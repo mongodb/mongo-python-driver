@@ -1102,8 +1102,11 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map,
                 copy.deepcopy(callback_ops))
         elif opname == 'drop_collection' and arg_name == 'collection':
             arguments['name_or_collection'] = arguments.pop(arg_name)
-        elif opname == 'create_collection' and arg_name == 'collection':
-            arguments['name'] = arguments.pop(arg_name)
+        elif opname == 'create_collection':
+            if arg_name == 'collection':
+                arguments['name'] = arguments.pop(arg_name)
+            # Any other arguments to create_collection are passed through
+            # **kwargs.
         elif opname == 'create_index' and arg_name == 'keys':
             arguments['keys'] = list(arguments.pop(arg_name).items())
         elif opname == 'drop_index' and arg_name == 'name':

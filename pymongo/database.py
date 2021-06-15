@@ -364,6 +364,10 @@ class Database(common.BaseObject):
             size of the collection.
           - "capped": if True, this is a capped collection
           - "max": maximum number of objects if capped (optional)
+          - `timeseries`: a document specifying configuration options for
+            timeseries collections
+          - `expireAfterSeconds`: the number of seconds after which a
+            document in a timeseries collection expires
 
         See the MongoDB documentation for a full list of supported options by
         server version.
