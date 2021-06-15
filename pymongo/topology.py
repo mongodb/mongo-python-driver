@@ -447,7 +447,8 @@ class Topology(object):
             # Only update pools for data-bearing servers.
             for sd in self.data_bearing_servers():
                 server = self._servers[sd.address]
-                servers.append((server, server.pool.generation))
+                servers.append((server,
+                                server.pool.gen.get_overall()))
 
         for server, generation in servers:
             try:
@@ -577,7 +578,8 @@ class Topology(object):
             # Another thread removed this server from the topology.
             return True
 
-        if err_ctx.sock_generation != server._pool.generation:
+        if server._pool.stale_generation(
+                err_ctx.sock_generation, err_ctx.service_id):
             # This is an outdated error from a previous pool version.
             return True
 
