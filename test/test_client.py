@@ -1554,7 +1554,7 @@ class TestClient(IntegrationTest):
         self.addCleanup(client.close)
         client.admin.command('ping')
         pool = get_pool(client)
-        generation = pool.generation
+        generation = pool.gen.get_overall()
 
         # Continuously reset the pool.
         class ResetPoolThread(threading.Thread):
@@ -1568,7 +1568,10 @@ class TestClient(IntegrationTest):
 
             def run(self):
                 while self.running:
-                    self.pool.reset()
+                    exc = AutoReconnect('mock pool error')
+                    ctx = _ErrorContext(
+                        exc, 0, pool.gen.get_overall(), False, None)
+                    client._topology.handle_error(pool.address, ctx)
                     time.sleep(0.001)
 
         t = ResetPoolThread(pool)
@@ -1581,7 +1584,7 @@ class TestClient(IntegrationTest):
                 for _ in range(10):
                     client._topology.update_pool(
                         client._MongoClient__all_credentials)
-                if generation != pool.generation:
+                if generation != pool.gen.get_overall():
                     break
         finally:
             t.stop()

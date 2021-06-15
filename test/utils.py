@@ -41,7 +41,8 @@ from pymongo.collection import ReturnDocument
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.monitoring import _SENSITIVE_COMMANDS
 from pymongo.pool import (_CancellationContext,
-                          PoolOptions)
+                          PoolOptions,
+                          _PoolGeneration)
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import (any_server_selector,
@@ -264,10 +265,13 @@ class MockSocketInfo(object):
 
 
 class MockPool(object):
-    def __init__(self, *args, **kwargs):
-        self.generation = 0
+    def __init__(self, address, options, handshake=True):
+        self.gen = _PoolGeneration()
         self._lock = threading.Lock()
         self.opts = PoolOptions()
+
+    def stale_generation(self, gen, service_id):
+        return self.gen.stale(gen, service_id)
 
     def get_socket(self, all_credentials, checkout=False):
         return MockSocketInfo()
@@ -275,9 +279,9 @@ class MockPool(object):
     def return_socket(self, *args, **kwargs):
         pass
 
-    def _reset(self):
+    def _reset(self, service_id=None):
         with self._lock:
-            self.generation += 1
+            self.gen.inc(service_id)
 
     def reset(self, service_id=None):
         self._reset()
