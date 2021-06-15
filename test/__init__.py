@@ -97,6 +97,9 @@ TEST_LOADBALANCER = bool(os.environ.get("TEST_LOADBALANCER"))
 SINGLE_MONGOS_LB_URI = os.environ.get("SINGLE_MONGOS_LB_URI")
 MULTI_MONGOS_LB_URI = os.environ.get("MULTI_MONGOS_LB_URI")
 if TEST_LOADBALANCER:
+    # Remove after PYTHON-2712
+    from pymongo import pool
+    pool._MOCK_SERVICE_ID = True
     res = parse_uri(SINGLE_MONGOS_LB_URI)
     host, port = res['nodelist'][0]
     db_user = res['username'] or db_user

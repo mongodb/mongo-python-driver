@@ -896,6 +896,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if expect_error:
                 return self.process_error(exc, expect_error)
             raise
+        else:
+            if expect_error:
+                self.fail('Excepted error %s but "%s" succeeded: %s' % (
+                    expect_error, opname, result))
 
         if expect_result:
             actual = coerce_result(opname, result)

@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import sys
-import unittest
 
 sys.path[0:0] = [""]
 
+from test import unittest
 from test.test_crud_unified import *
 
 if __name__ == '__main__':
