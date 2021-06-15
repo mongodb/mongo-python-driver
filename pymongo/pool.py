@@ -226,6 +226,9 @@ else:
 # main thread, to avoid the deadlock. See PYTHON-607.
 'foo'.encode('idna')
 
+# Remove after PYTHON-2712
+_MOCK_SERVICE_ID = False
+
 
 def _raise_connection_failure(address, error, msg_prefix=None):
     """Convert a socket.error to ConnectionFailure and raise it."""
@@ -600,7 +603,7 @@ class SocketInfo(object):
         doc = self.command('admin', cmd, publish_events=False,
                            exhaust_allowed=awaitable)
         # PYTHON-2712 will remove this topologyVersion fallback logic.
-        if self.opts.load_balanced:
+        if self.opts.load_balanced and _MOCK_SERVICE_ID:
             process_id = doc.get('topologyVersion', {}).get('processId')
             doc.setdefault('serviceId', process_id)
         ismaster = IsMaster(doc, awaitable=awaitable)
@@ -627,7 +630,7 @@ class SocketInfo(object):
         if self.opts.load_balanced:
             if not ismaster.service_id:
                 raise ConfigurationError(
-                    'Driver attempted to initialize in load balancing mode'
+                    'Driver attempted to initialize in load balancing mode,'
                     ' but the server does not support this mode')
             self.service_id = ismaster.service_id
             self.generation = self.pool_gen.get(self.service_id)
@@ -1338,11 +1341,11 @@ class Pool:
             raise
 
         sock_info = SocketInfo(sock, self, self.address, conn_id)
-        if self.handshake:
-            sock_info.ismaster(all_credentials)
-            self.is_writable = sock_info.is_writable
-
         try:
+            if self.handshake:
+                sock_info.ismaster(all_credentials)
+                self.is_writable = sock_info.is_writable
+
             sock_info.check_auth(all_credentials)
         except BaseException:
             sock_info.close_socket(ConnectionClosedReason.ERROR)
