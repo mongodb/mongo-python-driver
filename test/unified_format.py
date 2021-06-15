@@ -103,17 +103,19 @@ def is_run_on_requirement_satisfied(requirement):
         topology_satisfied = client_context.is_topology_type(
             req_topologies)
 
+    server_version = Version(*client_context.version[:3])
+
     min_version_satisfied = True
     req_min_server_version = requirement.get('minServerVersion')
     if req_min_server_version:
         min_version_satisfied = Version.from_string(
-            req_min_server_version) <= client_context.version
+            req_min_server_version) <= server_version
 
     max_version_satisfied = True
     req_max_server_version = requirement.get('maxServerVersion')
     if req_max_server_version:
         max_version_satisfied = Version.from_string(
-            req_max_server_version) >= client_context.version
+            req_max_server_version) >= server_version
 
     params_satisfied = True
     params = requirement.get('serverParameters')
