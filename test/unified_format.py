@@ -370,7 +370,7 @@ BSON_TYPE_ALIAS_MAP = {
     'symbol': (unicode_type,),
     'javascriptWithScope': (unicode_type, Code),
     'int': (int,),
-    'long': (Int64,),
+    'long': long_types,
     'decimal': (Decimal128,),
     'maxKey': (MaxKey,),
     'minKey': (MinKey,),
