@@ -551,6 +551,14 @@ class SocketInfo(object):
         self.pinned_txn = False
         self.pinned_cursor = False
 
+    def pin_txn(self):
+        self.pinned_txn = True
+        assert not self.pinned_cursor
+
+    def pin_cursor(self):
+        self.pinned_cursor = True
+        assert not self.pinned_txn
+
     def unpin(self):
         pool = self.pool_ref()
         if pool:
@@ -1356,7 +1364,7 @@ class Pool:
         return sock_info
 
     @contextlib.contextmanager
-    def get_socket(self, all_credentials, checkout=False, handler=None):
+    def get_socket(self, all_credentials, handler=None):
         """Get a socket from the pool. Use with a "with" statement.
 
         Returns a :class:`SocketInfo` object wrapping a connected
@@ -1364,7 +1372,7 @@ class Pool:
 
         This method should always be used in a with-statement::
 
-            with pool.get_socket(credentials, checkout) as socket_info:
+            with pool.get_socket(credentials) as socket_info:
                 socket_info.send_message(msg)
                 data = socket_info.receive_message(op_code, request_id)
 
@@ -1376,7 +1384,6 @@ class Pool:
 
         :Parameters:
           - `all_credentials`: dict, maps auth source to MongoCredential.
-          - `checkout` (optional): keep socket checked out.
           - `handler` (optional): A _MongoClientErrorHandler.
         """
         listeners = self.opts.event_listeners
@@ -1384,12 +1391,6 @@ class Pool:
             listeners.publish_connection_check_out_started(self.address)
 
         sock_info = self._get_socket(all_credentials)
-        if checkout:
-            with self.lock:
-                sock_info.pinned_cursor = True
-                self.__pinned_sockets.add(sock_info)
-                self.ncursors += 1
-
         if self.enabled_for_cmap:
             listeners.publish_connection_checked_out(
                 self.address, sock_info.id)
@@ -1400,7 +1401,7 @@ class Pool:
             # Note that when pinned is True, the session owns the
             # connection and it is responsible for checking the connection
             # back into the pool.
-            pinned = sock_info.pinned_txn
+            pinned = sock_info.pinned_txn or sock_info.pinned_cursor
             if handler:
                 # Perform SDAM error handling rules while the connection is
                 # still checked out.
@@ -1409,14 +1410,16 @@ class Pool:
             if not pinned:
                 self.return_socket(sock_info)
             raise
+        if sock_info.pinned_txn:
+            with self.lock:
+                self.__pinned_sockets.add(sock_info)
+                self.ntxns += 1
+        elif sock_info.pinned_cursor:
+            with self.lock:
+                self.__pinned_sockets.add(sock_info)
+                self.ncursors += 1
         else:
-            if sock_info.pinned_txn:
-                with self.lock:
-                    sock_info.pinned_cursor = False
-                    self.__pinned_sockets.add(sock_info)
-                    self.ntxns += 1
-            elif not checkout:
-                self.return_socket(sock_info)
+            self.return_socket(sock_info)
 
     def _raise_if_not_ready(self, emit_event):
         if self.state != PoolState.READY:

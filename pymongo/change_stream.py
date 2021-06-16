@@ -181,7 +181,7 @@ class ChangeStream(object):
 
         return self._client._retryable_read(
             cmd.get_cursor, self._target._read_preference_for(session),
-            session, pin=self._client._should_pin_cursor(session))
+            session)
 
     def _create_cursor(self):
         with self._client._tmp_session(self._session, close=False) as s:
