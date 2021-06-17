@@ -34,7 +34,6 @@ from pymongo.message import (_CursorAddress,
                              _RawBatchGetMore,
                              _Query,
                              _RawBatchQuery)
-from pymongo.monitoring import ConnectionClosedReason
 from pymongo.response import PinnedResponse
 
 # These errors mean that the server has already killed the cursor so there is
@@ -349,29 +348,20 @@ class Cursor(object):
 
         self.__killed = True
         if self.__id and not already_killed:
-            if self.__exhaust and self.__sock_mgr:
-                # If this is an exhaust cursor and we haven't completely
-                # exhausted the result set we *must* close the socket
-                # to stop the server from sending more data.
-                self.__sock_mgr.sock.close_socket(
-                    ConnectionClosedReason.ERROR)
-            else:
-                address = _CursorAddress(
-                    self.__address, self.__collection.full_name)
-                if synchronous:
-                    self.__collection.database.client._close_cursor_now(
-                        self.__id, address, session=self.__session,
-                        sock_mgr=self.__sock_mgr)
-                else:
-                    # The cursor will be closed later in a different session.
-                    self.__collection.database.client._close_cursor(
-                        self.__id, address)
-        if self.__sock_mgr:
-            self.__sock_mgr.close()
-            self.__sock_mgr = None
-        if self.__session and not self.__explicit_session:
-            self.__session._end_session(lock=synchronous)
-            self.__session = None
+            cursor_id = self.__id
+            address = _CursorAddress(
+                self.__address, self.__collection.full_name)
+        else:
+            # Skip killCursors.
+            cursor_id = 0
+            address = None
+        self.__collection.database.client._cleanup_cursor(
+            synchronous,
+            cursor_id,
+            address,
+            self.__sock_mgr,
+            self.__session,
+            self.__explicit_session)
 
     def close(self):
         """Explicitly close / kill this cursor.
@@ -1094,10 +1084,10 @@ class Cursor(object):
         if self.__id == 0:
             # Don't wait for garbage collection to call __del__, return the
             # socket and the session to the pool now.
-            self.__die()
+            self.close()
 
         if self.__limit and self.__id and self.__limit <= self.__retrieved:
-            self.__die()
+            self.close()
 
     def _unpack_response(self, response, cursor_id, codec_options,
                          user_fields=None, legacy_response=False):
