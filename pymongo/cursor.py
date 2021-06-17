@@ -155,6 +155,7 @@ class Cursor(object):
         """
         # Initialize all attributes used in __del__ before possibly raising
         # an error to avoid attribute errors during garbage collection.
+        self.__collection = collection
         self.__id = None
         self.__exhaust = False
         self.__sock_mgr = None
@@ -207,7 +208,6 @@ class Cursor(object):
                 projection = {"_id": 1}
             projection = helpers._fields_list_to_dict(projection, "projection")
 
-        self.__collection = collection
         self.__spec = spec
         self.__projection = projection
         self.__skip = skip
@@ -292,6 +292,7 @@ class Cursor(object):
         be sent to the server, even if the resultant data has already been
         retrieved by this cursor.
         """
+        self.close()
         self.__data = deque()
         self.__id = None
         self.__address = None
@@ -362,6 +363,9 @@ class Cursor(object):
             self.__sock_mgr,
             self.__session,
             self.__explicit_session)
+        if not self.__explicit_session:
+            self.__session = None
+        self.__sock_mgr = None
 
     def close(self):
         """Explicitly close / kill this cursor.

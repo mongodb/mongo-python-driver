@@ -86,6 +86,9 @@ class CommandCursor(object):
             self.__sock_mgr,
             self.__session,
             self.__explicit_session)
+        if not self.__explicit_session:
+            self.__session = None
+        self.__sock_mgr = None
 
     def __end_session(self, synchronous):
         if self.__session and not self.__explicit_session:
