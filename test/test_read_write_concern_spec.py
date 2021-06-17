@@ -25,7 +25,8 @@ from pymongo import DESCENDING
 from pymongo.errors import (BulkWriteError,
                             ConfigurationError,
                             WTimeoutError,
-                            WriteConcernError)
+                            WriteConcernError,
+                            WriteError)
 from pymongo.mongo_client import MongoClient
 from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern
@@ -209,6 +210,27 @@ class TestReadWriteConcernSpec(IntegrationTest):
                 'nInserted': 1, 'nUpserted': 0, 'nMatched': 0, 'nModified': 0,
                 'nRemoved': 0, 'upserted': []}
             self.assertEqual(ctx.exception.details, expected_details)
+
+    @client_context.require_version_min(4, 9)
+    def test_write_error_details_exposes_errinfo(self):
+        listener = EventListener()
+        client = rs_or_single_client(event_listeners=[listener])
+        db = client.errinfotest
+        self.addCleanup(client.drop_database, "errinfotest")
+        validator = {"x": {"$type": "string"}}
+        db.create_collection("test", validator=validator)
+        with self.assertRaises(WriteError) as ctx:
+            db.test.insert_one({'x': 1})
+        self.assertEqual(ctx.exception.code, 121)
+        self.assertIsNotNone(ctx.exception.details)
+        self.assertIsNotNone(ctx.exception.details.get('errInfo'))
+        for event in listener.results['succeeded']:
+            if event.command_name == 'insert':
+                self.assertEqual(
+                    event.reply['writeErrors'][0], ctx.exception.details)
+                break
+        else:
+            self.fail("Couldn't find insert event.")
 
 
 def normalize_write_concern(concern):
