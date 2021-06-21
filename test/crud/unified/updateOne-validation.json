@@ -1,6 +1,6 @@
 {
   "description": "updateOne-validation",
-  "schemaVersion": "1.1",
+  "schemaVersion": "1.0",
   "createEntities": [
     {
       "client": {
@@ -14,21 +14,21 @@
       "database": {
         "id": "database0",
         "client": "client0",
-        "databaseName": "crud-v2"
+        "databaseName": "crud-tests"
       }
     },
     {
       "collection": {
         "id": "collection0",
         "database": "database0",
-        "collectionName": "crud-v2"
+        "collectionName": "coll0"
       }
     }
   ],
   "initialData": [
     {
-      "collectionName": "crud-v2",
-      "databaseName": "crud-v2",
+      "collectionName": "coll0",
+      "databaseName": "crud-tests",
       "documents": [
         {
           "_id": 1,
@@ -42,8 +42,8 @@
       "description": "UpdateOne requires atomic modifiers",
       "operations": [
         {
-          "object": "collection0",
           "name": "updateOne",
+          "object": "collection0",
           "arguments": {
             "filter": {
               "_id": 1
@@ -53,7 +53,7 @@
             }
           },
           "expectError": {
-            "isError": true
+            "isClientError": true
           }
         }
       ],
@@ -65,8 +65,8 @@
       ],
       "outcome": [
         {
-          "collectionName": "crud-v2",
-          "databaseName": "crud-v2",
+          "collectionName": "coll0",
+          "databaseName": "crud-tests",
           "documents": [
             {
               "_id": 1,

@@ -617,9 +617,11 @@ def coerce_result(opname, result):
     if opname == 'bulkWrite':
         return parse_bulk_write_result(result)
     if opname == 'insertOne':
-        return {'insertedId': result.inserted_id}
+        return {'insertedId': result.inserted_id, 'insertedCount': 1}
     if opname == 'insertMany':
-        return {idx: _id for idx, _id in enumerate(result.inserted_ids)}
+        res = {idx: _id for idx, _id in enumerate(result.inserted_ids)}
+        res['insertedCount'] = len(result.inserted_ids)
+        return res
     if opname in ('deleteOne', 'deleteMany'):
         return {'deletedCount': result.deleted_count}
     if opname in ('updateOne', 'updateMany', 'replaceOne'):
@@ -708,6 +710,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if 'Dirty explicit session is discarded' in spec['description']:
                 raise unittest.SkipTest(
                     "MMAPv1 does not support retryWrites=True")
+        elif 'Client side error in command starting transaction' in spec['description']:
+            raise unittest.SkipTest("Implement PYTHON-1894")
 
     def process_error(self, exception, spec):
         is_error = spec.get('isError')

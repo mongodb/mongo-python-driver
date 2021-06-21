@@ -7,6 +7,9 @@ Changes in Version 3.12.0
 .. warning:: PyMongo 3.12.0 deprecates support for Python 2.7, 3.4 and 3.5.
    These Python versions will not be supported by PyMongo 4.
 
+.. warning:: PyMongo now allows insertion of documents with keys that include
+   dots ('.') or start with dollar signs ('$').
+
 - PyMongoCrypt 1.1.0 or later is now required for client side field level
   encryption support.
 

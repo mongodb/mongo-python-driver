@@ -1225,34 +1225,6 @@ class TestCollection(IntegrationTest):
             self.assertEqual(x["hello"], u"world")
             self.assertTrue("_id" in x)
 
-    def test_invalid_key_names(self):
-        db = self.db
-        db.test.drop()
-
-        db.test.insert_one({"hello": "world"})
-        db.test.insert_one({"hello": {"hello": "world"}})
-
-        self.assertRaises(InvalidDocument, db.test.insert_one,
-                          {"$hello": "world"})
-        self.assertRaises(InvalidDocument, db.test.insert_one,
-                          {"hello": {"$hello": "world"}})
-
-        db.test.insert_one({"he$llo": "world"})
-        db.test.insert_one({"hello": {"hello$": "world"}})
-
-        self.assertRaises(InvalidDocument, db.test.insert_one,
-                          {".hello": "world"})
-        self.assertRaises(InvalidDocument, db.test.insert_one,
-                          {"hello": {".hello": "world"}})
-        self.assertRaises(InvalidDocument, db.test.insert_one,
-                          {"hello.": "world"})
-        self.assertRaises(InvalidDocument, db.test.insert_one,
-                          {"hello": {"hello.": "world"}})
-        self.assertRaises(InvalidDocument, db.test.insert_one,
-                          {"hel.lo": "world"})
-        self.assertRaises(InvalidDocument, db.test.insert_one,
-                          {"hello": {"hel.lo": "world"}})
-
     def test_unique_index(self):
         db = self.db
         db.drop_collection("test")

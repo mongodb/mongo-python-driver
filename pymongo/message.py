@@ -940,7 +940,7 @@ class _BulkWriteContext(object):
     @property
     def check_keys(self):
         """Should we check keys for this operation type?"""
-        return self.op_type == _INSERT
+        return False
 
     @property
     def max_bson_size(self):

@@ -612,7 +612,7 @@ class Collection(common.BaseObject):
         if not isinstance(doc, RawBSONDocument):
             return doc.get('_id')
 
-    def _insert(self, docs, ordered=True, check_keys=True,
+    def _insert(self, docs, ordered=True, check_keys=False,
                 manipulate=False, write_concern=None, op_id=None,
                 bypass_doc_val=False, session=None):
         """Internal insert helper."""
@@ -771,7 +771,7 @@ class Collection(common.BaseObject):
         return InsertManyResult(inserted_ids, write_concern.acknowledged)
 
     def _update(self, sock_info, criteria, document, upsert=False,
-                check_keys=True, multi=False, manipulate=False,
+                check_keys=False, multi=False, manipulate=False,
                 write_concern=None, op_id=None, ordered=True,
                 bypass_doc_val=False, collation=None, array_filters=None,
                 hint=None, session=None, retryable_write=False):
@@ -860,7 +860,7 @@ class Collection(common.BaseObject):
 
     def _update_retryable(
             self, criteria, document, upsert=False,
-            check_keys=True, multi=False, manipulate=False,
+            check_keys=False, multi=False, manipulate=False,
             write_concern=None, op_id=None, ordered=True,
             bypass_doc_val=False, collation=None, array_filters=None,
             hint=None, session=None):

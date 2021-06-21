@@ -451,24 +451,6 @@ class TestLegacy(IntegrationTest):
 
         db.collection_4.drop()
 
-    def test_bad_dbref(self):
-        # Requires the legacy API to test.
-        c = self.db.test
-        c.drop()
-
-        # Incomplete DBRefs.
-        self.assertRaises(
-            InvalidDocument,
-            c.insert_one, {'ref': {'$ref': 'collection'}})
-
-        self.assertRaises(
-            InvalidDocument,
-            c.insert_one, {'ref': {'$id': ObjectId()}})
-
-        ref_only = {'ref': {'$ref': 'collection'}}
-        id_only = {'ref': {'$id': ObjectId()}}
-
-
     def test_update(self):
         # Tests legacy update.
         db = self.db
@@ -1518,15 +1500,6 @@ class TestLegacyBulk(BulkTestBase):
         self.assertEqualResponse(expected, result)
 
         self.assertEqual(2, self.coll.count())
-
-    def test_insert_check_keys(self):
-        bulk = self.coll.initialize_ordered_bulk_op()
-        bulk.insert({'$dollar': 1})
-        self.assertRaises(InvalidDocument, bulk.execute)
-
-        bulk = self.coll.initialize_ordered_bulk_op()
-        bulk.insert({'a.b': 1})
-        self.assertRaises(InvalidDocument, bulk.execute)
 
     def test_update(self):
 
