@@ -810,7 +810,7 @@ class Database(common.BaseObject):
         return cmd_cursor
 
     def list_collections(self, session=None, filter=None, **kwargs):
-        """Get a cursor over the collectons of this database.
+        """Get a cursor over the collections of this database.
 
         :Parameters:
           - `session` (optional): a
