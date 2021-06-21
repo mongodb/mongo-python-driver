@@ -644,7 +644,7 @@ class Collection(common.BaseObject):
         write_concern = self._write_concern_for(session)
         return InsertOneResult(
             self._insert_one(
-                document, ordered=True, check_keys=True,
+                document, ordered=True, check_keys=False,
                 write_concern=write_concern, op_id=None,
                 bypass_doc_val=bypass_document_validation, session=session),
             write_concern.acknowledged)
@@ -712,7 +712,7 @@ class Collection(common.BaseObject):
         return InsertManyResult(inserted_ids, write_concern.acknowledged)
 
     def _update(self, sock_info, criteria, document, upsert=False,
-                check_keys=True, multi=False,
+                check_keys=False, multi=False,
                 write_concern=None, op_id=None, ordered=True,
                 bypass_doc_val=False, collation=None, array_filters=None,
                 hint=None, session=None, retryable_write=False):
@@ -799,7 +799,7 @@ class Collection(common.BaseObject):
 
     def _update_retryable(
             self, criteria, document, upsert=False,
-            check_keys=True, multi=False,
+            check_keys=False, multi=False,
             write_concern=None, op_id=None, ordered=True,
             bypass_doc_val=False, collation=None, array_filters=None,
             hint=None, session=None):

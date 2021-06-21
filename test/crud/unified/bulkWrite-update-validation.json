@@ -1,6 +1,6 @@
 {
   "description": "bulkWrite-update-validation",
-  "schemaVersion": "1.1",
+  "schemaVersion": "1.0",
   "createEntities": [
     {
       "client": {
@@ -14,21 +14,21 @@
       "database": {
         "id": "database0",
         "client": "client0",
-        "databaseName": "crud-v2"
+        "databaseName": "crud-tests"
       }
     },
     {
       "collection": {
         "id": "collection0",
         "database": "database0",
-        "collectionName": "crud-v2"
+        "collectionName": "coll0"
       }
     }
   ],
   "initialData": [
     {
-      "collectionName": "crud-v2",
-      "databaseName": "crud-v2",
+      "collectionName": "coll0",
+      "databaseName": "crud-tests",
       "documents": [
         {
           "_id": 1,
@@ -50,8 +50,8 @@
       "description": "BulkWrite replaceOne prohibits atomic modifiers",
       "operations": [
         {
-          "object": "collection0",
           "name": "bulkWrite",
+          "object": "collection0",
           "arguments": {
             "requests": [
               {
@@ -69,7 +69,7 @@
             ]
           },
           "expectError": {
-            "isError": true
+            "isClientError": true
           }
         }
       ],
@@ -81,8 +81,8 @@
       ],
       "outcome": [
         {
-          "collectionName": "crud-v2",
-          "databaseName": "crud-v2",
+          "collectionName": "coll0",
+          "databaseName": "crud-tests",
           "documents": [
             {
               "_id": 1,
@@ -104,8 +104,8 @@
       "description": "BulkWrite updateOne requires atomic modifiers",
       "operations": [
         {
-          "object": "collection0",
           "name": "bulkWrite",
+          "object": "collection0",
           "arguments": {
             "requests": [
               {
@@ -121,7 +121,7 @@
             ]
           },
           "expectError": {
-            "isError": true
+            "isClientError": true
           }
         }
       ],
@@ -133,8 +133,8 @@
       ],
       "outcome": [
         {
-          "collectionName": "crud-v2",
-          "databaseName": "crud-v2",
+          "collectionName": "coll0",
+          "databaseName": "crud-tests",
           "documents": [
             {
               "_id": 1,
@@ -156,8 +156,8 @@
       "description": "BulkWrite updateMany requires atomic modifiers",
       "operations": [
         {
-          "object": "collection0",
           "name": "bulkWrite",
+          "object": "collection0",
           "arguments": {
             "requests": [
               {
@@ -175,7 +175,7 @@
             ]
           },
           "expectError": {
-            "isError": true
+            "isClientError": true
           }
         }
       ],
@@ -187,8 +187,8 @@
       ],
       "outcome": [
         {
-          "collectionName": "crud-v2",
-          "databaseName": "crud-v2",
+          "collectionName": "coll0",
+          "databaseName": "crud-tests",
           "documents": [
             {
               "_id": 1,

@@ -892,13 +892,6 @@ class TestCollection(IntegrationTest):
         # This will pass with OP_UPDATE or the update command.
         self.db.test.replace_one({"bar": "x"}, {"bar": "x" * (max_size - 32)})
 
-    def test_bad_dbref(self):
-        # Incomplete DBRefs.
-        ref_only = {'ref': {'$ref': 'collection'}}
-        id_only = {'ref': {'$id': ObjectId()}}
-        self.assertRaises(InvalidDocument, self.db.test.insert_one, ref_only)
-        self.assertRaises(InvalidDocument, self.db.test.insert_one, id_only)
-
     @client_context.require_version_min(3, 1, 9, -1)
     def test_insert_bypass_document_validation(self):
         db = self.db
@@ -1214,34 +1207,6 @@ class TestCollection(IntegrationTest):
         for x in db.test.find():
             self.assertEqual(x["hello"], "world")
             self.assertTrue("_id" in x)
-
-    def test_invalid_key_names(self):
-        db = self.db
-        db.test.drop()
-
-        db.test.insert_one({"hello": "world"})
-        db.test.insert_one({"hello": {"hello": "world"}})
-
-        self.assertRaises(InvalidDocument, db.test.insert_one,
-                          {"$hello": "world"})
-        self.assertRaises(InvalidDocument, db.test.insert_one,
-                          {"hello": {"$hello": "world"}})
-
-        db.test.insert_one({"he$llo": "world"})
-        db.test.insert_one({"hello": {"hello$": "world"}})
-
-        self.assertRaises(InvalidDocument, db.test.insert_one,
-                          {".hello": "world"})
-        self.assertRaises(InvalidDocument, db.test.insert_one,
-                          {"hello": {".hello": "world"}})
-        self.assertRaises(InvalidDocument, db.test.insert_one,
-                          {"hello.": "world"})
-        self.assertRaises(InvalidDocument, db.test.insert_one,
-                          {"hello": {"hello.": "world"}})
-        self.assertRaises(InvalidDocument, db.test.insert_one,
-                          {"hel.lo": "world"})
-        self.assertRaises(InvalidDocument, db.test.insert_one,
-                          {"hello": {"hel.lo": "world"}})
 
     def test_unique_index(self):
         db = self.db

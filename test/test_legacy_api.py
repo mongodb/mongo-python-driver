@@ -131,15 +131,6 @@ class TestLegacyBulk(BulkTestBase):
 
         self.assertEqual(2, self.coll.count())
 
-    def test_insert_check_keys(self):
-        bulk = self.coll.initialize_ordered_bulk_op()
-        bulk.insert({'$dollar': 1})
-        self.assertRaises(InvalidDocument, bulk.execute)
-
-        bulk = self.coll.initialize_ordered_bulk_op()
-        bulk.insert({'a.b': 1})
-        self.assertRaises(InvalidDocument, bulk.execute)
-
     def test_update(self):
 
         expected = {
