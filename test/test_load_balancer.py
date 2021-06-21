@@ -58,6 +58,7 @@ class TestLB(IntegrationTest):
         self.client.close()
         self.db.test.find_one({})
 
+    @client_context.require_failCommand_fail_point
     def test_cursor_gc(self):
         def create_resource(coll):
             cursor = coll.find({}, batch_size=3)
@@ -65,6 +66,7 @@ class TestLB(IntegrationTest):
             return cursor
         self._test_no_gc_deadlock(create_resource)
 
+    @client_context.require_failCommand_fail_point
     def test_command_cursor_gc(self):
         def create_resource(coll):
             cursor = coll.aggregate([], batchSize=3)
