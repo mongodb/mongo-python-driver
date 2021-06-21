@@ -109,6 +109,7 @@ class TestLB(IntegrationTest):
         # Run another operation to ensure the socket still works.
         self.db.test.delete_many({})
 
+    @client_context.require_transactions
     def test_session_gc(self):
         pool = get_pool(self.client)
 

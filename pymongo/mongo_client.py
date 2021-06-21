@@ -1504,7 +1504,8 @@ class MongoClient(common.BaseObject):
                 session._end_session(lock=True)
         else:
             # The cursor will be closed later in a different session.
-            self._close_cursor(cursor_id, address, sock_mgr)
+            if cursor_id or sock_mgr:
+                self._close_cursor(cursor_id, address, sock_mgr)
             if session and not explicit_session:
                 session._end_session(lock=False)
 
