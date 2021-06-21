@@ -116,9 +116,6 @@ class _SocketManager:
         self.__closed = False
         self.lock = threading.Lock()
 
-    def __del__(self):
-        self.close()
-
     def update_exhaust(self, more_to_come):
         self.more_to_come = more_to_come
 
