@@ -109,6 +109,31 @@ class TestLB(IntegrationTest):
         # Run another operation to ensure the socket still works.
         self.db.test.delete_many({})
 
+    def test_session_gc(self):
+        pool = get_pool(self.client)
+
+        session = self.client.start_session()
+        session.start_transaction()
+        self.client.test_session_gc.test.find_one({}, session=session)
+        if client_context.load_balancer:
+            self.assertEqual(pool.active_sockets, 1)  # Pinned.
+
+        thread = PoolLocker(pool)
+        thread.start()
+        self.assertTrue(thread.locked.wait(5), 'timed out')
+        # Garbage collect the session while the pool is locked to ensure we
+        # don't deadlock.
+        del session
+        gc.collect()
+        thread.unlock.set()
+        thread.join(5)
+        self.assertFalse(thread.is_alive())
+        self.assertIsNone(thread.exc)
+
+        wait_until(lambda: pool.active_sockets == 0, 'return socket')
+        # Run another operation to ensure the socket still works.
+        self.db.test.delete_many({})
+
 
 class PoolLocker(ExceptionCatchingThread):
     def __init__(self, pool):

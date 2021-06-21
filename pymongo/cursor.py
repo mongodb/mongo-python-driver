@@ -105,15 +105,13 @@ class CursorType(object):
     """
 
 
-# This has to be an old style class due to
-# http://bugs.jython.org/issue1057
-class _SocketManager:
+class _SocketManager(object):
     """Used with exhaust cursors to ensure the socket is returned.
     """
     def __init__(self, sock, more_to_come):
         self.sock = sock
         self.more_to_come = more_to_come
-        self.__closed = False
+        self.closed = False
         self.lock = threading.Lock()
 
     def update_exhaust(self, more_to_come):
@@ -122,8 +120,8 @@ class _SocketManager:
     def close(self):
         """Return this instance's socket to the connection pool.
         """
-        if not self.__closed:
-            self.__closed = True
+        if not self.closed:
+            self.closed = True
             self.sock.unpin()
             self.sock = None
 
