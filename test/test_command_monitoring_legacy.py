@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Run the command monitoring spec tests."""
+"""Run the command monitoring legacy-format spec tests."""
 
 import os
 import re
@@ -26,7 +26,6 @@ from bson import json_util
 from pymongo.errors import OperationFailure
 from pymongo.write_concern import WriteConcern
 from test import unittest, client_context
-from test.unified_format import generate_test_classes
 from test.utils import (
     single_client, wait_until, EventListener, parse_read_preference)
 
@@ -240,11 +239,6 @@ def create_tests():
 
 
 create_tests()
-
-
-globals().update(generate_test_classes(
-    os.path.join(_TEST_PATH, 'unified'),
-    module=__name__,))
 
 
 if __name__ == "__main__":
