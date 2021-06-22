@@ -24,7 +24,7 @@ from pymongo import ASCENDING
 from pymongo.errors import (CursorNotFound,
                             DuplicateKeyError,
                             ExecutionTimeout,
-                            NotMasterError,
+                            NotPrimaryError,
                             OperationFailure,
                             WriteError,
                             WriteConcernError,
@@ -40,10 +40,10 @@ _SHUTDOWN_CODES = frozenset([
 # errors are a subset).
 _NOT_MASTER_CODES = frozenset([
     10058,  # LegacyNotPrimary <=3.2 "not master" error code
-    10107,  # NotMaster
-    13435,  # NotMasterNoSlaveOk
+    10107,  # NotWritablePrimary
+    13435,  # NotPrimaryNoSecondaryOk
     11602,  # InterruptedDueToReplStateChange
-    13436,  # NotMasterOrSecondary
+    13436,  # NotPrimaryOrSecondary
     189,    # PrimarySteppedDown
 ]) | _SHUTDOWN_CODES
 # From the retryable writes spec.
@@ -151,9 +151,9 @@ def _check_command_response(response, max_wire_version,
     # Server is "not master" or "recovering"
     if code is not None:
         if code in _NOT_MASTER_CODES:
-            raise NotMasterError(errmsg, response)
+            raise NotPrimaryError(errmsg, response)
     elif "not master" in errmsg or "node is recovering" in errmsg:
-        raise NotMasterError(errmsg, response)
+        raise NotPrimaryError(errmsg, response)
 
     # Other errors
     # findAndModify with upsert can raise duplicate key error
@@ -185,7 +185,7 @@ def _check_gle_response(result, max_wire_version):
         return result
 
     if error_msg.startswith("not master"):
-        raise NotMasterError(error_msg, result)
+        raise NotPrimaryError(error_msg, result)
 
     details = result
 

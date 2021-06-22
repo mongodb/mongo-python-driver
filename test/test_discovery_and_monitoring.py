@@ -27,7 +27,7 @@ from pymongo import (common,
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             NetworkTimeout,
-                            NotMasterError,
+                            NotPrimaryError,
                             OperationFailure)
 from pymongo.helpers import (_check_command_response,
                              _check_write_command_response)
@@ -104,7 +104,7 @@ def got_app_error(topology, app_error):
         else:
             raise AssertionError('unknown error type: %s' % (error_type,))
         assert False
-    except (AutoReconnect, NotMasterError, OperationFailure) as e:
+    except (AutoReconnect, NotPrimaryError, OperationFailure) as e:
         if when == 'beforeHandshakeCompletes':
             completed_handshake = False
         elif when == 'afterHandshakeCompletes':

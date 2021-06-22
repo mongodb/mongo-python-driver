@@ -20,19 +20,19 @@ sys.path[0:0] = [""]
 
 from pymongo.errors import (BulkWriteError,
                             EncryptionError,
-                            NotMasterError,
+                            NotPrimaryError,
                             OperationFailure)
 from test import (PyMongoTestCase,
                   unittest)
 
 
 class TestErrors(PyMongoTestCase):
-    def test_not_master_error(self):
-        exc = NotMasterError("not master test", {"errmsg": "error"})
+    def test_not_primary_error(self):
+        exc = NotPrimaryError("not primary test", {"errmsg": "error"})
         self.assertIn("full error", str(exc))
         try:
             raise exc
-        except NotMasterError:
+        except NotPrimaryError:
             self.assertIn("full error", traceback.format_exc())
 
     def test_operation_failure(self):
@@ -63,8 +63,8 @@ class TestErrors(PyMongoTestCase):
         self._test_unicode_strs(exc)
 
     def test_unicode_strs_not_master_error(self):
-        exc = NotMasterError('unicode \U0001f40d',
-                             {"errmsg": 'unicode \U0001f40d'})
+        exc = NotPrimaryError('unicode \U0001f40d',
+                              {"errmsg": 'unicode \U0001f40d'})
         self._test_unicode_strs(exc)
 
     def assertPyMongoErrorEqual(self, exc1, exc2):
@@ -79,8 +79,8 @@ class TestErrors(PyMongoTestCase):
         self.assertEqual(exc1.details, exc2.details)
         self.assertEqual(exc1._max_wire_version, exc2._max_wire_version)
 
-    def test_pickle_NotMasterError(self):
-        exc = NotMasterError("not master test", {"errmsg": "error"})
+    def test_pickle_NotPrimaryError(self):
+        exc = NotPrimaryError("not primary test", {"errmsg": "error"})
         self.assertPyMongoErrorEqual(exc, pickle.loads(pickle.dumps(exc)))
 
     def test_pickle_OperationFailure(self):

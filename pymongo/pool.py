@@ -47,7 +47,7 @@ from pymongo.errors import (AutoReconnect,
                             InvalidOperation,
                             DocumentTooLarge,
                             NetworkTimeout,
-                            NotMasterError,
+                            NotPrimaryError,
                             OperationFailure,
                             PyMongoError)
 from pymongo.hello import HelloCompat
@@ -736,7 +736,7 @@ class SocketInfo(object):
                            unacknowledged=unacknowledged,
                            user_fields=user_fields,
                            exhaust_allowed=exhaust_allowed)
-        except (OperationFailure, NotMasterError):
+        except (OperationFailure, NotPrimaryError):
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.
         except BaseException as error:
@@ -770,13 +770,13 @@ class SocketInfo(object):
             self._raise_connection_failure(error)
 
     def _raise_if_not_writable(self, unacknowledged):
-        """Raise NotMasterError on unacknowledged write if this socket is not
+        """Raise NotPrimaryError on unacknowledged write if this socket is not
         writable.
         """
         if unacknowledged and not self.is_writable:
             # Write won't succeed, bail as if we'd received a not master error.
-            raise NotMasterError("not master", {
-                "ok": 0, "errmsg": "not master", "code": 10107})
+            raise NotPrimaryError("not primary", {
+                "ok": 0, "errmsg": "not primary", "code": 10107})
 
     def legacy_write(self, request_id, msg, max_doc_size, with_last_error):
         """Send OP_INSERT, etc., optionally returning response as a dict.
@@ -811,7 +811,7 @@ class SocketInfo(object):
         reply = self.receive_message(request_id)
         result = reply.command_response()
 
-        # Raises NotMasterError or OperationFailure.
+        # Raises NotPrimaryError or OperationFailure.
         helpers._check_command_response(result, self.max_wire_version)
         return result
 

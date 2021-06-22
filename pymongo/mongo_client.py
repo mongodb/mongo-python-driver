@@ -56,7 +56,7 @@ from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
                             InvalidOperation,
-                            NotMasterError,
+                            NotPrimaryError,
                             OperationFailure,
                             PyMongoError,
                             ServerSelectionTimeoutError)
@@ -1938,7 +1938,7 @@ def _retryable_error_doc(exc):
         wces = exc.details['writeConcernErrors']
         wce = wces[-1] if wces else None
         return wce
-    if isinstance(exc, (NotMasterError, OperationFailure)):
+    if isinstance(exc, (NotPrimaryError, OperationFailure)):
         return exc.details
     return None
 
@@ -1963,10 +1963,10 @@ def _add_retryable_write_error(exc, max_wire_version):
             if code in helpers._RETRYABLE_ERROR_CODES:
                 exc._add_error_label("RetryableWriteError")
 
-    # Connection errors are always retryable except NotMasterError which is
+    # Connection errors are always retryable except NotPrimaryError which is
     # handled above.
     if (isinstance(exc, ConnectionFailure) and
-            not isinstance(exc, NotMasterError)):
+            not isinstance(exc, NotPrimaryError)):
         exc._add_error_label("RetryableWriteError")
 
 
