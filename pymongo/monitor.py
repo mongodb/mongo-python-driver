@@ -21,7 +21,7 @@ import weakref
 from bson.py3compat import PY3
 
 from pymongo import common, periodic_executor
-from pymongo.errors import (NotMasterError,
+from pymongo.errors import (NotPrimaryError,
                             OperationFailure,
                             _OperationCancelled)
 from pymongo.ismaster import IsMaster
@@ -215,7 +215,7 @@ class Monitor(MonitorBase):
         try:
             try:
                 return self._check_once()
-            except (OperationFailure, NotMasterError) as exc:
+            except (OperationFailure, NotPrimaryError) as exc:
                 # Update max cluster time even when isMaster fails.
                 self._topology.receive_cluster_time(
                     exc.details.get('$clusterTime'))

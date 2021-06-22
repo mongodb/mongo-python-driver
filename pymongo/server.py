@@ -18,7 +18,7 @@ from datetime import datetime
 
 from bson import _decode_all_selective
 
-from pymongo.errors import NotMasterError, OperationFailure
+from pymongo.errors import NotPrimaryError, OperationFailure
 from pymongo.helpers import _check_command_response
 from pymongo.message import _convert_exception, _OpMsg
 from pymongo.response import Response, PinnedResponse
@@ -130,7 +130,7 @@ class Server(object):
         except Exception as exc:
             if publish:
                 duration = datetime.now() - start
-                if isinstance(exc, (NotMasterError, OperationFailure)):
+                if isinstance(exc, (NotPrimaryError, OperationFailure)):
                     failure = exc.details
                 else:
                     failure = _convert_exception(exc)

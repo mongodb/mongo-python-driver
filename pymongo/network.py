@@ -27,7 +27,7 @@ from pymongo import helpers, message
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.compression_support import decompress, _NO_COMPRESSION
 from pymongo.errors import (AutoReconnect,
-                            NotMasterError,
+                            NotPrimaryError,
                             OperationFailure,
                             ProtocolError,
                             NetworkTimeout,
@@ -163,7 +163,7 @@ def command(sock_info, dbname, spec, slave_ok, is_mongos,
     except Exception as exc:
         if publish:
             duration = (datetime.datetime.now() - start) + encoding_duration
-            if isinstance(exc, (NotMasterError, OperationFailure)):
+            if isinstance(exc, (NotPrimaryError, OperationFailure)):
                 failure = exc.details
             else:
                 failure = message._convert_exception(exc)

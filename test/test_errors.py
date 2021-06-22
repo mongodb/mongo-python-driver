@@ -20,6 +20,7 @@ sys.path[0:0] = [""]
 
 from pymongo.errors import (BulkWriteError,
                             EncryptionError,
+                            NotPrimaryError,
                             NotMasterError,
                             OperationFailure)
 from test import (PyMongoTestCase,
@@ -27,12 +28,12 @@ from test import (PyMongoTestCase,
 
 
 class TestErrors(PyMongoTestCase):
-    def test_not_master_error(self):
-        exc = NotMasterError("not master test", {"errmsg": "error"})
+    def test_not_primary_error(self):
+        exc = NotPrimaryError("not primary test", {"errmsg": "error"})
         self.assertIn("full error", str(exc))
         try:
             raise exc
-        except NotMasterError:
+        except NotPrimaryError:
             self.assertIn("full error", traceback.format_exc())
 
     def test_operation_failure(self):
@@ -66,8 +67,8 @@ class TestErrors(PyMongoTestCase):
         self._test_unicode_strs(exc)
 
     def test_unicode_strs_not_master_error(self):
-        exc = NotMasterError(u'unicode \U0001f40d',
-                             {"errmsg": u'unicode \U0001f40d'})
+        exc = NotPrimaryError(u'unicode \U0001f40d',
+                              {"errmsg": u'unicode \U0001f40d'})
         self._test_unicode_strs(exc)
 
     def assertPyMongoErrorEqual(self, exc1, exc2):
@@ -82,8 +83,8 @@ class TestErrors(PyMongoTestCase):
         self.assertEqual(exc1.details, exc2.details)
         self.assertEqual(exc1._max_wire_version, exc2._max_wire_version)
 
-    def test_pickle_NotMasterError(self):
-        exc = NotMasterError("not master test", {"errmsg": "error"})
+    def test_pickle_NotPrimaryError(self):
+        exc = NotPrimaryError("not primary test", {"errmsg": "error"})
         self.assertPyMongoErrorEqual(exc, pickle.loads(pickle.dumps(exc)))
 
     def test_pickle_OperationFailure(self):
@@ -102,6 +103,11 @@ class TestErrors(PyMongoTestCase):
         exc2 = pickle.loads(pickle.dumps(exc))
         self.assertPyMongoErrorEqual(exc, exc2)
         self.assertOperationFailureEqual(cause, exc2.cause)
+
+    def test_NotMasterError_catches_NotPrimaryError(self):
+        with self.assertRaises(NotMasterError) as exc:
+            raise NotPrimaryError("not primary test", {"errmsg": "error"})
+        self.assertIn("full error", str(exc.exception))
 
 
 if __name__ == "__main__":

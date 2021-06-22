@@ -37,7 +37,7 @@ from pymongo.topology_description import (updated_topology_description,
 from pymongo.errors import (ConnectionFailure,
                             ConfigurationError,
                             NetworkTimeout,
-                            NotMasterError,
+                            NotPrimaryError,
                             OperationFailure,
                             ServerSelectionTimeoutError,
                             WriteError)
@@ -608,9 +608,9 @@ class Topology(object):
         elif issubclass(exc_type, WriteError):
             # Ignore writeErrors.
             return
-        elif issubclass(exc_type, NotMasterError):
+        elif issubclass(exc_type, NotPrimaryError):
             # As per the SDAM spec if:
-            #   - the server sees a "not master" error, and
+            #   - the server sees a "not primary" error, and
             #   - the server is not shutting down, and
             #   - the server version is >= 4.2, then
             # we keep the existing connection pool, but mark the server type
