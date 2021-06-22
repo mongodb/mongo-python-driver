@@ -148,7 +148,7 @@ def _check_command_response(response, max_wire_version,
         elif errmsg in allowable_errors:
             return
 
-    # Server is "not master" or "recovering"
+    # Server is "not primary" or "recovering"
     if code is not None:
         if code in _NOT_MASTER_CODES:
             raise NotPrimaryError(errmsg, response)

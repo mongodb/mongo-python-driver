@@ -93,7 +93,7 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
         # Verify pool not cleared.
         self.verify_pool_not_cleared()
         # Attempt insertion to mark server description as stale and prevent a
-        # notMaster error on the subsequent operation.
+        # NotPrimaryError on the subsequent operation.
         try:
             self.coll.insert_one({})
         except NotPrimaryError:

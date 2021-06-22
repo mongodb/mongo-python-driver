@@ -14,8 +14,6 @@
 
 """Exceptions raised by PyMongo."""
 
-import warnings
-
 from bson.errors import *
 
 try:

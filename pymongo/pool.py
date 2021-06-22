@@ -774,7 +774,7 @@ class SocketInfo(object):
         writable.
         """
         if unacknowledged and not self.is_writable:
-            # Write won't succeed, bail as if we'd received a not master error.
+            # Write won't succeed, bail as if we'd received a not primary error.
             raise NotPrimaryError("not primary", {
                 "ok": 0, "errmsg": "not primary", "code": 10107})
 
