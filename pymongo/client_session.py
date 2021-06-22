@@ -336,8 +336,7 @@ class _Transaction(object):
             # Reuse the cursor closing machinery to return the socket to the
             # pool soon.
             self.client._close_cursor(0, None, self.sock_mgr)
-        self.client = None
-        self.sock_mgr = None
+            self.sock_mgr = None
 
 
 def _reraise_with_unknown_commit(exc):

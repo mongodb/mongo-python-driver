@@ -76,6 +76,7 @@ class TestLB(IntegrationTest):
 
     def _test_no_gc_deadlock(self, create_resource):
         pool = get_pool(self.client)
+        self.assertEqual(pool.active_sockets, 0)
         self.db.test.insert_many([{} for _ in range(10)])
         # Cause the initial find attempt to fail to induce a reference cycle.
         args = {
@@ -114,7 +115,7 @@ class TestLB(IntegrationTest):
     @client_context.require_transactions
     def test_session_gc(self):
         pool = get_pool(self.client)
-
+        self.assertEqual(pool.active_sockets, 0)
         session = self.client.start_session()
         session.start_transaction()
         self.client.test_session_gc.test.find_one({}, session=session)
@@ -127,7 +128,9 @@ class TestLB(IntegrationTest):
         # Garbage collect the session while the pool is locked to ensure we
         # don't deadlock.
         del session
-        gc.collect()
+        # On PyPy it can take a few rounds to collect the session.
+        for _ in range(3):
+            gc.collect()
         thread.unlock.set()
         thread.join(5)
         self.assertFalse(thread.is_alive())
