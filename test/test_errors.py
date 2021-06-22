@@ -102,10 +102,8 @@ class TestErrors(PyMongoTestCase):
         self.assertOperationFailureEqual(cause, exc2.cause)
 
     def test_NotMasterError_catches_NotPrimaryError(self):
-        def callback():
-            raise NotPrimaryError("not primary test", {"errmsg": "error"})
         with self.assertRaises(NotMasterError) as exc:
-            callback()
+            raise NotPrimaryError("not primary test", {"errmsg": "error"})
         self.assertIn("full error", str(exc.exception))
 
 
