@@ -170,10 +170,9 @@ def compare_multiple_events(i, expected_results, actual_results):
 
 class TestAllScenarios(IntegrationTest):
 
-    @classmethod
-    def setUp(cls):
-        super(TestAllScenarios, cls).setUp()
-        cls.all_listener = ServerAndTopologyEventListener()
+    def setUp(self):
+        super(TestAllScenarios, self).setUp()
+        self.all_listener = ServerAndTopologyEventListener()
 
 
 def create_test(scenario_def):
