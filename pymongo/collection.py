@@ -2093,8 +2093,7 @@ class Collection(common.BaseObject):
             return cmd_cursor
 
         return self.__database.client._retryable_read(
-            _cmd, read_pref, session,
-            pin=self.__database.client._should_pin_cursor(session))
+            _cmd, read_pref, session)
 
     def index_information(self, session=None):
         """Get information on this collection's indexes.
@@ -2175,8 +2174,7 @@ class Collection(common.BaseObject):
             user_fields={'cursor': {'firstBatch': 1}})
         return self.__database.client._retryable_read(
             cmd.get_cursor, cmd.get_read_preference(session), session,
-            retryable=not cmd._performs_write,
-            pin=self.database.client._should_pin_cursor(session))
+            retryable=not cmd._performs_write)
 
     def aggregate(self, pipeline, session=None, **kwargs):
         """Perform an aggregation using the aggregation framework on this

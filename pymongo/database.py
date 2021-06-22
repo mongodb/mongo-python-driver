@@ -381,8 +381,7 @@ class Database(common.BaseObject):
                 user_fields={'cursor': {'firstBatch': 1}})
             return self.client._retryable_read(
                 cmd.get_cursor, cmd.get_read_preference(s), s,
-                retryable=not cmd._performs_write,
-                pin=self.client._should_pin_cursor(s))
+                retryable=not cmd._performs_write)
 
     def watch(self, pipeline=None, full_document=None, resume_after=None,
               max_await_time_ms=None, batch_size=None, collation=None,
@@ -695,8 +694,7 @@ class Database(common.BaseObject):
                 **kwargs)
 
         return self.__client._retryable_read(
-            _cmd, read_pref, session,
-            pin=self.client._should_pin_cursor(session))
+            _cmd, read_pref, session)
 
     def list_collection_names(self, session=None, filter=None, **kwargs):
         """Get a list of all the collection names in this database.
