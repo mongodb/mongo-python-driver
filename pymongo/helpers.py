@@ -35,11 +35,11 @@ _SHUTDOWN_CODES = frozenset([
     11600,  # InterruptedAtShutdown
     91,     # ShutdownInProgress
 ])
-# From the SDAM spec, the "not master" error codes are combined with the
+# From the SDAM spec, the "not primary" error codes are combined with the
 # "node is recovering" error codes (of which the "node is shutting down"
 # errors are a subset).
 _NOT_MASTER_CODES = frozenset([
-    10058,  # LegacyNotPrimary <=3.2 "not master" error code
+    10058,  # LegacyNotPrimary <=3.2 "not primary" error code
     10107,  # NotWritablePrimary
     13435,  # NotPrimaryNoSecondaryOk
     11602,  # InterruptedDueToReplStateChange

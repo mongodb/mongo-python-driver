@@ -613,7 +613,7 @@ class Topology(object):
             return
         elif issubclass(exc_type, (NotPrimaryError, OperationFailure)):
             # As per the SDAM spec if:
-            #   - the server sees a "not master" error, and
+            #   - the server sees a "not primary" error, and
             #   - the server is not shutting down, and
             #   - the server version is >= 4.2, then
             # we keep the existing connection pool, but mark the server type
