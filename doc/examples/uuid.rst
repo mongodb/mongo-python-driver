@@ -272,7 +272,6 @@ Applications can set the UUID representation in one of the following ways:
 #. At the ``Database`` or ``Collection`` level by supplying a suitable
    :class:`~bson.codec_options.CodecOptions` instance, e.g.::
 
-     from bson.codec_options import CodecOptions
      java_opts = CodecOptions(uuid_representation=UuidRepresentation.JAVA_LEGACY)
      java_database = csharp_database.with_options(codec_options=java_opts)
      java_collection = csharp_collection.with_options(codec_options=java_opts)
