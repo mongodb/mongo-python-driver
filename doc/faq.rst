@@ -45,6 +45,17 @@ multithreaded contexts with ``fork()``, see http://bugs.python.org/issue6721.
 
 .. _connection-pooling:
 
+Can PyMongo help me load the results of my query as a Pandas ``DataFrame``?
+---------------------------------------------------------------------------
+
+While PyMongo itself does not provide any APIs for working with
+numerical or columnar data,
+`PyMongoArrow <https://mongo-arrow.readthedocs.io/en/pymongoarrow-0.1.1/>`_
+is a companion library to PyMongo that makes it easy to load MongoDB query result sets as
+`Pandas DataFrames <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`_,
+`NumPy ndarrays <https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html>`_, or
+`Apache Arrow Tables <https://arrow.apache.org/docs/python/generated/pyarrow.Table.html>`_.
+
 How does connection pooling work in PyMongo?
 --------------------------------------------
 
@@ -440,8 +451,8 @@ No. PyMongo creates Python threads which
 `PythonAnywhere <https://www.pythonanywhere.com>`_ does not support. For more
 information see `PYTHON-1495 <https://jira.mongodb.org/browse/PYTHON-1495>`_.
 
-How can I use something like Python's :mod:`json` module to encode my documents to JSON?
-----------------------------------------------------------------------------------------
+How can I use something like Python's ``json`` module to encode my documents to JSON?
+-------------------------------------------------------------------------------------
 :mod:`~bson.json_util` is PyMongo's built in, flexible tool for using
 Python's :mod:`json` module with BSON documents and `MongoDB Extended JSON
 <https://docs.mongodb.com/manual/reference/mongodb-extended-json/>`_. The
