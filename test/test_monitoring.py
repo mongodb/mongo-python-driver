@@ -27,7 +27,7 @@ from bson.son import SON
 from pymongo import CursorType, monitoring, InsertOne, UpdateOne, DeleteOne
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (AutoReconnect,
-                            NotMasterError,
+                            NotPrimaryError,
                             OperationFailure)
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
@@ -440,7 +440,7 @@ class TestCommandMonitoring(PyMongoTestCase):
         error = None
         try:
             client.pymongo_test.test.find_one_and_delete({})
-        except NotMasterError as exc:
+        except NotPrimaryError as exc:
             error = exc.errors
         results = self.listener.results
         started = results['started'][0]
@@ -1212,7 +1212,7 @@ class TestCommandMonitoring(PyMongoTestCase):
             },
         }
         with self.fail_point(insert_command_error):
-            with self.assertRaises(NotMasterError):
+            with self.assertRaises(NotPrimaryError):
                 coll.bulk_write([InsertOne({'_id': 1})])
         failed = self.listener.results['failed']
         self.assertEqual(1, len(failed))

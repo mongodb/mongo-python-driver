@@ -25,7 +25,7 @@ from bson.json_util import object_hook
 from pymongo import monitoring
 from pymongo.common import clean_node
 from pymongo.errors import (ConnectionFailure,
-                            NotMasterError)
+                            NotPrimaryError)
 from pymongo.ismaster import IsMaster
 from pymongo.monitor import Monitor
 from pymongo.server_description import ServerDescription
@@ -333,12 +333,12 @@ class TestSdamMonitoring(IntegrationTest):
     def test_not_master_error_publishes_events(self):
         self._test_app_error({'errorCode': 10107, 'closeConnection': False,
                               'errorLabels': ['RetryableWriteError']},
-                             NotMasterError)
+                             NotPrimaryError)
 
     def test_shutdown_error_publishes_events(self):
         self._test_app_error({'errorCode': 91, 'closeConnection': False,
                               'errorLabels': ['RetryableWriteError']},
-                             NotMasterError)
+                             NotPrimaryError)
 
 
 if __name__ == "__main__":

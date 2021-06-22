@@ -47,7 +47,7 @@ from pymongo.errors import (ConfigurationError,
                             DocumentTooLarge,
                             ExecutionTimeout,
                             InvalidOperation,
-                            NotMasterError,
+                            NotPrimaryError,
                             OperationFailure,
                             ProtocolError)
 from pymongo.read_concern import DEFAULT_READ_CONCERN
@@ -997,7 +997,7 @@ class _BulkWriteContext(object):
                 if isinstance(exc, OperationFailure):
                     failure = _convert_write_result(
                         self.name, cmd, exc.details)
-                elif isinstance(exc, NotMasterError):
+                elif isinstance(exc, NotPrimaryError):
                     failure = exc.details
                 else:
                     failure = _convert_exception(exc)
@@ -1022,7 +1022,7 @@ class _BulkWriteContext(object):
         except Exception as exc:
             if self.publish:
                 duration = (datetime.datetime.now() - start) + duration
-                if isinstance(exc, (NotMasterError, OperationFailure)):
+                if isinstance(exc, (NotPrimaryError, OperationFailure)):
                     failure = exc.details
                 else:
                     failure = _convert_exception(exc)
@@ -1516,7 +1516,7 @@ class _OpReply(object):
 
         Check the response for errors and unpack.
 
-        Can raise CursorNotFound, NotMasterError, ExecutionTimeout, or
+        Can raise CursorNotFound, NotPrimaryError, ExecutionTimeout, or
         OperationFailure.
 
         :Parameters:
@@ -1539,7 +1539,7 @@ class _OpReply(object):
             # Fake the ok field if it doesn't exist.
             error_object.setdefault("ok", 0)
             if error_object["$err"].startswith("not master"):
-                raise NotMasterError(error_object["$err"], error_object)
+                raise NotPrimaryError(error_object["$err"], error_object)
             elif error_object.get("code") == 50:
                 raise ExecutionTimeout(error_object.get("$err"),
                                        error_object.get("code"),
@@ -1560,7 +1560,7 @@ class _OpReply(object):
         Check the response for errors and unpack, returning a dictionary
         containing the response data.
 
-        Can raise CursorNotFound, NotMasterError, ExecutionTimeout, or
+        Can raise CursorNotFound, NotPrimaryError, ExecutionTimeout, or
         OperationFailure.
 
         :Parameters:
@@ -1721,7 +1721,7 @@ def _first_batch(sock_info, db, coll, query, ntoreturn,
     except Exception as exc:
         if publish:
             duration = (datetime.datetime.now() - start) + encoding_duration
-            if isinstance(exc, (NotMasterError, OperationFailure)):
+            if isinstance(exc, (NotPrimaryError, OperationFailure)):
                 failure = exc.details
             else:
                 failure = _convert_exception(exc)
