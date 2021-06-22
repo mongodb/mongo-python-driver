@@ -27,13 +27,14 @@ from test.unified_format import generate_test_classes
 
 # Location of JSON test specifications.
 TEST_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), 'load_balancer', 'unified')
+    os.path.dirname(os.path.realpath(__file__)), 'load_balancer')
 
 # Generate unified tests.
 globals().update(generate_test_classes(TEST_PATH, module=__name__))
 
 
 class TestLB(IntegrationTest):
+    RUN_ON_LOAD_BALANCER = True
 
     def test_connections_are_only_returned_once(self):
         pool = get_pool(self.client)

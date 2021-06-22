@@ -635,6 +635,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     a class attribute ``TEST_SPEC``.
     """
     SCHEMA_VERSION = Version.from_string('1.5')
+    RUN_ON_LOAD_BALANCER = True
 
     @staticmethod
     def should_run_on(run_on_spec):

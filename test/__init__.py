@@ -589,6 +589,24 @@ class ClientContext(object):
         return self._require(lambda: sec_count() >= count,
                              "Not enough secondaries available")
 
+    @property
+    def supports_secondary_read_pref(self):
+        if self.has_secondaries:
+            return True
+        if self.is_mongos:
+            shard = self.client.config.shards.find_one()['host']
+            num_members = shard.count(',') + 1
+            return num_members > 1
+        return False
+
+    def require_secondary_read_pref(self):
+        """Run a test only if the client is connected to a cluster that
+        supports secondary read preference
+        """
+        return self._require(lambda: self.supports_secondary_read_pref,
+                             "This cluster does not support secondary read "
+                             "preference")
+
     def require_no_replica_set(self, func):
         """Run a test if the client is *not* connected to a replica set."""
         return self._require(
@@ -637,6 +655,13 @@ class ClientContext(object):
         """Run a test only if the client is connected to a load balancer."""
         return self._require(lambda: self.load_balancer,
                              "Must be connected to a load balancer",
+                             func=func)
+
+    def require_no_load_balancer(self, func):
+        """Run a test only if the client is not connected to a load balancer.
+        """
+        return self._require(lambda: not self.load_balancer,
+                             "Must not be connected to a load balancer",
                              func=func)
 
     def check_auth_with_sharding(self, func):
@@ -852,6 +877,9 @@ class IntegrationTest(PyMongoTestCase):
     @classmethod
     @client_context.require_connection
     def setUpClass(cls):
+        if (client_context.load_balancer and
+                not getattr(cls, 'RUN_ON_LOAD_BALANCER', False)):
+            raise SkipTest('this test does not support load balancers')
         cls.client = client_context.client
         cls.db = cls.client.pymongo_test
         if client_context.auth_enabled:
@@ -874,6 +902,14 @@ class MockClientTest(unittest.TestCase):
 
     The class temporarily overrides HEARTBEAT_FREQUENCY to speed up tests.
     """
+
+    # MockClients tests that use replicaSet, directConnection=True, pass
+    # multiple seed addresses, or wait for heartbeat events are incompatible
+    # with loadBalanced=True.
+    @classmethod
+    @client_context.require_no_load_balancer
+    def setUpClass(cls):
+        pass
 
     def setUp(self):
         super(MockClientTest, self).setUp()

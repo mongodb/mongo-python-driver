@@ -197,11 +197,7 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
         $PYTHON -c "from bson import _cbson; from pymongo import _cmessage"
     fi
 
-    if [ -n "$TEST_LOADBALANCER" ]; then
-        $PYTHON -m xmlrunner discover -s test/load_balancer -v --locals -o $XUNIT_DIR
-    else
-        $PYTHON $COVERAGE_ARGS setup.py $C_EXTENSIONS test $TEST_ARGS $OUTPUT
-    fi
+    $PYTHON $COVERAGE_ARGS setup.py $C_EXTENSIONS test $TEST_ARGS $OUTPUT
 else
     # --no_ext has to come before "test" so there is no way to toggle extensions here.
     $PYTHON green_framework_test.py $GREEN_FRAMEWORK $OUTPUT
