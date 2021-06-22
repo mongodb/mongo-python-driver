@@ -335,7 +335,7 @@ class _Transaction(object):
         if self.sock_mgr:
             # Reuse the cursor closing machinery to return the socket to the
             # pool soon.
-            self.client._close_cursor(0, None, self.sock_mgr)
+            self.client._close_cursor_soon(0, None, self.sock_mgr)
             self.sock_mgr = None
 
 

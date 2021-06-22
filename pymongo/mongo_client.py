@@ -1485,7 +1485,20 @@ class MongoClient(common.BaseObject):
 
     def _cleanup_cursor(self, locks_allowed, cursor_id, address, sock_mgr,
                         session, explicit_session):
-        """Cleanup a cursor."""
+        """Cleanup a cursor from cursor.close() or __del__.
+
+        This method handles cleanup for Cursors/CommandCursors including any
+        pinned connection or implicit session attached at the time the cursor
+        was closed or garbage collected.
+
+        :Parameters:
+          - `locks_allowed`: True if we are allowed to acquire locks.
+          - `cursor_id`: The cursor id which may be 0.
+          - `address`: The _CursorAddress.
+          - `sock_mgr`: The _SocketManager for the pinned connection or None.
+          - `session`: The cursor's session.
+          - `explicit_session`: True if the session was passed explicitly.
+        """
         if locks_allowed:
             if cursor_id:
                 if sock_mgr and sock_mgr.more_to_come:
@@ -1500,16 +1513,14 @@ class MongoClient(common.BaseObject):
                         sock_mgr=sock_mgr)
             if sock_mgr:
                 sock_mgr.close()
-            if session and not explicit_session:
-                session._end_session(lock=True)
         else:
             # The cursor will be closed later in a different session.
             if cursor_id or sock_mgr:
-                self._close_cursor(cursor_id, address, sock_mgr)
-            if session and not explicit_session:
-                session._end_session(lock=False)
+                self._close_cursor_soon(cursor_id, address, sock_mgr)
+        if session and not explicit_session:
+            session._end_session(lock=locks_allowed)
 
-    def _close_cursor(self, cursor_id, address, sock_mgr=None):
+    def _close_cursor_soon(self, cursor_id, address, sock_mgr=None):
         """Request that a cursor and/or connection be cleaned up soon."""
         self.__kill_cursors_queue.append((address, cursor_id, sock_mgr))
 
@@ -1533,7 +1544,7 @@ class MongoClient(common.BaseObject):
                     [cursor_id], address, self._get_topology(), session)
         except PyMongoError:
             # Make another attempt to kill the cursor later.
-            self._close_cursor(cursor_id, address)
+            self._close_cursor_soon(cursor_id, address)
 
     def _kill_cursors(self, cursor_ids, address, topology, session):
         """Send a kill cursors message with the given ids."""
