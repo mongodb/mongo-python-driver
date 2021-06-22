@@ -38,6 +38,8 @@ Deprecations
   and :meth:`~pymongo.database.Database.profiling_info`. Instead, users
   should run the `profile command`_ with the
   :meth:`~pymongo.database.Database.command` helper directly.
+- Deprecated :exc:`~pymongo.errors.NotMasterError`. Users should
+  use :exc:`~pymongo.errors.NotPrimaryError` instead.
 
 .. _PYTHON-2466: https://jira.mongodb.org/browse/PYTHON-2466
 .. _PYTHON-1690: https://jira.mongodb.org/browse/PYTHON-1690
