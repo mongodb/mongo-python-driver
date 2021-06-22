@@ -550,6 +550,7 @@ class SocketInfo(object):
         # set to true to indicate that the session now owns the connection.
         self.pinned_txn = False
         self.pinned_cursor = False
+        self.active = False
 
     def pin_txn(self):
         self.pinned_txn = True
@@ -1407,7 +1408,7 @@ class Pool:
                 # still checked out.
                 exc_type, exc_val, _ = sys.exc_info()
                 handler.handle(exc_type, exc_val)
-            if not pinned:
+            if not pinned and sock_info.active:
                 self.return_socket(sock_info)
             raise
         if sock_info.pinned_txn:
@@ -1418,7 +1419,7 @@ class Pool:
             with self.lock:
                 self.__pinned_sockets.add(sock_info)
                 self.ncursors += 1
-        else:
+        elif sock_info.active:
             self.return_socket(sock_info)
 
     def _raise_if_not_ready(self, emit_event):
@@ -1531,6 +1532,7 @@ class Pool:
                     self.address, ConnectionCheckOutFailedReason.CONN_ERROR)
             raise
 
+        sock_info.active = True
         return sock_info
 
     def return_socket(self, sock_info):
@@ -1541,6 +1543,7 @@ class Pool:
         """
         txn = sock_info.pinned_txn
         cursor = sock_info.pinned_cursor
+        sock_info.active = False
         sock_info.pinned_txn = False
         sock_info.pinned_cursor = False
         self.__pinned_sockets.discard(sock_info)

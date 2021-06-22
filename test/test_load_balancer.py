@@ -32,6 +32,15 @@ globals().update(generate_test_classes(TEST_PATH, module=__name__))
 
 
 class TestLB(IntegrationTest):
+
+    def test_connections_are_only_returned_once(self):
+        pool = get_pool(self.client)
+        nconns = len(pool.sockets)
+        self.db.test.find_one({})
+        self.assertEqual(len(pool.sockets), nconns)
+        self.db.test.aggregate([{'$limit': 1}])
+        self.assertEqual(len(pool.sockets), nconns)
+
     @client_context.require_load_balancer
     def test_unpin_committed_transaction(self):
         pool = get_pool(self.client)
