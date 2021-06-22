@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Run the command monitoring spec tests."""
+"""Run the command monitoring legacy-format spec tests."""
 
 import os
 import re
@@ -26,7 +26,8 @@ from bson import json_util
 from pymongo.errors import OperationFailure
 from pymongo.write_concern import WriteConcern
 from test import unittest, client_context
-from test.utils import single_client, wait_until, EventListener, parse_read_preference
+from test.utils import (
+    single_client, wait_until, EventListener, parse_read_preference)
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
@@ -204,7 +205,7 @@ def create_test(scenario_def, test):
 
 
 def create_tests():
-    for dirpath, _, filenames in os.walk(_TEST_PATH):
+    for dirpath, _, filenames in os.walk(os.path.join(_TEST_PATH, 'legacy')):
         dirname = os.path.split(dirpath)[-1]
         for filename in filenames:
             with open(os.path.join(dirpath, filename)) as scenario_stream:
@@ -238,6 +239,7 @@ def create_tests():
 
 
 create_tests()
+
 
 if __name__ == "__main__":
     unittest.main()

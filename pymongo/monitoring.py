@@ -509,6 +509,15 @@ _SENSITIVE_COMMANDS = set(
      "updateuser", "copydbgetnonce", "copydbsaslstart", "copydb"])
 
 
+# The "hello" command is also deemed sensitive when attempting speculative
+# authentication.
+def _is_speculative_authenticate(command_name, doc):
+    if (command_name.lower() in ('hello', 'ismaster') and
+            'speculativeAuthenticate' in doc):
+        return True
+    return False
+
+
 class _CommandEvent(object):
     """Base class for command events."""
 
@@ -573,7 +582,9 @@ class CommandStartedEvent(_CommandEvent):
         command_name = next(iter(command))
         super(CommandStartedEvent, self).__init__(
             command_name, *args, service_id=service_id)
-        if command_name.lower() in _SENSITIVE_COMMANDS:
+        cmd_name, cmd_doc = command_name.lower(), command[command_name]
+        if (cmd_name in _SENSITIVE_COMMANDS or
+                _is_speculative_authenticate(cmd_name, command)):
             self.__cmd = {}
         else:
             self.__cmd = command
@@ -619,7 +630,9 @@ class CommandSucceededEvent(_CommandEvent):
             command_name, request_id, connection_id, operation_id,
             service_id=service_id)
         self.__duration_micros = _to_micros(duration)
-        if command_name.lower() in _SENSITIVE_COMMANDS:
+        cmd_name = command_name.lower()
+        if (cmd_name in _SENSITIVE_COMMANDS or
+                _is_speculative_authenticate(cmd_name, reply)):
             self.__reply = {}
         else:
             self.__reply = reply
