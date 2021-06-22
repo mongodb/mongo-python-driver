@@ -177,10 +177,14 @@ class NonLazyCursor(object):
 
 
 class EventListenerUtil(CMAPListener, CommandListener):
-    def __init__(self, observe_events, ignore_commands):
+    def __init__(self, observe_events, ignore_commands,
+                 observe_sensitive_commands):
         self._event_types = set(name.lower() for name in observe_events)
-        self._ignore_commands = _SENSITIVE_COMMANDS | set(ignore_commands)
-        self._ignore_commands.add('configurefailpoint')
+        if observe_sensitive_commands:
+            self._ignore_commands = set(ignore_commands)
+        else:
+            self._ignore_commands = _SENSITIVE_COMMANDS | set(ignore_commands)
+            self._ignore_commands.add('configurefailpoint')
         super(EventListenerUtil, self).__init__()
 
     def get_events(self, event_type):
@@ -243,10 +247,13 @@ class EntityMapUtil(object):
             kwargs = {}
             observe_events = spec.get('observeEvents', [])
             ignore_commands = spec.get('ignoreCommandMonitoringEvents', [])
+            observe_sensitive_commands = spec.get(
+                'observeSensitiveCommands', False)
             # TODO: SUPPORT storeEventsAsEntities
             if len(observe_events) or len(ignore_commands):
                 ignore_commands = [cmd.lower() for cmd in ignore_commands]
-                listener = EventListenerUtil(observe_events, ignore_commands)
+                listener = EventListenerUtil(
+                    observe_events, ignore_commands, observe_sensitive_commands)
                 self._listeners[spec['id']] = listener
                 kwargs['event_listeners'] = [listener]
             if spec.get('useMultipleMongoses'):
@@ -628,7 +635,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     Specification of the test suite being currently run is available as
     a class attribute ``TEST_SPEC``.
     """
-    SCHEMA_VERSION = Version.from_string('1.4')
+    SCHEMA_VERSION = Version.from_string('1.5')
 
     @staticmethod
     def should_run_on(run_on_spec):
