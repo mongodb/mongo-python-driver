@@ -30,7 +30,7 @@ from bson.son import SON
 import gridfs
 from gridfs.errors import NoFile, CorruptGridFile
 from pymongo.errors import (ConfigurationError,
-                            NotMasterError,
+                            NotPrimaryError,
                             ServerSelectionTimeoutError)
 from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import ReadPreference
@@ -536,7 +536,7 @@ class TestGridfsBucketReplicaSet(IntegrationTest):
             secondary_connection.gfsbucketreplica, 'gfsbucketsecondarytest')
 
         # This won't detect secondary, raises error
-        self.assertRaises(NotMasterError, gfs.upload_from_stream,
+        self.assertRaises(NotPrimaryError, gfs.upload_from_stream,
                           "test_filename", b'foo')
 
     def test_gridfs_secondary_lazy(self):
@@ -556,7 +556,7 @@ class TestGridfsBucketReplicaSet(IntegrationTest):
         # Connects, doesn't create index.
         self.assertRaises(NoFile, gfs.open_download_stream_by_name,
                           "test_filename")
-        self.assertRaises(NotMasterError, gfs.upload_from_stream,
+        self.assertRaises(NotPrimaryError, gfs.upload_from_stream,
                           "test_filename", b'data')
 
 

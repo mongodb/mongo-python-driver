@@ -20,7 +20,7 @@ sys.path[0:0] = [""]
 
 from bson import SON
 from pymongo import monitoring
-from pymongo.errors import NotMasterError
+from pymongo.errors import NotPrimaryError
 from pymongo.write_concern import WriteConcern
 
 from test import (client_context,
@@ -93,10 +93,10 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
         # Verify pool not cleared.
         self.verify_pool_not_cleared()
         # Attempt insertion to mark server description as stale and prevent a
-        # notMaster error on the subsequent operation.
+        # NotPrimaryError on the subsequent operation.
         try:
             self.coll.insert_one({})
-        except NotMasterError:
+        except NotPrimaryError:
             pass
         # Next insert should succeed on the new primary without clearing pool.
         self.coll.insert_one({})
@@ -109,7 +109,7 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
                                       "errorCode": error_code}})
         self.addCleanup(self.set_fail_point, {"mode": "off"})
         # Insert record and verify failure.
-        with self.assertRaises(NotMasterError) as exc:
+        with self.assertRaises(NotPrimaryError) as exc:
             self.coll.insert_one({"test": 1})
         self.assertEqual(exc.exception.details['code'], error_code)
         # Retry before CMAPListener assertion if retry_before=True.

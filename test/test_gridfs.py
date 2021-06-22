@@ -29,7 +29,7 @@ sys.path[0:0] = [""]
 from bson.binary import Binary
 from pymongo.mongo_client import MongoClient
 from pymongo.errors import (ConfigurationError,
-                            NotMasterError,
+                            NotPrimaryError,
                             ServerSelectionTimeoutError)
 from pymongo.read_preferences import ReadPreference
 import gridfs
@@ -539,7 +539,7 @@ class TestGridfsReplicaSet(IntegrationTest):
         fs = gridfs.GridFS(secondary_connection.gfsreplica, 'gfssecondarytest')
 
         # This won't detect secondary, raises error
-        self.assertRaises(NotMasterError, fs.put, b'foo')
+        self.assertRaises(NotPrimaryError, fs.put, b'foo')
 
     def test_gridfs_secondary_lazy(self):
         # Should detect it's connected to secondary and not attempt to
@@ -556,7 +556,7 @@ class TestGridfsReplicaSet(IntegrationTest):
 
         # Connects, doesn't create index.
         self.assertRaises(NoFile, fs.get_last_version)
-        self.assertRaises(NotMasterError, fs.put, 'data')
+        self.assertRaises(NotPrimaryError, fs.put, 'data')
 
 
 if __name__ == "__main__":
