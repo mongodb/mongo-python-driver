@@ -106,9 +106,6 @@ class NotMasterError(AutoReconnect):
     Deprecated. Use :exc:`~pymongo.errors.NotPrimaryError` instead.
     """
     def __init__(self, message='', errors=None):
-        warnings.warn(
-            "NotMasterError is deprecated. Use NotPrimaryError instead.",
-            DeprecationWarning, stacklevel=2)
         super(NotMasterError, self).__init__(
             _format_detailed_error(message, errors), errors=errors)
 
@@ -129,8 +126,7 @@ class NotPrimaryError(NotMasterError):
     .. versionadded:: 3.12
     """
     def __init__(self, message='', errors=None):
-        super(NotPrimaryError, self).__init__(
-            _format_detailed_error(message, errors), errors=errors)
+        super(NotPrimaryError, self).__init__(message, errors=errors)
 
 
 class ServerSelectionTimeoutError(AutoReconnect):
