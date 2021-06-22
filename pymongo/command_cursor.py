@@ -139,6 +139,7 @@ class CommandCursor(object):
         if not client._should_pin_cursor(self.__session):
             return
         if not self.__sock_mgr:
+            sock_info.pin_cursor()
             sock_mgr = _SocketManager(sock_info, False)
             # Ensure the connection gets returned when the entire result is
             # returned in the first batch.

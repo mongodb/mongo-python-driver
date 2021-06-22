@@ -1291,7 +1291,7 @@ class MongoClient(common.BaseObject):
         return self._topology
 
     @contextlib.contextmanager
-    def _get_socket(self, server, session, pin=False):
+    def _get_socket(self, server, session):
         in_txn = session and session.in_transaction
         with _MongoClientErrorHandler(self, server, session) as err_handler:
             # Reuse the pinned connection, if it exists.
@@ -1299,8 +1299,7 @@ class MongoClient(common.BaseObject):
                 yield session._pinned_connection
                 return
             with server.get_socket(
-                    self.__all_credentials, checkout=pin,
-                    handler=err_handler) as sock_info:
+                    self.__all_credentials, handler=err_handler) as sock_info:
                 # Pin this session to the selected server or connection.
                 if (in_txn and server.description.server_type in (
                         SERVER_TYPE.Mongos, SERVER_TYPE.LoadBalancer)):
@@ -1351,7 +1350,7 @@ class MongoClient(common.BaseObject):
         return self._get_socket(server, session)
 
     @contextlib.contextmanager
-    def _slaveok_for_server(self, read_preference, server, session, pin=False):
+    def _slaveok_for_server(self, read_preference, server, session):
         assert read_preference is not None, "read_preference must not be None"
         # Get a socket for a server matching the read preference, and yield
         # sock_info, slave_ok. Server Selection Spec: "slaveOK must be sent to
@@ -1362,7 +1361,7 @@ class MongoClient(common.BaseObject):
         topology = self._get_topology()
         single = topology.description.topology_type == TOPOLOGY_TYPE.Single
 
-        with self._get_socket(server, session, pin=pin) as sock_info:
+        with self._get_socket(server, session) as sock_info:
             slave_ok = (single and not sock_info.is_mongos) or (
                 read_preference != ReadPreference.PRIMARY)
             yield sock_info, slave_ok
@@ -1389,7 +1388,7 @@ class MongoClient(common.BaseObject):
         return (self.__options.load_balanced and
                 not (session and session.in_transaction))
 
-    def _run_operation(self, operation, unpack_res, pin=False, address=None):
+    def _run_operation(self, operation, unpack_res, address=None):
         """Run a _Query/_GetMore operation and return a Response.
 
         :Parameters:
@@ -1398,7 +1397,6 @@ class MongoClient(common.BaseObject):
           - `address` (optional): Optional address when sending a message
             to a specific server, used for getMore.
         """
-        pin = self._should_pin_cursor(operation.session) or operation.exhaust
         if operation.sock_mgr:
             server = self._select_server(
                 operation.read_preference, operation.session, address=address)
@@ -1409,17 +1407,16 @@ class MongoClient(common.BaseObject):
                     err_handler.contribute_socket(operation.sock_mgr.sock)
                     return server.run_operation(
                         operation.sock_mgr.sock, operation, True,
-                        self._event_listeners, pin, unpack_res)
+                        self._event_listeners, unpack_res)
 
         def _cmd(session, server, sock_info, slave_ok):
             return server.run_operation(
-                sock_info, operation, slave_ok, self._event_listeners, pin,
+                sock_info, operation, slave_ok, self._event_listeners,
                 unpack_res)
 
         return self._retryable_read(
             _cmd, operation.read_preference, operation.session,
-            address=address, retryable=isinstance(operation, message._Query),
-            pin=pin)
+            address=address, retryable=isinstance(operation, message._Query))
 
     def _retry_with_session(self, retryable, func, session, bulk):
         """Execute an operation with at most one consecutive retries
@@ -1491,7 +1488,7 @@ class MongoClient(common.BaseObject):
                 last_error = exc
 
     def _retryable_read(self, func, read_pref, session, address=None,
-                        retryable=True, pin=False):
+                        retryable=True):
         """Execute an operation with at most one consecutive retries
 
         Returns func()'s return value on success. On error retries the same
@@ -1511,8 +1508,7 @@ class MongoClient(common.BaseObject):
                     read_pref, session, address=address)
                 if not server.description.retryable_reads_supported:
                     retryable = False
-                with self._slaveok_for_server(
-                        read_pref, server, session, pin=pin) as (
+                with self._slaveok_for_server(read_pref, server, session) as (
                             sock_info, slave_ok):
                     if retrying and not retryable:
                         # A retry is not possible because this server does

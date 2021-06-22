@@ -566,10 +566,19 @@ class SocketInfo(object):
         self.service_id = None
         # When executing a transaction in load balancing mode, this flag is
         # set to true to indicate that the session now owns the connection.
-        self.pinned = False
+        self.pinned_txn = False
+        self.pinned_cursor = False
+        self.active = False
+
+    def pin_txn(self):
+        self.pinned_txn = True
+        assert not self.pinned_cursor
+
+    def pin_cursor(self):
+        self.pinned_cursor = True
+        assert not self.pinned_txn
 
     def unpin(self):
-        self.pinned = False
         pool = self.pool_ref()
         if pool:
             pool.return_socket(self)
@@ -1190,6 +1199,8 @@ class Pool:
         # from thinking that a cursor's pinned connection can be GC'd when the
         # cursor is GC'd (see PYTHON-2751).
         self.__pinned_sockets = set()
+        self.ncursors = 0
+        self.ntxns = 0
 
     def _reset(self, close, service_id=None):
         with self.lock:
@@ -1327,7 +1338,7 @@ class Pool:
         return sock_info
 
     @contextlib.contextmanager
-    def get_socket(self, all_credentials, checkout=False, handler=None):
+    def get_socket(self, all_credentials, handler=None):
         """Get a socket from the pool. Use with a "with" statement.
 
         Returns a :class:`SocketInfo` object wrapping a connected
@@ -1335,7 +1346,7 @@ class Pool:
 
         This method should always be used in a with-statement::
 
-            with pool.get_socket(credentials, checkout) as socket_info:
+            with pool.get_socket(credentials) as socket_info:
                 socket_info.send_message(msg)
                 data = socket_info.receive_message(op_code, request_id)
 
@@ -1347,7 +1358,6 @@ class Pool:
 
         :Parameters:
           - `all_credentials`: dict, maps auth source to MongoCredential.
-          - `checkout` (optional): keep socket checked out.
           - `handler` (optional): A _MongoClientErrorHandler.
         """
         listeners = self.opts.event_listeners
@@ -1355,9 +1365,6 @@ class Pool:
             listeners.publish_connection_check_out_started(self.address)
 
         sock_info = self._get_socket(all_credentials)
-        if checkout:
-            self.__pinned_sockets.add(sock_info)
-
         if self.enabled_for_cmap:
             listeners.publish_connection_checked_out(
                 self.address, sock_info.id)
@@ -1368,20 +1375,25 @@ class Pool:
             # Note that when pinned is True, the session owns the
             # connection and it is responsible for checking the connection
             # back into the pool.
-            pinned = sock_info.pinned
+            pinned = sock_info.pinned_txn or sock_info.pinned_cursor
             if handler:
                 # Perform SDAM error handling rules while the connection is
                 # still checked out.
                 exc_type, exc_val, _ = sys.exc_info()
                 handler.handle(exc_type, exc_val)
-            if not pinned:
+            if not pinned and sock_info.active:
                 self.return_socket(sock_info)
             raise
-        else:
-            if sock_info.pinned:
+        if sock_info.pinned_txn:
+            with self.lock:
                 self.__pinned_sockets.add(sock_info)
-            elif not checkout:
-                self.return_socket(sock_info)
+                self.ntxns += 1
+        elif sock_info.pinned_cursor:
+            with self.lock:
+                self.__pinned_sockets.add(sock_info)
+                self.ncursors += 1
+        elif sock_info.active:
+            self.return_socket(sock_info)
 
     def _get_socket(self, all_credentials):
         """Get or create a SocketInfo. Can raise ConnectionFailure."""
@@ -1438,6 +1450,7 @@ class Pool:
                     self.address, ConnectionCheckOutFailedReason.CONN_ERROR)
             raise
 
+        sock_info.active = True
         return sock_info
 
     def return_socket(self, sock_info):
@@ -1446,8 +1459,12 @@ class Pool:
         :Parameters:
           - `sock_info`: The socket to check into the pool.
         """
+        txn = sock_info.pinned_txn
+        cursor = sock_info.pinned_cursor
+        sock_info.active = False
+        sock_info.pinned_txn = False
+        sock_info.pinned_cursor = False
         self.__pinned_sockets.discard(sock_info)
-        sock_info.pinned = False
         listeners = self.opts.event_listeners
         if self.enabled_for_cmap:
             listeners.publish_connection_checked_in(self.address, sock_info.id)
@@ -1464,7 +1481,6 @@ class Pool:
                         ConnectionClosedReason.ERROR)
             else:
                 with self.lock:
-                    assert sock_info not in self.sockets
                     # Hold the lock to ensure this section does not race with
                     # Pool.reset().
                     if self.stale_generation(sock_info.generation,
@@ -1477,6 +1493,10 @@ class Pool:
 
         self._socket_semaphore.release()
         with self.lock:
+            if txn:
+                self.ntxns -= 1
+            elif cursor:
+                self.ncursors -= 1
             self.active_sockets -= 1
 
     def _perished(self, sock_info):
@@ -1518,9 +1538,18 @@ class Pool:
         if self.enabled_for_cmap:
             listeners.publish_connection_check_out_failed(
                 self.address, ConnectionCheckOutFailedReason.TIMEOUT)
+        if self.opts.load_balanced:
+            other_ops = self.active_sockets - self.ncursors - self.ntxns
+            raise ConnectionFailure(
+                'Timeout waiting for connection from the connection pool. '
+                'maxPoolSize: %s, connections in use by cursors: %s, '
+                'connections in use by transactions: %s, connections in use '
+                'by other operations: %s, wait_queue_timeout: %s' % (
+                    self.opts.max_pool_size, self.ncursors, self.ntxns,
+                    other_ops, self.opts.wait_queue_timeout))
         raise ConnectionFailure(
-            'Timed out while checking out a connection from connection pool '
-            'with max_size %r and wait_queue_timeout %r' % (
+            'Timed out while checking out a connection from connection pool. '
+            'maxPoolSize: %s, wait_queue_timeout: %s' % (
                 self.opts.max_pool_size, self.opts.wait_queue_timeout))
 
     def __del__(self):

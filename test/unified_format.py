@@ -165,12 +165,17 @@ class NonLazyCursor(object):
         # Create the server side cursor.
         self.first_result = next(find_cursor, None)
 
+    def __iter__(self):
+        return self
+
     def __next__(self):
         if self.first_result is not None:
             first = self.first_result
             self.first_result = None
             return first
         return next(self.find_cursor)
+
+    next = __next__
 
     def close(self):
         self.find_cursor.close()

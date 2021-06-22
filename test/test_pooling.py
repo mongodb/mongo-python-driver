@@ -125,8 +125,9 @@ class SocketGetter(MongoThread):
     def run_mongo_thread(self):
         self.state = 'get_socket'
 
-        # Pass 'checkout' so we can hold the socket.
-        with self.pool.get_socket({}, checkout=True) as sock:
+        # Call 'pin_cursor' so we can hold the socket.
+        with self.pool.get_socket({}) as sock:
+            sock.pin_cursor()
             self.sock = sock
 
         self.state = 'sock'
@@ -324,10 +325,8 @@ class TestPooling(_TestPoolingBase):
 
         # Back to normal, semaphore was correctly released.
         cx_pool.address = address
-        with cx_pool.get_socket({}, checkout=True) as sock_info:
+        with cx_pool.get_socket({}):
             pass
-
-        sock_info.close_socket(None)
 
     def test_wait_queue_timeout(self):
         wait_queue_timeout = 2  # Seconds
@@ -398,8 +397,9 @@ class TestPooling(_TestPoolingBase):
 
         socks = []
         for _ in range(2):
-            # Pass 'checkout' so we can hold the socket.
-            with pool.get_socket({}, checkout=True) as sock:
+            # Call 'pin_cursor' so we can hold the socket.
+            with pool.get_socket({}) as sock:
+                sock.pin_cursor()
                 socks.append(sock)
 
         threads = []
@@ -502,7 +502,7 @@ class TestPoolMaxSize(_TestPoolingBase):
         # socket from pool" instead of AutoReconnect.
         for i in range(2):
             with self.assertRaises(AutoReconnect) as context:
-                with test_pool.get_socket({}, checkout=True):
+                with test_pool.get_socket({}):
                     pass
 
             # Testing for AutoReconnect instead of ConnectionFailure, above,

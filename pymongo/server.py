@@ -69,7 +69,7 @@ class Server(object):
         self._monitor.request_check()
 
     def run_operation(self, sock_info, operation, set_slave_okay, listeners,
-                      pin, unpack_res):
+                      unpack_res):
         """Run a _Query or _GetMore operation and return a Response object.
 
         This method is used only to run _Query/_GetMore operations from
@@ -81,7 +81,6 @@ class Server(object):
           - `set_slave_okay`: Pass to operation.get_message.
           - `all_credentials`: dict, maps auth source to MongoCredential.
           - `listeners`: Instance of _EventListeners or None.
-          - `pin`: If True, then this is a pinned cursor operation.
           - `unpack_res`: A callable that decodes the wire protocol response.
         """
         duration = None
@@ -170,7 +169,8 @@ class Server(object):
                 docs = _decode_all_selective(
                     decrypted, operation.codec_options, user_fields)
 
-        if pin:
+        if client._should_pin_cursor(operation.session) or operation.exhaust:
+            sock_info.pin_cursor()
             if isinstance(reply, _OpMsg):
                 # In OP_MSG, the server keeps sending only if the
                 # more_to_come flag is set.
@@ -200,8 +200,8 @@ class Server(object):
 
         return response
 
-    def get_socket(self, all_credentials, checkout=False, handler=None):
-        return self.pool.get_socket(all_credentials, checkout, handler)
+    def get_socket(self, all_credentials, handler=None):
+        return self.pool.get_socket(all_credentials, handler)
 
     @property
     def description(self):
