@@ -1849,33 +1849,43 @@ class TestCollection(IntegrationTest):
         self.db.test.insert_many([{'i': i} for i in range(150)])
 
         client = rs_or_single_client(maxPoolSize=1)
-        socks = get_pool(client).sockets
+        self.addCleanup(client.close)
+        pool = get_pool(client)
 
         # Make sure the socket is returned after exhaustion.
         cur = client[self.db.name].test.find(cursor_type=CursorType.EXHAUST)
         next(cur)
-        self.assertEqual(0, len(socks))
+        self.assertEqual(0, len(pool.sockets))
         for _ in cur:
             pass
-        self.assertEqual(1, len(socks))
+        self.assertEqual(1, len(pool.sockets))
 
         # Same as previous but don't call next()
         for _ in client[self.db.name].test.find(cursor_type=CursorType.EXHAUST):
             pass
-        self.assertEqual(1, len(socks))
+        self.assertEqual(1, len(pool.sockets))
 
-        # If the Cursor instance is discarded before being
-        # completely iterated we have to close and
-        # discard the socket.
-        cur = client[self.db.name].test.find(cursor_type=CursorType.EXHAUST)
-        next(cur)
-        self.assertEqual(0, len(socks))
+        # If the Cursor instance is discarded before being completely iterated
+        # and the socket has pending data (more_to_come=True) we have to close
+        # and discard the socket.
+        cur = client[self.db.name].test.find(cursor_type=CursorType.EXHAUST,
+                                             batch_size=2)
+        if client_context.version.at_least(4, 2):
+            # On 4.2+ we use OP_MSG which only sets more_to_come=True after the
+            # first getMore.
+            for _ in range(3):
+                next(cur)
+        else:
+            next(cur)
+        self.assertEqual(0, len(pool.sockets))
         if sys.platform.startswith('java') or 'PyPy' in sys.version:
             # Don't wait for GC or use gc.collect(), it's unreliable.
             cur.close()
         cur = None
+        # Wait until the background thread returns the socket.
+        wait_until(lambda: pool.active_sockets == 0, 'return socket')
         # The socket should be discarded.
-        self.assertEqual(0, len(socks))
+        self.assertEqual(0, len(pool.sockets))
 
     def test_distinct(self):
         self.db.drop_collection("test")
