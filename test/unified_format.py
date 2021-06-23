@@ -614,6 +614,8 @@ class MatchEvaluatorUtil(object):
 
 def coerce_result(opname, result):
     """Convert a pymongo result into the spec's result format."""
+    if hasattr(result, 'acknowledged') and not result.acknowledged:
+        return {'acknowledged': False}
     if opname == 'bulkWrite':
         return parse_bulk_write_result(result)
     if opname == 'insertOne':
