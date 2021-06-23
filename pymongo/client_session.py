@@ -130,10 +130,20 @@ class SessionOptions(object):
         operations are causally ordered within the session.
       - `default_transaction_options` (optional): The default
         TransactionOptions to use for transactions started on this session.
+      - `is_snapshot` (optional): If True, then all reads performed using this
+        session will read from the same snapshot.
     """
     def __init__(self,
-                 causal_consistency=True,
-                 default_transaction_options=None):
+                 causal_consistency=None,
+                 default_transaction_options=None,
+                 is_snapshot=False):
+        if is_snapshot:
+            if causal_consistency:
+                raise ConfigurationError('snapshot reads do not support '
+                                         'causal_consistency=True')
+            causal_consistency = False
+        elif causal_consistency is None:
+            causal_consistency = True
         self._causal_consistency = causal_consistency
         if default_transaction_options is not None:
             if not isinstance(default_transaction_options, TransactionOptions):
@@ -142,6 +152,7 @@ class SessionOptions(object):
                     "pymongo.client_session.TransactionOptions, not: %r" %
                     (default_transaction_options,))
         self._default_transaction_options = default_transaction_options
+        self._is_snapshot = is_snapshot
 
     @property
     def causal_consistency(self):
@@ -156,6 +167,14 @@ class SessionOptions(object):
         .. versionadded:: 3.7
         """
         return self._default_transaction_options
+
+    @property
+    def is_snapshot(self):
+        """Whether snapshot reads are configured.
+
+        .. versionadded:: 3.12
+        """
+        return self._is_snapshot
 
 
 class TransactionOptions(object):
