@@ -226,8 +226,8 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
         $PYTHON -c "from bson import _cbson; from pymongo import _cmessage"
     fi
     if [ -n "$TEST_LOADBALANCER" ]; then
-        PY_MAJOR=$($PYTHON -c "import sys; sys.stdout.write(str(sys.version_info[0]))")
-        if [ "$PY_MAJOR" = "2" ]; then
+        IS_PRE_35=$(python -c "import sys; sys.stdout.write('1' if sys.version_info < (3, 5) else '0')")
+        if [ "$IS_PRE_35" = "1" ]; then
             RUNNER="unittest"
             RUNNER_ARGS=""
         else
