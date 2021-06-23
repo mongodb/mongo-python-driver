@@ -34,7 +34,6 @@ from pymongo.message import (_CursorAddress,
                              _RawBatchGetMore,
                              _Query,
                              _RawBatchQuery)
-from pymongo.monitoring import ConnectionClosedReason
 from pymongo.response import PinnedResponse
 
 # These errors mean that the server has already killed the cursor so there is
@@ -106,19 +105,14 @@ class CursorType(object):
     """
 
 
-# This has to be an old style class due to
-# http://bugs.jython.org/issue1057
-class _SocketManager:
+class _SocketManager(object):
     """Used with exhaust cursors to ensure the socket is returned.
     """
     def __init__(self, sock, more_to_come):
         self.sock = sock
         self.more_to_come = more_to_come
-        self.__closed = False
+        self.closed = False
         self.lock = threading.Lock()
-
-    def __del__(self):
-        self.close()
 
     def update_exhaust(self, more_to_come):
         self.more_to_come = more_to_come
@@ -126,8 +120,8 @@ class _SocketManager:
     def close(self):
         """Return this instance's socket to the connection pool.
         """
-        if not self.__closed:
-            self.__closed = True
+        if not self.closed:
+            self.closed = True
             self.sock.unpin()
             self.sock = None
 
@@ -156,6 +150,7 @@ class Cursor(object):
         """
         # Initialize all attributes used in __del__ before possibly raising
         # an error to avoid attribute errors during garbage collection.
+        self.__collection = collection
         self.__id = None
         self.__exhaust = False
         self.__sock_mgr = None
@@ -208,7 +203,6 @@ class Cursor(object):
                 projection = {"_id": 1}
             projection = helpers._fields_list_to_dict(projection, "projection")
 
-        self.__collection = collection
         self.__spec = spec
         self.__projection = projection
         self.__skip = skip
@@ -293,6 +287,7 @@ class Cursor(object):
         be sent to the server, even if the resultant data has already been
         retrieved by this cursor.
         """
+        self.close()
         self.__data = deque()
         self.__id = None
         self.__address = None
@@ -349,29 +344,23 @@ class Cursor(object):
 
         self.__killed = True
         if self.__id and not already_killed:
-            if self.__exhaust and self.__sock_mgr:
-                # If this is an exhaust cursor and we haven't completely
-                # exhausted the result set we *must* close the socket
-                # to stop the server from sending more data.
-                self.__sock_mgr.sock.close_socket(
-                    ConnectionClosedReason.ERROR)
-            else:
-                address = _CursorAddress(
-                    self.__address, self.__collection.full_name)
-                if synchronous:
-                    self.__collection.database.client._close_cursor_now(
-                        self.__id, address, session=self.__session,
-                        sock_mgr=self.__sock_mgr)
-                else:
-                    # The cursor will be closed later in a different session.
-                    self.__collection.database.client._close_cursor(
-                        self.__id, address)
-        if self.__sock_mgr:
-            self.__sock_mgr.close()
-            self.__sock_mgr = None
-        if self.__session and not self.__explicit_session:
-            self.__session._end_session(lock=synchronous)
+            cursor_id = self.__id
+            address = _CursorAddress(
+                self.__address, self.__collection.full_name)
+        else:
+            # Skip killCursors.
+            cursor_id = 0
+            address = None
+        self.__collection.database.client._cleanup_cursor(
+            synchronous,
+            cursor_id,
+            address,
+            self.__sock_mgr,
+            self.__session,
+            self.__explicit_session)
+        if not self.__explicit_session:
             self.__session = None
+        self.__sock_mgr = None
 
     def close(self):
         """Explicitly close / kill this cursor.
@@ -1094,10 +1083,10 @@ class Cursor(object):
         if self.__id == 0:
             # Don't wait for garbage collection to call __del__, return the
             # socket and the session to the pool now.
-            self.__die()
+            self.close()
 
         if self.__limit and self.__id and self.__limit <= self.__retrieved:
-            self.__die()
+            self.close()
 
     def _unpack_response(self, response, cursor_id, codec_options,
                          user_fields=None, legacy_response=False):

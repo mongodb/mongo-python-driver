@@ -53,13 +53,11 @@ class TestClientOptions(PyMongoTestCase):
 class TestSpec(SpecRunner):
 
     @classmethod
-    @client_context.require_version_min(4, 0)
+    @client_context.require_failCommand_fail_point
     # TODO: remove this once PYTHON-1948 is done.
     @client_context.require_no_mmap
     def setUpClass(cls):
         super(TestSpec, cls).setUpClass()
-        if client_context.is_mongos and client_context.version[:2] <= (4, 0):
-            raise unittest.SkipTest("4.0 mongos does not support failCommand")
 
     def maybe_skip_scenario(self, test):
         super(TestSpec, self).maybe_skip_scenario(test)
