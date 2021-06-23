@@ -61,16 +61,20 @@ def create_mock_topology(uri, monitor_class=DummyMonitor):
     parsed_uri = parse_uri(uri)
     replica_set_name = None
     direct_connection = None
+    load_balanced = None
     if 'replicaset' in parsed_uri['options']:
         replica_set_name = parsed_uri['options']['replicaset']
     if 'directConnection' in parsed_uri['options']:
         direct_connection = parsed_uri['options']['directConnection']
+    if 'loadBalanced' in parsed_uri['options']:
+        load_balanced = parsed_uri['options']['loadBalanced']
 
     topology_settings = TopologySettings(
         parsed_uri['nodelist'],
         replica_set_name=replica_set_name,
         monitor_class=monitor_class,
-        direct_connection=direct_connection)
+        direct_connection=direct_connection,
+        load_balanced=load_balanced)
 
     c = Topology(topology_settings)
     c.open()

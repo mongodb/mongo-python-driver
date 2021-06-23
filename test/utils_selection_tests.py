@@ -124,6 +124,10 @@ def create_topology(scenario_def, **kwargs):
     seeds, hosts = get_addresses(
         scenario_def['topology_description']['servers'])
 
+    topology_type = get_topology_type_name(scenario_def)
+    if topology_type == 'LoadBalanced':
+        kwargs.setdefault('load_balanced', True)
+
     settings = get_topology_settings_dict(
         heartbeat_frequency=frequency,
         seeds=seeds,
@@ -140,6 +144,9 @@ def create_topology(scenario_def, **kwargs):
     for server in scenario_def['topology_description']['servers']:
         server_description = make_server_description(server, hosts)
         topology.on_change(server_description)
+
+    if topology_type == 'LoadBalanced':
+        assert topology.description.topology_type_name == 'LoadBalanced'
 
     return topology
 
