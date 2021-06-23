@@ -407,6 +407,7 @@ class ClientSession(object):
         self._options = options
         self._cluster_time = None
         self._operation_time = None
+        self._snapshot_time = None
         # Is this an implicitly created session?
         self._implicit = implicit
         self._transaction = _Transaction(None, client)
@@ -471,6 +472,15 @@ class ClientSession(object):
         in this session.
         """
         return self._operation_time
+
+    @property
+    def snapshot_time(self):
+        """The snapshot time returned by the first read operation executed
+        in this session if is_snapshot is True.
+
+        .. versionadded:: 3.12
+        """
+        return self._snapshot_time
 
     def _inherit_option(self, name, val):
         """Return the inherited TransactionOption value."""
@@ -800,6 +810,8 @@ class ClientSession(object):
         """Process a response to a command that was run with this session."""
         self._advance_cluster_time(reply.get('$clusterTime'))
         self._advance_operation_time(reply.get('operationTime'))
+        if self._options.is_snapshot and self._snapshot_time is None:
+            self._snapshot_time = reply.get('atClusterTime')
         if self.in_transaction and self._transaction.sharded:
             recovery_token = reply.get('recoveryToken')
             if recovery_token:
@@ -873,15 +885,9 @@ class ClientSession(object):
 
                 if self._transaction.opts.read_concern:
                     rc = self._transaction.opts.read_concern.document
-                else:
-                    rc = {}
-
-                if (self.options.causal_consistency
-                        and self.operation_time is not None):
-                    rc['afterClusterTime'] = self.operation_time
-
-                if rc:
-                    command['readConcern'] = rc
+                    if rc:
+                        command['readConcern'] = rc
+                self._update_read_concern(command)
 
             command['txnNumber'] = self._server_session.transaction_id
             command['autocommit'] = False
@@ -889,6 +895,16 @@ class ClientSession(object):
     def _start_retryable_write(self):
         self._check_ended()
         self._server_session.inc_transaction_id()
+
+    def _update_read_concern(self, cmd):
+        if (self.options.causal_consistency
+                and self.operation_time is not None):
+            cmd.setdefault('readConcern', {})[
+                'afterClusterTime'] = self.operation_time
+        if (self.options.is_snapshot
+                and self._snapshot_time is not None):
+            cmd.setdefault('readConcern', {})[
+                'atClusterTime'] = self._snapshot_time
 
 
 class _ServerSession(object):

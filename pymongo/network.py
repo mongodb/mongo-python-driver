@@ -90,10 +90,8 @@ def command(sock_info, dbname, spec, slave_ok, is_mongos,
     if read_concern and not (session and session.in_transaction):
         if read_concern.level:
             spec['readConcern'] = read_concern.document
-        if (session and session.options.causal_consistency
-                and session.operation_time is not None):
-            spec.setdefault(
-                'readConcern', {})['afterClusterTime'] = session.operation_time
+        if session:
+            session._update_read_concern(spec)
     if collation is not None:
         spec['collation'] = collation
 

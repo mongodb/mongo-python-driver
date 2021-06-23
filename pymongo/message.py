@@ -315,12 +315,8 @@ class _Query(object):
         if session:
             session._apply_to(cmd, False, self.read_preference)
             # Explain does not support readConcern.
-            if (not explain and session.options.causal_consistency
-                    and session.operation_time is not None
-                    and not session.in_transaction):
-                cmd.setdefault(
-                    'readConcern', {})[
-                    'afterClusterTime'] = session.operation_time
+            if not explain and not session.in_transaction:
+                session._update_read_concern(cmd)
         sock_info.send_cluster_time(cmd, session, self.client)
         # Support auto encryption
         client = self.client
