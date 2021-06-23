@@ -185,8 +185,8 @@ class client_knobs(object):
 
     def __del__(self):
         if self._enabled:
-            print(
-                '\nERROR: client_knobs still enabled! HEARTBEAT_FREQUENCY=%s, '
+            msg = (
+                'ERROR: client_knobs still enabled! HEARTBEAT_FREQUENCY=%s, '
                 'MIN_HEARTBEAT_INTERVAL=%s, KILL_CURSOR_FREQUENCY=%s, '
                 'EVENTS_QUEUE_FREQUENCY=%s, stack:\n%s' % (
                     common.HEARTBEAT_FREQUENCY,
@@ -195,6 +195,7 @@ class client_knobs(object):
                     common.EVENTS_QUEUE_FREQUENCY,
                     self._stack))
             self.disable()
+            raise Exception(msg)
 
 
 def _all_users(db):

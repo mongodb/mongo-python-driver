@@ -65,8 +65,7 @@ class CommandCursor(object):
             raise TypeError("max_await_time_ms must be an integer or None")
 
     def __del__(self):
-        if self.__id and not self.__killed:
-            self.__die()
+        self.__die()
 
     def __die(self, synchronous=False):
         """Closes this cursor.
@@ -74,20 +73,23 @@ class CommandCursor(object):
         already_killed = self.__killed
         self.__killed = True
         if self.__id and not already_killed:
+            cursor_id = self.__id
             address = _CursorAddress(
                 self.__address, self.__collection.full_name)
-            if synchronous:
-                self.__collection.database.client._close_cursor_now(
-                    self.__id, address, session=self.__session,
-                    sock_mgr=self.__sock_mgr)
-            else:
-                # The cursor will be closed later in a different session.
-                self.__collection.database.client._close_cursor(
-                    self.__id, address)
-        if self.__sock_mgr:
-            self.__sock_mgr.close()
-            self.__sock_mgr = None
-        self.__end_session(synchronous)
+        else:
+            # Skip killCursors.
+            cursor_id = 0
+            address = None
+        self.__collection.database.client._cleanup_cursor(
+            synchronous,
+            cursor_id,
+            address,
+            self.__sock_mgr,
+            self.__session,
+            self.__explicit_session)
+        if not self.__explicit_session:
+            self.__session = None
+        self.__sock_mgr = None
 
     def __end_session(self, synchronous):
         if self.__session and not self.__explicit_session:
@@ -186,7 +188,7 @@ class CommandCursor(object):
             self.__id = response.data.cursor_id
 
         if self.__id == 0:
-            self.__die(True)
+            self.close()
         self.__data = deque(documents)
 
     def _unpack_response(self, response, cursor_id, codec_options,

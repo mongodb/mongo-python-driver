@@ -288,7 +288,7 @@ class _TxnState(object):
 
 class _Transaction(object):
     """Internal class to hold transaction information in a ClientSession."""
-    def __init__(self, opts):
+    def __init__(self, opts, client):
         self.opts = opts
         self.state = _TxnState.NONE
         self.sharded = False
@@ -296,6 +296,7 @@ class _Transaction(object):
         self.sock_mgr = None
         self.recovery_token = None
         self.attempt = 0
+        self.client = client
 
     def active(self):
         return self.state in (_TxnState.STARTING, _TxnState.IN_PROGRESS)
@@ -328,6 +329,13 @@ class _Transaction(object):
         self.sharded = False
         self.recovery_token = None
         self.attempt = 0
+
+    def __del__(self):
+        if self.sock_mgr:
+            # Reuse the cursor closing machinery to return the socket to the
+            # pool soon.
+            self.client._close_cursor_soon(0, None, self.sock_mgr)
+            self.sock_mgr = None
 
 
 def _reraise_with_unknown_commit(exc):
@@ -382,7 +390,7 @@ class ClientSession(object):
         self._operation_time = None
         # Is this an implicitly created session?
         self._implicit = implicit
-        self._transaction = _Transaction(None)
+        self._transaction = _Transaction(None, client)
 
     def end_session(self):
         """Finish this session. If a transaction has started, abort it.

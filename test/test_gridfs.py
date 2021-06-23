@@ -33,6 +33,7 @@ from pymongo.errors import (ConfigurationError,
 from pymongo.read_preferences import ReadPreference
 from gridfs.errors import CorruptGridFile, FileExists, NoFile
 from test.test_replica_set_client import TestReplicaSetClientBase
+from gridfs.grid_file import GridOutCursor
 from test import (client_context,
                   unittest,
                   IntegrationTest)
@@ -428,6 +429,14 @@ class TestGridfs(IntegrationTest):
         self.assertRaises(StopIteration, cursor.__next__)
         cursor.close()
         self.assertRaises(TypeError, self.fs.find, {}, {"_id": True})
+
+    def test_delete_not_initialized(self):
+        # Creating a cursor with invalid arguments will not run __init__
+        # but will still call __del__.
+        cursor = GridOutCursor.__new__(GridOutCursor)  # Skip calling __init__
+        with self.assertRaises(TypeError):
+            cursor.__init__(self.db.fs.files, {}, {"_id": True})
+        cursor.__del__()  # no error
 
     def test_gridfs_find_one(self):
         self.assertEqual(None, self.fs.find_one())
