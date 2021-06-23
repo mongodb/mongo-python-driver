@@ -1849,6 +1849,8 @@ class TestCollection(IntegrationTest):
         self.db.test.insert_many([{'i': i} for i in range(150)])
 
         client = rs_or_single_client(maxPoolSize=1)
+        self.addCleanup(client.close)
+        pool = get_pool(client)
         socks = get_pool(client).sockets
 
         # Make sure the socket is returned after exhaustion.
@@ -1867,13 +1869,17 @@ class TestCollection(IntegrationTest):
         # If the Cursor instance is discarded before being
         # completely iterated we have to close and
         # discard the socket.
-        cur = client[self.db.name].test.find(cursor_type=CursorType.EXHAUST)
-        next(cur)
+        cur = client[self.db.name].test.find(cursor_type=CursorType.EXHAUST,
+                                             batch_size=2)
+        for _ in range(3):
+            next(cur)
         self.assertEqual(0, len(socks))
         if sys.platform.startswith('java') or 'PyPy' in sys.version:
             # Don't wait for GC or use gc.collect(), it's unreliable.
             cur.close()
         cur = None
+        # Wait until the background thread returns the socket.
+        wait_until(lambda: pool.active_sockets == 0, 'return socket')
         # The socket should be discarded.
         self.assertEqual(0, len(socks))
 
