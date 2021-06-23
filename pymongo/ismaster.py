@@ -192,3 +192,7 @@ class IsMaster(object):
     @property
     def service_id(self):
         return self._doc.get('serviceId')
+
+    @property
+    def hello_ok(self):
+        return self._doc.get('helloOk', False)
