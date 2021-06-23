@@ -261,18 +261,18 @@ Applications can set the UUID representation in one of the following ways:
      from bson.binary import UuidRepresentation
      client = MongoClient(uuidRepresentation=UuidRepresentation.PYTHON_LEGACY)
 
-#. At the ``MongoClient`` level by supplying a suitable
+#. At the ``Database`` or ``Collection`` level by supplying a suitable
    :class:`~bson.codec_options.CodecOptions` instance, e.g.::
 
      from bson.codec_options import CodecOptions
      csharp_opts = CodecOptions(uuid_representation=UuidRepresentation.CSHARP_LEGACY)
+     java_opts = CodecOptions(uuid_representation=UuidRepresentation.JAVA_LEGACY)
+
+     # Get database/collection from client with csharpLegacy UUID representation
      csharp_database = client.get_database('csharp_db', codec_options=csharp_opts)
      csharp_collection = client.testdb.get_collection('csharp_coll', codec_options=csharp_opts)
 
-#. At the ``Database`` or ``Collection`` level by supplying a suitable
-   :class:`~bson.codec_options.CodecOptions` instance, e.g.::
-
-     java_opts = CodecOptions(uuid_representation=UuidRepresentation.JAVA_LEGACY)
+     # Get database/collection from existing database/collection with javaLegacy UUID representation
      java_database = csharp_database.with_options(codec_options=java_opts)
      java_collection = csharp_collection.with_options(codec_options=java_opts)
 
