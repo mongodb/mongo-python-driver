@@ -130,40 +130,57 @@ def get_topology_settings_dict(**kwargs):
     return settings
 
 
+def create_topology(scenario_def, **kwargs):
+    # Initialize topologies.
+    if 'heartbeatFrequencyMS' in scenario_def:
+        frequency = int(scenario_def['heartbeatFrequencyMS']) / 1000.0
+    else:
+        frequency = HEARTBEAT_FREQUENCY
+
+    seeds, hosts = get_addresses(
+        scenario_def['topology_description']['servers'])
+
+    topology_type = get_topology_type_name(scenario_def)
+    if topology_type == 'LoadBalanced':
+        kwargs.setdefault('load_balanced', True)
+
+    settings = get_topology_settings_dict(
+        heartbeat_frequency=frequency,
+        seeds=seeds,
+        **kwargs
+    )
+
+    # "Eligible servers" is defined in the server selection spec as
+    # the set of servers matching both the ReadPreference's mode
+    # and tag sets.
+    topology = Topology(TopologySettings(**settings))
+    topology.open()
+
+    # Update topologies with server descriptions.
+    for server in scenario_def['topology_description']['servers']:
+        server_description = make_server_description(server, hosts)
+        topology.on_change(server_description)
+
+    if topology_type == 'LoadBalanced':
+        assert topology.description.topology_type_name == 'LoadBalanced'
+
+    return topology
+
+
 def create_test(scenario_def):
     def run_scenario(self):
-        # Initialize topologies.
-        if 'heartbeatFrequencyMS' in scenario_def:
-            frequency = int(scenario_def['heartbeatFrequencyMS']) / 1000.0
-        else:
-            frequency = HEARTBEAT_FREQUENCY
-
-        seeds, hosts = get_addresses(
+        _, hosts = get_addresses(
             scenario_def['topology_description']['servers'])
-
-        settings = get_topology_settings_dict(
-            heartbeat_frequency=frequency,
-            seeds=seeds
-        )
-
         # "Eligible servers" is defined in the server selection spec as
         # the set of servers matching both the ReadPreference's mode
         # and tag sets.
-        top_latency = Topology(TopologySettings(**settings))
-        top_latency.open()
+        top_latency = create_topology(scenario_def)
 
         # "In latency window" is defined in the server selection
         # spec as the subset of suitable_servers that falls within the
         # allowable latency window.
-        settings['local_threshold_ms'] = 1000000
-        top_suitable = Topology(TopologySettings(**settings))
-        top_suitable.open()
-
-        # Update topologies with server descriptions.
-        for server in scenario_def['topology_description']['servers']:
-            server_description = make_server_description(server, hosts)
-            top_suitable.on_change(server_description)
-            top_latency.on_change(server_description)
+        top_suitable = create_topology(
+            scenario_def, local_threshold_ms=1000000)
 
         # Create server selector.
         if scenario_def.get("operation") == "write":
