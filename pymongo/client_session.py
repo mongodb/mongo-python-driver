@@ -126,12 +126,17 @@ class SessionOptions(object):
     """Options for a new :class:`ClientSession`.
 
     :Parameters:
-      - `causal_consistency` (optional): If True (the default), read
-        operations are causally ordered within the session.
+      - `causal_consistency` (optional): If True, read operations are causally
+        ordered within the session. Defaults to True when the ``snapshot``
+        option is ``False``.
       - `default_transaction_options` (optional): The default
         TransactionOptions to use for transactions started on this session.
       - `snapshot` (optional): If True, then all reads performed using this
-        session will read from the same snapshot.
+        session will read from the same snapshot. This option is incompatible
+        with ``causal_consistency=True``. Defaults to ``False``.
+
+    .. versionchanged:: 3.12
+       Added the ``snapshot`` parameter.
     """
     def __init__(self,
                  causal_consistency=None,
