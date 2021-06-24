@@ -194,7 +194,7 @@ def create_test(scenario_def):
 
         try:
             for phase in scenario_def['phases']:
-                for (source, response) in phase['responses']:
+                for (source, response) in phase.get('responses', []):
                     source_address = clean_node(source)
                     topology.on_change(ServerDescription(
                         address=source_address,
