@@ -21,6 +21,8 @@ import time
 
 from io import BytesIO
 
+sys.path[0:0] = [""]
+
 from bson import DBRef
 from gridfs import GridFS, GridFSBucket
 from pymongo import ASCENDING, InsertOne, IndexModel, OFF, monitoring
@@ -1153,7 +1155,7 @@ class TestClusterTime(IntegrationTest):
 class TestSpec(SpecRunner):
     # Location of JSON test specifications.
     TEST_PATH = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), 'sessions')
+        os.path.dirname(os.path.realpath(__file__)), 'sessions', 'legacy')
 
     def last_two_command_events(self):
         """Return the last two command started events."""
@@ -1198,3 +1200,6 @@ def create_test(scenario_def, test, name):
 
 test_creator = TestCreator(create_test, TestSpec, TestSpec.TEST_PATH)
 test_creator.create_tests()
+
+if __name__ == "__main__":
+    unittest.main()

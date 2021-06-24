@@ -501,8 +501,11 @@ class MatchEvaluatorUtil(object):
             self.match_result(value, actual[key], in_recursive_call=True)
 
         if not is_root:
-            self.test.assertEqual(
-                set(expectation.keys()), set(actual.keys()))
+            expected_keys = set(expectation.keys())
+            for key, value in expectation.items():
+                if value == {'$$exists': False}:
+                    expected_keys.remove(key)
+            self.test.assertEqual(expected_keys, set(actual.keys()))
 
     def match_result(self, expectation, actual,
                      in_recursive_call=False):

@@ -1660,7 +1660,7 @@ class MongoClient(common.BaseObject):
     def start_session(self,
                       causal_consistency=None,
                       default_transaction_options=None,
-                      is_snapshot=False):
+                      snapshot=False):
         """Start a logical session.
 
         This method takes the same parameters as
@@ -1684,7 +1684,7 @@ class MongoClient(common.BaseObject):
             False,
             causal_consistency=causal_consistency,
             default_transaction_options=default_transaction_options,
-            is_snapshot=is_snapshot)
+            snapshot=snapshot)
 
     def _get_server_session(self):
         """Internal: start or resume a _ServerSession."""

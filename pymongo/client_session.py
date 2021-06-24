@@ -130,14 +130,14 @@ class SessionOptions(object):
         operations are causally ordered within the session.
       - `default_transaction_options` (optional): The default
         TransactionOptions to use for transactions started on this session.
-      - `is_snapshot` (optional): If True, then all reads performed using this
+      - `snapshot` (optional): If True, then all reads performed using this
         session will read from the same snapshot.
     """
     def __init__(self,
                  causal_consistency=None,
                  default_transaction_options=None,
-                 is_snapshot=False):
-        if is_snapshot:
+                 snapshot=False):
+        if snapshot:
             if causal_consistency:
                 raise ConfigurationError('snapshot reads do not support '
                                          'causal_consistency=True')
@@ -152,7 +152,7 @@ class SessionOptions(object):
                     "pymongo.client_session.TransactionOptions, not: %r" %
                     (default_transaction_options,))
         self._default_transaction_options = default_transaction_options
-        self._is_snapshot = is_snapshot
+        self._snapshot = snapshot
 
     @property
     def causal_consistency(self):
@@ -169,12 +169,12 @@ class SessionOptions(object):
         return self._default_transaction_options
 
     @property
-    def is_snapshot(self):
+    def snapshot(self):
         """Whether snapshot reads are configured.
 
         .. versionadded:: 3.12
         """
-        return self._is_snapshot
+        return self._snapshot
 
 
 class TransactionOptions(object):
@@ -801,8 +801,12 @@ class ClientSession(object):
         """Process a response to a command that was run with this session."""
         self._advance_cluster_time(reply.get('$clusterTime'))
         self._advance_operation_time(reply.get('operationTime'))
-        if self._options.is_snapshot and self._snapshot_time is None:
-            self._snapshot_time = reply.get('atClusterTime')
+        if self._options.snapshot and self._snapshot_time is None:
+            if 'cursor' in reply:
+                ct = reply['cursor'].get('atClusterTime')
+            else:
+                ct = reply.get('atClusterTime')
+            self._snapshot_time = ct
         if self.in_transaction and self._transaction.sharded:
             recovery_token = reply.get('recoveryToken')
             if recovery_token:
@@ -892,10 +896,11 @@ class ClientSession(object):
                 and self.operation_time is not None):
             cmd.setdefault('readConcern', {})[
                 'afterClusterTime'] = self.operation_time
-        if (self.options.is_snapshot
-                and self._snapshot_time is not None):
-            cmd.setdefault('readConcern', {})[
-                'atClusterTime'] = self._snapshot_time
+        if self.options.snapshot:
+            rc = cmd.setdefault('readConcern', {})
+            rc['level'] = 'snapshot'
+            if self._snapshot_time is not None:
+                rc['atClusterTime'] = self._snapshot_time
 
 
 class _ServerSession(object):
