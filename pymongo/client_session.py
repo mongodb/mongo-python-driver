@@ -473,15 +473,6 @@ class ClientSession(object):
         """
         return self._operation_time
 
-    @property
-    def snapshot_time(self):
-        """The snapshot time returned by the first read operation executed
-        in this session if is_snapshot is True.
-
-        .. versionadded:: 3.12
-        """
-        return self._snapshot_time
-
     def _inherit_option(self, name, val):
         """Return the inherited TransactionOption value."""
         if val:
