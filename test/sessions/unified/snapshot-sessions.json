@@ -152,7 +152,6 @@
             "x": 13
           }
         },
-
         {
           "name": "find",
           "object": "collection0",
@@ -928,7 +927,6 @@
         {
           "name": "startTransaction",
           "object": "session0",
-
           "expectError": {
             "isError": true,
             "isClientError": true,
