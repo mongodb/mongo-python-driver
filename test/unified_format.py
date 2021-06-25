@@ -39,8 +39,8 @@ from pymongo.change_stream import ChangeStream
 from pymongo.collection import Collection
 from pymongo.database import Database
 from pymongo.errors import (
-    BulkWriteError, ConnectionFailure, InvalidOperation, NotPrimaryError,
-    PyMongoError)
+    BulkWriteError, ConnectionFailure, ConfigurationError, InvalidOperation,
+    NotPrimaryError, PyMongoError)
 from pymongo.monitoring import (
     CommandFailedEvent, CommandListener, CommandStartedEvent,
     CommandSucceededEvent, _SENSITIVE_COMMANDS, PoolCreatedEvent,
@@ -510,8 +510,11 @@ class MatchEvaluatorUtil(object):
             self.match_result(value, actual[key], in_recursive_call=True)
 
         if not is_root:
-            self.test.assertEqual(
-                set(expectation.keys()), set(actual.keys()))
+            expected_keys = set(expectation.keys())
+            for key, value in expectation.items():
+                if value == {'$$exists': False}:
+                    expected_keys.remove(key)
+            self.test.assertEqual(expected_keys, set(actual.keys()))
 
     def match_result(self, expectation, actual,
                      in_recursive_call=False):
@@ -733,6 +736,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             # Connection errors are considered client errors.
             if isinstance(exception, ConnectionFailure):
                 self.assertNotIsInstance(exception, NotPrimaryError)
+            elif isinstance(exception, (InvalidOperation, ConfigurationError)):
+                pass
             else:
                 self.assertNotIsInstance(exception, PyMongoError)
 
