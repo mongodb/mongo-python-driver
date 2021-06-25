@@ -569,7 +569,7 @@ class SocketInfo(object):
             self.close_socket(ConnectionClosedReason.STALE)
 
     def hello_cmd(self):
-        if self.opts.server_api:
+        if self.opts.server_api or self.hello_ok:
             return SON([(HelloCompat.CMD, 1)])
         else:
             return SON([(HelloCompat.LEGACY_CMD, 1)])
