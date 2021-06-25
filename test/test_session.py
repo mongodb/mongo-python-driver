@@ -21,6 +21,8 @@ import time
 
 from io import BytesIO
 
+sys.path[0:0] = [""]
+
 from bson import DBRef
 from gridfs import GridFS, GridFSBucket
 from pymongo import ASCENDING, InsertOne, IndexModel, OFF, monitoring
@@ -712,6 +714,21 @@ class TestSession(IntegrationTest):
 
         wait_until(drop_db, 'dropped database after w=0 writes')
 
+    def test_snapshot_incompatible_with_causal_consistency(self):
+        with self.client.start_session(causal_consistency=False,
+                                       snapshot=False):
+            pass
+        with self.client.start_session(causal_consistency=False,
+                                       snapshot=True):
+            pass
+        with self.client.start_session(causal_consistency=True,
+                                       snapshot=False):
+            pass
+        with self.assertRaises(ConfigurationError):
+            with self.client.start_session(causal_consistency=True,
+                                           snapshot=True):
+                pass
+
 
 class TestCausalConsistency(unittest.TestCase):
 
@@ -1153,7 +1170,7 @@ class TestClusterTime(IntegrationTest):
 class TestSpec(SpecRunner):
     # Location of JSON test specifications.
     TEST_PATH = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), 'sessions')
+        os.path.dirname(os.path.realpath(__file__)), 'sessions', 'legacy')
 
     def last_two_command_events(self):
         """Return the last two command started events."""
@@ -1198,3 +1215,6 @@ def create_test(scenario_def, test, name):
 
 test_creator = TestCreator(create_test, TestSpec, TestSpec.TEST_PATH)
 test_creator.create_tests()
+
+if __name__ == "__main__":
+    unittest.main()
