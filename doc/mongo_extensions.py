@@ -75,7 +75,7 @@ def process_mongodoc_nodes(app, doctree, fromdocname):
                 anchor = name["ids"][0]
                 break
         for para in node.traverse(nodes.paragraph):
-            tag = str(para.traverse()[1])
+            tag = str(list(para.traverse())[1])
             link = mongoref("", "")
             link["refuri"] = "http://dochub.mongodb.org/core/%s" % tag
             link["name"] = anchor

@@ -268,6 +268,10 @@ class PrimaryPreferred(_ServerMode):
     * When connected to a replica set queries are sent to the primary if
       available, otherwise a secondary.
 
+    .. note:: When a :class:`~pymongo.mongo_client.MongoClient` is first
+      created reads will be routed to an available secondary until the
+      primary of the replica set is discovered.
+
     :Parameters:
       - `tag_sets`: The :attr:`~tag_sets` to use if the primary is not
         available.
@@ -345,6 +349,10 @@ class SecondaryPreferred(_ServerMode):
       secondaries, or the shard primary if no secondary is available.
     * When connected to a replica set queries are distributed among
       secondaries, or the primary if no secondary is available.
+
+    .. note:: When a :class:`~pymongo.mongo_client.MongoClient` is first
+      created reads will be routed to the primary of the replica set until
+      an available secondary is discovered.
 
     :Parameters:
       - `tag_sets`: The :attr:`~tag_sets` for this read preference.
