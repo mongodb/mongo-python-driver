@@ -22,18 +22,22 @@ import threading
 sys.path[0:0] = [""]
 
 from test import unittest, IntegrationTest, client_context
-from test.utils import get_pool, wait_until, ExceptionCatchingThread
+from test.utils import (ExceptionCatchingThread,
+                        get_pool,
+                        rs_client,
+                        wait_until)
 from test.unified_format import generate_test_classes
 
 # Location of JSON test specifications.
 TEST_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), 'load_balancer', 'unified')
+    os.path.dirname(os.path.realpath(__file__)), 'load_balancer')
 
 # Generate unified tests.
 globals().update(generate_test_classes(TEST_PATH, module=__name__))
 
 
 class TestLB(IntegrationTest):
+    RUN_ON_LOAD_BALANCER = True
 
     def test_connections_are_only_returned_once(self):
         pool = get_pool(self.client)
@@ -45,11 +49,14 @@ class TestLB(IntegrationTest):
 
     @client_context.require_load_balancer
     def test_unpin_committed_transaction(self):
-        pool = get_pool(self.client)
-        with self.client.start_session() as session:
+        client = rs_client()
+        self.addCleanup(client.close)
+        pool = get_pool(client)
+        coll = client[self.db.name].test
+        with client.start_session() as session:
             with session.start_transaction():
                 self.assertEqual(pool.active_sockets, 0)
-                self.db.test.insert_one({}, session=session)
+                coll.insert_one({}, session=session)
                 self.assertEqual(pool.active_sockets, 1)  # Pinned.
             self.assertEqual(pool.active_sockets, 1)  # Still pinned.
         self.assertEqual(pool.active_sockets, 0)  # Unpinned.
@@ -75,9 +82,12 @@ class TestLB(IntegrationTest):
         self._test_no_gc_deadlock(create_resource)
 
     def _test_no_gc_deadlock(self, create_resource):
-        pool = get_pool(self.client)
+        client = rs_client()
+        self.addCleanup(client.close)
+        pool = get_pool(client)
+        coll = client[self.db.name].test
+        coll.insert_many([{} for _ in range(10)])
         self.assertEqual(pool.active_sockets, 0)
-        self.db.test.insert_many([{} for _ in range(10)])
         # Cause the initial find attempt to fail to induce a reference cycle.
         args = {
             "mode": {
@@ -92,7 +102,7 @@ class TestLB(IntegrationTest):
             }
         }
         with self.fail_point(args):
-            resource = create_resource(self.db.test)
+            resource = create_resource(coll)
             if client_context.load_balancer:
                 self.assertEqual(pool.active_sockets, 1)  # Pinned.
 
@@ -102,7 +112,9 @@ class TestLB(IntegrationTest):
         # Garbage collect the resource while the pool is locked to ensure we
         # don't deadlock.
         del resource
-        gc.collect()
+        # On PyPy it can take a few rounds to collect the cursor.
+        for _ in range(3):
+            gc.collect()
         thread.unlock.set()
         thread.join(5)
         self.assertFalse(thread.is_alive())
@@ -110,15 +122,16 @@ class TestLB(IntegrationTest):
 
         wait_until(lambda: pool.active_sockets == 0, 'return socket')
         # Run another operation to ensure the socket still works.
-        self.db.test.delete_many({})
+        coll.delete_many({})
 
     @client_context.require_transactions
     def test_session_gc(self):
-        pool = get_pool(self.client)
-        self.assertEqual(pool.active_sockets, 0)
-        session = self.client.start_session()
+        client = rs_client()
+        self.addCleanup(client.close)
+        pool = get_pool(client)
+        session = client.start_session()
         session.start_transaction()
-        self.client.test_session_gc.test.find_one({}, session=session)
+        client.test_session_gc.test.find_one({}, session=session)
         if client_context.load_balancer:
             self.assertEqual(pool.active_sockets, 1)  # Pinned.
 
@@ -138,7 +151,7 @@ class TestLB(IntegrationTest):
 
         wait_until(lambda: pool.active_sockets == 0, 'return socket')
         # Run another operation to ensure the socket still works.
-        self.db.test.delete_many({})
+        client[self.db.name].test.delete_many({})
 
 
 class PoolLocker(ExceptionCatchingThread):

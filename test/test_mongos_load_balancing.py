@@ -28,6 +28,7 @@ from test.utils import connected, wait_until
 
 
 @client_context.require_connection
+@client_context.require_no_load_balancer
 def setUpModule():
     pass
 

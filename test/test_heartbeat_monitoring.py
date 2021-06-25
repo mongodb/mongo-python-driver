@@ -22,12 +22,12 @@ sys.path[0:0] = [""]
 from pymongo.errors import ConnectionFailure
 from pymongo.ismaster import IsMaster
 from pymongo.monitor import Monitor
-from test import unittest, client_knobs
+from test import unittest, client_knobs, IntegrationTest
 from test.utils import (HeartbeatEventListener, MockPool, single_client,
                         wait_until)
 
 
-class TestHeartbeatMonitoring(unittest.TestCase):
+class TestHeartbeatMonitoring(IntegrationTest):
 
     def create_mock_monitor(self, responses, uri, expected_results):
         listener = HeartbeatEventListener()

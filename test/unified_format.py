@@ -638,6 +638,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     a class attribute ``TEST_SPEC``.
     """
     SCHEMA_VERSION = Version.from_string('1.5')
+    RUN_ON_LOAD_BALANCER = True
 
     @staticmethod
     def should_run_on(run_on_spec):
@@ -776,7 +777,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.skipTest("MMAPv1 does not support change streams")
         self.__raise_if_unsupported(
             'createChangeStream', target, MongoClient, Database, Collection)
-        return target.watch(*args, **kwargs)
+        stream = target.watch(*args, **kwargs)
+        self.addCleanup(stream.close)
+        return stream
 
     def _clientOperation_createChangeStream(self, target, *args, **kwargs):
         return self.__entityOperation_createChangeStream(
@@ -821,7 +824,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def _collectionOperation_createFindCursor(self, target, *args, **kwargs):
         self.__raise_if_unsupported('find', target, Collection)
-        return NonLazyCursor(target.find(*args, **kwargs))
+        cursor = NonLazyCursor(target.find(*args, **kwargs))
+        self.addCleanup(cursor.close)
+        return cursor
 
     def _collectionOperation_listIndexes(self, target, *args, **kwargs):
         if 'batch_size' in kwargs:
