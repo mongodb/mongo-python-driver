@@ -628,6 +628,10 @@ class ClientSession(object):
         """
         self._check_ended()
 
+        if self.options.snapshot:
+            raise InvalidOperation("Transactions are not supported in "
+                                   "snapshot sessions")
+
         if self.in_transaction:
             raise InvalidOperation("Transaction already in progress")
 

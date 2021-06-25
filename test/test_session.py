@@ -714,12 +714,6 @@ class TestSession(IntegrationTest):
 
         wait_until(drop_db, 'dropped database after w=0 writes')
 
-    @client_context.require_version_max(4, 4, 99)
-    def test_snapshot_raises_error_if_unsupported(self):
-        with self.client.start_session(snapshot=True) as session:
-            with self.assertRaises(OperationFailure):
-                self.db.test.find_one({}, session=session)
-
     def test_snapshot_incompatible_with_causal_consistency(self):
         with self.client.start_session(causal_consistency=False,
                                        snapshot=False):

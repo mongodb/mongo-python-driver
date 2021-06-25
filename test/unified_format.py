@@ -40,8 +40,8 @@ from pymongo.change_stream import ChangeStream
 from pymongo.collection import Collection
 from pymongo.database import Database
 from pymongo.errors import (
-    BulkWriteError, ConnectionFailure, InvalidOperation, NotPrimaryError,
-    PyMongoError)
+    BulkWriteError, ConnectionFailure, ConfigurationError, InvalidOperation,
+    NotPrimaryError, PyMongoError)
 from pymongo.monitoring import (
     CommandFailedEvent, CommandListener, CommandStartedEvent,
     CommandSucceededEvent, _SENSITIVE_COMMANDS, PoolCreatedEvent,
@@ -726,6 +726,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             # Connection errors are considered client errors.
             if isinstance(exception, ConnectionFailure):
                 self.assertNotIsInstance(exception, NotPrimaryError)
+            elif isinstance(exception, (InvalidOperation, ConfigurationError)):
+                pass
             else:
                 self.assertNotIsInstance(exception, PyMongoError)
 
