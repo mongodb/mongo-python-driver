@@ -120,7 +120,8 @@
               },
               "data": {
                 "failCommands": [
-                  "hello"
+                  "hello",
+                  "isMaster"
                 ],
                 "appName": "networkErrorCheckTest",
                 "closeConnection": true

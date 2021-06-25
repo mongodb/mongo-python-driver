@@ -60,6 +60,7 @@
           "a:27017",
           {
             "ok": 1,
+            "helloOk": true,
             "isWritablePrimary": true,
             "setName": "rs",
             "setVersion": 1,
@@ -75,6 +76,7 @@
           "b:27017",
           {
             "ok": 1,
+            "helloOk": true,
             "isWritablePrimary": true
           }
         ]

@@ -121,7 +121,8 @@
               },
               "data": {
                 "failCommands": [
-                  "hello"
+                  "hello",
+                  "isMaster"
                 ],
                 "appName": "commandErrorCheckTest",
                 "closeConnection": false,
