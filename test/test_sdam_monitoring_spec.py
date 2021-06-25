@@ -168,12 +168,11 @@ def compare_multiple_events(i, expected_results, actual_results):
     return j, True, ''
 
 
-class TestAllScenarios(unittest.TestCase):
+class TestAllScenarios(IntegrationTest):
 
-    @classmethod
-    @client_context.require_connection
-    def setUp(cls):
-        cls.all_listener = ServerAndTopologyEventListener()
+    def setUp(self):
+        super(TestAllScenarios, self).setUp()
+        self.all_listener = ServerAndTopologyEventListener()
 
 
 def create_test(scenario_def):

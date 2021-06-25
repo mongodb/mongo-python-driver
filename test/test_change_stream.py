@@ -51,6 +51,8 @@ from test.utils import (
 
 
 class TestChangeStreamBase(IntegrationTest):
+    RUN_ON_LOAD_BALANCER = True
+
     def change_stream_with_client(self, client, *args, **kwargs):
         """Create a change stream using the given client and return it."""
         raise NotImplementedError
@@ -1040,7 +1042,8 @@ class TestCollectionChangeStream(TestChangeStreamBase, APITestsMixin,
             pass
 
 
-class TestAllLegacyScenarios(unittest.TestCase):
+class TestAllLegacyScenarios(IntegrationTest):
+    RUN_ON_LOAD_BALANCER = True
 
     @classmethod
     @client_context.require_connection

@@ -54,6 +54,7 @@ _TEST_PATH = os.path.join(
 
 
 class TestAllScenarios(SpecRunner):
+    RUN_ON_LOAD_BALANCER = True
 
     def get_object_name(self, op):
         return op.get('object', 'collection')
@@ -163,6 +164,7 @@ def non_retryable_single_statement_ops(coll):
 
 
 class IgnoreDeprecationsTest(IntegrationTest):
+    RUN_ON_LOAD_BALANCER = True
 
     @classmethod
     def setUpClass(cls):
@@ -459,6 +461,8 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
 
 
 class TestWriteConcernError(IntegrationTest):
+    RUN_ON_LOAD_BALANCER = True
+
     @classmethod
     @client_context.require_replica_set
     @client_context.require_no_mmap

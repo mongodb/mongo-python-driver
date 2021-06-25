@@ -308,6 +308,10 @@ class SpecRunner(IntegrationTest):
             arguments = args
         result = cmd(**dict(arguments))
 
+        # Cleanup open change stream cursors.
+        if name == "watch":
+            self.addCleanup(result.close)
+
         if name == "aggregate":
             if arguments["pipeline"] and "$out" in arguments["pipeline"][-1]:
                 # Read from the primary to ensure causal consistency.

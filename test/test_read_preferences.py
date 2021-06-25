@@ -616,10 +616,11 @@ class TestMongosAndReadPreference(unittest.TestCase):
     def test_send_hedge(self):
         cases = {
             'primaryPreferred': PrimaryPreferred,
-            'secondary': Secondary,
             'secondaryPreferred': SecondaryPreferred,
             'nearest': Nearest,
         }
+        if client_context.supports_secondary_read_pref:
+            cases['secondary'] = Secondary
         listener = OvertCommandListener()
         client = rs_client(event_listeners=[listener])
         self.addCleanup(client.close)

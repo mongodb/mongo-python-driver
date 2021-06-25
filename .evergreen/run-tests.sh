@@ -225,19 +225,8 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
         # causing this script to exit.
         $PYTHON -c "from bson import _cbson; from pymongo import _cmessage"
     fi
-    if [ -n "$TEST_LOADBALANCER" ]; then
-        IS_PRE_35=$(python -c "import sys; sys.stdout.write('1' if sys.version_info < (3, 5) else '0')")
-        if [ "$IS_PRE_35" = "1" ]; then
-            RUNNER="unittest"
-            RUNNER_ARGS=""
-        else
-            RUNNER="xmlrunner"
-            RUNNER_ARGS="--locals -o $XUNIT_DIR"
-        fi
-        $COVERAGE_OR_PYTHON $PYTHON_ARGS $COVERAGE_ARGS -m $RUNNER discover $RUNNER_ARGS -s test/load_balancer -v
-    else
-        $COVERAGE_OR_PYTHON $PYTHON_ARGS $COVERAGE_ARGS setup.py $C_EXTENSIONS test $TEST_ARGS $OUTPUT
-    fi
+
+    $PYTHON $COVERAGE_ARGS setup.py $C_EXTENSIONS test $TEST_ARGS $OUTPUT
 else
     # --no_ext has to come before "test" so there is no way to toggle extensions here.
     $PYTHON green_framework_test.py $GREEN_FRAMEWORK $OUTPUT
