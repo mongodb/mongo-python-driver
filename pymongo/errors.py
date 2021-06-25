@@ -101,7 +101,7 @@ class NotMasterError(AutoReconnect):
     Use :exc:`~pymongo.errors.NotPrimaryError` instead.
 
     .. versionchanged:: 3.12
-    Deprecated. Use :exc:`~pymongo.errors.NotPrimaryError` instead.
+      Deprecated. Use :exc:`~pymongo.errors.NotPrimaryError` instead.
     """
     def __init__(self, message='', errors=None):
         super(NotMasterError, self).__init__(
