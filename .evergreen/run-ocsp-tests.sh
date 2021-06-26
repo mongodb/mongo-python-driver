@@ -20,6 +20,6 @@ fi
 createvirtualenv $PYTHON ocsptest
 trap "deactivate; rm -rf ocsptest" EXIT HUP
 
-python -m pip install --prefer-binary pyopenssl requests service_identity
+python -m pip install --prefer-binary -r .evergreen/test-pyopenssl-requirements.txt
 
 OCSP_TLS_SHOULD_SUCCEED=${OCSP_TLS_SHOULD_SUCCEED} CA_FILE=${CA_FILE} python test/ocsp/test_ocsp.py

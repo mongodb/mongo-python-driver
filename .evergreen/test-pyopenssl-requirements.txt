@@ -1,0 +1,8 @@
+-r test-encryption-requirements.txt
+pyopenssl>=17.2.0,<20;python_version=="3.4"
+pyopenssl>=17.2.0;python_version!="3.4"
+attrs<=20.3.0;python_version=="3.4"
+service-identity==18.1.0;python_version=="3.4"
+service-identity>=18.1.0;python_version!="3.4"
+requests<2.22;python_version=="3.4"
+requests<3.0;python_version!="3.4"

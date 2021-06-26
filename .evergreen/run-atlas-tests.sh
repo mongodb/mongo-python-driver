@@ -35,7 +35,7 @@ else
     IS_PRE_279=$(python -c "import sys; sys.stdout.write('1' if sys.version_info < (2, 7, 9) else '0')")
     if [ $IS_PRE_279 = "1" ]; then
         echo "Using a Pre-2.7.9 CPython"
-        python -m pip install pyopenssl>=17.2.0 service_identity>18.1.0
+        python -m pip install -r .evergreen/test-pyopenssl-requirements.txt
     else
         echo "Using CPython 2.7.9+"
     fi

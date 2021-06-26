@@ -75,7 +75,7 @@ if [ -z "$PYTHON_BINARY" ]; then
             exit 1
         fi
     else
-        $VIRTUALENV pymongotestvenv
+        $VIRTUALENV --never-download pymongotestvenv
         . pymongotestvenv/bin/activate
         PYTHON=python
         trap "deactivate; rm -rf pymongotestvenv" EXIT HUP
@@ -114,7 +114,7 @@ if [ -n "$TEST_PYOPENSSL" ]; then
     trap "deactivate; rm -rf pyopenssltest" EXIT HUP
     PYTHON=python
 
-    python -m pip install --prefer-binary pyopenssl requests service_identity
+    python -m pip install --prefer-binary -r .evergreen/test-pyopenssl-requirements.txt
 fi
 
 if [ -n "$TEST_ENCRYPTION" ]; then
