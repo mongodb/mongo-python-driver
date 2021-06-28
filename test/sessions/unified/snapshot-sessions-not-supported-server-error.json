@@ -106,6 +106,91 @@
           ]
         }
       ]
+    },
+    {
+      "description": "Server returns an error on aggregate with snapshot",
+      "operations": [
+        {
+          "name": "aggregate",
+          "object": "collection0",
+          "arguments": {
+            "session": "session0",
+            "pipeline": []
+          },
+          "expectError": {
+            "isError": true,
+            "isClientError": false
+          }
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "aggregate": "collection0",
+                  "readConcern": {
+                    "level": "snapshot",
+                    "atClusterTime": {
+                      "$$exists": false
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "commandFailedEvent": {
+                "commandName": "aggregate"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "Server returns an error on distinct with snapshot",
+      "operations": [
+        {
+          "name": "distinct",
+          "object": "collection0",
+          "arguments": {
+            "fieldName": "x",
+            "filter": {},
+            "session": "session0"
+          },
+          "expectError": {
+            "isError": true,
+            "isClientError": false
+          }
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "distinct": "collection0",
+                  "readConcern": {
+                    "level": "snapshot",
+                    "atClusterTime": {
+                      "$$exists": false
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "commandFailedEvent": {
+                "commandName": "distinct"
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }
