@@ -296,7 +296,8 @@ class _Bulk(object):
                     if retryable and not self.started_retryable_write:
                         session._start_retryable_write()
                         self.started_retryable_write = True
-                    session._apply_to(cmd, retryable, ReadPreference.PRIMARY)
+                    session._apply_to(cmd, retryable, ReadPreference.PRIMARY,
+                                      sock_info)
                 sock_info.send_cluster_time(cmd, session, client)
                 ops = islice(run.ops, run.idx_offset, None)
                 # Run as many ops as possible in one command.
