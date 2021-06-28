@@ -4,9 +4,12 @@
   "runOnRequirements": [
     {
       "minServerVersion": "3.6",
-      "maxServerVersion": "4.4.99",
+      "maxServerVersion": "4.4.99"
+    },
+    {
+      "minServerVersion": "3.6",
       "topologies": [
-        "replicaset, sharded-replicaset"
+        "single"
       ]
     }
   ],
@@ -17,6 +20,11 @@
         "observeEvents": [
           "commandStartedEvent",
           "commandFailedEvent"
+        ],
+        "ignoreCommandMonitoringEvents": [
+          "findAndModify",
+          "insert",
+          "update"
         ]
       }
     },
@@ -87,9 +95,7 @@
                       "$$exists": false
                     }
                   }
-                },
-                "commandName": "find",
-                "databaseName": "database0"
+                }
               }
             },
             {
