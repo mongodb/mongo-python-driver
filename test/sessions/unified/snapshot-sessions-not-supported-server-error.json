@@ -5,6 +5,11 @@
     {
       "minServerVersion": "3.6",
       "maxServerVersion": "4.4.99"
+    },
+    {
+      "topologies": [
+        "single"
+      ]
     }
   ],
   "createEntities": [
