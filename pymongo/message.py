@@ -468,6 +468,8 @@ class _RawBatchQuery(_Query):
 
 class _RawBatchGetMore(_GetMore):
     def use_command(self, sock_info):
+        # Compatibility checks.
+        super(_RawBatchGetMore, self).use_command(sock_info)
         if sock_info.max_wire_version >= 8:
             # MongoDB 4.2+ supports exhaust over OP_MSG
             return True

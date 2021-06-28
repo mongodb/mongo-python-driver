@@ -1484,21 +1484,16 @@ class Collection(common.BaseObject):
           >>> for batch in cursor:
           ...     print(bson.decode_all(batch))
 
-        .. note:: find_raw_batches does not support sessions or auto
-           encryption.
+        .. note:: find_raw_batches does not support auto encryption.
 
         .. versionchanged:: 3.12
            Instead of ignoring the user-specified read concern, this method
            now sends it to the server when connected to MongoDB 3.6+.
 
+           Added session support.
+
         .. versionadded:: 3.6
         """
-        # OP_MSG with document stream returns is required to support
-        # sessions.
-        if "session" in kwargs:
-            raise ConfigurationError(
-                "find_raw_batches does not support sessions")
-
         # OP_MSG is required to support encryption.
         if self.__database.client._encrypter:
             raise InvalidOperation(
@@ -2256,7 +2251,7 @@ class Collection(common.BaseObject):
                                    explicit_session=session is not None,
                                    **kwargs)
 
-    def aggregate_raw_batches(self, pipeline, **kwargs):
+    def aggregate_raw_batches(self, pipeline, session=None, **kwargs):
         """Perform an aggregation and retrieve batches of raw BSON.
 
         Similar to the :meth:`aggregate` method but returns a
@@ -2273,28 +2268,25 @@ class Collection(common.BaseObject):
           >>> for batch in cursor:
           ...     print(bson.decode_all(batch))
 
-        .. note:: aggregate_raw_batches does not support sessions or auto
-           encryption.
+        .. note:: aggregate_raw_batches does not support auto encryption.
+
+        .. versionchanged:: 3.12
+           Added session support.
 
         .. versionadded:: 3.6
         """
-        # OP_MSG with document stream returns is required to support
-        # sessions.
-        if "session" in kwargs:
-            raise ConfigurationError(
-                "aggregate_raw_batches does not support sessions")
-
         # OP_MSG is required to support encryption.
         if self.__database.client._encrypter:
             raise InvalidOperation(
                 "aggregate_raw_batches does not support auto encryption")
 
-        return self._aggregate(_CollectionRawAggregationCommand,
-                               pipeline,
-                               RawBatchCommandCursor,
-                               session=None,
-                               explicit_session=False,
-                               **kwargs)
+        with self.__database.client._tmp_session(session, close=False) as s:
+            return self._aggregate(_CollectionRawAggregationCommand,
+                                   pipeline,
+                                   RawBatchCommandCursor,
+                                   session=s,
+                                   explicit_session=session is not None,
+                                   **kwargs)
 
     def watch(self, pipeline=None, full_document=None, resume_after=None,
               max_await_time_ms=None, batch_size=None, collation=None,
