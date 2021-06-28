@@ -43,6 +43,20 @@
       }
     },
     {
+      "database": {
+        "id": "missingDB",
+        "client": "client0",
+        "databaseName": "missingDB"
+      }
+    },
+    {
+      "collection": {
+        "id": "missingColl",
+        "database": "missingDB",
+        "collectionName": "missingColl"
+      }
+    },
+    {
       "session": {
         "id": "session0",
         "client": "client0",
@@ -108,6 +122,48 @@
       ]
     },
     {
+      "description": "Server returns an error on find with snapshot on missing database",
+      "operations": [
+        {
+          "name": "find",
+          "object": "missingColl",
+          "arguments": {
+            "session": "session0",
+            "filter": {}
+          },
+          "expectError": {
+            "isError": true,
+            "isClientError": false
+          }
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "find": "missingColl",
+                  "readConcern": {
+                    "level": "snapshot",
+                    "atClusterTime": {
+                      "$$exists": false
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "commandFailedEvent": {
+                "commandName": "find"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "description": "Server returns an error on aggregate with snapshot",
       "operations": [
         {
@@ -131,6 +187,48 @@
               "commandStartedEvent": {
                 "command": {
                   "aggregate": "collection0",
+                  "readConcern": {
+                    "level": "snapshot",
+                    "atClusterTime": {
+                      "$$exists": false
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "commandFailedEvent": {
+                "commandName": "aggregate"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "Server returns an error on aggregate with snapshot on missing database",
+      "operations": [
+        {
+          "name": "aggregate",
+          "object": "missingColl",
+          "arguments": {
+            "session": "session0",
+            "pipeline": []
+          },
+          "expectError": {
+            "isError": true,
+            "isClientError": false
+          }
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "aggregate": "missingColl",
                   "readConcern": {
                     "level": "snapshot",
                     "atClusterTime": {
@@ -174,6 +272,49 @@
               "commandStartedEvent": {
                 "command": {
                   "distinct": "collection0",
+                  "readConcern": {
+                    "level": "snapshot",
+                    "atClusterTime": {
+                      "$$exists": false
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "commandFailedEvent": {
+                "commandName": "distinct"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "Server returns an error on distinct with snapshot on missing database",
+      "operations": [
+        {
+          "name": "distinct",
+          "object": "missingColl",
+          "arguments": {
+            "fieldName": "x",
+            "filter": {},
+            "session": "session0"
+          },
+          "expectError": {
+            "isError": true,
+            "isClientError": false
+          }
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "distinct": "missingColl",
                   "readConcern": {
                     "level": "snapshot",
                     "atClusterTime": {
