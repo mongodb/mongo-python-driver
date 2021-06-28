@@ -673,6 +673,9 @@ class ClientContext(object):
                              func=func)
 
     def is_topology_type(self, topologies):
+        for t in topologies:
+            assert t in {'load-balanced', 'single', 'replicaset', 'sharded',
+                         'sharded-replicaset'}
         if self.load_balancer:
             if 'load-balanced' in topologies:
                 return True
