@@ -673,9 +673,10 @@ class ClientContext(object):
                              func=func)
 
     def is_topology_type(self, topologies):
-        for t in topologies:
-            assert t in {'load-balanced', 'single', 'replicaset', 'sharded',
-                         'sharded-replicaset'}
+        unknown = set(topologies) - {'single', 'replicaset', 'sharded',
+                                     'sharded-replicaset', 'load-balanced'}
+        if unknown:
+            raise AssertionError('Unknown topologies: %r' % (unknown,))
         if self.load_balancer:
             if 'load-balanced' in topologies:
                 return True
