@@ -66,7 +66,7 @@
           },
           "expectError": {
             "isClientError": true,
-            "errorContains": "snapshot reads require MongoDB 5.0 or later"
+            "errorContains": "Snapshot reads require MongoDB 5.0 or later"
           }
         }
       ],
@@ -84,7 +84,7 @@
           },
           "expectError": {
             "isClientError": true,
-            "errorContains": "snapshot reads require MongoDB 5.0 or later"
+            "errorContains": "Snapshot reads require MongoDB 5.0 or later"
           }
         }
       ],
@@ -103,7 +103,7 @@
           },
           "expectError": {
             "isClientError": true,
-            "errorContains": "snapshot reads require MongoDB 5.0 or later"
+            "errorContains": "Snapshot reads require MongoDB 5.0 or later"
           }
         }
       ],

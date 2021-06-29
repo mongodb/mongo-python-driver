@@ -908,7 +908,7 @@ class ClientSession(object):
         if self.options.snapshot:
             if sock_info.max_wire_version < 13:
                 raise ConfigurationError(
-                    'snapshot reads require MongoDB 5.0 or later')
+                    'Snapshot reads require MongoDB 5.0 or later')
             rc = cmd.setdefault('readConcern', {})
             rc['level'] = 'snapshot'
             if self._snapshot_time is not None:
