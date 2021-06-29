@@ -869,6 +869,9 @@ class ClientSession(object):
     def _apply_to(self, command, is_retryable, read_preference, sock_info):
         self._check_ended()
 
+        if self.options.snapshot:
+            self._update_read_concern(command, sock_info)
+
         self._server_session.last_use = time.monotonic()
         command['lsid'] = self._server_session.session_id
 

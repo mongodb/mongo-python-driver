@@ -729,6 +729,24 @@ class TestSession(IntegrationTest):
                                            snapshot=True):
                 pass
 
+    @client_context.require_version_min(5, 0, -1)
+    def test_snapshot_writes(self):
+        with self.client.start_session(snapshot=True) as session:
+            with self.assertRaises(OperationFailure):
+                self.db.test.insert_one({}, session=session)
+            with self.assertRaises(OperationFailure):
+                self.db.test.insert_many([{}, {}], session=session)
+            with self.assertRaises(OperationFailure):
+                self.db.test.update_one({}, {'$set': {'x': 1}}, session=session)
+            with self.assertRaises(OperationFailure):
+                self.db.test.delete_one({}, session=session)
+            with self.assertRaises(OperationFailure):
+                self.db.test.find_one_and_delete({}, session=session)
+            with self.assertRaises(OperationFailure):
+                self.db.list_collections(session=session)
+            with self.assertRaises(OperationFailure):
+                self.db.test.list_indexes(session=session)
+
 
 class TestCausalConsistency(unittest.TestCase):
 
