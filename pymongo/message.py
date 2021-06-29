@@ -315,10 +315,10 @@ class _Query(object):
         session = self.session
         sock_info.add_server_api(cmd)
         if session:
-            session._apply_to(cmd, False, self.read_preference)
+            session._apply_to(cmd, False, self.read_preference, sock_info)
             # Explain does not support readConcern.
             if not explain and not session.in_transaction:
-                session._update_read_concern(cmd)
+                session._update_read_concern(cmd, sock_info)
         sock_info.send_cluster_time(cmd, session, self.client)
         # Support auto encryption
         client = self.client
@@ -420,7 +420,7 @@ class _GetMore(object):
                                     self.max_await_time_ms)
 
         if self.session:
-            self.session._apply_to(cmd, False, self.read_preference)
+            self.session._apply_to(cmd, False, self.read_preference, sock_info)
         sock_info.add_server_api(cmd)
         sock_info.send_cluster_time(cmd, self.session, self.client)
         # Support auto encryption

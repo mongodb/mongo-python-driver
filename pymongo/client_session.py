@@ -866,7 +866,7 @@ class ClientSession(object):
             return self._transaction.opts.read_preference
         return None
 
-    def _apply_to(self, command, is_retryable, read_preference):
+    def _apply_to(self, command, is_retryable, read_preference, sock_info):
         self._check_ended()
 
         self._server_session.last_use = monotonic.time()
@@ -891,7 +891,7 @@ class ClientSession(object):
                     rc = self._transaction.opts.read_concern.document
                     if rc:
                         command['readConcern'] = rc
-                self._update_read_concern(command)
+                self._update_read_concern(command, sock_info)
 
             command['txnNumber'] = self._server_session.transaction_id
             command['autocommit'] = False
@@ -900,12 +900,15 @@ class ClientSession(object):
         self._check_ended()
         self._server_session.inc_transaction_id()
 
-    def _update_read_concern(self, cmd):
+    def _update_read_concern(self, cmd, sock_info):
         if (self.options.causal_consistency
                 and self.operation_time is not None):
             cmd.setdefault('readConcern', {})[
                 'afterClusterTime'] = self.operation_time
         if self.options.snapshot:
+            if sock_info.max_wire_version < 13:
+                raise ConfigurationError(
+                    'Snapshot reads require MongoDB 5.0 or later')
             rc = cmd.setdefault('readConcern', {})
             rc['level'] = 'snapshot'
             if self._snapshot_time is not None:

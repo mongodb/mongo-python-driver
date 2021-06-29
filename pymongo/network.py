@@ -94,7 +94,7 @@ def command(sock_info, dbname, spec, slave_ok, is_mongos,
         if read_concern.level:
             spec['readConcern'] = read_concern.document
         if session:
-            session._update_read_concern(spec)
+            session._update_read_concern(spec, sock_info)
     if collation is not None:
         spec['collation'] = collation
 
