@@ -74,7 +74,8 @@ functions:
               export PROJECT_DIRECTORY="$PROJECT_DIRECTORY"
 
               export TMPDIR="$MONGO_ORCHESTRATION_HOME/db"
-              export PATH="$MONGODB_BINARIES:$PATH"
+              # Installation of cryptography requires a rust compiler on some machines
+              export PATH="$MONGODB_BINARIES:/home/admin/.cargo/bin:$PATH"
               export PROJECT="${project}"
            EOT
            # See what we've done
