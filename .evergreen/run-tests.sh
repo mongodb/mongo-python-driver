@@ -199,14 +199,14 @@ $PYTHON -c 'import sys; print(sys.version)'
 
 # Run the tests with coverage if requested and coverage is installed.
 # Only cover CPython. Jython and PyPy report suspiciously low coverage.
-COVERAGE_OR_PYTHON="$PYTHON"
+# Also skip CPython 3.4. It's not supported by coverage 5+, which uses
+# a new and incompatible data format.
+PYTHON_VERSION=$($PYTHON -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
 COVERAGE_ARGS=""
-if [ -n "$COVERAGE" -a $PYTHON_IMPL = "CPython" ]; then
-    COVERAGE_BIN="$(dirname "$PYTHON")/coverage"
-    if $COVERAGE_BIN --version; then
+if [ -n "$COVERAGE" -a $PYTHON_IMPL = "CPython" -a $PYTHON_VERSION != "3.4" ]; then
+    if $PYTHON -m coverage --version; then
         echo "INFO: coverage is installed, running tests with coverage..."
-        COVERAGE_OR_PYTHON="$COVERAGE_BIN"
-        COVERAGE_ARGS="run --branch"
+        COVERAGE_ARGS="-m coverage run --branch"
     else
         echo "INFO: coverage is not installed, running tests without coverage..."
     fi
