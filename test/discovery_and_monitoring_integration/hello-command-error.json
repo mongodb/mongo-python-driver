@@ -5,7 +5,7 @@
     }
   ],
   "database_name": "sdam-tests",
-  "collection_name": "isMaster-command-error",
+  "collection_name": "hello-command-error",
   "data": [],
   "tests": [
     {
@@ -17,8 +17,8 @@
         },
         "data": {
           "failCommands": [
-            "isMaster",
-            "hello"
+            "hello",
+            "isMaster"
           ],
           "appName": "commandErrorHandshakeTest",
           "closeConnection": false,
@@ -59,7 +59,7 @@
         {
           "command_started_event": {
             "command": {
-              "insert": "isMaster-command-error",
+              "insert": "hello-command-error",
               "documents": [
                 {
                   "_id": 1
@@ -121,8 +121,8 @@
               },
               "data": {
                 "failCommands": [
-                  "isMaster",
-                  "hello"
+                  "hello",
+                  "isMaster"
                 ],
                 "appName": "commandErrorCheckTest",
                 "closeConnection": false,
@@ -184,7 +184,7 @@
         {
           "command_started_event": {
             "command": {
-              "insert": "isMaster-command-error",
+              "insert": "hello-command-error",
               "documents": [
                 {
                   "_id": 1
@@ -201,7 +201,7 @@
         {
           "command_started_event": {
             "command": {
-              "insert": "isMaster-command-error",
+              "insert": "hello-command-error",
               "documents": [
                 {
                   "_id": 3

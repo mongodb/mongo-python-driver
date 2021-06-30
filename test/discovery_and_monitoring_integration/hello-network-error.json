@@ -1,15 +1,15 @@
 {
   "runOn": [
     {
-      "minServerVersion": "4.4"
+      "minServerVersion": "4.9"
     }
   ],
   "database_name": "sdam-tests",
-  "collection_name": "isMaster-timeout",
+  "collection_name": "hello-network-error",
   "data": [],
   "tests": [
     {
-      "description": "Network timeout on Monitor handshake",
+      "description": "Network error on Monitor handshake",
       "failPoint": {
         "configureFailPoint": "failCommand",
         "mode": {
@@ -17,19 +17,18 @@
         },
         "data": {
           "failCommands": [
-            "isMaster",
-            "hello"
+            "hello",
+            "isMaster"
           ],
-          "appName": "timeoutMonitorHandshakeTest",
-          "blockConnection": true,
-          "blockTimeMS": 1000
+          "appName": "networkErrorHandshakeTest",
+          "closeConnection": true
         }
       },
       "clientOptions": {
         "retryWrites": false,
         "connectTimeoutMS": 250,
         "heartbeatFrequencyMS": 500,
-        "appname": "timeoutMonitorHandshakeTest"
+        "appname": "networkErrorHandshakeTest"
       },
       "operations": [
         {
@@ -59,7 +58,7 @@
         {
           "command_started_event": {
             "command": {
-              "insert": "isMaster-timeout",
+              "insert": "hello-network-error",
               "documents": [
                 {
                   "_id": 1
@@ -88,12 +87,12 @@
       }
     },
     {
-      "description": "Network timeout on Monitor check",
+      "description": "Network error on Monitor check",
       "clientOptions": {
         "retryWrites": false,
-        "connectTimeoutMS": 750,
+        "connectTimeoutMS": 250,
         "heartbeatFrequencyMS": 500,
-        "appname": "timeoutMonitorCheckTest"
+        "appname": "networkErrorCheckTest"
       },
       "operations": [
         {
@@ -121,12 +120,11 @@
               },
               "data": {
                 "failCommands": [
-                  "isMaster",
-                  "hello"
+                  "hello",
+                  "isMaster"
                 ],
-                "appName": "timeoutMonitorCheckTest",
-                "blockConnection": true,
-                "blockTimeMS": 1000
+                "appName": "networkErrorCheckTest",
+                "closeConnection": true
               }
             }
           }
@@ -160,29 +158,13 @@
               }
             ]
           }
-        },
-        {
-          "name": "assertEventCount",
-          "object": "testRunner",
-          "arguments": {
-            "event": "ServerMarkedUnknownEvent",
-            "count": 1
-          }
-        },
-        {
-          "name": "assertEventCount",
-          "object": "testRunner",
-          "arguments": {
-            "event": "PoolClearedEvent",
-            "count": 1
-          }
         }
       ],
       "expectations": [
         {
           "command_started_event": {
             "command": {
-              "insert": "isMaster-timeout",
+              "insert": "hello-network-error",
               "documents": [
                 {
                   "_id": 1
@@ -199,123 +181,7 @@
         {
           "command_started_event": {
             "command": {
-              "insert": "isMaster-timeout",
-              "documents": [
-                {
-                  "_id": 3
-                },
-                {
-                  "_id": 4
-                }
-              ]
-            },
-            "command_name": "insert",
-            "database_name": "sdam-tests"
-          }
-        }
-      ],
-      "outcome": {
-        "collection": {
-          "data": [
-            {
-              "_id": 1
-            },
-            {
-              "_id": 2
-            },
-            {
-              "_id": 3
-            },
-            {
-              "_id": 4
-            }
-          ]
-        }
-      }
-    },
-    {
-      "description": "Driver extends timeout while streaming",
-      "clientOptions": {
-        "retryWrites": false,
-        "connectTimeoutMS": 250,
-        "heartbeatFrequencyMS": 500,
-        "appname": "extendsTimeoutTest"
-      },
-      "operations": [
-        {
-          "name": "insertMany",
-          "object": "collection",
-          "arguments": {
-            "documents": [
-              {
-                "_id": 1
-              },
-              {
-                "_id": 2
-              }
-            ]
-          }
-        },
-        {
-          "name": "wait",
-          "object": "testRunner",
-          "arguments": {
-            "ms": 2000
-          }
-        },
-        {
-          "name": "insertMany",
-          "object": "collection",
-          "arguments": {
-            "documents": [
-              {
-                "_id": 3
-              },
-              {
-                "_id": 4
-              }
-            ]
-          }
-        },
-        {
-          "name": "assertEventCount",
-          "object": "testRunner",
-          "arguments": {
-            "event": "ServerMarkedUnknownEvent",
-            "count": 0
-          }
-        },
-        {
-          "name": "assertEventCount",
-          "object": "testRunner",
-          "arguments": {
-            "event": "PoolClearedEvent",
-            "count": 0
-          }
-        }
-      ],
-      "expectations": [
-        {
-          "command_started_event": {
-            "command": {
-              "insert": "isMaster-timeout",
-              "documents": [
-                {
-                  "_id": 1
-                },
-                {
-                  "_id": 2
-                }
-              ]
-            },
-            "command_name": "insert",
-            "database_name": "sdam-tests"
-          }
-        },
-        {
-          "command_started_event": {
-            "command": {
-              "insert": "isMaster-timeout",
+              "insert": "hello-network-error",
               "documents": [
                 {
                   "_id": 3

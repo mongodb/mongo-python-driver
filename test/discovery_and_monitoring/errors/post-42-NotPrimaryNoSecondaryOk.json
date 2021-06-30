@@ -1,5 +1,5 @@
 {
-  "description": "Non-stale topologyVersion missing NotMasterOrSecondary error",
+  "description": "Post-4.2 NotPrimaryNoSecondaryOk error",
   "uri": "mongodb://a/?replicaSet=rs",
   "phases": [
     {
@@ -9,21 +9,14 @@
           "a:27017",
           {
             "ok": 1,
-            "ismaster": true,
+            "helloOk": true,
+            "isWritablePrimary": true,
             "hosts": [
               "a:27017"
             ],
             "setName": "rs",
             "minWireVersion": 0,
-            "maxWireVersion": 9,
-            "topologyVersion": {
-              "processId": {
-                "$oid": "000000000000000000000001"
-              },
-              "counter": {
-                "$numberLong": "1"
-              }
-            }
+            "maxWireVersion": 8
           }
         ]
       ],
@@ -32,14 +25,7 @@
           "a:27017": {
             "type": "RSPrimary",
             "setName": "rs",
-            "topologyVersion": {
-              "processId": {
-                "$oid": "000000000000000000000001"
-              },
-              "counter": {
-                "$numberLong": "1"
-              }
-            },
+            "topologyVersion": null,
             "pool": {
               "generation": 0
             }
@@ -51,17 +37,17 @@
       }
     },
     {
-      "description": "Non-stale topologyVersion missing NotMasterOrSecondary error marks server Unknown",
+      "description": "Post-4.2 NotPrimaryNoSecondaryOk error marks server Unknown",
       "applicationErrors": [
         {
           "address": "a:27017",
           "when": "afterHandshakeCompletes",
-          "maxWireVersion": 9,
+          "maxWireVersion": 8,
           "type": "command",
           "response": {
             "ok": 0,
-            "errmsg": "NotMasterOrSecondary",
-            "code": 13436
+            "errmsg": "NotPrimaryNoSecondaryOk",
+            "code": 13435
           }
         }
       ],

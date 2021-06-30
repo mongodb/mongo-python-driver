@@ -1,5 +1,5 @@
 {
-  "description": "Stale topologyVersion NotMasterNoSlaveOk error",
+  "description": "Stale generation NotPrimaryNoSecondaryOk error beforeHandshakeCompletes",
   "uri": "mongodb://a/?replicaSet=rs",
   "phases": [
     {
@@ -9,7 +9,8 @@
           "a:27017",
           {
             "ok": 1,
-            "ismaster": true,
+            "helloOk": true,
+            "isWritablePrimary": true,
             "hosts": [
               "a:27017"
             ],
@@ -51,27 +52,55 @@
       }
     },
     {
-      "description": "Ignore stale NotMasterNoSlaveOk error (topologyVersion less)",
+      "description": "Non-stale application network error",
       "applicationErrors": [
         {
           "address": "a:27017",
           "when": "afterHandshakeCompletes",
           "maxWireVersion": 9,
-          "type": "command",
-          "response": {
-            "ok": 0,
-            "errmsg": "NotMasterNoSlaveOk",
-            "code": 13435,
+          "type": "network"
+        }
+      ],
+      "outcome": {
+        "servers": {
+          "a:27017": {
+            "type": "Unknown",
+            "topologyVersion": null,
+            "pool": {
+              "generation": 1
+            }
+          }
+        },
+        "topologyType": "ReplicaSetNoPrimary",
+        "logicalSessionTimeoutMinutes": null,
+        "setName": "rs"
+      }
+    },
+    {
+      "description": "Primary A is rediscovered",
+      "responses": [
+        [
+          "a:27017",
+          {
+            "ok": 1,
+            "helloOk": true,
+            "isWritablePrimary": true,
+            "hosts": [
+              "a:27017"
+            ],
+            "setName": "rs",
+            "minWireVersion": 0,
+            "maxWireVersion": 9,
             "topologyVersion": {
               "processId": {
                 "$oid": "000000000000000000000001"
               },
               "counter": {
-                "$numberLong": "0"
+                "$numberLong": "1"
               }
             }
           }
-        }
+        ]
       ],
       "outcome": {
         "servers": {
@@ -87,7 +116,7 @@
               }
             },
             "pool": {
-              "generation": 0
+              "generation": 1
             }
           }
         },
@@ -97,23 +126,24 @@
       }
     },
     {
-      "description": "Ignore stale NotMasterNoSlaveOk error (topologyVersion equal)",
+      "description": "Ignore stale NotPrimaryNoSecondaryOk error (stale generation)",
       "applicationErrors": [
         {
           "address": "a:27017",
-          "when": "afterHandshakeCompletes",
+          "generation": 0,
+          "when": "beforeHandshakeCompletes",
           "maxWireVersion": 9,
           "type": "command",
           "response": {
             "ok": 0,
-            "errmsg": "NotMasterNoSlaveOk",
+            "errmsg": "NotPrimaryNoSecondaryOk",
             "code": 13435,
             "topologyVersion": {
               "processId": {
                 "$oid": "000000000000000000000001"
               },
               "counter": {
-                "$numberLong": "1"
+                "$numberLong": "2"
               }
             }
           }
@@ -133,7 +163,7 @@
               }
             },
             "pool": {
-              "generation": 0
+              "generation": 1
             }
           }
         },

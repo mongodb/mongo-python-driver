@@ -1,5 +1,5 @@
 {
-  "description": "Pre-4.2 PrimarySteppedDown error",
+  "description": "Non-stale topologyVersion proccessId changed NotPrimaryNoSecondaryOk error",
   "uri": "mongodb://a/?replicaSet=rs",
   "phases": [
     {
@@ -16,7 +16,15 @@
             ],
             "setName": "rs",
             "minWireVersion": 0,
-            "maxWireVersion": 7
+            "maxWireVersion": 9,
+            "topologyVersion": {
+              "processId": {
+                "$oid": "000000000000000000000001"
+              },
+              "counter": {
+                "$numberLong": "1"
+              }
+            }
           }
         ]
       ],
@@ -25,7 +33,14 @@
           "a:27017": {
             "type": "RSPrimary",
             "setName": "rs",
-            "topologyVersion": null,
+            "topologyVersion": {
+              "processId": {
+                "$oid": "000000000000000000000001"
+              },
+              "counter": {
+                "$numberLong": "1"
+              }
+            },
             "pool": {
               "generation": 0
             }
@@ -37,17 +52,25 @@
       }
     },
     {
-      "description": "Pre-4.2 PrimarySteppedDown error marks server Unknown and clears the pool",
+      "description": "Non-stale topologyVersion proccessId changed NotPrimaryNoSecondaryOk error marks server Unknown",
       "applicationErrors": [
         {
           "address": "a:27017",
           "when": "afterHandshakeCompletes",
-          "maxWireVersion": 7,
+          "maxWireVersion": 9,
           "type": "command",
           "response": {
             "ok": 0,
-            "errmsg": "PrimarySteppedDown",
-            "code": 189
+            "errmsg": "NotPrimaryNoSecondaryOk",
+            "code": 13435,
+            "topologyVersion": {
+              "processId": {
+                "$oid": "000000000000000000000002"
+              },
+              "counter": {
+                "$numberLong": "1"
+              }
+            }
           }
         }
       ],
@@ -55,9 +78,16 @@
         "servers": {
           "a:27017": {
             "type": "Unknown",
-            "topologyVersion": null,
+            "topologyVersion": {
+              "processId": {
+                "$oid": "000000000000000000000002"
+              },
+              "counter": {
+                "$numberLong": "1"
+              }
+            },
             "pool": {
-              "generation": 1
+              "generation": 0
             }
           }
         },

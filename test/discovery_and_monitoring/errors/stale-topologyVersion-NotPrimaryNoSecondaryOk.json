@@ -1,5 +1,5 @@
 {
-  "description": "Non-stale topologyVersion greater NotMasterOrSecondary error",
+  "description": "Stale topologyVersion NotPrimaryNoSecondaryOk error",
   "uri": "mongodb://a/?replicaSet=rs",
   "phases": [
     {
@@ -9,7 +9,8 @@
           "a:27017",
           {
             "ok": 1,
-            "ismaster": true,
+            "helloOk": true,
+            "isWritablePrimary": true,
             "hosts": [
               "a:27017"
             ],
@@ -51,7 +52,7 @@
       }
     },
     {
-      "description": "Non-stale topologyVersion greater NotMasterOrSecondary error marks server Unknown",
+      "description": "Ignore stale NotPrimaryNoSecondaryOk error (topologyVersion less)",
       "applicationErrors": [
         {
           "address": "a:27017",
@@ -60,14 +61,14 @@
           "type": "command",
           "response": {
             "ok": 0,
-            "errmsg": "NotMasterOrSecondary",
-            "code": 13436,
+            "errmsg": "NotPrimaryNoSecondaryOk",
+            "code": 13435,
             "topologyVersion": {
               "processId": {
                 "$oid": "000000000000000000000001"
               },
               "counter": {
-                "$numberLong": "2"
+                "$numberLong": "0"
               }
             }
           }
@@ -76,13 +77,14 @@
       "outcome": {
         "servers": {
           "a:27017": {
-            "type": "Unknown",
+            "type": "RSPrimary",
+            "setName": "rs",
             "topologyVersion": {
               "processId": {
                 "$oid": "000000000000000000000001"
               },
               "counter": {
-                "$numberLong": "2"
+                "$numberLong": "1"
               }
             },
             "pool": {
@@ -90,7 +92,53 @@
             }
           }
         },
-        "topologyType": "ReplicaSetNoPrimary",
+        "topologyType": "ReplicaSetWithPrimary",
+        "logicalSessionTimeoutMinutes": null,
+        "setName": "rs"
+      }
+    },
+    {
+      "description": "Ignore stale NotPrimaryNoSecondaryOk error (topologyVersion equal)",
+      "applicationErrors": [
+        {
+          "address": "a:27017",
+          "when": "afterHandshakeCompletes",
+          "maxWireVersion": 9,
+          "type": "command",
+          "response": {
+            "ok": 0,
+            "errmsg": "NotPrimaryNoSecondaryOk",
+            "code": 13435,
+            "topologyVersion": {
+              "processId": {
+                "$oid": "000000000000000000000001"
+              },
+              "counter": {
+                "$numberLong": "1"
+              }
+            }
+          }
+        }
+      ],
+      "outcome": {
+        "servers": {
+          "a:27017": {
+            "type": "RSPrimary",
+            "setName": "rs",
+            "topologyVersion": {
+              "processId": {
+                "$oid": "000000000000000000000001"
+              },
+              "counter": {
+                "$numberLong": "1"
+              }
+            },
+            "pool": {
+              "generation": 0
+            }
+          }
+        },
+        "topologyType": "ReplicaSetWithPrimary",
         "logicalSessionTimeoutMinutes": null,
         "setName": "rs"
       }
