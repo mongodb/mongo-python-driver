@@ -612,6 +612,18 @@ class Cursor(object):
     def __getitem__(self, index):
         """Get a single document or a slice of documents from this cursor.
 
+        .. warning:: A :class:`~Cursor` is not a Python :class:`list`. Each
+          index access or slice requires that a new query be run using skip
+          and limit. Do not iterate the cursor using index accesses.
+          The following example is **extremely inefficient** and may return
+          surprising results::
+
+            cursor = db.collection.find()
+            # Warning: This runs a new query for each document.
+            # Don't do this!
+            for idx in range(10):
+                print(cursor[idx])
+
         Raises :class:`~pymongo.errors.InvalidOperation` if this
         cursor has already been used.
 
