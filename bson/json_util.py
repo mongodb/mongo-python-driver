@@ -770,9 +770,11 @@ def default(obj, json_options=DEFAULT_JSON_OPTIONS):
         return {"$oid": str(obj)}
     if isinstance(obj, DBRef):
         return _json_convert(obj.as_doc(), json_options=json_options)
-    if isinstance(obj, datetime.datetime):
+    if isinstance(obj, (datetime.datetime, datetime.date)):
         if (json_options.datetime_representation ==
                 DatetimeRepresentation.ISO8601):
+            if isinstance(obj, datetime.date):
+                obj = datetime.datetime(obj.year, obj.month, obj.day, 0, 0, 0)
             if not obj.tzinfo:
                 obj = obj.replace(tzinfo=utc)
             if obj >= EPOCH_AWARE:
