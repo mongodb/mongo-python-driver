@@ -5,7 +5,7 @@
     }
   ],
   "database_name": "sdam-tests",
-  "collection_name": "isMaster-network-error",
+  "collection_name": "hello-network-error",
   "data": [],
   "tests": [
     {
@@ -17,8 +17,8 @@
         },
         "data": {
           "failCommands": [
-            "isMaster",
-            "hello"
+            "hello",
+            "isMaster"
           ],
           "appName": "networkErrorHandshakeTest",
           "closeConnection": true
@@ -66,7 +66,7 @@
         {
           "command_started_event": {
             "command": {
-              "insert": "isMaster-network-error",
+              "insert": "hello-network-error",
               "documents": [
                 {
                   "_id": 1
@@ -128,8 +128,8 @@
               },
               "data": {
                 "failCommands": [
-                  "isMaster",
-                  "hello"
+                  "hello",
+                  "isMaster"
                 ],
                 "appName": "networkErrorCheckTest",
                 "closeConnection": true
@@ -172,7 +172,7 @@
         {
           "command_started_event": {
             "command": {
-              "insert": "isMaster-network-error",
+              "insert": "hello-network-error",
               "documents": [
                 {
                   "_id": 1
@@ -189,7 +189,7 @@
         {
           "command_started_event": {
             "command": {
-              "insert": "isMaster-network-error",
+              "insert": "hello-network-error",
               "documents": [
                 {
                   "_id": 3

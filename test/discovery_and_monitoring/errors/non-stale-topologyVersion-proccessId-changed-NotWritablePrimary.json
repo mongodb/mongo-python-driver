@@ -1,5 +1,5 @@
 {
-  "description": "Stale topologyVersion NotMasterOrSecondary error",
+  "description": "Non-stale topologyVersion proccessId changed NotWritablePrimary error",
   "uri": "mongodb://a/?replicaSet=rs",
   "phases": [
     {
@@ -9,7 +9,8 @@
           "a:27017",
           {
             "ok": 1,
-            "ismaster": true,
+            "helloOk": true,
+            "isWritablePrimary": true,
             "hosts": [
               "a:27017"
             ],
@@ -51,7 +52,7 @@
       }
     },
     {
-      "description": "Ignore stale NotMasterOrSecondary error (topologyVersion less)",
+      "description": "Non-stale topologyVersion proccessId changed NotWritablePrimary error marks server Unknown",
       "applicationErrors": [
         {
           "address": "a:27017",
@@ -60,57 +61,11 @@
           "type": "command",
           "response": {
             "ok": 0,
-            "errmsg": "NotMasterOrSecondary",
-            "code": 13436,
+            "errmsg": "NotWritablePrimary",
+            "code": 10107,
             "topologyVersion": {
               "processId": {
-                "$oid": "000000000000000000000001"
-              },
-              "counter": {
-                "$numberLong": "0"
-              }
-            }
-          }
-        }
-      ],
-      "outcome": {
-        "servers": {
-          "a:27017": {
-            "type": "RSPrimary",
-            "setName": "rs",
-            "topologyVersion": {
-              "processId": {
-                "$oid": "000000000000000000000001"
-              },
-              "counter": {
-                "$numberLong": "1"
-              }
-            },
-            "pool": {
-              "generation": 0
-            }
-          }
-        },
-        "topologyType": "ReplicaSetWithPrimary",
-        "logicalSessionTimeoutMinutes": null,
-        "setName": "rs"
-      }
-    },
-    {
-      "description": "Ignore stale NotMasterOrSecondary error (topologyVersion equal)",
-      "applicationErrors": [
-        {
-          "address": "a:27017",
-          "when": "afterHandshakeCompletes",
-          "maxWireVersion": 9,
-          "type": "command",
-          "response": {
-            "ok": 0,
-            "errmsg": "NotMasterOrSecondary",
-            "code": 13436,
-            "topologyVersion": {
-              "processId": {
-                "$oid": "000000000000000000000001"
+                "$oid": "000000000000000000000002"
               },
               "counter": {
                 "$numberLong": "1"
@@ -122,11 +77,10 @@
       "outcome": {
         "servers": {
           "a:27017": {
-            "type": "RSPrimary",
-            "setName": "rs",
+            "type": "Unknown",
             "topologyVersion": {
               "processId": {
-                "$oid": "000000000000000000000001"
+                "$oid": "000000000000000000000002"
               },
               "counter": {
                 "$numberLong": "1"
@@ -137,7 +91,7 @@
             }
           }
         },
-        "topologyType": "ReplicaSetWithPrimary",
+        "topologyType": "ReplicaSetNoPrimary",
         "logicalSessionTimeoutMinutes": null,
         "setName": "rs"
       }

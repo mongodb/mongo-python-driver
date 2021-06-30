@@ -539,6 +539,7 @@ class SocketInfo(object):
         self.max_message_size = MAX_MESSAGE_SIZE
         self.max_write_batch_size = MAX_WRITE_BATCH_SIZE
         self.supports_sessions = False
+        self.hello_ok = None
         self.is_mongos = False
         self.op_msg_enabled = False
         self.listeners = pool.opts.event_listeners
@@ -586,10 +587,10 @@ class SocketInfo(object):
             self.close_socket(ConnectionClosedReason.STALE)
 
     def hello_cmd(self):
-        if self.opts.server_api:
+        if self.opts.server_api or self.hello_ok:
             return SON([(HelloCompat.CMD, 1)])
         else:
-            return SON([(HelloCompat.LEGACY_CMD, 1)])
+            return SON([(HelloCompat.LEGACY_CMD, 1), ('helloOk', True)])
 
     def ismaster(self, all_credentials=None):
         return self._ismaster(None, None, None, all_credentials)
@@ -641,6 +642,7 @@ class SocketInfo(object):
         self.max_write_batch_size = ismaster.max_write_batch_size
         self.supports_sessions = (
             ismaster.logical_session_timeout_minutes is not None)
+        self.hello_ok = ismaster.hello_ok
         self.is_mongos = ismaster.server_type == SERVER_TYPE.Mongos
         if performing_handshake and self.compression_settings:
             ctx = self.compression_settings.get_compression_context(

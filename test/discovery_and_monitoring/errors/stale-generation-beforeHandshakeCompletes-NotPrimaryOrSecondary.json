@@ -1,5 +1,5 @@
 {
-  "description": "Stale generation NotMasterNoSlaveOk error afterHandshakeCompletes",
+  "description": "Stale generation NotPrimaryOrSecondary error beforeHandshakeCompletes",
   "uri": "mongodb://a/?replicaSet=rs",
   "phases": [
     {
@@ -9,7 +9,8 @@
           "a:27017",
           {
             "ok": 1,
-            "ismaster": true,
+            "helloOk": true,
+            "isWritablePrimary": true,
             "hosts": [
               "a:27017"
             ],
@@ -82,7 +83,8 @@
           "a:27017",
           {
             "ok": 1,
-            "ismaster": true,
+            "helloOk": true,
+            "isWritablePrimary": true,
             "hosts": [
               "a:27017"
             ],
@@ -124,18 +126,18 @@
       }
     },
     {
-      "description": "Ignore stale NotMasterNoSlaveOk error (stale generation)",
+      "description": "Ignore stale NotPrimaryOrSecondary error (stale generation)",
       "applicationErrors": [
         {
           "address": "a:27017",
           "generation": 0,
-          "when": "afterHandshakeCompletes",
+          "when": "beforeHandshakeCompletes",
           "maxWireVersion": 9,
           "type": "command",
           "response": {
             "ok": 0,
-            "errmsg": "NotMasterNoSlaveOk",
-            "code": 13435,
+            "errmsg": "NotPrimaryOrSecondary",
+            "code": 13436,
             "topologyVersion": {
               "processId": {
                 "$oid": "000000000000000000000001"

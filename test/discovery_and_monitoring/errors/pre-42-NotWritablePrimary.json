@@ -1,5 +1,5 @@
 {
-  "description": "Pre-4.2 NotMasterOrSecondary error",
+  "description": "Pre-4.2 NotWritablePrimary error",
   "uri": "mongodb://a/?replicaSet=rs",
   "phases": [
     {
@@ -9,7 +9,8 @@
           "a:27017",
           {
             "ok": 1,
-            "ismaster": true,
+            "helloOk": true,
+            "isWritablePrimary": true,
             "hosts": [
               "a:27017"
             ],
@@ -36,7 +37,7 @@
       }
     },
     {
-      "description": "Pre-4.2 NotMasterOrSecondary error marks server Unknown and clears the pool",
+      "description": "Pre-4.2 NotWritablePrimary error marks server Unknown and clears the pool",
       "applicationErrors": [
         {
           "address": "a:27017",
@@ -45,8 +46,8 @@
           "type": "command",
           "response": {
             "ok": 0,
-            "errmsg": "NotMasterOrSecondary",
-            "code": 13436
+            "errmsg": "NotWritablePrimary",
+            "code": 10107
           }
         }
       ],

@@ -1,15 +1,15 @@
 {
   "runOn": [
     {
-      "minServerVersion": "4.4"
+      "minServerVersion": "4.9"
     }
   ],
   "database_name": "sdam-tests",
-  "collection_name": "isMaster-timeout",
+  "collection_name": "hello-command-error",
   "data": [],
   "tests": [
     {
-      "description": "Network timeout on Monitor handshake",
+      "description": "Command error on Monitor handshake",
       "failPoint": {
         "configureFailPoint": "failCommand",
         "mode": {
@@ -17,19 +17,19 @@
         },
         "data": {
           "failCommands": [
-            "isMaster",
-            "hello"
+            "hello",
+            "isMaster"
           ],
-          "appName": "timeoutMonitorHandshakeTest",
-          "blockConnection": true,
-          "blockTimeMS": 1000
+          "appName": "commandErrorHandshakeTest",
+          "closeConnection": false,
+          "errorCode": 91
         }
       },
       "clientOptions": {
         "retryWrites": false,
         "connectTimeoutMS": 250,
         "heartbeatFrequencyMS": 500,
-        "appname": "timeoutMonitorHandshakeTest"
+        "appname": "commandErrorHandshakeTest"
       },
       "operations": [
         {
@@ -67,7 +67,7 @@
         {
           "command_started_event": {
             "command": {
-              "insert": "isMaster-timeout",
+              "insert": "hello-command-error",
               "documents": [
                 {
                   "_id": 1
@@ -96,12 +96,12 @@
       }
     },
     {
-      "description": "Network timeout on Monitor check",
+      "description": "Command error on Monitor check",
       "clientOptions": {
         "retryWrites": false,
-        "connectTimeoutMS": 750,
+        "connectTimeoutMS": 1000,
         "heartbeatFrequencyMS": 500,
-        "appname": "timeoutMonitorCheckTest"
+        "appname": "commandErrorCheckTest"
       },
       "operations": [
         {
@@ -129,12 +129,14 @@
               },
               "data": {
                 "failCommands": [
-                  "isMaster",
-                  "hello"
+                  "hello",
+                  "isMaster"
                 ],
-                "appName": "timeoutMonitorCheckTest",
+                "appName": "commandErrorCheckTest",
+                "closeConnection": false,
                 "blockConnection": true,
-                "blockTimeMS": 1000
+                "blockTimeMS": 750,
+                "errorCode": 91
               }
             }
           }
@@ -190,7 +192,7 @@
         {
           "command_started_event": {
             "command": {
-              "insert": "isMaster-timeout",
+              "insert": "hello-command-error",
               "documents": [
                 {
                   "_id": 1
@@ -207,123 +209,7 @@
         {
           "command_started_event": {
             "command": {
-              "insert": "isMaster-timeout",
-              "documents": [
-                {
-                  "_id": 3
-                },
-                {
-                  "_id": 4
-                }
-              ]
-            },
-            "command_name": "insert",
-            "database_name": "sdam-tests"
-          }
-        }
-      ],
-      "outcome": {
-        "collection": {
-          "data": [
-            {
-              "_id": 1
-            },
-            {
-              "_id": 2
-            },
-            {
-              "_id": 3
-            },
-            {
-              "_id": 4
-            }
-          ]
-        }
-      }
-    },
-    {
-      "description": "Driver extends timeout while streaming",
-      "clientOptions": {
-        "retryWrites": false,
-        "connectTimeoutMS": 250,
-        "heartbeatFrequencyMS": 500,
-        "appname": "extendsTimeoutTest"
-      },
-      "operations": [
-        {
-          "name": "insertMany",
-          "object": "collection",
-          "arguments": {
-            "documents": [
-              {
-                "_id": 1
-              },
-              {
-                "_id": 2
-              }
-            ]
-          }
-        },
-        {
-          "name": "wait",
-          "object": "testRunner",
-          "arguments": {
-            "ms": 2000
-          }
-        },
-        {
-          "name": "insertMany",
-          "object": "collection",
-          "arguments": {
-            "documents": [
-              {
-                "_id": 3
-              },
-              {
-                "_id": 4
-              }
-            ]
-          }
-        },
-        {
-          "name": "assertEventCount",
-          "object": "testRunner",
-          "arguments": {
-            "event": "ServerMarkedUnknownEvent",
-            "count": 0
-          }
-        },
-        {
-          "name": "assertEventCount",
-          "object": "testRunner",
-          "arguments": {
-            "event": "PoolClearedEvent",
-            "count": 0
-          }
-        }
-      ],
-      "expectations": [
-        {
-          "command_started_event": {
-            "command": {
-              "insert": "isMaster-timeout",
-              "documents": [
-                {
-                  "_id": 1
-                },
-                {
-                  "_id": 2
-                }
-              ]
-            },
-            "command_name": "insert",
-            "database_name": "sdam-tests"
-          }
-        },
-        {
-          "command_started_event": {
-            "command": {
-              "insert": "isMaster-timeout",
+              "insert": "hello-command-error",
               "documents": [
                 {
                   "_id": 3
