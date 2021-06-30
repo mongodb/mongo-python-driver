@@ -19,18 +19,14 @@ Inserting and Retrieving RawBSONDocuments
 
 Example: Moving a document between different databases/collections
 
-.. testsetup::
-  from pymongo import MongoClient
-  client = MongoClient(document_class=RawBSONDocument)
-  client.drop_database('db')
-  client.drop_database('replica_db')
-
 .. doctest::
 
   >>> import bson
   >>> from pymongo import MongoClient
   >>> from bson.raw_bson import RawBSONDocument
   >>> client = MongoClient(document_class=RawBSONDocument)
+  >>> client.drop_database('db')
+  >>> client.drop_database('replica_db')
   >>> db = client.db
   >>> result = db.test.insert_many([{'a': 1},
   ...                               {'b': 1},
