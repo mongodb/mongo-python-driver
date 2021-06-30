@@ -616,6 +616,8 @@ class SocketInfo(object):
         if self.opts.load_balanced and _MOCK_SERVICE_ID:
             process_id = doc.get('topologyVersion', {}).get('processId')
             doc.setdefault('serviceId', process_id)
+        if not self.opts.load_balanced:
+            doc.pop('serviceId', None)
         ismaster = IsMaster(doc, awaitable=awaitable)
         self.is_writable = ismaster.is_writable
         self.max_wire_version = ismaster.max_wire_version
@@ -653,6 +655,8 @@ class SocketInfo(object):
         unpacked_docs = reply.unpack_response()
         response_doc = unpacked_docs[0]
         helpers._check_command_response(response_doc, self.max_wire_version)
+        if not self.opts.load_balanced:
+            response_doc.pop('serviceId', None)
         return response_doc
 
     def command(self, dbname, spec, slave_ok=False,
