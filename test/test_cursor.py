@@ -27,6 +27,7 @@ sys.path[0:0] = [""]
 
 from bson import decode_all
 from bson.code import Code
+from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo import (ASCENDING,
                      DESCENDING,
@@ -1482,10 +1483,8 @@ class TestRawBatchCursor(IntegrationTest):
                     session=session).sort('_id'))
                 cmd = listener.results['started'][0]
                 self.assertEqual(cmd.command_name, 'find')
-                self.assertEqual(cmd.command['$clusterTime']['clusterTime'],
-                                 session.cluster_time['clusterTime'])
-                self.assertEqual(cmd.command['$clusterTime']['signature'],
-                                 session.cluster_time['signature'])
+                self.assertEqual(cmd.command['$clusterTime'],
+                                 decode_all(session.cluster_time.raw)[0])
                 self.assertEqual(cmd.command['startTransaction'], True)
                 self.assertEqual(cmd.command['txnNumber'], 1)
 
