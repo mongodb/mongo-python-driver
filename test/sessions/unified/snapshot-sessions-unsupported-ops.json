@@ -454,7 +454,7 @@
             "session": "session0",
             "commandName": "listCollections",
             "command": {
-              "listIndexes": "collection0"
+              "listCollections": 1
             }
           },
           "expectError": {
@@ -482,7 +482,7 @@
             },
             {
               "commandFailedEvent": {
-                "listCollections": "insert"
+                "commandName": "listCollections"
               }
             }
           ]
