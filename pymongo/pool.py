@@ -572,7 +572,7 @@ class SocketInfo(object):
         if self.opts.server_api or self.hello_ok:
             return SON([(HelloCompat.CMD, 1)])
         else:
-            return SON([(HelloCompat.LEGACY_CMD, 1)])
+            return SON([(HelloCompat.LEGACY_CMD, 1), ('helloOk', True)])
 
     def ismaster(self, all_credentials=None):
         return self._ismaster(None, None, None, all_credentials)
@@ -584,7 +584,6 @@ class SocketInfo(object):
         awaitable = False
         if performing_handshake:
             self.performed_handshake = True
-            cmd['helloOk'] = True
             cmd['client'] = self.opts.metadata
             if self.compression_settings:
                 cmd['compression'] = self.compression_settings.compressors
