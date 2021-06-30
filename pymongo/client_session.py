@@ -44,6 +44,8 @@ guaranteed monotonic reads, even when reading from replica set secondaries.
 Transactions
 ============
 
+.. versionadded:: 3.7
+
 MongoDB 4.0 adds support for transactions on replica set primaries. A
 transaction is associated with a :class:`ClientSession`. To start a transaction
 on a session, use :meth:`ClientSession.start_transaction` in a with-statement.
@@ -76,25 +78,25 @@ see the `MongoDB server's documentation for transactions
 A session may only have a single active transaction at a time, multiple
 transactions on the same session can be executed in sequence.
 
-.. versionadded:: 3.7
-
 Sharded Transactions
 ^^^^^^^^^^^^^^^^^^^^
 
+.. versionadded:: 3.9
+
 PyMongo 3.9 adds support for transactions on sharded clusters running MongoDB
-4.2. Sharded transactions have the same API as replica set transactions.
+>=4.2. Sharded transactions have the same API as replica set transactions.
 When running a transaction against a sharded cluster, the session is
 pinned to the mongos server selected for the first operation in the
 transaction. All subsequent operations that are part of the same transaction
 are routed to the same mongos server. When the transaction is completed, by
 running either commitTransaction or abortTransaction, the session is unpinned.
 
-.. versionadded:: 3.9
-
 .. mongodoc:: transactions
 
 Snapshot Reads
 ==============
+
+.. versionadded:: 3.12
 
 .. code-block:: python
 
@@ -121,8 +123,6 @@ Only the following read operations are supported in a snapshot reads session:
 - :meth:`~pymongo.collection.Collection.aggregate`
 - :meth:`~pymongo.collection.Collection.count_documents`
 - :meth:`~pymongo.collection.Collection.distinct` (on unsharded collections)
-
-.. versionadded:: 3.12
 
 Classes
 =======
