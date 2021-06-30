@@ -98,19 +98,22 @@ Snapshot Reads
 
 .. versionadded:: 3.12
 
-.. code-block:: python
-
-  # Each read using this session reads data from the same point in time.
-  with client.start_session(snapshot=True) as session:
-      order = orders.find_one({"sku": "abc123"}, session=session)
-      inventory = inventory.find_one({"sku": "abc123"}, session=session)
-
+MongoDB 5.0 adds support for snapshot reads. Snapshot reads are requested by
+passing the ``snapshot`` option to
+:meth:`~pymongo.mongo_client.MongoClient.start_session`.
 If ``snapshot`` is True, all read operations that use this session read data
 from the same snapshot timestamp. The server chooses the latest
 majority-committed snapshot timestamp when executing the first read operation
 using the session. Subsequent reads on this session read from the same
 snapshot timestamp. Snapshot reads are also supported when reading from
 replica set secondaries.
+
+.. code-block:: python
+
+  # Each read using this session reads data from the same point in time.
+  with client.start_session(snapshot=True) as session:
+      order = orders.find_one({"sku": "abc123"}, session=session)
+      inventory = inventory.find_one({"sku": "abc123"}, session=session)
 
 Snapshot Reads Limitations
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
