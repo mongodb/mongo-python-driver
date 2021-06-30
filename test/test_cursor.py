@@ -1656,6 +1656,73 @@ class TestRawBatchCommandCursor(IntegrationTest):
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
 
+    @client_context.require_transactions
+    def test_aggregate_raw_transaction(self):
+        c = self.db.test
+        c.drop()
+        docs = [{'_id': i, 'x': 3.0 * i} for i in range(10)]
+        c.insert_many(docs)
+
+        listener = EventListener()
+        client = rs_or_single_client(event_listeners=[listener])
+        with client.start_session() as session:
+            with session.start_transaction():
+                batches = list(client.db.test.aggregate_raw_batches(
+                    [{'$sort': {'_id': 1}}], session=session))
+        self.assertEqual(1, len(batches))
+        self.assertEqual(docs, decode_all(batches[0]))
+
+        command = listener.results['started'][0].command
+        self.assertEqual(listener.results['started'][0].command_name, 'aggregate')
+        self.assertEqual(command['$clusterTime'], session.cluster_time)
+        self.assertEqual(command['startTransaction'], True)
+        self.assertEqual(command['txnNumber'], 1)
+
+    @client_context.require_sessions
+    @client_context.require_failCommand_fail_point
+    def test_aggregate_raw_retryable_reads(self):
+        c = self.db.test
+        c.drop()
+        docs = [{'_id': i, 'x': 3.0 * i} for i in range(10)]
+        c.insert_many(docs)
+
+        listener = EventListener()
+        client = rs_or_single_client(event_listeners=[listener],
+                                     retryReads=True)
+        with self.fail_point({
+            'mode': {'times': 1}, 'data': {'failCommands': ['aggregate'],
+                                           'closeConnection': True}}):
+            batches = list(
+                client.db.test.aggregate_raw_batches([{'$sort': {'_id': 1}}]))
+
+        self.assertEqual(1, len(batches))
+        self.assertEqual(docs, decode_all(batches[0]))
+        self.assertEqual(len(listener.results['started']), 3)
+        cmds = listener.results['started']
+        self.assertEqual(cmds[0].command_name, 'aggregate')
+        self.assertEqual(cmds[1].command_name, 'aggregate')
+
+    @client_context.require_version_min(5, 0, 0)
+    def test_aggregate_raw_snapshot_reads(self):
+        c = self.db.test
+        c.drop()
+        docs = [{'_id': i, 'x': 3.0 * i} for i in range(10)]
+        c.insert_many(docs)
+
+        listener = EventListener()
+        client = rs_or_single_client(event_listeners=[listener],
+                                     retryReads=True)
+        with client.start_session(snapshot=True) as session:
+            client.db.test.distinct('x', {}, session=session)
+            batches = list(client.db.test.aggregate_raw_batches(
+                [{'$sort': {'_id': 1}}], session=session))
+        self.assertEqual(1, len(batches))
+        self.assertEqual(docs, decode_all(batches[0]))
+
+        find_cmd = listener.results['started'][1].command
+        self.assertEqual(find_cmd['readConcern']['level'], 'snapshot')
+        self.assertIsNotNone(find_cmd['readConcern']['atClusterTime'])
+
     def test_server_error(self):
         c = self.db.test
         c.drop()
