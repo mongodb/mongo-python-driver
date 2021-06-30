@@ -1490,6 +1490,7 @@ class TestRawBatchCursor(IntegrationTest):
         self.assertEqual(command['txnNumber'], 1)
 
     @client_context.require_sessions
+    @client_context.require_failCommand_fail_point
     def test_find_raw_retryable_reads(self):
         c = self.db.test
         c.drop()
@@ -1507,6 +1508,8 @@ class TestRawBatchCursor(IntegrationTest):
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
         self.assertEqual(len(listener.results['started']), 2)
+        for cmd in listener.results['started']:
+            self.assertEqual(cmd.command_name, 'find')
 
     @client_context.require_version_min(5, 0, 0)
     def test_find_raw_snapshot_reads(self):
