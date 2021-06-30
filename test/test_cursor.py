@@ -1485,8 +1485,10 @@ class TestRawBatchCursor(IntegrationTest):
 
         command = listener.results['started'][0].command
         self.assertEqual(listener.results['started'][0].command_name, 'find')
-        self.assertEqual(command['$clusterTime'],
-                         decode_all(session.cluster_time.raw)[0])
+        self.assertEqual(command['$clusterTime']['clusterTime'],
+                         session.cluster_time['clusterTime'])
+        self.assertEqual(command['$clusterTime']['signature'],
+                         session.cluster_time['signature'])
         self.assertEqual(command['startTransaction'], True)
         self.assertEqual(command['txnNumber'], 1)
 
