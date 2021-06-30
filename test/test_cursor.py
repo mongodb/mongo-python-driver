@@ -44,6 +44,7 @@ from test import (client_context,
                   unittest,
                   IntegrationTest)
 from test.utils import (EventListener,
+                        OvertCommandListener,
                         ignore_deprecations,
                         rs_or_single_client,
                         WhiteListEventListener)
@@ -1473,7 +1474,7 @@ class TestRawBatchCursor(IntegrationTest):
         docs = [{'_id': i, 'x': 3.0 * i} for i in range(10)]
         c.insert_many(docs)
 
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = rs_or_single_client(event_listeners=[listener])
         with client.start_session() as session:
             with session.start_transaction():
@@ -1497,7 +1498,7 @@ class TestRawBatchCursor(IntegrationTest):
         docs = [{'_id': i, 'x': 3.0 * i} for i in range(10)]
         c.insert_many(docs)
 
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = rs_or_single_client(event_listeners=[listener],
                                      retryReads=True)
         with self.fail_point({
@@ -1519,7 +1520,7 @@ class TestRawBatchCursor(IntegrationTest):
         docs = [{'_id': i, 'x': 3.0 * i} for i in range(10)]
         c.insert_many(docs)
 
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = rs_or_single_client(event_listeners=[listener],
                                      retryReads=True)
         with client.start_session(snapshot=True) as session:
@@ -1664,7 +1665,7 @@ class TestRawBatchCommandCursor(IntegrationTest):
         docs = [{'_id': i, 'x': 3.0 * i} for i in range(10)]
         c.insert_many(docs)
 
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = rs_or_single_client(event_listeners=[listener])
         with client.start_session() as session:
             with session.start_transaction():
@@ -1687,7 +1688,7 @@ class TestRawBatchCommandCursor(IntegrationTest):
         docs = [{'_id': i, 'x': 3.0 * i} for i in range(10)]
         c.insert_many(docs)
 
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = rs_or_single_client(event_listeners=[listener],
                                      retryReads=True)
         with self.fail_point({
@@ -1710,7 +1711,7 @@ class TestRawBatchCommandCursor(IntegrationTest):
         docs = [{'_id': i, 'x': 3.0 * i} for i in range(10)]
         c.insert_many(docs)
 
-        listener = EventListener()
+        listener = OvertCommandListener()
         client = rs_or_single_client(event_listeners=[listener],
                                      retryReads=True)
         with client.start_session(snapshot=True) as session:
