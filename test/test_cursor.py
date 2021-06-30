@@ -1477,7 +1477,7 @@ class TestRawBatchCursor(IntegrationTest):
         client = rs_or_single_client(event_listeners=[listener])
         with client.start_session() as session:
             with session.start_transaction():
-                batches = list(client.db.test.find_raw_batches(
+                batches = list(client[self.db.name].test.find_raw_batches(
                     session=session).sort('_id'))
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
@@ -1503,7 +1503,8 @@ class TestRawBatchCursor(IntegrationTest):
         with self.fail_point({
             'mode': {'times': 1}, 'data': {'failCommands': ['find'],
                                            'closeConnection': True}}):
-            batches = list(client.db.test.find_raw_batches().sort('_id'))
+            batches = list(
+                client[self.db.name].test.find_raw_batches().sort('_id'))
 
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
@@ -1523,7 +1524,7 @@ class TestRawBatchCursor(IntegrationTest):
                                      retryReads=True)
         with client.start_session(snapshot=True) as session:
             client.db.test.distinct('x', {}, session=session)
-            batches = list(client.db.test.find_raw_batches(
+            batches = list(client[self.db.name].test.find_raw_batches(
                 session=session).sort('_id'))
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
@@ -1667,7 +1668,7 @@ class TestRawBatchCommandCursor(IntegrationTest):
         client = rs_or_single_client(event_listeners=[listener])
         with client.start_session() as session:
             with session.start_transaction():
-                batches = list(client.db.test.aggregate_raw_batches(
+                batches = list(client[self.db.name].test.aggregate_raw_batches(
                     [{'$sort': {'_id': 1}}], session=session))
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
@@ -1692,8 +1693,8 @@ class TestRawBatchCommandCursor(IntegrationTest):
         with self.fail_point({
             'mode': {'times': 1}, 'data': {'failCommands': ['aggregate'],
                                            'closeConnection': True}}):
-            batches = list(
-                client.db.test.aggregate_raw_batches([{'$sort': {'_id': 1}}]))
+            batches = list(client[self.db.name].test.aggregate_raw_batches(
+                [{'$sort': {'_id': 1}}]))
 
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
@@ -1714,7 +1715,7 @@ class TestRawBatchCommandCursor(IntegrationTest):
                                      retryReads=True)
         with client.start_session(snapshot=True) as session:
             client.db.test.distinct('x', {}, session=session)
-            batches = list(client.db.test.aggregate_raw_batches(
+            batches = list(client[self.db.name].test.aggregate_raw_batches(
                 [{'$sort': {'_id': 1}}], session=session))
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
