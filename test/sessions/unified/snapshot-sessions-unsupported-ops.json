@@ -59,6 +59,13 @@
   "tests": [
     {
       "description": "Server returns an error on insertOne with snapshot",
+      "runOnRequirements": [
+        {
+          "topologies": [
+            "replicaset"
+          ]
+        }
+      ],
       "operations": [
         {
           "name": "insertOne",
@@ -104,6 +111,13 @@
     },
     {
       "description": "Server returns an error on insertMany with snapshot",
+      "runOnRequirements": [
+        {
+          "topologies": [
+            "replicaset"
+          ]
+        }
+      ],
       "operations": [
         {
           "name": "insertMany",
@@ -155,6 +169,13 @@
     },
     {
       "description": "Server returns an error on deleteOne with snapshot",
+      "runOnRequirements": [
+        {
+          "topologies": [
+            "replicaset"
+          ]
+        }
+      ],
       "operations": [
         {
           "name": "deleteOne",
@@ -197,6 +218,13 @@
     },
     {
       "description": "Server returns an error on updateOne with snapshot",
+      "runOnRequirements": [
+        {
+          "topologies": [
+            "replicaset"
+          ]
+        }
+      ],
       "operations": [
         {
           "name": "updateOne",
@@ -417,19 +445,16 @@
       ]
     },
     {
-      "description": "Server returns an error on runComand with snapshot",
+      "description": "Server returns an error on runCommand with snapshot",
       "operations": [
         {
           "name": "runCommand",
           "object": "database0",
           "arguments": {
             "session": "session0",
-            "commandName": "insert",
+            "commandName": "listCollections",
             "command": {
-              "insert": "collection0",
-              "documents": [
-                {}
-              ]
+              "listIndexes": "collection0"
             }
           },
           "expectError": {
@@ -445,7 +470,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "collection0",
+                  "listCollections": 1,
                   "readConcern": {
                     "level": "snapshot",
                     "atClusterTime": {
@@ -457,7 +482,7 @@
             },
             {
               "commandFailedEvent": {
-                "commandName": "insert"
+                "listCollections": "insert"
               }
             }
           ]
