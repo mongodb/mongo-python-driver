@@ -1480,17 +1480,17 @@ class TestRawBatchCursor(IntegrationTest):
             with session.start_transaction():
                 batches = list(client[self.db.name].test.find_raw_batches(
                     session=session).sort('_id'))
+                cmd = listener.results['started'][0]
+                self.assertEqual(cmd.command_name, 'find')
+                self.assertEqual(cmd.command['$clusterTime']['clusterTime'],
+                                 session.cluster_time['clusterTime'])
+                self.assertEqual(cmd.command['$clusterTime']['signature'],
+                                 session.cluster_time['signature'])
+                self.assertEqual(cmd.command['startTransaction'], True)
+                self.assertEqual(cmd.command['txnNumber'], 1)
+
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
-
-        command = listener.results['started'][0].command
-        self.assertEqual(listener.results['started'][0].command_name, 'find')
-        self.assertEqual(command['$clusterTime']['clusterTime'],
-                         session.cluster_time['clusterTime'])
-        self.assertEqual(command['$clusterTime']['signature'],
-                         session.cluster_time['signature'])
-        self.assertEqual(command['startTransaction'], True)
-        self.assertEqual(command['txnNumber'], 1)
 
     @client_context.require_sessions
     @client_context.require_failCommand_fail_point
@@ -1673,14 +1673,13 @@ class TestRawBatchCommandCursor(IntegrationTest):
             with session.start_transaction():
                 batches = list(client[self.db.name].test.aggregate_raw_batches(
                     [{'$sort': {'_id': 1}}], session=session))
+                cmd = listener.results['started'][0]
+                self.assertEqual(cmd.command_name, 'aggregate')
+                self.assertEqual(cmd.command['$clusterTime'], session.cluster_time)
+                self.assertEqual(cmd.command['startTransaction'], True)
+                self.assertEqual(cmd.command['txnNumber'], 1)
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
-
-        command = listener.results['started'][0].command
-        self.assertEqual(listener.results['started'][0].command_name, 'aggregate')
-        self.assertEqual(command['$clusterTime'], session.cluster_time)
-        self.assertEqual(command['startTransaction'], True)
-        self.assertEqual(command['txnNumber'], 1)
 
     @client_context.require_sessions
     @client_context.require_failCommand_fail_point
