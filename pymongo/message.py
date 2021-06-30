@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tools for creating `messages
+"""**DEPRECATED** Tools for creating `messages
 <http://www.mongodb.org/display/DOCS/Mongo+Wire+Protocol>`_ to be sent to
 MongoDB.
 
 .. note:: This module is for internal use and is generally not needed by
    application developers.
+
+.. versionchanged:: 3.12
+  This module is deprecated and will be removed in PyMongo 4.0.
 """
 
 import datetime
@@ -595,7 +598,11 @@ if _use_c:
 
 def insert(collection_name, docs, check_keys,
            safe, last_error_args, continue_on_error, opts, ctx=None):
-    """Get an **insert** message."""
+    """**DEPRECATED** Get an **insert** message.
+
+    .. versionchanged:: 3.12
+      This function is deprecated and will be removed in PyMongo 4.0.
+    """
     if ctx:
         return _insert_compressed(
             collection_name, docs, check_keys, continue_on_error, opts, ctx)
@@ -645,7 +652,11 @@ if _use_c:
 
 def update(collection_name, upsert, multi, spec,
            doc, safe, last_error_args, check_keys, opts, ctx=None):
-    """Get an **update** message."""
+    """**DEPRECATED** Get an **update** message.
+
+    .. versionchanged:: 3.12
+      This function is deprecated and will be removed in PyMongo 4.0.
+    """
     if ctx:
         return _update_compressed(
             collection_name, upsert, multi, spec, doc, check_keys, opts, ctx)
@@ -788,7 +799,11 @@ if _use_c:
 
 def query(options, collection_name, num_to_skip, num_to_return,
           query, field_selector, opts, check_keys=False, ctx=None):
-    """Get a **query** message."""
+    """**DEPRECATED** Get a **query** message.
+
+    .. versionchanged:: 3.12
+      This function is deprecated and will be removed in PyMongo 4.0.
+    """
     if ctx:
         return _query_compressed(options, collection_name, num_to_skip,
                                  num_to_return, query, field_selector,
@@ -825,7 +840,11 @@ if _use_c:
 
 
 def get_more(collection_name, num_to_return, cursor_id, ctx=None):
-    """Get a **getMore** message."""
+    """**DEPRECATED** Get a **getMore** message.
+
+    .. versionchanged:: 3.12
+      This function is deprecated and will be removed in PyMongo 4.0.
+    """
     if ctx:
         return _get_more_compressed(
             collection_name, num_to_return, cursor_id, ctx)
@@ -862,12 +881,15 @@ def _delete_uncompressed(
 
 def delete(
         collection_name, spec, safe, last_error_args, opts, flags=0, ctx=None):
-    """Get a **delete** message.
+    """**DEPRECATED** Get a **delete** message.
 
     `opts` is a CodecOptions. `flags` is a bit vector that may contain
     the SingleRemove flag or not:
 
     http://docs.mongodb.org/meta-driver/latest/legacy/mongodb-wire-protocol/#op-delete
+
+    .. versionchanged:: 3.12
+      This function is deprecated and will be removed in PyMongo 4.0.
     """
     if ctx:
         return _delete_compressed(collection_name, spec, opts, flags, ctx)
@@ -876,7 +898,10 @@ def delete(
 
 
 def kill_cursors(cursor_ids):
-    """Get a **killCursors** message.
+    """**DEPRECATED** Get a **killCursors** message.
+
+    .. versionchanged:: 3.12
+      This function is deprecated and will be removed in PyMongo 4.0.
     """
     num_cursors = len(cursor_ids)
     pack = struct.Struct("<ii" + ("q" * num_cursors)).pack
