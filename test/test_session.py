@@ -1164,6 +1164,7 @@ class TestClusterTime(IntegrationTest):
 
 
 class TestSpec(SpecRunner):
+    RUN_ON_SERVERLESS = True
     # Location of JSON test specifications.
     TEST_PATH = os.path.join(
         os.path.dirname(os.path.realpath(__file__)), 'sessions', 'legacy')

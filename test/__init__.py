@@ -94,6 +94,8 @@ if CA_PEM:
 COMPRESSORS = os.environ.get("COMPRESSORS")
 MONGODB_API_VERSION = os.environ.get("MONGODB_API_VERSION")
 TEST_LOADBALANCER = bool(os.environ.get("TEST_LOADBALANCER"))
+TEST_SERVERLESS = bool(os.environ.get("TEST_SERVERLESS"))
+MONGODB_URI = os.environ.get("MONGODB_URI")
 SINGLE_MONGOS_LB_URI = os.environ.get("SINGLE_MONGOS_LB_URI")
 MULTI_MONGOS_LB_URI = os.environ.get("MULTI_MONGOS_LB_URI")
 if TEST_LOADBALANCER:
@@ -104,6 +106,9 @@ if TEST_LOADBALANCER:
     host, port = res['nodelist'][0]
     db_user = res['username'] or db_user
     db_pwd = res['password'] or db_pwd
+elif MONGODB_URI:
+    res = parse_uri(MONGODB_URI)
+    host, port = res['nodelist']
 
 
 def is_server_resolvable():
@@ -231,6 +236,7 @@ class ClientContext(object):
         self.conn_lock = threading.Lock()
         self.is_data_lake = False
         self.load_balancer = TEST_LOADBALANCER
+        self.serverless = TEST_SERVERLESS
         if self.load_balancer:
             self.default_client_options["loadBalanced"] = True
         if COMPRESSORS:
@@ -891,6 +897,9 @@ class IntegrationTest(PyMongoTestCase):
         if (client_context.load_balancer and
                 not getattr(cls, 'RUN_ON_LOAD_BALANCER', False)):
             raise SkipTest('this test does not support load balancers')
+        if (client_context.serverless and
+                not getattr(cls, 'RUN_ON_SERVERLESS', False)):
+            raise SkipTest('this test does not support serverless')
         cls.client = client_context.client
         cls.db = cls.client.pymongo_test
         if client_context.auth_enabled:

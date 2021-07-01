@@ -117,6 +117,14 @@ def is_run_on_requirement_satisfied(requirement):
         max_version_satisfied = Version.from_string(
             req_max_server_version) >= server_version
 
+    serverless = requirement.get('serverless')
+    if serverless == "require":
+        serverless_satisfied = client_context.serverless
+    elif serverless == "forbid":
+        serverless_satisfied = not client_context.serverless
+    else:   # unset or "allow"
+        serverless_satisfied = True
+
     params_satisfied = True
     params = requirement.get('serverParameters')
     if params:
@@ -135,7 +143,8 @@ def is_run_on_requirement_satisfied(requirement):
             auth_satisfied = not client_context.auth_enabled
 
     return (topology_satisfied and min_version_satisfied and
-            max_version_satisfied and params_satisfied and auth_satisfied)
+            max_version_satisfied and serverless_satisfied and
+            params_satisfied and auth_satisfied)
 
 
 def parse_collection_or_database_options(options):
@@ -637,6 +646,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     """
     SCHEMA_VERSION = Version.from_string('1.5')
     RUN_ON_LOAD_BALANCER = True
+    RUN_ON_SERVERLESS = True
 
     @staticmethod
     def should_run_on(run_on_spec):

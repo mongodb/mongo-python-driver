@@ -42,7 +42,7 @@ _TEST_PATH = os.path.join(
 
 
 class TestAllScenarios(IntegrationTest):
-    pass
+    RUN_ON_SERVERLESS = True
 
 
 def check_result(self, expected_result, result):

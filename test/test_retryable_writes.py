@@ -55,6 +55,7 @@ _TEST_PATH = os.path.join(
 
 class TestAllScenarios(SpecRunner):
     RUN_ON_LOAD_BALANCER = True
+    RUN_ON_SERVERLESS = True
 
     def get_object_name(self, op):
         return op.get('object', 'collection')

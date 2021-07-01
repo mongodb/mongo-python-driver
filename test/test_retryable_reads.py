@@ -52,6 +52,7 @@ class TestClientOptions(PyMongoTestCase):
 
 class TestSpec(SpecRunner):
     RUN_ON_LOAD_BALANCER = True
+    RUN_ON_SERVERLESS = True
 
     @classmethod
     @client_context.require_failCommand_fail_point
