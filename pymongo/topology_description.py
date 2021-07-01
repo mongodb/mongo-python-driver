@@ -361,7 +361,7 @@ def updated_topology_description(topology_description, server_description):
             topology_description._topology_settings)
 
     if topology_type == TOPOLOGY_TYPE.Unknown:
-        if server_type == SERVER_TYPE.Standalone:
+        if server_type in (SERVER_TYPE.Standalone, SERVER_TYPE.LoadBalancer):
             if len(topology_description._topology_settings.seeds) == 1:
                 topology_type = TOPOLOGY_TYPE.Single
             else:
