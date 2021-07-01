@@ -1517,7 +1517,8 @@ class TestRawBatchCursor(IntegrationTest):
     @client_context.require_version_min(5, 0, 0)
     @client_context.require_no_standalone
     def test_find_raw_snapshot_reads(self):
-        c = self.db.test
+        c = self.db.get_collection(
+            "test", write_concern=WriteConcern(w="majority"))
         c.drop()
         docs = [{'_id': i, 'x': 3.0 * i} for i in range(10)]
         c.insert_many(docs)
@@ -1709,7 +1710,8 @@ class TestRawBatchCommandCursor(IntegrationTest):
     @client_context.require_version_min(5, 0, -1)
     @client_context.require_no_standalone
     def test_aggregate_raw_snapshot_reads(self):
-        c = self.db.test
+        c = self.db.get_collection(
+            "test", write_concern=WriteConcern(w="majority"))
         c.drop()
         docs = [{'_id': i, 'x': 3.0 * i} for i in range(10)]
         c.insert_many(docs)
