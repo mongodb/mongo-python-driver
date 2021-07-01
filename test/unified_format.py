@@ -565,7 +565,7 @@ class MatchEvaluatorUtil(object):
                 if actual.command_name == 'update':
                     # TODO: remove this once PYTHON-1744 is done.
                     # Add upsert and multi fields back into expectations.
-                    for update in command['updates']:
+                    for update in command.get('updates', []):
                         update.setdefault('upsert', False)
                         update.setdefault('multi', False)
                 self.match_result(command, actual.command)
