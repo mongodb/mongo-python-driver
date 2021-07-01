@@ -18,7 +18,9 @@ import sys
 
 sys.path[0:0] = [""]
 
+from bson.objectid import ObjectId
 from bson.py3compat import imap
+
 from pymongo import common
 from pymongo.read_preferences import ReadPreference, Secondary
 from pymongo.server_type import SERVER_TYPE
@@ -294,7 +296,7 @@ class TestMultiServerTopology(TopologyTest):
             'setName': 'rs',
             'hosts': ['a', 'b']})
 
-        self.assertTrue(
+        self.assertEqual(
             t.description.topology_type_name, 'ReplicaSetWithPrimary')
         self.assertTrue(t.description.has_writable_server())
         self.assertTrue(t.description.has_readable_server())
@@ -319,7 +321,7 @@ class TestMultiServerTopology(TopologyTest):
             'setName': 'rs',
             'hosts': ['a', 'b']})
 
-        self.assertTrue(
+        self.assertEqual(
             t.description.topology_type_name, 'ReplicaSetNoPrimary')
         self.assertFalse(t.description.has_writable_server())
         self.assertFalse(t.description.has_readable_server())
@@ -344,7 +346,7 @@ class TestMultiServerTopology(TopologyTest):
             'hosts': ['a', 'b'],
             'tags': {'tag': 'exists'}})
 
-        self.assertTrue(
+        self.assertEqual(
             t.description.topology_type_name, 'ReplicaSetWithPrimary')
         self.assertTrue(t.description.has_writable_server())
         self.assertTrue(t.description.has_readable_server())
@@ -679,6 +681,26 @@ class TestMultiServerTopology(TopologyTest):
             " rtt: None>, "
             "<ServerDescription ('c', 27017) server_type: Unknown,"
             " rtt: None>]>" % (t._topology_id,))
+
+    def test_unexpected_load_balancer(self):
+        # Note: This behavior should not be reachable in practice but we
+        # should handle it gracefully nonetheless. See PYTHON-2791.
+        # Load balancers are included in topology with a single seed.
+        t = create_mock_topology(seeds=['a'])
+        mock_lb_response = {'ok': 1, 'msg': 'isdbgrid',
+                            'serviceId': ObjectId(), 'maxWireVersion': 13}
+        got_ismaster(t, ('a', 27017), mock_lb_response)
+        sds = t.description.server_descriptions()
+        self.assertIn(('a', 27017), sds)
+        self.assertEqual(sds[('a', 27017)].server_type_name, 'LoadBalancer')
+        self.assertEqual(t.description.topology_type_name, 'Single')
+        self.assertTrue(t.description.has_writable_server())
+
+        # Load balancers are removed from a topology with multiple seeds.
+        t = create_mock_topology(seeds=['a', 'b'])
+        got_ismaster(t, ('a', 27017), mock_lb_response)
+        self.assertNotIn(('a', 27017), t.description.server_descriptions())
+        self.assertEqual(t.description.topology_type_name, 'Unknown')
 
 
 def wait_for_master(topology):
