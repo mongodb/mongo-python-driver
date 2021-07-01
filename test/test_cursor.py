@@ -1525,9 +1525,10 @@ class TestRawBatchCursor(IntegrationTest):
         listener = OvertCommandListener()
         client = rs_or_single_client(event_listeners=[listener],
                                      retryReads=True)
+        db = client[self.db.name]
         with client.start_session(snapshot=True) as session:
-            client.db.test.distinct('x', {}, session=session)
-            batches = list(client[self.db.name].test.find_raw_batches(
+            db.test.distinct('x', {}, session=session)
+            batches = list(db.test.find_raw_batches(
                 session=session).sort('_id'))
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
@@ -1716,9 +1717,10 @@ class TestRawBatchCommandCursor(IntegrationTest):
         listener = OvertCommandListener()
         client = rs_or_single_client(event_listeners=[listener],
                                      retryReads=True)
+        db = client[self.db.name]
         with client.start_session(snapshot=True) as session:
-            client.db.test.distinct('x', {}, session=session)
-            batches = list(client[self.db.name].test.aggregate_raw_batches(
+            db.test.distinct('x', {}, session=session)
+            batches = list(db.test.aggregate_raw_batches(
                 [{'$sort': {'_id': 1}}], session=session))
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
