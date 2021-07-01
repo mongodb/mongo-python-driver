@@ -655,6 +655,7 @@ class SocketInfo(object):
         unpacked_docs = reply.unpack_response()
         response_doc = unpacked_docs[0]
         helpers._check_command_response(response_doc, self.max_wire_version)
+        # Remove after PYTHON-2712.
         if not self.opts.load_balanced:
             response_doc.pop('serviceId', None)
         return response_doc
