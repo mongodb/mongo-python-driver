@@ -46,6 +46,7 @@ from test import (client_context,
                   unittest,
                   IntegrationTest)
 from test.utils import (EventListener,
+                        OvertCommandListener,
                         ignore_deprecations,
                         rs_or_single_client,
                         WhiteListEventListener)
@@ -1478,6 +1479,76 @@ class TestRawBatchCursor(IntegrationTest):
         with self.assertRaises(InvalidOperation):
             c.find_raw_batches(manipulate=True)
 
+    @client_context.require_transactions
+    def test_find_raw_transaction(self):
+        c = self.db.test
+        c.drop()
+        docs = [{'_id': i, 'x': 3.0 * i} for i in range(10)]
+        c.insert_many(docs)
+
+        listener = OvertCommandListener()
+        client = rs_or_single_client(event_listeners=[listener])
+        with client.start_session() as session:
+            with session.start_transaction():
+                batches = list(client[self.db.name].test.find_raw_batches(
+                    session=session).sort('_id'))
+                cmd = listener.results['started'][0]
+                self.assertEqual(cmd.command_name, 'find')
+                self.assertEqual(cmd.command['$clusterTime'],
+                                 decode_all(session.cluster_time.raw)[0])
+                self.assertEqual(cmd.command['startTransaction'], True)
+                self.assertEqual(cmd.command['txnNumber'], 1)
+
+        self.assertEqual(1, len(batches))
+        self.assertEqual(docs, decode_all(batches[0]))
+
+    @client_context.require_sessions
+    @client_context.require_failCommand_fail_point
+    def test_find_raw_retryable_reads(self):
+        c = self.db.test
+        c.drop()
+        docs = [{'_id': i, 'x': 3.0 * i} for i in range(10)]
+        c.insert_many(docs)
+
+        listener = OvertCommandListener()
+        client = rs_or_single_client(event_listeners=[listener],
+                                     retryReads=True)
+        with self.fail_point({
+            'mode': {'times': 1}, 'data': {'failCommands': ['find'],
+                                           'closeConnection': True}}):
+            batches = list(
+                client[self.db.name].test.find_raw_batches().sort('_id'))
+
+        self.assertEqual(1, len(batches))
+        self.assertEqual(docs, decode_all(batches[0]))
+        self.assertEqual(len(listener.results['started']), 2)
+        for cmd in listener.results['started']:
+            self.assertEqual(cmd.command_name, 'find')
+
+    @client_context.require_version_min(5, 0, 0)
+    @client_context.require_no_standalone
+    def test_find_raw_snapshot_reads(self):
+        c = self.db.get_collection(
+            "test", write_concern=WriteConcern(w="majority"))
+        c.drop()
+        docs = [{'_id': i, 'x': 3.0 * i} for i in range(10)]
+        c.insert_many(docs)
+
+        listener = OvertCommandListener()
+        client = rs_or_single_client(event_listeners=[listener],
+                                     retryReads=True)
+        db = client[self.db.name]
+        with client.start_session(snapshot=True) as session:
+            db.test.distinct('x', {}, session=session)
+            batches = list(db.test.find_raw_batches(
+                session=session).sort('_id'))
+        self.assertEqual(1, len(batches))
+        self.assertEqual(docs, decode_all(batches[0]))
+
+        find_cmd = listener.results['started'][1].command
+        self.assertEqual(find_cmd['readConcern']['level'], 'snapshot')
+        self.assertIsNotNone(find_cmd['readConcern']['atClusterTime'])
+
     def test_explain(self):
         c = self.db.test
         c.insert_one({})
@@ -1601,6 +1672,75 @@ class TestRawBatchCommandCursor(IntegrationTest):
         batches = list(c.aggregate_raw_batches([{'$sort': {'_id': 1}}]))
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
+
+    @client_context.require_transactions
+    def test_aggregate_raw_transaction(self):
+        c = self.db.test
+        c.drop()
+        docs = [{'_id': i, 'x': 3.0 * i} for i in range(10)]
+        c.insert_many(docs)
+
+        listener = OvertCommandListener()
+        client = rs_or_single_client(event_listeners=[listener])
+        with client.start_session() as session:
+            with session.start_transaction():
+                batches = list(client[self.db.name].test.aggregate_raw_batches(
+                    [{'$sort': {'_id': 1}}], session=session))
+                cmd = listener.results['started'][0]
+                self.assertEqual(cmd.command_name, 'aggregate')
+                self.assertEqual(cmd.command['$clusterTime'], session.cluster_time)
+                self.assertEqual(cmd.command['startTransaction'], True)
+                self.assertEqual(cmd.command['txnNumber'], 1)
+        self.assertEqual(1, len(batches))
+        self.assertEqual(docs, decode_all(batches[0]))
+
+    @client_context.require_sessions
+    @client_context.require_failCommand_fail_point
+    def test_aggregate_raw_retryable_reads(self):
+        c = self.db.test
+        c.drop()
+        docs = [{'_id': i, 'x': 3.0 * i} for i in range(10)]
+        c.insert_many(docs)
+
+        listener = OvertCommandListener()
+        client = rs_or_single_client(event_listeners=[listener],
+                                     retryReads=True)
+        with self.fail_point({
+            'mode': {'times': 1}, 'data': {'failCommands': ['aggregate'],
+                                           'closeConnection': True}}):
+            batches = list(client[self.db.name].test.aggregate_raw_batches(
+                [{'$sort': {'_id': 1}}]))
+
+        self.assertEqual(1, len(batches))
+        self.assertEqual(docs, decode_all(batches[0]))
+        self.assertEqual(len(listener.results['started']), 3)
+        cmds = listener.results['started']
+        self.assertEqual(cmds[0].command_name, 'aggregate')
+        self.assertEqual(cmds[1].command_name, 'aggregate')
+
+    @client_context.require_version_min(5, 0, -1)
+    @client_context.require_no_standalone
+    def test_aggregate_raw_snapshot_reads(self):
+        c = self.db.get_collection(
+            "test", write_concern=WriteConcern(w="majority"))
+        c.drop()
+        docs = [{'_id': i, 'x': 3.0 * i} for i in range(10)]
+        c.insert_many(docs)
+
+        listener = OvertCommandListener()
+        client = rs_or_single_client(event_listeners=[listener],
+                                     retryReads=True)
+        db = client[self.db.name]
+        with client.start_session(snapshot=True) as session:
+            db.test.distinct('x', {}, session=session)
+            batches = list(db.test.aggregate_raw_batches(
+                [{'$sort': {'_id': 1}}], session=session))
+        self.assertEqual(1, len(batches))
+        self.assertEqual(docs, decode_all(batches[0]))
+
+        find_cmd = listener.results['started'][1].command
+        self.assertEqual(find_cmd['readConcern']['level'], 'snapshot')
+        self.assertIsNotNone(find_cmd['readConcern']['atClusterTime'])
 
     def test_server_error(self):
         c = self.db.test

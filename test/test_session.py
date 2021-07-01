@@ -891,6 +891,12 @@ class TestCausalConsistency(unittest.TestCase):
             lambda coll, session: coll.count_documents({}, session=session))
         self._test_reads(
             lambda coll, session: coll.distinct('foo', session=session))
+        self._test_reads(
+            lambda coll, session: list(coll.aggregate_raw_batches(
+                [], session=session)))
+        self._test_reads(
+            lambda coll, session: list(coll.find_raw_batches(
+                {}, session=session)))
 
         # SERVER-40938 removed support for casually consistent mapReduce.
         map_reduce_exc = None
@@ -916,16 +922,6 @@ class TestCausalConsistency(unittest.TestCase):
             self._test_reads(
                 lambda coll, session: scan(coll, session=session))
 
-        self.assertRaises(
-            ConfigurationError,
-            self._test_reads,
-            lambda coll, session: list(
-                coll.aggregate_raw_batches([], session=session)))
-        self.assertRaises(
-            ConfigurationError,
-            self._test_reads,
-            lambda coll, session: list(
-                coll.find_raw_batches({}, session=session)))
         self.assertRaises(
             ConfigurationError,
             self._test_reads,
