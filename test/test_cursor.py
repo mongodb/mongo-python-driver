@@ -1515,6 +1515,7 @@ class TestRawBatchCursor(IntegrationTest):
             self.assertEqual(cmd.command_name, 'find')
 
     @client_context.require_version_min(5, 0, 0)
+    @client_context.require_no_standalone
     def test_find_raw_snapshot_reads(self):
         c = self.db.test
         c.drop()
@@ -1704,7 +1705,8 @@ class TestRawBatchCommandCursor(IntegrationTest):
         self.assertEqual(cmds[0].command_name, 'aggregate')
         self.assertEqual(cmds[1].command_name, 'aggregate')
 
-    @client_context.require_version_min(5, 0, 0)
+    @client_context.require_version_min(5, 0, -1)
+    @client_context.require_no_standalone
     def test_aggregate_raw_snapshot_reads(self):
         c = self.db.test
         c.drop()
