@@ -148,7 +148,8 @@ class ChangeStream(object):
         full_pipeline.extend(self._pipeline)
         return full_pipeline
 
-    def _process_result(self, result, session, server, sock_info, slave_ok):
+    def _process_result(
+            self, result, session, server, sock_info, secondary_ok):
         """Callback that caches the postBatchResumeToken or
         startAtOperationTime from a changeStream aggregate command response
         containing an empty batch of change documents.

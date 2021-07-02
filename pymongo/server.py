@@ -68,8 +68,9 @@ class Server(object):
         """Check the server's state soon."""
         self._monitor.request_check()
 
-    def run_operation(self, sock_info, operation, set_slave_okay, listeners,
-                      unpack_res):
+    def run_operation(
+            self, sock_info, operation,
+            set_secondary_okay, listeners, unpack_res):
         """Run a _Query or _GetMore operation and return a Response object.
 
         This method is used only to run _Query/_GetMore operations from
@@ -78,7 +79,7 @@ class Server(object):
 
         :Parameters:
           - `operation`: A _Query or _GetMore object.
-          - `set_slave_okay`: Pass to operation.get_message.
+          - `set_secondary_okay`: Pass to operation.get_message.
           - `all_credentials`: dict, maps auth source to MongoCredential.
           - `listeners`: Instance of _EventListeners or None.
           - `unpack_res`: A callable that decodes the wire protocol response.
@@ -95,7 +96,7 @@ class Server(object):
             request_id = 0
         else:
             message = operation.get_message(
-                set_slave_okay, sock_info, use_cmd)
+                set_secondary_okay, sock_info, use_cmd)
             request_id, data, max_doc_size = self._split_message(message)
 
         if publish:

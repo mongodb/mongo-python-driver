@@ -179,7 +179,8 @@ class TestSingleServerTopology(TopologyTest):
                 HelloCompat.LEGACY_CMD: True,
                 'maxWireVersion': 6}),
 
-            # Slave.
+            # mongod started as "secondary" in the replication system
+            # that existed before replica sets.
             (SERVER_TYPE.Standalone, {
                 'ok': 1,
                 HelloCompat.LEGACY_CMD: False,

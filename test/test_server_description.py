@@ -138,7 +138,8 @@ class TestServerDescription(unittest.TestCase):
         s = parse_hello_response({'ok': 1, HelloCompat.LEGACY_CMD: True})
         self.assertEqual(SERVER_TYPE.Standalone, s.server_type)
 
-        # Mongod started with --slave.
+        # Mongod started as "secondary" in the replication mode that existed
+        # before replica sets.
         s = parse_hello_response({'ok': 1, HelloCompat.LEGACY_CMD: False})
         self.assertEqual(SERVER_TYPE.Standalone, s.server_type)
         self.assertTrue(s.is_writable)

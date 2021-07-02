@@ -197,7 +197,7 @@ class Collection(common.BaseObject):
     def _socket_for_writes(self, session):
         return self.__database.client._socket_for_writes(session)
 
-    def _command(self, sock_info, command, slave_ok=False,
+    def _command(self, sock_info, command, secondary_ok=False,
                  read_preference=None,
                  codec_options=None, check=True, allowable_errors=None,
                  read_concern=None,
@@ -211,7 +211,7 @@ class Collection(common.BaseObject):
         :Parameters:
           - `sock_info` - A SocketInfo instance.
           - `command` - The command itself, as a SON instance.
-          - `slave_ok`: whether to set the SlaveOkay wire protocol bit.
+          - `secondary_ok`: whether to set the secondaryOkay wire protocol bit.
           - `codec_options` (optional) - An instance of
             :class:`~bson.codec_options.CodecOptions`.
           - `check`: raise OperationFailure if there are errors
@@ -238,7 +238,7 @@ class Collection(common.BaseObject):
             return sock_info.command(
                 self.__database.name,
                 command,
-                slave_ok,
+                secondary_ok,
                 read_preference or self._read_preference_for(session),
                 codec_options or self.codec_options,
                 check,
@@ -1629,13 +1629,13 @@ class Collection(common.BaseObject):
                    ('numCursors', num_cursors)])
         cmd.update(kwargs)
 
-        with self._socket_for_reads(session) as (sock_info, slave_ok):
+        with self._socket_for_reads(session) as (sock_info, secondary_ok):
             # We call sock_info.command here directly, instead of
             # calling self._command to avoid using an implicit session.
             result = sock_info.command(
                 self.__database.name,
                 cmd,
-                slave_ok,
+                secondary_ok,
                 self._read_preference_for(session),
                 self.codec_options,
                 read_concern=self.read_concern,
@@ -1651,14 +1651,14 @@ class Collection(common.BaseObject):
 
         return cursors
 
-    def _count_cmd(self, session, sock_info, slave_ok, cmd, collation):
+    def _count_cmd(self, session, sock_info, secondary_ok, cmd, collation):
         """Internal count command helper."""
         # XXX: "ns missing" checks can be removed when we drop support for
         # MongoDB 3.0, see SERVER-17051.
         res = self._command(
             sock_info,
             cmd,
-            slave_ok,
+            secondary_ok,
             allowable_errors=["ns missing"],
             codec_options=self.__write_response_codec_options,
             read_concern=self.read_concern,
@@ -1672,20 +1672,20 @@ class Collection(common.BaseObject):
         """Internal count helper."""
         # XXX: "ns missing" checks can be removed when we drop support for
         # MongoDB 3.0, see SERVER-17051.
-        def _cmd(session, server, sock_info, slave_ok):
+        def _cmd(session, server, sock_info, secondary_ok):
             return self._count_cmd(
-                session, sock_info, slave_ok, cmd, collation)
+                session, sock_info, secondary_ok, cmd, collation)
 
         return self.__database.client._retryable_read(
             _cmd, self._read_preference_for(session), session)
 
     def _aggregate_one_result(
-            self, sock_info, slave_ok, cmd, collation, session):
+            self, sock_info, secondary_ok, cmd, collation, session):
         """Internal helper to run an aggregate that returns a single result."""
         result = self._command(
             sock_info,
             cmd,
-            slave_ok,
+            secondary_ok,
             allowable_errors=[26],  # Ignore NamespaceNotFound.
             codec_options=self.__write_response_codec_options,
             read_concern=self.read_concern,
@@ -1719,7 +1719,7 @@ class Collection(common.BaseObject):
             raise ConfigurationError(
                 'estimated_document_count does not support sessions')
 
-        def _cmd(session, server, sock_info, slave_ok):
+        def _cmd(session, server, sock_info, secondary_ok):
             if sock_info.max_wire_version >= 12:
                 # MongoDB 4.9+
                 pipeline = [
@@ -1731,7 +1731,7 @@ class Collection(common.BaseObject):
                            ('cursor', {})])
                 cmd.update(kwargs)
                 result = self._aggregate_one_result(
-                    sock_info, slave_ok, cmd, collation=None, session=session)
+                    sock_info, secondary_ok, cmd, collation=None, session=session)
                 if not result:
                     return 0
                 return int(result['n'])
@@ -1739,7 +1739,7 @@ class Collection(common.BaseObject):
                 # MongoDB < 4.9
                 cmd = SON([('count', self.__name)])
                 cmd.update(kwargs)
-                return self._count_cmd(None, sock_info, slave_ok, cmd, None)
+                return self._count_cmd(None, sock_info, secondary_ok, cmd, None)
 
         return self.__database.client._retryable_read(
             _cmd, self.read_preference, None)
@@ -1816,9 +1816,9 @@ class Collection(common.BaseObject):
         collation = validate_collation_or_none(kwargs.pop('collation', None))
         cmd.update(kwargs)
 
-        def _cmd(session, server, sock_info, slave_ok):
+        def _cmd(session, server, sock_info, secondary_ok):
             result = self._aggregate_one_result(
-                sock_info, slave_ok, cmd, collation, session)
+                sock_info, secondary_ok, cmd, collation, session)
             if not result:
                 return 0
             return result['n']
@@ -2294,12 +2294,12 @@ class Collection(common.BaseObject):
         read_pref = ((session and session._txn_read_preference())
                      or ReadPreference.PRIMARY)
 
-        def _cmd(session, server, sock_info, slave_ok):
+        def _cmd(session, server, sock_info, secondary_ok):
             cmd = SON([("listIndexes", self.__name), ("cursor", {})])
             if sock_info.max_wire_version > 2:
                 with self.__database.client._tmp_session(session, False) as s:
                     try:
-                        cursor = self._command(sock_info, cmd, slave_ok,
+                        cursor = self._command(sock_info, cmd, secondary_ok,
                                                read_pref,
                                                codec_options,
                                                session=s)["cursor"]
@@ -2315,7 +2315,7 @@ class Collection(common.BaseObject):
             else:
                 res = message._first_batch(
                     sock_info, self.__database.name, "system.indexes",
-                    {"ns": self.__full_name}, 0, slave_ok, codec_options,
+                    {"ns": self.__full_name}, 0, secondary_ok, codec_options,
                     read_pref, cmd,
                     self.database.client._event_listeners)
                 cursor = res["cursor"]
@@ -2676,8 +2676,8 @@ class Collection(common.BaseObject):
         collation = validate_collation_or_none(kwargs.pop('collation', None))
         cmd.update(kwargs)
 
-        with self._socket_for_reads(session=None) as (sock_info, slave_ok):
-            return self._command(sock_info, cmd, slave_ok,
+        with self._socket_for_reads(session=None) as (sock_info, secondary_ok):
+            return self._command(sock_info, cmd, secondary_ok,
                                  collation=collation,
                                  user_fields={'retval': 1})["retval"]
 
@@ -2780,9 +2780,9 @@ class Collection(common.BaseObject):
             kwargs["query"] = filter
         collation = validate_collation_or_none(kwargs.pop('collation', None))
         cmd.update(kwargs)
-        def _cmd(session, server, sock_info, slave_ok):
+        def _cmd(session, server, sock_info, secondary_ok):
             return self._command(
-                sock_info, cmd, slave_ok, read_concern=self.read_concern,
+                sock_info, cmd, secondary_ok, read_concern=self.read_concern,
                 collation=collation, session=session,
                 user_fields={"values": 1})["values"]
 
@@ -2809,7 +2809,7 @@ class Collection(common.BaseObject):
                      or read_pref)
 
         with self.__database.client._socket_for_reads(read_pref, session) as (
-                sock_info, slave_ok):
+                sock_info, secondary_ok):
             if (sock_info.max_wire_version >= 4 and
                     ('readConcern' not in cmd) and
                     inline):
@@ -2822,7 +2822,7 @@ class Collection(common.BaseObject):
                 write_concern = None
 
             return self._command(
-                sock_info, cmd, slave_ok, read_pref,
+                sock_info, cmd, secondary_ok, read_pref,
                 read_concern=read_concern,
                 write_concern=write_concern,
                 collation=collation, session=session,

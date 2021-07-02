@@ -634,7 +634,7 @@ class SocketInfo(object):
             response_doc.pop('serviceId', None)
         return response_doc
 
-    def command(self, dbname, spec, slave_ok=False,
+    def command(self, dbname, spec, secondary_ok=False,
                 read_preference=ReadPreference.PRIMARY,
                 codec_options=DEFAULT_CODEC_OPTIONS, check=True,
                 allowable_errors=None, check_keys=False,
@@ -653,7 +653,7 @@ class SocketInfo(object):
         :Parameters:
           - `dbname`: name of the database on which to run the command
           - `spec`: a command document as a dict, SON, or mapping object
-          - `slave_ok`: whether to set the SlaveOkay wire protocol bit
+          - `secondary_ok`: whether to set the secondaryOkay wire protocol bit
           - `read_preference`: a read preference
           - `codec_options`: a CodecOptions instance
           - `check`: raise OperationFailure if there are errors
@@ -707,7 +707,7 @@ class SocketInfo(object):
         if self.op_msg_enabled:
             self._raise_if_not_writable(unacknowledged)
         try:
-            return command(self, dbname, spec, slave_ok,
+            return command(self, dbname, spec, secondary_ok,
                            self.is_mongos, read_preference, codec_options,
                            session, client, check, allowable_errors,
                            self.address, check_keys, listeners,
