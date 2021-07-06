@@ -397,7 +397,7 @@ functions:
             cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
             . ./activate_venv.sh
             cd ${DRIVERS_TOOLS}/.evergreen/csfle
-            python -u lib/kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/expired.pem --port 8000
+            python -u lib/kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/wrong-host.pem --port 8001
           fi
     - command: shell.exec
       type: test
