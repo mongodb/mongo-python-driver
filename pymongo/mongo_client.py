@@ -189,9 +189,6 @@ class MongoClient(common.BaseObject):
           - `port` (optional): port number on which to connect
           - `document_class` (optional): default class to use for
             documents returned from queries on this client
-          - `type_registry` (optional): instance of
-            :class:`~bson.codec_options.TypeRegistry` to enable encoding
-            and decoding of custom types.
           - `tz_aware` (optional): if ``True``,
             :class:`~datetime.datetime` instances returned as values
             in a document by this :class:`MongoClient` will be timezone
@@ -199,15 +196,18 @@ class MongoClient(common.BaseObject):
           - `connect` (optional): if ``True`` (the default), immediately
             begin connecting to MongoDB in the background. Otherwise connect
             on the first operation.
+          - `type_registry` (optional): instance of
+            :class:`~bson.codec_options.TypeRegistry` to enable encoding
+            and decoding of custom types.
+
+          | **Other optional parameters can be passed as keyword arguments:**
+
           - `directConnection` (optional): if ``True``, forces this client to
              connect directly to the specified MongoDB host as a standalone.
              If ``false``, the client connects to the entire replica set of
              which the given MongoDB host(s) is a part. If this is ``True``
              and a mongodb+srv:// URI or a URI containing multiple seeds is
              provided, an exception will be raised.
-
-          | **Other optional parameters can be passed as keyword arguments:**
-
           - `maxPoolSize` (optional): The maximum allowable number of
             concurrent connections to each connected server. Requests to a
             server will block if there are `maxPoolSize` outstanding
@@ -338,6 +338,10 @@ class MongoClient(common.BaseObject):
             `csharpLegacy`, `standard` and `unspecified`. New applications
             should consider setting this to `standard` for cross language
             compatibility. See :ref:`handling-uuid-data-example` for details.
+          - `unicode_decode_error_handler`: The error handler to apply when
+            a Unicode-related error occurs during BSON decoding that would
+            otherwise raise :exc:`UnicodeDecodeError`. Valid options include
+            'strict', 'replace', and 'ignore'. Defaults to 'strict'.
 
           | **Write Concern options:**
           | (Only set if passed. No default values.)
