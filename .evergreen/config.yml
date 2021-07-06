@@ -360,26 +360,18 @@ functions:
 
   "run tests":
     # If testing encryption start the mock KMS servers.
+    # First create the virtualenv upfront.
     - command: shell.exec
       type: system
       params:
         working_dir: src
-        background: true
         script: |
           if [ -n "${test_encryption}" ]; then
             ${PREPARE_SHELL}
             cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
             . ./activate_venv.sh
-            cd ${DRIVERS_TOOLS}/.evergreen/csfle
-            cat <<EOF > kms_setup.json
-            {
-                "kms_ca_file": "ca.pem",
-                "kms_cert_file": "expired.pem",
-                "kms_port": "8000"
-            }
-          EOF
-            mongo --nodb mock_kms.js
           fi
+    # Start the first mock KMS responder.
     - command: shell.exec
       type: system
       params:
@@ -391,14 +383,21 @@ functions:
             cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
             . ./activate_venv.sh
             cd ${DRIVERS_TOOLS}/.evergreen/csfle
-            cat <<EOF > kms_setup.json
-            {
-                "kms_ca_file": "ca.pem",
-                "kms_cert_file": "wrong-host.pem",
-                "kms_port": "8001"
-            }
-          EOF
-            mongo --nodb mock_kms.js
+            python -u lib/kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/expired.pem --port 8000
+          fi
+    # Start the second mock KMS responder.
+    - command: shell.exec
+      type: system
+      params:
+        working_dir: src
+        background: true
+        script: |
+          if [ -n "${test_encryption}" ]; then
+            ${PREPARE_SHELL}
+            cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
+            . ./activate_venv.sh
+            cd ${DRIVERS_TOOLS}/.evergreen/csfle
+            python -u lib/kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/expired.pem --port 8000
           fi
     - command: shell.exec
       type: test
