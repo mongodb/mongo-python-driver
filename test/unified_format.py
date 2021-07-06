@@ -612,11 +612,9 @@ def coerce_result(opname, result):
     if opname == 'bulkWrite':
         return parse_bulk_write_result(result)
     if opname == 'insertOne':
-        return {'insertedId': result.inserted_id, 'insertedCount': 1}
+        return {'insertedId': result.inserted_id}
     if opname == 'insertMany':
-        res = {idx: _id for idx, _id in enumerate(result.inserted_ids)}
-        res['insertedCount'] = len(result.inserted_ids)
-        return res
+        return {idx: _id for idx, _id in enumerate(result.inserted_ids)}
     if opname in ('deleteOne', 'deleteMany'):
         return {'deletedCount': result.deleted_count}
     if opname in ('updateOne', 'updateMany', 'replaceOne'):
