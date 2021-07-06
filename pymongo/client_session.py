@@ -44,6 +44,8 @@ guaranteed monotonic reads, even when reading from replica set secondaries.
 Transactions
 ============
 
+.. versionadded:: 3.7
+
 MongoDB 4.0 adds support for transactions on replica set primaries. A
 transaction is associated with a :class:`ClientSession`. To start a transaction
 on a session, use :meth:`ClientSession.start_transaction` in a with-statement.
@@ -76,22 +78,54 @@ see the `MongoDB server's documentation for transactions
 A session may only have a single active transaction at a time, multiple
 transactions on the same session can be executed in sequence.
 
-.. versionadded:: 3.7
-
 Sharded Transactions
 ^^^^^^^^^^^^^^^^^^^^
 
+.. versionadded:: 3.9
+
 PyMongo 3.9 adds support for transactions on sharded clusters running MongoDB
-4.2. Sharded transactions have the same API as replica set transactions.
+>=4.2. Sharded transactions have the same API as replica set transactions.
 When running a transaction against a sharded cluster, the session is
 pinned to the mongos server selected for the first operation in the
 transaction. All subsequent operations that are part of the same transaction
 are routed to the same mongos server. When the transaction is completed, by
 running either commitTransaction or abortTransaction, the session is unpinned.
 
-.. versionadded:: 3.9
-
 .. mongodoc:: transactions
+
+Snapshot Reads
+==============
+
+.. versionadded:: 3.12
+
+MongoDB 5.0 adds support for snapshot reads. Snapshot reads are requested by
+passing the ``snapshot`` option to
+:meth:`~pymongo.mongo_client.MongoClient.start_session`.
+If ``snapshot`` is True, all read operations that use this session read data
+from the same snapshot timestamp. The server chooses the latest
+majority-committed snapshot timestamp when executing the first read operation
+using the session. Subsequent reads on this session read from the same
+snapshot timestamp. Snapshot reads are also supported when reading from
+replica set secondaries.
+
+.. code-block:: python
+
+  # Each read using this session reads data from the same point in time.
+  with client.start_session(snapshot=True) as session:
+      order = orders.find_one({"sku": "abc123"}, session=session)
+      inventory = inventory.find_one({"sku": "abc123"}, session=session)
+
+Snapshot Reads Limitations
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Snapshot reads sessions are incompatible with ``causal_consistency=True``.
+Only the following read operations are supported in a snapshot reads session:
+
+- :meth:`~pymongo.collection.Collection.find`
+- :meth:`~pymongo.collection.Collection.find_one`
+- :meth:`~pymongo.collection.Collection.aggregate`
+- :meth:`~pymongo.collection.Collection.count_documents`
+- :meth:`~pymongo.collection.Collection.distinct` (on unsharded collections)
 
 Classes
 =======
