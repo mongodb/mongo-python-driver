@@ -97,7 +97,7 @@ functions:
             # If this was a patch build, doing a fresh clone would not actually test the patch
             cp -R ${PROJECT_DIRECTORY}/ $DRIVERS_TOOLS
           else
-            git clone git://github.com/mongodb-labs/drivers-evergreen-tools.git $DRIVERS_TOOLS
+            git clone git://github.com/ShaneHarvey/drivers-evergreen-tools.git --branch DRIVERS-1560-allow-mock-kms-port $DRIVERS_TOOLS
           fi
           echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
 
@@ -359,6 +359,47 @@ functions:
            PYTHON_BINARY=${PYTHON_BINARY} sh ${PROJECT_DIRECTORY}/.evergreen/run-doctests.sh
 
   "run tests":
+    # If testing encryption start the mock KMS servers.
+    - command: shell.exec
+      type: system
+      params:
+        working_dir: src
+        background: true
+        script: |
+          if [ -n "${test_encryption}" ]; then
+            ${PREPARE_SHELL}
+            cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
+            . ./activate_venv.sh
+            cd ${DRIVERS_TOOLS}/.evergreen/csfle
+            cat <<EOF > kms_setup.json
+            {
+                "kms_ca_file": "ca.pem",
+                "kms_cert_file": "expired.pem",
+                "kms_port": "8000"
+            }
+          EOF
+            mongo --nodb mock_kms.js
+          fi
+    - command: shell.exec
+      type: system
+      params:
+        working_dir: src
+        background: true
+        script: |
+          if [ -n "${test_encryption}" ]; then
+            ${PREPARE_SHELL}
+            cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
+            . ./activate_venv.sh
+            cd ${DRIVERS_TOOLS}/.evergreen/csfle
+            cat <<EOF > kms_setup.json
+            {
+                "kms_ca_file": "ca.pem",
+                "kms_cert_file": "wrong-host.pem",
+                "kms_port": "8001"
+            }
+          EOF
+            mongo --nodb mock_kms.js
+          fi
     - command: shell.exec
       type: test
       params:
