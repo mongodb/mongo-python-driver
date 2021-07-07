@@ -75,7 +75,8 @@ class TestDataLakeProse(IntegrationTest):
         self.assertEqual(succeeded.command_name, 'killCursors')
 
         self.assertIn(cursor_id, started.command["cursors"])
-        target_ns = ".".join([started['$db'], started['killCursors']])
+        target_ns = ".".join([started.command['$db'],
+                              started.command['killCursors']])
         self.assertEqual(cursor_ns, target_ns)
 
         self.assertIn(cursor_id, succeeded.reply["cursorsKilled"])
