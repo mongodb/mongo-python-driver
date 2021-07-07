@@ -19,10 +19,12 @@ import sys
 
 sys.path[0:0] = [""]
 
+from pymongo.auth import MECHANISMS
 from test import client_context, unittest, IntegrationTest
 from test.crud_v2_format import TestCrudV2
 from test.utils import (
-    rs_or_single_client, OvertCommandListener, TestCreator)
+    rs_or_single_client, OvertCommandListener, TestCreator,
+    _mongo_client)
 
 
 # Location of JSON test specifications.
@@ -66,6 +68,16 @@ class TestDataLakeProse(IntegrationTest):
         self.assertEqual(started.command["cursor"]["ns"], cursor_ns)
         self.assertIn(cursor_id, succeeded.reply["cursorsKilled"])
 
+    # Test no auth
+    def test_2(self):
+        client = _mongo_client(None, None, authenticate=False)
+        client.admin.command('ping')
+
+    # Test with auth
+    def test_3(self):
+        for mechanism in ['SCRAM-SHA-1', 'SCRAM-SHA-256']:
+            client = rs_or_single_client(authMechanism=mechanism)
+            client.admin.command('ping')
 
 
 class DataLakeTestSpec(TestCrudV2):
