@@ -74,7 +74,7 @@ class CommandCursor(object):
         if self.__id and not already_killed:
             cursor_id = self.__id
             address = _CursorAddress(
-                self.__address, self.__collection.full_name)
+                self.__address, self.__ns)
         else:
             # Skip killCursors.
             cursor_id = 0
