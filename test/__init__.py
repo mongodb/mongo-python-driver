@@ -292,6 +292,7 @@ class ClientContext(object):
             build_info = self.client.admin.command('buildInfo')
             print(build_info)
             if 'dataLake' in build_info:
+                print(build_info)
                 self.is_data_lake = True
                 self.auth_enabled = True
                 self.client = self._connect(
