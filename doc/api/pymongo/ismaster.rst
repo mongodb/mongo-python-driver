@@ -1,7 +1,7 @@
 :orphan:
 
-:mod:`ismaster` -- A wrapper for ismaster command responses.
-============================================================
+:mod:`ismaster` -- **DEPRECATED** A wrapper for hello command responses.
+========================================================================
 
 .. automodule:: pymongo.ismaster
 

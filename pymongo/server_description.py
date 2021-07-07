@@ -15,8 +15,8 @@
 """Represent one server the driver is connected to."""
 
 from bson import EPOCH_NAIVE
-from pymongo.server_type import SERVER_TYPE
 from pymongo.ismaster import IsMaster
+from pymongo.server_type import SERVER_TYPE
 from pymongo.monotonic import time as _time
 
 
@@ -25,9 +25,12 @@ class ServerDescription(object):
 
     :Parameters:
       - `address`: A (host, port) pair
-      - `ismaster`: Optional IsMaster instance
+      - `ismaster`: Optional Hello instance
       - `round_trip_time`: Optional float
       - `error`: Optional, the last error attempting to connect to the server
+
+    .. warning:: The `ismaster` parameter will be renamed to `hello` in PyMongo
+      4.0.
     """
 
     __slots__ = (
@@ -46,37 +49,36 @@ class ServerDescription(object):
             round_trip_time=None,
             error=None):
         self._address = address
-        if not ismaster:
-            ismaster = IsMaster({})
+        hello = ismaster or IsMaster({})
 
-        self._server_type = ismaster.server_type
-        self._all_hosts = ismaster.all_hosts
-        self._tags = ismaster.tags
-        self._replica_set_name = ismaster.replica_set_name
-        self._primary = ismaster.primary
-        self._max_bson_size = ismaster.max_bson_size
-        self._max_message_size = ismaster.max_message_size
-        self._max_write_batch_size = ismaster.max_write_batch_size
-        self._min_wire_version = ismaster.min_wire_version
-        self._max_wire_version = ismaster.max_wire_version
-        self._set_version = ismaster.set_version
-        self._election_id = ismaster.election_id
-        self._cluster_time = ismaster.cluster_time
-        self._is_writable = ismaster.is_writable
-        self._is_readable = ismaster.is_readable
-        self._ls_timeout_minutes = ismaster.logical_session_timeout_minutes
+        self._server_type = hello.server_type
+        self._all_hosts = hello.all_hosts
+        self._tags = hello.tags
+        self._replica_set_name = hello.replica_set_name
+        self._primary = hello.primary
+        self._max_bson_size = hello.max_bson_size
+        self._max_message_size = hello.max_message_size
+        self._max_write_batch_size = hello.max_write_batch_size
+        self._min_wire_version = hello.min_wire_version
+        self._max_wire_version = hello.max_wire_version
+        self._set_version = hello.set_version
+        self._election_id = hello.election_id
+        self._cluster_time = hello.cluster_time
+        self._is_writable = hello.is_writable
+        self._is_readable = hello.is_readable
+        self._ls_timeout_minutes = hello.logical_session_timeout_minutes
         self._round_trip_time = round_trip_time
-        self._me = ismaster.me
+        self._me = hello.me
         self._last_update_time = _time()
         self._error = error
-        self._topology_version = ismaster.topology_version
+        self._topology_version = hello.topology_version
         if error:
             if hasattr(error, 'details') and isinstance(error.details, dict):
                 self._topology_version = error.details.get('topologyVersion')
 
-        if ismaster.last_write_date:
+        if hello.last_write_date:
             # Convert from datetime to seconds.
-            delta = ismaster.last_write_date - EPOCH_NAIVE
+            delta = hello.last_write_date - EPOCH_NAIVE
             self._last_write_date = delta.total_seconds()
         else:
             self._last_write_date = None

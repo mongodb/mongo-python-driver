@@ -41,7 +41,7 @@ class SimpleOp(threading.Thread):
         self.passed = False
 
     def run(self):
-        self.client.db.command('ismaster')
+        self.client.db.command('ping')
         self.passed = True  # No exception raised.
 
 
@@ -121,10 +121,10 @@ class TestMongosLoadBalancing(MockClientTest):
 
         def f():
             try:
-                client.db.command('ismaster')
+                client.db.command('ping')
             except AutoReconnect:
                 # Second attempt succeeds.
-                client.db.command('ismaster')
+                client.db.command('ping')
 
             passed.append(True)
 
@@ -151,23 +151,23 @@ class TestMongosLoadBalancing(MockClientTest):
                          writable_addresses(topology))
 
         # No error
-        client.admin.command('ismaster')
+        client.admin.command('ping')
 
         client = connected(self.mock_client(localThresholdMS=0))
         self.assertEqual(0, client.local_threshold_ms)
         # No error
-        client.db.command('ismaster')
+        client.db.command('ping')
         # Our chosen mongos goes down.
         client.kill_host('%s:%s' % next(iter(client.nodes)))
         try:
-            client.db.command('ismaster')
+            client.db.command('ping')
         except:
             pass
 
         # We eventually connect to a new mongos.
         def connect_to_new_mongos():
             try:
-                return client.db.command('ismaster')
+                return client.db.command('ping')
             except AutoReconnect:
                 pass
         wait_until(connect_to_new_mongos, 'connect to a new mongos')

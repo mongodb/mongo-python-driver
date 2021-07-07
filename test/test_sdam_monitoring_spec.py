@@ -26,7 +26,7 @@ from pymongo import monitoring
 from pymongo.common import clean_node
 from pymongo.errors import (ConnectionFailure,
                             NotPrimaryError)
-from pymongo.ismaster import IsMaster
+from pymongo.hello import Hello
 from pymongo.monitor import Monitor
 from pymongo.server_description import ServerDescription
 from pymongo.topology_description import TOPOLOGY_TYPE
@@ -196,8 +196,8 @@ def create_test(scenario_def):
                 for (source, response) in phase.get('responses', []):
                     source_address = clean_node(source)
                     topology.on_change(ServerDescription(
-                        address=source_address,
-                        ismaster=IsMaster(response),
+                        source_address,
+                        Hello(response),
                         round_trip_time=0))
 
                 expected_results = phase['outcome']['events']
@@ -326,10 +326,10 @@ class TestSdamMonitoring(IntegrationTest):
     def test_network_error_publishes_events(self):
         self._test_app_error({'closeConnection': True}, ConnectionFailure)
 
-    # In 4.4+, NotMaster errors from failCommand don't cause SDAM state
+    # In 4.4+, NotPrimary errors from failCommand don't cause SDAM state
     # changes because topologyVersion is not incremented.
     @client_context.require_version_max(4, 3)
-    def test_not_master_error_publishes_events(self):
+    def test_not_primary_error_publishes_events(self):
         self._test_app_error({'errorCode': 10107, 'closeConnection': False,
                               'errorLabels': ['RetryableWriteError']},
                              NotPrimaryError)

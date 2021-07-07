@@ -23,6 +23,7 @@ from pymongo.operations import *
 from pymongo.errors import (ConfigurationError,
                             InvalidOperation,
                             OperationFailure)
+from pymongo.hello_compat import HelloCompat
 from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   unittest,
@@ -37,8 +38,8 @@ class BulkTestBase(IntegrationTest):
     def setUpClass(cls):
         super(BulkTestBase, cls).setUpClass()
         cls.coll = cls.db.test
-        ismaster = client_context.client.admin.command('ismaster')
-        cls.has_write_commands = (ismaster.get("maxWireVersion", 0) > 1)
+        hello = client_context.client.admin.command(HelloCompat.LEGACY_CMD)
+        cls.has_write_commands = (hello.get("maxWireVersion", 0) > 1)
 
     def setUp(self):
         super(BulkTestBase, self).setUp()

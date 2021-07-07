@@ -18,7 +18,7 @@ import sys
 
 sys.path[0:0] = [""]
 
-from pymongo.ismaster import IsMaster
+from pymongo.hello import Hello
 from pymongo.server import Server
 from pymongo.server_description import ServerDescription
 from test import unittest
@@ -26,8 +26,8 @@ from test import unittest
 
 class TestServer(unittest.TestCase):
     def test_repr(self):
-        ismaster = IsMaster({'ok': 1})
-        sd = ServerDescription(('localhost', 27017), ismaster)
+        hello = Hello({'ok': 1})
+        sd = ServerDescription(('localhost', 27017), hello)
         server = Server(sd, pool=object(), monitor=object())
         self.assertTrue('Standalone' in str(server))
 

@@ -21,36 +21,37 @@ sys.path[0:0] = [""]
 from bson.objectid import ObjectId
 from bson.int64 import Int64
 from pymongo.server_type import SERVER_TYPE
-from pymongo.ismaster import IsMaster
+from pymongo.hello import Hello
+from pymongo.hello_compat import HelloCompat
 from pymongo.server_description import ServerDescription
 from test import unittest
 
 address = ('localhost', 27017)
 
 
-def parse_ismaster_response(doc):
-    ismaster_response = IsMaster(doc)
-    return ServerDescription(address, ismaster_response)
+def parse_hello_response(doc):
+    hello_response = Hello(doc)
+    return ServerDescription(address, hello_response)
 
 
 class TestServerDescription(unittest.TestCase):
     def test_unknown(self):
-        # Default, no ismaster_response.
+        # Default, no hello_response.
         s = ServerDescription(address)
         self.assertEqual(SERVER_TYPE.Unknown, s.server_type)
         self.assertFalse(s.is_writable)
         self.assertFalse(s.is_readable)
 
     def test_mongos(self):
-        s = parse_ismaster_response({'ok': 1, 'msg': 'isdbgrid'})
+        s = parse_hello_response({'ok': 1, 'msg': 'isdbgrid'})
         self.assertEqual(SERVER_TYPE.Mongos, s.server_type)
         self.assertEqual('Mongos', s.server_type_name)
         self.assertTrue(s.is_writable)
         self.assertTrue(s.is_readable)
 
     def test_primary(self):
-        s = parse_ismaster_response(
-            {'ok': 1, 'ismaster': True, 'setName': 'rs'})
+        s = parse_hello_response(
+            {'ok': 1, HelloCompat.LEGACY_CMD: True, 'setName': 'rs'})
 
         self.assertEqual(SERVER_TYPE.RSPrimary, s.server_type)
         self.assertEqual('RSPrimary', s.server_type_name)
@@ -58,8 +59,8 @@ class TestServerDescription(unittest.TestCase):
         self.assertTrue(s.is_readable)
 
     def test_secondary(self):
-        s = parse_ismaster_response(
-            {'ok': 1, 'ismaster': False, 'secondary': True, 'setName': 'rs'})
+        s = parse_hello_response(
+            {'ok': 1, HelloCompat.LEGACY_CMD: False, 'secondary': True, 'setName': 'rs'})
 
         self.assertEqual(SERVER_TYPE.RSSecondary, s.server_type)
         self.assertEqual('RSSecondary', s.server_type_name)
@@ -67,8 +68,8 @@ class TestServerDescription(unittest.TestCase):
         self.assertTrue(s.is_readable)
 
     def test_arbiter(self):
-        s = parse_ismaster_response(
-            {'ok': 1, 'ismaster': False, 'arbiterOnly': True, 'setName': 'rs'})
+        s = parse_hello_response(
+            {'ok': 1, HelloCompat.LEGACY_CMD: False, 'arbiterOnly': True, 'setName': 'rs'})
 
         self.assertEqual(SERVER_TYPE.RSArbiter, s.server_type)
         self.assertEqual('RSArbiter', s.server_type_name)
@@ -76,15 +77,15 @@ class TestServerDescription(unittest.TestCase):
         self.assertFalse(s.is_readable)
 
     def test_other(self):
-        s = parse_ismaster_response(
-            {'ok': 1, 'ismaster': False, 'setName': 'rs'})
+        s = parse_hello_response(
+            {'ok': 1, HelloCompat.LEGACY_CMD: False, 'setName': 'rs'})
 
         self.assertEqual(SERVER_TYPE.RSOther, s.server_type)
         self.assertEqual('RSOther', s.server_type_name)
 
-        s = parse_ismaster_response({
+        s = parse_hello_response({
             'ok': 1,
-            'ismaster': False,
+            HelloCompat.LEGACY_CMD: False,
             'secondary': True,
             'hidden': True,
             'setName': 'rs'})
@@ -94,7 +95,7 @@ class TestServerDescription(unittest.TestCase):
         self.assertFalse(s.is_readable)
 
     def test_ghost(self):
-        s = parse_ismaster_response({'ok': 1, 'isreplicaset': True})
+        s = parse_hello_response({'ok': 1, 'isreplicaset': True})
 
         self.assertEqual(SERVER_TYPE.RSGhost, s.server_type)
         self.assertEqual('RSGhost', s.server_type_name)
@@ -102,9 +103,9 @@ class TestServerDescription(unittest.TestCase):
         self.assertFalse(s.is_readable)
 
     def test_fields(self):
-        s = parse_ismaster_response({
+        s = parse_hello_response({
             'ok': 1,
-            'ismaster': False,
+            HelloCompat.LEGACY_CMD: False,
             'secondary': True,
             'primary': 'a:27017',
             'tags': {'a': 'foo', 'b': 'baz'},
@@ -125,34 +126,34 @@ class TestServerDescription(unittest.TestCase):
         self.assertEqual(5, s.max_wire_version)
 
     def test_default_max_message_size(self):
-        s = parse_ismaster_response({
+        s = parse_hello_response({
             'ok': 1,
-            'ismaster': True,
+            HelloCompat.LEGACY_CMD: True,
             'maxBsonObjectSize': 2})
 
         # Twice max_bson_size.
         self.assertEqual(4, s.max_message_size)
 
     def test_standalone(self):
-        s = parse_ismaster_response({'ok': 1, 'ismaster': True})
+        s = parse_hello_response({'ok': 1, HelloCompat.LEGACY_CMD: True})
         self.assertEqual(SERVER_TYPE.Standalone, s.server_type)
 
         # Mongod started with --slave.
-        s = parse_ismaster_response({'ok': 1, 'ismaster': False})
+        s = parse_hello_response({'ok': 1, HelloCompat.LEGACY_CMD: False})
         self.assertEqual(SERVER_TYPE.Standalone, s.server_type)
         self.assertTrue(s.is_writable)
         self.assertTrue(s.is_readable)
 
     def test_ok_false(self):
-        s = parse_ismaster_response({'ok': 0, 'ismaster': True})
+        s = parse_hello_response({'ok': 0, HelloCompat.LEGACY_CMD: True})
         self.assertEqual(SERVER_TYPE.Unknown, s.server_type)
         self.assertFalse(s.is_writable)
         self.assertFalse(s.is_readable)
 
     def test_all_hosts(self):
-        s = parse_ismaster_response({
+        s = parse_hello_response({
             'ok': 1,
-            'ismaster': True,
+            HelloCompat.LEGACY_CMD: True,
             'hosts': ['a'],
             'passives': ['b:27018'],
             'arbiters': ['c']
@@ -163,15 +164,15 @@ class TestServerDescription(unittest.TestCase):
             sorted(s.all_hosts))
 
     def test_repr(self):
-        s = parse_ismaster_response({'ok': 1, 'msg': 'isdbgrid'})
+        s = parse_hello_response({'ok': 1, 'msg': 'isdbgrid'})
         self.assertEqual(repr(s),
                          "<ServerDescription ('localhost', 27017)"
                          " server_type: Mongos, rtt: None>")
 
     def test_topology_version(self):
         topology_version = {'processId': ObjectId(), 'counter': Int64('0')}
-        s = parse_ismaster_response(
-            {'ok': 1, 'ismaster': True, 'setName': 'rs',
+        s = parse_hello_response(
+            {'ok': 1, HelloCompat.LEGACY_CMD: True, 'setName': 'rs',
              'topologyVersion': topology_version})
 
         self.assertEqual(SERVER_TYPE.RSPrimary, s.server_type)
@@ -184,8 +185,8 @@ class TestServerDescription(unittest.TestCase):
 
     def test_topology_version_not_present(self):
         # No topologyVersion field.
-        s = parse_ismaster_response(
-            {'ok': 1, 'ismaster': True, 'setName': 'rs'})
+        s = parse_hello_response(
+            {'ok': 1, HelloCompat.LEGACY_CMD: True, 'setName': 'rs'})
 
         self.assertEqual(SERVER_TYPE.RSPrimary, s.server_type)
         self.assertEqual(None, s.topology_version)

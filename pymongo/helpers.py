@@ -28,6 +28,7 @@ from pymongo.errors import (CursorNotFound,
                             WriteError,
                             WriteConcernError,
                             WTimeoutError)
+from pymongo.hello_compat import HelloCompat
 
 # From the SDAM spec, the "node is shutting down" codes.
 _SHUTDOWN_CODES = frozenset([
@@ -151,7 +152,7 @@ def _check_command_response(response, max_wire_version,
     if code is not None:
         if code in _NOT_MASTER_CODES:
             raise NotPrimaryError(errmsg, response)
-    elif "not master" in errmsg or "node is recovering" in errmsg:
+    elif HelloCompat.LEGACY_ERROR in errmsg or "node is recovering" in errmsg:
         raise NotPrimaryError(errmsg, response)
 
     # Other errors
@@ -183,7 +184,7 @@ def _check_gle_response(result, max_wire_version):
     if error_msg is None:
         return result
 
-    if error_msg.startswith("not master"):
+    if error_msg.startswith(HelloCompat.LEGACY_ERROR):
         raise NotPrimaryError(error_msg, result)
 
     details = result

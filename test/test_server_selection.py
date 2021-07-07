@@ -20,6 +20,7 @@ import sys
 from pymongo import MongoClient
 from pymongo import ReadPreference
 from pymongo.errors import ServerSelectionTimeoutError
+from pymongo.hello_compat import HelloCompat
 from pymongo.server_selectors import writable_server_selector
 from pymongo.settings import TopologySettings
 from pymongo.topology import Topology
@@ -75,7 +76,7 @@ class TestCustomServerSelectorFunction(IntegrationTest):
 
         # Wait the node list to be fully populated.
         def all_hosts_started():
-            return (len(client.admin.command('isMaster')['hosts']) ==
+            return (len(client.admin.command(HelloCompat.LEGACY_CMD)['hosts']) ==
                     len(client._topology._description.readable_servers))
 
         wait_until(all_hosts_started, 'receive heartbeat from all hosts')

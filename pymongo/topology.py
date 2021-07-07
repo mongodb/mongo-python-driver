@@ -29,6 +29,7 @@ else:
 from pymongo import (common,
                      helpers,
                      periodic_executor)
+from pymongo.ismaster import IsMaster
 from pymongo.pool import PoolOptions
 from pymongo.topology_description import (updated_topology_description,
                                           _updated_topology_description_srv_polling,
@@ -41,7 +42,6 @@ from pymongo.errors import (ConnectionFailure,
                             OperationFailure,
                             ServerSelectionTimeoutError,
                             WriteError)
-from pymongo.ismaster import IsMaster
 from pymongo.monitor import SrvMonitor
 from pymongo.monotonic import time as _time
 from pymongo.server import Server
@@ -276,7 +276,7 @@ class Topology(object):
         td_old = self._description
         sd_old = td_old._server_descriptions[server_description.address]
         if _is_stale_server_description(sd_old, server_description):
-            # This is a stale isMaster response. Ignore it.
+            # This is a stale hello response. Ignore it.
             return
 
         suppress_event = ((self._publish_server or self._publish_tp)
@@ -316,10 +316,10 @@ class Topology(object):
         self._condition.notify_all()
 
     def on_change(self, server_description, reset_pool=False):
-        """Process a new ServerDescription after an ismaster call completes."""
+        """Process a new ServerDescription after a hello call completes."""
         # We do no I/O holding the lock.
         with self._lock:
-            # Monitors may continue working on ismaster calls for some time
+            # Monitors may continue working on hello calls for some time
             # after a call to Topology.close, so this method may be called at
             # any time. Ensure the topology is open before processing the
             # change.
@@ -634,7 +634,7 @@ class Topology(object):
             # Clear the pool.
             server.reset(service_id)
             # "When a client marks a server Unknown from `Network error when
-            # reading or writing`_, clients MUST cancel the isMaster check on
+            # reading or writing`_, clients MUST cancel the hello check on
             # that server and close the current monitoring connection."
             server._monitor.cancel_check()
         elif issubclass(exc_type, OperationFailure):

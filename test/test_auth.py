@@ -28,6 +28,7 @@ sys.path[0:0] = [""]
 
 from pymongo import MongoClient, monitoring
 from pymongo.auth import HAVE_KERBEROS, _build_credentials_tuple
+from pymongo.hello_compat import HelloCompat
 from pymongo.errors import OperationFailure
 from pymongo.read_preferences import ReadPreference
 from pymongo.saslprep import HAVE_STRINGPREP
@@ -184,7 +185,7 @@ class TestGSSAPI(unittest.TestCase):
         client = MongoClient(mech_uri)
         client[GSSAPI_DB].collection.find_one()
 
-        set_name = client.admin.command('ismaster').get('setName')
+        set_name = client.admin.command(HelloCompat.LEGACY_CMD).get('setName')
         if set_name:
             if not self.service_realm_required:
                 # Without authMechanismProperties
@@ -250,7 +251,7 @@ class TestGSSAPI(unittest.TestCase):
             thread.join()
             self.assertTrue(thread.success)
 
-        set_name = client.admin.command('ismaster').get('setName')
+        set_name = client.admin.command(HelloCompat.LEGACY_CMD).get('setName')
         if set_name:
             client = MongoClient(GSSAPI_HOST,
                                  GSSAPI_PORT,
@@ -298,7 +299,7 @@ class TestSASLPlain(unittest.TestCase):
         client = MongoClient(uri)
         client.ldap.test.find_one()
 
-        set_name = client.admin.command('ismaster').get('setName')
+        set_name = client.admin.command(HelloCompat.LEGACY_CMD).get('setName')
         if set_name:
             client = MongoClient(SASL_HOST,
                                  SASL_PORT,
@@ -346,8 +347,8 @@ class TestSASLPlain(unittest.TestCase):
         bad_user = MongoClient(auth_string('not-user', SASL_PASS))
         bad_pwd = MongoClient(auth_string(SASL_USER, 'not-pwd'))
         # OperationFailure raised upon connecting.
-        self.assertRaises(OperationFailure, bad_user.admin.command, 'ismaster')
-        self.assertRaises(OperationFailure, bad_pwd.admin.command, 'ismaster')
+        self.assertRaises(OperationFailure, bad_user.admin.command, HelloCompat.LEGACY_CMD)
+        self.assertRaises(OperationFailure, bad_pwd.admin.command, HelloCompat.LEGACY_CMD)
 
 
 class TestSCRAMSHA1(unittest.TestCase):
@@ -611,7 +612,7 @@ class TestSCRAM(unittest.TestCase):
     def test_cache(self):
         client = single_client()
         # Force authentication.
-        client.admin.command('ismaster')
+        client.admin.command('ping')
         all_credentials = client._MongoClient__all_credentials
         credentials = all_credentials.get('admin')
         cache = credentials.cache

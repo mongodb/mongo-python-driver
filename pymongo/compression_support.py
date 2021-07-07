@@ -34,7 +34,7 @@ try:
 except ImportError:
     _HAVE_ZSTD = False
 
-from pymongo.hello import HelloCompat
+from pymongo.hello_compat import HelloCompat
 from pymongo.monitoring import _SENSITIVE_COMMANDS
 
 _SUPPORTED_COMPRESSORS = set(["snappy", "zlib", "zstd"])

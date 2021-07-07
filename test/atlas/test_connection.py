@@ -55,7 +55,7 @@ def connect(uri):
         raise Exception("Must set env variable to test.")
     client = pymongo.MongoClient(uri)
     # No TLS error
-    client.admin.command('ismaster')
+    client.admin.command('ping')
     # No auth error
     client.test.test.count_documents({})
 

@@ -175,8 +175,8 @@ class MongoClient(common.BaseObject):
             from pymongo.errors import ConnectionFailure
             client = MongoClient()
             try:
-                # The ismaster command is cheap and does not require auth.
-                client.admin.command('ismaster')
+                # The ping command is cheap and does not require auth.
+                client.admin.command('ping')
             except ConnectionFailure:
                 print("Server not available")
 

@@ -189,7 +189,7 @@ class TestRunCommand(PerformanceTest, unittest.TestCase):
     def do_task(self):
         command = self.client.perftest.command
         for _ in range(NUM_DOCS):
-            command("ismaster")
+            command("ping")
 
 
 class TestDocument(PerformanceTest):

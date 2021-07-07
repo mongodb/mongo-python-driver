@@ -43,6 +43,10 @@ Deprecations
   :meth:`~pymongo.database.Database.command` helper directly.
 - Deprecated :exc:`~pymongo.errors.NotMasterError`. Users should
   use :exc:`~pymongo.errors.NotPrimaryError` instead.
+- Deprecated :class:`~pymongo.ismaster.IsMaster` and :mod:`~pymongo.ismaster`
+  which will be removed in PyMongo 4.0 and are replaced by
+  :class:`~pymongo.hello.Hello` and :mod:`~pymongo.hello` which provide the
+  same API. 
 
 .. _PYTHON-2466: https://jira.mongodb.org/browse/PYTHON-2466
 .. _PYTHON-1690: https://jira.mongodb.org/browse/PYTHON-1690

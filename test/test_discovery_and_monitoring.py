@@ -31,7 +31,7 @@ from pymongo.errors import (AutoReconnect,
                             OperationFailure)
 from pymongo.helpers import (_check_command_response,
                              _check_write_command_response)
-from pymongo.ismaster import IsMaster
+from pymongo.hello import Hello
 from pymongo.server_description import ServerDescription, SERVER_TYPE
 from pymongo.settings import TopologySettings
 from pymongo.topology import Topology, _ErrorContext
@@ -99,9 +99,9 @@ def create_mock_topology(uri, monitor_class=MockMonitor):
     return c
 
 
-def got_ismaster(topology, server_address, ismaster_response):
+def got_hello(topology, server_address, hello_response):
     server_description = ServerDescription(
-        server_address, IsMaster(ismaster_response), 0)
+        server_address, Hello(hello_response), 0)
     topology.on_change(server_description)
 
 
@@ -224,7 +224,7 @@ def create_test(scenario_def):
             description = phase.get('description', str(i))
             with assertion_context('phase: %s' % (description,)):
                 for response in phase.get('responses', []):
-                    got_ismaster(
+                    got_hello(
                         c, common.partition_node(response[0]), response[1])
 
                 for app_error in phase.get('applicationErrors', []):
@@ -262,12 +262,12 @@ class TestClusterTimeComparison(unittest.TestCase):
         def send_cluster_time(time, inc, should_update):
             old = t.max_cluster_time()
             new = {'clusterTime': Timestamp(time, inc)}
-            got_ismaster(t,
-                         ('host', 27017),
-                         {'ok': 1,
-                          'minWireVersion': 0,
-                          'maxWireVersion': 6,
-                          '$clusterTime': new})
+            got_hello(t,
+                      ('host', 27017),
+                      {'ok': 1,
+                       'minWireVersion': 0,
+                       'maxWireVersion': 6,
+                       '$clusterTime': new})
 
             actual = t.max_cluster_time()
             if should_update:

@@ -433,13 +433,13 @@ can be changed to this with PyMongo 2.9 or later:
   >>> from pymongo.errors import ConnectionFailure
   >>> client = MongoClient(connect=False)
   >>> try:
-  ...     result = client.admin.command("ismaster")
+  ...     result = client.admin.command("ping")
   ... except ConnectionFailure:
   ...     print("Server not available")
   >>>
 
 Any operation can be used to determine if the server is available. We choose
-the "ismaster" command here because it is cheap and does not require auth, so
+the "ping" command here because it is cheap and does not require auth, so
 it is a simple way to check whether the server is available.
 
 The max_pool_size parameter is removed
@@ -516,9 +516,10 @@ Removed features with no migration path
 MasterSlaveConnection is removed
 ................................
 
-Master slave deployments are deprecated in MongoDB. Starting with MongoDB 3.0
-a replica set can have up to 50 members and that limit is likely to be
-removed in later releases. We recommend migrating to replica sets instead.
+Master slave deployments are no longer supported by MongoDB. Starting with
+MongoDB 3.0 a replica set can have up to 50 members and that limit is likely
+to be removed in later releases. We recommend migrating to replica sets
+instead.
 
 Requests are removed
 ....................

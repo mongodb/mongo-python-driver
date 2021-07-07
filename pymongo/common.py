@@ -60,7 +60,7 @@ MIN_SUPPORTED_SERVER_VERSION = "2.6"
 MIN_SUPPORTED_WIRE_VERSION = 2
 MAX_SUPPORTED_WIRE_VERSION = 13
 
-# Frequency to call ismaster on servers, in seconds.
+# Frequency to call hello on servers, in seconds.
 HEARTBEAT_FREQUENCY = 10
 
 # Frequency to process kill-cursors, in seconds. See MongoClient.close_cursor.
@@ -75,7 +75,7 @@ EVENTS_QUEUE_FREQUENCY = 1
 # longest it is willing to wait for a new primary to be found.
 SERVER_SELECTION_TIMEOUT = 30
 
-# Spec requires at least 500ms between ismaster calls.
+# Spec requires at least 500ms between hello calls.
 MIN_HEARTBEAT_INTERVAL = 0.5
 
 # Spec requires at least 60s between SRV rescans.
@@ -132,13 +132,13 @@ def partition_node(node):
 
 
 def clean_node(node):
-    """Split and normalize a node name from an ismaster response."""
+    """Split and normalize a node name from a hello response."""
     host, port = partition_node(node)
 
     # Normalize hostname to lowercase, since DNS is case-insensitive:
     # http://tools.ietf.org/html/rfc4343
     # This prevents useless rediscovery if "foo.com" is in the seed list but
-    # "FOO.com" is in the ismaster response.
+    # "FOO.com" is in the hello response.
     return host.lower(), port
 
 

@@ -53,6 +53,7 @@ from pymongo.errors import (ConfigurationError,
                             NotPrimaryError,
                             OperationFailure,
                             ProtocolError)
+from pymongo.hello_compat import HelloCompat
 from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
@@ -1561,7 +1562,7 @@ class _OpReply(object):
             error_object = bson.BSON(self.documents).decode()
             # Fake the ok field if it doesn't exist.
             error_object.setdefault("ok", 0)
-            if error_object["$err"].startswith("not master"):
+            if error_object["$err"].startswith(HelloCompat.LEGACY_ERROR):
                 raise NotPrimaryError(error_object["$err"], error_object)
             elif error_object.get("code") == 50:
                 raise ExecutionTimeout(error_object.get("$err"),

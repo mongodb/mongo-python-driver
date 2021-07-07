@@ -1253,7 +1253,7 @@ class TestSessionsNotSupported(IntegrationTest):
 class TestClusterTime(IntegrationTest):
     def setUp(self):
         super(TestClusterTime, self).setUp()
-        if '$clusterTime' not in client_context.ismaster:
+        if '$clusterTime' not in client_context.hello:
             raise SkipTest('$clusterTime not supported')
 
     @ignore_deprecations

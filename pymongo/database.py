@@ -30,6 +30,7 @@ from pymongo.errors import (CollectionInvalid,
                             ConfigurationError,
                             InvalidName,
                             OperationFailure)
+from pymongo.hello_compat import HelloCompat
 from pymongo.message import _first_batch
 from pymongo.read_preferences import ReadPreference
 from pymongo.son_manipulator import SONManipulator
@@ -1230,7 +1231,7 @@ class Database(common.BaseObject):
         error_msg = error.get("err", "")
         if error_msg is None:
             return None
-        if error_msg.startswith("not master"):
+        if error_msg.startswith(HelloCompat.LEGACY_ERROR):
             # Reset primary server and request check, if another thread isn't
             # doing so already.
             primary = self.__client.primary

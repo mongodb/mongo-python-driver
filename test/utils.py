@@ -38,6 +38,7 @@ from pymongo import (MongoClient,
                      monitoring, operations, read_preferences)
 from pymongo.collection import ReturnDocument
 from pymongo.errors import ConfigurationError, OperationFailure
+from pymongo.hello_compat import HelloCompat
 from pymongo.monitoring import _SENSITIVE_COMMANDS
 from pymongo.pool import (_CancellationContext,
                           PoolOptions,
@@ -543,19 +544,19 @@ def ensure_all_connected(client):
     Depending on the use-case, the caller may need to clear any event listeners
     that are configured on the client.
     """
-    ismaster = client.admin.command("isMaster")
-    if 'setName' not in ismaster:
+    hello = client.admin.command(HelloCompat.LEGACY_CMD)
+    if 'setName' not in hello:
         raise ConfigurationError("cluster is not a replica set")
 
-    target_host_list = set(ismaster['hosts'])
-    connected_host_list = set([ismaster['me']])
+    target_host_list = set(hello['hosts'])
+    connected_host_list = set([hello['me']])
     admindb = client.get_database('admin')
 
-    # Run isMaster until we have connected to each host at least once.
+    # Run legacy hello until we have connected to each host at least once.
     while connected_host_list != target_host_list:
-        ismaster = admindb.command("isMaster",
+        hello = admindb.command(HelloCompat.LEGACY_CMD,
                                    read_preference=ReadPreference.SECONDARY)
-        connected_host_list.update([ismaster["me"]])
+        connected_host_list.update([hello["me"]])
 
 
 def one(s):
@@ -674,13 +675,6 @@ def server_started_with_nojournal(client):
     return server_started_with_option(client, '--nojournal', 'nojournal')
 
 
-def server_is_master_with_slave(client):
-    command_line = get_command_line(client)
-    if 'parsed' in command_line:
-        return command_line['parsed'].get('master', False)
-    return '--master' in command_line['argv']
-
-
 def drop_collections(db):
     # Drop all non-system collections in this database.
     for coll in db.list_collection_names(
@@ -703,10 +697,10 @@ def joinall(threads):
 def connected(client):
     """Convenience to wait for a newly-constructed client to connect."""
     with warnings.catch_warnings():
-        # Ignore warning that "ismaster" is always routed to primary even
+        # Ignore warning that "ping" is always routed to primary even
         # if client's read preference isn't PRIMARY.
         warnings.simplefilter("ignore", UserWarning)
-        client.admin.command('ismaster')  # Force connection.
+        client.admin.command('ping')  # Force connection.
 
     return client
 
@@ -748,7 +742,7 @@ def repl_set_step_down(client, **kwargs):
     client.admin.command(cmd)
 
 def is_mongos(client):
-    res = client.admin.command('ismaster')
+    res = client.admin.command(HelloCompat.LEGACY_CMD)
     return res.get('msg', '') == 'isdbgrid'
 
 

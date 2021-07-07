@@ -46,7 +46,7 @@ def _connect(options):
            "&tlsCAFile=%s&%s") % (TIMEOUT_MS, CA_FILE, options)
     print(uri)
     client = pymongo.MongoClient(uri)
-    client.admin.command('ismaster')
+    client.admin.command('ping')
 
 
 if not hasattr(unittest.TestCase, 'assertRaisesRegex'):

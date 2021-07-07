@@ -42,6 +42,7 @@ from pymongo.errors import (BulkWriteError,
                             OperationFailure,
                             WriteConcernError,
                             WTimeoutError)
+from pymongo.hello_compat import HelloCompat
 from pymongo.message import _CursorAddress
 from pymongo.operations import IndexModel
 from pymongo.son_manipulator import (AutoReference,
@@ -495,8 +496,8 @@ class TestLegacy(IntegrationTest):
         # Tests legacy update.
         db = self.db
         db.drop_collection("test")
-        ismaster = self.client.admin.command('ismaster')
-        used_write_commands = (ismaster.get("maxWireVersion", 0) > 1)
+        hello = self.client.admin.command(HelloCompat.LEGACY_CMD)
+        used_write_commands = (hello.get("maxWireVersion", 0) > 1)
 
         db.test.insert({'_id': 1})
         result = db.test.update({'_id': 1}, {'$set': {'x': 1}})
@@ -2265,8 +2266,8 @@ class TestLegacyBulkWriteConcern(BulkTestBase):
         cls.w = client_context.w
         cls.secondary = None
         if cls.w > 1:
-            for member in client_context.ismaster['hosts']:
-                if member != client_context.ismaster['primary']:
+            for member in client_context.hello['hosts']:
+                if member != client_context.hello['primary']:
                     cls.secondary = single_client(*partition_node(member))
                     break
 

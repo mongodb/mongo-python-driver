@@ -1,4 +1,4 @@
-# Copyright 2014-present MongoDB, Inc.
+# Copyright 2021-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,19 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""**DEPRECATED** Parse a response to the 'ismaster' command.
+"""Compatibility enum of working with hello and legay hello."""
 
-.. versionchanged:: 3.12
-  This module is deprecated and will be removed in PyMongo 4.0.
-"""
+class HelloCompat:
+    CMD = 'hello'
+    LEGACY_CMD = 'ismaster'
+    PRIMARY = 'isWritablePrimary'
+    LEGACY_PRIMARY = 'ismaster'
+    LEGACY_ERROR = 'not master'
 
-from pymongo.hello import *
-
-class IsMaster(Hello):
-    """**DEPRECATED** A hello response from the server.
-
-    .. versionchanged:: 3.12
-       Deprecated. Use :class:`~pymongo.hello.Hello` instead to parse
-       server hello responses.
-    """
-    pass

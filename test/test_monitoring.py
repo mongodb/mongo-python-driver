@@ -62,7 +62,7 @@ class TestCommandMonitoring(PyMongoTestCase):
         self.listener.results.clear()
 
     def test_started_simple(self):
-        self.client.pymongo_test.command('ismaster')
+        self.client.pymongo_test.command('ping')
         results = self.listener.results
         started = results['started'][0]
         succeeded = results['succeeded'][0]
@@ -71,14 +71,14 @@ class TestCommandMonitoring(PyMongoTestCase):
             isinstance(succeeded, monitoring.CommandSucceededEvent))
         self.assertTrue(
             isinstance(started, monitoring.CommandStartedEvent))
-        self.assertEqualCommand(SON([('ismaster', 1)]), started.command)
-        self.assertEqual('ismaster', started.command_name)
+        self.assertEqualCommand(SON([('ping', 1)]), started.command)
+        self.assertEqual('ping', started.command_name)
         self.assertEqual(self.client.address, started.connection_id)
         self.assertEqual('pymongo_test', started.database_name)
         self.assertTrue(isinstance(started.request_id, int))
 
     def test_succeeded_simple(self):
-        self.client.pymongo_test.command('ismaster')
+        self.client.pymongo_test.command('ping')
         results = self.listener.results
         started = results['started'][0]
         succeeded = results['succeeded'][0]
@@ -87,7 +87,7 @@ class TestCommandMonitoring(PyMongoTestCase):
             isinstance(started, monitoring.CommandStartedEvent))
         self.assertTrue(
             isinstance(succeeded, monitoring.CommandSucceededEvent))
-        self.assertEqual('ismaster', succeeded.command_name)
+        self.assertEqual('ping', succeeded.command_name)
         self.assertEqual(self.client.address, succeeded.connection_id)
         self.assertEqual(1, succeeded.reply.get('ok'))
         self.assertTrue(isinstance(succeeded.request_id, int))
@@ -431,11 +431,11 @@ class TestCommandMonitoring(PyMongoTestCase):
 
     @client_context.require_replica_set
     @client_context.require_secondaries_count(1)
-    def test_not_master_error(self):
+    def test_not_primary_error(self):
         address = next(iter(client_context.client.secondaries))
         client = single_client(*address, event_listeners=[self.listener])
         # Clear authentication command results from the listener.
-        client.admin.command('ismaster')
+        client.admin.command('ping')
         self.listener.results.clear()
         error = None
         try:
@@ -1208,7 +1208,7 @@ class TestCommandMonitoring(PyMongoTestCase):
             'data': {
                 'failCommands': ['insert'],
                 'closeConnection': False,
-                'errorCode': 10107,  # NotMaster
+                'errorCode': 10107,  # NotPrimary
             },
         }
         with self.fail_point(insert_command_error):
@@ -1395,7 +1395,7 @@ class TestGlobalListener(PyMongoTestCase):
         monitoring.register(cls.listener)
         cls.client = single_client()
         # Get one (authenticated) socket in the pool.
-        cls.client.pymongo_test.command('ismaster')
+        cls.client.pymongo_test.command('ping')
 
     @classmethod
     def tearDownClass(cls):
@@ -1406,7 +1406,7 @@ class TestGlobalListener(PyMongoTestCase):
         self.listener.results.clear()
 
     def test_simple(self):
-        self.client.pymongo_test.command('ismaster')
+        self.client.pymongo_test.command('ping')
         results = self.listener.results
         started = results['started'][0]
         succeeded = results['succeeded'][0]
@@ -1415,8 +1415,8 @@ class TestGlobalListener(PyMongoTestCase):
             isinstance(succeeded, monitoring.CommandSucceededEvent))
         self.assertTrue(
             isinstance(started, monitoring.CommandStartedEvent))
-        self.assertEqualCommand(SON([('ismaster', 1)]), started.command)
-        self.assertEqual('ismaster', started.command_name)
+        self.assertEqualCommand(SON([('ping', 1)]), started.command)
+        self.assertEqual('ping', started.command_name)
         self.assertEqual(self.client.address, started.connection_id)
         self.assertEqual('pymongo_test', started.database_name)
         self.assertTrue(isinstance(started.request_id, int))
@@ -1427,27 +1427,27 @@ class TestEventClasses(PyMongoTestCase):
     def test_command_event_repr(self):
         request_id, connection_id, operation_id = 1, ('localhost', 27017), 2
         event = monitoring.CommandStartedEvent(
-            {'isMaster': 1}, 'admin', request_id, connection_id, operation_id)
+            {'ping': 1}, 'admin', request_id, connection_id, operation_id)
         self.assertEqual(
             repr(event),
             "<CommandStartedEvent ('localhost', 27017) db: 'admin', "
-            "command: 'isMaster', operation_id: 2, service_id: None>")
+            "command: 'ping', operation_id: 2, service_id: None>")
         delta = datetime.timedelta(milliseconds=100)
         event = monitoring.CommandSucceededEvent(
-            delta, {'ok': 1}, 'isMaster', request_id, connection_id,
+            delta, {'ok': 1}, 'ping', request_id, connection_id,
             operation_id)
         self.assertEqual(
             repr(event),
             "<CommandSucceededEvent ('localhost', 27017) "
-            "command: 'isMaster', operation_id: 2, duration_micros: 100000, "
+            "command: 'ping', operation_id: 2, duration_micros: 100000, "
             "service_id: None>")
         event = monitoring.CommandFailedEvent(
-            delta, {'ok': 0}, 'isMaster', request_id, connection_id,
+            delta, {'ok': 0}, 'ping', request_id, connection_id,
             operation_id)
         self.assertEqual(
             repr(event),
             "<CommandFailedEvent ('localhost', 27017) "
-            "command: 'isMaster', operation_id: 2, duration_micros: 100000, "
+            "command: 'ping', operation_id: 2, duration_micros: 100000, "
             "failure: {'ok': 0}, service_id: None>")
 
     def test_server_heartbeat_event_repr(self):

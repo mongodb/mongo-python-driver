@@ -20,7 +20,8 @@ import threading
 sys.path[0:0] = [""]
 
 from pymongo.errors import ConnectionFailure
-from pymongo.ismaster import IsMaster
+from pymongo.hello import Hello
+from pymongo.hello_compat import HelloCompat
 from pymongo.monitor import Monitor
 from test import unittest, client_knobs, IntegrationTest
 from test.utils import (HeartbeatEventListener, MockPool, single_client,
@@ -38,7 +39,7 @@ class TestHeartbeatMonitoring(IntegrationTest):
                 def _check_with_socket(self, *args, **kwargs):
                     if isinstance(responses[1], Exception):
                         raise responses[1]
-                    return IsMaster(responses[1]), 99
+                    return Hello(responses[1]), 99
 
             m = single_client(
                 h=uri,
@@ -62,7 +63,7 @@ class TestHeartbeatMonitoring(IntegrationTest):
                 self.assertEqual(actual.connection_id,
                                  responses[0])
                 if expected != 'ServerHeartbeatStartedEvent':
-                    if isinstance(actual.reply, IsMaster):
+                    if isinstance(actual.reply, Hello):
                         self.assertEqual(actual.duration, 99)
                         self.assertEqual(actual.reply._doc, responses[1])
                     else:
@@ -74,7 +75,7 @@ class TestHeartbeatMonitoring(IntegrationTest):
     def test_standalone(self):
         responses = (('a', 27017),
                      {
-                         "ismaster": True,
+                         HelloCompat.LEGACY_CMD: True,
                          "maxWireVersion": 4,
                          "minWireVersion": 0,
                          "ok": 1

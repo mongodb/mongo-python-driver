@@ -27,7 +27,7 @@ from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
                             NetworkTimeout,
-                            NotMasterError,
+                            NotPrimaryError,
                             OperationFailure)
 from pymongo.mongo_client import MongoClient
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
@@ -61,10 +61,10 @@ class TestReplicaSetClientBase(IntegrationTest):
         cls.name = client_context.replica_set_name
         cls.w = client_context.w
 
-        ismaster = client_context.ismaster
-        cls.hosts = set(partition_node(h.lower()) for h in ismaster['hosts'])
+        hello = client_context.hello
+        cls.hosts = set(partition_node(h.lower()) for h in hello['hosts'])
         cls.arbiters = set(partition_node(h)
-                           for h in ismaster.get("arbiters", []))
+                           for h in hello.get("arbiters", []))
 
         repl_set_status = client_context.client.admin.command(
             'replSetGetStatus')
@@ -202,7 +202,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
         port = client_context.port
         c = rs_client("mongodb://[::1]:%d" % (port,))
 
-        # Client switches to IPv4 once it has first ismaster response.
+        # Client switches to IPv4 once it has first hello response.
         msg = 'discovered primary with IPv4 address "%r"' % (self.primary,)
         wait_until(lambda: c.primary == self.primary, msg)
 
@@ -275,16 +275,16 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
         self._test_kill_cursor_explicit(ReadPreference.SECONDARY)
 
     @client_context.require_secondaries_count(1)
-    def test_not_master_error(self):
+    def test_not_primary_error(self):
         secondary_address = one(self.secondaries)
         direct_client = single_client(*secondary_address)
 
-        with self.assertRaises(NotMasterError):
+        with self.assertRaises(NotPrimaryError):
             direct_client.pymongo_test.collection.insert_one({})
 
         db = direct_client.get_database(
             "pymongo_test", write_concern=WriteConcern(w=0))
-        with self.assertRaises(NotMasterError):
+        with self.assertRaises(NotPrimaryError):
             db.collection.insert_one({})
 
 
@@ -305,7 +305,7 @@ class TestReplicaSetWireVersion(MockClientTest):
         c.set_wire_version_range('a:1', 3, 7)
         c.set_wire_version_range('b:2', 2, 3)
         c.set_wire_version_range('c:3', 3, 4)
-        c.db.command('ismaster')  # Connect.
+        c.db.command('ping')  # Connect.
 
         # A secondary doesn't overlap with us.
         c.set_wire_version_range('b:2',
@@ -335,7 +335,7 @@ class TestReplicaSetClientInternalIPs(MockClientTest):
             standalones=[],
             members=['a:1'],
             mongoses=[],
-            ismaster_hosts=['internal-ip:27017'],
+            hello_hosts=['internal-ip:27017'],
             host='a:1',
             replicaSet='rs',
             serverSelectionTimeoutMS=100)

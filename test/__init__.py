@@ -48,6 +48,7 @@ import pymongo.errors
 from bson.son import SON
 from pymongo import common, message
 from pymongo.common import partition_node
+from pymongo.hello_compat import HelloCompat
 from pymongo.server_api import ServerApi
 from pymongo.ssl_support import HAVE_SSL, validate_cert_reqs
 from pymongo.uri_parser import parse_uri
@@ -240,8 +241,8 @@ class ClientContext(object):
             self.default_client_options["server_api"] = server_api
 
     @property
-    def ismaster(self):
-        return self.client.admin.command('isMaster')
+    def hello(self):
+        return self.client.admin.command(HelloCompat.LEGACY_CMD)
 
     def _connect(self, host, port, **kwargs):
         # Jython takes a long time to connect.
@@ -254,11 +255,11 @@ class ClientContext(object):
             host, port, serverSelectionTimeoutMS=timeout_ms, **kwargs)
         try:
             try:
-                client.admin.command('isMaster')  # Can we connect?
+                client.admin.command('ping')  # Can we connect?
             except pymongo.errors.OperationFailure as exc:
                 # SERVER-32063
                 self.connection_attempts.append(
-                    'connected client %r, but isMaster failed: %s' % (
+                    'connected client %r, but hello failed: %s' % (
                         client, exc))
             else:
                 self.connection_attempts.append(
@@ -328,11 +329,11 @@ class ClientContext(object):
                 # MMAPv1 does not support retryWrites=True.
                 self.default_client_options['retryWrites'] = False
 
-            ismaster = self.ismaster
-            self.sessions_enabled = 'logicalSessionTimeoutMinutes' in ismaster
+            hello = self.hello
+            self.sessions_enabled = 'logicalSessionTimeoutMinutes' in hello
 
-            if 'setName' in ismaster:
-                self.replica_set_name = str(ismaster['setName'])
+            if 'setName' in hello:
+                self.replica_set_name = str(hello['setName'])
                 self.is_rs = True
                 if self.auth_enabled:
                     # It doesn't matter which member we use as the seed here.
@@ -350,18 +351,18 @@ class ClientContext(object):
                         replicaSet=self.replica_set_name,
                         **self.default_client_options)
 
-                # Get the authoritative ismaster result from the primary.
-                ismaster = self.ismaster
+                # Get the authoritative hello result from the primary.
+                hello = self.hello
                 nodes = [partition_node(node.lower())
-                         for node in ismaster.get('hosts', [])]
+                         for node in hello.get('hosts', [])]
                 nodes.extend([partition_node(node.lower())
-                              for node in ismaster.get('passives', [])])
+                              for node in hello.get('passives', [])])
                 nodes.extend([partition_node(node.lower())
-                              for node in ismaster.get('arbiters', [])])
+                              for node in hello.get('arbiters', [])])
                 self.nodes = set(nodes)
             else:
                 self.nodes = set([(host, port)])
-            self.w = len(ismaster.get("hosts", [])) or 1
+            self.w = len(hello.get("hosts", [])) or 1
             self.version = Version.from_client(self.client)
             self.server_parameters = self.client.admin.command(
                 'getParameter', '*')
@@ -377,7 +378,7 @@ class ClientContext(object):
                     if params.get('enableTestCommands') == '1':
                         self.test_commands_enabled = True
 
-            self.is_mongos = (self.ismaster.get('msg') == 'isdbgrid')
+            self.is_mongos = (self.hello.get('msg') == 'isdbgrid')
             self.has_ipv6 = self._server_started_with_ipv6()
             if self.is_mongos:
                 # Check for another mongos on the next port.
@@ -387,8 +388,8 @@ class ClientContext(object):
                 mongos_client = self._connect(*next_address,
                                               **self.default_client_options)
                 if mongos_client:
-                    ismaster = mongos_client.admin.command('ismaster')
-                    if ismaster.get('msg') == 'isdbgrid':
+                    hello = mongos_client.admin.command(HelloCompat.LEGACY_CMD)
+                    if hello.get('msg') == 'isdbgrid':
                         self.mongoses.append(next_address)
 
     def init(self):

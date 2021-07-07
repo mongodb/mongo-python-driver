@@ -258,11 +258,11 @@ class TestCMAP(IntegrationTest):
     def test_2_all_client_pools_have_same_options(self):
         client = rs_or_single_client(**self.POOL_OPTIONS)
         self.addCleanup(client.close)
-        client.admin.command('isMaster')
+        client.admin.command('ping')
         # Discover at least one secondary.
         if client_context.has_secondaries:
             client.admin.command(
-                'isMaster', read_preference=ReadPreference.SECONDARY)
+                'ping', read_preference=ReadPreference.SECONDARY)
         pools = get_pools(client)
         pool_opts = pools[0].opts
 
@@ -286,7 +286,7 @@ class TestCMAP(IntegrationTest):
         self.assertEqual(listener.event_count(PoolCreatedEvent), 1)
 
         # Creates a new connection.
-        client.admin.command('isMaster')
+        client.admin.command('ping')
         self.assertEqual(
             listener.event_count(ConnectionCheckOutStartedEvent), 1)
         self.assertEqual(listener.event_count(ConnectionCreatedEvent), 1)
@@ -295,7 +295,7 @@ class TestCMAP(IntegrationTest):
         self.assertEqual(listener.event_count(ConnectionCheckedInEvent), 1)
 
         # Uses the existing connection.
-        client.admin.command('isMaster')
+        client.admin.command('ping')
         self.assertEqual(
             listener.event_count(ConnectionCheckOutStartedEvent), 2)
         self.assertEqual(listener.event_count(ConnectionCheckedOutEvent), 2)
@@ -319,7 +319,7 @@ class TestCMAP(IntegrationTest):
 
         # Attempt to create a new connection.
         with self.assertRaisesRegex(ConnectionFailure, 'connect failed'):
-            client.admin.command('isMaster')
+            client.admin.command('ping')
 
         self.assertIsInstance(listener.events[0], PoolCreatedEvent)
         self.assertIsInstance(listener.events[1],
@@ -340,7 +340,7 @@ class TestCMAP(IntegrationTest):
 
         # Attempt to create a new connection.
         with self.assertRaisesRegex(OperationFailure, 'failed'):
-            client.admin.command('isMaster')
+            client.admin.command('ping')
 
         self.assertIsInstance(listener.events[0], PoolCreatedEvent)
         self.assertIsInstance(listener.events[1],

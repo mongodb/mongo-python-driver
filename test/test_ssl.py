@@ -30,6 +30,7 @@ from pymongo import MongoClient, ssl_support
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             OperationFailure)
+from pymongo.hello_compat import HelloCompat
 from pymongo.ssl_support import HAVE_SSL, get_ssl_context, validate_cert_reqs, _ssl
 from pymongo.write_concern import WriteConcern
 from test import (IntegrationTest,
@@ -249,7 +250,7 @@ class TestSSL(IntegrationTest):
         client = MongoClient(client_context.host, client_context.port,
                              ssl_cert_reqs=ssl.CERT_NONE,
                              ssl_certfile=CLIENT_PEM)
-        response = client.admin.command('ismaster')
+        response = client.admin.command(HelloCompat.LEGACY_CMD)
         if 'setName' in response:
             client = MongoClient(client_context.pair,
                                  replicaSet=response['setName'],
@@ -273,7 +274,7 @@ class TestSSL(IntegrationTest):
                              ssl_certfile=CLIENT_PEM,
                              ssl_cert_reqs=ssl.CERT_REQUIRED,
                              ssl_ca_certs=CA_PEM)
-        response = client.admin.command('ismaster')
+        response = client.admin.command(HelloCompat.LEGACY_CMD)
         if 'setName' in response:
             if response['primary'].split(":")[0] != 'localhost':
                 raise SkipTest("No hosts in the replicaset for 'localhost'. "
@@ -326,7 +327,7 @@ class TestSSL(IntegrationTest):
                              ssl_cert_reqs=ssl.CERT_OPTIONAL,
                              ssl_ca_certs=CA_PEM)
 
-        response = client.admin.command('ismaster')
+        response = client.admin.command(HelloCompat.LEGACY_CMD)
         if 'setName' in response:
             if response['primary'].split(":")[0] != 'localhost':
                 raise SkipTest("No hosts in the replicaset for 'localhost'. "
@@ -370,7 +371,7 @@ class TestSSL(IntegrationTest):
             else:
                 self.assertFalse(ctx.check_hostname)
 
-        response = self.client.admin.command('ismaster')
+        response = self.client.admin.command(HelloCompat.LEGACY_CMD)
 
         with self.assertRaises(ConnectionFailure):
             connected(MongoClient('server',
@@ -694,7 +695,7 @@ class TestSSL(IntegrationTest):
                          tls=True,
                          tlsCertificateKeyFile=CLIENT_PEM,
                          tlsCAFile=temp_ca_bundle) as client:
-            self.assertTrue(client.admin.command('ismaster'))
+            self.assertTrue(client.admin.command('ping'))
 
 
 if __name__ == "__main__":

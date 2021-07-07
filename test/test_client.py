@@ -50,6 +50,7 @@ from pymongo.errors import (AutoReconnect,
                             OperationFailure,
                             ServerSelectionTimeoutError,
                             WriteConcernError)
+from pymongo.hello_compat import HelloCompat
 from pymongo.monitoring import (ServerHeartbeatListener,
                                 ServerHeartbeatStartedEvent)
 from pymongo.mongo_client import MongoClient
@@ -92,7 +93,6 @@ from test.utils import (assertRaisesExactly,
                         rs_client,
                         rs_or_single_client,
                         rs_or_single_client_noauth,
-                        server_is_master_with_slave,
                         single_client,
                         wait_until)
 
@@ -846,7 +846,7 @@ class TestClient(IntegrationTest):
         self.assertTrue(client._kill_cursors_executor._stopped)
 
         # Reusing the closed client should restart the thread.
-        client.admin.command('isMaster')
+        client.admin.command('ping')
         self.assertFalse(client._kill_cursors_executor._stopped)
 
         # Again, closing the client should stop the thread.
@@ -863,7 +863,7 @@ class TestClient(IntegrationTest):
         self.assertFalse(kc_thread and kc_thread.is_alive())
 
         # Using the client should open topology and start the thread.
-        client.admin.command('isMaster')
+        client.admin.command('ping')
         self.assertTrue(client._topology._opened)
         kc_thread = client._kill_cursors_executor._thread
         self.assertTrue(kc_thread and kc_thread.is_alive())
@@ -1185,9 +1185,6 @@ class TestClient(IntegrationTest):
     @ignore_deprecations
     @client_context.require_no_mongos
     def test_fsync_lock_unlock(self):
-        if server_is_master_with_slave(client_context.client):
-            raise SkipTest('SERVER-7714')
-
         self.assertFalse(self.client.is_locked)
         # async flushing not supported on windows...
         if sys.platform not in ('cygwin', 'win32'):
@@ -1873,11 +1870,11 @@ class TestClientLazyConnect(IntegrationTest):
         c = self._get_client()
 
         # max_bson_size will cause the client to connect.
-        ismaster = c.db.command('ismaster')
-        self.assertEqual(ismaster['maxBsonObjectSize'], c.max_bson_size)
-        if 'maxMessageSizeBytes' in ismaster:
+        hello = c.db.command(HelloCompat.LEGACY_CMD)
+        self.assertEqual(hello['maxBsonObjectSize'], c.max_bson_size)
+        if 'maxMessageSizeBytes' in hello:
             self.assertEqual(
-                ismaster['maxMessageSizeBytes'],
+                hello['maxMessageSizeBytes'],
                 c.max_message_size)
 
 
