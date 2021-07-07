@@ -19,6 +19,7 @@ import copy
 import os
 import traceback
 import socket
+import ssl
 import sys
 import textwrap
 import uuid
@@ -49,6 +50,7 @@ from pymongo.errors import (BulkWriteError,
                             WriteError)
 from pymongo.mongo_client import MongoClient
 from pymongo.operations import InsertOne
+from pymongo.ssl_support import _ssl
 from pymongo.write_concern import WriteConcern
 
 from test import unittest, IntegrationTest, PyMongoTestCase, client_context
@@ -60,6 +62,7 @@ from test.utils import (TestCreator,
                         rs_or_single_client,
                         wait_until)
 from test.utils_spec_runner import SpecRunner
+from test.test_ssl import CA_PEM
 
 
 def get_client_opts(client):
@@ -1629,6 +1632,24 @@ class TestKmsTLSProse(EncryptionIntegrationTest):
     @unittest.skipUnless(any(AWS_CREDS.values()),
                          'AWS environment credentials are not set')
     def setUp(self):
+        if sys.platform == "win32":
+            self.skipTest("Can't test system ca certs on Windows.")
+
+        if (ssl.OPENSSL_VERSION.lower().startswith('libressl') and
+                sys.platform == 'darwin' and not _ssl.IS_PYOPENSSL):
+            self.skipTest(
+                "LibreSSL on OSX doesn't support setting CA certificates "
+                "using SSL_CERT_FILE environment variable.")
+        self.original_certs = os.environ.get('SSL_CERT_FILE')
+        def restore_certs():
+            if self.original_certs is None:
+                os.environ.pop('SSL_CERT_FILE')
+            else:
+                os.environ['SSL_CERT_FILE'] = self.original_certs
+        # Tell OpenSSL where CA certificates live.
+        os.environ['SSL_CERT_FILE'] = CA_PEM
+        self.addCleanup(restore_certs)
+
         self.client_encrypted = ClientEncryption(
             {'aws': AWS_CREDS}, 'keyvault.datakeys', self.client, OPTS)
         self.addCleanup(self.client_encrypted.close)
