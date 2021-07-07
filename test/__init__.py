@@ -95,7 +95,6 @@ COMPRESSORS = os.environ.get("COMPRESSORS")
 MONGODB_API_VERSION = os.environ.get("MONGODB_API_VERSION")
 TEST_LOADBALANCER = bool(os.environ.get("TEST_LOADBALANCER"))
 TEST_SERVERLESS = bool(os.environ.get("TEST_SERVERLESS"))
-MONGODB_URI = os.environ.get("MONGODB_URI")
 SINGLE_MONGOS_LB_URI = os.environ.get("SINGLE_MONGOS_LB_URI")
 MULTI_MONGOS_LB_URI = os.environ.get("MULTI_MONGOS_LB_URI")
 if TEST_LOADBALANCER:
@@ -106,9 +105,10 @@ if TEST_LOADBALANCER:
     host, port = res['nodelist'][0]
     db_user = res['username'] or db_user
     db_pwd = res['password'] or db_pwd
-elif MONGODB_URI:
-    res = parse_uri(MONGODB_URI)
-    host, port = res['nodelist']
+elif TEST_SERVERLESS:
+    host, port = os.environ["MONGODB_URI"], None
+    db_user = os.environ["SERVERLESS_ATLAS_USER"]
+    db_pwd = os.environ["SERVERLESS_ATLAS_PASSWORD"]
 
 
 def is_server_resolvable():
@@ -290,6 +290,7 @@ class ClientContext(object):
             client.close()
 
     def _init_client(self):
+        # import ipdb; ipdb.set_trace()
         self.client = self._connect(host, port)
 
         if self.client is not None:
@@ -315,22 +316,26 @@ class ClientContext(object):
         if self.client:
             self.connected = True
 
-            try:
-                self.cmd_line = self.client.admin.command('getCmdLineOpts')
-            except pymongo.errors.OperationFailure as e:
-                msg = e.details.get('errmsg', '')
-                if e.code == 13 or 'unauthorized' in msg or 'login' in msg:
-                    # Unauthorized.
-                    self.auth_enabled = True
-                else:
-                    raise
+            if TEST_SERVERLESS:
+                self.auth_enabled = True
             else:
-                self.auth_enabled = self._server_started_with_auth()
+                try:
+                    self.cmd_line = self.client.admin.command('getCmdLineOpts')
+                except pymongo.errors.OperationFailure as e:
+                    msg = e.details.get('errmsg', '')
+                    if e.code == 13 or 'unauthorized' in msg or 'login' in msg:
+                        # Unauthorized.
+                        self.auth_enabled = True
+                    else:
+                        raise
+                else:
+                    self.auth_enabled = self._server_started_with_auth()
 
             if self.auth_enabled:
-                # See if db_user already exists.
-                if not self._check_user_provided():
-                    _create_user(self.client.admin, db_user, db_pwd)
+                if not TEST_SERVERLESS:
+                    # See if db_user already exists.
+                    if not self._check_user_provided():
+                        _create_user(self.client.admin, db_user, db_pwd)
 
                 self.client = self._connect(
                     host, port, username=db_user, password=db_pwd,
@@ -340,10 +345,13 @@ class ClientContext(object):
                 # May not have this if OperationFailure was raised earlier.
                 self.cmd_line = self.client.admin.command('getCmdLineOpts')
 
-            self.server_status = self.client.admin.command('serverStatus')
-            if self.storage_engine == "mmapv1":
-                # MMAPv1 does not support retryWrites=True.
-                self.default_client_options['retryWrites'] = False
+            if TEST_SERVERLESS:
+                self.server_status = {}
+            else:
+                self.server_status = self.client.admin.command('serverStatus')
+                if self.storage_engine == "mmapv1":
+                    # MMAPv1 does not support retryWrites=True.
+                    self.default_client_options['retryWrites'] = False
 
             ismaster = self.ismaster
             self.sessions_enabled = 'logicalSessionTimeoutMinutes' in ismaster
@@ -380,33 +388,36 @@ class ClientContext(object):
                 self.nodes = set([(host, port)])
             self.w = len(ismaster.get("hosts", [])) or 1
             self.version = Version.from_client(self.client)
-            self.server_parameters = self.client.admin.command(
-                'getParameter', '*')
 
-            if 'enableTestCommands=1' in self.cmd_line['argv']:
+            if TEST_SERVERLESS:
                 self.test_commands_enabled = True
-            elif 'parsed' in self.cmd_line:
-                params = self.cmd_line['parsed'].get('setParameter', [])
-                if 'enableTestCommands=1' in params:
+                self.has_ipv6 = False
+            else:
+                self.server_parameters = self.client.admin.command(
+                    'getParameter', '*')
+                if 'enableTestCommands=1' in self.cmd_line['argv']:
                     self.test_commands_enabled = True
-                else:
-                    params = self.cmd_line['parsed'].get('setParameter', {})
-                    if params.get('enableTestCommands') == '1':
+                elif 'parsed' in self.cmd_line:
+                    params = self.cmd_line['parsed'].get('setParameter', [])
+                    if 'enableTestCommands=1' in params:
                         self.test_commands_enabled = True
-
-            self.is_mongos = (self.ismaster.get('msg') == 'isdbgrid')
-            self.has_ipv6 = self._server_started_with_ipv6()
-            if self.is_mongos:
-                # Check for another mongos on the next port.
-                address = self.client.address
-                next_address = address[0], address[1] + 1
-                self.mongoses.append(address)
-                mongos_client = self._connect(*next_address,
-                                              **self.default_client_options)
-                if mongos_client:
-                    ismaster = mongos_client.admin.command('ismaster')
-                    if ismaster.get('msg') == 'isdbgrid':
-                        self.mongoses.append(next_address)
+                    else:
+                        params = self.cmd_line['parsed'].get('setParameter', {})
+                        if params.get('enableTestCommands') == '1':
+                            self.test_commands_enabled = True
+                    self.has_ipv6 = self._server_started_with_ipv6()
+                self.is_mongos = (self.ismaster.get('msg') == 'isdbgrid')
+                if self.is_mongos:
+                    # Check for another mongos on the next port.
+                    address = self.client.address
+                    next_address = address[0], address[1] + 1
+                    self.mongoses.append(address)
+                    mongos_client = self._connect(*next_address,
+                                                  **self.default_client_options)
+                    if mongos_client:
+                        ismaster = mongos_client.admin.command('ismaster')
+                        if ismaster.get('msg') == 'isdbgrid':
+                            self.mongoses.append(next_address)
 
     def init(self):
         with self.conn_lock:
@@ -432,7 +443,10 @@ class ClientContext(object):
 
     @property
     def pair(self):
-        return "%s:%d" % (self.host, self.port)
+        if self.port:
+            return "%s:%d" % (self.host, self.port)
+        else:
+            return self.host
 
     @property
     def has_secondaries(self):

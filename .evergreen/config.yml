@@ -415,6 +415,11 @@ functions:
             export SINGLE_MONGOS_LB_URI="${SINGLE_MONGOS_LB_URI}"
             export MULTI_MONGOS_LB_URI="${MULTI_MONGOS_LB_URI}"
           fi
+          if [ -n "${test_serverless}" ]; then
+            export TEST_SERVERLESS=1
+            export SINGLE_MONGOS_LB_URI="${SINGLE_MONGOS_LB_URI}"
+            export MULTI_MONGOS_LB_URI="${MULTI_MONGOS_LB_URI}"
+          fi
 
           PYTHON_BINARY=${PYTHON_BINARY} \
             GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
@@ -426,6 +431,19 @@ functions:
             DATA_LAKE=${DATA_LAKE} \
             MONGODB_API_VERSION=${MONGODB_API_VERSION} \
             bash ${PROJECT_DIRECTORY}/.evergreen/run-tests.sh
+
+  "run serverless tests":
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        script: |
+          ${PREPARE_SHELL}
+          set +o xtrace
+          MONGODB_URI="${MONGODB_URI}" \
+          SERVERLESS_ATLAS_USER="${SERVERLESS_ATLAS_USER}" \
+          SERVERLESS_ATLAS_PASSWORD="${SERVERLESS_ATLAS_PASSWORD}" \
+            sh ${PROJECT_DIRECTORY}/.evergreen/run-serverless-tests.sh
 
   "run enterprise auth tests":
     - command: shell.exec
@@ -836,9 +854,41 @@ post:
   - func: "cleanup"
   - func: "teardown_docker"
 
+task_groups:
+  - name: serverless_task_group
+    setup_group_can_fail_task: true
+    setup_group_timeout_secs: 1800 # 30 minutes
+    setup_group:
+      - func: "fetch source"
+      - func: "prepare resources"
+      - command: shell.exec
+        params:
+          shell: "bash"
+          script: |
+            ${PREPARE_SHELL}
+            set +o xtrace
+            SERVERLESS_DRIVERS_GROUP=${SERVERLESS_DRIVERS_GROUP} \
+            SERVERLESS_API_PUBLIC_KEY=${SERVERLESS_API_PUBLIC_KEY} \
+            SERVERLESS_API_PRIVATE_KEY=${SERVERLESS_API_PRIVATE_KEY} \
+              bash ${DRIVERS_TOOLS}/.evergreen/serverless/create-instance.sh
+      - command: expansions.update
+        params:
+          file: serverless-expansion.yml
+    teardown_group:
+      - command: shell.exec
+        params:
+          script: |
+            ${PREPARE_SHELL}
+            set +o xtrace
+            SERVERLESS_DRIVERS_GROUP=${SERVERLESS_DRIVERS_GROUP} \
+            SERVERLESS_API_PUBLIC_KEY=${SERVERLESS_API_PUBLIC_KEY} \
+            SERVERLESS_API_PRIVATE_KEY=${SERVERLESS_API_PRIVATE_KEY} \
+            SERVERLESS_INSTANCE_NAME=${SERVERLESS_INSTANCE_NAME} \
+              bash ${DRIVERS_TOOLS}/.evergreen/serverless/delete-instance.sh
+    tasks:
+      - ".serverless"
+
 tasks:
-
-
     # Wildcard task. Do you need to find out what tools are available and where?
     # Throw it here, and execute this task on all buildvariants
     - name: getdata
@@ -1183,6 +1233,11 @@ tasks:
             VERSION: "latest"
             TOPOLOGY: "sharded_cluster"
         - func: "run tests"
+
+    - name: "test-serverless"
+      tags: ["serverless"]
+      commands:
+        - func: "run serverless tests"
 
     - name: "test-enterprise-auth"
       tags: ["enterprise-auth"]
@@ -2040,6 +2095,15 @@ axes:
           test_loadbalancer: true
         batchtime: 10080  # 7 days
 
+  - id: serverless
+    display_name: "Serverless"
+    values:
+      - id: "enabled"
+        display_name: "Serverless"
+        variables:
+          test_serverless: true
+        batchtime: 10080  # 7 days
+
 buildvariants:
 - matrix_name: "tests-all"
   matrix_spec:
@@ -2472,6 +2536,15 @@ buildvariants:
   display_name: "Atlas connect ${python-version} ${platform}"
   tasks:
     - name: "atlas-connect"
+
+- matrix_name: "serverless"
+  matrix_spec:
+    platform: awslinux
+    python-version: *amazon1-pythons
+    serverless: "*"
+  display_name: "Serverless ${python-version} ${platform}"
+  tasks:
+    - "serverless_task_group"
 
 - matrix_name: "data-lake-spec-tests"
   matrix_spec:
