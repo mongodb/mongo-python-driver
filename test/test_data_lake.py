@@ -52,7 +52,7 @@ class TestDataLakeProse(IntegrationTest):
         next(cursor)
 
         find_cmd = listener.results["succeeded"][-1]
-        print(find_cmd.command)
+        print(find_cmd.reply)
         self.assertEqual(find_cmd.command_name, "find")
         cursor_id = find_cmd.reply["cursor"]["id"]
         cursor_ns = find_cmd.reply["cursor"]["ns"]
@@ -61,7 +61,7 @@ class TestDataLakeProse(IntegrationTest):
         started = listener.results["started"][-1]
         print(started.command)
         succeeded = listener.results["succeeded"][-1]
-        print(succeeded.command)
+        print(succeeded.reply)
         self.assertEqual(started.command_name, 'killCursors')
         self.assertEqual(succeeded.command_name, 'killCursors')
         self.assertEqual(started.command["cursor"]["id"], cursor_id)
