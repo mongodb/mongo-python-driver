@@ -51,21 +51,23 @@ class TestDataLakeProse(IntegrationTest):
             {}, batch_size=2)
         next(cursor)
 
+        # find command assertions
         find_cmd = listener.results["succeeded"][-1]
-        print(find_cmd.reply)
         self.assertEqual(find_cmd.command_name, "find")
         cursor_id = find_cmd.reply["cursor"]["id"]
         cursor_ns = find_cmd.reply["cursor"]["ns"]
 
+        # killCursors command assertions
         cursor.close()
         started = listener.results["started"][-1]
-        print(started.command)
-        succeeded = listener.results["succeeded"][-1]
-        print(succeeded.reply)
         self.assertEqual(started.command_name, 'killCursors')
+        succeeded = listener.results["succeeded"][-1]
         self.assertEqual(succeeded.command_name, 'killCursors')
-        self.assertEqual(started.command["cursor"]["id"], cursor_id)
-        self.assertEqual(started.command["cursor"]["ns"], cursor_ns)
+
+        self.assertIn(cursor_id, started.command["cursors"])
+        target_ns = ".".join([started['$db'], started['killCursors']])
+        self.assertEqual(cursor_ns, target_ns)
+
         self.assertIn(cursor_id, succeeded.reply["cursorsKilled"])
 
     # Test no auth
