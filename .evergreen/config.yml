@@ -417,8 +417,9 @@ functions:
           fi
           if [ -n "${test_serverless}" ]; then
             export TEST_SERVERLESS=1
-            export SINGLE_MONGOS_LB_URI="${SINGLE_MONGOS_LB_URI}"
-            export MULTI_MONGOS_LB_URI="${MULTI_MONGOS_LB_URI}"
+            export MONGODB_URI="${MONGODB_URI}"
+            export SERVERLESS_ATLAS_USER="${SERVERLESS_ATLAS_USER}"
+            export SERVERLESS_ATLAS_PASSWORD="${SERVERLESS_ATLAS_PASSWORD}"
           fi
 
           PYTHON_BINARY=${PYTHON_BINARY} \
@@ -431,19 +432,6 @@ functions:
             DATA_LAKE=${DATA_LAKE} \
             MONGODB_API_VERSION=${MONGODB_API_VERSION} \
             bash ${PROJECT_DIRECTORY}/.evergreen/run-tests.sh
-
-  "run serverless tests":
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
-          set +o xtrace
-          MONGODB_URI="${MONGODB_URI}" \
-          SERVERLESS_ATLAS_USER="${SERVERLESS_ATLAS_USER}" \
-          SERVERLESS_ATLAS_PASSWORD="${SERVERLESS_ATLAS_PASSWORD}" \
-            sh ${PROJECT_DIRECTORY}/.evergreen/run-serverless-tests.sh
 
   "run enterprise auth tests":
     - command: shell.exec
@@ -1237,7 +1225,7 @@ tasks:
     - name: "test-serverless"
       tags: ["serverless"]
       commands:
-        - func: "run serverless tests"
+        - func: "run tests"
 
     - name: "test-enterprise-auth"
       tags: ["enterprise-auth"]
