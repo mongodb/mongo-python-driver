@@ -19,14 +19,53 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test import client_context, unittest
+from test import client_context, unittest, IntegrationTest
 from test.crud_v2_format import TestCrudV2
-from test.utils import TestCreator
+from test.utils import (
+    rs_or_single_client, OvertCommandListener, TestCreator)
 
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), "data_lake")
+
+
+class TestDataLakeProse(IntegrationTest):
+    # Default test database and collection names.
+    TEST_DB = 'test'
+    TEST_COLLECTION = 'driverdata'
+
+    @classmethod
+    @unittest.skipUnless(client_context.is_data_lake,
+                         'Not connected to Atlas Data Lake')
+    def setUpClass(cls):
+        super(TestDataLakeProse, cls).setUpClass()
+
+    # Test killCursors
+    def test_1(self):
+        listener = OvertCommandListener()
+        client = rs_or_single_client(event_listeners=[listener])
+        cursor = client[self.TEST_DB][self.TEST_COLLECTION].find(
+            {}, batch_size=2)
+        next(cursor)
+
+        find_cmd = listener.results["succeeded"][-1]
+        print(find_cmd.command)
+        self.assertEqual(find_cmd.command_name, "find")
+        cursor_id = find_cmd.reply["cursor"]["id"]
+        cursor_ns = find_cmd.reply["cursor"]["ns"]
+
+        cursor.close()
+        started = listener.results["started"][-1]
+        print(started.command)
+        succeeded = listener.results["succeeded"][-1]
+        print(succeeded.command)
+        self.assertEqual(started.command_name, 'killCursors')
+        self.assertEqual(succeeded.command_name, 'killCursors')
+        self.assertEqual(started.command["cursor"]["id"], cursor_id)
+        self.assertEqual(started.command["cursor"]["ns"], cursor_ns)
+        self.assertIn(cursor_id, succeeded.reply["cursorsKilled"])
+
 
 
 class DataLakeTestSpec(TestCrudV2):
