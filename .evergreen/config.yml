@@ -360,16 +360,16 @@ functions:
 
   "run tests":
     # If testing encryption start the mock KMS servers.
-    # First create the virtualenv upfront.
+    # First create the virtualenv and install dependencies.
     - command: shell.exec
       type: system
       params:
         working_dir: src
         script: |
-          if [ -n "${test_encryption}" ]; then
-            ${PREPARE_SHELL}
-            cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-            . ./activate_venv.sh
+          if [ -n "${test_encryption}" -a "$OS" != "Windows_NT" ]; then
+            . .evergreen/utils.sh
+            createvirtualenv ${python3_binary} venvmockkms
+            python -m pip install boto3
           fi
     # Start the first mock KMS responder.
     - command: shell.exec
@@ -378,10 +378,9 @@ functions:
         working_dir: src
         background: true
         script: |
-          if [ -n "${test_encryption}" ]; then
+          if [ -n "${test_encryption}" -a "$OS" != "Windows_NT" ]; then
             ${PREPARE_SHELL}
-            cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-            . ./activate_venv.sh
+            . ./venvmockkms/bin/activate
             cd ${DRIVERS_TOOLS}/.evergreen/csfle
             python -u lib/kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/expired.pem --port 8000
           fi
@@ -392,10 +391,9 @@ functions:
         working_dir: src
         background: true
         script: |
-          if [ -n "${test_encryption}" ]; then
+          if [ -n "${test_encryption}" -a "$OS" != "Windows_NT" ]; then
             ${PREPARE_SHELL}
-            cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-            . ./activate_venv.sh
+            . ./venvmockkms/bin/activate
             cd ${DRIVERS_TOOLS}/.evergreen/csfle
             python -u lib/kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/wrong-host.pem --port 8001
           fi
