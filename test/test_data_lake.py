@@ -32,6 +32,16 @@ _TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), "data_lake")
 
 
+class TestDataLakeMustConnect(IntegrationTest):
+    def test_connected_to_data_lake(self):
+        if 'DATA_LAKE' not in os.environ:
+            self.skipTest('DATA_LAKE is not set')
+
+        self.assertTrue(client_context.is_data_lake,
+                        'client context.is_data_lake must be True when '
+                        'DATA_LAKE is set')
+
+
 class TestDataLakeProse(IntegrationTest):
     # Default test database and collection names.
     TEST_DB = 'test'
