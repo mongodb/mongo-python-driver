@@ -150,8 +150,6 @@ if [ -z "$DATA_LAKE" ]; then
     TEST_ARGS=""
 else
     TEST_ARGS="-s test.test_data_lake"
-    # Wait for data lake bootstrap to complete
-    sleep 10
 fi
 
 # Don't download unittest-xml-reporting from pypi, which often fails.
