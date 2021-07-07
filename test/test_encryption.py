@@ -1629,17 +1629,15 @@ class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
 
 # https://github.com/mongodb/specifications/tree/master/source/client-side-encryption/tests#kms-tls-tests
 class TestKmsTLSProse(EncryptionIntegrationTest):
+    @unittest.skipIf(sys.platform == 'win32',
+                     "Can't test system ca certs on Windows")
+    @unittest.skipIf(ssl.OPENSSL_VERSION.lower().startswith('libressl') and
+                     sys.platform == 'darwin' and not _ssl.IS_PYOPENSSL,
+                     "LibreSSL on OSX doesn't support setting CA certificates "
+                     "using SSL_CERT_FILE environment variable.")
     @unittest.skipUnless(any(AWS_CREDS.values()),
                          'AWS environment credentials are not set')
     def setUp(self):
-        if sys.platform == "win32":
-            self.skipTest("Can't test system ca certs on Windows.")
-
-        if (ssl.OPENSSL_VERSION.lower().startswith('libressl') and
-                sys.platform == 'darwin' and not _ssl.IS_PYOPENSSL):
-            self.skipTest(
-                "LibreSSL on OSX doesn't support setting CA certificates "
-                "using SSL_CERT_FILE environment variable.")
         self.original_certs = os.environ.get('SSL_CERT_FILE')
         def restore_certs():
             if self.original_certs is None:
@@ -1661,18 +1659,20 @@ class TestKmsTLSProse(EncryptionIntegrationTest):
                   "89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
            "endpoint": "mongodb://127.0.0.1:8000",
         }
-        # with self.assertRaisesRegex(EncryptionError, 'expired'):
-        self.client_encrypted.create_data_key('aws', master_key=key)
+        # certificate verify failed: certificate has expired (_ssl.c:1129)
+        with self.assertRaisesRegex(EncryptionError, 'expired'):
+            self.client_encrypted.create_data_key('aws', master_key=key)
 
     def test_invalid_hostname_in_kms_certificate(self):
         key = {
            "region": "us-east-1",
            "key": "arn:aws:kms:us-east-1:579766882180:key/"
                   "89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
-           "endpoint": "mongodb://localhost:8001",
+           "endpoint": "mongodb://127.0.0.1:8001",
         }
-        # with self.assertRaisesRegex(EncryptionError, 'SANs'):
-        self.client_encrypted.create_data_key('aws', master_key=key)
+        # certificate verify failed: IP address mismatch, certificate is not valid for '127.0.0.1'. (_ssl.c:1129)"
+        with self.assertRaisesRegex(EncryptionError, 'IP address mismatch'):
+            self.client_encrypted.create_data_key('aws', master_key=key)
 
 
 if __name__ == "__main__":
