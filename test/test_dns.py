@@ -142,12 +142,20 @@ class TestParsingErrors(unittest.TestCase):
     def test_invalid_host(self):
         self.assertRaisesRegex(
             ConfigurationError,
-            "Invalid URI host: mongodb",
+            "Invalid URI host: mongodb is not",
             MongoClient, "mongodb+srv://mongodb")
         self.assertRaisesRegex(
             ConfigurationError,
-            "Invalid URI host: mongodb.com",
+            "Invalid URI host: mongodb.com is not",
             MongoClient, "mongodb+srv://mongodb.com")
+        self.assertRaisesRegex(
+            ConfigurationError,
+            "Invalid URI host: an IP address is not",
+            MongoClient, "mongodb+srv://127.0.0.1")
+        self.assertRaisesRegex(
+            ConfigurationError,
+            "Invalid URI host: an IP address is not",
+            MongoClient, "mongodb+srv://[::1]")
 
 
 if __name__ == '__main__':

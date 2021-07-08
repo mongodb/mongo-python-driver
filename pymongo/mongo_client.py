@@ -650,7 +650,10 @@ class MongoClient(common.BaseObject):
         opts = common._CaseInsensitiveDictionary()
         fqdn = None
         for entity in host:
-            if "://" in entity:
+            # A hostname can only include a-z, 0-9, '-' and '.'. If we find a '/'
+            # it must be a URI,
+            # https://en.wikipedia.org/wiki/Hostname#Restrictions_on_valid_host_names
+            if "/" in entity:
                 # Determine connection timeout from kwargs.
                 timeout = keyword_opts.get("connecttimeoutms")
                 if timeout is not None:
