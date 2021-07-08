@@ -524,6 +524,13 @@ class ClientContext(object):
             "Cannot connect to MongoDB on %s" % (self.pair,),
             func=func)
 
+    def require_data_lake(self, func):
+        """Run a test only if we are connected to Atlas Data Lake."""
+        return self._require(
+            lambda: self.is_data_lake,
+            "Not connected to Atlas Data Lake on %s" % (self.pair,),
+            func=func)
+
     def require_no_mmap(self, func):
         """Run a test only if the server is not using the MMAPv1 storage
         engine. Only works for standalone and replica sets; tests are
