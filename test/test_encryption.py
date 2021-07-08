@@ -1659,8 +1659,11 @@ class TestKmsTLSProse(EncryptionIntegrationTest):
                   "89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
            "endpoint": "mongodb://127.0.0.1:8000",
         }
+        # Some examples:
         # certificate verify failed: certificate has expired (_ssl.c:1129)
-        with self.assertRaisesRegex(EncryptionError, 'expired'):
+        # amazon1-2018 Python 3.6: certificate verify failed (_ssl.c:852)
+        with self.assertRaisesRegex(
+                EncryptionError, 'expired|certificate verify failed'):
             self.client_encrypted.create_data_key('aws', master_key=key)
 
     def test_invalid_hostname_in_kms_certificate(self):
@@ -1670,8 +1673,11 @@ class TestKmsTLSProse(EncryptionIntegrationTest):
                   "89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
            "endpoint": "mongodb://127.0.0.1:8001",
         }
+        # Some examples:
         # certificate verify failed: IP address mismatch, certificate is not valid for '127.0.0.1'. (_ssl.c:1129)"
-        with self.assertRaisesRegex(EncryptionError, 'IP address mismatch'):
+        # hostname '127.0.0.1' doesn't match 'wronghost.com'
+        with self.assertRaisesRegex(
+                EncryptionError, 'IP address mismatch|wronghost'):
             self.client_encrypted.create_data_key('aws', master_key=key)
 
 
