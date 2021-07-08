@@ -2529,6 +2529,7 @@ buildvariants:
   matrix_spec:
     platform: awslinux
     python-version: *amazon1-pythons
+    auth-ssl: auth-ssl
     serverless: "*"
   display_name: "Serverless ${python-version} ${platform}"
   tasks:

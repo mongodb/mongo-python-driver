@@ -107,8 +107,7 @@ if TEST_LOADBALANCER:
     db_pwd = res['password'] or db_pwd
 elif TEST_SERVERLESS:
     host, port = os.environ["MONGODB_URI"], None
-    db_user = os.environ["SERVERLESS_ATLAS_USER"]
-    db_pwd = os.environ["SERVERLESS_ATLAS_PASSWORD"]
+    TLS_OPTIONS = {'tls': True}
 
 
 def is_server_resolvable():
