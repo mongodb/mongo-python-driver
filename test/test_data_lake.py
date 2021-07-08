@@ -23,8 +23,7 @@ from pymongo.auth import MECHANISMS
 from test import client_context, unittest, IntegrationTest
 from test.crud_v2_format import TestCrudV2
 from test.utils import (
-    rs_or_single_client, OvertCommandListener, TestCreator,
-    _mongo_client)
+    rs_client_noauth, rs_or_single_client, OvertCommandListener, TestCreator)
 
 
 # Location of JSON test specifications.
@@ -49,10 +48,9 @@ class TestDataLakeProse(IntegrationTest):
     TEST_COLLECTION = 'driverdata'
 
     @classmethod
+    @client_context.require_data_lake
     def setUpClass(cls):
         super(TestDataLakeProse, cls).setUpClass()
-        if not client_context.is_data_lake:
-            raise unittest.SkipTest('Not connected to Atlas Data Lake')
 
     # Test killCursors
     def test_1(self):
@@ -84,14 +82,14 @@ class TestDataLakeProse(IntegrationTest):
 
     # Test no auth
     def test_2(self):
-        client = _mongo_client(None, None, authenticate=False)
+        client = rs_client_noauth()
         client.admin.command('ping')
 
     # Test with auth
     def test_3(self):
         for mechanism in ['SCRAM-SHA-1', 'SCRAM-SHA-256']:
             client = rs_or_single_client(authMechanism=mechanism)
-            client.admin.command('ping')
+            client[self.TEST_DB][self.TEST_COLLECTION].find_one()
 
 
 class DataLakeTestSpec(TestCrudV2):
@@ -100,10 +98,9 @@ class DataLakeTestSpec(TestCrudV2):
     TEST_COLLECTION = 'driverdata'
 
     @classmethod
+    @client_context.require_data_lake
     def setUpClass(cls):
         super(DataLakeTestSpec, cls).setUpClass()
-        if not client_context.is_data_lake:
-            raise unittest.SkipTest('Not connected to Atlas Data Lake')
 
     def setup_scenario(self, scenario_def):
         # Spec tests MUST NOT insert data/drop collection for
