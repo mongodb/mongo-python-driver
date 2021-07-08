@@ -24,6 +24,7 @@ from bson.py3compat import PY3
 
 from pymongo.common import CONNECT_TIMEOUT
 from pymongo.errors import ConfigurationError
+from pymongo._ipaddress import is_ip_address
 
 
 if PY3:
@@ -46,6 +47,9 @@ def _resolve(*args, **kwargs):
     # dnspython 1.X
     return resolver.query(*args, **kwargs)
 
+_INVALID_HOST_MSG = (
+    "Invalid URI host: %s is not a valid hostname for 'mongodb+srv://'. "
+    "Did you mean to use 'mongodb://'?")
 
 class _SrvResolver(object):
     def __init__(self, fqdn, connect_timeout=None):
@@ -53,13 +57,16 @@ class _SrvResolver(object):
         self.__connect_timeout = connect_timeout or CONNECT_TIMEOUT
 
         # Validate the fully qualified domain name.
+        if is_ip_address(fqdn):
+            raise ConfigurationError(_INVALID_HOST_MSG % ("an IP address",))
+
         try:
             self.__plist = self.__fqdn.split(".")[1:]
         except Exception:
-            raise ConfigurationError("Invalid URI host: %s" % (fqdn,))
+            raise ConfigurationError(_INVALID_HOST_MSG % (fqdn,))
         self.__slen = len(self.__plist)
         if self.__slen < 2:
-            raise ConfigurationError("Invalid URI host: %s" % (fqdn,))
+            raise ConfigurationError(_INVALID_HOST_MSG % (fqdn,))
 
     def get_options(self):
         try:

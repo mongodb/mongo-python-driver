@@ -52,6 +52,7 @@ from pymongo.errors import (AutoReconnect,
                             OperationFailure,
                             PyMongoError)
 from pymongo.hello import HelloCompat
+from pymongo._ipaddress import is_ip_address
 from pymongo.ismaster import IsMaster
 from pymongo.monotonic import time as _time
 from pymongo.monitoring import (ConnectionCheckOutFailedReason,
@@ -64,51 +65,6 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
 # Always use our backport so we always have support for IP address matching
 from pymongo.ssl_match_hostname import match_hostname
-
-# For SNI support. According to RFC6066, section 3, IPv4 and IPv6 literals are
-# not permitted for SNI hostname.
-try:
-    from ipaddress import ip_address
-    def is_ip_address(address):
-        try:
-            ip_address(_unicode(address))
-            return True
-        except (ValueError, UnicodeError):
-            return False
-except ImportError:
-    if hasattr(socket, 'inet_pton') and socket.has_ipv6:
-        # Most *nix, recent Windows
-        def is_ip_address(address):
-            try:
-                # inet_pton rejects IPv4 literals with leading zeros
-                # (e.g. 192.168.0.01), inet_aton does not, and we
-                # can connect to them without issue. Use inet_aton.
-                socket.inet_aton(address)
-                return True
-            except socket.error:
-                try:
-                    socket.inet_pton(socket.AF_INET6, address)
-                    return True
-                except socket.error:
-                    return False
-    else:
-        # No inet_pton
-        def is_ip_address(address):
-            try:
-                socket.inet_aton(address)
-                return True
-            except socket.error:
-                if ':' in address:
-                    # ':' is not a valid character for a hostname. If we get
-                    # here a few things have to be true:
-                    #   - We're on a recent version of python 2.7 (2.7.9+).
-                    #     Older 2.7 versions don't support SNI.
-                    #   - We're on Windows XP or some unusual Unix that doesn't
-                    #     have inet_pton.
-                    #   - The application is using IPv6 literals with TLS, which
-                    #     is pretty unusual.
-                    return True
-                return False
 
 try:
     from fcntl import fcntl, F_GETFD, F_SETFD, FD_CLOEXEC

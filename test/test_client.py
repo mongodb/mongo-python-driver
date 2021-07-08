@@ -169,6 +169,20 @@ class ClientUnitTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             MongoClient(maxPoolSize=0)
 
+    def test_uri_detection(self):
+        self.assertRaises(
+            ConfigurationError,
+            MongoClient,
+            "/foo")
+        self.assertRaises(
+            ConfigurationError,
+            MongoClient,
+            "://")
+        self.assertRaises(
+            ConfigurationError,
+            MongoClient,
+            "foo/")
+
     def test_get_db(self):
         def make_db(base, name):
             return base[name]
