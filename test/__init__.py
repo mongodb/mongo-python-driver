@@ -289,7 +289,6 @@ class ClientContext(object):
             client.close()
 
     def _init_client(self):
-        # import ipdb; ipdb.set_trace()
         self.client = self._connect(host, port)
 
         if self.client is not None:
