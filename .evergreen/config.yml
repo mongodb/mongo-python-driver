@@ -310,8 +310,7 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
-          cd ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake
-          DRIVERS_TOOLS="${DRIVERS_TOOLS}" sh build-mongohouse-local.sh
+          sh ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/build-mongohouse-local.sh
     - command: shell.exec
       type: setup
       params:
@@ -319,8 +318,7 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
-          cd ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake
-          DRIVERS_TOOLS="${DRIVERS_TOOLS}" sh run-mongohouse-local.sh
+          sh ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/run-mongohouse-local.sh
 
   "stop mongo-orchestration":
     - command: shell.exec
