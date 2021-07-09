@@ -106,7 +106,10 @@ if TEST_LOADBALANCER:
     db_user = res['username'] or db_user
     db_pwd = res['password'] or db_pwd
 elif TEST_SERVERLESS:
-    host, port = os.environ["MONGODB_URI"], None
+    uri = os.environ["MONGODB_URI"]
+    host = "mongodb://%s:%s@%s" % (
+        db_user, db_pwd, str(uri).lstrip("mongodb://"))
+    port = None
     TLS_OPTIONS = {'tls': True}
 
 
