@@ -164,6 +164,15 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     # Get access to the AWS temporary credentials:
     # CSFLE_AWS_TEMP_ACCESS_KEY_ID, CSFLE_AWS_TEMP_SECRET_ACCESS_KEY, CSFLE_AWS_TEMP_SESSION_TOKEN
     . $DRIVERS_TOOLS/.evergreen/csfle/set-temp-creds.sh
+
+    # Start the mock KMS servers.
+    if [ "$OS" != "Windows_NT" ]; then
+        pushd ${DRIVERS_TOOLS}/.evergreen/csfle
+        python -u lib/kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/expired.pem --port 8000 &
+        python -u lib/kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/wrong-host.pem --port 8001 &
+        trap 'kill $(jobs -p)' EXIT HUP
+        popd
+    fi
 fi
 
 PYTHON_IMPL=$($PYTHON -c "import platform, sys; sys.stdout.write(platform.python_implementation())")
