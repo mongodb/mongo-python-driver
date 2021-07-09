@@ -292,7 +292,7 @@ functions:
             DISABLE_TEST_COMMANDS=${DISABLE_TEST_COMMANDS} \
             ORCHESTRATION_FILE=${ORCHESTRATION_FILE} \
             REQUIRE_API_VERSION=${REQUIRE_API_VERSION} \
-            sh ${DRIVERS_TOOLS}/.evergreen/run-orchestration.sh
+            bash ${DRIVERS_TOOLS}/.evergreen/run-orchestration.sh
     # run-orchestration generates expansion file with the MONGODB_URI for the cluster
     - command: expansions.update
       params:
@@ -310,7 +310,7 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
-          sh ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/build-mongohouse-local.sh
+          bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/build-mongohouse-local.sh
     - command: shell.exec
       type: setup
       params:
@@ -318,7 +318,7 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
-          sh ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/run-mongohouse-local.sh
+          bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/run-mongohouse-local.sh
 
   "stop mongo-orchestration":
     - command: shell.exec
@@ -326,7 +326,7 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
-          sh ${DRIVERS_TOOLS}/.evergreen/stop-orchestration.sh
+          bash ${DRIVERS_TOOLS}/.evergreen/stop-orchestration.sh
 
   "run mod_wsgi tests":
     - command: shell.exec
@@ -336,7 +336,7 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
-          PYTHON_BINARY=${PYTHON_BINARY} MOD_WSGI_VERSION=${MOD_WSGI_VERSION} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} sh ${PROJECT_DIRECTORY}/.evergreen/run-mod-wsgi-tests.sh
+          PYTHON_BINARY=${PYTHON_BINARY} MOD_WSGI_VERSION=${MOD_WSGI_VERSION} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} bash ${PROJECT_DIRECTORY}/.evergreen/run-mod-wsgi-tests.sh
 
   "run mockupdb tests":
     - command: shell.exec
@@ -346,7 +346,7 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
-          PYTHON_BINARY=${PYTHON_BINARY} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} sh ${PROJECT_DIRECTORY}/.evergreen/run-mockupdb-tests.sh
+          PYTHON_BINARY=${PYTHON_BINARY} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} bash ${PROJECT_DIRECTORY}/.evergreen/run-mockupdb-tests.sh
 
   "run doctests":
      - command: shell.exec
@@ -356,7 +356,7 @@ functions:
          script: |
            set -o xtrace
            ${PREPARE_SHELL}
-           PYTHON_BINARY=${PYTHON_BINARY} sh ${PROJECT_DIRECTORY}/.evergreen/run-doctests.sh
+           PYTHON_BINARY=${PYTHON_BINARY} bash ${PROJECT_DIRECTORY}/.evergreen/run-doctests.sh
 
   "run tests":
     - command: shell.exec
@@ -425,7 +425,7 @@ functions:
             SSL=${SSL} \
             DATA_LAKE=${DATA_LAKE} \
             MONGODB_API_VERSION=${MONGODB_API_VERSION} \
-            sh ${PROJECT_DIRECTORY}/.evergreen/run-tests.sh
+            bash ${PROJECT_DIRECTORY}/.evergreen/run-tests.sh
 
   "run enterprise auth tests":
     - command: shell.exec
@@ -435,7 +435,7 @@ functions:
         working_dir: "src"
         script: |
           # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
-          PYTHON_BINARY=${PYTHON_BINARY} SASL_HOST=${sasl_host} SASL_PORT=${sasl_port} SASL_USER=${sasl_user} SASL_PASS=${sasl_pass} SASL_DB=${sasl_db} PRINCIPAL=${principal} GSSAPI_DB=${gssapi_db} KEYTAB_BASE64=${keytab_base64} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} sh ${PROJECT_DIRECTORY}/.evergreen/run-enterprise-auth-tests.sh
+          PYTHON_BINARY=${PYTHON_BINARY} SASL_HOST=${sasl_host} SASL_PORT=${sasl_port} SASL_USER=${sasl_user} SASL_PASS=${sasl_pass} SASL_DB=${sasl_db} PRINCIPAL=${principal} GSSAPI_DB=${gssapi_db} KEYTAB_BASE64=${keytab_base64} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} bash ${PROJECT_DIRECTORY}/.evergreen/run-enterprise-auth-tests.sh
 
   "run atlas tests":
     - command: shell.exec
@@ -705,7 +705,7 @@ functions:
           ${PREPARE_SHELL}
           file="${PROJECT_DIRECTORY}/.evergreen/install-dependencies.sh"
           # Don't use ${file} syntax here because evergreen treats it as an empty expansion.
-          [ -f "$file" ] && sh $file || echo "$file not available, skipping"
+          [ -f "$file" ] && bash $file || echo "$file not available, skipping"
 
   "run-ocsp-test":
     - command: shell.exec
@@ -717,7 +717,7 @@ functions:
           PYTHON_BINARY=${PYTHON_BINARY} \
           CA_FILE="$DRIVERS_TOOLS/.evergreen/ocsp/${OCSP_ALGORITHM}/ca.pem" \
           OCSP_TLS_SHOULD_SUCCEED="${OCSP_TLS_SHOULD_SUCCEED}" \
-          sh ${PROJECT_DIRECTORY}/.evergreen/run-ocsp-tests.sh
+          bash ${PROJECT_DIRECTORY}/.evergreen/run-ocsp-tests.sh
 
   run-valid-ocsp-server:
     - command: shell.exec

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -o xtrace
 set -o errexit
 
