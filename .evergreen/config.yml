@@ -359,32 +359,6 @@ functions:
            PYTHON_BINARY=${PYTHON_BINARY} sh ${PROJECT_DIRECTORY}/.evergreen/run-doctests.sh
 
   "run tests":
-    # If testing encryption start the mock KMS servers.
-    # First create the virtualenv and install dependencies.
-    - command: shell.exec
-      type: setup
-      params:
-        working_dir: src
-        script: |
-          if [ -n "${test_encryption}" -a "$OS" != "Windows_NT" ]; then
-            . .evergreen/utils.sh
-            createvirtualenv ${python3_binary} venvmockkms
-            python -m pip install boto3
-          fi
-    # Start the mock KMS responders.
-    - command: shell.exec
-      type: setup
-      params:
-        working_dir: src
-        background: true
-        script: |
-          if [ -n "${test_encryption}" -a "$OS" != "Windows_NT" ]; then
-            ${PREPARE_SHELL}
-            . ./venvmockkms/bin/activate
-            cd ${DRIVERS_TOOLS}/.evergreen/csfle
-            python -u lib/kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/expired.pem --port 8000 &
-            python -u lib/kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/wrong-host.pem --port 8001
-          fi
     - command: shell.exec
       type: test
       params:
