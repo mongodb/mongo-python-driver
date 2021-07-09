@@ -96,6 +96,7 @@ from test.utils import (assertRaisesExactly,
 
 class ClientUnitTest(unittest.TestCase):
     """MongoClient tests that don't require a server."""
+    RUN_ON_SERVERLESS = False
 
     @classmethod
     @client_context.require_connection

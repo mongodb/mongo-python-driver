@@ -304,6 +304,7 @@ class TestSASLPlain(unittest.TestCase):
 
 
 class TestSCRAMSHA1(unittest.TestCase):
+    RUN_ON_SERVERLESS = False
 
     @client_context.require_auth
     @client_context.require_version_min(2, 7, 2)
@@ -344,6 +345,7 @@ class TestSCRAMSHA1(unittest.TestCase):
 
 # https://github.com/mongodb/specifications/blob/master/source/auth/auth.rst#scram-sha-256-and-mechanism-negotiation
 class TestSCRAM(unittest.TestCase):
+    RUN_ON_SERVERLESS = False
 
     @client_context.require_auth
     @client_context.require_version_min(3, 7, 2)
@@ -572,6 +574,7 @@ class TestSCRAM(unittest.TestCase):
 
 
 class TestAuthURIOptions(unittest.TestCase):
+    RUN_ON_SERVERLESS = False
 
     @client_context.require_auth
     def setUp(self):
