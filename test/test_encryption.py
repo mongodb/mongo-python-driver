@@ -36,6 +36,7 @@ from bson.errors import BSONError
 from bson.json_util import JSONOptions
 from bson.son import SON
 
+from pymongo import encryption
 from pymongo.cursor import CursorType
 from pymongo.encryption import (Algorithm,
                                 ClientEncryption)
@@ -45,6 +46,7 @@ from pymongo.errors import (BulkWriteError,
                             EncryptionError,
                             InvalidOperation,
                             OperationFailure,
+                            ServerSelectionTimeoutError,
                             WriteError)
 from pymongo.mongo_client import MongoClient
 from pymongo.operations import InsertOne
@@ -1580,6 +1582,52 @@ class TestDeadlockProse(EncryptionIntegrationTest):
         self.assertEqual(cev[0].database_name, 'keyvault')
 
         self.assertEqual(len(self.topology_listener.results['opened']), 1)
+
+
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#bypass-spawning-mongocryptd
+class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
+    def test_mongocryptd_bypass_spawn(self):
+        # Lower the mongocryptd timeout to reduce the test run time.
+        self._original_timeout = encryption._MONGOCRYPTD_TIMEOUT_MS
+        encryption._MONGOCRYPTD_TIMEOUT_MS = 500
+        def reset_timeout():
+            encryption._MONGOCRYPTD_TIMEOUT_MS = self._original_timeout
+        self.addCleanup(reset_timeout)
+
+        # Configure the encrypted field via the local schema_map option.
+        schemas = {'db.coll': json_data('external', 'external-schema.json')}
+        opts = AutoEncryptionOpts(
+            {'local': {'key': LOCAL_MASTER_KEY}},
+            'keyvault.datakeys',
+            schema_map=schemas,
+            mongocryptd_bypass_spawn=True,
+            mongocryptd_uri='mongodb://localhost:27027/',
+            mongocryptd_spawn_args=[
+                '--pidfilepath=bypass-spawning-mongocryptd.pid',
+                '--port=27027']
+        )
+        client_encrypted = rs_or_single_client(auto_encryption_opts=opts)
+        self.addCleanup(client_encrypted.close)
+        with self.assertRaisesRegex(EncryptionError, 'Timeout'):
+            client_encrypted.db.coll.insert_one({'encrypted': 'test'})
+
+    def test_bypassAutoEncryption(self):
+        opts = AutoEncryptionOpts(
+            {'local': {'key': LOCAL_MASTER_KEY}},
+            'keyvault.datakeys',
+            bypass_auto_encryption=True,
+            mongocryptd_spawn_args=[
+                '--pidfilepath=bypass-spawning-mongocryptd.pid',
+                '--port=27027']
+        )
+        client_encrypted = rs_or_single_client(auto_encryption_opts=opts)
+        self.addCleanup(client_encrypted.close)
+        client_encrypted.db.coll.insert_one({"unencrypted": "test"})
+        # Validate that mongocryptd was not spawned:
+        mongocryptd_client = MongoClient(
+            'mongodb://localhost:27027/?serverSelectionTimeoutMS=500')
+        with self.assertRaises(ServerSelectionTimeoutError):
+            mongocryptd_client.admin.command('ping')
 
 
 if __name__ == "__main__":
