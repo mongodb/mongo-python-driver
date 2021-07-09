@@ -421,6 +421,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
 
 class TestWriteConcernError(IntegrationTest):
     RUN_ON_LOAD_BALANCER = True
+    RUN_ON_SERVERLESS = True
 
     @classmethod
     @client_context.require_replica_set

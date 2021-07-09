@@ -646,7 +646,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     """
     SCHEMA_VERSION = Version.from_string('1.5')
     RUN_ON_LOAD_BALANCER = True
-    RUN_ON_SERVERLESS = True
 
     @staticmethod
     def should_run_on(run_on_spec):
@@ -1164,7 +1163,8 @@ _SCHEMA_VERSION_MAJOR_TO_MIXIN_CLASS = {
 
 def generate_test_classes(test_path, module=__name__, class_name_prefix='',
                           expected_failures=[],
-                          bypass_test_generation_errors=False):
+                          bypass_test_generation_errors=False,
+                          **kwargs):
     """Method for generating test classes. Returns a dictionary where keys are
     the names of test classes and values are the test class objects."""
     test_klasses = {}
@@ -1205,10 +1205,12 @@ def generate_test_classes(test_path, module=__name__, class_name_prefix='',
                     raise ValueError(
                         "test file '%s' has unsupported schemaVersion '%s'" % (
                             fpath, schema_version))
+                module_dict = {'__module__': module}
+                module_dict.update(kwargs)
                 test_klasses[class_name] = type(
                     class_name,
                     (mixin_class, test_base_class_factory(scenario_def),),
-                    {'__module__': module})
+                    module_dict)
             except Exception:
                 if bypass_test_generation_errors:
                     continue

@@ -89,6 +89,7 @@ def raisesConfigurationErrorForOldMongoDB(func):
 
 
 class TestCollation(unittest.TestCase):
+    RUN_ON_SERVERLESS = False
 
     @classmethod
     @client_context.require_connection
