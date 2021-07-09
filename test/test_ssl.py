@@ -449,45 +449,32 @@ class TestSSL(IntegrationTest):
         #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
         #   --sslWeakCertificateValidation
         #
-        if sys.platform == "win32":
-            raise SkipTest("Can't test system ca certs on Windows.")
-
-        if (ssl.OPENSSL_VERSION.lower().startswith('libressl') and
-                sys.platform == 'darwin' and not _ssl.IS_PYOPENSSL):
-            raise SkipTest(
-                "LibreSSL on OSX doesn't support setting CA certificates "
-                "using SSL_CERT_FILE environment variable.")
-
-        # Tell OpenSSL where CA certificates live.
-        os.environ['SSL_CERT_FILE'] = CA_PEM
-        try:
-            with self.assertRaises(ConnectionFailure):
-                # Server cert is verified but hostname matching fails
-                connected(MongoClient('server',
-                                      ssl=True,
-                                      serverSelectionTimeoutMS=100,
-                                      **self.credentials))
-
-            # Server cert is verified. Disable hostname matching.
+        self.patch_system_certs(CA_PEM)
+        with self.assertRaises(ConnectionFailure):
+            # Server cert is verified but hostname matching fails
             connected(MongoClient('server',
                                   ssl=True,
-                                  ssl_match_hostname=False,
                                   serverSelectionTimeoutMS=100,
                                   **self.credentials))
 
-            # Server cert and hostname are verified.
-            connected(MongoClient('localhost',
-                                  ssl=True,
-                                  serverSelectionTimeoutMS=100,
-                                  **self.credentials))
+        # Server cert is verified. Disable hostname matching.
+        connected(MongoClient('server',
+                              ssl=True,
+                              ssl_match_hostname=False,
+                              serverSelectionTimeoutMS=100,
+                              **self.credentials))
 
-            # Server cert and hostname are verified.
-            connected(
-                MongoClient(
-                    'mongodb://localhost/?ssl=true&serverSelectionTimeoutMS=100',
-                    **self.credentials))
-        finally:
-            os.environ.pop('SSL_CERT_FILE')
+        # Server cert and hostname are verified.
+        connected(MongoClient('localhost',
+                              ssl=True,
+                              serverSelectionTimeoutMS=100,
+                              **self.credentials))
+
+        # Server cert and hostname are verified.
+        connected(
+            MongoClient(
+                'mongodb://localhost/?ssl=true&serverSelectionTimeoutMS=100',
+                **self.credentials))
 
     def test_system_certs_config_error(self):
         ctx = get_ssl_context(

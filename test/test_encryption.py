@@ -19,7 +19,6 @@ import copy
 import os
 import traceback
 import socket
-import ssl
 import sys
 import textwrap
 import uuid
@@ -50,10 +49,14 @@ from pymongo.errors import (BulkWriteError,
                             WriteError)
 from pymongo.mongo_client import MongoClient
 from pymongo.operations import InsertOne
-from pymongo.ssl_support import _ssl
 from pymongo.write_concern import WriteConcern
+from test.test_ssl import CA_PEM
 
-from test import unittest, IntegrationTest, PyMongoTestCase, client_context
+from test import (unittest,
+                  client_context,
+                  IntegrationTest,
+                  PyMongoTestCase,
+                  SystemCertsPatcher)
 from test.utils import (TestCreator,
                         camel_to_snake_args,
                         OvertCommandListener,
@@ -62,7 +65,26 @@ from test.utils import (TestCreator,
                         rs_or_single_client,
                         wait_until)
 from test.utils_spec_runner import SpecRunner
-from test.test_ssl import CA_PEM
+
+try:
+    import certifi
+    HAVE_CERTIFI = True
+except ImportError:
+    HAVE_CERTIFI = False
+
+patcher = None
+
+
+def setUpModule():
+    if sys.platform == 'win32' and HAVE_CERTIFI:
+        # Remove after BUILD-13574.
+        global patcher
+        patcher = SystemCertsPatcher(certifi.where())
+
+
+def tearDownModule():
+    if patcher:
+        patcher.disable()
 
 
 def get_client_opts(client):
@@ -1629,25 +1651,11 @@ class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
 
 # https://github.com/mongodb/specifications/tree/master/source/client-side-encryption/tests#kms-tls-tests
 class TestKmsTLSProse(EncryptionIntegrationTest):
-    @unittest.skipIf(sys.platform == 'win32',
-                     "Can't test system ca certs on Windows")
-    @unittest.skipIf(ssl.OPENSSL_VERSION.lower().startswith('libressl') and
-                     sys.platform == 'darwin' and not _ssl.IS_PYOPENSSL,
-                     "LibreSSL on OSX doesn't support setting CA certificates "
-                     "using SSL_CERT_FILE environment variable.")
     @unittest.skipUnless(any(AWS_CREDS.values()),
                          'AWS environment credentials are not set')
     def setUp(self):
-        self.original_certs = os.environ.get('SSL_CERT_FILE')
-        def restore_certs():
-            if self.original_certs is None:
-                os.environ.pop('SSL_CERT_FILE')
-            else:
-                os.environ['SSL_CERT_FILE'] = self.original_certs
-        # Tell OpenSSL where CA certificates live.
-        os.environ['SSL_CERT_FILE'] = CA_PEM
-        self.addCleanup(restore_certs)
-
+        super(TestKmsTLSProse, self).setUp()
+        self.patch_system_certs(CA_PEM)
         self.client_encrypted = ClientEncryption(
             {'aws': AWS_CREDS}, 'keyvault.datakeys', self.client, OPTS)
         self.addCleanup(self.client_encrypted.close)
