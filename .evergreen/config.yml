@@ -450,11 +450,13 @@ functions:
           export ATLAS_SHRD='${atlas_shrd}'
           export ATLAS_TLS11='${atlas_tls11}'
           export ATLAS_TLS12='${atlas_tls12}'
+          export ATLAS_SERVERLESS='${atlas_serverless}'
           export ATLAS_SRV_FREE='${atlas_srv_free}'
           export ATLAS_SRV_REPL='${atlas_srv_repl}'
           export ATLAS_SRV_SHRD='${atlas_srv_shrd}'
           export ATLAS_SRV_TLS11='${atlas_srv_tls11}'
           export ATLAS_SRV_TLS12='${atlas_srv_tls12}'
+          export ATLAS_SRV_SERVERLESS='${atlas_srv_serverless}'
           EOT
     - command: shell.exec
       type: test
