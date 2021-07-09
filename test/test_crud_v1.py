@@ -32,7 +32,7 @@ from pymongo.operations import (InsertOne,
                                 UpdateOne,
                                 UpdateMany)
 
-from test import unittest, IntegrationTest
+from test import client_context, unittest, IntegrationTest
 from test.utils import (camel_to_snake, camel_to_upper_camel,
                         camel_to_snake_args, drop_collections, TestCreator)
 
@@ -131,8 +131,25 @@ def run_operation(collection, test):
     return result
 
 
+def maybe_skip_test(self, test):
+    """Skip tests that use features not supported by MongoDB serverless."""
+    if not client_context.serverless:
+        return
+
+    if test['operation']['name'] == 'aggregate':
+        for stage in test['operation']['arguments']['pipeline']:
+            if "$out" in stage:
+                self.skipTest("MongoDB Serverless does not support $out")
+
+    if "collation" in test['operation']['arguments']:
+        self.skipTest("MongoDB Serverless does not support collations")
+
+
 def create_test(scenario_def, test, name):
     def run_scenario(self):
+        # Skip some tests on serverless
+        maybe_skip_test(self, test)
+
         # Cleanup state and load data (if provided).
         drop_collections(self.db)
         data = scenario_def.get('data')

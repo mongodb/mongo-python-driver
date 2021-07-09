@@ -314,7 +314,7 @@ class ClientContext(object):
         if self.client:
             self.connected = True
 
-            if TEST_SERVERLESS:
+            if self.serverless:
                 self.auth_enabled = True
             else:
                 try:
