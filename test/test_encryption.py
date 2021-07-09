@@ -19,6 +19,7 @@ import copy
 import os
 import traceback
 import socket
+import ssl
 import sys
 import textwrap
 import uuid
@@ -49,6 +50,7 @@ from pymongo.errors import (BulkWriteError,
                             WriteError)
 from pymongo.mongo_client import MongoClient
 from pymongo.operations import InsertOne
+from pymongo.ssl_support import _ssl
 from pymongo.write_concern import WriteConcern
 
 from test import unittest, IntegrationTest, PyMongoTestCase, client_context
@@ -60,6 +62,7 @@ from test.utils import (TestCreator,
                         rs_or_single_client,
                         wait_until)
 from test.utils_spec_runner import SpecRunner
+from test.test_ssl import CA_PEM
 
 
 def get_client_opts(client):
@@ -1622,6 +1625,60 @@ class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
             'mongodb://localhost:27027/?serverSelectionTimeoutMS=500')
         with self.assertRaises(ServerSelectionTimeoutError):
             mongocryptd_client.admin.command('ping')
+
+
+# https://github.com/mongodb/specifications/tree/master/source/client-side-encryption/tests#kms-tls-tests
+class TestKmsTLSProse(EncryptionIntegrationTest):
+    @unittest.skipIf(sys.platform == 'win32',
+                     "Can't test system ca certs on Windows")
+    @unittest.skipIf(ssl.OPENSSL_VERSION.lower().startswith('libressl') and
+                     sys.platform == 'darwin' and not _ssl.IS_PYOPENSSL,
+                     "LibreSSL on OSX doesn't support setting CA certificates "
+                     "using SSL_CERT_FILE environment variable.")
+    @unittest.skipUnless(any(AWS_CREDS.values()),
+                         'AWS environment credentials are not set')
+    def setUp(self):
+        self.original_certs = os.environ.get('SSL_CERT_FILE')
+        def restore_certs():
+            if self.original_certs is None:
+                os.environ.pop('SSL_CERT_FILE')
+            else:
+                os.environ['SSL_CERT_FILE'] = self.original_certs
+        # Tell OpenSSL where CA certificates live.
+        os.environ['SSL_CERT_FILE'] = CA_PEM
+        self.addCleanup(restore_certs)
+
+        self.client_encrypted = ClientEncryption(
+            {'aws': AWS_CREDS}, 'keyvault.datakeys', self.client, OPTS)
+        self.addCleanup(self.client_encrypted.close)
+
+    def test_invalid_kms_certificate_expired(self):
+        key = {
+           "region": "us-east-1",
+           "key": "arn:aws:kms:us-east-1:579766882180:key/"
+                  "89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
+           "endpoint": "mongodb://127.0.0.1:8000",
+        }
+        # Some examples:
+        # certificate verify failed: certificate has expired (_ssl.c:1129)
+        # amazon1-2018 Python 3.6: certificate verify failed (_ssl.c:852)
+        with self.assertRaisesRegex(
+                EncryptionError, 'expired|certificate verify failed'):
+            self.client_encrypted.create_data_key('aws', master_key=key)
+
+    def test_invalid_hostname_in_kms_certificate(self):
+        key = {
+           "region": "us-east-1",
+           "key": "arn:aws:kms:us-east-1:579766882180:key/"
+                  "89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
+           "endpoint": "mongodb://127.0.0.1:8001",
+        }
+        # Some examples:
+        # certificate verify failed: IP address mismatch, certificate is not valid for '127.0.0.1'. (_ssl.c:1129)"
+        # hostname '127.0.0.1' doesn't match 'wronghost.com'
+        with self.assertRaisesRegex(
+                EncryptionError, 'IP address mismatch|wronghost'):
+            self.client_encrypted.create_data_key('aws', master_key=key)
 
 
 if __name__ == "__main__":
