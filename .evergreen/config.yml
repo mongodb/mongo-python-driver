@@ -426,6 +426,7 @@ functions:
           fi
 
           PYTHON_BINARY=${PYTHON_BINARY} \
+            PYTHON3_BINARY=${python3_binary} \
             GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
             C_EXTENSIONS=${C_EXTENSIONS} \
             COVERAGE=${COVERAGE} \
@@ -1697,6 +1698,7 @@ axes:
         run_on: rhel70-small
         batchtime: 10080  # 7 days
         variables:
+          python3_binary: "/opt/python/3.6/bin/python3"
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-70-64-bit/master/latest/libmongocrypt.tar.gz
       - id: suse12-x86-64-test
         display_name: "SUSE 12 (x86_64)"

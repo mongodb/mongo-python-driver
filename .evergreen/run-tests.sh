@@ -6,6 +6,7 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #  AUTH               Set to enable authentication. Defaults to "noauth"
 #  SSL                Set to enable SSL. Defaults to "nossl"
 #  PYTHON_BINARY      The Python version to use. Defaults to whatever is available
+#  PYTHON3_BINARY     Path to a working Python 3.5+ binary.
 #  GREEN_FRAMEWORK    The green framework to test with, if any.
 #  C_EXTENSIONS       Pass --no_ext to setup.py, or not.
 #  COVERAGE           If non-empty, run the test suite with coverage.
@@ -22,6 +23,7 @@ fi
 AUTH=${AUTH:-noauth}
 SSL=${SSL:-nossl}
 PYTHON_BINARY=${PYTHON_BINARY:-}
+PYTHON3_BINARY=${PYTHON3_BINARY:-python3}
 GREEN_FRAMEWORK=${GREEN_FRAMEWORK:-}
 C_EXTENSIONS=${C_EXTENSIONS:-}
 COVERAGE=${COVERAGE:-}
@@ -170,11 +172,27 @@ if [ -n "$TEST_ENCRYPTION" ]; then
         # Remove after BUILD-13574.
         python -m pip install certifi
     fi
+    # The mock KMS server requires Python >=3.5 with boto3.
+    IS_PRE_35=$(python -c "import sys; sys.stdout.write('1' if sys.version_info < (3, 5) else '0')")
+    if [ $IS_PRE_35 = "1" ]; then
+        deactivate
+        createvirtualenv $PYTHON3_BINARY venv-kms
+        python -m pip install boto3
+    fi
     pushd ${DRIVERS_TOOLS}/.evergreen/csfle
     python -u lib/kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/expired.pem --port 8000 &
     python -u lib/kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/wrong-host.pem --port 8001 &
     trap 'kill $(jobs -p)' EXIT HUP
     popd
+    # Restore the test virtualenv.
+    if [ $IS_PRE_35 = "1" ]; then
+        deactivate
+        if [ "Windows_NT" = "$OS" ]; then
+            . venv-encryption/Scripts/activate
+        else
+            . venv-encryption/bin/activate
+        fi
+    fi
 fi
 
 PYTHON_IMPL=$($PYTHON -c "import platform, sys; sys.stdout.write(platform.python_implementation())")
