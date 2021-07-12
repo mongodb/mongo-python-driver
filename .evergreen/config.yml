@@ -2399,28 +2399,13 @@ buildvariants:
   display_name: "${c-extensions} ${python-version} ${platform} ${auth} ${ssl} ${coverage}"
   tasks: *all-server-versions
 
-- matrix_name: "tests-python-version-ubuntu18-compression"
+- matrix_name: "tests-python-version-compression"
   matrix_spec:
-    platform: [awslinux, ubuntu-18.04]
+    platform: [awslinux]
     python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy", "pypy3.5", "pypy3.6", "pypy3.7", "jython2.7"]
     c-extensions: "*"
     compression: "*"
   exclude_spec:
-   # Only test snappy on Ubuntu-18.04 as Ubuntu 18.04 images have libsnappy-dev installed
-   - platform: awslinux
-     python-version: "*"
-     c-extensions: "*"
-     compression: ["snappy"]
-   # Ubuntu-18.04 does not have Python 3.4 installed
-   - platform: ubuntu-18.04
-     python-version: ["3.4"]
-     c-extensions: "*"
-     compression: ["snappy"]
-   # Only test zlib and zstd on Amazon Linux
-   - platform: ubuntu-18.04
-     python-version: "*"
-     c-extensions: "*"
-     compression: ["zlib", "zstd"]
    # These interpreters are always tested without extensions.
    - platform: "*"
      python-version: ["pypy", "pypy3.5", "pypy3.6", "pypy3.7", "jython2.7"]
@@ -2445,12 +2430,12 @@ buildvariants:
   rules:
     # Server versions 3.6+ support snappy and zlib.
     - if:
+        platform: "*"
         python-version: "*"
         c-extensions: "*"
         compression: ["snappy", "zlib"]
       then:
         add_tasks:
-          - "test-5.0-standalone"
           - "test-4.0-standalone"
           - "test-3.6-standalone"
 
