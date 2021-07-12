@@ -1,18 +1,6 @@
 #!/bin/bash -ex
 
 # Usage:
-# activatevritualenv /path/to/venv
-# * param1: Path to the virtualenv to activate
-activatevritualenv () {
-    VENVPATH=$1
-    if [ "Windows_NT" = "$OS" ]; then
-        . $VENVPATH/Scripts/activate
-    else
-        . $VENVPATH/bin/activate
-    fi
-}
-
-# Usage:
 # createvirtualenv /path/to/python /output/path/for/venv
 # * param1: Python binary to use for the virtualenv
 # * param2: Path to the virtualenv to create
@@ -30,7 +18,11 @@ createvirtualenv () {
         exit 1
     fi
     $VIRTUALENV $VENVPATH
-    activatevritualenv $VENVPATH
+    if [ "Windows_NT" = "$OS" ]; then
+        . $VENVPATH/Scripts/activate
+    else
+        . $VENVPATH/bin/activate
+    fi
     # Upgrade to the latest versions of pip setuptools wheel so that
     # pip can always download the latest cryptography+cffi wheels.
     PYTHON_VERSION=$(python -c 'import sys;print("%s.%s" % sys.version_info[:2])')
