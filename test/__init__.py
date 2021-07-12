@@ -447,7 +447,7 @@ class ClientContext(object):
         if self.port:
             return "%s:%d" % (self.host, self.port)
         else:
-            return self.host
+            return "%s" % (self.host, )
 
     @property
     def has_secondaries(self):

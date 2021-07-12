@@ -96,7 +96,6 @@ from test.utils import (assertRaisesExactly,
 
 class ClientUnitTest(unittest.TestCase):
     """MongoClient tests that don't require a server."""
-    RUN_ON_SERVERLESS = False
 
     @classmethod
     @client_context.require_connection
@@ -225,8 +224,7 @@ class ClientUnitTest(unittest.TestCase):
         self.assertRaises(TypeError, iterate)
 
     def test_get_default_database(self):
-        c = rs_or_single_client("mongodb://%s:%d/foo" % (client_context.host,
-                                                         client_context.port),
+        c = rs_or_single_client("mongodb://%s/foo" % (client_context.pair, ),
                                 connect=False)
         self.assertEqual(Database(c, 'foo'), c.get_default_database())
         # Test that default doesn't override the URI value.
@@ -241,42 +239,36 @@ class ClientUnitTest(unittest.TestCase):
         self.assertEqual(ReadPreference.SECONDARY, db.read_preference)
         self.assertEqual(write_concern, db.write_concern)
 
-        c = rs_or_single_client("mongodb://%s:%d/" % (client_context.host,
-                                                      client_context.port),
+        c = rs_or_single_client("mongodb://%s/" % (client_context.pair, ),
                                 connect=False)
         self.assertEqual(Database(c, 'foo'), c.get_default_database('foo'))
 
     def test_get_default_database_error(self):
         # URI with no database.
-        c = rs_or_single_client("mongodb://%s:%d/" % (client_context.host,
-                                                      client_context.port),
+        c = rs_or_single_client("mongodb://%s/" % (client_context.pair, ),
                                 connect=False)
         self.assertRaises(ConfigurationError, c.get_default_database)
 
     def test_get_default_database_with_authsource(self):
         # Ensure we distinguish database name from authSource.
-        uri = "mongodb://%s:%d/foo?authSource=src" % (
-            client_context.host, client_context.port)
+        uri = "mongodb://%s/foo?authSource=src" % (client_context.pair, )
         c = rs_or_single_client(uri, connect=False)
         self.assertEqual(Database(c, 'foo'), c.get_default_database())
 
     def test_get_database_default(self):
-        c = rs_or_single_client("mongodb://%s:%d/foo" % (client_context.host,
-                                                         client_context.port),
+        c = rs_or_single_client("mongodb://%s/foo" % (client_context.pair, ),
                                 connect=False)
         self.assertEqual(Database(c, 'foo'), c.get_database())
 
     def test_get_database_default_error(self):
         # URI with no database.
-        c = rs_or_single_client("mongodb://%s:%d/" % (client_context.host,
-                                                      client_context.port),
+        c = rs_or_single_client("mongodb://%s/" % (client_context.pair, ),
                                 connect=False)
         self.assertRaises(ConfigurationError, c.get_database)
 
     def test_get_database_default_with_authsource(self):
         # Ensure we distinguish database name from authSource.
-        uri = "mongodb://%s:%d/foo?authSource=src" % (
-            client_context.host, client_context.port)
+        uri = "mongodb://%s/foo?authSource=src" % (client_context.pair, )
         c = rs_or_single_client(uri, connect=False)
         self.assertEqual(Database(c, 'foo'), c.get_database())
 
@@ -373,10 +365,9 @@ class ClientUnitTest(unittest.TestCase):
         # Ensure codec options are passed in correctly
         uuid_representation_label = 'javaLegacy'
         unicode_decode_error_handler = 'ignore'
-        uri = ("mongodb://%s:%d/foo?tz_aware=true&uuidrepresentation="
+        uri = ("mongodb://%s/foo?tz_aware=true&uuidrepresentation="
                "%s&unicode_decode_error_handler=%s" % (
-                   client_context.host,
-                   client_context.port,
+                   client_context.pair,
                    uuid_representation_label,
                    unicode_decode_error_handler))
         c = MongoClient(uri, connect=False)
@@ -1371,8 +1362,8 @@ class TestClient(IntegrationTest):
         try:
             ServerHeartbeatStartedEvent.__init__ = init
             listener = HeartbeatStartedListener()
-            uri = "mongodb://%s:%d/?heartbeatFrequencyMS=500" % (
-                client_context.host, client_context.port)
+            uri = "mongodb://%s/?heartbeatFrequencyMS=500" % (
+                client_context.pair, )
             client = single_client(uri, event_listeners=[listener])
             wait_until(lambda: len(listener.results) >= 2,
                        "record two ServerHeartbeatStartedEvents")

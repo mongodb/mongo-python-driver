@@ -25,7 +25,7 @@ from pymongo.errors import ConfigurationError
 from pymongo.operations import (DeleteMany, DeleteOne, IndexModel, ReplaceOne,
                                 UpdateMany, UpdateOne)
 from pymongo.write_concern import WriteConcern
-from test import unittest, client_context
+from test import client_context, IntegrationTest, unittest
 from test.utils import EventListener, ignore_deprecations, rs_or_single_client
 
 
@@ -88,12 +88,11 @@ def raisesConfigurationErrorForOldMongoDB(func):
     return wrapper
 
 
-class TestCollation(unittest.TestCase):
-    RUN_ON_SERVERLESS = False
-
+class TestCollation(IntegrationTest):
     @classmethod
     @client_context.require_connection
     def setUpClass(cls):
+        super(TestCollation, cls).setUpClass()
         cls.listener = EventListener()
         cls.client = rs_or_single_client(event_listeners=[cls.listener])
         cls.db = cls.client.pymongo_test
@@ -107,9 +106,11 @@ class TestCollation(unittest.TestCase):
         cls.warn_context.__exit__()
         cls.warn_context = None
         cls.client.close()
+        super(TestCollation, cls).tearDownClass()
 
     def tearDown(self):
         self.listener.results.clear()
+        super(TestCollation, self).tearDown()
 
     def last_command_started(self):
         return self.listener.results['started'][-1].command

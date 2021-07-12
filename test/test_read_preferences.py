@@ -49,7 +49,7 @@ from test.utils import (connected,
 from test.version import Version
 
 
-class TestSelections(unittest.TestCase):
+class TestSelections(IntegrationTest):
 
     @client_context.require_connection
     def test_bool(self):
