@@ -1494,10 +1494,13 @@ class TestRawBatchCursor(IntegrationTest):
                     session=session).sort('_id'))
                 cmd = listener.results['started'][0]
                 self.assertEqual(cmd.command_name, 'find')
-                self.assertEqual(cmd.command['$clusterTime'],
-                                 decode_all(session.cluster_time.raw)[0])
+                self.assertIn('$clusterTime', cmd.command)
                 self.assertEqual(cmd.command['startTransaction'], True)
                 self.assertEqual(cmd.command['txnNumber'], 1)
+                # Ensure we update $clusterTime from the command response.
+                last_cmd = listener.results['succeeded'][-1]
+                self.assertEqual(last_cmd.reply['$clusterTime']['clusterTime'],
+                                 session.cluster_time['clusterTime'])
 
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
@@ -1688,9 +1691,13 @@ class TestRawBatchCommandCursor(IntegrationTest):
                     [{'$sort': {'_id': 1}}], session=session))
                 cmd = listener.results['started'][0]
                 self.assertEqual(cmd.command_name, 'aggregate')
-                self.assertEqual(cmd.command['$clusterTime'], session.cluster_time)
+                self.assertIn('$clusterTime', cmd.command)
                 self.assertEqual(cmd.command['startTransaction'], True)
                 self.assertEqual(cmd.command['txnNumber'], 1)
+                # Ensure we update $clusterTime from the command response.
+                last_cmd = listener.results['succeeded'][-1]
+                self.assertEqual(last_cmd.reply['$clusterTime']['clusterTime'],
+                                 session.cluster_time['clusterTime'])
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
 
