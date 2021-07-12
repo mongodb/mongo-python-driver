@@ -1374,6 +1374,7 @@ class TestLegacy(IntegrationTest):
 
         wait_until(raises_cursor_not_found, 'close cursor')
 
+    @client_context.require_version_max(4, 9, 99)  # SERVER-57457
     def test_kill_cursors_with_tuple(self):
         # Some evergreen distros (Debian 7.1) still test against 3.6.5 where
         # OP_KILL_CURSORS does not work.
