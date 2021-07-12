@@ -49,7 +49,7 @@ from bson.son import SON
 from pymongo import common, message
 from pymongo.common import partition_node
 from pymongo.server_api import ServerApi
-from pymongo.ssl_support import HAVE_SSL, validate_cert_reqs
+from pymongo.ssl_support import HAVE_SSL, _ssl
 from pymongo.uri_parser import parse_uri
 from test.version import Version
 
@@ -898,6 +898,10 @@ class IntegrationTest(PyMongoTestCase):
         else:
             cls.credentials = {}
 
+    def patch_system_certs(self, ca_certs):
+        patcher = SystemCertsPatcher(ca_certs)
+        self.addCleanup(patcher.disable)
+
 
 # Use assertRaisesRegex if available, otherwise use Python 2.7's
 # deprecated assertRaisesRegexp, with a 'p'.
@@ -1043,3 +1047,21 @@ def clear_warning_registry():
     for name, module in list(sys.modules.items()):
         if hasattr(module, "__warningregistry__"):
             setattr(module, "__warningregistry__", {})
+
+
+class SystemCertsPatcher(object):
+    def __init__(self, ca_certs):
+        if (ssl.OPENSSL_VERSION.lower().startswith('libressl') and
+                sys.platform == 'darwin' and not _ssl.IS_PYOPENSSL):
+            raise SkipTest(
+                "LibreSSL on OSX doesn't support setting CA certificates "
+                "using SSL_CERT_FILE environment variable.")
+        self.original_certs = os.environ.get('SSL_CERT_FILE')
+        # Tell OpenSSL where CA certificates live.
+        os.environ['SSL_CERT_FILE'] = ca_certs
+
+    def disable(self):
+        if self.original_certs is None:
+            os.environ.pop('SSL_CERT_FILE')
+        else:
+            os.environ['SSL_CERT_FILE'] = self.original_certs
