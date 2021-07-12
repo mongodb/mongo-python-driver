@@ -187,11 +187,7 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     # Restore the test virtualenv.
     if [ $IS_PRE_35 = "1" ]; then
         deactivate
-        if [ "Windows_NT" = "$OS" ]; then
-            . venv-encryption/Scripts/activate
-        else
-            . venv-encryption/bin/activate
-        fi
+        activatevritualenv venv-encryption
     fi
 fi
 
