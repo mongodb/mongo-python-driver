@@ -106,10 +106,11 @@ if TEST_LOADBALANCER:
     db_user = res['username'] or db_user
     db_pwd = res['password'] or db_pwd
 elif TEST_SERVERLESS:
-    uri = os.environ["MONGODB_URI"]
-    host = "mongodb://%s:%s@%s" % (
-        db_user, db_pwd, str(uri).lstrip("mongodb://"))
-    port = None
+    res = parse_uri(os.environ["MONGODB_URI"])
+    host, port = res['nodelist'].pop(0)
+    additional_serverless_mongoses = res['nodelist']
+    db_user = res['username'] or db_user
+    db_pwd = res['password'] or db_pwd
     TLS_OPTIONS = {'tls': True}
 
 
@@ -393,6 +394,7 @@ class ClientContext(object):
             if TEST_SERVERLESS:
                 self.test_commands_enabled = True
                 self.has_ipv6 = False
+
             else:
                 self.server_parameters = self.client.admin.command(
                     'getParameter', '*')
@@ -407,14 +409,19 @@ class ClientContext(object):
                         if params.get('enableTestCommands') == '1':
                             self.test_commands_enabled = True
                     self.has_ipv6 = self._server_started_with_ipv6()
-                self.is_mongos = (self.ismaster.get('msg') == 'isdbgrid')
-                if self.is_mongos:
+
+            self.is_mongos = (self.ismaster.get('msg') == 'isdbgrid')
+            if self.is_mongos:
+                if self.serverless:
+                    self.mongoses.append(self.client.address)
+                    self.mongoses.extend(additional_serverless_mongoses)
+                else:
                     # Check for another mongos on the next port.
                     address = self.client.address
                     next_address = address[0], address[1] + 1
                     self.mongoses.append(address)
-                    mongos_client = self._connect(*next_address,
-                                                  **self.default_client_options)
+                    mongos_client = self._connect(
+                        *next_address, **self.default_client_options)
                     if mongos_client:
                         ismaster = mongos_client.admin.command('ismaster')
                         if ismaster.get('msg') == 'isdbgrid':
@@ -444,10 +451,7 @@ class ClientContext(object):
 
     @property
     def pair(self):
-        if self.port:
-            return "%s:%d" % (self.host, self.port)
-        else:
-            return "%s" % (self.host, )
+        return "%s:%d" % (self.host, self.port)
 
     @property
     def has_secondaries(self):
