@@ -38,11 +38,13 @@ URIS = {
     "ATLAS_FREE": os.environ.get("ATLAS_FREE"),
     "ATLAS_TLS11": os.environ.get("ATLAS_TLS11"),
     "ATLAS_TLS12": os.environ.get("ATLAS_TLS12"),
+    "ATLAS_SERVERLESS": os.environ.get("ATLAS_SERVERLESS"),
     "ATLAS_SRV_REPL": os.environ.get("ATLAS_SRV_REPL"),
     "ATLAS_SRV_SHRD": os.environ.get("ATLAS_SRV_SHRD"),
     "ATLAS_SRV_FREE": os.environ.get("ATLAS_SRV_FREE"),
     "ATLAS_SRV_TLS11": os.environ.get("ATLAS_SRV_TLS11"),
     "ATLAS_SRV_TLS12": os.environ.get("ATLAS_SRV_TLS12"),
+    "ATLAS_SRV_SERVERLESS": os.environ.get("ATLAS_SRV_SERVERLESS"),
 }
 
 # Set this variable to true to run the SRV tests even when dnspython is not
@@ -77,6 +79,9 @@ class TestAtlasConnect(unittest.TestCase):
     def test_tls_12(self):
         connect(URIS['ATLAS_TLS12'])
 
+    def test_serverless(self):
+        connect(URIS['ATLAS_SERVERLESS'])
+
     def connect_srv(self, uri):
         connect(uri)
         self.assertIn('mongodb+srv://', uri)
@@ -102,6 +107,10 @@ class TestAtlasConnect(unittest.TestCase):
     def test_srv_tls_12(self):
         self.connect_srv(URIS['ATLAS_SRV_TLS12'])
 
+    @unittest.skipUnless(HAS_DNS or MUST_TEST_SRV, 'SRV requires dnspython')
+    def test_srv_serverless(self):
+        self.connect_srv(URIS['ATLAS_SRV_SERVERLESS'])
+
     def test_uniqueness(self):
         """Ensure that we don't accidentally duplicate the test URIs."""
         uri_to_names = defaultdict(list)
@@ -112,7 +121,6 @@ class TestAtlasConnect(unittest.TestCase):
                       if len(names) > 1]
         self.assertFalse(duplicates, 'Error: the following env variables have '
                                      'duplicate values: %s' % (duplicates,))
-
 
 
 if __name__ == '__main__':
