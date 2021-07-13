@@ -27,6 +27,9 @@ Notable improvements
   in client side field level encryption.
 - Support for connecting to load balanced MongoDB clusters via the new
   ``loadBalanced`` URI option.
+- Support for creating timeseries collections via the ``timeseries`` and
+  ``expireAfterSeconds`` arguments to
+  :meth:`~pymongo.database.Database.create_collection`.
 - Added :attr:`pymongo.mongo_client.MongoClient.topology_description`.
 - Added hash support to :class:`~pymongo.mongo_client.MongoClient`,
   :class:`~pymongo.database.Database` and

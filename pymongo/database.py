@@ -360,14 +360,14 @@ class Database(common.BaseObject):
         Options should be passed as keyword arguments to this method. Supported
         options vary with MongoDB release. Some examples include:
 
-          - "size": desired initial size for the collection (in
+          - ``size``: desired initial size for the collection (in
             bytes). For capped collections this size is the max
             size of the collection.
-          - "capped": if True, this is a capped collection
-          - "max": maximum number of objects if capped (optional)
-          - `timeseries`: a document specifying configuration options for
+          - ``capped``: if True, this is a capped collection
+          - ``max``: maximum number of objects if capped (optional)
+          - ``timeseries``: a document specifying configuration options for
             timeseries collections
-          - `expireAfterSeconds`: the number of seconds after which a
+          - ``expireAfterSeconds``: the number of seconds after which a
             document in a timeseries collection expires
 
         See the MongoDB documentation for a full list of supported options by
