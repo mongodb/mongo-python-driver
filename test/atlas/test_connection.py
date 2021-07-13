@@ -79,8 +79,6 @@ class TestAtlasConnect(unittest.TestCase):
     def test_tls_12(self):
         connect(URIS['ATLAS_TLS12'])
 
-    @unittest.skipIf(sys.platform.startswith('java'),
-                     'Jython does not support serverless TLS')
     def test_serverless(self):
         connect(URIS['ATLAS_SERVERLESS'])
 
