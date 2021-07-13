@@ -31,6 +31,7 @@ from pymongo.errors import (NotPrimaryError,
                             ProtocolError,
                             _OperationCancelled)
 from pymongo.message import _UNPACK_REPLY, _OpMsg
+from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.socket_checker import _errno_from_exception
 
 
@@ -82,6 +83,7 @@ def command(sock_info, dbname, spec, slave_ok, is_mongos,
     name = next(iter(spec))
     ns = dbname + '.$cmd'
     flags = 4 if slave_ok else 0
+    speculative_hello = False
 
     # Publish the original command document, perhaps with lsid and $clusterTime.
     orig = spec
@@ -98,6 +100,7 @@ def command(sock_info, dbname, spec, slave_ok, is_mongos,
     publish = listeners is not None and listeners.enabled_for_commands
     if publish:
         start = datetime.datetime.now()
+        speculative_hello = _is_speculative_authenticate(name, spec)
 
     if compression_ctx and name.lower() in _NO_COMPRESSION:
         compression_ctx = None
@@ -170,7 +173,8 @@ def command(sock_info, dbname, spec, slave_ok, is_mongos,
         duration = (datetime.datetime.now() - start) + encoding_duration
         listeners.publish_command_success(
             duration, response_doc, name, request_id, address,
-            service_id=sock_info.service_id)
+            service_id=sock_info.service_id,
+            speculative_hello=speculative_hello)
 
     if client and client._encrypter and reply:
         decrypted = client._encrypter.decrypt(reply.raw_command_response())

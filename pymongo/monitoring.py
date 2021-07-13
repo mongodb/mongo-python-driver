@@ -182,6 +182,7 @@ will not add that listener to existing client instances.
 
 from collections import abc, namedtuple
 
+from pymongo.hello import HelloCompat
 from pymongo.helpers import _handle_exception
 
 _Listeners = namedtuple('Listeners',
@@ -512,7 +513,7 @@ _SENSITIVE_COMMANDS = set(
 # The "hello" command is also deemed sensitive when attempting speculative
 # authentication.
 def _is_speculative_authenticate(command_name, doc):
-    if (command_name.lower() in ('hello', 'ismaster') and
+    if (command_name.lower() in (HelloCompat.CMD, HelloCompat.LEGACY_CMD) and
             'speculativeAuthenticate' in doc):
         return True
     return False
@@ -1350,7 +1351,8 @@ class _EventListeners(object):
 
     def publish_command_success(self, duration, reply, command_name,
                                 request_id, connection_id, op_id=None,
-                                service_id=None):
+                                service_id=None,
+                                speculative_hello=False):
         """Publish a CommandSucceededEvent to all command listeners.
 
         :Parameters:
@@ -1362,9 +1364,14 @@ class _EventListeners(object):
             command was sent to.
           - `op_id`: The (optional) operation id for this operation.
           - `service_id`: The service_id this command was sent to, or ``None``.
+          - `speculative_hello`: Was the command sent with speculative auth?
         """
         if op_id is None:
             op_id = request_id
+        if speculative_hello:
+            # Redact entire response when the command started contained
+            # speculativeAuthenticate.
+            reply = {}
         event = CommandSucceededEvent(
             duration, reply, command_name, request_id, connection_id, op_id,
             service_id)
