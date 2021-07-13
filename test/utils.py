@@ -423,6 +423,16 @@ class TestCreator(object):
             return not client_context.auth_enabled
         return True
 
+    @staticmethod
+    def serverless_ok(run_on_req):
+        serverless = run_on_req['serverless']
+        if serverless == "require":
+            return client_context.serverless
+        elif serverless == "forbid":
+            return not client_context.serverless
+        else:  # unset or "allow"
+            return True
+
     def should_run_on(self, scenario_def):
         run_on = scenario_def.get('runOn', [])
         if not run_on:
@@ -433,7 +443,8 @@ class TestCreator(object):
             if (self.valid_topology(req) and
                     self.min_server_version(req) and
                     self.max_server_version(req) and
-                    self.valid_auth_enabled(req)):
+                    self.valid_auth_enabled(req) and
+                    self.serverless_ok(req)):
                 return True
         return False
 
