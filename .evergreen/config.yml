@@ -2658,7 +2658,7 @@ buildvariants:
 
 - matrix_name: "versioned-api-tests"
   matrix_spec:
-    platform: ubuntu-18.04
+    platform: awslinux
     python-version: ["2.7", "3.9"]
     auth: "auth"
     versionedApi: "*"
@@ -2666,6 +2666,7 @@ buildvariants:
   batchtime: 10080  # 7 days
   tasks:
     # Versioned API was introduced in MongoDB 4.7
+    - "test-5.0-standalone"
     - "test-latest-standalone"
 
 - matrix_name: "ocsp-test"
