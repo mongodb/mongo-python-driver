@@ -93,6 +93,8 @@ running either commitTransaction or abortTransaction, the session is unpinned.
 
 .. mongodoc:: transactions
 
+.. _snapshot-reads-ref:
+
 Snapshot Reads
 ==============
 

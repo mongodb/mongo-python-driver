@@ -17,7 +17,7 @@ is a `gridfs
 <http://www.mongodb.org/display/DOCS/GridFS+Specification>`_
 implementation on top of ``pymongo``.
 
-PyMongo supports MongoDB 2.6, 3.0, 3.2, 3.4, 3.6, 4.0, 4.2, and 4.4.
+PyMongo supports MongoDB 2.6, 3.0, 3.2, 3.4, 3.6, 4.0, 4.2, 4.4, and 5.0.
 
 Support / Feedback
 ==================

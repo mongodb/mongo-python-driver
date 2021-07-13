@@ -16,7 +16,17 @@ Changes in Version 3.12.0
 Notable improvements
 ....................
 
+- Added support for MongoDB 5.0.
 - Support for MongoDB Versioned API, see :class:`~pymongo.server_api.ServerApi`.
+- Support for snapshot reads on secondaries (see :ref:`snapshot-reads-ref`).
+- Support for Azure and GCP KMS providers for client side field level
+  encryption. See the docstring for :class:`~pymongo.mongo_client.MongoClient`,
+  :class:`~pymongo.encryption_options.AutoEncryptionOpts`,
+  and :mod:`~pymongo.encryption`.
+- Support AWS authentication with temporary credentials when connecting to KMS
+  in client side field level encryption.
+- Support for connecting to load balanced MongoDB clusters via the new
+  ``loadBalanced`` URI option.
 - Added :attr:`pymongo.mongo_client.MongoClient.topology_description`.
 - Added hash support to :class:`~pymongo.mongo_client.MongoClient`,
   :class:`~pymongo.database.Database` and
@@ -24,12 +34,21 @@ Notable improvements
 - Improved the error message returned by
   :meth:`~pymongo.collection.Collection.insert_many` when supplied with an
   argument of incorrect type (`PYTHON-1690`_).
+- Add session support to :meth:`~pymongo.collection.Collection.find_raw_batches`
+  and :meth:`~pymongo.collection.Collection.aggregate_raw_batches`.
 
 Bug fixes
 .........
 
 - Fixed a bug that could cause the driver to deadlock during automatic
   client side field level encryption (`PYTHON-2472`_).
+- Fixed a potential deadlock when garbage collecting an unclosed exhaust
+  :class:`~pymongo.cursor.Cursor`.
+- Fixed an bug where using gevent.Timeout to timeout an operation could
+  lead to a deadlock.
+- Fixed the following bug with Atlas Data Lake. When closing cursors,
+  pymongo now sends killCursors with the namespace returned the cursor's
+  initial command response.
 
 Deprecations
 ............
@@ -46,7 +65,10 @@ Deprecations
 - Deprecated :class:`~pymongo.ismaster.IsMaster` and :mod:`~pymongo.ismaster`
   which will be removed in PyMongo 4.0 and are replaced by
   :class:`~pymongo.hello.Hello` and :mod:`~pymongo.hello` which provide the
-  same API. 
+  same API.
+- Deprecated the :mod:`pymongo.messeage` module.
+- Deprecated the ``ssl_keyfile`` and ``ssl_certfile`` URI options in favor
+  of ``tlsCertificateKeyFile`` (see :doc:`examples/tls`).
 
 .. _PYTHON-2466: https://jira.mongodb.org/browse/PYTHON-2466
 .. _PYTHON-1690: https://jira.mongodb.org/browse/PYTHON-1690
