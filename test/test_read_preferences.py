@@ -471,7 +471,8 @@ class TestMovingAverage(unittest.TestCase):
         avg.add_sample(30)
         self.assertAlmostEqual(15.6, avg.get())
 
-class TestMongosAndReadPreference(unittest.TestCase):
+
+class TestMongosAndReadPreference(IntegrationTest):
 
     def test_read_preference_document(self):
 

@@ -1046,14 +1046,17 @@ class TestAllLegacyScenarios(IntegrationTest):
     @classmethod
     @client_context.require_connection
     def setUpClass(cls):
+        super(TestAllLegacyScenarios, cls).setUpClass()
         cls.listener = WhiteListEventListener("aggregate", "getMore")
         cls.client = rs_or_single_client(event_listeners=[cls.listener])
 
     @classmethod
     def tearDownClass(cls):
         cls.client.close()
+        super(TestAllLegacyScenarios, cls).tearDownClass()
 
     def setUp(self):
+        super(TestAllLegacyScenarios, self).setUp()
         self.listener.results.clear()
 
     def setUpCluster(self, scenario_dict):

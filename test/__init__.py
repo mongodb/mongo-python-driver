@@ -334,7 +334,7 @@ class ClientContext(object):
                     self.auth_enabled = self._server_started_with_auth()
 
             if self.auth_enabled:
-                if not TEST_SERVERLESS:
+                if not self.serverless:
                     # See if db_user already exists.
                     if not self._check_user_provided():
                         _create_user(self.client.admin, db_user, db_pwd)
@@ -347,7 +347,7 @@ class ClientContext(object):
                 # May not have this if OperationFailure was raised earlier.
                 self.cmd_line = self.client.admin.command('getCmdLineOpts')
 
-            if TEST_SERVERLESS:
+            if self.serverless:
                 self.server_status = {}
             else:
                 self.server_status = self.client.admin.command('serverStatus')
@@ -394,7 +394,6 @@ class ClientContext(object):
             if TEST_SERVERLESS:
                 self.test_commands_enabled = True
                 self.has_ipv6 = False
-
             else:
                 self.server_parameters = self.client.admin.command(
                     'getParameter', '*')

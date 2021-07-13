@@ -69,11 +69,13 @@ class TestSpec(SpecRunner):
             if name.lower() in test['description'].lower():
                 self.skipTest('PyMongo does not support %s' % (name,))
 
-        # Skip changeStream related tests on MMAPv1.
+        # Skip changeStream related tests on MMAPv1 and serverless.
         test_name = self.id().rsplit('.')[-1]
-        if ('changestream' in test_name.lower() and
-                client_context.storage_engine == 'mmapv1'):
-            self.skipTest("MMAPv1 does not support change streams.")
+        if 'changestream' in test_name.lower():
+            if client_context.storage_engine == 'mmapv1':
+                self.skipTest("MMAPv1 does not support change streams.")
+            if client_context.serverless:
+                self.skipTest("Serverless does not support change streams.")
 
     def get_scenario_coll_name(self, scenario_def):
         """Override a test's collection name to support GridFS tests."""
