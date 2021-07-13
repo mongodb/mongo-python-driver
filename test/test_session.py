@@ -958,9 +958,6 @@ class TestCausalConsistency(unittest.TestCase):
             lambda coll, session: coll.drop_index("foo_1", session=session))
         self._test_no_read_concern(
             lambda coll, session: coll.drop_indexes(session=session))
-        self._test_no_read_concern(
-            lambda coll, session: coll.map_reduce(
-                'function() {}', 'function() {}', 'mrout', session=session))
 
         # They are not writes, but currentOp and explain also don't support
         # readConcern.
@@ -968,6 +965,14 @@ class TestCausalConsistency(unittest.TestCase):
             lambda coll, session: coll.database.current_op(session=session))
         self._test_no_read_concern(
             lambda coll, session: coll.find({}, session=session).explain())
+
+    @client_context.require_no_standalone
+    @unittest.skipIf(client_context.serverless,
+                     "Serverless does not support mapReduce")
+    def test_writes_do_not_include_read_concern_map_reduce(self):
+        self._test_no_read_concern(
+            lambda coll, session: coll.map_reduce(
+                'function() {}', 'function() {}', 'mrout', session=session))
 
     @client_context.require_no_standalone
     @client_context.require_version_max(4, 1, 0)
