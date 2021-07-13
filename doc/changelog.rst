@@ -34,7 +34,8 @@ Notable improvements
 - Improved the error message returned by
   :meth:`~pymongo.collection.Collection.insert_many` when supplied with an
   argument of incorrect type (`PYTHON-1690`_).
-- Add session support to :meth:`~pymongo.collection.Collection.find_raw_batches`
+- Added session and read concern support to
+  :meth:`~pymongo.collection.Collection.find_raw_batches`
   and :meth:`~pymongo.collection.Collection.aggregate_raw_batches`.
 
 Bug fixes
@@ -49,6 +50,9 @@ Bug fixes
 - Fixed the following bug with Atlas Data Lake. When closing cursors,
   pymongo now sends killCursors with the namespace returned the cursor's
   initial command response.
+- Fixed a bug in :class:`~pymongo.cursor.RawBatchCursor` that caused it to
+  return an empty bytestring when the cursor contained no results. It now
+  raises :exc:`StopIteration` instead.
 
 Deprecations
 ............
