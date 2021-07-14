@@ -69,6 +69,16 @@ class TestSpec(SpecRunner):
             if name.lower() in test['description'].lower():
                 self.skipTest('PyMongo does not support %s' % (name,))
 
+        # Serverless does not support $out and collation.
+        for operation in test['operations']:
+            if operation['name'] == 'aggregate':
+                for stage in operation['arguments']['pipeline']:
+                    if "$out" in stage:
+                        self.skipTest("MongoDB Serverless does not support $out")
+
+            if "collation" in operation['arguments']:
+                self.skipTest("MongoDB Serverless does not support collations")
+
         # Skip changeStream related tests on MMAPv1 and serverless.
         test_name = self.id().rsplit('.')[-1]
         if 'changestream' in test_name.lower():
