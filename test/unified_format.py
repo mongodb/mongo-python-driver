@@ -254,7 +254,7 @@ class EntityMapUtil(object):
             ignore_commands = spec.get('ignoreCommandMonitoringEvents', [])
             observe_sensitive_commands = spec.get(
                 'observeSensitiveCommands', False)
-            # TODO: SUPPORT storeEventsAsEntities
+            # TODO: PYTHON-2511 support storeEventsAsEntities
             if len(observe_events) or len(ignore_commands):
                 ignore_commands = [cmd.lower() for cmd in ignore_commands]
                 listener = EventListenerUtil(
@@ -418,8 +418,8 @@ class MatchEvaluatorUtil(object):
                 t for alias in spec for t in self.__type_alias_to_type(alias)])
         else:
             permissible_types = self.__type_alias_to_type(spec)
-        self.test.assertIsInstance(
-            actual[key_to_compare], permissible_types)
+        value = actual[key_to_compare] if key_to_compare else actual
+        self.test.assertIsInstance(value, permissible_types)
 
     def _operation_matchesEntity(self, spec, actual, key_to_compare):
         expected_entity = self.test.entity_map[spec]
@@ -832,6 +832,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def _collectionOperation_createFindCursor(self, target, *args, **kwargs):
         self.__raise_if_unsupported('find', target, Collection)
+        if 'filter' not in kwargs:
+            self.fail('createFindCursor requires a "filter" argument')
         cursor = NonLazyCursor(target.find(*args, **kwargs))
         self.addCleanup(cursor.close)
         return cursor
@@ -919,7 +921,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         try:
             result = cmd(**dict(arguments))
         except Exception as exc:
-            if ignore:
+            # Ignore all operation errors but to avoid masking bugs don't
+            # ignore things like TypeError and ValueError.
+            if ignore and isinstance(exc, (PyMongoError,)):
                 return
             if expect_error:
                 return self.process_error(exc, expect_error)
