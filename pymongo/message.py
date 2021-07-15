@@ -33,6 +33,7 @@ from bson import (CodecOptions,
                   _dict_to_bson,
                   _make_c_string)
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
+from bson.int64 import Int64
 from bson.raw_bson import (_inflate_bson, DEFAULT_RAW_BSON_OPTIONS,
                            RawBSONDocument)
 from bson.son import SON
@@ -1503,7 +1504,7 @@ class _OpReply(object):
 
     def __init__(self, flags, cursor_id, number_returned, documents):
         self.flags = flags
-        self.cursor_id = cursor_id
+        self.cursor_id = Int64(cursor_id)
         self.number_returned = number_returned
         self.documents = documents
 

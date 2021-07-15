@@ -146,6 +146,15 @@ def create_test(scenario_def, test):
                         event.command['getMore'] = 42
                     elif event.command_name == 'killCursors':
                         event.command['cursors'] = [42]
+                    elif event.command_name == 'update':
+                        # TODO: remove this once PYTHON-1744 is done.
+                        # Add upsert and multi fields back into
+                        # expectations.
+                        updates = expectation[event_type]['command'][
+                            'updates']
+                        for update in updates:
+                            update.setdefault('upsert', False)
+                            update.setdefault('multi', False)
             elif event_type == "command_succeeded_event":
                 event = (
                     res['succeeded'].pop(0) if len(res['succeeded']) else None)
