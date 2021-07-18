@@ -18,6 +18,7 @@
 """
 
 import datetime
+import io
 import sys
 import zipfile
 
@@ -323,6 +324,20 @@ class TestGridFile(IntegrationTest):
         self.assertRaises(ValueError, f.write, "test")
         f.close()
 
+    def test_closed(self):
+        f = GridIn(self.db.fs, chunkSize=5)
+        f.write(b"Hello world.\nHow are you?")
+        f.close()
+
+        g = GridOut(self.db.fs, f._id)
+        self.assertFalse(g.closed)
+        g.read(1)
+        self.assertFalse(g.closed)
+        g.read(100)
+        self.assertFalse(g.closed)
+        g.close()
+        self.assertTrue(g.closed)
+
     def test_multi_chunk_file(self):
         random_string = b'a' * (DEFAULT_CHUNK_SIZE + 1000)
 
@@ -446,6 +461,58 @@ Bye"""))
         self.assertEqual(b"H", g.readline(1))
         self.assertEqual(b"e", g.readline(1))
         self.assertEqual(b"llo world,\n", g.readline())
+
+    def test_readlines(self):
+        f = GridIn(self.db.fs, chunkSize=5)
+        f.write((b"""Hello world,
+How are you?
+Hope all is well.
+Bye"""))
+        f.close()
+
+        # Try read(), then readlines().
+        g = GridOut(self.db.fs, f._id)
+        self.assertEqual(b"He", g.read(2))
+        self.assertEqual([b"llo world,\n", b"How are you?\n"], g.readlines(11))
+        self.assertEqual([b"Hope all is well.\n", b"Bye"], g.readlines())
+        self.assertEqual([], g.readlines())
+
+        # Try readline(), then readlines().
+        g = GridOut(self.db.fs, f._id)
+        self.assertEqual(b"Hello world,\n", g.readline())
+        self.assertEqual([b"How are you?\n", b"Hope all is well.\n"], g.readlines(13))
+        self.assertEqual(b"Bye", g.readline())
+        self.assertEqual([], g.readlines())
+
+        # Only readlines().
+        g = GridOut(self.db.fs, f._id)
+        self.assertEqual(
+            [b"Hello world,\n", b"How are you?\n", b"Hope all is well.\n", b"Bye"],
+            g.readlines())
+
+        g = GridOut(self.db.fs, f._id)
+        self.assertEqual(
+            [b"Hello world,\n", b"How are you?\n", b"Hope all is well.\n", b"Bye"],
+            g.readlines(0))
+
+        g = GridOut(self.db.fs, f._id)
+        self.assertEqual([b"Hello world,\n"], g.readlines(1))
+        self.assertEqual([b"How are you?\n"], g.readlines(12))
+        self.assertEqual([b"Hope all is well.\n", b"Bye"], g.readlines(18))
+
+        # Try readlines() first, then read().
+        g = GridOut(self.db.fs, f._id)
+        self.assertEqual([b"Hello world,\n"], g.readlines(1))
+        self.assertEqual(b"H", g.read(1))
+        self.assertEqual([b"ow are you?\n", b"Hope all is well.\n"], g.readlines(29))
+        self.assertEqual([b"Bye"], g.readlines(1))
+
+        # Try readlines() first, then readline().
+        g = GridOut(self.db.fs, f._id)
+        self.assertEqual([b"Hello world,\n"], g.readlines(1))
+        self.assertEqual(b"How are you?\n", g.readline())
+        self.assertEqual([b"Hope all is well.\n"], g.readlines(17))
+        self.assertEqual(b"Bye", g.readline())
 
     def test_iterator(self):
         f = GridIn(self.db.fs)
@@ -664,6 +731,21 @@ Bye"""))
         z = zipfile.ZipFile(g)
         self.assertSequenceEqual(z.namelist(), ["test.txt"])
         self.assertEqual(z.read("test.txt"), b"hello world")
+
+    def test_grid_out_unsupported_operations(self):
+        f = GridIn(self.db.fs, chunkSize=3)
+        f.write(b"hello world")
+        f.close()
+
+        g = GridOut(self.db.fs, f._id)
+
+        self.assertRaises(io.UnsupportedOperation, g.writelines, [b"some", b"lines"])
+        self.assertRaises(io.UnsupportedOperation, g.write, b"some text")
+        self.assertRaises(io.UnsupportedOperation, g.fileno)
+        self.assertRaises(io.UnsupportedOperation, g.truncate)
+
+        self.assertFalse(g.writable())
+        self.assertFalse(g.isatty())
 
 
 if __name__ == "__main__":
