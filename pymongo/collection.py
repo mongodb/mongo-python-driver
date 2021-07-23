@@ -2189,6 +2189,11 @@ class Collection(common.BaseObject):
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`. This option is only supported
             on MongoDB 3.4 and above.
+          - `let` (dict): A dict of parameter names and values. Values must be
+            constant or closed expressions that do not reference document
+            fields. Parameters can then be accessed as variables in an
+            aggregate expression context (e.g. ``"$$var"``). This option is
+            only supported on MongoDB >= 5.0.
 
         The :meth:`aggregate` method obeys the :attr:`read_preference` of this
         :class:`Collection`, except when ``$out`` or ``$merge`` are used, in

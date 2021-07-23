@@ -248,22 +248,6 @@ class Database(common.BaseObject):
         creation. :class:`~pymongo.errors.CollectionInvalid` will be
         raised if the collection already exists.
 
-        Options should be passed as keyword arguments to this method. Supported
-        options vary with MongoDB release. Some examples include:
-
-          - "size": desired initial size for the collection (in
-            bytes). For capped collections this size is the max
-            size of the collection.
-          - "capped": if True, this is a capped collection
-          - "max": maximum number of objects if capped (optional)
-          - `timeseries`: a document specifying configuration options for
-            timeseries collections
-          - `expireAfterSeconds`: the number of seconds after which a
-            document in a timeseries collection expires
-
-        See the MongoDB documentation for a full list of supported options by
-        server version.
-
         :Parameters:
           - `name`: the name of the collection to create
           - `codec_options` (optional): An instance of
@@ -286,7 +270,21 @@ class Database(common.BaseObject):
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): additional keyword arguments will
-            be passed as options for the create collection command
+            be passed as options for the `create collection command`_
+
+        Additional options should be passed as keyword arguments to this
+        method. See the `create collection command`_ documentation for a full
+        list of supported options by MongoDB version. Some examples include:
+
+          - ``size``: desired initial size for the collection (in
+            bytes). For capped collections this size is the max
+            size of the collection.
+          - ``capped``: if True, this is a capped collection
+          - ``max``: maximum number of objects if capped (optional)
+          - ``timeseries``: a document specifying configuration options for
+            timeseries collections
+          - ``expireAfterSeconds``: the number of seconds after which a
+            document in a timeseries collection expires
 
         .. versionchanged:: 3.11
            This method is now supported inside multi-document transactions
@@ -303,6 +301,9 @@ class Database(common.BaseObject):
 
         .. versionchanged:: 2.2
            Removed deprecated argument: options
+
+        .. _create collection command:
+            https://docs.mongodb.com/manual/reference/command/create
         """
         with self.__client._tmp_session(session) as s:
             # Skip this check in a transaction where listCollections is not
@@ -345,6 +346,11 @@ class Database(common.BaseObject):
             returning aggregate results using a cursor.
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`.
+          - `let` (dict): A dict of parameter names and values. Values must be
+            constant or closed expressions that do not reference document
+            fields. Parameters can then be accessed as variables in an
+            aggregate expression context (e.g. ``"$$var"``). This option is
+            only supported on MongoDB >= 5.0.
 
         The :meth:`aggregate` method obeys the :attr:`read_preference` of this
         :class:`Database`, except when ``$out`` or ``$merge`` are used, in
