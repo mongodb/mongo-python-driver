@@ -2175,26 +2175,6 @@ class Collection(common.BaseObject):
         """Perform an aggregation using the aggregation framework on this
         collection.
 
-        All optional `aggregate command`_ parameters should be passed as
-        keyword arguments to this method. Valid options include, but are not
-        limited to:
-
-          - `allowDiskUse` (bool): Enables writing to temporary files. When set
-            to True, aggregation stages can write data to the _tmp subdirectory
-            of the --dbpath directory. The default is False.
-          - `maxTimeMS` (int): The maximum amount of time to allow the operation
-            to run in milliseconds.
-          - `batchSize` (int): The maximum number of documents to return per
-            batch.
-          - `collation` (optional): An instance of
-            :class:`~pymongo.collation.Collation`. This option is only supported
-            on MongoDB 3.4 and above.
-          - `let` (dict): A dict of parameter names and values. Values must be
-            constant or closed expressions that do not reference document
-            fields. Parameters can then be accessed as variables in an
-            aggregate expression context (e.g. ``"$$var"``). This option is
-            only supported on MongoDB >= 5.0.
-
         The :meth:`aggregate` method obeys the :attr:`read_preference` of this
         :class:`Collection`, except when ``$out`` or ``$merge`` are used, in
         which case  :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY`
@@ -2212,7 +2192,27 @@ class Collection(common.BaseObject):
           - `pipeline`: a list of aggregation pipeline stages
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
-          - `**kwargs` (optional): See list of options above.
+          - `**kwargs` (optional): extra `aggregate command`_ parameters.
+
+        All optional `aggregate command`_ parameters should be passed as
+        keyword arguments to this method. Valid options include, but are not
+        limited to:
+
+          - `allowDiskUse` (bool): Enables writing to temporary files. When set
+            to True, aggregation stages can write data to the _tmp subdirectory
+            of the --dbpath directory. The default is False.
+          - `maxTimeMS` (int): The maximum amount of time to allow the operation
+            to run in milliseconds.
+          - `batchSize` (int): The maximum number of documents to return per
+            batch. Ignored if the connected mongod or mongos does not support
+            returning aggregate results using a cursor.
+          - `collation` (optional): An instance of
+            :class:`~pymongo.collation.Collation`.
+          - `let` (dict): A dict of parameter names and values. Values must be
+            constant or closed expressions that do not reference document
+            fields. Parameters can then be accessed as variables in an
+            aggregate expression context (e.g. ``"$$var"``). This option is
+            only supported on MongoDB >= 5.0.
 
         :Returns:
           A :class:`~pymongo.command_cursor.CommandCursor` over the result

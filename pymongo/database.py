@@ -272,9 +272,9 @@ class Database(common.BaseObject):
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the `create collection command`_
 
-        Additional options should be passed as keyword arguments to this
-        method. See the `create collection command`_ documentation for a full
-        list of supported options by MongoDB version. Some examples include:
+        All optional `create collection command`_ parameters should be passed
+        as keyword arguments to this method. Valid options include, but are not
+        limited to:
 
           - ``size``: desired initial size for the collection (in
             bytes). For capped collections this size is the max
@@ -332,6 +332,23 @@ class Database(common.BaseObject):
                for operation in cursor:
                    print(operation)
 
+        The :meth:`aggregate` method obeys the :attr:`read_preference` of this
+        :class:`Database`, except when ``$out`` or ``$merge`` are used, in
+        which case  :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY`
+        is used.
+
+        .. note:: This method does not support the 'explain' option. Please
+           use :meth:`~pymongo.database.Database.command` instead.
+
+        .. note:: The :attr:`~pymongo.database.Database.write_concern` of
+           this collection is automatically applied to this operation.
+
+        :Parameters:
+          - `pipeline`: a list of aggregation pipeline stages
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+          - `**kwargs` (optional): extra `aggregate command`_ parameters.
+
         All optional `aggregate command`_ parameters should be passed as
         keyword arguments to this method. Valid options include, but are not
         limited to:
@@ -351,23 +368,6 @@ class Database(common.BaseObject):
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. ``"$$var"``). This option is
             only supported on MongoDB >= 5.0.
-
-        The :meth:`aggregate` method obeys the :attr:`read_preference` of this
-        :class:`Database`, except when ``$out`` or ``$merge`` are used, in
-        which case  :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY`
-        is used.
-
-        .. note:: This method does not support the 'explain' option. Please
-           use :meth:`~pymongo.database.Database.command` instead.
-
-        .. note:: The :attr:`~pymongo.database.Database.write_concern` of
-           this collection is automatically applied to this operation.
-
-        :Parameters:
-          - `pipeline`: a list of aggregation pipeline stages
-          - `session` (optional): a
-            :class:`~pymongo.client_session.ClientSession`.
-          - `**kwargs` (optional): See list of options above.
 
         :Returns:
           A :class:`~pymongo.command_cursor.CommandCursor` over the result
