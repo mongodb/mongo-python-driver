@@ -1027,7 +1027,13 @@ class TestLegacy(IntegrationTest):
                          coll.group([], {"_id": uu},
                                     {"count": 0}, reduce))
 
+    @client_context.require_version_max(5, 0, 99)
     def test_last_status(self):
+        # Skip versions like "v5.0.0-alpha0-1768-gfda1dfa" which equals:
+        # Version(5, 0, 1, -1)
+        if (client_context.version[:2] == (5, 0) and
+                client_context.version[-1] == -1):
+            self.skipTest('getLastError is not supported')
         # Tests many legacy API elements.
         # We must call getlasterror on same socket as the last operation.
         db = rs_or_single_client(maxPoolSize=1).pymongo_test

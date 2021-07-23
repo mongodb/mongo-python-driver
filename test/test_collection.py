@@ -1586,6 +1586,7 @@ class TestCollection(IntegrationTest):
         self.assertEqual(2, db.test.delete_many({}).deleted_count)
         self.assertEqual(0, db.test.delete_many({}).deleted_count)
 
+    @client_context.require_version_max(4, 9)
     def test_manual_last_error(self):
         coll = self.db.get_collection("test", write_concern=WriteConcern(w=0))
         coll.insert_one({"x": 1})
