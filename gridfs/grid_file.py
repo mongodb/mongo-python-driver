@@ -465,7 +465,8 @@ class GridOut(io.IOBase):
 
         root_collection = _clear_entity_type_registry(root_collection)
 
-        self.__closed = False
+        super().__init__()
+
         self.__chunks = root_collection.chunks
         self.__files = root_collection.files
         self.__file_id = file_id
@@ -612,33 +613,6 @@ class GridOut(io.IOBase):
         data.seek(0)
         return data.read(size)
 
-    def readlines(self, hint=-1):
-        """Read and return a list of lines from the file.
-
-        :Parameters:
-         - `hint` (optional): Stop reading lines after more than `hint`
-            bytes have been read. If `hint` <= 0, read all lines.
-        """
-        lines = []
-
-        if hint <= 0:
-            line = self.readline()
-            while line != EMPTY:
-                lines.append(line)
-                line = self.readline()
-
-        else:
-            received = 0
-            while received <= hint:
-                line = self.readline()
-                if line == EMPTY:
-                    break
-
-                lines.append(line)
-                received += len(line)
-
-        return lines
-
     def tell(self):
         """Return the current position of this file.
         """
@@ -684,34 +658,30 @@ class GridOut(io.IOBase):
     def __iter__(self):
         """Return an iterator over all of this file's data.
 
-        The iterator will return chunk-sized instances of
-        :class:`str` (:class:`bytes` in python 3). This can be
-        useful when serving files using a webserver that handles
-        such an iterator efficiently.
-
-        .. note::
-           This is different from :py:class:`io.IOBase` which iterates over
-           *lines* in the file. Use :meth:`GridOut.readline` to read line by
-           line instead of chunk by chunk.
+        The iterator will return lines (delimited by b'\n') of
+        :class:`bytes`. This can be useful when serving files
+        using a webserver that handles such an iterator efficiently.
 
         .. versionchanged:: 3.8
            The iterator now raises :class:`CorruptGridFile` when encountering
            any truncated, missing, or extra chunk in a file. The previous
            behavior was to only raise :class:`CorruptGridFile` on a missing
            chunk.
+
+        .. versionchanged:: 4.0
+            The iterator now iterates over *lines* in the file, instead
+            of chunks, to conform to the base class :py:class:`io.IOBase`.
+            Use :meth:`GridOut.readchunk` to read chunk by chunk instead
+            of line by line.
         """
-        return GridOutIterator(self, self.__chunks, self._session)
+        return self
 
     def close(self):
         """Make GridOut more generically file-like."""
         if self.__chunk_iter:
             self.__chunk_iter.close()
             self.__chunk_iter = None
-            self.__closed = True
-
-    @property
-    def closed(self):
-        return self.__closed
+            super().close()
 
     def write(self, value):
         raise io.UnsupportedOperation('write')

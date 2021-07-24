@@ -521,20 +521,26 @@ Bye"""))
         self.assertEqual([], list(g))
 
         f = GridIn(self.db.fs)
-        f.write(b"hello world")
+        f.write(b"hello world\nhere are\nsome lines.")
         f.close()
         g = GridOut(self.db.fs, f._id)
-        self.assertEqual([b"hello world"], list(g))
-        self.assertEqual(b"hello", g.read(5))
-        self.assertEqual([b"hello world"], list(g))
-        self.assertEqual(b" worl", g.read(5))
+        self.assertEqual([b"hello world\n", b"here are\n", b"some lines."], list(g))
+        self.assertEqual(b"", g.read(5))
+        self.assertEqual([], list(g))
+
+        g = GridOut(self.db.fs, f._id)
+        self.assertEqual(b"hello world\n", next(iter(g)))
+        self.assertEqual(b"here", g.read(4))
+        self.assertEqual(b" are\n", next(iter(g)))
+        self.assertEqual(b"some lines", g.read(10))
+        self.assertEqual(b".", next(iter(g)))
+        self.assertRaises(StopIteration, iter(g).__next__)
 
         f = GridIn(self.db.fs, chunk_size=2)
         f.write(b"hello world")
         f.close()
         g = GridOut(self.db.fs, f._id)
-        self.assertEqual([b"he", b"ll", b"o ",
-                          b"wo", b"rl", b"d"], list(g))
+        self.assertEqual([b"hello world"], list(g))
 
     def test_read_unaligned_buffer_size(self):
         in_data = (b"This is a text that doesn't "
