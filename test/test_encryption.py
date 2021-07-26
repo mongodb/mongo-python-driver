@@ -55,8 +55,7 @@ from test.test_ssl import CA_PEM
 from test import (unittest,
                   client_context,
                   IntegrationTest,
-                  PyMongoTestCase,
-                  SystemCertsPatcher)
+                  PyMongoTestCase)
 from test.utils import (TestCreator,
                         camel_to_snake_args,
                         OvertCommandListener,
@@ -65,26 +64,6 @@ from test.utils import (TestCreator,
                         rs_or_single_client,
                         wait_until)
 from test.utils_spec_runner import SpecRunner
-
-try:
-    import certifi
-    HAVE_CERTIFI = True
-except ImportError:
-    HAVE_CERTIFI = False
-
-patcher = None
-
-
-def setUpModule():
-    if sys.platform == 'win32' and HAVE_CERTIFI:
-        # Remove after BUILD-13574.
-        global patcher
-        patcher = SystemCertsPatcher(certifi.where())
-
-
-def tearDownModule():
-    if patcher:
-        patcher.disable()
 
 
 def get_client_opts(client):
