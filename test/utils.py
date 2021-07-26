@@ -24,6 +24,7 @@ import shutil
 import sys
 import threading
 import time
+import unittest
 import warnings
 
 from collections import abc, defaultdict
@@ -390,6 +391,18 @@ class TestCreator(object):
                 elt in scenario_def['maxServerVersion'].split('.'))
             if max_ver is not None:
                 method = client_context.require_version_max(*max_ver)(method)
+
+        if 'serverless' in scenario_def:
+            serverless = scenario_def['serverless']
+            if serverless == "require":
+                serverless_satisfied = client_context.serverless
+            elif serverless == "forbid":
+                serverless_satisfied = not client_context.serverless
+            else:   # unset or "allow"
+                serverless_satisfied = True
+            method = unittest.skipUnless(
+                serverless_satisfied,
+                "Serverless requirement not satisfied")(method)
 
         return method
 
