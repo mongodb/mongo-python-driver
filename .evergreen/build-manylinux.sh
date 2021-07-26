@@ -5,14 +5,9 @@ docker version
 # wheels. After that auditwheel was upgraded to v4 which produces PEP 600
 # manylinux_x_y wheels which requires pip >= 20.3. We use the older docker
 # image to support older pip versions.
-images=(quay.io/pypa/manylinux1_x86_64:2021-05-05-1ac6ef3 \
-        quay.io/pypa/manylinux1_i686:2021-05-05-1ac6ef3 \
-        quay.io/pypa/manylinux2014_x86_64:2021-05-05-1ac6ef3 \
-        quay.io/pypa/manylinux2014_i686:2021-05-05-1ac6ef3 \
-        quay.io/pypa/manylinux2014_aarch64:2021-05-05-1ac6ef3 \
-        quay.io/pypa/manylinux2014_ppc64le:2021-05-05-1ac6ef3 \
-        quay.io/pypa/manylinux2014_s390x:2021-05-05-1ac6ef3 \
-        quay.io/pypa/manylinux1_x86_64 \
+BUILD_WITH_TAG="$1"
+TAG="2021-05-05-1ac6ef3"
+images=(quay.io/pypa/manylinux1_x86_64 \
         quay.io/pypa/manylinux1_i686 \
         quay.io/pypa/manylinux2014_x86_64 \
         quay.io/pypa/manylinux2014_i686 \
@@ -21,6 +16,9 @@ images=(quay.io/pypa/manylinux1_x86_64:2021-05-05-1ac6ef3 \
         quay.io/pypa/manylinux2014_s390x)
 
 for image in "${images[@]}"; do
+  if [ -n "$BUILD_WITH_TAG" ]; then
+    image="${image}:${TAG}"
+  fi
   docker pull $image
   docker run --rm -v `pwd`:/src $image /src/.evergreen/build-manylinux-internal.sh
 done
