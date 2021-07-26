@@ -133,16 +133,13 @@ def run_operation(collection, test):
 
 def maybe_skip_test(self, test):
     """Skip tests that use features not supported by MongoDB serverless."""
-    if not client_context.serverless:
-        return
-
-    if test['operation']['name'] == 'aggregate':
-        for stage in test['operation']['arguments']['pipeline']:
-            if "$out" in stage:
-                self.skipTest("MongoDB Serverless does not support $out")
-
-    if "collation" in test['operation']['arguments']:
-        self.skipTest("MongoDB Serverless does not support collations")
+    serverless = test.get('serverless')
+    if serverless == "require":
+        if not client_context.serverless:
+            self.skipTest("This test requires MongoDB serverless")
+    elif serverless == "forbid":
+        if client_context.serverless:
+            self.skipTest("This test does not support MongoDB serverless")
 
 
 def create_test(scenario_def, test, name):
