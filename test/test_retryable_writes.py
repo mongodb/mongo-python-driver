@@ -124,6 +124,7 @@ def non_retryable_single_statement_ops(coll):
 
 class IgnoreDeprecationsTest(IntegrationTest):
     RUN_ON_LOAD_BALANCER = True
+    RUN_ON_SERVERLESS = True
 
     @classmethod
     def setUpClass(cls):
