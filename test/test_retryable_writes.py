@@ -17,12 +17,12 @@
 import copy
 import os
 import sys
+import threading
 
 sys.path[0:0] = [""]
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.int64 import Int64
-from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 
@@ -32,6 +32,10 @@ from pymongo.errors import (ConnectionFailure,
                             ServerSelectionTimeoutError,
                             WriteConcernError)
 from pymongo.mongo_client import MongoClient
+from pymongo.monitoring import (ConnectionCheckedOutEvent,
+                                ConnectionCheckOutFailedEvent,
+                                ConnectionCheckOutFailedReason,
+                                PoolClearedEvent)
 from pymongo.operations import (InsertOne,
                                 DeleteMany,
                                 DeleteOne,
@@ -40,10 +44,16 @@ from pymongo.operations import (InsertOne,
                                 UpdateOne)
 from pymongo.write_concern import WriteConcern
 
-from test import unittest, client_context, IntegrationTest, SkipTest, client_knobs
-from test.utils import (rs_or_single_client,
+from test import (unittest,
+                  client_context,
+                  IntegrationTest,
+                  SkipTest,
+                  SpeedyTest,
+                  client_knobs)
+from test.utils import (CMAPListener,
                         DeprecationFilter,
                         OvertCommandListener,
+                        rs_or_single_client,
                         TestCreator)
 from test.utils_spec_runner import SpecRunner
 from test.version import Version
@@ -153,6 +163,7 @@ class TestRetryableWritesMMAPv1(IgnoreDeprecationsTest):
     def tearDownClass(cls):
         cls.knobs.disable()
         cls.client.close()
+        super(TestRetryableWritesMMAPv1, cls).tearDownClass()
 
     @client_context.require_version_min(3, 5)
     @client_context.require_no_standalone
@@ -475,6 +486,69 @@ class TestWriteConcernError(IntegrationTest):
 
         self.assertIn('writeConcernError', result)
         self.assertIn('RetryableWriteError', result['errorLabels'])
+
+
+class InsertThread(threading.Thread):
+    def __init__(self, collection):
+        super().__init__()
+        self.daemon = True
+        self.collection = collection
+        self.passed = False
+
+    def run(self):
+        self.collection.insert_one({})
+        self.passed = True
+
+
+class TestPoolPausedError(SpeedyTest):
+    RUN_ON_LOAD_BALANCER = True
+
+    @client_context.require_failCommand_blockConnection
+    @client_context.require_retryable_writes
+    def test_pool_paused_error_is_retryable(self):
+        cmap_listener = CMAPListener()
+        cmd_listener = OvertCommandListener()
+        client = rs_or_single_client(
+            maxPoolSize=1,
+            event_listeners=[cmap_listener, cmd_listener])
+        self.addCleanup(client.close)
+        threads = [InsertThread(client.pymongo_test.test) for _ in range(2)]
+        fail_command = {
+            'mode': {'times': 1},
+            'data': {
+                'failCommands': ['insert'],
+                'blockConnection': True,
+                'blockTimeMS': 1000,
+                'errorCode': 91,
+                'errorLabels': ['RetryableWriteError'],
+            },
+        }
+        with self.fail_point(fail_command):
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+            for thread in threads:
+                self.assertTrue(thread.passed)
+
+        # Via CMAP monitoring, assert that the first check out succeeds.
+        cmap_events = cmap_listener.events_by_type((
+            ConnectionCheckedOutEvent,
+            ConnectionCheckOutFailedEvent,
+            PoolClearedEvent))
+        self.assertIsInstance(cmap_events[0], ConnectionCheckedOutEvent)
+        self.assertIsInstance(cmap_events[1], PoolClearedEvent)
+        self.assertIsInstance(cmap_events[2], ConnectionCheckOutFailedEvent)
+        self.assertEqual(cmap_events[2].reason,
+                         ConnectionCheckOutFailedReason.CONN_ERROR)
+        self.assertIsInstance(cmap_events[3], ConnectionCheckedOutEvent)
+
+        # Connection check out failures are not reflected in command
+        # monitoring because we only publish command events _after_ checking
+        # out a connection.
+        self.assertEqual(3, len(cmd_listener.results['started']))
+        self.assertEqual(2, len(cmd_listener.results['succeeded']))
+        self.assertEqual(1, len(cmd_listener.results['failed']))
 
 
 # TODO: Make this a real integration test where we stepdown the primary.

@@ -442,59 +442,6 @@ class TestCMAP(IntegrationTest):
         with pool.get_socket({}):
             pass
 
-    @client_context.require_version_max(4, 3)  # Remove after SERVER-53624.
-    @client_context.require_retryable_writes
-    @client_context.require_failCommand_fail_point
-    def test_pool_paused_error_is_retryable(self):
-        cmap_listener = CMAPListener()
-        cmd_listener = OvertCommandListener()
-        client = rs_or_single_client(
-            maxPoolSize=1,
-            heartbeatFrequencyMS=500,
-            event_listeners=[cmap_listener, cmd_listener])
-        self.addCleanup(client.close)
-        threads = [InsertThread(client.pymongo_test.test) for _ in range(3)]
-        fail_command = {
-            'mode': {'times': 1},
-            'data': {
-                'failCommands': ['insert'],
-                'blockConnection': True,
-                'blockTimeMS': 1000,
-                'errorCode': 91
-            },
-        }
-        with self.fail_point(fail_command):
-            for thread in threads:
-                thread.start()
-            for thread in threads:
-                thread.join()
-            for thread in threads:
-                self.assertTrue(thread.passed)
-
-        # The two threads in the wait queue fail the initial connection check
-        # out attempt and then succeed on retry.
-        self.assertEqual(
-            2, cmap_listener.event_count(ConnectionCheckOutFailedEvent))
-
-        # Connection check out failures are not reflected in command
-        # monitoring because we only publish command events _after_ checking
-        # out a connection.
-        self.assertEqual(4, len(cmd_listener.results['started']))
-        self.assertEqual(3, len(cmd_listener.results['succeeded']))
-        self.assertEqual(1, len(cmd_listener.results['failed']))
-
-
-class InsertThread(threading.Thread):
-    def __init__(self, collection):
-        super(InsertThread, self).__init__()
-        self.daemon = True
-        self.collection = collection
-        self.passed = False
-
-    def run(self):
-        self.collection.insert_one({})
-        self.passed = True
-
 
 def create_test(scenario_def, test, name):
     def run_scenario(self):

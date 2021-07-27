@@ -761,6 +761,14 @@ class ClientContext(object):
                              "failCommand appName must be supported",
                              func=func)
 
+    def require_failCommand_blockConnection(self, func):
+        """Run a test only if the server supports failCommand blockConnection.
+        """
+        return self._require(lambda: (self.test_commands_enabled and
+                                      self.version >= (4, 2, 9)),
+                             "failCommand blockConnection is not supported",
+                             func=func)
+
     def require_tls(self, func):
         """Run a test only if the client can connect over TLS."""
         return self._require(lambda: self.tls,
@@ -930,10 +938,22 @@ class IntegrationTest(PyMongoTestCase):
         self.addCleanup(patcher.disable)
 
 
-# Use assertRaisesRegex if available, otherwise use Python 2.7's
-# deprecated assertRaisesRegexp, with a 'p'.
-if not hasattr(unittest.TestCase, 'assertRaisesRegex'):
-    unittest.TestCase.assertRaisesRegex = unittest.TestCase.assertRaisesRegexp
+class SpeedyTest(IntegrationTest):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        # Speed up the tests by decreasing all background task frequencies.
+        cls.knobs = client_knobs(heartbeat_frequency=.05,
+                                 min_heartbeat_interval=.05,
+                                 kill_cursor_frequency=.05,
+                                 events_queue_frequency=.05)
+        cls.knobs.enable()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.knobs.disable()
+        super().tearDownClass()
 
 
 class MockClientTest(unittest.TestCase):
