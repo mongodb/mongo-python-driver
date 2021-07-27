@@ -39,12 +39,15 @@ if [ -n "$MONGODB_API_VERSION" ]; then
 fi
 
 if [ "$AUTH" != "noauth" ]; then
-    if [ -z "$DATA_LAKE" ]; then
-        export DB_USER="bob"
-        export DB_PASSWORD="pwd123"
-    else
+    if [ ! -z "$DATA_LAKE" ]; then
         export DB_USER="mhuser"
         export DB_PASSWORD="pencil"
+    elif [ ! -z "$TEST_SERVERLESS" ]; then
+        export DB_USER=$SERVERLESS_ATLAS_USER
+        export DB_PASSWORD=$SERVERLESS_ATLAS_PASSWORD
+    else
+        export DB_USER="bob"
+        export DB_PASSWORD="pwd123"
     fi
 fi
 

@@ -34,6 +34,7 @@ globals().update(generate_test_classes(TEST_PATH, module=__name__))
 
 class TestServerApi(IntegrationTest):
     RUN_ON_LOAD_BALANCER = True
+    RUN_ON_SERVERLESS = True
 
     def test_server_api_defaults(self):
         api = ServerApi(ServerApiVersion.V1)

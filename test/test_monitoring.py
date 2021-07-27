@@ -32,7 +32,7 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   client_knobs,
-                  PyMongoTestCase,
+                  IntegrationTest,
                   sanitize_cmd,
                   unittest)
 from test.utils import (EventListener,
@@ -42,11 +42,12 @@ from test.utils import (EventListener,
                         wait_until)
 
 
-class TestCommandMonitoring(PyMongoTestCase):
+class TestCommandMonitoring(IntegrationTest):
 
     @classmethod
     @client_context.require_connection
     def setUpClass(cls):
+        super(TestCommandMonitoring, cls).setUpClass()
         cls.listener = EventListener()
         cls.client = rs_or_single_client(
             event_listeners=[cls.listener],
@@ -55,9 +56,11 @@ class TestCommandMonitoring(PyMongoTestCase):
     @classmethod
     def tearDownClass(cls):
         cls.client.close()
+        super(TestCommandMonitoring, cls).tearDownClass()
 
     def tearDown(self):
         self.listener.results.clear()
+        super(TestCommandMonitoring, self).tearDown()
 
     def test_started_simple(self):
         self.client.pymongo_test.command('ismaster')
@@ -1129,11 +1132,12 @@ class TestCommandMonitoring(PyMongoTestCase):
         self.assertEqual({}, succeeded.reply)
 
 
-class TestGlobalListener(PyMongoTestCase):
+class TestGlobalListener(IntegrationTest):
 
     @classmethod
     @client_context.require_connection
     def setUpClass(cls):
+        super(TestGlobalListener, cls).setUpClass()
         cls.listener = EventListener()
         # We plan to call register(), which internally modifies _LISTENERS.
         cls.saved_listeners = copy.deepcopy(monitoring._LISTENERS)
@@ -1146,8 +1150,10 @@ class TestGlobalListener(PyMongoTestCase):
     def tearDownClass(cls):
         monitoring._LISTENERS = cls.saved_listeners
         cls.client.close()
+        super(TestGlobalListener, cls).tearDownClass()
 
     def setUp(self):
+        super(TestGlobalListener, self).setUp()
         self.listener.results.clear()
 
     def test_simple(self):
@@ -1167,7 +1173,7 @@ class TestGlobalListener(PyMongoTestCase):
         self.assertTrue(isinstance(started.request_id, int))
 
 
-class TestEventClasses(PyMongoTestCase):
+class TestEventClasses(unittest.TestCase):
 
     def test_command_event_repr(self):
         request_id, connection_id, operation_id = 1, ('localhost', 27017), 2

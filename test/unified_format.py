@@ -117,6 +117,14 @@ def is_run_on_requirement_satisfied(requirement):
         max_version_satisfied = Version.from_string(
             req_max_server_version) >= server_version
 
+    serverless = requirement.get('serverless')
+    if serverless == "require":
+        serverless_satisfied = client_context.serverless
+    elif serverless == "forbid":
+        serverless_satisfied = not client_context.serverless
+    else:   # unset or "allow"
+        serverless_satisfied = True
+
     params_satisfied = True
     params = requirement.get('serverParameters')
     if params:
@@ -135,7 +143,8 @@ def is_run_on_requirement_satisfied(requirement):
             auth_satisfied = not client_context.auth_enabled
 
     return (topology_satisfied and min_version_satisfied and
-            max_version_satisfied and params_satisfied and auth_satisfied)
+            max_version_satisfied and serverless_satisfied and
+            params_satisfied and auth_satisfied)
 
 
 def parse_collection_or_database_options(options):
@@ -1154,7 +1163,8 @@ _SCHEMA_VERSION_MAJOR_TO_MIXIN_CLASS = {
 
 def generate_test_classes(test_path, module=__name__, class_name_prefix='',
                           expected_failures=[],
-                          bypass_test_generation_errors=False):
+                          bypass_test_generation_errors=False,
+                          **kwargs):
     """Method for generating test classes. Returns a dictionary where keys are
     the names of test classes and values are the test class objects."""
     test_klasses = {}
@@ -1195,10 +1205,12 @@ def generate_test_classes(test_path, module=__name__, class_name_prefix='',
                     raise ValueError(
                         "test file '%s' has unsupported schemaVersion '%s'" % (
                             fpath, schema_version))
+                module_dict = {'__module__': module}
+                module_dict.update(kwargs)
                 test_klasses[class_name] = type(
                     class_name,
                     (mixin_class, test_base_class_factory(scenario_def),),
-                    {'__module__': module})
+                    module_dict)
             except Exception:
                 if bypass_test_generation_errors:
                     continue

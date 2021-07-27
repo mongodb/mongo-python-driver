@@ -27,7 +27,7 @@ from pymongo.auth import HAVE_KERBEROS, _build_credentials_tuple
 from pymongo.errors import OperationFailure
 from pymongo.read_preferences import ReadPreference
 from pymongo.saslprep import HAVE_STRINGPREP
-from test import client_context, SkipTest, unittest, Version
+from test import client_context, IntegrationTest, SkipTest, unittest, Version
 from test.utils import (delay,
                         ignore_deprecations,
                         single_client,
@@ -303,11 +303,12 @@ class TestSASLPlain(unittest.TestCase):
         self.assertRaises(OperationFailure, bad_pwd.admin.command, 'ismaster')
 
 
-class TestSCRAMSHA1(unittest.TestCase):
+class TestSCRAMSHA1(IntegrationTest):
 
     @client_context.require_auth
     @client_context.require_version_min(2, 7, 2)
     def setUp(self):
+        super(TestSCRAMSHA1, self).setUp()
         # Before 2.7.7, SCRAM-SHA-1 had to be enabled from the command line.
         if client_context.version < Version(2, 7, 7):
             cmd_line = client_context.cmd_line
@@ -321,6 +322,7 @@ class TestSCRAMSHA1(unittest.TestCase):
 
     def tearDown(self):
         client_context.drop_user('pymongo_test', 'user')
+        super(TestSCRAMSHA1, self).tearDown()
 
     def test_scram_sha1(self):
         host, port = client_context.host, client_context.port
@@ -343,11 +345,12 @@ class TestSCRAMSHA1(unittest.TestCase):
 
 
 # https://github.com/mongodb/specifications/blob/master/source/auth/auth.rst#scram-sha-256-and-mechanism-negotiation
-class TestSCRAM(unittest.TestCase):
+class TestSCRAM(IntegrationTest):
 
     @client_context.require_auth
     @client_context.require_version_min(3, 7, 2)
     def setUp(self):
+        super(TestSCRAM, self).setUp()
         self._SENSITIVE_COMMANDS = monitoring._SENSITIVE_COMMANDS
         monitoring._SENSITIVE_COMMANDS = set([])
         self.listener = WhiteListEventListener("saslStart")
@@ -356,6 +359,7 @@ class TestSCRAM(unittest.TestCase):
         monitoring._SENSITIVE_COMMANDS = self._SENSITIVE_COMMANDS
         client_context.client.testscram.command("dropAllUsersFromDatabase")
         client_context.client.drop_database("testscram")
+        super(TestSCRAM, self).tearDown()
 
     def test_scram_skip_empty_exchange(self):
         listener = WhiteListEventListener("saslStart", "saslContinue")
@@ -571,10 +575,11 @@ class TestSCRAM(unittest.TestCase):
             self.assertTrue(thread.success)
 
 
-class TestAuthURIOptions(unittest.TestCase):
+class TestAuthURIOptions(IntegrationTest):
 
     @client_context.require_auth
     def setUp(self):
+        super(TestAuthURIOptions, self).setUp()
         client_context.create_user('admin', 'admin', 'pass')
         client_context.create_user(
             'pymongo_test', 'user', 'pass', ['userAdmin', 'readWrite'])
@@ -582,6 +587,7 @@ class TestAuthURIOptions(unittest.TestCase):
     def tearDown(self):
         client_context.drop_user('pymongo_test', 'user')
         client_context.drop_user('admin', 'admin')
+        super(TestAuthURIOptions, self).tearDown()
 
     def test_uri_options(self):
         # Test default to admin
