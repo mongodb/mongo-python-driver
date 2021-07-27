@@ -34,7 +34,7 @@ sys.path[0:0] = [""]
 
 from pymongo.pool import Pool, PoolOptions
 from pymongo.socket_checker import SocketChecker
-from test import client_context, unittest
+from test import client_context, IntegrationTest, unittest
 from test.utils import (get_pool,
                         joinall,
                         delay,
@@ -154,10 +154,11 @@ def run_cases(client, cases):
         assert t.passed, "%s.run() threw an exception" % repr(t)
 
 
-class _TestPoolingBase(unittest.TestCase):
+class _TestPoolingBase(IntegrationTest):
     """Base class for all connection-pool tests."""
 
     def setUp(self):
+        super(_TestPoolingBase, self).setUp()
         self.c = rs_or_single_client()
         db = self.c[DB]
         db.unique.drop()
@@ -167,6 +168,7 @@ class _TestPoolingBase(unittest.TestCase):
 
     def tearDown(self):
         self.c.close()
+        super(_TestPoolingBase, self).tearDown()
 
     def create_pool(
             self,

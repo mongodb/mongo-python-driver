@@ -53,7 +53,7 @@ from test.utils import (connected,
 from test.version import Version
 
 
-class TestSelections(unittest.TestCase):
+class TestSelections(IntegrationTest):
 
     @client_context.require_connection
     def test_bool(self):
@@ -486,7 +486,8 @@ class TestMovingAverage(unittest.TestCase):
         avg.add_sample(30)
         self.assertAlmostEqual(15.6, avg.get())
 
-class TestMongosAndReadPreference(unittest.TestCase):
+
+class TestMongosAndReadPreference(IntegrationTest):
 
     def test_read_preference_document(self):
 
