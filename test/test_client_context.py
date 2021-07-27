@@ -34,7 +34,7 @@ class TestClientContext(unittest.TestCase):
         if 'TEST_SERVERLESS' not in os.environ:
             raise SkipTest('TEST_SERVERLESS is not set')
 
-        self.assertTrue(client_context.connected,
+        self.assertTrue(client_context.connected and client_context.serverless,
                         'client context must be connected to serverless when '
                         'TEST_SERVERLESS is set. Failed attempts:\n%s' %
                         (client_context.connection_attempt_info(),))
