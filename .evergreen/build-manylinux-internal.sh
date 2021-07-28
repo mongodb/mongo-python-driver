@@ -19,9 +19,9 @@ for PYTHON in /opt/python/*/bin/python; do
     $PYTHON setup.py bdist_wheel
     rm -rf build
 
-    # Audit wheels and write multilinux tag
+    # Audit wheels and write manylinux tag
     for whl in dist/*.whl; do
-        # Skip already built manylinux1 wheels.
+        # Skip already built manylinux wheels.
         if [[ "$whl" != *"manylinux"* ]]; then
             auditwheel repair $whl -w dist
             rm $whl
