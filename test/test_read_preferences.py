@@ -37,7 +37,8 @@ from pymongo.server_selectors import readable_server_selector, Selection
 from pymongo.server_type import SERVER_TYPE
 from pymongo.write_concern import WriteConcern
 
-from test import (SkipTest,
+from test import (IntegrationTest,
+                  SkipTest,
                   client_context,
                   unittest,
                   db_user,
