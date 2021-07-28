@@ -426,6 +426,7 @@ functions:
           fi
           if [ -n "${test_serverless}" ]; then
             export TEST_SERVERLESS=1
+            export PROJECT="mongo-python-driver-312"
             export MONGODB_URI="${MONGODB_URI}"
             export SERVERLESS_ATLAS_USER="${SERVERLESS_ATLAS_USER}"
             export SERVERLESS_ATLAS_PASSWORD="${SERVERLESS_ATLAS_PASSWORD}"
