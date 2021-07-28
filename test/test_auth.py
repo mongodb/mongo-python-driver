@@ -660,7 +660,8 @@ class TestSCRAM(IntegrationTest):
             thread.join()
             self.assertTrue(thread.success)
 
-class TestThreadedAuth(unittest.TestCase):
+
+class TestThreadedAuth(IntegrationTest):
 
     @client_context.require_auth
     def test_db_authenticate_threaded(self):
