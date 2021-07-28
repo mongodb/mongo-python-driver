@@ -1037,16 +1037,26 @@ class TestCausalConsistency(unittest.TestCase):
             lambda coll, session: coll.drop_index("foo_1", session=session))
         self._test_no_read_concern(
             lambda coll, session: coll.drop_indexes(session=session))
+
+        # Not a write, but explain also doesn't support readConcern.
+        self._test_no_read_concern(
+            lambda coll, session: coll.find({}, session=session).explain())
+
+    @client_context.require_no_standalone
+    @unittest.skipIf(client_context.serverless,
+                     "Serverless does not support currentOp")
+    def test_writes_do_not_include_read_concern_current_op(self):
+        # Not a write, but currentOp also doesn't support readConcern.
+        self._test_no_read_concern(
+            lambda coll, session: coll.database.current_op(session=session))
+
+    @client_context.require_no_standalone
+    @unittest.skipIf(client_context.serverless,
+                     "Serverless does not support mapReduce")
+    def test_writes_do_not_include_read_concern_map_reduce(self):
         self._test_no_read_concern(
             lambda coll, session: coll.map_reduce(
                 'function() {}', 'function() {}', 'mrout', session=session))
-
-        # They are not writes, but currentOp and explain also don't support
-        # readConcern.
-        self._test_no_read_concern(
-            lambda coll, session: coll.database.current_op(session=session))
-        self._test_no_read_concern(
-            lambda coll, session: coll.find({}, session=session).explain())
 
         if client_context.supports_reindex:
             self._test_no_read_concern(
@@ -1353,6 +1363,7 @@ class TestClusterTime(IntegrationTest):
 
 
 class TestSpec(SpecRunner):
+    RUN_ON_SERVERLESS = True
     # Location of JSON test specifications.
     TEST_PATH = os.path.join(
         os.path.dirname(os.path.realpath(__file__)), 'sessions', 'legacy')

@@ -35,7 +35,7 @@ from pymongo.operations import (InsertOne,
                                 UpdateOne,
                                 UpdateMany)
 
-from test import unittest, client_context, IntegrationTest
+from test import client_context, unittest, IntegrationTest
 from test.utils import (camel_to_snake, camel_to_upper_camel,
                         camel_to_snake_args, drop_collections, TestCreator)
 
@@ -45,7 +45,7 @@ _TEST_PATH = os.path.join(
 
 
 class TestAllScenarios(IntegrationTest):
-    pass
+    RUN_ON_SERVERLESS = True
 
 
 def check_result(self, expected_result, result):

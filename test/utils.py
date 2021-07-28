@@ -24,6 +24,7 @@ import shutil
 import sys
 import threading
 import time
+import unittest
 import warnings
 
 from collections import defaultdict
@@ -392,6 +393,18 @@ class TestCreator(object):
             if max_ver is not None:
                 method = client_context.require_version_max(*max_ver)(method)
 
+        if 'serverless' in scenario_def:
+            serverless = scenario_def['serverless']
+            if serverless == "require":
+                serverless_satisfied = client_context.serverless
+            elif serverless == "forbid":
+                serverless_satisfied = not client_context.serverless
+            else:   # unset or "allow"
+                serverless_satisfied = True
+            method = unittest.skipUnless(
+                serverless_satisfied,
+                "Serverless requirement not satisfied")(method)
+
         return method
 
     @staticmethod
@@ -416,6 +429,24 @@ class TestCreator(object):
             return client_context.version <= max_ver
         return True
 
+    @staticmethod
+    def valid_auth_enabled(run_on_req):
+        if 'authEnabled' in run_on_req:
+            if run_on_req['authEnabled']:
+                return client_context.auth_enabled
+            return not client_context.auth_enabled
+        return True
+
+    @staticmethod
+    def serverless_ok(run_on_req):
+        serverless = run_on_req['serverless']
+        if serverless == "require":
+            return client_context.serverless
+        elif serverless == "forbid":
+            return not client_context.serverless
+        else:  # unset or "allow"
+            return True
+
     def should_run_on(self, scenario_def):
         run_on = scenario_def.get('runOn', [])
         if not run_on:
@@ -425,7 +456,9 @@ class TestCreator(object):
         for req in run_on:
             if (self.valid_topology(req) and
                     self.min_server_version(req) and
-                    self.max_server_version(req)):
+                    self.max_server_version(req) and
+                    self.valid_auth_enabled(req) and
+                    self.serverless_ok(req)):
                 return True
         return False
 
