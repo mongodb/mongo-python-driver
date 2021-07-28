@@ -44,9 +44,9 @@ from pymongo.errors import (
     NotPrimaryError, PyMongoError)
 from pymongo.monitoring import (
     CommandFailedEvent, CommandListener, CommandStartedEvent,
-    CommandSucceededEvent, _SENSITIVE_COMMANDS, _is_speculative_authenticate,
-    PoolCreatedEvent, PoolReadyEvent, PoolClearedEvent, PoolClosedEvent,
-    ConnectionCreatedEvent, ConnectionReadyEvent, ConnectionClosedEvent,
+    CommandSucceededEvent, _SENSITIVE_COMMANDS, PoolCreatedEvent,
+    PoolReadyEvent, PoolClearedEvent, PoolClosedEvent, ConnectionCreatedEvent,
+    ConnectionReadyEvent, ConnectionClosedEvent,
     ConnectionCheckOutStartedEvent, ConnectionCheckOutFailedEvent,
     ConnectionCheckedOutEvent, ConnectionCheckedInEvent)
 from pymongo.read_concern import ReadConcern
