@@ -93,22 +93,7 @@ def _format_detailed_error(message, details):
     return message
 
 
-class NotMasterError(AutoReconnect):
-    """**DEPRECATED** - The server responded "not master" or
-    "node is recovering".
-
-    This exception has been deprecated and will be removed in PyMongo 4.0.
-    Use :exc:`~pymongo.errors.NotPrimaryError` instead.
-
-    .. versionchanged:: 3.12
-      Deprecated. Use :exc:`~pymongo.errors.NotPrimaryError` instead.
-    """
-    def __init__(self, message='', errors=None):
-        super(NotMasterError, self).__init__(
-            _format_detailed_error(message, errors), errors=errors)
-
-
-class NotPrimaryError(NotMasterError):
+class NotPrimaryError(AutoReconnect):
     """The server responded "not primary" or "node is recovering".
 
     These errors result from a query, write, or command. The operation failed
@@ -124,7 +109,8 @@ class NotPrimaryError(NotMasterError):
     .. versionadded:: 3.12
     """
     def __init__(self, message='', errors=None):
-        super(NotPrimaryError, self).__init__(message, errors=errors)
+        super(NotPrimaryError, self).__init__(
+            _format_detailed_error(message, errors), errors=errors)
 
 
 class ServerSelectionTimeoutError(AutoReconnect):
