@@ -21,7 +21,6 @@ sys.path[0:0] = [""]
 from pymongo.errors import (BulkWriteError,
                             EncryptionError,
                             NotPrimaryError,
-                            NotMasterError,
                             OperationFailure)
 from test import (PyMongoTestCase,
                   unittest)
@@ -100,11 +99,6 @@ class TestErrors(PyMongoTestCase):
         exc2 = pickle.loads(pickle.dumps(exc))
         self.assertPyMongoErrorEqual(exc, exc2)
         self.assertOperationFailureEqual(cause, exc2.cause)
-
-    def test_NotMasterError_catches_NotPrimaryError(self):
-        with self.assertRaises(NotMasterError) as exc:
-            raise NotPrimaryError("not primary test", {"errmsg": "error"})
-        self.assertIn("full error", str(exc.exception))
 
 
 if __name__ == "__main__":

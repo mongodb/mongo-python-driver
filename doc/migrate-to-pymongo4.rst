@@ -378,6 +378,12 @@ custom types to BSON, the :class:`~bson.codec_options.TypeCodec` and
 For more information, see the
 :doc:`custom type example <examples/custom_type>`.
 
+NotMasterError is removed
+-------------------------
+
+Removed :exc:`pymongo.errors.NotMasterError`.
+Use :exc:`~pymongo.errors.NotPrimaryError` instead.
+
 Removed features with no migration path
 ---------------------------------------
 
