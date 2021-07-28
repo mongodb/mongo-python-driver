@@ -1199,10 +1199,12 @@ class Pool:
         self.ntxns = 0
 
     def ready(self):
-        old_state, self.state = self.state, PoolState.READY
-        if old_state != PoolState.READY:
-            if self.enabled_for_cmap:
-                self.opts.event_listeners.publish_pool_ready(self.address)
+        # Take the lock to avoid the race condition described in PYTHON-2699.
+        with self.lock:
+            if self.state != PoolState.READY:
+                self.state = PoolState.READY
+                if self.enabled_for_cmap:
+                    self.opts.event_listeners.publish_pool_ready(self.address)
 
     @property
     def closed(self):
@@ -1284,8 +1286,10 @@ class Pool:
         `generation` at the point in time this operation was requested on the
         pool.
         """
-        if self.state != PoolState.READY:
-            return
+        # Take the lock to avoid the race condition described in PYTHON-2699.
+        with self.lock:
+            if self.state != PoolState.READY:
+                return
 
         if self.opts.max_idle_time_seconds is not None:
             with self.lock:
