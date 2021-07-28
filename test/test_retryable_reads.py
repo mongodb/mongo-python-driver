@@ -146,6 +146,7 @@ class FindThread(threading.Thread):
 
 class TestPoolPausedError(SpeedyTest):
     RUN_ON_LOAD_BALANCER = True
+    RUN_ON_SERVERLESS = True
 
     @client_context.require_failCommand_blockConnection
     @client_context.require_retryable_writes
