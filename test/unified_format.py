@@ -44,9 +44,9 @@ from pymongo.errors import (
     NotPrimaryError, PyMongoError)
 from pymongo.monitoring import (
     CommandFailedEvent, CommandListener, CommandStartedEvent,
-    CommandSucceededEvent, _SENSITIVE_COMMANDS, PoolCreatedEvent,
-    PoolReadyEvent, PoolClearedEvent, PoolClosedEvent, ConnectionCreatedEvent,
-    ConnectionReadyEvent, ConnectionClosedEvent,
+    CommandSucceededEvent, _SENSITIVE_COMMANDS, _is_speculative_authenticate,
+    PoolCreatedEvent, PoolReadyEvent, PoolClearedEvent, PoolClosedEvent,
+    ConnectionCreatedEvent, ConnectionReadyEvent, ConnectionClosedEvent,
     ConnectionCheckOutStartedEvent, ConnectionCheckOutFailedEvent,
     ConnectionCheckedOutEvent, ConnectionCheckedInEvent)
 from pymongo.read_concern import ReadConcern
@@ -191,8 +191,10 @@ class EventListenerUtil(CMAPListener, CommandListener):
                  observe_sensitive_commands):
         self._event_types = set(name.lower() for name in observe_events)
         if observe_sensitive_commands:
+            self._observe_sensitive_commands = True
             self._ignore_commands = set(ignore_commands)
         else:
+            self._observe_sensitive_commands = False
             self._ignore_commands = _SENSITIVE_COMMANDS | set(ignore_commands)
             self._ignore_commands.add('configurefailpoint')
         super(EventListenerUtil, self).__init__()
@@ -211,13 +213,24 @@ class EventListenerUtil(CMAPListener, CommandListener):
             self.add_event(event)
 
     def started(self, event):
-        self._command_event(event)
+        if event.command == {}:
+            # Command is redacted. Observe only if flag is set.
+            if self._observe_sensitive_commands:
+                self._command_event(event)
+        else:
+            self._command_event(event)
 
     def succeeded(self, event):
-        self._command_event(event)
+        if event.reply == {}:
+            # Command is redacted. Observe only if flag is set.
+            if self._observe_sensitive_commands:
+                self._command_event(event)
+        else:
+            self._command_event(event)
 
     def failed(self, event):
-        self._command_event(event)
+        if self._observe_sensitive_commands:
+            self._command_event(event)
 
 
 class EntityMapUtil(object):
