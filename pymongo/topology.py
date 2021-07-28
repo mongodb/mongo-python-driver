@@ -281,8 +281,12 @@ class Topology(object):
             # This is a stale isMaster response. Ignore it.
             return
 
+        new_td = updated_topology_description(
+            self._description, server_description)
         # CMAP: Ensure the pool is "ready" when the server is selectable.
-        if server_description.is_server_type_known:
+        if (server_description.is_readable
+                or (server_description.is_server_type_known and
+                    new_td.topology_type == TOPOLOGY_TYPE.Single)):
             server = self._servers.get(server_description.address)
             if server:
                 server.pool.ready()
@@ -295,9 +299,7 @@ class Topology(object):
                 (sd_old, server_description,
                  server_description.address, self._topology_id)))
 
-        self._description = updated_topology_description(
-            self._description, server_description)
-
+        self._description = new_td
         self._update_servers()
         self._receive_cluster_time_no_lock(server_description.cluster_time)
 
