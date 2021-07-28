@@ -229,7 +229,13 @@ class TestCMAP(IntegrationTest):
         opts['event_listeners'] = [self.listener]
         opts['_monitor_class'] = DummyMonitor
         opts['connect'] = False
-        with client_knobs(kill_cursor_frequency=.05,
+        # Support backgroundThreadIntervalMS, default to 50ms.
+        interval = opts.pop('backgroundThreadIntervalMS', 50)
+        if interval < 0:
+            kill_cursor_frequency = 99999999
+        else:
+            kill_cursor_frequency = interval/1000.0
+        with client_knobs(kill_cursor_frequency=kill_cursor_frequency,
                           min_heartbeat_interval=.05):
             client = single_client(**opts)
             # Update the SD to a known type because the DummyMonitor will not.
@@ -242,7 +248,12 @@ class TestCMAP(IntegrationTest):
                                            client_context.port)]
             client._topology._description = updated_topology_description(
                 client._topology._description, sd)
-            client._get_topology()
+            # When backgroundThreadIntervalMS is negative we do not start the
+            # background thread to ensure it never runs.
+            if interval < 0:
+                client._topology.open()
+            else:
+                client._get_topology()
         self.addCleanup(client.close)
         self.pool = list(client._topology._servers.values())[0].pool
 

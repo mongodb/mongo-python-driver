@@ -23,6 +23,7 @@
   },
   "poolOptions": {
     "minPoolSize": 1,
+    "backgroundThreadIntervalMS": 50,
     "appName": "poolCreateMinSizeErrorTest"
   },
   "operations": [
