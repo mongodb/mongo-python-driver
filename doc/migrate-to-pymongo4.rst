@@ -381,7 +381,7 @@ For more information, see the
 NotMasterError is removed
 -------------------------
 
-Removed :exc:`pymongo.errors.NotMasterError`.
+Removed :exc:`~pymongo.errors.NotMasterError`.
 Use :exc:`~pymongo.errors.NotPrimaryError` instead.
 
 Removed features with no migration path
