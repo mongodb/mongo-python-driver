@@ -2706,7 +2706,10 @@ buildvariants:
     auth-ssl: auth-ssl
     serverless: "*"
   exclude_spec:
+    platform: awslinux
     python-version: "jython2.7"
+    auth-ssl: auth-ssl
+    serverless: "*"
   display_name: "Serverless ${python-version} ${platform}"
   tasks:
     - "serverless_task_group"
