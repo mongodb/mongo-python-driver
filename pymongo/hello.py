@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Parse a response to the 'hello' or legacy hello command."""
+"""Helpers for the 'hello' and legacy hello commands."""
+
 import itertools
 
 from pymongo import common
@@ -26,15 +27,43 @@ class HelloCompat:
     LEGACY_PRIMARY = 'ismaster'
 
 
+def _get_server_type(doc):
+    """Determine the server type from a hello response."""
+    if not doc.get('ok'):
+        return SERVER_TYPE.Unknown
+
+    if doc.get('serviceId'):
+        return SERVER_TYPE.LoadBalancer
+    elif doc.get('isreplicaset'):
+        return SERVER_TYPE.RSGhost
+    elif doc.get('setName'):
+        if doc.get('hidden'):
+            return SERVER_TYPE.RSOther
+        elif doc.get(HelloCompat.PRIMARY):
+            return SERVER_TYPE.RSPrimary
+        elif doc.get(HelloCompat.LEGACY_PRIMARY):
+            return SERVER_TYPE.RSPrimary
+        elif doc.get('secondary'):
+            return SERVER_TYPE.RSSecondary
+        elif doc.get('arbiterOnly'):
+            return SERVER_TYPE.RSArbiter
+        else:
+            return SERVER_TYPE.RSOther
+    elif doc.get('msg') == 'isdbgrid':
+        return SERVER_TYPE.Mongos
+    else:
+        return SERVER_TYPE.Standalone
+
+
 class Hello(object):
+    """Parse a hello response from the server.
+
+    .. versionadded:: 3.12
+    """
     __slots__ = ('_doc', '_server_type', '_is_writable', '_is_readable',
                  '_awaitable')
 
     def __init__(self, doc, awaitable=False):
-        """Parse a hello response from the server.
-
-        .. versionadded:: 4.0
-        """
         self._server_type = _get_server_type(doc)
         self._doc = doc
         self._is_writable = self._server_type in (
@@ -50,7 +79,10 @@ class Hello(object):
 
     @property
     def document(self):
-        """The complete hello command response document."""
+        """The complete hello command response document.
+
+        .. versionadded:: 3.4
+        """
         return self._doc.copy()
 
     @property
@@ -173,31 +205,3 @@ class Hello(object):
     @property
     def hello_ok(self):
         return self._doc.get('helloOk', False)
-
-
-def _get_server_type(doc):
-    """Determine the server type from a hello response."""
-    if not doc.get('ok'):
-        return SERVER_TYPE.Unknown
-
-    if doc.get('serviceId'):
-        return SERVER_TYPE.LoadBalancer
-    elif doc.get('isreplicaset'):
-        return SERVER_TYPE.RSGhost
-    elif doc.get('setName'):
-        if doc.get('hidden'):
-            return SERVER_TYPE.RSOther
-        elif doc.get(HelloCompat.PRIMARY):
-            return SERVER_TYPE.RSPrimary
-        elif doc.get(HelloCompat.LEGACY_PRIMARY):
-            return SERVER_TYPE.RSPrimary
-        elif doc.get('secondary'):
-            return SERVER_TYPE.RSSecondary
-        elif doc.get('arbiterOnly'):
-            return SERVER_TYPE.RSArbiter
-        else:
-            return SERVER_TYPE.RSOther
-    elif doc.get('msg') == 'isdbgrid':
-        return SERVER_TYPE.Mongos
-    else:
-        return SERVER_TYPE.Standalone
