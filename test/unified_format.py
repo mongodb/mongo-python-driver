@@ -229,8 +229,7 @@ class EventListenerUtil(CMAPListener, CommandListener):
             self._command_event(event)
 
     def failed(self, event):
-        if self._observe_sensitive_commands:
-            self._command_event(event)
+        self._command_event(event)
 
 
 class EntityMapUtil(object):
