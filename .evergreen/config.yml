@@ -2705,6 +2705,8 @@ buildvariants:
     python-version: *amazon1-pythons
     auth-ssl: auth-ssl
     serverless: "*"
+  exclude_spec:
+    python-version: "jython2.7"
   display_name: "Serverless ${python-version} ${platform}"
   tasks:
     - "serverless_task_group"
