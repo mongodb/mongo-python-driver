@@ -31,13 +31,10 @@ class CommandCursor(object):
     """A cursor / iterator over command cursors."""
     _getmore_class = _GetMore
 
-    def __init__(self, collection, cursor_info, address, retrieved=0,
+    def __init__(self, collection, cursor_info, address,
                  batch_size=0, max_await_time_ms=None, session=None,
                  explicit_session=False):
-        """Create a new command cursor.
-
-        The parameter 'retrieved' is unused.
-        """
+        """Create a new command cursor."""
         self.__sock_mgr = None
         self.__collection = collection
         self.__id = cursor_info['id']
@@ -297,7 +294,7 @@ class CommandCursor(object):
 class RawBatchCommandCursor(CommandCursor):
     _getmore_class = _RawBatchGetMore
 
-    def __init__(self, collection, cursor_info, address, retrieved=0,
+    def __init__(self, collection, cursor_info, address,
                  batch_size=0, max_await_time_ms=None, session=None,
                  explicit_session=False):
         """Create a new cursor / iterator over raw batches of BSON data.
@@ -310,7 +307,7 @@ class RawBatchCommandCursor(CommandCursor):
         """
         assert not cursor_info.get('firstBatch')
         super(RawBatchCommandCursor, self).__init__(
-            collection, cursor_info, address, retrieved, batch_size,
+            collection, cursor_info, address, batch_size,
             max_await_time_ms, session, explicit_session)
 
     def _unpack_response(self, response, cursor_id, codec_options,
