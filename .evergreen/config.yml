@@ -827,6 +827,24 @@ functions:
           # Remove all Docker images
           docker rmi -f $(docker images -a -q) &> /dev/null || true
 
+  "upload release":
+    - command: archive.targz_pack
+      params:
+        target: "release-files.tgz"
+        source_dir: "src/dist"
+        include:
+          - "*"
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: release-files.tgz
+        remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/release/${task_id}-${execution}-release-files.tar.gz
+        bucket: mciuploads
+        permissions: public-read
+        content_type: ${content_type|application/gzip}
+        display_name: Release files
+
 pre:
   - func: "fetch source"
   - func: "prepare resources"
@@ -878,7 +896,6 @@ tasks:
                genhtml --version || true
                valgrind --version || true
 
-
     - name: "release"
       tags: ["release"]
       exec_timeout_secs: 216000  # 60 minutes (manylinux task is slow).
@@ -891,22 +908,21 @@ tasks:
               set -o xtrace
               ${PREPARE_SHELL}
               .evergreen/release.sh
-        - command: archive.targz_pack
+        - func: "upload release"
+
+    - name: "release-old-manylinux"
+      tags: ["release"]
+      exec_timeout_secs: 216000  # 60 minutes (manylinux task is slow).
+      commands:
+        - command: shell.exec
+          type: test
           params:
-            target: "release-files.tgz"
-            source_dir: "src/dist"
-            include:
-              - "*"
-        - command: s3.put
-          params:
-            aws_key: ${aws_key}
-            aws_secret: ${aws_secret}
-            local_file: release-files.tgz
-            remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/release/${task_id}-${execution}-release-files.tar.gz
-            bucket: mciuploads
-            permissions: public-read
-            content_type: ${content_type|application/gzip}
-            display_name: Release files
+            working_dir: "src"
+            script: |
+              set -o xtrace
+              ${PREPARE_SHELL}
+              .evergreen/build-manylinux.sh BUILD_WITH_TAG
+        - func: "upload release"
 
 # Standard test tasks {{{
 
@@ -2757,6 +2773,12 @@ buildvariants:
   batchtime: 20160 # 14 days
   tasks:
     - name: "release"
+  rules:
+    - if:
+        platform: ubuntu-20.04
+      then:
+        add_tasks:
+          - name: "release-old-manylinux"
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available
