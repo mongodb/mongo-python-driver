@@ -2044,6 +2044,9 @@ class TestClientPool(MockClientTest):
         # Assert that we do not create connections to unknown servers.
         arbiter = c._topology.get_server_by_address(('d', 4))
         self.assertFalse(arbiter.pool.sockets)
+        # Arbiter pool is not marked ready.
+        self.assertEqual(
+            listener.event_count(monitoring.PoolReadyEvent), 2)
 
     @client_context.require_connection
     def test_direct_client_maintains_pool_to_arbiter(self):
@@ -2068,6 +2071,9 @@ class TestClientPool(MockClientTest):
             listener.event_count(monitoring.ConnectionCreatedEvent), 1)
         arbiter = c._topology.get_server_by_address(('c', 3))
         self.assertEqual(len(arbiter.pool.sockets), 1)
+        # Arbiter pool is marked ready.
+        self.assertEqual(
+            listener.event_count(monitoring.PoolReadyEvent), 1)
 
 
 if __name__ == "__main__":
