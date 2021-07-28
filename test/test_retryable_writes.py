@@ -537,19 +537,27 @@ class TestPoolPausedError(SpeedyTest):
             ConnectionCheckedOutEvent,
             ConnectionCheckOutFailedEvent,
             PoolClearedEvent))
-        self.assertIsInstance(cmap_events[0], ConnectionCheckedOutEvent)
-        self.assertIsInstance(cmap_events[1], PoolClearedEvent)
-        self.assertIsInstance(cmap_events[2], ConnectionCheckOutFailedEvent)
+        self.assertIsInstance(cmap_events[0], ConnectionCheckedOutEvent,
+                              msg=cmap_events)
+        self.assertIsInstance(cmap_events[1], PoolClearedEvent,
+                              msg=cmap_events)
+        self.assertIsInstance(cmap_events[2], ConnectionCheckOutFailedEvent,
+                              msg=cmap_events)
         self.assertEqual(cmap_events[2].reason,
-                         ConnectionCheckOutFailedReason.CONN_ERROR)
-        self.assertIsInstance(cmap_events[3], ConnectionCheckedOutEvent)
+                         ConnectionCheckOutFailedReason.CONN_ERROR,
+                         msg=cmap_events)
+        self.assertIsInstance(cmap_events[3], ConnectionCheckedOutEvent,
+                              msg=cmap_events)
 
         # Connection check out failures are not reflected in command
         # monitoring because we only publish command events _after_ checking
         # out a connection.
-        self.assertEqual(3, len(cmd_listener.results['started']))
-        self.assertEqual(2, len(cmd_listener.results['succeeded']))
-        self.assertEqual(1, len(cmd_listener.results['failed']))
+        started = cmd_listener.results['started']
+        self.assertEqual(3, len(started), msg=started)
+        succeeded = cmd_listener.results['succeeded']
+        self.assertEqual(2, len(succeeded), msg=succeeded)
+        failed = cmd_listener.results['failed']
+        self.assertEqual(1, len(failed), msg=failed)
 
 
 # TODO: Make this a real integration test where we stepdown the primary.
