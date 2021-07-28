@@ -50,8 +50,7 @@ from pymongo.errors import (AutoReconnect,
                             NotPrimaryError,
                             OperationFailure,
                             PyMongoError)
-from pymongo.hello import HelloCompat
-from pymongo.ismaster import IsMaster
+from pymongo.hello import HelloCompat, Hello
 from pymongo.monitoring import (ConnectionCheckOutFailedReason,
                                 ConnectionClosedReason)
 from pymongo.network import (command,
@@ -618,7 +617,7 @@ class SocketInfo(object):
             doc.setdefault('serviceId', process_id)
         if not self.opts.load_balanced:
             doc.pop('serviceId', None)
-        ismaster = IsMaster(doc, awaitable=awaitable)
+        ismaster = Hello(doc, awaitable=awaitable)
         self.is_writable = ismaster.is_writable
         self.max_wire_version = ismaster.max_wire_version
         self.max_bson_size = ismaster.max_bson_size

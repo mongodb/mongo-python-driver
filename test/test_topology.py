@@ -29,7 +29,7 @@ from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure)
-from pymongo.ismaster import IsMaster
+from pymongo.hello import Hello
 from pymongo.monitor import Monitor
 from pymongo.pool import PoolOptions
 from pymongo.server_description import ServerDescription
@@ -67,7 +67,7 @@ def create_mock_topology(
 
 def got_ismaster(topology, server_address, ismaster_response):
     server_description = ServerDescription(
-        server_address, IsMaster(ismaster_response), 0)
+        server_address, Hello(ismaster_response), 0)
 
     topology.on_change(server_description)
 
@@ -212,7 +212,7 @@ class TestSingleServerTopology(TopologyTest):
         class TestMonitor(Monitor):
             def _check_with_socket(self, *args, **kwargs):
                 if available:
-                    return (IsMaster({'ok': 1, 'maxWireVersion': 6}),
+                    return (Hello({'ok': 1, 'maxWireVersion': 6}),
                             round_trip_time)
                 else:
                     raise AutoReconnect('mock monitor error')
@@ -673,7 +673,7 @@ class TestTopologyErrors(TopologyTest):
             def _check_with_socket(self, *args, **kwargs):
                 ismaster_count[0] += 1
                 if ismaster_count[0] == 1:
-                    return IsMaster({'ok': 1, 'maxWireVersion': 6}), 0
+                    return Hello({'ok': 1, 'maxWireVersion': 6}), 0
                 else:
                     raise AutoReconnect('mock monitor error')
 
@@ -695,7 +695,7 @@ class TestTopologyErrors(TopologyTest):
             def _check_with_socket(self, *args, **kwargs):
                 ismaster_count[0] += 1
                 if ismaster_count[0] in (1, 3):
-                    return IsMaster({'ok': 1, 'maxWireVersion': 6}), 0
+                    return Hello({'ok': 1, 'maxWireVersion': 6}), 0
                 else:
                     raise AutoReconnect(
                         'mock monitor error #%s' % (ismaster_count[0],))

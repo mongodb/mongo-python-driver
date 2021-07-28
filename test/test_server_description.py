@@ -21,7 +21,7 @@ sys.path[0:0] = [""]
 from bson.objectid import ObjectId
 from bson.int64 import Int64
 from pymongo.server_type import SERVER_TYPE
-from pymongo.ismaster import IsMaster
+from pymongo.hello import Hello
 from pymongo.server_description import ServerDescription
 from test import unittest
 
@@ -29,7 +29,7 @@ address = ('localhost', 27017)
 
 
 def parse_ismaster_response(doc):
-    ismaster_response = IsMaster(doc)
+    ismaster_response = Hello(doc)
     return ServerDescription(address, ismaster_response)
 
 

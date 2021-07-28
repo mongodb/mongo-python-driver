@@ -378,6 +378,12 @@ custom types to BSON, the :class:`~bson.codec_options.TypeCodec` and
 For more information, see the
 :doc:`custom type example <examples/custom_type>`.
 
+IsMaster is removed
+-------------------
+
+Removed :class:`pymongo.ismaster.IsMaster`.
+Use :class:`pymongo.hello.Hello` instead.
+
 Removed features with no migration path
 ---------------------------------------
 

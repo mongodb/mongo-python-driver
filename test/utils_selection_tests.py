@@ -23,7 +23,7 @@ sys.path[0:0] = [""]
 from bson import json_util
 from pymongo.common import clean_node, HEARTBEAT_FREQUENCY
 from pymongo.errors import AutoReconnect, ConfigurationError
-from pymongo.ismaster import IsMaster
+from pymongo.hello import Hello
 from pymongo.server_description import ServerDescription
 from pymongo.settings import TopologySettings
 from pymongo.server_selectors import writable_server_selector
@@ -60,7 +60,7 @@ def make_server_description(server, hosts):
     """Make a ServerDescription from server info in a JSON test."""
     server_type = server['type']
     if server_type in ("Unknown", "PossiblePrimary"):
-        return ServerDescription(clean_node(server['address']), IsMaster({}))
+        return ServerDescription(clean_node(server['address']), Hello({}))
 
     ismaster_response = {'ok': True, 'hosts': hosts}
     if server_type != "Standalone" and server_type != "Mongos":
@@ -85,7 +85,7 @@ def make_server_description(server, hosts):
 
     # Sets _last_update_time to now.
     sd = ServerDescription(clean_node(server['address']),
-                           IsMaster(ismaster_response),
+                           Hello(ismaster_response),
                            round_trip_time=server['avg_rtt_ms'] / 1000.0)
 
     if 'lastUpdateTime' in server:

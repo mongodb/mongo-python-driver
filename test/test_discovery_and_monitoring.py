@@ -31,7 +31,7 @@ from pymongo.errors import (AutoReconnect,
                             OperationFailure)
 from pymongo.helpers import (_check_command_response,
                              _check_write_command_response)
-from pymongo.ismaster import IsMaster
+from pymongo.hello import Hello
 from pymongo.server_description import ServerDescription, SERVER_TYPE
 from pymongo.settings import TopologySettings
 from pymongo.topology import Topology, _ErrorContext
@@ -83,7 +83,7 @@ def create_mock_topology(uri, monitor_class=DummyMonitor):
 
 def got_ismaster(topology, server_address, ismaster_response):
     server_description = ServerDescription(
-        server_address, IsMaster(ismaster_response), 0)
+        server_address, Hello(ismaster_response), 0)
     topology.on_change(server_description)
 
 

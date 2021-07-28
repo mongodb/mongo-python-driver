@@ -34,7 +34,7 @@ from pymongo.errors import (ConnectionFailure,
                             PyMongoError,
                             ServerSelectionTimeoutError,
                             WriteError)
-from pymongo.ismaster import IsMaster
+from pymongo.hello import Hello
 from pymongo.monitor import SrvMonitor
 from pymongo.pool import PoolOptions
 from pymongo.server import Server
@@ -567,7 +567,7 @@ class Topology(object):
                 # Emit initial SDAM events for load balancer mode.
                 self._process_change(ServerDescription(
                     self._seed_addresses[0],
-                    IsMaster({'ok': 1, 'serviceId': self._topology_id,
+                    Hello({'ok': 1, 'serviceId': self._topology_id,
                               'maxWireVersion': 13})))
 
         # Ensure that the monitors are open.

@@ -55,6 +55,8 @@ Breaking Changes in 4.0
 - Removed :meth:`pymongo.mongo_client.MongoClient.set_cursor_manager`.
 - Removed :mod:`pymongo.thread_util`.
 - Removed :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`.
+- Removed :class:`~pymongo.ismaster.IsMaster`.
+  Use :class:`~pymongo.hello.Hello` instead.
 - Removed :mod:`pymongo.son_manipulator`,
   :class:`pymongo.son_manipulator.SONManipulator`,
   :class:`pymongo.son_manipulator.ObjectIdInjector`,

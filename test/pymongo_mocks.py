@@ -21,7 +21,7 @@ import weakref
 from pymongo import common
 from pymongo import MongoClient
 from pymongo.errors import AutoReconnect, NetworkTimeout
-from pymongo.ismaster import IsMaster
+from pymongo.hello import Hello
 from pymongo.monitor import Monitor
 from pymongo.pool import Pool
 from pymongo.server_description import ServerDescription
@@ -100,7 +100,7 @@ class MockMonitor(Monitor):
         client = self.client
         address = self._server_description.address
         response, rtt = client.mock_is_master('%s:%d' % address)
-        return ServerDescription(address, IsMaster(response), rtt)
+        return ServerDescription(address, Hello(response), rtt)
 
 
 class MockClient(MongoClient):
