@@ -1139,6 +1139,11 @@ class TestVersionedApiExamples(IntegrationTest):
 
     @client_context.require_version_min(4, 7)
     def test_versioned_api_migration(self):
+        # SERVER-58785
+        if (client_context.is_topology_type(["sharded"]) and
+                not client_context.version.at_least(5, 0, 2)):
+            self.skipTest("This test needs MongoDB 5.0.2 or newer")
+
         client = rs_client(server_api=ServerApi("1", strict=True))
         client.db.sales.drop()
 
@@ -1171,7 +1176,7 @@ class TestVersionedApiExamples(IntegrationTest):
 
         # Start Versioned API Example 8
         # 8
-        # End Versioned API Example 7
+        # End Versioned API Example 8
 
 
 if __name__ == "__main__":
