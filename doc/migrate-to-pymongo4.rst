@@ -384,6 +384,12 @@ IsMaster is removed
 Removed :class:`pymongo.ismaster.IsMaster`.
 Use :class:`pymongo.hello.Hello` instead.
 
+NotMasterError is removed
+-------------------------
+
+Removed :exc:`~pymongo.errors.NotMasterError`.
+Use :exc:`~pymongo.errors.NotPrimaryError` instead.
+
 Removed features with no migration path
 ---------------------------------------
 
