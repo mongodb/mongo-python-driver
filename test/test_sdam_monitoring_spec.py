@@ -26,7 +26,7 @@ from pymongo import monitoring
 from pymongo.common import clean_node
 from pymongo.errors import (ConnectionFailure,
                             NotPrimaryError)
-from pymongo.ismaster import IsMaster
+from pymongo.hello import Hello
 from pymongo.monitor import Monitor
 from pymongo.server_description import ServerDescription
 from pymongo.topology_description import TOPOLOGY_TYPE
@@ -197,7 +197,7 @@ def create_test(scenario_def):
                     source_address = clean_node(source)
                     topology.on_change(ServerDescription(
                         address=source_address,
-                        ismaster=IsMaster(response),
+                        ismaster=Hello(response),
                         round_trip_time=0))
 
                 expected_results = phase['outcome']['events']

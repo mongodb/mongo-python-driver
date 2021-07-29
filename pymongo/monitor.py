@@ -23,7 +23,7 @@ from pymongo import common, periodic_executor
 from pymongo.errors import (NotPrimaryError,
                             OperationFailure,
                             _OperationCancelled)
-from pymongo.ismaster import IsMaster
+from pymongo.hello import Hello
 from pymongo.periodic_executor import _shutdown_executors
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
@@ -268,7 +268,7 @@ class Monitor(MonitorBase):
         start = time.monotonic()
         if conn.more_to_come:
             # Read the next streaming isMaster (MongoDB 4.4+).
-            response = IsMaster(conn._next_reply(), awaitable=True)
+            response = Hello(conn._next_reply(), awaitable=True)
         elif (conn.performed_handshake and
               self._server_description.topology_version):
             # Initiate streaming isMaster (MongoDB 4.4+).

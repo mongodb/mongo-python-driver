@@ -18,7 +18,7 @@ import time
 
 from bson import EPOCH_NAIVE
 from pymongo.server_type import SERVER_TYPE
-from pymongo.ismaster import IsMaster
+from pymongo.hello import Hello
 
 
 class ServerDescription(object):
@@ -48,7 +48,7 @@ class ServerDescription(object):
             error=None):
         self._address = address
         if not ismaster:
-            ismaster = IsMaster({})
+            ismaster = Hello({})
 
         self._server_type = ismaster.server_type
         self._all_hosts = ismaster.all_hosts
