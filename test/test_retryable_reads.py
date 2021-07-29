@@ -15,6 +15,7 @@
 """Test retryable reads spec."""
 
 import os
+import pprint
 import sys
 import threading
 
@@ -27,7 +28,11 @@ from pymongo.monitoring import (ConnectionCheckedOutEvent,
                                 PoolClearedEvent)
 from pymongo.write_concern import WriteConcern
 
-from test import unittest, client_context, PyMongoTestCase, SpeedyTest
+from test import (client_context,
+                  client_knobs,
+                  IntegrationTest,
+                  PyMongoTestCase,
+                  unittest)
 from test.utils import (CMAPListener,
                         OvertCommandListener,
                         rs_or_single_client,
@@ -144,12 +149,14 @@ class FindThread(threading.Thread):
         self.passed = True
 
 
-class TestPoolPausedError(SpeedyTest):
-    RUN_ON_LOAD_BALANCER = True
-    RUN_ON_SERVERLESS = True
+class TestPoolPausedError(IntegrationTest):
+    # Pools don't get paused in load balanced mode.
+    RUN_ON_LOAD_BALANCER = False
+    RUN_ON_SERVERLESS = False
 
     @client_context.require_failCommand_blockConnection
-    @client_context.require_retryable_writes
+    @client_knobs(heartbeat_frequency=.25, min_heartbeat_interval=.25,
+                  kill_cursor_frequency=.25, events_queue_frequency=.25)
     def test_pool_paused_error_is_retryable(self):
         cmap_listener = CMAPListener()
         cmd_listener = OvertCommandListener()
@@ -180,7 +187,6 @@ class TestPoolPausedError(SpeedyTest):
             ConnectionCheckedOutEvent,
             ConnectionCheckOutFailedEvent,
             PoolClearedEvent))
-        import pprint
         msg = pprint.pformat(cmap_listener.events)
         self.assertIsInstance(cmap_events[0], ConnectionCheckedOutEvent, msg)
         self.assertIsInstance(cmap_events[1], PoolClearedEvent, msg)

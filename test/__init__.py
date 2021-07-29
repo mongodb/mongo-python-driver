@@ -191,6 +191,16 @@ class client_knobs(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.disable()
 
+    def __call__(self, func):
+        def make_wrapper(f):
+            @wraps(f)
+            def wrap(*args, **kwargs):
+                with self:
+                    return f(*args, **kwargs)
+            return wrap
+
+        return make_wrapper(func)
+
     def __del__(self):
         if self._enabled:
             msg = (
@@ -855,7 +865,6 @@ class ClientContext(object):
             return (self.version.at_least(4, 0) and
                     self.test_commands_enabled)
 
-
     @property
     def requires_hint_with_min_max_queries(self):
         """Does the server require a hint with min/max queries."""
@@ -936,24 +945,6 @@ class IntegrationTest(PyMongoTestCase):
     def patch_system_certs(self, ca_certs):
         patcher = SystemCertsPatcher(ca_certs)
         self.addCleanup(patcher.disable)
-
-
-class SpeedyTest(IntegrationTest):
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        # Speed up the tests by decreasing all background task frequencies.
-        cls.knobs = client_knobs(heartbeat_frequency=.05,
-                                 min_heartbeat_interval=.05,
-                                 kill_cursor_frequency=.05,
-                                 events_queue_frequency=.05)
-        cls.knobs.enable()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.knobs.disable()
-        super().tearDownClass()
 
 
 class MockClientTest(unittest.TestCase):
