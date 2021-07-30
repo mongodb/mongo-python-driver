@@ -163,33 +163,23 @@ class TestPoolPausedError(IntegrationTest):
             maxPoolSize=1,
             event_listeners=[cmap_listener, cmd_listener])
         self.addCleanup(client.close)
-        for _ in range(10):
-            cmap_listener.reset()
-            cmd_listener.reset()
-            threads = [FindThread(client.pymongo_test.test) for _ in range(2)]
-            fail_command = {
-                'mode': {'times': 1},
-                'data': {
-                    'failCommands': ['find'],
-                    'blockConnection': True,
-                    'blockTimeMS': 1000,
-                    'errorCode': 91,
-                },
-            }
-            with self.fail_point(fail_command):
-                for thread in threads:
-                    thread.start()
-                for thread in threads:
-                    thread.join()
-                for thread in threads:
-                    self.assertTrue(thread.passed)
-
-            # It's possible that SDAM can rediscover the server and mark the
-            # pool ready before the thread in the wait queue has a chance
-            # to run. Repeat the test until the thread actually encounters
-            # a PoolClearedError.
-            if cmap_listener.event_count(ConnectionCheckOutFailedEvent):
-                break
+        threads = [FindThread(client.pymongo_test.test) for _ in range(2)]
+        fail_command = {
+            'mode': {'times': 1},
+            'data': {
+                'failCommands': ['find'],
+                'blockConnection': True,
+                'blockTimeMS': 1000,
+                'errorCode': 91,
+            },
+        }
+        with self.fail_point(fail_command):
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+            for thread in threads:
+                self.assertTrue(thread.passed)
 
         # Via CMAP monitoring, assert that the first check out succeeds.
         cmap_events = cmap_listener.events_by_type((

@@ -774,10 +774,12 @@ class ClientContext(object):
     def require_failCommand_blockConnection(self, func):
         """Run a test only if the server supports failCommand blockConnection.
         """
-        return self._require(lambda: (self.test_commands_enabled and
-                                      self.version >= (4, 2, 9)),
-                             "failCommand blockConnection is not supported",
-                             func=func)
+        return self._require(
+            lambda: (self.test_commands_enabled and (
+                (not self.is_mongos and self.version >= (4, 2, 9))) or
+                (self.is_mongos and self.version >= (4, 4))),
+            "failCommand blockConnection is not supported",
+            func=func)
 
     def require_tls(self, func):
         """Run a test only if the client can connect over TLS."""
