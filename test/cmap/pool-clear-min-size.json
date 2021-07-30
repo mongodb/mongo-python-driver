@@ -3,7 +3,8 @@
   "style": "unit",
   "description": "pool clear halts background minPoolSize establishments",
   "poolOptions": {
-    "minPoolSize": 1
+    "minPoolSize": 1,
+    "backgroundThreadIntervalMS": 50
   },
   "operations": [
     {
