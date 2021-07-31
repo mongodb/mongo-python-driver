@@ -681,7 +681,7 @@ class GridOut(io.IOBase):
         if self.__chunk_iter:
             self.__chunk_iter.close()
             self.__chunk_iter = None
-            super().close()
+        super().close()
 
     def write(self, value):
         raise io.UnsupportedOperation('write')
