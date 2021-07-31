@@ -15,15 +15,28 @@
 """Test retryable reads spec."""
 
 import os
+import pprint
 import sys
+import threading
 
 sys.path[0:0] = [""]
 
 from pymongo.mongo_client import MongoClient
+from pymongo.monitoring import (ConnectionCheckedOutEvent,
+                                ConnectionCheckOutFailedEvent,
+                                ConnectionCheckOutFailedReason,
+                                PoolClearedEvent)
 from pymongo.write_concern import WriteConcern
 
-from test import unittest, client_context, PyMongoTestCase
-from test.utils import TestCreator
+from test import (client_context,
+                  client_knobs,
+                  IntegrationTest,
+                  PyMongoTestCase,
+                  unittest)
+from test.utils import (CMAPListener,
+                        OvertCommandListener,
+                        rs_or_single_client,
+                        TestCreator)
 from test.utils_spec_runner import SpecRunner
 
 
@@ -122,6 +135,78 @@ def create_test(scenario_def, test, name):
 
 test_creator = TestCreator(create_test, TestSpec, _TEST_PATH)
 test_creator.create_tests()
+
+
+class FindThread(threading.Thread):
+    def __init__(self, collection):
+        super().__init__()
+        self.daemon = True
+        self.collection = collection
+        self.passed = False
+
+    def run(self):
+        self.collection.find_one({})
+        self.passed = True
+
+
+class TestPoolPausedError(IntegrationTest):
+    # Pools don't get paused in load balanced mode.
+    RUN_ON_LOAD_BALANCER = False
+    RUN_ON_SERVERLESS = False
+
+    @client_context.require_failCommand_blockConnection
+    @client_knobs(heartbeat_frequency=.05, min_heartbeat_interval=.05)
+    def test_pool_paused_error_is_retryable(self):
+        cmap_listener = CMAPListener()
+        cmd_listener = OvertCommandListener()
+        client = rs_or_single_client(
+            maxPoolSize=1,
+            event_listeners=[cmap_listener, cmd_listener])
+        self.addCleanup(client.close)
+        threads = [FindThread(client.pymongo_test.test) for _ in range(2)]
+        fail_command = {
+            'mode': {'times': 1},
+            'data': {
+                'failCommands': ['find'],
+                'blockConnection': True,
+                'blockTimeMS': 1000,
+                'errorCode': 91,
+            },
+        }
+        with self.fail_point(fail_command):
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+            for thread in threads:
+                self.assertTrue(thread.passed)
+
+        # Via CMAP monitoring, assert that the first check out succeeds.
+        cmap_events = cmap_listener.events_by_type((
+            ConnectionCheckedOutEvent,
+            ConnectionCheckOutFailedEvent,
+            PoolClearedEvent))
+        msg = pprint.pformat(cmap_listener.events)
+        self.assertIsInstance(cmap_events[0], ConnectionCheckedOutEvent, msg)
+        self.assertIsInstance(cmap_events[1], PoolClearedEvent, msg)
+        self.assertIsInstance(
+            cmap_events[2], ConnectionCheckOutFailedEvent, msg)
+        self.assertEqual(cmap_events[2].reason,
+                         ConnectionCheckOutFailedReason.CONN_ERROR,
+                         msg)
+        self.assertIsInstance(cmap_events[3], ConnectionCheckedOutEvent, msg)
+
+        # Connection check out failures are not reflected in command
+        # monitoring because we only publish command events _after_ checking
+        # out a connection.
+        started = cmd_listener.results['started']
+        msg = pprint.pformat(cmd_listener.results)
+        self.assertEqual(3, len(started), msg)
+        succeeded = cmd_listener.results['succeeded']
+        self.assertEqual(2, len(succeeded), msg)
+        failed = cmd_listener.results['failed']
+        self.assertEqual(1, len(failed), msg)
+
 
 if __name__ == "__main__":
     unittest.main()

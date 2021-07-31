@@ -125,7 +125,7 @@ class Topology(object):
 
             executor = periodic_executor.PeriodicExecutor(
                 interval=common.EVENTS_QUEUE_FREQUENCY,
-                min_interval=0.5,
+                min_interval=common.MIN_HEARTBEAT_INTERVAL,
                 target=target,
                 name="pymongo_events_thread")
 

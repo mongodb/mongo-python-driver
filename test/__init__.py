@@ -191,6 +191,16 @@ class client_knobs(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.disable()
 
+    def __call__(self, func):
+        def make_wrapper(f):
+            @wraps(f)
+            def wrap(*args, **kwargs):
+                with self:
+                    return f(*args, **kwargs)
+            return wrap
+
+        return make_wrapper(func)
+
     def __del__(self):
         if self._enabled:
             msg = (
@@ -761,6 +771,16 @@ class ClientContext(object):
                              "failCommand appName must be supported",
                              func=func)
 
+    def require_failCommand_blockConnection(self, func):
+        """Run a test only if the server supports failCommand blockConnection.
+        """
+        return self._require(
+            lambda: (self.test_commands_enabled and (
+                (not self.is_mongos and self.version >= (4, 2, 9))) or
+                (self.is_mongos and self.version >= (4, 4))),
+            "failCommand blockConnection is not supported",
+            func=func)
+
     def require_tls(self, func):
         """Run a test only if the client can connect over TLS."""
         return self._require(lambda: self.tls,
@@ -847,7 +867,6 @@ class ClientContext(object):
             return (self.version.at_least(4, 0) and
                     self.test_commands_enabled)
 
-
     @property
     def requires_hint_with_min_max_queries(self):
         """Does the server require a hint with min/max queries."""
@@ -928,12 +947,6 @@ class IntegrationTest(PyMongoTestCase):
     def patch_system_certs(self, ca_certs):
         patcher = SystemCertsPatcher(ca_certs)
         self.addCleanup(patcher.disable)
-
-
-# Use assertRaisesRegex if available, otherwise use Python 2.7's
-# deprecated assertRaisesRegexp, with a 'p'.
-if not hasattr(unittest.TestCase, 'assertRaisesRegex'):
-    unittest.TestCase.assertRaisesRegex = unittest.TestCase.assertRaisesRegexp
 
 
 class MockClientTest(unittest.TestCase):
