@@ -669,10 +669,10 @@ class GridOut(io.IOBase):
            chunk.
 
         .. versionchanged:: 4.0
-            The iterator now iterates over *lines* in the file, instead
-            of chunks, to conform to the base class :py:class:`io.IOBase`.
-            Use :meth:`GridOut.readchunk` to read chunk by chunk instead
-            of line by line.
+           The iterator now iterates over *lines* in the file, instead
+           of chunks, to conform to the base class :py:class:`io.IOBase`.
+           Use :meth:`GridOut.readchunk` to read chunk by chunk instead
+           of line by line.
         """
         return self
 
