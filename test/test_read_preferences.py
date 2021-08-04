@@ -166,9 +166,6 @@ class TestSingleSlaveOk(TestReadPreferencesBase):
         self.assertIsNotNone(coll.aggregate([]))
         self.assertIsNotNone(coll.index_information())
 
-        # Test some "magic" namespace helpers.
-        self.assertIsNotNone(db.current_op())
-
 
 class TestReadPreferences(TestReadPreferencesBase):
 

@@ -157,6 +157,22 @@ can be changed to this::
     names = client.list_collection_names()
     non_system_names = client.list_collection_names(filter={"name": {"$regex": r"^(?!system\\.)"}})
 
+Database.current_op is removed
+..............................
+
+Removed :meth:`pymongo.database.Database.current_op`. Use
+:meth:`~pymongo.database.Database.aggregate` instead with the
+`$currentOp aggregation pipeline stage`_. Code like
+this::
+
+    ops = client.admin.current_op()['inprog']
+
+can be changed to this::
+
+    ops = list(client.admin.aggregate([{'$currentOp': {}}]))
+
+.. _$currentOp aggregation pipeline stage: https://docs.mongodb.com/manual/reference/operator/aggregation/currentOp/
+
 Database.add_user is removed
 ............................
 
