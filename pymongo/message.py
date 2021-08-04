@@ -580,28 +580,25 @@ def _insert_compressed(
     return rid, msg, max_bson_size
 
 
-def _insert_uncompressed(collection_name, docs, check_keys,
-            safe, last_error_args, continue_on_error, opts):
+def _insert_uncompressed(collection_name, docs, check_keys, continue_on_error,
+                         opts):
     """Internal insert message helper."""
     op_insert, max_bson_size = _insert(
         collection_name, docs, check_keys, continue_on_error, opts)
     rid, msg = __pack_message(2002, op_insert)
-    if safe:
-        rid, gle, _ = __last_error(collection_name, last_error_args)
-        return rid, msg + gle, max_bson_size
     return rid, msg, max_bson_size
 if _use_c:
     _insert_uncompressed = _cmessage._insert_message
 
 
-def insert(collection_name, docs, check_keys,
-           safe, last_error_args, continue_on_error, opts, ctx=None):
+def insert(collection_name, docs, check_keys, continue_on_error, opts,
+           ctx=None):
     """Get an **insert** message."""
     if ctx:
         return _insert_compressed(
             collection_name, docs, check_keys, continue_on_error, opts, ctx)
-    return _insert_uncompressed(collection_name, docs, check_keys, safe,
-                                last_error_args, continue_on_error, opts)
+    return _insert_uncompressed(collection_name, docs, check_keys,
+                                continue_on_error, opts)
 
 
 def _update(collection_name, upsert, multi, spec, doc, check_keys, opts):
@@ -630,28 +627,25 @@ def _update_compressed(
     return rid, msg, max_bson_size
 
 
-def _update_uncompressed(collection_name, upsert, multi, spec,
-                         doc, safe, last_error_args, check_keys, opts):
+def _update_uncompressed(collection_name, upsert, multi, spec, doc,
+                         check_keys, opts):
     """Internal update message helper."""
     op_update, max_bson_size = _update(
         collection_name, upsert, multi, spec, doc, check_keys, opts)
     rid, msg = __pack_message(2001, op_update)
-    if safe:
-        rid, gle, _ = __last_error(collection_name, last_error_args)
-        return rid, msg + gle, max_bson_size
     return rid, msg, max_bson_size
 if _use_c:
     _update_uncompressed = _cmessage._update_message
 
 
-def update(collection_name, upsert, multi, spec,
-           doc, safe, last_error_args, check_keys, opts, ctx=None):
+def update(collection_name, upsert, multi, spec, doc, check_keys, opts,
+           ctx=None):
     """Get an **update** message."""
     if ctx:
         return _update_compressed(
             collection_name, upsert, multi, spec, doc, check_keys, opts, ctx)
     return _update_uncompressed(collection_name, upsert, multi, spec,
-                                doc, safe, last_error_args, check_keys, opts)
+                                doc, check_keys, opts)
 
 
 _pack_op_msg_flags_type = struct.Struct("<IB").pack
@@ -850,19 +844,14 @@ def _delete_compressed(collection_name, spec, opts, flags, ctx):
     return rid, msg, max_bson_size
 
 
-def _delete_uncompressed(
-        collection_name, spec, safe, last_error_args, opts, flags=0):
+def _delete_uncompressed(collection_name, spec, opts, flags=0):
     """Internal delete message helper."""
     op_delete, max_bson_size = _delete(collection_name, spec, opts, flags)
     rid, msg = __pack_message(2006, op_delete)
-    if safe:
-        rid, gle, _ = __last_error(collection_name, last_error_args)
-        return rid, msg + gle, max_bson_size
     return rid, msg, max_bson_size
 
 
-def delete(
-        collection_name, spec, safe, last_error_args, opts, flags=0, ctx=None):
+def delete(collection_name, spec, opts, flags=0, ctx=None):
     """Get a **delete** message.
 
     `opts` is a CodecOptions. `flags` is a bit vector that may contain
@@ -872,8 +861,7 @@ def delete(
     """
     if ctx:
         return _delete_compressed(collection_name, spec, opts, flags, ctx)
-    return _delete_uncompressed(
-        collection_name, spec, safe, last_error_args, opts, flags)
+    return _delete_uncompressed(collection_name, spec, opts, flags)
 
 
 def kill_cursors(cursor_ids):
