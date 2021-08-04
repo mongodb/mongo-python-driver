@@ -575,7 +575,7 @@ class Collection(common.BaseObject):
                 return self._legacy_write(
                     sock_info, 'insert', command, op_id,
                     bypass_doc_val, message.insert, self.__full_name,
-                    [doc], check_keys, False, write_concern.document, False,
+                    [doc], check_keys, False,
                     self.__write_response_codec_options)
 
             if bypass_doc_val and sock_info.max_wire_version >= 4:
@@ -765,8 +765,8 @@ class Collection(common.BaseObject):
             return self._legacy_write(
                 sock_info, 'update', command, op_id,
                 bypass_doc_val, message.update, self.__full_name, upsert,
-                multi, criteria, document, False, write_concern.document,
-                check_keys, self.__write_response_codec_options)
+                multi, criteria, document, check_keys,
+                self.__write_response_codec_options)
 
         # Update command.
         if bypass_doc_val and sock_info.max_wire_version >= 4:
@@ -1115,7 +1115,6 @@ class Collection(common.BaseObject):
             return self._legacy_write(
                 sock_info, 'delete', command, op_id,
                 False, message.delete, self.__full_name, criteria,
-                False, write_concern.document,
                 self.__write_response_codec_options,
                 int(not multi))
         # Delete command.

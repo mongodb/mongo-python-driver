@@ -181,20 +181,17 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     int before, cur_size, max_size = 0;
     int flags = 0;
     unsigned char check_keys;
-    unsigned char safe;
     unsigned char continue_on_error;
     codec_options_t options;
-    PyObject* last_error_args;
     buffer_t buffer = NULL;
     int length_location, message_length;
     PyObject* result = NULL;
 
-    if (!PyArg_ParseTuple(args, "et#ObbObO&",
+    if (!PyArg_ParseTuple(args, "et#ObbO&",
                           "utf-8",
                           &collection_name,
                           &collection_name_length,
-                          &docs, &check_keys, &safe,
-                          &last_error_args,
+                          &docs, &check_keys,
                           &continue_on_error,
                           convert_codec_options, &options)) {
         return NULL;
@@ -257,13 +254,6 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     buffer_write_int32_at_position(
         buffer, length_location, (int32_t)message_length);
 
-    if (safe) {
-        if (!add_last_error(self, buffer, request_id, collection_name,
-                            collection_name_length, &options, last_error_args)) {
-            goto fail;
-        }
-    }
-
     /* objectify buffer */
     result = Py_BuildValue("iy#i", request_id,
                            buffer_get_buffer(buffer),
@@ -290,21 +280,18 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     PyObject* spec;
     unsigned char multi;
     unsigned char upsert;
-    unsigned char safe;
     unsigned char check_keys;
     codec_options_t options;
-    PyObject* last_error_args;
     int flags;
     buffer_t buffer = NULL;
     int length_location, message_length;
     PyObject* result = NULL;
 
-    if (!PyArg_ParseTuple(args, "et#bbOObObO&",
+    if (!PyArg_ParseTuple(args, "et#bbOObO&",
                           "utf-8",
                           &collection_name,
                           &collection_name_length,
-                          &upsert, &multi, &spec, &doc, &safe,
-                          &last_error_args, &check_keys,
+                          &upsert, &multi, &spec, &doc, &check_keys,
                           convert_codec_options, &options)) {
         return NULL;
     }
@@ -356,13 +343,6 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     message_length = buffer_get_position(buffer) - length_location;
     buffer_write_int32_at_position(
         buffer, length_location, (int32_t)message_length);
-
-    if (safe) {
-        if (!add_last_error(self, buffer, request_id, collection_name,
-                            collection_name_length, &options, last_error_args)) {
-            goto fail;
-        }
-    }
 
     /* objectify buffer */
     result = Py_BuildValue("iy#i", request_id,
