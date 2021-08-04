@@ -789,6 +789,20 @@ class TestCollection(IntegrationTest):
         self.assertFalse(result.acknowledged)
         self.assertEqual(20, db.test.count_documents({}))
 
+    def test_insert_many_generator(self):
+        coll = self.db.test
+        coll.delete_many({})
+
+        def gen():
+            yield {'a': 1, 'b': 1}
+            yield {'a': 1, 'b': 2}
+            yield {'a': 2, 'b': 3}
+            yield {'a': 3, 'b': 5}
+            yield {'a': 5, 'b': 8}
+
+        result = coll.insert_many(gen())
+        self.assertEqual(5, len(result.inserted_ids))
+
     def test_insert_many_invalid(self):
         db = self.db
 

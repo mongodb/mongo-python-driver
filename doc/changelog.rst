@@ -44,6 +44,10 @@ Breaking Changes in 4.0
 - Removed :meth:`pymongo.collection.Collection.update`.
 - Removed :meth:`pymongo.collection.Collection.remove`.
 - Removed :meth:`pymongo.collection.Collection.find_and_modify`.
+- Removed :meth:`pymongo.collection.Collection.initialize_ordered_bulk_op`,
+  :meth:`pymongo.collection.Collection.initialize_unordered_bulk_op`, and
+  :class:`pymongo.bulk.BulkOperationBuilder`. Use
+  :meth:`pymongo.collection.Collection.bulk_write` instead.
 - Removed :meth:`pymongo.collection.Collection.group`.
 - Removed the ``useCursor`` option for
   :meth:`~pymongo.collection.Collection.aggregate`.

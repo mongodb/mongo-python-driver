@@ -283,49 +283,6 @@ class TestCollation(IntegrationTest):
         check_ops(update_cmd['updates'])
 
     @raisesConfigurationErrorForOldMongoDB
-    def test_bulk(self):
-        bulk = self.db.test.initialize_ordered_bulk_op()
-        bulk.find({'noCollation': 42}).remove_one()
-        bulk.find({'noCollation': 42}).remove()
-        bulk.find({'foo': 42}, collation=self.collation).remove_one()
-        bulk.find({'foo': 42}, collation=self.collation).remove()
-        bulk.find({'noCollation': 24}).replace_one({'bar': 42})
-        bulk.find({'noCollation': 84}).upsert().update_one(
-            {'$set': {'foo': 10}})
-        bulk.find({'noCollation': 45}).update({'$set': {'bar': 42}})
-        bulk.find({'foo': 24}, collation=self.collation).replace_one(
-            {'foo': 42})
-        bulk.find({'foo': 84}, collation=self.collation).upsert().update_one(
-            {'$set': {'foo': 10}})
-        bulk.find({'foo': 45}, collation=self.collation).update({
-            '$set': {'foo': 42}})
-        bulk.execute()
-
-        delete_cmd = self.listener.results['started'][0].command
-        update_cmd = self.listener.results['started'][1].command
-
-        def check_ops(ops):
-            for op in ops:
-                if 'noCollation' in op['q']:
-                    self.assertNotIn('collation', op)
-                else:
-                    self.assertEqual(self.collation.document,
-                                     op['collation'])
-
-        check_ops(delete_cmd['deletes'])
-        check_ops(update_cmd['updates'])
-
-    @client_context.require_version_max(3, 3, 8)
-    def test_mixed_bulk_collation(self):
-        bulk = self.db.test.initialize_unordered_bulk_op()
-        bulk.find({'foo': 42}).upsert().update_one(
-            {'$set': {'bar': 10}})
-        bulk.find({'foo': 43}, collation=self.collation).remove_one()
-        with self.assertRaises(ConfigurationError):
-            bulk.execute()
-        self.assertIsNone(self.db.test.find_one({'foo': 42}))
-
-    @raisesConfigurationErrorForOldMongoDB
     def test_indexes_same_keys_different_collations(self):
         self.db.test.drop()
         usa_collation = Collation('en_US')
@@ -356,11 +313,6 @@ class TestCollation(IntegrationTest):
             collection.update_one(
                 {'hello': 'world'}, {'$set': {'hello': 'moon'}},
                 collation=self.collation)
-        bulk = collection.initialize_ordered_bulk_op()
-        bulk.find({'hello': 'world'}, collation=self.collation).update_one(
-            {'$set': {'hello': 'moon'}})
-        with self.assertRaises(ConfigurationError):
-            bulk.execute()
         update_one = UpdateOne({'hello': 'world'}, {'$set': {'hello': 'moon'}},
                                collation=self.collation)
         with self.assertRaises(ConfigurationError):
