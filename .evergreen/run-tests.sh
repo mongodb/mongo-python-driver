@@ -183,8 +183,8 @@ if [ -n "$TEST_ENCRYPTION" ]; then
         python -m pip install boto3
     fi
     pushd ${DRIVERS_TOOLS}/.evergreen/csfle
-    python -u lib/kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/expired.pem --port 8000 &
-    python -u lib/kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/wrong-host.pem --port 8001 &
+    python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/expired.pem --port 8000 &
+    python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/wrong-host.pem --port 8001 &
     trap 'kill $(jobs -p)' EXIT HUP
     popd
     # Restore the test virtualenv.
