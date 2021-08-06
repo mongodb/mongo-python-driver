@@ -1081,14 +1081,6 @@ class TestClusterTime(IntegrationTest):
         self.addCleanup(collection.drop)
         self.addCleanup(client.pymongo_test.collection2.drop)
 
-        def bulk_insert(ordered):
-            if ordered:
-                bulk = collection.initialize_ordered_bulk_op()
-            else:
-                bulk = collection.initialize_unordered_bulk_op()
-            bulk.insert({})
-            bulk.execute()
-
         def rename_and_drop():
             # Ensure collection exists.
             collection.insert_one({})
@@ -1130,8 +1122,6 @@ class TestClusterTime(IntegrationTest):
             ('delete_one', lambda: collection.delete_one({})),
             ('delete_many', lambda: collection.delete_many({})),
             ('bulk_write', lambda: collection.bulk_write([InsertOne({})])),
-            ('ordered bulk', lambda: bulk_insert(True)),
-            ('unordered bulk', lambda: bulk_insert(False)),
             ('rename_and_drop', rename_and_drop),
         ]
 

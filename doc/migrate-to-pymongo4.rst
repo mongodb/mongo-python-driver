@@ -315,6 +315,51 @@ Can be changed to this::
   replaced_doc = collection.find_one_and_replace({'b': 1}, {'c': 1})
   deleted_doc = collection.find_one_and_delete({'c': 1})
 
+Collection.initialize_ordered_bulk_op and initialize_unordered_bulk_op is removed
+.................................................................................
+
+Removed :meth:`pymongo.collection.Collection.initialize_ordered_bulk_op`
+and :class:`pymongo.bulk.BulkOperationBuilder`. Use
+:meth:`pymongo.collection.Collection.bulk_write` instead. Code like this::
+
+  batch = coll.initialize_ordered_bulk_op()
+  batch.insert({'a': 1})
+  batch.find({'a': 1}).update_one({'$set': {'b': 1}})
+  batch.find({'a': 2}).upsert().replace_one({'b': 2})
+  batch.find({'a': 3}).remove()
+  result = batch.execute()
+
+Can be changed to this::
+
+  coll.bulk_write([
+      InsertOne({'a': 1}),
+      UpdateOne({'a': 1}, {'$set': {'b': 1}}),
+      ReplaceOne({'a': 2}, {'b': 2}, upsert=True),
+      DeleteOne({'a': 3}),
+  ])
+
+Collection.initialize_unordered_bulk_op is removed
+..................................................
+
+Removed :meth:`pymongo.collection.Collection.initialize_unordered_bulk_op`.
+Use :meth:`pymongo.collection.Collection.bulk_write` instead. Code like this::
+
+  batch = coll.initialize_unordered_bulk_op()
+  batch.insert({'a': 1})
+  batch.find({'a': 1}).update_one({'$set': {'b': 1}})
+  batch.find({'a': 2}).upsert().replace_one({'b': 2})
+  batch.find({'a': 3}).remove()
+  result = batch.execute()
+
+Can be changed to this::
+
+  coll.bulk_write([
+      InsertOne({'a': 1}),
+      UpdateOne({'a': 1}, {'$set': {'b': 1}}),
+      ReplaceOne({'a': 2}, {'b': 2}, upsert=True),
+      DeleteOne({'a': 3}),
+  ], ordered=False)
+
 Collection.group is removed
 ...........................
 

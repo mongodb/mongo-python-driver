@@ -29,7 +29,7 @@ from pymongo import (common,
                      message)
 from pymongo.aggregation import (_CollectionAggregationCommand,
                                  _CollectionRawAggregationCommand)
-from pymongo.bulk import BulkOperationBuilder, _Bulk
+from pymongo.bulk import _Bulk
 from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
 from pymongo.collation import validate_collation_or_none
 from pymongo.change_stream import CollectionChangeStream
@@ -357,69 +357,6 @@ class Collection(common.BaseObject):
                           read_preference or self.read_preference,
                           write_concern or self.write_concern,
                           read_concern or self.read_concern)
-
-    def initialize_unordered_bulk_op(self, bypass_document_validation=False):
-        """**DEPRECATED** - Initialize an unordered batch of write operations.
-
-        Operations will be performed on the server in arbitrary order,
-        possibly in parallel. All operations will be attempted.
-
-        :Parameters:
-          - `bypass_document_validation`: (optional) If ``True``, allows the
-            write to opt-out of document level validation. Default is
-            ``False``.
-
-        Returns a :class:`~pymongo.bulk.BulkOperationBuilder` instance.
-
-        See :ref:`unordered_bulk` for examples.
-
-        .. note:: `bypass_document_validation` requires server version
-          **>= 3.2**
-
-        .. versionchanged:: 3.5
-           Deprecated. Use :meth:`~pymongo.collection.Collection.bulk_write`
-           instead.
-
-        .. versionchanged:: 3.2
-           Added bypass_document_validation support
-
-        .. versionadded:: 2.7
-        """
-        warnings.warn("initialize_unordered_bulk_op is deprecated",
-                      DeprecationWarning, stacklevel=2)
-        return BulkOperationBuilder(self, False, bypass_document_validation)
-
-    def initialize_ordered_bulk_op(self, bypass_document_validation=False):
-        """**DEPRECATED** - Initialize an ordered batch of write operations.
-
-        Operations will be performed on the server serially, in the
-        order provided. If an error occurs all remaining operations
-        are aborted.
-
-        :Parameters:
-          - `bypass_document_validation`: (optional) If ``True``, allows the
-            write to opt-out of document level validation. Default is
-            ``False``.
-
-        Returns a :class:`~pymongo.bulk.BulkOperationBuilder` instance.
-
-        See :ref:`ordered_bulk` for examples.
-
-        .. note:: `bypass_document_validation` requires server version
-          **>= 3.2**
-
-        .. versionchanged:: 3.5
-           Deprecated. Use :meth:`~pymongo.collection.Collection.bulk_write`
-           instead.
-
-        .. versionchanged:: 3.2
-           Added bypass_document_validation support
-
-        .. versionadded:: 2.7
-        """
-        warnings.warn("initialize_ordered_bulk_op is deprecated",
-                      DeprecationWarning, stacklevel=2)
-        return BulkOperationBuilder(self, True, bypass_document_validation)
 
     def bulk_write(self, requests, ordered=True,
                    bypass_document_validation=False, session=None):
