@@ -25,7 +25,7 @@ sys.path[0:0] = [""]
 
 from bson import DBRef
 from gridfs import GridFS, GridFSBucket
-from pymongo import ASCENDING, InsertOne, IndexModel, OFF, monitoring
+from pymongo import ASCENDING, InsertOne, IndexModel, monitoring
 from pymongo.common import _MAX_END_SESSIONS
 from pymongo.errors import (ConfigurationError,
                             InvalidOperation,
@@ -249,14 +249,8 @@ class TestSession(IntegrationTest):
             (db.list_collection_names, [], {}),
             (db.validate_collection, ['collection'], {}),
             (db.drop_collection, ['collection'], {}),
-            (db.profiling_info, [], {}),
             (db.dereference, [DBRef('collection', 1)], {}),
         ]
-
-        if not client_context.is_mongos:
-            ops.append((db.set_profiling_level, [OFF], {}))
-            ops.append((db.profiling_level, [], {}))
-
         self._test_ops(client, *ops)
 
     @staticmethod

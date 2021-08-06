@@ -67,38 +67,6 @@ TEXT = "text"
 .. _text index: http://docs.mongodb.org/manual/core/index-text/
 """
 
-OFF = 0
-"""**DEPRECATED** - No database profiling.
-
-**DEPRECATED** - :attr:`OFF` is deprecated and will be removed in PyMongo 4.0.
-Instead, specify this profiling level using the numeric value ``0``.
-See https://docs.mongodb.com/manual/tutorial/manage-the-database-profiler
-
-.. versionchanged:: 3.12
-   Deprecated
-"""
-SLOW_ONLY = 1
-"""**DEPRECATED** - Only profile slow operations.
-
-**DEPRECATED** - :attr:`SLOW_ONLY` is deprecated and will be removed in
-PyMongo 4.0. Instead, specify this profiling level using the numeric
-value ``1``.
-See https://docs.mongodb.com/manual/tutorial/manage-the-database-profiler
-
-.. versionchanged:: 3.12
-   Deprecated
-"""
-ALL = 2
-"""**DEPRECATED** - Profile all operations.
-
-**DEPRECATED** - :attr:`ALL` is deprecated and will be removed in PyMongo 4.0.
-Instead, specify this profiling level using the numeric value ``2``.
-See https://docs.mongodb.com/manual/tutorial/manage-the-database-profiler
-
-.. versionchanged:: 3.12
-   Deprecated
-"""
-
 version_tuple = (4, 0, '.dev0')
 
 def get_version_string():

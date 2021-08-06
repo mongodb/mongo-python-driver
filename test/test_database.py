@@ -26,10 +26,7 @@ from bson.regex import Regex
 from bson.dbref import DBRef
 from bson.objectid import ObjectId
 from bson.son import SON
-from pymongo import (ALL,
-                     auth,
-                     OFF,
-                     SLOW_ONLY,
+from pymongo import (auth,
                      helpers)
 from pymongo.collection import Collection
 from pymongo.database import Database
@@ -369,105 +366,6 @@ class TestDatabase(IntegrationTest):
             # that this combination fails.
             with self.assertRaises(OperationFailure):
                 db.validate_collection(coll, full=True, background=True)
-
-    @client_context.require_no_mongos
-    @ignore_deprecations
-    def test_profiling_levels(self):
-        db = self.client.pymongo_test
-        self.assertEqual(db.profiling_level(), OFF)  # default
-
-        self.assertRaises(ValueError, db.set_profiling_level, 5.5)
-        self.assertRaises(ValueError, db.set_profiling_level, None)
-        self.assertRaises(ValueError, db.set_profiling_level, -1)
-        self.assertRaises(TypeError, db.set_profiling_level, SLOW_ONLY, 5.5)
-        self.assertRaises(TypeError, db.set_profiling_level, SLOW_ONLY, '1')
-
-        db.set_profiling_level(SLOW_ONLY)
-        self.assertEqual(db.profiling_level(), SLOW_ONLY)
-
-        db.set_profiling_level(ALL)
-        self.assertEqual(db.profiling_level(), ALL)
-
-        db.set_profiling_level(OFF)
-        self.assertEqual(db.profiling_level(), OFF)
-
-        db.set_profiling_level(SLOW_ONLY, 50)
-        self.assertEqual(50, db.command("profile", -1)['slowms'])
-
-        db.set_profiling_level(ALL, -1)
-        self.assertEqual(-1, db.command("profile", -1)['slowms'])
-
-        db.set_profiling_level(OFF, 100)  # back to default
-        self.assertEqual(100, db.command("profile", -1)['slowms'])
-
-    @client_context.require_no_mongos
-    @client_context.require_version_min(3, 6)
-    @ignore_deprecations
-    def test_profiling_sample_rate(self):
-        db = self.client.pymongo_test
-        with self.assertRaises(TypeError):
-            db.set_profiling_level(SLOW_ONLY, 50, sample_rate='1')
-        with self.assertRaises(TypeError):
-            db.set_profiling_level(SLOW_ONLY, 50, sample_rate=1)
-
-        db.set_profiling_level(SLOW_ONLY, 50, sample_rate=0.0)
-        db.set_profiling_level(SLOW_ONLY, 50, sample_rate=1.0)
-        db.set_profiling_level(SLOW_ONLY, 50, sample_rate=0.5)
-        profile = db.command("profile", -1)
-        self.assertEqual(50, profile['slowms'])
-        self.assertEqual(0.5, profile['sampleRate'])
-        db.set_profiling_level(OFF, 100)  # back to default
-        self.assertEqual(100, db.command("profile", -1)['slowms'])
-
-    @client_context.require_no_mongos
-    @client_context.require_version_min(4, 4, 2)
-    @ignore_deprecations
-    def test_profiling_filter(self):
-        db = self.client.pymongo_test
-        db.set_profiling_level(ALL, filter={'ns': {'$eq': 'test.test'}})
-        profile = db.command("profile", -1)
-        self.assertEqual({'ns': {'$eq': 'test.test'}}, profile['filter'])
-        # filter='unset' resets the filter back to the default.
-        db.set_profiling_level(OFF, 100, filter='unset')
-        self.assertEqual(100, db.command("profile", -1)['slowms'])
-
-    @client_context.require_no_mongos
-    @ignore_deprecations
-    def test_profiling_info(self):
-        db = self.client.pymongo_test
-
-        db.system.profile.drop()
-        db.set_profiling_level(ALL)
-        db.test.find_one()
-        db.set_profiling_level(OFF)
-
-        info = db.profiling_info()
-        self.assertTrue(isinstance(info, list))
-
-        # Check if we're going to fail because of SERVER-4754, in which
-        # profiling info isn't collected if mongod was started with --auth
-        if server_started_with_auth(self.client):
-            raise SkipTest(
-                "We need SERVER-4754 fixed for the rest of this test to pass"
-            )
-
-        self.assertTrue(len(info) >= 1)
-        # These basically clue us in to server changes.
-        self.assertTrue(isinstance(info[0]['responseLength'], int))
-        self.assertTrue(isinstance(info[0]['millis'], int))
-        self.assertTrue(isinstance(info[0]['client'], str))
-        self.assertTrue(isinstance(info[0]['user'], str))
-        self.assertTrue(isinstance(info[0]['ns'], str))
-        self.assertTrue(isinstance(info[0]['op'], str))
-        self.assertTrue(isinstance(info[0]["ts"], datetime.datetime))
-
-    def test_profiling_helpers_deprecated(self):
-        filter = DeprecationFilter('error')
-        self.addCleanup(filter.stop)
-        db = self.client.pymongo_test
-        self.assertRaises(DeprecationWarning, db.profiling_level)
-        self.assertRaises(DeprecationWarning, db.profiling_info)
-        self.assertRaises(DeprecationWarning, db.set_profiling_level, OFF)
 
     def test_command(self):
         self.maxDiff = None
