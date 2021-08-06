@@ -38,7 +38,7 @@ class TestStreamingProtocol(IntegrationTest):
         hb_listener = HeartbeatEventListener()
         client = rs_or_single_client(
             event_listeners=[listener, hb_listener], heartbeatFrequencyMS=500,
-            appName='failingIsMasterTest')
+            appName='failingHeartbeatTest')
         self.addCleanup(client.close)
         # Force a connection.
         client.admin.command('ping')
@@ -52,7 +52,7 @@ class TestStreamingProtocol(IntegrationTest):
                 'failCommands': ['isMaster', 'hello'],
                 'closeConnection': False,
                 'errorCode': 10107,
-                'appName': 'failingIsMasterTest',
+                'appName': 'failingHeartbeatTest',
             },
         }
         with self.fail_point(fail_ismaster):

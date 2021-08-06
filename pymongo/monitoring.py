@@ -1196,7 +1196,7 @@ class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):
 
     @property
     def reply(self):
-        """An instance of :class:`~pymongo.ismaster.IsMaster`."""
+        """An instance of :class:`~pymongo.hello.Hello`."""
         return self.__reply
 
     @property

@@ -260,7 +260,7 @@ class Monitor(MonitorBase):
             return sd
 
     def _check_with_socket(self, conn):
-        """Return (IsMaster, round_trip_time).
+        """Return (Hello, round_trip_time).
 
         Can raise ConnectionFailure or OperationFailure.
         """

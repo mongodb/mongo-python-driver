@@ -26,7 +26,7 @@ class ServerDescription(object):
 
     :Parameters:
       - `address`: A (host, port) pair
-      - `ismaster`: Optional IsMaster instance
+      - `ismaster`: Optional Hello instance
       - `round_trip_time`: Optional float
       - `error`: Optional, the last error attempting to connect to the server
     """
