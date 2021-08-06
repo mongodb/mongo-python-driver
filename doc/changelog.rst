@@ -86,6 +86,7 @@ Breaking Changes in 4.0
 - Removed :exc:`pymongo.errors.NotMasterError`.
   Use :exc:`pymongo.errors.NotPrimaryError` instead.
 - Removed :attr:`pymongo.GEOHAYSTACK`.
+- Removed :class:`bson.binary.UUIDLegacy`.
 - The "tls" install extra is no longer necessary or supported and will be
   ignored by pip.
 
@@ -307,6 +308,8 @@ Highlights include:
   ``MongoClient(uuidRepresentation='unspecified')`` which will become the
   default UUID representation starting in PyMongo 4.0. See
   :ref:`handling-uuid-data-example` for details.
+- New methods :meth:`bson.binary.Binary.from_uuid` and
+  :meth:`bson.binary.Binary.as_uuid`.
 - Added the ``background`` parameter to
   :meth:`pymongo.database.Database.validate_collection`. For a description
   of this parameter see the MongoDB documentation for the `validate command`_.
@@ -342,6 +345,8 @@ Deprecations:
 - Deprecated :attr:`pymongo.mongo_client.MongoClient.is_locked`. Use
   :meth:`~pymongo.database.Database.command` to run the ``currentOp`` command
   instead. See the documentation for more information.
+- Deprecated :class:`bson.binary.UUIDLegacy`. Use
+  :meth:`bson.binary.Binary.from_uuid` instead.
 
 Unavoidable breaking changes:
 

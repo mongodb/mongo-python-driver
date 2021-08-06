@@ -287,9 +287,7 @@ class TestBinary(unittest.TestCase):
             CSHARP_LEGACY)
 
     @client_context.require_connection
-    @ignore_deprecations
     def test_uuid_queries(self):
-
         db = client_context.client.pymongo_test
         coll = db.test
         coll.drop()
@@ -298,29 +296,23 @@ class TestBinary(unittest.TestCase):
         coll.insert_one({'uuid': Binary(uu.bytes, 3)})
         self.assertEqual(1, coll.count_documents({}))
 
-        # Test UUIDLegacy queries.
+        # Test regular UUID queries (using subtype 4).
         coll = db.get_collection(
             "test", CodecOptions(
                 uuid_representation=UuidRepresentation.STANDARD))
-        self.assertEqual(0, coll.find({'uuid': uu}).count())
-        cur = coll.find({'uuid': UUIDLegacy(uu)})
-        self.assertEqual(1, cur.count())
-        retrieved = next(cur)
-        self.assertEqual(uu, retrieved['uuid'])
-
-        # Test regular UUID queries (using subtype 4).
+        self.assertEqual(0, coll.count_documents({'uuid': uu}))
         coll.insert_one({'uuid': uu})
         self.assertEqual(2, coll.count_documents({}))
-        cur = coll.find({'uuid': uu})
-        self.assertEqual(1, cur.count())
-        retrieved = next(cur)
-        self.assertEqual(uu, retrieved['uuid'])
+        docs = list(coll.find({'uuid': uu}))
+        self.assertEqual(1, len(docs))
+        self.assertEqual(uu, docs[0]['uuid'])
 
         # Test both.
-        predicate = {'uuid': {'$in': [uu, UUIDLegacy(uu)]}}
+        uu_legacy = Binary.from_uuid(uu, UuidRepresentation.PYTHON_LEGACY)
+        predicate = {'uuid': {'$in': [uu, uu_legacy]}}
         self.assertEqual(2, coll.count_documents(predicate))
-        cur = coll.find(predicate)
-        self.assertEqual(2, cur.count())
+        docs = list(coll.find(predicate))
+        self.assertEqual(2, len(docs))
         coll.drop()
 
     def test_pickle(self):
@@ -338,7 +330,7 @@ class TestBinary(unittest.TestCase):
             self.assertEqual(b1, pickle.loads(pickle.dumps(b1, proto)))
 
         uu = uuid.uuid4()
-        uul = UUIDLegacy(uu)
+        uul = Binary.from_uuid(uu, UuidRepresentation.PYTHON_LEGACY)
 
         self.assertEqual(uul, copy.copy(uul))
         self.assertEqual(uul, copy.deepcopy(uul))

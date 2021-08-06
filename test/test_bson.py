@@ -41,7 +41,7 @@ from bson import (BSON,
                   EPOCH_AWARE,
                   is_valid,
                   Regex)
-from bson.binary import Binary, UUIDLegacy
+from bson.binary import Binary, UuidRepresentation
 from bson.code import Code
 from bson.codec_options import CodecOptions
 from bson.int64 import Int64
@@ -646,14 +646,12 @@ class TestBSON(unittest.TestCase):
         self.assertNotEqual(uuid.uuid4(), transformed_id)
 
     def test_uuid_legacy(self):
-
         id = uuid.uuid4()
-        legacy = UUIDLegacy(id)
+        legacy = Binary.from_uuid(id, UuidRepresentation.PYTHON_LEGACY)
         self.assertEqual(3, legacy.subtype)
         transformed = decode(encode({"uuid": legacy}))["uuid"]
         self.assertTrue(isinstance(transformed, uuid.UUID))
         self.assertEqual(id, transformed)
-        self.assertNotEqual(UUIDLegacy(uuid.uuid4()), UUIDLegacy(transformed))
 
     # The C extension was segfaulting on unicode RegExs, so we have this test
     # that doesn't really test anything but the lack of a segfault.

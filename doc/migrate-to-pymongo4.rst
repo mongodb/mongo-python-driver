@@ -499,6 +499,20 @@ Removed :attr:`pymongo.GEOHAYSTACK`. Replace with "geoHaystack" or create a
 2d index and use $geoNear or $geoWithin instead.
 See https://dochub.mongodb.org/core/4.4-deprecate-geoHaystack.
 
+UUIDLegacy is removed
+---------------------
+
+Removed :class:`bson.binary.UUIDLegacy`. Use
+:meth:`bson.binary.Binary.from_uuid` instead.  Code like this::
+
+  uu = uuid.uuid4()
+  uuid_legacy = UUIDLegacy(uu)
+
+can be changed to this::
+
+  uu = uuid.uuid4()
+  uuid_legacy = Binary.from_uuid(uu, PYTHON_LEGACY)
+
 Removed features with no migration path
 ---------------------------------------
 

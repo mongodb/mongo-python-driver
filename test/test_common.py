@@ -19,7 +19,7 @@ import uuid
 
 sys.path[0:0] = [""]
 
-from bson.binary import UUIDLegacy, PYTHON_LEGACY, STANDARD
+from bson.binary import Binary, PYTHON_LEGACY, STANDARD
 from bson.code import Code
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
@@ -53,7 +53,8 @@ class TestCommon(IntegrationTest):
             "uuid", CodecOptions(uuid_representation=STANDARD))
         self.assertEqual(STANDARD, coll.codec_options.uuid_representation)
         self.assertEqual(None, coll.find_one({'uu': uu}))
-        self.assertEqual(uu, coll.find_one({'uu': UUIDLegacy(uu)})['uu'])
+        uul = Binary.from_uuid(uu, PYTHON_LEGACY)
+        self.assertEqual(uu, coll.find_one({'uu': uul})['uu'])
 
         # Test count_documents
         self.assertEqual(0, coll.count_documents({'uu': uu}))
@@ -104,7 +105,7 @@ class TestCommon(IntegrationTest):
         self.assertEqual(6, self.db.command(
             'findAndModify', 'uuid',
             update={'$set': {'i': 7}},
-            query={'_id': UUIDLegacy(uu)})['value']['i'])
+            query={'_id': Binary.from_uuid(uu, PYTHON_LEGACY)})['value']['i'])
 
         # Test (inline)_map_reduce
         coll.drop()
