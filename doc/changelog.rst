@@ -80,6 +80,9 @@ Breaking Changes in 4.0
   :meth:`~pymongo.collection.Collection.find`,
   :meth:`~pymongo.collection.Collection.find_one`, and
   :meth:`~pymongo.cursor.Cursor`.
+- Removed :meth:`pymongo.message.delete`, :meth:`pymongo.message.get_more`,
+  :meth:`pymongo.message.insert`, :meth:`pymongo.message.kill_cursors`,
+  :meth:`pymongo.message.query`, and :meth:`pymongo.message.update`.
 - Removed :exc:`pymongo.errors.NotMasterError`.
   Use :exc:`pymongo.errors.NotPrimaryError` instead.
 - Removed :attr:`pymongo.GEOHAYSTACK`.

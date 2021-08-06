@@ -507,7 +507,7 @@ class Collection(common.BaseObject):
                 # Legacy OP_INSERT.
                 return self._legacy_write(
                     sock_info, 'insert', command, op_id,
-                    bypass_doc_val, message.insert, self.__full_name,
+                    bypass_doc_val, message._insert, self.__full_name,
                     [doc], check_keys, False,
                     self.__write_response_codec_options)
 
@@ -697,7 +697,7 @@ class Collection(common.BaseObject):
             # Legacy OP_UPDATE.
             return self._legacy_write(
                 sock_info, 'update', command, op_id,
-                bypass_doc_val, message.update, self.__full_name, upsert,
+                bypass_doc_val, message._update, self.__full_name, upsert,
                 multi, criteria, document, check_keys,
                 self.__write_response_codec_options)
 
@@ -1047,7 +1047,7 @@ class Collection(common.BaseObject):
             # Legacy OP_DELETE.
             return self._legacy_write(
                 sock_info, 'delete', command, op_id,
-                False, message.delete, self.__full_name, criteria,
+                False, message._delete, self.__full_name, criteria,
                 self.__write_response_codec_options,
                 int(not multi))
         # Delete command.

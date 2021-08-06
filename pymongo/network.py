@@ -124,7 +124,7 @@ def command(sock_info, dbname, spec, slave_ok, is_mongos,
                 max_doc_size > max_bson_size):
             message._raise_document_too_large(name, size, max_bson_size)
     else:
-        request_id, msg, size = message.query(
+        request_id, msg, size = message._query(
             flags, ns, 0, -1, spec, None, codec_options, check_keys,
             compression_ctx)
 

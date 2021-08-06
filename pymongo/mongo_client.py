@@ -1582,7 +1582,7 @@ class MongoClient(common.BaseObject):
         else:
             if publish:
                 start = datetime.datetime.now()
-            request_id, msg = message.kill_cursors(cursor_ids)
+            request_id, msg = message._kill_cursors(cursor_ids)
             if publish:
                 duration = datetime.datetime.now() - start
                 # Here and below, address could be a tuple or

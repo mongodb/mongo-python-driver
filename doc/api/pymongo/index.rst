@@ -39,7 +39,6 @@ Sub-modules:
    encryption
    encryption_options
    errors
-   message
    mongo_client
    monitoring
    operations
