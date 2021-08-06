@@ -6,15 +6,10 @@ Changes in Version 4.0
 
 .. warning:: PyMongo 4.0 drops support for Python 2.7, 3.4, and 3.5.
 
-.. warning:: PyMongo now allows insertion of documents with keys that include
-   dots ('.') or start with dollar signs ('$').
-
 PyMongo 4.0 brings a number of improvements as well as some backward breaking
 changes. For example, all APIs deprecated in PyMongo 3.X have been removed.
 Be sure to read the changes listed below and the :doc:`migrate-to-pymongo4`
 before upgrading from PyMongo 3.x.
-
-- Added :attr:`pymongo.mongo_client.MongoClient.topology_description`.
 
 Breaking Changes in 4.0
 .......................
@@ -90,13 +85,12 @@ Breaking Changes in 4.0
 - Removed :attr:`pymongo.GEOHAYSTACK`.
 - The "tls" install extra is no longer necessary or supported and will be
   ignored by pip.
-- PyMongoCrypt 1.1.0 or later is now required for client side field level
-  encryption support.
 
 Notable improvements
 ....................
 
-- Support for MongoDB Versioned API, see :class:`~pymongo.server_api.ServerApi`.
+- Enhanced connection pooling to create connections more efficiently and
+  avoid connection storms.
 
 Issues Resolved
 ...............
@@ -105,7 +99,138 @@ See the `PyMongo 4.0 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
 .. _PyMongo 4.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=18463
+
+Changes in Version 3.12.0
+-------------------------
+
+.. warning:: PyMongo 3.12.0 deprecates support for Python 2.7, 3.4 and 3.5.
+   These Python versions will not be supported by PyMongo 4.
+
+.. warning:: PyMongo now allows insertion of documents with keys that include
+   dots ('.') or start with dollar signs ('$').
+
+- PyMongoCrypt 1.1.0 or later is now required for client side field level
+  encryption support.
+
+Notable improvements
+....................
+
+- Added support for MongoDB 5.0.
+- Support for MongoDB Versioned API, see :class:`~pymongo.server_api.ServerApi`.
+- Support for snapshot reads on secondaries (see :ref:`snapshot-reads-ref`).
+- Support for Azure and GCP KMS providers for client side field level
+  encryption. See the docstring for :class:`~pymongo.mongo_client.MongoClient`,
+  :class:`~pymongo.encryption_options.AutoEncryptionOpts`,
+  and :mod:`~pymongo.encryption`.
+- Support AWS authentication with temporary credentials when connecting to KMS
+  in client side field level encryption.
+- Support for connecting to load balanced MongoDB clusters via the new
+  ``loadBalanced`` URI option.
+- Support for creating timeseries collections via the ``timeseries`` and
+  ``expireAfterSeconds`` arguments to
+  :meth:`~pymongo.database.Database.create_collection`.
+- Added :attr:`pymongo.mongo_client.MongoClient.topology_description`.
+- Added hash support to :class:`~pymongo.mongo_client.MongoClient`,
+  :class:`~pymongo.database.Database` and
+  :class:`~pymongo.collection.Collection` (`PYTHON-2466`_).
+- Improved the error message returned by
+  :meth:`~pymongo.collection.Collection.insert_many` when supplied with an
+  argument of incorrect type (`PYTHON-1690`_).
+- Added session and read concern support to
+  :meth:`~pymongo.collection.Collection.find_raw_batches`
+  and :meth:`~pymongo.collection.Collection.aggregate_raw_batches`.
+
+Bug fixes
+.........
+
+- Fixed a bug that could cause the driver to deadlock during automatic
+  client side field level encryption (`PYTHON-2472`_).
+- Fixed a potential deadlock when garbage collecting an unclosed exhaust
+  :class:`~pymongo.cursor.Cursor`.
+- Fixed an bug where using gevent.Timeout to timeout an operation could
+  lead to a deadlock.
+- Fixed the following bug with Atlas Data Lake. When closing cursors,
+  pymongo now sends killCursors with the namespace returned the cursor's
+  initial command response.
+- Fixed a bug in :class:`~pymongo.cursor.RawBatchCursor` that caused it to
+  return an empty bytestring when the cursor contained no results. It now
+  raises :exc:`StopIteration` instead.
+
+Deprecations
+............
+
+- Deprecated support for Python 2.7, 3.4 and 3.5.
+- Deprecated support for database profiler helpers
+  :meth:`~pymongo.database.Database.profiling_level`,
+  :meth:`~pymongo.database.Database.set_profiling_level`,
+  and :meth:`~pymongo.database.Database.profiling_info`. Instead, users
+  should run the `profile command`_ with the
+  :meth:`~pymongo.database.Database.command` helper directly.
+- Deprecated :exc:`~pymongo.errors.NotMasterError`. Users should
+  use :exc:`~pymongo.errors.NotPrimaryError` instead.
+- Deprecated :class:`~pymongo.ismaster.IsMaster` and :mod:`~pymongo.ismaster`
+  which will be removed in PyMongo 4.0 and are replaced by
+  :class:`~pymongo.hello.Hello` and :mod:`~pymongo.hello` which provide the
+  same API.
+- Deprecated the :mod:`pymongo.messeage` module.
+- Deprecated the ``ssl_keyfile`` and ``ssl_certfile`` URI options in favor
+  of ``tlsCertificateKeyFile`` (see :doc:`examples/tls`).
+
+.. _PYTHON-2466: https://jira.mongodb.org/browse/PYTHON-2466
+.. _PYTHON-1690: https://jira.mongodb.org/browse/PYTHON-1690
+.. _PYTHON-2472: https://jira.mongodb.org/browse/PYTHON-2472
 .. _profile command: https://docs.mongodb.com/manual/reference/command/profile/
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.12.0 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.12.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=29594
+
+Changes in Version 3.11.3
+-------------------------
+
+Issues Resolved
+...............
+
+Version 3.11.3 fixes a bug that prevented PyMongo from retrying writes after
+a ``writeConcernError`` on MongoDB 4.4+ (`PYTHON-2452`_)
+
+See the `PyMongo 3.11.3 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PYTHON-2452: https://jira.mongodb.org/browse/PYTHON-2452
+.. _PyMongo 3.11.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=30355
+
+Changes in Version 3.11.2
+-------------------------
+
+Issues Resolved
+...............
+
+Version 3.11.2 includes a number of bugfixes. Highlights include:
+
+- Fixed a memory leak caused by failing SDAM monitor checks on Python 3 (`PYTHON-2433`_).
+- Fixed a regression that changed the string representation of
+  :exc:`~pymongo.errors.BulkWriteError` (`PYTHON-2438`_).
+- Fixed a bug that made it impossible to use
+  :meth:`bson.codec_options.CodecOptions.with_options` and
+  :meth:`~bson.json_util.JSONOptions.with_options` on some early versions of
+  Python 3.4 and Python 3.5 due to a bug in the standard library implementation
+  of :meth:`collections.namedtuple._asdict` (`PYTHON-2440`_).
+- Fixed a bug that resulted in a :exc:`TypeError` exception when a PyOpenSSL
+  socket was configured with a timeout of ``None`` (`PYTHON-2443`_).
+
+See the `PyMongo 3.11.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PYTHON-2433: https://jira.mongodb.org/browse/PYTHON-2433
+.. _PYTHON-2438: https://jira.mongodb.org/browse/PYTHON-2438
+.. _PYTHON-2440: https://jira.mongodb.org/browse/PYTHON-2440
+.. _PYTHON-2443: https://jira.mongodb.org/browse/PYTHON-2443
+.. _PyMongo 3.11.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=30315
 
 Changes in Version 3.11.1
 -------------------------
