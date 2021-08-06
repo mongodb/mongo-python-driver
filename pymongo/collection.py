@@ -1313,9 +1313,6 @@ class Collection(common.BaseObject):
             interpret and trace the operation in the server logs and in profile
             data. Pass this as an alternative to calling
             :meth:`~pymongo.cursor.Cursor.comment` on the cursor.
-          - `modifiers` (optional): **DEPRECATED** - A dict specifying
-            additional MongoDB query modifiers. Use the keyword arguments listed
-            above instead.
           - `allow_disk_use` (optional): if True, MongoDB may use temporary
             disk files to store data exceeding the system memory limit while
             processing a blocking sort operation. The option has no effect if
@@ -1338,6 +1335,9 @@ class Collection(common.BaseObject):
             completely iterated the underlying :class:`~socket.socket`
             connection will be closed and discarded without being returned to
             the connection pool.
+
+        .. versionchanged:: 4.0
+           Removed the ``modifiers`` option.
 
         .. versionchanged:: 3.11
            Added the ``allow_disk_use`` option.

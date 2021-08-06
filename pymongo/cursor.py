@@ -136,10 +136,10 @@ class Cursor(object):
                  limit=0, no_cursor_timeout=False,
                  cursor_type=CursorType.NON_TAILABLE,
                  sort=None, allow_partial_results=False, oplog_replay=False,
-                 modifiers=None, batch_size=0,
+                 batch_size=0,
                  collation=None, hint=None, max_scan=None, max_time_ms=None,
-                 max=None, min=None, return_key=False, show_record_id=False,
-                 snapshot=False, comment=None, session=None,
+                 max=None, min=None, return_key=None, show_record_id=None,
+                 snapshot=None, comment=None, session=None,
                  allow_disk_use=None):
         """Create a new cursor.
 
@@ -186,10 +186,6 @@ class Cursor(object):
             raise ValueError("not a valid value for cursor_type")
         validate_boolean("allow_partial_results", allow_partial_results)
         validate_boolean("oplog_replay", oplog_replay)
-        if modifiers is not None:
-            warnings.warn("the 'modifiers' parameter is deprecated",
-                          DeprecationWarning, stacklevel=2)
-            validate_is_mapping("modifiers", modifiers)
         if not isinstance(batch_size, int):
             raise TypeError("batch_size must be an integer")
         if batch_size < 0:
@@ -208,7 +204,6 @@ class Cursor(object):
         self.__skip = skip
         self.__limit = limit
         self.__batch_size = batch_size
-        self.__modifiers = modifiers and modifiers.copy() or {}
         self.__ordering = sort and helpers._index_document(sort) or None
         self.__max_scan = max_scan
         self.__explain = False
@@ -318,7 +313,7 @@ class Cursor(object):
                            "max_time_ms", "max_await_time_ms", "comment",
                            "max", "min", "ordering", "explain", "hint",
                            "batch_size", "max_scan",
-                           "query_flags", "modifiers", "collation", "empty",
+                           "query_flags", "collation", "empty",
                            "show_record_id", "return_key", "allow_disk_use",
                            "snapshot", "exhaust")
         data = dict((k, v) for k, v in self.__dict__.items()
@@ -370,7 +365,7 @@ class Cursor(object):
     def __query_spec(self):
         """Get the spec to use for a query.
         """
-        operators = self.__modifiers.copy()
+        operators = {}
         if self.__ordering:
             operators["$orderby"] = self.__ordering
         if self.__explain:
@@ -387,12 +382,12 @@ class Cursor(object):
             operators["$max"] = self.__max
         if self.__min:
             operators["$min"] = self.__min
-        if self.__return_key:
+        if self.__return_key is not None:
             operators["$returnKey"] = self.__return_key
-        if self.__show_record_id:
+        if self.__show_record_id is not None:
             # This is upgraded to showRecordId for MongoDB 3.2+ "find" command.
             operators["$showDiskLoc"] = self.__show_record_id
-        if self.__snapshot:
+        if self.__snapshot is not None:
             operators["$snapshot"] = self.__snapshot
 
         if operators:

@@ -76,9 +76,10 @@ Breaking Changes in 4.0
   :attr:`pymongo.database.Database.outgoing_manipulators`,
   :attr:`pymongo.database.Database.incoming_copying_manipulators`, and
   :attr:`pymongo.database.Database.incoming_manipulators`.
-- Removed the ``manipulate`` parameter from
+- Removed the ``manipulate`` and ``modifiers`` parameters from
   :meth:`~pymongo.collection.Collection.find`,
-  :meth:`~pymongo.collection.Collection.find_one`, and
+  :meth:`~pymongo.collection.Collection.find_one`,
+  :meth:`~pymongo.collection.Collection.find_raw_batches`, and
   :meth:`~pymongo.cursor.Cursor`.
 - Removed :meth:`pymongo.message.delete`, :meth:`pymongo.message.get_more`,
   :meth:`pymongo.message.insert`, :meth:`pymongo.message.kill_cursors`,

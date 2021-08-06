@@ -109,6 +109,8 @@ def create_test(scenario_def, test):
         elif name == 'find':
             if 'sort' in args:
                 args['sort'] = list(args['sort'].items())
+            if 'hint' in args:
+                args['hint'] = list(args['hint'].items())
             for arg in 'skip', 'limit':
                 if arg in args:
                     args[arg] = int(args[arg])
