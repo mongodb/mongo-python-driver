@@ -555,3 +555,10 @@ Removed :meth:`~pymongo.collection.Collection.parallel_scan`. MongoDB 4.2
 removed the `parallelCollectionScan command`_.  There is no replacement.
 
 .. _parallelCollectionScan command: https://docs.mongodb.com/manual/reference/command/parallelCollectionScan/
+
+pymongo.message helpers are removed
+...................................
+
+Removed :meth:`pymongo.message.delete`, :meth:`pymongo.message.get_more`,
+:meth:`pymongo.message.insert`, :meth:`pymongo.message.kill_cursors`,
+:meth:`pymongo.message.query`, and :meth:`pymongo.message.update`.
