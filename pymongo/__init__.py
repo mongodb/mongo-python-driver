@@ -25,20 +25,6 @@ GEO2D = "2d"
 .. _geospatial index: http://docs.mongodb.org/manual/core/2d/
 """
 
-GEOHAYSTACK = "geoHaystack"
-"""**DEPRECATED** - Index specifier for a 2-dimensional `haystack index`_.
-
-**DEPRECATED** - :attr:`GEOHAYSTACK` is deprecated and will be removed in
-PyMongo 4.0. geoHaystack indexes (and the geoSearch command) were deprecated
-in MongoDB 4.4. Instead, create a 2d index and use $geoNear or $geoWithin.
-See https://dochub.mongodb.org/core/4.4-deprecate-geoHaystack.
-
-.. versionchanged:: 3.11
-   Deprecated.
-
-.. _haystack index: http://docs.mongodb.org/manual/core/geohaystack/
-"""
-
 GEOSPHERE = "2dsphere"
 """Index specifier for a `spherical geospatial index`_.
 

@@ -50,10 +50,6 @@ from pymongo.results import (BulkWriteResult,
 from pymongo.write_concern import WriteConcern
 
 _FIND_AND_MODIFY_DOC_FIELDS = {'value': 1}
-_HAYSTACK_MSG = (
-    "geoHaystack indexes are deprecated as of MongoDB 4.4."
-    " Instead, create a 2d index and use $geoNear or $geoWithin."
-    " See https://dochub.mongodb.org/core/4.4-deprecate-geoHaystack")
 
 
 class ReturnDocument(object):
@@ -1758,10 +1754,6 @@ class Collection(common.BaseObject):
                         raise ConfigurationError(
                             "Must be connected to MongoDB "
                             "3.4+ to use collations.")
-                    if 'bucketSize' in document:
-                        # The bucketSize option is required by geoHaystack.
-                        warnings.warn(
-                            _HAYSTACK_MSG, DeprecationWarning, stacklevel=4)
                     names.append(document["name"])
                     yield document
 
@@ -1787,9 +1779,8 @@ class Collection(common.BaseObject):
         The key(s) must be an instance of :class:`basestring`
         (:class:`str` in python 3), and the direction(s) must be one of
         (:data:`~pymongo.ASCENDING`, :data:`~pymongo.DESCENDING`,
-        :data:`~pymongo.GEO2D`, :data:`~pymongo.GEOHAYSTACK`,
-        :data:`~pymongo.GEOSPHERE`, :data:`~pymongo.HASHED`,
-        :data:`~pymongo.TEXT`).
+        :data:`~pymongo.GEO2D`, :data:`~pymongo.GEOSPHERE`,
+        :data:`~pymongo.HASHED`, :data:`~pymongo.TEXT`).
 
         To create a single key ascending index on the key ``'mike'`` we just
         use a string argument::
