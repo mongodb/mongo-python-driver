@@ -32,8 +32,7 @@ from bson.code import Code
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from bson.son import SON
-from pymongo import (ASCENDING, DESCENDING, GEO2D,
-                     GEOHAYSTACK, GEOSPHERE, HASHED, TEXT)
+from pymongo import ASCENDING, DESCENDING, GEO2D, GEOSPHERE, HASHED, TEXT
 from pymongo.bulk import BulkWriteError
 from pymongo.collection import Collection, ReturnDocument
 from pymongo.command_cursor import CommandCursor
@@ -430,7 +429,7 @@ class TestCollection(IntegrationTest):
             "pos": {"long": 59.1, "lat": 87.2}, "type": "office"
         })
         db.test.create_index(
-            [("pos", GEOHAYSTACK), ("type", ASCENDING)],
+            [("pos", "geoHaystack"), ("type", ASCENDING)],
             bucketSize=1
         )
 

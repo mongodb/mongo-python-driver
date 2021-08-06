@@ -492,6 +492,13 @@ NotMasterError is removed
 Removed :exc:`~pymongo.errors.NotMasterError`.
 Use :exc:`~pymongo.errors.NotPrimaryError` instead.
 
+pymongo.GEOHAYSTACK is removed
+------------------------------
+
+Removed :attr:`pymongo.GEOHAYSTACK`. Replace with "geoHaystack" or create a
+2d index and use $geoNear or $geoWithin instead.
+See https://dochub.mongodb.org/core/4.4-deprecate-geoHaystack.
+
 Removed features with no migration path
 ---------------------------------------
 

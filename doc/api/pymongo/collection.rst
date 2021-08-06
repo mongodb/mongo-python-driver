@@ -7,7 +7,6 @@
    .. autodata:: pymongo.ASCENDING
    .. autodata:: pymongo.DESCENDING
    .. autodata:: pymongo.GEO2D
-   .. autodata:: pymongo.GEOHAYSTACK
    .. autodata:: pymongo.GEOSPHERE
    .. autodata:: pymongo.HASHED
    .. autodata:: pymongo.TEXT

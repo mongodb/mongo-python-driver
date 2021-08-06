@@ -87,6 +87,7 @@ Breaking Changes in 4.0
   :meth:`~pymongo.cursor.Cursor`.
 - Removed :exc:`pymongo.errors.NotMasterError`.
   Use :exc:`pymongo.errors.NotPrimaryError` instead.
+- Removed :attr:`pymongo.GEOHAYSTACK`.
 - The "tls" install extra is no longer necessary or supported and will be
   ignored by pip.
 - PyMongoCrypt 1.1.0 or later is now required for client side field level

@@ -380,9 +380,8 @@ class IndexModel(object):
         The key(s) must be an instance of :class:`basestring`
         (:class:`str` in python 3), and the direction(s) must be one of
         (:data:`~pymongo.ASCENDING`, :data:`~pymongo.DESCENDING`,
-        :data:`~pymongo.GEO2D`, :data:`~pymongo.GEOHAYSTACK`,
-        :data:`~pymongo.GEOSPHERE`, :data:`~pymongo.HASHED`,
-        :data:`~pymongo.TEXT`).
+        :data:`~pymongo.GEO2D`, :data:`~pymongo.GEOSPHERE`,
+        :data:`~pymongo.HASHED`, :data:`~pymongo.TEXT`).
 
         Valid options include, but are not limited to:
 
