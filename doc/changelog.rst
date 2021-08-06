@@ -37,6 +37,14 @@ Breaking Changes in 4.0
   :meth:`pymongo.database.Database.reset_error_history`.
 - Removed :meth:`pymongo.database.Database.add_user` and
   :meth:`pymongo.database.Database.remove_user`.
+- Removed support for database profiler helpers
+  :meth:`~pymongo.database.Database.profiling_level`,
+  :meth:`~pymongo.database.Database.set_profiling_level`,
+  and :meth:`~pymongo.database.Database.profiling_info`. Instead, users
+  should run the `profile command`_ with the
+  :meth:`~pymongo.database.Database.command` helper directly.
+- Removed :attr:`pymongo.OFF`, :attr:`pymongo.SLOW_ONLY`, and
+  :attr:`pymongo.ALL`.
 - Removed :meth:`pymongo.collection.Collection.parallel_scan`.
 - Removed :meth:`pymongo.collection.Collection.ensure_index`.
 - Removed :meth:`pymongo.collection.Collection.reindex`.
@@ -96,6 +104,7 @@ See the `PyMongo 4.0 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
 .. _PyMongo 4.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=18463
+.. _profile command: https://docs.mongodb.com/manual/reference/command/profile/
 
 Changes in Version 3.11.1
 -------------------------

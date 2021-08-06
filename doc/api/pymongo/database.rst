@@ -5,9 +5,6 @@
    :synopsis: Database level operations
 
    .. autodata:: pymongo.auth.MECHANISMS
-   .. autodata:: pymongo.OFF
-   .. autodata:: pymongo.SLOW_ONLY
-   .. autodata:: pymongo.ALL
 
    .. autoclass:: pymongo.database.Database
       :members:

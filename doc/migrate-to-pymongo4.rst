@@ -207,6 +207,47 @@ PyMongo 3.6. Use the `dropUser command`_ instead::
 
 .. _dropUser command: https://docs.mongodb.com/manual/reference/command/createUser/
 
+Database.profiling_level is removed
+...................................
+
+Removed :meth:`pymongo.database.Database.profiling_level` which was deprecated in
+PyMongo 3.12. Use the `profile command`_ instead. Code like this::
+
+  level = db.profiling_level()
+
+Can be changed to this::
+
+  profile = db.command('profile', -1)
+  level = profile['was']
+
+.. _profile command: https://docs.mongodb.com/manual/reference/command/profile/
+
+Database.set_profiling_level is removed
+.......................................
+
+Removed :meth:`pymongo.database.Database.set_profiling_level` which was deprecated in
+PyMongo 3.12. Use the `profile command`_ instead. Code like this::
+
+  db.set_profiling_level(pymongo.ALL, filter={'op': 'query'})
+
+Can be changed to this::
+
+  res = db.command('profile', 2, filter={'op': 'query'})
+
+Database.profiling_info is removed
+..................................
+
+Removed :meth:`pymongo.database.Database.profiling_info` which was deprecated in
+PyMongo 3.12. Query the `'system.profile' collection`_ instead. Code like this::
+
+  profiling_info = db.profiling_info()
+
+Can be changed to this::
+
+  profiling_info = list(db['system.profile'].find())
+
+.. _'system.profile' collection: https://docs.mongodb.com/manual/reference/database-profiler/
+
 Collection
 ----------
 

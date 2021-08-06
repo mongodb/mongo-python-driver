@@ -27,12 +27,9 @@ sys.path[0:0] = [""]
 
 from bson import decode_all
 from bson.code import Code
-from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo import (ASCENDING,
-                     DESCENDING,
-                     ALL,
-                     OFF)
+                     DESCENDING)
 from pymongo.collation import Collation
 from pymongo.cursor import Cursor, CursorType
 from pymongo.errors import (ConfigurationError,
@@ -1290,7 +1287,7 @@ class TestCursor(IntegrationTest):
             query_key = "query.$comment"
 
         self.client.drop_database(self.db)
-        self.db.set_profiling_level(ALL)
+        self.db.command('profile', 2)  # Profile ALL commands.
         try:
             list(self.db.test.find().comment('foo'))
             op = self.db.system.profile.find({'ns': 'pymongo_test.test',
@@ -1312,7 +1309,7 @@ class TestCursor(IntegrationTest):
                                               'command.comment': 'foo'})
             self.assertEqual(op.count(), 1)
         finally:
-            self.db.set_profiling_level(OFF)
+            self.db.command('profile', 0)  # Turn off profiling.
             self.db.system.profile.drop()
 
         self.db.test.insert_many([{}, {}])
