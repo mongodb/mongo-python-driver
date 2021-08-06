@@ -207,8 +207,8 @@ class CodecOptions(_options_base):
     See :doc:`/examples/datetimes` for examples using the `tz_aware` and
     `tzinfo` options.
 
-    See :class:`~bson.binary.UUIDLegacy` for examples using the
-    `uuid_representation` option.
+    See :doc:`examples/uuid` for examples using the `uuid_representation`
+    option.
 
     :Parameters:
       - `document_class`: BSON documents returned in queries will be decoded

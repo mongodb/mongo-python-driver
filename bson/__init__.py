@@ -70,7 +70,7 @@ from collections import abc as _abc
 from bson.binary import (Binary, UuidRepresentation, ALL_UUID_SUBTYPES,
                          OLD_UUID_SUBTYPE,
                          JAVA_LEGACY, CSHARP_LEGACY,
-                         UUIDLegacy, UUID_SUBTYPE)
+                         UUID_SUBTYPE)
 from bson.code import Code
 from bson.codec_options import (
     CodecOptions, DEFAULT_CODEC_OPTIONS, _raw_document_class)
@@ -707,7 +707,6 @@ _ENCODERS = {
     RE_TYPE: _encode_regex,
     SON: _encode_mapping,
     Timestamp: _encode_timestamp,
-    UUIDLegacy: _encode_binary,
     Decimal128: _encode_decimal128,
     # Special case. This will never be looked up directly.
     _abc.Mapping: _encode_mapping,
