@@ -27,8 +27,7 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from pymongo import MongoClient, message
 from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
-                            DuplicateKeyError,
-                            ExceededMaxWaiters)
+                            DuplicateKeyError)
 
 sys.path[0:0] = [""]
 
