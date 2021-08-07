@@ -261,7 +261,7 @@ class PoolOptions(object):
     __slots__ = ('__max_pool_size', '__min_pool_size',
                  '__max_idle_time_seconds',
                  '__connect_timeout', '__socket_timeout',
-                 '__wait_queue_timeout', '__wait_queue_multiple',
+                 '__wait_queue_timeout',
                  '__ssl_context', '__ssl_match_hostname', '__socket_keepalive',
                  '__event_listeners', '__appname', '__driver', '__metadata',
                  '__compression_settings', '__max_connecting',
@@ -271,7 +271,7 @@ class PoolOptions(object):
                  min_pool_size=MIN_POOL_SIZE,
                  max_idle_time_seconds=MAX_IDLE_TIME_SEC, connect_timeout=None,
                  socket_timeout=None, wait_queue_timeout=WAIT_QUEUE_TIMEOUT,
-                 wait_queue_multiple=None, ssl_context=None,
+                 ssl_context=None,
                  ssl_match_hostname=True, socket_keepalive=True,
                  event_listeners=None, appname=None, driver=None,
                  compression_settings=None, max_connecting=MAX_CONNECTING,
@@ -282,7 +282,6 @@ class PoolOptions(object):
         self.__connect_timeout = connect_timeout
         self.__socket_timeout = socket_timeout
         self.__wait_queue_timeout = wait_queue_timeout
-        self.__wait_queue_multiple = wait_queue_multiple
         self.__ssl_context = ssl_context
         self.__ssl_match_hostname = ssl_match_hostname
         self.__socket_keepalive = socket_keepalive
@@ -395,13 +394,6 @@ class PoolOptions(object):
         has no free sockets.
         """
         return self.__wait_queue_timeout
-
-    @property
-    def wait_queue_multiple(self):
-        """Multiplied by max_pool_size to give the number of threads allowed
-        to wait for a socket at one time.
-        """
-        return self.__wait_queue_multiple
 
     @property
     def ssl_context(self):
@@ -1163,22 +1155,14 @@ class Pool:
                 self.opts.event_listeners is not None and
                 self.opts.event_listeners.enabled_for_cmap)
 
-        if (self.opts.wait_queue_multiple is None or
-                self.opts.max_pool_size is None):
-            max_waiters = float('inf')
-        else:
-            max_waiters = (
-                self.opts.max_pool_size * self.opts.wait_queue_multiple)
         # The first portion of the wait queue.
-        # Enforces: maxPoolSize and waitQueueMultiple
+        # Enforces: maxPoolSize
         # Also used for: clearing the wait queue
         self.size_cond = threading.Condition(self.lock)
         self.requests = 0
         self.max_pool_size = self.opts.max_pool_size
         if self.max_pool_size is None:
             self.max_pool_size = float('inf')
-        self.waiters = 0
-        self.max_waiters = max_waiters
         # The second portion of the wait queue.
         # Enforces: maxConnecting
         # Also used for: clearing the wait queue
@@ -1468,22 +1452,14 @@ class Pool:
 
         with self.size_cond:
             self._raise_if_not_ready(emit_event=True)
-            if self.waiters >= self.max_waiters:
-                raise ExceededMaxWaiters(
-                    'exceeded max waiters: %s threads already waiting' % (
-                        self.waiters))
-            self.waiters += 1
-            try:
-                while not (self.requests < self.max_pool_size):
-                    if not _cond_wait(self.size_cond, deadline):
-                        # Timed out, notify the next thread to ensure a
-                        # timeout doesn't consume the condition.
-                        if self.requests < self.max_pool_size:
-                            self.size_cond.notify()
-                        self._raise_wait_queue_timeout()
-                    self._raise_if_not_ready(emit_event=True)
-            finally:
-                self.waiters -= 1
+            while not (self.requests < self.max_pool_size):
+                if not _cond_wait(self.size_cond, deadline):
+                    # Timed out, notify the next thread to ensure a
+                    # timeout doesn't consume the condition.
+                    if self.requests < self.max_pool_size:
+                        self.size_cond.notify()
+                    self._raise_wait_queue_timeout()
+                self._raise_if_not_ready(emit_event=True)
             self.requests += 1
 
         # We've now acquired the semaphore and must release it on error.

@@ -243,9 +243,6 @@ class MongoClient(common.BaseObject):
           - `waitQueueTimeoutMS`: (integer or None) How long (in milliseconds)
             a thread will wait for a socket from the pool if the pool has no
             free sockets. Defaults to ``None`` (no timeout).
-          - `waitQueueMultiple`: (integer or None) Multiplied by maxPoolSize
-            to give the number of threads allowed to wait for a socket at one
-            time. Defaults to ``None`` (no limit).
           - `heartbeatFrequencyMS`: (optional) The number of milliseconds
             between periodic server checks, or None to accept the default
             frequency of 10 seconds.
@@ -504,6 +501,9 @@ class MongoClient(common.BaseObject):
             details.
 
         .. mongodoc:: connections
+
+        .. versionchanged:: 3.12
+           Removed the ``waitQueueMultiple`` keyword argument.
 
         .. versionchanged:: 3.12
            Added the ``server_api`` keyword argument.

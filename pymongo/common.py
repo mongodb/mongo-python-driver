@@ -716,9 +716,6 @@ URI_OPTIONS_DEPRECATION_MAP = {
         'use tlsCertificateKeyFile to pass a single file containing both '
         'the client certificate and the private key')),
     'ssl_pem_passphrase': ('renamed', 'tlsCertificateKeyFilePassword'),
-    'waitqueuemultiple': ('removed', (
-        'Instead of using waitQueueMultiple to bound queuing, limit the size '
-        'of the thread pool in your application server'))
 }
 
 # Augment the option validator map with pymongo-specific option information.

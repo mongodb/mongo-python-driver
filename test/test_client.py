@@ -111,7 +111,6 @@ class ClientUnitTest(unittest.TestCase):
         client = MongoClient(socketTimeoutMS=None,
                              connectTimeoutMS=20000,
                              waitQueueTimeoutMS=None,
-                             waitQueueMultiple=None,
                              replicaSet=None,
                              read_preference=ReadPreference.PRIMARY,
                              ssl=False,
@@ -128,7 +127,6 @@ class ClientUnitTest(unittest.TestCase):
         # socket.Socket.settimeout takes a float in seconds
         self.assertEqual(20.0, pool_opts.connect_timeout)
         self.assertEqual(None, pool_opts.wait_queue_timeout)
-        self.assertEqual(None, pool_opts.wait_queue_multiple)
         self.assertTrue(pool_opts.socket_keepalive)
         self.assertEqual(None, pool_opts.ssl_context)
         self.assertEqual(None, options.replica_set_name)
@@ -1078,13 +1076,6 @@ class TestClient(IntegrationTest):
     def test_waitQueueTimeoutMS(self):
         client = rs_or_single_client(waitQueueTimeoutMS=2000)
         self.assertEqual(get_pool(client).opts.wait_queue_timeout, 2)
-
-    def test_waitQueueMultiple(self):
-        client = rs_or_single_client(maxPoolSize=3, waitQueueMultiple=2)
-        pool = get_pool(client)
-        self.assertEqual(pool.opts.wait_queue_multiple, 2)
-        self.assertEqual(pool.max_waiters, 6)
-        self.assertEqual(pool.max_pool_size, 3)
 
     def test_socketKeepAlive(self):
         for socketKeepAlive in [True, False]:
