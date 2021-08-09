@@ -127,7 +127,6 @@ class ClientUnitTest(unittest.TestCase):
         # socket.Socket.settimeout takes a float in seconds
         self.assertEqual(20.0, pool_opts.connect_timeout)
         self.assertEqual(None, pool_opts.wait_queue_timeout)
-        self.assertTrue(pool_opts.socket_keepalive)
         self.assertEqual(None, pool_opts.ssl_context)
         self.assertEqual(None, options.replica_set_name)
         self.assertEqual(ReadPreference.PRIMARY, client.read_preference)
