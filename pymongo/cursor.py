@@ -141,8 +141,8 @@ class Cursor(object):
                  sort=None, allow_partial_results=False, oplog_replay=False,
                  modifiers=None, batch_size=0, manipulate=True,
                  collation=None, hint=None, max_scan=None, max_time_ms=None,
-                 max=None, min=None, return_key=False, show_record_id=False,
-                 snapshot=False, comment=None, session=None,
+                 max=None, min=None, return_key=None, show_record_id=None,
+                 snapshot=None, comment=None, session=None,
                  allow_disk_use=None):
         """Create a new cursor.
 
@@ -391,12 +391,12 @@ class Cursor(object):
             operators["$max"] = self.__max
         if self.__min:
             operators["$min"] = self.__min
-        if self.__return_key:
+        if self.__return_key is not None:
             operators["$returnKey"] = self.__return_key
-        if self.__show_record_id:
+        if self.__show_record_id is not None:
             # This is upgraded to showRecordId for MongoDB 3.2+ "find" command.
             operators["$showDiskLoc"] = self.__show_record_id
-        if self.__snapshot:
+        if self.__snapshot is not None:
             operators["$snapshot"] = self.__snapshot
 
         if operators:
