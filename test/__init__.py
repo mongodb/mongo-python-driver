@@ -154,7 +154,7 @@ class client_knobs(object):
         self.old_min_heartbeat_interval = None
         self.old_kill_cursor_frequency = None
         self.old_events_queue_frequency = None
-        self._enabled = True
+        self._enabled = False
         self._stack = None
 
     def enable(self):
