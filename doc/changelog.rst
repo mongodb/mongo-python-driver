@@ -51,6 +51,7 @@ Breaking Changes in 4.0
 - Removed :meth:`pymongo.collection.Collection.update`.
 - Removed :meth:`pymongo.collection.Collection.remove`.
 - Removed :meth:`pymongo.collection.Collection.find_and_modify`.
+- Removed :meth:`pymongo.collection.Collection.count`.
 - Removed :meth:`pymongo.collection.Collection.initialize_ordered_bulk_op`,
   :meth:`pymongo.collection.Collection.initialize_unordered_bulk_op`, and
   :class:`pymongo.bulk.BulkOperationBuilder`. Use
@@ -64,6 +65,7 @@ Breaking Changes in 4.0
 - Removed :class:`pymongo.cursor_manager.CursorManager` and
   :mod:`pymongo.cursor_manager`.
 - Removed :meth:`pymongo.mongo_client.MongoClient.set_cursor_manager`.
+- Removed :meth:`pymongo.cursor.Cursor.count`.
 - Removed :mod:`pymongo.thread_util`.
 - Removed :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`.
 - Removed :class:`~pymongo.ismaster.IsMaster`.
