@@ -309,10 +309,6 @@ class MongoClient(common.BaseObject):
             trigger a retry, see the `retryable reads specification
             <https://github.com/mongodb/specifications/blob/master/source/retryable-reads/retryable-reads.rst>`_.
 
-          - `socketKeepAlive`: (boolean) **DEPRECATED** Whether to send
-            periodic keep-alive packets on connected sockets. Defaults to
-            ``True``. Disabling it is not recommended, see
-            https://docs.mongodb.com/manual/faq/diagnostics/#does-tcp-keepalive-time-affect-mongodb-deployments",
           - `compressors`: Comma separated list of compressors for wire
             protocol compression. The list is used to negotiate a compressor
             with the server. Currently supported options are "snappy", "zlib"
@@ -502,8 +498,9 @@ class MongoClient(common.BaseObject):
 
         .. mongodoc:: connections
 
-        .. versionchanged:: 3.12
-           Removed the ``waitQueueMultiple`` keyword argument.
+        .. versionchanged:: 4.0
+           Removed the ``waitQueueMultiple`` and ``socketKeepAlive`` keyword
+           arguments.
 
         .. versionchanged:: 3.12
            Added the ``server_api`` keyword argument.
@@ -700,13 +697,6 @@ class MongoClient(common.BaseObject):
         # Username and password passed as kwargs override user info in URI.
         username = opts.get("username", username)
         password = opts.get("password", password)
-        if 'socketkeepalive' in opts:
-            warnings.warn(
-                "The socketKeepAlive option is deprecated. It now"
-                "defaults to true and disabling it is not recommended, see "
-                "https://docs.mongodb.com/manual/faq/diagnostics/"
-                "#does-tcp-keepalive-time-affect-mongodb-deployments",
-                DeprecationWarning, stacklevel=2)
         self.__options = options = ClientOptions(
             username, password, dbase, opts)
 

@@ -650,7 +650,6 @@ NONSPEC_OPTIONS_VALIDATOR_MAP = {
     'server_api': validate_server_api_or_none,
     'fsync': validate_boolean_or_string,
     'minpoolsize': validate_non_negative_integer,
-    'socketkeepalive': validate_boolean_or_string,
     'tlscrlfile': validate_readable,
     'tz_aware': validate_boolean_or_string,
     'unicode_decode_error_handler': validate_unicode_decode_error_handler,
