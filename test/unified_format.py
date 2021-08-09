@@ -1142,7 +1142,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self.run_operations(spec['operations'])
 
         # process expectEvents
-        self.check_events(spec.get('expectEvents', []))
+        if 'expectEvents' in spec:
+            expect_events = spec['expectEvents']
+            self.assertTrue(expect_events, 'expectEvents must be non-empty')
+            self.check_events(expect_events)
 
         # process outcome
         self.verify_outcome(spec.get('outcome', []))
