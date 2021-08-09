@@ -40,7 +40,6 @@ from test import (SkipTest,
                   IntegrationTest,
                   unittest)
 from test.utils import (connected,
-                        ignore_deprecations,
                         one,
                         OvertCommandListener,
                         rs_client,
@@ -430,10 +429,6 @@ class TestCommandAndReadPreference(IntegrationTest):
         self._test_coll_helper(True, self.c.pymongo_test.test,
                                'inline_map_reduce',
                                'function() { }', 'function() { }')
-
-    @ignore_deprecations
-    def test_count(self):
-        self._test_coll_helper(True, self.c.pymongo_test.test, 'count')
 
     def test_count_documents(self):
         self._test_coll_helper(

@@ -809,8 +809,6 @@ class TestCausalConsistency(unittest.TestCase):
         self._test_reads(
             lambda coll, session: coll.find_one({}, session=session))
         self._test_reads(
-            lambda coll, session: coll.count(session=session))
-        self._test_reads(
             lambda coll, session: coll.count_documents({}, session=session))
         self._test_reads(
             lambda coll, session: coll.distinct('foo', session=session))

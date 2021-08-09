@@ -68,11 +68,11 @@ class TestReadConcern(IntegrationTest):
     def test_invalid_read_concern(self):
         coll = self.db.get_collection(
             'coll', read_concern=ReadConcern('majority'))
-        self.assertRaisesRegexp(
-            ConfigurationError,
-            'read concern level of majority is not valid '
-            'with a max wire version of [0-3]',
-            coll.count)
+        with self.assertRaisesRegex(
+                ConfigurationError,
+                'read concern level of majority is not valid '
+                'with a max wire version of [0-3]'):
+            coll.find_one()
 
     @client_context.require_version_min(3, 1, 9, -1)
     def test_find_command(self):

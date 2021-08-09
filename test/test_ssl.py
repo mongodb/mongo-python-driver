@@ -559,7 +559,8 @@ class TestSSL(IntegrationTest):
             ssl_cert_reqs=ssl.CERT_NONE,
             ssl_certfile=CLIENT_PEM)
 
-        self.assertRaises(OperationFailure, noauth.pymongo_test.test.count)
+        with self.assertRaises(OperationFailure):
+            noauth.pymongo_test.test.find_one()
 
         listener = EventListener()
         auth = MongoClient(

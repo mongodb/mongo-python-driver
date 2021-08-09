@@ -49,10 +49,6 @@ def _connect(options):
     client.admin.command('ismaster')
 
 
-if not hasattr(unittest.TestCase, 'assertRaisesRegex'):
-    unittest.TestCase.assertRaisesRegex = unittest.TestCase.assertRaisesRegexp
-
-
 class TestOCSP(unittest.TestCase):
 
     def test_tls_insecure(self):
