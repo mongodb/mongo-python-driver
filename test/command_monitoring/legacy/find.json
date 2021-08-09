@@ -89,21 +89,19 @@
           "skip": {
             "$numberLong": "2"
           },
-          "modifiers": {
-            "$comment": "test",
-            "$hint": {
-              "_id": 1
-            },
-            "$max": {
-              "_id": 6
-            },
-            "$maxTimeMS": 6000,
-            "$min": {
-              "_id": 0
-            },
-            "$returnKey": false,
-            "$showDiskLoc": false
-          }
+          "comment": "test",
+          "hint": {
+            "_id": 1
+          },
+          "max": {
+            "_id": 6
+          },
+          "maxTimeMS": 6000,
+          "min": {
+            "_id": 0
+          },
+          "returnKey": false,
+          "showRecordId": false
         }
       },
       "expectations": [

@@ -1317,58 +1317,6 @@ class TestCursor(IntegrationTest):
         next(cursor)
         self.assertRaises(InvalidOperation, cursor.comment, 'hello')
 
-    def test_modifiers(self):
-        c = self.db.test
-
-        # "modifiers" is deprecated.
-        with ignore_deprecations():
-            cur = c.find()
-            self.assertTrue('$query' not in cur._Cursor__query_spec())
-            cur = c.find().comment("testing").max_time_ms(500)
-            self.assertTrue('$query' in cur._Cursor__query_spec())
-            self.assertEqual(cur._Cursor__query_spec()["$comment"], "testing")
-            self.assertEqual(cur._Cursor__query_spec()["$maxTimeMS"], 500)
-            cur = c.find(
-                modifiers={"$maxTimeMS": 500, "$comment": "testing"})
-            self.assertTrue('$query' in cur._Cursor__query_spec())
-            self.assertEqual(cur._Cursor__query_spec()["$comment"], "testing")
-            self.assertEqual(cur._Cursor__query_spec()["$maxTimeMS"], 500)
-
-            # Keyword arg overwrites modifier.
-            # If we remove the "modifiers" arg, delete this test after checking
-            # that TestCommandMonitoring.test_find_options covers all cases.
-            cur = c.find(comment="hi", modifiers={"$comment": "bye"})
-            self.assertEqual(cur._Cursor__query_spec()["$comment"], "hi")
-
-            cur = c.find(max_scan=1, modifiers={"$maxScan": 2})
-            self.assertEqual(cur._Cursor__query_spec()["$maxScan"], 1)
-
-            cur = c.find(max_time_ms=1, modifiers={"$maxTimeMS": 2})
-            self.assertEqual(cur._Cursor__query_spec()["$maxTimeMS"], 1)
-
-            cur = c.find(min=1, modifiers={"$min": 2})
-            self.assertEqual(cur._Cursor__query_spec()["$min"], 1)
-
-            cur = c.find(max=1, modifiers={"$max": 2})
-            self.assertEqual(cur._Cursor__query_spec()["$max"], 1)
-
-            cur = c.find(return_key=True, modifiers={"$returnKey": False})
-            self.assertEqual(cur._Cursor__query_spec()["$returnKey"], True)
-
-            cur = c.find(hint=[("a", 1)], modifiers={"$hint": {"b": "1"}})
-            self.assertEqual(cur._Cursor__query_spec()["$hint"], {"a": 1})
-
-            # The arg is named show_record_id after the "find" command arg, the
-            # modifier is named $showDiskLoc for the OP_QUERY modifier. It's
-            # stored as $showDiskLoc then upgraded to showRecordId if we send a
-            # "find" command.
-            cur = c.find(show_record_id=True, modifiers={"$showDiskLoc": False})
-            self.assertEqual(cur._Cursor__query_spec()["$showDiskLoc"], True)
-
-            if not client_context.version.at_least(3, 7, 3):
-                cur = c.find(snapshot=True, modifiers={"$snapshot": False})
-                self.assertEqual(cur._Cursor__query_spec()["$snapshot"], True)
-
     def test_alive(self):
         self.db.test.delete_many({})
         self.db.test.insert_many([{} for _ in range(3)])

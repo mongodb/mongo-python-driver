@@ -448,6 +448,39 @@ can be changed to this::
 
 .. _reIndex command: https://docs.mongodb.com/manual/reference/command/reIndex/
 
+The modifiers parameter is removed
+..................................
+
+Removed the ``modifiers`` parameter from
+:meth:`~pymongo.collection.Collection.find`,
+:meth:`~pymongo.collection.Collection.find_one`,
+:meth:`~pymongo.collection.Collection.find_raw_batches`, and
+:meth:`~pymongo.cursor.Cursor`. Pass the options directly to the method
+instead. Code like this::
+
+  cursor = coll.find({}, modifiers={
+      "$comment": "comment",
+      "$hint": {"_id": 1},
+      "$min": {"_id": 0},
+      "$max": {"_id": 6},
+      "$maxTimeMS": 6000,
+      "$returnKey": False,
+      "$showDiskLoc": False,
+  })
+
+can be changed to this::
+
+  cursor = coll.find(
+      {},
+      comment="comment",
+      hint={"_id": 1},
+      min={"_id": 0},
+      max={"_id": 6},
+      max_time_ms=6000,
+      return_key=False,
+      show_record_id=False,
+  )
+
 SONManipulator is removed
 -------------------------
 
