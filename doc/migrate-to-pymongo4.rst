@@ -468,6 +468,17 @@ instead.
 
 .. _group command: https://docs.mongodb.com/manual/reference/command/group/
 
+Collection.map_reduce and Collection.inline_map_reduce are removed
+..................................................................
+
+Removed :meth:`pymongo.collection.Collection.map_reduce` and
+:meth:`pymongo.collection.Collection.inline_map_reduce`.
+Migrate to :meth:`~pymongo.collection.Collection.aggregate` or run the
+`mapReduce command`_ directly with :meth:`~pymongo.database.Database.command`
+instead.
+
+.. _mapReduce command: https://docs.mongodb.com/manual/reference/command/mapReduce/
+
 Collection.ensure_index is removed
 ..................................
 
