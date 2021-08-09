@@ -1450,17 +1450,6 @@ class Collection(common.BaseObject):
             return 0
         return int(res["n"])
 
-    def _count(self, cmd, collation=None, session=None):
-        """Internal count helper."""
-        # XXX: "ns missing" checks can be removed when we drop support for
-        # MongoDB 3.0, see SERVER-17051.
-        def _cmd(session, server, sock_info, slave_ok):
-            return self._count_cmd(
-                session, sock_info, slave_ok, cmd, collation)
-
-        return self.__database.client._retryable_read(
-            _cmd, self._read_preference_for(session), session)
-
     def _aggregate_one_result(
             self, sock_info, slave_ok, cmd, collation, session):
         """Internal helper to run an aggregate that returns a single result."""
@@ -1607,85 +1596,6 @@ class Collection(common.BaseObject):
 
         return self.__database.client._retryable_read(
             _cmd, self._read_preference_for(session), session)
-
-    def count(self, filter=None, session=None, **kwargs):
-        """**DEPRECATED** - Get the number of documents in this collection.
-
-        The :meth:`count` method is deprecated and **not** supported in a
-        transaction. Please use :meth:`count_documents` or
-        :meth:`estimated_document_count` instead.
-
-        All optional count parameters should be passed as keyword arguments
-        to this method. Valid options include:
-
-          - `skip` (int): The number of matching documents to skip before
-            returning results.
-          - `limit` (int): The maximum number of documents to count. A limit
-            of 0 (the default) is equivalent to setting no limit.
-          - `maxTimeMS` (int): The maximum amount of time to allow the count
-            command to run, in milliseconds.
-          - `collation` (optional): An instance of
-            :class:`~pymongo.collation.Collation`. This option is only supported
-            on MongoDB 3.4 and above.
-          - `hint` (string or list of tuples): The index to use. Specify either
-            the index name as a string or the index specification as a list of
-            tuples (e.g. [('a', pymongo.ASCENDING), ('b', pymongo.ASCENDING)]).
-
-        The :meth:`count` method obeys the :attr:`read_preference` of
-        this :class:`Collection`.
-
-        .. note:: When migrating from :meth:`count` to :meth:`count_documents`
-           the following query operators must be replaced:
-
-           +-------------+-------------------------------------+
-           | Operator    | Replacement                         |
-           +=============+=====================================+
-           | $where      | `$expr`_                            |
-           +-------------+-------------------------------------+
-           | $near       | `$geoWithin`_ with `$center`_       |
-           +-------------+-------------------------------------+
-           | $nearSphere | `$geoWithin`_ with `$centerSphere`_ |
-           +-------------+-------------------------------------+
-
-           $expr requires MongoDB 3.6+
-
-        :Parameters:
-          - `filter` (optional): A query document that selects which documents
-            to count in the collection.
-          - `session` (optional): a
-            :class:`~pymongo.client_session.ClientSession`.
-          - `**kwargs` (optional): See list of options above.
-
-        .. versionchanged:: 3.7
-           Deprecated.
-
-        .. versionchanged:: 3.6
-           Added ``session`` parameter.
-
-        .. versionchanged:: 3.4
-           Support the `collation` option.
-
-        .. _$expr: https://docs.mongodb.com/manual/reference/operator/query/expr/
-        .. _$geoWithin: https://docs.mongodb.com/manual/reference/operator/query/geoWithin/
-        .. _$center: https://docs.mongodb.com/manual/reference/operator/query/center/#op._S_center
-        .. _$centerSphere: https://docs.mongodb.com/manual/reference/operator/query/centerSphere/#op._S_centerSphere
-        """
-        warnings.warn("count is deprecated. Use estimated_document_count or "
-                      "count_documents instead. Please note that $where must "
-                      "be replaced by $expr, $near must be replaced by "
-                      "$geoWithin with $center, and $nearSphere must be "
-                      "replaced by $geoWithin with $centerSphere",
-                      DeprecationWarning, stacklevel=2)
-        cmd = SON([("count", self.__name)])
-        if filter is not None:
-            if "query" in kwargs:
-                raise ConfigurationError("can't pass both filter and query")
-            kwargs["query"] = filter
-        if "hint" in kwargs and not isinstance(kwargs["hint"], str):
-            kwargs["hint"] = helpers._index_document(kwargs["hint"])
-        collation = validate_collation_or_none(kwargs.pop('collation', None))
-        cmd.update(kwargs)
-        return self._count(cmd, collation, session)
 
     def create_indexes(self, indexes, session=None, **kwargs):
         """Create one or more indexes on this collection.

@@ -26,7 +26,7 @@ from pymongo.operations import (DeleteMany, DeleteOne, IndexModel, ReplaceOne,
                                 UpdateMany, UpdateOne)
 from pymongo.write_concern import WriteConcern
 from test import client_context, IntegrationTest, unittest
-from test.utils import EventListener, ignore_deprecations, rs_or_single_client
+from test.utils import EventListener, rs_or_single_client
 
 
 class TestCollationObject(unittest.TestCase):
@@ -148,16 +148,6 @@ class TestCollation(IntegrationTest):
     def test_aggregate(self):
         self.db.test.aggregate([{'$group': {'_id': 42}}],
                                collation=self.collation)
-        self.assertCollationInLastCommand()
-
-    @raisesConfigurationErrorForOldMongoDB
-    @ignore_deprecations
-    def test_count(self):
-        self.db.test.count(collation=self.collation)
-        self.assertCollationInLastCommand()
-
-        self.listener.results.clear()
-        self.db.test.find(collation=self.collation).count()
         self.assertCollationInLastCommand()
 
     @raisesConfigurationErrorForOldMongoDB

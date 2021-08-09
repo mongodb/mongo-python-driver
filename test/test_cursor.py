@@ -769,62 +769,6 @@ class TestCursor(IntegrationTest):
             break
         self.assertRaises(InvalidOperation, a.sort, "x", ASCENDING)
 
-    @ignore_deprecations
-    def test_count(self):
-        db = self.db
-        db.test.drop()
-
-        self.assertEqual(0, db.test.find().count())
-
-        db.test.insert_many([{"x": i} for i in range(10)])
-
-        self.assertEqual(10, db.test.find().count())
-        self.assertTrue(isinstance(db.test.find().count(), int))
-        self.assertEqual(10, db.test.find().limit(5).count())
-        self.assertEqual(10, db.test.find().skip(5).count())
-
-        self.assertEqual(1, db.test.find({"x": 1}).count())
-        self.assertEqual(5, db.test.find({"x": {"$lt": 5}}).count())
-
-        a = db.test.find()
-        b = a.count()
-        for _ in a:
-            break
-        self.assertEqual(b, a.count())
-
-        self.assertEqual(0, db.test.acollectionthatdoesntexist.find().count())
-
-    @ignore_deprecations
-    def test_count_with_hint(self):
-        collection = self.db.test
-        collection.drop()
-
-        collection.insert_many([{'i': 1}, {'i': 2}])
-        self.assertEqual(2, collection.find().count())
-
-        collection.create_index([('i', 1)])
-
-        self.assertEqual(1, collection.find({'i': 1}).hint("_id_").count())
-        self.assertEqual(2, collection.find().hint("_id_").count())
-
-        self.assertRaises(OperationFailure,
-                          collection.find({'i': 1}).hint("BAD HINT").count)
-
-        # Create a sparse index which should have no entries.
-        collection.create_index([('x', 1)], sparse=True)
-
-        self.assertEqual(0, collection.find({'i': 1}).hint("x_1").count())
-        self.assertEqual(
-            0, collection.find({'i': 1}).hint([("x", 1)]).count())
-
-        if client_context.version.at_least(3, 3, 2):
-            self.assertEqual(0, collection.find().hint("x_1").count())
-            self.assertEqual(0, collection.find().hint([("x", 1)]).count())
-        else:
-            self.assertEqual(2, collection.find().hint("x_1").count())
-            self.assertEqual(2, collection.find().hint([("x", 1)]).count())
-
-    @ignore_deprecations
     def test_where(self):
         db = self.db
         db.test.drop()
@@ -854,9 +798,6 @@ class TestCursor(IntegrationTest):
                 3, len(list(db.test.find().where(code_with_scope))))
 
         self.assertEqual(10, len(list(db.test.find())))
-
-        self.assertEqual(3, db.test.find().where('this.x < 3').count())
-        self.assertEqual(10, db.test.find().count())
         self.assertEqual([0, 1, 2],
                          [a["x"] for a in
                           db.test.find().where('this.x < 3')])
@@ -1013,12 +954,6 @@ class TestCursor(IntegrationTest):
         self.assertRaises(StopIteration, cursor.next)
         self.assertRaises(StopIteration, cursor2.next)
 
-    @ignore_deprecations
-    def test_count_with_fields(self):
-        self.db.test.drop()
-        self.db.test.insert_one({"x": 1})
-        self.assertEqual(1, self.db.test.find({}, ["a"]).count())
-
     def test_bad_getitem(self):
         self.assertRaises(TypeError, lambda x: self.db.test.find()[x], "hello")
         self.assertRaises(TypeError, lambda x: self.db.test.find()[x], 5.5)
@@ -1104,30 +1039,6 @@ class TestCursor(IntegrationTest):
         self.assertRaises(IndexError, lambda x: self.db.test.find()[x], 100)
         self.assertRaises(IndexError,
                           lambda x: self.db.test.find().skip(50)[x], 50)
-
-    @ignore_deprecations
-    def test_count_with_limit_and_skip(self):
-        self.assertRaises(TypeError, self.db.test.find().count, "foo")
-
-        def check_len(cursor, length):
-            self.assertEqual(len(list(cursor)), cursor.count(True))
-            self.assertEqual(length, cursor.count(True))
-
-        self.db.drop_collection("test")
-        self.db.test.insert_many([{"i": i} for i in range(100)])
-
-        check_len(self.db.test.find(), 100)
-
-        check_len(self.db.test.find().limit(10), 10)
-        check_len(self.db.test.find().limit(110), 100)
-
-        check_len(self.db.test.find().skip(10), 90)
-        check_len(self.db.test.find().skip(110), 0)
-
-        check_len(self.db.test.find().limit(10).skip(10), 10)
-        check_len(self.db.test.find()[10:20], 10)
-        check_len(self.db.test.find().limit(10).skip(95), 5)
-        check_len(self.db.test.find()[95:105], 5)
 
     def test_len(self):
         self.assertRaises(TypeError, len, self.db.test.find())
@@ -1274,7 +1185,6 @@ class TestCursor(IntegrationTest):
         self.assertTrue(c1.alive)
 
     @client_context.require_no_mongos
-    @ignore_deprecations
     def test_comment(self):
         # MongoDB 3.1.5 changed the ns for commands.
         regex = {'$regex': r'pymongo_test.(\$cmd|test)'}
@@ -1290,24 +1200,15 @@ class TestCursor(IntegrationTest):
         self.db.command('profile', 2)  # Profile ALL commands.
         try:
             list(self.db.test.find().comment('foo'))
-            op = self.db.system.profile.find({'ns': 'pymongo_test.test',
-                                              'op': 'query',
-                                              query_key: 'foo'})
-            self.assertEqual(op.count(), 1)
-
-            self.db.test.find().comment('foo').count()
-            op = self.db.system.profile.find({'ns': regex,
-                                              'op': 'command',
-                                              'command.count': 'test',
-                                              'command.comment': 'foo'})
-            self.assertEqual(op.count(), 1)
+            count = self.db.system.profile.count_documents(
+                {'ns': 'pymongo_test.test', 'op': 'query',  query_key: 'foo'})
+            self.assertEqual(count, 1)
 
             self.db.test.find().comment('foo').distinct('type')
-            op = self.db.system.profile.find({'ns': regex,
-                                              'op': 'command',
-                                              'command.distinct': 'test',
-                                              'command.comment': 'foo'})
-            self.assertEqual(op.count(), 1)
+            count = self.db.system.profile.find(
+                {'ns': regex, 'op': 'command', 'command.distinct': 'test',
+                 'command.comment': 'foo'})
+            self.assertEqual(count, 1)
         finally:
             self.db.command('profile', 0)  # Turn off profiling.
             self.db.system.profile.drop()

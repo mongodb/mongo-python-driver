@@ -63,7 +63,7 @@ class TestSampleShellCommands(IntegrationTest):
         cursor = db.inventory.find({"item": "canvas"})
         # End Example 2
 
-        self.assertEqual(cursor.count(), 1)
+        self.assertEqual(len(list(cursor)), 1)
 
         # Start Example 3
         db.inventory.insert_many([

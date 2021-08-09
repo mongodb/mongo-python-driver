@@ -32,8 +32,7 @@ from pymongo.errors import (ConfigurationError,
                             OperationFailure)
 from pymongo.read_concern import ReadConcern
 from test import IntegrationTest, client_context, unittest, SkipTest
-from test.utils import (ignore_deprecations,
-                        rs_or_single_client,
+from test.utils import (rs_or_single_client,
                         EventListener,
                         TestCreator,
                         wait_until)
@@ -337,7 +336,6 @@ class TestSession(IntegrationTest):
         ops = [
             ('find', lambda session: list(coll.find(session=session))),
             ('getitem', lambda session: coll.find(session=session)[0]),
-            ('count', lambda session: coll.find(session=session).count()),
             ('distinct',
              lambda session: coll.find(session=session).distinct('a')),
             ('explain', lambda session: coll.find(session=session).explain()),
@@ -1062,7 +1060,6 @@ class TestClusterTime(IntegrationTest):
         if '$clusterTime' not in client_context.ismaster:
             raise SkipTest('$clusterTime not supported')
 
-    @ignore_deprecations
     def test_cluster_time(self):
         listener = SessionTestListener()
         # Prevent heartbeats from updating $clusterTime between operations.
