@@ -95,6 +95,8 @@ def run_operation(collection, test):
     options = arguments.pop("options", {})
     for option_name in options:
         arguments[camel_to_snake(option_name)] = options[option_name]
+    if operation == 'count':
+        raise unittest.SkipTest('PyMongo does not support count')
     if operation == "bulk_write":
         # Parse each request into a bulk write model.
         requests = []

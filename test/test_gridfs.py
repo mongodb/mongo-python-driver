@@ -431,7 +431,7 @@ class TestGridfs(IntegrationTest):
         self.fs.put(b"test2++", filename="two")
         files = self.db.fs.files
         self.assertEqual(3, files.count_documents({"filename": "two"}))
-        self.assertEqual(4, files.count_documents())
+        self.assertEqual(4, files.count_documents({}))
         cursor = self.fs.find(
             no_cursor_timeout=False).sort("uploadDate", -1).skip(1).limit(2)
         gout = next(cursor)

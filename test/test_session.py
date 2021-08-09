@@ -289,7 +289,6 @@ class TestSession(IntegrationTest):
         ops.extend([
             (coll.distinct, ['a'], {}),
             (coll.find_one, [], {}),
-            (coll.count, [], {}),
             (coll.count_documents, [{}], {}),
             (coll.inline_map_reduce, ['function() {}', 'function() {}'], {}),
             (coll.list_indexes, [], {}),

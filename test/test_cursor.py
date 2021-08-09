@@ -1205,7 +1205,7 @@ class TestCursor(IntegrationTest):
             self.assertEqual(count, 1)
 
             self.db.test.find().comment('foo').distinct('type')
-            count = self.db.system.profile.find(
+            count = self.db.system.profile.count_documents(
                 {'ns': regex, 'op': 'command', 'command.distinct': 'test',
                  'command.comment': 'foo'})
             self.assertEqual(count, 1)
