@@ -15,13 +15,16 @@ Breaking Changes in 4.0
 .......................
 
 - Removed support for Python 2.7, 3.4, and 3.5. Python 3.6+ is now required.
-- Removed :meth:`pymongo.database.Database.eval`,
-  :data:`pymongo.database.Database.system_js` and
-  :class:`pymongo.database.SystemJS`.
+- Removed the ``waitQueueMultiple`` keyword argument to
+  :class:`~pymongo.mongo_client.MongoClient` and removed
+  :exc:`pymongo.errors.ExceededMaxWaiters`.
 - Removed :meth:`pymongo.mongo_client.MongoClient.fsync`,
   :meth:`pymongo.mongo_client.MongoClient.unlock`, and
   :attr:`pymongo.mongo_client.MongoClient.is_locked`.
 - Removed :meth:`pymongo.mongo_client.MongoClient.database_names`.
+- Removed :meth:`pymongo.database.Database.eval`,
+  :data:`pymongo.database.Database.system_js` and
+  :class:`pymongo.database.SystemJS`.
 - Removed :meth:`pymongo.database.Database.collection_names`.
 - Removed :meth:`pymongo.database.Database.current_op`.
 - Removed :meth:`pymongo.database.Database.authenticate` and

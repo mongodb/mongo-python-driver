@@ -248,15 +248,6 @@ class InvalidURI(ConfigurationError):
     """Raised when trying to parse an invalid mongodb URI."""
 
 
-class ExceededMaxWaiters(PyMongoError):
-    """Raised when a thread tries to get a connection from a pool and
-    ``maxPoolSize * waitQueueMultiple`` threads are already waiting.
-
-    .. versionadded:: 2.6
-    """
-    pass
-
-
 class DocumentTooLarge(InvalidDocument):
     """Raised when an encoded document is too large for the connected server.
     """

@@ -121,7 +121,6 @@ def _parse_pool_options(options):
     socket_timeout = options.get('sockettimeoutms')
     wait_queue_timeout = options.get(
         'waitqueuetimeoutms', common.WAIT_QUEUE_TIMEOUT)
-    wait_queue_multiple = options.get('waitqueuemultiple')
     event_listeners = options.get('event_listeners')
     appname = options.get('appname')
     driver = options.get('driver')
@@ -135,7 +134,7 @@ def _parse_pool_options(options):
                        min_pool_size,
                        max_idle_time_seconds,
                        connect_timeout, socket_timeout,
-                       wait_queue_timeout, wait_queue_multiple,
+                       wait_queue_timeout,
                        ssl_context, ssl_match_hostname, socket_keepalive,
                        _EventListeners(event_listeners),
                        appname,

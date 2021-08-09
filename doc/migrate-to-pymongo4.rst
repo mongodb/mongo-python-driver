@@ -62,6 +62,15 @@ get the same behavior.
 MongoClient
 -----------
 
+The waitQueueMultiple parameter is removed
+..........................................
+
+Removed the ``waitQueueMultiple`` keyword argument to
+:class:`~pymongo.mongo_client.MongoClient` and removed
+:exc:`pymongo.errors.ExceededMaxWaiters`. Instead of using
+``waitQueueMultiple`` to bound queuing, limit the size of the thread
+pool in your application.
+
 MongoClient.fsync is removed
 ............................
 

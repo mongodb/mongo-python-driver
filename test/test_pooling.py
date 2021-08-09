@@ -27,8 +27,7 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from pymongo import MongoClient, message
 from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
-                            DuplicateKeyError,
-                            ExceededMaxWaiters)
+                            DuplicateKeyError)
 
 sys.path[0:0] = [""]
 
@@ -113,8 +112,7 @@ class SocketGetter(MongoThread):
     """Utility for TestPooling.
 
     Checks out a socket and holds it forever. Used in
-    test_no_wait_queue_timeout, test_wait_queue_multiple, and
-    test_no_wait_queue_multiple.
+    test_no_wait_queue_timeout.
     """
     def __init__(self, client, pool):
         super(SocketGetter, self).__init__(client)
@@ -350,7 +348,6 @@ class TestPooling(_TestPoolingBase):
             "Waited %.2f seconds for a socket, expected %f" % (
                 duration, wait_queue_timeout))
 
-
     def test_no_wait_queue_timeout(self):
         # Verify get_socket() with no wait_queue_timeout blocks forever.
         pool = self.create_pool(max_pool_size=1)
@@ -372,31 +369,7 @@ class TestPooling(_TestPoolingBase):
         self.assertEqual(t.state, 'sock')
         self.assertEqual(t.sock, s1)
 
-    def test_wait_queue_multiple(self):
-        wait_queue_multiple = 3
-        pool = self.create_pool(
-            max_pool_size=2, wait_queue_multiple=wait_queue_multiple)
-
-        # Reach max_size sockets.
-        with pool.get_socket({}):
-            with pool.get_socket({}):
-
-                # Reach max_size * wait_queue_multiple waiters.
-                threads = []
-                for _ in range(6):
-                    t = SocketGetter(self.c, pool)
-                    t.start()
-                    threads.append(t)
-
-                time.sleep(1)
-                for t in threads:
-                    self.assertEqual(t.state, 'get_socket')
-
-                with self.assertRaises(ExceededMaxWaiters):
-                    with pool.get_socket({}):
-                        pass
-
-    def test_no_wait_queue_multiple(self):
+    def test_checkout_more_than_max_pool_size(self):
         pool = self.create_pool(max_pool_size=2)
 
         socks = []
