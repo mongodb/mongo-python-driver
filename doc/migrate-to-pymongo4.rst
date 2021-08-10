@@ -388,15 +388,17 @@ Can be changed to this::
 .. note:: When migrating from :meth:`count` to :meth:`count_documents`
    the following query operators must be replaced:
 
-   +-------------+-------------------------------------+
-   | Operator    | Replacement                         |
-   +=============+=====================================+
-   | $where      | `$expr`_                            |
-   +-------------+-------------------------------------+
-   | $near       | `$geoWithin`_ with `$center`_       |
-   +-------------+-------------------------------------+
-   | $nearSphere | `$geoWithin`_ with `$centerSphere`_ |
-   +-------------+-------------------------------------+
+   +-------------+--------------------------------------------------------------+
+   | Operator    | Replacement                                                  |
+   +=============+==============================================================+
+   | $where      | `$expr`_                                                     |
+   +-------------+--------------------------------------------------------------+
+   | $near       | `$geoWithin`_ with `$center`_; i.e.                          |
+   |             | ``{'$geoWithin': {'$center': [[<x>,<y>], <radius>]}}``       |
+   +-------------+--------------------------------------------------------------+
+   | $nearSphere | `$geoWithin`_ with `$centerSphere`_; i.e.                    |
+   |             | ``{'$geoWithin': {'$centerSphere': [[<x>,<y>], <radius>]}}`` |
+   +-------------+--------------------------------------------------------------+
 
 .. _$expr: https://docs.mongodb.com/manual/reference/operator/query/expr/
 .. _$geoWithin: https://docs.mongodb.com/manual/reference/operator/query/geoWithin/
