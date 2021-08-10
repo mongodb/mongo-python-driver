@@ -40,7 +40,7 @@ from pymongo.common import (MAX_BSON_SIZE,
                             ORDERED_TYPES,
                             WAIT_QUEUE_TIMEOUT)
 from pymongo.errors import (AutoReconnect,
-                            CertificateError,
+                            _CertificateError,
                             ConnectionFailure,
                             ConfigurationError,
                             InvalidOperation,
@@ -1013,7 +1013,7 @@ def _create_connection(address, options):
 def _configured_socket(address, options):
     """Given (host, port) and PoolOptions, return a configured socket.
 
-    Can raise socket.error, ConnectionFailure, or CertificateError.
+    Can raise socket.error, ConnectionFailure, or _CertificateError.
 
     Sets socket's SSL and timeout options.
     """
@@ -1034,9 +1034,9 @@ def _configured_socket(address, options):
                 sock = ssl_context.wrap_socket(sock, server_hostname=host)
             else:
                 sock = ssl_context.wrap_socket(sock)
-        except CertificateError:
+        except _CertificateError:
             sock.close()
-            # Raise CertificateError directly like we do after match_hostname
+            # Raise _CertificateError directly like we do after match_hostname
             # below.
             raise
         except (IOError, OSError, _SSLError) as exc:
@@ -1050,7 +1050,7 @@ def _configured_socket(address, options):
                 options.ssl_match_hostname):
             try:
                 ssl.match_hostname(sock.getpeercert(), hostname=host)
-            except CertificateError:
+            except _CertificateError:
                 sock.close()
                 raise
 
@@ -1310,7 +1310,7 @@ class Pool:
     def connect(self, all_credentials=None):
         """Connect to Mongo and return a new SocketInfo.
 
-        Can raise ConnectionFailure or CertificateError.
+        Can raise ConnectionFailure.
 
         Note that the pool does not keep a reference to the socket -- you
         must call return_socket() when you're done with it.
