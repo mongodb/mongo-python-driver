@@ -95,7 +95,9 @@ def create_test(scenario_def, test):
         for arg in test_args:
             args[camel_to_snake(arg)] = test_args[arg]
 
-        if name == 'bulk_write':
+        if name == 'count':
+            self.skipTest('PyMongo does not support count')
+        elif name == 'bulk_write':
             bulk_args = []
             for request in args['requests']:
                 opname = request['name']

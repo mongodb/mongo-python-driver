@@ -38,8 +38,7 @@ from gridfs.grid_file import GridOutCursor
 from test import (client_context,
                   unittest,
                   IntegrationTest)
-from test.utils import (ignore_deprecations,
-                        joinall,
+from test.utils import (joinall,
                         one,
                         rs_client,
                         rs_or_single_client,
@@ -422,7 +421,6 @@ class TestGridfs(IntegrationTest):
         f = fs.new_file()
         self.assertRaises(ServerSelectionTimeoutError, f.close)
 
-    @ignore_deprecations
     def test_gridfs_find(self):
         self.fs.put(b"test2", filename="two")
         time.sleep(0.01)
@@ -431,8 +429,9 @@ class TestGridfs(IntegrationTest):
         self.fs.put(b"test1", filename="one")
         time.sleep(0.01)
         self.fs.put(b"test2++", filename="two")
-        self.assertEqual(3, self.fs.find({"filename": "two"}).count())
-        self.assertEqual(4, self.fs.find().count())
+        files = self.db.fs.files
+        self.assertEqual(3, files.count_documents({"filename": "two"}))
+        self.assertEqual(4, files.count_documents({}))
         cursor = self.fs.find(
             no_cursor_timeout=False).sort("uploadDate", -1).skip(1).limit(2)
         gout = next(cursor)

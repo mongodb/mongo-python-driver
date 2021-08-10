@@ -25,10 +25,6 @@ from pymongo.errors import OperationFailure
 from pymongo.uri_parser import parse_uri
 
 
-if not hasattr(unittest.TestCase, 'assertRaisesRegex'):
-    unittest.TestCase.assertRaisesRegex = unittest.TestCase.assertRaisesRegexp
-
-
 class TestAuthAWS(unittest.TestCase):
 
     @classmethod

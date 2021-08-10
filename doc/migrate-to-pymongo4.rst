@@ -365,6 +365,46 @@ Can be changed to this::
   replaced_doc = collection.find_one_and_replace({'b': 1}, {'c': 1})
   deleted_doc = collection.find_one_and_delete({'c': 1})
 
+Collection.count and Cursor.count is removed
+............................................
+
+Removed :meth:`pymongo.collection.Collection.count` and
+:meth:`pymongo.cursor.Cursor.count`. Use
+:meth:`~pymongo.collection.Collection.count_documents` or
+:meth:`~pymongo.collection.Collection.estimated_document_count` instead.
+Code like this::
+
+  ntotal = collection.count({})
+  nmatched = collection.count({'price': {'$gte': 10}})
+  # Or via the Cursor.count api:
+  ntotal = collection.find({}).count()
+  nmatched = collection.find({'price': {'$gte': 10}}).count()
+
+Can be changed to this::
+
+  ntotal = collection.estimated_document_count()
+  nmatched = collection.count_documents({'price': {'$gte': 10}})
+
+.. note:: When migrating from :meth:`count` to :meth:`count_documents`
+   the following query operators must be replaced:
+
+   +-------------+--------------------------------------------------------------+
+   | Operator    | Replacement                                                  |
+   +=============+==============================================================+
+   | $where      | `$expr`_                                                     |
+   +-------------+--------------------------------------------------------------+
+   | $near       | `$geoWithin`_ with `$center`_; i.e.                          |
+   |             | ``{'$geoWithin': {'$center': [[<x>,<y>], <radius>]}}``       |
+   +-------------+--------------------------------------------------------------+
+   | $nearSphere | `$geoWithin`_ with `$centerSphere`_; i.e.                    |
+   |             | ``{'$geoWithin': {'$centerSphere': [[<x>,<y>], <radius>]}}`` |
+   +-------------+--------------------------------------------------------------+
+
+.. _$expr: https://docs.mongodb.com/manual/reference/operator/query/expr/
+.. _$geoWithin: https://docs.mongodb.com/manual/reference/operator/query/geoWithin/
+.. _$center: https://docs.mongodb.com/manual/reference/operator/query/center/#op._S_center
+.. _$centerSphere: https://docs.mongodb.com/manual/reference/operator/query/centerSphere/#op._S_centerSphere
+
 Collection.initialize_ordered_bulk_op and initialize_unordered_bulk_op is removed
 .................................................................................
 

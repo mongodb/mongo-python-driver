@@ -58,7 +58,7 @@ from pymongo.results import (InsertOneResult,
 from pymongo.write_concern import WriteConcern
 from test import client_context, unittest
 from test.test_client import IntegrationTest
-from test.utils import (get_pool, ignore_deprecations, is_mongos,
+from test.utils import (get_pool, is_mongos,
                         rs_or_single_client, single_client,
                         wait_until, EventListener,
                         IMPOSSIBLE_WRITE_CONCERN)
@@ -1567,21 +1567,6 @@ class TestCollection(IntegrationTest):
         coll = self.db.get_collection("test", write_concern=WriteConcern(w=0))
         coll.insert_one({"x": 1})
         self.db.command("getlasterror", w=1, wtimeout=1)
-
-    @ignore_deprecations
-    def test_count(self):
-        db = self.db
-        db.drop_collection("test")
-
-        self.assertEqual(db.test.count(), 0)
-        db.test.insert_many([{}, {}])
-        self.assertEqual(db.test.count(), 2)
-        db.test.insert_many([{'foo': 'bar'}, {'foo': 'baz'}])
-        self.assertEqual(db.test.find({'foo': 'bar'}).count(), 1)
-        self.assertEqual(db.test.count({'foo': 'bar'}), 1)
-        self.assertEqual(db.test.find({'foo': re.compile(r'ba.*')}).count(), 2)
-        self.assertEqual(
-            db.test.count({'foo': re.compile(r'ba.*')}), 2)
 
     def test_count_documents(self):
         db = self.db

@@ -799,65 +799,6 @@ class Cursor(object):
         self.__ordering = helpers._index_document(keys)
         return self
 
-    def count(self, with_limit_and_skip=False):
-        """**DEPRECATED** - Get the size of the results set for this query.
-
-        The :meth:`count` method is deprecated and **not** supported in a
-        transaction. Please use
-        :meth:`~pymongo.collection.Collection.count_documents` instead.
-
-        Returns the number of documents in the results set for this query. Does
-        not take :meth:`limit` and :meth:`skip` into account by default - set
-        `with_limit_and_skip` to ``True`` if that is the desired behavior.
-        Raises :class:`~pymongo.errors.OperationFailure` on a database error.
-
-        When used with MongoDB >= 2.6, :meth:`~count` uses any :meth:`~hint`
-        applied to the query. In the following example the hint is passed to
-        the count command:
-
-          collection.find({'field': 'value'}).hint('field_1').count()
-
-        The :meth:`count` method obeys the
-        :attr:`~pymongo.collection.Collection.read_preference` of the
-        :class:`~pymongo.collection.Collection` instance on which
-        :meth:`~pymongo.collection.Collection.find` was called.
-
-        :Parameters:
-          - `with_limit_and_skip` (optional): take any :meth:`limit` or
-            :meth:`skip` that has been applied to this cursor into account when
-            getting the count
-
-        .. note:: The `with_limit_and_skip` parameter requires server
-           version **>= 1.1.4-**
-
-        .. versionchanged:: 3.7
-           Deprecated.
-
-        .. versionchanged:: 2.8
-           The :meth:`~count` method now supports :meth:`~hint`.
-        """
-        warnings.warn("count is deprecated. Use Collection.count_documents "
-                      "instead.", DeprecationWarning, stacklevel=2)
-        validate_boolean("with_limit_and_skip", with_limit_and_skip)
-        cmd = SON([("count", self.__collection.name),
-                   ("query", self.__spec)])
-        if self.__max_time_ms is not None:
-            cmd["maxTimeMS"] = self.__max_time_ms
-        if self.__comment:
-            cmd["comment"] = self.__comment
-
-        if self.__hint is not None:
-            cmd["hint"] = self.__hint
-
-        if with_limit_and_skip:
-            if self.__limit:
-                cmd["limit"] = self.__limit
-            if self.__skip:
-                cmd["skip"] = self.__skip
-
-        return self.__collection._count(
-            cmd, self.__collation, session=self.__session)
-
     def distinct(self, key):
         """Get a list of distinct values for `key` among all documents
         in the result set of this query.

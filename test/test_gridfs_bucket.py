@@ -37,8 +37,7 @@ from pymongo.read_preferences import ReadPreference
 from test import (client_context,
                   unittest,
                   IntegrationTest)
-from test.utils import (ignore_deprecations,
-                        joinall,
+from test.utils import (joinall,
                         one,
                         rs_client,
                         rs_or_single_client,
@@ -350,7 +349,6 @@ class TestGridfs(IntegrationTest):
             ServerSelectionTimeoutError,
             gfs.upload_from_stream, "test", b"")  # Still no connection.
 
-    @ignore_deprecations
     def test_gridfs_find(self):
         self.fs.upload_from_stream("two", b"test2")
         time.sleep(0.01)
@@ -359,8 +357,9 @@ class TestGridfs(IntegrationTest):
         self.fs.upload_from_stream("one", b"test1")
         time.sleep(0.01)
         self.fs.upload_from_stream("two", b"test2++")
-        self.assertEqual(3, self.fs.find({"filename": "two"}).count())
-        self.assertEqual(4, self.fs.find({}).count())
+        files = self.db.fs.files
+        self.assertEqual(3, files.count_documents({"filename": "two"}))
+        self.assertEqual(4, files.count_documents({}))
         cursor = self.fs.find(
             {}, no_cursor_timeout=False, sort=[("uploadDate", -1)],
             skip=1, limit=2)
