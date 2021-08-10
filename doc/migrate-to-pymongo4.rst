@@ -71,6 +71,14 @@ Removed the ``waitQueueMultiple`` keyword argument to
 ``waitQueueMultiple`` to bound queuing, limit the size of the thread
 pool in your application.
 
+The socketKeepAlive parameter is removed
+..........................................
+
+Removed the ``socketKeepAlive`` keyword argument to
+:class:`~pymongo.mongo_client.MongoClient`. PyMongo now always enables TCP
+keepalive. For more information see:
+https://docs.mongodb.com/manual/faq/diagnostics/#does-tcp-keepalive-time-affect-mongodb-deployments
+
 MongoClient.fsync is removed
 ............................
 

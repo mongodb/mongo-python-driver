@@ -117,7 +117,6 @@ def _parse_pool_options(options):
     if max_pool_size is not None and min_pool_size > max_pool_size:
         raise ValueError("minPoolSize must be smaller or equal to maxPoolSize")
     connect_timeout = options.get('connecttimeoutms', common.CONNECT_TIMEOUT)
-    socket_keepalive = options.get('socketkeepalive', True)
     socket_timeout = options.get('sockettimeoutms')
     wait_queue_timeout = options.get(
         'waitqueuetimeoutms', common.WAIT_QUEUE_TIMEOUT)
@@ -135,7 +134,7 @@ def _parse_pool_options(options):
                        max_idle_time_seconds,
                        connect_timeout, socket_timeout,
                        wait_queue_timeout,
-                       ssl_context, ssl_match_hostname, socket_keepalive,
+                       ssl_context, ssl_match_hostname,
                        _EventListeners(event_listeners),
                        appname,
                        driver,

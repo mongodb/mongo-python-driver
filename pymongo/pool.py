@@ -261,7 +261,7 @@ class PoolOptions(object):
                  '__max_idle_time_seconds',
                  '__connect_timeout', '__socket_timeout',
                  '__wait_queue_timeout',
-                 '__ssl_context', '__ssl_match_hostname', '__socket_keepalive',
+                 '__ssl_context', '__ssl_match_hostname',
                  '__event_listeners', '__appname', '__driver', '__metadata',
                  '__compression_settings', '__max_connecting',
                  '__pause_enabled', '__server_api', '__load_balanced')
@@ -271,7 +271,7 @@ class PoolOptions(object):
                  max_idle_time_seconds=MAX_IDLE_TIME_SEC, connect_timeout=None,
                  socket_timeout=None, wait_queue_timeout=WAIT_QUEUE_TIMEOUT,
                  ssl_context=None,
-                 ssl_match_hostname=True, socket_keepalive=True,
+                 ssl_match_hostname=True,
                  event_listeners=None, appname=None, driver=None,
                  compression_settings=None, max_connecting=MAX_CONNECTING,
                  pause_enabled=True, server_api=None, load_balanced=None):
@@ -283,7 +283,6 @@ class PoolOptions(object):
         self.__wait_queue_timeout = wait_queue_timeout
         self.__ssl_context = ssl_context
         self.__ssl_match_hostname = ssl_match_hostname
-        self.__socket_keepalive = socket_keepalive
         self.__event_listeners = event_listeners
         self.__appname = appname
         self.__driver = driver
@@ -405,13 +404,6 @@ class PoolOptions(object):
         """Call ssl.match_hostname if cert_reqs is not ssl.CERT_NONE.
         """
         return self.__ssl_match_hostname
-
-    @property
-    def socket_keepalive(self):
-        """Whether to send periodic messages to determine if a connection
-        is closed.
-        """
-        return self.__socket_keepalive
 
     @property
     def event_listeners(self):
@@ -1000,10 +992,8 @@ def _create_connection(address, options):
         try:
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             sock.settimeout(options.connect_timeout)
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE,
-                            options.socket_keepalive)
-            if options.socket_keepalive:
-                _set_keepalive_times(sock)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
+            _set_keepalive_times(sock)
             sock.connect(sa)
             return sock
         except socket.error as e:

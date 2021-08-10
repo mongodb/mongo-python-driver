@@ -127,7 +127,6 @@ class ClientUnitTest(unittest.TestCase):
         # socket.Socket.settimeout takes a float in seconds
         self.assertEqual(20.0, pool_opts.connect_timeout)
         self.assertEqual(None, pool_opts.wait_queue_timeout)
-        self.assertTrue(pool_opts.socket_keepalive)
         self.assertEqual(None, pool_opts.ssl_context)
         self.assertEqual(None, options.replica_set_name)
         self.assertEqual(ReadPreference.PRIMARY, client.read_preference)
@@ -1078,19 +1077,11 @@ class TestClient(IntegrationTest):
         self.assertEqual(get_pool(client).opts.wait_queue_timeout, 2)
 
     def test_socketKeepAlive(self):
-        for socketKeepAlive in [True, False]:
-            with warnings.catch_warnings(record=True) as ctx:
-                warnings.simplefilter("always")
-                client = rs_or_single_client(socketKeepAlive=socketKeepAlive)
-                self.assertTrue(any("The socketKeepAlive option is deprecated"
-                                    in str(k) for k in ctx))
-                pool = get_pool(client)
-                self.assertEqual(socketKeepAlive,
-                                 pool.opts.socket_keepalive)
-                with pool.get_socket({}) as sock_info:
-                    keepalive = sock_info.sock.getsockopt(socket.SOL_SOCKET,
-                                                          socket.SO_KEEPALIVE)
-                    self.assertEqual(socketKeepAlive, bool(keepalive))
+        pool = get_pool(self.client)
+        with pool.get_socket({}) as sock_info:
+            keepalive = sock_info.sock.getsockopt(socket.SOL_SOCKET,
+                                                  socket.SO_KEEPALIVE)
+            self.assertTrue(keepalive)
 
     def test_tz_aware(self):
         self.assertRaises(ValueError, MongoClient, tz_aware='foo')

@@ -18,6 +18,8 @@ Breaking Changes in 4.0
 - Removed the ``waitQueueMultiple`` keyword argument to
   :class:`~pymongo.mongo_client.MongoClient` and removed
   :exc:`pymongo.errors.ExceededMaxWaiters`.
+- Removed the ``socketKeepAlive`` keyword argument to
+  :class:`~pymongo.mongo_client.MongoClient`.
 - Removed :meth:`pymongo.mongo_client.MongoClient.fsync`,
   :meth:`pymongo.mongo_client.MongoClient.unlock`, and
   :attr:`pymongo.mongo_client.MongoClient.is_locked`.
