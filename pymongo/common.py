@@ -596,7 +596,7 @@ URI_OPTIONS_ALIAS_MAP = {
     'tlscrlfile': ['ssl_crlfile'],
     'tlscafile': ['ssl_ca_certs'],
     'tlscertificatekeyfile': ['ssl_certfile'],
-    'tlscertificatekeyfilepassword': ['ssl_pem_passphrase'],
+    # 'tlscertificatekeyfilepassword': ['ssl_pem_passphrase'],
 }
 
 # Dictionary where keys are the names of URI options, and values
@@ -686,7 +686,7 @@ INTERNAL_URI_OPTION_NAME_MAP = {
     'tlscrlfile': 'ssl_crlfile',
     'tlscafile': 'ssl_ca_certs',
     'tlscertificatekeyfile': 'ssl_certfile',
-    'tlscertificatekeyfilepassword': 'ssl_pem_passphrase',
+    # 'tlscertificatekeyfilepassword': 'ssl_pem_passphrase',
     'tlsdisableocspendpointcheck': 'ssl_check_ocsp_endpoint',
 }
 
@@ -714,7 +714,7 @@ URI_OPTIONS_DEPRECATION_MAP = {
         'Instead of using ssl_keyfile to specify the private keyfile, '
         'use tlsCertificateKeyFile to pass a single file containing both '
         'the client certificate and the private key')),
-    'ssl_pem_passphrase': ('renamed', 'tlsCertificateKeyFilePassword'),
+    # 'ssl_pem_passphrase': ('renamed', 'tlsCertificateKeyFilePassword'),
 }
 
 # Augment the option validator map with pymongo-specific option information.

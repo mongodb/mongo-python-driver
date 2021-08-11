@@ -199,7 +199,7 @@ class TestSSL(IntegrationTest):
 
     @client_context.require_ssl_certfile
     @ignore_deprecations
-    def test_ssl_pem_passphrase(self):
+    def test_tlsCertificateKeyFilePassword(self):
         # Expects the server to be running with server.pem and ca.pem
         #
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
@@ -211,20 +211,20 @@ class TestSSL(IntegrationTest):
                 'localhost',
                 ssl=True,
                 ssl_certfile=CLIENT_ENCRYPTED_PEM,
-                ssl_pem_passphrase="qwerty",
+                tlsCertificateKeyFilePassword="qwerty",
                 ssl_ca_certs=CA_PEM,
                 serverSelectionTimeoutMS=100)
         else:
             connected(MongoClient('localhost',
                                   ssl=True,
                                   ssl_certfile=CLIENT_ENCRYPTED_PEM,
-                                  ssl_pem_passphrase="qwerty",
+                                  tlsCertificateKeyFilePassword="qwerty",
                                   ssl_ca_certs=CA_PEM,
                                   serverSelectionTimeoutMS=5000,
                                   **self.credentials))
 
             uri_fmt = ("mongodb://localhost/?ssl=true"
-                       "&ssl_certfile=%s&ssl_pem_passphrase=qwerty"
+                       "&ssl_certfile=%s&tlsCertificateKeyFilePassword=qwerty"
                        "&ssl_ca_certs=%s&serverSelectionTimeoutMS=5000")
             connected(MongoClient(uri_fmt % (CLIENT_ENCRYPTED_PEM, CA_PEM),
                                   **self.credentials))

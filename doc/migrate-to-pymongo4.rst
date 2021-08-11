@@ -79,6 +79,22 @@ Removed the ``socketKeepAlive`` keyword argument to
 keepalive. For more information see:
 https://docs.mongodb.com/manual/faq/diagnostics/#does-tcp-keepalive-time-affect-mongodb-deployments
 
+Renamed URI options
+...................
+
+Several deprecated URI options have been renamed to the standardized
+option names defined in the
+`URI options specification <https://github.com/mongodb/specifications/blob/master/source/uri-options/uri-options.rst>`_.
+The old option names and their renamed equivalents are summarized in the table
+below. Some renamed options have different semantics from the option being
+replaced as noted in the 'Migration Notes' column.
+
++--------------------+-------------------------------+-----------------+
+| Old URI Option     | Renamed URI Option            | Migration Notes |
++====================+===============================+=================+
+| ssl_pem_passphrase | tlsCertificateKeyFilePassword | -               |
++--------------------+-------------------------------+-----------------+
+
 MongoClient.fsync is removed
 ............................
 

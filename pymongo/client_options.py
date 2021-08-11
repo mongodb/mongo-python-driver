@@ -75,7 +75,7 @@ def _parse_ssl_options(options):
 
     certfile = options.get('ssl_certfile')
     keyfile = options.get('ssl_keyfile')
-    passphrase = options.get('ssl_pem_passphrase')
+    passphrase = options.get('tlscertificatekeyfilepassword')
     ca_certs = options.get('ssl_ca_certs')
     cert_reqs = options.get('ssl_cert_reqs')
     match_hostname = options.get('ssl_match_hostname', True)
