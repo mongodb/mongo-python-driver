@@ -776,8 +776,8 @@ class ClientContext(object):
         """
         return self._require(
             lambda: (self.test_commands_enabled and (
-                (not self.is_mongos and self.version >= (4, 2, 9))) or
-                (self.is_mongos and self.version >= (4, 4))),
+                (not self.is_mongos and self.version >= (4, 2, 9)) or
+                (self.is_mongos and self.version >= (4, 4)))),
             "failCommand blockConnection is not supported",
             func=func)
 
