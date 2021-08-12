@@ -634,12 +634,14 @@ URI_OPTIONS_VALIDATOR_MAP = {
     'tls': validate_boolean_or_string,
     'tlsallowinvalidcertificates': validate_allow_invalid_certs,
     'ssl_cert_reqs': validate_cert_reqs,
+    # Normalized to ssl_match_hostname which is the logical inverse of tlsallowinvalidhostnames
     'tlsallowinvalidhostnames': lambda *x: not validate_boolean_or_string(*x),
     'ssl_match_hostname': validate_boolean_or_string,
     'tlscafile': validate_readable,
     'tlscertificatekeyfile': validate_readable,
     'tlscertificatekeyfilepassword': validate_string_or_none,
-    'tlsdisableocspendpointcheck': validate_boolean_or_string,
+    # Normalized to ssl_check_ocsp_endpoint which is the logical inverse of tlsdisableocspendpointcheck
+    'tlsdisableocspendpointcheck': lambda *x: not validate_boolean_or_string(*x),
     'tlsinsecure': validate_boolean_or_string,
     'w': validate_non_negative_int_or_basestring,
     'wtimeoutms': validate_non_negative_integer,
