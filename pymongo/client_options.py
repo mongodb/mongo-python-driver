@@ -80,7 +80,6 @@ def _parse_ssl_options(options):
     allow_invalid_hostnames = options.get('tlsallowinvalidhostnames', False)
     crlfile = options.get('tlscrlfile')
     disable_ocsp_endpoint_check = options.get('tlsdisableocspendpointcheck', False)
-    # check_ocsp_endpoint
 
     ssl_kwarg_keys = [k for k in options
                       if k.startswith('ssl_') and options[k]]

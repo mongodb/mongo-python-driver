@@ -99,10 +99,6 @@ class TestClientSSL(unittest.TestCase):
     def test_config_ssl(self):
         # Tests various ssl configurations
         self.assertRaises(ValueError, MongoClient, ssl='foo')
-        self.assertRaises(ConfigurationError,
-                          MongoClient,
-                          ssl=False,
-                          tlsCertificateKeyFile=CLIENT_PEM)
         self.assertRaises(TypeError, MongoClient, ssl=0)
         self.assertRaises(TypeError, MongoClient, ssl=5.5)
         self.assertRaises(TypeError, MongoClient, ssl=[])
@@ -111,17 +107,11 @@ class TestClientSSL(unittest.TestCase):
         self.assertRaises(TypeError, MongoClient, tlsCertificateKeyFile=True)
         self.assertRaises(TypeError, MongoClient, tlsCertificateKeyFile=[])
 
-        # Test invalid combinations
-        self.assertRaises(ConfigurationError,
-                          MongoClient,
-                          ssl=False,
-                          tlsCertificateKeyFile=CLIENT_PEM)
-
         self.assertRaises(
             ValueError, validate_allow_invalid_certs,
             'tlsAllowInvalidCertificates', 'foo')
         self.assertRaises(
-            ValueError, validate_allow_invalid_certs,
+            TypeError, validate_allow_invalid_certs,
             'tlsAllowInvalidCertificates', None)
         self.assertEqual(
             validate_allow_invalid_certs('tlsAllowInvalidCertificates', True),
@@ -292,16 +282,16 @@ class TestSSL(IntegrationTest):
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
         #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
         ctx = get_ssl_context(
-            None, None, None, None, ssl.CERT_NONE, None, False, True)
+            None, None, None, ssl.CERT_NONE, None, True, False)
         self.assertFalse(ctx.check_hostname)
         ctx = get_ssl_context(
-            None, None, None, None, ssl.CERT_NONE, None, True, True)
+            None, None, None, ssl.CERT_NONE, None, False, False)
         self.assertFalse(ctx.check_hostname)
         ctx = get_ssl_context(
-            None, None, None, None, ssl.CERT_REQUIRED, None, False, True)
+            None, None, None, ssl.CERT_REQUIRED, None, True, False)
         self.assertFalse(ctx.check_hostname)
         ctx = get_ssl_context(
-            None, None, None, None, ssl.CERT_REQUIRED, None, True, True)
+            None, None, None, ssl.CERT_REQUIRED, None, False, False)
         if _PY37PLUS or _HAVE_PYOPENSSL:
             self.assertTrue(ctx.check_hostname)
         else:
@@ -425,7 +415,7 @@ class TestSSL(IntegrationTest):
 
     def test_system_certs_config_error(self):
         ctx = get_ssl_context(
-            None, None, None, None, ssl.CERT_NONE, None, False, True)
+            None, None, None, ssl.CERT_NONE, None, True, False)
         if ((sys.platform != "win32"
              and hasattr(ctx, "set_default_verify_paths"))
                 or hasattr(ctx, "load_default_certs")):
