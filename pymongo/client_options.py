@@ -73,8 +73,7 @@ def _parse_ssl_options(options):
     if use_ssl is not None:
         validate_boolean('ssl', use_ssl)
 
-    certfile = options.get('ssl_certfile')
-    keyfile = options.get('ssl_keyfile')
+    certfile = options.get('tlscertificatekeyfile')
     passphrase = options.get('tlscertificatekeyfilepassword')
     ca_certs = options.get('tlscafile')
     cert_reqs = options.get('tlsallowinvalidcertificates')
@@ -97,7 +96,6 @@ def _parse_ssl_options(options):
     if use_ssl is True:
         ctx = get_ssl_context(
             certfile,
-            keyfile,
             passphrase,
             ca_certs,
             cert_reqs,

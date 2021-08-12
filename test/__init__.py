@@ -241,7 +241,7 @@ class ClientContext(object):
         self.is_rs = False
         self.has_ipv6 = False
         self.tls = False
-        self.ssl_certfile = False
+        self.tlsCertificateKeyFile = False
         self.server_is_resolvable = is_server_resolvable()
         self.default_client_options = {}
         self.sessions_enabled = False
@@ -323,7 +323,7 @@ class ClientContext(object):
             if self.client:
                 self.tls = True
                 self.default_client_options.update(TLS_OPTIONS)
-                self.ssl_certfile = True
+                self.tlsCertificateKeyFile = True
 
         if self.client:
             self.connected = True
@@ -793,10 +793,10 @@ class ClientContext(object):
                              "Must be able to connect without TLS",
                              func=func)
 
-    def require_ssl_certfile(self, func):
-        """Run a test only if the client can connect with ssl_certfile."""
-        return self._require(lambda: self.ssl_certfile,
-                             "Must be able to connect with ssl_certfile",
+    def require_tlsCertificateKeyFile(self, func):
+        """Run a test only if the client can connect with tlsCertificateKeyFile."""
+        return self._require(lambda: self.tlsCertificateKeyFile,
+                             "Must be able to connect with tlsCertificateKeyFile",
                              func=func)
 
     def require_server_resolvable(self, func):

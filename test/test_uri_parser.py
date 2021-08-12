@@ -444,24 +444,24 @@ class TestURI(unittest.TestCase):
             {'collection': None,
              'database': None,
              'nodelist': [('/MongoDB.sock', None)],
-             'options': {'ssl_certfile': '/a/b'},
+             'options': {'tlsCertificateKeyFile': '/a/b'},
              'password': 'foo/bar',
              'username': 'jesse',
              'fqdn': None},
             parse_uri(
-                'mongodb://jesse:foo%2Fbar@%2FMongoDB.sock/?ssl_certfile=/a/b',
+                'mongodb://jesse:foo%2Fbar@%2FMongoDB.sock/?tlsCertificateKeyFile=/a/b',
                 validate=False))
 
         self.assertEqual(
             {'collection': None,
              'database': None,
              'nodelist': [('/MongoDB.sock', None)],
-             'options': {'ssl_certfile': 'a/b'},
+             'options': {'tlsCertificateKeyFile': 'a/b'},
              'password': 'foo/bar',
              'username': 'jesse',
              'fqdn': None},
             parse_uri(
-                'mongodb://jesse:foo%2Fbar@%2FMongoDB.sock/?ssl_certfile=a/b',
+                'mongodb://jesse:foo%2Fbar@%2FMongoDB.sock/?tlsCertificateKeyFile=a/b',
                 validate=False))
 
     def test_tlsinsecure_simple(self):

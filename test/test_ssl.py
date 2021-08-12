@@ -92,7 +92,7 @@ class TestClientSSL(unittest.TestCase):
 
         # Implied
         self.assertRaises(ConfigurationError,
-                          MongoClient, ssl_certfile=CLIENT_PEM)
+                          MongoClient, tlsCertificateKeyFile=CLIENT_PEM)
 
     @unittest.skipUnless(HAVE_SSL, "The ssl module is not available.")
     @ignore_deprecations
@@ -102,32 +102,20 @@ class TestClientSSL(unittest.TestCase):
         self.assertRaises(ConfigurationError,
                           MongoClient,
                           ssl=False,
-                          ssl_certfile=CLIENT_PEM)
+                          tlsCertificateKeyFile=CLIENT_PEM)
         self.assertRaises(TypeError, MongoClient, ssl=0)
         self.assertRaises(TypeError, MongoClient, ssl=5.5)
         self.assertRaises(TypeError, MongoClient, ssl=[])
 
-        self.assertRaises(IOError, MongoClient, ssl_certfile="NoSuchFile")
-        self.assertRaises(TypeError, MongoClient, ssl_certfile=True)
-        self.assertRaises(TypeError, MongoClient, ssl_certfile=[])
-        self.assertRaises(IOError, MongoClient, ssl_keyfile="NoSuchFile")
-        self.assertRaises(TypeError, MongoClient, ssl_keyfile=True)
-        self.assertRaises(TypeError, MongoClient, ssl_keyfile=[])
+        self.assertRaises(IOError, MongoClient, tlsCertificateKeyFile="NoSuchFile")
+        self.assertRaises(TypeError, MongoClient, tlsCertificateKeyFile=True)
+        self.assertRaises(TypeError, MongoClient, tlsCertificateKeyFile=[])
 
         # Test invalid combinations
         self.assertRaises(ConfigurationError,
                           MongoClient,
                           ssl=False,
-                          ssl_keyfile=CLIENT_PEM)
-        self.assertRaises(ConfigurationError,
-                          MongoClient,
-                          ssl=False,
-                          ssl_certfile=CLIENT_PEM)
-        self.assertRaises(ConfigurationError,
-                          MongoClient,
-                          ssl=False,
-                          ssl_keyfile=CLIENT_PEM,
-                          ssl_certfile=CLIENT_PEM)
+                          tlsCertificateKeyFile=CLIENT_PEM)
 
         self.assertRaises(
             ValueError, validate_allow_invalid_certs,
@@ -187,7 +175,7 @@ class TestSSL(IntegrationTest):
         # no --sslPEMKeyFile or with --sslWeakCertificateValidation
         self.assertClientWorks(self.client)
 
-    @client_context.require_ssl_certfile
+    @client_context.require_tlsCertificateKeyFile
     @ignore_deprecations
     def test_tlsCertificateKeyFilePassword(self):
         # Expects the server to be running with server.pem and ca.pem
@@ -200,26 +188,26 @@ class TestSSL(IntegrationTest):
                 MongoClient,
                 'localhost',
                 ssl=True,
-                ssl_certfile=CLIENT_ENCRYPTED_PEM,
+                tlsCertificateKeyFile=CLIENT_ENCRYPTED_PEM,
                 tlsCertificateKeyFilePassword="qwerty",
                 tlsCAFile=CA_PEM,
                 serverSelectionTimeoutMS=100)
         else:
             connected(MongoClient('localhost',
                                   ssl=True,
-                                  ssl_certfile=CLIENT_ENCRYPTED_PEM,
+                                  tlsCertificateKeyFile=CLIENT_ENCRYPTED_PEM,
                                   tlsCertificateKeyFilePassword="qwerty",
                                   tlsCAFile=CA_PEM,
                                   serverSelectionTimeoutMS=5000,
                                   **self.credentials))
 
             uri_fmt = ("mongodb://localhost/?ssl=true"
-                       "&ssl_certfile=%s&tlsCertificateKeyFilePassword=qwerty"
+                       "&tlsCertificateKeyFile=%s&tlsCertificateKeyFilePassword=qwerty"
                        "&tlsCAFile=%s&serverSelectionTimeoutMS=5000")
             connected(MongoClient(uri_fmt % (CLIENT_ENCRYPTED_PEM, CA_PEM),
                                   **self.credentials))
 
-    @client_context.require_ssl_certfile
+    @client_context.require_tlsCertificateKeyFile
     @client_context.require_no_auth
     @ignore_deprecations
     def test_cert_ssl_implicitly_set(self):
@@ -229,21 +217,21 @@ class TestSSL(IntegrationTest):
         #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
         #
 
-        # test that setting ssl_certfile causes ssl to be set to True
+        # test that setting tlsCertificateKeyFile causes ssl to be set to True
         client = MongoClient(client_context.host, client_context.port,
                              tlsAllowInvalidCertificates=True,
-                             ssl_certfile=CLIENT_PEM)
+                             tlsCertificateKeyFile=CLIENT_PEM)
         response = client.admin.command('ismaster')
         if 'setName' in response:
             client = MongoClient(client_context.pair,
                                  replicaSet=response['setName'],
                                  w=len(response['hosts']),
                                  tlsAllowInvalidCertificates=True,
-                                 ssl_certfile=CLIENT_PEM)
+                                 tlsCertificateKeyFile=CLIENT_PEM)
 
         self.assertClientWorks(client)
 
-    @client_context.require_ssl_certfile
+    @client_context.require_tlsCertificateKeyFile
     @client_context.require_no_auth
     @ignore_deprecations
     def test_cert_ssl_validation(self):
@@ -254,7 +242,7 @@ class TestSSL(IntegrationTest):
         #
         client = MongoClient('localhost',
                              ssl=True,
-                             ssl_certfile=CLIENT_PEM,
+                             tlsCertificateKeyFile=CLIENT_PEM,
                              tlsAllowInvalidCertificates=False,
                              tlsCAFile=CA_PEM)
         response = client.admin.command('ismaster')
@@ -267,7 +255,7 @@ class TestSSL(IntegrationTest):
                                  replicaSet=response['setName'],
                                  w=len(response['hosts']),
                                  ssl=True,
-                                 ssl_certfile=CLIENT_PEM,
+                                 tlsCertificateKeyFile=CLIENT_PEM,
                                  tlsAllowInvalidCertificates=False,
                                  tlsCAFile=CA_PEM)
 
@@ -276,12 +264,12 @@ class TestSSL(IntegrationTest):
         if HAVE_IPADDRESS:
             client = MongoClient('127.0.0.1',
                                  ssl=True,
-                                 ssl_certfile=CLIENT_PEM,
+                                 tlsCertificateKeyFile=CLIENT_PEM,
                                  tlsAllowInvalidCertificates=False,
                                  tlsCAFile=CA_PEM)
             self.assertClientWorks(client)
 
-    @client_context.require_ssl_certfile
+    @client_context.require_tlsCertificateKeyFile
     @client_context.require_no_auth
     @ignore_deprecations
     def test_cert_ssl_uri_support(self):
@@ -290,12 +278,12 @@ class TestSSL(IntegrationTest):
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
         #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
         #
-        uri_fmt = ("mongodb://localhost/?ssl=true&ssl_certfile=%s&tlsAllowInvalidCertificates"
+        uri_fmt = ("mongodb://localhost/?ssl=true&tlsCertificateKeyFile=%s&tlsAllowInvalidCertificates"
                    "=%s&tlsCAFile=%s&tlsAllowInvalidHostnames=false")
         client = MongoClient(uri_fmt % (CLIENT_PEM, 'true', CA_PEM))
         self.assertClientWorks(client)
 
-    @client_context.require_ssl_certfile
+    @client_context.require_tlsCertificateKeyFile
     @client_context.require_server_resolvable
     @ignore_deprecations
     def test_cert_ssl_validation_hostname_matching(self):
@@ -324,7 +312,7 @@ class TestSSL(IntegrationTest):
         with self.assertRaises(ConnectionFailure):
             connected(MongoClient('server',
                                   ssl=True,
-                                  ssl_certfile=CLIENT_PEM,
+                                  tlsCertificateKeyFile=CLIENT_PEM,
                                   tlsAllowInvalidCertificates=False,
                                   tlsCAFile=CA_PEM,
                                   serverSelectionTimeoutMS=500,
@@ -332,7 +320,7 @@ class TestSSL(IntegrationTest):
 
         connected(MongoClient('server',
                               ssl=True,
-                              ssl_certfile=CLIENT_PEM,
+                              tlsCertificateKeyFile=CLIENT_PEM,
                               tlsAllowInvalidCertificates=False,
                               tlsCAFile=CA_PEM,
                               tlsAllowInvalidHostnames=True,
@@ -344,7 +332,7 @@ class TestSSL(IntegrationTest):
                 connected(MongoClient('server',
                                       replicaSet=response['setName'],
                                       ssl=True,
-                                      ssl_certfile=CLIENT_PEM,
+                                      tlsCertificateKeyFile=CLIENT_PEM,
                                       tlsAllowInvalidCertificates=False,
                                       tlsCAFile=CA_PEM,
                                       serverSelectionTimeoutMS=500,
@@ -353,14 +341,14 @@ class TestSSL(IntegrationTest):
             connected(MongoClient('server',
                                   replicaSet=response['setName'],
                                   ssl=True,
-                                  ssl_certfile=CLIENT_PEM,
+                                  tlsCertificateKeyFile=CLIENT_PEM,
                                   tlsAllowInvalidCertificates=False,
                                   tlsCAFile=CA_PEM,
                                   tlsAllowInvalidHostnames=True,
                                   serverSelectionTimeoutMS=500,
                                   **self.credentials))
 
-    @client_context.require_ssl_certfile
+    @client_context.require_tlsCertificateKeyFile
     @ignore_deprecations
     def test_tlsCRLFile_support(self):
         if not hasattr(ssl, 'VERIFY_CRL_CHECK_LEAF') or _ssl.IS_PYOPENSSL:
@@ -398,7 +386,7 @@ class TestSSL(IntegrationTest):
                 connected(MongoClient(uri_fmt % (CRL_PEM, CA_PEM),
                                       **self.credentials))
 
-    @client_context.require_ssl_certfile
+    @client_context.require_tlsCertificateKeyFile
     @client_context.require_server_resolvable
     @ignore_deprecations
     def test_validation_with_system_ca_certs(self):
@@ -501,7 +489,7 @@ class TestSSL(IntegrationTest):
         self.assertEqual(ssl_sock.ca_certs, ssl_support._WINCERTS.name)
 
     @client_context.require_auth
-    @client_context.require_ssl_certfile
+    @client_context.require_tlsCertificateKeyFile
     @ignore_deprecations
     def test_mongodb_x509_auth(self):
         host, port = client_context.host, client_context.port
@@ -516,7 +504,7 @@ class TestSSL(IntegrationTest):
             client_context.pair,
             ssl=True,
             tlsAllowInvalidCertificates=True,
-            ssl_certfile=CLIENT_PEM)
+            tlsCertificateKeyFile=CLIENT_PEM)
 
         with self.assertRaises(OperationFailure):
             noauth.pymongo_test.test.find_one()
@@ -527,7 +515,7 @@ class TestSSL(IntegrationTest):
             authMechanism='MONGODB-X509',
             ssl=True,
             tlsAllowInvalidCertificates=True,
-            ssl_certfile=CLIENT_PEM,
+            tlsCertificateKeyFile=CLIENT_PEM,
             event_listeners=[listener])
 
         if client_context.version.at_least(3, 3, 12):
@@ -550,7 +538,7 @@ class TestSSL(IntegrationTest):
         client = MongoClient(uri,
                              ssl=True,
                              tlsAllowInvalidCertificates=True,
-                             ssl_certfile=CLIENT_PEM)
+                             tlsCertificateKeyFile=CLIENT_PEM)
         # No error
         client.pymongo_test.test.find_one()
 
@@ -558,7 +546,7 @@ class TestSSL(IntegrationTest):
         client = MongoClient(uri,
                              ssl=True,
                              tlsAllowInvalidCertificates=True,
-                             ssl_certfile=CLIENT_PEM)
+                             tlsCertificateKeyFile=CLIENT_PEM)
         if client_context.version.at_least(3, 3, 12):
             # No error
             client.pymongo_test.test.find_one()
@@ -573,7 +561,7 @@ class TestSSL(IntegrationTest):
                    quote_plus("not the username"), host, port))
 
         bad_client = MongoClient(
-            uri, ssl=True, tlsAllowInvalidCertificates=True, ssl_certfile=CLIENT_PEM)
+            uri, ssl=True, tlsAllowInvalidCertificates=True, tlsCertificateKeyFile=CLIENT_PEM)
 
         with self.assertRaises(OperationFailure):
             bad_client.pymongo_test.test.find_one()
@@ -584,7 +572,7 @@ class TestSSL(IntegrationTest):
                 authMechanism='MONGODB-X509',
                 ssl=True,
                 tlsAllowInvalidCertificates=True,
-                ssl_certfile=CLIENT_PEM)
+                tlsCertificateKeyFile=CLIENT_PEM)
 
         with self.assertRaises(OperationFailure):
             bad_client.pymongo_test.test.find_one()
@@ -597,14 +585,14 @@ class TestSSL(IntegrationTest):
             connected(MongoClient(uri,
                                   ssl=True,
                                   tlsAllowInvalidCertificates=True,
-                                  ssl_certfile=CA_PEM,
+                                  tlsCertificateKeyFile=CA_PEM,
                                   serverSelectionTimeoutMS=100))
         except (ConnectionFailure, ConfigurationError):
             pass
         else:
             self.fail("Invalid certificate accepted.")
 
-    @client_context.require_ssl_certfile
+    @client_context.require_tlsCertificateKeyFile
     @ignore_deprecations
     def test_connect_with_ca_bundle(self):
         def remove(path):

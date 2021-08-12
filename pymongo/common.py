@@ -591,10 +591,10 @@ URI_OPTIONS_ALIAS_MAP = {
     'wtimeoutms': ['wtimeout'],
     'tls': ['ssl'],
     # 'tlsallowinvalidcertificates': ['ssl_cert_reqs'],
-    'tlsallowinvalidhostnames': ['ssl_match_hostname'],
+    # 'tlsallowinvalidhostnames': ['ssl_match_hostname'],
     # 'tlscrlfile': ['ssl_crlfile'],
     # 'tlscafile': ['ssl_ca_certs'],
-    'tlscertificatekeyfile': ['ssl_certfile'],
+    # 'tlscertificatekeyfile': ['ssl_certfile'],
     # 'tlscertificatekeyfilepassword': ['ssl_pem_passphrase'],
 }
 
@@ -625,7 +625,7 @@ URI_OPTIONS_VALIDATOR_MAP = {
     'loadbalanced': validate_boolean_or_string,
     'serverselectiontimeoutms': validate_timeout_or_zero,
     'sockettimeoutms': validate_timeout_or_none_or_zero,
-    'ssl_keyfile': validate_readable,
+    # 'ssl_keyfile': validate_readable,
     'tls': validate_boolean_or_string,
     'tlsallowinvalidcertificates': validate_allow_invalid_certs,
     # 'ssl_cert_reqs': validate_cert_reqs,
@@ -684,7 +684,7 @@ INTERNAL_URI_OPTION_NAME_MAP = {
     # 'tlsallowinvalidhostnames': 'ssl_match_hostname',
     # 'tlscrlfile': 'ssl_crlfile',
     # 'tlscafile': 'ssl_ca_certs',
-    'tlscertificatekeyfile': 'ssl_certfile',
+    # 'tlscertificatekeyfile': 'ssl_certfile',
     # 'tlscertificatekeyfilepassword': 'ssl_pem_passphrase',
     'tlsdisableocspendpointcheck': 'ssl_check_ocsp_endpoint',
 }
@@ -705,14 +705,14 @@ URI_OPTIONS_DEPRECATION_MAP = {
     # 'ssl_match_hostname': ('renamed', 'tlsAllowInvalidHostnames'),
     # 'ssl_crlfile': ('renamed', 'tlsCRLFile'),
     # 'ssl_ca_certs': ('renamed', 'tlsCAFile'),
-    'ssl_certfile': ('removed', (
-        'Instead of using ssl_certfile to specify the certificate file, '
-        'use tlsCertificateKeyFile to pass a single file containing both '
-        'the client certificate and the private key')),
-    'ssl_keyfile': ('removed', (
-        'Instead of using ssl_keyfile to specify the private keyfile, '
-        'use tlsCertificateKeyFile to pass a single file containing both '
-        'the client certificate and the private key')),
+    # 'ssl_certfile': ('removed', (
+    #     'Instead of using ssl_certfile to specify the certificate file, '
+    #     'use tlsCertificateKeyFile to pass a single file containing both '
+    #     'the client certificate and the private key')),
+    # 'ssl_keyfile': ('removed', (
+    #     'Instead of using ssl_keyfile to specify the private keyfile, '
+    #     'use tlsCertificateKeyFile to pass a single file containing both '
+    #     'the client certificate and the private key')),
     # 'ssl_pem_passphrase': ('renamed', 'tlsCertificateKeyFilePassword'),
 }
 

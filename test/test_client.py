@@ -114,8 +114,7 @@ class ClientUnitTest(unittest.TestCase):
                              replicaSet=None,
                              read_preference=ReadPreference.PRIMARY,
                              ssl=False,
-                             ssl_keyfile=None,
-                             ssl_certfile=None,
+                             tlsCertificateKeyFile=None,
                              tlsAllowInvalidCertificates=True,  # ssl.CERT_NONE
                              tlsCAFile=None,
                              connect=False,

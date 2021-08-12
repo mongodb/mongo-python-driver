@@ -51,7 +51,6 @@ if HAVE_SSL:
     def get_ssl_context(*args):
         """Create and return an SSLContext object."""
         (certfile,
-         keyfile,
          passphrase,
          ca_certs,
          cert_reqs,
@@ -79,7 +78,7 @@ if HAVE_SSL:
             ctx.options |= _ssl.OP_NO_RENEGOTIATION
         if certfile is not None:
             try:
-                ctx.load_cert_chain(certfile, keyfile, passphrase)
+                ctx.load_cert_chain(certfile, None, passphrase)
             except _ssl.SSLError as exc:
                 raise ConfigurationError(
                     "Private key doesn't match certificate: %s" % (exc,))
