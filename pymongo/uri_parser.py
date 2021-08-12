@@ -122,12 +122,10 @@ def parse_host(entity, default_port=DEFAULT_PORT):
 _IMPLICIT_TLSINSECURE_OPTS = {
     "tlsallowinvalidcertificates",
     "tlsallowinvalidhostnames",
-    "tlsdisableocspendpointcheck",}
+    "tlsdisableocspendpointcheck"}
 
 # Options that cannot be specified when tlsInsecure is also specified.
-_TLSINSECURE_EXCLUDE_OPTS = (
-        {k for k in _IMPLICIT_TLSINSECURE_OPTS} |
-        {INTERNAL_URI_OPTION_NAME_MAP[k] for k in _IMPLICIT_TLSINSECURE_OPTS})
+_TLSINSECURE_EXCLUDE_OPTS = _IMPLICIT_TLSINSECURE_OPTS
 
 
 def _parse_options(opts, delim):
@@ -168,13 +166,8 @@ def _handle_security_options(options):
                 raise InvalidURI(err_msg % (
                     options.cased_key('tlsinsecure'), options.cased_key(opt)))
 
-    # Convenience function to retrieve option values based on public or private names.
-    def _getopt(opt):
-        return (options.get(opt) or
-                options.get(INTERNAL_URI_OPTION_NAME_MAP[opt]))
-
     # Handle co-occurence of OCSP & tlsAllowInvalidCertificates options.
-    tlsallowinvalidcerts = _getopt('tlsallowinvalidcertificates')
+    tlsallowinvalidcerts = options.get('tlsallowinvalidcertificates')
     if tlsallowinvalidcerts is not None:
         if 'tlsdisableocspendpointcheck' in options:
             err_msg = ("URI options %s and %s cannot be specified "
@@ -186,7 +179,7 @@ def _handle_security_options(options):
             options['tlsdisableocspendpointcheck'] = True
 
     # Handle co-occurence of CRL and OCSP-related options.
-    tlscrlfile = _getopt('tlscrlfile')
+    tlscrlfile = options.get('tlscrlfile')
     if tlscrlfile is not None:
         for opt in ('tlsinsecure', 'tlsallowinvalidcertificates',
                     'tlsdisableocspendpointcheck'):
@@ -207,6 +200,12 @@ def _handle_security_options(options):
                       "and %s.")
             raise InvalidURI(err_msg % (
                 options.cased_key('ssl'), options.cased_key('tls')))
+
+    # Expand the tlsInsecure option.
+    if tlsinsecure is not None:
+        for opt in _IMPLICIT_TLSINSECURE_OPTS:
+            # Implicit options are logically the same as tlsInsecure.
+            options[opt] = tlsinsecure
 
     return options
 
@@ -249,19 +248,12 @@ def _handle_option_deprecations(options):
 
 def _normalize_options(options):
     """Normalizes option names in the options dictionary by converting them to
-    their internally-used names. Also handles use of the tlsInsecure option.
+    their internally-used names.
 
     :Parameters:
         - `options`: Instance of _CaseInsensitiveDictionary containing
           MongoDB URI options.
     """
-    tlsinsecure = options.get('tlsinsecure')
-    if tlsinsecure is not None:
-        for opt in _IMPLICIT_TLSINSECURE_OPTS:
-            intname = INTERNAL_URI_OPTION_NAME_MAP[opt]
-            # Internal options are logical inverse of public options.
-            options[intname] = not tlsinsecure
-
     for optname in list(options):
         intname = INTERNAL_URI_OPTION_NAME_MAP.get(optname, None)
         if intname is not None:

@@ -56,7 +56,7 @@ if HAVE_SSL:
          cert_reqs,
          crlfile,
          allow_invalid_hostnames,
-         check_ocsp_endpoint) = args
+         disable_ocsp_endpoint_check) = args
         verify_mode = CERT_REQUIRED if cert_reqs is None else cert_reqs
         ctx = _ssl.SSLContext(_ssl.PROTOCOL_SSLv23)
         # SSLContext.check_hostname was added in CPython 3.4.
@@ -66,7 +66,7 @@ if HAVE_SSL:
             else:
                 ctx.check_hostname = False
         if hasattr(ctx, "check_ocsp_endpoint"):
-            ctx.check_ocsp_endpoint = check_ocsp_endpoint
+            ctx.check_ocsp_endpoint = not disable_ocsp_endpoint_check
         if hasattr(ctx, "options"):
             # Explicitly disable SSLv2, SSLv3 and TLS compression. Note that
             # up to date versions of MongoDB 2.4 and above already disable

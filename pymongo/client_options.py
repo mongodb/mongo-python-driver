@@ -79,7 +79,8 @@ def _parse_ssl_options(options):
     cert_reqs = options.get('tlsallowinvalidcertificates')
     allow_invalid_hostnames = options.get('tlsallowinvalidhostnames', False)
     crlfile = options.get('tlscrlfile')
-    check_ocsp_endpoint = options.get('ssl_check_ocsp_endpoint', True)
+    disable_ocsp_endpoint_check = options.get('tlsdisableocspendpointcheck', False)
+    # check_ocsp_endpoint
 
     ssl_kwarg_keys = [k for k in options
                       if k.startswith('ssl_') and options[k]]
@@ -101,7 +102,7 @@ def _parse_ssl_options(options):
             cert_reqs,
             crlfile,
             allow_invalid_hostnames,
-            check_ocsp_endpoint)
+            disable_ocsp_endpoint_check)
         return ctx, allow_invalid_hostnames
     return None, allow_invalid_hostnames
 

@@ -584,8 +584,7 @@ def validate_tzinfo(dummy, value):
 
 
 # Dictionary where keys are the names of public URI options, and values
-# are lists of aliases for that option. Aliases of option names are assumed
-# to have been deprecated.
+# are lists of aliases for that option.
 URI_OPTIONS_ALIAS_MAP = {
     'journal': ['j'],
     'wtimeoutms': ['wtimeout'],
@@ -671,7 +670,7 @@ INTERNAL_URI_OPTION_NAME_MAP = {
     'j': 'journal',
     'wtimeout': 'wtimeoutms',
     'tls': 'ssl',
-    'tlsdisableocspendpointcheck': 'ssl_check_ocsp_endpoint',
+    # 'tlsdisableocspendpointcheck': 'ssl_check_ocsp_endpoint',
 }
 
 # Map from deprecated URI option names to a tuple indicating the method of

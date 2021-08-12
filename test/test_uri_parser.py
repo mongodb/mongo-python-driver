@@ -466,11 +466,12 @@ class TestURI(unittest.TestCase):
 
     def test_tlsinsecure_simple(self):
         # check that tlsInsecure is expanded correctly.
+        self.maxDiff = None
         uri = "mongodb://example.com/?tlsInsecure=true"
         res = {
             "tlsAllowInvalidHostnames": True,
             "tlsAllowInvalidCertificates": CERT_NONE,
-            "tlsinsecure": True, 'ssl_check_ocsp_endpoint': False}
+            "tlsInsecure": True, 'tlsDisableOCSPEndpointCheck': True}
         self.assertEqual(res, parse_uri(uri)["options"])
 
     def test_normalize_options(self):
