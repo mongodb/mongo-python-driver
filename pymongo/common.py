@@ -670,7 +670,6 @@ INTERNAL_URI_OPTION_NAME_MAP = {
     'j': 'journal',
     'wtimeout': 'wtimeoutms',
     'tls': 'ssl',
-    # 'tlsdisableocspendpointcheck': 'ssl_check_ocsp_endpoint',
 }
 
 # Map from deprecated URI option names to a tuple indicating the method of
