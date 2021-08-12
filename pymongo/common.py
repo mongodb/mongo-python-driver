@@ -594,7 +594,7 @@ URI_OPTIONS_ALIAS_MAP = {
     'tlsallowinvalidcertificates': ['ssl_cert_reqs'],
     'tlsallowinvalidhostnames': ['ssl_match_hostname'],
     'tlscrlfile': ['ssl_crlfile'],
-    'tlscafile': ['ssl_ca_certs'],
+    # 'tlscafile': ['ssl_ca_certs'],
     'tlscertificatekeyfile': ['ssl_certfile'],
     # 'tlscertificatekeyfilepassword': ['ssl_pem_passphrase'],
 }
@@ -684,7 +684,7 @@ INTERNAL_URI_OPTION_NAME_MAP = {
     'tlsallowinvalidcertificates': 'ssl_cert_reqs',
     'tlsallowinvalidhostnames': 'ssl_match_hostname',
     'tlscrlfile': 'ssl_crlfile',
-    'tlscafile': 'ssl_ca_certs',
+    # 'tlscafile': 'ssl_ca_certs',
     'tlscertificatekeyfile': 'ssl_certfile',
     # 'tlscertificatekeyfilepassword': 'ssl_pem_passphrase',
     'tlsdisableocspendpointcheck': 'ssl_check_ocsp_endpoint',
@@ -705,7 +705,7 @@ URI_OPTIONS_DEPRECATION_MAP = {
     'ssl_cert_reqs': ('renamed', 'tlsAllowInvalidCertificates'),
     'ssl_match_hostname': ('renamed', 'tlsAllowInvalidHostnames'),
     'ssl_crlfile': ('renamed', 'tlsCRLFile'),
-    'ssl_ca_certs': ('renamed', 'tlsCAFile'),
+    # 'ssl_ca_certs': ('renamed', 'tlsCAFile'),
     'ssl_certfile': ('removed', (
         'Instead of using ssl_certfile to specify the certificate file, '
         'use tlsCertificateKeyFile to pass a single file containing both '

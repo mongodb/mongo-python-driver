@@ -117,7 +117,7 @@ class ClientUnitTest(unittest.TestCase):
                              ssl_keyfile=None,
                              ssl_certfile=None,
                              ssl_cert_reqs=0,  # ssl.CERT_NONE
-                             ssl_ca_certs=None,
+                             tlsCAFile=None,
                              connect=False,
                              serverSelectionTimeoutMS=12000)
 

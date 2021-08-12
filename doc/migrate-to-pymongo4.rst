@@ -94,6 +94,8 @@ replaced as noted in the 'Migration Notes' column.
 +====================+===============================+=================+
 | ssl_pem_passphrase | tlsCertificateKeyFilePassword | -               |
 +--------------------+-------------------------------+-----------------+
+| ssl_ca_certs       | tlsCAFile                     | -               |
++--------------------+-------------------------------+-----------------+
 
 MongoClient.fsync is removed
 ............................
