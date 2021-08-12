@@ -89,15 +89,21 @@ The old option names and their renamed equivalents are summarized in the table
 below. Some renamed options have different semantics from the option being
 replaced as noted in the 'Migration Notes' column.
 
-+--------------------+-------------------------------+-----------------+
-| Old URI Option     | Renamed URI Option            | Migration Notes |
-+====================+===============================+=================+
-| ssl_pem_passphrase | tlsCertificateKeyFilePassword | -               |
-+--------------------+-------------------------------+-----------------+
-| ssl_ca_certs       | tlsCAFile                     | -               |
-+--------------------+-------------------------------+-----------------+
-| ssl_crlfile        | tlsCRLFile                    | -               |
-+--------------------+-------------------------------+-----------------+
++--------------------+-------------------------------+-----------------------------------------+
+| Old URI Option     | Renamed URI Option            | Migration Notes                         |
++====================+===============================+=========================================+
+| ssl_pem_passphrase | tlsCertificateKeyFilePassword | -                                       |
++--------------------+-------------------------------+-----------------------------------------+
+| ssl_ca_certs       | tlsCAFile                     | -                                       |
++--------------------+-------------------------------+-----------------------------------------+
+| ssl_crlfile        | tlsCRLFile                    | -                                       |
++--------------------+-------------------------------+-----------------------------------------+
+| ssl_match_hostname | tlsAllowInvalidHostnames      | tlsAllowInvalidHostnames is the logical |
+|                    |                               | inverse of ssl_match_hostname. If the   |
+|                    |                               | old URI reads ssl_match_hostname=True,  |
+|                    |                               | the new URI should read                 |
+|                    |                               | tlsAllowInvalidHostnames=False.         |
++--------------------+-------------------------------+-----------------------------------------+
 
 MongoClient.fsync is removed
 ............................

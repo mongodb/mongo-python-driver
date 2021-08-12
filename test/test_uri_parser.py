@@ -92,7 +92,7 @@ class TestURI(unittest.TestCase):
         self.assertRaises(ConfigurationError, split_options, 'foo=bar;foo')
         self.assertTrue(split_options('ssl=true'))
         self.assertTrue(split_options('connect=true'))
-        self.assertTrue(split_options('ssl_match_hostname=true'))
+        self.assertTrue(split_options('tlsAllowInvalidHostnames=false'))
 
         # Test Invalid URI options that should throw warnings.
         with warnings.catch_warnings():
@@ -116,7 +116,7 @@ class TestURI(unittest.TestCase):
             self.assertRaises(Warning, split_options,
                               'connect=foo', warn=True)
             self.assertRaises(Warning, split_options,
-                              'ssl_match_hostname=foo', warn=True)
+                              'tlsAllowInvalidHostnames=foo', warn=True)
             self.assertRaises(Warning, split_options,
                               'connectTimeoutMS=inf', warn=True)
             self.assertRaises(Warning, split_options,
@@ -145,7 +145,7 @@ class TestURI(unittest.TestCase):
                           'connectTimeoutMS=-1e100000')
         self.assertRaises(ValueError, split_options, 'ssl=foo')
         self.assertRaises(ValueError, split_options, 'connect=foo')
-        self.assertRaises(ValueError, split_options, 'ssl_match_hostname=foo')
+        self.assertRaises(ValueError, split_options, 'tlsAllowInvalidHostnames=foo')
         self.assertRaises(ValueError, split_options, 'connectTimeoutMS=inf')
         self.assertRaises(ValueError, split_options, 'connectTimeoutMS=-inf')
         self.assertRaises(ValueError, split_options, 'wtimeoutms=foo')
@@ -468,16 +468,9 @@ class TestURI(unittest.TestCase):
         # check that tlsInsecure is expanded correctly.
         uri = "mongodb://example.com/?tlsInsecure=true"
         res = {
-            "ssl_match_hostname": False, "ssl_cert_reqs": CERT_NONE,
+            "tlsAllowInvalidHostnames": True, "ssl_cert_reqs": CERT_NONE,
             "tlsinsecure": True, 'ssl_check_ocsp_endpoint': False}
         self.assertEqual(res, parse_uri(uri)["options"])
-
-    def test_tlsinsecure_legacy_conflict(self):
-        # must not allow use of tlsinsecure alongside legacy TLS options.
-        # same check for modern TLS options is performed in the spec-tests.
-        uri = "mongodb://srv.com/?tlsInsecure=true&ssl_match_hostname=true"
-        with self.assertRaises(InvalidURI):
-            parse_uri(uri, validate=False, warn=False, normalize=False)
 
     def test_normalize_options(self):
         # check that options are converted to their internal names correctly.

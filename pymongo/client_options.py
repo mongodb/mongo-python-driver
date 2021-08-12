@@ -78,7 +78,7 @@ def _parse_ssl_options(options):
     passphrase = options.get('tlscertificatekeyfilepassword')
     ca_certs = options.get('tlscafile')
     cert_reqs = options.get('ssl_cert_reqs')
-    match_hostname = options.get('ssl_match_hostname', True)
+    allow_invalid_hostnames = options.get('tlsallowinvalidhostnames', False)
     crlfile = options.get('tlscrlfile')
     check_ocsp_endpoint = options.get('ssl_check_ocsp_endpoint', True)
 
@@ -102,10 +102,10 @@ def _parse_ssl_options(options):
             ca_certs,
             cert_reqs,
             crlfile,
-            match_hostname,
+            allow_invalid_hostnames,
             check_ocsp_endpoint)
-        return ctx, match_hostname
-    return None, match_hostname
+        return ctx, allow_invalid_hostnames
+    return None, allow_invalid_hostnames
 
 
 def _parse_pool_options(options):
@@ -127,14 +127,14 @@ def _parse_pool_options(options):
     compression_settings = CompressionSettings(
         options.get('compressors', []),
         options.get('zlibcompressionlevel', -1))
-    ssl_context, ssl_match_hostname = _parse_ssl_options(options)
+    ssl_context, tls_allow_invalid_hostnames = _parse_ssl_options(options)
     load_balanced = options.get('loadbalanced')
     return PoolOptions(max_pool_size,
                        min_pool_size,
                        max_idle_time_seconds,
                        connect_timeout, socket_timeout,
                        wait_queue_timeout,
-                       ssl_context, ssl_match_hostname,
+                       ssl_context, tls_allow_invalid_hostnames,
                        _EventListeners(event_listeners),
                        appname,
                        driver,

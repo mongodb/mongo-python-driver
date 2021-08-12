@@ -261,7 +261,7 @@ class PoolOptions(object):
                  '__max_idle_time_seconds',
                  '__connect_timeout', '__socket_timeout',
                  '__wait_queue_timeout',
-                 '__ssl_context', '__ssl_match_hostname',
+                 '__ssl_context', '__tls_allow_invalid_hostnames',
                  '__event_listeners', '__appname', '__driver', '__metadata',
                  '__compression_settings', '__max_connecting',
                  '__pause_enabled', '__server_api', '__load_balanced')
@@ -271,7 +271,7 @@ class PoolOptions(object):
                  max_idle_time_seconds=MAX_IDLE_TIME_SEC, connect_timeout=None,
                  socket_timeout=None, wait_queue_timeout=WAIT_QUEUE_TIMEOUT,
                  ssl_context=None,
-                 ssl_match_hostname=True,
+                 tls_allow_invalid_hostnames=False,
                  event_listeners=None, appname=None, driver=None,
                  compression_settings=None, max_connecting=MAX_CONNECTING,
                  pause_enabled=True, server_api=None, load_balanced=None):
@@ -282,7 +282,7 @@ class PoolOptions(object):
         self.__socket_timeout = socket_timeout
         self.__wait_queue_timeout = wait_queue_timeout
         self.__ssl_context = ssl_context
-        self.__ssl_match_hostname = ssl_match_hostname
+        self.__tls_allow_invalid_hostnames = tls_allow_invalid_hostnames
         self.__event_listeners = event_listeners
         self.__appname = appname
         self.__driver = driver
@@ -400,10 +400,10 @@ class PoolOptions(object):
         return self.__ssl_context
 
     @property
-    def ssl_match_hostname(self):
+    def tls_allow_invalid_hostnames(self):
         """Call ssl.match_hostname if cert_reqs is not ssl.CERT_NONE.
         """
-        return self.__ssl_match_hostname
+        return self.__tls_allow_invalid_hostnames
 
     @property
     def event_listeners(self):
@@ -1047,7 +1047,7 @@ def _configured_socket(address, options):
             _raise_connection_failure(address, exc, "SSL handshake failed: ")
         if (ssl_context.verify_mode and not
                 getattr(ssl_context, "check_hostname", False) and
-                options.ssl_match_hostname):
+                not options.tls_allow_invalid_hostnames):
             try:
                 ssl.match_hostname(sock.getpeercert(), hostname=host)
             except CertificateError:

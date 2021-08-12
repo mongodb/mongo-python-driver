@@ -301,7 +301,7 @@ class TestSSL(IntegrationTest):
         #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
         #
         uri_fmt = ("mongodb://localhost/?ssl=true&ssl_certfile=%s&ssl_cert_reqs"
-                   "=%s&tlsCAFile=%s&ssl_match_hostname=true")
+                   "=%s&tlsCAFile=%s&tlsAllowInvalidHostnames=false")
         client = MongoClient(uri_fmt % (CLIENT_PEM, 'CERT_REQUIRED', CA_PEM))
         self.assertClientWorks(client)
 
@@ -376,7 +376,7 @@ class TestSSL(IntegrationTest):
                               ssl_certfile=CLIENT_PEM,
                               ssl_cert_reqs=ssl.CERT_REQUIRED,
                               tlsCAFile=CA_PEM,
-                              ssl_match_hostname=False,
+                              tlsAllowInvalidHostnames=True,
                               serverSelectionTimeoutMS=500,
                               **self.credentials))
 
@@ -397,7 +397,7 @@ class TestSSL(IntegrationTest):
                                   ssl_certfile=CLIENT_PEM,
                                   ssl_cert_reqs=ssl.CERT_REQUIRED,
                                   tlsCAFile=CA_PEM,
-                                  ssl_match_hostname=False,
+                                  tlsAllowInvalidHostnames=True,
                                   serverSelectionTimeoutMS=500,
                                   **self.credentials))
 
@@ -460,7 +460,7 @@ class TestSSL(IntegrationTest):
         # Server cert is verified. Disable hostname matching.
         connected(MongoClient('server',
                               ssl=True,
-                              ssl_match_hostname=False,
+                              tlsAllowInvalidHostnames=True,
                               serverSelectionTimeoutMS=100,
                               **self.credentials))
 
