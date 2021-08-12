@@ -35,7 +35,7 @@ from service_identity import (
     VerificationError as _SIVerificationError)
 
 from pymongo.errors import (
-    CertificateError as _CertificateError,
+    _CertificateError,
     ConfigurationError as _ConfigurationError)
 from pymongo.ocsp_support import (
     _load_trusted_ca_certs,

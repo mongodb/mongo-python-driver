@@ -582,6 +582,12 @@ NotMasterError is removed
 Removed :exc:`~pymongo.errors.NotMasterError`.
 Use :exc:`~pymongo.errors.NotPrimaryError` instead.
 
+CertificateError is removed
+---------------------------
+
+Removed :exc:`~pymongo.errors.CertificateError`. Since PyMongo 3.0 this error
+is handled internally and is never raised to the application.
+
 pymongo.GEOHAYSTACK is removed
 ------------------------------
 

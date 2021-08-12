@@ -18,13 +18,14 @@ from bson.errors import *
 
 try:
     # CPython 3.7+
-    from ssl import SSLCertVerificationError as CertificateError
+    from ssl import SSLCertVerificationError as _CertificateError
 except ImportError:
     try:
-        from ssl import CertificateError
+        from ssl import CertificateError as _CertificateError
     except ImportError:
-        class CertificateError(ValueError):
+        class _CertificateError(ValueError):
             pass
+
 
 class PyMongoError(Exception):
     """Base class for all PyMongo exceptions."""

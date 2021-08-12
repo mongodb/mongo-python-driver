@@ -93,6 +93,7 @@ Breaking Changes in 4.0
   :meth:`pymongo.message.query`, and :meth:`pymongo.message.update`.
 - Removed :exc:`pymongo.errors.NotMasterError`.
   Use :exc:`pymongo.errors.NotPrimaryError` instead.
+- Removed :exc:`pymongo.errors.CertificateError`.
 - Removed :attr:`pymongo.GEOHAYSTACK`.
 - Removed :class:`bson.binary.UUIDLegacy`.
 - The "tls" install extra is no longer necessary or supported and will be
