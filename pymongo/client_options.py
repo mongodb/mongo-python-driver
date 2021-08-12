@@ -79,7 +79,7 @@ def _parse_ssl_options(options):
     ca_certs = options.get('tlscafile')
     cert_reqs = options.get('ssl_cert_reqs')
     match_hostname = options.get('ssl_match_hostname', True)
-    crlfile = options.get('ssl_crlfile')
+    crlfile = options.get('tlscrlfile')
     check_ocsp_endpoint = options.get('ssl_check_ocsp_endpoint', True)
 
     ssl_kwarg_keys = [k for k in options

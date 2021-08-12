@@ -403,7 +403,7 @@ class TestSSL(IntegrationTest):
 
     @client_context.require_ssl_certfile
     @ignore_deprecations
-    def test_ssl_crlfile_support(self):
+    def test_tlsCRLFile_support(self):
         if not hasattr(ssl, 'VERIFY_CRL_CHECK_LEAF') or _ssl.IS_PYOPENSSL:
             self.assertRaises(
                 ConfigurationError,
@@ -411,7 +411,7 @@ class TestSSL(IntegrationTest):
                 'localhost',
                 ssl=True,
                 tlsCAFile=CA_PEM,
-                ssl_crlfile=CRL_PEM,
+                tlsCRLFile=CRL_PEM,
                 serverSelectionTimeoutMS=100)
         else:
             connected(MongoClient('localhost',
@@ -424,7 +424,7 @@ class TestSSL(IntegrationTest):
                 connected(MongoClient('localhost',
                                       ssl=True,
                                       tlsCAFile=CA_PEM,
-                                      ssl_crlfile=CRL_PEM,
+                                      tlsCRLFile=CRL_PEM,
                                       serverSelectionTimeoutMS=100,
                                       **self.credentials))
 
@@ -433,7 +433,7 @@ class TestSSL(IntegrationTest):
             connected(MongoClient(uri_fmt % (CA_PEM,),
                                   **self.credentials))
 
-            uri_fmt = ("mongodb://localhost/?ssl=true&ssl_crlfile=%s"
+            uri_fmt = ("mongodb://localhost/?ssl=true&tlsCRLFile=%s"
                        "&tlsCAFile=%s&serverSelectionTimeoutMS=100")
             with self.assertRaises(ConnectionFailure):
                 connected(MongoClient(uri_fmt % (CRL_PEM, CA_PEM),
