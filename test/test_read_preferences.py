@@ -420,16 +420,6 @@ class TestCommandAndReadPreference(IntegrationTest):
             lambda: self.c.pymongo_test.create_collection(
                 'some_collection%s' % random.randint(0, sys.maxsize)))
 
-    def test_map_reduce(self):
-        self._test_coll_helper(False, self.c.pymongo_test.test, 'map_reduce',
-                               'function() { }', 'function() { }',
-                               {'inline': 1})
-
-    def test_inline_map_reduce(self):
-        self._test_coll_helper(True, self.c.pymongo_test.test,
-                               'inline_map_reduce',
-                               'function() { }', 'function() { }')
-
     def test_count_documents(self):
         self._test_coll_helper(
             True, self.c.pymongo_test.test, 'count_documents', {})

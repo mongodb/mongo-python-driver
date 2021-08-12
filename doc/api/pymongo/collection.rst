@@ -64,5 +64,3 @@
       .. automethod:: drop
       .. automethod:: rename
       .. automethod:: options
-      .. automethod:: map_reduce
-      .. automethod:: inline_map_reduce

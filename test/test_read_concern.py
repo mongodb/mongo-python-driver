@@ -122,31 +122,3 @@ class TestReadConcern(IntegrationTest):
         else:
             self.assertNotIn('readConcern',
                           self.listener.results['started'][0].command)
-
-    def test_map_reduce_out(self):
-        coll = self.db.get_collection('coll', read_concern=ReadConcern('local'))
-        coll.map_reduce('function() { emit(this._id, this.value); }',
-                        'function(key, values) { return 42; }',
-                        out='output_collection')
-        self.assertNotIn('readConcern',
-                         self.listener.results['started'][0].command)
-
-        if client_context.version.at_least(3, 1, 9, -1):
-            self.listener.results.clear()
-            coll.map_reduce(
-                'function() { emit(this._id, this.value); }',
-                'function(key, values) { return 42; }',
-                out={'inline': 1})
-            self.assertEqual(
-                {'level': 'local'},
-                self.listener.results['started'][0].command['readConcern'])
-
-    @client_context.require_version_min(3, 1, 9, -1)
-    def test_inline_map_reduce(self):
-        coll = self.db.get_collection('coll', read_concern=ReadConcern('local'))
-        tuple(coll.inline_map_reduce(
-            'function() { emit(this._id, this.value); }',
-            'function(key, values) { return 42; }'))
-        self.assertEqual(
-            {'level': 'local'},
-            self.listener.results['started'][0].command['readConcern'])

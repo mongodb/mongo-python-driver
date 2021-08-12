@@ -135,8 +135,6 @@ class TestTransactions(TransactionsBase):
             (client.drop_database, [db.name], {}),
             (db.drop_collection, ['collection'], {}),
             (coll.drop, [], {}),
-            (coll.map_reduce,
-             ['function() {}', 'function() {}', 'output'], {}),
             (coll.rename, ['collection2'], {}),
             # Drop collection2 between tests of "rename", above.
             (coll.database.drop_collection, ['collection2'], {}),

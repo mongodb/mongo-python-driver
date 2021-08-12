@@ -181,12 +181,6 @@ class TestCollation(IntegrationTest):
             self.last_command_started()['explain']['collation'])
 
     @raisesConfigurationErrorForOldMongoDB
-    def test_map_reduce(self):
-        self.db.test.map_reduce('function() {}', 'function() {}', 'output',
-                                collation=self.collation)
-        self.assertCollationInLastCommand()
-
-    @raisesConfigurationErrorForOldMongoDB
     def test_delete(self):
         self.db.test.delete_one({'foo': 42}, collation=self.collation)
         command = self.listener.results['started'][0].command

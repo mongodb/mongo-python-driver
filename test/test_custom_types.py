@@ -34,7 +34,6 @@ from bson import (Decimal128,
                   _BUILT_IN_TYPES,
                   _dict_to_bson,
                   _bson_to_dict)
-from bson.code import Code
 from bson.codec_options import (CodecOptions, TypeCodec, TypeDecoder,
                                 TypeEncoder, TypeRegistry)
 from bson.errors import InvalidDocument
@@ -621,39 +620,6 @@ class TestCollectionWCustomType(IntegrationTest):
         test.insert_many({"a": val} for val in values)
 
         self.assertEqual(values, test.distinct("a"))
-
-    def test_map_reduce_w_custom_type(self):
-        test = self.db.get_collection(
-            'test', codec_options=UPPERSTR_DECODER_CODECOPTS)
-
-        test.insert_many([
-            {'_id': 1, 'sku': 'abcd', 'qty': 1},
-            {'_id': 2, 'sku': 'abcd', 'qty': 2},
-            {'_id': 3, 'sku': 'abcd', 'qty': 3}])
-
-        map = Code("function () {"
-                   "  emit(this.sku, this.qty);"
-                   "}")
-        reduce = Code("function (key, values) {"
-                      "  return Array.sum(values);"
-                      "}")
-
-        result = test.map_reduce(map, reduce, out={'inline': 1})
-        self.assertTrue(isinstance(result, dict))
-        self.assertTrue('results' in result)
-        self.assertEqual(result['results'][0], {'_id': 'ABCD', 'value': 6})
-
-        result = test.inline_map_reduce(map, reduce)
-        self.assertTrue(isinstance(result, list))
-        self.assertEqual(1, len(result))
-        self.assertEqual(result[0]["_id"], 'ABCD')
-
-        full_result = test.inline_map_reduce(map, reduce,
-                                             full_response=True)
-        result = full_result['results']
-        self.assertTrue(isinstance(result, list))
-        self.assertEqual(1, len(result))
-        self.assertEqual(result[0]["_id"], 'ABCD')
 
     def test_find_one_and__w_custom_type_decoder(self):
         db = self.db

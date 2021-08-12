@@ -28,7 +28,6 @@ sys.path[0:0] = [""]
 from bson import encode
 from bson.raw_bson import RawBSONDocument
 from bson.regex import Regex
-from bson.code import Code
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from bson.son import SON
@@ -2014,102 +2013,6 @@ class TestCollection(IntegrationTest):
                    'insert 2 documents', timeout=60)
 
         db.collection_4.drop()
-
-    def test_map_reduce(self):
-        db = self.db
-        db.drop_collection("test")
-
-        db.test.insert_one({"id": 1, "tags": ["dog", "cat"]})
-        db.test.insert_one({"id": 2, "tags": ["cat"]})
-        db.test.insert_one({"id": 3, "tags": ["mouse", "cat", "dog"]})
-        db.test.insert_one({"id": 4, "tags": []})
-
-        map = Code("function () {"
-                   "  this.tags.forEach(function(z) {"
-                   "    emit(z, 1);"
-                   "  });"
-                   "}")
-        reduce = Code("function (key, values) {"
-                      "  var total = 0;"
-                      "  for (var i = 0; i < values.length; i++) {"
-                      "    total += values[i];"
-                      "  }"
-                      "  return total;"
-                      "}")
-        result = db.test.map_reduce(map, reduce, out='mrunittests')
-        self.assertEqual(3, result.find_one({"_id": "cat"})["value"])
-        self.assertEqual(2, result.find_one({"_id": "dog"})["value"])
-        self.assertEqual(1, result.find_one({"_id": "mouse"})["value"])
-
-        db.test.insert_one({"id": 5, "tags": ["hampster"]})
-        result = db.test.map_reduce(map, reduce, out='mrunittests')
-        self.assertEqual(1, result.find_one({"_id": "hampster"})["value"])
-        db.test.delete_one({"id": 5})
-
-        result = db.test.map_reduce(map, reduce,
-                                    out={'merge': 'mrunittests'})
-        self.assertEqual(3, result.find_one({"_id": "cat"})["value"])
-        self.assertEqual(1, result.find_one({"_id": "hampster"})["value"])
-
-        result = db.test.map_reduce(map, reduce,
-                                    out={'reduce': 'mrunittests'})
-
-        self.assertEqual(6, result.find_one({"_id": "cat"})["value"])
-        self.assertEqual(4, result.find_one({"_id": "dog"})["value"])
-        self.assertEqual(2, result.find_one({"_id": "mouse"})["value"])
-        self.assertEqual(1, result.find_one({"_id": "hampster"})["value"])
-
-        result = db.test.map_reduce(
-            map,
-            reduce,
-            out={'replace': 'mrunittests'}
-        )
-        self.assertEqual(3, result.find_one({"_id": "cat"})["value"])
-        self.assertEqual(2, result.find_one({"_id": "dog"})["value"])
-        self.assertEqual(1, result.find_one({"_id": "mouse"})["value"])
-
-        # Create the output database.
-        db.client.mrtestdb.mrunittests.insert_one({})
-        result = db.test.map_reduce(map, reduce,
-                                    out=SON([('replace', 'mrunittests'),
-                                             ('db', 'mrtestdb')
-                                            ]))
-        self.assertEqual(3, result.find_one({"_id": "cat"})["value"])
-        self.assertEqual(2, result.find_one({"_id": "dog"})["value"])
-        self.assertEqual(1, result.find_one({"_id": "mouse"})["value"])
-        self.client.drop_database('mrtestdb')
-
-        full_result = db.test.map_reduce(map, reduce,
-                                         out='mrunittests', full_response=True)
-        self.assertEqual('mrunittests', full_result["result"])
-        if client_context.version < (4, 3):
-            self.assertEqual(6, full_result["counts"]["emit"])
-
-        result = db.test.map_reduce(map, reduce, out='mrunittests', limit=2)
-        self.assertEqual(2, result.find_one({"_id": "cat"})["value"])
-        self.assertEqual(1, result.find_one({"_id": "dog"})["value"])
-        self.assertEqual(None, result.find_one({"_id": "mouse"}))
-
-        result = db.test.map_reduce(map, reduce, out={'inline': 1})
-        self.assertTrue(isinstance(result, dict))
-        self.assertTrue('results' in result)
-        self.assertTrue(result['results'][1]["_id"] in ("cat",
-                                                        "dog",
-                                                        "mouse"))
-
-        result = db.test.inline_map_reduce(map, reduce)
-        self.assertTrue(isinstance(result, list))
-        self.assertEqual(3, len(result))
-        self.assertTrue(result[1]["_id"] in ("cat", "dog", "mouse"))
-
-        full_result = db.test.inline_map_reduce(map, reduce,
-                                                full_response=True)
-        self.assertEqual(3, len(full_result["results"]))
-        if client_context.version < (4, 3):
-            self.assertEqual(6, full_result["counts"]["emit"])
-
-        with self.write_concern_collection() as coll:
-            coll.map_reduce(map, reduce, 'output')
 
     def test_messages_with_unicode_collection_names(self):
         db = self.db
