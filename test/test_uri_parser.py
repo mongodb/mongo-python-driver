@@ -479,6 +479,16 @@ class TestURI(unittest.TestCase):
         with self.assertRaises(InvalidURI):
             parse_uri(uri, validate=False, warn=False, normalize=False)
 
+    def test_tlsDisableOCSPEndpointCheck(self):
+        # check that tlsDisableOCSPEndpointCheck is handled correctly.
+        uri = "mongodb://example.com/?tlsDisableOCSPEndpointCheck=true"
+        res = {'ssl_check_ocsp_endpoint': False}
+        self.assertEqual(res, parse_uri(uri)["options"])
+
+        uri = "mongodb://example.com/?tlsDisableOCSPEndpointCheck=false"
+        res = {'ssl_check_ocsp_endpoint': True}
+        self.assertEqual(res, parse_uri(uri)["options"])
+
     def test_normalize_options(self):
         # check that options are converted to their internal names correctly.
         uri = ("mongodb://example.com/?tls=true&appname=myapp&maxPoolSize=10&"
