@@ -39,22 +39,6 @@ if HAVE_SSL:
     HAS_SNI = _ssl.HAS_SNI
     IPADDR_SAFE = _ssl.IS_PYOPENSSL or sys.version_info[:2] >= (3, 7)
     SSLError = _ssl.SSLError
-    def validate_cert_reqs(option, value):
-        """Validate the cert reqs are valid. It must be None or one of the
-        three values ``ssl.CERT_NONE``, ``ssl.CERT_OPTIONAL`` or
-        ``ssl.CERT_REQUIRED``.
-        """
-        if value is None:
-            return value
-        if isinstance(value, str) and hasattr(_stdlibssl, value):
-            value = getattr(_stdlibssl, value)
-
-        if value in (CERT_NONE, CERT_OPTIONAL, CERT_REQUIRED):
-            return value
-        raise ValueError("The value of %s must be one of: "
-                         "`ssl.CERT_NONE`, `ssl.CERT_OPTIONAL` or "
-                         "`ssl.CERT_REQUIRED`" % (option,))
-
     def validate_allow_invalid_certs(option, value):
         """Validate the option to allow invalid certificates is valid."""
         # Avoid circular import.
@@ -117,15 +101,11 @@ else:
         pass
     HAS_SNI = False
     IPADDR_SAFE = False
-    def validate_cert_reqs(option, dummy):
+    def validate_allow_invalid_certs(option, dummy):
         """No ssl module, raise ConfigurationError."""
         raise ConfigurationError("The value of %s is set but can't be "
                                  "validated. The ssl module is not available"
                                  % (option,))
-
-    def validate_allow_invalid_certs(option, dummy):
-        """No ssl module, raise ConfigurationError."""
-        return validate_cert_reqs(option, dummy)
 
     def get_ssl_context(*dummy):
         """No ssl module, raise ConfigurationError."""

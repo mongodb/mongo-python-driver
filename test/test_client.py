@@ -116,7 +116,7 @@ class ClientUnitTest(unittest.TestCase):
                              ssl=False,
                              ssl_keyfile=None,
                              ssl_certfile=None,
-                             ssl_cert_reqs=0,  # ssl.CERT_NONE
+                             tlsAllowInvalidCertificates=True,  # ssl.CERT_NONE
                              tlsCAFile=None,
                              connect=False,
                              serverSelectionTimeoutMS=12000)
@@ -455,7 +455,7 @@ class ClientUnitTest(unittest.TestCase):
         # Conflicting legacy tlsInsecure options should also raise an error.
         with self.assertRaises(InvalidURI):
             MongoClient('mongodb://localhost/?tlsInsecure=true',
-                        connect=False, ssl_cert_reqs=True)
+                        connect=False, tlsAllowInvalidCertificates=False)
 
         # Conflicting kwargs should raise InvalidURI
         with self.assertRaises(InvalidURI):

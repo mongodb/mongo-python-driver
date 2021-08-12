@@ -468,7 +468,8 @@ class TestURI(unittest.TestCase):
         # check that tlsInsecure is expanded correctly.
         uri = "mongodb://example.com/?tlsInsecure=true"
         res = {
-            "tlsAllowInvalidHostnames": True, "ssl_cert_reqs": CERT_NONE,
+            "tlsAllowInvalidHostnames": True,
+            "tlsAllowInvalidCertificates": CERT_NONE,
             "tlsinsecure": True, 'ssl_check_ocsp_endpoint': False}
         self.assertEqual(res, parse_uri(uri)["options"])
 

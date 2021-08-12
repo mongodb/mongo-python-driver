@@ -35,8 +35,7 @@ from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _validate_event_listeners
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import _MONGOS_MODES, _ServerMode
-from pymongo.ssl_support import (validate_cert_reqs,
-                                 validate_allow_invalid_certs)
+from pymongo.ssl_support import validate_allow_invalid_certs
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
 ORDERED_TYPES = (SON, OrderedDict)
@@ -591,7 +590,7 @@ URI_OPTIONS_ALIAS_MAP = {
     'journal': ['j'],
     'wtimeoutms': ['wtimeout'],
     'tls': ['ssl'],
-    'tlsallowinvalidcertificates': ['ssl_cert_reqs'],
+    # 'tlsallowinvalidcertificates': ['ssl_cert_reqs'],
     'tlsallowinvalidhostnames': ['ssl_match_hostname'],
     # 'tlscrlfile': ['ssl_crlfile'],
     # 'tlscafile': ['ssl_ca_certs'],
@@ -629,7 +628,7 @@ URI_OPTIONS_VALIDATOR_MAP = {
     'ssl_keyfile': validate_readable,
     'tls': validate_boolean_or_string,
     'tlsallowinvalidcertificates': validate_allow_invalid_certs,
-    'ssl_cert_reqs': validate_cert_reqs,
+    # 'ssl_cert_reqs': validate_cert_reqs,
     'tlsallowinvalidhostnames': validate_boolean_or_string,
     # 'ssl_match_hostname': validate_boolean_or_string,
     'tlscafile': validate_readable,
@@ -681,7 +680,7 @@ INTERNAL_URI_OPTION_NAME_MAP = {
     'j': 'journal',
     'wtimeout': 'wtimeoutms',
     'tls': 'ssl',
-    'tlsallowinvalidcertificates': 'ssl_cert_reqs',
+    # 'tlsallowinvalidcertificates': 'ssl_cert_reqs',
     # 'tlsallowinvalidhostnames': 'ssl_match_hostname',
     # 'tlscrlfile': 'ssl_crlfile',
     # 'tlscafile': 'ssl_ca_certs',
@@ -702,7 +701,7 @@ URI_OPTIONS_DEPRECATION_MAP = {
     #   option and/or recommend remedial action.
     'j': ('renamed', 'journal'),
     'wtimeout': ('renamed', 'wTimeoutMS'),
-    'ssl_cert_reqs': ('renamed', 'tlsAllowInvalidCertificates'),
+    # 'ssl_cert_reqs': ('renamed', 'tlsAllowInvalidCertificates'),
     # 'ssl_match_hostname': ('renamed', 'tlsAllowInvalidHostnames'),
     # 'ssl_crlfile': ('renamed', 'tlsCRLFile'),
     # 'ssl_ca_certs': ('renamed', 'tlsCAFile'),
