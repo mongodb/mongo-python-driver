@@ -201,12 +201,6 @@ def _handle_security_options(options):
             raise InvalidURI(err_msg % (
                 options.cased_key('ssl'), options.cased_key('tls')))
 
-    # Expand the tlsInsecure option.
-    if tlsinsecure is not None:
-        for opt in _IMPLICIT_TLSINSECURE_OPTS:
-            # Implicit options are logically the same as tlsInsecure.
-            options[opt] = tlsinsecure
-
     return options
 
 
@@ -254,6 +248,13 @@ def _normalize_options(options):
         - `options`: Instance of _CaseInsensitiveDictionary containing
           MongoDB URI options.
     """
+    # Expand the tlsInsecure option.
+    tlsinsecure = options.get('tlsinsecure')
+    if tlsinsecure is not None:
+        for opt in _IMPLICIT_TLSINSECURE_OPTS:
+            # Implicit options are logically the same as tlsInsecure.
+            options[opt] = tlsinsecure
+
     for optname in list(options):
         intname = INTERNAL_URI_OPTION_NAME_MAP.get(optname, None)
         if intname is not None:
