@@ -8,6 +8,7 @@
           "a:27017",
           {
             "ok": 1,
+            "helloOk": true,
             "isWritablePrimary": true,
             "setName": "rs",
             "hosts": [
@@ -22,6 +23,7 @@
           "b:27017",
           {
             "ok": 1,
+            "helloOk": true,
             "isreplicaset": true,
             "minWireVersion": 0,
             "maxWireVersion": 1

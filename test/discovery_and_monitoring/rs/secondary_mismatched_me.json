@@ -27,6 +27,7 @@
               "a:27017",
               "b:27017"
             ],
+            "helloOk": true,
             "isWritablePrimary": false,
             "ok": 1,
             "setName": "rs",
