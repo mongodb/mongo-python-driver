@@ -154,7 +154,7 @@ class client_knobs(object):
         self.old_min_heartbeat_interval = None
         self.old_kill_cursor_frequency = None
         self.old_events_queue_frequency = None
-        self._enabled = True
+        self._enabled = False
         self._stack = None
 
     def enable(self):
@@ -776,8 +776,8 @@ class ClientContext(object):
         """
         return self._require(
             lambda: (self.test_commands_enabled and (
-                (not self.is_mongos and self.version >= (4, 2, 9))) or
-                (self.is_mongos and self.version >= (4, 4))),
+                (not self.is_mongos and self.version >= (4, 2, 9)) or
+                (self.is_mongos and self.version >= (4, 4)))),
             "failCommand blockConnection is not supported",
             func=func)
 
