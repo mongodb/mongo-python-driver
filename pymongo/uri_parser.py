@@ -312,14 +312,14 @@ def split_options(opts, validate=True, warn=False, normalize=True):
 
     options = _handle_option_deprecations(options)
 
+    if normalize:
+        options = _normalize_options(options)
+
     if validate:
         options = validate_options(options, warn)
         if options.get('authsource') == '':
             raise InvalidURI(
                 "the authSource database cannot be an empty string")
-
-    if normalize:
-        options = _normalize_options(options)
 
     return options
 
