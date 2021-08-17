@@ -81,15 +81,15 @@ def _parse_ssl_options(options):
     crlfile = options.get('tlscrlfile')
     disable_ocsp_endpoint_check = options.get('tlsdisableocspendpointcheck', False)
 
-    ssl_kwarg_keys = [k for k in options
-                      if k.startswith('ssl_') and options[k]]
-    if use_ssl is False and ssl_kwarg_keys:
-        raise ConfigurationError("ssl has not been enabled but the "
-                                 "following ssl parameters have been set: "
-                                 "%s. Please set `ssl=True` or remove."
-                                 % ', '.join(ssl_kwarg_keys))
+    tls_kwarg_keys = [k for k in options
+                      if k.startswith('tls') and options[k]]
+    if use_ssl is False and tls_kwarg_keys:
+        raise ConfigurationError("TLS has not been enabled but the "
+                                 "following tls parameters have been set: "
+                                 "%s. Please set `tls=True` or remove."
+                                 % ', '.join(tls_kwarg_keys))
 
-    if ssl_kwarg_keys and use_ssl is None:
+    if tls_kwarg_keys and use_ssl is None:
         # ssl options imply ssl = True
         use_ssl = True
 
