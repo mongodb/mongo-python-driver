@@ -8,6 +8,7 @@
           "a:27017",
           {
             "ok": 1,
+            "helloOk": true,
             "isWritablePrimary": true,
             "minWireVersion": 999,
             "maxWireVersion": 1000

@@ -8,6 +8,7 @@
           "a:27017",
           {
             "ok": 1,
+            "helloOk": true,
             "isWritablePrimary": true,
             "msg": "isdbgrid",
             "minWireVersion": 999,
@@ -18,6 +19,7 @@
           "b:27017",
           {
             "ok": 1,
+            "helloOk": true,
             "isWritablePrimary": true,
             "msg": "isdbgrid"
           }

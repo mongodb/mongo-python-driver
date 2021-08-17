@@ -8,6 +8,7 @@
           "a:27017",
           {
             "ok": 1,
+            "helloOk": true,
             "isWritablePrimary": true,
             "hosts": [
               "a:27017",
@@ -54,6 +55,7 @@
           "b:27017",
           {
             "ok": 1,
+            "helloOk": true,
             "isWritablePrimary": true,
             "hosts": [
               "a:27017",
@@ -100,6 +102,7 @@
           "a:27017",
           {
             "ok": 1,
+            "helloOk": true,
             "isWritablePrimary": true,
             "hosts": [
               "a:27017",
