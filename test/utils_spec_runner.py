@@ -256,6 +256,8 @@ class SpecRunner(IntegrationTest):
             name = 'open_download_stream_by_name'
         elif name == 'download':
             name = 'open_download_stream'
+        elif name == 'map_reduce':
+            self.skipTest('PyMongo does not support mapReduce')
         elif name == 'count':
             self.skipTest('PyMongo does not support count')
 
@@ -312,9 +314,6 @@ class SpecRunner(IntegrationTest):
                     arguments["pipeline"][-1]["$out"],
                     read_preference=ReadPreference.PRIMARY)
                 return out.find()
-        if name == "map_reduce":
-            if isinstance(result, dict) and 'results' in result:
-                return result['results']
         if 'download' in name:
             result = Binary(result.read())
 

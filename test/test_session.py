@@ -265,8 +265,6 @@ class TestSession(IntegrationTest):
             (coll.update_many, [{}, {'$set': {'a': 1}}], {}),
             (coll.delete_one, [{}], {}),
             (coll.delete_many, [{}], {}),
-            (coll.map_reduce,
-             ['function() {}', 'function() {}', 'output'], {}),
             (coll.find_one_and_replace, [{}, {}], {}),
             (coll.find_one_and_update, [{}, {'$set': {'a': 1}}], {}),
             (coll.find_one_and_delete, [{}, {}], {}),
@@ -290,7 +288,6 @@ class TestSession(IntegrationTest):
             (coll.distinct, ['a'], {}),
             (coll.find_one, [], {}),
             (coll.count_documents, [{}], {}),
-            (coll.inline_map_reduce, ['function() {}', 'function() {}'], {}),
             (coll.list_indexes, [], {}),
             (coll.index_information, [], {}),
             (coll.options, [], {}),
@@ -819,22 +816,6 @@ class TestCausalConsistency(unittest.TestCase):
             lambda coll, session: list(coll.find_raw_batches(
                 {}, session=session)))
 
-        # SERVER-40938 removed support for casually consistent mapReduce.
-        map_reduce_exc = None
-        if client_context.version.at_least(4, 1, 12):
-            map_reduce_exc = OperationFailure
-        # SERVER-44635 The mapReduce in aggregation project added back
-        # support for casually consistent mapReduce.
-        if client_context.version < (4, 3):
-            self._test_reads(
-                lambda coll, session: coll.map_reduce(
-                    'function() {}', 'function() {}', 'inline', session=session),
-                exception=map_reduce_exc)
-            self._test_reads(
-                lambda coll, session: coll.inline_map_reduce(
-                    'function() {}', 'function() {}', session=session),
-                exception=map_reduce_exc)
-
         self.assertRaises(
             ConfigurationError,
             self._test_reads,
@@ -950,14 +931,6 @@ class TestCausalConsistency(unittest.TestCase):
         # Not a write, but explain also doesn't support readConcern.
         self._test_no_read_concern(
             lambda coll, session: coll.find({}, session=session).explain())
-
-    @client_context.require_no_standalone
-    @unittest.skipIf(client_context.serverless,
-                     "Serverless does not support mapReduce")
-    def test_writes_do_not_include_read_concern_map_reduce(self):
-        self._test_no_read_concern(
-            lambda coll, session: coll.map_reduce(
-                'function() {}', 'function() {}', 'mrout', session=session))
 
     @client_context.require_no_standalone
     @client_context.require_version_max(4, 1, 0)

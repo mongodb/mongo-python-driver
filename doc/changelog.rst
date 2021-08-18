@@ -59,6 +59,8 @@ Breaking Changes in 4.0
   :class:`pymongo.bulk.BulkOperationBuilder`. Use
   :meth:`pymongo.collection.Collection.bulk_write` instead.
 - Removed :meth:`pymongo.collection.Collection.group`.
+- Removed :meth:`pymongo.collection.Collection.map_reduce` and
+  :meth:`pymongo.collection.Collection.inline_map_reduce`.
 - Removed the ``useCursor`` option for
   :meth:`~pymongo.collection.Collection.aggregate`.
 - Removed :meth:`pymongo.mongo_client.MongoClient.close_cursor`. Use
@@ -93,6 +95,7 @@ Breaking Changes in 4.0
   :meth:`pymongo.message.query`, and :meth:`pymongo.message.update`.
 - Removed :exc:`pymongo.errors.NotMasterError`.
   Use :exc:`pymongo.errors.NotPrimaryError` instead.
+- Removed :exc:`pymongo.errors.CertificateError`.
 - Removed :attr:`pymongo.GEOHAYSTACK`.
 - Removed :class:`bson.binary.UUIDLegacy`.
 - The "tls" install extra is no longer necessary or supported and will be

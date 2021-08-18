@@ -297,11 +297,9 @@ class MongoClient(common.BaseObject):
             :meth:`pymongo.mongo_client.MongoClient.watch`,
             and :meth:`~pymongo.mongo_client.MongoClient.list_databases`.
 
-            Unsupported read operations include, but are not limited to:
-            :meth:`~pymongo.collection.Collection.map_reduce`,
-            :meth:`~pymongo.collection.Collection.inline_map_reduce`,
-            :meth:`~pymongo.database.Database.command`,
-            and any getMore operation on a cursor.
+            Unsupported read operations include, but are not limited to
+            :meth:`~pymongo.database.Database.command` and any getMore
+            operation on a cursor.
 
             Enabling retryable reads makes applications more resilient to
             transient errors such as network failures, database upgrades, and

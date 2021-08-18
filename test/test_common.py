@@ -20,7 +20,6 @@ import uuid
 sys.path[0:0] = [""]
 
 from bson.binary import Binary, PYTHON_LEGACY, STANDARD
-from bson.code import Code
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from pymongo.errors import OperationFailure
@@ -106,47 +105,6 @@ class TestCommon(IntegrationTest):
             'findAndModify', 'uuid',
             update={'$set': {'i': 7}},
             query={'_id': Binary.from_uuid(uu, PYTHON_LEGACY)})['value']['i'])
-
-        # Test (inline)_map_reduce
-        coll.drop()
-        coll.insert_one({"_id": uu, "x": 1, "tags": ["dog", "cat"]})
-        coll.insert_one({"_id": uuid.uuid4(), "x": 3,
-                         "tags": ["mouse", "cat", "dog"]})
-
-        map = Code("function () {"
-                   "  this.tags.forEach(function(z) {"
-                   "    emit(z, 1);"
-                   "  });"
-                   "}")
-
-        reduce = Code("function (key, values) {"
-                      "  var total = 0;"
-                      "  for (var i = 0; i < values.length; i++) {"
-                      "    total += values[i];"
-                      "  }"
-                      "  return total;"
-                      "}")
-
-        coll = self.db.get_collection(
-            "uuid", CodecOptions(uuid_representation=STANDARD))
-        q = {"_id": uu}
-        result = coll.inline_map_reduce(map, reduce, query=q)
-        self.assertEqual([], result)
-
-        result = coll.map_reduce(map, reduce, "results", query=q)
-        self.assertEqual(0, self.db.results.count_documents({}))
-
-        coll = self.db.get_collection(
-            "uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
-        q = {"_id": uu}
-        result = coll.inline_map_reduce(map, reduce, query=q)
-        self.assertEqual(2, len(result))
-
-        result = coll.map_reduce(map, reduce, "results", query=q)
-        self.assertEqual(2, self.db.results.count_documents({}))
-
-        self.db.drop_collection("result")
-        coll.drop()
 
     def test_write_concern(self):
         c = rs_or_single_client(connect=False)

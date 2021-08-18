@@ -502,6 +502,20 @@ instead.
 
 .. _group command: https://docs.mongodb.com/manual/reference/command/group/
 
+Collection.map_reduce and Collection.inline_map_reduce are removed
+..................................................................
+
+Removed :meth:`pymongo.collection.Collection.map_reduce` and
+:meth:`pymongo.collection.Collection.inline_map_reduce`.
+Migrate to :meth:`~pymongo.collection.Collection.aggregate` or run the
+`mapReduce command`_ directly with :meth:`~pymongo.database.Database.command`
+instead. For more guidance on this migration see:
+
+- https://docs.mongodb.com/manual/reference/map-reduce-to-aggregation-pipeline/
+- https://docs.mongodb.com/manual/reference/aggregation-commands-comparison/
+
+.. _mapReduce command: https://docs.mongodb.com/manual/reference/command/mapReduce/
+
 Collection.ensure_index is removed
 ..................................
 
@@ -615,6 +629,12 @@ NotMasterError is removed
 
 Removed :exc:`~pymongo.errors.NotMasterError`.
 Use :exc:`~pymongo.errors.NotPrimaryError` instead.
+
+CertificateError is removed
+---------------------------
+
+Removed :exc:`~pymongo.errors.CertificateError`. Since PyMongo 3.0 this error
+is handled internally and is never raised to the application.
 
 pymongo.GEOHAYSTACK is removed
 ------------------------------

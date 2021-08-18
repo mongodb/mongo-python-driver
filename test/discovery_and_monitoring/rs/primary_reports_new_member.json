@@ -8,6 +8,7 @@
           "a:27017",
           {
             "ok": 1,
+            "helloOk": true,
             "isWritablePrimary": false,
             "secondary": true,
             "setName": "rs",
@@ -42,6 +43,7 @@
           "b:27017",
           {
             "ok": 1,
+            "helloOk": true,
             "isWritablePrimary": true,
             "setName": "rs",
             "hosts": [
@@ -75,6 +77,7 @@
           "b:27017",
           {
             "ok": 1,
+            "helloOk": true,
             "isWritablePrimary": true,
             "setName": "rs",
             "hosts": [
@@ -113,6 +116,7 @@
           "c:27017",
           {
             "ok": 1,
+            "helloOk": true,
             "isWritablePrimary": false,
             "secondary": true,
             "setName": "rs",
