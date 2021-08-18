@@ -35,7 +35,6 @@ from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _validate_event_listeners
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import _MONGOS_MODES, _ServerMode
-from pymongo.ssl_support import validate_allow_invalid_certs
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
 ORDERED_TYPES = (SON, OrderedDict)
@@ -619,7 +618,7 @@ URI_OPTIONS_VALIDATOR_MAP = {
     'serverselectiontimeoutms': validate_timeout_or_zero,
     'sockettimeoutms': validate_timeout_or_none_or_zero,
     'tls': validate_boolean_or_string,
-    'tlsallowinvalidcertificates': validate_allow_invalid_certs,
+    'tlsallowinvalidcertificates': validate_boolean_or_string,
     'tlsallowinvalidhostnames': validate_boolean_or_string,
     'tlscafile': validate_readable,
     'tlscertificatekeyfile': validate_readable,

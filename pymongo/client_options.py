@@ -76,7 +76,7 @@ def _parse_ssl_options(options):
     certfile = options.get('tlscertificatekeyfile')
     passphrase = options.get('tlscertificatekeyfilepassword')
     ca_certs = options.get('tlscafile')
-    cert_reqs = options.get('tlsallowinvalidcertificates')
+    allow_invalid_certificates = options.get('tlsallowinvalidcertificates')
     allow_invalid_hostnames = options.get('tlsallowinvalidhostnames', False)
     crlfile = options.get('tlscrlfile')
     disable_ocsp_endpoint_check = options.get('tlsdisableocspendpointcheck', False)
@@ -98,7 +98,7 @@ def _parse_ssl_options(options):
             certfile,
             passphrase,
             ca_certs,
-            cert_reqs,
+            allow_invalid_certificates,
             crlfile,
             allow_invalid_hostnames,
             disable_ocsp_endpoint_check)

@@ -39,25 +39,20 @@ if HAVE_SSL:
     HAS_SNI = _ssl.HAS_SNI
     IPADDR_SAFE = _ssl.IS_PYOPENSSL or sys.version_info[:2] >= (3, 7)
     SSLError = _ssl.SSLError
-    def validate_allow_invalid_certs(option, value):
-        """Validate the option to allow invalid certificates is valid."""
-        # Avoid circular import.
-        from pymongo.common import validate_boolean_or_string
-        boolean_cert_reqs = validate_boolean_or_string(option, value)
-        if boolean_cert_reqs:
-            return CERT_NONE
-        return CERT_REQUIRED
 
     def get_ssl_context(*args):
         """Create and return an SSLContext object."""
         (certfile,
          passphrase,
          ca_certs,
-         cert_reqs,
+         allow_invalid_certificates,
          crlfile,
          allow_invalid_hostnames,
          disable_ocsp_endpoint_check) = args
-        verify_mode = CERT_REQUIRED if cert_reqs is None else cert_reqs
+        if allow_invalid_certificates is True:
+            verify_mode = CERT_NONE
+        else:   # allow_invalid_certificates in (False, None)
+            verify_mode = CERT_REQUIRED
         ctx = _ssl.SSLContext(_ssl.PROTOCOL_SSLv23)
         # SSLContext.check_hostname was added in CPython 3.4.
         if hasattr(ctx, "check_hostname"):
@@ -100,11 +95,6 @@ else:
         pass
     HAS_SNI = False
     IPADDR_SAFE = False
-    def validate_allow_invalid_certs(option, dummy):
-        """No ssl module, raise ConfigurationError."""
-        raise ConfigurationError("The value of %s is set but can't be "
-                                 "validated. The ssl module is not available"
-                                 % (option,))
 
     def get_ssl_context(*dummy):
         """No ssl module, raise ConfigurationError."""
