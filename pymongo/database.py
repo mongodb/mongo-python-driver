@@ -299,9 +299,6 @@ class Database(common.BaseObject):
         .. versionchanged:: 3.0
            Added the codec_options, read_preference, and write_concern options.
 
-        .. versionchanged:: 2.2
-           Removed deprecated argument: options
-
         .. _create collection command:
             https://docs.mongodb.com/manual/reference/command/create
         """
@@ -587,21 +584,6 @@ class Database(common.BaseObject):
            :meth:`~bson.regex.Regex.try_compile` to attempt to convert from a
            BSON regular expression to a Python regular expression object.
            Added the `codec_options` parameter.
-
-        .. versionchanged:: 2.7
-           Added `compile_re` option. If set to False, PyMongo represented BSON
-           regular expressions as :class:`~bson.regex.Regex` objects instead of
-           attempting to compile BSON regular expressions as Python native
-           regular expressions, thus preventing errors for some incompatible
-           patterns, see `PYTHON-500`_.
-
-        .. versionchanged:: 2.3
-           Added `tag_sets` and `secondary_acceptable_latency_ms` options.
-        .. versionchanged:: 2.2
-           Added support for `as_class` - the class you want to use for
-           the resulting documents
-
-        .. _PYTHON-500: https://jira.mongodb.org/browse/PYTHON-500
 
         .. mongodoc:: commands
         """

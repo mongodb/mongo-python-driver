@@ -17,11 +17,7 @@
 
 
 class MaxKey(object):
-    """MongoDB internal MaxKey type.
-
-    .. versionchanged:: 2.7
-       ``MaxKey`` now implements comparison operators.
-    """
+    """MongoDB internal MaxKey type."""
 
     _type_marker = 127
 

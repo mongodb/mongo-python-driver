@@ -84,25 +84,6 @@ but it will be faster as there is less recursion.
    Extended JSON converter for Python built on top of
    `libbson <https://github.com/mongodb/libbson>`_. `python-bsonjs` works best
    with PyMongo when using :class:`~bson.raw_bson.RawBSONDocument`.
-
-.. versionchanged:: 2.8
-   The output format for :class:`~bson.timestamp.Timestamp` has changed from
-   '{"t": <int>, "i": <int>}' to '{"$timestamp": {"t": <int>, "i": <int>}}'.
-   This new format will be decoded to an instance of
-   :class:`~bson.timestamp.Timestamp`. The old format will continue to be
-   decoded to a python dict as before. Encoding to the old format is no longer
-   supported as it was never correct and loses type information.
-   Added support for $numberLong and $undefined - new in MongoDB 2.6 - and
-   parsing $date in ISO-8601 format.
-
-.. versionchanged:: 2.7
-   Preserves order when rendering SON, Timestamp, Code, Binary, and DBRef
-   instances.
-
-.. versionchanged:: 2.3
-   Added dumps and loads helpers to automatically handle conversion to and
-   from json and supports :class:`~bson.binary.Binary` and
-   :class:`~bson.code.Code`
 """
 
 import base64
@@ -401,10 +382,6 @@ def dumps(obj, *args, **kwargs):
 
     .. versionchanged:: 3.4
        Accepts optional parameter `json_options`. See :class:`JSONOptions`.
-
-    .. versionchanged:: 2.7
-       Preserves order when rendering SON, Timestamp, Code, Binary, and DBRef
-       instances.
     """
     json_options = kwargs.pop("json_options", DEFAULT_JSON_OPTIONS)
     return json.dumps(_json_convert(obj, json_options), *args, **kwargs)

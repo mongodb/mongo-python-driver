@@ -879,9 +879,6 @@ class Cursor(object):
 
         :Parameters:
           - `index`: index to hint on (as an index specifier)
-
-        .. versionchanged:: 2.8
-           The :meth:`~hint` method accepts the name of the index.
         """
         self.__check_okay_to_chain()
         self.__set_hint(index)
