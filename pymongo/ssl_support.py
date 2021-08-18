@@ -86,7 +86,7 @@ if HAVE_SSL:
             ctx.load_verify_locations(crlfile)
         if ca_certs is not None:
             ctx.load_verify_locations(ca_certs)
-        elif cert_reqs != CERT_NONE:
+        elif verify_mode != CERT_NONE:
             ctx.load_default_certs()
         ctx.verify_mode = verify_mode
         return ctx
