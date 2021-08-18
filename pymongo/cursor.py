@@ -146,7 +146,7 @@ class Cursor(object):
         Should not be called directly by application developers - see
         :meth:`~pymongo.collection.Collection.find` instead.
 
-        .. mongodoc:: cursors
+        .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
         """
         # Initialize all attributes used in __del__ before possibly raising
         # an error to avoid attribute errors during garbage collection.
@@ -494,7 +494,7 @@ class Cursor(object):
         :Parameters:
           - `limit`: the number of results to return
 
-        .. mongodoc:: limit
+        .. seealso:: The MongoDB documentation on `limit <https://dochub.mongodb.org/core/limit>`_.
         """
         if not isinstance(limit, int):
             raise TypeError("limit must be an integer")
@@ -839,7 +839,7 @@ class Cursor(object):
           :meth:`~pymongo.database.Database.command` to run the explain
           command directly.
 
-        .. mongodoc:: explain
+        .. seealso:: The MongoDB documentation on `explain <https://dochub.mongodb.org/core/explain>`_.
         """
         c = self.clone()
         c.__explain = True
@@ -1233,7 +1233,7 @@ class RawBatchCursor(Cursor):
         see :meth:`~pymongo.collection.Collection.find_raw_batches`
         instead.
 
-        .. mongodoc:: cursors
+        .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
         """
         super(RawBatchCursor, self).__init__(*args, **kwargs)
 
@@ -1250,7 +1250,7 @@ class RawBatchCursor(Cursor):
     def explain(self):
         """Returns an explain plan record for this cursor.
 
-        .. mongodoc:: explain
+        .. seealso:: The MongoDB documentation on `explain <https://dochub.mongodb.org/core/explain>`_.
         """
         clone = self._clone(deepcopy=True, base=Cursor(self.collection))
         return clone.explain()

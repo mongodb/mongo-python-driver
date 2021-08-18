@@ -37,7 +37,7 @@ the session are causally after previous read and write operations. Using a
 causally consistent session, an application can read its own writes and is
 guaranteed monotonic reads, even when reading from replica set secondaries.
 
-.. mongodoc:: causal-consistency
+.. seealso:: The MongoDB documentation on `causal-consistency <https://dochub.mongodb.org/core/causal-consistency>`_.
 
 .. _transactions-ref:
 
@@ -91,7 +91,7 @@ transaction. All subsequent operations that are part of the same transaction
 are routed to the same mongos server. When the transaction is completed, by
 running either commitTransaction or abortTransaction, the session is unpinned.
 
-.. mongodoc:: transactions
+.. seealso:: The MongoDB documentation on `transactions <https://dochub.mongodb.org/core/transactions>`_.
 
 .. _snapshot-reads-ref:
 

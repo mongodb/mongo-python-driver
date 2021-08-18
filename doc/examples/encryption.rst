@@ -16,7 +16,7 @@ level encryption supports workloads where applications must guarantee that
 unauthorized parties, including server administrators, cannot read the
 encrypted data.
 
-.. mongodoc:: client-side-field-level-encryption
+.. seealso:: The MongoDB documentation on `Client Side Field Level Encryption <https://dochub.mongodb.org/core/client-side-field-level-encryption>`_.
 
 Dependencies
 ------------

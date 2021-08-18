@@ -138,7 +138,7 @@ class Collection(common.BaseObject):
 
                collection.__my_collection__
 
-        .. mongodoc:: collections
+        .. seealso:: The MongoDB documentation on `collections <https://dochub.mongodb.org/core/collections>`_.
         """
         super(Collection, self).__init__(
             codec_options or database.codec_options,
@@ -1376,8 +1376,7 @@ class Collection(common.BaseObject):
            expression object.
            Soft deprecated the ``manipulate`` option.
 
-        .. mongodoc:: find
-
+        .. seealso:: The MongoDB documentation on `find <https://dochub.mongodb.org/core/find>`_.
         """
         return Cursor(self, *args, **kwargs)
 
@@ -1757,7 +1756,7 @@ class Collection(common.BaseObject):
            :meth:`create_index` no longer caches index names. Removed support
            for the drop_dups and bucket_size aliases.
 
-        .. mongodoc:: indexes
+        .. seealso:: The MongoDB documentation on `indexes <https://dochub.mongodb.org/core/indexes>`_.
 
         .. _wildcard index: https://docs.mongodb.com/master/core/index-wildcard/#wildcard-index-core
         """
@@ -2198,7 +2197,7 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 3.6
 
-        .. mongodoc:: changeStreams
+        .. seealso:: The MongoDB documentation on `changeStreams <https://dochub.mongodb.org/core/changeStreams>`_.
 
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.rst

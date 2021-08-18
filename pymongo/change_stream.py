@@ -64,7 +64,7 @@ class ChangeStream(object):
     :meth:`pymongo.mongo_client.MongoClient.watch` instead.
 
     .. versionadded:: 3.6
-    .. mongodoc:: changeStreams
+    .. seealso:: The MongoDB documentation on `changeStreams <https://dochub.mongodb.org/core/changeStreams>`_.
     """
     def __init__(self, target, pipeline, full_document, resume_after,
                  max_await_time_ms, batch_size, collation,
