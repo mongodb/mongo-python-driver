@@ -124,9 +124,6 @@ _IMPLICIT_TLSINSECURE_OPTS = {
     "tlsallowinvalidhostnames",
     "tlsdisableocspendpointcheck"}
 
-# Options that cannot be specified when tlsInsecure is also specified.
-_TLSINSECURE_EXCLUDE_OPTS = _IMPLICIT_TLSINSECURE_OPTS
-
 
 def _parse_options(opts, delim):
     """Helper method for split_options which creates the options dict.
@@ -157,9 +154,10 @@ def _handle_security_options(options):
         - `options`: Instance of _CaseInsensitiveDictionary containing
           MongoDB URI options.
     """
+    # Implicitly defined options must not be explicitly specified.
     tlsinsecure = options.get('tlsinsecure')
     if tlsinsecure is not None:
-        for opt in _TLSINSECURE_EXCLUDE_OPTS:
+        for opt in _IMPLICIT_TLSINSECURE_OPTS:
             if opt in options:
                 err_msg = ("URI options %s and %s cannot be specified "
                            "simultaneously.")
@@ -197,7 +195,7 @@ def _handle_security_options(options):
             return val
         if truth_value(options.get('ssl')) != truth_value(options.get('tls')):
             err_msg = ("Can not specify conflicting values for URI options %s "
-                      "and %s.")
+                       "and %s.")
             raise InvalidURI(err_msg % (
                 options.cased_key('ssl'), options.cased_key('tls')))
 
