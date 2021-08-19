@@ -77,7 +77,7 @@ def _parse_ssl_options(options):
     passphrase = options.get('tlscertificatekeyfilepassword')
     ca_certs = options.get('tlscafile')
     crlfile = options.get('tlscrlfile')
-    allow_invalid_certificates = options.get('tlsallowinvalidcertificates', False)
+    allow_invalid_certificates = options.get('tlsallowinvalidcertificates')
     allow_invalid_hostnames = options.get('tlsallowinvalidhostnames', False)
     disable_ocsp_endpoint_check = options.get('tlsdisableocspendpointcheck', False)
 
