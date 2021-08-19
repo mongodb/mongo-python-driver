@@ -77,7 +77,7 @@ def _parse_ssl_options(options):
     passphrase = options.get('tlscertificatekeyfilepassword')
     ca_certs = options.get('tlscafile')
     crlfile = options.get('tlscrlfile')
-    allow_invalid_certificates = options.get('tlsallowinvalidcertificates')
+    allow_invalid_certificates = options.get('tlsallowinvalidcertificates', False)
     allow_invalid_hostnames = options.get('tlsallowinvalidhostnames', False)
     disable_ocsp_endpoint_check = options.get('tlsdisableocspendpointcheck', False)
 
@@ -90,7 +90,7 @@ def _parse_ssl_options(options):
     for opt in ('tlsallowinvalidcertificates', 'tlsallowinvalidhostnames',
                 'tlsdisableocspendpointcheck'):
         # A value of False for these options implies tls=True.
-        if opt in options and not options[opt]:
+        if opt in options and options[opt] is False:
             enabled_tls_opts.append(opt)
 
     if enabled_tls_opts:
