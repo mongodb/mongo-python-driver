@@ -76,9 +76,9 @@ def _parse_ssl_options(options):
     certfile = options.get('tlscertificatekeyfile')
     passphrase = options.get('tlscertificatekeyfilepassword')
     ca_certs = options.get('tlscafile')
-    allow_invalid_certificates = options.get('tlsallowinvalidcertificates')
-    allow_invalid_hostnames = options.get('tlsallowinvalidhostnames', False)
     crlfile = options.get('tlscrlfile')
+    allow_invalid_certificates = options.get('tlsallowinvalidcertificates', False)
+    allow_invalid_hostnames = options.get('tlsallowinvalidhostnames', False)
     disable_ocsp_endpoint_check = options.get('tlsdisableocspendpointcheck', False)
 
     enabled_tls_opts = []
@@ -90,20 +90,21 @@ def _parse_ssl_options(options):
     for opt in ('tlsallowinvalidcertificates', 'tlsallowinvalidhostnames',
                 'tlsdisableocspendpointcheck'):
         # A value of False for these options implies tls=True.
-        if opt in options and options[opt] is False:
+        if opt in options and not options[opt]:
             enabled_tls_opts.append(opt)
 
     if enabled_tls_opts:
-        if use_tls is False:
+        if use_tls is None:
+            # Implicitly enable TLS when one of the tls* options is set.
+            use_tls = True
+        elif not use_tls:
+            # Error since tls is explicitly disabled but a tls option is set.
             raise ConfigurationError("TLS has not been enabled but the "
                                      "following tls parameters have been set: "
                                      "%s. Please set `tls=True` or remove."
                                      % ', '.join(enabled_tls_opts))
-        elif use_tls is None:
-            # Implicitly enable TLS when one of the tls* options is set.
-            use_tls = True
 
-    if use_tls is True:
+    if use_tls:
         ctx = get_ssl_context(
             certfile,
             passphrase,
