@@ -666,8 +666,6 @@ KW_VALIDATORS = {
 # variant need not be included here. Options whose public and internal
 # names are the same need not be included here.
 INTERNAL_URI_OPTION_NAME_MAP = {
-    'j': 'journal',
-    'wtimeout': 'wtimeoutms',
     'ssl': 'tls',
 }
 
@@ -681,8 +679,8 @@ URI_OPTIONS_DEPRECATION_MAP = {
     #   preserved for renamed options as they are part of user warnings.
     # - 'removed': <message> may suggest the rationale for deprecating the
     #   option and/or recommend remedial action.
-    'j': ('renamed', 'journal'),
-    'wtimeout': ('renamed', 'wTimeoutMS'),
+    # For example:
+    # 'wtimeout': ('renamed', 'wTimeoutMS'),
 }
 
 # Augment the option validator map with pymongo-specific option information.

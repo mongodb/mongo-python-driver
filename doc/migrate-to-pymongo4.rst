@@ -89,29 +89,34 @@ The old option names and their renamed equivalents are summarized in the table
 below. Some renamed options have different semantics from the option being
 replaced as noted in the 'Migration Notes' column.
 
-+--------------------+-------------------------------+-------------------------------------------------------------+
-| Old URI Option     | Renamed URI Option            | Migration Notes                                             |
-+====================+===============================+=============================================================+
-| ssl_pem_passphrase | tlsCertificateKeyFilePassword | -                                                           |
-+--------------------+-------------------------------+-------------------------------------------------------------+
-| ssl_ca_certs       | tlsCAFile                     | -                                                           |
-+--------------------+-------------------------------+-------------------------------------------------------------+
-| ssl_crlfile        | tlsCRLFile                    | -                                                           |
-+--------------------+-------------------------------+-------------------------------------------------------------+
-| ssl_match_hostname | tlsAllowInvalidHostnames      | ``ssl_match_hostname=True`` is equivalent to                |
-|                    |                               | ``tlsAllowInvalidHostnames=False`` and vice-versa.          |
-+--------------------+-------------------------------+-------------------------------------------------------------+
-| ssl_cert_reqs      | tlsAllowInvalidCertificates   | Instead of ``ssl.CERT_NONE``, ``ssl.CERT_OPTIONAL``         |
-|                    |                               | and ``ssl.CERT_REQUIRED``, ``tlsAllowInvalidCertificates``  |
-|                    |                               | expects a boolean value - ``True`` is equivalent to         |
-|                    |                               | ``ssl.CERT_NONE``, while ``False`` is equivalent to         |
-|                    |                               | ``ssl.CERT_REQUIRED``.                                      |
-+--------------------+-------------------------------+-------------------------------------------------------------+
-| ssl_certfile       | tlsCertificateKeyFile         | Instead of using ``ssl_certfile`` and ``ssl_keyfile``       |
-|                    |                               | to specify the certificate and private key files,           |
-+--------------------+                               | ``tlsCertificateKeyFile`` expects a single file containing  |
-| ssl_keyfile        |                               | both the client certificate and the private key.            |
-+--------------------+-------------------------------+-------------------------------------------------------------+
++--------------------+-------------------------------+--------------------------------------------------------+
+| Old URI Option     | Renamed URI Option            | Migration Notes                                        |
++====================+===============================+========================================================+
+| ssl_pem_passphrase | tlsCertificateKeyFilePassword | -                                                      |
++--------------------+-------------------------------+--------------------------------------------------------+
+| ssl_ca_certs       | tlsCAFile                     | -                                                      |
++--------------------+-------------------------------+--------------------------------------------------------+
+| ssl_crlfile        | tlsCRLFile                    | -                                                      |
++--------------------+-------------------------------+--------------------------------------------------------+
+| ssl_match_hostname | tlsAllowInvalidHostnames      | ``ssl_match_hostname=True`` is equivalent to           |
+|                    |                               | ``tlsAllowInvalidHostnames=False`` and vice-versa.     |
++--------------------+-------------------------------+--------------------------------------------------------+
+| ssl_cert_reqs      | tlsAllowInvalidCertificates   | Instead of ``ssl.CERT_NONE``, ``ssl.CERT_OPTIONAL``    |
+|                    |                               | and ``ssl.CERT_REQUIRED``, the new option expects      |
+|                    |                               | a boolean value - ``True`` is equivalent to            |
+|                    |                               | ``ssl.CERT_NONE``, while ``False`` is equivalent to    |
+|                    |                               | ``ssl.CERT_REQUIRED``.                                 |
++--------------------+-------------------------------+--------------------------------------------------------+
+| ssl_certfile       | tlsCertificateKeyFile         | Instead of using ``ssl_certfile`` and ``ssl_keyfile``  |
+|                    |                               | to specify the certificate and private key files       |
++--------------------+                               | respectively,  use ``tlsCertificateKeyFile`` to pass   |
+| ssl_keyfile        |                               | a single file containing both the client certificate   |
+|                    |                               | and the private key.                                   |
++--------------------+-------------------------------+--------------------------------------------------------+
+| j                  | journal                       | -                                                      |
++--------------------+-------------------------------+--------------------------------------------------------+
+| wtimeout           | wTimeoutMS                    | -                                                      |
++--------------------+-------------------------------+--------------------------------------------------------+
 
 MongoClient.fsync is removed
 ............................
