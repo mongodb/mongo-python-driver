@@ -238,23 +238,27 @@ class JSONOptions(CodecOptions):
 
     .. seealso:: The specification for Relaxed and Canonical `Extended JSON`_.
 
-    .. versionadded:: 3.4
+    .. versionchanged:: 4.0
+       The default for `json_mode` was changed from :const:`JSONMode.LEGACY`
+       to :const:`JSONMode.RELAXED`.
 
     .. versionchanged:: 3.5
        Accepts the optional parameter `json_mode`.
 
+    .. versionadded:: 3.4
     """
 
-    def __new__(cls, strict_number_long=False,
-                datetime_representation=DatetimeRepresentation.LEGACY,
-                strict_uuid=False, json_mode=JSONMode.LEGACY,
+    def __new__(cls, strict_number_long=None,
+                datetime_representation=None,
+                strict_uuid=None, json_mode=JSONMode.RELAXED,
                 *args, **kwargs):
         kwargs["tz_aware"] = kwargs.get("tz_aware", True)
         if kwargs["tz_aware"]:
             kwargs["tzinfo"] = kwargs.get("tzinfo", utc)
         if datetime_representation not in (DatetimeRepresentation.LEGACY,
                                            DatetimeRepresentation.NUMBERLONG,
-                                           DatetimeRepresentation.ISO8601):
+                                           DatetimeRepresentation.ISO8601,
+                                           None):
             raise ConfigurationError(
                 "JSONOptions.datetime_representation must be one of LEGACY, "
                 "NUMBERLONG, or ISO8601 from DatetimeRepresentation.")
@@ -267,17 +271,47 @@ class JSONOptions(CodecOptions):
                 "or CANONICAL from JSONMode.")
         self.json_mode = json_mode
         if self.json_mode == JSONMode.RELAXED:
+            if strict_number_long:
+                raise ConfigurationError(
+                    "Cannot specify strict_number_long=True with"
+                    " JSONMode.RELAXED")
+            if datetime_representation not in (None,
+                                               DatetimeRepresentation.ISO8601):
+                raise ConfigurationError(
+                    "datetime_representation must be DatetimeRepresentation."
+                    "ISO8601 or omitted with JSONMode.RELAXED")
+            if strict_uuid not in (None, True):
+                raise ConfigurationError(
+                    "Cannot specify strict_uuid=False with JSONMode.RELAXED")
             self.strict_number_long = False
             self.datetime_representation = DatetimeRepresentation.ISO8601
             self.strict_uuid = True
         elif self.json_mode == JSONMode.CANONICAL:
+            if strict_number_long not in (None, True):
+                raise ConfigurationError(
+                    "Cannot specify strict_number_long=False with"
+                    " JSONMode.RELAXED")
+            if datetime_representation not in (
+                    None, DatetimeRepresentation.NUMBERLONG):
+                raise ConfigurationError(
+                    "datetime_representation must be DatetimeRepresentation."
+                    "NUMBERLONG or omitted with JSONMode.RELAXED")
+            if strict_uuid not in (None, True):
+                raise ConfigurationError(
+                    "Cannot specify strict_uuid=False with JSONMode.RELAXED")
             self.strict_number_long = True
             self.datetime_representation = DatetimeRepresentation.NUMBERLONG
             self.strict_uuid = True
-        else:
-            self.strict_number_long = strict_number_long
-            self.datetime_representation = datetime_representation
-            self.strict_uuid = strict_uuid
+        else:  # JSONMode.LEGACY
+            self.strict_number_long = False
+            self.datetime_representation = DatetimeRepresentation.LEGACY
+            self.strict_uuid = False
+            if strict_number_long is not None:
+                self.strict_number_long = strict_number_long
+            if datetime_representation is not None:
+                self.datetime_representation = datetime_representation
+            if strict_uuid is not None:
+                self.strict_uuid = strict_uuid
         return self
 
     def _arguments_repr(self):
@@ -307,7 +341,7 @@ class JSONOptions(CodecOptions):
             >>> from bson.json_util import CANONICAL_JSON_OPTIONS
             >>> CANONICAL_JSON_OPTIONS.tz_aware
             True
-            >>> json_options = CANONICAL_JSON_OPTIONS.with_options(tz_aware=False)
+            >>> json_options = CANONICAL_JSON_OPTIONS.with_options(tz_aware=False, tzinfo=None)
             >>> json_options.tz_aware
             False
 
@@ -329,15 +363,6 @@ LEGACY_JSON_OPTIONS = JSONOptions(json_mode=JSONMode.LEGACY)
 .. versionadded:: 3.5
 """
 
-DEFAULT_JSON_OPTIONS = LEGACY_JSON_OPTIONS
-"""The default :class:`JSONOptions` for JSON encoding/decoding.
-
-The same as :const:`LEGACY_JSON_OPTIONS`. This will change to
-:const:`RELAXED_JSON_OPTIONS` in a future release.
-
-.. versionadded:: 3.4
-"""
-
 CANONICAL_JSON_OPTIONS = JSONOptions(json_mode=JSONMode.CANONICAL)
 """:class:`JSONOptions` for Canonical Extended JSON.
 
@@ -354,18 +379,16 @@ RELAXED_JSON_OPTIONS = JSONOptions(json_mode=JSONMode.RELAXED)
 .. versionadded:: 3.5
 """
 
-STRICT_JSON_OPTIONS = JSONOptions(
-    strict_number_long=True,
-    datetime_representation=DatetimeRepresentation.ISO8601,
-    strict_uuid=True)
-"""**DEPRECATED** - :class:`JSONOptions` for MongoDB Extended JSON's *Strict
-mode* encoding.
+DEFAULT_JSON_OPTIONS = RELAXED_JSON_OPTIONS
+"""The default :class:`JSONOptions` for JSON encoding/decoding.
+
+The same as :const:`RELAXED_JSON_OPTIONS`.
+
+.. versionchanged:: 4.0
+   Changed from :const:`LEGACY_JSON_OPTIONS` to
+   :const:`RELAXED_JSON_OPTIONS`.
 
 .. versionadded:: 3.4
-
-.. versionchanged:: 3.5
-   Deprecated. Use :const:`RELAXED_JSON_OPTIONS` or
-   :const:`CANONICAL_JSON_OPTIONS` instead.
 """
 
 
@@ -379,6 +402,10 @@ def dumps(obj, *args, **kwargs):
       - `json_options`: A :class:`JSONOptions` instance used to modify the
         encoding of MongoDB Extended JSON types. Defaults to
         :const:`DEFAULT_JSON_OPTIONS`.
+
+    .. versionchanged:: 4.0
+       Now outputs MongoDB Relaxed Extended JSON by default (using
+       :const:`DEFAULT_JSON_OPTIONS`).
 
     .. versionchanged:: 3.4
        Accepts optional parameter `json_options`. See :class:`JSONOptions`.
