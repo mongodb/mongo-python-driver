@@ -176,7 +176,7 @@ class _TestPoolingBase(IntegrationTest):
         # Start the pool with the correct ssl options.
         pool_options = client_context.client._topology_settings.pool_options
         kwargs['ssl_context'] = pool_options.ssl_context
-        kwargs['ssl_match_hostname'] = pool_options.ssl_match_hostname
+        kwargs['tls_allow_invalid_hostnames'] = pool_options.tls_allow_invalid_hostnames
         kwargs['server_api'] = pool_options.server_api
         pool = Pool(pair, PoolOptions(*args, **kwargs))
         pool.ready()

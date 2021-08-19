@@ -69,43 +69,52 @@ def _parse_read_concern(options):
 
 def _parse_ssl_options(options):
     """Parse ssl options."""
-    use_ssl = options.get('ssl')
-    if use_ssl is not None:
-        validate_boolean('ssl', use_ssl)
+    use_tls = options.get('tls')
+    if use_tls is not None:
+        validate_boolean('tls', use_tls)
 
-    certfile = options.get('ssl_certfile')
-    keyfile = options.get('ssl_keyfile')
-    passphrase = options.get('ssl_pem_passphrase')
-    ca_certs = options.get('ssl_ca_certs')
-    cert_reqs = options.get('ssl_cert_reqs')
-    match_hostname = options.get('ssl_match_hostname', True)
-    crlfile = options.get('ssl_crlfile')
-    check_ocsp_endpoint = options.get('ssl_check_ocsp_endpoint', True)
+    certfile = options.get('tlscertificatekeyfile')
+    passphrase = options.get('tlscertificatekeyfilepassword')
+    ca_certs = options.get('tlscafile')
+    crlfile = options.get('tlscrlfile')
+    allow_invalid_certificates = options.get('tlsallowinvalidcertificates', False)
+    allow_invalid_hostnames = options.get('tlsallowinvalidhostnames', False)
+    disable_ocsp_endpoint_check = options.get('tlsdisableocspendpointcheck', False)
 
-    ssl_kwarg_keys = [k for k in options
-                      if k.startswith('ssl_') and options[k]]
-    if use_ssl is False and ssl_kwarg_keys:
-        raise ConfigurationError("ssl has not been enabled but the "
-                                 "following ssl parameters have been set: "
-                                 "%s. Please set `ssl=True` or remove."
-                                 % ', '.join(ssl_kwarg_keys))
+    enabled_tls_opts = []
+    for opt in ('tlscertificatekeyfile', 'tlscertificatekeyfilepassword',
+                'tlscafile', 'tlscrlfile'):
+        # Any non-null value of these options implies tls=True.
+        if opt in options and options[opt]:
+            enabled_tls_opts.append(opt)
+    for opt in ('tlsallowinvalidcertificates', 'tlsallowinvalidhostnames',
+                'tlsdisableocspendpointcheck'):
+        # A value of False for these options implies tls=True.
+        if opt in options and not options[opt]:
+            enabled_tls_opts.append(opt)
 
-    if ssl_kwarg_keys and use_ssl is None:
-        # ssl options imply ssl = True
-        use_ssl = True
+    if enabled_tls_opts:
+        if use_tls is None:
+            # Implicitly enable TLS when one of the tls* options is set.
+            use_tls = True
+        elif not use_tls:
+            # Error since tls is explicitly disabled but a tls option is set.
+            raise ConfigurationError("TLS has not been enabled but the "
+                                     "following tls parameters have been set: "
+                                     "%s. Please set `tls=True` or remove."
+                                     % ', '.join(enabled_tls_opts))
 
-    if use_ssl is True:
+    if use_tls:
         ctx = get_ssl_context(
             certfile,
-            keyfile,
             passphrase,
             ca_certs,
-            cert_reqs,
+            allow_invalid_certificates,
             crlfile,
-            match_hostname,
-            check_ocsp_endpoint)
-        return ctx, match_hostname
-    return None, match_hostname
+            allow_invalid_hostnames,
+            disable_ocsp_endpoint_check)
+        return ctx, allow_invalid_hostnames
+    return None, allow_invalid_hostnames
 
 
 def _parse_pool_options(options):
@@ -127,14 +136,14 @@ def _parse_pool_options(options):
     compression_settings = CompressionSettings(
         options.get('compressors', []),
         options.get('zlibcompressionlevel', -1))
-    ssl_context, ssl_match_hostname = _parse_ssl_options(options)
+    ssl_context, tls_allow_invalid_hostnames = _parse_ssl_options(options)
     load_balanced = options.get('loadbalanced')
     return PoolOptions(max_pool_size,
                        min_pool_size,
                        max_idle_time_seconds,
                        connect_timeout, socket_timeout,
                        wait_queue_timeout,
-                       ssl_context, ssl_match_hostname,
+                       ssl_context, tls_allow_invalid_hostnames,
                        _EventListeners(event_listeners),
                        appname,
                        driver,

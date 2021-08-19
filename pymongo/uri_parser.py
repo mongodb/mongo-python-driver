@@ -119,12 +119,7 @@ def parse_host(entity, default_port=DEFAULT_PORT):
 _IMPLICIT_TLSINSECURE_OPTS = {
     "tlsallowinvalidcertificates",
     "tlsallowinvalidhostnames",
-    "tlsdisableocspendpointcheck",}
-
-# Options that cannot be specified when tlsInsecure is also specified.
-_TLSINSECURE_EXCLUDE_OPTS = (
-        {k for k in _IMPLICIT_TLSINSECURE_OPTS} |
-        {INTERNAL_URI_OPTION_NAME_MAP[k] for k in _IMPLICIT_TLSINSECURE_OPTS})
+    "tlsdisableocspendpointcheck"}
 
 
 def _parse_options(opts, delim):
@@ -156,22 +151,18 @@ def _handle_security_options(options):
         - `options`: Instance of _CaseInsensitiveDictionary containing
           MongoDB URI options.
     """
+    # Implicitly defined options must not be explicitly specified.
     tlsinsecure = options.get('tlsinsecure')
     if tlsinsecure is not None:
-        for opt in _TLSINSECURE_EXCLUDE_OPTS:
+        for opt in _IMPLICIT_TLSINSECURE_OPTS:
             if opt in options:
                 err_msg = ("URI options %s and %s cannot be specified "
                            "simultaneously.")
                 raise InvalidURI(err_msg % (
                     options.cased_key('tlsinsecure'), options.cased_key(opt)))
 
-    # Convenience function to retrieve option values based on public or private names.
-    def _getopt(opt):
-        return (options.get(opt) or
-                options.get(INTERNAL_URI_OPTION_NAME_MAP[opt]))
-
     # Handle co-occurence of OCSP & tlsAllowInvalidCertificates options.
-    tlsallowinvalidcerts = _getopt('tlsallowinvalidcertificates')
+    tlsallowinvalidcerts = options.get('tlsallowinvalidcertificates')
     if tlsallowinvalidcerts is not None:
         if 'tlsdisableocspendpointcheck' in options:
             err_msg = ("URI options %s and %s cannot be specified "
@@ -183,7 +174,7 @@ def _handle_security_options(options):
             options['tlsdisableocspendpointcheck'] = True
 
     # Handle co-occurence of CRL and OCSP-related options.
-    tlscrlfile = _getopt('tlscrlfile')
+    tlscrlfile = options.get('tlscrlfile')
     if tlscrlfile is not None:
         for opt in ('tlsinsecure', 'tlsallowinvalidcertificates',
                     'tlsdisableocspendpointcheck'):
@@ -201,7 +192,7 @@ def _handle_security_options(options):
             return val
         if truth_value(options.get('ssl')) != truth_value(options.get('tls')):
             err_msg = ("Can not specify conflicting values for URI options %s "
-                      "and %s.")
+                       "and %s.")
             raise InvalidURI(err_msg % (
                 options.cased_key('ssl'), options.cased_key('tls')))
 
@@ -246,18 +237,18 @@ def _handle_option_deprecations(options):
 
 def _normalize_options(options):
     """Normalizes option names in the options dictionary by converting them to
-    their internally-used names. Also handles use of the tlsInsecure option.
+    their internally-used names.
 
     :Parameters:
         - `options`: Instance of _CaseInsensitiveDictionary containing
           MongoDB URI options.
     """
+    # Expand the tlsInsecure option.
     tlsinsecure = options.get('tlsinsecure')
     if tlsinsecure is not None:
         for opt in _IMPLICIT_TLSINSECURE_OPTS:
-            intname = INTERNAL_URI_OPTION_NAME_MAP[opt]
-            # Internal options are logical inverse of public options.
-            options[intname] = not tlsinsecure
+            # Implicit options are logically the same as tlsInsecure.
+            options[opt] = tlsinsecure
 
     for optname in list(options):
         intname = INTERNAL_URI_OPTION_NAME_MAP.get(optname, None)
@@ -316,14 +307,14 @@ def split_options(opts, validate=True, warn=False, normalize=True):
 
     options = _handle_option_deprecations(options)
 
+    if normalize:
+        options = _normalize_options(options)
+
     if validate:
         options = validate_options(options, warn)
         if options.get('authsource') == '':
             raise InvalidURI(
                 "the authSource database cannot be an empty string")
-
-    if normalize:
-        options = _normalize_options(options)
 
     return options
 
@@ -521,8 +512,8 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
             for opt, val in parsed_dns_options.items():
                 if opt not in options:
                     options[opt] = val
-        if "ssl" not in options:
-            options["ssl"] = True if validate else 'true'
+        if "tls" not in options and "ssl" not in options:
+            options["tls"] = True if validate else 'true'
     else:
         nodes = split_hosts(hosts, default_port=default_port)
 

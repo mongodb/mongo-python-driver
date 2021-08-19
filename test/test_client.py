@@ -114,10 +114,9 @@ class ClientUnitTest(unittest.TestCase):
                              replicaSet=None,
                              read_preference=ReadPreference.PRIMARY,
                              ssl=False,
-                             ssl_keyfile=None,
-                             ssl_certfile=None,
-                             ssl_cert_reqs=0,  # ssl.CERT_NONE
-                             ssl_ca_certs=None,
+                             tlsCertificateKeyFile=None,
+                             tlsAllowInvalidCertificates=True,  # ssl.CERT_NONE
+                             tlsCAFile=None,
                              connect=False,
                              serverSelectionTimeoutMS=12000)
 
@@ -394,7 +393,7 @@ class ClientUnitTest(unittest.TestCase):
         clopts = c._MongoClient__options
         opts = clopts._options
 
-        self.assertEqual(opts['ssl'], False)
+        self.assertEqual(opts['tls'], False)
         self.assertEqual(clopts.replica_set_name, "newname")
         self.assertEqual(
             clopts.read_preference, ReadPreference.SECONDARY_PREFERRED)
@@ -445,7 +444,7 @@ class ClientUnitTest(unittest.TestCase):
         # Matching SSL and TLS options should not cause errors.
         c = MongoClient('mongodb://localhost/?ssl=false', tls=False,
                         connect=False)
-        self.assertEqual(c._MongoClient__options._options['ssl'], False)
+        self.assertEqual(c._MongoClient__options._options['tls'], False)
 
         # Conflicting tlsInsecure options should raise an error.
         with self.assertRaises(InvalidURI):
@@ -455,11 +454,12 @@ class ClientUnitTest(unittest.TestCase):
         # Conflicting legacy tlsInsecure options should also raise an error.
         with self.assertRaises(InvalidURI):
             MongoClient('mongodb://localhost/?tlsInsecure=true',
-                        connect=False, ssl_cert_reqs=True)
+                        connect=False, tlsAllowInvalidCertificates=False)
 
         # Conflicting kwargs should raise InvalidURI
         with self.assertRaises(InvalidURI):
             MongoClient(ssl=True, tls=False)
+
 
 class TestClient(IntegrationTest):
 

@@ -721,7 +721,7 @@ class Topology(object):
             connect_timeout=options.connect_timeout,
             socket_timeout=options.connect_timeout,
             ssl_context=options.ssl_context,
-            ssl_match_hostname=options.ssl_match_hostname,
+            tls_allow_invalid_hostnames=options.tls_allow_invalid_hostnames,
             event_listeners=options.event_listeners,
             appname=options.appname,
             driver=options.driver,

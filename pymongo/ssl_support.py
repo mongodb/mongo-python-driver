@@ -39,51 +39,26 @@ if HAVE_SSL:
     HAS_SNI = _ssl.HAS_SNI
     IPADDR_SAFE = _ssl.IS_PYOPENSSL or sys.version_info[:2] >= (3, 7)
     SSLError = _ssl.SSLError
-    def validate_cert_reqs(option, value):
-        """Validate the cert reqs are valid. It must be None or one of the
-        three values ``ssl.CERT_NONE``, ``ssl.CERT_OPTIONAL`` or
-        ``ssl.CERT_REQUIRED``.
-        """
-        if value is None:
-            return value
-        if isinstance(value, str) and hasattr(_stdlibssl, value):
-            value = getattr(_stdlibssl, value)
-
-        if value in (CERT_NONE, CERT_OPTIONAL, CERT_REQUIRED):
-            return value
-        raise ValueError("The value of %s must be one of: "
-                         "`ssl.CERT_NONE`, `ssl.CERT_OPTIONAL` or "
-                         "`ssl.CERT_REQUIRED`" % (option,))
-
-    def validate_allow_invalid_certs(option, value):
-        """Validate the option to allow invalid certificates is valid."""
-        # Avoid circular import.
-        from pymongo.common import validate_boolean_or_string
-        boolean_cert_reqs = validate_boolean_or_string(option, value)
-        if boolean_cert_reqs:
-            return CERT_NONE
-        return CERT_REQUIRED
 
     def get_ssl_context(*args):
         """Create and return an SSLContext object."""
         (certfile,
-         keyfile,
          passphrase,
          ca_certs,
-         cert_reqs,
+         allow_invalid_certificates,
          crlfile,
-         match_hostname,
-         check_ocsp_endpoint) = args
-        verify_mode = CERT_REQUIRED if cert_reqs is None else cert_reqs
+         allow_invalid_hostnames,
+         disable_ocsp_endpoint_check) = args
+        verify_mode = CERT_NONE if allow_invalid_certificates else CERT_REQUIRED
         ctx = _ssl.SSLContext(_ssl.PROTOCOL_SSLv23)
         # SSLContext.check_hostname was added in CPython 3.4.
         if hasattr(ctx, "check_hostname"):
             if _ssl.CHECK_HOSTNAME_SAFE and verify_mode != CERT_NONE:
-                ctx.check_hostname = match_hostname
+                ctx.check_hostname = not allow_invalid_hostnames
             else:
                 ctx.check_hostname = False
         if hasattr(ctx, "check_ocsp_endpoint"):
-            ctx.check_ocsp_endpoint = check_ocsp_endpoint
+            ctx.check_ocsp_endpoint = not disable_ocsp_endpoint_check
         if hasattr(ctx, "options"):
             # Explicitly disable SSLv2, SSLv3 and TLS compression. Note that
             # up to date versions of MongoDB 2.4 and above already disable
@@ -95,20 +70,20 @@ if HAVE_SSL:
             ctx.options |= _ssl.OP_NO_RENEGOTIATION
         if certfile is not None:
             try:
-                ctx.load_cert_chain(certfile, keyfile, passphrase)
+                ctx.load_cert_chain(certfile, None, passphrase)
             except _ssl.SSLError as exc:
                 raise ConfigurationError(
                     "Private key doesn't match certificate: %s" % (exc,))
         if crlfile is not None:
             if _ssl.IS_PYOPENSSL:
                 raise ConfigurationError(
-                    "ssl_crlfile cannot be used with PyOpenSSL")
+                    "tlsCRLFile cannot be used with PyOpenSSL")
             # Match the server's behavior.
             ctx.verify_flags = getattr(_ssl, "VERIFY_CRL_CHECK_LEAF", 0)
             ctx.load_verify_locations(crlfile)
         if ca_certs is not None:
             ctx.load_verify_locations(ca_certs)
-        elif cert_reqs != CERT_NONE:
+        elif verify_mode != CERT_NONE:
             ctx.load_default_certs()
         ctx.verify_mode = verify_mode
         return ctx
@@ -117,15 +92,6 @@ else:
         pass
     HAS_SNI = False
     IPADDR_SAFE = False
-    def validate_cert_reqs(option, dummy):
-        """No ssl module, raise ConfigurationError."""
-        raise ConfigurationError("The value of %s is set but can't be "
-                                 "validated. The ssl module is not available"
-                                 % (option,))
-
-    def validate_allow_invalid_certs(option, dummy):
-        """No ssl module, raise ConfigurationError."""
-        return validate_cert_reqs(option, dummy)
 
     def get_ssl_context(*dummy):
         """No ssl module, raise ConfigurationError."""

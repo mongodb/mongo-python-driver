@@ -88,7 +88,7 @@ def _get_issuer_cert(cert, chain, trusted_ca_certs):
 
     # Depending on the server's TLS library, the peer's cert chain may not
     # include the self signed root CA. In this case we check the user
-    # provided tlsCAFile (ssl_ca_certs) for the issuer.
+    # provided tlsCAFile for the issuer.
     # Remove once we use the verified peer cert chain in PYTHON-2147.
     if trusted_ca_certs:
         for candidate in trusted_ca_certs:
