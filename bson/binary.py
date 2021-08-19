@@ -49,9 +49,6 @@ UUID_SUBTYPE = 4
 
 This is the new BSON binary subtype for UUIDs. The
 current default is :data:`OLD_UUID_SUBTYPE`.
-
-.. versionchanged:: 2.1
-   Changed to subtype 4.
 """
 
 

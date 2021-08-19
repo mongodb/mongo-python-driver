@@ -928,15 +928,6 @@ def decode_all(data, codec_options=DEFAULT_CODEC_OPTIONS):
 
        Replaced `as_class`, `tz_aware`, and `uuid_subtype` options with
        `codec_options`.
-
-    .. versionchanged:: 2.7
-       Added `compile_re` option. If set to False, PyMongo represented BSON
-       regular expressions as :class:`~bson.regex.Regex` objects instead of
-       attempting to compile BSON regular expressions as Python native
-       regular expressions, thus preventing errors for some incompatible
-       patterns, see `PYTHON-500`_.
-
-    .. _PYTHON-500: https://jira.mongodb.org/browse/PYTHON-500
     """
     data, view = get_data_and_view(data)
     if not isinstance(codec_options, CodecOptions):
@@ -1191,15 +1182,6 @@ class BSON(bytes):
 
            Replaced `as_class`, `tz_aware`, and `uuid_subtype` options with
            `codec_options`.
-
-        .. versionchanged:: 2.7
-           Added `compile_re` option. If set to False, PyMongo represented BSON
-           regular expressions as :class:`~bson.regex.Regex` objects instead of
-           attempting to compile BSON regular expressions as Python native
-           regular expressions, thus preventing errors for some incompatible
-           patterns, see `PYTHON-500`_.
-
-        .. _PYTHON-500: https://jira.mongodb.org/browse/PYTHON-500
         """
         return decode(self, codec_options)
 

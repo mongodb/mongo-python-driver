@@ -44,9 +44,6 @@ def parse_userinfo(userinfo):
 
     :Paramaters:
         - `userinfo`: A string of the form <username>:<password>
-
-    .. versionchanged:: 2.2
-       Now uses `urllib.unquote_plus` so `+` characters must be escaped.
     """
     if '@' in userinfo or userinfo.count(':') > 1:
         raise InvalidURI("Username and password must be escaped according to "

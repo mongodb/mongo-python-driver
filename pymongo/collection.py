@@ -138,12 +138,6 @@ class Collection(common.BaseObject):
 
                collection.__my_collection__
 
-        .. versionchanged:: 2.2
-           Removed deprecated argument: options
-
-        .. versionadded:: 2.1
-           uuid_subtype attribute
-
         .. mongodoc:: collections
         """
         super(Collection, self).__init__(
@@ -1382,19 +1376,6 @@ class Collection(common.BaseObject):
            expression object.
            Soft deprecated the ``manipulate`` option.
 
-        .. versionchanged:: 2.7
-           Added ``compile_re`` option. If set to False, PyMongo represented
-           BSON regular expressions as :class:`~bson.regex.Regex` objects
-           instead of attempting to compile BSON regular expressions as Python
-           native regular expressions, thus preventing errors for some
-           incompatible patterns, see `PYTHON-500`_.
-
-        .. versionchanged:: 2.3
-           Added the ``tag_sets`` and ``secondary_acceptable_latency_ms``
-           parameters.
-
-        .. _PYTHON-500: https://jira.mongodb.org/browse/PYTHON-500
-
         .. mongodoc:: find
 
         """
@@ -2072,13 +2053,6 @@ class Collection(common.BaseObject):
         .. versionchanged:: 3.0
            The :meth:`aggregate` method always returns a CommandCursor. The
            pipeline argument must be a list.
-        .. versionchanged:: 2.7
-           When the cursor option is used, return
-           :class:`~pymongo.command_cursor.CommandCursor` instead of
-           :class:`~pymongo.cursor.Cursor`.
-        .. versionchanged:: 2.6
-           Added cursor support.
-        .. versionadded:: 2.3
 
         .. seealso:: :doc:`/examples/aggregation`
 
