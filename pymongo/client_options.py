@@ -69,9 +69,9 @@ def _parse_read_concern(options):
 
 def _parse_ssl_options(options):
     """Parse ssl options."""
-    use_ssl = options.get('ssl')
-    if use_ssl is not None:
-        validate_boolean('ssl', use_ssl)
+    use_tls = options.get('tls')
+    if use_tls is not None:
+        validate_boolean('tls', use_tls)
 
     certfile = options.get('tlscertificatekeyfile')
     passphrase = options.get('tlscertificatekeyfilepassword')
@@ -81,19 +81,29 @@ def _parse_ssl_options(options):
     crlfile = options.get('tlscrlfile')
     disable_ocsp_endpoint_check = options.get('tlsdisableocspendpointcheck', False)
 
-    tls_kwarg_keys = [k for k in options
-                      if k.startswith('tls') and options[k]]
-    if use_ssl is False and tls_kwarg_keys:
-        raise ConfigurationError("TLS has not been enabled but the "
-                                 "following tls parameters have been set: "
-                                 "%s. Please set `tls=True` or remove."
-                                 % ', '.join(tls_kwarg_keys))
+    enabled_tls_opts = []
+    for opt in ('tlscertificatekeyfile', 'tlscertificatekeyfilepassword',
+                'tlscafile', 'tlscrlfile'):
+        # Any non-null value of these options implies tls=True.
+        if opt in options and options[opt]:
+            enabled_tls_opts.append(opt)
+    for opt in ('tlsallowinvalidcertificates', 'tlsallowinvalidhostnames',
+                'tlsdisableocspendpointcheck'):
+        # A value of False for these options implies tls=True.
+        if opt in options and options[opt] is False:
+            enabled_tls_opts.append(opt)
 
-    if tls_kwarg_keys and use_ssl is None:
-        # ssl options imply ssl = True
-        use_ssl = True
+    if enabled_tls_opts:
+        if use_tls is False:
+            raise ConfigurationError("TLS has not been enabled but the "
+                                     "following tls parameters have been set: "
+                                     "%s. Please set `tls=True` or remove."
+                                     % ', '.join(enabled_tls_opts))
+        elif use_tls is None:
+            # Implicitly enable TLS when one of the tls* options is set.
+            use_tls = True
 
-    if use_ssl is True:
+    if use_tls is True:
         ctx = get_ssl_context(
             certfile,
             passphrase,

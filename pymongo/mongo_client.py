@@ -456,7 +456,9 @@ class MongoClient(common.BaseObject):
             python 2.7.9+ (pypy 2.5.1+) and 3.3+. Defaults to ``None``.
           - `tlsDisableOCSPEndpointCheck`: (boolean) If ``True``, disables
             certificate revocation status checking via the OCSP responder
-            specified on the server certificate. Defaults to ``False``.
+            specified on the server certificate.
+            ``tlsDisableOCSPEndpointCheck=False`` implies ``tls=True``.
+            Defaults to ``False``.
           - `ssl`: (boolean) Alias for ``tls``.
 
           | **Read Concern options:**

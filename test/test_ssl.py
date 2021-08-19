@@ -26,8 +26,7 @@ from pymongo import MongoClient, ssl_support
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             OperationFailure)
-from pymongo.ssl_support import (
-    HAVE_SSL, get_ssl_context, validate_allow_invalid_certs, _ssl)
+from pymongo.ssl_support import HAVE_SSL, get_ssl_context, _ssl
 from pymongo.write_concern import WriteConcern
 from test import (IntegrationTest,
                   client_context,
@@ -99,6 +98,10 @@ class TestClientSSL(unittest.TestCase):
     def test_config_ssl(self):
         # Tests various ssl configurations
         self.assertRaises(ValueError, MongoClient, ssl='foo')
+        self.assertRaises(ConfigurationError,
+                          MongoClient,
+                          tls=False,
+                          tlsCertificateKeyFile=CLIENT_PEM)
         self.assertRaises(TypeError, MongoClient, ssl=0)
         self.assertRaises(TypeError, MongoClient, ssl=5.5)
         self.assertRaises(TypeError, MongoClient, ssl=[])
@@ -107,24 +110,31 @@ class TestClientSSL(unittest.TestCase):
         self.assertRaises(TypeError, MongoClient, tlsCertificateKeyFile=True)
         self.assertRaises(TypeError, MongoClient, tlsCertificateKeyFile=[])
 
-        self.assertRaises(
-            ValueError, validate_allow_invalid_certs,
-            'tlsAllowInvalidCertificates', 'foo')
-        self.assertRaises(
-            TypeError, validate_allow_invalid_certs,
-            'tlsAllowInvalidCertificates', None)
-        self.assertEqual(
-            validate_allow_invalid_certs('tlsAllowInvalidCertificates', True),
-            ssl.CERT_NONE)
-        self.assertEqual(
-            validate_allow_invalid_certs('tlsAllowInvalidCertificates', 'true'),
-            ssl.CERT_NONE)
-        self.assertEqual(
-            validate_allow_invalid_certs('tlsAllowInvalidCertificates', False),
-            ssl.CERT_REQUIRED)
-        self.assertEqual(
-            validate_allow_invalid_certs('tlsAllowInvalidCertificates', 'false'),
-            ssl.CERT_REQUIRED)
+        # Test invalid combinations
+        self.assertRaises(ConfigurationError,
+                          MongoClient,
+                          tls=False,
+                          tlsCertificateKeyFile=CLIENT_PEM)
+        self.assertRaises(ConfigurationError,
+                          MongoClient,
+                          tls=False,
+                          tlsCAFile=CA_PEM)
+        self.assertRaises(ConfigurationError,
+                          MongoClient,
+                          tls=False,
+                          tlsCRLFile=CRL_PEM)
+        self.assertRaises(ConfigurationError,
+                          MongoClient,
+                          tls=False,
+                          tlsAllowInvalidCertificates=False)
+        self.assertRaises(ConfigurationError,
+                          MongoClient,
+                          tls=False,
+                          tlsAllowInvalidHostnames=False)
+        self.assertRaises(ConfigurationError,
+                          MongoClient,
+                          tls=False,
+                          tlsDisableOCSPEndpointCheck=False)
 
     @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_use_pyopenssl_when_available(self):
