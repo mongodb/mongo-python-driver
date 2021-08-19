@@ -49,7 +49,7 @@ if HAVE_SSL:
          crlfile,
          allow_invalid_hostnames,
          disable_ocsp_endpoint_check) = args
-        verify_mode = CERT_NONE if allow_invalid_hostnames else CERT_REQUIRED
+        verify_mode = CERT_NONE if allow_invalid_certificates else CERT_REQUIRED
         ctx = _ssl.SSLContext(_ssl.PROTOCOL_SSLv23)
         # SSLContext.check_hostname was added in CPython 3.4.
         if hasattr(ctx, "check_hostname"):

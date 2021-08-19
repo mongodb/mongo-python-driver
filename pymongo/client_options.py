@@ -90,7 +90,7 @@ def _parse_ssl_options(options):
     for opt in ('tlsallowinvalidcertificates', 'tlsallowinvalidhostnames',
                 'tlsdisableocspendpointcheck'):
         # A value of False for these options implies tls=True.
-        if opt in options and options[opt] is False:
+        if opt in options and not options[opt]:
             enabled_tls_opts.append(opt)
 
     if enabled_tls_opts:
