@@ -292,16 +292,16 @@ class TestSSL(IntegrationTest):
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
         #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
         ctx = get_ssl_context(
-            None, None, None, ssl.CERT_NONE, None, True, False)
+            None, None, None, True, None, True, False)
         self.assertFalse(ctx.check_hostname)
         ctx = get_ssl_context(
-            None, None, None, ssl.CERT_NONE, None, False, False)
+            None, None, None, True, None, False, False)
         self.assertFalse(ctx.check_hostname)
         ctx = get_ssl_context(
-            None, None, None, ssl.CERT_REQUIRED, None, True, False)
+            None, None, None, False, None, True, False)
         self.assertFalse(ctx.check_hostname)
         ctx = get_ssl_context(
-            None, None, None, ssl.CERT_REQUIRED, None, False, False)
+            None, None, None, False, None, False, False)
         if _PY37PLUS or _HAVE_PYOPENSSL:
             self.assertTrue(ctx.check_hostname)
         else:

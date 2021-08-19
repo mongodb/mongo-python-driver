@@ -393,7 +393,7 @@ class ClientUnitTest(unittest.TestCase):
         clopts = c._MongoClient__options
         opts = clopts._options
 
-        self.assertEqual(opts['ssl'], False)
+        self.assertEqual(opts['tls'], False)
         self.assertEqual(clopts.replica_set_name, "newname")
         self.assertEqual(
             clopts.read_preference, ReadPreference.SECONDARY_PREFERRED)
@@ -444,7 +444,7 @@ class ClientUnitTest(unittest.TestCase):
         # Matching SSL and TLS options should not cause errors.
         c = MongoClient('mongodb://localhost/?ssl=false', tls=False,
                         connect=False)
-        self.assertEqual(c._MongoClient__options._options['ssl'], False)
+        self.assertEqual(c._MongoClient__options._options['tls'], False)
 
         # Conflicting tlsInsecure options should raise an error.
         with self.assertRaises(InvalidURI):
@@ -459,6 +459,7 @@ class ClientUnitTest(unittest.TestCase):
         # Conflicting kwargs should raise InvalidURI
         with self.assertRaises(InvalidURI):
             MongoClient(ssl=True, tls=False)
+
 
 class TestClient(IntegrationTest):
 
