@@ -476,8 +476,8 @@ class TestURI(unittest.TestCase):
 
     def test_normalize_options(self):
         # check that options are converted to their internal names correctly.
-        uri = ("mongodb://example.com/?ssl=true&appname=myapp&wtimeout=10")
-        res = {"tls": True, "appname": "myapp", "wtimeoutms": 10}
+        uri = ("mongodb://example.com/?ssl=true&appname=myapp")
+        res = {"tls": True, "appname": "myapp"}
         self.assertEqual(res, parse_uri(uri)["options"])
 
     def test_unquote_after_parsing(self):
