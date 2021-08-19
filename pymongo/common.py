@@ -585,8 +585,6 @@ def validate_tzinfo(dummy, value):
 # Dictionary where keys are the names of public URI options, and values
 # are lists of aliases for that option.
 URI_OPTIONS_ALIAS_MAP = {
-    'journal': ['j'],
-    'wtimeoutms': ['wtimeout'],
     'tls': ['ssl'],
 }
 
