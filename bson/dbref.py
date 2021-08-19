@@ -43,7 +43,7 @@ class DBRef(object):
           - `**kwargs` (optional): additional keyword arguments will
             create additional, custom fields
 
-        .. mongodoc:: dbrefs
+        .. seealso:: The MongoDB documentation on `dbrefs <https://dochub.mongodb.org/core/dbrefs>`_.
         """
         if not isinstance(collection, string_type):
             raise TypeError("collection must be an "

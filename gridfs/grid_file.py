@@ -820,7 +820,7 @@ class GridOutCursor(Cursor):
 
         .. versionadded 2.7
 
-        .. mongodoc:: cursors
+        .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
         """
         _disallow_transactions(session)
         collection = _clear_entity_type_registry(collection)

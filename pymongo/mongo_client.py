@@ -511,7 +511,7 @@ class MongoClient(common.BaseObject):
             client to use Versioned API. See :ref:`versioned-api-ref` for
             details.
 
-        .. mongodoc:: connections
+        .. seealso:: The MongoDB documentation on `connections <https://dochub.mongodb.org/core/connections>`_.
 
         .. versionchanged:: 3.12
            Added the ``server_api`` keyword argument.
@@ -973,7 +973,7 @@ class MongoClient(common.BaseObject):
 
         .. versionadded:: 3.7
 
-        .. mongodoc:: changeStreams
+        .. seealso:: The MongoDB documentation on `changeStreams <https://dochub.mongodb.org/core/changeStreams>`_.
 
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.rst

@@ -94,7 +94,7 @@ class ObjectId(object):
         :Parameters:
           - `oid` (optional): a valid ObjectId.
 
-        .. mongodoc:: objectids
+        .. seealso:: The MongoDB documentation on `ObjectIds`_.
 
         .. versionchanged:: 3.8
            :class:`~bson.objectid.ObjectId` now implements the `ObjectID

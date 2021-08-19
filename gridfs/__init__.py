@@ -17,7 +17,7 @@
 The :mod:`gridfs` package is an implementation of GridFS on top of
 :mod:`pymongo`, exposing a file-like interface.
 
-.. mongodoc:: gridfs
+.. seealso:: The MongoDB documentation on `gridfs <https://dochub.mongodb.org/core/gridfs>`_.
 """
 
 from bson.py3compat import abc
@@ -62,7 +62,7 @@ class GridFS(object):
            `database` must use an acknowledged
            :attr:`~pymongo.database.Database.write_concern`
 
-        .. mongodoc:: gridfs
+        .. seealso:: The MongoDB documentation on `gridfs <https://dochub.mongodb.org/core/gridfs>`_.
         """
         if not isinstance(database, Database):
             raise TypeError("database must be an instance of Database")
@@ -367,7 +367,7 @@ class GridFS(object):
            Removed the read_preference, tag_sets, and
            secondary_acceptable_latency_ms options.
         .. versionadded:: 2.7
-        .. mongodoc:: find
+        .. seealso:: The MongoDB documentation on `find <https://dochub.mongodb.org/core/find>`_.
         """
         return GridOutCursor(self.__collection, *args, **kwargs)
 
@@ -452,7 +452,7 @@ class GridFSBucket(object):
 
         .. versionadded:: 3.1
 
-        .. mongodoc:: gridfs
+        .. seealso:: The MongoDB documentation on `gridfs <https://dochub.mongodb.org/core/gridfs>`_.
         """
         if not isinstance(db, Database):
             raise TypeError("database must be an instance of Database")

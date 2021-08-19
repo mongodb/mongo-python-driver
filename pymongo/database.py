@@ -81,7 +81,7 @@ class Database(common.BaseObject):
             :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
             default) client.read_concern is used.
 
-        .. mongodoc:: databases
+        .. seealso:: The MongoDB documentation on `databases <https://dochub.mongodb.org/core/databases>`_.
 
         .. versionchanged:: 3.2
            Added the read_concern option.
@@ -616,7 +616,7 @@ class Database(common.BaseObject):
 
         .. versionadded:: 3.7
 
-        .. mongodoc:: changeStreams
+        .. seealso:: The MongoDB documentation on `changeStreams <https://dochub.mongodb.org/core/changeStreams>`_.
 
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.rst
@@ -749,7 +749,7 @@ class Database(common.BaseObject):
 
         .. _PYTHON-500: https://jira.mongodb.org/browse/PYTHON-500
 
-        .. mongodoc:: commands
+        .. seealso:: The MongoDB documentation on `commands <https://dochub.mongodb.org/core/commands>`_.
         """
         if read_preference is None:
             read_preference = ((session and session._txn_read_preference())
@@ -1107,7 +1107,7 @@ class Database(common.BaseObject):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
 
-        .. mongodoc:: profiling
+        .. seealso:: The MongoDB documentation on `profiling <https://dochub.mongodb.org/core/profiling>`_.
         .. _profile command: https://docs.mongodb.com/manual/reference/command/profile/
         """
         warnings.warn("profiling_level() is deprecated. See the documentation "
@@ -1164,7 +1164,7 @@ class Database(common.BaseObject):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
 
-        .. mongodoc:: profiling
+        .. seealso:: The MongoDB documentation on `profiling <https://dochub.mongodb.org/core/profiling>`_.
         .. _profile command: https://docs.mongodb.com/manual/reference/command/profile/
         """
         warnings.warn("set_profiling_level() is deprecated. See the "
@@ -1212,7 +1212,7 @@ class Database(common.BaseObject):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
 
-        .. mongodoc:: profiling
+        .. seealso:: The MongoDB documentation on `profiling <https://dochub.mongodb.org/core/profiling>`_.
         .. _profiler output: https://docs.mongodb.com/manual/reference/database-profiler/
         """
         warnings.warn("profiling_info() is deprecated. See the "
@@ -1549,7 +1549,7 @@ class Database(common.BaseObject):
            authentication fails due to invalid credentials or configuration
            issues.
 
-        .. mongodoc:: authenticate
+        .. seealso:: The MongoDB documentation on `authenticate <https://dochub.mongodb.org/core/authenticate>`_.
         """
         if name is not None and not isinstance(name, string_type):
             raise TypeError("name must be an "

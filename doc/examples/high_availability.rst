@@ -14,7 +14,7 @@ PyMongo makes working with `replica sets
 replica set and show how to handle both initialization and normal
 connections with PyMongo.
 
-.. mongodoc:: rs
+.. seealso:: The MongoDB documentation on `replication <https://dochub.mongodb.org/core/rs>`_.
 
 Starting a Replica Set
 ~~~~~~~~~~~~~~~~~~~~~~
