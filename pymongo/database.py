@@ -73,7 +73,7 @@ class Database(common.BaseObject):
             :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
             default) client.read_concern is used.
 
-        .. mongodoc:: databases
+        .. seealso:: The MongoDB documentation on `databases <https://dochub.mongodb.org/core/databases>`_.
 
         .. versionchanged:: 3.2
            Added the read_concern option.
@@ -468,7 +468,7 @@ class Database(common.BaseObject):
 
         .. versionadded:: 3.7
 
-        .. mongodoc:: changeStreams
+        .. seealso:: The MongoDB documentation on `changeStreams <https://dochub.mongodb.org/core/changeStreams>`_.
 
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.rst
@@ -585,7 +585,7 @@ class Database(common.BaseObject):
            BSON regular expression to a Python regular expression object.
            Added the `codec_options` parameter.
 
-        .. mongodoc:: commands
+        .. seealso:: The MongoDB documentation on `commands <https://dochub.mongodb.org/core/commands>`_.
         """
         if read_preference is None:
             read_preference = ((session and session._txn_read_preference())
