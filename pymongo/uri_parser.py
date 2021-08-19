@@ -515,8 +515,8 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
             for opt, val in parsed_dns_options.items():
                 if opt not in options:
                     options[opt] = val
-        if "ssl" not in options:
-            options["ssl"] = True if validate else 'true'
+        if "tls" not in options and "ssl" not in options:
+            options["tls"] = True if validate else 'true'
     else:
         nodes = split_hosts(hosts, default_port=default_port)
 
