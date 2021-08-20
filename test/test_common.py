@@ -110,7 +110,7 @@ class TestCommon(IntegrationTest):
         c = rs_or_single_client(connect=False)
         self.assertEqual(WriteConcern(), c.write_concern)
 
-        c = rs_or_single_client(connect=False, w=2, wtimeout=1000)
+        c = rs_or_single_client(connect=False, w=2, wTimeoutMS=1000)
         wc = WriteConcern(w=2, wtimeout=1000)
         self.assertEqual(wc, c.write_concern)
 
