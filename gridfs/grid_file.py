@@ -720,6 +720,12 @@ class GridOut(io.IOBase):
         # for why truncate has to raise.
         raise io.UnsupportedOperation('truncate')
 
+    # Override IOBase.__del__ otherwise it will lead to __getattr__ on
+    # __IOBase_closed which calls _ensure_file and potentially performs I/O.
+    # We cannot do I/O in __del__ since it can lead to a deadlock.
+    def __del__(self):
+        pass
+
 
 class _GridOutChunkIterator(object):
     """Iterates over a file's chunks using a single cursor.
