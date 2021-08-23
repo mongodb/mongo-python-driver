@@ -1932,9 +1932,8 @@ class TestCollection(IntegrationTest):
         self.db.test.insert_many([{"x": 1}, {"x": 2}])
         self.db.test.create_index("x")
 
-        cursor = self.db.test.find({"$min": {"x": 2}, "$query": {}})
-        if client_context.requires_hint_with_min_max_queries:
-            cursor = cursor.hint("x_1")
+        cursor = self.db.test.find({"$min": {"x": 2}, "$query": {}},
+                                   hint="x_1")
 
         docs = list(cursor)
         self.assertEqual(1, len(docs))

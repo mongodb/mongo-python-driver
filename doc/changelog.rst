@@ -100,6 +100,8 @@ Breaking Changes in 4.0
 - Removed :class:`bson.binary.UUIDLegacy`.
 - The "tls" install extra is no longer necessary or supported and will be
   ignored by pip.
+- The ``hint`` option is now required when using ``min`` or ``max`` queries
+  with :meth:`~pymongo.collection.Collection.find`.
 
 Notable improvements
 ....................
