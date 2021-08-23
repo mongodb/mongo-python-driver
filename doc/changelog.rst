@@ -126,6 +126,10 @@ Changes in Version 3.12.0
 
 - PyMongoCrypt 1.1.0 or later is now required for client side field level
   encryption support.
+- Iterating over :class:`gridfs.grid_file.GridOut` now moves through
+  the file line by line instead of chunk by chunk, and does not
+  restart at the top for subsequent iterations on the same object.
+  Call `seek(0)` to reset the iterator.
 
 Notable improvements
 ....................

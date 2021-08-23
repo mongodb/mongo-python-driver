@@ -421,7 +421,7 @@ class GridIn(object):
         return False
 
 
-class GridOut(object):
+class GridOut(io.IOBase):
     """Class to read data out of GridFS.
     """
     def __init__(self, root_collection, file_id=None, file_document=None,
@@ -464,6 +464,8 @@ class GridOut(object):
         _disallow_transactions(session)
 
         root_collection = _clear_entity_type_registry(root_collection)
+
+        super().__init__()
 
         self.__chunks = root_collection.chunks
         self.__files = root_collection.files
@@ -656,32 +658,39 @@ class GridOut(object):
     def __iter__(self):
         """Return an iterator over all of this file's data.
 
-        The iterator will return chunk-sized instances of
-        :class:`str` (:class:`bytes` in python 3). This can be
-        useful when serving files using a webserver that handles
-        such an iterator efficiently.
-
-        .. note::
-           This is different from :py:class:`io.IOBase` which iterates over
-           *lines* in the file. Use :meth:`GridOut.readline` to read line by
-           line instead of chunk by chunk.
+        The iterator will return lines (delimited by b'\n') of
+        :class:`bytes`. This can be useful when serving files
+        using a webserver that handles such an iterator efficiently.
 
         .. versionchanged:: 3.8
            The iterator now raises :class:`CorruptGridFile` when encountering
            any truncated, missing, or extra chunk in a file. The previous
            behavior was to only raise :class:`CorruptGridFile` on a missing
            chunk.
+
+        .. versionchanged:: 4.0
+           The iterator now iterates over *lines* in the file, instead
+           of chunks, to conform to the base class :py:class:`io.IOBase`.
+           Use :meth:`GridOut.readchunk` to read chunk by chunk instead
+           of line by line.
         """
-        return GridOutIterator(self, self.__chunks, self._session)
+        return self
 
     def close(self):
         """Make GridOut more generically file-like."""
         if self.__chunk_iter:
             self.__chunk_iter.close()
             self.__chunk_iter = None
+        super().close()
 
     def write(self, value):
         raise io.UnsupportedOperation('write')
+
+    def writelines(self, lines):
+        raise io.UnsupportedOperation('writelines')
+
+    def writable(self):
+        return False
 
     def __enter__(self):
         """Makes it possible to use :class:`GridOut` files
@@ -695,6 +704,27 @@ class GridOut(object):
         """
         self.close()
         return False
+
+    def fileno(self):
+        raise io.UnsupportedOperation('fileno')
+
+    def flush(self):
+        # GridOut is read-only, so flush does nothing.
+        pass
+
+    def isatty(self):
+        return False
+
+    def truncate(self, size=None):
+        # See https://docs.python.org/3/library/io.html#io.IOBase.writable
+        # for why truncate has to raise.
+        raise io.UnsupportedOperation('truncate')
+
+    # Override IOBase.__del__ otherwise it will lead to __getattr__ on
+    # __IOBase_closed which calls _ensure_file and potentially performs I/O.
+    # We cannot do I/O in __del__ since it can lead to a deadlock.
+    def __del__(self):
+        pass
 
 
 class _GridOutChunkIterator(object):
