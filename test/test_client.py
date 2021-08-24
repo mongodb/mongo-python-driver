@@ -115,7 +115,7 @@ class ClientUnitTest(unittest.TestCase):
                              read_preference=ReadPreference.PRIMARY,
                              ssl=False,
                              tlsCertificateKeyFile=None,
-                             tlsAllowInvalidCertificates=True,  # ssl.CERT_NONE
+                             tlsAllowInvalidCertificates=True,
                              tlsCAFile=None,
                              connect=False,
                              serverSelectionTimeoutMS=12000)

@@ -18,11 +18,6 @@ import copy
 import sys
 import warnings
 
-try:
-    from ssl import CERT_NONE
-except ImportError:
-    CERT_NONE = 0
-
 sys.path[0:0] = [""]
 
 from bson.binary import JAVA_LEGACY

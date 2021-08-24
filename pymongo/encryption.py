@@ -49,15 +49,11 @@ from pymongo.errors import (ConfigurationError,
 from pymongo.mongo_client import MongoClient
 from pymongo.pool import _configured_socket, PoolOptions
 from pymongo.read_concern import ReadConcern
-from pymongo.ssl_support import get_ssl_context, HAVE_SSL
+from pymongo.ssl_support import get_ssl_context
 from pymongo.uri_parser import parse_host
 from pymongo.write_concern import WriteConcern
 from pymongo.daemon import _spawn_daemon
 
-if HAVE_SSL:
-    from ssl import CERT_REQUIRED
-else:
-    CERT_REQUIRED = None
 
 _HTTPS_PORT = 443
 _KMS_CONNECT_TIMEOUT = 10  # TODO: CDRIVER-3262 will define this value.
@@ -114,14 +110,13 @@ class _EncryptionIO(MongoCryptCallback):
         # Enable strict certificate verification, OCSP, match hostname, and
         # SNI using the system default CA certificates.
         ctx = get_ssl_context(
-            None,  # certfile
-            None,  # keyfile
-            None,  # passphrase
-            None,  # ca_certs
-            CERT_REQUIRED,  # cert_reqs
-            None,  # crlfile
-            True,  # match_hostname
-            True)  # check_ocsp_endpoint
+            None,   # certfile
+            None,   # passphrase
+            None,   # ca_certs
+            None,   # crlfile
+            False,  # allow_invalid_certificates
+            False,  # allow_invalid_hostnames
+            False)  # disable_ocsp_endpoint_check
         opts = PoolOptions(connect_timeout=_KMS_CONNECT_TIMEOUT,
                            socket_timeout=_KMS_CONNECT_TIMEOUT,
                            ssl_context=ctx)

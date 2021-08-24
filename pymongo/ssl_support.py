@@ -35,20 +35,15 @@ if HAVE_SSL:
     # at a high level. This is legacy behavior, but requires us to
     # import the ssl module even if we're only using it for this purpose.
     import ssl as _stdlibssl
-    from ssl import CERT_NONE, CERT_OPTIONAL, CERT_REQUIRED
+    from ssl import CERT_NONE, CERT_REQUIRED
     HAS_SNI = _ssl.HAS_SNI
     IPADDR_SAFE = _ssl.IS_PYOPENSSL or sys.version_info[:2] >= (3, 7)
     SSLError = _ssl.SSLError
 
-    def get_ssl_context(*args):
+    def get_ssl_context(certfile, passphrase, ca_certs, crlfile,
+                        allow_invalid_certificates, allow_invalid_hostnames,
+                        disable_ocsp_endpoint_check):
         """Create and return an SSLContext object."""
-        (certfile,
-         passphrase,
-         ca_certs,
-         allow_invalid_certificates,
-         crlfile,
-         allow_invalid_hostnames,
-         disable_ocsp_endpoint_check) = args
         verify_mode = CERT_NONE if allow_invalid_certificates else CERT_REQUIRED
         ctx = _ssl.SSLContext(_ssl.PROTOCOL_SSLv23)
         # SSLContext.check_hostname was added in CPython 3.4.
