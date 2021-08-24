@@ -478,7 +478,7 @@ class TestSSL(IntegrationTest):
         ssl_sock = ctx.wrap_socket(socket.socket())
         self.assertEqual(ssl_sock.ca_certs, CA_PEM)
 
-        ctx = get_ssl_context(None, None, None, None, None, None, True)
+        ctx = get_ssl_context(None, None, None, None, False, False, False)
         ssl_sock = ctx.wrap_socket(socket.socket())
         self.assertEqual(ssl_sock.ca_certs, ssl_support._WINCERTS.name)
 
