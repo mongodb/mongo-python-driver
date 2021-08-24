@@ -109,8 +109,8 @@ def _parse_ssl_options(options):
             certfile,
             passphrase,
             ca_certs,
-            allow_invalid_certificates,
             crlfile,
+            allow_invalid_certificates,
             allow_invalid_hostnames,
             disable_ocsp_endpoint_check)
         return ctx, allow_invalid_hostnames

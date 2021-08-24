@@ -16,8 +16,6 @@ import argparse
 import logging
 import socket
 
-from ssl import CERT_REQUIRED
-
 from pymongo.pyopenssl_context import SSLContext
 from pymongo.ssl_support import get_ssl_context
 
@@ -28,14 +26,13 @@ logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 
 def check_ocsp(host, port, capath):
     ctx = get_ssl_context(
-        None,  # certfile
-        None,  # keyfile
-        None,  # passphrase
-        capath,
-        CERT_REQUIRED,
-        None,  # crlfile
-        True,  # match_hostname
-        True)  # check_ocsp_endpoint
+        None,    # certfile
+        None,    # passphrase
+        capath,  # ca_certs
+        None,    # crlfile
+        False,   # allow_invalid_certificates
+        False,   # allow_invalid_hostnames
+        False)   # disable_ocsp_endpoint_check
 
     # Ensure we're using pyOpenSSL.
     assert isinstance(ctx, SSLContext)
