@@ -1,6 +1,21 @@
 Changelog
 =========
 
+Changes in Version 3.11.5
+-------------------------
+
+Issues Resolved
+...............
+
+Version 3.11.5 fixes a bug that caused the ``tlsDisableOCSPEndpointCheck``
+URI option to not be applied correctly (`PYTHON-2866`_).
+
+See the `PyMongo 3.11.5 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PYTHON-2866: https://jira.mongodb.org/browse/PYTHON-2866
+.. _PyMongo 3.11.5 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=31795
+
 Changes in Version 3.11.4
 -------------------------
 
