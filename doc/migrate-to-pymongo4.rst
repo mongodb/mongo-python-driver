@@ -662,6 +662,13 @@ can be changed to this::
   uu = uuid.uuid4()
   uuid_legacy = Binary.from_uuid(uu, PYTHON_LEGACY)
 
+Default JSONMode changed from LEGACY to RELAXED
+-----------------------------------------------
+
+Changed the default JSON encoding representation from legacy to relaxed.
+The json_mode parameter for :const:`bson.json_util.dumps` now defaults to
+:const:`~bson.json_util.RELAXED_JSON_OPTIONS`.
+
 Removed features with no migration path
 ---------------------------------------
 

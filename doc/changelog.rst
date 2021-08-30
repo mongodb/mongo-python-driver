@@ -101,6 +101,9 @@ Breaking Changes in 4.0
 - Removed :const:`bson.json_util.STRICT_JSON_OPTIONS`. Use
   :const:`~bson.json_util.RELAXED_JSON_OPTIONS` or
   :const:`~bson.json_util.CANONICAL_JSON_OPTIONS` instead.
+- Changed the default JSON encoding representation from legacy to relaxed.
+  The json_mode parameter for :const:`bson.json_util.dumps` now defaults to
+  :const:`~bson.json_util.RELAXED_JSON_OPTIONS`.
 - The "tls" install extra is no longer necessary or supported and will be
   ignored by pip.
 

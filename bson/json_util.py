@@ -17,9 +17,9 @@
 This module provides two helper methods `dumps` and `loads` that wrap the
 native :mod:`json` methods and provide explicit BSON conversion to and from
 JSON. :class:`~bson.json_util.JSONOptions` provides a way to control how JSON
-is emitted and parsed, with the default being the legacy PyMongo format.
-:mod:`~bson.json_util` can also generate Canonical or Relaxed `Extended JSON`_
-when :const:`CANONICAL_JSON_OPTIONS` or :const:`RELAXED_JSON_OPTIONS` is
+is emitted and parsed, with the default being the Relaxed Extended JSON format.
+:mod:`~bson.json_util` can also generate Canonical or legacy `Extended JSON`_
+when :const:`CANONICAL_JSON_OPTIONS` or :const:`LEGACY_JSON_OPTIONS` is
 provided, respectively.
 
 .. _Extended JSON: https://github.com/mongodb/specifications/blob/master/source/extended-json.rst
@@ -32,7 +32,7 @@ Example usage (deserialization):
    >>> loads('[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$scope": {}, "$code": "function x() { return 1; }"}}, {"bin": {"$type": "80", "$binary": "AQIDBA=="}}]')
    [{'foo': [1, 2]}, {'bar': {'hello': 'world'}}, {'code': Code('function x() { return 1; }', {})}, {'bin': Binary(b'...', 128)}]
 
-Example usage (serialization):
+Example usage with :const:`RELAXED_JSON_OPTIONS` (the default):
 
 .. doctest::
 
@@ -40,9 +40,9 @@ Example usage (serialization):
    >>> from bson.json_util import dumps
    >>> dumps([{'foo': [1, 2]},
    ...        {'bar': {'hello': 'world'}},
-   ...        {'code': Code("function x() { return 1; }", {})},
+   ...        {'code': Code("function x() { return 1; }")},
    ...        {'bin': Binary(b"\x01\x02\x03\x04")}])
-   '[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$code": "function x() { return 1; }", "$scope": {}}}, {"bin": {"$binary": "AQIDBA==", "$type": "00"}}]'
+   '[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$code": "function x() { return 1; }"}}, {"bin": {"$binary": {"base64": "AQIDBA==", "subType": "00"}}}]'
 
 Example usage (with :const:`CANONICAL_JSON_OPTIONS`):
 
@@ -57,18 +57,18 @@ Example usage (with :const:`CANONICAL_JSON_OPTIONS`):
    ...       json_options=CANONICAL_JSON_OPTIONS)
    '[{"foo": [{"$numberInt": "1"}, {"$numberInt": "2"}]}, {"bar": {"hello": "world"}}, {"code": {"$code": "function x() { return 1; }"}}, {"bin": {"$binary": {"base64": "AQIDBA==", "subType": "00"}}}]'
 
-Example usage (with :const:`RELAXED_JSON_OPTIONS`):
+Example usage (with :const:`LEGACY_JSON_OPTIONS`):
 
 .. doctest::
 
    >>> from bson import Binary, Code
-   >>> from bson.json_util import dumps, RELAXED_JSON_OPTIONS
+   >>> from bson.json_util import dumps, LEGACY_JSON_OPTIONS
    >>> dumps([{'foo': [1, 2]},
    ...        {'bar': {'hello': 'world'}},
-   ...        {'code': Code("function x() { return 1; }")},
+   ...        {'code': Code("function x() { return 1; }", {})},
    ...        {'bin': Binary(b"\x01\x02\x03\x04")}],
-   ...       json_options=RELAXED_JSON_OPTIONS)
-   '[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$code": "function x() { return 1; }"}}, {"bin": {"$binary": {"base64": "AQIDBA==", "subType": "00"}}}]'
+   ...       json_options=LEGACY_JSON_OPTIONS)
+   '[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$code": "function x() { return 1; }", "$scope": {}}}, {"bin": {"$binary": "AQIDBA==", "$type": "00"}}]'
 
 Alternatively, you can manually pass the `default` to :func:`json.dumps`.
 It won't handle :class:`~bson.binary.Binary` and :class:`~bson.code.Code`
