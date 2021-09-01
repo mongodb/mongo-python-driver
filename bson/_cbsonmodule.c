@@ -1506,6 +1506,72 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
     return result;
 }
 
+/*
+ * Hook for optional decoding BSON documents to DBRef.
+ */
+static PyObject *_decode_as_dbref(PyObject* self, PyObject* value) {
+    struct module_state *state = GETSTATE(self);
+    PyObject* dbref = NULL;
+    PyObject* dbref_type = NULL;
+    PyObject* ref = NULL;
+    PyObject* id = NULL;
+    PyObject* database = NULL;
+    PyObject* ret = NULL;
+    int db_present = 0;
+
+    /* Decoding for DBRefs */
+    if (PyMapping_HasKeyString(value, "$ref") && PyMapping_HasKeyString(value, "$id")) { /* DBRef */
+        ref = PyMapping_GetItemString(value, "$ref");
+        /* PyMapping_GetItemString returns NULL to indicate error. */
+        if (!ref) {
+            goto invalid;
+        }
+        id = PyMapping_GetItemString(value, "$id");
+        /* PyMapping_GetItemString returns NULL to indicate error. */
+        if (!id) {
+            goto invalid;
+        }
+
+        if (PyMapping_HasKeyString(value, "$db")) {
+            database = PyMapping_GetItemString(value, "$db");
+            if (!database) {
+                goto invalid;
+            }
+            db_present = 1;
+        } else {
+            database = Py_None;
+            Py_INCREF(database);
+        }
+
+        // check types
+        if (!(PyUnicode_Check(ref) && (database == Py_None || PyUnicode_Check(database)))) {
+            ret = value;
+            goto invalid;
+        }
+
+        PyMapping_DelItemString(value, "$ref");
+        PyMapping_DelItemString(value, "$id");
+        if (db_present) {
+            PyMapping_DelItemString(value, "$db");
+        }
+
+        if ((dbref_type = _get_object(state->DBRef, "bson.dbref", "DBRef"))) {
+            dbref = PyObject_CallFunctionObjArgs(dbref_type, ref, id, database, value, NULL);
+            Py_DECREF(value);
+            value = dbref;
+        }
+    } else {
+        ret = value;
+    }
+invalid:
+    Py_XDECREF(dbref);
+    Py_XDECREF(dbref_type);
+    Py_XDECREF(ref);
+    Py_XDECREF(id);
+    Py_XDECREF(database);
+    return ret;
+}
+
 static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                            unsigned* position, unsigned char type,
                            unsigned max, const codec_options_t* options) {
@@ -1552,7 +1618,6 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
         }
     case 3:
         {
-            PyObject* collection;
             uint32_t size;
 
             if (max < 4) {
@@ -1585,55 +1650,10 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                 goto invalid;
             }
 
-            /* Decoding for DBRefs */
-            if (PyMapping_HasKeyString(value, "$ref")) { /* DBRef */
-                PyObject* dbref = NULL;
-                PyObject* dbref_type;
-                PyObject* id;
-                PyObject* database;
-
-                collection = PyMapping_GetItemString(value, "$ref");
-                /* PyMapping_GetItemString returns NULL to indicate error. */
-                if (!collection) {
-                    goto invalid;
-                }
-                PyMapping_DelItemString(value, "$ref");
-
-                if (PyMapping_HasKeyString(value, "$id")) {
-                    id = PyMapping_GetItemString(value, "$id");
-                    if (!id) {
-                        Py_DECREF(collection);
-                        goto invalid;
-                    }
-                    PyMapping_DelItemString(value, "$id");
-                } else {
-                    id = Py_None;
-                    Py_INCREF(id);
-                }
-
-                if (PyMapping_HasKeyString(value, "$db")) {
-                    database = PyMapping_GetItemString(value, "$db");
-                    if (!database) {
-                        Py_DECREF(collection);
-                        Py_DECREF(id);
-                        goto invalid;
-                    }
-                    PyMapping_DelItemString(value, "$db");
-                } else {
-                    database = Py_None;
-                    Py_INCREF(database);
-                }
-
-                if ((dbref_type = _get_object(state->DBRef, "bson.dbref", "DBRef"))) {
-                    dbref = PyObject_CallFunctionObjArgs(dbref_type, collection, id, database, value, NULL);
-                    Py_DECREF(dbref_type);
-                }
-                Py_DECREF(value);
-                value = dbref;
-
-                Py_DECREF(id);
-                Py_DECREF(collection);
-                Py_DECREF(database);
+            /* Hook for DBRefs */
+            value = _decode_as_dbref(self, value);
+            if (!value) {
+                goto invalid;
             }
 
             *position += size;
