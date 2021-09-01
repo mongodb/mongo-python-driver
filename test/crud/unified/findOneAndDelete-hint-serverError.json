@@ -1,6 +1,6 @@
 {
   "description": "findOneAndDelete-hint-serverError",
-  "schemaVersion": "1.1",
+  "schemaVersion": "1.0",
   "runOnRequirements": [
     {
       "minServerVersion": "4.2.0",
