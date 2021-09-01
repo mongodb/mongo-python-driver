@@ -716,9 +716,6 @@ class MongoClient(common.BaseObject):
         if creds:
             self.__all_credentials[creds.source] = creds
 
-        if options.direct_connection is None:
-            options.direct_connection = False
-
         self._topology_settings = TopologySettings(
             seeds=seeds,
             replica_set_name=options.replica_set_name,
