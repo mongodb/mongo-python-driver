@@ -107,6 +107,8 @@ if [ -n "$TEST_ENCRYPTION" ]; then
 
     if [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
         $PYTHON -m pip install -U setuptools
+        # PYTHON-2808 Ensure this machine has the CA cert for google KMS.
+        powershell.exe "Invoke-WebRequest -URI https://oauth2.googleapis.com/" > /dev/null || true
     fi
 
     if [ -z "$LIBMONGOCRYPT_URL" ]; then
@@ -149,10 +151,6 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     . $DRIVERS_TOOLS/.evergreen/csfle/set-temp-creds.sh
 
     # Start the mock KMS servers.
-    if [ "$OS" = "Windows_NT" ]; then
-        # Remove after BUILD-13574.
-        python -m pip install certifi
-    fi
     pushd ${DRIVERS_TOOLS}/.evergreen/csfle
     python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/expired.pem --port 8000 &
     python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/wrong-host.pem --port 8001 &
