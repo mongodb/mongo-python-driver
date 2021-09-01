@@ -62,8 +62,10 @@ class TopologySettings(object):
         self._fqdn = fqdn
         self._heartbeat_frequency = heartbeat_frequency
 
-
-        self._direct = direct_connection
+        if direct_connection is None:
+            self._direct = (len(self._seeds) == 1 and not self.replica_set_name)
+        else:
+            self._direct = direct_connection
         self._load_balanced = load_balanced
 
         self._topology_id = ObjectId()
