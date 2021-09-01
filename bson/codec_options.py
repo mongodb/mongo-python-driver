@@ -172,7 +172,7 @@ _options_base = namedtuple(
      'unicode_decode_error_handler', 'tzinfo', 'type_registry'))
 
 
-class CodecOptions(_options_base):
+class JSCodecOptions(_options_base):
     """Encapsulates options used encoding and / or decoding BSON.
 
     The `document_class` option is used to define a custom type for use
