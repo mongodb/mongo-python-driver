@@ -121,9 +121,6 @@ _RE_OPT_TABLE = {
     "x": re.X,
 }
 
-# Dollar-prefixed keys which may appear in DBRefs.
-_DBREF_KEYS = frozenset(['$id', '$ref', '$db'])
-
 
 class DatetimeRepresentation:
     LEGACY = 0
@@ -463,7 +460,7 @@ def object_pairs_hook(pairs, json_options=DEFAULT_JSON_OPTIONS):
 def object_hook(dct, json_options=DEFAULT_JSON_OPTIONS):
     if "$oid" in dct:
         return _parse_canonical_oid(dct)
-    if "$ref" in dct:
+    if isinstance(dct.get('$ref'), str) and "$id" in dct and isinstance(dct.get('$db'), (str, type(None))):
         return _parse_canonical_dbref(dct)
     if "$date" in dct:
         return _parse_canonical_datetime(dct, json_options)
@@ -676,10 +673,6 @@ def _parse_canonical_regex(doc):
 
 def _parse_canonical_dbref(doc):
     """Decode a JSON DBRef to bson.dbref.DBRef."""
-    for key in doc:
-        if key.startswith('$') and key not in _DBREF_KEYS:
-            # Other keys start with $, so dct cannot be parsed as a DBRef.
-            return doc
     return DBRef(doc.pop('$ref'), doc.pop('$id'),
                  database=doc.pop('$db', None), **doc)
 

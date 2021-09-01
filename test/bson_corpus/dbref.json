@@ -25,7 +25,8 @@
         {
             "description": "Document with key names similar to those of a DBRef",
             "canonical_bson": "3e0000000224726566000c0000006e6f742d612d646272656600072469640058921b3e6e32ab156a22b59e022462616e616e6100050000007065656c0000",
-            "canonical_extjson": "{\"$ref\": \"not-a-dbref\", \"$id\": {\"$oid\": \"58921b3e6e32ab156a22b59e\"}, \"$banana\": \"peel\"}"
+            "canonical_extjson": "{\"$ref\": \"not-a-dbref\", \"$id\": {\"$oid\": \"58921b3e6e32ab156a22b59e\"}, \"$banana\": \"peel\"}",
+            "lossy": true
         },
         {
             "description": "DBRef with additional dollar-prefixed and dotted fields",

@@ -136,7 +136,8 @@ def create_test(case_spec):
                 # Make sure we can parse the legacy (default) JSON format.
                 legacy_json = json_util.dumps(
                     decoded_bson, json_options=json_util.LEGACY_JSON_OPTIONS)
-                self.assertEqual(decode_extjson(legacy_json), decoded_bson)
+                self.assertEqual(
+                    decode_extjson(legacy_json), decoded_bson, description)
 
             if deprecated:
                 if 'converted_bson' in valid_case:
@@ -158,7 +159,7 @@ def create_test(case_spec):
             if not (sys.platform.startswith("java") and
                     description == 'NaN with payload'):
                 # Test round-tripping canonical bson.
-                self.assertEqual(encode_bson(decoded_bson), cB)
+                self.assertEqual(encode_bson(decoded_bson), cB, description)
             self.assertJsonEqual(encode_extjson(decoded_bson), cEJ)
 
             # Test round-tripping canonical extended json.
