@@ -515,7 +515,7 @@ def _connection_string(h, authenticate):
         return "mongodb://%s" % (str(h),)
 
 
-def _mongo_client(host, port, authenticate=True, directConnection=False,
+def _mongo_client(host, port, authenticate=True, directConnection=None,
                   **kwargs):
     """Create a new client over SSL/TLS if necessary."""
     host = host or client_context.host
@@ -523,6 +523,8 @@ def _mongo_client(host, port, authenticate=True, directConnection=False,
     client_options = client_context.default_client_options.copy()
     if client_context.replica_set_name and not directConnection:
         client_options['replicaSet'] = client_context.replica_set_name
+    if directConnection is not None:
+        client_options['directConnection'] = directConnection
     client_options.update(kwargs)
 
     client = MongoClient(_connection_string(host, authenticate), port,
