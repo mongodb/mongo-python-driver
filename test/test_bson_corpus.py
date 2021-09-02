@@ -65,6 +65,7 @@ _DEPRECATED_BSON_TYPES = {
 
 # Need to set tz_aware=True in order to use "strict" dates in extended JSON.
 codec_options = CodecOptions(tz_aware=True, document_class=SON)
+codec_options_no_tzaware = CodecOptions(document_class=SON)
 # We normally encode UUID as binary subtype 0x03,
 # but we'll need to encode to subtype 0x04 for one of the tests.
 codec_options_uuid_04 = codec_options._replace(uuid_representation=STANDARD)
@@ -83,10 +84,12 @@ to_relaxed_extjson = functools.partial(
 to_bson_uuid_04 = functools.partial(encode,
                                     codec_options=codec_options_uuid_04)
 to_bson = functools.partial(encode, codec_options=codec_options)
-decode_bson = lambda bbytes: decode(bbytes, codec_options=codec_options)
+# decode_bson = lambda bbytes: decode(bbytes, codec_options=codec_options)
+decode_bson = lambda bbytes: decode(bbytes, codec_options=codec_options_no_tzaware)
 decode_extjson = functools.partial(
     json_util.loads,
     json_options=json_util.JSONOptions(json_mode=JSONMode.CANONICAL,
+                                       # document_class=SON, tz_aware=True)
                                        document_class=SON))
 loads = functools.partial(json.loads, object_pairs_hook=SON)
 
@@ -131,8 +134,10 @@ def create_test(case_spec):
 
             if not lossy:
                 # Make sure we can parse the legacy (default) JSON format.
+                # json_opts = json_util.LEGACY_JSON_OPTIONS.with_options(tz_aware=True)
+                json_opts = json_util.LEGACY_JSON_OPTIONS
                 legacy_json = json_util.dumps(
-                    decoded_bson, json_options=json_util.LEGACY_JSON_OPTIONS)
+                    decoded_bson, json_options=json_opts)
                 self.assertEqual(decode_extjson(legacy_json), decoded_bson)
 
             if deprecated:
