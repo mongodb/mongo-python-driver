@@ -134,10 +134,8 @@ def create_test(case_spec):
 
             if not lossy:
                 # Make sure we can parse the legacy (default) JSON format.
-                # json_opts = json_util.LEGACY_JSON_OPTIONS.with_options(tz_aware=True)
-                json_opts = json_util.LEGACY_JSON_OPTIONS
                 legacy_json = json_util.dumps(
-                    decoded_bson, json_options=json_opts)
+                    decoded_bson, json_options=json_util.LEGACY_JSON_OPTIONS)
                 self.assertEqual(decode_extjson(legacy_json), decoded_bson)
 
             if deprecated:
