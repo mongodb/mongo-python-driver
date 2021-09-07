@@ -6,6 +6,8 @@ Changes in Version 4.0
 
 .. warning:: PyMongo 4.0 drops support for Python 2.7, 3.4, and 3.5.
 
+.. warning:: PyMongo 4.0 drops support for MongoDB 2.6, 3.0, 3.2, and 3.4.
+
 PyMongo 4.0 brings a number of improvements as well as some backward breaking
 changes. For example, all APIs deprecated in PyMongo 3.X have been removed.
 Be sure to read the changes listed below and the :doc:`migrate-to-pymongo4`
