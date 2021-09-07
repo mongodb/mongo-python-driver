@@ -100,6 +100,7 @@ Breaking Changes in 4.0
 - Removed :class:`bson.binary.UUIDLegacy`.
 - The "tls" install extra is no longer necessary or supported and will be
   ignored by pip.
+- ``name`` is now a required argument for the :class:`pymongo.driver_info.DriverInfo` class.
 
 Notable improvements
 ....................
