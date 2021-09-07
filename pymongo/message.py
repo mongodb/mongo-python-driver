@@ -101,7 +101,7 @@ def _maybe_add_read_preference(spec, read_preference):
     # problems with mongos versions that don't support read preferences. Also,
     # for maximum backwards compatibility, don't add $readPreference for
     # secondaryPreferred unless tags or maxStalenessSeconds are in use (setting
-    # the slaveOkay bit has the same effect).
+    # the secondaryOkay bit has the same effect).
     if mode and (
             mode != ReadPreference.SECONDARY_PREFERRED.mode or
             len(document) > 1):
@@ -328,10 +328,10 @@ class _Query(object):
         self._as_command = cmd, self.db
         return self._as_command
 
-    def get_message(self, set_slave_ok, sock_info, use_cmd=False):
-        """Get a query message, possibly setting the slaveOk bit."""
-        if set_slave_ok:
-            # Set the slaveOk bit.
+    def get_message(self, set_secondary_ok, sock_info, use_cmd=False):
+        """Get a query message, possibly setting the secondaryOk bit."""
+        if set_secondary_ok:
+            # Set the secondaryOk bit.
             flags = self.flags | 4
         else:
             flags = self.flags
@@ -344,7 +344,7 @@ class _Query(object):
             if sock_info.op_msg_enabled:
                 request_id, msg, size, _ = _op_msg(
                     0, spec, self.db, self.read_preference,
-                    set_slave_ok, False, self.codec_options,
+                    set_secondary_ok, False, self.codec_options,
                     ctx=sock_info.compression_context)
                 return request_id, msg, size
             ns = "%s.%s" % (self.db, "$cmd")
@@ -699,13 +699,13 @@ if _use_c:
     _op_msg_uncompressed = _cmessage._op_msg
 
 
-def _op_msg(flags, command, dbname, read_preference, slave_ok, check_keys,
+def _op_msg(flags, command, dbname, read_preference, secondary_ok, check_keys,
             opts, ctx=None):
     """Get a OP_MSG message."""
     command['$db'] = dbname
     # getMore commands do not send $readPreference.
     if read_preference is not None and "$readPreference" not in command:
-        if slave_ok and not read_preference.mode:
+        if secondary_ok and not read_preference.mode:
             command["$readPreference"] = (
                 ReadPreference.PRIMARY_PREFERRED.document)
         else:
@@ -1675,7 +1675,7 @@ _UNPACK_REPLY = {
 
 
 def _first_batch(sock_info, db, coll, query, ntoreturn,
-                 slave_ok, codec_options, read_preference, cmd, listeners):
+                 secondary_ok, codec_options, read_preference, cmd, listeners):
     """Simple query helper for retrieving a first (and possibly only) batch."""
     query = _Query(
         0, db, coll, 0, query, None, codec_options,
@@ -1687,7 +1687,7 @@ def _first_batch(sock_info, db, coll, query, ntoreturn,
     if publish:
         start = datetime.datetime.now()
 
-    request_id, msg, max_doc_size = query.get_message(slave_ok, sock_info)
+    request_id, msg, max_doc_size = query.get_message(secondary_ok, sock_info)
 
     if publish:
         encoding_duration = datetime.datetime.now() - start

@@ -138,6 +138,7 @@ class TestServerDescription(unittest.TestCase):
         self.assertEqual(SERVER_TYPE.Standalone, s.server_type)
 
         # Mongod started with --slave.
+        # master-slave replication was removed in MongoDB 4.0.
         s = parse_ismaster_response({'ok': 1, 'ismaster': False})
         self.assertEqual(SERVER_TYPE.Standalone, s.server_type)
         self.assertTrue(s.is_writable)

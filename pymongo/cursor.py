@@ -68,7 +68,7 @@ _CURSOR_CLOSED_ERRORS = frozenset([
 
 _QUERY_OPTIONS = {
     "tailable_cursor": 2,
-    "slave_okay": 4,
+    "secondary_okay": 4,
     "oplog_replay": 8,
     "no_timeout": 16,
     "await_data": 32,

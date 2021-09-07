@@ -693,27 +693,6 @@ def server_started_with_auth(client):
     return '--auth' in argv or '--keyFile' in argv
 
 
-def server_started_with_nojournal(client):
-    command_line = get_command_line(client)
-
-    # MongoDB 2.6.
-    if 'parsed' in command_line:
-        parsed = command_line['parsed']
-        if 'storage' in parsed:
-            storage = parsed['storage']
-            if 'journal' in storage:
-                return not storage['journal']['enabled']
-
-    return server_started_with_option(client, '--nojournal', 'nojournal')
-
-
-def server_is_master_with_slave(client):
-    command_line = get_command_line(client)
-    if 'parsed' in command_line:
-        return command_line['parsed'].get('master', False)
-    return '--master' in command_line['argv']
-
-
 def drop_collections(db):
     # Drop all non-system collections in this database.
     for coll in db.list_collection_names(

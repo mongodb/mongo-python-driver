@@ -160,7 +160,9 @@ class TestSingleServerTopology(TopologyTest):
                 'ismaster': True,
                 'maxWireVersion': 6}),
 
-            # Slave.
+            # A "slave" in a master-slave deployment.
+            # This replication type was removed in MongoDB
+            # 4.0.
             (SERVER_TYPE.Standalone, {
                 'ok': 1,
                 'ismaster': False,
