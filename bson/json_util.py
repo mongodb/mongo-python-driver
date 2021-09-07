@@ -467,7 +467,6 @@ def object_hook(dct, json_options=DEFAULT_JSON_OPTIONS):
     if "$dbPointer" in dct:
         return _parse_canonical_dbpointer(dct)
     if "$regularExpression" in dct:
-        print(_parse_canonical_regex(dct))
         return _parse_canonical_regex(dct)
     if "$symbol" in dct:
         return _parse_canonical_symbol(dct)
@@ -633,7 +632,6 @@ def _parse_canonical_code(doc):
 
 
 def _parse_canonical_regex(doc):
-
     """Decode a JSON regex to bson.regex.Regex."""
     regex = doc['$regularExpression']
     if not isinstance(regex['options'], str):
