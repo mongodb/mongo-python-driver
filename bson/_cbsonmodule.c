@@ -1509,7 +1509,7 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
 /*
  * Hook for optional decoding BSON documents to DBRef.
  */
-static PyObject *_decode_as_dbref(PyObject* self, PyObject* value) {
+static PyObject *_dbref_hook(PyObject* self, PyObject* value) {
     struct module_state *state = GETSTATE(self);
     PyObject* dbref = NULL;
     PyObject* dbref_type = NULL;
@@ -1558,13 +1558,12 @@ static PyObject *_decode_as_dbref(PyObject* self, PyObject* value) {
         if ((dbref_type = _get_object(state->DBRef, "bson.dbref", "DBRef"))) {
             dbref = PyObject_CallFunctionObjArgs(dbref_type, ref, id, database, value, NULL);
             Py_DECREF(value);
-            value = dbref;
+            ret = dbref;
         }
     } else {
         ret = value;
     }
 invalid:
-    Py_XDECREF(dbref);
     Py_XDECREF(dbref_type);
     Py_XDECREF(ref);
     Py_XDECREF(id);
@@ -1651,7 +1650,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             }
 
             /* Hook for DBRefs */
-            value = _decode_as_dbref(self, value);
+            value = _dbref_hook(self, value);
             if (!value) {
                 goto invalid;
             }
