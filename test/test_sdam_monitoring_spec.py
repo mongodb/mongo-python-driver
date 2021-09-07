@@ -21,6 +21,7 @@ import time
 
 sys.path[0:0] = [""]
 
+from pymongo import MongoClient
 from bson.json_util import object_hook
 from pymongo import monitoring
 from pymongo.common import clean_node
@@ -32,7 +33,6 @@ from pymongo.server_description import ServerDescription
 from pymongo.topology_description import TOPOLOGY_TYPE
 from test import unittest, client_context, client_knobs, IntegrationTest
 from test.utils import (ServerAndTopologyEventListener,
-                        single_client,
                         server_name_to_type,
                         rs_or_single_client,
                         wait_until)
@@ -186,7 +186,7 @@ def create_test(scenario_def):
             def _run(self):
                 time.sleep(0.05)
 
-        m = single_client(h=scenario_def['uri'], p=27017,
+        m = MongoClient(host=scenario_def['uri'], port=27017,
                           event_listeners=[self.all_listener],
                           _monitor_class=NoopMonitor)
         topology = m._get_topology()
