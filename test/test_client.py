@@ -305,6 +305,8 @@ class ClientUnitTest(unittest.TestCase):
         self.assertRaises(ValueError, MongoClient, appname='x' * 129)
         # Bad "driver" options.
         self.assertRaises(TypeError, DriverInfo, 'Foo', 1, 'a')
+        self.assertRaises(TypeError, DriverInfo, version="1", platform='a')
+        self.assertRaises(TypeError, DriverInfo)
         self.assertRaises(TypeError, MongoClient, driver=1)
         self.assertRaises(TypeError, MongoClient, driver='abc')
         self.assertRaises(TypeError, MongoClient, driver=('Foo', '1', 'a'))
