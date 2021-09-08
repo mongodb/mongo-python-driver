@@ -243,6 +243,8 @@ class JSONOptions(CodecOptions):
     .. versionchanged:: 3.5
        Accepts the optional parameter `json_mode`.
 
+    .. versionchanged:: 4.0
+        Changed default value of `tz_aware` to False
     """
 
     def __new__(cls, strict_number_long=False,

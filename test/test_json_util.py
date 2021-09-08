@@ -107,13 +107,8 @@ class TestJsonUtil(unittest.TestCase):
                     '{"dt": { "$date" : "1970-01-01T00:00:00.000000+00"}}',
                     '{"dt": { "$date" : "1970-01-01T00:00:00.000Z"}}',
                     '{"dt": { "$date" : "1970-01-01T00:00:00.000000Z"}}',
-                    '{"dt": { "$date" : "1970-01-01T00:00:00Z"}}']:
-            self.assertEqual(EPOCH_AWARE, json_util.loads(
-                jsn, json_options=tz_aware_opts)["dt"])
-            self.assertEqual(EPOCH_NAIVE, json_util.loads(jsn)["dt"])
-
-
-        for jsn in ['{"dt": { "$date" : "1970-01-01T00:00:00.000"}}',
+                    '{"dt": { "$date" : "1970-01-01T00:00:00Z"}}',
+                    '{"dt": {"$date": "1970-01-01T00:00:00.000"}}',
                     '{"dt": { "$date" : "1970-01-01T00:00:00"}}',
                     '{"dt": { "$date" : "1970-01-01T00:00:00.000000"}}',
                     '{"dt": { "$date" : "1969-12-31T16:00:00.000-0800"}}',
@@ -130,8 +125,6 @@ class TestJsonUtil(unittest.TestCase):
             self.assertEqual(EPOCH_AWARE, json_util.loads(
                 jsn, json_options=tz_aware_opts)["dt"])
             self.assertEqual(EPOCH_NAIVE, json_util.loads(jsn)["dt"])
-
-
 
         dtm = datetime.datetime(1, 1, 1, 1, 1, 1, 0, utc)
         jsn = '{"dt": {"$date": -62135593139000}}'

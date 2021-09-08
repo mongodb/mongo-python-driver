@@ -84,12 +84,10 @@ to_relaxed_extjson = functools.partial(
 to_bson_uuid_04 = functools.partial(encode,
                                     codec_options=codec_options_uuid_04)
 to_bson = functools.partial(encode, codec_options=codec_options)
-# decode_bson = lambda bbytes: decode(bbytes, codec_options=codec_options)
-decode_bson = lambda bbytes: decode(bbytes, codec_options=codec_options_no_tzaware)
+decode_bson = functools.partial(decode, codec_options=codec_options_no_tzaware)
 decode_extjson = functools.partial(
     json_util.loads,
     json_options=json_util.JSONOptions(json_mode=JSONMode.CANONICAL,
-                                       # document_class=SON, tz_aware=True)
                                        document_class=SON))
 loads = functools.partial(json.loads, object_pairs_hook=SON)
 
