@@ -1537,9 +1537,7 @@ class TestClient(IntegrationTest):
     @client_context.require_replica_set
     def test_direct_connection(self):
         # direct_connection=True should result in Single topology.
-        # import ipdb; ipdb.set_trace()
         client = rs_or_single_client(directConnection=True)
-        print(client.topology_description)
         client.admin.command('ping')
         self.assertEqual(len(client.nodes), 1)
         self.assertEqual(client._topology_settings.get_topology_type(),

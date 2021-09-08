@@ -919,7 +919,8 @@ class MongoClient(common.BaseObject):
         .. versionadded:: 3.0
         """
         topology_type = self._topology._description.topology_type
-        if topology_type == TOPOLOGY_TYPE.Sharded and len(self.topology_description.server_descriptions()) > 1:
+        if topology_type == TOPOLOGY_TYPE.Sharded and \
+                len(self.topology_description.server_descriptions()) > 1:
             raise InvalidOperation(
                 'Cannot use "address" property when load balancing among'
                 ' mongoses, use "nodes" instead.')

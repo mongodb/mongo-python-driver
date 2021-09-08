@@ -567,7 +567,7 @@ def rs_or_single_client(h=None, p=None, **kwargs):
 
     Authenticates if necessary.
     """
-    return _mongo_client(h, p,**kwargs)
+    return _mongo_client(h, p, **kwargs)
 
 
 def ensure_all_connected(client):
