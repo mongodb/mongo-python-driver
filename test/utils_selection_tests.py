@@ -127,7 +127,9 @@ def create_topology(scenario_def, **kwargs):
     topology_type = get_topology_type_name(scenario_def)
     if topology_type == 'LoadBalanced':
         kwargs.setdefault('load_balanced', True)
-
+    # Force topology description to ReplicaSet
+    elif topology_type in ['ReplicaSetNoPrimary', 'ReplicaSetWithPrimary']:
+        kwargs.setdefault('replica_set_name', 'rs')
     settings = get_topology_settings_dict(
         heartbeat_frequency=frequency,
         seeds=seeds,
@@ -145,8 +147,9 @@ def create_topology(scenario_def, **kwargs):
         server_description = make_server_description(server, hosts)
         topology.on_change(server_description)
 
-    if topology_type == 'LoadBalanced':
-        assert topology.description.topology_type_name == 'LoadBalanced'
+    # Assert that descriptions match
+    assert scenario_def['topology_description']['type'] == \
+           topology.description.topology_type_name
 
     return topology
 
