@@ -925,7 +925,8 @@ class MongoClient(common.BaseObject):
                 ' mongoses, use "nodes" instead.')
         if topology_type not in (TOPOLOGY_TYPE.ReplicaSetWithPrimary,
                                  TOPOLOGY_TYPE.Single,
-                                 TOPOLOGY_TYPE.LoadBalanced):
+                                 TOPOLOGY_TYPE.LoadBalanced,
+                                 TOPOLOGY_TYPE.Sharded):
             return None
         return self._server_property('address')
 
