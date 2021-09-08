@@ -291,17 +291,13 @@ class TestSSL(IntegrationTest):
         #
         #   --sslPEMKeyFile=/path/to/pymongo/test/certificates/server.pem
         #   --sslCAFile=/path/to/pymongo/test/certificates/ca.pem
-        ctx = get_ssl_context(
-            None, None, None, True, None, True, False)
+        ctx = get_ssl_context(None, None, None, None, True, True, False)
         self.assertFalse(ctx.check_hostname)
-        ctx = get_ssl_context(
-            None, None, None, True, None, False, False)
+        ctx = get_ssl_context(None, None, None, None, True, False, False)
         self.assertFalse(ctx.check_hostname)
-        ctx = get_ssl_context(
-            None, None, None, False, None, True, False)
+        ctx = get_ssl_context(None, None, None, None, False, True, False)
         self.assertFalse(ctx.check_hostname)
-        ctx = get_ssl_context(
-            None, None, None, False, None, False, False)
+        ctx = get_ssl_context(None, None, None, None, False, False, False)
         if _PY37PLUS or _HAVE_PYOPENSSL:
             self.assertTrue(ctx.check_hostname)
         else:
@@ -424,8 +420,7 @@ class TestSSL(IntegrationTest):
                 **self.credentials))
 
     def test_system_certs_config_error(self):
-        ctx = get_ssl_context(
-            None, None, None, ssl.CERT_NONE, None, True, False)
+        ctx = get_ssl_context(None, None, None, None, True, True, False)
         if ((sys.platform != "win32"
              and hasattr(ctx, "set_default_verify_paths"))
                 or hasattr(ctx, "load_default_certs")):
@@ -457,12 +452,12 @@ class TestSSL(IntegrationTest):
         # Force the test on Windows, regardless of environment.
         ssl_support.HAVE_WINCERTSTORE = False
         try:
-            ctx = get_ssl_context(
-                None, None, None, CA_PEM, ssl.CERT_REQUIRED, None, True, True)
+            ctx = get_ssl_context(None, None, CA_PEM, None, False, False,
+                                  False)
             ssl_sock = ctx.wrap_socket(socket.socket())
             self.assertEqual(ssl_sock.ca_certs, CA_PEM)
 
-            ctx = get_ssl_context(None, None, None, None, None, None, True, True)
+            ctx = get_ssl_context(None, None, None, None, False, False, False)
             ssl_sock = ctx.wrap_socket(socket.socket())
             self.assertEqual(ssl_sock.ca_certs, ssl_support.certifi.where())
         finally:
@@ -479,12 +474,11 @@ class TestSSL(IntegrationTest):
         if not ssl_support.HAVE_WINCERTSTORE:
             raise SkipTest("Need wincertstore to test wincertstore.")
 
-        ctx = get_ssl_context(
-            None, None, None, CA_PEM, ssl.CERT_REQUIRED, None, True, True)
+        ctx = get_ssl_context(None, None, CA_PEM, None, False, False, False)
         ssl_sock = ctx.wrap_socket(socket.socket())
         self.assertEqual(ssl_sock.ca_certs, CA_PEM)
 
-        ctx = get_ssl_context(None, None, None, None, None, None, True, True)
+        ctx = get_ssl_context(None, None, None, None, False, False, False)
         ssl_sock = ctx.wrap_socket(socket.socket())
         self.assertEqual(ssl_sock.ca_certs, ssl_support._WINCERTS.name)
 

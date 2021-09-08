@@ -401,7 +401,7 @@ class PoolOptions(object):
 
     @property
     def tls_allow_invalid_hostnames(self):
-        """Call ssl.match_hostname if cert_reqs is not ssl.CERT_NONE.
+        """If True skip ssl.match_hostname.
         """
         return self.__tls_allow_invalid_hostnames
 

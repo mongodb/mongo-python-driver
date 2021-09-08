@@ -102,6 +102,7 @@ Breaking Changes in 4.0
   ignored by pip.
 - The ``hint`` option is now required when using ``min`` or ``max`` queries
   with :meth:`~pymongo.collection.Collection.find`.
+- ``name`` is now a required argument for the :class:`pymongo.driver_info.DriverInfo` class.
 
 Notable improvements
 ....................
