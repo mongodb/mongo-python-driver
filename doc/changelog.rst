@@ -100,6 +100,11 @@ Breaking Changes in 4.0
 - Removed :class:`bson.binary.UUIDLegacy`.
 - The "tls" install extra is no longer necessary or supported and will be
   ignored by pip.
+- ``directConnection`` defaults to False instead of None, allowing for the
+automatic discovery of replica sets. This means that if you want a direct
+connection to a single server you must pass ``directConnection=True`` as a
+keyword argument when calling your :class:`pymongo.mongo_client.MongoClient`
+constructor.
 
 Notable improvements
 ....................
