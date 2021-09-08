@@ -640,7 +640,8 @@ def _parse_canonical_regex(doc):
         raise TypeError('Bad $regularExpression must include only "pattern"'
                         'and "options" components: %s' % (doc,))
     if not isinstance(regex['options'], str):
-        raise TypeError('Bad $regularExpression options, options must be string, was type %s' % (type(regex['options'])))
+        raise TypeError('Bad $regularExpression options, options must be '
+                        'string, was type %s' % (type(regex['options'])))
     return Regex(regex['pattern'], regex['options'])
 
 
