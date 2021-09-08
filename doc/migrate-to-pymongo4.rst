@@ -729,5 +729,6 @@ Removed :meth:`pymongo.message.delete`, :meth:`pymongo.message.get_more`,
 
 Name is a required argument for pymongo.driver_info.DriverInfo
 ..............................................................
+
 ``name`` is now a required argument for the :class:`pymongo.driver_info.DriverInfo` class.
 
