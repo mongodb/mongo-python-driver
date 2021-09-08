@@ -124,9 +124,7 @@ modifier. Code like this::
   # Set a 5 second select() timeout.
   >>> cursor = collection.find({"a": 1}, network_timeout=5)
 
-can be changed to this with PyMongo 2.9 or later:
-
-.. doctest::
+can be changed to this with PyMongo 2.9 or later::
 
   # Set a 5 second (5000 millisecond) server side query timeout.
   >>> cursor = collection.find({"a": 1}, modifiers={"$maxTimeMS": 5000})

@@ -71,7 +71,8 @@ codec_options_uuid_04 = codec_options._replace(uuid_representation=STANDARD)
 json_options_uuid_04 = json_util.JSONOptions(json_mode=JSONMode.CANONICAL,
                                              uuid_representation=STANDARD)
 json_options_iso8601 = json_util.JSONOptions(
-    datetime_representation=json_util.DatetimeRepresentation.ISO8601)
+    datetime_representation=json_util.DatetimeRepresentation.ISO8601,
+    json_mode=JSONMode.LEGACY)
 to_extjson = functools.partial(json_util.dumps,
                                json_options=json_util.CANONICAL_JSON_OPTIONS)
 to_extjson_uuid_04 = functools.partial(json_util.dumps,
