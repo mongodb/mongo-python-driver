@@ -1060,11 +1060,9 @@ class Cursor(object):
 
         if self.__id is None:  # Query
             if (self.__min or self.__max) and not self.__hint:
-                warnings.warn("using a min/max query operator without "
-                              "specifying a Cursor.hint is deprecated. A "
-                              "hint will be required when using min/max in "
-                              "PyMongo 4.0",
-                              DeprecationWarning, stacklevel=3)
+                raise InvalidOperation(
+                    "Passing a 'hint' is required when using the min/max query"
+                    " option to ensure the query utilizes the correct index")
             q = self._query_class(self.__query_flags,
                                   self.__collection.database.name,
                                   self.__collection.name,

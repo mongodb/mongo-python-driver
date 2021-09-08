@@ -591,6 +591,19 @@ can be changed to this::
       show_record_id=False,
   )
 
+The hint parameter is required with min/max
+...........................................
+
+The ``hint`` option is now required when using ``min`` or ``max`` queries
+with :meth:`~pymongo.collection.Collection.find` to ensure the query utilizes
+the correct index. For example, code like this::
+
+  cursor = coll.find({}, min={'x', min_value})
+
+can be changed to this::
+
+  cursor = coll.find({}, min={'x', min_value}, hint=[('x', ASCENDING)])
+
 SONManipulator is removed
 -------------------------
 
