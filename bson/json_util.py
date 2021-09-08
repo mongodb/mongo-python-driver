@@ -634,13 +634,13 @@ def _parse_canonical_code(doc):
 def _parse_canonical_regex(doc):
     """Decode a JSON regex to bson.regex.Regex."""
     regex = doc['$regularExpression']
-    if not isinstance(regex['options'], str):
-        raise TypeError('Bad $regularExpression options, options must be string')
     if len(doc) != 1:
         raise TypeError('Bad $regularExpression, extra field(s): %s' % (doc,))
     if len(regex) != 2:
         raise TypeError('Bad $regularExpression must include only "pattern"'
                         'and "options" components: %s' % (doc,))
+    if not isinstance(regex['options'], str):
+        raise TypeError('Bad $regularExpression options, options must be string, was type %s' % (type(regex['options'])))
     return Regex(regex['pattern'], regex['options'])
 
 
