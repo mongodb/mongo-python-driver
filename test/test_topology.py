@@ -52,7 +52,8 @@ address = ('a', 27017)
 def create_mock_topology(
         seeds=None,
         replica_set_name=None,
-        monitor_class=DummyMonitor, direct_connection=False):
+        monitor_class=DummyMonitor,
+        direct_connection=False):
     partitioned_seeds = list(map(common.partition_node, seeds or ['a']))
     topology_settings = TopologySettings(
         partitioned_seeds,

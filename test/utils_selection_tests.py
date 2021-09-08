@@ -148,8 +148,8 @@ def create_topology(scenario_def, **kwargs):
         topology.on_change(server_description)
 
     # Assert that descriptions match
-    assert scenario_def['topology_description']['type'] == \
-           topology.description.topology_type_name
+    assert (scenario_def['topology_description']['type'] ==
+           topology.description.topology_type_name)
 
     return topology
 

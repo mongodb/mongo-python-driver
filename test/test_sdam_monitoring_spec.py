@@ -187,8 +187,8 @@ def create_test(scenario_def):
                 time.sleep(0.05)
 
         m = MongoClient(host=scenario_def['uri'], port=27017,
-                          event_listeners=[self.all_listener],
-                          _monitor_class=NoopMonitor)
+                        event_listeners=[self.all_listener],
+                        _monitor_class=NoopMonitor)
         topology = m._get_topology()
 
         try:
