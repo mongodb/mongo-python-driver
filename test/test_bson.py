@@ -965,7 +965,7 @@ class TestCodecOptions(unittest.TestCase):
 
     def test_codec_options_repr(self):
         r = ("CodecOptions(document_class=dict, tz_aware=False, "
-             "uuid_representation=UuidRepresentation.PYTHON_LEGACY, "
+             "uuid_representation=UuidRepresentation.UNSPECIFIED, "
              "unicode_decode_error_handler='strict', "
              "tzinfo=None, type_registry=TypeRegistry(type_codecs=[], "
              "fallback_encoder=None))")
