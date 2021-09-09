@@ -460,7 +460,9 @@ def object_pairs_hook(pairs, json_options=DEFAULT_JSON_OPTIONS):
 def object_hook(dct, json_options=DEFAULT_JSON_OPTIONS):
     if "$oid" in dct:
         return _parse_canonical_oid(dct)
-    if isinstance(dct.get('$ref'), str) and "$id" in dct and isinstance(dct.get('$db'), (str, type(None))):
+    if (isinstance(dct.get('$ref'), str) and
+            "$id" in dct and
+            isinstance(dct.get('$db'), (str, type(None)))):
         return _parse_canonical_dbref(dct)
     if "$date" in dct:
         return _parse_canonical_datetime(dct, json_options)

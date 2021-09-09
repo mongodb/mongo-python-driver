@@ -203,7 +203,9 @@ def _get_object(data, view, position, obj_end, opts, dummy):
 
     position += obj_size
     # If DBRef validation fails, return a normal doc.
-    if isinstance(obj.get('$ref'), str) and "$id" in obj and isinstance(obj.get('$db'), (str, type(None))):
+    if (isinstance(obj.get('$ref'), str) and
+            "$id" in obj and
+            isinstance(obj.get('$db'), (str, type(None)))):
         return (DBRef(obj.pop("$ref"), obj.pop("$id", None),
                       obj.pop("$db", None), obj), position)
     return obj, position
