@@ -752,3 +752,16 @@ Name is a required argument for pymongo.driver_info.DriverInfo
 
 ``name`` is now a required argument for the :class:`pymongo.driver_info.DriverInfo` class.
 
+DBRef BSON/JSON decoding behavior
+.................................
+
+Changed the BSON and JSON decoding behavior of :class:`~bson.dbref.DBRef`
+to match the behavior outlined in the `DBRef specification`_ version 1.0.
+Specifically, PyMongo now only decodes a subdocument into a
+:class:`~bson.dbref.DBRef` if and only if, it contains both ``$ref`` and
+``$id`` fields and the ``$ref``, ``$id``, and ``$db`` fields are of the
+correct type. Otherwise the document is returned as normal. Previously, any
+subdocument containing a ``$ref`` field would be decoded as a
+:class:`~bson.dbref.DBRef`.
+
+.. _DBRef specification: https://github.com/mongodb/specifications/blob/5a8c8d7/source/dbref.rst

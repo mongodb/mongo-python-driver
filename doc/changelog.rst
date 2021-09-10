@@ -104,6 +104,14 @@ Breaking Changes in 4.0
 - Changed the default JSON encoding representation from legacy to relaxed.
   The json_mode parameter for :const:`bson.json_util.dumps` now defaults to
   :const:`~bson.json_util.RELAXED_JSON_OPTIONS`.
+- Changed the BSON and JSON decoding behavior of :class:`~bson.dbref.DBRef`
+  to match the behavior outlined in the `DBRef specification`_ version 1.0.
+  Specifically, PyMongo now only decodes a subdocument into a
+  :class:`~bson.dbref.DBRef` if and only if, it contains both ``$ref`` and
+  ``$id`` fields and the ``$ref``, ``$id``, and ``$db`` fields are of the
+  correct type. Otherwise the document is returned as normal. Previously, any
+  subdocument containing a ``$ref`` field would be decoded as a
+  :class:`~bson.dbref.DBRef`.
 - The "tls" install extra is no longer necessary or supported and will be
   ignored by pip.
 - The ``hint`` option is now required when using ``min`` or ``max`` queries
@@ -123,6 +131,7 @@ See the `PyMongo 4.0 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
 .. _PyMongo 4.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=18463
+.. _DBRef specification: https://github.com/mongodb/specifications/blob/5a8c8d7/source/dbref.rst
 
 Changes in Version 3.12.0
 -------------------------
