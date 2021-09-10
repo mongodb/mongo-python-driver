@@ -246,7 +246,7 @@ def wait_for_read(sock_info, deadline):
                 readable = sock_info.socket_checker.select(
                     sock, read=True, timeout=timeout)
             if context.cancelled:
-                raise _OperationCancelled('isMaster cancelled')
+                raise _OperationCancelled('hello cancelled')
             if readable:
                 return
             if deadline and time.monotonic() > deadline:

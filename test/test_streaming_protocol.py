@@ -20,6 +20,7 @@ import time
 sys.path[0:0] = [""]
 
 from pymongo import monitoring
+from pymongo.hello import HelloCompat
 
 from test import (client_context,
                   IntegrationTest,
@@ -45,17 +46,17 @@ class TestStreamingProtocol(IntegrationTest):
         address = client.address
         listener.reset()
 
-        fail_ismaster = {
+        fail_hello = {
             'configureFailPoint': 'failCommand',
             'mode': {'times': 4},
             'data': {
-                'failCommands': ['isMaster', 'hello'],
+                'failCommands': [HelloCompat.LEGACY_CMD, 'hello'],
                 'closeConnection': False,
                 'errorCode': 10107,
                 'appName': 'failingHeartbeatTest',
             },
         }
-        with self.fail_point(fail_ismaster):
+        with self.fail_point(fail_hello):
             def _marked_unknown(event):
                 return (event.server_address == address
                         and not event.new_description.is_server_type_known)
@@ -83,21 +84,21 @@ class TestStreamingProtocol(IntegrationTest):
         listener = ServerEventListener()
         hb_listener = HeartbeatEventListener()
         # On Windows, RTT can actually be 0.0 because time.time() only has
-        # 1-15 millisecond resolution. We need to delay the initial isMaster
+        # 1-15 millisecond resolution. We need to delay the initial hello
         # to ensure that RTT is never zero.
         name = 'streamingRttTest'
-        delay_ismaster = {
+        delay_hello = {
             'configureFailPoint': 'failCommand',
             'mode': {'times': 1000},
             'data': {
-                'failCommands': ['isMaster', 'hello'],
+                'failCommands': [HelloCompat.LEGACY_CMD, 'hello'],
                 'blockConnection': True,
                 'blockTimeMS': 20,
                 # This can be uncommented after SERVER-49220 is fixed.
                 # 'appName': name,
             },
         }
-        with self.fail_point(delay_ismaster):
+        with self.fail_point(delay_hello):
             client = rs_or_single_client(
                 event_listeners=[listener, hb_listener],
                 heartbeatFrequencyMS=500,
@@ -107,9 +108,9 @@ class TestStreamingProtocol(IntegrationTest):
             client.admin.command('ping')
             address = client.address
 
-        delay_ismaster['data']['blockTimeMS'] = 500
-        delay_ismaster['data']['appName'] = name
-        with self.fail_point(delay_ismaster):
+        delay_hello['data']['blockTimeMS'] = 500
+        delay_hello['data']['appName'] = name
+        with self.fail_point(delay_hello):
             def rtt_exceeds_250_ms():
                 # XXX: Add a public TopologyDescription getter to MongoClient?
                 topology = client._topology
@@ -135,15 +136,15 @@ class TestStreamingProtocol(IntegrationTest):
     def test_monitor_waits_after_server_check_error(self):
         # This test implements:
         # https://github.com/mongodb/specifications/blob/6c5b2ac/source/server-discovery-and-monitoring/server-discovery-and-monitoring-tests.rst#monitors-sleep-at-least-minheartbeatfreqencyms-between-checks
-        fail_ismaster = {
+        fail_hello = {
             'mode': {'times': 5},
             'data': {
-                'failCommands': ['isMaster', 'hello'],
+                'failCommands': [HelloCompat.LEGACY_CMD, 'hello'],
                 'errorCode': 1234,
                 'appName': 'SDAMMinHeartbeatFrequencyTest',
             },
         }
-        with self.fail_point(fail_ismaster):
+        with self.fail_point(fail_hello):
             start = time.time()
             client = single_client(
                 appName='SDAMMinHeartbeatFrequencyTest',
@@ -161,7 +162,7 @@ class TestStreamingProtocol(IntegrationTest):
             # 1502ms: failed monitor handshake, 4
             # 2002ms: failed monitor handshake, 5
             # 2502ms: monitor handshake succeeds
-            # 2503ms: run awaitable isMaster
+            # 2503ms: run awaitable hello
             # 2504ms: application handshake succeeds
             # 2505ms: ping command succeeds
             self.assertGreaterEqual(duration, 2)
@@ -186,7 +187,7 @@ class TestStreamingProtocol(IntegrationTest):
         fail_heartbeat = {
             'mode': {'times': 2},
             'data': {
-                'failCommands': ['isMaster', 'hello'],
+                'failCommands': [HelloCompat.LEGACY_CMD, 'hello'],
                 'closeConnection': True,
                 'appName': 'heartbeatEventAwaitedFlag',
             },

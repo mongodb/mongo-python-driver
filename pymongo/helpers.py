@@ -29,6 +29,7 @@ from pymongo.errors import (CursorNotFound,
                             WriteError,
                             WriteConcernError,
                             WTimeoutError)
+from pymongo.hello import HelloCompat
 
 # From the SDAM spec, the "node is shutting down" codes.
 _SHUTDOWN_CODES = frozenset([
@@ -38,7 +39,7 @@ _SHUTDOWN_CODES = frozenset([
 # From the SDAM spec, the "not primary" error codes are combined with the
 # "node is recovering" error codes (of which the "node is shutting down"
 # errors are a subset).
-_NOT_MASTER_CODES = frozenset([
+_NOT_PRIMARY_CODES = frozenset([
     10058,  # LegacyNotPrimary <=3.2 "not primary" error code
     10107,  # NotWritablePrimary
     13435,  # NotPrimaryNoSecondaryOk
@@ -47,7 +48,7 @@ _NOT_MASTER_CODES = frozenset([
     189,    # PrimarySteppedDown
 ]) | _SHUTDOWN_CODES
 # From the retryable writes spec.
-_RETRYABLE_ERROR_CODES = _NOT_MASTER_CODES | frozenset([
+_RETRYABLE_ERROR_CODES = _NOT_PRIMARY_CODES | frozenset([
     7,     # HostNotFound
     6,     # HostUnreachable
     89,    # NetworkTimeout
@@ -150,9 +151,9 @@ def _check_command_response(response, max_wire_version,
 
     # Server is "not primary" or "recovering"
     if code is not None:
-        if code in _NOT_MASTER_CODES:
+        if code in _NOT_PRIMARY_CODES:
             raise NotPrimaryError(errmsg, response)
-    elif "not master" in errmsg or "node is recovering" in errmsg:
+    elif HelloCompat.LEGACY_ERROR in errmsg or "node is recovering" in errmsg:
         raise NotPrimaryError(errmsg, response)
 
     # Other errors
@@ -184,7 +185,7 @@ def _check_gle_response(result, max_wire_version):
     if error_msg is None:
         return result
 
-    if error_msg.startswith("not master"):
+    if error_msg.startswith(HelloCompat.LEGACY_ERROR):
         raise NotPrimaryError(error_msg, result)
 
     details = result

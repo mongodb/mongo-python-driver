@@ -264,11 +264,11 @@ class TestClientSimple(EncryptionIntegrationTest):
         client = rs_or_single_client(auto_encryption_opts=opts)
         self.addCleanup(client.close)
 
-        client.admin.command('isMaster')
+        client.admin.command('ping')
         client.close()
         with self.assertRaisesRegex(InvalidOperation,
                                     'Cannot use MongoClient after close'):
-            client.admin.command('isMaster')
+            client.admin.command('ping')
 
 
 class TestClientMaxWireVersion(IntegrationTest):
@@ -287,7 +287,7 @@ class TestClientMaxWireVersion(IntegrationTest):
         with self.assertRaisesRegex(ConfigurationError, msg):
             client.test.test.insert_one({})
         with self.assertRaisesRegex(ConfigurationError, msg):
-            client.admin.command('isMaster')
+            client.admin.command('ping')
         with self.assertRaisesRegex(ConfigurationError, msg):
             client.test.test.find_one({})
         with self.assertRaisesRegex(ConfigurationError, msg):
