@@ -298,9 +298,22 @@ class TestJsonUtil(unittest.TestCase):
         self.assertEqual(dct, rtdct)
         self.assertEqual('{"ts": {"$timestamp": {"t": 4, "i": 13}}}', res)
 
+    def test_uuid_default(self):
+        # Cannot directly encode native UUIDs with the default
+        # uuid_representation.
+        doc = {'uuid': uuid.UUID('f47ac10b-58cc-4372-a567-0e02b2c3d479')}
+        with self.assertRaisesRegex(ValueError, 'cannot encode native uuid'):
+            json_util.dumps(doc)
+        legacy_jsn = '{"uuid": {"$uuid": "f47ac10b58cc4372a5670e02b2c3d479"}}'
+        expected = {'uuid': Binary(
+            b'\xf4z\xc1\x0bX\xccCr\xa5g\x0e\x02\xb2\xc3\xd4y', 4)}
+        self.assertEqual(json_util.loads(legacy_jsn), expected)
+
     def test_uuid(self):
         doc = {'uuid': uuid.UUID('f47ac10b-58cc-4372-a567-0e02b2c3d479')}
-        self.round_trip(doc)
+        uuid_legacy_opts = LEGACY_JSON_OPTIONS.with_options(
+            uuid_representation=UuidRepresentation.PYTHON_LEGACY)
+        self.round_trip(doc, json_options=uuid_legacy_opts)
         self.assertEqual(
             '{"uuid": {"$uuid": "f47ac10b58cc4372a5670e02b2c3d479"}}',
             json_util.dumps(doc, json_options=LEGACY_JSON_OPTIONS))
@@ -308,7 +321,8 @@ class TestJsonUtil(unittest.TestCase):
             '{"uuid": '
             '{"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "03"}}',
             json_util.dumps(
-                doc, json_options=STRICT_JSON_OPTIONS))
+                doc, json_options=STRICT_JSON_OPTIONS.with_options(
+                    uuid_representation=UuidRepresentation.PYTHON_LEGACY)))
         self.assertEqual(
             '{"uuid": '
             '{"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "04"}}',
@@ -319,7 +333,8 @@ class TestJsonUtil(unittest.TestCase):
         self.assertEqual(
             doc, json_util.loads(
                 '{"uuid": '
-                '{"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "03"}}'))
+                '{"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "03"}}',
+                json_options=uuid_legacy_opts))
         for uuid_representation in (set(ALL_UUID_REPRESENTATIONS) -
                                     {UuidRepresentation.UNSPECIFIED}):
             options = JSONOptions(

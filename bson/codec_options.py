@@ -325,8 +325,7 @@ class CodecOptions(_options_base):
         return CodecOptions(**opts)
 
 
-DEFAULT_CODEC_OPTIONS = CodecOptions(
-    uuid_representation=UuidRepresentation.PYTHON_LEGACY)
+DEFAULT_CODEC_OPTIONS = CodecOptions()
 
 
 def _parse_codec_options(options):

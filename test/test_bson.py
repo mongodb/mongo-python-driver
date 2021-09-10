@@ -973,17 +973,16 @@ class TestCodecOptions(unittest.TestCase):
 
     def test_decode_all_defaults(self):
         # Test decode_all()'s default document_class is dict and tz_aware is
-        # False. The default uuid_representation is PYTHON_LEGACY but this
-        # decodes same as STANDARD, so all this test proves about UUID decoding
-        # is that it's not CSHARP_LEGACY or JAVA_LEGACY.
+        # False.
         doc = {'sub_document': {},
-               'uuid': uuid.uuid4(),
                'dt': datetime.datetime.utcnow()}
 
         decoded = bson.decode_all(bson.encode(doc))[0]
         self.assertIsInstance(decoded['sub_document'], dict)
-        self.assertEqual(decoded['uuid'], doc['uuid'])
         self.assertIsNone(decoded['dt'].tzinfo)
+        # The default uuid_representation is UNSPECIFIED
+        with self.assertRaisesRegex(ValueError, 'cannot encode native uuid'):
+            bson.decode_all(bson.encode({'uuid': uuid.uuid4()}))
 
     def test_unicode_decode_error_handler(self):
         enc = encode({"keystr": "foobar"})
