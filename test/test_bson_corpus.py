@@ -31,7 +31,7 @@ from bson.binary import STANDARD
 from bson.codec_options import CodecOptions
 from bson.decimal128 import Decimal128
 from bson.dbref import DBRef
-from bson.errors import InvalidBSON, InvalidId
+from bson.errors import InvalidBSON, InvalidDocument, InvalidId
 from bson.json_util import JSONMode
 from bson.son import SON
 
@@ -53,6 +53,8 @@ _NON_PARSE_ERRORS = {
     'Bad $numberLong (number, not string)',
     # Python's UUID constructor is very permissive.
     '$uuid invalid value--misplaced hyphens',
+    # We parse Regex flags with extra characters, including nulls.
+    'Null byte in $regularExpression options',
 }
 
 _IMPLCIT_LOSSY_TESTS = {
@@ -212,10 +214,14 @@ def create_test(case_spec):
                     DecimalException, Decimal128, parse_error_case['string'])
             elif bson_type == '0x00':
                 try:
-                    decode_extjson(parse_error_case['string'])
+                    doc = decode_extjson(parse_error_case['string'])
+                    # Null bytes are validated when encoding to BSON.
+                    if 'Null' in description:
+                        to_bson(doc)
                     raise AssertionError('exception not raised for test '
                                          'case: ' + description)
-                except (ValueError, KeyError, TypeError, InvalidId):
+                except (ValueError, KeyError, TypeError, InvalidId,
+                        InvalidDocument):
                     pass
             elif bson_type == '0x05':
                 try:

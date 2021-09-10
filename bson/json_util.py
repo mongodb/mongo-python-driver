@@ -665,7 +665,11 @@ def _parse_canonical_regex(doc):
     if len(regex) != 2:
         raise TypeError('Bad $regularExpression must include only "pattern"'
                         'and "options" components: %s' % (doc,))
-    return Regex(regex['pattern'], regex['options'])
+    opts = regex['options']
+    if not isinstance(opts, str):
+        raise TypeError('Bad $regularExpression options, options must be '
+                        'string, was type %s' % (type(opts)))
+    return Regex(regex['pattern'], opts)
 
 
 def _parse_canonical_dbref(doc):
