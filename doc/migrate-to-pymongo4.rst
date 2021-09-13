@@ -176,7 +176,8 @@ can be changed to this::
 
 ``tz_aware`` defaults to ``False``
 .....................................
-``tz_aware`` now defaults to ``False`` everywhere instead of ``True`` in
+``tz_aware``, a keyword argument for :class:`~pymongo.mongo_client
+.MongoClient`, now defaults to ``False`` everywhere instead of ``True`` in
 some places.
 
 Database
