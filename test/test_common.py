@@ -56,7 +56,7 @@ class TestCommon(IntegrationTest):
         self.assertEqual(STANDARD, coll.codec_options.uuid_representation)
         self.assertEqual(None, coll.find_one({'uu': uu}))
         uul = Binary.from_uuid(uu, PYTHON_LEGACY)
-        self.assertEqual(uu, coll.find_one({'uu': uul})['uu'])
+        self.assertEqual(uul, coll.find_one({'uu': uul})['uu'])
 
         # Test count_documents
         self.assertEqual(0, coll.count_documents({'uu': uu}))

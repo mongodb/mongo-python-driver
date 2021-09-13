@@ -96,8 +96,8 @@ class TestRawBSONDocument(IntegrationTest):
         uuid_coll = coll.with_options(
             codec_options=coll.codec_options.with_options(
                 uuid_representation=UuidRepresentation.STANDARD))
-        self.assertEqual(
-            uuid_coll.find_one(), {'_id': 1, 'bin4': uid, 'bin3': uid})
+        self.assertEqual(uuid_coll.find_one(),
+                         {'_id': 1, 'bin4': uid, 'bin3': Binary(uid.bytes, 3)})
 
         # Test that the raw bytes haven't changed.
         raw_coll = coll.with_options(codec_options=DEFAULT_RAW_BSON_OPTIONS)
@@ -190,3 +190,7 @@ class TestRawBSONDocument(IntegrationTest):
 
         for rkey, elt in zip(rawdoc, keyvaluepairs):
             self.assertEqual(rkey, elt[0])
+
+
+if __name__ == "__main__":
+    unittest.main()
