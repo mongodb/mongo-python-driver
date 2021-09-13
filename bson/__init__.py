@@ -202,7 +202,10 @@ def _get_object(data, view, position, obj_end, opts, dummy):
     obj = _elements_to_dict(data, view, position + 4, end, opts)
 
     position += obj_size
-    if "$ref" in obj:
+    # If DBRef validation fails, return a normal doc.
+    if (isinstance(obj.get('$ref'), str) and
+            "$id" in obj and
+            isinstance(obj.get('$db'), (str, type(None)))):
         return (DBRef(obj.pop("$ref"), obj.pop("$id", None),
                       obj.pop("$db", None), obj), position)
     return obj, position

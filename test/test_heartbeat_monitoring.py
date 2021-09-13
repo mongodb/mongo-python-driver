@@ -20,7 +20,7 @@ import threading
 sys.path[0:0] = [""]
 
 from pymongo.errors import ConnectionFailure
-from pymongo.hello import Hello
+from pymongo.hello import Hello, HelloCompat
 from pymongo.monitor import Monitor
 from test import unittest, client_knobs, IntegrationTest
 from test.utils import (HeartbeatEventListener, MockPool, single_client,
@@ -74,7 +74,7 @@ class TestHeartbeatMonitoring(IntegrationTest):
     def test_standalone(self):
         responses = (('a', 27017),
                      {
-                         "ismaster": True,
+                         HelloCompat.LEGACY_CMD: True,
                          "maxWireVersion": 4,
                          "minWireVersion": 0,
                          "ok": 1

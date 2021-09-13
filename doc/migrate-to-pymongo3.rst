@@ -124,9 +124,7 @@ modifier. Code like this::
   # Set a 5 second select() timeout.
   >>> cursor = collection.find({"a": 1}, network_timeout=5)
 
-can be changed to this with PyMongo 2.9 or later:
-
-.. doctest::
+can be changed to this with PyMongo 2.9 or later::
 
   # Set a 5 second (5000 millisecond) server side query timeout.
   >>> cursor = collection.find({"a": 1}, modifiers={"$maxTimeMS": 5000})
@@ -433,13 +431,13 @@ can be changed to this with PyMongo 2.9 or later:
   >>> from pymongo.errors import ConnectionFailure
   >>> client = MongoClient(connect=False)
   >>> try:
-  ...     result = client.admin.command("ismaster")
+  ...     client.admin.command("ping")
   ... except ConnectionFailure:
   ...     print("Server not available")
   >>>
 
 Any operation can be used to determine if the server is available. We choose
-the "ismaster" command here because it is cheap and does not require auth, so
+the "ping" command here because it is cheap and does not require auth, so
 it is a simple way to check whether the server is available.
 
 The max_pool_size parameter is removed

@@ -111,7 +111,7 @@ def parse_host(entity, default_port=DEFAULT_PORT):
     # Normalize hostname to lowercase, since DNS is case-insensitive:
     # http://tools.ietf.org/html/rfc4343
     # This prevents useless rediscovery if "foo.com" is in the seed list but
-    # "FOO.com" is in the ismaster response.
+    # "FOO.com" is in the hello response.
     return host.lower(), port
 
 

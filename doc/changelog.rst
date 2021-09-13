@@ -6,6 +6,8 @@ Changes in Version 4.0
 
 .. warning:: PyMongo 4.0 drops support for Python 2.7, 3.4, and 3.5.
 
+.. warning:: PyMongo 4.0 drops support for MongoDB 2.6, 3.0, 3.2, and 3.4.
+
 PyMongo 4.0 brings a number of improvements as well as some backward breaking
 changes. For example, all APIs deprecated in PyMongo 3.X have been removed.
 Be sure to read the changes listed below and the :doc:`migrate-to-pymongo4`
@@ -98,6 +100,20 @@ Breaking Changes in 4.0
 - Removed :exc:`pymongo.errors.CertificateError`.
 - Removed :attr:`pymongo.GEOHAYSTACK`.
 - Removed :class:`bson.binary.UUIDLegacy`.
+- Removed :const:`bson.json_util.STRICT_JSON_OPTIONS`. Use
+  :const:`~bson.json_util.RELAXED_JSON_OPTIONS` or
+  :const:`~bson.json_util.CANONICAL_JSON_OPTIONS` instead.
+- Changed the default JSON encoding representation from legacy to relaxed.
+  The json_mode parameter for :const:`bson.json_util.dumps` now defaults to
+  :const:`~bson.json_util.RELAXED_JSON_OPTIONS`.
+- Changed the BSON and JSON decoding behavior of :class:`~bson.dbref.DBRef`
+  to match the behavior outlined in the `DBRef specification`_ version 1.0.
+  Specifically, PyMongo now only decodes a subdocument into a
+  :class:`~bson.dbref.DBRef` if and only if, it contains both ``$ref`` and
+  ``$id`` fields and the ``$ref``, ``$id``, and ``$db`` fields are of the
+  correct type. Otherwise the document is returned as normal. Previously, any
+  subdocument containing a ``$ref`` field would be decoded as a
+  :class:`~bson.dbref.DBRef`.
 - The "tls" install extra is no longer necessary or supported and will be
   ignored by pip.
 - ``directConnection`` URI option and keyword argument to :class:`~pymongo
@@ -105,6 +121,10 @@ Breaking Changes in 4.0
 allowing for the automatic discovery of replica sets. This means that if you
 want a direct connection to a single server you must pass
 ``directConnection=True`` as a URI option or keyword argument.
+- The ``hint`` option is now required when using ``min`` or ``max`` queries
+  with :meth:`~pymongo.collection.Collection.find`.
+- ``name`` is now a required argument for the :class:`pymongo.driver_info.DriverInfo` class.
+
 
 Notable improvements
 ....................
@@ -119,6 +139,7 @@ See the `PyMongo 4.0 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
 .. _PyMongo 4.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=18463
+.. _DBRef specification: https://github.com/mongodb/specifications/blob/5a8c8d7/source/dbref.rst
 
 Changes in Version 3.12.0
 -------------------------

@@ -55,8 +55,7 @@ from test.test_ssl import CA_PEM
 from test import (unittest,
                   client_context,
                   IntegrationTest,
-                  PyMongoTestCase,
-                  SystemCertsPatcher)
+                  PyMongoTestCase)
 from test.utils import (TestCreator,
                         camel_to_snake_args,
                         OvertCommandListener,
@@ -65,26 +64,6 @@ from test.utils import (TestCreator,
                         rs_or_single_client,
                         wait_until)
 from test.utils_spec_runner import SpecRunner
-
-try:
-    import certifi
-    HAVE_CERTIFI = True
-except ImportError:
-    HAVE_CERTIFI = False
-
-patcher = None
-
-
-def setUpModule():
-    if sys.platform == 'win32' and HAVE_CERTIFI:
-        # Remove after BUILD-13574.
-        global patcher
-        patcher = SystemCertsPatcher(certifi.where())
-
-
-def tearDownModule():
-    if patcher:
-        patcher.disable()
 
 
 def get_client_opts(client):
@@ -285,11 +264,11 @@ class TestClientSimple(EncryptionIntegrationTest):
         client = rs_or_single_client(auto_encryption_opts=opts)
         self.addCleanup(client.close)
 
-        client.admin.command('isMaster')
+        client.admin.command('ping')
         client.close()
         with self.assertRaisesRegex(InvalidOperation,
                                     'Cannot use MongoClient after close'):
-            client.admin.command('isMaster')
+            client.admin.command('ping')
 
 
 class TestClientMaxWireVersion(IntegrationTest):
@@ -308,7 +287,7 @@ class TestClientMaxWireVersion(IntegrationTest):
         with self.assertRaisesRegex(ConfigurationError, msg):
             client.test.test.insert_one({})
         with self.assertRaisesRegex(ConfigurationError, msg):
-            client.admin.command('isMaster')
+            client.admin.command('ping')
         with self.assertRaisesRegex(ConfigurationError, msg):
             client.test.test.find_one({})
         with self.assertRaisesRegex(ConfigurationError, msg):

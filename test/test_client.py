@@ -36,11 +36,12 @@ from bson.son import SON
 from bson.tz_util import utc
 import pymongo
 from pymongo import message, monitoring
-from pymongo.common import CONNECT_TIMEOUT, _UUID_REPRESENTATIONS
 from pymongo.command_cursor import CommandCursor
+from pymongo.common import CONNECT_TIMEOUT, _UUID_REPRESENTATIONS
 from pymongo.compression_support import _HAVE_SNAPPY, _HAVE_ZSTD
 from pymongo.cursor import Cursor, CursorType
 from pymongo.database import Database
+from pymongo.driver_info import DriverInfo
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
@@ -50,10 +51,10 @@ from pymongo.errors import (AutoReconnect,
                             OperationFailure,
                             ServerSelectionTimeoutError,
                             WriteConcernError)
+from pymongo.hello import HelloCompat
+from pymongo.mongo_client import MongoClient
 from pymongo.monitoring import (ServerHeartbeatListener,
                                 ServerHeartbeatStartedEvent)
-from pymongo.mongo_client import MongoClient
-from pymongo.driver_info import DriverInfo
 from pymongo.pool import SocketInfo, _METADATA
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
@@ -61,9 +62,9 @@ from pymongo.server_selectors import (readable_server_selector,
                                       writable_server_selector)
 from pymongo.server_type import SERVER_TYPE
 from pymongo.settings import TOPOLOGY_TYPE
+from pymongo.srv_resolver import _HAVE_DNSPYTHON
 from pymongo.topology import _ErrorContext
 from pymongo.topology_description import TopologyDescription
-from pymongo.srv_resolver import _HAVE_DNSPYTHON
 from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   client_knobs,
@@ -305,6 +306,8 @@ class ClientUnitTest(unittest.TestCase):
         self.assertRaises(ValueError, MongoClient, appname='x' * 129)
         # Bad "driver" options.
         self.assertRaises(TypeError, DriverInfo, 'Foo', 1, 'a')
+        self.assertRaises(TypeError, DriverInfo, version="1", platform='a')
+        self.assertRaises(TypeError, DriverInfo)
         self.assertRaises(TypeError, MongoClient, driver=1)
         self.assertRaises(TypeError, MongoClient, driver='abc')
         self.assertRaises(TypeError, MongoClient, driver=('Foo', '1', 'a'))
@@ -831,7 +834,7 @@ class TestClient(IntegrationTest):
         self.assertTrue(client._kill_cursors_executor._stopped)
 
         # Reusing the closed client should restart the thread.
-        client.admin.command('isMaster')
+        client.admin.command('ping')
         self.assertFalse(client._kill_cursors_executor._stopped)
 
         # Again, closing the client should stop the thread.
@@ -848,7 +851,7 @@ class TestClient(IntegrationTest):
         self.assertFalse(kc_thread and kc_thread.is_alive())
 
         # Using the client should open topology and start the thread.
-        client.admin.command('isMaster')
+        client.admin.command('ping')
         self.assertTrue(client._topology._opened)
         kc_thread = client._kill_cursors_executor._thread
         self.assertTrue(kc_thread and kc_thread.is_alive())
@@ -1781,11 +1784,11 @@ class TestClientLazyConnect(IntegrationTest):
         c = self._get_client()
 
         # max_bson_size will cause the client to connect.
-        ismaster = c.db.command('ismaster')
-        self.assertEqual(ismaster['maxBsonObjectSize'], c.max_bson_size)
-        if 'maxMessageSizeBytes' in ismaster:
+        hello = c.db.command(HelloCompat.LEGACY_CMD)
+        self.assertEqual(hello['maxBsonObjectSize'], c.max_bson_size)
+        if 'maxMessageSizeBytes' in hello:
             self.assertEqual(
-                ismaster['maxMessageSizeBytes'],
+                hello['maxMessageSizeBytes'],
                 c.max_message_size)
 
 

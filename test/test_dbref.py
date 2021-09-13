@@ -18,6 +18,7 @@ import pickle
 import sys
 sys.path[0:0] = [""]
 
+from bson import encode, decode
 from bson.dbref import DBRef
 from bson.objectid import ObjectId
 from test import unittest
@@ -130,6 +131,109 @@ class TestDBRef(unittest.TestCase):
         self.assertEqual(hash(dbref_2a), hash(dbref_2b))
 
         self.assertNotEqual(hash(dbref_1a), hash(dbref_2a))
+
+
+# https://github.com/mongodb/specifications/blob/master/source/dbref.rst#test-plan
+class TestDBRefSpec(unittest.TestCase):
+    def test_decoding_1_2_3(self):
+        for doc in [
+            # 1, Valid documents MUST be decoded to a DBRef:
+            {"$ref": "coll0", "$id": ObjectId("60a6fe9a54f4180c86309efa")},
+            {"$ref": "coll0", "$id": 1},
+            {"$ref": "coll0", "$id": None},
+            {"$ref": "coll0", "$id": 1, "$db": "db0"},
+            # 2, Valid documents with extra fields:
+            {"$ref": "coll0", "$id": 1, "$db": "db0", "foo": "bar"},
+            {"$ref": "coll0", "$id": 1, "foo": True, "bar": False},
+            {"$ref": "coll0", "$id": 1, "meta": {"foo": 1, "bar": 2}},
+            {"$ref": "coll0", "$id": 1, "$foo": "bar"},
+            {"$ref": "coll0", "$id": 1, "foo.bar": 0},
+            # 3, Valid documents with out of order fields:
+            {"$id": 1, "$ref": "coll0"},
+            {"$db": "db0", "$ref": "coll0", "$id": 1},
+            {"foo": 1, "$id": 1, "$ref": "coll0"},
+            {"foo": 1, "$ref": "coll0", "$id": 1, "$db": "db0"},
+            {"foo": 1, "$ref": "coll0", "$id": 1, "$db": "db0", "bar": 1},
+        ]:
+            with self.subTest(doc=doc):
+                decoded = decode(encode({'dbref': doc}))
+                dbref = decoded['dbref']
+                self.assertIsInstance(dbref, DBRef)
+                self.assertEqual(dbref.collection, doc['$ref'])
+                self.assertEqual(dbref.id, doc['$id'])
+                self.assertEqual(dbref.database, doc.get('$db'))
+                for extra in set(doc.keys()) - {"$ref", "$id", "$db"}:
+                    self.assertEqual(getattr(dbref, extra), doc[extra])
+
+    def test_decoding_4_5(self):
+        for doc in [
+            # 4, Documents missing required fields MUST NOT be decoded to a
+            # DBRef:
+            {"$ref": "coll0"},
+            {"$id": ObjectId("60a6fe9a54f4180c86309efa")},
+            {"$db": "db0"},
+            # 5, Documents with invalid types for $ref or $db MUST NOT be
+            # decoded to a DBRef
+            {"$ref": True, "$id": 1},
+            {"$ref": "coll0", "$id": 1, "$db": 1},
+        ]:
+            with self.subTest(doc=doc):
+                decoded = decode(encode({'dbref': doc}))
+                dbref = decoded['dbref']
+                self.assertIsInstance(dbref, dict)
+
+    def test_encoding_1_2(self):
+        for doc in [
+            # 1, Encoding DBRefs with basic fields:
+            {"$ref": "coll0", "$id": ObjectId("60a6fe9a54f4180c86309efa")},
+            {"$ref": "coll0", "$id": 1},
+            {"$ref": "coll0", "$id": None},
+            {"$ref": "coll0", "$id": 1, "$db": "db0"},
+            # 2, Encoding DBRefs with extra, optional fields:
+            {"$ref": "coll0", "$id": 1, "$db": "db0", "foo": "bar"},
+            {"$ref": "coll0", "$id": 1, "foo": True, "bar": False},
+            {"$ref": "coll0", "$id": 1, "meta": {"foo": 1, "bar": 2}},
+            {"$ref": "coll0", "$id": 1, "$foo": "bar"},
+            {"$ref": "coll0", "$id": 1, "foo.bar": 0},
+        ]:
+            with self.subTest(doc=doc):
+                # Decode the test input to a DBRef via a BSON roundtrip.
+                encoded_doc = encode({'dbref': doc})
+                decoded = decode(encoded_doc)
+                dbref = decoded['dbref']
+                self.assertIsInstance(dbref, DBRef)
+                # Encode the DBRef.
+                encoded_dbref = encode(decoded)
+                self.assertEqual(encoded_dbref, encoded_doc)
+                # Ensure extra fields are present.
+                for extra in set(doc.keys()) - {"$ref", "$id", "$db"}:
+                    self.assertEqual(getattr(dbref, extra), doc[extra])
+
+    def test_encoding_3(self):
+        for doc in [
+            # 3, Encoding DBRefs re-orders any out of order fields during
+            # decoding:
+            {"$id": 1, "$ref": "coll0"},
+            {"$db": "db0", "$ref": "coll0", "$id": 1},
+            {"foo": 1, "$id": 1, "$ref": "coll0"},
+            {"foo": 1, "$ref": "coll0", "$id": 1, "$db": "db0"},
+            {"foo": 1, "$ref": "coll0", "$id": 1, "$db": "db0", "bar": 1},
+        ]:
+            with self.subTest(doc=doc):
+                # Decode the test input to a DBRef via a BSON roundtrip.
+                encoded_doc = encode({'dbref': doc})
+                decoded = decode(encoded_doc)
+                dbref = decoded['dbref']
+                self.assertIsInstance(dbref, DBRef)
+                # Encode the DBRef.
+                encoded_dbref = encode(decoded)
+                # BSON does not match because DBRef fields are reordered.
+                self.assertNotEqual(encoded_dbref, encoded_doc)
+                self.assertEqual(decode(encoded_dbref), decode(encoded_doc))
+                # Ensure extra fields are present.
+                for extra in set(doc.keys()) - {"$ref", "$id", "$db"}:
+                    self.assertEqual(getattr(dbref, extra), doc[extra])
+
 
 if __name__ == "__main__":
     unittest.main()

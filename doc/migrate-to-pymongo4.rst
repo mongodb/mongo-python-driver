@@ -601,6 +601,19 @@ can be changed to this::
       show_record_id=False,
   )
 
+The hint parameter is required with min/max
+...........................................
+
+The ``hint`` option is now required when using ``min`` or ``max`` queries
+with :meth:`~pymongo.collection.Collection.find` to ensure the query utilizes
+the correct index. For example, code like this::
+
+  cursor = coll.find({}, min={'x', min_value})
+
+can be changed to this::
+
+  cursor = coll.find({}, min={'x', min_value}, hint=[('x', ASCENDING)])
+
 SONManipulator is removed
 -------------------------
 
@@ -672,6 +685,13 @@ can be changed to this::
   uu = uuid.uuid4()
   uuid_legacy = Binary.from_uuid(uu, PYTHON_LEGACY)
 
+Default JSONMode changed from LEGACY to RELAXED
+-----------------------------------------------
+
+Changed the default JSON encoding representation from legacy to relaxed.
+The json_mode parameter for :const:`bson.json_util.dumps` now defaults to
+:const:`~bson.json_util.RELAXED_JSON_OPTIONS`.
+
 Removed features with no migration path
 ---------------------------------------
 
@@ -735,3 +755,23 @@ pymongo.message helpers are removed
 Removed :meth:`pymongo.message.delete`, :meth:`pymongo.message.get_more`,
 :meth:`pymongo.message.insert`, :meth:`pymongo.message.kill_cursors`,
 :meth:`pymongo.message.query`, and :meth:`pymongo.message.update`.
+
+
+Name is a required argument for pymongo.driver_info.DriverInfo
+..............................................................
+
+``name`` is now a required argument for the :class:`pymongo.driver_info.DriverInfo` class.
+
+DBRef BSON/JSON decoding behavior
+.................................
+
+Changed the BSON and JSON decoding behavior of :class:`~bson.dbref.DBRef`
+to match the behavior outlined in the `DBRef specification`_ version 1.0.
+Specifically, PyMongo now only decodes a subdocument into a
+:class:`~bson.dbref.DBRef` if and only if, it contains both ``$ref`` and
+``$id`` fields and the ``$ref``, ``$id``, and ``$db`` fields are of the
+correct type. Otherwise the document is returned as normal. Previously, any
+subdocument containing a ``$ref`` field would be decoded as a
+:class:`~bson.dbref.DBRef`.
+
+.. _DBRef specification: https://github.com/mongodb/specifications/blob/5a8c8d7/source/dbref.rst

@@ -61,7 +61,7 @@ class TestSecondaryBecomesStandalone(MockClientTest):
         c.close()
 
         with self.assertRaises(AutoReconnect):
-            c.db.command('ismaster')
+            c.db.command('ping')
 
         self.assertEqual(c.address, None)
 
@@ -106,7 +106,7 @@ class TestSecondaryRemoved(MockClientTest):
         wait_until(lambda: ('c', 3) in c.secondaries, 'discover host "c"')
 
         # C is removed.
-        c.mock_ismaster_hosts.remove('c:3')
+        c.mock_hello_hosts.remove('c:3')
         wait_until(lambda: set([('b', 2)]) == c.secondaries,
                    'update list of secondaries')
 
@@ -156,10 +156,10 @@ class TestSecondaryAdded(MockClientTest):
 
         # C is added.
         c.mock_members.append('c:3')
-        c.mock_ismaster_hosts.append('c:3')
+        c.mock_hello_hosts.append('c:3')
 
         c.close()
-        c.db.command('ismaster')
+        c.db.command('ping')
 
         self.assertEqual(c.address, ('a', 1))
 
@@ -181,7 +181,7 @@ class TestSecondaryAdded(MockClientTest):
 
         # C is added.
         c.mock_members.append('c:3')
-        c.mock_ismaster_hosts.append('c:3')
+        c.mock_hello_hosts.append('c:3')
 
         wait_until(lambda: set([('b', 2), ('c', 3)]) == c.secondaries,
                    'discover the new secondary')

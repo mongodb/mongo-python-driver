@@ -532,8 +532,8 @@ class _AuthContext(object):
     def speculate_command(self):
         raise NotImplementedError
 
-    def parse_response(self, ismaster):
-        self.speculative_authenticate = ismaster.speculative_authenticate
+    def parse_response(self, hello):
+        self.speculative_authenticate = hello.speculative_authenticate
 
     def speculate_succeeded(self):
         return bool(self.speculative_authenticate)
