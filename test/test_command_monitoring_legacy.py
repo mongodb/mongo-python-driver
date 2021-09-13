@@ -27,8 +27,8 @@ from bson import json_util
 from pymongo.errors import OperationFailure
 from pymongo.write_concern import WriteConcern
 from test import unittest, client_context
-from test.utils import (
-    single_client, wait_until, EventListener, parse_read_preference)
+from test.utils import (rs_or_single_client, wait_until, EventListener,
+                        parse_read_preference)
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
@@ -48,7 +48,7 @@ class TestAllScenarios(unittest.TestCase):
     @client_context.require_connection
     def setUpClass(cls):
         cls.listener = EventListener()
-        cls.client = MongoClient(event_listeners=[cls.listener])
+        cls.client = rs_or_single_client(event_listeners=[cls.listener])
 
     @classmethod
     def tearDownClass(cls):
