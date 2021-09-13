@@ -121,6 +121,7 @@ Breaking Changes in 4.0
 allowing for the automatic discovery of replica sets. This means that if you
 want a direct connection to a single server you must pass
 ``directConnection=True`` as a URI option or keyword argument.
+
 - The ``hint`` option is now required when using ``min`` or ``max`` queries
   with :meth:`~pymongo.collection.Collection.find`.
 - ``name`` is now a required argument for the :class:`pymongo.driver_info.DriverInfo` class.
