@@ -63,7 +63,8 @@ MongoClient
 -----------
 
 ``directConnection`` defaults to False
-..........................................
+......................................
+
 ``directConnection`` URI option and keyword argument to :class:`~pymongo
 .mongo_client.MongoClient` defaults to ``False`` instead of ``None``,
 allowing for the automatic discovery of replica sets. This means that if you
