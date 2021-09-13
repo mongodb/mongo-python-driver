@@ -100,6 +100,8 @@ Breaking Changes in 4.0
 - Removed :class:`bson.binary.UUIDLegacy`.
 - The "tls" install extra is no longer necessary or supported and will be
   ignored by pip.
+- ``tz_aware`` now defaults to ``False`` everywhere instead of ``True`` in
+some places.
 
 Notable improvements
 ....................

@@ -174,6 +174,11 @@ can be changed to this::
 
     names = client.list_database_names()
 
+``tz_aware`` defaults to ``False``
+.....................................
+``tz_aware`` now defaults to ``False`` everywhere instead of ``True`` in
+some places.
+
 Database
 --------
 

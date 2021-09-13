@@ -95,8 +95,8 @@ class TestJsonUtil(unittest.TestCase):
         tz_aware_opts = json_util.DEFAULT_JSON_OPTIONS.with_options(
             tz_aware=True)
         # only millis, not micros
-        self.round_trip({"date": datetime.datetime(2009, 12, 9, 15,
-                                                    49, 45, 191000, utc)}, json_options=tz_aware_opts)
+        self.round_trip({"date": datetime.datetime(2009, 12, 9, 15, 49, 45,
+                        191000, utc)}, json_options=tz_aware_opts)
         self.round_trip({"date": datetime.datetime(2009, 12, 9, 15,
                                                    49, 45, 191000)})
 
@@ -173,7 +173,8 @@ class TestJsonUtil(unittest.TestCase):
         self.assertEqual(
             datetime.datetime(1972, 1, 1, 1, 1, 1, 10000, utc),
             json_util.loads(
-                '{"dt": {"$date": "1972-01-01T01:01:01.010+0000"}}', json_options=tz_aware_opts)["dt"])
+                '{"dt": {"$date": "1972-01-01T01:01:01.010+0000"}}',
+                json_options=tz_aware_opts)["dt"])
         self.assertEqual(
             datetime.datetime(1972, 1, 1, 1, 1, 1, 10000, utc),
             json_util.loads(
