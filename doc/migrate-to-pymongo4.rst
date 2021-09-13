@@ -183,7 +183,6 @@ can be changed to this::
 
     names = client.list_database_names()
 
-
 Database
 --------
 
