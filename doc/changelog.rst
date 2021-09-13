@@ -100,9 +100,9 @@ Breaking Changes in 4.0
 - Removed :class:`bson.binary.UUIDLegacy`.
 - The "tls" install extra is no longer necessary or supported and will be
   ignored by pip.
-- ``tz_aware``, a keyword argument for :class:`~pymongo.mongo_client
-.MongoClient`, now defaults to ``False`` everywhere instead of ``True`` in
-some places.
+- ``tz_aware``, an argument for :class:`~bson.json_util.JSONOptions`,
+  now defaults to ``False`` instead of ``True``. ``json_util.loads`` now
+decodes datetime as naive by default.
 
 Notable improvements
 ....................

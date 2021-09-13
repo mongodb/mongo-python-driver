@@ -177,9 +177,10 @@ can be changed to this::
 ``tz_aware`` defaults to ``False``
 ..................................
 
-``tz_aware``, a keyword argument for :class:`~pymongo.mongo_client
-.MongoClient`, now defaults to ``False`` everywhere instead of ``True`` in
-some places.
+``tz_aware``, an argument for :class:`~bson.json_util.JSONOptions`,
+now defaults to ``False`` instead of ``True``. ``json_util.loads`` now
+decodes datetime as naive by default.
+
 
 Database
 --------
