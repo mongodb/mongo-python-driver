@@ -22,6 +22,7 @@ sys.path[0:0] = [""]
 
 import pymongo
 
+from pymongo import MongoClient
 from bson import json_util
 from pymongo.errors import OperationFailure
 from pymongo.write_concern import WriteConcern
@@ -47,7 +48,7 @@ class TestAllScenarios(unittest.TestCase):
     @client_context.require_connection
     def setUpClass(cls):
         cls.listener = EventListener()
-        cls.client = single_client(event_listeners=[cls.listener])
+        cls.client = MongoClient(event_listeners=[cls.listener])
 
     @classmethod
     def tearDownClass(cls):
