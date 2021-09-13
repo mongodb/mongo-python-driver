@@ -638,8 +638,13 @@ class TestBSON(unittest.TestCase):
 
     def test_uuid(self):
         id = uuid.uuid4()
-        transformed_id = decode(encode({"id": id}))["id"]
+        # The default uuid_representation is UNSPECIFIED
+        with self.assertRaisesRegex(ValueError, 'cannot encode native uuid'):
+            bson.decode_all(encode({'uuid': id}))
 
+        opts = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
+        transformed_id = decode(encode({"id": id}, codec_options=opts),
+                                codec_options=opts)["id"]
         self.assertTrue(isinstance(transformed_id, uuid.UUID))
         self.assertEqual(id, transformed_id)
         self.assertNotEqual(uuid.uuid4(), transformed_id)
@@ -648,8 +653,9 @@ class TestBSON(unittest.TestCase):
         id = uuid.uuid4()
         legacy = Binary.from_uuid(id, UuidRepresentation.PYTHON_LEGACY)
         self.assertEqual(3, legacy.subtype)
-        transformed = decode(encode({"uuid": legacy}))["uuid"]
-        self.assertTrue(isinstance(transformed, uuid.UUID))
+        bin = decode(encode({"uuid": legacy}))["uuid"]
+        self.assertTrue(isinstance(bin, Binary))
+        transformed = bin.as_uuid(UuidRepresentation.PYTHON_LEGACY)
         self.assertEqual(id, transformed)
 
     # The C extension was segfaulting on unicode RegExs, so we have this test
