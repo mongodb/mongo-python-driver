@@ -765,3 +765,14 @@ subdocument containing a ``$ref`` field would be decoded as a
 :class:`~bson.dbref.DBRef`.
 
 .. _DBRef specification: https://github.com/mongodb/specifications/blob/5a8c8d7/source/dbref.rst
+
+Encoding a UUID raises an error by default
+..........................................
+
+The default uuid_representation for :class:`~bson.codec_options.CodecOptions`,
+:class:`~bson.json_util.JSONOptions`, and
+:class:`~pymongo.mongo_client.MongoClient` has been changed from
+:data:`bson.binary.UuidRepresentation.PYTHON_LEGACY` to
+:data:`bson.binary.UuidRepresentation.UNSPECIFIED`. Attempting to encode a
+:class:`uuid.UUID` instance to BSON or JSON now produces an error by default.
+See :ref:`handling-uuid-data-example` for details.
