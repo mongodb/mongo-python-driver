@@ -62,7 +62,7 @@ class TestErrors(PyMongoTestCase):
                                {"errmsg": 'unicode \U0001f40d'})
         self._test_unicode_strs(exc)
 
-    def test_unicode_strs_not_master_error(self):
+    def test_unicode_strs_not_primary_error(self):
         exc = NotPrimaryError('unicode \U0001f40d',
                               {"errmsg": 'unicode \U0001f40d'})
         self._test_unicode_strs(exc)

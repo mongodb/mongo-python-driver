@@ -62,7 +62,7 @@ class MonitorBase(object):
         self._executor = executor
 
         def _on_topology_gc(dummy=None):
-            # This prevents GC from waiting 10 seconds for isMaster to complete
+            # This prevents GC from waiting 10 seconds for hello to complete
             # See test_cleanup_executors_on_client_del.
             monitor = self_ref()
             if monitor:
@@ -133,7 +133,7 @@ class Monitor(MonitorBase):
         self.heartbeater = None
 
     def cancel_check(self):
-        """Cancel any concurrent isMaster check.
+        """Cancel any concurrent hello check.
 
         Note: this is called from a weakref.proxy callback and MUST NOT take
         any locks.
@@ -204,7 +204,7 @@ class Monitor(MonitorBase):
             self.close()
 
     def _check_server(self):
-        """Call isMaster or read the next streaming response.
+        """Call hello or read the next streaming response.
 
         Returns a ServerDescription.
         """
@@ -213,7 +213,7 @@ class Monitor(MonitorBase):
             try:
                 return self._check_once()
             except (OperationFailure, NotPrimaryError) as exc:
-                # Update max cluster time even when isMaster fails.
+                # Update max cluster time even when hello fails.
                 self._topology.receive_cluster_time(
                     exc.details.get('$clusterTime'))
                 raise
@@ -236,7 +236,7 @@ class Monitor(MonitorBase):
             return ServerDescription(address, error=error)
 
     def _check_once(self):
-        """A single attempt to call ismaster.
+        """A single attempt to call hello.
 
         Returns a ServerDescription, or raises an exception.
         """
@@ -267,19 +267,19 @@ class Monitor(MonitorBase):
         cluster_time = self._topology.max_cluster_time()
         start = time.monotonic()
         if conn.more_to_come:
-            # Read the next streaming isMaster (MongoDB 4.4+).
+            # Read the next streaming hello (MongoDB 4.4+).
             response = Hello(conn._next_reply(), awaitable=True)
         elif (conn.performed_handshake and
               self._server_description.topology_version):
-            # Initiate streaming isMaster (MongoDB 4.4+).
-            response = conn._ismaster(
+            # Initiate streaming hello (MongoDB 4.4+).
+            response = conn._hello(
                 cluster_time,
                 self._server_description.topology_version,
                 self._settings.heartbeat_frequency,
                 None)
         else:
-            # New connection handshake or polling isMaster (MongoDB <4.4).
-            response = conn._ismaster(cluster_time, None, None, None)
+            # New connection handshake or polling hello (MongoDB <4.4).
+            response = conn._hello(cluster_time, None, None, None)
         return response, time.monotonic() - start
 
 
@@ -384,12 +384,12 @@ class _RttMonitor(MonitorBase):
             self._pool.reset()
 
     def _ping(self):
-        """Run an "isMaster" command and return the RTT."""
+        """Run a "hello" command and return the RTT."""
         with self._pool.get_socket({}) as sock_info:
             if self._executor._stopped:
                 raise Exception('_RttMonitor closed')
             start = time.monotonic()
-            sock_info.ismaster()
+            sock_info.hello()
             return time.monotonic() - start
 
 

@@ -182,6 +182,7 @@ will not add that listener to existing client instances.
 
 from collections import abc, namedtuple
 
+from pymongo.hello import HelloCompat
 from pymongo.helpers import _handle_exception
 
 _Listeners = namedtuple('Listeners',
@@ -512,7 +513,7 @@ _SENSITIVE_COMMANDS = set(
 # The "hello" command is also deemed sensitive when attempting speculative
 # authentication.
 def _is_speculative_authenticate(command_name, doc):
-    if (command_name.lower() in ('hello', 'ismaster') and
+    if (command_name.lower() in ('hello', HelloCompat.LEGACY_CMD) and
             'speculativeAuthenticate' in doc):
         return True
     return False

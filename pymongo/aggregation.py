@@ -93,17 +93,17 @@ class _AggregationCommand(object):
         """Check whether the server version in-use supports aggregation."""
         pass
 
-    def _process_result(self, result, session, server, sock_info, slave_ok):
+    def _process_result(self, result, session, server, sock_info, secondary_ok):
         if self._result_processor:
             self._result_processor(
-                result, session, server, sock_info, slave_ok)
+                result, session, server, sock_info, secondary_ok)
 
     def get_read_preference(self, session):
         if self._performs_write:
             return ReadPreference.PRIMARY
         return self._target._read_preference_for(session)
 
-    def get_cursor(self, session, server, sock_info, slave_ok):
+    def get_cursor(self, session, server, sock_info, secondary_ok):
         # Ensure command compatibility.
         self._check_compat(sock_info)
 
@@ -136,7 +136,7 @@ class _AggregationCommand(object):
         result = sock_info.command(
             self._database.name,
             cmd,
-            slave_ok,
+            secondary_ok,
             self.get_read_preference(session),
             self._target.codec_options,
             parse_write_concern_error=True,
@@ -147,7 +147,7 @@ class _AggregationCommand(object):
             client=self._database.client,
             user_fields=self._user_fields)
 
-        self._process_result(result, session, server, sock_info, slave_ok)
+        self._process_result(result, session, server, sock_info, secondary_ok)
 
         # Extract cursor from result or mock/fake one if necessary.
         if 'cursor' in result:

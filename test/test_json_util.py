@@ -24,7 +24,9 @@ sys.path[0:0] = [""]
 
 from bson import json_util, EPOCH_AWARE, EPOCH_NAIVE, SON
 from bson.json_util import (DatetimeRepresentation,
-                            STRICT_JSON_OPTIONS)
+                            JSONMode,
+                            JSONOptions,
+                            LEGACY_JSON_OPTIONS)
 from bson.binary import (ALL_UUID_REPRESENTATIONS, Binary, MD5_SUBTYPE,
                          USER_DEFINED_SUBTYPE, UuidRepresentation, STANDARD)
 from bson.code import Code
@@ -40,6 +42,13 @@ from bson.tz_util import FixedOffset, utc
 from test import unittest, IntegrationTest
 
 
+STRICT_JSON_OPTIONS = JSONOptions(
+    strict_number_long=True,
+    datetime_representation=DatetimeRepresentation.ISO8601,
+    strict_uuid=True,
+    json_mode=JSONMode.LEGACY)
+
+
 class TestJsonUtil(unittest.TestCase):
     def round_tripped(self, doc, **kwargs):
         return json_util.loads(json_util.dumps(doc, **kwargs), **kwargs)
@@ -51,16 +60,18 @@ class TestJsonUtil(unittest.TestCase):
         self.round_trip({"hello": "world"})
 
     def test_json_options_with_options(self):
-        opts = json_util.JSONOptions(
-            datetime_representation=DatetimeRepresentation.NUMBERLONG)
+        opts = JSONOptions(
+            datetime_representation=DatetimeRepresentation.NUMBERLONG,
+            json_mode=JSONMode.LEGACY)
         self.assertEqual(
             opts.datetime_representation, DatetimeRepresentation.NUMBERLONG)
         opts2 = opts.with_options(
-            datetime_representation=DatetimeRepresentation.ISO8601)
+            datetime_representation=DatetimeRepresentation.ISO8601,
+            json_mode=JSONMode.LEGACY)
         self.assertEqual(
             opts2.datetime_representation, DatetimeRepresentation.ISO8601)
 
-        opts = json_util.JSONOptions(strict_number_long=True)
+        opts = JSONOptions(strict_number_long=True, json_mode=JSONMode.LEGACY)
         self.assertEqual(opts.strict_number_long, True)
         opts2 = opts.with_options(strict_number_long=False)
         self.assertEqual(opts2.strict_number_long, False)
@@ -136,11 +147,17 @@ class TestJsonUtil(unittest.TestCase):
         pre_epoch = {"dt": datetime.datetime(1, 1, 1, 1, 1, 1, 10000, utc)}
         post_epoch = {"dt": datetime.datetime(1972, 1, 1, 1, 1, 1, 10000, utc)}
         self.assertEqual(
-            '{"dt": {"$date": -62135593138990}}',
+            '{"dt": {"$date": {"$numberLong": "-62135593138990"}}}',
             json_util.dumps(pre_epoch))
         self.assertEqual(
-            '{"dt": {"$date": 63075661010}}',
+            '{"dt": {"$date": "1972-01-01T01:01:01.010Z"}}',
             json_util.dumps(post_epoch))
+        self.assertEqual(
+            '{"dt": {"$date": -62135593138990}}',
+            json_util.dumps(pre_epoch, json_options=LEGACY_JSON_OPTIONS))
+        self.assertEqual(
+            '{"dt": {"$date": 63075661010}}',
+            json_util.dumps(post_epoch, json_options=LEGACY_JSON_OPTIONS))
         self.assertEqual(
             '{"dt": {"$date": {"$numberLong": "-62135593138990"}}}',
             json_util.dumps(pre_epoch, json_options=STRICT_JSON_OPTIONS))
@@ -148,8 +165,9 @@ class TestJsonUtil(unittest.TestCase):
             '{"dt": {"$date": "1972-01-01T01:01:01.010Z"}}',
             json_util.dumps(post_epoch, json_options=STRICT_JSON_OPTIONS))
 
-        number_long_options = json_util.JSONOptions(
-            datetime_representation=DatetimeRepresentation.NUMBERLONG)
+        number_long_options = JSONOptions(
+            datetime_representation=DatetimeRepresentation.NUMBERLONG,
+            json_mode=JSONMode.LEGACY)
         self.assertEqual(
             '{"dt": {"$date": {"$numberLong": "63075661010"}}}',
             json_util.dumps(post_epoch, json_options=number_long_options))
@@ -179,14 +197,14 @@ class TestJsonUtil(unittest.TestCase):
             datetime.datetime(1972, 1, 1, 1, 1, 1, 10000, utc),
             json_util.loads(
                 '{"dt": {"$date": "1972-01-01T01:01:01.010+0000"}}',
-                json_options=json_util.JSONOptions(tz_aware=True,
+                json_options=JSONOptions(tz_aware=True,
                                                    tzinfo=utc))["dt"])
         self.assertEqual(
             datetime.datetime(1972, 1, 1, 1, 1, 1, 10000),
             json_util.loads(
                 '{"dt": {"$date": "1972-01-01T01:01:01.010+0000"}}',
-                json_options=json_util.JSONOptions(tz_aware=False))["dt"])
-        self.round_trip(pre_epoch_naive, json_options=json_util.JSONOptions(
+                json_options=JSONOptions(tz_aware=False))["dt"])
+        self.round_trip(pre_epoch_naive, json_options=JSONOptions(
             tz_aware=False))
 
         # Test a non-utc timezone
@@ -196,10 +214,12 @@ class TestJsonUtil(unittest.TestCase):
         self.assertEqual(
             '{"dt": {"$date": "2002-10-27T06:00:00.010-0800"}}',
             json_util.dumps(aware_datetime, json_options=STRICT_JSON_OPTIONS))
-        self.round_trip(aware_datetime, json_options=json_util.JSONOptions(
+        self.round_trip(aware_datetime, json_options=JSONOptions(
+            json_mode=JSONMode.LEGACY,
             tz_aware=True, tzinfo=pacific))
-        self.round_trip(aware_datetime, json_options=json_util.JSONOptions(
+        self.round_trip(aware_datetime, json_options=JSONOptions(
             datetime_representation=DatetimeRepresentation.ISO8601,
+            json_mode=JSONMode.LEGACY,
             tz_aware=True, tzinfo=pacific))
 
     def test_regex_object_hook(self):
@@ -238,12 +258,17 @@ class TestJsonUtil(unittest.TestCase):
 
         # Check order.
         self.assertEqual(
-            '{"$regex": ".*", "$options": "mx"}',
+            '{"$regularExpression": {"pattern": ".*", "options": "mx"}}',
             json_util.dumps(Regex('.*', re.M | re.X)))
 
         self.assertEqual(
-            '{"$regex": ".*", "$options": "mx"}',
+            '{"$regularExpression": {"pattern": ".*", "options": "mx"}}',
             json_util.dumps(re.compile(b'.*', re.M | re.X)))
+
+        self.assertEqual(
+            '{"$regex": ".*", "$options": "mx"}',
+            json_util.dumps(Regex('.*', re.M | re.X),
+                            json_options=LEGACY_JSON_OPTIONS))
 
     def test_minkey(self):
         self.round_trip({"m": MinKey()})
@@ -263,26 +288,28 @@ class TestJsonUtil(unittest.TestCase):
         self.round_trip(doc)
         self.assertEqual(
             '{"uuid": {"$uuid": "f47ac10b58cc4372a5670e02b2c3d479"}}',
-            json_util.dumps(doc))
+            json_util.dumps(doc, json_options=LEGACY_JSON_OPTIONS))
         self.assertEqual(
             '{"uuid": '
             '{"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "03"}}',
             json_util.dumps(
-                doc, json_options=json_util.STRICT_JSON_OPTIONS))
+                doc, json_options=STRICT_JSON_OPTIONS))
         self.assertEqual(
             '{"uuid": '
             '{"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "04"}}',
             json_util.dumps(
-                doc, json_options=json_util.JSONOptions(
-                    strict_uuid=True, uuid_representation=STANDARD)))
+                doc, json_options=JSONOptions(
+                    strict_uuid=True, json_mode=JSONMode.LEGACY,
+                    uuid_representation=STANDARD)))
         self.assertEqual(
             doc, json_util.loads(
                 '{"uuid": '
                 '{"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "03"}}'))
         for uuid_representation in (set(ALL_UUID_REPRESENTATIONS) -
                                     {UuidRepresentation.UNSPECIFIED}):
-            options = json_util.JSONOptions(
-                strict_uuid=True, uuid_representation=uuid_representation)
+            options = JSONOptions(
+                strict_uuid=True, json_mode=JSONMode.LEGACY,
+                uuid_representation=uuid_representation)
             self.round_trip(doc, json_options=options)
             # Ignore UUID representation when decoding BSON binary subtype 4.
             self.assertEqual(doc, json_util.loads(
@@ -292,8 +319,9 @@ class TestJsonUtil(unittest.TestCase):
 
     def test_uuid_uuid_rep_unspecified(self):
         _uuid = uuid.uuid4()
-        options = json_util.JSONOptions(
+        options = JSONOptions(
             strict_uuid=True,
+            json_mode=JSONMode.LEGACY,
             uuid_representation=UuidRepresentation.UNSPECIFIED)
 
         # Cannot directly encode native UUIDs with UNSPECIFIED.
@@ -314,7 +342,8 @@ class TestJsonUtil(unittest.TestCase):
             doc, json_util.loads(ext_json_str, json_options=options))
         # $uuid-encoded fields
         doc = {'uuid': Binary(_uuid.bytes, subtype=4)}
-        ext_json_str = json_util.dumps({'uuid': _uuid})
+        ext_json_str = json_util.dumps({'uuid': _uuid},
+                                       json_options=LEGACY_JSON_OPTIONS)
         self.assertEqual(
             doc, json_util.loads(ext_json_str, json_options=options))
 
@@ -335,11 +364,13 @@ class TestJsonUtil(unittest.TestCase):
         self.assertEqual(type(bin), bytes)
 
         # PYTHON-443 ensure old type formats are supported
-        json_bin_dump = json_util.dumps(bin_type_dict)
-        self.assertTrue('"$type": "00"' in json_bin_dump)
+        json_bin_dump = json_util.dumps(bin_type_dict,
+                                        json_options=LEGACY_JSON_OPTIONS)
+        self.assertIn('"$type": "00"', json_bin_dump)
         self.assertEqual(bin_type_dict,
             json_util.loads('{"bin": {"$type": 0, "$binary": "AAECAwQ="}}'))
-        json_bin_dump = json_util.dumps(md5_type_dict)
+        json_bin_dump = json_util.dumps(md5_type_dict,
+                                        json_options=LEGACY_JSON_OPTIONS)
         # Check order.
         self.assertEqual(
             '{"md5": {"$binary": "IG43GK8JL9HRL4DK53HMrA==",'
@@ -350,8 +381,9 @@ class TestJsonUtil(unittest.TestCase):
             json_util.loads('{"md5": {"$type": 5, "$binary":'
                             ' "IG43GK8JL9HRL4DK53HMrA=="}}'))
 
-        json_bin_dump = json_util.dumps(custom_type_dict)
-        self.assertTrue('"$type": "80"' in json_bin_dump)
+        json_bin_dump = json_util.dumps(custom_type_dict,
+                                        json_options=LEGACY_JSON_OPTIONS)
+        self.assertIn('"$type": "80"', json_bin_dump)
         self.assertEqual(custom_type_dict,
             json_util.loads('{"custom": {"$type": 128, "$binary":'
                             ' "aGVsbG8="}}'))
@@ -389,7 +421,8 @@ class TestJsonUtil(unittest.TestCase):
                          Int64(65535))
         self.assertEqual(json_util.dumps({"weight": Int64(65535)}),
                          '{"weight": 65535}')
-        json_options = json_util.JSONOptions(strict_number_long=True)
+        json_options = JSONOptions(strict_number_long=True,
+                                   json_mode=JSONMode.LEGACY)
         self.assertEqual(json_util.dumps({"weight": Int64(65535)},
                                          json_options=json_options),
                          jsn)
@@ -398,10 +431,10 @@ class TestJsonUtil(unittest.TestCase):
         # document_class dict should always work
         self.assertEqual({"foo": "bar"}, json_util.loads(
             '{"foo": "bar"}',
-            json_options=json_util.JSONOptions(document_class=dict)))
+            json_options=JSONOptions(document_class=dict)))
         self.assertEqual(SON([("foo", "bar"), ("b", 1)]), json_util.loads(
             '{"foo": "bar", "b": 1}',
-            json_options=json_util.JSONOptions(document_class=SON)))
+            json_options=JSONOptions(document_class=SON)))
 
 
 class TestJsonUtilRoundtrip(IntegrationTest):

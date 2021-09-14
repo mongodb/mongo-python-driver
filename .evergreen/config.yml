@@ -968,114 +968,6 @@ tasks:
             TOPOLOGY: "server"
         - func: "run doctests"
 
-    - name: "test-2.6-standalone"
-      tags: ["2.6", "standalone"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "2.6"
-            TOPOLOGY: "server"
-        - func: "run tests"
-
-    - name: "test-2.6-replica_set"
-      tags: ["2.6", "replica_set"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "2.6"
-            TOPOLOGY: "replica_set"
-        - func: "run tests"
-
-    - name: "test-2.6-sharded_cluster"
-      tags: ["2.6", "sharded_cluster"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "2.6"
-            TOPOLOGY: "sharded_cluster"
-        - func: "run tests"
-
-    - name: "test-3.0-standalone"
-      tags: ["3.0", "standalone"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "3.0"
-            TOPOLOGY: "server"
-        - func: "run tests"
-
-    - name: "test-3.0-replica_set"
-      tags: ["3.0", "replica_set"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "3.0"
-            TOPOLOGY: "replica_set"
-        - func: "run tests"
-
-    - name: "test-3.0-sharded_cluster"
-      tags: ["3.0", "sharded_cluster"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "3.0"
-            TOPOLOGY: "sharded_cluster"
-        - func: "run tests"
-
-    - name: "test-3.2-standalone"
-      tags: ["3.2", "standalone"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "3.2"
-            TOPOLOGY: "server"
-        - func: "run tests"
-
-    - name: "test-3.2-replica_set"
-      tags: ["3.2", "replica_set"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "3.2"
-            TOPOLOGY: "replica_set"
-        - func: "run tests"
-
-    - name: "test-3.2-sharded_cluster"
-      tags: ["3.2", "sharded_cluster"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "3.2"
-            TOPOLOGY: "sharded_cluster"
-        - func: "run tests"
-
-    - name: "test-3.4-standalone"
-      tags: ["3.4", "standalone"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "3.4"
-            TOPOLOGY: "server"
-        - func: "run tests"
-
-    - name: "test-3.4-replica_set"
-      tags: ["3.4", "replica_set"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "3.4"
-            TOPOLOGY: "replica_set"
-        - func: "run tests"
-
-    - name: "test-3.4-sharded_cluster"
-      tags: ["3.4", "sharded_cluster"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "3.4"
-            TOPOLOGY: "sharded_cluster"
-        - func: "run tests"
-
     - name: "test-3.6-standalone"
       tags: ["3.6", "standalone"]
       commands:
@@ -1843,22 +1735,6 @@ axes:
   - id: mongodb-version
     display_name: "MongoDB"
     values:
-      - id: "2.6"
-        display_name: "MongoDB 2.6"
-        variables:
-           VERSION: "2.6"
-      - id: "3.0"
-        display_name: "MongoDB 3.0"
-        variables:
-          VERSION: "3.0"
-      - id: "3.2"
-        display_name: "MongoDB 3.2"
-        variables:
-          VERSION: "3.2"
-      - id: "3.4"
-        display_name: "MongoDB 3.4"
-        variables:
-          VERSION: "3.4"
       - id: "3.6"
         display_name: "MongoDB 3.6"
         variables:
@@ -2018,10 +1894,6 @@ axes:
         display_name: MMAPv1
         variables:
            STORAGE_ENGINE: "mmapv1"
-      - id: wiredtiger
-        display_name: WiredTiger
-        variables:
-           STORAGE_ENGINE: "wiredtiger"
       - id: inmemory
         display_name: InMemory
         variables:
@@ -2123,10 +1995,6 @@ buildvariants:
     - ".4.2"
     - ".4.0"
     - ".3.6"
-    - ".3.4"
-    - ".3.2"
-    - ".3.0"
-    - ".2.6"
 
 - matrix_name: "tests-all-encryption"
   matrix_spec:
@@ -2142,7 +2010,6 @@ buildvariants:
     - ".4.4"
     - ".4.2"
     - ".4.0"
-    - ".2.6"
 
 - matrix_name: "tests-archlinux"
   matrix_spec:
@@ -2156,10 +2023,6 @@ buildvariants:
   tasks:
     - ".4.0"
     - ".3.6"
-    - ".3.4"
-    - ".3.2"
-    - ".3.0"
-    - ".2.6"
 
 - matrix_name: "test-macos"
   matrix_spec:
@@ -2182,17 +2045,6 @@ buildvariants:
     - ".4.2"
     - ".4.0"
     - ".3.6"
-    - ".3.4"
-    - ".3.2"
-  rules:
-    - if:
-        platform: macos-1014
-        auth: "*"
-        ssl: "nossl"
-      then:
-        add_tasks:
-          - ".3.0"
-          - ".2.6"
 
 - matrix_name: "test-macos-encryption"
   matrix_spec:
@@ -2252,7 +2104,7 @@ buildvariants:
     pyopenssl: "*"
   display_name: "PyOpenSSL ${platform} ${python-version} ${auth}"
   tasks:
-    - '.replica_set !.2.6 !.3.0'
+    - '.replica_set'
     # Test standalone and sharded only on 5.0 and later.
     - '.5.0'
 
@@ -2265,7 +2117,7 @@ buildvariants:
     pyopenssl: "*"
   display_name: "PyOpenSSL ${platform} ${python-version} ${auth}"
   tasks:
-    - '.replica_set !.2.6 !.3.0 !.3.2 !.3.4'
+    - '.replica_set'
     # Test standalone and sharded only on 5.0 and later.
     - '.5.0'
 
@@ -2277,7 +2129,7 @@ buildvariants:
     pyopenssl: "*"
   display_name: "PyOpenSSL ${platform} ${auth}"
   tasks:
-    - '.replica_set !.2.6 !.3.0'
+    - '.replica_set'
 
 - matrix_name: "tests-pyopenssl-windows"
   matrix_spec:
@@ -2432,8 +2284,6 @@ buildvariants:
           - "test-4.2-standalone"
           - "test-4.0-standalone"
           - "test-3.6-standalone"
-          - "test-3.4-standalone"
-          - "test-3.2-standalone"
     - if:
         # MongoDB 4.2 drops support for MMAPv1
         platform: awslinux
@@ -2445,16 +2295,6 @@ buildvariants:
           - "test-4.0-replica_set"
           - "test-3.6-standalone"
           - "test-3.6-replica_set"
-          - "test-3.4-standalone"
-          - "test-3.2-standalone"
-    - if:
-        # No need to test this on later server versions as it becomes the default
-        platform: awslinux
-        storage-engine: ["wiredtiger"]
-        python-version: "*"
-      then:
-        add_tasks:
-          - "test-3.0-standalone"
 
 # enableTestCommands=0 tests on Amazon1 (x86_64) with Python 3.6.
 - matrix_name: "test-disableTestCommands"

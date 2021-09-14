@@ -490,8 +490,7 @@ class TestBSON(unittest.TestCase):
         ref_only = {'ref': {'$ref': 'collection'}}
         id_only = {'ref': {'$id': ObjectId()}}
 
-        self.assertEqual(DBRef('collection', id=None),
-                         decode(encode(ref_only))['ref'])
+        self.assertEqual(ref_only, decode(encode(ref_only)))
         self.assertEqual(id_only, decode(encode(id_only)))
 
     def test_bytes_as_keys(self):

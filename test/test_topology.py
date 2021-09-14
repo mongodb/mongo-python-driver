@@ -21,24 +21,24 @@ sys.path[0:0] = [""]
 from bson.objectid import ObjectId
 
 from pymongo import common
-from pymongo.read_preferences import ReadPreference, Secondary
-from pymongo.server_type import SERVER_TYPE
-from pymongo.topology import (_ErrorContext,
-                              Topology)
-from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure)
-from pymongo.hello import Hello
+from pymongo.hello import Hello, HelloCompat
 from pymongo.monitor import Monitor
 from pymongo.pool import PoolOptions
+from pymongo.read_preferences import ReadPreference, Secondary
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
+from pymongo.server_type import SERVER_TYPE
 from pymongo.settings import TopologySettings
+from pymongo.topology import (_ErrorContext,
+                              Topology)
+from pymongo.topology_description import TOPOLOGY_TYPE
 from test import client_knobs, unittest
-from test.utils import MockPool, wait_until
 from test.pymongo_mocks import DummyMonitor
+from test.utils import MockPool, wait_until
 
 
 class SetNameDiscoverySettings(TopologySettings):
@@ -65,9 +65,9 @@ def create_mock_topology(
     return t
 
 
-def got_ismaster(topology, server_address, ismaster_response):
+def got_hello(topology, server_address, hello_response):
     server_description = ServerDescription(
-        server_address, Hello(ismaster_response), 0)
+        server_address, Hello(hello_response), 0)
 
     topology.on_change(server_description)
 
@@ -119,23 +119,23 @@ class TestTopologyConfiguration(TopologyTest):
         self.assertEqual(1, monitor._pool.opts.connect_timeout)
         self.assertEqual(1, monitor._pool.opts.socket_timeout)
 
-        # The monitor, not its pool, is responsible for calling ismaster.
+        # The monitor, not its pool, is responsible for calling hello.
         self.assertFalse(monitor._pool.handshake)
 
 
 class TestSingleServerTopology(TopologyTest):
     def test_direct_connection(self):
-        for server_type, ismaster_response in [
+        for server_type, hello_response in [
             (SERVER_TYPE.RSPrimary, {
                 'ok': 1,
-                'ismaster': True,
+                HelloCompat.LEGACY_CMD: True,
                 'hosts': ['a'],
                 'setName': 'rs',
                 'maxWireVersion': 6}),
 
             (SERVER_TYPE.RSSecondary, {
                 'ok': 1,
-                'ismaster': False,
+                HelloCompat.LEGACY_CMD: False,
                 'secondary': True,
                 'hosts': ['a'],
                 'setName': 'rs',
@@ -143,13 +143,13 @@ class TestSingleServerTopology(TopologyTest):
 
             (SERVER_TYPE.Mongos, {
                 'ok': 1,
-                'ismaster': True,
+                HelloCompat.LEGACY_CMD: True,
                 'msg': 'isdbgrid',
                 'maxWireVersion': 6}),
 
             (SERVER_TYPE.RSArbiter, {
                 'ok': 1,
-                'ismaster': False,
+                HelloCompat.LEGACY_CMD: False,
                 'arbiterOnly': True,
                 'hosts': ['a'],
                 'setName': 'rs',
@@ -157,13 +157,15 @@ class TestSingleServerTopology(TopologyTest):
 
             (SERVER_TYPE.Standalone, {
                 'ok': 1,
-                'ismaster': True,
+                HelloCompat.LEGACY_CMD: True,
                 'maxWireVersion': 6}),
 
-            # Slave.
+            # A "slave" in a master-slave deployment.
+            # This replication type was removed in MongoDB
+            # 4.0.
             (SERVER_TYPE.Standalone, {
                 'ok': 1,
-                'ismaster': False,
+                HelloCompat.LEGACY_CMD: False,
                 'maxWireVersion': 6}),
         ]:
             t = create_mock_topology()
@@ -174,7 +176,7 @@ class TestSingleServerTopology(TopologyTest):
                 t.select_servers(any_server_selector,
                                  server_selection_timeout=0)
 
-            got_ismaster(t, address, ismaster_response)
+            got_hello(t, address, hello_response)
 
             # Topology type never changes.
             self.assertEqual(TOPOLOGY_TYPE.Single, t.description.topology_type)
@@ -265,15 +267,15 @@ class TestSingleServerTopology(TopologyTest):
 class TestMultiServerTopology(TopologyTest):
     def test_readable_writable(self):
         t = create_mock_topology(replica_set_name='rs')
-        got_ismaster(t, ('a', 27017), {
+        got_hello(t, ('a', 27017), {
             'ok': 1,
-            'ismaster': True,
+            HelloCompat.LEGACY_CMD: True,
             'setName': 'rs',
             'hosts': ['a', 'b']})
 
-        got_ismaster(t, ('b', 27017), {
+        got_hello(t, ('b', 27017), {
             'ok': 1,
-            'ismaster': False,
+            HelloCompat.LEGACY_CMD: False,
             'secondary': True,
             'setName': 'rs',
             'hosts': ['a', 'b']})
@@ -289,16 +291,16 @@ class TestMultiServerTopology(TopologyTest):
                 Secondary(tag_sets=[{'tag': 'exists'}])))
 
         t = create_mock_topology(replica_set_name='rs')
-        got_ismaster(t, ('a', 27017), {
+        got_hello(t, ('a', 27017), {
             'ok': 1,
-            'ismaster': False,
+            HelloCompat.LEGACY_CMD: False,
             'secondary': False,
             'setName': 'rs',
             'hosts': ['a', 'b']})
 
-        got_ismaster(t, ('b', 27017), {
+        got_hello(t, ('b', 27017), {
             'ok': 1,
-            'ismaster': False,
+            HelloCompat.LEGACY_CMD: False,
             'secondary': True,
             'setName': 'rs',
             'hosts': ['a', 'b']})
@@ -314,15 +316,15 @@ class TestMultiServerTopology(TopologyTest):
                 Secondary(tag_sets=[{'tag': 'exists'}])))
 
         t = create_mock_topology(replica_set_name='rs')
-        got_ismaster(t, ('a', 27017), {
+        got_hello(t, ('a', 27017), {
             'ok': 1,
-            'ismaster': True,
+            HelloCompat.LEGACY_CMD: True,
             'setName': 'rs',
             'hosts': ['a', 'b']})
 
-        got_ismaster(t, ('b', 27017), {
+        got_hello(t, ('b', 27017), {
             'ok': 1,
-            'ismaster': False,
+            HelloCompat.LEGACY_CMD: False,
             'secondary': True,
             'setName': 'rs',
             'hosts': ['a', 'b'],
@@ -340,15 +342,15 @@ class TestMultiServerTopology(TopologyTest):
 
     def test_close(self):
         t = create_mock_topology(replica_set_name='rs')
-        got_ismaster(t, ('a', 27017), {
+        got_hello(t, ('a', 27017), {
             'ok': 1,
-            'ismaster': True,
+            HelloCompat.LEGACY_CMD: True,
             'setName': 'rs',
             'hosts': ['a', 'b']})
 
-        got_ismaster(t, ('b', 27017), {
+        got_hello(t, ('b', 27017), {
             'ok': 1,
-            'ismaster': False,
+            HelloCompat.LEGACY_CMD: False,
             'secondary': True,
             'setName': 'rs',
             'hosts': ['a', 'b']})
@@ -370,10 +372,10 @@ class TestMultiServerTopology(TopologyTest):
         self.assertEqual(TOPOLOGY_TYPE.ReplicaSetNoPrimary,
                          t.description.topology_type)
 
-        # A closed topology should not be updated when receiving an isMaster.
-        got_ismaster(t, ('a', 27017), {
+        # A closed topology should not be updated when receiving a hello.
+        got_hello(t, ('a', 27017), {
             'ok': 1,
-            'ismaster': True,
+            HelloCompat.LEGACY_CMD: True,
             'setName': 'rs',
             'hosts': ['a', 'b', 'c']})
 
@@ -390,15 +392,15 @@ class TestMultiServerTopology(TopologyTest):
 
     def test_handle_error(self):
         t = create_mock_topology(replica_set_name='rs')
-        got_ismaster(t, ('a', 27017), {
+        got_hello(t, ('a', 27017), {
             'ok': 1,
-            'ismaster': True,
+            HelloCompat.LEGACY_CMD: True,
             'setName': 'rs',
             'hosts': ['a', 'b']})
 
-        got_ismaster(t, ('b', 27017), {
+        got_hello(t, ('b', 27017), {
             'ok': 1,
-            'ismaster': False,
+            HelloCompat.LEGACY_CMD: False,
             'secondary': True,
             'setName': 'rs',
             'hosts': ['a', 'b']})
@@ -411,9 +413,9 @@ class TestMultiServerTopology(TopologyTest):
         self.assertEqual(TOPOLOGY_TYPE.ReplicaSetNoPrimary,
                          t.description.topology_type)
 
-        got_ismaster(t, ('a', 27017), {
+        got_hello(t, ('a', 27017), {
             'ok': 1,
-            'ismaster': True,
+            HelloCompat.LEGACY_CMD: True,
             'setName': 'rs',
             'hosts': ['a', 'b']})
 
@@ -451,9 +453,9 @@ class TestMultiServerTopology(TopologyTest):
         self.assertEqual(t.description.topology_type,
                          TOPOLOGY_TYPE.ReplicaSetNoPrimary)
         t.open()
-        got_ismaster(t, address, {
+        got_hello(t, address, {
             'ok': 1,
-            'ismaster': True,
+            HelloCompat.LEGACY_CMD: True,
             'setName': 'rs',
             'hosts': ['a']})
 
@@ -463,9 +465,9 @@ class TestMultiServerTopology(TopologyTest):
 
         # Another response from the primary. Tests the code that processes
         # primary response when topology type is already ReplicaSetWithPrimary.
-        got_ismaster(t, address, {
+        got_hello(t, address, {
             'ok': 1,
-            'ismaster': True,
+            HelloCompat.LEGACY_CMD: True,
             'setName': 'rs',
             'hosts': ['a']})
 
@@ -487,9 +489,9 @@ class TestMultiServerTopology(TopologyTest):
         self.assertEqual(t.description.topology_type,
                          TOPOLOGY_TYPE.ReplicaSetNoPrimary)
         t.open()
-        got_ismaster(t, address, {
+        got_hello(t, address, {
             'ok': 1,
-            'ismaster': False,
+            HelloCompat.LEGACY_CMD: False,
             'secondary': True,
             'setName': 'rs',
             'hosts': ['a']})
@@ -502,9 +504,9 @@ class TestMultiServerTopology(TopologyTest):
         t = create_mock_topology(replica_set_name='rs')
         t.description.check_compatible()  # No error.
 
-        got_ismaster(t, address, {
+        got_hello(t, address, {
             'ok': 1,
-            'ismaster': True,
+            HelloCompat.LEGACY_CMD: True,
             'setName': 'rs',
             'hosts': ['a']})
 
@@ -513,9 +515,9 @@ class TestMultiServerTopology(TopologyTest):
         self.assertEqual(server.description.min_wire_version, 0)
         self.assertEqual(server.description.max_wire_version, 0)
 
-        got_ismaster(t, address, {
+        got_hello(t, address, {
             'ok': 1,
-            'ismaster': True,
+            HelloCompat.LEGACY_CMD: True,
             'setName': 'rs',
             'hosts': ['a'],
             'minWireVersion': 1,
@@ -525,9 +527,9 @@ class TestMultiServerTopology(TopologyTest):
         self.assertEqual(server.description.max_wire_version, 5)
 
         # Incompatible.
-        got_ismaster(t, address, {
+        got_hello(t, address, {
             'ok': 1,
-            'ismaster': True,
+            HelloCompat.LEGACY_CMD: True,
             'setName': 'rs',
             'hosts': ['a'],
             'minWireVersion': 21,
@@ -546,9 +548,9 @@ class TestMultiServerTopology(TopologyTest):
             self.fail('No error with incompatible wire version')
 
         # Incompatible.
-        got_ismaster(t, address, {
+        got_hello(t, address, {
             'ok': 1,
-            'ismaster': True,
+            HelloCompat.LEGACY_CMD: True,
             'setName': 'rs',
             'hosts': ['a'],
             'minWireVersion': 0,
@@ -574,17 +576,17 @@ class TestMultiServerTopology(TopologyTest):
             s = t.select_server(writable_server_selector)
             return s.description.max_write_batch_size
 
-        got_ismaster(t, ('a', 27017), {
+        got_hello(t, ('a', 27017), {
             'ok': 1,
-            'ismaster': True,
+            HelloCompat.LEGACY_CMD: True,
             'setName': 'rs',
             'hosts': ['a', 'b'],
             'maxWireVersion': 6,
             'maxWriteBatchSize': 1})
 
-        got_ismaster(t, ('b', 27017), {
+        got_hello(t, ('b', 27017), {
             'ok': 1,
-            'ismaster': False,
+            HelloCompat.LEGACY_CMD: False,
             'secondary': True,
             'setName': 'rs',
             'hosts': ['a', 'b'],
@@ -595,9 +597,9 @@ class TestMultiServerTopology(TopologyTest):
         self.assertEqual(1, write_batch_size())
 
         # b becomes primary.
-        got_ismaster(t, ('b', 27017), {
+        got_hello(t, ('b', 27017), {
             'ok': 1,
-            'ismaster': True,
+            HelloCompat.LEGACY_CMD: True,
             'setName': 'rs',
             'hosts': ['a', 'b'],
             'maxWireVersion': 6,
@@ -608,9 +610,9 @@ class TestMultiServerTopology(TopologyTest):
     def test_topology_repr(self):
         t = create_mock_topology(replica_set_name='rs')
         self.addCleanup(t.close)
-        got_ismaster(t, ('a', 27017), {
+        got_hello(t, ('a', 27017), {
             'ok': 1,
-            'ismaster': True,
+            HelloCompat.LEGACY_CMD: True,
             'setName': 'rs',
             'hosts': ['a', 'c', 'b']})
         self.assertEqual(
@@ -630,7 +632,7 @@ class TestMultiServerTopology(TopologyTest):
         t = create_mock_topology(seeds=['a'])
         mock_lb_response = {'ok': 1, 'msg': 'isdbgrid',
                             'serviceId': ObjectId(), 'maxWireVersion': 13}
-        got_ismaster(t, ('a', 27017), mock_lb_response)
+        got_hello(t, ('a', 27017), mock_lb_response)
         sds = t.description.server_descriptions()
         self.assertIn(('a', 27017), sds)
         self.assertEqual(sds[('a', 27017)].server_type_name, 'LoadBalancer')
@@ -639,84 +641,84 @@ class TestMultiServerTopology(TopologyTest):
 
         # Load balancers are removed from a topology with multiple seeds.
         t = create_mock_topology(seeds=['a', 'b'])
-        got_ismaster(t, ('a', 27017), mock_lb_response)
+        got_hello(t, ('a', 27017), mock_lb_response)
         self.assertNotIn(('a', 27017), t.description.server_descriptions())
         self.assertEqual(t.description.topology_type_name, 'Unknown')
 
 
-def wait_for_master(topology):
+def wait_for_primary(topology):
     """Wait for a Topology to discover a writable server.
 
-    If the monitor is currently calling ismaster, a blocking call to
+    If the monitor is currently calling hello, a blocking call to
     select_server from this thread can trigger a spurious wake of the monitor
     thread. In applications this is harmless but it would break some tests,
     so we pass server_selection_timeout=0 and poll instead.
     """
 
-    def get_master():
+    def get_primary():
         try:
             return topology.select_server(writable_server_selector, 0)
         except ConnectionFailure:
             return None
 
-    return wait_until(get_master, 'find master')
+    return wait_until(get_primary, 'find primary')
 
 
 class TestTopologyErrors(TopologyTest):
-    # Errors when calling ismaster.
+    # Errors when calling hello.
 
     def test_pool_reset(self):
-        # ismaster succeeds at first, then always raises socket error.
-        ismaster_count = [0]
+        # hello succeeds at first, then always raises socket error.
+        hello_count = [0]
 
         class TestMonitor(Monitor):
             def _check_with_socket(self, *args, **kwargs):
-                ismaster_count[0] += 1
-                if ismaster_count[0] == 1:
+                hello_count[0] += 1
+                if hello_count[0] == 1:
                     return Hello({'ok': 1, 'maxWireVersion': 6}), 0
                 else:
                     raise AutoReconnect('mock monitor error')
 
         t = create_mock_topology(monitor_class=TestMonitor)
         self.addCleanup(t.close)
-        server = wait_for_master(t)
-        self.assertEqual(1, ismaster_count[0])
+        server = wait_for_primary(t)
+        self.assertEqual(1, hello_count[0])
         generation = server.pool.gen.get_overall()
 
-        # Pool is reset by ismaster failure.
+        # Pool is reset by hello failure.
         t.request_check_all()
         self.assertNotEqual(generation, server.pool.gen.get_overall())
 
-    def test_ismaster_retry(self):
-        # ismaster succeeds at first, then raises socket error, then succeeds.
-        ismaster_count = [0]
+    def test_hello_retry(self):
+        # hello succeeds at first, then raises socket error, then succeeds.
+        hello_count = [0]
 
         class TestMonitor(Monitor):
             def _check_with_socket(self, *args, **kwargs):
-                ismaster_count[0] += 1
-                if ismaster_count[0] in (1, 3):
+                hello_count[0] += 1
+                if hello_count[0] in (1, 3):
                     return Hello({'ok': 1, 'maxWireVersion': 6}), 0
                 else:
                     raise AutoReconnect(
-                        'mock monitor error #%s' % (ismaster_count[0],))
+                        'mock monitor error #%s' % (hello_count[0],))
 
         t = create_mock_topology(monitor_class=TestMonitor)
         self.addCleanup(t.close)
-        server = wait_for_master(t)
-        self.assertEqual(1, ismaster_count[0])
+        server = wait_for_primary(t)
+        self.assertEqual(1, hello_count[0])
         self.assertEqual(SERVER_TYPE.Standalone,
                          server.description.server_type)
 
-        # Second ismaster call, server is marked Unknown, then the monitor
-        # immediately runs a retry (third ismaster).
+        # Second hello call, server is marked Unknown, then the monitor
+        # immediately runs a retry (third hello).
         t.request_check_all()
-        # The third ismaster call (the immediate retry) happens sometime soon
+        # The third hello call (the immediate retry) happens sometime soon
         # after the failed check triggered by request_check_all. Wait until
         # the server becomes known again.
         server = t.select_server(writable_server_selector, 0.250)
         self.assertEqual(SERVER_TYPE.Standalone,
                          server.description.server_type)
-        self.assertEqual(3, ismaster_count[0])
+        self.assertEqual(3, hello_count[0])
 
     def test_internal_monitor_error(self):
         exception = AssertionError('internal error')
@@ -741,9 +743,9 @@ class TestServerSelectionErrors(TopologyTest):
 
     def test_no_primary(self):
         t = create_mock_topology(replica_set_name='rs')
-        got_ismaster(t, address, {
+        got_hello(t, address, {
             'ok': 1,
-            'ismaster': False,
+            HelloCompat.LEGACY_CMD: False,
             'secondary': True,
             'setName': 'rs',
             'hosts': ['a']})
@@ -756,9 +758,9 @@ class TestServerSelectionErrors(TopologyTest):
 
     def test_no_secondary(self):
         t = create_mock_topology(replica_set_name='rs')
-        got_ismaster(t, address, {
+        got_hello(t, address, {
             'ok': 1,
-            'ismaster': True,
+            HelloCompat.LEGACY_CMD: True,
             'setName': 'rs',
             'hosts': ['a']})
 
@@ -775,9 +777,9 @@ class TestServerSelectionErrors(TopologyTest):
 
     def test_bad_replica_set_name(self):
         t = create_mock_topology(replica_set_name='rs')
-        got_ismaster(t, address, {
+        got_hello(t, address, {
             'ok': 1,
-            'ismaster': False,
+            HelloCompat.LEGACY_CMD: False,
             'secondary': True,
             'setName': 'wrong',
             'hosts': ['a']})
@@ -788,8 +790,8 @@ class TestServerSelectionErrors(TopologyTest):
     def test_multiple_standalones(self):
         # Standalones are removed from a topology with multiple seeds.
         t = create_mock_topology(seeds=['a', 'b'])
-        got_ismaster(t, ('a', 27017), {'ok': 1})
-        got_ismaster(t, ('b', 27017), {'ok': 1})
+        got_hello(t, ('a', 27017), {'ok': 1})
+        got_hello(t, ('b', 27017), {'ok': 1})
         self.assertMessage('No servers available', t)
 
     def test_no_mongoses(self):
@@ -797,11 +799,11 @@ class TestServerSelectionErrors(TopologyTest):
         t = create_mock_topology(seeds=['a', 'b'])
 
         # Discover a mongos and change topology type to Sharded.
-        got_ismaster(t, ('a', 27017), {'ok': 1, 'msg': 'isdbgrid'})
+        got_hello(t, ('a', 27017), {'ok': 1, 'msg': 'isdbgrid'})
 
         # Oops, both servers are standalone now. Remove them.
-        got_ismaster(t, ('a', 27017), {'ok': 1})
-        got_ismaster(t, ('b', 27017), {'ok': 1})
+        got_hello(t, ('a', 27017), {'ok': 1})
+        got_hello(t, ('b', 27017), {'ok': 1})
         self.assertMessage('No mongoses available', t)
 
 

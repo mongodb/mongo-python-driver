@@ -21,7 +21,6 @@ import re
 import sys
 import time
 import threading
-import warnings
 
 sys.path[0:0] = [""]
 
@@ -450,7 +449,6 @@ class TestCursor(IntegrationTest):
             break
         self.assertRaises(InvalidOperation, a.limit, 5)
 
-    @ignore_deprecations  # Ignore max without hint.
     def test_max(self):
         db = self.db
         db.test.drop()
@@ -460,10 +458,7 @@ class TestCursor(IntegrationTest):
         db.test.insert_many([{"j": j, "k": j} for j in range(10)])
 
         def find(max_spec, expected_index):
-            cursor = db.test.find().max(max_spec)
-            if client_context.requires_hint_with_min_max_queries:
-                cursor = cursor.hint(expected_index)
-            return cursor
+            return db.test.find().max(max_spec).hint(expected_index)
 
         cursor = find([("j", 3)], j_index)
         self.assertEqual(len(list(cursor)), 3)
@@ -489,7 +484,6 @@ class TestCursor(IntegrationTest):
         self.assertRaises(TypeError, db.test.find().max, 10)
         self.assertRaises(TypeError, db.test.find().max, {"j": 10})
 
-    @ignore_deprecations  # Ignore min without hint.
     def test_min(self):
         db = self.db
         db.test.drop()
@@ -499,10 +493,7 @@ class TestCursor(IntegrationTest):
         db.test.insert_many([{"j": j, "k": j} for j in range(10)])
 
         def find(min_spec, expected_index):
-            cursor = db.test.find().min(min_spec)
-            if client_context.requires_hint_with_min_max_queries:
-                cursor = cursor.hint(expected_index)
-            return cursor
+            return db.test.find().min(min_spec).hint(expected_index)
 
         cursor = find([("j", 3)], j_index)
         self.assertEqual(len(list(cursor)), 7)
@@ -528,23 +519,15 @@ class TestCursor(IntegrationTest):
         self.assertRaises(TypeError, db.test.find().min, 10)
         self.assertRaises(TypeError, db.test.find().min, {"j": 10})
 
-    @client_context.require_version_max(4, 1, -1)
     def test_min_max_without_hint(self):
         coll = self.db.test
         j_index = [("j", ASCENDING)]
         coll.create_index(j_index)
 
-        with warnings.catch_warnings(record=True) as warns:
-            warnings.simplefilter("default", DeprecationWarning)
+        with self.assertRaises(InvalidOperation):
             list(coll.find().min([("j", 3)]))
-            self.assertIn('using a min/max query operator', str(warns[0]))
-            # Ensure the warning is raised with the proper stack level.
-            del warns[:]
-            list(coll.find().min([("j", 3)]))
-            self.assertIn('using a min/max query operator', str(warns[0]))
-            del warns[:]
+        with self.assertRaises(InvalidOperation):
             list(coll.find().max([("j", 3)]))
-            self.assertIn('using a min/max query operator', str(warns[0]))
 
     def test_batch_size(self):
         db = self.db

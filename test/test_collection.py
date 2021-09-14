@@ -1932,9 +1932,8 @@ class TestCollection(IntegrationTest):
         self.db.test.insert_many([{"x": 1}, {"x": 2}])
         self.db.test.create_index("x")
 
-        cursor = self.db.test.find({"$min": {"x": 2}, "$query": {}})
-        if client_context.requires_hint_with_min_max_queries:
-            cursor = cursor.hint("x_1")
+        cursor = self.db.test.find({"$min": {"x": 2}, "$query": {}},
+                                   hint="x_1")
 
         docs = list(cursor)
         self.assertEqual(1, len(docs))
@@ -2135,7 +2134,7 @@ class TestCollection(IntegrationTest):
         c_default = db.get_collection('test', write_concern=WriteConcern())
         results = listener.results
         # Authenticate the client and throw out auth commands from the listener.
-        db.command('ismaster')
+        db.command('ping')
         results.clear()
         if client_context.version.at_least(3, 1, 9, -1):
             c_w0.find_one_and_update(

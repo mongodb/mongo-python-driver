@@ -25,6 +25,7 @@ class HelloCompat:
     LEGACY_CMD = 'ismaster'
     PRIMARY = 'isWritablePrimary'
     LEGACY_PRIMARY = 'ismaster'
+    LEGACY_ERROR = 'not master'
 
 
 def _get_server_type(doc):

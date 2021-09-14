@@ -413,13 +413,13 @@ class PoolOptions(object):
 
     @property
     def appname(self):
-        """The application name, for sending with ismaster in server handshake.
+        """The application name, for sending with hello in server handshake.
         """
         return self.__appname
 
     @property
     def driver(self):
-        """Driver name and version, for sending with ismaster in handshake.
+        """Driver name and version, for sending with hello in handshake.
         """
         return self.__driver
 
@@ -556,10 +556,10 @@ class SocketInfo(object):
         else:
             return SON([(HelloCompat.LEGACY_CMD, 1), ('helloOk', True)])
 
-    def ismaster(self, all_credentials=None):
-        return self._ismaster(None, None, None, all_credentials)
+    def hello(self, all_credentials=None):
+        return self._hello(None, None, None, all_credentials)
 
-    def _ismaster(self, cluster_time, topology_version,
+    def _hello(self, cluster_time, topology_version,
                   heartbeat_frequency, all_credentials):
         cmd = self.hello_cmd()
         performing_handshake = not self.performed_handshake
@@ -600,36 +600,36 @@ class SocketInfo(object):
             doc.setdefault('serviceId', process_id)
         if not self.opts.load_balanced:
             doc.pop('serviceId', None)
-        ismaster = Hello(doc, awaitable=awaitable)
-        self.is_writable = ismaster.is_writable
-        self.max_wire_version = ismaster.max_wire_version
-        self.max_bson_size = ismaster.max_bson_size
-        self.max_message_size = ismaster.max_message_size
-        self.max_write_batch_size = ismaster.max_write_batch_size
+        hello = Hello(doc, awaitable=awaitable)
+        self.is_writable = hello.is_writable
+        self.max_wire_version = hello.max_wire_version
+        self.max_bson_size = hello.max_bson_size
+        self.max_message_size = hello.max_message_size
+        self.max_write_batch_size = hello.max_write_batch_size
         self.supports_sessions = (
-            ismaster.logical_session_timeout_minutes is not None)
-        self.hello_ok = ismaster.hello_ok
-        self.is_mongos = ismaster.server_type == SERVER_TYPE.Mongos
+            hello.logical_session_timeout_minutes is not None)
+        self.hello_ok = hello.hello_ok
+        self.is_mongos = hello.server_type == SERVER_TYPE.Mongos
         if performing_handshake and self.compression_settings:
             ctx = self.compression_settings.get_compression_context(
-                ismaster.compressors)
+                hello.compressors)
             self.compression_context = ctx
 
-        self.op_msg_enabled = ismaster.max_wire_version >= 6
+        self.op_msg_enabled = hello.max_wire_version >= 6
         if creds:
-            self.negotiated_mechanisms[creds] = ismaster.sasl_supported_mechs
+            self.negotiated_mechanisms[creds] = hello.sasl_supported_mechs
         if auth_ctx:
-            auth_ctx.parse_response(ismaster)
+            auth_ctx.parse_response(hello)
             if auth_ctx.speculate_succeeded():
                 self.auth_ctx[auth_ctx.credentials] = auth_ctx
         if self.opts.load_balanced:
-            if not ismaster.service_id:
+            if not hello.service_id:
                 raise ConfigurationError(
                     'Driver attempted to initialize in load balancing mode,'
                     ' but the server does not support this mode')
-            self.service_id = ismaster.service_id
+            self.service_id = hello.service_id
             self.generation = self.pool_gen.get(self.service_id)
-        return ismaster
+        return hello
 
     def _next_reply(self):
         reply = self.receive_message(None)
@@ -642,7 +642,7 @@ class SocketInfo(object):
             response_doc.pop('serviceId', None)
         return response_doc
 
-    def command(self, dbname, spec, slave_ok=False,
+    def command(self, dbname, spec, secondary_ok=False,
                 read_preference=ReadPreference.PRIMARY,
                 codec_options=DEFAULT_CODEC_OPTIONS, check=True,
                 allowable_errors=None, check_keys=False,
@@ -661,7 +661,7 @@ class SocketInfo(object):
         :Parameters:
           - `dbname`: name of the database on which to run the command
           - `spec`: a command document as a dict, SON, or mapping object
-          - `slave_ok`: whether to set the SlaveOkay wire protocol bit
+          - `secondary_ok`: whether to set the secondaryOkay wire protocol bit
           - `read_preference`: a read preference
           - `codec_options`: a CodecOptions instance
           - `check`: raise OperationFailure if there are errors
@@ -715,7 +715,7 @@ class SocketInfo(object):
         if self.op_msg_enabled:
             self._raise_if_not_writable(unacknowledged)
         try:
-            return command(self, dbname, spec, slave_ok,
+            return command(self, dbname, spec, secondary_ok,
                            self.is_mongos, read_preference, codec_options,
                            session, client, check, allowable_errors,
                            self.address, check_keys, listeners,
@@ -1110,7 +1110,7 @@ class Pool:
         :Parameters:
           - `address`: a (hostname, port) tuple
           - `options`: a PoolOptions instance
-          - `handshake`: whether to call ismaster for each new SocketInfo
+          - `handshake`: whether to call hello for each new SocketInfo
         """
         if options.pause_enabled:
             self.state = PoolState.PAUSED
@@ -1338,7 +1338,7 @@ class Pool:
         sock_info = SocketInfo(sock, self, self.address, conn_id)
         try:
             if self.handshake:
-                sock_info.ismaster(all_credentials)
+                sock_info.hello(all_credentials)
                 self.is_writable = sock_info.is_writable
 
             sock_info.check_auth(all_credentials)
