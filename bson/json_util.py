@@ -93,8 +93,6 @@ import math
 import re
 import uuid
 
-from pymongo.errors import ConfigurationError
-
 import bson
 from bson import EPOCH_AWARE, RE_TYPE, SON
 from bson.binary import (Binary, UuidRepresentation, ALL_UUID_SUBTYPES,
@@ -255,14 +253,14 @@ class JSONOptions(CodecOptions):
         if datetime_representation not in (DatetimeRepresentation.LEGACY,
                                            DatetimeRepresentation.NUMBERLONG,
                                            DatetimeRepresentation.ISO8601):
-            raise ConfigurationError(
+            raise ValueError(
                 "JSONOptions.datetime_representation must be one of LEGACY, "
                 "NUMBERLONG, or ISO8601 from DatetimeRepresentation.")
         self = super(JSONOptions, cls).__new__(cls, *args, **kwargs)
         if json_mode not in (JSONMode.LEGACY,
                              JSONMode.RELAXED,
                              JSONMode.CANONICAL):
-            raise ConfigurationError(
+            raise ValueError(
                 "JSONOptions.json_mode must be one of LEGACY, RELAXED, "
                 "or CANONICAL from JSONMode.")
         self.json_mode = json_mode
