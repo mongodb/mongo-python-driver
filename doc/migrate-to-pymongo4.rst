@@ -62,6 +62,15 @@ get the same behavior.
 MongoClient
 -----------
 
+``directConnection`` defaults to False
+......................................
+
+``directConnection`` URI option and keyword argument to :class:`~pymongo
+.mongo_client.MongoClient` defaults to ``False`` instead of ``None``,
+allowing for the automatic discovery of replica sets. This means that if you
+want a direct connection to a single server you must pass
+``directConnection=True`` as a URI option or keyword argument.
+
 The waitQueueMultiple parameter is removed
 ..........................................
 

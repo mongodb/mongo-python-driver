@@ -39,7 +39,7 @@ class TopologySettings(object):
                  heartbeat_frequency=common.HEARTBEAT_FREQUENCY,
                  server_selector=None,
                  fqdn=None,
-                 direct_connection=None,
+                 direct_connection=False,
                  load_balanced=None):
         """Represent MongoClient's configuration.
 
@@ -62,10 +62,7 @@ class TopologySettings(object):
         self._fqdn = fqdn
         self._heartbeat_frequency = heartbeat_frequency
 
-        if direct_connection is None:
-            self._direct = (len(self._seeds) == 1 and not self.replica_set_name)
-        else:
-            self._direct = direct_connection
+        self._direct = direct_connection
         self._load_balanced = load_balanced
 
         self._topology_id = ObjectId()
