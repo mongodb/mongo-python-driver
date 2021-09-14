@@ -183,6 +183,14 @@ can be changed to this::
 
     names = client.list_database_names()
 
+``tz_aware`` defaults to ``False``
+..................................
+
+``tz_aware``, an argument for :class:`~bson.json_util.JSONOptions`,
+now defaults to ``False`` instead of ``True``. ``json_util.loads`` now
+decodes datetime as naive by default.
+
+
 Database
 --------
 

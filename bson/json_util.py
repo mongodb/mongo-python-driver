@@ -226,7 +226,7 @@ class JSONOptions(CodecOptions):
       - `tz_aware`: If ``True``, MongoDB Extended JSON's *Strict mode* type
         `Date` will be decoded to timezone aware instances of
         :class:`datetime.datetime`. Otherwise they will be naive. Defaults
-        to ``True``.
+        to ``False``.
       - `tzinfo`: A :class:`datetime.tzinfo` subclass that specifies the
         timezone from which :class:`~datetime.datetime` objects should be
         decoded. Defaults to :const:`~bson.tz_util.utc`.
@@ -245,14 +245,15 @@ class JSONOptions(CodecOptions):
     .. versionchanged:: 3.5
        Accepts the optional parameter `json_mode`.
 
-    .. versionadded:: 3.4
+    .. versionchanged:: 4.0
+       Changed default value of `tz_aware` to False.
     """
 
     def __new__(cls, strict_number_long=None,
                 datetime_representation=None,
                 strict_uuid=None, json_mode=JSONMode.RELAXED,
                 *args, **kwargs):
-        kwargs["tz_aware"] = kwargs.get("tz_aware", True)
+        kwargs["tz_aware"] = kwargs.get("tz_aware", False)
         if kwargs["tz_aware"]:
             kwargs["tzinfo"] = kwargs.get("tzinfo", utc)
         if datetime_representation not in (DatetimeRepresentation.LEGACY,

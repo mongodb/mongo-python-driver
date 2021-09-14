@@ -22,7 +22,7 @@ import uuid
 
 sys.path[0:0] = [""]
 
-from bson import json_util, EPOCH_AWARE, SON
+from bson import json_util, EPOCH_AWARE, EPOCH_NAIVE, SON
 from bson.json_util import (DatetimeRepresentation,
                             JSONMode,
                             JSONOptions,
@@ -103,61 +103,45 @@ class TestJsonUtil(unittest.TestCase):
             json_util.dumps(DBRef('collection', 1, 'db')))
 
     def test_datetime(self):
+        tz_aware_opts = json_util.DEFAULT_JSON_OPTIONS.with_options(
+            tz_aware=True)
         # only millis, not micros
+        self.round_trip({"date": datetime.datetime(2009, 12, 9, 15, 49, 45,
+                        191000, utc)}, json_options=tz_aware_opts)
         self.round_trip({"date": datetime.datetime(2009, 12, 9, 15,
-                                                   49, 45, 191000, utc)})
+                                                   49, 45, 191000)})
 
-        jsn = '{"dt": { "$date" : "1970-01-01T00:00:00.000+0000"}}'
-        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
-        jsn = '{"dt": { "$date" : "1970-01-01T00:00:00.000000+0000"}}'
-        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
-        jsn = '{"dt": { "$date" : "1970-01-01T00:00:00.000+00:00"}}'
-        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
-        jsn = '{"dt": { "$date" : "1970-01-01T00:00:00.000000+00:00"}}'
-        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
-        jsn = '{"dt": { "$date" : "1970-01-01T00:00:00.000000+00"}}'
-        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
-        jsn = '{"dt": { "$date" : "1970-01-01T00:00:00.000Z"}}'
-        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
-        jsn = '{"dt": { "$date" : "1970-01-01T00:00:00.000000Z"}}'
-        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
-        jsn = '{"dt": { "$date" : "1970-01-01T00:00:00Z"}}'
-        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
-        # No explicit offset
-        jsn = '{"dt": { "$date" : "1970-01-01T00:00:00.000"}}'
-        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
-        jsn = '{"dt": { "$date" : "1970-01-01T00:00:00"}}'
-        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
-        jsn = '{"dt": { "$date" : "1970-01-01T00:00:00.000000"}}'
-        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
-        # Localtime behind UTC
-        jsn = '{"dt": { "$date" : "1969-12-31T16:00:00.000-0800"}}'
-        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
-        jsn = '{"dt": { "$date" : "1969-12-31T16:00:00.000000-0800"}}'
-        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
-        jsn = '{"dt": { "$date" : "1969-12-31T16:00:00.000-08:00"}}'
-        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
-        jsn = '{"dt": { "$date" : "1969-12-31T16:00:00.000000-08:00"}}'
-        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
-        jsn = '{"dt": { "$date" : "1969-12-31T16:00:00.000000-08"}}'
-        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
-        # Localtime ahead of UTC
-        jsn = '{"dt": { "$date" : "1970-01-01T01:00:00.000+0100"}}'
-        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
-        jsn = '{"dt": { "$date" : "1970-01-01T01:00:00.000000+0100"}}'
-        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
-        jsn = '{"dt": { "$date" : "1970-01-01T01:00:00.000+01:00"}}'
-        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
-        jsn = '{"dt": { "$date" : "1970-01-01T01:00:00.000000+01:00"}}'
-        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
-        jsn = '{"dt": { "$date" : "1970-01-01T01:00:00.000000+01"}}'
-        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
+        for jsn in ['{"dt": { "$date" : "1970-01-01T00:00:00.000+0000"}}',
+                    '{"dt": { "$date" : "1970-01-01T00:00:00.000000+0000"}}',
+                    '{"dt": { "$date" : "1970-01-01T00:00:00.000+00:00"}}',
+                    '{"dt": { "$date" : "1970-01-01T00:00:00.000000+00:00"}}',
+                    '{"dt": { "$date" : "1970-01-01T00:00:00.000000+00"}}',
+                    '{"dt": { "$date" : "1970-01-01T00:00:00.000Z"}}',
+                    '{"dt": { "$date" : "1970-01-01T00:00:00.000000Z"}}',
+                    '{"dt": { "$date" : "1970-01-01T00:00:00Z"}}',
+                    '{"dt": {"$date": "1970-01-01T00:00:00.000"}}',
+                    '{"dt": { "$date" : "1970-01-01T00:00:00"}}',
+                    '{"dt": { "$date" : "1970-01-01T00:00:00.000000"}}',
+                    '{"dt": { "$date" : "1969-12-31T16:00:00.000-0800"}}',
+                    '{"dt": { "$date" : "1969-12-31T16:00:00.000000-0800"}}',
+                    '{"dt": { "$date" : "1969-12-31T16:00:00.000-08:00"}}',
+                    '{"dt": { "$date" : "1969-12-31T16:00:00.000000-08:00"}}',
+                    '{"dt": { "$date" : "1969-12-31T16:00:00.000000-08"}}',
+                    '{"dt": { "$date" : "1970-01-01T01:00:00.000+0100"}}',
+                    '{"dt": { "$date" : "1970-01-01T01:00:00.000000+0100"}}',
+                    '{"dt": { "$date" : "1970-01-01T01:00:00.000+01:00"}}',
+                    '{"dt": { "$date" : "1970-01-01T01:00:00.000000+01:00"}}',
+                    '{"dt": { "$date" : "1970-01-01T01:00:00.000000+01"}}'
+                    ]:
+            self.assertEqual(EPOCH_AWARE, json_util.loads(
+                jsn, json_options=tz_aware_opts)["dt"])
+            self.assertEqual(EPOCH_NAIVE, json_util.loads(jsn)["dt"])
 
         dtm = datetime.datetime(1, 1, 1, 1, 1, 1, 0, utc)
         jsn = '{"dt": {"$date": -62135593139000}}'
-        self.assertEqual(dtm, json_util.loads(jsn)["dt"])
+        self.assertEqual(dtm, json_util.loads(jsn, json_options=tz_aware_opts)["dt"])
         jsn = '{"dt": {"$date": {"$numberLong": "-62135593139000"}}}'
-        self.assertEqual(dtm, json_util.loads(jsn)["dt"])
+        self.assertEqual(dtm, json_util.loads(jsn, json_options=tz_aware_opts)["dt"])
 
         # Test dumps format
         pre_epoch = {"dt": datetime.datetime(1, 1, 1, 1, 1, 1, 10000, utc)}
@@ -207,7 +191,8 @@ class TestJsonUtil(unittest.TestCase):
         self.assertEqual(
             datetime.datetime(1972, 1, 1, 1, 1, 1, 10000, utc),
             json_util.loads(
-                '{"dt": {"$date": "1972-01-01T01:01:01.010+0000"}}')["dt"])
+                '{"dt": {"$date": "1972-01-01T01:01:01.010+0000"}}',
+                json_options=tz_aware_opts)["dt"])
         self.assertEqual(
             datetime.datetime(1972, 1, 1, 1, 1, 1, 10000, utc),
             json_util.loads(
