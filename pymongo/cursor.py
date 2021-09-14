@@ -394,7 +394,7 @@ class Cursor(object):
             # Make a shallow copy so we can cleanly rewind or clone.
             spec = self.__spec.copy()
 
-            # White-listed commands must be wrapped in $query.
+            # Allow-listed commands must be wrapped in $query.
             if "$query" not in spec:
                 # $query has to come first
                 spec = SON([("$query", spec)])

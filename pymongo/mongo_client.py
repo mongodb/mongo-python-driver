@@ -435,12 +435,12 @@ class MongoClient(common.BaseObject):
             ``tlsAllowInvalidCertificates=False`` implies ``tls=True``.
             Defaults to ``False``. Think very carefully before setting this
             to ``True`` as that could make your application vulnerable to
-            man-in-the-middle attacks.
+            on-path attackers.
           - `tlsAllowInvalidHostnames`: (boolean) If ``True``, disables TLS
             hostname verification. ``tlsAllowInvalidHostnames=False`` implies
             ``tls=True``. Defaults to ``False``. Think very carefully before
             setting this to ``True`` as that could make your application
-            vulnerable to man-in-the-middle attacks.
+            vulnerable to on-path attackers.
           - `tlsCAFile`: A file containing a single or a bundle of
             "certification authority" certificates, which are used to validate
             certificates passed from the other end of the connection.
