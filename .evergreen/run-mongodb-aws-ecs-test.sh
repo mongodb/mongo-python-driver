@@ -37,7 +37,7 @@ authtest () {
     . venvaws/bin/activate
 
     cd src
-    pip install '.[aws]'
+    python -m pip install '.[aws]'
     python test/auth_aws/test_auth_aws.py
     cd -
     deactivate
