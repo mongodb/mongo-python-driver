@@ -1,5 +1,5 @@
 {
-    "description": "DBRef",
+    "description": "Document type (DBRef sub-documents)",
     "bson_type": "0x03",
     "valid": [
         {
@@ -26,6 +26,26 @@
             "description": "Document with key names similar to those of a DBRef",
             "canonical_bson": "3e0000000224726566000c0000006e6f742d612d646272656600072469640058921b3e6e32ab156a22b59e022462616e616e6100050000007065656c0000",
             "canonical_extjson": "{\"$ref\": \"not-a-dbref\", \"$id\": {\"$oid\": \"58921b3e6e32ab156a22b59e\"}, \"$banana\": \"peel\"}"
+        },
+        {
+            "description": "DBRef with additional dollar-prefixed and dotted fields",
+            "canonical_bson": "48000000036462726566003c0000000224726566000b000000636f6c6c656374696f6e00072469640058921b3e6e32ab156a22b59e10612e62000100000010246300010000000000",
+            "canonical_extjson": "{\"dbref\": {\"$ref\": \"collection\", \"$id\": {\"$oid\": \"58921b3e6e32ab156a22b59e\"}, \"a.b\": {\"$numberInt\": \"1\"}, \"$c\": {\"$numberInt\": \"1\"}}}"
+        },
+        {
+            "description": "Sub-document resembles DBRef but $id is missing",
+            "canonical_bson": "26000000036462726566001a0000000224726566000b000000636f6c6c656374696f6e000000",
+            "canonical_extjson": "{\"dbref\": {\"$ref\": \"collection\"}}"
+        },
+        {
+            "description": "Sub-document resembles DBRef but $ref is not a string",
+            "canonical_bson": "2c000000036462726566002000000010247265660001000000072469640058921b3e6e32ab156a22b59e0000",
+            "canonical_extjson": "{\"dbref\": {\"$ref\": {\"$numberInt\": \"1\"}, \"$id\": {\"$oid\": \"58921b3e6e32ab156a22b59e\"}}}"
+        },
+        {
+            "description": "Sub-document resembles DBRef but $db is not a string",
+            "canonical_bson": "4000000003646272656600340000000224726566000b000000636f6c6c656374696f6e00072469640058921b3e6e32ab156a22b59e1024646200010000000000",
+            "canonical_extjson": "{\"dbref\": {\"$ref\": \"collection\", \"$id\": {\"$oid\": \"58921b3e6e32ab156a22b59e\"}, \"$db\": {\"$numberInt\": \"1\"}}}"
         }
     ]
 }

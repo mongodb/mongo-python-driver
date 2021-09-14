@@ -25,6 +25,7 @@ sys.path[0:0] = [""]
 from pymongo import MongoClient, monitoring
 from pymongo.auth import HAVE_KERBEROS, _build_credentials_tuple
 from pymongo.errors import OperationFailure
+from pymongo.hello import HelloCompat
 from pymongo.read_preferences import ReadPreference
 from pymongo.saslprep import HAVE_STRINGPREP
 from test import client_context, IntegrationTest, SkipTest, unittest, Version
@@ -34,7 +35,7 @@ from test.utils import (delay,
                         rs_or_single_client,
                         rs_or_single_client_noauth,
                         single_client_noauth,
-                        WhiteListEventListener)
+                        AllowListEventListener)
 
 # YOU MUST RUN KINIT BEFORE RUNNING GSSAPI TESTS ON UNIX.
 GSSAPI_HOST = os.environ.get('GSSAPI_HOST')
@@ -155,7 +156,7 @@ class TestGSSAPI(unittest.TestCase):
         client = MongoClient(mech_uri)
         client[GSSAPI_DB].collection.find_one()
 
-        set_name = client.admin.command('ismaster').get('setName')
+        set_name = client.admin.command('HelloCompat.LEGACY_CMD').get('setName')
         if set_name:
             if not self.service_realm_required:
                 # Without authMechanismProperties
@@ -221,7 +222,7 @@ class TestGSSAPI(unittest.TestCase):
             thread.join()
             self.assertTrue(thread.success)
 
-        set_name = client.admin.command('ismaster').get('setName')
+        set_name = client.admin.command('HelloCompat.LEGACY_CMD').get('setName')
         if set_name:
             client = MongoClient(GSSAPI_HOST,
                                  GSSAPI_PORT,
@@ -269,7 +270,7 @@ class TestSASLPlain(unittest.TestCase):
         client = MongoClient(uri)
         client.ldap.test.find_one()
 
-        set_name = client.admin.command('ismaster').get('setName')
+        set_name = client.admin.command('HelloCompat.LEGACY_CMD').get('setName')
         if set_name:
             client = MongoClient(SASL_HOST,
                                  SASL_PORT,
@@ -299,8 +300,8 @@ class TestSASLPlain(unittest.TestCase):
         bad_user = MongoClient(auth_string('not-user', SASL_PASS))
         bad_pwd = MongoClient(auth_string(SASL_USER, 'not-pwd'))
         # OperationFailure raised upon connecting.
-        self.assertRaises(OperationFailure, bad_user.admin.command, 'ismaster')
-        self.assertRaises(OperationFailure, bad_pwd.admin.command, 'ismaster')
+        self.assertRaises(OperationFailure, bad_user.admin.command, 'ping')
+        self.assertRaises(OperationFailure, bad_pwd.admin.command, 'ping')
 
 
 class TestSCRAMSHA1(IntegrationTest):
@@ -353,7 +354,7 @@ class TestSCRAM(IntegrationTest):
         super(TestSCRAM, self).setUp()
         self._SENSITIVE_COMMANDS = monitoring._SENSITIVE_COMMANDS
         monitoring._SENSITIVE_COMMANDS = set([])
-        self.listener = WhiteListEventListener("saslStart")
+        self.listener = AllowListEventListener("saslStart")
 
     def tearDown(self):
         monitoring._SENSITIVE_COMMANDS = self._SENSITIVE_COMMANDS
@@ -362,7 +363,7 @@ class TestSCRAM(IntegrationTest):
         super(TestSCRAM, self).tearDown()
 
     def test_scram_skip_empty_exchange(self):
-        listener = WhiteListEventListener("saslStart", "saslContinue")
+        listener = AllowListEventListener("saslStart", "saslContinue")
         client_context.create_user(
             'testscram', 'sha256', 'pwd', roles=['dbOwner'],
             mechanisms=['SCRAM-SHA-256'])
@@ -530,7 +531,7 @@ class TestSCRAM(IntegrationTest):
     def test_cache(self):
         client = single_client()
         # Force authentication.
-        client.admin.command('ismaster')
+        client.admin.command('ping')
         all_credentials = client._MongoClient__all_credentials
         credentials = all_credentials.get('admin')
         cache = credentials.cache

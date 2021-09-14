@@ -58,7 +58,7 @@ _RESUMABLE_GETMORE_ERRORS = frozenset([
 class ChangeStream(object):
     """The internal abstract base class for change stream cursors.
 
-    Should not be called directly by application developers. Use 
+    Should not be called directly by application developers. Use
     :meth:`pymongo.collection.Collection.watch`,
     :meth:`pymongo.database.Database.watch`, or
     :meth:`pymongo.mongo_client.MongoClient.watch` instead.
@@ -148,7 +148,7 @@ class ChangeStream(object):
         full_pipeline.extend(self._pipeline)
         return full_pipeline
 
-    def _process_result(self, result, session, server, sock_info, slave_ok):
+    def _process_result(self, result, session, server, sock_info, secondary_ok):
         """Callback that caches the postBatchResumeToken or
         startAtOperationTime from a changeStream aggregate command response
         containing an empty batch of change documents.

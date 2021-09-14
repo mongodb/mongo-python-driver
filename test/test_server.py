@@ -26,8 +26,8 @@ from test import unittest
 
 class TestServer(unittest.TestCase):
     def test_repr(self):
-        ismaster = Hello({'ok': 1})
-        sd = ServerDescription(('localhost', 27017), ismaster)
+        hello = Hello({'ok': 1})
+        sd = ServerDescription(('localhost', 27017), hello)
         server = Server(sd, pool=object(), monitor=object())
         self.assertTrue('Standalone' in str(server))
 

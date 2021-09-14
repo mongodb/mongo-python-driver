@@ -67,7 +67,7 @@ class TopologyDescription(object):
             self._init_incompatible_err()
 
         # Server Discovery And Monitoring Spec: Whenever a client updates the
-        # TopologyDescription from an ismaster response, it MUST set
+        # TopologyDescription from an hello response, it MUST set
         # TopologyDescription.logicalSessionTimeoutMinutes to the smallest
         # logicalSessionTimeoutMinutes value among ServerDescriptions of all
         # data-bearing server types. If any have a null
@@ -303,7 +303,7 @@ class TopologyDescription(object):
             self.topology_type_name, servers)
 
 
-# If topology type is Unknown and we receive an ismaster response, what should
+# If topology type is Unknown and we receive a hello response, what should
 # the new topology type be?
 _SERVER_TYPE_TO_TOPOLOGY_TYPE = {
     SERVER_TYPE.Mongos: TOPOLOGY_TYPE.Sharded,
@@ -321,9 +321,9 @@ def updated_topology_description(topology_description, server_description):
     :Parameters:
       - `topology_description`: the current TopologyDescription
       - `server_description`: a new ServerDescription that resulted from
-        an ismaster call
+        a hello call
 
-    Called after attempting (successfully or not) to call ismaster on the
+    Called after attempting (successfully or not) to call hello on the
     server at server_description.address. Does not modify topology_description.
     """
     address = server_description.address
@@ -436,7 +436,7 @@ def _updated_topology_description_srv_polling(topology_description, seedlist):
     :Parameters:
       - `topology_description`: the current TopologyDescription
       - `seedlist`: a list of new seeds new ServerDescription that resulted from
-        an ismaster call
+        a hello call
     """
     # Create a copy of the server descriptions.
     sds = topology_description.server_descriptions()
@@ -470,7 +470,7 @@ def _update_rs_from_primary(
         server_description,
         max_set_version,
         max_election_id):
-    """Update topology description from a primary's ismaster response.
+    """Update topology description from a primary's hello response.
 
     Pass in a dict of ServerDescriptions, current replica set name, the
     ServerDescription we are processing, and the TopologyDescription's

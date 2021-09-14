@@ -75,15 +75,13 @@ if [ -z "$PYTHON_BINARY" ]; then
         echo "Cannot test without python3.6+ installed!"
     fi
 elif [ "$COMPRESSORS" = "snappy" ]; then
-    $PYTHON_BINARY -m virtualenv --never-download snappytest
-    . snappytest/bin/activate
+    createvirtualenv $PYTHON_BINARY snappytest
     trap "deactivate; rm -rf snappytest" EXIT HUP
     # 0.5.2 has issues in pypy3(.5)
     pip install python-snappy==0.5.1
     PYTHON=python
 elif [ "$COMPRESSORS" = "zstd" ]; then
-    $PYTHON_BINARY -m virtualenv --never-download zstdtest
-    . zstdtest/bin/activate
+    createvirtualenv $PYTHON_BINARY zstdtest
     trap "deactivate; rm -rf zstdtest" EXIT HUP
     pip install zstandard
     PYTHON=python
@@ -106,7 +104,8 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     PYTHON=python
 
     if [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
-        $PYTHON -m pip install -U setuptools
+        # PYTHON-2808 Ensure this machine has the CA cert for google KMS.
+        powershell.exe "Invoke-WebRequest -URI https://oauth2.googleapis.com/" > /dev/null || true
     fi
 
     if [ -z "$LIBMONGOCRYPT_URL" ]; then
@@ -149,10 +148,6 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     . $DRIVERS_TOOLS/.evergreen/csfle/set-temp-creds.sh
 
     # Start the mock KMS servers.
-    if [ "$OS" = "Windows_NT" ]; then
-        # Remove after BUILD-13574.
-        python -m pip install certifi
-    fi
     pushd ${DRIVERS_TOOLS}/.evergreen/csfle
     python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/expired.pem --port 8000 &
     python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/wrong-host.pem --port 8001 &

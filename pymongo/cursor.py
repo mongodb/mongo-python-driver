@@ -68,7 +68,7 @@ _CURSOR_CLOSED_ERRORS = frozenset([
 
 _QUERY_OPTIONS = {
     "tailable_cursor": 2,
-    "slave_okay": 4,
+    "secondary_okay": 4,
     "oplog_replay": 8,
     "no_timeout": 16,
     "await_data": 32,
@@ -394,7 +394,7 @@ class Cursor(object):
             # Make a shallow copy so we can cleanly rewind or clone.
             spec = self.__spec.copy()
 
-            # White-listed commands must be wrapped in $query.
+            # Allow-listed commands must be wrapped in $query.
             if "$query" not in spec:
                 # $query has to come first
                 spec = SON([("$query", spec)])
@@ -1060,11 +1060,9 @@ class Cursor(object):
 
         if self.__id is None:  # Query
             if (self.__min or self.__max) and not self.__hint:
-                warnings.warn("using a min/max query operator without "
-                              "specifying a Cursor.hint is deprecated. A "
-                              "hint will be required when using min/max in "
-                              "PyMongo 4.0",
-                              DeprecationWarning, stacklevel=3)
+                raise InvalidOperation(
+                    "Passing a 'hint' is required when using the min/max query"
+                    " option to ensure the query utilizes the correct index")
             q = self._query_class(self.__query_flags,
                                   self.__collection.database.name,
                                   self.__collection.name,

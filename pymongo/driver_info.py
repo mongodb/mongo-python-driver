@@ -26,7 +26,7 @@ class DriverInfo(namedtuple('DriverInfo', ['name', 'version', 'platform'])):
     like 'MyDriver', '1.2.3', 'some platform info'. Any of these strings may be
     None to accept PyMongo's default.
     """
-    def __new__(cls, name=None, version=None, platform=None):
+    def __new__(cls, name, version=None, platform=None):
         self = super(DriverInfo, cls).__new__(cls, name, version, platform)
         for key, value in self._asdict().items():
             if value is not None and not isinstance(value, str):
