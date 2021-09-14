@@ -435,12 +435,12 @@ class MongoClient(common.BaseObject):
             ``tlsAllowInvalidCertificates=False`` implies ``tls=True``.
             Defaults to ``False``. Think very carefully before setting this
             to ``True`` as that could make your application vulnerable to
-            man-in-the-middle attacks.
+            on-path attackers.
           - `tlsAllowInvalidHostnames`: (boolean) If ``True``, disables TLS
             hostname verification. ``tlsAllowInvalidHostnames=False`` implies
             ``tls=True``. Defaults to ``False``. Think very carefully before
             setting this to ``True`` as that could make your application
-            vulnerable to man-in-the-middle attacks.
+            vulnerable to on-path attackers.
           - `tlsCAFile`: A file containing a single or a bundle of
             "certification authority" certificates, which are used to validate
             certificates passed from the other end of the connection.
@@ -919,13 +919,15 @@ class MongoClient(common.BaseObject):
         .. versionadded:: 3.0
         """
         topology_type = self._topology._description.topology_type
-        if topology_type == TOPOLOGY_TYPE.Sharded:
+        if (topology_type == TOPOLOGY_TYPE.Sharded and
+                len(self.topology_description.server_descriptions()) > 1):
             raise InvalidOperation(
                 'Cannot use "address" property when load balancing among'
                 ' mongoses, use "nodes" instead.')
         if topology_type not in (TOPOLOGY_TYPE.ReplicaSetWithPrimary,
                                  TOPOLOGY_TYPE.Single,
-                                 TOPOLOGY_TYPE.LoadBalanced):
+                                 TOPOLOGY_TYPE.LoadBalanced,
+                                 TOPOLOGY_TYPE.Sharded):
             return None
         return self._server_property('address')
 

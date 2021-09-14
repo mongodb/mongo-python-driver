@@ -16,7 +16,7 @@ for VERSION in 3.6 3.7 3.8 3.9; do
     if ! $PYTHON -m wheel version; then
         createvirtualenv $PYTHON releasevenv
         WHEELPYTHON=python
-        pip install --upgrade wheel
+        python -m pip install --upgrade wheel
     else
         WHEELPYTHON=$PYTHON
     fi

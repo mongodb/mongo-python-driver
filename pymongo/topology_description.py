@@ -248,7 +248,8 @@ class TopologyDescription(object):
                                              common_wv))
 
         if self.topology_type in (TOPOLOGY_TYPE.Single,
-                                  TOPOLOGY_TYPE.LoadBalanced):
+                                  TOPOLOGY_TYPE.LoadBalanced,
+                                  TOPOLOGY_TYPE.Unknown):
             # Ignore selectors for standalone and load balancer mode.
             return self.known_servers
         elif address:

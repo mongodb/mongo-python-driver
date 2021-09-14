@@ -162,23 +162,23 @@ class TopologyEventListener(monitoring.TopologyListener):
         self.results.clear()
 
 
-class WhiteListEventListener(EventListener):
+class AllowListEventListener(EventListener):
 
     def __init__(self, *commands):
         self.commands = set(commands)
-        super(WhiteListEventListener, self).__init__()
+        super(AllowListEventListener, self).__init__()
 
     def started(self, event):
         if event.command_name in self.commands:
-            super(WhiteListEventListener, self).started(event)
+            super(AllowListEventListener, self).started(event)
 
     def succeeded(self, event):
         if event.command_name in self.commands:
-            super(WhiteListEventListener, self).succeeded(event)
+            super(AllowListEventListener, self).succeeded(event)
 
     def failed(self, event):
         if event.command_name in self.commands:
-            super(WhiteListEventListener, self).failed(event)
+            super(AllowListEventListener, self).failed(event)
 
 
 class OvertCommandListener(EventListener):
@@ -516,7 +516,7 @@ def _connection_string(h, authenticate):
         return "mongodb://%s" % (str(h),)
 
 
-def _mongo_client(host, port, authenticate=True, directConnection=False,
+def _mongo_client(host, port, authenticate=True, directConnection=None,
                   **kwargs):
     """Create a new client over SSL/TLS if necessary."""
     host = host or client_context.host
@@ -524,6 +524,8 @@ def _mongo_client(host, port, authenticate=True, directConnection=False,
     client_options = client_context.default_client_options.copy()
     if client_context.replica_set_name and not directConnection:
         client_options['replicaSet'] = client_context.replica_set_name
+    if directConnection is not None:
+        client_options['directConnection'] = directConnection
     client_options.update(kwargs)
 
     client = MongoClient(_connection_string(host, authenticate), port,

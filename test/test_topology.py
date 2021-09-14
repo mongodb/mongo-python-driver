@@ -52,13 +52,14 @@ address = ('a', 27017)
 def create_mock_topology(
         seeds=None,
         replica_set_name=None,
-        monitor_class=DummyMonitor):
+        monitor_class=DummyMonitor,
+        direct_connection=False):
     partitioned_seeds = list(map(common.partition_node, seeds or ['a']))
     topology_settings = TopologySettings(
         partitioned_seeds,
         replica_set_name=replica_set_name,
         pool_class=MockPool,
-        monitor_class=monitor_class)
+        monitor_class=monitor_class, direct_connection=direct_connection)
 
     t = Topology(topology_settings)
     t.open()
@@ -168,7 +169,7 @@ class TestSingleServerTopology(TopologyTest):
                 HelloCompat.LEGACY_CMD: False,
                 'maxWireVersion': 6}),
         ]:
-            t = create_mock_topology()
+            t = create_mock_topology(direct_connection=True)
 
             # Can't select a server while the only server is of type Unknown.
             with self.assertRaisesRegex(ConnectionFailure,

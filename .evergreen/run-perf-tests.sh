@@ -18,7 +18,7 @@ VIRTUALENV="$MTCBIN/virtualenv -p $MTCBIN/python3"
 
 $VIRTUALENV pyperftest
 . pyperftest/bin/activate
-pip install simplejson
+python -m pip install simplejson
 
 python setup.py build_ext -i
 start_time=$(date +%s)

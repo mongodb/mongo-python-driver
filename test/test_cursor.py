@@ -44,7 +44,7 @@ from test.utils import (EventListener,
                         OvertCommandListener,
                         ignore_deprecations,
                         rs_or_single_client,
-                        WhiteListEventListener)
+                        AllowListEventListener)
 
 
 class TestCursor(IntegrationTest):
@@ -231,7 +231,7 @@ class TestCursor(IntegrationTest):
                 10).max_await_time_ms(90)
         self.assertEqual(90, cursor._Cursor__max_await_time_ms)
 
-        listener = WhiteListEventListener('find', 'getMore')
+        listener = AllowListEventListener('find', 'getMore')
         coll = rs_or_single_client(
             event_listeners=[listener])[self.db.name].pymongo_test
         results = listener.results
@@ -349,7 +349,7 @@ class TestCursor(IntegrationTest):
 
     def test_explain_with_read_concern(self):
         # Do not add readConcern level to explain.
-        listener = WhiteListEventListener("explain")
+        listener = AllowListEventListener("explain")
         client = rs_or_single_client(event_listeners=[listener])
         self.addCleanup(client.close)
         coll = client.pymongo_test.test.with_options(
@@ -1221,7 +1221,7 @@ class TestCursor(IntegrationTest):
         gc.collect()
         self.client._process_periodic_tasks()
 
-        listener = WhiteListEventListener("killCursors")
+        listener = AllowListEventListener("killCursors")
         results = listener.results
         client = rs_or_single_client(event_listeners=[listener])
         self.addCleanup(client.close)
@@ -1268,7 +1268,7 @@ class TestCursor(IntegrationTest):
 
     @client_context.require_version_min(3, 6)
     def test_getMore_does_not_send_readPreference(self):
-        listener = WhiteListEventListener('find', 'getMore')
+        listener = AllowListEventListener('find', 'getMore')
         client = rs_or_single_client(
             event_listeners=[listener])
         self.addCleanup(client.close)
