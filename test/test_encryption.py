@@ -61,7 +61,7 @@ from test.utils import (TestCreator,
                         camel_to_snake_args,
                         OvertCommandListener,
                         TopologyEventListener,
-                        WhiteListEventListener,
+                        AllowListEventListener,
                         rs_or_single_client,
                         wait_until)
 from test.utils_spec_runner import SpecRunner
@@ -1293,7 +1293,7 @@ class AzureGCPEncryptionTestMixin(object):
             keyvault_namespace,
             schema_map=self.SCHEMA_MAP)
 
-        insert_listener = WhiteListEventListener('insert')
+        insert_listener = AllowListEventListener('insert')
         client = rs_or_single_client(
             auto_encryption_opts=encryption_opts,
             event_listeners=[insert_listener])

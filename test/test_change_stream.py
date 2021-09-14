@@ -47,7 +47,7 @@ from pymongo.write_concern import WriteConcern
 from test import client_context, unittest, IntegrationTest
 from test.unified_format import generate_test_classes
 from test.utils import (
-    EventListener, WhiteListEventListener, rs_or_single_client, wait_until)
+    EventListener, AllowListEventListener, rs_or_single_client, wait_until)
 
 
 class TestChangeStreamBase(IntegrationTest):
@@ -62,8 +62,8 @@ class TestChangeStreamBase(IntegrationTest):
         return self.change_stream_with_client(self.client, *args, **kwargs)
 
     def client_with_listener(self, *commands):
-        """Return a client with a WhiteListEventListener."""
-        listener = WhiteListEventListener(*commands)
+        """Return a client with a AllowListEventListener."""
+        listener = AllowListEventListener(*commands)
         client = rs_or_single_client(event_listeners=[listener])
         self.addCleanup(client.close)
         return client, listener
@@ -447,7 +447,7 @@ class APITestsMixin(object):
 
 class ProseSpecTestsMixin(object):
     def _client_with_listener(self, *commands):
-        listener = WhiteListEventListener(*commands)
+        listener = AllowListEventListener(*commands)
         client = rs_or_single_client(event_listeners=[listener])
         self.addCleanup(client.close)
         return client, listener
@@ -476,7 +476,7 @@ class ProseSpecTestsMixin(object):
         """Predicts what the resume token should currently be for server
         versions that support postBatchResumeToken. Assumes the stream has
         never returned any changes if previous_change is None. Assumes
-        listener is a WhiteListEventListener that listens for aggregate and
+        listener is a AllowListEventListener that listens for aggregate and
         getMore commands."""
         if previous_change is None or stream._cursor._has_next():
             token = self._get_expected_resume_token_legacy(
@@ -1049,7 +1049,7 @@ class TestAllLegacyScenarios(IntegrationTest):
     @client_context.require_connection
     def setUpClass(cls):
         super(TestAllLegacyScenarios, cls).setUpClass()
-        cls.listener = WhiteListEventListener("aggregate", "getMore")
+        cls.listener = AllowListEventListener("aggregate", "getMore")
         cls.client = rs_or_single_client(event_listeners=[cls.listener])
 
     @classmethod

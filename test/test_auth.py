@@ -39,7 +39,7 @@ from test.utils import (delay,
                         rs_or_single_client,
                         rs_or_single_client_noauth,
                         single_client_noauth,
-                        WhiteListEventListener)
+                        AllowListEventListener)
 
 # YOU MUST RUN KINIT BEFORE RUNNING GSSAPI TESTS ON UNIX.
 GSSAPI_HOST = os.environ.get('GSSAPI_HOST')
@@ -406,7 +406,7 @@ class TestSCRAM(IntegrationTest):
         super(TestSCRAM, self).setUp()
         self._SENSITIVE_COMMANDS = monitoring._SENSITIVE_COMMANDS
         monitoring._SENSITIVE_COMMANDS = set([])
-        self.listener = WhiteListEventListener("saslStart")
+        self.listener = AllowListEventListener("saslStart")
 
     def tearDown(self):
         monitoring._SENSITIVE_COMMANDS = self._SENSITIVE_COMMANDS
@@ -415,7 +415,7 @@ class TestSCRAM(IntegrationTest):
         super(TestSCRAM, self).tearDown()
 
     def test_scram_skip_empty_exchange(self):
-        listener = WhiteListEventListener("saslStart", "saslContinue")
+        listener = AllowListEventListener("saslStart", "saslContinue")
         client_context.create_user(
             'testscram', 'sha256', 'pwd', roles=['dbOwner'],
             mechanisms=['SCRAM-SHA-256'])

@@ -169,23 +169,23 @@ class TopologyEventListener(monitoring.TopologyListener):
         self.results.clear()
 
 
-class WhiteListEventListener(EventListener):
+class AllowListEventListener(EventListener):
 
     def __init__(self, *commands):
         self.commands = set(commands)
-        super(WhiteListEventListener, self).__init__()
+        super(AllowListEventListener, self).__init__()
 
     def started(self, event):
         if event.command_name in self.commands:
-            super(WhiteListEventListener, self).started(event)
+            super(AllowListEventListener, self).started(event)
 
     def succeeded(self, event):
         if event.command_name in self.commands:
-            super(WhiteListEventListener, self).succeeded(event)
+            super(AllowListEventListener, self).succeeded(event)
 
     def failed(self, event):
         if event.command_name in self.commands:
-            super(WhiteListEventListener, self).failed(event)
+            super(AllowListEventListener, self).failed(event)
 
 
 class OvertCommandListener(EventListener):
