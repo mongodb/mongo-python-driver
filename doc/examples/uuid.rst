@@ -331,7 +331,7 @@ representation.
 
 The :data:`~bson.binary.UuidRepresentation.UNSPECIFIED` representation
 prevents the incorrect interpretation of UUID bytes by stopping short of
-automatically converting UUID fields in BSON to native UUID types. Loading
+automatically converting UUID fields in BSON to native UUID types. Decoding
 a UUID when using this representation returns a :class:`~bson.binary.Binary`
 object instead. If required, users can coerce the decoded
 :class:`~bson.binary.Binary` objects into native UUIDs using the
@@ -386,8 +386,8 @@ must explicitly coerce a native UUID using the
 ^^^^^^^^^^^^
 
 .. attention:: This UUID representation should be used by new applications or
-   applications that are storing and/or loading UUIDs in MongoDB for the first
-   time.
+   applications that are encoding and/or decoding UUIDs in MongoDB for the
+   first time.
 
 The :data:`~bson.binary.UuidRepresentation.STANDARD` representation
 enables cross-language compatibility by ensuring the same byte-ordering

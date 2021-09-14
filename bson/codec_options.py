@@ -219,7 +219,7 @@ class CodecOptions(_options_base):
         naive. Defaults to ``False``.
       - `uuid_representation`: The BSON representation to use when encoding
         and decoding instances of :class:`~uuid.UUID`. Defaults to
-        :data:`~bson.binary.UuidRepresentation.PYTHON_LEGACY`. New
+        :data:`~bson.binary.UuidRepresentation.UNSPECIFIED`. New
         applications should consider setting this to
         :data:`~bson.binary.UuidRepresentation.STANDARD` for cross language
         compatibility. See :ref:`handling-uuid-data-example` for details.
@@ -232,6 +232,11 @@ class CodecOptions(_options_base):
         encoded/decoded.
       - `type_registry`: Instance of :class:`TypeRegistry` used to customize
         encoding and decoding behavior.
+
+    .. versionchanged:: 4.0
+       The default for `uuid_representation` was changed from
+       :const:`~bson.binary.UuidRepresentation.PYTHON_LEGACY` to
+       :const:`~bson.binary.UuidRepresentation.UNSPECIFIED`.
 
     .. versionadded:: 3.8
        `type_registry` attribute.

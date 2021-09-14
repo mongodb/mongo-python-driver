@@ -325,8 +325,8 @@ class MongoClient(common.BaseObject):
             speed. 9 is best compression. Defaults to -1.
           - `uuidRepresentation`: The BSON representation to use when encoding
             from and decoding to instances of :class:`~uuid.UUID`. Valid
-            values are `pythonLegacy` (the default), `javaLegacy`,
-            `csharpLegacy`, `standard` and `unspecified`. New applications
+            values are `pythonLegacy`, `javaLegacy`, `csharpLegacy`, `standard`
+            and `unspecified` (the default). New applications
             should consider setting this to `standard` for cross language
             compatibility. See :ref:`handling-uuid-data-example` for details.
           - `unicode_decode_error_handler`: The error handler to apply when
@@ -501,6 +501,8 @@ class MongoClient(common.BaseObject):
         .. versionchanged:: 4.0
            Removed the ``waitQueueMultiple`` and ``socketKeepAlive`` keyword
            arguments.
+           The default for `uuidRepresentation` was changed from
+           ``pythonLegacy`` to ``unspecified``.
 
         .. versionchanged:: 3.12
            Added the ``server_api`` keyword argument.
