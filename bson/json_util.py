@@ -222,7 +222,7 @@ class JSONOptions(CodecOptions):
         :class:`collections.MutableMapping`. Defaults to :class:`dict`.
       - `uuid_representation`: The :class:`~bson.binary.UuidRepresentation`
         to use when encoding and decoding instances of :class:`uuid.UUID`.
-        Defaults to :const:`~bson.binary.UuidRepresentation.PYTHON_LEGACY`.
+        Defaults to :const:`~bson.binary.UuidRepresentation.UNSPECIFIED`.
       - `tz_aware`: If ``True``, MongoDB Extended JSON's *Strict mode* type
         `Date` will be decoded to timezone aware instances of
         :class:`datetime.datetime`. Otherwise they will be naive. Defaults
@@ -238,6 +238,9 @@ class JSONOptions(CodecOptions):
     .. versionchanged:: 4.0
        The default for `json_mode` was changed from :const:`JSONMode.LEGACY`
        to :const:`JSONMode.RELAXED`.
+       The default for `uuid_representation` was changed from
+       :const:`~bson.binary.UuidRepresentation.PYTHON_LEGACY` to
+       :const:`~bson.binary.UuidRepresentation.UNSPECIFIED`.
 
     .. versionchanged:: 3.5
        Accepts the optional parameter `json_mode`.

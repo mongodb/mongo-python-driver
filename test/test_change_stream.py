@@ -896,7 +896,8 @@ class TestDatabaseChangeStream(TestChangeStreamBase, APITestsMixin):
         with self.change_stream() as change_stream:
             for collname in collnames:
                 self._insert_and_check(
-                    change_stream, collname, {'_id': uuid.uuid4()})
+                    change_stream, collname,
+                    {'_id': Binary.from_uuid(uuid.uuid4())})
 
     def test_isolation(self):
         # Ensure inserts to other dbs don't show up in our ChangeStream.
@@ -905,9 +906,11 @@ class TestDatabaseChangeStream(TestChangeStreamBase, APITestsMixin):
             other_db, self.db, msg="Isolation must be tested on separate DBs")
         collname = self.id()
         with self.change_stream() as change_stream:
-            other_db[collname].insert_one({'_id': uuid.uuid4()})
+            other_db[collname].insert_one(
+                {'_id': Binary.from_uuid(uuid.uuid4())})
             self._insert_and_check(
-                change_stream, collname, {'_id': uuid.uuid4()})
+                change_stream, collname,
+                {'_id': Binary.from_uuid(uuid.uuid4())})
         self.client.drop_database(other_db)
 
 

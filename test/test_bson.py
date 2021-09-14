@@ -638,8 +638,13 @@ class TestBSON(unittest.TestCase):
 
     def test_uuid(self):
         id = uuid.uuid4()
-        transformed_id = decode(encode({"id": id}))["id"]
+        # The default uuid_representation is UNSPECIFIED
+        with self.assertRaisesRegex(ValueError, 'cannot encode native uuid'):
+            bson.decode_all(encode({'uuid': id}))
 
+        opts = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
+        transformed_id = decode(encode({"id": id}, codec_options=opts),
+                                codec_options=opts)["id"]
         self.assertTrue(isinstance(transformed_id, uuid.UUID))
         self.assertEqual(id, transformed_id)
         self.assertNotEqual(uuid.uuid4(), transformed_id)
@@ -648,8 +653,9 @@ class TestBSON(unittest.TestCase):
         id = uuid.uuid4()
         legacy = Binary.from_uuid(id, UuidRepresentation.PYTHON_LEGACY)
         self.assertEqual(3, legacy.subtype)
-        transformed = decode(encode({"uuid": legacy}))["uuid"]
-        self.assertTrue(isinstance(transformed, uuid.UUID))
+        bin = decode(encode({"uuid": legacy}))["uuid"]
+        self.assertTrue(isinstance(bin, Binary))
+        transformed = bin.as_uuid(UuidRepresentation.PYTHON_LEGACY)
         self.assertEqual(id, transformed)
 
     # The C extension was segfaulting on unicode RegExs, so we have this test
@@ -965,7 +971,7 @@ class TestCodecOptions(unittest.TestCase):
 
     def test_codec_options_repr(self):
         r = ("CodecOptions(document_class=dict, tz_aware=False, "
-             "uuid_representation=UuidRepresentation.PYTHON_LEGACY, "
+             "uuid_representation=UuidRepresentation.UNSPECIFIED, "
              "unicode_decode_error_handler='strict', "
              "tzinfo=None, type_registry=TypeRegistry(type_codecs=[], "
              "fallback_encoder=None))")
@@ -973,17 +979,16 @@ class TestCodecOptions(unittest.TestCase):
 
     def test_decode_all_defaults(self):
         # Test decode_all()'s default document_class is dict and tz_aware is
-        # False. The default uuid_representation is PYTHON_LEGACY but this
-        # decodes same as STANDARD, so all this test proves about UUID decoding
-        # is that it's not CSHARP_LEGACY or JAVA_LEGACY.
+        # False.
         doc = {'sub_document': {},
-               'uuid': uuid.uuid4(),
                'dt': datetime.datetime.utcnow()}
 
         decoded = bson.decode_all(bson.encode(doc))[0]
         self.assertIsInstance(decoded['sub_document'], dict)
-        self.assertEqual(decoded['uuid'], doc['uuid'])
         self.assertIsNone(decoded['dt'].tzinfo)
+        # The default uuid_representation is UNSPECIFIED
+        with self.assertRaisesRegex(ValueError, 'cannot encode native uuid'):
+            bson.decode_all(bson.encode({'uuid': uuid.uuid4()}))
 
     def test_unicode_decode_error_handler(self):
         enc = encode({"keystr": "foobar"})

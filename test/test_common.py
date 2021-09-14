@@ -19,7 +19,7 @@ import uuid
 
 sys.path[0:0] = [""]
 
-from bson.binary import Binary, PYTHON_LEGACY, STANDARD
+from bson.binary import Binary, PYTHON_LEGACY, STANDARD, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from pymongo.errors import OperationFailure
@@ -40,12 +40,15 @@ class TestCommon(IntegrationTest):
         coll.drop()
 
         # Test property
-        self.assertEqual(PYTHON_LEGACY,
+        self.assertEqual(UuidRepresentation.UNSPECIFIED,
                          coll.codec_options.uuid_representation)
 
         # Test basic query
         uu = uuid.uuid4()
         # Insert as binary subtype 3
+        coll = self.db.get_collection(
+            "uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
+        legacy_opts = coll.codec_options
         coll.insert_one({'uu': uu})
         self.assertEqual(uu, coll.find_one({'uu': uu})['uu'])
         coll = self.db.get_collection(
@@ -53,7 +56,7 @@ class TestCommon(IntegrationTest):
         self.assertEqual(STANDARD, coll.codec_options.uuid_representation)
         self.assertEqual(None, coll.find_one({'uu': uu}))
         uul = Binary.from_uuid(uu, PYTHON_LEGACY)
-        self.assertEqual(uu, coll.find_one({'uu': uul})['uu'])
+        self.assertEqual(uul, coll.find_one({'uu': uul})['uu'])
 
         # Test count_documents
         self.assertEqual(0, coll.count_documents({'uu': uu}))
@@ -98,9 +101,10 @@ class TestCommon(IntegrationTest):
         self.assertEqual(5, coll.find_one({'_id': uu})['i'])
 
         # Test command
-        self.assertEqual(5, self.db.command('findAndModify', 'uuid',
-                                            update={'$set': {'i': 6}},
-                                            query={'_id': uu})['value']['i'])
+        self.assertEqual(5, self.db.command(
+            'findAndModify', 'uuid',
+            update={'$set': {'i': 6}},
+            query={'_id': uu}, codec_options=legacy_opts)['value']['i'])
         self.assertEqual(6, self.db.command(
             'findAndModify', 'uuid',
             update={'$set': {'i': 7}},

@@ -219,7 +219,7 @@ class CodecOptions(_options_base):
         naive. Defaults to ``False``.
       - `uuid_representation`: The BSON representation to use when encoding
         and decoding instances of :class:`~uuid.UUID`. Defaults to
-        :data:`~bson.binary.UuidRepresentation.PYTHON_LEGACY`. New
+        :data:`~bson.binary.UuidRepresentation.UNSPECIFIED`. New
         applications should consider setting this to
         :data:`~bson.binary.UuidRepresentation.STANDARD` for cross language
         compatibility. See :ref:`handling-uuid-data-example` for details.
@@ -233,6 +233,11 @@ class CodecOptions(_options_base):
       - `type_registry`: Instance of :class:`TypeRegistry` used to customize
         encoding and decoding behavior.
 
+    .. versionchanged:: 4.0
+       The default for `uuid_representation` was changed from
+       :const:`~bson.binary.UuidRepresentation.PYTHON_LEGACY` to
+       :const:`~bson.binary.UuidRepresentation.UNSPECIFIED`.
+
     .. versionadded:: 3.8
        `type_registry` attribute.
 
@@ -245,7 +250,7 @@ class CodecOptions(_options_base):
 
     def __new__(cls, document_class=dict,
                 tz_aware=False,
-                uuid_representation=None,
+                uuid_representation=UuidRepresentation.UNSPECIFIED,
                 unicode_decode_error_handler="strict",
                 tzinfo=None, type_registry=None):
         if not (issubclass(document_class, _MutableMapping) or
@@ -255,9 +260,7 @@ class CodecOptions(_options_base):
                             "sublass of collections.abc.MutableMapping")
         if not isinstance(tz_aware, bool):
             raise TypeError("tz_aware must be True or False")
-        if uuid_representation is None:
-            uuid_representation = UuidRepresentation.PYTHON_LEGACY
-        elif uuid_representation not in ALL_UUID_REPRESENTATIONS:
+        if uuid_representation not in ALL_UUID_REPRESENTATIONS:
             raise ValueError("uuid_representation must be a value "
                              "from bson.binary.UuidRepresentation")
         if not isinstance(unicode_decode_error_handler, (str, None)):
@@ -327,21 +330,18 @@ class CodecOptions(_options_base):
         return CodecOptions(**opts)
 
 
-DEFAULT_CODEC_OPTIONS = CodecOptions(
-    uuid_representation=UuidRepresentation.PYTHON_LEGACY)
+DEFAULT_CODEC_OPTIONS = CodecOptions()
 
 
 def _parse_codec_options(options):
     """Parse BSON codec options."""
-    return CodecOptions(
-        document_class=options.get(
-            'document_class', DEFAULT_CODEC_OPTIONS.document_class),
-        tz_aware=options.get(
-            'tz_aware', DEFAULT_CODEC_OPTIONS.tz_aware),
-        uuid_representation=options.get('uuidrepresentation'),
-        unicode_decode_error_handler=options.get(
-            'unicode_decode_error_handler',
-            DEFAULT_CODEC_OPTIONS.unicode_decode_error_handler),
-        tzinfo=options.get('tzinfo', DEFAULT_CODEC_OPTIONS.tzinfo),
-        type_registry=options.get(
-            'type_registry', DEFAULT_CODEC_OPTIONS.type_registry))
+    kwargs = {}
+    for k in set(options) & {'document_class', 'tz_aware',
+                             'uuidrepresentation',
+                             'unicode_decode_error_handler', 'tzinfo',
+                             'type_registry'}:
+        if k == 'uuidrepresentation':
+            kwargs['uuid_representation'] = options[k]
+        else:
+            kwargs[k] = options[k]
+    return CodecOptions(**kwargs)

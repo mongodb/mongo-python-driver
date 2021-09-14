@@ -69,7 +69,7 @@ from collections import abc as _abc
 
 from bson.binary import (Binary, UuidRepresentation, ALL_UUID_SUBTYPES,
                          OLD_UUID_SUBTYPE,
-                         JAVA_LEGACY, CSHARP_LEGACY,
+                         JAVA_LEGACY, CSHARP_LEGACY, STANDARD,
                          UUID_SUBTYPE)
 from bson.code import Code
 from bson.codec_options import (
@@ -265,20 +265,14 @@ def _get_binary(data, view, position, obj_end, opts, dummy1):
         raise InvalidBSON('bad binary object length')
 
     # Convert UUID subtypes to native UUIDs.
-    # TODO: PYTHON-2245 Decoding should follow UUID spec in PyMongo 4.0+
     if subtype in ALL_UUID_SUBTYPES:
-        uuid_representation = opts.uuid_representation
+        uuid_rep = opts.uuid_representation
         binary_value = Binary(data[position:end], subtype)
-        if uuid_representation == UuidRepresentation.UNSPECIFIED:
+        if ((uuid_rep == UuidRepresentation.UNSPECIFIED) or
+                (subtype == UUID_SUBTYPE and uuid_rep != STANDARD) or
+                (subtype == OLD_UUID_SUBTYPE and uuid_rep == STANDARD)):
             return binary_value, end
-        if subtype == UUID_SUBTYPE:
-            # Legacy behavior: use STANDARD with binary subtype 4.
-            uuid_representation = UuidRepresentation.STANDARD
-        elif uuid_representation == UuidRepresentation.STANDARD:
-            # subtype == OLD_UUID_SUBTYPE
-            # Legacy behavior: STANDARD is the same as PYTHON_LEGACY.
-            uuid_representation = UuidRepresentation.PYTHON_LEGACY
-        return binary_value.as_uuid(uuid_representation), end
+        return binary_value.as_uuid(uuid_rep), end
 
     # Decode subtype 0 to 'bytes'.
     if subtype == 0:

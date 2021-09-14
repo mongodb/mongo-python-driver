@@ -1760,8 +1760,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             if (!data) {
                 goto invalid;
             }
-            /* Encode as UUID or Binary based on options->uuid_rep
-             * TODO: PYTHON-2245 Decoding should follow UUID spec in PyMongo 4.0  */
+            /* Encode as UUID or Binary based on options->uuid_rep */
             if (subtype == 3 || subtype == 4) {
                 PyObject* binary_type = NULL;
                 PyObject* binary_value = NULL;
@@ -1782,15 +1781,12 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                     goto uuiderror;
                 }
 
-                if (uuid_rep == UNSPECIFIED) {
+                if ((uuid_rep == UNSPECIFIED) ||
+                        (subtype == 4 && uuid_rep != STANDARD) ||
+                        (subtype == 3 && uuid_rep == STANDARD)) {
                     value = binary_value;
                     Py_INCREF(value);
                 } else {
-                    if (subtype == 4) {
-                        uuid_rep = STANDARD;
-                    } else if (uuid_rep == STANDARD) {
-                        uuid_rep = PYTHON_LEGACY;
-                    }
                     value = PyObject_CallMethod(binary_value, "as_uuid", "(i)", uuid_rep);
                 }
 

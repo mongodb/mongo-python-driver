@@ -17,6 +17,13 @@ Breaking Changes in 4.0
 .......................
 
 - Removed support for Python 2.7, 3.4, and 3.5. Python 3.6+ is now required.
+- The default uuid_representation for :class:`~bson.codec_options.CodecOptions`,
+  :class:`~bson.json_util.JSONOptions`, and
+  :class:`~pymongo.mongo_client.MongoClient` has been changed from
+  :data:`bson.binary.UuidRepresentation.PYTHON_LEGACY` to
+  :data:`bson.binary.UuidRepresentation.UNSPECIFIED`. Attempting to encode a
+  :class:`uuid.UUID` instance to BSON or JSON now produces an error by default.
+  See :ref:`handling-uuid-data-example` for details.
 - Removed the ``waitQueueMultiple`` keyword argument to
   :class:`~pymongo.mongo_client.MongoClient` and removed
   :exc:`pymongo.errors.ExceededMaxWaiters`.

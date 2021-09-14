@@ -39,7 +39,10 @@ OLD_UUID_SUBTYPE = 3
 """Old BSON binary subtype for a UUID.
 
 :class:`uuid.UUID` instances will automatically be encoded
-by :mod:`bson` using this subtype.
+by :mod:`bson` using this subtype when using
+:data:`UuidRepresentation.PYTHON_LEGACY`,
+:data:`UuidRepresentation.JAVA_LEGACY`, or
+:data:`UuidRepresentation.CSHARP_LEGACY`.
 
 .. versionadded:: 2.1
 """
@@ -47,8 +50,10 @@ by :mod:`bson` using this subtype.
 UUID_SUBTYPE = 4
 """BSON binary subtype for a UUID.
 
-This is the new BSON binary subtype for UUIDs. The
-current default is :data:`OLD_UUID_SUBTYPE`.
+This is the standard BSON binary subtype for UUIDs.
+:class:`uuid.UUID` instances will automatically be encoded
+by :mod:`bson` using this subtype when using
+:data:`UuidRepresentation.STANDARD`.
 """
 
 

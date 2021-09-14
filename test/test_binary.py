@@ -145,15 +145,18 @@ class TestBinary(unittest.TestCase):
         self.assertEqual(hash(Binary(b"hello world", 42)), hash(two))
 
     def test_uuid_subtype_4(self):
-        """uuid_representation should be ignored when decoding subtype 4 for
-        all UuidRepresentation values except UNSPECIFIED."""
+        """Only STANDARD should decode subtype 4 as native uuid."""
         expected_uuid = uuid.uuid4()
-        doc = {"uuid": Binary(expected_uuid.bytes, 4)}
+        expected_bin = Binary(expected_uuid.bytes, 4)
+        doc = {"uuid": expected_bin}
         encoded = encode(doc)
-        for uuid_representation in (set(ALL_UUID_REPRESENTATIONS) -
-                                    {UuidRepresentation.UNSPECIFIED}):
-            options = CodecOptions(uuid_representation=uuid_representation)
-            self.assertEqual(expected_uuid, decode(encoded, options)["uuid"])
+        for uuid_rep in (UuidRepresentation.PYTHON_LEGACY,
+                         UuidRepresentation.JAVA_LEGACY,
+                         UuidRepresentation.CSHARP_LEGACY):
+            opts = CodecOptions(uuid_representation=uuid_rep)
+            self.assertEqual(expected_bin, decode(encoded, opts)["uuid"])
+        opts = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
+        self.assertEqual(expected_uuid, decode(encoded, opts)["uuid"])
 
     def test_legacy_java_uuid(self):
         # Test decoding
@@ -522,29 +525,25 @@ class TestUuidSpecImplicitCoding(IntegrationTest):
 
     # Implicit decoding prose test #1
     def test_decoding_1(self):
-        # TODO: these assertions will change after PYTHON-2245. Specifically,
-        #  the 'standard' field will be decoded as a Binary subtype 4.
-        binary_value = Binary.from_uuid(
-            self.uuid, UuidRepresentation.PYTHON_LEGACY)
+        standard_binary = Binary.from_uuid(
+            self.uuid, UuidRepresentation.STANDARD)
         self._test_decoding(
             "javaLegacy", UuidRepresentation.JAVA_LEGACY,
-            self.uuid, self.uuid)
+            standard_binary, self.uuid)
         self._test_decoding(
             "csharpLegacy", UuidRepresentation.CSHARP_LEGACY,
-            self.uuid, self.uuid)
+            standard_binary, self.uuid)
         self._test_decoding(
             "pythonLegacy", UuidRepresentation.PYTHON_LEGACY,
-            self.uuid, self.uuid)
+            standard_binary, self.uuid)
 
     # Implicit decoding pose test #2
     def test_decoding_2(self):
-        # TODO: these assertions will change after PYTHON-2245. Specifically,
-        #  the 'legacy' field will be decoded as a Binary subtype 3.
-        binary_value = Binary.from_uuid(
+        legacy_binary = Binary.from_uuid(
             self.uuid, UuidRepresentation.PYTHON_LEGACY)
         self._test_decoding(
             "standard", UuidRepresentation.PYTHON_LEGACY,
-            self.uuid, binary_value.as_uuid(UuidRepresentation.PYTHON_LEGACY))
+            self.uuid, legacy_binary)
 
     # Implicit decoding pose test #3
     def test_decoding_3(self):

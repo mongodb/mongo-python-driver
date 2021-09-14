@@ -19,7 +19,7 @@ import uuid
 sys.path[0:0] = [""]
 
 from bson import decode, encode
-from bson.binary import Binary, JAVA_LEGACY
+from bson.binary import Binary, JAVA_LEGACY, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.errors import InvalidBSON
 from bson.raw_bson import RawBSONDocument, DEFAULT_RAW_BSON_OPTIONS
@@ -92,7 +92,12 @@ class TestRawBSONDocument(IntegrationTest):
                'bin3': Binary(uid.bytes, 3)}
         raw = RawBSONDocument(encode(doc))
         coll.insert_one(raw)
-        self.assertEqual(coll.find_one(), {'_id': 1, 'bin4': uid, 'bin3': uid})
+        self.assertEqual(coll.find_one(), doc)
+        uuid_coll = coll.with_options(
+            codec_options=coll.codec_options.with_options(
+                uuid_representation=UuidRepresentation.STANDARD))
+        self.assertEqual(uuid_coll.find_one(),
+                         {'_id': 1, 'bin4': uid, 'bin3': Binary(uid.bytes, 3)})
 
         # Test that the raw bytes haven't changed.
         raw_coll = coll.with_options(codec_options=DEFAULT_RAW_BSON_OPTIONS)
@@ -185,3 +190,7 @@ class TestRawBSONDocument(IntegrationTest):
 
         for rkey, elt in zip(rawdoc, keyvaluepairs):
             self.assertEqual(rkey, elt[0])
+
+
+if __name__ == "__main__":
+    unittest.main()
