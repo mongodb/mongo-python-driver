@@ -840,6 +840,10 @@ class Database(common.BaseObject):
 
     next = __next__
 
+    def __bool__(self):
+        raise NotImplementedError("Database does not implement Boolean "
+                                  "methods")
+
     def dereference(self, dbref, session=None, **kwargs):
         """Dereference a :class:`~bson.dbref.DBRef`, getting the
         document it points to.

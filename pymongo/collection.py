@@ -289,6 +289,10 @@ class Collection(common.BaseObject):
     def __hash__(self):
         return hash((self.__database, self.__name))
 
+    def __bool__(self):
+        raise NotImplementedError("Collection does not implement Boolean "
+                                  "methods")
+
     @property
     def full_name(self):
         """The full name of this :class:`Collection`.
