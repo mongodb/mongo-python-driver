@@ -63,7 +63,7 @@ class SON(dict):
         dict.__delitem__(self, key)
 
     def keys(self):
-        return OrderedDict.fromkeys(self.__keys)
+        return set(self.__keys)
 
     def copy(self):
         other = SON()
