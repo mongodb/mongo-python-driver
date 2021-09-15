@@ -193,7 +193,7 @@ class TestSON(unittest.TestCase):
         d = SON()
         for i in [OrderedDict, dict]:
             try:
-                d.keys() - i({'a':0, 'n':0}).keys()
+                d.keys() - i().keys()
             except TypeError:
                 self.fail("SON().keys() is not returning an object compatible "
                           "with %s objects" % (str(i)))
