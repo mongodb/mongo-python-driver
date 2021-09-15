@@ -32,7 +32,6 @@ from bson import (CodecOptions,
                   _decode_selective,
                   _dict_to_bson,
                   _make_c_string)
-from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.int64 import Int64
 from bson.raw_bson import (_inflate_bson, DEFAULT_RAW_BSON_OPTIONS,
                            RawBSONDocument)
@@ -52,7 +51,6 @@ from pymongo.errors import (ConfigurationError,
                             OperationFailure,
                             ProtocolError)
 from pymongo.hello import HelloCompat
-from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
@@ -1361,63 +1359,3 @@ _UNPACK_REPLY = {
     _OpReply.OP_CODE: _OpReply.unpack,
     _OpMsg.OP_CODE: _OpMsg.unpack,
 }
-
-
-def _first_batch(sock_info, db, coll, query, ntoreturn,
-                 secondary_ok, codec_options, read_preference, cmd, listeners):
-    """Simple query helper for retrieving a first (and possibly only) batch."""
-    query = _Query(
-        0, db, coll, 0, query, None, codec_options,
-        read_preference, ntoreturn, 0, DEFAULT_READ_CONCERN, None, None,
-        None, None, False)
-
-    name = next(iter(cmd))
-    publish = listeners.enabled_for_commands
-    if publish:
-        start = datetime.datetime.now()
-
-    request_id, msg, max_doc_size = query.get_message(secondary_ok, sock_info)
-
-    if publish:
-        encoding_duration = datetime.datetime.now() - start
-        listeners.publish_command_start(
-            cmd, db, request_id, sock_info.address,
-            service_id=sock_info.service_id)
-        start = datetime.datetime.now()
-
-    sock_info.send_message(msg, max_doc_size)
-    reply = sock_info.receive_message(request_id)
-    try:
-        docs = reply.unpack_response(None, codec_options)
-    except Exception as exc:
-        if publish:
-            duration = (datetime.datetime.now() - start) + encoding_duration
-            if isinstance(exc, (NotPrimaryError, OperationFailure)):
-                failure = exc.details
-            else:
-                failure = _convert_exception(exc)
-            listeners.publish_command_failure(
-                duration, failure, name, request_id, sock_info.address,
-                service_id=sock_info.service_id)
-        raise
-    # listIndexes
-    if 'cursor' in cmd:
-        result = {
-            'cursor': {
-                'firstBatch': docs,
-                'id': reply.cursor_id,
-                'ns': '%s.%s' % (db, coll)
-            },
-            'ok': 1.0
-        }
-    # fsyncUnlock, currentOp
-    else:
-        result = docs[0] if docs else {}
-        result['ok'] = 1.0
-    if publish:
-        duration = (datetime.datetime.now() - start) + encoding_duration
-        listeners.publish_command_success(
-            duration, result, name, request_id, sock_info.address,
-            service_id=sock_info.service_id)
-
-    return result

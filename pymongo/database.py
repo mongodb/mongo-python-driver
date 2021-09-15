@@ -14,23 +14,17 @@
 
 """Database level operations."""
 
-import warnings
-
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.dbref import DBRef
 from bson.son import SON
-from pymongo import auth, common
+from pymongo import common
 from pymongo.aggregation import _DatabaseAggregationCommand
 from pymongo.change_stream import DatabaseChangeStream
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (CollectionInvalid,
                             InvalidName)
-from pymongo.message import _first_batch
 from pymongo.read_preferences import ReadPreference
-
-
-_INDEX_REGEX = {"name": {"$regex": r"^(?!.*\$)"}}
 
 
 def _check_name(name):
