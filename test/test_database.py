@@ -204,11 +204,8 @@ class TestDatabase(IntegrationTest):
             self.assertIn("capped", names)
             self.assertIn("non_capped", names)
             command = results["started"][0].command
-            if client_context.version >= (3, 0):
-                self.assertIn("nameOnly", command)
-                self.assertTrue(command["nameOnly"])
-            else:
-                self.assertNotIn("nameOnly", command)
+            self.assertIn("nameOnly", command)
+            self.assertTrue(command["nameOnly"])
 
     def test_list_collections(self):
         self.client.drop_database("pymongo_test")
@@ -324,7 +321,7 @@ class TestDatabase(IntegrationTest):
 
         db.drop_collection(db.test.doesnotexist)
 
-        if client_context.version.at_least(3, 3, 9) and client_context.is_rs:
+        if client_context.is_rs:
             db_wc = Database(self.client, 'pymongo_test',
                              write_concern=IMPOSSIBLE_WRITE_CONCERN)
             with self.assertRaises(WriteConcernError):
@@ -377,19 +374,15 @@ class TestDatabase(IntegrationTest):
         self.assertEqualReply(second, third)
 
     # We use 'aggregate' as our example command, since it's an easy way to
-    # retrieve a BSON regex from a collection using a command. But until
-    # MongoDB 2.3.2, aggregation turned regexes into strings: SERVER-6470.
-    # Note: MongoDB 3.5.2 requires the 'cursor' or 'explain' option for
-    # aggregate.
-    @client_context.require_version_max(3, 5, 0)
+    # retrieve a BSON regex from a collection using a command.
     def test_command_with_regex(self):
         db = self.client.pymongo_test
         db.test.drop()
         db.test.insert_one({'r': re.compile('.*')})
         db.test.insert_one({'r': Regex('.*')})
 
-        result = db.command('aggregate', 'test', pipeline=[])
-        for doc in result['result']:
+        result = db.command('aggregate', 'test', pipeline=[], cursor={})
+        for doc in result['cursor']['firstBatch']:
             self.assertTrue(isinstance(doc['r'], Regex))
 
     def test_password_digest(self):
@@ -647,13 +640,11 @@ class TestDatabaseAggregation(IntegrationTest):
         self.result = {"dummy": "dummy field"}
         self.admin = self.client.admin
 
-    @client_context.require_version_min(3, 6, 0)
     def test_database_aggregation(self):
         with self.admin.aggregate(self.pipeline) as cursor:
             result = next(cursor)
             self.assertEqual(result, self.result)
 
-    @client_context.require_version_min(3, 6, 0)
     @client_context.require_no_mongos
     def test_database_aggregation_fake_cursor(self):
         coll_name = "test_output"
@@ -679,13 +670,6 @@ class TestDatabaseAggregation(IntegrationTest):
 
         result = wait_until(output_coll.find_one, "read unacknowledged write")
         self.assertEqual(result["dummy"], self.result["dummy"])
-
-    @client_context.require_version_max(3, 6, 0, -1)
-    def test_database_aggregation_unsupported(self):
-        err_msg = r"Database.aggregate\(\) is only supported on MongoDB 3.6\+."
-        with self.assertRaisesRegex(ConfigurationError, err_msg):
-            with self.admin.aggregate(self.pipeline) as _:
-                pass
 
 
 if __name__ == "__main__":

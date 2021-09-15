@@ -77,17 +77,6 @@ class TestCollationObject(unittest.TestCase):
         }, Collation('en_US', backwards=True).document)
 
 
-def raisesConfigurationErrorForOldMongoDB(func):
-    @functools.wraps(func)
-    def wrapper(self, *args, **kwargs):
-        if client_context.version.at_least(3, 3, 9):
-            return func(self, *args, **kwargs)
-        else:
-            with self.assertRaises(ConfigurationError):
-                return func(self, *args, **kwargs)
-    return wrapper
-
-
 class TestCollation(IntegrationTest):
     @classmethod
     @client_context.require_connection
@@ -120,7 +109,6 @@ class TestCollation(IntegrationTest):
             self.collation.document,
             self.last_command_started()['collation'])
 
-    @raisesConfigurationErrorForOldMongoDB
     def test_create_collection(self):
         self.db.test.drop()
         self.db.create_collection('test', collation=self.collation)
@@ -136,7 +124,6 @@ class TestCollation(IntegrationTest):
         model = IndexModel([('a', 1), ('b', -1)], collation=self.collation)
         self.assertEqual(self.collation.document, model.document['collation'])
 
-    @raisesConfigurationErrorForOldMongoDB
     def test_create_index(self):
         self.db.test.create_index('foo', collation=self.collation)
         ci_cmd = self.listener.results['started'][0].command
@@ -144,18 +131,15 @@ class TestCollation(IntegrationTest):
             self.collation.document,
             ci_cmd['indexes'][0]['collation'])
 
-    @raisesConfigurationErrorForOldMongoDB
     def test_aggregate(self):
         self.db.test.aggregate([{'$group': {'_id': 42}}],
                                collation=self.collation)
         self.assertCollationInLastCommand()
 
-    @raisesConfigurationErrorForOldMongoDB
     def test_count_documents(self):
         self.db.test.count_documents({}, collation=self.collation)
         self.assertCollationInLastCommand()
 
-    @raisesConfigurationErrorForOldMongoDB
     def test_distinct(self):
         self.db.test.distinct('foo', collation=self.collation)
         self.assertCollationInLastCommand()
@@ -164,14 +148,12 @@ class TestCollation(IntegrationTest):
         self.db.test.find(collation=self.collation).distinct('foo')
         self.assertCollationInLastCommand()
 
-    @raisesConfigurationErrorForOldMongoDB
     def test_find_command(self):
         self.db.test.insert_one({'is this thing on?': True})
         self.listener.results.clear()
         next(self.db.test.find(collation=self.collation))
         self.assertCollationInLastCommand()
 
-    @raisesConfigurationErrorForOldMongoDB
     def test_explain_command(self):
         self.listener.results.clear()
         self.db.test.find(collation=self.collation).explain()
@@ -180,7 +162,6 @@ class TestCollation(IntegrationTest):
             self.collation.document,
             self.last_command_started()['explain']['collation'])
 
-    @raisesConfigurationErrorForOldMongoDB
     def test_delete(self):
         self.db.test.delete_one({'foo': 42}, collation=self.collation)
         command = self.listener.results['started'][0].command
@@ -195,7 +176,6 @@ class TestCollation(IntegrationTest):
             self.collation.document,
             command['deletes'][0]['collation'])
 
-    @raisesConfigurationErrorForOldMongoDB
     def test_update(self):
         self.db.test.replace_one({'foo': 42}, {'foo': 43},
                                  collation=self.collation)
@@ -220,7 +200,6 @@ class TestCollation(IntegrationTest):
             self.collation.document,
             command['updates'][0]['collation'])
 
-    @raisesConfigurationErrorForOldMongoDB
     def test_find_and(self):
         self.db.test.find_one_and_delete({'foo': 42}, collation=self.collation)
         self.assertCollationInLastCommand()
@@ -235,7 +214,6 @@ class TestCollation(IntegrationTest):
                                           collation=self.collation)
         self.assertCollationInLastCommand()
 
-    @raisesConfigurationErrorForOldMongoDB
     def test_bulk_write(self):
         self.db.test.collection.bulk_write([
             DeleteOne({'noCollation': 42}),
@@ -266,7 +244,6 @@ class TestCollation(IntegrationTest):
         check_ops(delete_cmd['deletes'])
         check_ops(update_cmd['updates'])
 
-    @raisesConfigurationErrorForOldMongoDB
     def test_indexes_same_keys_different_collations(self):
         self.db.test.drop()
         usa_collation = Collation('en_US')
@@ -302,7 +279,6 @@ class TestCollation(IntegrationTest):
         with self.assertRaises(ConfigurationError):
             collection.bulk_write([update_one])
 
-    @raisesConfigurationErrorForOldMongoDB
     def test_cursor_collation(self):
         self.db.test.insert_one({'hello': 'world'})
         next(self.db.test.find().collation(self.collation))

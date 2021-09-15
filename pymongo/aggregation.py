@@ -88,11 +88,6 @@ class _AggregationCommand(object):
         """The database against which the aggregation command is run."""
         raise NotImplementedError
 
-    @staticmethod
-    def _check_compat(sock_info):
-        """Check whether the server version in-use supports aggregation."""
-        pass
-
     def _process_result(self, result, session, server, sock_info, secondary_ok):
         if self._result_processor:
             self._result_processor(
@@ -104,9 +99,6 @@ class _AggregationCommand(object):
         return self._target._read_preference_for(session)
 
     def get_cursor(self, session, server, sock_info, secondary_ok):
-        # Ensure command compatibility.
-        self._check_compat(sock_info)
-
         # Serialize command.
         cmd = SON([("aggregate", self._aggregation_target),
                    ("pipeline", self._pipeline)])
@@ -117,8 +109,7 @@ class _AggregationCommand(object):
         # - server version is >= 4.2 or
         # - server version is >= 3.2 and pipeline doesn't use $out
         if (('readConcern' not in cmd) and
-                ((sock_info.max_wire_version >= 4 and
-                  not self._performs_write) or
+                (not self._performs_write or
                  (sock_info.max_wire_version >= 8))):
             read_concern = self._target.read_concern
         else:
@@ -218,11 +209,3 @@ class _DatabaseAggregationCommand(_AggregationCommand):
         # aggregate too by defaulting to the <db>.$cmd.aggregate namespace.
         _, collname = cursor.get("ns", self._cursor_namespace).split(".", 1)
         return self._database[collname]
-
-    @staticmethod
-    def _check_compat(sock_info):
-        # Older server version don't raise a descriptive error, so we raise
-        # one instead.
-        if not sock_info.max_wire_version >= 6:
-            err_msg = "Database.aggregate() is only supported on MongoDB 3.6+."
-            raise ConfigurationError(err_msg)

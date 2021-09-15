@@ -729,17 +729,15 @@ class TestClient(IntegrationTest):
         for doc in client.list_databases():
             self.assertIs(type(doc), dict)
 
-        if client_context.version.at_least(3, 4, 2):
-            self.client.pymongo_test.test.insert_one({})
-            cursor = self.client.list_databases(filter={"name": "admin"})
-            docs = list(cursor)
-            self.assertEqual(1, len(docs))
-            self.assertEqual(docs[0]["name"], "admin")
+        self.client.pymongo_test.test.insert_one({})
+        cursor = self.client.list_databases(filter={"name": "admin"})
+        docs = list(cursor)
+        self.assertEqual(1, len(docs))
+        self.assertEqual(docs[0]["name"], "admin")
 
-        if client_context.version.at_least(3, 4, 3):
-            cursor = self.client.list_databases(nameOnly=True)
-            for doc in cursor:
-                self.assertEqual(["name"], list(doc))
+        cursor = self.client.list_databases(nameOnly=True)
+        for doc in cursor:
+            self.assertEqual(["name"], list(doc))
 
     def test_list_database_names(self):
         self.client.pymongo_test.test.insert_one({"dummy": "object"})
@@ -763,15 +761,12 @@ class TestClient(IntegrationTest):
         self.assertIn("pymongo_test2", dbs)
         self.client.drop_database("pymongo_test")
 
-        if client_context.version.at_least(3, 3, 9) and client_context.is_rs:
+        if client_context.is_rs:
             wc_client = rs_or_single_client(w=len(client_context.nodes) + 1)
             with self.assertRaises(WriteConcernError):
                 wc_client.drop_database('pymongo_test2')
 
         self.client.drop_database(self.client.pymongo_test2)
-
-        raise SkipTest("This test often fails due to SERVER-2329")
-
         dbs = self.client.list_database_names()
         self.assertNotIn("pymongo_test", dbs)
         self.assertNotIn("pymongo_test2", dbs)

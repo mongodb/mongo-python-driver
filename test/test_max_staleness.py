@@ -116,7 +116,6 @@ class TestMaxStaleness(unittest.TestCase):
             self.assertEqual(-1, client.read_preference.max_staleness)
             self.assertIn("must be a positive integer", str(ctx[0]))
 
-    @client_context.require_version_min(3, 3, 6)  # SERVER-8858
     @client_context.require_replica_set
     def test_last_write_date(self):
         # From max-staleness-tests.rst, "Parse lastWriteDate".
@@ -138,12 +137,6 @@ class TestMaxStaleness(unittest.TestCase):
         self.assertGreater(second, first)
         self.assertLess(second, first + 10)
 
-    @client_context.require_version_max(3, 3)
-    def test_last_write_date_absent(self):
-        # From max-staleness-tests.rst, "Absent lastWriteDate".
-        client = rs_or_single_client()
-        sd = client._topology.select_server(writable_server_selector)
-        self.assertIsNone(sd.description.last_write_date)
 
 if __name__ == "__main__":
     unittest.main()

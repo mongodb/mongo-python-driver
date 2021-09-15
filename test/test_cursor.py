@@ -198,7 +198,6 @@ class TestCursor(IntegrationTest):
                                      "maxTimeAlwaysTimeOut",
                                      mode="off")
 
-    @client_context.require_version_min(3, 1, 9, -1)
     def test_max_await_time_ms(self):
         db = self.db
         db.pymongo_test.drop()
@@ -573,12 +572,8 @@ class TestCursor(IntegrationTest):
 
         cur = db.test.find().batch_size(1)
         next(cur)
-        if client_context.version.at_least(3, 1, 9):
-            # find command batchSize should be 1
-            self.assertEqual(0, len(cur._Cursor__data))
-        else:
-            # OP_QUERY ntoreturn should be 2
-            self.assertEqual(1, len(cur._Cursor__data))
+        # find command batchSize should be 1
+        self.assertEqual(0, len(cur._Cursor__data))
         next(cur)
         self.assertEqual(0, len(cur._Cursor__data))
         next(cur)
@@ -1169,27 +1164,19 @@ class TestCursor(IntegrationTest):
 
     @client_context.require_no_mongos
     def test_comment(self):
-        # MongoDB 3.1.5 changed the ns for commands.
-        regex = {'$regex': r'pymongo_test.(\$cmd|test)'}
-
-        if client_context.version.at_least(3, 5, 8, -1):
-            query_key = "command.comment"
-        elif client_context.version.at_least(3, 1, 8, -1):
-            query_key = "query.comment"
-        else:
-            query_key = "query.$comment"
-
         self.client.drop_database(self.db)
         self.db.command('profile', 2)  # Profile ALL commands.
         try:
             list(self.db.test.find().comment('foo'))
             count = self.db.system.profile.count_documents(
-                {'ns': 'pymongo_test.test', 'op': 'query',  query_key: 'foo'})
+                {'ns': 'pymongo_test.test', 'op': 'query',
+                 'command.comment': 'foo'})
             self.assertEqual(count, 1)
 
             self.db.test.find().comment('foo').distinct('type')
             count = self.db.system.profile.count_documents(
-                {'ns': regex, 'op': 'command', 'command.distinct': 'test',
+                {'ns': 'pymongo_test.test', 'op': 'command',
+                 'command.distinct': 'test',
                  'command.comment': 'foo'})
             self.assertEqual(count, 1)
         finally:
@@ -1266,7 +1253,6 @@ class TestCursor(IntegrationTest):
         cursor = Cursor.__new__(Cursor)  # Skip calling __init__
         cursor.__del__()  # no error
 
-    @client_context.require_version_min(3, 6)
     def test_getMore_does_not_send_readPreference(self):
         listener = AllowListEventListener('find', 'getMore')
         client = rs_or_single_client(
@@ -1408,28 +1394,15 @@ class TestRawBatchCursor(IntegrationTest):
         with self.assertRaises(InvalidOperation):
             self.db.test.find_raw_batches()[0]
 
-    @client_context.require_version_min(3, 4)
     def test_collation(self):
         next(self.db.test.find_raw_batches(collation=Collation('en_US')))
 
-    @client_context.require_version_max(3, 2)
-    def test_collation_error(self):
-        with self.assertRaises(ConfigurationError):
-            next(self.db.test.find_raw_batches(collation=Collation('en_US')))
-
-    @client_context.require_version_min(3, 2)
     @client_context.require_no_mmap   # MMAPv1 does not support read concern
     def test_read_concern(self):
         self.db.get_collection(
             "test", write_concern=WriteConcern(w="majority")).insert_one({})
         c = self.db.get_collection("test", read_concern=ReadConcern("majority"))
         next(c.find_raw_batches())
-
-    @client_context.require_version_max(3, 1)
-    def test_read_concern_error(self):
-        c = self.db.get_collection("test", read_concern=ReadConcern("majority"))
-        with self.assertRaises(ConfigurationError):
-            next(c.find_raw_batches())
 
     def test_monitoring(self):
         listener = EventListener()
@@ -1588,14 +1561,8 @@ class TestRawBatchCommandCursor(IntegrationTest):
         with self.assertRaises(InvalidOperation):
             self.db.test.aggregate_raw_batches([])[0]
 
-    @client_context.require_version_min(3, 4)
     def test_collation(self):
         next(self.db.test.aggregate_raw_batches([], collation=Collation('en_US')))
-
-    @client_context.require_version_max(3, 2)
-    def test_collation_error(self):
-        with self.assertRaises(ConfigurationError):
-            next(self.db.test.aggregate_raw_batches([], collation=Collation('en_US')))
 
     def test_monitoring(self):
         listener = EventListener()

@@ -479,7 +479,6 @@ class TestSpec(SpecRunner):
 
     @classmethod
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, 'pymongocrypt is not installed')
-    @client_context.require_version_min(3, 6)  # SpecRunner requires sessions.
     def setUpClass(cls):
         super(TestSpec, cls).setUpClass()
 

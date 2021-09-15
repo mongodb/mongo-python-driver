@@ -35,7 +35,6 @@ from pymongo.errors import (BulkWriteError,
                             InvalidOperation,
                             OperationFailure)
 from pymongo.message import (_INSERT, _UPDATE, _DELETE,
-                             _do_batched_insert,
                              _randint,
                              _BulkWriteContext,
                              _EncryptedBulkWriteContext)
@@ -256,17 +255,6 @@ class _Bulk(object):
 
     def _execute_command(self, generator, write_concern, session,
                          sock_info, op_id, retryable, full_result):
-        if sock_info.max_wire_version < 5:
-            if self.uses_collation:
-                raise ConfigurationError(
-                    'Must be connected to MongoDB 3.4+ to use a collation.')
-            if self.uses_hint:
-                raise ConfigurationError(
-                    'Must be connected to MongoDB 3.4+ to use hint.')
-        if sock_info.max_wire_version < 6 and self.uses_array_filters:
-            raise ConfigurationError(
-                'Must be connected to MongoDB 3.6+ to use arrayFilters.')
-
         db_name = self.collection.database.name
         client = self.collection.database.client
         listeners = client._event_listeners
@@ -283,7 +271,7 @@ class _Bulk(object):
                        ('ordered', self.ordered)])
             if not write_concern.is_server_default:
                 cmd['writeConcern'] = write_concern.document
-            if self.bypass_doc_val and sock_info.max_wire_version >= 4:
+            if self.bypass_doc_val:
                 cmd['bypassDocumentValidation'] = True
             bwc = self.bulk_ctx_class(
                 db_name, cmd, sock_info, op_id, listeners, session,
@@ -358,24 +346,6 @@ class _Bulk(object):
             _raise_bulk_write_error(full_result)
         return full_result
 
-    def execute_insert_no_results(self, sock_info, run, op_id, acknowledged):
-        """Execute insert, returning no results.
-        """
-        command = SON([('insert', self.collection.name),
-                       ('ordered', self.ordered)])
-        concern = {'w': int(self.ordered)}
-        command['writeConcern'] = concern
-        if self.bypass_doc_val and sock_info.max_wire_version >= 4:
-            command['bypassDocumentValidation'] = True
-        db = self.collection.database
-        bwc = _BulkWriteContext(
-            db.name, command, sock_info, op_id, db.client._event_listeners,
-            None, _INSERT, self.collection.codec_options)
-        # Legacy batched OP_INSERT.
-        _do_batched_insert(
-            self.collection.full_name, run.ops, True, acknowledged, concern,
-            not self.ordered, self.collection.codec_options, bwc)
-
     def execute_op_msg_no_results(self, sock_info, generator):
         """Execute write commands with OP_MSG and w=0 writeConcern, unordered.
         """
@@ -441,62 +411,13 @@ class _Bulk(object):
             raise ConfigurationError(
                 'hint is unsupported for unacknowledged writes.')
         # Cannot have both unacknowledged writes and bypass document validation.
-        if self.bypass_doc_val and sock_info.max_wire_version >= 4:
+        if self.bypass_doc_val:
             raise OperationFailure("Cannot set bypass_document_validation with"
                                    " unacknowledged write concern")
 
-        # OP_MSG
-        if sock_info.max_wire_version > 5:
-            if self.ordered:
-                return self.execute_command_no_results(sock_info, generator)
-            return self.execute_op_msg_no_results(sock_info, generator)
-
-        coll = self.collection
-        # If ordered is True we have to send GLE or use write
-        # commands so we can abort on the first error.
-        write_concern = WriteConcern(w=int(self.ordered))
-        op_id = _randint()
-
-        next_run = next(generator)
-        while next_run:
-            # An ordered bulk write needs to send acknowledged writes to short
-            # circuit the next run. However, the final message on the final
-            # run can be unacknowledged.
-            run = next_run
-            next_run = next(generator, None)
-            needs_ack = self.ordered and next_run is not None
-            try:
-                if run.op_type == _INSERT:
-                    self.execute_insert_no_results(
-                        sock_info, run, op_id, needs_ack)
-                elif run.op_type == _UPDATE:
-                    for operation in run.ops:
-                        doc = operation['u']
-                        check_keys = True
-                        if doc and next(iter(doc)).startswith('$'):
-                            check_keys = False
-                        coll._update(
-                            sock_info,
-                            operation['q'],
-                            doc,
-                            upsert=operation['upsert'],
-                            check_keys=check_keys,
-                            multi=operation['multi'],
-                            write_concern=write_concern,
-                            op_id=op_id,
-                            ordered=self.ordered,
-                            bypass_doc_val=self.bypass_doc_val)
-                else:
-                    for operation in run.ops:
-                        coll._delete(sock_info,
-                                     operation['q'],
-                                     not operation['limit'],
-                                     write_concern,
-                                     op_id,
-                                     self.ordered)
-            except OperationFailure:
-                if self.ordered:
-                    break
+        if self.ordered:
+            return self.execute_command_no_results(sock_info, generator)
+        return self.execute_op_msg_no_results(sock_info, generator)
 
     def execute(self, write_concern, session):
         """Execute operations.

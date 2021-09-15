@@ -580,7 +580,7 @@ class SocketInfo(object):
                 self.sock.settimeout(
                     self.opts.connect_timeout + heartbeat_frequency)
 
-        if self.max_wire_version >= 6 and cluster_time is not None:
+        if not performing_handshake and cluster_time is not None:
             cmd['$clusterTime'] = cluster_time
 
         # XXX: Simplify in PyMongo 4.0 when all_credentials is always a single
@@ -615,7 +615,7 @@ class SocketInfo(object):
                 hello.compressors)
             self.compression_context = ctx
 
-        self.op_msg_enabled = hello.max_wire_version >= 6
+        self.op_msg_enabled = True
         if creds:
             self.negotiated_mechanisms[creds] = hello.sasl_supported_mechs
         if auth_ctx:
@@ -687,23 +687,13 @@ class SocketInfo(object):
         if not isinstance(spec, ORDERED_TYPES):
             spec = SON(spec)
 
-        if (read_concern and self.max_wire_version < 4
-                and not read_concern.ok_for_legacy):
-            raise ConfigurationError(
-                'read concern level of %s is not valid '
-                'with a max wire version of %d.'
-                % (read_concern.level, self.max_wire_version))
         if not (write_concern is None or write_concern.acknowledged or
                 collation is None):
             raise ConfigurationError(
                 'Collation is unsupported for unacknowledged writes.')
-        if (self.max_wire_version >= 5 and
-                write_concern and
+        if (write_concern and
                 not write_concern.is_server_default):
             spec['writeConcern'] = write_concern.document
-        elif self.max_wire_version < 5 and collation is not None:
-            raise ConfigurationError(
-                'Must be connected to MongoDB 3.4+ to use a collation.')
 
         self.add_server_api(spec)
         if session:
@@ -769,8 +759,8 @@ class SocketInfo(object):
             raise NotPrimaryError("not primary", {
                 "ok": 0, "errmsg": "not primary", "code": 10107})
 
-    def legacy_write(self, request_id, msg, max_doc_size, with_last_error):
-        """Send OP_INSERT, etc., optionally returning response as a dict.
+    def unack_write(self, msg, max_doc_size):
+        """Send unack OP_MSG.
 
         Can raise ConnectionFailure or OperationFailure.
 
@@ -781,13 +771,8 @@ class SocketInfo(object):
           - `max_doc_size`: size in bytes of the largest document in `msg`.
           - `with_last_error`: True if a getlasterror command is appended.
         """
-        self._raise_if_not_writable(not with_last_error)
-
+        self._raise_if_not_writable(True)
         self.send_message(msg, max_doc_size)
-        if with_last_error:
-            reply = self.receive_message(request_id)
-            return helpers._check_gle_response(reply.command_response(),
-                                               self.max_wire_version)
 
     def write_command(self, request_id, msg):
         """Send "insert" etc. command, returning response as a dict.
@@ -881,7 +866,7 @@ class SocketInfo(object):
 
     def send_cluster_time(self, command, session, client):
         """Add cluster time for MongoDB >= 3.6."""
-        if self.max_wire_version >= 6 and client:
+        if client:
             client._send_cluster_time(command, session)
 
     def add_server_api(self, command):

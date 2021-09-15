@@ -1377,8 +1377,6 @@ class MongoClient(common.BaseObject):
             try:
                 server = self._select_server(
                     read_pref, session, address=address)
-                if not server.description.retryable_reads_supported:
-                    retryable = False
                 with self._secondaryok_for_server(read_pref, server, session) as (
                             sock_info, secondary_ok):
                     if retrying and not retryable:
@@ -1571,7 +1569,7 @@ class MongoClient(common.BaseObject):
             namespace = None
             db = coll = "OP_KILL_CURSORS"
         spec = SON([('killCursors', coll), ('cursors', cursor_ids)])
-        if sock_info.max_wire_version >= 4 and namespace is not None:
+        if namespace is not None:
             sock_info.command(db, spec, session=session, client=self)
         else:
             if publish:
