@@ -105,12 +105,6 @@ def create_test(test_case):
                     # tests.
                     copts['tlsAllowInvalidHostnames'] = True
 
-                # The SRV spec tests assume drivers auto discover replica set
-                # members. This should be removed during PYTHON-2679.
-                if not self.load_balanced and (
-                        'directconnection' not in result['options']):
-                    copts['directConnection'] = False
-
                 client = MongoClient(uri, **copts)
                 wait_until(
                     lambda: hosts == client.nodes,
