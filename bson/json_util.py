@@ -93,8 +93,6 @@ import math
 import re
 import uuid
 
-from pymongo.errors import ConfigurationError
-
 import bson
 from bson import EPOCH_AWARE, RE_TYPE, SON
 from bson.binary import (Binary, UuidRepresentation, ALL_UUID_SUBTYPES,
@@ -260,45 +258,45 @@ class JSONOptions(CodecOptions):
                                            DatetimeRepresentation.NUMBERLONG,
                                            DatetimeRepresentation.ISO8601,
                                            None):
-            raise ConfigurationError(
+            raise ValueError(
                 "JSONOptions.datetime_representation must be one of LEGACY, "
                 "NUMBERLONG, or ISO8601 from DatetimeRepresentation.")
         self = super(JSONOptions, cls).__new__(cls, *args, **kwargs)
         if json_mode not in (JSONMode.LEGACY,
                              JSONMode.RELAXED,
                              JSONMode.CANONICAL):
-            raise ConfigurationError(
+            raise ValueError(
                 "JSONOptions.json_mode must be one of LEGACY, RELAXED, "
                 "or CANONICAL from JSONMode.")
         self.json_mode = json_mode
         if self.json_mode == JSONMode.RELAXED:
             if strict_number_long:
-                raise ConfigurationError(
+                raise ValueError(
                     "Cannot specify strict_number_long=True with"
                     " JSONMode.RELAXED")
             if datetime_representation not in (None,
                                                DatetimeRepresentation.ISO8601):
-                raise ConfigurationError(
+                raise ValueError(
                     "datetime_representation must be DatetimeRepresentation."
                     "ISO8601 or omitted with JSONMode.RELAXED")
             if strict_uuid not in (None, True):
-                raise ConfigurationError(
+                raise ValueError(
                     "Cannot specify strict_uuid=False with JSONMode.RELAXED")
             self.strict_number_long = False
             self.datetime_representation = DatetimeRepresentation.ISO8601
             self.strict_uuid = True
         elif self.json_mode == JSONMode.CANONICAL:
             if strict_number_long not in (None, True):
-                raise ConfigurationError(
+                raise ValueError(
                     "Cannot specify strict_number_long=False with"
                     " JSONMode.RELAXED")
             if datetime_representation not in (
                     None, DatetimeRepresentation.NUMBERLONG):
-                raise ConfigurationError(
+                raise ValueError(
                     "datetime_representation must be DatetimeRepresentation."
                     "NUMBERLONG or omitted with JSONMode.RELAXED")
             if strict_uuid not in (None, True):
-                raise ConfigurationError(
+                raise ValueError(
                     "Cannot specify strict_uuid=False with JSONMode.RELAXED")
             self.strict_number_long = True
             self.datetime_representation = DatetimeRepresentation.NUMBERLONG
