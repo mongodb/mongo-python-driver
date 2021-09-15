@@ -252,7 +252,8 @@ class JSONOptions(CodecOptions):
             kwargs["tzinfo"] = kwargs.get("tzinfo", utc)
         if datetime_representation not in (DatetimeRepresentation.LEGACY,
                                            DatetimeRepresentation.NUMBERLONG,
-                                           DatetimeRepresentation.ISO8601):
+                                           DatetimeRepresentation.ISO8601,
+                                           None):
             raise ValueError(
                 "JSONOptions.datetime_representation must be one of LEGACY, "
                 "NUMBERLONG, or ISO8601 from DatetimeRepresentation.")
