@@ -952,6 +952,7 @@ class ClientSession(object):
             rc['level'] = 'snapshot'
             if self._snapshot_time is not None:
                 rc['atClusterTime'] = self._snapshot_time
+
     def __copy__(self):
         raise TypeError('A ClientSession cannot be copied, create a new session instead')
 
