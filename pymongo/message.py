@@ -1271,7 +1271,7 @@ class _OpReply(object):
         # PYTHON-945: ignore starting_from field.
         flags, cursor_id, _, number_returned = cls.UNPACK_FROM(msg)
 
-        documents = bytes(msg[20:])
+        documents = msg[20:]
         return cls(flags, cursor_id, number_returned, documents)
 
 
@@ -1351,7 +1351,7 @@ class _OpMsg(object):
         if len(msg) != first_payload_size + 5:
             raise ProtocolError("Unsupported OP_MSG reply: >1 section")
 
-        payload_document = bytes(msg[5:])
+        payload_document = msg[5:]
         return cls(flags, payload_document)
 
 
