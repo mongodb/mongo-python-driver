@@ -23,7 +23,7 @@ sys.path[0:0] = [""]
 
 from bson.son import SON
 from test import unittest
-
+from collections import OrderedDict
 
 class TestSON(unittest.TestCase):
     def test_ordered_dict(self):
@@ -188,6 +188,16 @@ class TestSON(unittest.TestCase):
         self.assertEqual(3, len(test_son))
         test_son.popitem()
         self.assertEqual(2, len(test_son))
+
+    def test_keys(self):
+        d = SON()
+        for i in [OrderedDict, dict]:
+            try:
+                d.keys() - i({'a':0, 'n':0}).keys()
+            except TypeError:
+                self.fail("SON().keys() is not returning an object compatible "
+                          "with %s objects" % (str(i)))
+
 
 if __name__ == "__main__":
     unittest.main()
