@@ -843,7 +843,8 @@ class Database(common.BaseObject):
     def __bool__(self):
         raise NotImplementedError("Database does not implement Boolean "
                                   "methods. Please explicitly compare with "
-                                  "None instead of using __bool__.")
+                                  "None like so: \"if database is not "
+                                  "None:\"")
 
     def dereference(self, dbref, session=None, **kwargs):
         """Dereference a :class:`~bson.dbref.DBRef`, getting the
