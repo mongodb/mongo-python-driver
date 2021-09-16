@@ -190,13 +190,18 @@ class TestSON(unittest.TestCase):
         self.assertEqual(2, len(test_son))
 
     def test_keys(self):
-        d = SON()
+        #Test to make sure that set operations do not throw an error
+        d = SON().keys()
         for i in [OrderedDict, dict]:
             try:
-                d.keys() - i().keys()
+                d - i().keys()
             except TypeError:
                 self.fail("SON().keys() is not returning an object compatible "
                           "with %s objects" % (str(i)))
+        #Test to verify correctness
+        d = SON({"k": "v"}).keys()
+        for i in [OrderedDict, dict]:
+            assert d-i({"k":"v"}).keys() == set()
 
 
 if __name__ == "__main__":
