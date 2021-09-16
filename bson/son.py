@@ -123,7 +123,7 @@ class SON(dict):
 
     def popitem(self):
         try:
-            k, v = next(self.items())
+            k, v = next(self.items(iterable=True))
         except StopIteration:
             raise KeyError('container is empty')
         del self[k]
