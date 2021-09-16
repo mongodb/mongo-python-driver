@@ -291,7 +291,8 @@ class Collection(common.BaseObject):
 
     def __bool__(self):
         raise NotImplementedError("Collection does not implement Boolean "
-                                  "methods")
+                                  "methods. Please explicitly compare with "
+                                  "None instead of using __bool__.")
 
     @property
     def full_name(self):

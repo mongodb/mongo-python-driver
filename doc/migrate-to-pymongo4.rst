@@ -321,6 +321,14 @@ Can be changed to this::
 
 .. _'system.profile' collection: https://docs.mongodb.com/manual/reference/database-profiler/
 
+Database.__bool__ raises NotImplementedError
+..............................................
+:class:`~pymongo.database.Database` now raises an error upon evaluating as a
+Boolean, please use the syntax ``if database
+!= None:`` as opposed to
+the previous syntax which was simply ``if database:``. You must now
+explicitly compare with None.
+
 Collection
 ----------
 
@@ -620,6 +628,13 @@ the correct index. For example, code like this::
 can be changed to this::
 
   cursor = coll.find({}, min={'x', min_value}, hint=[('x', ASCENDING)])
+
+Collection.__bool__ raises NotImplementedError
+..............................................
+:class:`~pymongo.collection.Collection``
+now raises an error upon evaluating as a Boolean, please use the
+syntax ``if collection != None:`` as opposed to the previous syntax which
+was simply ``if collection:``. You must now explicitly compare with None.
 
 SONManipulator is removed
 -------------------------
