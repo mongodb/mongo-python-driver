@@ -1020,14 +1020,6 @@ class TestCausalConsistency(unittest.TestCase):
         self.assertIsNone(after_cluster_time)
 
 
-class TestSessionsNotSupported(IntegrationTest):
-    @client_context.require_version_max(3, 5, 10)
-    def test_sessions_not_supported(self):
-        with self.assertRaisesRegex(
-                ConfigurationError, "Sessions are not supported"):
-            self.client.start_session()
-
-
 class TestClusterTime(IntegrationTest):
     def setUp(self):
         super(TestClusterTime, self).setUp()

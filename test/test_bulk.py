@@ -164,18 +164,6 @@ class TestBulk(BulkTestBase):
     def test_update_many_pipeline(self):
         self._test_update_many([{'$set': {'foo': 'bar'}}])
 
-    @client_context.require_version_max(3, 5, 5)
-    def test_array_filters_unsupported(self):
-        requests = [
-            UpdateMany(
-                {}, {'$set': {'y.$[i].b': 5}}, array_filters=[{'i.b': 1}]),
-            UpdateOne(
-                {}, {'$set': {"y.$[i].b": 2}}, array_filters=[{'i.b': 3}])
-        ]
-        for bulk_op in requests:
-            self.assertRaises(
-                ConfigurationError, self.coll.bulk_write, [bulk_op])
-
     def test_array_filters_validation(self):
         self.assertRaises(TypeError, UpdateMany, {}, {}, array_filters={})
         self.assertRaises(TypeError, UpdateOne, {}, {}, array_filters={})
@@ -307,7 +295,6 @@ class TestBulk(BulkTestBase):
         self.assertEqual(n_docs, result.inserted_count)
         self.assertEqual(n_docs, self.coll.count_documents({}))
 
-    @client_context.require_version_min(3, 6)
     def test_bulk_max_message_size(self):
         self.coll.delete_many({})
         self.addCleanup(self.coll.delete_many, {})
@@ -781,38 +768,29 @@ class TestBulkWriteConcern(BulkTestBase):
                     cls.secondary = single_client(*partition_node(member))
                     break
 
-        # We tested wtimeout errors by specifying a write concern greater than
-        # the number of members, but in MongoDB 2.7.8+ this causes a different
-        # sort of error, "Not enough data-bearing nodes". In recent servers we
-        # use a failpoint to pause replication on a secondary.
-        cls.need_replication_stopped = client_context.version.at_least(2, 7, 8)
-
     @classmethod
     def tearDownClass(cls):
         if cls.secondary:
             cls.secondary.close()
 
     def cause_wtimeout(self, requests, ordered):
-        if self.need_replication_stopped:
-            if not client_context.test_commands_enabled:
-                self.skipTest("Test commands must be enabled.")
+        if not client_context.test_commands_enabled:
+            self.skipTest("Test commands must be enabled.")
 
+        # Use the rsSyncApplyStop failpoint to pause replication on a
+        # secondary which will cause a wtimeout error.
+        self.secondary.admin.command('configureFailPoint',
+                                     'rsSyncApplyStop',
+                                     mode='alwaysOn')
+
+        try:
+            coll = self.coll.with_options(
+                write_concern=WriteConcern(w=self.w, wtimeout=1))
+            return coll.bulk_write(requests, ordered=ordered)
+        finally:
             self.secondary.admin.command('configureFailPoint',
                                          'rsSyncApplyStop',
-                                         mode='alwaysOn')
-
-            try:
-                coll = self.coll.with_options(
-                    write_concern=WriteConcern(w=self.w, wtimeout=1))
-                return coll.bulk_write(requests, ordered=ordered)
-            finally:
-                self.secondary.admin.command('configureFailPoint',
-                                             'rsSyncApplyStop',
-                                             mode='off')
-        else:
-            coll = self.coll.with_options(
-                write_concern=WriteConcern(w=self.w + 1, wtimeout=1))
-            return coll.bulk_write(requests, ordered=ordered)
+                                         mode='off')
 
     @client_context.require_replica_set
     @client_context.require_secondaries_count(1)

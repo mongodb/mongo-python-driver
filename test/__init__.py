@@ -605,10 +605,9 @@ class ClientContext(object):
 
     def require_auth(self, func):
         """Run a test only if the server is running with auth enabled."""
-        return self.check_auth_with_sharding(
-            self._require(lambda: self.auth_enabled,
-                          "Authentication is not enabled on the server",
-                          func=func))
+        return self._require(lambda: self.auth_enabled,
+                             "Authentication is not enabled on the server",
+                             func=func)
 
     def require_no_auth(self, func):
         """Run a test only if the server is running without auth enabled."""
@@ -704,14 +703,6 @@ class ClientContext(object):
         """
         return self._require(lambda: not self.load_balancer,
                              "Must not be connected to a load balancer",
-                             func=func)
-
-    def check_auth_with_sharding(self, func):
-        """Skip a test when connected to mongos < 2.0 and running with auth."""
-        condition = lambda: not (self.auth_enabled and
-                         self.is_mongos and self.version < (2,))
-        return self._require(condition,
-                             "Auth with sharding requires MongoDB >= 2.0.0",
                              func=func)
 
     def is_topology_type(self, topologies):
@@ -818,9 +809,7 @@ class ClientContext(object):
             return False
         if not self.sessions_enabled:
             return False
-        if self.version.at_least(3, 6):
-            return self.is_mongos or self.is_rs
-        return False
+        return self.is_mongos or self.is_rs
 
     def require_retryable_writes(self, func):
         """Run a test only if the deployment supports retryable writes."""

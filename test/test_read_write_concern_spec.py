@@ -123,8 +123,6 @@ class TestReadWriteConcernSpec(IntegrationTest):
             ('delete_many', lambda: coll.delete_many({})),
             ('bulk_write', lambda: coll.bulk_write([InsertOne({})])),
             ('command', insert_command),
-        ]
-        ops_require_34 = [
             ('aggregate', lambda: coll.aggregate([{'$out': 'out'}])),
             # SERVER-46668 Delete all the documents in the collection to
             # workaround a hang in createIndexes.
@@ -136,11 +134,9 @@ class TestReadWriteConcernSpec(IntegrationTest):
             ('rename', lambda: coll.rename('new')),
             ('drop', lambda: db.new.drop()),
         ]
-        if client_context.version > (3, 4):
-            ops.extend(ops_require_34)
-            # SERVER-47194: dropDatabase does not respect wtimeout in 3.6.
-            if client_context.version[:2] != (3, 6):
-                ops.append(('drop_database', lambda: client.drop_database(db)))
+        # SERVER-47194: dropDatabase does not respect wtimeout in 3.6.
+        if client_context.version[:2] != (3, 6):
+            ops.append(('drop_database', lambda: client.drop_database(db)))
 
         for name, f in ops:
             # Ensure insert_many and bulk_write still raise BulkWriteError.
@@ -161,8 +157,6 @@ class TestReadWriteConcernSpec(IntegrationTest):
         self.assertWriteOpsRaise(
             WriteConcern(w=client_context.w+1, wtimeout=1), WriteConcernError)
 
-    # MongoDB 3.2 introduced the stopReplProducer failpoint.
-    @client_context.require_version_min(3, 2)
     @client_context.require_secondaries_count(1)
     @client_context.require_test_commands
     def test_raise_wtimeout(self):

@@ -32,7 +32,6 @@ from bson import (CodecOptions,
                   _decode_selective,
                   _dict_to_bson,
                   _make_c_string)
-from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.int64 import Int64
 from bson.raw_bson import (_inflate_bson, DEFAULT_RAW_BSON_OPTIONS,
                            RawBSONDocument)
@@ -52,7 +51,6 @@ from pymongo.errors import (ConfigurationError,
                             OperationFailure,
                             ProtocolError)
 from pymongo.hello import HelloCompat
-from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
@@ -271,7 +269,7 @@ class _Query(object):
 
     def use_command(self, sock_info):
         use_find_cmd = False
-        if sock_info.max_wire_version >= 4 and not self.exhaust:
+        if not self.exhaust:
             use_find_cmd = True
         elif sock_info.max_wire_version >= 8:
             # OP_MSG supports exhaust on MongoDB 4.2+
@@ -283,18 +281,7 @@ class _Query(object):
                 % (self.read_concern.level,
                    sock_info.max_wire_version))
 
-        if sock_info.max_wire_version < 5 and self.collation is not None:
-            raise ConfigurationError(
-                'Specifying a collation is unsupported with a max wire '
-                'version of %d.' % (sock_info.max_wire_version,))
-
-        if sock_info.max_wire_version < 4 and self.allow_disk_use is not None:
-            raise ConfigurationError(
-                'Specifying allowDiskUse is unsupported with a max wire '
-                'version of %d.' % (sock_info.max_wire_version,))
-
         sock_info.validate_session(self.client, self.session)
-
         return use_find_cmd
 
     def as_command(self, sock_info):
@@ -342,24 +329,21 @@ class _Query(object):
 
         if use_cmd:
             spec = self.as_command(sock_info)[0]
-            if sock_info.op_msg_enabled:
-                request_id, msg, size, _ = _op_msg(
-                    0, spec, self.db, self.read_preference,
-                    set_secondary_ok, False, self.codec_options,
-                    ctx=sock_info.compression_context)
-                return request_id, msg, size
-            ns = "%s.%s" % (self.db, "$cmd")
-            ntoreturn = -1  # All DB commands return 1 document
-        else:
-            # OP_QUERY treats ntoreturn of -1 and 1 the same, return
-            # one document and close the cursor. We have to use 2 for
-            # batch size if 1 is specified.
-            ntoreturn = self.batch_size == 1 and 2 or self.batch_size
-            if self.limit:
-                if ntoreturn:
-                    ntoreturn = min(self.limit, ntoreturn)
-                else:
-                    ntoreturn = self.limit
+            request_id, msg, size, _ = _op_msg(
+                0, spec, self.db, self.read_preference,
+                set_secondary_ok, False, self.codec_options,
+                ctx=sock_info.compression_context)
+            return request_id, msg, size
+
+        # OP_QUERY treats ntoreturn of -1 and 1 the same, return
+        # one document and close the cursor. We have to use 2 for
+        # batch size if 1 is specified.
+        ntoreturn = self.batch_size == 1 and 2 or self.batch_size
+        if self.limit:
+            if ntoreturn:
+                ntoreturn = min(self.limit, ntoreturn)
+            else:
+                ntoreturn = self.limit
 
         if sock_info.is_mongos:
             spec = _maybe_add_read_preference(spec,
@@ -400,7 +384,7 @@ class _GetMore(object):
 
     def use_command(self, sock_info):
         use_cmd = False
-        if sock_info.max_wire_version >= 4 and not self.exhaust:
+        if not self.exhaust:
             use_cmd = True
         elif sock_info.max_wire_version >= 8:
             # OP_MSG supports exhaust on MongoDB 4.2+
@@ -440,19 +424,15 @@ class _GetMore(object):
 
         if use_cmd:
             spec = self.as_command(sock_info)[0]
-            if sock_info.op_msg_enabled:
-                if self.sock_mgr:
-                    flags = _OpMsg.EXHAUST_ALLOWED
-                else:
-                    flags = 0
-                request_id, msg, size, _ = _op_msg(
-                    flags, spec, self.db, None,
-                    False, False, self.codec_options,
-                    ctx=sock_info.compression_context)
-                return request_id, msg, size
-            ns = "%s.%s" % (self.db, "$cmd")
-            return _query(0, ns, 0, -1, spec, None, self.codec_options,
-                          ctx=ctx)
+            if self.sock_mgr:
+                flags = _OpMsg.EXHAUST_ALLOWED
+            else:
+                flags = 0
+            request_id, msg, size, _ = _op_msg(
+                flags, spec, self.db, None,
+                False, False, self.codec_options,
+                ctx=sock_info.compression_context)
+            return request_id, msg, size
 
         return _get_more(ns, self.ntoreturn, self.cursor_id, ctx)
 
@@ -464,7 +444,7 @@ class _RawBatchQuery(_Query):
         if sock_info.max_wire_version >= 8:
             # MongoDB 4.2+ supports exhaust over OP_MSG
             return True
-        elif sock_info.op_msg_enabled and not self.exhaust:
+        elif not self.exhaust:
             return True
         return False
 
@@ -476,7 +456,7 @@ class _RawBatchGetMore(_GetMore):
         if sock_info.max_wire_version >= 8:
             # MongoDB 4.2+ supports exhaust over OP_MSG
             return True
-        elif sock_info.op_msg_enabled and not self.exhaust:
+        elif not self.exhaust:
             return True
         return False
 
@@ -528,16 +508,6 @@ def _compress(operation, data, ctx):
     return request_id, header + compressed
 
 
-def __last_error(namespace, args):
-    """Data to send to do a lastError.
-    """
-    cmd = SON([("getlasterror", 1)])
-    cmd.update(args)
-    splitns = namespace.split('.', 1)
-    return _query(0, splitns[0] + '.$cmd', 0, -1, cmd,
-                  None, DEFAULT_CODEC_OPTIONS)
-
-
 _pack_header = struct.Struct("<iiii").pack
 
 
@@ -552,104 +522,6 @@ def __pack_message(operation, data):
 
 
 _pack_int = struct.Struct("<i").pack
-
-
-def _insert_impl(collection_name, docs, check_keys, flags, opts):
-    """Get an OP_INSERT message"""
-    encode = _dict_to_bson  # Make local. Uses extensions.
-    if len(docs) == 1:
-        encoded = encode(docs[0], check_keys, opts)
-        return b"".join([
-            b"\x00\x00\x00\x00",  # Flags don't matter for one doc.
-            _make_c_string(collection_name),
-            encoded]), len(encoded)
-
-    encoded = [encode(doc, check_keys, opts) for doc in docs]
-    if not encoded:
-        raise InvalidOperation("cannot do an empty bulk insert")
-    return b"".join([
-        _pack_int(flags),
-        _make_c_string(collection_name),
-        b"".join(encoded)]), max(map(len, encoded))
-
-
-def _insert_compressed(
-        collection_name, docs, check_keys, continue_on_error, opts, ctx):
-    """Internal compressed unacknowledged insert message helper."""
-    op_insert, max_bson_size = _insert_impl(
-        collection_name, docs, check_keys, continue_on_error, opts)
-    rid, msg = _compress(2002, op_insert, ctx)
-    return rid, msg, max_bson_size
-
-
-def _insert_uncompressed(collection_name, docs, check_keys, continue_on_error,
-                         opts):
-    """Internal insert message helper."""
-    op_insert, max_bson_size = _insert_impl(
-        collection_name, docs, check_keys, continue_on_error, opts)
-    rid, msg = __pack_message(2002, op_insert)
-    return rid, msg, max_bson_size
-if _use_c:
-    _insert_uncompressed = _cmessage._insert_message
-
-
-def _insert(collection_name, docs, check_keys, continue_on_error, opts,
-            ctx=None):
-    """Get an **insert** message."""
-    if ctx:
-        return _insert_compressed(
-            collection_name, docs, check_keys, continue_on_error, opts, ctx)
-    return _insert_uncompressed(collection_name, docs, check_keys,
-                                continue_on_error, opts)
-
-
-def _update_impl(collection_name, upsert, multi, spec, doc, check_keys, opts):
-    """Get an OP_UPDATE message."""
-    flags = 0
-    if upsert:
-        flags += 1
-    if multi:
-        flags += 2
-    encode = _dict_to_bson  # Make local. Uses extensions.
-    encoded_update = encode(doc, check_keys, opts)
-    return b"".join([
-        _ZERO_32,
-        _make_c_string(collection_name),
-        _pack_int(flags),
-        encode(spec, False, opts),
-        encoded_update]), len(encoded_update)
-
-
-def _update_compressed(
-        collection_name, upsert, multi, spec, doc, check_keys, opts, ctx):
-    """Internal compressed unacknowledged update message helper."""
-    op_update, max_bson_size = _update_impl(
-        collection_name, upsert, multi, spec, doc, check_keys, opts)
-    rid, msg = _compress(2001, op_update, ctx)
-    return rid, msg, max_bson_size
-
-
-def _update_uncompressed(collection_name, upsert, multi, spec, doc,
-                         check_keys, opts):
-    """Internal update message helper."""
-    op_update, max_bson_size = _update_impl(
-        collection_name, upsert, multi, spec, doc, check_keys, opts)
-    rid, msg = __pack_message(2001, op_update)
-    return rid, msg, max_bson_size
-if _use_c:
-    _update_uncompressed = _cmessage._update_message
-
-
-def _update(collection_name, upsert, multi, spec, doc, check_keys, opts,
-           ctx=None):
-    """Get an **update** message."""
-    if ctx:
-        return _update_compressed(
-            collection_name, upsert, multi, spec, doc, check_keys, opts, ctx)
-    return _update_uncompressed(collection_name, upsert, multi, spec,
-                                doc, check_keys, opts)
-
-
 _pack_op_msg_flags_type = struct.Struct("<IB").pack
 _pack_byte = struct.Struct("<B").pack
 
@@ -829,52 +701,6 @@ def _get_more(collection_name, num_to_return, cursor_id, ctx=None):
     return _get_more_uncompressed(collection_name, num_to_return, cursor_id)
 
 
-def _delete_impl(collection_name, spec, opts, flags):
-    """Get an OP_DELETE message."""
-    encoded = _dict_to_bson(spec, False, opts)  # Uses extensions.
-    return b"".join([
-        _ZERO_32,
-        _make_c_string(collection_name),
-        _pack_int(flags),
-        encoded]), len(encoded)
-
-
-def _delete_compressed(collection_name, spec, opts, flags, ctx):
-    """Internal compressed unacknowledged delete message helper."""
-    op_delete, max_bson_size = _delete_impl(collection_name, spec, opts, flags)
-    rid, msg = _compress(2006, op_delete, ctx)
-    return rid, msg, max_bson_size
-
-
-def _delete_uncompressed(collection_name, spec, opts, flags=0):
-    """Internal delete message helper."""
-    op_delete, max_bson_size = _delete_impl(collection_name, spec, opts, flags)
-    rid, msg = __pack_message(2006, op_delete)
-    return rid, msg, max_bson_size
-
-
-def _delete(collection_name, spec, opts, flags=0, ctx=None):
-    """Get a **delete** message.
-
-    `opts` is a CodecOptions. `flags` is a bit vector that may contain
-    the SingleRemove flag or not:
-
-    http://docs.mongodb.org/meta-driver/latest/legacy/mongodb-wire-protocol/#op-delete
-    """
-    if ctx:
-        return _delete_compressed(collection_name, spec, opts, flags, ctx)
-    return _delete_uncompressed(collection_name, spec, opts, flags)
-
-
-def _kill_cursors(cursor_ids):
-    """Get a **killCursors** message.
-    """
-    num_cursors = len(cursor_ids)
-    pack = struct.Struct("<ii" + ("q" * num_cursors)).pack
-    op_kill_cursors = pack(0, num_cursors, *cursor_ids)
-    return __pack_message(2007, op_kill_cursors)
-
-
 class _BulkWriteContext(object):
     """A wrapper around SocketInfo for use with write splitting functions."""
 
@@ -901,7 +727,7 @@ class _BulkWriteContext(object):
 
     def _batch_command(self, docs):
         namespace = self.db_name + '.$cmd'
-        request_id, msg, to_send = _do_bulk_write_command(
+        request_id, msg, to_send = _do_batched_op_msg(
             namespace, self.op_type, self.command, docs, self.check_keys,
             self.codec, self)
         if not to_send:
@@ -921,7 +747,7 @@ class _BulkWriteContext(object):
         # without receiving a result. Send 0 for max_doc_size
         # to disable size checking. Size checking is handled while
         # the documents are encoded to BSON.
-        self.legacy_write(request_id, msg, 0, False, to_send)
+        self.unack_write(request_id, msg, 0, to_send)
         return to_send
 
     @property
@@ -952,24 +778,15 @@ class _BulkWriteContext(object):
         """The maximum size of a BSON command before batch splitting."""
         return self.max_bson_size
 
-    def legacy_bulk_insert(
-            self, request_id, msg, max_doc_size, acknowledged, docs, compress):
-        if compress:
-            request_id, msg = _compress(
-                2002, msg, self.sock_info.compression_context)
-        return self.legacy_write(
-            request_id, msg, max_doc_size, acknowledged, docs)
-
-    def legacy_write(self, request_id, msg, max_doc_size, acknowledged, docs):
-        """A proxy for SocketInfo.legacy_write that handles event publishing.
+    def unack_write(self, request_id, msg, max_doc_size, docs):
+        """A proxy for SocketInfo.unack_write that handles event publishing.
         """
         if self.publish:
             duration = datetime.datetime.now() - self.start_time
             cmd = self._start(request_id, docs)
             start = datetime.datetime.now()
         try:
-            result = self.sock_info.legacy_write(
-                request_id, msg, max_doc_size, acknowledged)
+            result = self.sock_info.unack_write(msg, max_doc_size)
             if self.publish:
                 duration = (datetime.datetime.now() - start) + duration
                 if result is not None:
@@ -1099,92 +916,6 @@ def _raise_document_too_large(operation, doc_size, max_size):
         # There's nothing intelligent we can say
         # about size for update and delete
         raise DocumentTooLarge("%r command document too large" % (operation,))
-
-
-def _do_batched_insert(collection_name, docs, check_keys,
-                       safe, last_error_args, continue_on_error, opts,
-                       ctx):
-    """Insert `docs` using multiple batches.
-    """
-    def _insert_message(insert_message, send_safe):
-        """Build the insert message with header and GLE.
-        """
-        request_id, final_message = __pack_message(2002, insert_message)
-        if send_safe:
-            request_id, error_message, _ = __last_error(collection_name,
-                                                        last_error_args)
-            final_message += error_message
-        return request_id, final_message
-
-    send_safe = safe or not continue_on_error
-    last_error = None
-    data = _BytesIO()
-    data.write(struct.pack("<i", int(continue_on_error)))
-    data.write(_make_c_string(collection_name))
-    message_length = begin_loc = data.tell()
-    has_docs = False
-    to_send = []
-    encode = _dict_to_bson  # Make local
-    compress = ctx.compress and not (safe or send_safe)
-    for doc in docs:
-        encoded = encode(doc, check_keys, opts)
-        encoded_length = len(encoded)
-        too_large = (encoded_length > ctx.max_bson_size)
-
-        message_length += encoded_length
-        if message_length < ctx.max_message_size and not too_large:
-            data.write(encoded)
-            to_send.append(doc)
-            has_docs = True
-            continue
-
-        if has_docs:
-            # We have enough data, send this message.
-            try:
-                if compress:
-                    rid, msg = None, data.getvalue()
-                else:
-                    rid, msg = _insert_message(data.getvalue(), send_safe)
-                ctx.legacy_bulk_insert(
-                    rid, msg, 0, send_safe, to_send, compress)
-            # Exception type could be OperationFailure or a subtype
-            # (e.g. DuplicateKeyError)
-            except OperationFailure as exc:
-                # Like it says, continue on error...
-                if continue_on_error:
-                    # Store exception details to re-raise after the final batch.
-                    last_error = exc
-                # With unacknowledged writes just return at the first error.
-                elif not safe:
-                    return
-                # With acknowledged writes raise immediately.
-                else:
-                    raise
-
-        if too_large:
-            _raise_document_too_large(
-                "insert", encoded_length, ctx.max_bson_size)
-
-        message_length = begin_loc + encoded_length
-        data.seek(begin_loc)
-        data.truncate()
-        data.write(encoded)
-        to_send = [doc]
-
-    if not has_docs:
-        raise InvalidOperation("cannot do an empty bulk insert")
-
-    if compress:
-        request_id, msg = None, data.getvalue()
-    else:
-        request_id, msg = _insert_message(data.getvalue(), safe)
-    ctx.legacy_bulk_insert(request_id, msg, 0, safe, to_send, compress)
-
-    # Re-raise any exception stored due to continue_on_error
-    if last_error is not None:
-        raise last_error
-if _use_c:
-    _do_batched_insert = _cmessage._do_batched_insert
 
 # OP_MSG -------------------------------------------------------------
 
@@ -1335,20 +1066,6 @@ def _do_batched_op_msg(
 # End OP_MSG -----------------------------------------------------
 
 
-def _batched_write_command_compressed(
-        namespace, operation, command, docs, check_keys, opts, ctx):
-    """Create the next batched insert, update, or delete command, compressed.
-    """
-    data, to_send = _encode_batched_write_command(
-        namespace, operation, command, docs, check_keys, opts, ctx)
-
-    request_id, msg = _compress(
-        2004,
-        data,
-        ctx.sock_info.compression_context)
-    return request_id, msg, to_send
-
-
 def _encode_batched_write_command(
         namespace, operation, command, docs, check_keys, opts, ctx):
     """Encode the next batched insert, update, or delete command.
@@ -1360,53 +1077,6 @@ def _encode_batched_write_command(
     return buf.getvalue(), to_send
 if _use_c:
     _encode_batched_write_command = _cmessage._encode_batched_write_command
-
-
-def _batched_write_command(
-        namespace, operation, command, docs, check_keys, opts, ctx):
-    """Create the next batched insert, update, or delete command.
-    """
-    buf = _BytesIO()
-
-    # Save space for message length and request id
-    buf.write(_ZERO_64)
-    # responseTo, opCode
-    buf.write(b"\x00\x00\x00\x00\xd4\x07\x00\x00")
-
-    # Write OP_QUERY write command
-    to_send, length = _batched_write_command_impl(
-        namespace, operation, command, docs, check_keys, opts, ctx, buf)
-
-    # Header - request id and message length
-    buf.seek(4)
-    request_id = _randint()
-    buf.write(_pack_int(request_id))
-    buf.seek(0)
-    buf.write(_pack_int(length))
-
-    return request_id, buf.getvalue(), to_send
-if _use_c:
-    _batched_write_command = _cmessage._batched_write_command
-
-
-def _do_batched_write_command(
-        namespace, operation, command, docs, check_keys, opts, ctx):
-    """Batched write commands entry point."""
-    if ctx.sock_info.compression_context:
-        return _batched_write_command_compressed(
-            namespace, operation, command, docs, check_keys, opts, ctx)
-    return _batched_write_command(
-        namespace, operation, command, docs, check_keys, opts, ctx)
-
-
-def _do_bulk_write_command(
-        namespace, operation, command, docs, check_keys, opts, ctx):
-    """Bulk write commands entry point."""
-    if ctx.sock_info.max_wire_version > 5:
-        return _do_batched_op_msg(
-            namespace, operation, command, docs, check_keys, opts, ctx)
-    return _do_batched_write_command(
-        namespace, operation, command, docs, check_keys, opts, ctx)
 
 
 def _batched_write_command_impl(
@@ -1585,7 +1255,7 @@ class _OpReply(object):
         # PYTHON-945: ignore starting_from field.
         flags, cursor_id, _, number_returned = cls.UNPACK_FROM(msg)
 
-        documents = bytes(msg[20:])
+        documents = msg[20:]
         return cls(flags, cursor_id, number_returned, documents)
 
 
@@ -1665,7 +1335,7 @@ class _OpMsg(object):
         if len(msg) != first_payload_size + 5:
             raise ProtocolError("Unsupported OP_MSG reply: >1 section")
 
-        payload_document = bytes(msg[5:])
+        payload_document = msg[5:]
         return cls(flags, payload_document)
 
 
@@ -1673,63 +1343,3 @@ _UNPACK_REPLY = {
     _OpReply.OP_CODE: _OpReply.unpack,
     _OpMsg.OP_CODE: _OpMsg.unpack,
 }
-
-
-def _first_batch(sock_info, db, coll, query, ntoreturn,
-                 secondary_ok, codec_options, read_preference, cmd, listeners):
-    """Simple query helper for retrieving a first (and possibly only) batch."""
-    query = _Query(
-        0, db, coll, 0, query, None, codec_options,
-        read_preference, ntoreturn, 0, DEFAULT_READ_CONCERN, None, None,
-        None, None, False)
-
-    name = next(iter(cmd))
-    publish = listeners.enabled_for_commands
-    if publish:
-        start = datetime.datetime.now()
-
-    request_id, msg, max_doc_size = query.get_message(secondary_ok, sock_info)
-
-    if publish:
-        encoding_duration = datetime.datetime.now() - start
-        listeners.publish_command_start(
-            cmd, db, request_id, sock_info.address,
-            service_id=sock_info.service_id)
-        start = datetime.datetime.now()
-
-    sock_info.send_message(msg, max_doc_size)
-    reply = sock_info.receive_message(request_id)
-    try:
-        docs = reply.unpack_response(None, codec_options)
-    except Exception as exc:
-        if publish:
-            duration = (datetime.datetime.now() - start) + encoding_duration
-            if isinstance(exc, (NotPrimaryError, OperationFailure)):
-                failure = exc.details
-            else:
-                failure = _convert_exception(exc)
-            listeners.publish_command_failure(
-                duration, failure, name, request_id, sock_info.address,
-                service_id=sock_info.service_id)
-        raise
-    # listIndexes
-    if 'cursor' in cmd:
-        result = {
-            'cursor': {
-                'firstBatch': docs,
-                'id': reply.cursor_id,
-                'ns': '%s.%s' % (db, coll)
-            },
-            'ok': 1.0
-        }
-    # fsyncUnlock, currentOp
-    else:
-        result = docs[0] if docs else {}
-        result['ok'] = 1.0
-    if publish:
-        duration = (datetime.datetime.now() - start) + encoding_duration
-        listeners.publish_command_success(
-            duration, result, name, request_id, sock_info.address,
-            service_id=sock_info.service_id)
-
-    return result

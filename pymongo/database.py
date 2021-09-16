@@ -14,23 +14,17 @@
 
 """Database level operations."""
 
-import warnings
-
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.dbref import DBRef
 from bson.son import SON
-from pymongo import auth, common
+from pymongo import common
 from pymongo.aggregation import _DatabaseAggregationCommand
 from pymongo.change_stream import DatabaseChangeStream
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (CollectionInvalid,
                             InvalidName)
-from pymongo.message import _first_batch
 from pymongo.read_preferences import ReadPreference
-
-
-_INDEX_REGEX = {"name": {"$regex": r"^(?!.*\$)"}}
 
 
 def _check_name(name):
@@ -618,37 +612,21 @@ class Database(common.BaseObject):
 
         coll = self.get_collection(
             "$cmd", read_preference=read_preference)
-        if sock_info.max_wire_version > 2:
-            cmd = SON([("listCollections", 1),
-                       ("cursor", {})])
-            cmd.update(kwargs)
-            with self.__client._tmp_session(
-                    session, close=False) as tmp_session:
-                cursor = self._command(
-                    sock_info, cmd, secondary_okay,
-                    read_preference=read_preference,
-                    session=tmp_session)["cursor"]
-                cmd_cursor = CommandCursor(
-                    coll,
-                    cursor,
-                    sock_info.address,
-                    session=tmp_session,
-                    explicit_session=session is not None)
-        else:
-            match = _INDEX_REGEX
-            if "filter" in kwargs:
-                match = {"$and": [_INDEX_REGEX, kwargs["filter"]]}
-            dblen = len(self.name.encode("utf8") + b".")
-            pipeline = [
-                {"$project": {"name": {"$substr": ["$name", dblen, -1]},
-                              "options": 1}},
-                {"$match": match}
-            ]
-            cmd = SON([("aggregate", "system.namespaces"),
-                       ("pipeline", pipeline),
-                       ("cursor", kwargs.get("cursor", {}))])
-            cursor = self._command(sock_info, cmd, secondary_okay)["cursor"]
-            cmd_cursor = CommandCursor(coll, cursor, sock_info.address)
+        cmd = SON([("listCollections", 1),
+                   ("cursor", {})])
+        cmd.update(kwargs)
+        with self.__client._tmp_session(
+                session, close=False) as tmp_session:
+            cursor = self._command(
+                sock_info, cmd, secondary_okay,
+                read_preference=read_preference,
+                session=tmp_session)["cursor"]
+            cmd_cursor = CommandCursor(
+                coll,
+                cursor,
+                sock_info.address,
+                session=tmp_session,
+                explicit_session=session is not None)
         cmd_cursor._maybe_pin_connection(sock_info)
         return cmd_cursor
 

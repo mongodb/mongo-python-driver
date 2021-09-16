@@ -134,7 +134,7 @@ class TestCollection(IntegrationTest):
 
     @contextlib.contextmanager
     def write_concern_collection(self):
-        if client_context.version.at_least(3, 3, 9) and client_context.is_rs:
+        if client_context.is_rs:
             with self.assertRaises(WriteConcernError):
                 # Unsatisfiable write concern.
                 yield Collection(
@@ -153,7 +153,6 @@ class TestCollection(IntegrationTest):
     def test_hashable(self):
         self.assertIn(self.db.test.mike, {self.db["test.mike"]})
 
-    @client_context.require_version_min(3, 3, 9)
     def test_create(self):
         # No Exception.
         db = client_context.client.pymongo_test
@@ -322,9 +321,6 @@ class TestCollection(IntegrationTest):
     @client_context.require_no_mongos
     @client_context.require_test_commands
     def test_index_management_max_time_ms(self):
-        if (client_context.version[:2] == (3, 4) and
-                client_context.version[2] < 4):
-            raise unittest.SkipTest("SERVER-27711")
         coll = self.db.test
         self.client.admin.command("configureFailPoint",
                                   "maxTimeAlwaysTimeOut",
@@ -531,21 +527,6 @@ class TestCollection(IntegrationTest):
         db.test.insert_one({'i': 2})  # duplicate
         db.test.insert_one({'i': 3})
 
-    @client_context.require_version_max(2, 6)
-    def test_index_drop_dups(self):
-        # Try dropping duplicates
-        db = self.db
-        self._drop_dups_setup(db)
-
-        # No error, just drop the duplicate
-        db.test.create_index([('i', ASCENDING)], unique=True, dropDups=True)
-
-        # Duplicate was dropped
-        self.assertEqual(3, db.test.count_documents({}))
-
-        # Index was created, plus the index on _id
-        self.assertEqual(2, len(db.test.index_information()))
-
     def test_index_dont_drop_dups(self):
         # Try *not* dropping duplicates
         db = self.db
@@ -587,7 +568,6 @@ class TestCollection(IntegrationTest):
                     return stage
         return {}
 
-    @client_context.require_version_min(3, 1, 9, -1)
     def test_index_filter(self):
         db = self.db
         db.drop_collection("test")
@@ -901,10 +881,8 @@ class TestCollection(IntegrationTest):
         unack_coll = self.db.test.with_options(write_concern=WriteConcern(w=0))
         self.assertRaises(DocumentTooLarge, unack_coll.replace_one,
                           {"bar": "x"}, {"bar": "x" * (max_size - 14)})
-        # This will pass with OP_UPDATE or the update command.
         self.db.test.replace_one({"bar": "x"}, {"bar": "x" * (max_size - 32)})
 
-    @client_context.require_version_min(3, 1, 9, -1)
     def test_insert_bypass_document_validation(self):
         db = self.db
         db.test.drop()
@@ -923,14 +901,9 @@ class TestCollection(IntegrationTest):
         self.assertTrue(isinstance(result, InsertOneResult))
         self.assertEqual(2, result.inserted_id)
 
-        if client_context.version < (3, 6):
-            # Uses OP_INSERT which does not support bypass_document_validation.
-            self.assertRaises(OperationFailure, db_w0.test.insert_one,
-                              {"y": 1}, bypass_document_validation=True)
-        else:
-            db_w0.test.insert_one({"y": 1}, bypass_document_validation=True)
-            wait_until(lambda: db_w0.test.find_one({"y": 1}),
-                       "find w:0 inserted document")
+        db_w0.test.insert_one({"y": 1}, bypass_document_validation=True)
+        wait_until(lambda: db_w0.test.find_one({"y": 1}),
+                   "find w:0 inserted document")
 
         # Test insert_many
         docs = [{"_id": i, "x": 100 - i} for i in range(3, 100)]
@@ -959,7 +932,6 @@ class TestCollection(IntegrationTest):
                           [{"x": 1}, {"x": 2}],
                           bypass_document_validation=True)
 
-    @client_context.require_version_min(3, 1, 9, -1)
     def test_replace_bypass_document_validation(self):
         db = self.db
         db.test.drop()
@@ -997,18 +969,11 @@ class TestCollection(IntegrationTest):
         self.assertEqual(1, db.test.count_documents({"a": 103}))
 
         db.test.insert_one({"y": 1}, bypass_document_validation=True)
-        if client_context.version < (3, 6):
-            # Uses OP_UPDATE which does not support bypass_document_validation.
-            self.assertRaises(OperationFailure, db_w0.test.replace_one,
-                              {"y": 1}, {"x": 1},
-                              bypass_document_validation=True)
-        else:
-            db_w0.test.replace_one({"y": 1}, {"x": 1},
-                                   bypass_document_validation=True)
-            wait_until(lambda: db_w0.test.find_one({"x": 1}),
-                       "find w:0 replaced document")
+        db_w0.test.replace_one({"y": 1}, {"x": 1},
+                               bypass_document_validation=True)
+        wait_until(lambda: db_w0.test.find_one({"x": 1}),
+                   "find w:0 replaced document")
 
-    @client_context.require_version_min(3, 1, 9, -1)
     def test_update_bypass_document_validation(self):
         db = self.db
         db.test.drop()
@@ -1048,16 +1013,10 @@ class TestCollection(IntegrationTest):
         self.assertEqual(1, db.test.count_documents({"z": 0}))
 
         db.test.insert_one({"y": 1, "x": 0}, bypass_document_validation=True)
-        if client_context.version < (3, 6):
-            # Uses OP_UPDATE which does not support bypass_document_validation.
-            self.assertRaises(OperationFailure, db_w0.test.update_one,
-                              {"y": 1}, {"$inc": {"x": 1}},
+        db_w0.test.update_one({"y": 1}, {"$inc": {"x": 1}},
                               bypass_document_validation=True)
-        else:
-            db_w0.test.update_one({"y": 1}, {"$inc": {"x": 1}},
-                                  bypass_document_validation=True)
-            wait_until(lambda: db_w0.test.find_one({"y": 1, "x": 1}),
-                       "find w:0 updated document")
+        wait_until(lambda: db_w0.test.find_one({"y": 1, "x": 1}),
+                   "find w:0 updated document")
 
         # Test update_many
         db.test.insert_many([{"z": i} for i in range(3, 101)])
@@ -1094,19 +1053,12 @@ class TestCollection(IntegrationTest):
 
         db.test.insert_one({"m": 1, "x": 0}, bypass_document_validation=True)
         db.test.insert_one({"m": 1, "x": 0}, bypass_document_validation=True)
-        if client_context.version < (3, 6):
-            # Uses OP_UPDATE which does not support bypass_document_validation.
-            self.assertRaises(OperationFailure, db_w0.test.update_many,
-                              {"m": 1}, {"$inc": {"x": 1}},
-                              bypass_document_validation=True)
-        else:
-            db_w0.test.update_many({"m": 1}, {"$inc": {"x": 1}},
-                                   bypass_document_validation=True)
-            wait_until(
-                lambda: db_w0.test.count_documents({"m": 1, "x": 1}) == 2,
-                "find w:0 updated documents")
+        db_w0.test.update_many({"m": 1}, {"$inc": {"x": 1}},
+                               bypass_document_validation=True)
+        wait_until(
+            lambda: db_w0.test.count_documents({"m": 1, "x": 1}) == 2,
+            "find w:0 updated documents")
 
-    @client_context.require_version_min(3, 1, 9, -1)
     def test_bypass_document_validation_bulk_write(self):
         db = self.db
         db.test.drop()
@@ -1498,24 +1450,6 @@ class TestCollection(IntegrationTest):
         self.assertRaises(InvalidOperation, lambda: result.modified_count)
         self.assertRaises(InvalidOperation, lambda: result.upserted_id)
         self.assertFalse(result.acknowledged)
-
-    # MongoDB >= 3.5.8 allows dotted fields in updates
-    @client_context.require_version_max(3, 5, 7)
-    def test_update_with_invalid_keys(self):
-        self.db.drop_collection("test")
-        self.assertTrue(self.db.test.insert_one({"hello": "world"}))
-        doc = self.db.test.find_one()
-        doc['a.b'] = 'c'
-
-        # Replace
-        self.assertRaises(OperationFailure, self.db.test.replace_one,
-                          {"hello": "world"}, doc)
-        # Upsert
-        self.assertRaises(OperationFailure, self.db.test.replace_one,
-                          {"foo": "bar"}, doc, upsert=True)
-
-        # Check that the last two ops didn't actually modify anything
-        self.assertTrue('a.b' not in self.db.test.find_one())
 
     def test_update_check_keys(self):
         self.db.drop_collection("test")
@@ -2041,19 +1975,6 @@ class TestCollection(IntegrationTest):
         c.insert_one({'bad': bad})
         self.assertEqual('bar', c.find_one()['bad']['foo'])
 
-    @client_context.require_version_max(3, 5, 5)
-    def test_array_filters_unsupported(self):
-        c = self.db.test
-        with self.assertRaises(ConfigurationError):
-            c.update_one(
-                {}, {'$set': {'y.$[i].b': 5}}, array_filters=[{'i.b': 1}])
-        with self.assertRaises(ConfigurationError):
-            c.update_many(
-                {}, {'$set': {'y.$[i].b': 5}}, array_filters=[{'i.b': 1}])
-        with self.assertRaises(ConfigurationError):
-            c.find_one_and_update(
-                {}, {'$set': {'y.$[i].b': 5}}, array_filters=[{'i.b': 1}])
-
     def test_array_filters_validation(self):
         # array_filters must be a list.
         c = self.db.test
@@ -2136,54 +2057,40 @@ class TestCollection(IntegrationTest):
         # Authenticate the client and throw out auth commands from the listener.
         db.command('ping')
         results.clear()
-        if client_context.version.at_least(3, 1, 9, -1):
-            c_w0.find_one_and_update(
+        c_w0.find_one_and_update(
+            {'_id': 1}, {'$set': {'foo': 'bar'}})
+        self.assertEqual(
+            {'w': 0}, results['started'][0].command['writeConcern'])
+        results.clear()
+
+        c_w0.find_one_and_replace({'_id': 1}, {'foo': 'bar'})
+        self.assertEqual(
+            {'w': 0}, results['started'][0].command['writeConcern'])
+        results.clear()
+
+        c_w0.find_one_and_delete({'_id': 1})
+        self.assertEqual(
+            {'w': 0}, results['started'][0].command['writeConcern'])
+        results.clear()
+
+        # Test write concern errors.
+        if client_context.is_rs:
+            c_wc_error = db.get_collection(
+                'test',
+                write_concern=WriteConcern(
+                    w=len(client_context.nodes) + 1))
+            self.assertRaises(
+                WriteConcernError,
+                c_wc_error.find_one_and_update,
                 {'_id': 1}, {'$set': {'foo': 'bar'}})
-            self.assertEqual(
+            self.assertRaises(
+                WriteConcernError,
+                c_wc_error.find_one_and_replace,
                 {'w': 0}, results['started'][0].command['writeConcern'])
-            results.clear()
-
-            c_w0.find_one_and_replace({'_id': 1}, {'foo': 'bar'})
-            self.assertEqual(
+            self.assertRaises(
+                WriteConcernError,
+                c_wc_error.find_one_and_delete,
                 {'w': 0}, results['started'][0].command['writeConcern'])
-            results.clear()
-
-            c_w0.find_one_and_delete({'_id': 1})
-            self.assertEqual(
-                {'w': 0}, results['started'][0].command['writeConcern'])
-            results.clear()
-
-            # Test write concern errors.
-            if client_context.is_rs:
-                c_wc_error = db.get_collection(
-                    'test',
-                    write_concern=WriteConcern(
-                        w=len(client_context.nodes) + 1))
-                self.assertRaises(
-                    WriteConcernError,
-                    c_wc_error.find_one_and_update,
-                    {'_id': 1}, {'$set': {'foo': 'bar'}})
-                self.assertRaises(
-                    WriteConcernError,
-                    c_wc_error.find_one_and_replace,
-                    {'w': 0}, results['started'][0].command['writeConcern'])
-                self.assertRaises(
-                    WriteConcernError,
-                    c_wc_error.find_one_and_delete,
-                    {'w': 0}, results['started'][0].command['writeConcern'])
-                results.clear()
-        else:
-            c_w0.find_one_and_update(
-                {'_id': 1}, {'$set': {'foo': 'bar'}})
-            self.assertNotIn('writeConcern', results['started'][0].command)
-            results.clear()
-
-            c_w0.find_one_and_replace({'_id': 1}, {'foo': 'bar'})
-            self.assertNotIn('writeConcern', results['started'][0].command)
-            results.clear()
-
-            c_w0.find_one_and_delete({'_id': 1})
-            self.assertNotIn('writeConcern', results['started'][0].command)
             results.clear()
 
         c_default.find_one_and_update({'_id': 1}, {'$set': {'foo': 'bar'}})

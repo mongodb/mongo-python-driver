@@ -790,7 +790,6 @@ class ChangeStreamsWCustomTypesTestMixin(object):
 class TestCollectionChangeStreamsWCustomTypes(
     IntegrationTest, ChangeStreamsWCustomTypesTestMixin):
     @classmethod
-    @client_context.require_version_min(3, 6, 0)
     @client_context.require_no_mmap
     @client_context.require_no_standalone
     def setUpClass(cls):

@@ -32,9 +32,7 @@ access:
 """
 
 import contextlib
-import datetime
 import threading
-import warnings
 import weakref
 
 from collections import defaultdict
@@ -62,8 +60,7 @@ from pymongo.errors import (AutoReconnect,
                             ServerSelectionTimeoutError)
 from pymongo.pool import ConnectionClosedReason
 from pymongo.read_preferences import ReadPreference
-from pymongo.server_selectors import (writable_preferred_server_selector,
-                                      writable_server_selector)
+from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.topology import (Topology,
                               _ErrorContext)
@@ -1377,8 +1374,6 @@ class MongoClient(common.BaseObject):
             try:
                 server = self._select_server(
                     read_pref, session, address=address)
-                if not server.description.retryable_reads_supported:
-                    retryable = False
                 with self._secondaryok_for_server(read_pref, server, session) as (
                             sock_info, secondary_ok):
                     if retrying and not retryable:
@@ -1561,51 +1556,10 @@ class MongoClient(common.BaseObject):
             self._kill_cursor_impl(cursor_ids, address, session, sock_info)
 
     def _kill_cursor_impl(self, cursor_ids, address, session, sock_info):
-        listeners = self._event_listeners
-        publish = listeners.enabled_for_commands
-
-        try:
-            namespace = address.namespace
-            db, coll = namespace.split('.', 1)
-        except AttributeError:
-            namespace = None
-            db = coll = "OP_KILL_CURSORS"
+        namespace = address.namespace
+        db, coll = namespace.split('.', 1)
         spec = SON([('killCursors', coll), ('cursors', cursor_ids)])
-        if sock_info.max_wire_version >= 4 and namespace is not None:
-            sock_info.command(db, spec, session=session, client=self)
-        else:
-            if publish:
-                start = datetime.datetime.now()
-            request_id, msg = message._kill_cursors(cursor_ids)
-            if publish:
-                duration = datetime.datetime.now() - start
-                # Here and below, address could be a tuple or
-                # _CursorAddress. We always want to publish a
-                # tuple to match the rest of the monitoring
-                # API.
-                listeners.publish_command_start(
-                    spec, db, request_id, tuple(address),
-                    service_id=sock_info.service_id)
-                start = datetime.datetime.now()
-
-            try:
-                sock_info.send_message(msg, 0)
-            except Exception as exc:
-                if publish:
-                    dur = ((datetime.datetime.now() - start) + duration)
-                    listeners.publish_command_failure(
-                        dur, message._convert_exception(exc),
-                        'killCursors', request_id,
-                        tuple(address), service_id=sock_info.service_id)
-                raise
-
-            if publish:
-                duration = ((datetime.datetime.now() - start) + duration)
-                # OP_KILL_CURSORS returns no reply, fake one.
-                reply = {'cursorsUnknown': cursor_ids, 'ok': 1}
-                listeners.publish_command_success(
-                    duration, reply, 'killCursors', request_id,
-                    tuple(address), service_id=sock_info.service_id)
+        sock_info.command(db, spec, session=session, client=self)
 
     def _process_kill_cursors(self):
         """Process any pending kill cursors requests."""
