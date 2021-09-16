@@ -688,8 +688,8 @@ class TestDatabaseAggregation(IntegrationTest):
                 pass
 
     def test_bool(self):
-        self.assertRaises(NotImplementedError, Database(self.client,
-                                                        "test").__bool__())
+        with self.assertRaises(NotImplementedError):
+            Database(self.client, "test").__bool__()
 
 
 if __name__ == "__main__":

@@ -2266,8 +2266,9 @@ class TestCollection(IntegrationTest):
                  ('filter', {'foo': 1})]).to_dict())
 
     def test_bool(self):
-        self.assertRaises(NotImplementedError, Collection(self.db,
-                                                          'test').__bool__())
+        with self.assertRaises(NotImplementedError):
+            Collection(self.db, 'test').__bool__()
+
 
 if __name__ == "__main__":
     unittest.main()
