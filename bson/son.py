@@ -91,8 +91,11 @@ class SON(dict):
     def values(self):
         return [v for _, v in self.items()]
 
-    def items(self):
-        return [(key, self[key]) for key in self)]
+    def items(self, iterable=False):
+        if iterable:
+            return ((key, self[key]) for key in self)
+        else:
+            return [(key, self[key]) for key in self]
 
     def clear(self):
         self.__keys = []
