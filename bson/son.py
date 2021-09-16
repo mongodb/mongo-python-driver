@@ -62,9 +62,6 @@ class SON(dict):
         self.__keys.remove(key)
         dict.__delitem__(self, key)
 
-    def keys(self):
-        return set(self.__keys)
-
     def copy(self):
         other = SON()
         other.update(self)
