@@ -843,7 +843,7 @@ class Database(common.BaseObject):
     def __bool__(self):
         raise NotImplementedError("Database objects do not implement truth "
                                   "value testing or bool(). Please compare "
-                                  "with None instead: collection is not None")
+                                  "with None instead: database is not None")
 
     def dereference(self, dbref, session=None, **kwargs):
         """Dereference a :class:`~bson.dbref.DBRef`, getting the
