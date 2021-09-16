@@ -671,6 +671,10 @@ class TestDatabaseAggregation(IntegrationTest):
         result = wait_until(output_coll.find_one, "read unacknowledged write")
         self.assertEqual(result["dummy"], self.result["dummy"])
 
+    def test_bool(self):
+        with self.assertRaises(NotImplementedError):
+            bool(Database(self.client, "test"))
+
 
 if __name__ == "__main__":
     unittest.main()

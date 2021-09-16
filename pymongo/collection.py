@@ -289,6 +289,11 @@ class Collection(common.BaseObject):
     def __hash__(self):
         return hash((self.__database, self.__name))
 
+    def __bool__(self):
+        raise NotImplementedError("Collection objects do not implement truth "
+                                  "value testing or bool(). Please compare "
+                                  "with None instead: collection is not None")
+
     @property
     def full_name(self):
         """The full name of this :class:`Collection`.
