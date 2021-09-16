@@ -203,7 +203,7 @@ class TestSON(unittest.TestCase):
         for i in [OrderedDict, dict]:
             self.assertEqual(d | i({"k1": 0}).keys(), {"k", "k1"})
         for i in [OrderedDict, dict]:
-            self.assertEqual(d - i({"k": 0}).keys(), {})
+            self.assertEqual(d - i({"k": 0}).keys(), set())
 
 if __name__ == "__main__":
     unittest.main()
