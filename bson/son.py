@@ -80,21 +80,16 @@ class SON(dict):
     def has_key(self, key):
         return key in self.__keys
 
-    # third level takes advantage of second level definitions
-    def iteritems(self):
-        for k in self:
-            yield (k, self[k])
-
     def iterkeys(self):
         return self.__iter__()
 
     # fourth level uses definitions from lower levels
     def itervalues(self):
-        for _, v in self.iteritems():
+        for _, v in self.items():
             yield v
 
     def values(self):
-        return [v for _, v in self.iteritems()]
+        return [v for _, v in self.items()]
 
     def items(self):
         return [(key, self[key]) for key in self]
@@ -125,7 +120,7 @@ class SON(dict):
 
     def popitem(self):
         try:
-            k, v = next(self.iteritems())
+            k, v = next(self.items())
         except StopIteration:
             raise KeyError('container is empty')
         del self[k]
@@ -135,8 +130,8 @@ class SON(dict):
         # Make progressively weaker assumptions about "other"
         if other is None:
             pass
-        elif hasattr(other, 'iteritems'):  # iteritems saves memory and lookups
-            for k, v in other.iteritems():
+        elif hasattr(other, 'items'):
+            for k, v in other.items():
                 self[k] = v
         elif hasattr(other, 'keys'):
             for k in other.keys():
@@ -192,7 +187,7 @@ class SON(dict):
         if val_id in memo:
             return memo.get(val_id)
         memo[val_id] = out
-        for k, v in self.iteritems():
+        for k, v in self.items():
             if not isinstance(v, RE_TYPE):
                 v = copy.deepcopy(v, memo)
             out[k] = v
