@@ -687,6 +687,8 @@ class TestDatabaseAggregation(IntegrationTest):
             with self.admin.aggregate(self.pipeline) as _:
                 pass
 
+    def test_bool(self):
+        self.assertRaises(NotImplementedError, Database().__bool__())
 
 if __name__ == "__main__":
     unittest.main()
