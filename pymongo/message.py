@@ -701,15 +701,6 @@ def _get_more(collection_name, num_to_return, cursor_id, ctx=None):
     return _get_more_uncompressed(collection_name, num_to_return, cursor_id)
 
 
-def _kill_cursors(cursor_ids):
-    """Get a **killCursors** message.
-    """
-    num_cursors = len(cursor_ids)
-    pack = struct.Struct("<ii" + ("q" * num_cursors)).pack
-    op_kill_cursors = pack(0, num_cursors, *cursor_ids)
-    return __pack_message(2007, op_kill_cursors)
-
-
 class _BulkWriteContext(object):
     """A wrapper around SocketInfo for use with write splitting functions."""
 

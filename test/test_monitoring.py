@@ -860,7 +860,6 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertEqual(6, count)
 
     def test_insert_many_unacknowledged(self):
-        # On legacy servers this uses bulk OP_INSERT.
         coll = self.client.pymongo_test.test
         coll.drop()
         unack_coll = coll.with_options(write_concern=WriteConcern(w=0))

@@ -881,7 +881,6 @@ class TestCollection(IntegrationTest):
         unack_coll = self.db.test.with_options(write_concern=WriteConcern(w=0))
         self.assertRaises(DocumentTooLarge, unack_coll.replace_one,
                           {"bar": "x"}, {"bar": "x" * (max_size - 14)})
-        # This will pass with OP_UPDATE or the update command.
         self.db.test.replace_one({"bar": "x"}, {"bar": "x" * (max_size - 32)})
 
     def test_insert_bypass_document_validation(self):
