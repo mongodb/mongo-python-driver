@@ -688,7 +688,9 @@ class TestDatabaseAggregation(IntegrationTest):
                 pass
 
     def test_bool(self):
-        self.assertRaises(NotImplementedError, Database().__bool__())
+        self.assertRaises(NotImplementedError, Database(self.client,
+                                                        "test").__bool__())
+
 
 if __name__ == "__main__":
     unittest.main()
