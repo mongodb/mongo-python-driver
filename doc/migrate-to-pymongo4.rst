@@ -322,11 +322,17 @@ Can be changed to this::
 .. _'system.profile' collection: https://docs.mongodb.com/manual/reference/database-profiler/
 
 Database.__bool__ raises NotImplementedError
-..............................................
+............................................
 :class:`~pymongo.database.Database` now raises an error upon evaluating as a
-Boolean, please use the syntax ``if database is not None:`` as opposed to
-the previous syntax which was simply ``if database:``. You must now
-explicitly compare with None.
+Boolean. Code like this::
+
+  if database:
+
+Can be changed to this::
+
+  if database is not None:
+
+You must now explicitly compare with None.
 
 Collection
 ----------
@@ -630,10 +636,16 @@ can be changed to this::
 
 Collection.__bool__ raises NotImplementedError
 ..............................................
-:class:`~pymongo.collection.Collection``
-now raises an error upon evaluating as a Boolean, please use the
-syntax ``if collection is not None:`` as opposed to the previous syntax which
-was simply ``if collection:``. You must now explicitly compare with None.
+:class:`~pymongo.collection.Collection` now raises an error upon evaluating
+as a Boolean. Code like this::
+
+  if collection:
+
+Can be changed to this::
+
+  if collection is not None:
+
+You must now explicitly compare with None.
 
 SONManipulator is removed
 -------------------------

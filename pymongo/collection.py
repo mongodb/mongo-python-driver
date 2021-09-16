@@ -290,10 +290,9 @@ class Collection(common.BaseObject):
         return hash((self.__database, self.__name))
 
     def __bool__(self):
-        raise NotImplementedError("Collection does not implement Boolean "
-                                  "methods. Please explicitly compare with "
-                                  "None like so: \"if collection is not "
-                                  "None:\"")
+        raise NotImplementedError("Collection objects do not implement truth "
+                                  "value testing or bool(). Please compare "
+                                  "with None instead: collection is not None")
 
     @property
     def full_name(self):

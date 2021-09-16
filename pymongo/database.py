@@ -841,10 +841,9 @@ class Database(common.BaseObject):
     next = __next__
 
     def __bool__(self):
-        raise NotImplementedError("Database does not implement Boolean "
-                                  "methods. Please explicitly compare with "
-                                  "None like so: \"if database is not "
-                                  "None:\"")
+        raise NotImplementedError("Database objects do not implement truth "
+                                  "value testing or bool(). Please compare "
+                                  "with None instead: collection is not None")
 
     def dereference(self, dbref, session=None, **kwargs):
         """Dereference a :class:`~bson.dbref.DBRef`, getting the

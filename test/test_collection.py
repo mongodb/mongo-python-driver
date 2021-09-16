@@ -2267,7 +2267,7 @@ class TestCollection(IntegrationTest):
 
     def test_bool(self):
         with self.assertRaises(NotImplementedError):
-            Collection(self.db, 'test').__bool__()
+            bool(Collection(self.db, 'test'))
 
 
 if __name__ == "__main__":

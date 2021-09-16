@@ -135,11 +135,11 @@ decodes datetime as naive by default.
   with :meth:`~pymongo.collection.Collection.find`.
 - ``name`` is now a required argument for the :class:`pymongo.driver_info.DriverInfo` class.
 - :class:`~pymongo.collection.Collection` and :class:`~pymongo.database.Database`
-now raises an error upon evaluating as a Boolean, please use the
-syntax ``if collection is not None:`` or ``if database is not None:`` as
-opposed to
-the previous syntax which was simply ``if collection:`` or ``if database:``.
-You must now explicitly compare with None.
+  now raises an error upon evaluating as a Boolean, please use the
+  syntax ``if collection is not None:`` or ``if database is not None:`` as
+  opposed to
+  the previous syntax which was simply ``if collection:`` or ``if database:``.
+  You must now explicitly compare with None.
 
 Notable improvements
 ....................
