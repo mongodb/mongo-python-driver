@@ -736,7 +736,7 @@ class _BulkWriteContext(object):
 
     def _batch_command(self, docs):
         namespace = self.db_name + '.$cmd'
-        request_id, msg, to_send = _do_bulk_write_command(
+        request_id, msg, to_send = _do_batched_op_msg(
             namespace, self.op_type, self.command, docs, self.check_keys,
             self.codec, self)
         if not to_send:
@@ -1086,13 +1086,6 @@ def _encode_batched_write_command(
     return buf.getvalue(), to_send
 if _use_c:
     _encode_batched_write_command = _cmessage._encode_batched_write_command
-
-
-def _do_bulk_write_command(
-        namespace, operation, command, docs, check_keys, opts, ctx):
-    """Bulk write commands entry point."""
-    return _do_batched_op_msg(
-        namespace, operation, command, docs, check_keys, opts, ctx)
 
 
 def _batched_write_command_impl(

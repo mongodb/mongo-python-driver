@@ -762,14 +762,11 @@ class SocketInfo(object):
     def unack_write(self, msg, max_doc_size):
         """Send unack OP_MSG.
 
-        Can raise ConnectionFailure or OperationFailure.
+        Can raise ConnectionFailure or InvalidDocument.
 
         :Parameters:
-          - `request_id`: an int.
-          - `msg`: bytes, an OP_INSERT, OP_UPDATE, or OP_DELETE message,
-            perhaps with a getlasterror command appended.
+          - `msg`: bytes, an OP_MSG message.
           - `max_doc_size`: size in bytes of the largest document in `msg`.
-          - `with_last_error`: True if a getlasterror command is appended.
         """
         self._raise_if_not_writable(True)
         self.send_message(msg, max_doc_size)
