@@ -22,7 +22,7 @@ import copy
 import re
 
 from collections.abc import Mapping as _Mapping
-from collections import OrderedDict
+
 # This sort of sucks, but seems to be as good as it gets...
 # This is essentially the same as re._pattern_type
 RE_TYPE = type(re.compile(""))
