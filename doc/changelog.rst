@@ -125,7 +125,7 @@ Breaking Changes in 4.0
   ignored by pip.
 - ``tz_aware``, an argument for :class:`~bson.json_util.JSONOptions`,
   now defaults to ``False`` instead of ``True``. ``json_util.loads`` now
-decodes datetime as naive by default.
+  decodes datetime as naive by default.
 - ``directConnection`` URI option and keyword argument to :class:`~pymongo.mongo_client.MongoClient`
   defaults to ``False`` instead of ``None``, allowing for the automatic
   discovery of replica sets. This means that if you

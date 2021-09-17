@@ -26,6 +26,7 @@ from test import client_context, unittest
 
 class TestDecimal128(unittest.TestCase):
 
+    @client_context.require_connection
     def test_round_trip(self):
         coll = client_context.client.pymongo_test.test
         coll.drop()
