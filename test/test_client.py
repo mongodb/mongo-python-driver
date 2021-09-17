@@ -108,6 +108,7 @@ class ClientUnitTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.client.close()
+        cls.client = rs_or_single_client()
 
     def test_keyword_arg_defaults(self):
         client = MongoClient(socketTimeoutMS=None,
@@ -777,6 +778,7 @@ class TestClient(IntegrationTest):
 
         self.client.close()
         self.assertRaises(InvalidOperation, coll.count_documents, {})
+        self.client = rs_or_single_client()
 
     def test_close_kills_cursors(self):
         if sys.platform.startswith('java'):
@@ -808,10 +810,10 @@ class TestClient(IntegrationTest):
         self.assertTrue(self.client._topology._opened)
         self.client.close()
         self.assertFalse(self.client._topology._opened)
-
+        self.client = rs_or_single_client()
         # The killCursors task should not need to re-open the topology.
         self.client._process_periodic_tasks()
-        self.assertFalse(self.client._topology._opened)
+        self.assertTrue(self.client._topology._opened)
 
     def test_close_stops_kill_cursors_thread(self):
         client = rs_client()
@@ -822,9 +824,9 @@ class TestClient(IntegrationTest):
         client.close()
         self.assertTrue(client._kill_cursors_executor._stopped)
 
-        # Reusing the closed client should restart the thread.
-        client.admin.command('ping')
-        self.assertFalse(client._kill_cursors_executor._stopped)
+        # Reusing the closed client should raise an InvalidOperation error.
+        self.assertRaises(InvalidOperation, client.admin.command, 'ping')
+        self.assertTrue(client._kill_cursors_executor._stopped)
 
         # Again, closing the client should stop the thread.
         client.close()
