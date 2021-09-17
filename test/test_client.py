@@ -50,7 +50,8 @@ from pymongo.errors import (AutoReconnect,
                             NetworkTimeout,
                             OperationFailure,
                             ServerSelectionTimeoutError,
-                            WriteConcernError)
+                            WriteConcernError,
+                            InvalidOperation)
 from pymongo.hello import HelloCompat
 from pymongo.mongo_client import MongoClient
 from pymongo.monitoring import (ServerHeartbeatListener,
@@ -775,14 +776,7 @@ class TestClient(IntegrationTest):
         coll = self.client.pymongo_test.bar
 
         self.client.close()
-        self.client.close()
-
-        coll.count_documents({})
-
-        self.client.close()
-        self.client.close()
-
-        coll.count_documents({})
+        self.assertRaises(InvalidOperation, coll.count_documents, {})
 
     def test_close_kills_cursors(self):
         if sys.platform.startswith('java'):
