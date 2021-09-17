@@ -419,7 +419,8 @@ class TestExplicitSimple(EncryptionIntegrationTest):
         self.assertNotEqual(encrypted_standard, encrypted_legacy)
         # Test that codec_options is applied during decryption.
         self.assertEqual(
-            client_encryption_legacy.decrypt(encrypted_standard), value)
+            client_encryption_legacy.decrypt(encrypted_standard),
+            Binary.from_uuid(value))
         self.assertNotEqual(
             client_encryption.decrypt(encrypted_legacy), value)
 
@@ -848,7 +849,7 @@ class TestCorpus(EncryptionIntegrationTest):
     @staticmethod
     def fix_up_schema(json_schema):
         """Remove deprecated symbol/dbPointer types from json schema."""
-        for key in json_schema['properties'].keys():
+        for key in list(json_schema['properties']):
             if '_symbol_' in key or '_dbPointer_' in key:
                 del json_schema['properties'][key]
         return json_schema
