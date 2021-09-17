@@ -17,6 +17,8 @@ echo "Running MONGODB-AWS authentication tests"
 # ensure no secrets are printed in log files
 set +x
 
+. .evergreen/utils.sh
+
 # load the script
 shopt -s expand_aliases # needed for `urlencode` alias
 [ -s "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh" ] && source "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
@@ -54,13 +56,8 @@ authtest () {
     echo "Running MONGODB-AWS authentication tests with $PYTHON"
     $PYTHON --version
 
-    $VIRTUALENV -p $PYTHON --system-site-packages --never-download venvaws
-    if [ "Windows_NT" = "$OS" ]; then
-      . venvaws/Scripts/activate
-    else
-      . venvaws/bin/activate
-    fi
-    pip install '.[aws]'
+    createvirtualenv $PYTHON venvaws
+    python -m pip install '.[aws]'
     python test/auth_aws/test_auth_aws.py
     deactivate
     rm -rf venvaws
