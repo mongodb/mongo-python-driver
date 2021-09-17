@@ -2547,7 +2547,7 @@ buildvariants:
   exclude_spec:
    # Python 3.4 doesn't support OpenSSL 1.1.0+ so won't build on Debian 9+.
    - platform: debian92
-     python-version: ["3.4"]
+     python-version: ["3.4", "jython2.7"]
      auth-ssl: "auth-ssl"
   display_name: "${python-version} OpenSSL 1.1.0 ${platform} ${auth-ssl}"
   tasks:
