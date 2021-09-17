@@ -510,7 +510,7 @@ class SpecRunner(IntegrationTest):
         use_multi_mongos = test['useMultipleMongoses']
         host = None
         if use_multi_mongos:
-            if client_context.load_balancer:
+            if client_context.load_balancer or client_context.serverless:
                 host = client_context.MULTI_MONGOS_LB_URI
             elif client_context.is_mongos:
                 host = client_context.mongos_seeds()

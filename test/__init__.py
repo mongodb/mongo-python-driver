@@ -107,12 +107,13 @@ if TEST_LOADBALANCER:
     db_user = res['username'] or db_user
     db_pwd = res['password'] or db_pwd
 elif TEST_SERVERLESS:
-    res = parse_uri(os.environ["MONGODB_URI"])
-    host, port = res['nodelist'].pop(0)
-    additional_serverless_mongoses = res['nodelist']
+    res = parse_uri(SINGLE_MONGOS_LB_URI)
+    host, port = res['nodelist'][0]
     db_user = res['username'] or db_user
     db_pwd = res['password'] or db_pwd
     TLS_OPTIONS = {'tls': True}
+    # Spec says serverless tests must be run with compression.
+    COMPRESSORS = COMPRESSORS or 'zlib'
 
 
 def is_server_resolvable():
@@ -251,7 +252,7 @@ class ClientContext(object):
         self.is_data_lake = False
         self.load_balancer = TEST_LOADBALANCER
         self.serverless = TEST_SERVERLESS
-        if self.load_balancer:
+        if self.load_balancer or TEST_SERVERLESS:
             self.default_client_options["loadBalanced"] = True
         if COMPRESSORS:
             self.default_client_options["compressors"] = COMPRESSORS
@@ -422,14 +423,11 @@ class ClientContext(object):
 
             self.is_mongos = (self.hello.get('msg') == 'isdbgrid')
             if self.is_mongos:
-                if self.serverless:
-                    self.mongoses.append(self.client.address)
-                    self.mongoses.extend(additional_serverless_mongoses)
-                else:
+                address = self.client.address
+                self.mongoses.append(address)
+                if not self.serverless:
                     # Check for another mongos on the next port.
-                    address = self.client.address
                     next_address = address[0], address[1] + 1
-                    self.mongoses.append(address)
                     mongos_client = self._connect(
                         *next_address, **self.default_client_options)
                     if mongos_client:

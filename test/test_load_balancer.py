@@ -38,6 +38,7 @@ globals().update(generate_test_classes(TEST_PATH, module=__name__))
 
 class TestLB(IntegrationTest):
     RUN_ON_LOAD_BALANCER = True
+    RUN_ON_SERVERLESS = True
 
     def test_connections_are_only_returned_once(self):
         pool = get_pool(self.client)
