@@ -108,7 +108,6 @@ class ClientUnitTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.client.close()
-        cls.client = rs_or_single_client()
 
     def test_keyword_arg_defaults(self):
         client = MongoClient(socketTimeoutMS=None,
@@ -774,22 +773,22 @@ class TestClient(IntegrationTest):
         self.assertNotIn("pymongo_test2", dbs)
 
     def test_close(self):
-        coll = self.client.pymongo_test.bar
-
-        self.client.close()
+        test_client = rs_or_single_client()
+        coll = test_client.pymongo_test.bar
+        test_client.close()
         self.assertRaises(InvalidOperation, coll.count_documents, {})
-        self.client = rs_or_single_client()
 
     def test_close_kills_cursors(self):
         if sys.platform.startswith('java'):
             # We can't figure out how to make this test reliable with Jython.
             raise SkipTest("Can't test with Jython")
+        test_client = rs_or_single_client()
         # Kill any cursors possibly queued up by previous tests.
         gc.collect()
-        self.client._process_periodic_tasks()
+        test_client._process_periodic_tasks()
 
         # Add some test data.
-        coll = self.client.pymongo_test.test_close_kills_cursors
+        coll = test_client.pymongo_test.test_close_kills_cursors
         docs_inserted = 1000
         coll.insert_many([{"i": i} for i in range(docs_inserted)])
 
@@ -807,13 +806,13 @@ class TestClient(IntegrationTest):
         gc.collect()
 
         # Close the client and ensure the topology is closed.
-        self.assertTrue(self.client._topology._opened)
-        self.client.close()
-        self.assertFalse(self.client._topology._opened)
-        self.client = rs_or_single_client()
+        self.assertTrue(test_client._topology._opened)
+        test_client.close()
+        self.assertFalse(test_client._topology._opened)
+        test_client = rs_or_single_client()
         # The killCursors task should not need to re-open the topology.
-        self.client._process_periodic_tasks()
-        self.assertTrue(self.client._topology._opened)
+        test_client._process_periodic_tasks()
+        self.assertTrue(test_client._topology._opened)
 
     def test_close_stops_kill_cursors_thread(self):
         client = rs_client()
