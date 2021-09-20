@@ -621,7 +621,6 @@ can be changed to this::
 
   cursor = coll.find({}, min={'x', min_value}, hint=[('x', ASCENDING)])
 
-
 SONManipulator is removed
 -------------------------
 
@@ -658,6 +657,16 @@ For more information, see the
 ----------------------------------------------------
 :meth:`~bson.son.SON.items` now returns a ``dict_items`` object rather than
 a list.
+
+``SON().iteritems()`` removed.
+------------------------------
+``SON.iteritems()`` now removed. Code that looks like this::
+
+    for k, v in son.iteritems():
+
+Can now be replaced by code that looks like::
+
+    for k, v in iter(son.items()):
 
 IsMaster is removed
 -------------------
