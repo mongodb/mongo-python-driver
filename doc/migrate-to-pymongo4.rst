@@ -666,7 +666,7 @@ a list.
 
 Can now be replaced by code that looks like::
 
-    for k, v in iter(son.items()):
+    for k, v in son.items():
 
 IsMaster is removed
 -------------------

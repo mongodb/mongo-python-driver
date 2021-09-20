@@ -156,10 +156,10 @@ class TestGridfs(IntegrationTest):
         self.fs.upload_from_stream("filename", b"junk")
 
         self.assertTrue(any(
-            list(info.get('key')) == [('files_id', 1), ('n', 1)]
+            info.get('key') == [('files_id', 1), ('n', 1)]
             for info in chunks.index_information().values()))
         self.assertTrue(any(
-            list(info.get('key')) == [('filename', 1), ('uploadDate', 1)]
+            info.get('key') == [('filename', 1), ('uploadDate', 1)]
             for info in files.index_information().values()))
 
     def test_ensure_index_shell_compat(self):
@@ -177,7 +177,7 @@ class TestGridfs(IntegrationTest):
             self.fs.upload_from_stream("filename", b"data")
 
             self.assertTrue(any(
-                list(info.get('key')) == [('filename', 1), ('uploadDate', 1)]
+                info.get('key') == [('filename', 1), ('uploadDate', 1)]
                 for info in files.index_information().values()))
             files.drop()
 

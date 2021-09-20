@@ -136,13 +136,7 @@ decodes datetime as naive by default.
 - ``name`` is now a required argument for the :class:`pymongo.driver_info.DriverInfo` class.
 - :meth:`~bson.son.SON.items` now returns a ``dict_items`` object rather
   than a list.
-- ``SON.iteritems()`` now removed. Code that looks like this::
-
-    for k, v in son.iteritems():
-
-  Can now be replaced by code that looks like::
-
-    for k, v in iter(son.items()):
+- Removed :meth:`bson.son.SON.iteritems`.
 
 Notable improvements
 ....................
