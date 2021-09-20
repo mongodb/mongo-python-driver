@@ -150,7 +150,8 @@ class SON(dict):
         regular dictionary is order-insensitive.
         """
         if isinstance(other, SON):
-            return len(self) == len(other) and self.items() == other.items()
+            return len(self) == len(other) and list(self.items()) == \
+                   list(other.items())
         return self.to_dict() == other
 
     def __ne__(self, other):
