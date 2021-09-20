@@ -390,26 +390,28 @@ class TestCollection(IntegrationTest):
 
         db.test.create_index("hello")
         self.assertEqual(len(db.test.index_information()), 2)
-        self.assertEqual(db.test.index_information()["hello_1"]["key"],
+        self.assertEqual(list(db.test.index_information()["hello_1"]["key"]),
                          [("hello", ASCENDING)])
 
         db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)],
                              unique=True)
-        self.assertEqual(db.test.index_information()["hello_1"]["key"],
+        self.assertEqual(list(db.test.index_information()["hello_1"]["key"]),
                          [("hello", ASCENDING)])
         self.assertEqual(len(db.test.index_information()), 3)
         self.assertEqual([("hello", DESCENDING), ("world", ASCENDING)],
-                         db.test.index_information()["hello_-1_world_1"]["key"]
+                         list(db.test.index_information()["hello_-1_world_1"][
+                             "key"])
                         )
         self.assertEqual(
-            True, db.test.index_information()["hello_-1_world_1"]["unique"])
+            True, db.test.index_information()["hello_-1_world_1"][
+                "unique"])
 
     def test_index_geo2d(self):
         db = self.db
         db.test.drop_indexes()
         self.assertEqual('loc_2d', db.test.create_index([("loc", GEO2D)]))
         index_info = db.test.index_information()['loc_2d']
-        self.assertEqual([('loc', '2d')], index_info['key'])
+        self.assertEqual([('loc', '2d')], list(index_info['key']))
 
     # geoSearch was deprecated in 4.4 and removed in 5.0
     @client_context.require_version_max(4, 5)
@@ -479,7 +481,7 @@ class TestCollection(IntegrationTest):
                          db.test.create_index([("geo", GEOSPHERE)]))
 
         for dummy, info in db.test.index_information().items():
-            field, idx_type = info['key'][0]
+            field, idx_type = list(info['key'])[0]
             if field == 'geo' and idx_type == '2dsphere':
                 break
         else:
@@ -500,7 +502,7 @@ class TestCollection(IntegrationTest):
                          db.test.create_index([("a", HASHED)]))
 
         for dummy, info in db.test.index_information().items():
-            field, idx_type = info['key'][0]
+            field, idx_type = list(info['key'])[0]
             if field == 'a' and idx_type == 'hashed':
                 break
         else:
