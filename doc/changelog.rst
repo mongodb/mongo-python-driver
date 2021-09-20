@@ -134,8 +134,9 @@ decodes datetime as naive by default.
 - The ``hint`` option is now required when using ``min`` or ``max`` queries
   with :meth:`~pymongo.collection.Collection.find`.
 - ``name`` is now a required argument for the :class:`pymongo.driver_info.DriverInfo` class.
+- :meth:`~bson.son.SON.items` now returns a ``dict_items`` object rather
+  than a list.
 
- d
 Notable improvements
 ....................
 

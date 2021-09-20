@@ -621,6 +621,7 @@ can be changed to this::
 
   cursor = coll.find({}, min={'x', min_value}, hint=[('x', ASCENDING)])
 
+
 SONManipulator is removed
 -------------------------
 
@@ -652,6 +653,11 @@ custom types to BSON, the :class:`~bson.codec_options.TypeCodec` and
 :class:`~bson.codec_options.TypeRegistry` APIs may be a suitable alternative.
 For more information, see the
 :doc:`custom type example <examples/custom_type>`.
+
+``SON().items()`` now returns ``dict_items`` object.
+----------------------------------------------------
+:meth:`~bson.son.SON.items` now returns a ``dict_items`` object rather than
+a list.
 
 IsMaster is removed
 -------------------
