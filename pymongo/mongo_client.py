@@ -704,7 +704,6 @@ class MongoClient(common.BaseObject):
         self.__kill_cursors_queue = []
 
         self._event_listeners = options.pool_options.event_listeners
-        self._is_closed = False
         super(MongoClient, self).__init__(options.codec_options,
                                           options.read_preference,
                                           options.write_concern,
@@ -1146,7 +1145,6 @@ class MongoClient(common.BaseObject):
         if self._encrypter:
             # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
             self._encrypter.close()
-        self._is_closed = True
 
     def _get_topology(self):
         """Get the internal :class:`~pymongo.topology.Topology` object.
@@ -1193,9 +1191,6 @@ class MongoClient(common.BaseObject):
           - `address` (optional): Address when sending a message
             to a specific server, used for getMore.
         """
-        if self._is_closed:
-            raise InvalidOperation("Once a MongoClient is closed, "
-                                   "all operations raise an error")
         try:
             topology = self._get_topology()
             if session and not session.in_transaction:

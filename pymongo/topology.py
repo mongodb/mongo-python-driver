@@ -33,7 +33,8 @@ from pymongo.errors import (ConnectionFailure,
                             OperationFailure,
                             PyMongoError,
                             ServerSelectionTimeoutError,
-                            WriteError)
+                            WriteError,
+                            InvalidOperation)
 from pymongo.hello import Hello
 from pymongo.monitor import SrvMonitor
 from pymongo.pool import PoolOptions
@@ -76,6 +77,8 @@ class Topology(object):
         pub = self._listeners is not None
         self._publish_server = pub and self._listeners.enabled_for_server
         self._publish_tp = pub and self._listeners.enabled_for_topology
+
+        self._is_closed = False
 
         # Create events queue if there are publishers.
         self._events = None
@@ -237,6 +240,9 @@ class Topology(object):
                       server_selection_timeout=None,
                       address=None):
         """Like select_servers, but choose a random server if several match."""
+        if self._is_closed:
+            raise InvalidOperation("Once a Topology is closed, "
+                                   "all operations raise an error")
         servers = self.select_servers(
             selector, server_selection_timeout, address)
         if len(servers) == 1:
@@ -246,6 +252,7 @@ class Topology(object):
             return server1
         else:
             return server2
+
 
     def select_server_by_address(self, address,
                                  server_selection_timeout=None):
@@ -477,6 +484,7 @@ class Topology(object):
                 self._srv_monitor.close()
 
             self._opened = False
+            self._is_closed = True
 
         # Publish only after releasing the lock.
         if self._publish_tp:
