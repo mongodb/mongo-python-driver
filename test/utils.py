@@ -507,13 +507,10 @@ class TestCreator(object):
                     setattr(self._test_class, new_test.__name__, new_test)
 
 
-def _connection_string(h, authenticate):
-    if h.startswith("mongodb://"):
+def _connection_string(h):
+    if h.startswith("mongodb://") or h.startswith("mongodb+srv://"):
         return h
-    elif client_context.auth_enabled and authenticate:
-        return "mongodb://%s:%s@%s" % (db_user, db_pwd, str(h))
-    else:
-        return "mongodb://%s" % (str(h),)
+    return "mongodb://%s" % (str(h),)
 
 
 def _mongo_client(host, port, authenticate=True, directConnection=None,
@@ -528,8 +525,11 @@ def _mongo_client(host, port, authenticate=True, directConnection=None,
         client_options['directConnection'] = directConnection
     client_options.update(kwargs)
 
-    client = MongoClient(_connection_string(host, authenticate), port,
-                         **client_options)
+    if client_context.auth_enabled and authenticate:
+        client_options['username'] = db_user
+        client_options['password'] = db_pwd
+
+    client = MongoClient(_connection_string(host), port, **client_options)
 
     return client
 

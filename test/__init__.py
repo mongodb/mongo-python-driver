@@ -107,6 +107,7 @@ if TEST_LOADBALANCER:
     db_user = res['username'] or db_user
     db_pwd = res['password'] or db_pwd
 elif TEST_SERVERLESS:
+    TEST_LOADBALANCER = True
     res = parse_uri(SINGLE_MONGOS_LB_URI)
     host, port = res['nodelist'][0]
     db_user = res['username'] or db_user
@@ -237,7 +238,7 @@ class ClientContext(object):
         self.version = Version(-1)  # Needs to be comparable with Version
         self.auth_enabled = False
         self.test_commands_enabled = False
-        self.server_parameters = None
+        self.server_parameters = {}
         self.is_mongos = False
         self.mongoses = []
         self.is_rs = False
@@ -404,6 +405,10 @@ class ClientContext(object):
             self.version = Version.from_client(self.client)
 
             if TEST_SERVERLESS:
+                self.server_parameters = {
+                    'requireApiVersion': False,
+                    'enableTestCommands': True,
+                }
                 self.test_commands_enabled = True
                 self.has_ipv6 = False
             else:
