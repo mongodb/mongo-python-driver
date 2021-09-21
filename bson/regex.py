@@ -114,7 +114,8 @@ class Regex(object):
         return "Regex(%r, %r)" % (self.pattern, self.flags)
 
     def __setstate__(self, state):
-        self.__slots__.update(state)
+        for slot, value in state.items():
+            setattr(self, slot, value)
 
     def __getstate__(self):
         return {slot: getattr(self, slot) for slot in self.__slots__ if

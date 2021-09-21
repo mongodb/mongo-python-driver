@@ -82,15 +82,21 @@ class DBRef(object):
         except KeyError:
             raise AttributeError(key)
 
+    #def __setattr__(self, key, value):
+    #    self.__kwargs[key] = value
     # Have to provide __setstate__ to avoid
     # infinite recursion since we override
     # __getattr__.
     def __setstate__(self, state):
-        self.__slots__.update(state)
+        for slot, value in state.items():
+            setattr(self, slot, value)
 
     def __getstate__(self):
-        return {slot: getattr(self, slot) for slot in self.__slots__ if
-                hasattr(self, slot)}
+        def mangle_name(n):
+            return "_DBRef"+n
+        return {mangle_name(s): getattr(self, mangle_name(s)) for s in
+                DBRef.__slots__ if
+                hasattr(self, mangle_name(s))}
 
     def as_doc(self):
         """Get the SON document representation of this DBRef.

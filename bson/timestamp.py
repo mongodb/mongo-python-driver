@@ -111,11 +111,15 @@ class Timestamp(object):
         return "Timestamp(%s, %s)" % (self.__time, self.__inc)
 
     def __setstate__(self, state):
-        self.__slots__.update(state)
+        for slot, value in state.items():
+            setattr(self, slot, value)
 
     def __getstate__(self):
-        return {slot: getattr(self, slot) for slot in self.__slots__ if
-                hasattr(self, slot)}
+        def mangle_name(n):
+            return "_Timestamp"+n
+        return {mangle_name(s): getattr(self, mangle_name(s)) for s in
+                self.__slots__ if
+                hasattr(self, mangle_name(s))}
 
     def as_datetime(self):
         """Return a :class:`~datetime.datetime` instance corresponding
