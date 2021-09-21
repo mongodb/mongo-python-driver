@@ -24,7 +24,7 @@ class Int64(int):
     :Parameters:
       - `value`: the numeric value to represent
     """
-    __slots__ = ()
+    __slots__ = ("value")
 
     _type_marker = 18
 
