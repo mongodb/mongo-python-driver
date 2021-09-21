@@ -18,8 +18,15 @@
 
 class MaxKey(object):
     """MongoDB internal MaxKey type."""
+    __slots__ = ()
 
     _type_marker = 127
+
+    def __getstate__(self):
+        return {}
+
+    def __setstate__(self, state):
+        pass
 
     def __eq__(self, other):
         return isinstance(other, MaxKey)

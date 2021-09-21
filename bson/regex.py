@@ -40,6 +40,8 @@ def str_flags_to_int(str_flags):
 
 class Regex(object):
     """BSON regular expression data."""
+    __slots__ = ("pattern", "flags")
+
     _type_marker = 11
 
     @classmethod
@@ -110,6 +112,13 @@ class Regex(object):
 
     def __repr__(self):
         return "Regex(%r, %r)" % (self.pattern, self.flags)
+
+    def __setstate__(self, state):
+        self.__slots__.update(state)
+
+    def __getstate__(self):
+        return {slot: getattr(self, slot) for slot in self.__slots__ if
+                hasattr(self, slot)}
 
     def try_compile(self):
         """Compile this :class:`Regex` as a Python regular expression.

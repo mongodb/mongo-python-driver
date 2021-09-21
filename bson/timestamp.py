@@ -26,7 +26,7 @@ UPPERBOUND = 4294967296
 class Timestamp(object):
     """MongoDB internal timestamps used in the opLog.
     """
-
+    __slots__ = ("__time", "__inc")
     _type_marker = 17
 
     def __init__(self, time, inc):
@@ -109,6 +109,13 @@ class Timestamp(object):
 
     def __repr__(self):
         return "Timestamp(%s, %s)" % (self.__time, self.__inc)
+
+    def __setstate__(self, state):
+        self.__slots__.update(state)
+
+    def __getstate__(self):
+        return {slot: getattr(self, slot) for slot in self.__slots__ if
+                hasattr(self, slot)}
 
     def as_datetime(self):
         """Return a :class:`~datetime.datetime` instance corresponding
