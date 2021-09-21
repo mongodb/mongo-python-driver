@@ -82,8 +82,6 @@ class DBRef(object):
         except KeyError:
             raise AttributeError(key)
 
-    #def __setattr__(self, key, value):
-    #    self.__kwargs[key] = value
     # Have to provide __setstate__ to avoid
     # infinite recursion since we override
     # __getattr__.
