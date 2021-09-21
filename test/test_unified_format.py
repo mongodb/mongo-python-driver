@@ -33,7 +33,8 @@ globals().update(generate_test_classes(
     class_name_prefix='UnifiedTestFormat',
     expected_failures=[
         'Client side error in command starting transaction',    # PYTHON-1894
-    ]))
+    ],
+    RUN_ON_SERVERLESS=False))
 
 
 globals().update(generate_test_classes(
@@ -43,7 +44,8 @@ globals().update(generate_test_classes(
     bypass_test_generation_errors=True,
     expected_failures=[
         '.*',       # All tests expected to fail
-    ]))
+    ],
+    RUN_ON_SERVERLESS=False))
 
 
 class TestMatchEvaluatorUtil(unittest.TestCase):

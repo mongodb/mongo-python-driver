@@ -260,7 +260,7 @@
       ]
     },
     {
-      "description": "errors during the initial connection hello are ignore",
+      "description": "errors during the initial connection hello are ignored",
       "runOnRequirements": [
         {
           "minServerVersion": "4.9"
@@ -279,7 +279,8 @@
               },
               "data": {
                 "failCommands": [
-                  "isMaster"
+                  "isMaster",
+                  "hello"
                 ],
                 "closeConnection": true,
                 "appName": "lbSDAMErrorTestClient"

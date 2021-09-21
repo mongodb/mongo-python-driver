@@ -98,7 +98,6 @@ class TestLB(IntegrationTest):
               "failCommands": [
                 "find", "aggregate"
               ],
-              "errorCode": 91,
               "closeConnection": True,
             }
         }
