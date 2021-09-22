@@ -78,8 +78,6 @@ class Topology(object):
         self._publish_server = pub and self._listeners.enabled_for_server
         self._publish_tp = pub and self._listeners.enabled_for_topology
 
-        self._is_closed = False
-
         # Create events queue if there are publishers.
         self._events = None
         self.__events_executor = None
@@ -115,6 +113,7 @@ class Topology(object):
         # Store the seed list to help diagnose errors in _error_message().
         self._seed_addresses = list(topology_description.server_descriptions())
         self._opened = False
+        self._closed = False
         self._lock = threading.Lock()
         self._condition = self._settings.condition_class(self._lock)
         self._servers = {}
@@ -240,9 +239,6 @@ class Topology(object):
                       server_selection_timeout=None,
                       address=None):
         """Like select_servers, but choose a random server if several match."""
-        if self._is_closed:
-            raise InvalidOperation("Once a Topology is closed, "
-                                   "all operations raise an error")
         servers = self.select_servers(
             selector, server_selection_timeout, address)
         if len(servers) == 1:
@@ -468,7 +464,9 @@ class Topology(object):
                 raise
 
     def close(self):
-        """Clear pools and terminate monitors. Topology reopens on demand."""
+        """Clear pools and terminate monitors. Topology does not reopens on
+        demand. Any further operations will raise
+        :exc:`~.errors.InvalidOperation`. """
         with self._lock:
             for server in self._servers.values():
                 server.close()
@@ -484,7 +482,7 @@ class Topology(object):
                 self._srv_monitor.close()
 
             self._opened = False
-            self._is_closed = True
+            self._closed = True
 
         # Publish only after releasing the lock.
         if self._publish_tp:
@@ -558,6 +556,9 @@ class Topology(object):
 
         Hold the lock when calling this.
         """
+        if self._closed:
+            raise InvalidOperation("Once a Topology is closed, "
+                                   "all operations raise an error")
         if not self._opened:
             self._opened = True
             self._update_servers()

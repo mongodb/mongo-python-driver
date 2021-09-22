@@ -140,6 +140,9 @@ decodes datetime as naive by default.
   opposed to
   the previous syntax which was simply ``if collection:`` or ``if database:``.
   You must now explicitly compare with None.
+- :class:`~pymongo.topology.Topology` cannot execute any operations after
+  being closed. The previous behavior would simply reconnect. However, now
+  you must create a new instance.
 
 Notable improvements
 ....................

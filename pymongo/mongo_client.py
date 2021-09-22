@@ -1126,10 +1126,9 @@ class MongoClient(common.BaseObject):
         sending one or more endSessions commands.
 
         Close all sockets in the connection pools and stop the monitor threads.
-        If this instance is used again it will be automatically re-opened and
-        the threads restarted unless auto encryption is enabled. A client
-        enabled with auto encryption cannot be used again after being closed;
-        any attempt will raise :exc:`~.errors.InvalidOperation`.
+        If this instance is used again it will NOT automatically be
+        re-opened and the threads restarted. No client can be used again after
+        being closed; any attempt will raise :exc:`~.errors.InvalidOperation`.
 
         .. versionchanged:: 3.6
            End all server sessions created by this client.
