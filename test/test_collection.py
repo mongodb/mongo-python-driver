@@ -1709,6 +1709,7 @@ class TestCollection(IntegrationTest):
 
         self.assertEqual(["_id"], list(db.test.find_one(projection={'_id':
             True})))
+        self.assertTrue("hello" in list(db.test.find_one(projection={})))
 
         self.assertEqual(None, db.test.find_one({"hello": "foo"}))
         self.assertEqual(None, db.test.find_one(ObjectId()))
