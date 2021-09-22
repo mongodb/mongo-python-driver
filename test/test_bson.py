@@ -25,6 +25,7 @@ import re
 import sys
 import tempfile
 import uuid
+import pickle
 
 from collections import abc, OrderedDict
 from io import BytesIO
@@ -1052,6 +1053,73 @@ class TestCodecOptions(unittest.TestCase):
 
         self.assertRaises(InvalidBSON, decode, invalid_both, CodecOptions(
             unicode_decode_error_handler="junk"))
+
+    def test_regex_pickling(self):
+        dbr = Regex(".?")
+        pickled_with_3 = b'\x80\x04\x959\x00\x00\x00\x00\x00\x00\x00\x8c\n' \
+                         b'bson.regex\x94\x8c\x05Regex\x94\x93\x94)\x81\x94}' \
+                         b'\x94(\x8c\x07pattern\x94\x8c\x02.?\x94\x8c\x05flags' \
+                         b'\x94K\x00ub.'
+        pickled_with_3 = pickle.loads(pickled_with_3)
+        for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
+            pkl = pickle.dumps(dbr, protocol=protocol)
+            dbr2 = pickle.loads(pkl)
+            self.assertEqual(dbr, dbr2)
+            self.assertEqual(pickled_with_3, dbr2)
+
+    def test_timestamp_pickling(self):
+        dbr = Timestamp(0, 1)
+        pickled_with_3 = b'\x80\x04\x95Q\x00\x00\x00\x00\x00\x00\x00\x8c\x0e' \
+                         b'bson.timestamp\x94\x8c\tTimestamp\x94\x93\x94)\x81' \
+                         b'\x94}\x94(\x8c\x10_Timestamp__time\x94K\x00\x8c\x0f_' \
+                         b'Timestamp__inc\x94K\x01ub.'
+        pickled_with_3 = pickle.loads(pickled_with_3)
+        for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
+            pkl = pickle.dumps(dbr, protocol=protocol)
+            dbr2 = pickle.loads(pkl)
+            self.assertEqual(dbr, dbr2)
+            self.assertEqual(pickled_with_3, dbr2)
+
+    def test_dbref_pickling(self):
+        dbr = DBRef("foo", 5)
+        pickled_with_3 = b'\x80\x04\x95q\x00\x00\x00\x00\x00\x00\x00\x8c\n' \
+                         b'bson.dbref\x94\x8c\x05DBRef\x94\x93\x94)\x81\x94}' \
+                         b'\x94(\x8c\x12_DBRef__collection\x94\x8c\x03foo\x94' \
+                         b'\x8c\n_DBRef__id\x94K\x05\x8c\x10_DBRef__database' \
+                         b'\x94N\x8c\x0e_DBRef__kwargs\x94}\x94ub.'
+        pickled_with_3 = pickle.loads(pickled_with_3)
+        for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
+            pkl = pickle.dumps(dbr, protocol=protocol)
+            dbr2 = pickle.loads(pkl)
+            self.assertEqual(dbr, dbr2)
+            self.assertEqual(pickled_with_3, dbr2)
+
+        dbr = DBRef("foo", 5, database='db', kwargs1=None)
+        for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
+            pkl = pickle.dumps(dbr, protocol=protocol)
+            dbr2 = pickle.loads(pkl)
+            self.assertEqual(dbr, dbr2)
+
+    def test_minkey_pickling(self):
+        dbr = MinKey()
+        for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
+            pkl = pickle.dumps(dbr, protocol=protocol)
+            dbr2 = pickle.loads(pkl)
+            self.assertEqual(dbr, dbr2)
+
+    def test_maxkey_pickling(self):
+        dbr = MaxKey()
+        for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
+            pkl = pickle.dumps(dbr, protocol=protocol)
+            dbr2 = pickle.loads(pkl)
+            self.assertEqual(dbr, dbr2)
+
+    def test_int64_pickling(self):
+        dbr = Int64()
+        for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
+            pkl = pickle.dumps(dbr, protocol=protocol)
+            dbr2 = pickle.loads(pkl)
+            self.assertEqual(dbr, dbr2)
 
 
 if __name__ == "__main__":
