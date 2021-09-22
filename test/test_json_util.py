@@ -49,6 +49,7 @@ STRICT_JSON_OPTIONS = JSONOptions(
     strict_uuid=True,
     json_mode=JSONMode.LEGACY)
 
+PICKLING_BACKWARDS_COMPAT_PROTOCOL = 4
 
 class TestJsonUtil(unittest.TestCase):
     def round_tripped(self, doc, **kwargs):
@@ -280,7 +281,7 @@ class TestJsonUtil(unittest.TestCase):
         pickled_with_3_obj = pickle.loads(pickled_with_3)
         for protocol in range(pickle.HIGHEST_PROTOCOL+1):
             pkl = pickle.dumps(dbr, protocol=protocol)
-            if protocol == 4:
+            if protocol == PICKLING_BACKWARDS_COMPAT_PROTOCOL:
                 self.assertEqual(pickled_with_3, pkl)
             dbr2 = pickle.loads(pkl)
             self.assertEqual(dbr, dbr2)
@@ -295,7 +296,7 @@ class TestJsonUtil(unittest.TestCase):
         pickled_with_3_obj = pickle.loads(pickled_with_3)
         for protocol in range(pickle.HIGHEST_PROTOCOL+1):
             pkl = pickle.dumps(dbr, protocol=protocol)
-            if protocol == 4:
+            if protocol == PICKLING_BACKWARDS_COMPAT_PROTOCOL:
                 self.assertEqual(pickled_with_3, pkl)
             dbr2 = pickle.loads(pkl)
             self.assertEqual(dbr, dbr2)
@@ -311,7 +312,7 @@ class TestJsonUtil(unittest.TestCase):
         pickled_with_3_obj = pickle.loads(pickled_with_3)
         for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
             pkl = pickle.dumps(dbr, protocol=protocol)
-            if protocol == 4:
+            if protocol == PICKLING_BACKWARDS_COMPAT_PROTOCOL:
                 self.assertEqual(pickled_with_3, pkl)
             dbr2 = pickle.loads(pkl)
             self.assertEqual(dbr, dbr2)
