@@ -19,7 +19,6 @@ import json
 import re
 import sys
 import uuid
-import pickle
 
 sys.path[0:0] = [""]
 
