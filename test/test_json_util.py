@@ -49,7 +49,6 @@ STRICT_JSON_OPTIONS = JSONOptions(
     strict_uuid=True,
     json_mode=JSONMode.LEGACY)
 
-PICKLING_BACKWARDS_COMPAT_PROTOCOL = 4
 
 class TestJsonUtil(unittest.TestCase):
     def round_tripped(self, doc, **kwargs):
@@ -278,14 +277,12 @@ class TestJsonUtil(unittest.TestCase):
                          b'bson.regex\x94\x8c\x05Regex\x94\x93\x94)\x81\x94}' \
                          b'\x94(\x8c\x07pattern\x94\x8c\x02.?\x94\x8c\x05flags' \
                          b'\x94K\x00ub.'
-        pickled_with_3_obj = pickle.loads(pickled_with_3)
+        pickled_with_3 = pickle.loads(pickled_with_3)
         for protocol in range(pickle.HIGHEST_PROTOCOL+1):
             pkl = pickle.dumps(dbr, protocol=protocol)
-            if protocol == PICKLING_BACKWARDS_COMPAT_PROTOCOL:
-                self.assertEqual(pickled_with_3, pkl)
             dbr2 = pickle.loads(pkl)
             self.assertEqual(dbr, dbr2)
-            self.assertEqual(pickled_with_3_obj, dbr2)
+            self.assertEqual(pickled_with_3, dbr2)
 
     def test_timestamp_pickling(self):
         dbr = Timestamp(0, 1)
@@ -293,14 +290,12 @@ class TestJsonUtil(unittest.TestCase):
                          b'bson.timestamp\x94\x8c\tTimestamp\x94\x93\x94)\x81' \
                          b'\x94}\x94(\x8c\x10_Timestamp__time\x94K\x00\x8c\x0f_' \
                          b'Timestamp__inc\x94K\x01ub.'
-        pickled_with_3_obj = pickle.loads(pickled_with_3)
+        pickled_with_3 = pickle.loads(pickled_with_3)
         for protocol in range(pickle.HIGHEST_PROTOCOL+1):
             pkl = pickle.dumps(dbr, protocol=protocol)
-            if protocol == PICKLING_BACKWARDS_COMPAT_PROTOCOL:
-                self.assertEqual(pickled_with_3, pkl)
             dbr2 = pickle.loads(pkl)
             self.assertEqual(dbr, dbr2)
-            self.assertEqual(pickled_with_3_obj, dbr2)
+            self.assertEqual(pickled_with_3, dbr2)
 
     def test_dbref_pickling(self):
         dbr = DBRef("foo", 5)
@@ -309,14 +304,12 @@ class TestJsonUtil(unittest.TestCase):
                          b'\x94(\x8c\x12_DBRef__collection\x94\x8c\x03foo\x94' \
                          b'\x8c\n_DBRef__id\x94K\x05\x8c\x10_DBRef__database' \
                          b'\x94N\x8c\x0e_DBRef__kwargs\x94}\x94ub.'
-        pickled_with_3_obj = pickle.loads(pickled_with_3)
+        pickled_with_3 = pickle.loads(pickled_with_3)
         for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
             pkl = pickle.dumps(dbr, protocol=protocol)
-            if protocol == PICKLING_BACKWARDS_COMPAT_PROTOCOL:
-                self.assertEqual(pickled_with_3, pkl)
             dbr2 = pickle.loads(pkl)
             self.assertEqual(dbr, dbr2)
-            self.assertEqual(pickled_with_3_obj, dbr2)
+            self.assertEqual(pickled_with_3, dbr2)
 
     def test_minkey(self):
         self.round_trip({"m": MinKey()})
