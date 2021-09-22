@@ -273,14 +273,14 @@ class TestJsonUtil(unittest.TestCase):
 
     def test_regex_pickling(self):
         dbr = Regex(".?")
-        for protocol in [0, 1, 2, -1]:
+        for protocol in range(pickle.HIGHEST_PROTOCOL+1):
             pkl = pickle.dumps(dbr, protocol=protocol)
             dbr2 = pickle.loads(pkl)
             self.assertEqual(dbr, dbr2)
 
     def test_timestamp_pickling(self):
         dbr = Timestamp(0, 1)
-        for protocol in [0, 1, 2, -1]:
+        for protocol in range(pickle.HIGHEST_PROTOCOL+1):
             pkl = pickle.dumps(dbr, protocol=protocol)
             dbr2 = pickle.loads(pkl)
             self.assertEqual(dbr, dbr2)
