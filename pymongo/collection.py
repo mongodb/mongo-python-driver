@@ -1290,6 +1290,13 @@ class Collection(common.BaseObject):
            expression object.
            Soft deprecated the ``manipulate`` option.
 
+        .. versionchanged:: 4.0
+            Empty (None, {})  projections for find commands are passed on to
+            the server as-is rather than the previous behavior which
+            substituted in a projection of ``{"_id": 1}``.
+            This means that an empty projection will now return the
+            entire document, not just the ``"_id"`` field.
+
         .. seealso:: The MongoDB documentation on `find <https://dochub.mongodb.org/core/find>`_.
         """
         return Cursor(self, *args, **kwargs)
