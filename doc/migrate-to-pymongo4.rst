@@ -669,6 +669,21 @@ custom types to BSON, the :class:`~bson.codec_options.TypeCodec` and
 For more information, see the
 :doc:`custom type example <examples/custom_type>`.
 
+``SON().items()`` now returns ``dict_items`` object.
+----------------------------------------------------
+:meth:`~bson.son.SON.items` now returns a ``dict_items`` object rather than
+a list.
+
+``SON().iteritems()`` removed.
+------------------------------
+``SON.iteritems()`` now removed. Code that looks like this::
+
+    for k, v in son.iteritems():
+
+Can now be replaced by code that looks like::
+
+    for k, v in son.items():
+
 IsMaster is removed
 -------------------
 

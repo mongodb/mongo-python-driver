@@ -1834,7 +1834,7 @@ class Collection(common.BaseObject):
         cursor = self.list_indexes(session=session)
         info = {}
         for index in cursor:
-            index["key"] = index["key"].items()
+            index["key"] = list(index["key"].items())
             index = dict(index)
             info[index.pop("name")] = index
         return info

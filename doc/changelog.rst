@@ -134,6 +134,9 @@ Breaking Changes in 4.0
 - The ``hint`` option is now required when using ``min`` or ``max`` queries
   with :meth:`~pymongo.collection.Collection.find`.
 - ``name`` is now a required argument for the :class:`pymongo.driver_info.DriverInfo` class.
+- :meth:`~bson.son.SON.items` now returns a ``dict_items`` object rather
+  than a list.
+- Removed :meth:`bson.son.SON.iteritems`.
 - :class:`~pymongo.collection.Collection` and :class:`~pymongo.database.Database`
   now raises an error upon evaluating as a Boolean, please use the
   syntax ``if collection is not None:`` or ``if database is not None:`` as
