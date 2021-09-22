@@ -125,7 +125,7 @@ Breaking Changes in 4.0
   ignored by pip.
 - ``tz_aware``, an argument for :class:`~bson.json_util.JSONOptions`,
   now defaults to ``False`` instead of ``True``. ``json_util.loads`` now
-decodes datetime as naive by default.
+  decodes datetime as naive by default.
 - ``directConnection`` URI option and keyword argument to :class:`~pymongo.mongo_client.MongoClient`
   defaults to ``False`` instead of ``None``, allowing for the automatic
   discovery of replica sets. This means that if you
@@ -137,6 +137,12 @@ decodes datetime as naive by default.
 - :meth:`~bson.son.SON.items` now returns a ``dict_items`` object rather
   than a list.
 - Removed :meth:`bson.son.SON.iteritems`.
+- :class:`~pymongo.collection.Collection` and :class:`~pymongo.database.Database`
+  now raises an error upon evaluating as a Boolean, please use the
+  syntax ``if collection is not None:`` or ``if database is not None:`` as
+  opposed to
+  the previous syntax which was simply ``if collection:`` or ``if database:``.
+  You must now explicitly compare with None.
 
 Notable improvements
 ....................

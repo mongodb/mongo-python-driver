@@ -307,17 +307,8 @@ class TestSASLPlain(unittest.TestCase):
 class TestSCRAMSHA1(IntegrationTest):
 
     @client_context.require_auth
-    @client_context.require_version_min(2, 7, 2)
     def setUp(self):
         super(TestSCRAMSHA1, self).setUp()
-        # Before 2.7.7, SCRAM-SHA-1 had to be enabled from the command line.
-        if client_context.version < Version(2, 7, 7):
-            cmd_line = client_context.cmd_line
-            if 'SCRAM-SHA-1' not in cmd_line.get(
-                    'parsed', {}).get('setParameter',
-                    {}).get('authenticationMechanisms', ''):
-                raise SkipTest('SCRAM-SHA-1 mechanism not enabled')
-
         client_context.create_user(
             'pymongo_test', 'user', 'pass', roles=['userAdmin', 'readWrite'])
 

@@ -208,7 +208,7 @@ class _EncryptionIO(MongoCryptCallback):
         :Returns:
           The _id of the inserted data key document.
         """
-        raw_doc = RawBSONDocument(data_key)
+        raw_doc = RawBSONDocument(data_key, _KEY_VAULT_OPTS)
         data_key_id = raw_doc.get('_id')
         if not isinstance(data_key_id, uuid.UUID):
             raise TypeError('data_key _id must be a UUID')

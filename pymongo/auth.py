@@ -455,10 +455,6 @@ def _authenticate_x509(credentials, sock_info):
         return
 
     cmd = _X509Context(credentials).speculate_command()
-    if credentials.username is None and sock_info.max_wire_version < 5:
-        raise ConfigurationError(
-            "A username is required for MONGODB-X509 authentication "
-            "when connected to MongoDB versions older than 3.4.")
     sock_info.command('$external', cmd)
 
 
@@ -496,10 +492,8 @@ def _authenticate_default(credentials, sock_info):
             return _authenticate_scram(credentials, sock_info, 'SCRAM-SHA-256')
         else:
             return _authenticate_scram(credentials, sock_info, 'SCRAM-SHA-1')
-    elif sock_info.max_wire_version >= 3:
-        return _authenticate_scram(credentials, sock_info, 'SCRAM-SHA-1')
     else:
-        return _authenticate_mongo_cr(credentials, sock_info)
+        return _authenticate_scram(credentials, sock_info, 'SCRAM-SHA-1')
 
 
 _AUTH_MAP = {

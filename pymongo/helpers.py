@@ -170,41 +170,6 @@ def _check_command_response(response, max_wire_version,
     raise OperationFailure(errmsg, code, response, max_wire_version)
 
 
-def _check_gle_response(result, max_wire_version):
-    """Return getlasterror response as a dict, or raise OperationFailure."""
-    # Did getlasterror itself fail?
-    _check_command_response(result, max_wire_version)
-
-    if result.get("wtimeout", False):
-        # MongoDB versions before 1.8.0 return the error message in an "errmsg"
-        # field. If "errmsg" exists "err" will also exist set to None, so we
-        # have to check for "errmsg" first.
-        raise WTimeoutError(result.get("errmsg", result.get("err")),
-                            result.get("code"),
-                            result)
-
-    error_msg = result.get("err", "")
-    if error_msg is None:
-        return result
-
-    if error_msg.startswith(HelloCompat.LEGACY_ERROR):
-        raise NotPrimaryError(error_msg, result)
-
-    details = result
-
-    # mongos returns the error code in an error object for some errors.
-    if "errObjects" in result:
-        for errobj in result["errObjects"]:
-            if errobj.get("err") == error_msg:
-                details = errobj
-                break
-
-    code = details.get("code")
-    if code in (11000, 11001, 12582):
-        raise DuplicateKeyError(details["err"], code, result)
-    raise OperationFailure(details["err"], code, result)
-
-
 def _raise_last_write_error(write_errors):
     # If the last batch had multiple errors only report
     # the last error to emulate continue_on_error.
