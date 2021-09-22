@@ -115,6 +115,8 @@ elif TEST_SERVERLESS:
     TLS_OPTIONS = {'tls': True}
     # Spec says serverless tests must be run with compression.
     COMPRESSORS = COMPRESSORS or 'zlib'
+    # TODO: add to drivers-evg-tools?
+    MULTI_MONGOS_LB_URI = MULTI_MONGOS_LB_URI+'/?loadBalanced=true'
 
 
 def is_server_resolvable():
