@@ -284,7 +284,6 @@ class TestJsonUtil(unittest.TestCase):
             self.assertEqual(dbr, dbr2)
             self.assertEqual(pickled_with_3, dbr2)
 
-
     def test_timestamp_pickling(self):
         dbr = Timestamp(0, 1)
         pickled_with_3 = b'\x80\x04\x95Q\x00\x00\x00\x00\x00\x00\x00\x8c\x0e' \

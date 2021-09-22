@@ -27,6 +27,7 @@ class Timestamp(object):
     """MongoDB internal timestamps used in the opLog.
     """
     __slots__ = ("__time", "__inc")
+
     _type_marker = 17
 
     def __init__(self, time, inc):
