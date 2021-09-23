@@ -1246,6 +1246,13 @@ class Collection(common.BaseObject):
 
         .. versionchanged:: 4.0
            Removed the ``modifiers`` option.
+           Empty projections (eg {} or []) for
+           :meth:`~pymongo.collection.Collection.find`, and
+           :meth:`~pymongo.collection.Collection.find_one`
+           are passed to the server as-is rather than the previous behavior
+           which substituted in a projection of ``{"_id": 1}``. This means
+           that an empty projection will now return the entire document,
+           not just the ``"_id"`` field.
 
         .. versionchanged:: 3.11
            Added the ``allow_disk_use`` option.
@@ -1289,16 +1296,6 @@ class Collection(common.BaseObject):
            convert from a BSON regular expression to a Python regular
            expression object.
            Soft deprecated the ``manipulate`` option.
-
-        .. versionchanged:: 4.0
-           Empty projections (eg {} or []) for
-           :meth:`~pymongo.collection.Collection.find`, and
-           :meth:`~pymongo.collection.Collection.find_one`
-           are passed to the server as-is rather than the previous behavior
-           which substituted in a projection of ``{"_id": 1}``. This means
-           that an empty projection will now return the entire document,
-           not just the ``"_id"`` field.
-
 
         .. seealso:: The MongoDB documentation on `find <https://dochub.mongodb.org/core/find>`_.
         """
