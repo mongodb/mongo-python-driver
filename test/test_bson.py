@@ -1066,32 +1066,32 @@ class TestCodecOptions(unittest.TestCase):
 
     def test_regex_pickling(self):
         dbr = Regex(".?")
-        pickled_with_3 = b'\x80\x04\x959\x00\x00\x00\x00\x00\x00\x00\x8c\n' \
-                         b'bson.regex\x94\x8c\x05Regex\x94\x93\x94)\x81\x94}' \
-                         b'\x94(\x8c\x07pattern\x94\x8c\x02.?\x94\x8c\x05flags' \
-                         b'\x94K\x00ub.'
+        pickled_with_3 = (b'\x80\x04\x959\x00\x00\x00\x00\x00\x00\x00\x8c\n' 
+                         b'bson.regex\x94\x8c\x05Regex\x94\x93\x94)\x81\x94}' 
+                         b'\x94(\x8c\x07pattern\x94\x8c\x02.?\x94\x8c\x05flags' 
+                         b'\x94K\x00ub.')
         self.round_trip_pickle(dbr, pickled_with_3)
 
     def test_timestamp_pickling(self):
         dbr = Timestamp(0, 1)
-        pickled_with_3 = b'\x80\x04\x95Q\x00\x00\x00\x00\x00\x00\x00\x8c\x0e' \
-                         b'bson.timestamp\x94\x8c\tTimestamp\x94\x93\x94)\x81' \
-                         b'\x94}\x94(\x8c\x10_Timestamp__time\x94K\x00\x8c\x0f_' \
-                         b'Timestamp__inc\x94K\x01ub.'
+        pickled_with_3 = (b'\x80\x04\x95Q\x00\x00\x00\x00\x00\x00\x00\x8c'
+                          b'\x0ebson.timestamp\x94\x8c\tTimestamp\x94\x93\x94)'
+                          b'\x81\x94}\x94(\x8c\x10_Timestamp__time\x94K\x00\x8c'
+                          b'\x0f_Timestamp__inc\x94K\x01ub.')
         self.round_trip_pickle(dbr, pickled_with_3)
 
     def test_dbref_pickling(self):
         dbr = DBRef("foo", 5)
-        pickled_with_3 = b'\x80\x04\x95q\x00\x00\x00\x00\x00\x00\x00\x8c\n' \
-                         b'bson.dbref\x94\x8c\x05DBRef\x94\x93\x94)\x81\x94}' \
-                         b'\x94(\x8c\x12_DBRef__collection\x94\x8c\x03foo\x94' \
-                         b'\x8c\n_DBRef__id\x94K\x05\x8c\x10_DBRef__database' \
-                         b'\x94N\x8c\x0e_DBRef__kwargs\x94}\x94ub.'
+        pickled_with_3 = (b'\x80\x04\x95q\x00\x00\x00\x00\x00\x00\x00\x8c\n'
+                         b'bson.dbref\x94\x8c\x05DBRef\x94\x93\x94)\x81\x94}'
+                         b'\x94(\x8c\x12_DBRef__collection\x94\x8c\x03foo\x94'
+                         b'\x8c\n_DBRef__id\x94K\x05\x8c\x10_DBRef__database'
+                         b'\x94N\x8c\x0e_DBRef__kwargs\x94}\x94ub.')
+        print(pickled_with_3)
         self.round_trip_pickle(dbr, pickled_with_3)
 
         dbr = DBRef("foo", 5, database='db', kwargs1=None)
         self.round_trip_pickle(dbr)
-
 
     def test_minkey_pickling(self):
         dbr = MinKey()
