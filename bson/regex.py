@@ -18,7 +18,8 @@
 import re
 
 from bson.son import RE_TYPE
-
+from bson._helpers import getstate_slots, setstate_slots
+import functools
 
 def str_flags_to_int(str_flags):
     flags = 0
@@ -41,6 +42,9 @@ def str_flags_to_int(str_flags):
 class Regex(object):
     """BSON regular expression data."""
     __slots__ = ("pattern", "flags")
+
+    __getstate__ = getstate_slots
+    __setstate__ = setstate_slots
 
     _type_marker = 11
 
@@ -99,6 +103,7 @@ class Regex(object):
             raise TypeError(
                 "flags must be a string or int, not %s" % type(flags))
 
+
     def __eq__(self, other):
         if isinstance(other, Regex):
             return self.pattern == other.pattern and self.flags == other.flags
@@ -112,14 +117,6 @@ class Regex(object):
 
     def __repr__(self):
         return "Regex(%r, %r)" % (self.pattern, self.flags)
-
-    def __setstate__(self, state):
-        for slot, value in state.items():
-            setattr(self, slot, value)
-
-    def __getstate__(self):
-        return {slot: getattr(self, slot) for slot in self.__slots__ if
-                hasattr(self, slot)}
 
     def try_compile(self):
         """Compile this :class:`Regex` as a Python regular expression.

@@ -13,17 +13,19 @@
 # limitations under the License.
 
 """Tools for manipulating DBRefs (references to MongoDB documents)."""
-
+import functools
 from copy import deepcopy
 
 from bson.son import SON
-
+import functools
+from bson._helpers import getstate_slots, setstate_slots
 
 class DBRef(object):
     """A reference to a document stored in MongoDB.
     """
     __slots__ = "__collection", "__id", "__database", "__kwargs"
-
+    __getstate__ = getstate_slots
+    __setstate__ = setstate_slots
     # DBRef isn't actually a BSON "type" so this number was arbitrarily chosen.
     _type_marker = 100
 
@@ -82,20 +84,6 @@ class DBRef(object):
         except KeyError:
             raise AttributeError(key)
 
-    # Have to provide __setstate__ to avoid
-    # infinite recursion since we override
-    # __getattr__.
-    def __setstate__(self, state):
-        for slot, value in state.items():
-            setattr(self, slot, value)
-
-    def __getstate__(self):
-        def mangle_name(n):
-            return "_DBRef"+n
-        return {mangle_name(s): getattr(self, mangle_name(s)) for s in
-                DBRef.__slots__ if
-                hasattr(self, mangle_name(s))}
-
     def as_doc(self):
         """Get the SON document representation of this DBRef.
 
@@ -139,3 +127,4 @@ class DBRef(object):
                      deepcopy(self.__id, memo),
                      deepcopy(self.__database, memo),
                      deepcopy(self.__kwargs, memo))
+

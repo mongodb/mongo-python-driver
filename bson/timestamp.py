@@ -17,8 +17,10 @@
 
 import calendar
 import datetime
+import functools
 
 from bson.tz_util import utc
+from bson._helpers import getstate_slots, setstate_slots
 
 UPPERBOUND = 4294967296
 
@@ -27,6 +29,9 @@ class Timestamp(object):
     """MongoDB internal timestamps used in the opLog.
     """
     __slots__ = ("__time", "__inc")
+
+    __getstate__ = getstate_slots
+    __setstate__ = setstate_slots
 
     _type_marker = 17
 
@@ -63,6 +68,8 @@ class Timestamp(object):
 
         self.__time = time
         self.__inc = inc
+
+
 
     @property
     def time(self):
@@ -110,17 +117,6 @@ class Timestamp(object):
 
     def __repr__(self):
         return "Timestamp(%s, %s)" % (self.__time, self.__inc)
-
-    def __setstate__(self, state):
-        for slot, value in state.items():
-            setattr(self, slot, value)
-
-    def __getstate__(self):
-        def mangle_name(n):
-            return "_Timestamp"+n
-        return {mangle_name(s): getattr(self, mangle_name(s)) for s in
-                self.__slots__ if
-                hasattr(self, mangle_name(s))}
 
     def as_datetime(self):
         """Return a :class:`~datetime.datetime` instance corresponding
