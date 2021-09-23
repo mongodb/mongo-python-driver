@@ -1,4 +1,4 @@
-# Copyright 2010-2015 MongoDB, Inc.
+# Copyright 2021-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,22 +17,24 @@
 """
 
 
-def setstate_slots(self, state):
+def _setstate_slots(self, state):
     for slot, value in state.items():
         setattr(self, slot, value)
 
 
 def mangle_name(n, prefix):
+    if n.startswith("__"):
+        prefix = "_"+prefix
+    else:
+        prefix = ""
     return prefix + n
 
 
-def getstate_slots(self):
+def _getstate_slots(self):
     prefix = self.__class__.__name__
-    if prefix not in ["Timestamp", "DBRef"]:
-        prefix = ""
-    else:
-        prefix = "_"+prefix
-    return {mangle_name(s, prefix): getattr(self, mangle_name(s, prefix)) for
-            s in
-            self.__slots__ if
-            hasattr(self, mangle_name(s, prefix))}
+    ret = dict()
+    for s in self.__slots__:
+        mangled_name = mangle_name(s, prefix)
+        if hasattr(self, mangled_name):
+            ret[mangled_name] =  getattr(self, mangled_name)
+    return ret

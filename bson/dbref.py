@@ -17,14 +17,14 @@
 from copy import deepcopy
 
 from bson.son import SON
-from bson._helpers import getstate_slots, setstate_slots
+from bson._helpers import _getstate_slots, _setstate_slots
 
 class DBRef(object):
     """A reference to a document stored in MongoDB.
     """
     __slots__ = "__collection", "__id", "__database", "__kwargs"
-    __getstate__ = getstate_slots
-    __setstate__ = setstate_slots
+    __getstate__ = _getstate_slots
+    __setstate__ = _setstate_slots
     # DBRef isn't actually a BSON "type" so this number was arbitrarily chosen.
     _type_marker = 100
 

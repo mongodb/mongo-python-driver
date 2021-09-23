@@ -1087,7 +1087,6 @@ class TestCodecOptions(unittest.TestCase):
                          b'\x94(\x8c\x12_DBRef__collection\x94\x8c\x03foo\x94'
                          b'\x8c\n_DBRef__id\x94K\x05\x8c\x10_DBRef__database'
                          b'\x94N\x8c\x0e_DBRef__kwargs\x94}\x94ub.')
-        print(pickled_with_3)
         self.round_trip_pickle(dbr, pickled_with_3)
 
         dbr = DBRef("foo", 5, database='db', kwargs1=None)
@@ -1102,7 +1101,7 @@ class TestCodecOptions(unittest.TestCase):
         self.round_trip_pickle(dbr)
 
     def test_int64_pickling(self):
-        dbr = Int64()
+        dbr = Int64(10)
         self.round_trip_pickle(dbr)
 
 

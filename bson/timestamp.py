@@ -19,7 +19,7 @@ import calendar
 import datetime
 
 from bson.tz_util import utc
-from bson._helpers import getstate_slots, setstate_slots
+from bson._helpers import _getstate_slots, _setstate_slots
 
 UPPERBOUND = 4294967296
 
@@ -29,8 +29,8 @@ class Timestamp(object):
     """
     __slots__ = ("__time", "__inc")
 
-    __getstate__ = getstate_slots
-    __setstate__ = setstate_slots
+    __getstate__ = _getstate_slots
+    __setstate__ = _setstate_slots
 
     _type_marker = 17
 
