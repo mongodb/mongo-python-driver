@@ -253,7 +253,7 @@ class ClientContext(object):
         self.is_data_lake = False
         self.load_balancer = TEST_LOADBALANCER
         self.serverless = TEST_SERVERLESS
-        if self.load_balancer or TEST_SERVERLESS:
+        if self.load_balancer or self.serverless:
             self.default_client_options["loadBalanced"] = True
         if COMPRESSORS:
             self.default_client_options["compressors"] = COMPRESSORS
@@ -404,7 +404,7 @@ class ClientContext(object):
             self.w = len(hello.get("hosts", [])) or 1
             self.version = Version.from_client(self.client)
 
-            if TEST_SERVERLESS:
+            if self.serverless:
                 self.server_parameters = {
                     'requireApiVersion': False,
                     'enableTestCommands': True,
