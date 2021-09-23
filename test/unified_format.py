@@ -283,7 +283,7 @@ class EntityMapUtil(object):
                 self._listeners[spec['id']] = listener
                 kwargs['event_listeners'] = [listener]
             if spec.get('useMultipleMongoses'):
-                if client_context.load_balancer:
+                if client_context.load_balancer or client_context.serverless:
                     kwargs['h'] = client_context.MULTI_MONGOS_LB_URI
                 elif client_context.is_mongos:
                     kwargs['h'] = client_context.mongos_seeds()
@@ -668,6 +668,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     """
     SCHEMA_VERSION = Version.from_string('1.5')
     RUN_ON_LOAD_BALANCER = True
+    RUN_ON_SERVERLESS = True
 
     @staticmethod
     def should_run_on(run_on_spec):

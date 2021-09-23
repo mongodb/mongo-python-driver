@@ -906,7 +906,7 @@ class TestClient(IntegrationTest):
             "pymongo_test", "user", "pass", roles=['userAdmin', 'readWrite'])
 
         with self.assertRaises(OperationFailure):
-            connected(rs_or_single_client(
+            connected(rs_or_single_client_noauth(
                 "mongodb://a:b@%s:%d" % (host, port)))
 
         # No error.
@@ -916,7 +916,7 @@ class TestClient(IntegrationTest):
         # Wrong database.
         uri = "mongodb://admin:pass@%s:%d/pymongo_test" % (host, port)
         with self.assertRaises(OperationFailure):
-            connected(rs_or_single_client(uri))
+            connected(rs_or_single_client_noauth(uri))
 
         # No error.
         connected(rs_or_single_client_noauth(
@@ -940,7 +940,7 @@ class TestClient(IntegrationTest):
         client_context.create_user("admin", "ad min", "pa/ss")
         self.addCleanup(client_context.drop_user, "admin", "ad min")
 
-        c = rs_or_single_client(username="ad min", password="pa/ss")
+        c = rs_or_single_client_noauth(username="ad min", password="pa/ss")
 
         # Username and password aren't in strings that will likely be logged.
         self.assertNotIn("ad min", repr(c))
@@ -952,7 +952,8 @@ class TestClient(IntegrationTest):
         c.server_info()
 
         with self.assertRaises(OperationFailure):
-            rs_or_single_client(username="ad min", password="foo").server_info()
+            rs_or_single_client_noauth(
+                username="ad min", password="foo").server_info()
 
     @client_context.require_auth
     @ignore_deprecations
@@ -1005,11 +1006,7 @@ class TestClient(IntegrationTest):
         if not os.access(mongodb_socket, os.R_OK):
             raise SkipTest("Socket file is not accessible")
 
-        if client_context.auth_enabled:
-            uri = "mongodb://%s:%s@%s" % (db_user, db_pwd, encoded_socket)
-        else:
-            uri = "mongodb://%s" % encoded_socket
-
+        uri = "mongodb://%s" % encoded_socket
         # Confirm we can do operations via the socket.
         client = rs_or_single_client(uri)
         client.pymongo_test.test.insert_one({"dummy": "object"})

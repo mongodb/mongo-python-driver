@@ -50,6 +50,7 @@ from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.server_type import SERVER_TYPE
 from pymongo.write_concern import WriteConcern
+from pymongo.uri_parser import parse_uri
 
 from test import (client_context,
                   db_user,
@@ -507,13 +508,10 @@ class TestCreator(object):
                     setattr(self._test_class, new_test.__name__, new_test)
 
 
-def _connection_string(h, authenticate):
-    if h.startswith("mongodb://"):
+def _connection_string(h):
+    if h.startswith("mongodb://") or h.startswith("mongodb+srv://"):
         return h
-    elif client_context.auth_enabled and authenticate:
-        return "mongodb://%s:%s@%s" % (db_user, db_pwd, str(h))
-    else:
-        return "mongodb://%s" % (str(h),)
+    return "mongodb://%s" % (str(h),)
 
 
 def _mongo_client(host, port, authenticate=True, directConnection=False,
@@ -526,10 +524,17 @@ def _mongo_client(host, port, authenticate=True, directConnection=False,
         client_options['replicaSet'] = client_context.replica_set_name
     client_options.update(kwargs)
 
-    client = MongoClient(_connection_string(host, authenticate), port,
-                         **client_options)
+    uri = _connection_string(host)
+    if client_context.auth_enabled and authenticate:
+        # Only add the default username or password if one is not provided.
+        res = parse_uri(uri)
+        if (not res['username'] and not res['password'] and
+                'username' not in client_options and
+                'password' not in client_options):
+            client_options['username'] = db_user
+            client_options['password'] = db_pwd
 
-    return client
+    return MongoClient(uri, port, **client_options)
 
 
 def single_client_noauth(h=None, p=None, **kwargs):
