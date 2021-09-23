@@ -1054,30 +1054,30 @@ class TestCodecOptions(unittest.TestCase):
         self.assertRaises(InvalidBSON, decode, invalid_both, CodecOptions(
             unicode_decode_error_handler="junk"))
 
-    def round_trip_pickle(self, object, pickled_with_older):
+    def round_trip_pickle(self, obj, pickled_with_older):
         pickled_with_older_obj = pickle.loads(pickled_with_older)
         for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
-            pkl = pickle.dumps(object, protocol=protocol)
-            dbr2 = pickle.loads(pkl)
-            self.assertEqual(object, dbr2)
-            self.assertEqual(pickled_with_older_obj, dbr2)
+            pkl = pickle.dumps(obj, protocol=protocol)
+            obj2 = pickle.loads(pkl)
+            self.assertEqual(obj, obj2)
+            self.assertEqual(pickled_with_older_obj, obj2)
 
     def test_regex_pickling(self):
-        dbr = Regex(".?")
+        reg = Regex(".?")
         pickled_with_3 = (b'\x80\x04\x959\x00\x00\x00\x00\x00\x00\x00\x8c\n' 
                           b'bson.regex\x94\x8c\x05Regex\x94\x93\x94)\x81\x94}' 
                           b'\x94(\x8c\x07pattern\x94\x8c\x02.?\x94\x8c\x05flag'
                           b's\x94K\x00ub.')
-        self.round_trip_pickle(dbr, pickled_with_3)
+        self.round_trip_pickle(reg, pickled_with_3)
 
     def test_timestamp_pickling(self):
-        dbr = Timestamp(0, 1)
+        ts = Timestamp(0, 1)
         pickled_with_3 = (b'\x80\x04\x95Q\x00\x00\x00\x00\x00\x00\x00\x8c'
                           b'\x0ebson.timestamp\x94\x8c\tTimestamp\x94\x93\x94)'
                           b'\x81\x94}\x94('
                           b'\x8c\x10_Timestamp__time\x94K\x00\x8c'
                           b'\x0f_Timestamp__inc\x94K\x01ub.')
-        self.round_trip_pickle(dbr, pickled_with_3)
+        self.round_trip_pickle(ts, pickled_with_3)
 
     def test_dbref_pickling(self):
         dbr = DBRef("foo", 5)
@@ -1099,27 +1099,27 @@ class TestCodecOptions(unittest.TestCase):
         self.round_trip_pickle(dbr, pickled_with_3)
 
     def test_minkey_pickling(self):
-        dbr = MinKey()
+        mink = MinKey()
         pickled_with_3 = (b'\x80\x04\x95\x1e\x00\x00\x00\x00\x00\x00\x00\x8c'
                           b'\x0cbson.min_key\x94\x8c\x06MinKey\x94\x93\x94)'
                           b'\x81\x94.')
 
-        self.round_trip_pickle(dbr, pickled_with_3)
+        self.round_trip_pickle(mink, pickled_with_3)
 
     def test_maxkey_pickling(self):
-        dbr = MaxKey()
+        maxk = MaxKey()
         pickled_with_3 = (b'\x80\x04\x95\x1e\x00\x00\x00\x00\x00\x00\x00\x8c' 
                           b'\x0cbson.max_key\x94\x8c\x06MaxKey\x94\x93\x94)' 
                           b'\x81\x94.')
 
-        self.round_trip_pickle(dbr, pickled_with_3)
+        self.round_trip_pickle(maxk, pickled_with_3)
 
     def test_int64_pickling(self):
-        dbr = Int64(9)
+        i64 = Int64(9)
         pickled_with_3 = (b'\x80\x04\x95\x1e\x00\x00\x00\x00\x00\x00\x00\x8c\n'
                           b'bson.int64\x94\x8c\x05Int64\x94\x93\x94K\t\x85\x94'
                           b'\x81\x94.')
-        self.round_trip_pickle(dbr, pickled_with_3)
+        self.round_trip_pickle(i64, pickled_with_3)
 
 
 if __name__ == "__main__":

@@ -126,4 +126,3 @@ class DBRef(object):
                      deepcopy(self.__id, memo),
                      deepcopy(self.__database, memo),
                      deepcopy(self.__kwargs, memo))
-

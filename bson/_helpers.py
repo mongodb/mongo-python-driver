@@ -22,19 +22,19 @@ def _setstate_slots(self, state):
         setattr(self, slot, value)
 
 
-def mangle_name(n, prefix):
-    if n.startswith("__"):
+def _mangle_name(name, prefix):
+    if name.startswith("__"):
         prefix = "_"+prefix
     else:
         prefix = ""
-    return prefix + n
+    return prefix + name
 
 
 def _getstate_slots(self):
     prefix = self.__class__.__name__
     ret = dict()
-    for s in self.__slots__:
-        mangled_name = mangle_name(s, prefix)
+    for name in self.__slots__:
+        mangled_name = _mangle_name(name, prefix)
         if hasattr(self, mangled_name):
             ret[mangled_name] =  getattr(self, mangled_name)
     return ret

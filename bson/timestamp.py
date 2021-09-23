@@ -68,8 +68,6 @@ class Timestamp(object):
         self.__time = time
         self.__inc = inc
 
-
-
     @property
     def time(self):
         """Get the time portion of this :class:`Timestamp`.
