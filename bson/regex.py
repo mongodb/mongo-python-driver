@@ -19,7 +19,7 @@ import re
 
 from bson.son import RE_TYPE
 from bson._helpers import getstate_slots, setstate_slots
-import functools
+
 
 def str_flags_to_int(str_flags):
     flags = 0
@@ -102,7 +102,6 @@ class Regex(object):
         else:
             raise TypeError(
                 "flags must be a string or int, not %s" % type(flags))
-
 
     def __eq__(self, other):
         if isinstance(other, Regex):

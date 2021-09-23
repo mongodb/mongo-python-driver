@@ -13,11 +13,10 @@
 # limitations under the License.
 
 """Tools for manipulating DBRefs (references to MongoDB documents)."""
-import functools
+
 from copy import deepcopy
 
 from bson.son import SON
-import functools
 from bson._helpers import getstate_slots, setstate_slots
 
 class DBRef(object):

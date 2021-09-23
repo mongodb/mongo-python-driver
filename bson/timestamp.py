@@ -17,7 +17,6 @@
 
 import calendar
 import datetime
-import functools
 
 from bson.tz_util import utc
 from bson._helpers import getstate_slots, setstate_slots
