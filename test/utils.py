@@ -47,6 +47,7 @@ from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.server_type import SERVER_TYPE
 from pymongo.write_concern import WriteConcern
+from pymongo.uri_parser import parse_uri
 
 from test import (client_context,
                   db_user,
@@ -525,13 +526,17 @@ def _mongo_client(host, port, authenticate=True, directConnection=None,
         client_options['directConnection'] = directConnection
     client_options.update(kwargs)
 
+    uri = _connection_string(host)
     if client_context.auth_enabled and authenticate:
-        client_options['username'] = db_user
-        client_options['password'] = db_pwd
+        # Only add the default username or password if one is not provided.
+        res = parse_uri(uri)
+        if (not res['username'] and not res['password'] and
+                'username' not in client_options and
+                'password' not in client_options):
+            client_options['username'] = db_user
+            client_options['password'] = db_pwd
 
-    client = MongoClient(_connection_string(host), port, **client_options)
-
-    return client
+    return MongoClient(uri, port, **client_options)
 
 
 def single_client_noauth(h=None, p=None, **kwargs):
