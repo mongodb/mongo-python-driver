@@ -359,10 +359,12 @@ if sys.version_info[0] == 2:
         # older than 2.7.9, or systems that have setuptools versions
         # older than 20.10.
         extras_require['tls'].extend(pyopenssl_reqs)
-    extras_require.update({'srv': ["dnspython>=1.16.0,<1.17.0"]})
     extras_require.update({'tls': ["ipaddress"]})
+
+if sys.version_info[:2] < (3, 6):
+    extras_require.update({'srv': ["dnspython>=1.16.0,<1.17.0"]})
 else:
-    extras_require.update({'srv': ["dnspython>=1.16.0,<2.0.0"]})
+    extras_require.update({'srv': ["dnspython>=1.16.0,<3.0.0"]})
 
 # GSSAPI extras
 if sys.platform == 'win32':
