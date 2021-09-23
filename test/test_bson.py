@@ -1054,55 +1054,72 @@ class TestCodecOptions(unittest.TestCase):
         self.assertRaises(InvalidBSON, decode, invalid_both, CodecOptions(
             unicode_decode_error_handler="junk"))
 
-    def round_trip_pickle(self, object, pickled_with_older=None):
-        if pickled_with_older is not None:
-            pickled_with_older = pickle.loads(pickled_with_older)
+    def round_trip_pickle(self, object, pickled_with_older):
+        pickled_with_older_obj = pickle.loads(pickled_with_older)
         for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
             pkl = pickle.dumps(object, protocol=protocol)
             dbr2 = pickle.loads(pkl)
             self.assertEqual(object, dbr2)
-            if pickled_with_older is not None:
-                self.assertEqual(pickled_with_older, dbr2)
+            self.assertEqual(pickled_with_older_obj, dbr2)
 
     def test_regex_pickling(self):
         dbr = Regex(".?")
         pickled_with_3 = (b'\x80\x04\x959\x00\x00\x00\x00\x00\x00\x00\x8c\n' 
-                         b'bson.regex\x94\x8c\x05Regex\x94\x93\x94)\x81\x94}' 
-                         b'\x94(\x8c\x07pattern\x94\x8c\x02.?\x94\x8c\x05flags' 
-                         b'\x94K\x00ub.')
+                          b'bson.regex\x94\x8c\x05Regex\x94\x93\x94)\x81\x94}' 
+                          b'\x94(\x8c\x07pattern\x94\x8c\x02.?\x94\x8c\x05flag'
+                          b's\x94K\x00ub.')
         self.round_trip_pickle(dbr, pickled_with_3)
 
     def test_timestamp_pickling(self):
         dbr = Timestamp(0, 1)
         pickled_with_3 = (b'\x80\x04\x95Q\x00\x00\x00\x00\x00\x00\x00\x8c'
                           b'\x0ebson.timestamp\x94\x8c\tTimestamp\x94\x93\x94)'
-                          b'\x81\x94}\x94(\x8c\x10_Timestamp__time\x94K\x00\x8c'
+                          b'\x81\x94}\x94('
+                          b'\x8c\x10_Timestamp__time\x94K\x00\x8c'
                           b'\x0f_Timestamp__inc\x94K\x01ub.')
         self.round_trip_pickle(dbr, pickled_with_3)
 
     def test_dbref_pickling(self):
         dbr = DBRef("foo", 5)
         pickled_with_3 = (b'\x80\x04\x95q\x00\x00\x00\x00\x00\x00\x00\x8c\n'
-                         b'bson.dbref\x94\x8c\x05DBRef\x94\x93\x94)\x81\x94}'
-                         b'\x94(\x8c\x12_DBRef__collection\x94\x8c\x03foo\x94'
-                         b'\x8c\n_DBRef__id\x94K\x05\x8c\x10_DBRef__database'
-                         b'\x94N\x8c\x0e_DBRef__kwargs\x94}\x94ub.')
+                          b'bson.dbref\x94\x8c\x05DBRef\x94\x93\x94)\x81\x94}'
+                          b'\x94(\x8c\x12_DBRef__collection\x94\x8c\x03foo\x94'
+                          b'\x8c\n_DBRef__id\x94K\x05\x8c\x10_DBRef__database'
+                          b'\x94N\x8c\x0e_DBRef__kwargs\x94}\x94ub.')
         self.round_trip_pickle(dbr, pickled_with_3)
 
         dbr = DBRef("foo", 5, database='db', kwargs1=None)
-        self.round_trip_pickle(dbr)
+        pickled_with_3 = (b'\x80\x04\x95\x81\x00\x00\x00\x00\x00\x00\x00\x8c'
+                          b'\nbson.dbref\x94\x8c\x05DBRef\x94\x93\x94)\x81\x94}'
+                          b'\x94(\x8c\x12_DBRef__collection\x94\x8c\x03foo\x94'
+                          b'\x8c\n_DBRef__id\x94K\x05\x8c\x10_DBRef__database'
+                          b'\x94\x8c\x02db\x94\x8c\x0e_DBRef__kwargs\x94}\x94'
+                          b'\x8c\x07kwargs1\x94Nsub.')
+
+        self.round_trip_pickle(dbr, pickled_with_3)
 
     def test_minkey_pickling(self):
         dbr = MinKey()
-        self.round_trip_pickle(dbr)
+        pickled_with_3 = (b'\x80\x04\x95\x1e\x00\x00\x00\x00\x00\x00\x00\x8c'
+                          b'\x0cbson.min_key\x94\x8c\x06MinKey\x94\x93\x94)'
+                          b'\x81\x94.')
+
+        self.round_trip_pickle(dbr, pickled_with_3)
 
     def test_maxkey_pickling(self):
         dbr = MaxKey()
-        self.round_trip_pickle(dbr)
+        pickled_with_3 = (b'\x80\x04\x95\x1e\x00\x00\x00\x00\x00\x00\x00\x8c' 
+                          b'\x0cbson.max_key\x94\x8c\x06MaxKey\x94\x93\x94)' 
+                          b'\x81\x94.')
+
+        self.round_trip_pickle(dbr, pickled_with_3)
 
     def test_int64_pickling(self):
-        dbr = Int64(10)
-        self.round_trip_pickle(dbr)
+        dbr = Int64(9)
+        pickled_with_3 = (b'\x80\x04\x95\x1e\x00\x00\x00\x00\x00\x00\x00\x8c\n'
+                          b'bson.int64\x94\x8c\x05Int64\x94\x93\x94K\t\x85\x94'
+                          b'\x81\x94.')
+        self.round_trip_pickle(dbr, pickled_with_3)
 
 
 if __name__ == "__main__":
