@@ -637,6 +637,22 @@ Can be changed to this::
 
 You must now explicitly compare with None.
 
+Collection.find returns entire document with empty projection
+.............................................................
+Empty projections (eg {} or []) for
+:meth:`~pymongo.collection.Collection.find`, and
+:meth:`~pymongo.collection.Collection.find_one`
+are passed to the server as-is rather than the previous behavior which
+substituted in a projection of ``{"_id": 1}``. This means that an empty
+projection will now return the entire document, not just the ``"_id"`` field.
+To ensure that behavior remains consistent, code like this::
+
+  coll.find({}, projection={})
+
+Can be changed to this::
+
+  coll.find({}, projection={"_id":1})
+
 SONManipulator is removed
 -------------------------
 

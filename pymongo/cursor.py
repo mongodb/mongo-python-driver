@@ -195,8 +195,6 @@ class Cursor(object):
             allow_disk_use = validate_boolean("allow_disk_use", allow_disk_use)
 
         if projection is not None:
-            if not projection:
-                projection = {"_id": 1}
             projection = helpers._fields_list_to_dict(projection, "projection")
 
         self.__spec = spec
