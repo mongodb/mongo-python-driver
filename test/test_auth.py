@@ -156,7 +156,7 @@ class TestGSSAPI(unittest.TestCase):
         client = MongoClient(mech_uri)
         client[GSSAPI_DB].collection.find_one()
 
-        set_name = client.admin.command('HelloCompat.LEGACY_CMD').get('setName')
+        set_name = client.admin.command(HelloCompat.LEGACY_CMD).get('setName')
         if set_name:
             if not self.service_realm_required:
                 # Without authMechanismProperties
@@ -222,7 +222,7 @@ class TestGSSAPI(unittest.TestCase):
             thread.join()
             self.assertTrue(thread.success)
 
-        set_name = client.admin.command('HelloCompat.LEGACY_CMD').get('setName')
+        set_name = client.admin.command(HelloCompat.LEGACY_CMD).get('setName')
         if set_name:
             client = MongoClient(GSSAPI_HOST,
                                  GSSAPI_PORT,
@@ -270,7 +270,7 @@ class TestSASLPlain(unittest.TestCase):
         client = MongoClient(uri)
         client.ldap.test.find_one()
 
-        set_name = client.admin.command('HelloCompat.LEGACY_CMD').get('setName')
+        set_name = client.admin.command(HelloCompat.LEGACY_CMD).get('setName')
         if set_name:
             client = MongoClient(SASL_HOST,
                                  SASL_PORT,
