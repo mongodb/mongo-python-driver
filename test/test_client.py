@@ -825,11 +825,6 @@ class TestClient(IntegrationTest):
 
         # Reusing the closed client should raise an InvalidOperation error.
         self.assertRaises(InvalidOperation, client.admin.command, 'ping')
-        self.assertFalse(client._kill_cursors_executor._stopped)
-
-        # Again, closing the client should stop the thread.
-        client.close()
-        self.assertTrue(client._kill_cursors_executor._stopped)
 
     def test_uri_connect_option(self):
         # Ensure that topology is not opened if connect=False.
