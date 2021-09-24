@@ -286,6 +286,8 @@ class TestTransactions(TransactionsBase):
                 ):
                     op(*args, session=s)
 
+    # Require 4.2+ for large (16MB+) transactions.
+    @client_context.require_version_min(4, 2)
     @client_context.require_transactions
     def test_transaction_starts_with_batched_write(self):
         # Start a transaction with a batch of operations that needs to be
@@ -293,6 +295,7 @@ class TestTransactions(TransactionsBase):
         listener = OvertCommandListener()
         client = rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
+        coll.delete_many({})
         self.addCleanup(client.close)
         self.addCleanup(coll.drop)
         ops = [InsertOne({'a': '1'*(10*1024*1024)}) for _ in range(10)]
