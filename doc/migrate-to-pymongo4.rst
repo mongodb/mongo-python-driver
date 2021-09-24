@@ -193,10 +193,11 @@ decodes datetime as naive by default.
 
 MongoClient cannot execute operations after ``close()``
 .......................................................
-:class:`~pymongo.topology.Topology` cannot execute any operations after
-being closed. This change means that after calling ``close()`` on a
-MongoClient instance, all operations will fail. The previous behavior would
-simply reconnect. However, now you must create a new instance.
+
+:class:`~pymongo.mongo_client.MongoClient` cannot execute any operations
+after being closed. The previous behavior would simply reconnect. However,
+now you must create a new instance.
+
 
 Database
 --------
