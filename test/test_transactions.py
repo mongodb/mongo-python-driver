@@ -296,6 +296,7 @@ class TestTransactions(TransactionsBase):
         client = rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
         coll.delete_many({})
+        listener.reset()
         self.addCleanup(client.close)
         self.addCleanup(coll.drop)
         ops = [InsertOne({'a': '1'*(10*1024*1024)}) for _ in range(10)]
