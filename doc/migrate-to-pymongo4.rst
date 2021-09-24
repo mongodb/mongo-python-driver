@@ -180,14 +180,12 @@ can be changed to this::
 now defaults to ``False`` instead of ``True``. ``json_util.loads`` now
 decodes datetime as naive by default.
 
-
 MongoClient cannot execute operations after ``close()``
 .......................................................
 
 :class:`~pymongo.mongo_client.MongoClient` cannot execute any operations
 after being closed. The previous behavior would simply reconnect. However,
 now you must create a new instance.
-
 
 Database
 --------

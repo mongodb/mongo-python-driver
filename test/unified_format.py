@@ -975,6 +975,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                       "session %s" % (spec['session'],))
 
         client = single_client('%s:%s' % session._pinned_address)
+        self.addCleanup(client.close)
         self.__set_fail_point(
             client=client, command_args=spec['failPoint'])
 
