@@ -1783,42 +1783,26 @@ class TestClientLazyConnect(IntegrationTest):
 class TestMongoClientFailover(MockClientTest):
 
     def test_discover_primary(self):
-        # Disable background refresh.
-        with client_knobs(heartbeat_frequency=999999):
-            c = MockClient(
-                standalones=[],
-                members=['a:1', 'b:2', 'c:3'],
-                mongoses=[],
-                host='b:2',  # Pass a secondary.
-                replicaSet='rs')
-            self.addCleanup(c.close)
+        c = MockClient(
+            standalones=[],
+            members=['a:1', 'b:2', 'c:3'],
+            mongoses=[],
+            host='b:2',  # Pass a secondary.
+            replicaSet='rs',
+            heartbeatFrequencyMS=500)
+        self.addCleanup(c.close)
 
-            wait_until(lambda: len(c.nodes) == 3, 'connect')
+        wait_until(lambda: len(c.nodes) == 3, 'connect')
 
-            self.assertEqual(c.address, ('a', 1))
-            # Fail over.
-            c.kill_host('a:1')
-            c.mock_primary = 'b:2'
-            c.close()
-            self.assertEqual(0, len(c.nodes))
-
-            c = MockClient(
-                standalones=[],
-                members=['a:1', 'b:2', 'c:3'],
-                mongoses=[],
-                host='b:2',  # Pass a secondary.
-                replicaSet='rs')
-            c.kill_host('a:1')
-            c.mock_primary = 'b:2'
-            t = c._get_topology()
-            t.select_servers(writable_server_selector)  # Reconnect.
-            self.assertEqual(c.address, ('b', 2))
-
-            # a:1 not longer in nodes.
-            self.assertLess(len(c.nodes), 3)
-
-            # c:3 is rediscovered.
-            t.select_server_by_address(('c', 3))
+        self.assertEqual(c.address, ('a', 1))
+        # Fail over.
+        c.kill_host('a:1')
+        c.mock_primary = 'b:2'
+        wait_until(lambda: c.address == ('b', 2), "wait for server "
+                                                  "address to be "
+                                                  "updated")
+        # a:1 not longer in nodes.
+        self.assertLess(len(c.nodes), 3)
 
     def test_reconnect(self):
         # Verify the node list isn't forgotten during a network failure.
