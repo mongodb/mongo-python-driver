@@ -463,7 +463,7 @@ class Topology(object):
                 raise
 
     def close(self):
-        """Clear pools and terminate monitors. Topology does not reopens on
+        """Clear pools and terminate monitors. Topology does not reopen on
         demand. Any further operations will raise
         :exc:`~.errors.InvalidOperation`. """
         with self._lock:
