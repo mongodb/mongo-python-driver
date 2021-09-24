@@ -249,7 +249,6 @@ class Topology(object):
         else:
             return server2
 
-
     def select_server_by_address(self, address,
                                  server_selection_timeout=None):
         """Return a Server for "address", reconnecting if necessary.
@@ -557,8 +556,10 @@ class Topology(object):
         Hold the lock when calling this.
         """
         if self._closed:
-            raise InvalidOperation("Once a Topology is closed, "
-                                   "all operations raise an error")
+            raise InvalidOperation("Once a MongoClient is closed, "
+                                   "all operations will fail. Please create "
+                                   "a new client object if you wish to "
+                                   "reconnect.")
         if not self._opened:
             self._opened = True
             self._update_servers()

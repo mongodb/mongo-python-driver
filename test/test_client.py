@@ -107,7 +107,7 @@ class ClientUnitTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        pass
+        cls.client.close()
 
     def test_keyword_arg_defaults(self):
         client = MongoClient(socketTimeoutMS=None,
@@ -825,6 +825,8 @@ class TestClient(IntegrationTest):
 
         # Reusing the closed client should raise an InvalidOperation error.
         self.assertRaises(InvalidOperation, client.admin.command, 'ping')
+        # Thread is still stopped.
+        self.assertTrue(client._kill_cursors_executor._stopped)
 
     def test_uri_connect_option(self):
         # Ensure that topology is not opened if connect=False.
