@@ -143,6 +143,9 @@ Breaking Changes in 4.0
   opposed to
   the previous syntax which was simply ``if collection:`` or ``if database:``.
   You must now explicitly compare with None.
+- :class:`~pymongo.mongo_client.MongoClient` cannot execute any operations
+  after being closed. The previous behavior would simply reconnect. However,
+  now you must create a new instance.
 - Classes :class:`~bson.int64.Int64`, :class:`~bson.min_key.MinKey`,
   :class:`~bson.max_key.MaxKey`, :class:`~bson.timestamp.Timestamp`,
   :class:`~bson.regex.Regex`, and :class:`~bson.dbref.DBRef` all implement

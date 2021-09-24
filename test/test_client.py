@@ -50,7 +50,8 @@ from pymongo.errors import (AutoReconnect,
                             NetworkTimeout,
                             OperationFailure,
                             ServerSelectionTimeoutError,
-                            WriteConcernError)
+                            WriteConcernError,
+                            InvalidOperation)
 from pymongo.hello import HelloCompat
 from pymongo.mongo_client import MongoClient
 from pymongo.monitoring import (ServerHeartbeatListener,
@@ -772,28 +773,22 @@ class TestClient(IntegrationTest):
         self.assertNotIn("pymongo_test2", dbs)
 
     def test_close(self):
-        coll = self.client.pymongo_test.bar
-
-        self.client.close()
-        self.client.close()
-
-        coll.count_documents({})
-
-        self.client.close()
-        self.client.close()
-
-        coll.count_documents({})
+        test_client = rs_or_single_client()
+        coll = test_client.pymongo_test.bar
+        test_client.close()
+        self.assertRaises(InvalidOperation, coll.count_documents, {})
 
     def test_close_kills_cursors(self):
         if sys.platform.startswith('java'):
             # We can't figure out how to make this test reliable with Jython.
             raise SkipTest("Can't test with Jython")
+        test_client = rs_or_single_client()
         # Kill any cursors possibly queued up by previous tests.
         gc.collect()
-        self.client._process_periodic_tasks()
+        test_client._process_periodic_tasks()
 
         # Add some test data.
-        coll = self.client.pymongo_test.test_close_kills_cursors
+        coll = test_client.pymongo_test.test_close_kills_cursors
         docs_inserted = 1000
         coll.insert_many([{"i": i} for i in range(docs_inserted)])
 
@@ -811,13 +806,13 @@ class TestClient(IntegrationTest):
         gc.collect()
 
         # Close the client and ensure the topology is closed.
-        self.assertTrue(self.client._topology._opened)
-        self.client.close()
-        self.assertFalse(self.client._topology._opened)
-
+        self.assertTrue(test_client._topology._opened)
+        test_client.close()
+        self.assertFalse(test_client._topology._opened)
+        test_client = rs_or_single_client()
         # The killCursors task should not need to re-open the topology.
-        self.client._process_periodic_tasks()
-        self.assertFalse(self.client._topology._opened)
+        test_client._process_periodic_tasks()
+        self.assertTrue(test_client._topology._opened)
 
     def test_close_stops_kill_cursors_thread(self):
         client = rs_client()
@@ -828,12 +823,9 @@ class TestClient(IntegrationTest):
         client.close()
         self.assertTrue(client._kill_cursors_executor._stopped)
 
-        # Reusing the closed client should restart the thread.
-        client.admin.command('ping')
-        self.assertFalse(client._kill_cursors_executor._stopped)
-
-        # Again, closing the client should stop the thread.
-        client.close()
+        # Reusing the closed client should raise an InvalidOperation error.
+        self.assertRaises(InvalidOperation, client.admin.command, 'ping')
+        # Thread is still stopped.
         self.assertTrue(client._kill_cursors_executor._stopped)
 
     def test_uri_connect_option(self):
@@ -1128,12 +1120,13 @@ class TestClient(IntegrationTest):
 
         with contextlib.closing(client):
             self.assertEqual("bar", client.pymongo_test.test.find_one()["foo"])
-            self.assertEqual(1, len(get_pool(client).sockets))
-        self.assertEqual(0, len(get_pool(client).sockets))
-
+        with self.assertRaises(InvalidOperation):
+            client.pymongo_test.test.find_one()
+        client = rs_or_single_client()
         with client as client:
             self.assertEqual("bar", client.pymongo_test.test.find_one()["foo"])
-        self.assertEqual(0, len(get_pool(client).sockets))
+        with self.assertRaises(InvalidOperation):
+            client.pymongo_test.test.find_one()
 
     def test_interrupt_signal(self):
         if sys.platform.startswith('java'):
@@ -1787,35 +1780,26 @@ class TestClientLazyConnect(IntegrationTest):
 class TestMongoClientFailover(MockClientTest):
 
     def test_discover_primary(self):
-        # Disable background refresh.
-        with client_knobs(heartbeat_frequency=999999):
-            c = MockClient(
-                standalones=[],
-                members=['a:1', 'b:2', 'c:3'],
-                mongoses=[],
-                host='b:2',  # Pass a secondary.
-                replicaSet='rs')
-            self.addCleanup(c.close)
+        c = MockClient(
+            standalones=[],
+            members=['a:1', 'b:2', 'c:3'],
+            mongoses=[],
+            host='b:2',  # Pass a secondary.
+            replicaSet='rs',
+            heartbeatFrequencyMS=500)
+        self.addCleanup(c.close)
 
-            wait_until(lambda: len(c.nodes) == 3, 'connect')
-            self.assertEqual(c.address, ('a', 1))
+        wait_until(lambda: len(c.nodes) == 3, 'connect')
 
-            # Fail over.
-            c.kill_host('a:1')
-            c.mock_primary = 'b:2'
-
-            c.close()
-            self.assertEqual(0, len(c.nodes))
-
-            t = c._get_topology()
-            t.select_servers(writable_server_selector)  # Reconnect.
-            self.assertEqual(c.address, ('b', 2))
-
-            # a:1 not longer in nodes.
-            self.assertLess(len(c.nodes), 3)
-
-            # c:3 is rediscovered.
-            t.select_server_by_address(('c', 3))
+        self.assertEqual(c.address, ('a', 1))
+        # Fail over.
+        c.kill_host('a:1')
+        c.mock_primary = 'b:2'
+        wait_until(lambda: c.address == ('b', 2), "wait for server "
+                                                  "address to be "
+                                                  "updated")
+        # a:1 not longer in nodes.
+        self.assertLess(len(c.nodes), 3)
 
     def test_reconnect(self):
         # Verify the node list isn't forgotten during a network failure.

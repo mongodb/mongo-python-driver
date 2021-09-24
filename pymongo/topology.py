@@ -33,7 +33,8 @@ from pymongo.errors import (ConnectionFailure,
                             OperationFailure,
                             PyMongoError,
                             ServerSelectionTimeoutError,
-                            WriteError)
+                            WriteError,
+                            InvalidOperation)
 from pymongo.hello import Hello
 from pymongo.monitor import SrvMonitor
 from pymongo.pool import PoolOptions
@@ -112,6 +113,7 @@ class Topology(object):
         # Store the seed list to help diagnose errors in _error_message().
         self._seed_addresses = list(topology_description.server_descriptions())
         self._opened = False
+        self._closed = False
         self._lock = threading.Lock()
         self._condition = self._settings.condition_class(self._lock)
         self._servers = {}
@@ -461,7 +463,9 @@ class Topology(object):
                 raise
 
     def close(self):
-        """Clear pools and terminate monitors. Topology reopens on demand."""
+        """Clear pools and terminate monitors. Topology does not reopen on
+        demand. Any further operations will raise
+        :exc:`~.errors.InvalidOperation`. """
         with self._lock:
             for server in self._servers.values():
                 server.close()
@@ -477,6 +481,7 @@ class Topology(object):
                 self._srv_monitor.close()
 
             self._opened = False
+            self._closed = True
 
         # Publish only after releasing the lock.
         if self._publish_tp:
@@ -550,6 +555,11 @@ class Topology(object):
 
         Hold the lock when calling this.
         """
+        if self._closed:
+            raise InvalidOperation("Once a MongoClient is closed, "
+                                   "all operations will fail. Please create "
+                                   "a new client object if you wish to "
+                                   "reconnect.")
         if not self._opened:
             self._opened = True
             self._update_servers()
