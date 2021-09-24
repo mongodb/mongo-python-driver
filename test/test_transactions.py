@@ -294,6 +294,7 @@ class TestTransactions(TransactionsBase):
         client = rs_client(event_listeners=[listener])
         coll = client[self.db.name].test
         self.addCleanup(client.close)
+        self.addCleanup(coll.drop)
         ops = [InsertOne({'a': '1'*(10*1024*1024)}) for _ in range(10)]
         with client.start_session() as session:
             with session.start_transaction():
@@ -310,8 +311,6 @@ class TestTransactions(TransactionsBase):
             self.assertEqual(lsid, event.command['lsid'])
             self.assertEqual(txn_number, event.command['txnNumber'])
         self.assertEqual(10, coll.count_documents({}))
-        coll.drop()
-
 
 
 class PatchSessionTimeout(object):
