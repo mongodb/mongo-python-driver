@@ -286,6 +286,33 @@ class TestTransactions(TransactionsBase):
                 ):
                     op(*args, session=s)
 
+    @client_context.require_transactions
+    def test_transaction_starts_with_batched_write(self):
+        # Start a transaction with a batch of operations that needs to be
+        # split.
+        listener = OvertCommandListener()
+        client = rs_client(event_listeners=[listener])
+        coll = client[self.db.name].test
+        self.addCleanup(client.close)
+        ops = [InsertOne({'a': '1'*(10*1024*1024)}) for _ in range(10)]
+        with client.start_session() as session:
+            with session.start_transaction():
+                coll.bulk_write(ops, session=session)
+        # Assert commands were constructed properly.
+        self.assertEqual(['insert', 'insert', 'insert', 'commitTransaction'],
+                         listener.started_command_names())
+        first_cmd = listener.results['started'][0].command
+        self.assertTrue(first_cmd['startTransaction'])
+        lsid = first_cmd['lsid']
+        txn_number = first_cmd['txnNumber']
+        for event in listener.results['started'][1:]:
+            self.assertNotIn('startTransaction', event.command)
+            self.assertEqual(lsid, event.command['lsid'])
+            self.assertEqual(txn_number, event.command['txnNumber'])
+        self.assertEqual(10, coll.count_documents({}))
+        coll.drop()
+
+
 
 class PatchSessionTimeout(object):
     """Patches the client_session's with_transaction timeout for testing."""

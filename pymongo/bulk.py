@@ -267,17 +267,18 @@ class _Bulk(object):
         # sock_info.write_command.
         sock_info.validate_session(client, session)
         while run:
-            cmd = SON([(_COMMANDS[run.op_type], self.collection.name),
-                       ('ordered', self.ordered)])
-            if not write_concern.is_server_default:
-                cmd['writeConcern'] = write_concern.document
-            if self.bypass_doc_val:
-                cmd['bypassDocumentValidation'] = True
+            cmd_name = _COMMANDS[run.op_type]
             bwc = self.bulk_ctx_class(
-                db_name, cmd, sock_info, op_id, listeners, session,
+                db_name, cmd_name, sock_info, op_id, listeners, session,
                 run.op_type, self.collection.codec_options)
 
             while run.idx_offset < len(run.ops):
+                cmd = SON([(cmd_name, self.collection.name),
+                           ('ordered', self.ordered)])
+                if not write_concern.is_server_default:
+                    cmd['writeConcern'] = write_concern.document
+                if self.bypass_doc_val:
+                    cmd['bypassDocumentValidation'] = True
                 if session:
                     # Start a new retryable write unless one was already
                     # started for this command.
@@ -287,9 +288,10 @@ class _Bulk(object):
                     session._apply_to(cmd, retryable, ReadPreference.PRIMARY,
                                       sock_info)
                 sock_info.send_cluster_time(cmd, session, client)
+                sock_info.add_server_api(cmd)
                 ops = islice(run.ops, run.idx_offset, None)
                 # Run as many ops as possible in one command.
-                result, to_send = bwc.execute(ops, client)
+                result, to_send = bwc.execute(cmd, ops, client)
 
                 # Retryable writeConcernErrors halt the execution of this run.
                 wce = result.get('writeConcernError', {})
@@ -359,17 +361,19 @@ class _Bulk(object):
         run = self.current_run
 
         while run:
-            cmd = SON([(_COMMANDS[run.op_type], self.collection.name),
-                       ('ordered', False),
-                       ('writeConcern', {'w': 0})])
+            cmd_name = _COMMANDS[run.op_type]
             bwc = self.bulk_ctx_class(
-                db_name, cmd, sock_info, op_id, listeners, None,
+                db_name, cmd_name, sock_info, op_id, listeners, None,
                 run.op_type, self.collection.codec_options)
 
             while run.idx_offset < len(run.ops):
+                cmd = SON([(cmd_name, self.collection.name),
+                           ('ordered', False),
+                           ('writeConcern', {'w': 0})])
+                sock_info.add_server_api(cmd)
                 ops = islice(run.ops, run.idx_offset, None)
                 # Run as many ops as possible.
-                to_send = bwc.execute_unack(ops, client)
+                to_send = bwc.execute_unack(cmd, ops, client)
                 run.idx_offset += len(to_send)
             self.current_run = run = next(generator, None)
 
