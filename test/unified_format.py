@@ -976,7 +976,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         client = single_client('%s:%s' % session._pinned_address)
         self.__set_fail_point(
             client=client, command_args=spec['failPoint'])
-        self.addCleanup(client.close)
 
     def _testOperation_assertSessionTransactionState(self, spec):
         session = self.entity_map[spec['session']]
