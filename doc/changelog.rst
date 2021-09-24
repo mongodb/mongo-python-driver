@@ -143,6 +143,11 @@ Breaking Changes in 4.0
   opposed to
   the previous syntax which was simply ``if collection:`` or ``if database:``.
   You must now explicitly compare with None.
+- Classes :class:`~bson.int64.Int64`, :class:`~bson.min_key.MinKey`,
+  :class:`~bson.max_key.MaxKey`, :class:`~bson.timestamp.Timestamp`,
+  :class:`~bson.regex.Regex`, and :class:`~bson.dbref.DBRef` all implement
+  ``__slots__`` now. This means that their attributes are fixed, and new
+  attributes cannot be added to them at runtime.
 - Empty projections (eg {} or []) for
   :meth:`~pymongo.collection.Collection.find`, and
   :meth:`~pymongo.collection.Collection.find_one`

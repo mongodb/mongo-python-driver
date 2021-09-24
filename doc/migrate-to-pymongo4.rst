@@ -840,3 +840,12 @@ The default uuid_representation for :class:`~bson.codec_options.CodecOptions`,
 :data:`bson.binary.UuidRepresentation.UNSPECIFIED`. Attempting to encode a
 :class:`uuid.UUID` instance to BSON or JSON now produces an error by default.
 See :ref:`handling-uuid-data-example` for details.
+
+Additional BSON classes implement ``__slots__``
+...............................................
+
+:class:`~bson.int64.Int64`, :class:`~bson.min_key.MinKey`,
+:class:`~bson.max_key.MaxKey`, :class:`~bson.timestamp.Timestamp`,
+:class:`~bson.regex.Regex`, and :class:`~bson.dbref.DBRef` now implement
+``__slots__`` to reduce memory usage. This means that their attributes are fixed, and new
+attributes cannot be added to the object at runtime.
