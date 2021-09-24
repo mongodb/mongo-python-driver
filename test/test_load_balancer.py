@@ -61,10 +61,6 @@ class TestLB(IntegrationTest):
             self.assertEqual(pool.active_sockets, 1)  # Still pinned.
         self.assertEqual(pool.active_sockets, 0)  # Unpinned.
 
-    def test_client_can_be_reopened(self):
-        self.client.close()
-        self.db.test.find_one({})
-
     @client_context.require_failCommand_fail_point
     def test_cursor_gc(self):
         def create_resource(coll):

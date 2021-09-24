@@ -92,21 +92,6 @@ class TestMongosLoadBalancing(MockClientTest):
         do_simple_op(client, nthreads)
         wait_until(lambda: len(client.nodes) == 3, 'connect to all mongoses')
 
-    def test_reconnect(self):
-        nthreads = 10
-        client = connected(self.mock_client())
-
-        # connected() ensures we've contacted at least one mongos. Wait for
-        # all of them.
-        wait_until(lambda: len(client.nodes) == 3, 'connect to all mongoses')
-
-        # Trigger reconnect.
-        client.close()
-        do_simple_op(client, nthreads)
-
-        wait_until(lambda: len(client.nodes) == 3,
-                   'reconnect to all mongoses')
-
     def test_failover(self):
         nthreads = 10
         client = connected(self.mock_client(localThresholdMS=0.001))

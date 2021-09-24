@@ -111,8 +111,8 @@ class TestCustomServerSelectorFunction(IntegrationTest):
         # Client setup.
         mongo_client = rs_or_single_client(server_selector=selector)
         test_collection = mongo_client.testdb.test_collection
-        self.addCleanup(mongo_client.drop_database, 'testdb')
         self.addCleanup(mongo_client.close)
+        self.addCleanup(mongo_client.drop_database, 'testdb')
 
         # Do N operations and test selector is called at least N times.
         test_collection.insert_one({'age': 20, 'name': 'John'})

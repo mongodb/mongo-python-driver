@@ -102,12 +102,6 @@ class NonUnique(MongoThread):
                 raise AssertionError("Should have raised DuplicateKeyError")
 
 
-class Disconnect(MongoThread):
-    def run_mongo_thread(self):
-        for _ in range(N):
-            self.client.close()
-
-
 class SocketGetter(MongoThread):
     """Utility for TestPooling.
 
@@ -197,9 +191,6 @@ class TestPooling(_TestPoolingBase):
 
     def test_no_disconnect(self):
         run_cases(self.c, [NonUnique, Unique, InsertOneAndFind])
-
-    def test_disconnect(self):
-        run_cases(self.c, [InsertOneAndFind, Disconnect, Unique])
 
     def test_pool_reuses_open_socket(self):
         # Test Pool's _check_closed() method doesn't close a healthy socket.

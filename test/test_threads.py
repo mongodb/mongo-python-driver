@@ -111,21 +111,6 @@ class Update(threading.Thread):
                 assert error
 
 
-class Disconnect(threading.Thread):
-
-    def __init__(self, client, n):
-        threading.Thread.__init__(self)
-        self.client = client
-        self.n = n
-        self.passed = False
-
-    def run(self):
-        for _ in range(self.n):
-            self.client.close()
-
-        self.passed = True
-
-
 class TestThreads(IntegrationTest):
     def setUp(self):
         self.db = self.client.pymongo_test
@@ -179,25 +164,6 @@ class TestThreads(IntegrationTest):
 
         error.join()
         okay.join()
-
-    def test_client_disconnect(self):
-        db = rs_or_single_client(serverSelectionTimeoutMS=30000).pymongo_test
-        db.drop_collection("test")
-        db.test.insert_many([{"x": i} for i in range(1000)])
-
-        # Start 10 threads that execute a query, and 10 threads that call
-        # client.close() 10 times in a row.
-        threads = [SaveAndFind(db.test) for _ in range(10)]
-        threads.extend(Disconnect(db.client, 10) for _ in range(10))
-
-        for t in threads:
-            t.start()
-
-        for t in threads:
-            t.join(300)
-
-        for t in threads:
-            self.assertTrue(t.passed)
 
 
 if __name__ == "__main__":

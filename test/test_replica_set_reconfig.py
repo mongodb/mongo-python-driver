@@ -18,7 +18,7 @@ import sys
 
 sys.path[0:0] = [""]
 
-from pymongo.errors import ConnectionFailure, AutoReconnect
+from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 from pymongo import ReadPreference
 from test import unittest, client_context, client_knobs, MockClientTest
 from test.pymongo_mocks import MockClient
@@ -42,12 +42,9 @@ class TestSecondaryBecomesStandalone(MockClientTest):
             mongoses=[],
             host='a:1,b:2,c:3',
             replicaSet='rs',
-            serverSelectionTimeoutMS=100)
+            serverSelectionTimeoutMS=100,
+            connect=False)
         self.addCleanup(c.close)
-
-        # MongoClient connects to primary by default.
-        wait_until(lambda: c.address is not None, 'connect to primary')
-        self.assertEqual(c.address, ('a', 1))
 
         # C is brought up as a standalone.
         c.mock_members.remove('c:3')
@@ -57,13 +54,14 @@ class TestSecondaryBecomesStandalone(MockClientTest):
         c.kill_host('a:1')
         c.kill_host('b:2')
 
-        # Force reconnect.
-        c.close()
-
-        with self.assertRaises(AutoReconnect):
+        with self.assertRaises(ServerSelectionTimeoutError):
             c.db.command('ping')
-
         self.assertEqual(c.address, None)
+
+        # Client can still discover the primary node
+        c.revive_host('a:1')
+        wait_until(lambda: c.address is not None, 'connect to primary')
+        self.assertEqual(c.address, ('a', 1))
 
     def test_replica_set_client(self):
         c = MockClient(
@@ -158,7 +156,6 @@ class TestSecondaryAdded(MockClientTest):
         c.mock_members.append('c:3')
         c.mock_hello_hosts.append('c:3')
 
-        c.close()
         c.db.command('ping')
 
         self.assertEqual(c.address, ('a', 1))

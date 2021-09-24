@@ -1127,11 +1127,14 @@ class TestClient(IntegrationTest):
         with contextlib.closing(client):
             self.assertEqual("bar", client.pymongo_test.test.find_one()["foo"])
             self.assertEqual(1, len(get_pool(client).sockets))
-        self.assertEqual(0, len(get_pool(client).sockets))
-
+            self.assertEqual(3, len(client.nodes))
+        self.assertEqual(0, len(client.nodes))
+        client = rs_or_single_client()
         with client as client:
             self.assertEqual("bar", client.pymongo_test.test.find_one()["foo"])
-        self.assertEqual(0, len(get_pool(client).sockets))
+            self.assertEqual(1, len(get_pool(client).sockets))
+            self.assertEqual(3, len(client.nodes))
+        self.assertEqual(0, len(client.nodes))
 
     def test_interrupt_signal(self):
         if sys.platform.startswith('java'):
@@ -1796,15 +1799,22 @@ class TestMongoClientFailover(MockClientTest):
             self.addCleanup(c.close)
 
             wait_until(lambda: len(c.nodes) == 3, 'connect')
-            self.assertEqual(c.address, ('a', 1))
 
+            self.assertEqual(c.address, ('a', 1))
             # Fail over.
             c.kill_host('a:1')
             c.mock_primary = 'b:2'
-
             c.close()
             self.assertEqual(0, len(c.nodes))
 
+            c = MockClient(
+                standalones=[],
+                members=['a:1', 'b:2', 'c:3'],
+                mongoses=[],
+                host='b:2',  # Pass a secondary.
+                replicaSet='rs')
+            c.kill_host('a:1')
+            c.mock_primary = 'b:2'
             t = c._get_topology()
             t.select_servers(writable_server_selector)  # Reconnect.
             self.assertEqual(c.address, ('b', 2))
