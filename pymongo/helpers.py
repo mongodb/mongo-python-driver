@@ -72,6 +72,8 @@ def _index_list(key_or_list, direction=None):
     else:
         if isinstance(key_or_list, str):
             return [(key_or_list, ASCENDING)]
+        if isinstance(key_or_list, abc.ItemsView):
+            return list(key_or_list)
         elif not isinstance(key_or_list, (list, tuple)):
             raise TypeError("if no direction is specified, "
                             "key_or_list must be an instance of list")

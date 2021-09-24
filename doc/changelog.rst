@@ -134,6 +134,9 @@ Breaking Changes in 4.0
 - The ``hint`` option is now required when using ``min`` or ``max`` queries
   with :meth:`~pymongo.collection.Collection.find`.
 - ``name`` is now a required argument for the :class:`pymongo.driver_info.DriverInfo` class.
+- :meth:`~bson.son.SON.items` now returns a ``dict_items`` object rather
+  than a list.
+- Removed :meth:`bson.son.SON.iteritems`.
 - :class:`~pymongo.collection.Collection` and :class:`~pymongo.database.Database`
   now raises an error upon evaluating as a Boolean, please use the
   syntax ``if collection is not None:`` or ``if database is not None:`` as
@@ -145,6 +148,13 @@ Breaking Changes in 4.0
   :class:`~bson.regex.Regex`, and :class:`~bson.dbref.DBRef` all implement
   ``__slots__`` now. This means that their attributes are fixed, and new
   attributes cannot be added to them at runtime.
+- Empty projections (eg {} or []) for
+  :meth:`~pymongo.collection.Collection.find`, and
+  :meth:`~pymongo.collection.Collection.find_one`
+  are passed to the server as-is rather than the previous behavior which
+  substituted in a projection of ``{"_id": 1}``. This means that an empty
+  projection will now return the entire document, not just the ``"_id"`` field.
+
 
 Notable improvements
 ....................
