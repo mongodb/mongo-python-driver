@@ -1122,12 +1122,14 @@ class TestClient(IntegrationTest):
         with contextlib.closing(client):
             self.assertEqual("bar", client.pymongo_test.test.find_one()["foo"])
             self.assertEqual(1, len(get_pool(client).sockets))
+            wait_until(lambda: len(client.nodes) == 3, "find all nodes")
             self.assertEqual(3, len(client.nodes))
         self.assertEqual(0, len(client.nodes))
         client = rs_or_single_client()
         with client as client:
             self.assertEqual("bar", client.pymongo_test.test.find_one()["foo"])
             self.assertEqual(1, len(get_pool(client).sockets))
+            wait_until(lambda: len(client.nodes) == 3, "find all nodes")
             self.assertEqual(3, len(client.nodes))
         self.assertEqual(0, len(client.nodes))
 
