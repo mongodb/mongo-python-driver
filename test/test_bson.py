@@ -25,6 +25,7 @@ import re
 import sys
 import tempfile
 import uuid
+import pickle
 
 from collections import abc, OrderedDict
 from io import BytesIO
@@ -1052,6 +1053,73 @@ class TestCodecOptions(unittest.TestCase):
 
         self.assertRaises(InvalidBSON, decode, invalid_both, CodecOptions(
             unicode_decode_error_handler="junk"))
+
+    def round_trip_pickle(self, obj, pickled_with_older):
+        pickled_with_older_obj = pickle.loads(pickled_with_older)
+        for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
+            pkl = pickle.dumps(obj, protocol=protocol)
+            obj2 = pickle.loads(pkl)
+            self.assertEqual(obj, obj2)
+            self.assertEqual(pickled_with_older_obj, obj2)
+
+    def test_regex_pickling(self):
+        reg = Regex(".?")
+        pickled_with_3 = (b'\x80\x04\x959\x00\x00\x00\x00\x00\x00\x00\x8c\n' 
+                          b'bson.regex\x94\x8c\x05Regex\x94\x93\x94)\x81\x94}' 
+                          b'\x94(\x8c\x07pattern\x94\x8c\x02.?\x94\x8c\x05flag'
+                          b's\x94K\x00ub.')
+        self.round_trip_pickle(reg, pickled_with_3)
+
+    def test_timestamp_pickling(self):
+        ts = Timestamp(0, 1)
+        pickled_with_3 = (b'\x80\x04\x95Q\x00\x00\x00\x00\x00\x00\x00\x8c'
+                          b'\x0ebson.timestamp\x94\x8c\tTimestamp\x94\x93\x94)'
+                          b'\x81\x94}\x94('
+                          b'\x8c\x10_Timestamp__time\x94K\x00\x8c'
+                          b'\x0f_Timestamp__inc\x94K\x01ub.')
+        self.round_trip_pickle(ts, pickled_with_3)
+
+    def test_dbref_pickling(self):
+        dbr = DBRef("foo", 5)
+        pickled_with_3 = (b'\x80\x04\x95q\x00\x00\x00\x00\x00\x00\x00\x8c\n'
+                          b'bson.dbref\x94\x8c\x05DBRef\x94\x93\x94)\x81\x94}'
+                          b'\x94(\x8c\x12_DBRef__collection\x94\x8c\x03foo\x94'
+                          b'\x8c\n_DBRef__id\x94K\x05\x8c\x10_DBRef__database'
+                          b'\x94N\x8c\x0e_DBRef__kwargs\x94}\x94ub.')
+        self.round_trip_pickle(dbr, pickled_with_3)
+
+        dbr = DBRef("foo", 5, database='db', kwargs1=None)
+        pickled_with_3 = (b'\x80\x04\x95\x81\x00\x00\x00\x00\x00\x00\x00\x8c'
+                          b'\nbson.dbref\x94\x8c\x05DBRef\x94\x93\x94)\x81\x94}'
+                          b'\x94(\x8c\x12_DBRef__collection\x94\x8c\x03foo\x94'
+                          b'\x8c\n_DBRef__id\x94K\x05\x8c\x10_DBRef__database'
+                          b'\x94\x8c\x02db\x94\x8c\x0e_DBRef__kwargs\x94}\x94'
+                          b'\x8c\x07kwargs1\x94Nsub.')
+
+        self.round_trip_pickle(dbr, pickled_with_3)
+
+    def test_minkey_pickling(self):
+        mink = MinKey()
+        pickled_with_3 = (b'\x80\x04\x95\x1e\x00\x00\x00\x00\x00\x00\x00\x8c'
+                          b'\x0cbson.min_key\x94\x8c\x06MinKey\x94\x93\x94)'
+                          b'\x81\x94.')
+
+        self.round_trip_pickle(mink, pickled_with_3)
+
+    def test_maxkey_pickling(self):
+        maxk = MaxKey()
+        pickled_with_3 = (b'\x80\x04\x95\x1e\x00\x00\x00\x00\x00\x00\x00\x8c' 
+                          b'\x0cbson.max_key\x94\x8c\x06MaxKey\x94\x93\x94)' 
+                          b'\x81\x94.')
+
+        self.round_trip_pickle(maxk, pickled_with_3)
+
+    def test_int64_pickling(self):
+        i64 = Int64(9)
+        pickled_with_3 = (b'\x80\x04\x95\x1e\x00\x00\x00\x00\x00\x00\x00\x8c\n'
+                          b'bson.int64\x94\x8c\x05Int64\x94\x93\x94K\t\x85\x94'
+                          b'\x81\x94.')
+        self.round_trip_pickle(i64, pickled_with_3)
 
 
 if __name__ == "__main__":

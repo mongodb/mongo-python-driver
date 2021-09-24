@@ -18,6 +18,7 @@
 import re
 
 from bson.son import RE_TYPE
+from bson._helpers import _getstate_slots, _setstate_slots
 
 
 def str_flags_to_int(str_flags):
@@ -40,6 +41,11 @@ def str_flags_to_int(str_flags):
 
 class Regex(object):
     """BSON regular expression data."""
+    __slots__ = ("pattern", "flags")
+
+    __getstate__ = _getstate_slots
+    __setstate__ = _setstate_slots
+
     _type_marker = 11
 
     @classmethod

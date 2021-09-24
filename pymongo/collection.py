@@ -1246,6 +1246,10 @@ class Collection(common.BaseObject):
 
         .. versionchanged:: 4.0
            Removed the ``modifiers`` option.
+           Empty projections (eg {} or []) are passed to the server as-is,
+           rather than the previous behavior which substituted in a
+           projection of ``{"_id": 1}``. This means that an empty projection
+           will now return the entire document, not just the ``"_id"`` field.
 
         .. versionchanged:: 3.11
            Added the ``allow_disk_use`` option.
@@ -1834,7 +1838,7 @@ class Collection(common.BaseObject):
         cursor = self.list_indexes(session=session)
         info = {}
         for index in cursor:
-            index["key"] = index["key"].items()
+            index["key"] = list(index["key"].items())
             index = dict(index)
             info[index.pop("name")] = index
         return info
