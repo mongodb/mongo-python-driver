@@ -285,17 +285,18 @@ class _Bulk(object):
         # sock_info.write_command.
         sock_info.validate_session(client, session)
         while run:
-            cmd = SON([(_COMMANDS[run.op_type], self.collection.name),
-                       ('ordered', self.ordered)])
-            if not write_concern.is_server_default:
-                cmd['writeConcern'] = write_concern.document
-            if self.bypass_doc_val and sock_info.max_wire_version >= 4:
-                cmd['bypassDocumentValidation'] = True
+            cmd_name = _COMMANDS[run.op_type]
             bwc = self.bulk_ctx_class(
-                db_name, cmd, sock_info, op_id, listeners, session,
+                db_name, cmd_name, sock_info, op_id, listeners, session,
                 run.op_type, self.collection.codec_options)
 
             while run.idx_offset < len(run.ops):
+                cmd = SON([(cmd_name, self.collection.name),
+                           ('ordered', self.ordered)])
+                if not write_concern.is_server_default:
+                    cmd['writeConcern'] = write_concern.document
+                if self.bypass_doc_val and sock_info.max_wire_version >= 4:
+                    cmd['bypassDocumentValidation'] = True
                 if session:
                     # Start a new retryable write unless one was already
                     # started for this command.
@@ -305,9 +306,10 @@ class _Bulk(object):
                     session._apply_to(cmd, retryable, ReadPreference.PRIMARY,
                                       sock_info)
                 sock_info.send_cluster_time(cmd, session, client)
+                sock_info.add_server_api(cmd)
                 ops = islice(run.ops, run.idx_offset, None)
                 # Run as many ops as possible in one command.
-                result, to_send = bwc.execute(ops, client)
+                result, to_send = bwc.execute(cmd, ops, client)
 
                 # Retryable writeConcernErrors halt the execution of this run.
                 wce = result.get('writeConcernError', {})
@@ -367,16 +369,16 @@ class _Bulk(object):
     def execute_insert_no_results(self, sock_info, run, op_id, acknowledged):
         """Execute insert, returning no results.
         """
-        command = SON([('insert', self.collection.name),
-                       ('ordered', self.ordered)])
-        concern = {'w': int(self.ordered)}
-        command['writeConcern'] = concern
-        if self.bypass_doc_val and sock_info.max_wire_version >= 4:
-            command['bypassDocumentValidation'] = True
         db = self.collection.database
+        concern = {'w': int(self.ordered)}
+        cmd = SON([('insert', self.collection.name),
+                   ('ordered', self.ordered),
+                   ('writeConcern', concern)])
+        if self.bypass_doc_val and sock_info.max_wire_version >= 4:
+            cmd['bypassDocumentValidation'] = True
         bwc = _BulkWriteContext(
-            db.name, command, sock_info, op_id, db.client._event_listeners,
-            None, _INSERT, self.collection.codec_options)
+            db.name, 'insert', sock_info, op_id, db.client._event_listeners,
+            None, _INSERT, self.collection.codec_options, cmd_legacy=cmd)
         # Legacy batched OP_INSERT.
         _do_batched_insert(
             self.collection.full_name, run.ops, True, acknowledged, concern,
@@ -395,17 +397,19 @@ class _Bulk(object):
         run = self.current_run
 
         while run:
-            cmd = SON([(_COMMANDS[run.op_type], self.collection.name),
-                       ('ordered', False),
-                       ('writeConcern', {'w': 0})])
+            cmd_name = _COMMANDS[run.op_type]
             bwc = self.bulk_ctx_class(
-                db_name, cmd, sock_info, op_id, listeners, None,
+                db_name, cmd_name, sock_info, op_id, listeners, None,
                 run.op_type, self.collection.codec_options)
 
             while run.idx_offset < len(run.ops):
+                cmd = SON([(cmd_name, self.collection.name),
+                           ('ordered', False),
+                           ('writeConcern', {'w': 0})])
+                sock_info.add_server_api(cmd)
                 ops = islice(run.ops, run.idx_offset, None)
                 # Run as many ops as possible.
-                to_send = bwc.execute_unack(ops, client)
+                to_send = bwc.execute_unack(cmd, ops, client)
                 run.idx_offset += len(to_send)
             self.current_run = run = next(generator, None)
 

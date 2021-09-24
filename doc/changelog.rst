@@ -1,6 +1,27 @@
 Changelog
 =========
 
+Changes in Version 3.12.1
+-------------------------
+
+Issues Resolved
+...............
+
+Version 3.12.1 fixes a number of bugs:
+
+- Fixed a bug that caused a multi-document transaction to fail when the first
+  operation was large bulk write (>48MB) that required splitting a batched
+  write command (`PYTHON-2915`_).
+- Fixed a bug that caused the ``tlsDisableOCSPEndpointCheck`` URI option to
+  be applied incorrectly (`PYTHON-2866`_).
+
+See the `PyMongo 3.12.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PYTHON-2915: https://jira.mongodb.org/browse/PYTHON-2915
+.. _PYTHON-2866: https://jira.mongodb.org/browse/PYTHON-2866
+.. _PyMongo 3.12.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=31527
+
 Changes in Version 3.12.0
 -------------------------
 

@@ -916,50 +916,49 @@ def kill_cursors(cursor_ids):
 class _BulkWriteContext(object):
     """A wrapper around SocketInfo for use with write splitting functions."""
 
-    __slots__ = ('db_name', 'command', 'sock_info', 'op_id',
+    __slots__ = ('db_name', 'sock_info', 'op_id',
                  'name', 'field', 'publish', 'start_time', 'listeners',
-                 'session', 'compress', 'op_type', 'codec')
+                 'session', 'compress', 'op_type', 'codec', 'cmd_legacy')
 
-    def __init__(self, database_name, command, sock_info, operation_id,
-                 listeners, session, op_type, codec):
+    def __init__(self, database_name, cmd_name, sock_info, operation_id,
+                 listeners, session, op_type, codec, cmd_legacy=None):
         self.db_name = database_name
-        self.command = command
         self.sock_info = sock_info
         self.op_id = operation_id
         self.listeners = listeners
         self.publish = listeners.enabled_for_commands
-        self.name = next(iter(command))
+        self.name = cmd_name
         self.field = _FIELD_MAP[self.name]
         self.start_time = datetime.datetime.now() if self.publish else None
         self.session = session
         self.compress = True if sock_info.compression_context else False
         self.op_type = op_type
         self.codec = codec
-        sock_info.add_server_api(command)
+        self.cmd_legacy = cmd_legacy
 
-    def _batch_command(self, docs):
+    def _batch_command(self, cmd, docs):
         namespace = self.db_name + '.$cmd'
         request_id, msg, to_send = _do_bulk_write_command(
-            namespace, self.op_type, self.command, docs, self.check_keys,
+            namespace, self.op_type, cmd, docs, self.check_keys,
             self.codec, self)
         if not to_send:
             raise InvalidOperation("cannot do an empty bulk write")
         return request_id, msg, to_send
 
-    def execute(self, docs, client):
-        request_id, msg, to_send = self._batch_command(docs)
-        result = self.write_command(request_id, msg, to_send)
+    def execute(self, cmd, docs, client):
+        request_id, msg, to_send = self._batch_command(cmd, docs)
+        result = self.write_command(cmd, request_id, msg, to_send)
         client._process_response(result, self.session)
         return result, to_send
 
-    def execute_unack(self, docs, client):
-        request_id, msg, to_send = self._batch_command(docs)
+    def execute_unack(self, cmd, docs, client):
+        request_id, msg, to_send = self._batch_command(cmd, docs)
         # Though this isn't strictly a "legacy" write, the helper
         # handles publishing commands and sending our message
         # without receiving a result. Send 0 for max_doc_size
         # to disable size checking. Size checking is handled while
         # the documents are encoded to BSON.
-        self.legacy_write(request_id, msg, 0, False, to_send)
+        self.legacy_write(cmd, request_id, msg, 0, False, to_send)
         return to_send
 
     @property
@@ -996,14 +995,16 @@ class _BulkWriteContext(object):
             request_id, msg = _compress(
                 2002, msg, self.sock_info.compression_context)
         return self.legacy_write(
-            request_id, msg, max_doc_size, acknowledged, docs)
+            self.cmd_legacy.copy(), request_id, msg, max_doc_size,
+            acknowledged, docs)
 
-    def legacy_write(self, request_id, msg, max_doc_size, acknowledged, docs):
+    def legacy_write(self, cmd, request_id, msg, max_doc_size, acknowledged,
+                     docs):
         """A proxy for SocketInfo.legacy_write that handles event publishing.
         """
         if self.publish:
             duration = datetime.datetime.now() - self.start_time
-            cmd = self._start(request_id, docs)
+            cmd = self._start(cmd, request_id, docs)
             start = datetime.datetime.now()
         try:
             result = self.sock_info.legacy_write(
@@ -1032,12 +1033,12 @@ class _BulkWriteContext(object):
             self.start_time = datetime.datetime.now()
         return result
 
-    def write_command(self, request_id, msg, docs):
+    def write_command(self, cmd, request_id, msg, docs):
         """A proxy for SocketInfo.write_command that handles event publishing.
         """
         if self.publish:
             duration = datetime.datetime.now() - self.start_time
-            self._start(request_id, docs)
+            self._start(cmd, request_id, docs)
             start = datetime.datetime.now()
         try:
             reply = self.sock_info.write_command(request_id, msg)
@@ -1057,9 +1058,8 @@ class _BulkWriteContext(object):
             self.start_time = datetime.datetime.now()
         return reply
 
-    def _start(self, request_id, docs):
+    def _start(self, cmd, request_id, docs):
         """Publish a CommandStartedEvent."""
-        cmd = self.command.copy()
         cmd[self.field] = docs
         self.listeners.publish_command_start(
             cmd, self.db_name,
@@ -1092,10 +1092,10 @@ _MAX_SPLIT_SIZE_ENC = 2097152
 class _EncryptedBulkWriteContext(_BulkWriteContext):
     __slots__ = ()
 
-    def _batch_command(self, docs):
+    def _batch_command(self, cmd, docs):
         namespace = self.db_name + '.$cmd'
         msg, to_send = _encode_batched_write_command(
-            namespace, self.op_type, self.command, docs, self.check_keys,
+            namespace, self.op_type, cmd, docs, self.check_keys,
             self.codec, self)
         if not to_send:
             raise InvalidOperation("cannot do an empty bulk write")
@@ -1106,17 +1106,18 @@ class _EncryptedBulkWriteContext(_BulkWriteContext):
                             DEFAULT_RAW_BSON_OPTIONS)
         return cmd, to_send
 
-    def execute(self, docs, client):
-        cmd, to_send = self._batch_command(docs)
+    def execute(self, cmd, docs, client):
+        batched_cmd, to_send = self._batch_command(cmd, docs)
         result = self.sock_info.command(
-            self.db_name, cmd, codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
+            self.db_name, batched_cmd,
+            codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
             session=self.session, client=client)
         return result, to_send
 
-    def execute_unack(self, docs, client):
-        cmd, to_send = self._batch_command(docs)
+    def execute_unack(self, cmd, docs, client):
+        batched_cmd, to_send = self._batch_command(cmd, docs)
         self.sock_info.command(
-            self.db_name, cmd, write_concern=WriteConcern(w=0),
+            self.db_name, batched_cmd, write_concern=WriteConcern(w=0),
             session=self.session, client=client)
         return to_send
 
