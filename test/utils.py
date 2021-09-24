@@ -918,13 +918,9 @@ def gevent_monkey_patched():
 
 def eventlet_monkey_patched():
     """Check if eventlet's monkey patching is active."""
-    try:
-        import threading
-        import eventlet
-        return (threading.current_thread.__module__ ==
-                'eventlet.green.threading')
-    except ImportError:
-        return False
+    import threading
+    return (threading.current_thread.__module__ ==
+            'eventlet.green.threading')
 
 
 def is_greenthread_patched():
