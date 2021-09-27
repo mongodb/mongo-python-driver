@@ -23,7 +23,7 @@ from pymongo.change_stream import DatabaseChangeStream
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (CollectionInvalid,
-                            InvalidName)
+                            InvalidName, OperationFailure)
 from pymongo.read_preferences import ReadPreference
 
 
@@ -297,16 +297,12 @@ class Database(common.BaseObject):
             https://docs.mongodb.com/manual/reference/command/create
         """
         with self.__client._tmp_session(session) as s:
-            # Skip this check in a transaction where listCollections is not
-            # supported.
-            if ((not s or not s.in_transaction) and
-                    name in self.list_collection_names(
-                        filter={"name": name}, session=s)):
+            try:
+                return Collection(self, name, True, codec_options,
+                                  read_preference, write_concern,
+                                  read_concern, session=s, **kwargs)
+            except OperationFailure:
                 raise CollectionInvalid("collection %s already exists" % name)
-
-            return Collection(self, name, True, codec_options,
-                              read_preference, write_concern,
-                              read_concern, session=s, **kwargs)
 
     def aggregate(self, pipeline, session=None, **kwargs):
         """Perform a database-level aggregation.
