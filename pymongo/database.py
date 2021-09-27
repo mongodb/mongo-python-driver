@@ -297,12 +297,9 @@ class Database(common.BaseObject):
             https://docs.mongodb.com/manual/reference/command/create
         """
         with self.__client._tmp_session(session) as s:
-            try:
-                return Collection(self, name, True, codec_options,
-                                  read_preference, write_concern,
-                                  read_concern, session=s, **kwargs)
-            except OperationFailure:
-                raise CollectionInvalid("collection %s already exists" % name)
+            return Collection(self, name, True, codec_options,
+                              read_preference, write_concern,
+                              read_concern, session=s, **kwargs)
 
     def aggregate(self, pipeline, session=None, **kwargs):
         """Perform a database-level aggregation.
