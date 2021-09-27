@@ -413,13 +413,6 @@ class TestCommandAndReadPreference(IntegrationTest):
                                                        read_preference=mode())
             self._test_fn(server_type, func)
 
-    def test_create_collection(self):
-        # create_collection runs listCollections on the primary to check if
-        # the collection already exists.
-        self._test_primary_helper(
-            lambda: self.c.pymongo_test.create_collection(
-                'some_collection%s' % random.randint(0, sys.maxsize)))
-
     def test_count_documents(self):
         self._test_coll_helper(
             True, self.c.pymongo_test.test, 'count_documents', {})
