@@ -23,7 +23,7 @@ from pymongo.change_stream import DatabaseChangeStream
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (CollectionInvalid,
-                            InvalidName, OperationFailure)
+                            InvalidName)
 from pymongo.read_preferences import ReadPreference
 
 
