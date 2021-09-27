@@ -1069,8 +1069,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def check_events(self, spec):
         for event_spec in spec:
             client_name = event_spec['client']
-            events = [i for i in event_spec['events'] if i[
-                "commandStartedEvent"]["command"] != {"listCollections": 1}]
+            events = event_spec['events']
             # Valid types: 'command', 'cmap'
             event_type = event_spec.get('eventType', 'command')
             assert event_type in ('command', 'cmap')
