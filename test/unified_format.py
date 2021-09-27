@@ -1069,7 +1069,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def check_events(self, spec):
         for event_spec in spec:
             client_name = event_spec['client']
-            events = event_spec['events']
+            events = [i for i in event_spec['events'] if i[
+                "commandStartedEvent"]["command"] != {"listCollections": 1}]
             # Valid types: 'command', 'cmap'
             event_type = event_spec.get('eventType', 'command')
             assert event_type in ('command', 'cmap')
@@ -1079,7 +1080,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if len(events) == 0:
                 self.assertEqual(actual_events, [])
                 continue
-
+            import ipdb;
+           # ipdb.set_trace()
             if len(events) > len(actual_events):
                 self.fail('Expected to see %s events, got %s' % (
                     len(events), len(actual_events)))
