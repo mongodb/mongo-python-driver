@@ -645,6 +645,10 @@ class MongoClient(common.BaseObject):
         dbase = None
         opts = common._CaseInsensitiveDictionary()
         fqdn = None
+        # Raise an error when we have more than one URI
+        if len([i for i in host if "/" in i]) > 1:
+            raise ConfigurationError("MongoClient() only accepts 1 URI at a "
+                                     "time")
         for entity in host:
             # A hostname can only include a-z, 0-9, '-' and '.'. If we find a '/'
             # it must be a URI,
