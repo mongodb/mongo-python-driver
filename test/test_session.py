@@ -640,13 +640,6 @@ class TestSession(IntegrationTest):
                         msg="%s did not raise ConfigurationError" % (
                                 f.__name__,)):
                     f(*args, **kw)
-                if f.__name__ == 'create_collection':
-                    # create_collection runs listCollections first.
-                    event = listener.results['started'].pop(0)
-                    self.assertEqual('listCollections', event.command_name)
-                    self.assertIn('lsid', event.command,
-                                  "%s sent no lsid with %s" % (
-                                     f.__name__, event.command_name))
 
                 # Should not run any command before raising an error.
                 self.assertFalse(listener.results['started'],
@@ -658,15 +651,7 @@ class TestSession(IntegrationTest):
         for f, args, kw in ops:
             listener.results.clear()
             f(*args, **kw)
-            self.assertGreaterEqual(len(listener.results['started']), 1)
-
-            if f.__name__ == 'create_collection':
-                # create_collection runs listCollections first.
-                event = listener.results['started'].pop(0)
-                self.assertEqual('listCollections', event.command_name)
-                self.assertIn('lsid', event.command,
-                              "%s sent no lsid with %s" % (
-                                  f.__name__, event.command_name))
+            self.assertGreaterEqual(len(listener.results['started']), 0)
 
             for event in listener.results['started']:
                 self.assertNotIn('lsid', event.command,

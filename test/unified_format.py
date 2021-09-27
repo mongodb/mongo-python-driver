@@ -1080,8 +1080,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if len(events) == 0:
                 self.assertEqual(actual_events, [])
                 continue
-            import ipdb;
-           # ipdb.set_trace()
             if len(events) > len(actual_events):
                 self.fail('Expected to see %s events, got %s' % (
                     len(events), len(actual_events)))
