@@ -2431,20 +2431,6 @@ buildvariants:
   display_name: "PyOpenSSL ${platform} ${python-version-windows} ${auth}"
   tasks:
     - '.replica_set'
-  rules:
-    # Python 3.10 does not support TLS on MongoDB <= 3.4.
-    - if:
-        platform: "*"
-        python-version-windows: "3.10"
-        auth: "*"
-        ssl: "ssl"
-        pyopenssl: "*"
-      then:
-        remove_tasks:
-          - ".2.6"
-          - ".3.0"
-          - ".3.2"
-          - ".3.4"
 
 - matrix_name: "tests-python-version-amazon1-test-encryption"
   matrix_spec:
@@ -2548,7 +2534,7 @@ buildvariants:
   display_name: "${platform} ${python-version-windows} ${auth-ssl}"
   tasks: *all-server-versions
   rules:
-    # Python 3.10 does not support TLS on MongoDB <= 3.4.
+    # Python 3.10+ and MongoDB <= 3.4 don't have any TLS ciphers in common.
     - if:
         platform: "*"
         python-version-windows: "3.10"
@@ -2560,6 +2546,19 @@ buildvariants:
           - ".3.2"
           - ".3.4"
 
+- matrix_name: "tests-windows-python-version-3.10"
+  matrix_spec:
+    platform: windows-64-vsMulti-small
+    python-version-windows: ["3.10"]
+    auth: "auth"
+    ssl: "nossl"
+  display_name: "${platform} ${python-version-windows} ${auth} ${ssl}"
+  tasks:
+    - ".2.6"
+    - ".3.0"
+    - ".3.2"
+    - ".3.4"
+
 - matrix_name: "tests-windows-python-version-32-bit"
   matrix_spec:
     platform: windows-64-vsMulti-small
@@ -2568,7 +2567,7 @@ buildvariants:
   display_name: "${platform} ${python-version-windows-32} ${auth-ssl}"
   tasks: *all-server-versions
   rules:
-    # Python 3.10 does not support TLS on MongoDB <= 3.4.
+    # Python 3.10+ and MongoDB <= 3.4 don't have any TLS ciphers in common.
     - if:
         platform: "*"
         python-version-windows-32: "3.10"
@@ -2579,6 +2578,19 @@ buildvariants:
           - ".3.0"
           - ".3.2"
           - ".3.4"
+
+- matrix_name: "tests-windows-python-version-3.10"
+  matrix_spec:
+    platform: windows-64-vsMulti-small
+    python-version-windows-32: ["3.10"]
+    auth: "auth"
+    ssl: "nossl"
+  display_name: "${platform} ${python-version-windows-32} ${auth} ${ssl}"
+  tasks:
+    - ".2.6"
+    - ".3.0"
+    - ".3.2"
+    - ".3.4"
 
 - matrix_name: "tests-python-version-supports-openssl-110-test-ssl"
   matrix_spec:
@@ -2603,7 +2615,7 @@ buildvariants:
   display_name: "Encryption ${platform} ${python-version-windows} ${auth-ssl}"
   tasks: *encryption-server-versions
   rules:
-    # Python 3.10 does not support TLS on MongoDB <= 3.4.
+    # Python 3.10+ and MongoDB <= 3.4 don't have any TLS ciphers in common.
     - if:
         platform: "*"
         python-version-windows: "3.10"
