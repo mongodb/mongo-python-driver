@@ -187,6 +187,12 @@ MongoClient cannot execute operations after ``close()``
 after being closed. The previous behavior would simply reconnect. However,
 now you must create a new instance.
 
+MongoClient raises exception when given more than 1 URI
+.......................................................
+
+``MongoClient()`` now raises a :exc:`~pymongo.errors.ConfigurationError`
+when more than one URI is passed into the ``hosts`` argument.
+
 Database
 --------
 
