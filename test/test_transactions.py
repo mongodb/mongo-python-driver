@@ -234,7 +234,7 @@ class TestTransactions(TransactionsBase):
             s.with_transaction(create_and_insert)
 
         # Outside a transaction we raise CollectionInvalid on existing colls.
-        with self.assertRaises(CollectionInvalid):
+        with self.assertRaises(OperationFailure):
             db.create_collection(coll.name)
 
         # Inside a transaction we raise the OperationFailure from create.

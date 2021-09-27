@@ -148,7 +148,8 @@ class TestDatabase(IntegrationTest):
         db.drop_collection("test.foo")
         db.create_collection("test.foo")
         self.assertTrue("test.foo" in db.list_collection_names())
-        self.assertRaises(OperationFailure, db.create_collection, "test.foo")
+        if client_context.is_mongos:
+            self.assertRaises(OperationFailure, db.create_collection, "test.foo")
 
     def test_list_collection_names(self):
         db = Database(self.client, "pymongo_test")
