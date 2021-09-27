@@ -249,3 +249,14 @@ revocation checking failed::
   [('SSL routines', 'tls_process_initial_server_flight', 'invalid status response')]
 
 See :ref:`OCSP` for more details.
+
+Python 3.10+ is incompatible with TLS/SSL on MongoDB <= 3.4
+...........................................................
+
+Note that Python 3.10+ is incompatible with TLS/SSL on MongoDB <= 3.4. The
+following are some example errors that may occur with this combination::
+
+  SSL handshake failed: localhost:27017: [SSL: SSLV3_ALERT_HANDSHAKE_FAILURE] sslv3 alert handshake failure (_ssl.c:997)
+  SSL handshake failed: localhost:27017: EOF occurred in violation of protocol (_ssl.c:997)
+
+To resolve this issue, use Python <=3.10 or upgrade to MongoDB 3.6+.

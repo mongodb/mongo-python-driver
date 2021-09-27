@@ -2431,6 +2431,19 @@ buildvariants:
   display_name: "PyOpenSSL ${platform} ${python-version-windows} ${auth}"
   tasks:
     - '.replica_set'
+  rules:
+    # Python 3.10 does not support TLS on MongoDB <= 3.4.
+    - if:
+        platform: "*"
+        python-version-windows: "3.10"
+        auth: "*"
+        ssl: "ssl"
+      then:
+        remove_tasks:
+          - ".2.6"
+          - ".3.0"
+          - ".3.2"
+          - ".3.4"
 
 - matrix_name: "tests-python-version-amazon1-test-encryption"
   matrix_spec:
@@ -2533,6 +2546,18 @@ buildvariants:
     auth-ssl: "*"
   display_name: "${platform} ${python-version-windows} ${auth-ssl}"
   tasks: *all-server-versions
+  rules:
+    # Python 3.10 does not support TLS on MongoDB <= 3.4.
+    - if:
+        platform: "*"
+        python-version-windows: "3.10"
+        auth-ssl: "auth-ssl"
+      then:
+        remove_tasks:
+          - ".2.6"
+          - ".3.0"
+          - ".3.2"
+          - ".3.4"
 
 - matrix_name: "tests-windows-python-version-32-bit"
   matrix_spec:
@@ -2541,6 +2566,18 @@ buildvariants:
     auth-ssl: "*"
   display_name: "${platform} ${python-version-windows-32} ${auth-ssl}"
   tasks: *all-server-versions
+  rules:
+    # Python 3.10 does not support TLS on MongoDB <= 3.4.
+    - if:
+        platform: "*"
+        python-version-windows-32: "3.10"
+        auth-ssl: "auth-ssl"
+      then:
+        remove_tasks:
+          - ".2.6"
+          - ".3.0"
+          - ".3.2"
+          - ".3.4"
 
 - matrix_name: "tests-python-version-supports-openssl-110-test-ssl"
   matrix_spec:
@@ -2564,6 +2601,16 @@ buildvariants:
     encryption: "*"
   display_name: "Encryption ${platform} ${python-version-windows} ${auth-ssl}"
   tasks: *encryption-server-versions
+  rules:
+    # Python 3.10 does not support TLS on MongoDB <= 3.4.
+    - if:
+        platform: "*"
+        python-version-windows: "3.10"
+        auth-ssl: "auth-ssl"
+        encryption: "*"
+      then:
+        remove_tasks:
+          - ".2.6"
 
 # Storage engine tests on Amazon1 (x86_64) with Python 2.7.
 - matrix_name: "tests-storage-engines"
