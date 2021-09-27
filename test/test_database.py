@@ -132,7 +132,8 @@ class TestDatabase(IntegrationTest):
         db = Database(self.client, "pymongo_test")
 
         db.test.insert_one({"hello": "world"})
-        self.assertRaises(OperationFailure, db.create_collection, "test")
+        if client_context.is_mongos:
+            self.assertRaises(OperationFailure, db.create_collection, "test")
 
         db.drop_collection("test")
 

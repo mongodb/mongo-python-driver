@@ -233,9 +233,10 @@ class TestTransactions(TransactionsBase):
         with client.start_session() as s:
             s.with_transaction(create_and_insert)
 
-        # Outside a transaction we raise CollectionInvalid on existing colls.
-        with self.assertRaises(OperationFailure):
-            db.create_collection(coll.name)
+        # Outside a transaction we raise OperationFailure on existing colls.
+        if client_context.is_mongos():
+            with self.assertRaises(OperationFailure):
+                db.create_collection(coll.name)
 
         # Inside a transaction we raise the OperationFailure from create.
         with client.start_session() as s:
