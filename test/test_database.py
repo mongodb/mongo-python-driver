@@ -131,14 +131,14 @@ class TestDatabase(IntegrationTest):
         db = Database(self.client, "pymongo_test")
 
         db.test.insert_one({"hello": "world"})
-        if not client_context.is_mongos or client_context.version <= (3, 6):
+        if not client_context.is_mongos or client_context.version < (4, 0):
             self.assertRaises(OperationFailure, db.create_collection, "test")
         else:
             try:
                 db.create_collection("test")
             except OperationFailure:
-                self.fail("There was an OperationFailure when attempting"
-                          "to create a collection that already exists on"
+                self.fail("There was an OperationFailure when attempting "
+                          "to create a collection that already exists on "
                           "a sharded cluster")
         db.drop_collection("test")
 
@@ -154,14 +154,14 @@ class TestDatabase(IntegrationTest):
         db.drop_collection("test.foo")
         db.create_collection("test.foo")
         self.assertTrue("test.foo" in db.list_collection_names())
-        if not client_context.is_mongos:
+        if not client_context.is_mongos or client_context.version < (4, 0):
             self.assertRaises(OperationFailure, db.create_collection, "test.foo")
         else:
             try:
                 db.create_collection("test.foo")
             except OperationFailure:
-                self.fail("There was an OperationFailure when attempting"
-                          "to create a collection that already exists on"
+                self.fail("There was an OperationFailure when attempting "
+                          "to create a collection that already exists on "
                           "a sharded cluster")
 
     def test_list_collection_names(self):
