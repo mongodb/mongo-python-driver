@@ -233,10 +233,16 @@ class TestTransactions(TransactionsBase):
             s.with_transaction(create_and_insert)
 
         # Outside a transaction we raise OperationFailure on existing colls.
-        if not client_context.is_topology_type(["sharded"]):
+        if not client_context.is_mongos:
             with self.assertRaises(OperationFailure):
                 db.create_collection(coll.name)
-
+        else:
+            try:
+                db.create_collection(coll.name)
+            except OperationFailure:
+                self.fail("There was an OperationFailure when attempting"
+                          "to create a collection that already exists on"
+                          "a sharded cluster")
         # Inside a transaction we raise the OperationFailure from create.
         with client.start_session() as s:
             s.start_transaction()
