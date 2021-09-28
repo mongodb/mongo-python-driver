@@ -131,7 +131,7 @@ class TestDatabase(IntegrationTest):
         db = Database(self.client, "pymongo_test")
 
         db.test.insert_one({"hello": "world"})
-        if not client_context.is_mongos:
+        if not client_context.is_mongos or client_context.version <= (3, 6):
             self.assertRaises(OperationFailure, db.create_collection, "test")
         else:
             try:
