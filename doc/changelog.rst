@@ -160,7 +160,8 @@ Breaking Changes in 4.0
 - :meth:`~pymongo.database.Database.create_collection` now raises an
   :class:`~pymongo.errors.OperationFailure` exception instead of a
   :class:`~pymongo.errors.CollectionInvalid` exception when a collection
-  already exists.
+  already exists (unless you are using sharded clusters, in which case it
+  does not raise :class:`~pymongo.errors.OperationFailure`).
 
 Notable improvements
 ....................

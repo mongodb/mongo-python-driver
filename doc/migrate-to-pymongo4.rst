@@ -337,7 +337,9 @@ Database.create_collection raises OperationFailure
 :class:`~pymongo.errors.CollectionInvalid` exception when a collection
 already exists. Any code that relies on catching a
 :class:`~pymongo.errors.CollectionInvalid` exception can simply catch
-:class:`~pymongo.errors.OperationFailure` instead.
+:class:`~pymongo.errors.OperationFailure` instead (unless you are using
+sharded clusters, in which case it does not raise
+:class:`~pymongo.errors.OperationFailure`).
 
 Collection
 ----------
