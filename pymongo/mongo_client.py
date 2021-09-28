@@ -109,11 +109,9 @@ class MongoClient(common.BaseObject):
 
         The `host` parameter can be a full `mongodb URI
         <http://dochub.mongodb.org/core/connections>`_, in addition to
-        a simple hostname. It can also be a list of hostnames or
-        URIs. Any port specified in the host string(s) will override
-        the `port` parameter. If multiple mongodb URIs containing
-        database or auth information are passed, the last database,
-        username, and password present will be used.  For username and
+        a simple hostname. It can also be a list of hostnames but no more
+        than one URI. Any port specified in the host string(s) will override
+        the `port` parameter. For username and
         passwords reserved characters like ':', '/', '+' and '@' must be
         percent encoded following RFC 2396::
 
