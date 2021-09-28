@@ -2036,6 +2036,12 @@ class TestClientPool(MockClientTest):
         self.assertEqual(
             listener.event_count(monitoring.PoolReadyEvent), 1)
 
+    def test_multiple_uris(self):
+        with self.assertRaises(ConfigurationError):
+            MongoClient(host=['mongodb+srv://cluster-a.abc12.mongodb.net',
+                              'mongodb+srv://cluster-b.abc12.mongodb.net',
+                              'mongodb+srv://cluster-c.abc12.mongodb.net'])
+
 
 if __name__ == "__main__":
     unittest.main()
