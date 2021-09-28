@@ -234,7 +234,7 @@ class TestTransactions(TransactionsBase):
             s.with_transaction(create_and_insert)
 
         # Outside a transaction we raise OperationFailure on existing colls.
-        if client_context.is_mongos:
+        if not client_context.is_topology_type(["sharded"]):
             with self.assertRaises(OperationFailure):
                 db.create_collection(coll.name)
 

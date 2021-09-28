@@ -132,7 +132,7 @@ class TestDatabase(IntegrationTest):
         db = Database(self.client, "pymongo_test")
 
         db.test.insert_one({"hello": "world"})
-        if client_context.is_mongos:
+        if not client_context.is_topology_type(["sharded"]):
             self.assertRaises(OperationFailure, db.create_collection, "test")
 
         db.drop_collection("test")
@@ -149,7 +149,7 @@ class TestDatabase(IntegrationTest):
         db.drop_collection("test.foo")
         db.create_collection("test.foo")
         self.assertTrue("test.foo" in db.list_collection_names())
-        if client_context.is_mongos:
+        if not client_context.is_topology_type(["sharded"]):
             self.assertRaises(OperationFailure, db.create_collection, "test.foo")
 
     def test_list_collection_names(self):
