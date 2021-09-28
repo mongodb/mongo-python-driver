@@ -651,7 +651,7 @@ class TestSession(IntegrationTest):
         for f, args, kw in ops:
             listener.results.clear()
             f(*args, **kw)
-            self.assertGreaterEqual(len(listener.results['started']), 0)
+            self.assertGreaterEqual(len(listener.results['started']), 1)
 
             for event in listener.results['started']:
                 self.assertNotIn('lsid', event.command,
