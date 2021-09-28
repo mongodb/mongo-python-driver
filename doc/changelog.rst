@@ -157,7 +157,10 @@ Breaking Changes in 4.0
   are passed to the server as-is rather than the previous behavior which
   substituted in a projection of ``{"_id": 1}``. This means that an empty
   projection will now return the entire document, not just the ``"_id"`` field.
-
+- :meth:`~pymongo.database.Database.create_collection` now raises an
+  :class:`~pymongo.errors.OperationFailure` exception instead of a
+  :class:`~pymongo.errors.CollectionInvalid` exception when a collection
+  already exists.
 
 Notable improvements
 ....................

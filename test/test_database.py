@@ -30,8 +30,7 @@ from pymongo import (auth,
                      helpers)
 from pymongo.collection import Collection
 from pymongo.database import Database
-from pymongo.errors import (CollectionInvalid,
-                            ConfigurationError,
+from pymongo.errors import (ConfigurationError,
                             ExecutionTimeout,
                             InvalidName,
                             OperationFailure,

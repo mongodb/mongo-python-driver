@@ -23,8 +23,7 @@ sys.path[0:0] = [""]
 
 from pymongo import client_session, WriteConcern
 from pymongo.client_session import TransactionOptions
-from pymongo.errors import (CollectionInvalid,
-                            ConfigurationError,
+from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             InvalidOperation,
                             OperationFailure)

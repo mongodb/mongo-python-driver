@@ -330,6 +330,15 @@ Can be changed to this::
 
 You must now explicitly compare with None.
 
+Database.create_collection raises OperationFailure
+..................................................
+:meth:`~pymongo.database.Database.create_collection` now raises an
+:class:`~pymongo.errors.OperationFailure` exception instead of a
+:class:`~pymongo.errors.CollectionInvalid` exception when a collection
+already exists. Any code that relies on catching a
+:class:`~pymongo.errors.CollectionInvalid` exception can simply catch
+:class:`~pymongo.errors.OperationFailure` instead.
+
 Collection
 ----------
 
