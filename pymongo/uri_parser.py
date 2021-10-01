@@ -372,7 +372,8 @@ def _check_options(nodes, options):
                 'Cannot specify replicaSet with loadBalanced=true')
 
 
-def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
+def parse_uri(uri, srv_service_name, default_port=DEFAULT_PORT,
+    validate=True, warn=False,
               normalize=True, connect_timeout=None):
     """Parse and validate a MongoDB URI.
 
@@ -499,7 +500,8 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
         # Use the connection timeout. connectTimeoutMS passed as a keyword
         # argument overrides the same option passed in the connection string.
         connect_timeout = connect_timeout or options.get("connectTimeoutMS")
-        dns_resolver = _SrvResolver(fqdn, connect_timeout=connect_timeout)
+        dns_resolver = _SrvResolver(fqdn, srv_service_name,
+                                    connect_timeout=connect_timeout)
         nodes = dns_resolver.get_hosts()
         dns_options = dns_resolver.get_options()
         if dns_options:

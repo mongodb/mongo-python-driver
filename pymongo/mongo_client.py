@@ -658,9 +658,11 @@ class MongoClient(common.BaseObject):
                 if timeout is not None:
                     timeout = common.validate_timeout_or_none_or_zero(
                         keyword_opts.cased_key("connecttimeoutms"), timeout)
+
                 res = uri_parser.parse_uri(
-                    entity, port, validate=True, warn=True, normalize=False,
-                    connect_timeout=timeout)
+                    entity, port, opts.get("srvServiceName", None),
+                    validate=True, warn=True,
+                    normalize=False, connect_timeout=timeout)
                 seeds.update(res["nodelist"])
                 username = res["username"] or username
                 password = res["password"] or password
