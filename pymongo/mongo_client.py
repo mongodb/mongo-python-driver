@@ -177,8 +177,9 @@ class MongoClient(common.BaseObject):
         :Parameters:
           - `host` (optional): hostname or IP address or Unix domain socket
             path of a single mongod or mongos instance to connect to, or a
-            mongodb URI, or a list of hostnames / mongodb URIs. If `host` is
-            an IPv6 literal it must be enclosed in '[' and ']' characters
+            mongodb URI, or a list of hostnames (but no more than one mongodb
+            URI). If `host` is an IPv6 literal it must be enclosed in '['
+            and ']' characters
             following the RFC2732 URL syntax (e.g. '[::1]' for localhost).
             Multihomed and round robin DNS addresses are **not** supported.
           - `port` (optional): port number on which to connect
