@@ -106,7 +106,6 @@ class _SrvResolver(object):
         nodes = [
             (maybe_decode(res.target.to_text(omit_final_dot=True)), res.port)
             for res in results]
-
         # Validate hosts
         for node in nodes:
             try:

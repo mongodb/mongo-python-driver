@@ -372,7 +372,7 @@ def _check_options(nodes, options):
                 'Cannot specify replicaSet with loadBalanced=true')
 
 
-def parse_uri(uri, srv_service_name, default_port=DEFAULT_PORT,
+def parse_uri(uri, default_port=DEFAULT_PORT,
     validate=True, warn=False,
               normalize=True, connect_timeout=None):
     """Parse and validate a MongoDB URI.
@@ -468,7 +468,10 @@ def parse_uri(uri, srv_service_name, default_port=DEFAULT_PORT,
 
         if opts:
             options.update(split_options(opts, validate, warn, normalize))
-
+    # get the srvservicename from options so that we can pass it to
+    # _SrvResolver
+    # constructor below
+    srv_service_name = options.get("srvServiceName")
     if '@' in host_part:
         userinfo, _, hosts = host_part.rpartition('@')
         user, passwd = parse_userinfo(userinfo)

@@ -660,7 +660,7 @@ class MongoClient(common.BaseObject):
                         keyword_opts.cased_key("connecttimeoutms"), timeout)
 
                 res = uri_parser.parse_uri(
-                    entity, port, opts.get("srvServiceName", None),
+                    entity, port,
                     validate=True, warn=True,
                     normalize=False, connect_timeout=timeout)
                 seeds.update(res["nodelist"])
