@@ -470,7 +470,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
     # get the srvservicename from options so that we can pass it to
     # _SrvResolver
     # constructor below
-    srv_service_name = options.get("srvServiceName", "_mongodb")
+    srv_service_name = options.get("srvServiceName", "mongodb")
     if '@' in host_part:
         userinfo, _, hosts = host_part.rpartition('@')
         user, passwd = parse_userinfo(userinfo)
