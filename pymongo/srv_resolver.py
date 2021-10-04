@@ -85,7 +85,7 @@ class _SrvResolver(object):
 
     def _resolve_uri(self, encapsulate_errors):
         try:
-            results = _resolve(str(self.__srv)+'._tcp.' + self.__fqdn,
+            results = _resolve('_'+str(self.__srv)+'._tcp.' + self.__fqdn,
                                    'SRV', lifetime=self.__connect_timeout)
         except Exception as exc:
             if not encapsulate_errors:
