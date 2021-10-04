@@ -47,8 +47,8 @@ _INVALID_HOST_MSG = (
     "Did you mean to use 'mongodb://'?")
 
 class _SrvResolver(object):
-    def __init__(self, fqdn, srv_service_name="_mongodb",
-                 connect_timeout=None):
+    def __init__(self, fqdn,
+                 connect_timeout=None, srv_service_name="_mongodb"):
         self.__fqdn = fqdn
         self.__srv = srv_service_name
         self.__connect_timeout = connect_timeout or CONNECT_TIMEOUT
