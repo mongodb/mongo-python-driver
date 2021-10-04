@@ -372,8 +372,7 @@ def _check_options(nodes, options):
                 'Cannot specify replicaSet with loadBalanced=true')
 
 
-def parse_uri(uri, default_port=DEFAULT_PORT,
-    validate=True, warn=False,
+def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
               normalize=True, connect_timeout=None):
     """Parse and validate a MongoDB URI.
 

@@ -316,8 +316,7 @@ class SrvMonitor(MonitorBase):
         Returns a list of ServerDescriptions.
         """
         try:
-            seedlist, ttl = _SrvResolver(self._fqdn, self._settings
-                                         ).get_hosts_and_min_ttl()
+            seedlist, ttl = _SrvResolver(self._fqdn).get_hosts_and_min_ttl()
             if len(seedlist) == 0:
                 # As per the spec: this should be treated as a failure.
                 raise Exception
