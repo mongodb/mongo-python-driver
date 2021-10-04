@@ -150,6 +150,11 @@ class MongoClient(common.BaseObject):
         initial-dns-seedlist-discovery/initial-dns-seedlist-discovery.rst>`_
         for more details. Note that the use of SRV URIs implicitly enables
         TLS support. Pass tls=false in the URI to override.
+        Starting in version 4.0 you can pass a custom SRV service name by
+        using the ``srvServiceName`` option like so::
+
+            MongoClient("mongodb+srv://test22.test.build.10gen.cc/?srvServiceName=customname")
+
 
         .. note:: MongoClient creation will block waiting for answers from
           DNS when mongodb+srv:// URIs are used.

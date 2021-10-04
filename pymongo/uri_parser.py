@@ -519,9 +519,9 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
                     options[opt] = val
         if "tls" not in options and "ssl" not in options:
             options["tls"] = True if validate else 'true'
-    #elif not is_srv and options.get("srvServiceName", None) is not None:
-    #    raise ConfigurationError("You cannot use the srvServiceName option "
-    #                             "with non-SRV URIs.")
+    elif not is_srv and options.get("srvServiceName", None) is not None:
+        raise ConfigurationError("You cannot use the srvServiceName option "
+                                 "with non-SRV URIs.")
     else:
         nodes = split_hosts(hosts, default_port=default_port)
 
