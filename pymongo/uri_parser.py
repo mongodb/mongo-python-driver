@@ -470,7 +470,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
     # get the srvservicename from options so that we can pass it to
     # _SrvResolver
     # constructor below
-    srv_service_name = options.get("srvServiceName")
+    # srv_service_name = options.get("srvServiceName")
     if '@' in host_part:
         userinfo, _, hosts = host_part.rpartition('@')
         user, passwd = parse_userinfo(userinfo)
@@ -493,7 +493,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
         if len(nodes) != 1:
             raise InvalidURI(
                 "%s URIs must include one, "
-                "and only one, hostname" % (SRV_SCHEME,))
+                "and only one   , hostname" % (SRV_SCHEME,))
         fqdn, port = nodes[0]
         if port is not None:
             raise InvalidURI(
@@ -502,7 +502,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
         # Use the connection timeout. connectTimeoutMS passed as a keyword
         # argument overrides the same option passed in the connection string.
         connect_timeout = connect_timeout or options.get("connectTimeoutMS")
-        dns_resolver = _SrvResolver(fqdn, srv_service_name,
+        dns_resolver = _SrvResolver(fqdn, #srv_service_name,
                                     connect_timeout=connect_timeout)
         nodes = dns_resolver.get_hosts()
         dns_options = dns_resolver.get_options()
@@ -518,9 +518,9 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
                     options[opt] = val
         if "tls" not in options and "ssl" not in options:
             options["tls"] = True if validate else 'true'
-    elif not is_srv and options.get("srvServiceName", None) is not None:
-        raise ConfigurationError("You cannot use the srvServiceName option "
-                                 "with non-SRV URIs.")
+    #elif not is_srv and options.get("srvServiceName", None) is not None:
+    #    raise ConfigurationError("You cannot use the srvServiceName option "
+    #                             "with non-SRV URIs.")
     else:
         nodes = split_hosts(hosts, default_port=default_port)
 
