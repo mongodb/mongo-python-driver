@@ -32,17 +32,6 @@
       "options": {}
     },
     {
-      "description": "maxPoolSize=0 does not error",
-      "uri": "mongodb://example.com/?maxPoolSize=0",
-      "valid": true,
-      "warning": false,
-      "hosts": null,
-      "auth": null,
-      "options": {
-        "maxPoolSize": 0
-      }
-    },
-    {
       "description": "minPoolSize=0 does not error",
       "uri": "mongodb://example.com/?minPoolSize=0",
       "valid": true,
