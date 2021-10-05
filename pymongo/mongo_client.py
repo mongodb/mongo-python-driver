@@ -109,11 +109,9 @@ class MongoClient(common.BaseObject):
 
         The `host` parameter can be a full `mongodb URI
         <http://dochub.mongodb.org/core/connections>`_, in addition to
-        a simple hostname. It can also be a list of hostnames or
-        URIs. Any port specified in the host string(s) will override
-        the `port` parameter. If multiple mongodb URIs containing
-        database or auth information are passed, the last database,
-        username, and password present will be used.  For username and
+        a simple hostname. It can also be a list of hostnames but no more
+        than one URI. Any port specified in the host string(s) will override
+        the `port` parameter. For username and
         passwords reserved characters like ':', '/', '+' and '@' must be
         percent encoded following RFC 2396::
 
@@ -179,8 +177,9 @@ class MongoClient(common.BaseObject):
         :Parameters:
           - `host` (optional): hostname or IP address or Unix domain socket
             path of a single mongod or mongos instance to connect to, or a
-            mongodb URI, or a list of hostnames / mongodb URIs. If `host` is
-            an IPv6 literal it must be enclosed in '[' and ']' characters
+            mongodb URI, or a list of hostnames (but no more than one mongodb
+            URI). If `host` is an IPv6 literal it must be enclosed in '['
+            and ']' characters
             following the RFC2732 URL syntax (e.g. '[::1]' for localhost).
             Multihomed and round robin DNS addresses are **not** supported.
           - `port` (optional): port number on which to connect
@@ -645,6 +644,9 @@ class MongoClient(common.BaseObject):
         dbase = None
         opts = common._CaseInsensitiveDictionary()
         fqdn = None
+        if len([h for h in host if "/" in h]) > 1:
+            raise ConfigurationError("host must not contain multiple MongoDB "
+                                     "URIs")
         for entity in host:
             # A hostname can only include a-z, 0-9, '-' and '.'. If we find a '/'
             # it must be a URI,

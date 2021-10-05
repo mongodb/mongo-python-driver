@@ -466,6 +466,11 @@ class ClientUnitTest(unittest.TestCase):
 
 
 class TestClient(IntegrationTest):
+    def test_multiple_uris(self):
+        with self.assertRaises(ConfigurationError):
+            MongoClient(host=['mongodb+srv://cluster-a.abc12.mongodb.net',
+                              'mongodb+srv://cluster-b.abc12.mongodb.net',
+                              'mongodb+srv://cluster-c.abc12.mongodb.net'])
 
     def test_max_idle_time_reaper_default(self):
         with client_knobs(kill_cursor_frequency=0.1):
