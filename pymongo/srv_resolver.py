@@ -85,8 +85,8 @@ class _SrvResolver(object):
 
     def _resolve_uri(self, encapsulate_errors):
         try:
-            results = _resolve('_' + self.__srv+'._tcp.' + self.__fqdn,
-                                   'SRV', lifetime=self.__connect_timeout)
+            results = _resolve('_' + self.__srv + '._tcp.' + self.__fqdn,
+                                'SRV', lifetime=self.__connect_timeout)
         except Exception as exc:
             if not encapsulate_errors:
                 # Raise the original error.
@@ -102,6 +102,7 @@ class _SrvResolver(object):
         nodes = [
             (maybe_decode(res.target.to_text(omit_final_dot=True)), res.port)
             for res in results]
+
         # Validate hosts
         for node in nodes:
             try:

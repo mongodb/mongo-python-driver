@@ -467,9 +467,6 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
 
         if opts:
             options.update(split_options(opts, validate, warn, normalize))
-    # get the srvservicename from options so that we can pass it to
-    # _SrvResolver
-    # constructor below
     srv_service_name = options.get("srvServiceName", "mongodb")
     if '@' in host_part:
         userinfo, _, hosts = host_part.rpartition('@')
@@ -519,9 +516,9 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
                     options[opt] = val
         if "tls" not in options and "ssl" not in options:
             options["tls"] = True if validate else 'true'
-    elif not is_srv and options.get("srvServiceName", None) is not None:
-        raise ConfigurationError("You cannot use the srvServiceName option "
-                                 "with non-SRV URIs.")
+    elif not is_srv and options.get("srvServiceName") is not None:
+        raise ConfigurationError("The srvServiceName option is only allowed "
+                                 "with 'mongodb+srv://' URIs")
     else:
         nodes = split_hosts(hosts, default_port=default_port)
 

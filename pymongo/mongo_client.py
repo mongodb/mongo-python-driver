@@ -150,11 +150,6 @@ class MongoClient(common.BaseObject):
         initial-dns-seedlist-discovery/initial-dns-seedlist-discovery.rst>`_
         for more details. Note that the use of SRV URIs implicitly enables
         TLS support. Pass tls=false in the URI to override.
-        Starting in version 4.0 you can pass a custom SRV service name by
-        using the ``srvServiceName`` option like so::
-
-            MongoClient("mongodb+srv://test22.test.build.10gen.cc/?srvServiceName=customname")
-
 
         .. note:: MongoClient creation will block waiting for answers from
           DNS when mongodb+srv:// URIs are used.
@@ -206,6 +201,10 @@ class MongoClient(common.BaseObject):
             and decoding of custom types.
 
           | **Other optional parameters can be passed as keyword arguments:**
+          - Starting in version 4.0 you can pass a custom SRV service name by
+            using the ``srvServiceName`` option like so::
+
+                MongoClient("mongodb+srv://test22.test.build.10gen.cc/?srvServiceName=customname")
 
           - `directConnection` (optional): if ``True``, forces this client to
              connect directly to the specified MongoDB host as a standalone.
@@ -508,6 +507,10 @@ class MongoClient(common.BaseObject):
            arguments.
            The default for `uuidRepresentation` was changed from
            ``pythonLegacy`` to ``unspecified``.
+           There is a new parameter for SRV URIs ``srvServiceName`` which
+           can be used like so::
+
+                MongoClient("mongodb+srv://test22.test.build.10gen.cc/?srvServiceName=customname")
 
         .. versionchanged:: 3.12
            Added the ``server_api`` keyword argument.
@@ -672,6 +675,7 @@ class MongoClient(common.BaseObject):
                 dbase = res["database"] or dbase
                 opts = res["options"]
                 fqdn = res["fqdn"]
+                srv_service_name = opts["srvServiceName"]
             else:
                 seeds.update(uri_parser.split_hosts(entity, port))
         if not seeds:
@@ -735,6 +739,7 @@ class MongoClient(common.BaseObject):
             server_selector=options.server_selector,
             heartbeat_frequency=options.heartbeat_frequency,
             fqdn=fqdn,
+            srv_service_name=srv_service_name,
             direct_connection=options.direct_connection,
             load_balanced=options.load_balanced,
         )
