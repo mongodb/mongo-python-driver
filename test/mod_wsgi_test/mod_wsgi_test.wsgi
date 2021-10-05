@@ -41,7 +41,9 @@ ndocs = 20
 
 collection.drop()
 collection.insert_many([{'i': i} for i in range(ndocs)])
-
+client.close() # Discard main thread's request socket.
+client = MongoClient()
+collection = client.test.test
 
 try:
     from mod_wsgi import version as mod_wsgi_version
