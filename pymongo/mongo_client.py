@@ -656,6 +656,7 @@ class MongoClient(common.BaseObject):
         dbase = None
         opts = common._CaseInsensitiveDictionary()
         fqdn = None
+        srv_service_name = "mongodb"
         for entity in host:
             # A hostname can only include a-z, 0-9, '-' and '.'. If we find a '/'
             # it must be a URI,
