@@ -676,7 +676,7 @@ class MongoClient(common.BaseObject):
                 dbase = res["database"] or dbase
                 opts = res["options"]
                 fqdn = res["fqdn"]
-                srv_service_name = opts["srvServiceName"]
+                srv_service_name = opts.get("srvServiceName", "mongodb")
             else:
                 seeds.update(uri_parser.split_hosts(entity, port))
         if not seeds:
