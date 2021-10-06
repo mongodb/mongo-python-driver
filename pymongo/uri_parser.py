@@ -20,7 +20,8 @@ import sys
 
 from urllib.parse import unquote_plus
 
-from pymongo.common import (SRV_SERVICE_NAME_DEFAULT,
+from pymongo.common import (
+    SRV_SERVICE_NAME,
     get_validated_options, INTERNAL_URI_OPTION_NAME_MAP,
     URI_OPTIONS_DEPRECATION_MAP, _CaseInsensitiveDictionary)
 from pymongo.errors import ConfigurationError, InvalidURI
@@ -467,7 +468,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
 
         if opts:
             options.update(split_options(opts, validate, warn, normalize))
-    srv_service_name = options.get("srvServiceName", SRV_SERVICE_NAME_DEFAULT)
+    srv_service_name = options.get("srvServiceName", SRV_SERVICE_NAME)
     if '@' in host_part:
         userinfo, _, hosts = host_part.rpartition('@')
         user, passwd = parse_userinfo(userinfo)

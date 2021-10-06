@@ -1603,9 +1603,9 @@ class TestClient(IntegrationTest):
 
     def test_service_name_from_kwargs(self):
         client = MongoClient('mongodb+srv://test22.test.build.10gen.cc',
-                             srvServiceName='namefromkwarg')
+                             srvServiceName='namefromkwarg', connect=False)
         self.assertEqual(client._topology_settings._srv_service_name,
-        'namefromkwarg')
+                         'namefromkwarg')
 
 
 class TestExhaustCursor(IntegrationTest):

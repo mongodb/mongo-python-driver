@@ -39,7 +39,7 @@ class TopologySettings(object):
                  heartbeat_frequency=common.HEARTBEAT_FREQUENCY,
                  server_selector=None,
                  fqdn=None,
-                 srv_service_name=common.SRV_SERVICE_NAME_DEFAULT,
+                 srv_service_name=common.SRV_SERVICE_NAME,
                  direct_connection=False,
                  load_balanced=None):
         """Represent MongoClient's configuration.

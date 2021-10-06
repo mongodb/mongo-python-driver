@@ -114,7 +114,7 @@ UNAUTHORIZED_CODES = (13, 16547, 16548)
 _MAX_END_SESSIONS = 10000
 
 # Default value for srvServiceName
-SRV_SERVICE_NAME_DEFAULT = "mongodb"
+SRV_SERVICE_NAME = "mongodb"
 
 
 def partition_node(node):
