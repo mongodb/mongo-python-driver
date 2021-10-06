@@ -738,7 +738,13 @@ class MongoClient(common.BaseObject):
             client = self_ref()
             if client is None:
                 return False  # Stop the executor.
-            MongoClient._process_periodic_tasks(client)
+            try:
+                MongoClient._process_periodic_tasks(client)
+            except InvalidOperation as e:
+                if client._get_topology._closed:
+                    return False
+                else:
+                    raise e
             return True
 
         executor = periodic_executor.PeriodicExecutor(
