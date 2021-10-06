@@ -335,7 +335,7 @@ class MongoClient(common.BaseObject):
           - Starting in version 4.0 you can pass a custom SRV service name by
             using the ``srvServiceName`` option like so::
 
-                MongoClient("mongodb+srv://test22.test.build.10gen.cc/?srvServiceName=customname")
+                MongoClient("mongodb+srv://example.com/?srvServiceName=customname")
 
 
           | **Write Concern options:**
