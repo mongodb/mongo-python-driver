@@ -134,9 +134,9 @@ decodes datetime as naive by default.
 - The ``hint`` option is now required when using ``min`` or ``max`` queries
   with :meth:`~pymongo.collection.Collection.find`.
 - ``name`` is now a required argument for the :class:`pymongo.driver_info.DriverInfo` class.
-- When providing a URI to the :class:`~pymongo.mongo_client.MongoClient`
-  constructor you can now use the ``srvServiceName`` URI option to specify
-  your own SRV service name.
+- When providing a "mongodb+srv://" URI to
+  :class:`~pymongo.mongo_client.MongoClient` constructor you can now use the
+  ``srvServiceName`` URI option to specify your own SRV service name.
 
 Notable improvements
 ....................

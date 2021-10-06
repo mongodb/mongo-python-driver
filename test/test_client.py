@@ -1601,6 +1601,12 @@ class TestClient(IntegrationTest):
             with self.assertRaisesRegex(AutoReconnect, expected):
                 client.pymongo_test.test.find_one({})
 
+    def test_service_name_from_kwargs(self):
+        client = MongoClient('mongodb+srv://test22.test.build.10gen.cc',
+                             srvServiceName='namefromkwarg')
+        self.assertEqual(client._topology_settings._srv_service_name,
+        'namefromkwarg')
+
 
 class TestExhaustCursor(IntegrationTest):
     """Test that clients properly handle errors from exhaust cursors."""

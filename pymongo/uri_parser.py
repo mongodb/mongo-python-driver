@@ -20,7 +20,7 @@ import sys
 
 from urllib.parse import unquote_plus
 
-from pymongo.common import (
+from pymongo.common import (SRV_SERVICE_NAME_DEFAULT,
     get_validated_options, INTERNAL_URI_OPTION_NAME_MAP,
     URI_OPTIONS_DEPRECATION_MAP, _CaseInsensitiveDictionary)
 from pymongo.errors import ConfigurationError, InvalidURI
@@ -467,7 +467,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
 
         if opts:
             options.update(split_options(opts, validate, warn, normalize))
-    srv_service_name = options.get("srvServiceName", "mongodb")
+    srv_service_name = options.get("srvServiceName", SRV_SERVICE_NAME_DEFAULT)
     if '@' in host_part:
         userinfo, _, hosts = host_part.rpartition('@')
         user, passwd = parse_userinfo(userinfo)
@@ -499,9 +499,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
         # Use the connection timeout. connectTimeoutMS passed as a keyword
         # argument overrides the same option passed in the connection string.
         connect_timeout = connect_timeout or options.get("connectTimeoutMS")
-        dns_resolver = _SrvResolver(fqdn,
-                                    connect_timeout=connect_timeout,
-                                    srv_service_name=srv_service_name)
+        dns_resolver = _SrvResolver(fqdn, connect_timeout, srv_service_name)
         nodes = dns_resolver.get_hosts()
         dns_options = dns_resolver.get_options()
         if dns_options:

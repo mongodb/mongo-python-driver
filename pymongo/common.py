@@ -113,6 +113,9 @@ UNAUTHORIZED_CODES = (13, 16547, 16548)
 # From the driver sessions spec.
 _MAX_END_SESSIONS = 10000
 
+# Default value for srvServiceName
+SRV_SERVICE_NAME_DEFAULT = "mongodb"
+
 
 def partition_node(node):
     """Split a host:port string into (host, int(port)) pair."""

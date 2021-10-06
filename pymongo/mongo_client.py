@@ -201,12 +201,7 @@ class MongoClient(common.BaseObject):
             and decoding of custom types.
 
           | **Other optional parameters can be passed as keyword arguments:**
-          - Starting in version 4.0 you can pass a custom SRV service name by
-            using the ``srvServiceName`` option like so::
-
-                MongoClient("mongodb+srv://test22.test.build.10gen.cc/?srvServiceName=customname")
-
-          - `directConnection` (optional): if ``True``, forces this client to
+           - `directConnection` (optional): if ``True``, forces this client to
              connect directly to the specified MongoDB host as a standalone.
              If ``false``, the client connects to the entire replica set of
              which the given MongoDB host(s) is a part. If this is ``True``
@@ -337,6 +332,11 @@ class MongoClient(common.BaseObject):
             a Unicode-related error occurs during BSON decoding that would
             otherwise raise :exc:`UnicodeDecodeError`. Valid options include
             'strict', 'replace', and 'ignore'. Defaults to 'strict'.
+          - Starting in version 4.0 you can pass a custom SRV service name by
+            using the ``srvServiceName`` option like so::
+
+                MongoClient("mongodb+srv://test22.test.build.10gen.cc/?srvServiceName=customname")
+
 
           | **Write Concern options:**
           | (Only set if passed. No default values.)
@@ -507,10 +507,7 @@ class MongoClient(common.BaseObject):
            arguments.
            The default for `uuidRepresentation` was changed from
            ``pythonLegacy`` to ``unspecified``.
-           There is a new parameter for SRV URIs ``srvServiceName`` which
-           can be used like so::
-
-                MongoClient("mongodb+srv://test22.test.build.10gen.cc/?srvServiceName=customname")
+           Added the ``srvServiceName`` URI and keyword argument.
 
         .. versionchanged:: 3.12
            Added the ``server_api`` keyword argument.
@@ -656,7 +653,7 @@ class MongoClient(common.BaseObject):
         dbase = None
         opts = common._CaseInsensitiveDictionary()
         fqdn = None
-        srv_service_name = "mongodb"
+        srv_service_name = common.SRV_SERVICE_NAME_DEFAULT
         for entity in host:
             # A hostname can only include a-z, 0-9, '-' and '.'. If we find a '/'
             # it must be a URI,
@@ -676,7 +673,8 @@ class MongoClient(common.BaseObject):
                 dbase = res["database"] or dbase
                 opts = res["options"]
                 fqdn = res["fqdn"]
-                srv_service_name = opts.get("srvServiceName", "mongodb")
+                srv_service_name = opts.get("srvServiceName",
+                                            common.SRV_SERVICE_NAME_DEFAULT)
             else:
                 seeds.update(uri_parser.split_hosts(entity, port))
         if not seeds:

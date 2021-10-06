@@ -48,7 +48,7 @@ _INVALID_HOST_MSG = (
 
 class _SrvResolver(object):
     def __init__(self, fqdn,
-                 connect_timeout=None, srv_service_name="mongodb"):
+                 connect_timeout, srv_service_name):
         self.__fqdn = fqdn
         self.__srv = srv_service_name
         self.__connect_timeout = connect_timeout or CONNECT_TIMEOUT
@@ -86,7 +86,7 @@ class _SrvResolver(object):
     def _resolve_uri(self, encapsulate_errors):
         try:
             results = _resolve('_' + self.__srv + '._tcp.' + self.__fqdn,
-                                'SRV', lifetime=self.__connect_timeout)
+                               'SRV', lifetime=self.__connect_timeout)
         except Exception as exc:
             if not encapsulate_errors:
                 # Raise the original error.
