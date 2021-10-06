@@ -29,19 +29,13 @@ from pymongo.hello import HelloCompat
 from pymongo.mongo_client import MongoClient
 
 client = MongoClient()
-
-# If the deployment is a replica set, connect to the whole set.
-replica_set_name = client.admin.command(HelloCompat.LEGACY_CMD).get('setName')
-if replica_set_name:
-    client = MongoClient(replicaSet=replica_set_name)
-
 collection = client.test.test
-
 ndocs = 20
-
 collection.drop()
 collection.insert_many([{'i': i} for i in range(ndocs)])
-client.close()  # Discard main thread's request socket.
+client.close() # Discard main thread's request socket.
+client = MongoClient()
+collection = client.test.test
 
 try:
     from mod_wsgi import version as mod_wsgi_version
