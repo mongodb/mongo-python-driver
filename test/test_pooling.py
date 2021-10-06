@@ -421,6 +421,7 @@ class TestPoolMaxSize(_TestPoolingBase):
     def test_max_pool_size(self):
         max_pool_size = 4
         c = rs_or_single_client(maxPoolSize=max_pool_size)
+        self.addCleanup(c.close)
         collection = c[DB].test
 
         # Need one document.
@@ -456,6 +457,7 @@ class TestPoolMaxSize(_TestPoolingBase):
 
     def test_max_pool_size_none(self):
         c = rs_or_single_client(maxPoolSize=None)
+        self.addCleanup(c.close)
         collection = c[DB].test
 
         # Need one document.

@@ -364,6 +364,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
     def test_callback_not_retried_after_timeout(self):
         listener = OvertCommandListener()
         client = rs_client(event_listeners=[listener])
+        self.addCleanup(client.close)
         coll = client[self.db.name].test
 
         def callback(session):
@@ -393,6 +394,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
     def test_callback_not_retried_after_commit_timeout(self):
         listener = OvertCommandListener()
         client = rs_client(event_listeners=[listener])
+        self.addCleanup(client.close)
         coll = client[self.db.name].test
 
         def callback(session):
@@ -423,6 +425,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
     def test_commit_not_retried_after_timeout(self):
         listener = OvertCommandListener()
         client = rs_client(event_listeners=[listener])
+        self.addCleanup(client.close)
         coll = client[self.db.name].test
 
         def callback(session):
