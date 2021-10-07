@@ -652,7 +652,7 @@ class MongoClient(common.BaseObject):
         dbase = None
         opts = common._CaseInsensitiveDictionary()
         fqdn = None
-        srv_service_name = keyword_opts.get("srvservicenqame", None)
+        srv_service_name = keyword_opts.get("srvservicename", None)
 
         for entity in host:
             # A hostname can only include a-z, 0-9, '-' and '.'. If we find a '/'

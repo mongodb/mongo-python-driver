@@ -1603,10 +1603,21 @@ class TestClient(IntegrationTest):
 
     def test_service_name_from_kwargs(self):
         client = MongoClient(
-            'mongodb+srv://user:password@test22.test.build.10gen.cc/?srvServiceName=customname',
+            'mongodb+srv://user:password@test22.test.build.10gen.cc',
                              srvServiceName='namefromkwarg', connect=False)
         self.assertEqual(client._topology_settings._srv_service_name,
                          'namefromkwarg')
+        print("first done")
+        client = MongoClient(
+            'mongodb+srv://user:password@test22.test.build.10gen.cc/?srvServiceName=customname',
+            srvServiceName='namefromkwarg', connect=False)
+        self.assertEqual(client._topology_settings._srv_service_name,
+                         'namefromkwarg')
+        client = MongoClient(
+            'mongodb+srv://user:password@test22.test.build.10gen.cc/?srvServiceName=customname',
+             connect=False)
+        self.assertEqual(client._topology_settings._srv_service_name,
+                         'customname')
 
 
 class TestExhaustCursor(IntegrationTest):
