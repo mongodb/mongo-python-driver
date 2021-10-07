@@ -197,6 +197,7 @@ class MongoClient(common.BaseObject):
             and decoding of custom types.
 
           | **Other optional parameters can be passed as keyword arguments:**
+
           - `directConnection` (optional): if ``True``, forces this client to
              connect directly to the specified MongoDB host as a standalone.
              If ``false``, the client connects to the entire replica set of
@@ -328,7 +329,8 @@ class MongoClient(common.BaseObject):
             a Unicode-related error occurs during BSON decoding that would
             otherwise raise :exc:`UnicodeDecodeError`. Valid options include
             'strict', 'replace', and 'ignore'. Defaults to 'strict'.
-          - `srvServiceName`: A custom SRV service name. Use it like so::
+          - ``srvServiceName`: (string) The SRV service name to use for
+            "mongodb+srv://" URIs. Defaults to "mongodb". Use it like so::
 
                 MongoClient("mongodb+srv://example.com/?srvServiceName=customname")
 
