@@ -26,11 +26,8 @@ from test import client_context, unittest
 
 class TestDecimal128(unittest.TestCase):
 
+    @client_context.require_connection
     def test_round_trip(self):
-        if not client_context.version.at_least(3, 3, 6):
-            raise unittest.SkipTest(
-                'Round trip test requires MongoDB >= 3.3.6')
-
         coll = client_context.client.pymongo_test.test
         coll.drop()
 

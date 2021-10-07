@@ -660,7 +660,6 @@ class TestSampleShellCommands(IntegrationTest):
 
         self.assertEqual(db.inventory.count_documents({}), 0)
 
-    @client_context.require_version_min(3, 5, 11)
     @client_context.require_replica_set
     @client_context.require_no_mmap
     def test_change_streams(self):
@@ -762,34 +761,31 @@ class TestSampleShellCommands(IntegrationTest):
         ])
         # End Aggregation Example 3
 
-        # $lookup was new in 3.2. The let and pipeline options
-        # were added in 3.6.
-        if client_context.version.at_least(3, 6, 0):
-            # Start Aggregation Example 4
-            db.air_alliances.aggregate([
-                {"$lookup": {
-                    "from": "air_airlines",
-                    "let": {"constituents": "$airlines"},
-                    "pipeline": [
-                        {"$match": {"$expr": {"$in": ["$name", "$$constituents"]}}}
-                    ],
-                    "as": "airlines"
-                    }
-                },
-                {"$project": {
-                    "_id": 0,
-                    "name": 1,
-                    "airlines": {
-                        "$filter": {
-                            "input": "$airlines",
-                            "as": "airline",
-                            "cond": {"$eq": ["$$airline.country", "Canada"]}
-                            }
+        # Start Aggregation Example 4
+        db.air_alliances.aggregate([
+            {"$lookup": {
+                "from": "air_airlines",
+                "let": {"constituents": "$airlines"},
+                "pipeline": [
+                    {"$match": {"$expr": {"$in": ["$name", "$$constituents"]}}}
+                ],
+                "as": "airlines"
+                }
+            },
+            {"$project": {
+                "_id": 0,
+                "name": 1,
+                "airlines": {
+                    "$filter": {
+                        "input": "$airlines",
+                        "as": "airline",
+                        "cond": {"$eq": ["$$airline.country", "Canada"]}
                         }
                     }
                 }
-            ])
-            # End Aggregation Example 4
+            }
+        ])
+        # End Aggregation Example 4
 
     def test_commands(self):
         db = self.db
@@ -817,7 +813,6 @@ class TestSampleShellCommands(IntegrationTest):
         )
         # End Index Example 1
 
-    @client_context.require_version_min(3, 6, 0)
     @client_context.require_replica_set
     def test_misc(self):
         # Marketing examples
@@ -1069,7 +1064,6 @@ class TestTransactionExamples(IntegrationTest):
 
 
 class TestCausalConsistencyExamples(IntegrationTest):
-    @client_context.require_version_min(3, 6, 0)
     @client_context.require_secondaries_count(1)
     @client_context.require_no_mmap
     def test_causal_consistency(self):

@@ -38,6 +38,7 @@ globals().update(generate_test_classes(TEST_PATH, module=__name__))
 
 class TestLB(IntegrationTest):
     RUN_ON_LOAD_BALANCER = True
+    RUN_ON_SERVERLESS = True
 
     def test_connections_are_only_returned_once(self):
         pool = get_pool(self.client)
@@ -60,10 +61,6 @@ class TestLB(IntegrationTest):
                 self.assertEqual(pool.active_sockets, 1)  # Pinned.
             self.assertEqual(pool.active_sockets, 1)  # Still pinned.
         self.assertEqual(pool.active_sockets, 0)  # Unpinned.
-
-    def test_client_can_be_reopened(self):
-        self.client.close()
-        self.db.test.find_one({})
 
     @client_context.require_failCommand_fail_point
     def test_cursor_gc(self):
@@ -97,7 +94,6 @@ class TestLB(IntegrationTest):
               "failCommands": [
                 "find", "aggregate"
               ],
-              "errorCode": 91,
               "closeConnection": True,
             }
         }

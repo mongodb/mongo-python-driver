@@ -579,8 +579,6 @@ class TestMongosAndReadPreference(IntegrationTest):
             self.assertEqual(
                 out, SON([("$query", {}), ("$readPreference", pref.document)]))
 
-    # Require OP_MSG so that $readPreference is visible in the command event.
-    @client_context.require_version_min(3, 6)
     def test_send_hedge(self):
         cases = {
             'primaryPreferred': PrimaryPreferred,
@@ -697,7 +695,6 @@ class TestMongosAndReadPreference(IntegrationTest):
             self.assertEqual(last_id, results[0]["_id"])
 
     @client_context.require_mongos
-    @client_context.require_version_min(3, 3, 12)
     def test_mongos_max_staleness(self):
         # Sanity check that we're sending maxStalenessSeconds
         coll = client_context.client.pymongo_test.get_collection(

@@ -522,10 +522,11 @@ class TestMultiServerTopology(TopologyTest):
             'setName': 'rs',
             'hosts': ['a'],
             'minWireVersion': 1,
-            'maxWireVersion': 5})
+            'maxWireVersion': 6})
 
         self.assertEqual(server.description.min_wire_version, 1)
-        self.assertEqual(server.description.max_wire_version, 5)
+        self.assertEqual(server.description.max_wire_version, 6)
+        t.select_servers(any_server_selector)
 
         # Incompatible.
         got_hello(t, address, {

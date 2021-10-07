@@ -125,7 +125,7 @@ Breaking Changes in 4.0
   ignored by pip.
 - ``tz_aware``, an argument for :class:`~bson.json_util.JSONOptions`,
   now defaults to ``False`` instead of ``True``. ``json_util.loads`` now
-decodes datetime as naive by default.
+  decodes datetime as naive by default.
 - ``directConnection`` URI option and keyword argument to :class:`~pymongo.mongo_client.MongoClient`
   defaults to ``False`` instead of ``None``, allowing for the automatic
   discovery of replica sets. This means that if you
@@ -137,6 +137,31 @@ decodes datetime as naive by default.
 - When providing a "mongodb+srv://" URI to
   :class:`~pymongo.mongo_client.MongoClient` constructor you can now use the
   ``srvServiceName`` URI option to specify your own SRV service name.
+- :meth:`~bson.son.SON.items` now returns a ``dict_items`` object rather
+  than a list.
+- Removed :meth:`bson.son.SON.iteritems`.
+- :class:`~pymongo.collection.Collection` and :class:`~pymongo.database.Database`
+  now raises an error upon evaluating as a Boolean, please use the
+  syntax ``if collection is not None:`` or ``if database is not None:`` as
+  opposed to
+  the previous syntax which was simply ``if collection:`` or ``if database:``.
+  You must now explicitly compare with None.
+- :class:`~pymongo.mongo_client.MongoClient` cannot execute any operations
+  after being closed. The previous behavior would simply reconnect. However,
+  now you must create a new instance.
+- Classes :class:`~bson.int64.Int64`, :class:`~bson.min_key.MinKey`,
+  :class:`~bson.max_key.MaxKey`, :class:`~bson.timestamp.Timestamp`,
+  :class:`~bson.regex.Regex`, and :class:`~bson.dbref.DBRef` all implement
+  ``__slots__`` now. This means that their attributes are fixed, and new
+  attributes cannot be added to them at runtime.
+- Empty projections (eg {} or []) for
+  :meth:`~pymongo.collection.Collection.find`, and
+  :meth:`~pymongo.collection.Collection.find_one`
+  are passed to the server as-is rather than the previous behavior which
+  substituted in a projection of ``{"_id": 1}``. This means that an empty
+  projection will now return the entire document, not just the ``"_id"`` field.
+- ``MongoClient()`` now raises a :exc:`~pymongo.errors.ConfigurationError`
+  when more than one URI is passed into the ``hosts`` argument.
 
 Notable improvements
 ....................

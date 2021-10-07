@@ -289,6 +289,11 @@ class Collection(common.BaseObject):
     def __hash__(self):
         return hash((self.__database, self.__name))
 
+    def __bool__(self):
+        raise NotImplementedError("Collection objects do not implement truth "
+                                  "value testing or bool(). Please compare "
+                                  "with None instead: collection is not None")
+
     @property
     def full_name(self):
         """The full name of this :class:`Collection`.
@@ -430,59 +435,6 @@ class Collection(common.BaseObject):
             return BulkWriteResult(bulk_api_result, True)
         return BulkWriteResult({}, False)
 
-    def _legacy_write(self, sock_info, name, cmd, op_id,
-                      bypass_doc_val, func, *args):
-        """Internal legacy unacknowledged write helper."""
-        # Cannot have both unacknowledged write and bypass document validation.
-        if bypass_doc_val and sock_info.max_wire_version >= 4:
-            raise OperationFailure("Cannot set bypass_document_validation with"
-                                   " unacknowledged write concern")
-        listeners = self.database.client._event_listeners
-        publish = listeners.enabled_for_commands
-
-        if publish:
-            start = datetime.datetime.now()
-        args = args + (sock_info.compression_context,)
-        rqst_id, msg, max_size = func(*args)
-        if publish:
-            duration = datetime.datetime.now() - start
-            listeners.publish_command_start(
-                cmd, self.__database.name, rqst_id, sock_info.address, op_id,
-                sock_info.service_id)
-            start = datetime.datetime.now()
-        try:
-            result = sock_info.legacy_write(rqst_id, msg, max_size, False)
-        except Exception as exc:
-            if publish:
-                dur = (datetime.datetime.now() - start) + duration
-                if isinstance(exc, OperationFailure):
-                    details = exc.details
-                    # Succeed if GLE was successful and this is a write error.
-                    if details.get("ok") and "n" in details:
-                        reply = message._convert_write_result(
-                            name, cmd, details)
-                        listeners.publish_command_success(
-                            dur, reply, name, rqst_id, sock_info.address,
-                            op_id, sock_info.service_id)
-                        raise
-                else:
-                    details = message._convert_exception(exc)
-                listeners.publish_command_failure(
-                    dur, details, name, rqst_id, sock_info.address, op_id,
-                    sock_info.service_id)
-            raise
-        if publish:
-            if result is not None:
-                reply = message._convert_write_result(name, cmd, result)
-            else:
-                # Comply with APM spec.
-                reply = {'ok': 1}
-            duration = (datetime.datetime.now() - start) + duration
-            listeners.publish_command_success(
-                duration, reply, name, rqst_id, sock_info.address, op_id,
-                sock_info.service_id)
-        return result
-
     def _insert_one(
             self, doc, ordered,
             check_keys, write_concern, op_id, bypass_doc_val,
@@ -497,15 +449,7 @@ class Collection(common.BaseObject):
             command['writeConcern'] = write_concern.document
 
         def _insert_command(session, sock_info, retryable_write):
-            if not sock_info.op_msg_enabled and not acknowledged:
-                # Legacy OP_INSERT.
-                return self._legacy_write(
-                    sock_info, 'insert', command, op_id,
-                    bypass_doc_val, message._insert, self.__full_name,
-                    [doc], check_keys, False,
-                    self.__write_response_codec_options)
-
-            if bypass_doc_val and sock_info.max_wire_version >= 4:
+            if bypass_doc_val:
                 command['bypassDocumentValidation'] = True
 
             result = sock_info.command(
@@ -653,28 +597,19 @@ class Collection(common.BaseObject):
                           ('multi', multi),
                           ('upsert', upsert)])
         if collation is not None:
-            if sock_info.max_wire_version < 5:
-                raise ConfigurationError(
-                    'Must be connected to MongoDB 3.4+ to use collations.')
-            elif not acknowledged:
+            if not acknowledged:
                 raise ConfigurationError(
                     'Collation is unsupported for unacknowledged writes.')
             else:
                 update_doc['collation'] = collation
         if array_filters is not None:
-            if sock_info.max_wire_version < 6:
-                raise ConfigurationError(
-                    'Must be connected to MongoDB 3.6+ to use array_filters.')
-            elif not acknowledged:
+            if not acknowledged:
                 raise ConfigurationError(
                     'arrayFilters is unsupported for unacknowledged writes.')
             else:
                 update_doc['arrayFilters'] = array_filters
         if hint is not None:
-            if sock_info.max_wire_version < 5:
-                raise ConfigurationError(
-                    'Must be connected to MongoDB 3.4+ to use hint.')
-            elif not acknowledged:
+            if not acknowledged:
                 raise ConfigurationError(
                     'hint is unsupported for unacknowledged writes.')
             if not isinstance(hint, str):
@@ -687,16 +622,8 @@ class Collection(common.BaseObject):
         if not write_concern.is_server_default:
             command['writeConcern'] = write_concern.document
 
-        if not sock_info.op_msg_enabled and not acknowledged:
-            # Legacy OP_UPDATE.
-            return self._legacy_write(
-                sock_info, 'update', command, op_id,
-                bypass_doc_val, message._update, self.__full_name, upsert,
-                multi, criteria, document, check_keys,
-                self.__write_response_codec_options)
-
         # Update command.
-        if bypass_doc_val and sock_info.max_wire_version >= 4:
+        if bypass_doc_val:
             command['bypassDocumentValidation'] = True
 
         # The command result has to be published for APM unmodified
@@ -1013,19 +940,13 @@ class Collection(common.BaseObject):
                           ('limit', int(not multi))])
         collation = validate_collation_or_none(collation)
         if collation is not None:
-            if sock_info.max_wire_version < 5:
-                raise ConfigurationError(
-                    'Must be connected to MongoDB 3.4+ to use collations.')
-            elif not acknowledged:
+            if not acknowledged:
                 raise ConfigurationError(
                     'Collation is unsupported for unacknowledged writes.')
             else:
                 delete_doc['collation'] = collation
         if hint is not None:
-            if sock_info.max_wire_version < 5:
-                raise ConfigurationError(
-                    'Must be connected to MongoDB 3.4+ to use hint.')
-            elif not acknowledged:
+            if not acknowledged:
                 raise ConfigurationError(
                     'hint is unsupported for unacknowledged writes.')
             if not isinstance(hint, str):
@@ -1037,13 +958,6 @@ class Collection(common.BaseObject):
         if not write_concern.is_server_default:
             command['writeConcern'] = write_concern.document
 
-        if not sock_info.op_msg_enabled and not acknowledged:
-            # Legacy OP_DELETE.
-            return self._legacy_write(
-                sock_info, 'delete', command, op_id,
-                False, message._delete, self.__full_name, criteria,
-                self.__write_response_codec_options,
-                int(not multi))
         # Delete command.
         result = sock_info.command(
             self.__database.name,
@@ -1332,6 +1246,10 @@ class Collection(common.BaseObject):
 
         .. versionchanged:: 4.0
            Removed the ``modifiers`` option.
+           Empty projections (eg {} or []) are passed to the server as-is,
+           rather than the previous behavior which substituted in a
+           projection of ``{"_id": 1}``. This means that an empty projection
+           will now return the entire document, not just the ``"_id"`` field.
 
         .. versionchanged:: 3.11
            Added the ``allow_disk_use`` option.
@@ -1630,7 +1548,6 @@ class Collection(common.BaseObject):
         """
         names = []
         with self._socket_for_writes(session) as sock_info:
-            supports_collations = sock_info.max_wire_version >= 5
             supports_quorum = sock_info.max_wire_version >= 9
 
             def gen_indexes():
@@ -1640,10 +1557,6 @@ class Collection(common.BaseObject):
                             "%r is not an instance of "
                             "pymongo.operations.IndexModel" % (index,))
                     document = index.document
-                    if "collation" in document and not supports_collations:
-                        raise ConfigurationError(
-                            "Must be connected to MongoDB "
-                            "3.4+ to use collations.")
                     names.append(document["name"])
                     yield document
 
@@ -1875,32 +1788,21 @@ class Collection(common.BaseObject):
 
         def _cmd(session, server, sock_info, secondary_ok):
             cmd = SON([("listIndexes", self.__name), ("cursor", {})])
-            if sock_info.max_wire_version > 2:
-                with self.__database.client._tmp_session(session, False) as s:
-                    try:
-                        cursor = self._command(sock_info, cmd, secondary_ok,
-                                               read_pref,
-                                               codec_options,
-                                               session=s)["cursor"]
-                    except OperationFailure as exc:
-                        # Ignore NamespaceNotFound errors to match the behavior
-                        # of reading from *.system.indexes.
-                        if exc.code != 26:
-                            raise
-                        cursor = {'id': 0, 'firstBatch': []}
-                cmd_cursor = CommandCursor(
-                    coll, cursor, sock_info.address, session=s,
-                    explicit_session=session is not None)
-            else:
-                res = message._first_batch(
-                    sock_info, self.__database.name, "system.indexes",
-                    {"ns": self.__full_name}, 0, secondary_ok, codec_options,
-                    read_pref, cmd,
-                    self.database.client._event_listeners)
-                cursor = res["cursor"]
-                # Note that a collection can only have 64 indexes, so there
-                # will never be a getMore call.
-                cmd_cursor = CommandCursor(coll, cursor, sock_info.address)
+            with self.__database.client._tmp_session(session, False) as s:
+                try:
+                    cursor = self._command(sock_info, cmd, secondary_ok,
+                                           read_pref,
+                                           codec_options,
+                                           session=s)["cursor"]
+                except OperationFailure as exc:
+                    # Ignore NamespaceNotFound errors to match the behavior
+                    # of reading from *.system.indexes.
+                    if exc.code != 26:
+                        raise
+                    cursor = {'id': 0, 'firstBatch': []}
+            cmd_cursor = CommandCursor(
+                coll, cursor, sock_info.address, session=s,
+                explicit_session=session is not None)
             cmd_cursor._maybe_pin_connection(sock_info)
             return cmd_cursor
 
@@ -1936,7 +1838,7 @@ class Collection(common.BaseObject):
         cursor = self.list_indexes(session=session)
         info = {}
         for index in cursor:
-            index["key"] = index["key"].items()
+            index["key"] = list(index["key"].items())
             index = dict(index)
             info[index.pop("name")] = index
         return info
@@ -2351,10 +2253,6 @@ class Collection(common.BaseObject):
 
         def _find_and_modify(session, sock_info, retryable_write):
             if array_filters is not None:
-                if sock_info.max_wire_version < 6:
-                    raise ConfigurationError(
-                        'Must be connected to MongoDB 3.6+ to use '
-                        'arrayFilters.')
                 if not write_concern.acknowledged:
                     raise ConfigurationError(
                         'arrayFilters is unsupported for unacknowledged '
@@ -2368,8 +2266,7 @@ class Collection(common.BaseObject):
                     raise ConfigurationError(
                         'hint is unsupported for unacknowledged writes.')
                 cmd['hint'] = hint
-            if (sock_info.max_wire_version >= 4 and
-                    not write_concern.is_server_default):
+            if not write_concern.is_server_default:
                 cmd['writeConcern'] = write_concern.document
             out = self._command(sock_info, cmd,
                                 read_preference=ReadPreference.PRIMARY,

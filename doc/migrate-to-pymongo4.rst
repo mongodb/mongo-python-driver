@@ -141,32 +141,22 @@ instead. For example::
 MongoClient.unlock is removed
 .............................
 
-Removed :meth:`pymongo.mongo_client.MongoClient.unlock`. Users of MongoDB
-version 3.2 or newer can run the `fsyncUnlock command`_ directly with
-:meth:`~pymongo.database.Database.command`::
+Removed :meth:`pymongo.mongo_client.MongoClient.unlock`. Run the
+`fsyncUnlock command`_ directly with
+:meth:`~pymongo.database.Database.command` instead. For example::
 
      client.admin.command('fsyncUnlock')
-
-Users of MongoDB version 2.6 and 3.0 can query the "unlock" virtual
-collection::
-
-    client.admin["$cmd.sys.unlock"].find_one()
 
 .. _fsyncUnlock command: https://docs.mongodb.com/manual/reference/command/fsyncUnlock/
 
 MongoClient.is_locked is removed
 ................................
 
-Removed :attr:`pymongo.mongo_client.MongoClient.is_locked`. Users of MongoDB
-version 3.2 or newer can run the `currentOp command`_ directly with
-:meth:`~pymongo.database.Database.command`::
+Removed :attr:`pymongo.mongo_client.MongoClient.is_locked`. Run the
+`currentOp command`_ directly with
+:meth:`~pymongo.database.Database.command` instead. For example::
 
     is_locked = client.admin.command('currentOp').get('fsyncLock')
-
-Users of MongoDB version 2.6 and 3.0 can query the "inprog" virtual
-collection::
-
-    is_locked = client.admin["$cmd.sys.inprog"].find_one().get('fsyncLock')
 
 .. _currentOp command: https://docs.mongodb.com/manual/reference/command/currentOp/
 
@@ -190,6 +180,18 @@ can be changed to this::
 now defaults to ``False`` instead of ``True``. ``json_util.loads`` now
 decodes datetime as naive by default.
 
+MongoClient cannot execute operations after ``close()``
+.......................................................
+
+:class:`~pymongo.mongo_client.MongoClient` cannot execute any operations
+after being closed. The previous behavior would simply reconnect. However,
+now you must create a new instance.
+
+MongoClient raises exception when given more than one URI
+.........................................................
+
+``MongoClient()`` now raises a :exc:`~pymongo.errors.ConfigurationError`
+when more than one URI is passed into the ``hosts`` argument.
 
 Database
 --------
@@ -320,6 +322,19 @@ Can be changed to this::
   profiling_info = list(db['system.profile'].find())
 
 .. _'system.profile' collection: https://docs.mongodb.com/manual/reference/database-profiler/
+
+Database.__bool__ raises NotImplementedError
+............................................
+:class:`~pymongo.database.Database` now raises an error upon evaluating as a
+Boolean. Code like this::
+
+  if database:
+
+Can be changed to this::
+
+  if database is not None:
+
+You must now explicitly compare with None.
 
 Collection
 ----------
@@ -621,6 +636,35 @@ can be changed to this::
 
   cursor = coll.find({}, min={'x', min_value}, hint=[('x', ASCENDING)])
 
+Collection.__bool__ raises NotImplementedError
+..............................................
+:class:`~pymongo.collection.Collection` now raises an error upon evaluating
+as a Boolean. Code like this::
+
+  if collection:
+
+Can be changed to this::
+
+  if collection is not None:
+
+You must now explicitly compare with None.
+
+Collection.find returns entire document with empty projection
+.............................................................
+Empty projections (eg {} or []) for
+:meth:`~pymongo.collection.Collection.find`, and
+:meth:`~pymongo.collection.Collection.find_one`
+are passed to the server as-is rather than the previous behavior which
+substituted in a projection of ``{"_id": 1}``. This means that an empty
+projection will now return the entire document, not just the ``"_id"`` field.
+To ensure that behavior remains consistent, code like this::
+
+  coll.find({}, projection={})
+
+Can be changed to this::
+
+  coll.find({}, projection={"_id":1})
+
 SONManipulator is removed
 -------------------------
 
@@ -652,6 +696,21 @@ custom types to BSON, the :class:`~bson.codec_options.TypeCodec` and
 :class:`~bson.codec_options.TypeRegistry` APIs may be a suitable alternative.
 For more information, see the
 :doc:`custom type example <examples/custom_type>`.
+
+``SON().items()`` now returns ``dict_items`` object.
+----------------------------------------------------
+:meth:`~bson.son.SON.items` now returns a ``dict_items`` object rather than
+a list.
+
+``SON().iteritems()`` removed.
+------------------------------
+``SON.iteritems()`` now removed. Code that looks like this::
+
+    for k, v in son.iteritems():
+
+Can now be replaced by code that looks like::
+
+    for k, v in son.items():
 
 IsMaster is removed
 -------------------
@@ -793,3 +852,12 @@ The default uuid_representation for :class:`~bson.codec_options.CodecOptions`,
 :data:`bson.binary.UuidRepresentation.UNSPECIFIED`. Attempting to encode a
 :class:`uuid.UUID` instance to BSON or JSON now produces an error by default.
 See :ref:`handling-uuid-data-example` for details.
+
+Additional BSON classes implement ``__slots__``
+...............................................
+
+:class:`~bson.int64.Int64`, :class:`~bson.min_key.MinKey`,
+:class:`~bson.max_key.MaxKey`, :class:`~bson.timestamp.Timestamp`,
+:class:`~bson.regex.Regex`, and :class:`~bson.dbref.DBRef` now implement
+``__slots__`` to reduce memory usage. This means that their attributes are fixed, and new
+attributes cannot be added to the object at runtime.

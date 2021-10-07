@@ -15,7 +15,7 @@
 """Test the read_concern module."""
 
 from bson.son import SON
-from pymongo.errors import ConfigurationError
+from pymongo.errors import OperationFailure
 from pymongo.read_concern import ReadConcern
 
 from test import client_context, IntegrationTest
@@ -64,17 +64,13 @@ class TestReadConcern(IntegrationTest):
         client = rs_or_single_client(uri, connect=False)
         self.assertEqual(ReadConcern('majority'), client.read_concern)
 
-    @client_context.require_version_max(3, 1)
     def test_invalid_read_concern(self):
         coll = self.db.get_collection(
-            'coll', read_concern=ReadConcern('majority'))
-        with self.assertRaisesRegex(
-                ConfigurationError,
-                'read concern level of majority is not valid '
-                'with a max wire version of [0-3]'):
+            'coll', read_concern=ReadConcern('unknown'))
+        # We rely on the server to validate read concern.
+        with self.assertRaises(OperationFailure):
             coll.find_one()
 
-    @client_context.require_version_min(3, 1, 9, -1)
     def test_find_command(self):
         # readConcern not sent in command if not specified.
         coll = self.db.coll
@@ -93,7 +89,6 @@ class TestReadConcern(IntegrationTest):
                  ('readConcern', {'level': 'local'})]),
             self.listener.results['started'][0].command)
 
-    @client_context.require_version_min(3, 1, 9, -1)
     def test_command_cursor(self):
         # readConcern not sent in command if not specified.
         coll = self.db.coll

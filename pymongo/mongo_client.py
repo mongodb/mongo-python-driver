@@ -32,9 +32,7 @@ access:
 """
 
 import contextlib
-import datetime
 import threading
-import warnings
 import weakref
 
 from collections import defaultdict
@@ -62,8 +60,7 @@ from pymongo.errors import (AutoReconnect,
                             ServerSelectionTimeoutError)
 from pymongo.pool import ConnectionClosedReason
 from pymongo.read_preferences import ReadPreference
-from pymongo.server_selectors import (writable_preferred_server_selector,
-                                      writable_server_selector)
+from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.topology import (Topology,
                               _ErrorContext)
@@ -112,11 +109,9 @@ class MongoClient(common.BaseObject):
 
         The `host` parameter can be a full `mongodb URI
         <http://dochub.mongodb.org/core/connections>`_, in addition to
-        a simple hostname. It can also be a list of hostnames or
-        URIs. Any port specified in the host string(s) will override
-        the `port` parameter. If multiple mongodb URIs containing
-        database or auth information are passed, the last database,
-        username, and password present will be used.  For username and
+        a simple hostname. It can also be a list of hostnames but no more
+        than one URI. Any port specified in the host string(s) will override
+        the `port` parameter. For username and
         passwords reserved characters like ':', '/', '+' and '@' must be
         percent encoded following RFC 2396::
 
@@ -182,8 +177,9 @@ class MongoClient(common.BaseObject):
         :Parameters:
           - `host` (optional): hostname or IP address or Unix domain socket
             path of a single mongod or mongos instance to connect to, or a
-            mongodb URI, or a list of hostnames / mongodb URIs. If `host` is
-            an IPv6 literal it must be enclosed in '[' and ']' characters
+            mongodb URI, or a list of hostnames (but no more than one mongodb
+            URI). If `host` is an IPv6 literal it must be enclosed in '['
+            and ']' characters
             following the RFC2732 URL syntax (e.g. '[::1]' for localhost).
             Multihomed and round robin DNS addresses are **not** supported.
           - `port` (optional): port number on which to connect
@@ -654,6 +650,9 @@ class MongoClient(common.BaseObject):
         fqdn = None
         srv_service_name = keyword_opts.get("srvservicename", None)
 
+        if len([h for h in host if "/" in h]) > 1:
+            raise ConfigurationError("host must not contain multiple MongoDB "
+                                     "URIs")
         for entity in host:
             # A hostname can only include a-z, 0-9, '-' and '.'. If we find a '/'
             # it must be a URI,
@@ -717,7 +716,6 @@ class MongoClient(common.BaseObject):
         self.__kill_cursors_queue = []
 
         self._event_listeners = options.pool_options.event_listeners
-
         super(MongoClient, self).__init__(options.codec_options,
                                           options.read_preference,
                                           options.write_concern,
@@ -1141,10 +1139,10 @@ class MongoClient(common.BaseObject):
         sending one or more endSessions commands.
 
         Close all sockets in the connection pools and stop the monitor threads.
-        If this instance is used again it will be automatically re-opened and
-        the threads restarted unless auto encryption is enabled. A client
-        enabled with auto encryption cannot be used again after being closed;
-        any attempt will raise :exc:`~.errors.InvalidOperation`.
+
+        .. versionchanged:: 4.0
+           Once closed, the client cannot be used again and any attempt will
+           raise :exc:`~pymongo.errors.InvalidOperation`.
 
         .. versionchanged:: 3.6
            End all server sessions created by this client.
@@ -1388,8 +1386,6 @@ class MongoClient(common.BaseObject):
             try:
                 server = self._select_server(
                     read_pref, session, address=address)
-                if not server.description.retryable_reads_supported:
-                    retryable = False
                 with self._secondaryok_for_server(read_pref, server, session) as (
                             sock_info, secondary_ok):
                     if retrying and not retryable:
@@ -1572,51 +1568,10 @@ class MongoClient(common.BaseObject):
             self._kill_cursor_impl(cursor_ids, address, session, sock_info)
 
     def _kill_cursor_impl(self, cursor_ids, address, session, sock_info):
-        listeners = self._event_listeners
-        publish = listeners.enabled_for_commands
-
-        try:
-            namespace = address.namespace
-            db, coll = namespace.split('.', 1)
-        except AttributeError:
-            namespace = None
-            db = coll = "OP_KILL_CURSORS"
+        namespace = address.namespace
+        db, coll = namespace.split('.', 1)
         spec = SON([('killCursors', coll), ('cursors', cursor_ids)])
-        if sock_info.max_wire_version >= 4 and namespace is not None:
-            sock_info.command(db, spec, session=session, client=self)
-        else:
-            if publish:
-                start = datetime.datetime.now()
-            request_id, msg = message._kill_cursors(cursor_ids)
-            if publish:
-                duration = datetime.datetime.now() - start
-                # Here and below, address could be a tuple or
-                # _CursorAddress. We always want to publish a
-                # tuple to match the rest of the monitoring
-                # API.
-                listeners.publish_command_start(
-                    spec, db, request_id, tuple(address),
-                    service_id=sock_info.service_id)
-                start = datetime.datetime.now()
-
-            try:
-                sock_info.send_message(msg, 0)
-            except Exception as exc:
-                if publish:
-                    dur = ((datetime.datetime.now() - start) + duration)
-                    listeners.publish_command_failure(
-                        dur, message._convert_exception(exc),
-                        'killCursors', request_id,
-                        tuple(address), service_id=sock_info.service_id)
-                raise
-
-            if publish:
-                duration = ((datetime.datetime.now() - start) + duration)
-                # OP_KILL_CURSORS returns no reply, fake one.
-                reply = {'cursorsUnknown': cursor_ids, 'ok': 1}
-                listeners.publish_command_success(
-                    duration, reply, 'killCursors', request_id,
-                    tuple(address), service_id=sock_info.service_id)
+        sock_info.command(db, spec, session=session, client=self)
 
     def _process_kill_cursors(self):
         """Process any pending kill cursors requests."""

@@ -55,6 +55,7 @@ from test.utils import (camel_to_snake,
                         OvertCommandListener,
                         rs_or_single_client,
                         single_client,
+                        single_client_noauth,
                         TestCreator,
                         wait_until)
 from test.utils_spec_runner import SpecRunnerThread
@@ -334,7 +335,7 @@ class TestCMAP(IntegrationTest):
         opts = '&'.join(['%s=%s' % (k, v)
                          for k, v in self.POOL_OPTIONS.items()])
         uri = 'mongodb://%s/?%s' % (client_context.pair, opts)
-        client = rs_or_single_client(uri, **self.credentials)
+        client = rs_or_single_client(uri)
         self.addCleanup(client.close)
         pool_opts = get_pool(client).opts
         self.assertEqual(pool_opts.non_default_options, self.POOL_OPTIONS)
@@ -395,8 +396,9 @@ class TestCMAP(IntegrationTest):
 
     def test_5_check_out_fails_auth_error(self):
         listener = CMAPListener()
-        client = single_client(username="notauser", password="fail",
-                               event_listeners=[listener])
+        client = single_client_noauth(
+            username="notauser", password="fail",
+            event_listeners=[listener])
         self.addCleanup(client.close)
 
         # Attempt to create a new connection.

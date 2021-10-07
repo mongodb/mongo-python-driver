@@ -19,6 +19,7 @@ import calendar
 import datetime
 
 from bson.tz_util import utc
+from bson._helpers import _getstate_slots, _setstate_slots
 
 UPPERBOUND = 4294967296
 
@@ -26,6 +27,10 @@ UPPERBOUND = 4294967296
 class Timestamp(object):
     """MongoDB internal timestamps used in the opLog.
     """
+    __slots__ = ("__time", "__inc")
+
+    __getstate__ = _getstate_slots
+    __setstate__ = _setstate_slots
 
     _type_marker = 17
 

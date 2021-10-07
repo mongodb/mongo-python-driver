@@ -17,12 +17,14 @@
 from copy import deepcopy
 
 from bson.son import SON
-
+from bson._helpers import _getstate_slots, _setstate_slots
 
 class DBRef(object):
     """A reference to a document stored in MongoDB.
     """
-
+    __slots__ = "__collection", "__id", "__database", "__kwargs"
+    __getstate__ = _getstate_slots
+    __setstate__ = _setstate_slots
     # DBRef isn't actually a BSON "type" so this number was arbitrarily chosen.
     _type_marker = 100
 
@@ -80,12 +82,6 @@ class DBRef(object):
             return self.__kwargs[key]
         except KeyError:
             raise AttributeError(key)
-
-    # Have to provide __setstate__ to avoid
-    # infinite recursion since we override
-    # __getattr__.
-    def __setstate__(self, state):
-        self.__dict__.update(state)
 
     def as_doc(self):
         """Get the SON document representation of this DBRef.

@@ -50,7 +50,8 @@ from pymongo.errors import (AutoReconnect,
                             NetworkTimeout,
                             OperationFailure,
                             ServerSelectionTimeoutError,
-                            WriteConcernError)
+                            WriteConcernError,
+                            InvalidOperation)
 from pymongo.hello import HelloCompat
 from pymongo.mongo_client import MongoClient
 from pymongo.monitoring import (ServerHeartbeatListener,
@@ -465,6 +466,11 @@ class ClientUnitTest(unittest.TestCase):
 
 
 class TestClient(IntegrationTest):
+    def test_multiple_uris(self):
+        with self.assertRaises(ConfigurationError):
+            MongoClient(host=['mongodb+srv://cluster-a.abc12.mongodb.net',
+                              'mongodb+srv://cluster-b.abc12.mongodb.net',
+                              'mongodb+srv://cluster-c.abc12.mongodb.net'])
 
     def test_max_idle_time_reaper_default(self):
         with client_knobs(kill_cursor_frequency=0.1):
@@ -729,17 +735,15 @@ class TestClient(IntegrationTest):
         for doc in client.list_databases():
             self.assertIs(type(doc), dict)
 
-        if client_context.version.at_least(3, 4, 2):
-            self.client.pymongo_test.test.insert_one({})
-            cursor = self.client.list_databases(filter={"name": "admin"})
-            docs = list(cursor)
-            self.assertEqual(1, len(docs))
-            self.assertEqual(docs[0]["name"], "admin")
+        self.client.pymongo_test.test.insert_one({})
+        cursor = self.client.list_databases(filter={"name": "admin"})
+        docs = list(cursor)
+        self.assertEqual(1, len(docs))
+        self.assertEqual(docs[0]["name"], "admin")
 
-        if client_context.version.at_least(3, 4, 3):
-            cursor = self.client.list_databases(nameOnly=True)
-            for doc in cursor:
-                self.assertEqual(["name"], list(doc))
+        cursor = self.client.list_databases(nameOnly=True)
+        for doc in cursor:
+            self.assertEqual(["name"], list(doc))
 
     def test_list_database_names(self):
         self.client.pymongo_test.test.insert_one({"dummy": "object"})
@@ -763,42 +767,33 @@ class TestClient(IntegrationTest):
         self.assertIn("pymongo_test2", dbs)
         self.client.drop_database("pymongo_test")
 
-        if client_context.version.at_least(3, 3, 9) and client_context.is_rs:
+        if client_context.is_rs:
             wc_client = rs_or_single_client(w=len(client_context.nodes) + 1)
             with self.assertRaises(WriteConcernError):
                 wc_client.drop_database('pymongo_test2')
 
         self.client.drop_database(self.client.pymongo_test2)
-
-        raise SkipTest("This test often fails due to SERVER-2329")
-
         dbs = self.client.list_database_names()
         self.assertNotIn("pymongo_test", dbs)
         self.assertNotIn("pymongo_test2", dbs)
 
     def test_close(self):
-        coll = self.client.pymongo_test.bar
-
-        self.client.close()
-        self.client.close()
-
-        coll.count_documents({})
-
-        self.client.close()
-        self.client.close()
-
-        coll.count_documents({})
+        test_client = rs_or_single_client()
+        coll = test_client.pymongo_test.bar
+        test_client.close()
+        self.assertRaises(InvalidOperation, coll.count_documents, {})
 
     def test_close_kills_cursors(self):
         if sys.platform.startswith('java'):
             # We can't figure out how to make this test reliable with Jython.
             raise SkipTest("Can't test with Jython")
+        test_client = rs_or_single_client()
         # Kill any cursors possibly queued up by previous tests.
         gc.collect()
-        self.client._process_periodic_tasks()
+        test_client._process_periodic_tasks()
 
         # Add some test data.
-        coll = self.client.pymongo_test.test_close_kills_cursors
+        coll = test_client.pymongo_test.test_close_kills_cursors
         docs_inserted = 1000
         coll.insert_many([{"i": i} for i in range(docs_inserted)])
 
@@ -816,13 +811,13 @@ class TestClient(IntegrationTest):
         gc.collect()
 
         # Close the client and ensure the topology is closed.
-        self.assertTrue(self.client._topology._opened)
-        self.client.close()
-        self.assertFalse(self.client._topology._opened)
-
+        self.assertTrue(test_client._topology._opened)
+        test_client.close()
+        self.assertFalse(test_client._topology._opened)
+        test_client = rs_or_single_client()
         # The killCursors task should not need to re-open the topology.
-        self.client._process_periodic_tasks()
-        self.assertFalse(self.client._topology._opened)
+        test_client._process_periodic_tasks()
+        self.assertTrue(test_client._topology._opened)
 
     def test_close_stops_kill_cursors_thread(self):
         client = rs_client()
@@ -833,12 +828,9 @@ class TestClient(IntegrationTest):
         client.close()
         self.assertTrue(client._kill_cursors_executor._stopped)
 
-        # Reusing the closed client should restart the thread.
-        client.admin.command('ping')
-        self.assertFalse(client._kill_cursors_executor._stopped)
-
-        # Again, closing the client should stop the thread.
-        client.close()
+        # Reusing the closed client should raise an InvalidOperation error.
+        self.assertRaises(InvalidOperation, client.admin.command, 'ping')
+        # Thread is still stopped.
         self.assertTrue(client._kill_cursors_executor._stopped)
 
     def test_uri_connect_option(self):
@@ -894,7 +886,7 @@ class TestClient(IntegrationTest):
             "pymongo_test", "user", "pass", roles=['userAdmin', 'readWrite'])
 
         with self.assertRaises(OperationFailure):
-            connected(rs_or_single_client(
+            connected(rs_or_single_client_noauth(
                 "mongodb://a:b@%s:%d" % (host, port)))
 
         # No error.
@@ -904,7 +896,7 @@ class TestClient(IntegrationTest):
         # Wrong database.
         uri = "mongodb://admin:pass@%s:%d/pymongo_test" % (host, port)
         with self.assertRaises(OperationFailure):
-            connected(rs_or_single_client(uri))
+            connected(rs_or_single_client_noauth(uri))
 
         # No error.
         connected(rs_or_single_client_noauth(
@@ -928,7 +920,7 @@ class TestClient(IntegrationTest):
         client_context.create_user("admin", "ad min", "pa/ss")
         self.addCleanup(client_context.drop_user, "admin", "ad min")
 
-        c = rs_or_single_client(username="ad min", password="pa/ss")
+        c = rs_or_single_client_noauth(username="ad min", password="pa/ss")
 
         # Username and password aren't in strings that will likely be logged.
         self.assertNotIn("ad min", repr(c))
@@ -940,7 +932,8 @@ class TestClient(IntegrationTest):
         c.server_info()
 
         with self.assertRaises(OperationFailure):
-            rs_or_single_client(username="ad min", password="foo").server_info()
+            rs_or_single_client_noauth(
+                username="ad min", password="foo").server_info()
 
     @client_context.require_auth
     def test_lazy_auth_raises_operation_failure(self):
@@ -962,11 +955,7 @@ class TestClient(IntegrationTest):
         if not os.access(mongodb_socket, os.R_OK):
             raise SkipTest("Socket file is not accessible")
 
-        if client_context.auth_enabled:
-            uri = "mongodb://%s:%s@%s" % (db_user, db_pwd, encoded_socket)
-        else:
-            uri = "mongodb://%s" % encoded_socket
-
+        uri = "mongodb://%s" % encoded_socket
         # Confirm we can do operations via the socket.
         client = rs_or_single_client(uri)
         client.pymongo_test.test.insert_one({"dummy": "object"})
@@ -1136,12 +1125,13 @@ class TestClient(IntegrationTest):
 
         with contextlib.closing(client):
             self.assertEqual("bar", client.pymongo_test.test.find_one()["foo"])
-            self.assertEqual(1, len(get_pool(client).sockets))
-        self.assertEqual(0, len(get_pool(client).sockets))
-
+        with self.assertRaises(InvalidOperation):
+            client.pymongo_test.test.find_one()
+        client = rs_or_single_client()
         with client as client:
             self.assertEqual("bar", client.pymongo_test.test.find_one()["foo"])
-        self.assertEqual(0, len(get_pool(client).sockets))
+        with self.assertRaises(InvalidOperation):
+            client.pymongo_test.test.find_one()
 
     def test_interrupt_signal(self):
         if sys.platform.startswith('java'):
@@ -1816,35 +1806,26 @@ class TestClientLazyConnect(IntegrationTest):
 class TestMongoClientFailover(MockClientTest):
 
     def test_discover_primary(self):
-        # Disable background refresh.
-        with client_knobs(heartbeat_frequency=999999):
-            c = MockClient(
-                standalones=[],
-                members=['a:1', 'b:2', 'c:3'],
-                mongoses=[],
-                host='b:2',  # Pass a secondary.
-                replicaSet='rs')
-            self.addCleanup(c.close)
+        c = MockClient(
+            standalones=[],
+            members=['a:1', 'b:2', 'c:3'],
+            mongoses=[],
+            host='b:2',  # Pass a secondary.
+            replicaSet='rs',
+            heartbeatFrequencyMS=500)
+        self.addCleanup(c.close)
 
-            wait_until(lambda: len(c.nodes) == 3, 'connect')
-            self.assertEqual(c.address, ('a', 1))
+        wait_until(lambda: len(c.nodes) == 3, 'connect')
 
-            # Fail over.
-            c.kill_host('a:1')
-            c.mock_primary = 'b:2'
-
-            c.close()
-            self.assertEqual(0, len(c.nodes))
-
-            t = c._get_topology()
-            t.select_servers(writable_server_selector)  # Reconnect.
-            self.assertEqual(c.address, ('b', 2))
-
-            # a:1 not longer in nodes.
-            self.assertLess(len(c.nodes), 3)
-
-            # c:3 is rediscovered.
-            t.select_server_by_address(('c', 3))
+        self.assertEqual(c.address, ('a', 1))
+        # Fail over.
+        c.kill_host('a:1')
+        c.mock_primary = 'b:2'
+        wait_until(lambda: c.address == ('b', 2), "wait for server "
+                                                  "address to be "
+                                                  "updated")
+        # a:1 not longer in nodes.
+        self.assertLess(len(c.nodes), 3)
 
     def test_reconnect(self):
         # Verify the node list isn't forgotten during a network failure.

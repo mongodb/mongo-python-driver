@@ -107,12 +107,14 @@ if TEST_LOADBALANCER:
     db_user = res['username'] or db_user
     db_pwd = res['password'] or db_pwd
 elif TEST_SERVERLESS:
-    res = parse_uri(os.environ["MONGODB_URI"])
-    host, port = res['nodelist'].pop(0)
-    additional_serverless_mongoses = res['nodelist']
+    TEST_LOADBALANCER = True
+    res = parse_uri(SINGLE_MONGOS_LB_URI)
+    host, port = res['nodelist'][0]
     db_user = res['username'] or db_user
     db_pwd = res['password'] or db_pwd
     TLS_OPTIONS = {'tls': True}
+    # Spec says serverless tests must be run with compression.
+    COMPRESSORS = COMPRESSORS or 'zlib'
 
 
 def is_server_resolvable():
@@ -236,7 +238,7 @@ class ClientContext(object):
         self.version = Version(-1)  # Needs to be comparable with Version
         self.auth_enabled = False
         self.test_commands_enabled = False
-        self.server_parameters = None
+        self.server_parameters = {}
         self.is_mongos = False
         self.mongoses = []
         self.is_rs = False
@@ -251,7 +253,7 @@ class ClientContext(object):
         self.is_data_lake = False
         self.load_balancer = TEST_LOADBALANCER
         self.serverless = TEST_SERVERLESS
-        if self.load_balancer:
+        if self.load_balancer or self.serverless:
             self.default_client_options["loadBalanced"] = True
         if COMPRESSORS:
             self.default_client_options["compressors"] = COMPRESSORS
@@ -402,7 +404,11 @@ class ClientContext(object):
             self.w = len(hello.get("hosts", [])) or 1
             self.version = Version.from_client(self.client)
 
-            if TEST_SERVERLESS:
+            if self.serverless:
+                self.server_parameters = {
+                    'requireApiVersion': False,
+                    'enableTestCommands': True,
+                }
                 self.test_commands_enabled = True
                 self.has_ipv6 = False
             else:
@@ -422,14 +428,11 @@ class ClientContext(object):
 
             self.is_mongos = (self.hello.get('msg') == 'isdbgrid')
             if self.is_mongos:
-                if self.serverless:
-                    self.mongoses.append(self.client.address)
-                    self.mongoses.extend(additional_serverless_mongoses)
-                else:
+                address = self.client.address
+                self.mongoses.append(address)
+                if not self.serverless:
                     # Check for another mongos on the next port.
-                    address = self.client.address
                     next_address = address[0], address[1] + 1
-                    self.mongoses.append(address)
                     mongos_client = self._connect(
                         *next_address, **self.default_client_options)
                     if mongos_client:
@@ -605,10 +608,9 @@ class ClientContext(object):
 
     def require_auth(self, func):
         """Run a test only if the server is running with auth enabled."""
-        return self.check_auth_with_sharding(
-            self._require(lambda: self.auth_enabled,
-                          "Authentication is not enabled on the server",
-                          func=func))
+        return self._require(lambda: self.auth_enabled,
+                             "Authentication is not enabled on the server",
+                             func=func)
 
     def require_no_auth(self, func):
         """Run a test only if the server is running without auth enabled."""
@@ -704,14 +706,6 @@ class ClientContext(object):
         """
         return self._require(lambda: not self.load_balancer,
                              "Must not be connected to a load balancer",
-                             func=func)
-
-    def check_auth_with_sharding(self, func):
-        """Skip a test when connected to mongos < 2.0 and running with auth."""
-        condition = lambda: not (self.auth_enabled and
-                         self.is_mongos and self.version < (2,))
-        return self._require(condition,
-                             "Auth with sharding requires MongoDB >= 2.0.0",
                              func=func)
 
     def is_topology_type(self, topologies):
@@ -818,9 +812,7 @@ class ClientContext(object):
             return False
         if not self.sessions_enabled:
             return False
-        if self.version.at_least(3, 6):
-            return self.is_mongos or self.is_rs
-        return False
+        return self.is_mongos or self.is_rs
 
     def require_retryable_writes(self, func):
         """Run a test only if the deployment supports retryable writes."""

@@ -165,7 +165,6 @@ class TestRetryableWritesMMAPv1(IgnoreDeprecationsTest):
         cls.client.close()
         super(TestRetryableWritesMMAPv1, cls).tearDownClass()
 
-    @client_context.require_version_min(3, 5)
     @client_context.require_no_standalone
     def test_actionable_error_message(self):
         if client_context.storage_engine != 'mmapv1':
@@ -202,15 +201,13 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
         super(TestRetryableWrites, cls).tearDownClass()
 
     def setUp(self):
-        if (client_context.version.at_least(3, 5) and client_context.is_rs
-                and client_context.test_commands_enabled):
+        if client_context.is_rs and client_context.test_commands_enabled:
             self.client.admin.command(SON([
                 ('configureFailPoint', 'onPrimaryTransactionalWrite'),
                 ('mode', 'alwaysOn')]))
 
     def tearDown(self):
-        if (client_context.version.at_least(3, 5) and client_context.is_rs
-                and client_context.test_commands_enabled):
+        if client_context.is_rs and client_context.test_commands_enabled:
             self.client.admin.command(SON([
                 ('configureFailPoint', 'onPrimaryTransactionalWrite'),
                 ('mode', 'off')]))
@@ -230,7 +227,6 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
                     'txnNumber', event.command,
                     '%s sent txnNumber with %s' % (msg, event.command_name))
 
-    @client_context.require_version_min(3, 5)
     @client_context.require_no_standalone
     def test_supported_single_statement_supported_cluster(self):
         for method, args, kwargs in retryable_single_statement_ops(
@@ -271,8 +267,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
                              initial_transaction_id, msg)
 
     def test_supported_single_statement_unsupported_cluster(self):
-        if client_context.version.at_least(3, 5) and (
-                    client_context.is_rs or client_context.is_mongos):
+        if client_context.is_rs or client_context.is_mongos:
             raise SkipTest('This cluster supports retryable writes')
 
         for method, args, kwargs in retryable_single_statement_ops(
@@ -319,7 +314,6 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
                 method(*args, **kwargs)
             self.assertEqual(len(listener.results['started']), 0, msg)
 
-    @client_context.require_version_min(3, 5)
     @client_context.require_replica_set
     @client_context.require_test_commands
     def test_retry_timeout_raises_original_error(self):
@@ -352,7 +346,6 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
                 method(*args, **kwargs)
             self.assertEqual(len(listener.results['started']), 1, msg)
 
-    @client_context.require_version_min(3, 5)
     @client_context.require_replica_set
     @client_context.require_test_commands
     def test_batch_splitting(self):
@@ -388,7 +381,6 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
         }
         self.assertEqual(bulk_result.bulk_api_result, expected_result)
 
-    @client_context.require_version_min(3, 5)
     @client_context.require_replica_set
     @client_context.require_test_commands
     def test_batch_splitting_retry_fails(self):
@@ -572,7 +564,6 @@ class TestPoolPausedError(IntegrationTest):
 
 # TODO: Make this a real integration test where we stepdown the primary.
 class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
-    @client_context.require_version_min(3, 6)
     @client_context.require_replica_set
     @client_context.require_no_mmap
     def test_increment_transaction_id_without_sending_command(self):

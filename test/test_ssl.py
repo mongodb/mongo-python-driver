@@ -513,19 +513,14 @@ class TestSSL(IntegrationTest):
             tlsCertificateKeyFile=CLIENT_PEM,
             event_listeners=[listener])
 
-        if client_context.version.at_least(3, 3, 12):
-            # No error
-            auth.pymongo_test.test.find_one()
-            names = listener.started_command_names()
-            if client_context.version.at_least(4, 4, -1):
-                # Speculative auth skips the authenticate command.
-                self.assertEqual(names, ['find'])
-            else:
-                self.assertEqual(names, ['authenticate', 'find'])
+        # No error
+        auth.pymongo_test.test.find_one()
+        names = listener.started_command_names()
+        if client_context.version.at_least(4, 4, -1):
+            # Speculative auth skips the authenticate command.
+            self.assertEqual(names, ['find'])
         else:
-            # Should require a username
-            with self.assertRaises(ConfigurationError):
-                auth.pymongo_test.test.find_one()
+            self.assertEqual(names, ['authenticate', 'find'])
 
         uri = ('mongodb://%s@%s:%d/?authMechanism='
                'MONGODB-X509' % (
@@ -542,14 +537,8 @@ class TestSSL(IntegrationTest):
                              ssl=True,
                              tlsAllowInvalidCertificates=True,
                              tlsCertificateKeyFile=CLIENT_PEM)
-        if client_context.version.at_least(3, 3, 12):
-            # No error
-            client.pymongo_test.test.find_one()
-        else:
-            # Should require a username
-            with self.assertRaises(ConfigurationError):
-                client.pymongo_test.test.find_one()
-
+        # No error
+        client.pymongo_test.test.find_one()
         # Auth should fail if username and certificate do not match
         uri = ('mongodb://%s@%s:%d/?authMechanism='
                'MONGODB-X509' % (

@@ -20,8 +20,7 @@ import threading
 from collections import abc
 
 from bson import decode, encode
-from bson.binary import Binary, STANDARD
-from bson.codec_options import CodecOptions
+from bson.binary import Binary
 from bson.int64 import Int64
 from bson.son import SON
 
@@ -511,7 +510,7 @@ class SpecRunner(IntegrationTest):
         use_multi_mongos = test['useMultipleMongoses']
         host = None
         if use_multi_mongos:
-            if client_context.load_balancer:
+            if client_context.load_balancer or client_context.serverless:
                 host = client_context.MULTI_MONGOS_LB_URI
             elif client_context.is_mongos:
                 host = client_context.mongos_seeds()
@@ -634,13 +633,10 @@ def end_sessions(sessions):
         s.end_session()
 
 
-OPTS = CodecOptions(document_class=dict, uuid_representation=STANDARD)
-
-
 def decode_raw(val):
     """Decode RawBSONDocuments in the given container."""
     if isinstance(val, (list, abc.Mapping)):
-        return decode(encode({'v': val}, codec_options=OPTS), OPTS)['v']
+        return decode(encode({'v': val}))['v']
     return val
 
 

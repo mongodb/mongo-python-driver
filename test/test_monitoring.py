@@ -860,7 +860,6 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertEqual(6, count)
 
     def test_insert_many_unacknowledged(self):
-        # On legacy servers this uses bulk OP_INSERT.
         coll = self.client.pymongo_test.test
         coll.drop()
         unack_coll = coll.with_options(write_concern=WriteConcern(w=0))
@@ -994,29 +993,6 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertEqual(event.command_name, 'insert')
         self.assertIsInstance(event.failure, dict)
         self.assertEqual(event.failure['code'], 10107)
-        self.assertTrue(event.failure['errmsg'])
-
-    @client_context.require_version_max(3, 4, 99)
-    def test_bulk_write_legacy_network_error(self):
-        self.listener.results.clear()
-
-        # Make the delete operation run on a closed connection.
-        self.client.admin.command('ping')
-        pool = get_pool(self.client)
-        sock_info = pool.sockets[0]
-        sock_info.sock.close()
-
-        # Test legacy unacknowledged write network error.
-        coll = self.client.pymongo_test.get_collection(
-            'test', write_concern=WriteConcern(w=0))
-        with self.assertRaises(AutoReconnect):
-            coll.bulk_write([InsertOne({'_id': 1})], ordered=False)
-        failed = self.listener.results['failed']
-        self.assertEqual(1, len(failed))
-        event = failed[0]
-        self.assertEqual(event.command_name, 'insert')
-        self.assertIsInstance(event.failure, dict)
-        self.assertEqual(event.failure['errtype'], 'AutoReconnect')
         self.assertTrue(event.failure['errmsg'])
 
     def test_write_errors(self):

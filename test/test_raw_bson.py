@@ -25,6 +25,7 @@ from bson.errors import InvalidBSON
 from bson.raw_bson import RawBSONDocument, DEFAULT_RAW_BSON_OPTIONS
 from bson.son import SON
 from test import client_context, unittest
+from test.utils import rs_or_single_client
 from test.test_client import IntegrationTest
 
 
@@ -43,6 +44,7 @@ class TestRawBSONDocument(IntegrationTest):
     @classmethod
     def setUpClass(cls):
         super(TestRawBSONDocument, cls).setUpClass()
+        client_context.client = rs_or_single_client()
         cls.client = client_context.client
 
     def tearDown(self):
