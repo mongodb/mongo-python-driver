@@ -1589,6 +1589,8 @@ class MongoClient(common.BaseObject):
             try:
                 self._cleanup_cursor(True, cursor_id, address, sock_mgr,
                                      None, False)
+            except InvalidOperation as e:
+                raise e
             except Exception:
                 helpers._handle_exception()
 
@@ -1606,9 +1608,11 @@ class MongoClient(common.BaseObject):
     def _process_periodic_tasks(self):
         """Process any pending kill cursors requests and
         maintain connection pool parameters."""
-        self._process_kill_cursors()
         try:
+            self._process_kill_cursors()
             self._topology.update_pool(self.__all_credentials)
+        except InvalidOperation:
+            pass
         except Exception:
             helpers._handle_exception()
 
