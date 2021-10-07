@@ -374,7 +374,7 @@ def _check_options(nodes, options):
 
 
 def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
-              normalize=True, connect_timeout=None):
+              normalize=True, connect_timeout=None, srv_service_name=None):
     """Parse and validate a MongoDB URI.
 
     Returns a dict of the form::
@@ -468,7 +468,10 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
 
         if opts:
             options.update(split_options(opts, validate, warn, normalize))
-    srv_service_name = options.get("srvServiceName", SRV_SERVICE_NAME)
+
+    if srv_service_name is None:
+        srv_service_name = options.get("srvServiceName", SRV_SERVICE_NAME)
+
     if '@' in host_part:
         userinfo, _, hosts = host_part.rpartition('@')
         user, passwd = parse_userinfo(userinfo)

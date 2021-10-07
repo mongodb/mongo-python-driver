@@ -652,6 +652,8 @@ class MongoClient(common.BaseObject):
         dbase = None
         opts = common._CaseInsensitiveDictionary()
         fqdn = None
+        srv_service_name = keyword_opts.get("srvservicenqame",
+                                      common.SRV_SERVICE_NAME)
         for entity in host:
             # A hostname can only include a-z, 0-9, '-' and '.'. If we find a '/'
             # it must be a URI,
@@ -664,7 +666,7 @@ class MongoClient(common.BaseObject):
                         keyword_opts.cased_key("connecttimeoutms"), timeout)
                 res = uri_parser.parse_uri(
                     entity, port, validate=True, warn=True, normalize=False,
-                    connect_timeout=timeout)
+                    connect_timeout=timeout, srv_service_name=srv_service_name)
                 seeds.update(res["nodelist"])
                 username = res["username"] or username
                 password = res["password"] or password
@@ -694,8 +696,11 @@ class MongoClient(common.BaseObject):
 
         # Override connection string options with kwarg options.
         opts.update(keyword_opts)
-        srv_service_name = opts.get("srvServiceName",
-                                    common.SRV_SERVICE_NAME)
+
+        if opts.get("srvServiceName") is not None and srv_service_name == \
+                common.SRV_SERVICE_NAME:
+            srv_service_name = opts.get("srvServiceName")
+
         # Handle security-option conflicts in combined options.
         opts = _handle_security_options(opts)
         # Normalize combined options.
