@@ -289,6 +289,7 @@ class TestTransactions(TransactionsBase):
     # Require 4.2+ for large (16MB+) transactions.
     @client_context.require_version_min(4, 2)
     @client_context.require_transactions
+    @unittest.skipIf('PyPy' in sys.version, 'PYTHON-2937 fails on PyPy')
     def test_transaction_starts_with_batched_write(self):
         # Start a transaction with a batch of operations that needs to be
         # split.
@@ -299,7 +300,8 @@ class TestTransactions(TransactionsBase):
         listener.reset()
         self.addCleanup(client.close)
         self.addCleanup(coll.drop)
-        ops = [InsertOne({'a': '1'*(10*1024*1024)}) for _ in range(10)]
+        large_str = '\0'*(10*1024*1024)
+        ops = [InsertOne({'a': large_str}) for _ in range(10)]
         with client.start_session() as session:
             with session.start_transaction():
                 coll.bulk_write(ops, session=session)
