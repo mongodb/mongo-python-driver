@@ -406,6 +406,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
           to their internally-used names. Default: ``True``.
         - `connect_timeout` (optional): The maximum time in milliseconds to
           wait for a response from the DNS server.
+        - 'srv_service_name` (optional): A custom SRV service name
 
     .. versionchanged:: 3.9
         Added the ``normalize`` parameter.
