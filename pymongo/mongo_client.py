@@ -652,8 +652,8 @@ class MongoClient(common.BaseObject):
         dbase = None
         opts = common._CaseInsensitiveDictionary()
         fqdn = None
-        srv_service_name = keyword_opts.get("srvservicenqame",
-                                      common.SRV_SERVICE_NAME)
+        srv_service_name = keyword_opts.get("srvservicenqame", None)
+
         for entity in host:
             # A hostname can only include a-z, 0-9, '-' and '.'. If we find a '/'
             # it must be a URI,
@@ -697,7 +697,7 @@ class MongoClient(common.BaseObject):
         # Override connection string options with kwarg options.
         opts.update(keyword_opts)
 
-        if srv_service_name == common.SRV_SERVICE_NAME:
+        if srv_service_name is None:
             srv_service_name = opts.get("srvServiceName", common.SRV_SERVICE_NAME)
 
         # Handle security-option conflicts in combined options.
