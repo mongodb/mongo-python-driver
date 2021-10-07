@@ -697,9 +697,8 @@ class MongoClient(common.BaseObject):
         # Override connection string options with kwarg options.
         opts.update(keyword_opts)
 
-        if opts.get("srvServiceName") is not None and srv_service_name == \
-                common.SRV_SERVICE_NAME:
-            srv_service_name = opts.get("srvServiceName")
+        if srv_service_name == common.SRV_SERVICE_NAME:
+            srv_service_name = opts.get("srvServiceName", common.SRV_SERVICE_NAME)
 
         # Handle security-option conflicts in combined options.
         opts = _handle_security_options(opts)

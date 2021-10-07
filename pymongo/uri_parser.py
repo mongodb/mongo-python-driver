@@ -469,7 +469,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
         if opts:
             options.update(split_options(opts, validate, warn, normalize))
 
-    if srv_service_name is None:
+    if srv_service_name == SRV_SERVICE_NAME:
         srv_service_name = options.get("srvServiceName", SRV_SERVICE_NAME)
 
     if '@' in host_part:
