@@ -1591,8 +1591,8 @@ class TestClient(IntegrationTest):
             with self.assertRaisesRegex(AutoReconnect, expected):
                 client.pymongo_test.test.find_one({})
 
-    def test_process_period_tasks(self):
-        client = MongoClient("mongodb://user:password@localhost/")
+    def test_process_periodic_tasks(self):
+        client = rs_or_single_client()
         coll = client.db.collection
         coll.insert_many([{} for _ in range(5)])
         cursor = coll.find(batch_size=2)
