@@ -21,6 +21,7 @@ import sys
 from urllib.parse import unquote_plus
 
 from pymongo.common import (
+    SRV_SERVICE_NAME,
     get_validated_options, INTERNAL_URI_OPTION_NAME_MAP,
     URI_OPTIONS_DEPRECATION_MAP, _CaseInsensitiveDictionary)
 from pymongo.errors import ConfigurationError, InvalidURI
@@ -373,7 +374,7 @@ def _check_options(nodes, options):
 
 
 def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
-              normalize=True, connect_timeout=None):
+              normalize=True, connect_timeout=None, srv_service_name=None):
     """Parse and validate a MongoDB URI.
 
     Returns a dict of the form::
@@ -405,6 +406,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
           to their internally-used names. Default: ``True``.
         - `connect_timeout` (optional): The maximum time in milliseconds to
           wait for a response from the DNS server.
+        - 'srv_service_name` (optional): A custom SRV service name
 
     .. versionchanged:: 3.9
         Added the ``normalize`` parameter.
@@ -468,6 +470,9 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
         if opts:
             options.update(split_options(opts, validate, warn, normalize))
 
+    if srv_service_name is None:
+        srv_service_name = options.get("srvServiceName", SRV_SERVICE_NAME)
+
     if '@' in host_part:
         userinfo, _, hosts = host_part.rpartition('@')
         user, passwd = parse_userinfo(userinfo)
@@ -499,7 +504,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
         # Use the connection timeout. connectTimeoutMS passed as a keyword
         # argument overrides the same option passed in the connection string.
         connect_timeout = connect_timeout or options.get("connectTimeoutMS")
-        dns_resolver = _SrvResolver(fqdn, connect_timeout=connect_timeout)
+        dns_resolver = _SrvResolver(fqdn, connect_timeout, srv_service_name)
         nodes = dns_resolver.get_hosts()
         dns_options = dns_resolver.get_options()
         if dns_options:
@@ -514,6 +519,9 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
                     options[opt] = val
         if "tls" not in options and "ssl" not in options:
             options["tls"] = True if validate else 'true'
+    elif not is_srv and options.get("srvServiceName") is not None:
+        raise ConfigurationError("The srvServiceName option is only allowed "
+                                 "with 'mongodb+srv://' URIs")
     else:
         nodes = split_hosts(hosts, default_port=default_port)
 

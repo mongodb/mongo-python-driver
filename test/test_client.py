@@ -1609,6 +1609,27 @@ class TestClient(IntegrationTest):
         with self.assertRaises(InvalidOperation):
             coll.insert_many([{} for _ in range(5)])
 
+    @unittest.skipUnless(
+        _HAVE_DNSPYTHON, "DNS-related tests need dnspython to be installed")
+    def test_service_name_from_kwargs(self):
+        client = MongoClient(
+            'mongodb+srv://user:password@test22.test.build.10gen.cc',
+            srvServiceName='customname', connect=False)
+        self.assertEqual(client._topology_settings._srv_service_name,
+                         'customname')
+        client = MongoClient(
+            'mongodb+srv://user:password@test22.test.build.10gen.cc'
+            '/?srvServiceName=shouldbeoverriden',
+            srvServiceName='customname', connect=False)
+        self.assertEqual(client._topology_settings._srv_service_name,
+                         'customname')
+        client = MongoClient(
+             'mongodb+srv://user:password@test22.test.build.10gen.cc'
+             '/?srvServiceName=customname',
+             connect=False)
+        self.assertEqual(client._topology_settings._srv_service_name,
+                         'customname')
+
 
 
 class TestExhaustCursor(IntegrationTest):

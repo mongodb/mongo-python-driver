@@ -556,10 +556,8 @@ class Topology(object):
         Hold the lock when calling this.
         """
         if self._closed:
-            raise InvalidOperation("Once a MongoClient is closed, "
-                                   "all operations will fail. Please create "
-                                   "a new client object if you wish to "
-                                   "reconnect.")
+            raise InvalidOperation("Cannot use MongoClient after close")
+
         if not self._opened:
             self._opened = True
             self._update_servers()
