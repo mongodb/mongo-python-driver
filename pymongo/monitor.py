@@ -299,6 +299,7 @@ class SrvMonitor(MonitorBase):
         self._settings = topology_settings
         self._seedlist = self._settings._seeds
         self._fqdn = self._settings.fqdn
+        self._srv_service_name = self._settings._srv_service_name
 
     def _run(self):
         seedlist = self._get_seedlist()
@@ -316,7 +317,10 @@ class SrvMonitor(MonitorBase):
         Returns a list of ServerDescriptions.
         """
         try:
-            seedlist, ttl = _SrvResolver(self._fqdn).get_hosts_and_min_ttl()
+            resolver = _SrvResolver(self._fqdn,
+                                    self._settings.pool_options.connect_timeout,
+                                    self._srv_service_name)
+            seedlist, ttl = resolver.get_hosts_and_min_ttl()
             if len(seedlist) == 0:
                 # As per the spec: this should be treated as a failure.
                 raise Exception

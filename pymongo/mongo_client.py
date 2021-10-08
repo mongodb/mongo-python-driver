@@ -329,6 +329,11 @@ class MongoClient(common.BaseObject):
             a Unicode-related error occurs during BSON decoding that would
             otherwise raise :exc:`UnicodeDecodeError`. Valid options include
             'strict', 'replace', and 'ignore'. Defaults to 'strict'.
+          - ``srvServiceName`: (string) The SRV service name to use for
+            "mongodb+srv://" URIs. Defaults to "mongodb". Use it like so::
+
+                MongoClient("mongodb+srv://example.com/?srvServiceName=customname")
+
 
           | **Write Concern options:**
           | (Only set if passed. No default values.)
@@ -499,6 +504,7 @@ class MongoClient(common.BaseObject):
            arguments.
            The default for `uuidRepresentation` was changed from
            ``pythonLegacy`` to ``unspecified``.
+           Added the ``srvServiceName`` URI and keyword argument.
 
         .. versionchanged:: 3.12
            Added the ``server_api`` keyword argument.
@@ -644,6 +650,8 @@ class MongoClient(common.BaseObject):
         dbase = None
         opts = common._CaseInsensitiveDictionary()
         fqdn = None
+        srv_service_name = keyword_opts.get("srvservicename", None)
+
         if len([h for h in host if "/" in h]) > 1:
             raise ConfigurationError("host must not contain multiple MongoDB "
                                      "URIs")
@@ -659,7 +667,7 @@ class MongoClient(common.BaseObject):
                         keyword_opts.cased_key("connecttimeoutms"), timeout)
                 res = uri_parser.parse_uri(
                     entity, port, validate=True, warn=True, normalize=False,
-                    connect_timeout=timeout)
+                    connect_timeout=timeout, srv_service_name=srv_service_name)
                 seeds.update(res["nodelist"])
                 username = res["username"] or username
                 password = res["password"] or password
@@ -689,6 +697,10 @@ class MongoClient(common.BaseObject):
 
         # Override connection string options with kwarg options.
         opts.update(keyword_opts)
+
+        if srv_service_name is None:
+            srv_service_name = opts.get("srvServiceName", common.SRV_SERVICE_NAME)
+
         # Handle security-option conflicts in combined options.
         opts = _handle_security_options(opts)
         # Normalize combined options.
@@ -728,6 +740,7 @@ class MongoClient(common.BaseObject):
             server_selector=options.server_selector,
             heartbeat_frequency=options.heartbeat_frequency,
             fqdn=fqdn,
+            srv_service_name=srv_service_name,
             direct_connection=options.direct_connection,
             load_balanced=options.load_balanced,
         )

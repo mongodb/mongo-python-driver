@@ -134,6 +134,9 @@ Breaking Changes in 4.0
 - The ``hint`` option is now required when using ``min`` or ``max`` queries
   with :meth:`~pymongo.collection.Collection.find`.
 - ``name`` is now a required argument for the :class:`pymongo.driver_info.DriverInfo` class.
+- When providing a "mongodb+srv://" URI to
+  :class:`~pymongo.mongo_client.MongoClient` constructor you can now use the
+  ``srvServiceName`` URI option to specify your own SRV service name.
 - :meth:`~bson.son.SON.items` now returns a ``dict_items`` object rather
   than a list.
 - Removed :meth:`bson.son.SON.iteritems`.
@@ -159,7 +162,6 @@ Breaking Changes in 4.0
   projection will now return the entire document, not just the ``"_id"`` field.
 - ``MongoClient()`` now raises a :exc:`~pymongo.errors.ConfigurationError`
   when more than one URI is passed into the ``hosts`` argument.
-
 
 Notable improvements
 ....................
