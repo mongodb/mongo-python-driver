@@ -1583,13 +1583,11 @@ class MongoClient(common.BaseObject):
             try:
                 self._cleanup_cursor(True, cursor_id, address, sock_mgr,
                                      None, False)
-            except InvalidOperation as e:
-                if self._topology._closed:
-                    raise e
+            except Exception as e:
+                if isinstance(e, InvalidOperation) and self._topology._closed:
+                    raise
                 else:
                     helpers._handle_exception()
-            except Exception:
-                helpers._handle_exception()
 
         # Don't re-open topology if it's closed and there's no pending cursors.
         if address_to_cursor_ids:
@@ -1599,7 +1597,11 @@ class MongoClient(common.BaseObject):
                     self._kill_cursors(
                         cursor_ids, address, topology, session=None)
                 except Exception:
-                    helpers._handle_exception()
+                    if (isinstance(e,InvalidOperation) and
+                            self._topology._closed):
+                        raise
+                    else:
+                        helpers._handle_exception()
 
     # This method is run periodically by a background thread.
     def _process_periodic_tasks(self):
@@ -1608,13 +1610,11 @@ class MongoClient(common.BaseObject):
         try:
             self._process_kill_cursors()
             self._topology.update_pool(self.__all_credentials)
-        except InvalidOperation:
-            if self._topology._closed:
-                pass
+        except Exception as e:
+            if isinstance(e, InvalidOperation) and self._topology._closed:
+                return
             else:
                 helpers._handle_exception()
-        except Exception:
-            helpers._handle_exception()
 
     def __start_session(self, implicit, **kwargs):
         # Raises ConfigurationError if sessions are not supported.
