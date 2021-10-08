@@ -1603,7 +1603,7 @@ class TestClient(IntegrationTest):
         client.close()
         # Add cursor to kill cursors queue
         del cursor
-        wait_until(lambda: client._MongoClient__kill_cursors_queuee,
+        wait_until(lambda: client._MongoClient__kill_cursors_queue,
                    "waited for cursor to be added to queue")
         client._process_periodic_tasks()  # This must not raise or print any exceptions
         with self.assertRaises(InvalidOperation):
