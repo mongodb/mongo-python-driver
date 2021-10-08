@@ -1585,6 +1585,8 @@ class MongoClient(common.BaseObject):
                                      None, False)
             except Exception as e:
                 if isinstance(e, InvalidOperation) and self._topology._closed:
+                    # Raise the exception when client is closed so that it
+                    # can be caught in _process_periodic_tasks
                     raise
                 else:
                     helpers._handle_exception()
