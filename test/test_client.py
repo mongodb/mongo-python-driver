@@ -1607,7 +1607,8 @@ class TestClient(IntegrationTest):
                    "waited for cursor to be added to queue")
         client._process_periodic_tasks()  # This must not raise or print any exceptions
         with self.assertRaises(InvalidOperation):
-            coll.find({})
+            coll.insert_many([{} for _ in range(5)])
+
 
 
 class TestExhaustCursor(IntegrationTest):
