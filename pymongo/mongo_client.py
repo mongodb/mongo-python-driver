@@ -1584,7 +1584,10 @@ class MongoClient(common.BaseObject):
                 self._cleanup_cursor(True, cursor_id, address, sock_mgr,
                                      None, False)
             except InvalidOperation as e:
-                raise e
+                if self._topology._closed:
+                    raise e
+                else:
+                    helpers._handle_exception()
             except Exception:
                 helpers._handle_exception()
 
@@ -1606,7 +1609,10 @@ class MongoClient(common.BaseObject):
             self._process_kill_cursors()
             self._topology.update_pool(self.__all_credentials)
         except InvalidOperation:
-            pass
+            if self._topology._closed:
+                pass
+            else:
+                helpers._handle_exception()
         except Exception:
             helpers._handle_exception()
 

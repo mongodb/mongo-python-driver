@@ -1591,6 +1591,7 @@ class TestClient(IntegrationTest):
             with self.assertRaisesRegex(AutoReconnect, expected):
                 client.pymongo_test.test.find_one({})
 
+    @unittest.skipIf('PyPy' in sys.version, 'PYTHON-2938 could fail on PyPy')
     def test_process_periodic_tasks(self):
         client = rs_or_single_client()
         coll = client.db.collection
@@ -1598,17 +1599,15 @@ class TestClient(IntegrationTest):
         cursor = coll.find(batch_size=2)
         cursor.next()
         c_id = cursor.cursor_id
-        assert c_id
+        self.assertIsNotNone(c_id)
         client.close()
         # Add cursor to kill cursors queue
         del cursor
-        wait_until(lambda: c_id in [c for _, c, _ in
-                                    client._MongoClient__kill_cursors_queue],
+        wait_until(lambda: client._MongoClient__kill_cursors_queuee,
                    "waited for cursor to be added to queue")
-        try:
-            client._process_periodic_tasks()  # This must not raise or print any exceptions
-        except Exception:
-            self.fail("client._process_periodic_tasks() raised an exception")
+        client._process_periodic_tasks()  # This must not raise or print any exceptions
+        with self.assertRaises(InvalidOperation):
+            coll.find({})
 
 
 class TestExhaustCursor(IntegrationTest):
