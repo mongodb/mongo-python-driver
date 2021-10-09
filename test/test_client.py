@@ -1591,6 +1591,24 @@ class TestClient(IntegrationTest):
             with self.assertRaisesRegex(AutoReconnect, expected):
                 client.pymongo_test.test.find_one({})
 
+    @unittest.skipIf('PyPy' in sys.version, 'PYTHON-2938 could fail on PyPy')
+    def test_process_periodic_tasks(self):
+        client = rs_or_single_client()
+        coll = client.db.collection
+        coll.insert_many([{} for _ in range(5)])
+        cursor = coll.find(batch_size=2)
+        cursor.next()
+        c_id = cursor.cursor_id
+        self.assertIsNotNone(c_id)
+        client.close()
+        # Add cursor to kill cursors queue
+        del cursor
+        wait_until(lambda: client._MongoClient__kill_cursors_queue,
+                   "waited for cursor to be added to queue")
+        client._process_periodic_tasks()  # This must not raise or print any exceptions
+        with self.assertRaises(InvalidOperation):
+            coll.insert_many([{} for _ in range(5)])
+
     @unittest.skipUnless(
         _HAVE_DNSPYTHON, "DNS-related tests need dnspython to be installed")
     def test_service_name_from_kwargs(self):
@@ -1611,6 +1629,7 @@ class TestClient(IntegrationTest):
              connect=False)
         self.assertEqual(client._topology_settings._srv_service_name,
                          'customname')
+
 
 
 class TestExhaustCursor(IntegrationTest):

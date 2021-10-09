@@ -1596,8 +1596,14 @@ class MongoClient(common.BaseObject):
             try:
                 self._cleanup_cursor(True, cursor_id, address, sock_mgr,
                                      None, False)
-            except Exception:
-                helpers._handle_exception()
+            except Exception as exc:
+                if (isinstance(exc, InvalidOperation)
+                        and self._topology._closed):
+                    # Raise the exception when client is closed so that it
+                    # can be caught in _process_periodic_tasks
+                    raise
+                else:
+                    helpers._handle_exception()
 
         # Don't re-open topology if it's closed and there's no pending cursors.
         if address_to_cursor_ids:
@@ -1606,18 +1612,25 @@ class MongoClient(common.BaseObject):
                 try:
                     self._kill_cursors(
                         cursor_ids, address, topology, session=None)
-                except Exception:
-                    helpers._handle_exception()
+                except Exception as exc:
+                    if (isinstance(exc, InvalidOperation) and
+                            self._topology._closed):
+                        raise
+                    else:
+                        helpers._handle_exception()
 
     # This method is run periodically by a background thread.
     def _process_periodic_tasks(self):
         """Process any pending kill cursors requests and
         maintain connection pool parameters."""
-        self._process_kill_cursors()
         try:
+            self._process_kill_cursors()
             self._topology.update_pool(self.__all_credentials)
-        except Exception:
-            helpers._handle_exception()
+        except Exception as exc:
+            if isinstance(exc, InvalidOperation) and self._topology._closed:
+                return
+            else:
+                helpers._handle_exception()
 
     def __start_session(self, implicit, **kwargs):
         # Raises ConfigurationError if sessions are not supported.
