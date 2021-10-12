@@ -108,8 +108,11 @@ class TestSrvPolling(unittest.TestCase):
         """Check if the client._topology eventually sees all nodes in the
         expected_nodelist.
         """
+
         def predicate():
             nodelist = self.get_nodelist(client)
+            print("nodelist seen", nodelist)
+            print("nodelist expected", expected_nodelist)
             if set(expected_nodelist) == set(nodelist):
                 return True
             return False

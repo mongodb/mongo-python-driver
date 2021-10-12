@@ -97,14 +97,14 @@ class _SrvResolver(object):
 
     def _get_srv_response_and_hosts(self, encapsulate_errors):
         results = self._resolve_uri(encapsulate_errors)
+        if (self.__srv_max_hosts != 0 and self.__srv_max_hosts is not None) \
+                and self.__srv_max_hosts <= len(results):
+            results = sample(results, self.__srv_max_hosts)
 
         # Construct address tuples
         nodes = [
             (maybe_decode(res.target.to_text(omit_final_dot=True)), res.port)
             for res in results]
-        if (self.__srv_max_hosts != 0 and self.__srv_max_hosts is not None) \
-                and self.__srv_max_hosts <= len(nodes):
-            nodes = sample(nodes, self.__srv_max_hosts)
 
         # Validate hosts
         for node in nodes:

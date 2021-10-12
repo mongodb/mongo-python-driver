@@ -284,7 +284,7 @@ class Monitor(MonitorBase):
 
 
 class SrvMonitor(MonitorBase):
-    def __init__(self, topology, topology_settings, srv_max_hosts):
+    def __init__(self, topology, topology_settings):
         """Class to poll SRV records on a background thread.
 
         Pass a Topology and a TopologySettings.
@@ -300,6 +300,7 @@ class SrvMonitor(MonitorBase):
         self._seedlist = self._settings._seeds
         self._fqdn = self._settings.fqdn
         self._srv_service_name = self._settings._srv_service_name
+        self._srv_max_hosts = self._settings._srv_max_hosts
 
     def _run(self):
         seedlist = self._get_seedlist()

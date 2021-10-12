@@ -651,7 +651,7 @@ class MongoClient(common.BaseObject):
         opts = common._CaseInsensitiveDictionary()
         fqdn = None
         srv_service_name = keyword_opts.get("srvservicename", None)
-
+        srv_max_hosts = keyword_opts.get("srvmaxhosts")
         if len([h for h in host if "/" in h]) > 1:
             raise ConfigurationError("host must not contain multiple MongoDB "
                                      "URIs")
@@ -669,7 +669,7 @@ class MongoClient(common.BaseObject):
                     entity, port, validate=True, warn=True, normalize=False,
                     connect_timeout=timeout,
                     srv_service_name=srv_service_name,
-                    srv_max_hosts=keyword_opts.get("srvmaxhosts"))
+                    srv_max_hosts=srv_max_hosts)
                 seeds.update(res["nodelist"])
                 username = res["username"] or username
                 password = res["password"] or password
@@ -702,7 +702,8 @@ class MongoClient(common.BaseObject):
 
         if srv_service_name is None:
             srv_service_name = opts.get("srvServiceName", common.SRV_SERVICE_NAME)
-
+        if srv_max_hosts is None:
+            srv_max_hosts = opts.get("srvmaxhosts")
         # Handle security-option conflicts in combined options.
         opts = _handle_security_options(opts)
         # Normalize combined options.
@@ -745,7 +746,7 @@ class MongoClient(common.BaseObject):
             srv_service_name=srv_service_name,
             direct_connection=options.direct_connection,
             load_balanced=options.load_balanced,
-            srv_max_hosts=
+            srv_max_hosts=srv_max_hosts
         )
 
         self._topology = Topology(self._topology_settings)
