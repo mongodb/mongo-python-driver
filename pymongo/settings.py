@@ -41,7 +41,8 @@ class TopologySettings(object):
                  fqdn=None,
                  srv_service_name=common.SRV_SERVICE_NAME,
                  direct_connection=False,
-                 load_balanced=None):
+                 load_balanced=None,
+                 srv_max_hosts=None):
         """Represent MongoClient's configuration.
 
         Take a list of (host, port) pairs and optional replica set name.
@@ -63,7 +64,7 @@ class TopologySettings(object):
         self._fqdn = fqdn
         self._srv_service_name = srv_service_name
         self._heartbeat_frequency = heartbeat_frequency
-
+        self._srv_max_hosts = srv_max_hosts
         self._direct = direct_connection
         self._load_balanced = load_balanced
 

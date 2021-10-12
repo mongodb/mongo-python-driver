@@ -284,7 +284,7 @@ class Monitor(MonitorBase):
 
 
 class SrvMonitor(MonitorBase):
-    def __init__(self, topology, topology_settings):
+    def __init__(self, topology, topology_settings, srv_max_hosts):
         """Class to poll SRV records on a background thread.
 
         Pass a Topology and a TopologySettings.
@@ -319,7 +319,7 @@ class SrvMonitor(MonitorBase):
         try:
             resolver = _SrvResolver(self._fqdn,
                                     self._settings.pool_options.connect_timeout,
-                                    self._srv_service_name)
+                                    self._settings._srv_max_hosts)
             seedlist, ttl = resolver.get_hosts_and_min_ttl()
             if len(seedlist) == 0:
                 # As per the spec: this should be treated as a failure.

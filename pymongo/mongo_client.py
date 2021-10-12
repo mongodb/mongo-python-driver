@@ -745,6 +745,7 @@ class MongoClient(common.BaseObject):
             srv_service_name=srv_service_name,
             direct_connection=options.direct_connection,
             load_balanced=options.load_balanced,
+            srv_max_hosts=
         )
 
         self._topology = Topology(self._topology_settings)
