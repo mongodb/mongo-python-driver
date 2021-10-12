@@ -35,7 +35,7 @@ from bson.codec_options import CodecOptions, TypeEncoder, TypeRegistry
 from bson.son import SON
 from bson.tz_util import utc
 import pymongo
-from pymongo import message, monitoring
+from pymongo import message, monitoring, uri_parser
 from pymongo.command_cursor import CommandCursor
 from pymongo.common import CONNECT_TIMEOUT, _UUID_REPRESENTATIONS
 from pymongo.compression_support import _HAVE_SNAPPY, _HAVE_ZSTD
@@ -1630,7 +1630,16 @@ class TestClient(IntegrationTest):
         self.assertEqual(client._topology_settings._srv_service_name,
                          'customname')
 
-
+    def test_srv_max_hosts(self):
+        uri = uri_parser.parse_uri(
+            'mongodb+srv://test1.test.build.10gen.cc/')
+        self.assertGreater(len(uri["nodelist"]), 1)
+        uri = uri_parser.parse_uri(
+        'mongodb+srv://test1.test.build.10gen.cc/', srv_max_hosts=1)
+        self.assertEqual(len(uri["nodelist"]), 1)
+        uri = uri_parser.parse_uri(
+        'mongodb+srv://test1.test.build.10gen.cc/?srvMaxHosts=1')
+        self.assertEqual(len(uri["nodelist"]), 1)
 
 class TestExhaustCursor(IntegrationTest):
     """Test that clients properly handle errors from exhaust cursors."""

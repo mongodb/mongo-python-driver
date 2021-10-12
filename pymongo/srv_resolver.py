@@ -24,7 +24,7 @@ except ImportError:
 
 from pymongo.common import CONNECT_TIMEOUT
 from pymongo.errors import ConfigurationError
-
+from random import sample
 
 # dnspython can return bytes or str from various parts
 # of its API depending on version. We always want str.
@@ -48,11 +48,11 @@ _INVALID_HOST_MSG = (
 
 class _SrvResolver(object):
     def __init__(self, fqdn,
-                 connect_timeout, srv_service_name):
+                 connect_timeout, srv_service_name, srv_max_hosts):
         self.__fqdn = fqdn
         self.__srv = srv_service_name
         self.__connect_timeout = connect_timeout or CONNECT_TIMEOUT
-
+        self.__srv_max_hosts = srv_max_hosts
         # Validate the fully qualified domain name.
         try:
             ipaddress.ip_address(fqdn)
@@ -102,6 +102,9 @@ class _SrvResolver(object):
         nodes = [
             (maybe_decode(res.target.to_text(omit_final_dot=True)), res.port)
             for res in results]
+        if (self.__srv_max_hosts != 0 and self.__srv_max_hosts is not None) \
+                and self.__srv_max_hosts <= len(nodes):
+            nodes = sample(nodes, self.__srv_max_hosts)
 
         # Validate hosts
         for node in nodes:

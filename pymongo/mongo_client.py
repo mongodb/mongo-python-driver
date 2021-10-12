@@ -667,7 +667,9 @@ class MongoClient(common.BaseObject):
                         keyword_opts.cased_key("connecttimeoutms"), timeout)
                 res = uri_parser.parse_uri(
                     entity, port, validate=True, warn=True, normalize=False,
-                    connect_timeout=timeout, srv_service_name=srv_service_name)
+                    connect_timeout=timeout,
+                    srv_service_name=srv_service_name,
+                    srv_max_hosts=keyword_opts.get("srvmaxhosts"))
                 seeds.update(res["nodelist"])
                 username = res["username"] or username
                 password = res["password"] or password
