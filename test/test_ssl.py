@@ -524,7 +524,7 @@ class TestSSL(IntegrationTest):
 
         uri = ('mongodb://%s@%s:%d/?authMechanism='
                'MONGODB-X509' % (
-                   quote_plus(MONGODB_X509_USERNAME), host, port))
+                   MONGODB_X509_USERNAME, host, port))
         client = MongoClient(uri,
                              ssl=True,
                              tlsAllowInvalidCertificates=True,

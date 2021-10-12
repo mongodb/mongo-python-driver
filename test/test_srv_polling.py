@@ -111,8 +111,6 @@ class TestSrvPolling(unittest.TestCase):
 
         def predicate():
             nodelist = self.get_nodelist(client)
-            print("nodelist seen", nodelist)
-            print("nodelist expected", expected_nodelist)
             if set(expected_nodelist) == set(nodelist):
                 return True
             return False

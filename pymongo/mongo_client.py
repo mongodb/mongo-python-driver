@@ -650,7 +650,7 @@ class MongoClient(common.BaseObject):
         dbase = None
         opts = common._CaseInsensitiveDictionary()
         fqdn = None
-        srv_service_name = keyword_opts.get("srvservicename", None)
+        srv_service_name = keyword_opts.get("srvservicename")
         srv_max_hosts = keyword_opts.get("srvmaxhosts")
         if len([h for h in host if "/" in h]) > 1:
             raise ConfigurationError("host must not contain multiple MongoDB "
