@@ -68,13 +68,18 @@ def parse_userinfo(userinfo):
     if not user:
         raise InvalidURI("The empty string is not valid username.")
 
+
     # If we cannot round-trip a value, it is not properly URI encoded.
+    # This checks that we can take a quoted value, and unquote it and it will
+    # still be the same. We take in the unquoted user and passwd strings and
+    # strip subdelimeters and then compare the original unquoted value
+    # without subdelimeters to the resulting string after round-tripping.
     for value_name, quoted_value in zip(
             ('username', 'password',), (user, passwd,)):
         quoted_value_no_sdelims = "".join(
             [ch for ch in quoted_value if ch not in SUBDELIMS])
-        unquoted_value = unquote_plus(quoted_value_no_sdelims)
-        if not quoted_value_no_sdelims == quote_plus(unquoted_value):
+        quoted_value = quote_plus(quoted_value_no_sdelims)
+        if not quoted_value_no_sdelims == unquote_plus(quoted_value):
             raise InvalidURI("%r is not a valid %s" % (
                 quoted_value, value_name))
 
