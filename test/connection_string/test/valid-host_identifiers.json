@@ -132,18 +132,18 @@
     },
     {
       "description": "UTF-8 hosts",
-      "uri": "mongodb://bücher.example.com,umläut.example.com/",,
+      "uri": "mongodb://bücher.example.com,umläut.example.com/",
       "valid": true,
       "warning": false,
       "hosts": [
         {
           "type": "hostname",
-          "host": "b\u00fccher.example.com",
+          "host": "bücher.example.com",
           "port": null
         },
         {
           "type": "hostname",
-          "host": "uml\\u00e4ut.example.com",
+          "host": "umläut.example.com",
           "port": null
         }
       ],
