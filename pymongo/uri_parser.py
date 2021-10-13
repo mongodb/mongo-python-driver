@@ -70,10 +70,12 @@ def parse_userinfo(userinfo):
 
 
     # If we cannot round-trip a value, it is not properly URI encoded.
-    # This checks that we can take a quoted value, and unquote it and it will
-    # still be the same. We take in the unquoted user and passwd strings and
+    # This checks that we can take a value, quote it, and then unquote
+    # that quoted string and arrive at the same value.
+    # We take in the unquoted user and passwd strings and
     # strip subdelimeters and then compare the original unquoted value
     # without subdelimeters to the resulting string after round-tripping.
+    # One round trip means to quote once and then unquote.
     for value_name, quoted_value in zip(
             ('username', 'password',), (user, passwd,)):
         quoted_value_no_sdelims = "".join(
