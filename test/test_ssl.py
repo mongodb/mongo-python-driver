@@ -629,8 +629,6 @@ class TestSSL(IntegrationTest):
             with self.assertRaises(ConfigurationError):
                 client.pymongo_test.test.find_one()
 
-        # No error
-        client.pymongo_test.test.find_one()
         # Auth should fail if username and certificate do not match
         uri = ('mongodb://%s@%s:%d/?authMechanism='
                'MONGODB-X509' % (
