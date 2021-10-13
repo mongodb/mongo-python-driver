@@ -289,8 +289,10 @@ class TestTransactions(TransactionsBase):
     # Require 4.2+ for large (16MB+) transactions.
     @client_context.require_version_min(4, 2)
     @client_context.require_transactions
-    @unittest.skipIf('PyPy' in sys.version, 'PYTHON-2937 fails on PyPy')
     def test_transaction_starts_with_batched_write(self):
+        if 'PyPy' in sys.version and client_context.tls:
+            self.skipTest('PYTHON-2937 PyPy is so slow sending large '
+                          'messages over TLS that this test fails')
         # Start a transaction with a batch of operations that needs to be
         # split.
         listener = OvertCommandListener()
