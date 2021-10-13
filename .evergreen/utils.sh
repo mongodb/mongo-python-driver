@@ -28,9 +28,7 @@ createvirtualenv () {
     PYTHON_VERSION=$(python -c 'import sys;print("%s.%s" % sys.version_info[:2])')
     if [[ $PYTHON_VERSION == "2.7" || $PYTHON_VERSION == "3.4" || $PYTHON_VERSION == "3.5" ]]; then
         # Use get-pip for EOL Python versions.
-        curl -sSL https://bootstrap.pypa.io/pip/${PYTHON_VERSION}/get-pip.py -o get-pip.py
-        python get-pip.py
-        rm get-pip.py
+        curl --retry 3 -L https://bootstrap.pypa.io/pip/$PYTHON_VERSION/get-pip.py | python
     else
         python -m pip install --upgrade pip
     fi
