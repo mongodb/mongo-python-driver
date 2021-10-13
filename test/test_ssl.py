@@ -576,6 +576,7 @@ class TestSSL(IntegrationTest):
             ssl=True,
             ssl_cert_reqs=ssl.CERT_NONE,
             ssl_certfile=CLIENT_PEM)
+        self.addCleanup(noauth.close)
 
         self.assertRaises(OperationFailure, noauth.pymongo_test.test.count)
 
@@ -587,6 +588,7 @@ class TestSSL(IntegrationTest):
             ssl_cert_reqs=ssl.CERT_NONE,
             ssl_certfile=CLIENT_PEM,
             event_listeners=[listener])
+        self.addCleanup(auth.close)
 
         if client_context.version.at_least(3, 3, 12):
             # No error
@@ -609,6 +611,7 @@ class TestSSL(IntegrationTest):
                              ssl=True,
                              ssl_cert_reqs=ssl.CERT_NONE,
                              ssl_certfile=CLIENT_PEM)
+        self.addCleanup(client.close)
         # No error
         client.pymongo_test.test.find_one()
 
@@ -617,6 +620,7 @@ class TestSSL(IntegrationTest):
                              ssl=True,
                              ssl_cert_reqs=ssl.CERT_NONE,
                              ssl_certfile=CLIENT_PEM)
+        self.addCleanup(client.close)
         if client_context.version.at_least(3, 3, 12):
             # No error
             client.pymongo_test.test.find_one()
@@ -625,6 +629,8 @@ class TestSSL(IntegrationTest):
             with self.assertRaises(ConfigurationError):
                 client.pymongo_test.test.find_one()
 
+        # No error
+        client.pymongo_test.test.find_one()
         # Auth should fail if username and certificate do not match
         uri = ('mongodb://%s@%s:%d/?authMechanism='
                'MONGODB-X509' % (
@@ -632,6 +638,7 @@ class TestSSL(IntegrationTest):
 
         bad_client = MongoClient(
             uri, ssl=True, ssl_cert_reqs="CERT_NONE", ssl_certfile=CLIENT_PEM)
+        self.addCleanup(bad_client.close)
 
         with self.assertRaises(OperationFailure):
             bad_client.pymongo_test.test.find_one()
@@ -643,6 +650,7 @@ class TestSSL(IntegrationTest):
                 ssl=True,
                 ssl_cert_reqs=ssl.CERT_NONE,
                 ssl_certfile=CLIENT_PEM)
+        self.addCleanup(bad_client.close)
 
         with self.assertRaises(OperationFailure):
             bad_client.pymongo_test.test.find_one()

@@ -292,6 +292,9 @@ class TestTransactions(TransactionsBase):
     @client_context.require_version_min(4, 2)
     @client_context.require_transactions
     def test_transaction_starts_with_batched_write(self):
+        if 'PyPy' in sys.version and client_context.tls:
+            self.skipTest('PYTHON-2937 PyPy is so slow sending large '
+                          'messages over TLS that this test fails')
         # Start a transaction with a batch of operations that needs to be
         # split.
         listener = OvertCommandListener()
@@ -301,7 +304,8 @@ class TestTransactions(TransactionsBase):
         listener.reset()
         self.addCleanup(client.close)
         self.addCleanup(coll.drop)
-        ops = [InsertOne({'a': '1'*(10*1024*1024)}) for _ in range(10)]
+        large_str = '\0'*(10*1024*1024)
+        ops = [InsertOne({'a': large_str}) for _ in range(10)]
         with client.start_session() as session:
             with session.start_transaction():
                 coll.bulk_write(ops, session=session)
