@@ -93,10 +93,9 @@ def create_test(test, test_workdir):
         compressors = (test.get('options') or {}).get('compressors', [])
         if 'snappy' in compressors and not _HAVE_SNAPPY:
             self.skipTest('This test needs the snappy module.')
-        if (test['uri'].startswith(SRV_SCHEME) and not
-                _HAVE_DNSPYTHON):
+        if test['uri'].startswith(SRV_SCHEME) and not _HAVE_DNSPYTHON:
             self.skipTest("Skipping test '%s' because you need DNSPython for "
-                  "mongodb+srv URIs" % dsc)
+                          "mongodb+srv URIs" % dsc)
         valid = True
         warning = False
 
