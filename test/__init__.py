@@ -1075,6 +1075,9 @@ class SystemCertsPatcher(object):
             raise SkipTest(
                 "LibreSSL on OSX doesn't support setting CA certificates "
                 "using SSL_CERT_FILE environment variable.")
+        if sys.platform == 'win32' and _ssl.IS_PYOPENSSL:
+            raise SkipTest(
+                "SSL_CERT_FILE does not work on Windows with PyOpenSSL")
         self.original_certs = os.environ.get('SSL_CERT_FILE')
         # Tell OpenSSL where CA certificates live.
         os.environ['SSL_CERT_FILE'] = ca_certs
