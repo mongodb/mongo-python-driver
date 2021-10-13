@@ -25,7 +25,7 @@ sys.path[0:0] = [""]
 from pymongo.common import INTERNAL_URI_OPTION_NAME_MAP, validate
 from pymongo.compression_support import _HAVE_SNAPPY
 from pymongo.srv_resolver import _HAVE_DNSPYTHON
-from pymongo.uri_parser import parse_uri
+from pymongo.uri_parser import parse_uri, SRV_SCHEME
 from test import clear_warning_registry, unittest
 
 
@@ -182,7 +182,7 @@ def create_tests(test_path):
                 scenario_def = json.load(scenario_stream)
 
             for testcase in scenario_def['tests']:
-                if (testcase['uri'].startswith("mongodb+srv") and not
+                if (testcase['uri'].startswith(SRV_SCHEME) and not
                 _HAVE_DNSPYTHON):
                     print("Skipping test '%s' because you need DNSPython for "
                           "mongodb+srv URIs" % dsc)
