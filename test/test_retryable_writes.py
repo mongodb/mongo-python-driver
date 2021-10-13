@@ -573,6 +573,7 @@ class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
         listener = OvertCommandListener()
         client = rs_or_single_client(
             retryWrites=True, event_listeners=[listener])
+        self.addCleanup(client.close)
         topology = client._topology
         select_server = topology.select_server
 

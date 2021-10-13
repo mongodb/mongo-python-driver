@@ -500,6 +500,7 @@ class TestSSL(IntegrationTest):
             ssl=True,
             tlsAllowInvalidCertificates=True,
             tlsCertificateKeyFile=CLIENT_PEM)
+        self.addCleanup(noauth.close)
 
         with self.assertRaises(OperationFailure):
             noauth.pymongo_test.test.find_one()
@@ -512,6 +513,7 @@ class TestSSL(IntegrationTest):
             tlsAllowInvalidCertificates=True,
             tlsCertificateKeyFile=CLIENT_PEM,
             event_listeners=[listener])
+        self.addCleanup(auth.close)
 
         # No error
         auth.pymongo_test.test.find_one()
@@ -529,6 +531,7 @@ class TestSSL(IntegrationTest):
                              ssl=True,
                              tlsAllowInvalidCertificates=True,
                              tlsCertificateKeyFile=CLIENT_PEM)
+        self.addCleanup(client.close)
         # No error
         client.pymongo_test.test.find_one()
 
@@ -537,6 +540,7 @@ class TestSSL(IntegrationTest):
                              ssl=True,
                              tlsAllowInvalidCertificates=True,
                              tlsCertificateKeyFile=CLIENT_PEM)
+        self.addCleanup(client.close)
         # No error
         client.pymongo_test.test.find_one()
         # Auth should fail if username and certificate do not match
@@ -545,7 +549,9 @@ class TestSSL(IntegrationTest):
                    quote_plus("not the username"), host, port))
 
         bad_client = MongoClient(
-            uri, ssl=True, tlsAllowInvalidCertificates=True, tlsCertificateKeyFile=CLIENT_PEM)
+            uri, ssl=True, tlsAllowInvalidCertificates=True,
+            tlsCertificateKeyFile=CLIENT_PEM)
+        self.addCleanup(bad_client.close)
 
         with self.assertRaises(OperationFailure):
             bad_client.pymongo_test.test.find_one()
@@ -557,6 +563,7 @@ class TestSSL(IntegrationTest):
                 ssl=True,
                 tlsAllowInvalidCertificates=True,
                 tlsCertificateKeyFile=CLIENT_PEM)
+        self.addCleanup(bad_client.close)
 
         with self.assertRaises(OperationFailure):
             bad_client.pymongo_test.test.find_one()
