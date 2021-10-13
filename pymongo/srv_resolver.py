@@ -98,9 +98,6 @@ class _SrvResolver(object):
 
     def _get_srv_response_and_hosts(self, encapsulate_errors):
         results = self._resolve_uri(encapsulate_errors)
-        if (self.__srv_max_hosts != 0
-                and self.__srv_max_hosts <= len(results)):
-            results = sample(results, self.__srv_max_hosts)
 
         # Construct address tuples
         nodes = [
