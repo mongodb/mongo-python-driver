@@ -18,7 +18,7 @@ import re
 import warnings
 import sys
 
-from urllib.parse import unquote_plus, unquote, quote_plus, quote
+from urllib.parse import unquote_plus, unquote
 
 try:
     from dns import resolver
@@ -40,12 +40,13 @@ SRV_SCHEME = 'mongodb+srv://'
 SRV_SCHEME_LEN = len(SRV_SCHEME)
 DEFAULT_PORT = 27017
 
-# List of sub-delimiters as defined in RFC 3986.
-_SUBDELIMS = ["!", "$", "&", "'", "(", ")", "*", "+", ",", ";", "="]
 
-def unquoted_percent(s):
-    # s can have things like '%25', '%2525', '%E2%85%A8' and 'Ⅸ' but cannot
-    # have unquoted percent like '%foo'.
+def _unquoted_percent(s):
+    """Check for unescaped percent signs
+
+    s can have things like '%25', '%2525', '%E2%85%A8' and 'Ⅸ' but cannot
+    have unquoted percent like '%foo'.
+    """
     for i in range(len(s)):
         if s[i] == '%':
             sub = s[i:i+3]
@@ -71,16 +72,10 @@ def parse_userinfo(userinfo):
        "(", ")", "*", "+", ",", ";", "=") as per RFC 3986 need not be
        escaped.
     """
-    if '@' in userinfo or userinfo.count(':') > 1:
+    if '@' in userinfo or userinfo.count(':') > 1 or _unquoted_percent(userinfo):
         raise InvalidURI("Username and password must be escaped according to "
                          "RFC 3986, use urllib.parse.quote")
 
-    no_subdelims = "".join(
-        [ch for ch in userinfo if ch not in _SUBDELIMS])
-
-    if unquoted_percent(no_subdelims):
-        raise InvalidURI("Username and password must be escaped according to "
-                         "RFC 3986, use urllib.parse.quote")
     user, _, passwd = userinfo.partition(":")
     # No password is expected with GSSAPI authentication.
     if not user:
