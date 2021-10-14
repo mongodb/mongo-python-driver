@@ -291,6 +291,10 @@ class TestTransactions(TransactionsBase):
     # Require 4.2+ for large (16MB+) transactions.
     @client_context.require_version_min(4, 2)
     @client_context.require_transactions
+    @unittest.skipIf(sys.platform.startswith('java'),
+                     'Jython is too slow to pass this test')
+    @unittest.skipIf(sys.platform == 'win32',
+                     'Our Windows machines are too slow to pass this test')
     def test_transaction_starts_with_batched_write(self):
         if 'PyPy' in sys.version and client_context.tls:
             self.skipTest('PYTHON-2937 PyPy is so slow sending large '
