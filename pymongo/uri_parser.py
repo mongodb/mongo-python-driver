@@ -18,7 +18,7 @@ import re
 import warnings
 import sys
 
-from urllib.parse import unquote_plus, unquote, quote_plus
+from urllib.parse import unquote_plus, unquote, quote_plus, quote
 
 try:
     from dns import resolver
@@ -41,8 +41,19 @@ SRV_SCHEME_LEN = len(SRV_SCHEME)
 DEFAULT_PORT = 27017
 
 # List of sub-delimiters as defined in RFC 3986.
-SUBDELIMS = ["!", "$", "&", "'", "(", ")", "*", "+", ",", ";", "="]
+_SUBDELIMS = ["!", "$", "&", "'", "(", ")", "*", "+", ",", ";", "="]
 
+def unquoted_percent(s):
+    # s can have things like '%25', '%2525', '%E2%85%A8' and 'Ⅸ' but cannot
+    # have unquoted percent like '%foo'.
+    for i in range(len(s)):
+        if s[i] == '%':
+            sub = s[i:i+3]
+            # If unquoting yields the same string this means there was an
+            # unquoted %.
+            if unquote(sub) == sub:
+                return True
+    return False
 
 def parse_userinfo(userinfo):
     """Validates the format of user information in a MongoDB URI.
@@ -62,21 +73,14 @@ def parse_userinfo(userinfo):
     """
     if '@' in userinfo or userinfo.count(':') > 1:
         raise InvalidURI("Username and password must be escaped according to "
-                         "RFC 3986, use urllib.parse.quote_plus")
-        # If we cannot round-trip a value, it is not properly URI encoded.
-        # This checks that we can take a value, quote it, and then unquote
-        # that quoted string and arrive at the same value.
-        # We take in the unquoted user and passwd strings and
-        # strip subdelimeters and then compare the original unquoted value
-        # without subdelimeters to the resulting string after round-tripping.
-        # One round trip means to quote once and then unquote.
+                         "RFC 3986, use urllib.parse.quote")
 
-    unquoted_value_no_sdelims = "".join(
-        [ch for ch in userinfo if ch not in SUBDELIMS])
-    quoted_value = quote_plus(unquoted_value_no_sdelims)
-    if unquoted_value_no_sdelims != unquote_plus(quoted_value):
+    no_subdelims = "".join(
+        [ch for ch in userinfo if ch not in _SUBDELIMS])
+
+    if unquoted_percent(no_subdelims):
         raise InvalidURI("Username and password must be escaped according to "
-                         "RFC 3986, use urllib.parse.quote_plus")
+                         "RFC 3986, use urllib.parse.quote")
     user, _, passwd = userinfo.partition(":")
     # No password is expected with GSSAPI authentication.
     if not user:
