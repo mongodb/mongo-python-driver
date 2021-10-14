@@ -63,27 +63,24 @@ def parse_userinfo(userinfo):
     if '@' in userinfo or userinfo.count(':') > 1:
         raise InvalidURI("Username and password must be escaped according to "
                          "RFC 3986, use urllib.parse.quote_plus")
+        # If we cannot round-trip a value, it is not properly URI encoded.
+        # This checks that we can take a value, quote it, and then unquote
+        # that quoted string and arrive at the same value.
+        # We take in the unquoted user and passwd strings and
+        # strip subdelimeters and then compare the original unquoted value
+        # without subdelimeters to the resulting string after round-tripping.
+        # One round trip means to quote once and then unquote.
+
+    quoted_value_no_sdelims = "".join(
+        [ch for ch in userinfo if ch not in SUBDELIMS])
+    quoted_value = quote_plus(quoted_value_no_sdelims)
+    if quoted_value_no_sdelims != unquote_plus(quoted_value):
+        raise InvalidURI("Username and password must be escaped according to "
+                         "RFC 3986, use urllib.parse.quote_plus")
     user, _, passwd = userinfo.partition(":")
     # No password is expected with GSSAPI authentication.
     if not user:
         raise InvalidURI("The empty string is not valid username.")
-
-
-    # If we cannot round-trip a value, it is not properly URI encoded.
-    # This checks that we can take a value, quote it, and then unquote
-    # that quoted string and arrive at the same value.
-    # We take in the unquoted user and passwd strings and
-    # strip subdelimeters and then compare the original unquoted value
-    # without subdelimeters to the resulting string after round-tripping.
-    # One round trip means to quote once and then unquote.
-    for value_name, quoted_value in zip(
-            ('username', 'password',), (user, passwd,)):
-        quoted_value_no_sdelims = "".join(
-            [ch for ch in quoted_value if ch not in SUBDELIMS])
-        quoted_value = quote_plus(quoted_value_no_sdelims)
-        if quoted_value_no_sdelims != unquote_plus(quoted_value):
-            raise InvalidURI("%r is not a valid %s" % (
-                quoted_value, value_name))
 
     return unquote(user), unquote(passwd)
 
