@@ -81,7 +81,7 @@ def parse_userinfo(userinfo):
         quoted_value_no_sdelims = "".join(
             [ch for ch in quoted_value if ch not in SUBDELIMS])
         quoted_value = quote_plus(quoted_value_no_sdelims)
-        if not quoted_value_no_sdelims == unquote_plus(quoted_value):
+        if quoted_value_no_sdelims != unquote_plus(quoted_value):
             raise InvalidURI("%r is not a valid %s" % (
                 quoted_value, value_name))
 
