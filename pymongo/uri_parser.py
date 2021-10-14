@@ -44,8 +44,9 @@ DEFAULT_PORT = 27017
 def _unquoted_percent(s):
     """Check for unescaped percent signs
 
-    s can have things like '%25', '%2525', '%E2%85%A8' and 'Ⅸ' but cannot
-    have unquoted percent like '%foo'.
+    :Paramaters:
+        - `s`: A string. `s` can have things like '%25', '%2525', '%E2%85%A8'
+               and 'Ⅸ' but cannot have unquoted percent like '%foo'.
     """
     for i in range(len(s)):
         if s[i] == '%':
