@@ -456,12 +456,9 @@ def _updated_topology_description_srv_polling(topology_description, seedlist):
         elif new_hosts_needed < 0:
             while len(sds) > topology_description._srv_max_hosts:
                 sds.pop()
-        for address in seedlist:
+    for address in seedlist:
+        if address not in sds:
             sds[address] = ServerDescription(address)
-    else:
-        for address in seedlist:
-            if address not in sds:
-                sds[address] = ServerDescription(address)
 
     # Remove SDs corresponding to servers no longer part of the SRV record.
     for address in list(sds.keys()):

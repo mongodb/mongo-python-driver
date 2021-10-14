@@ -300,7 +300,6 @@ class SrvMonitor(MonitorBase):
         self._seedlist = self._settings._seeds
         self._fqdn = self._settings.fqdn
         self._srv_service_name = self._settings._srv_service_name
-        self._srv_max_hosts = self._settings._srv_max_hosts
 
     def _run(self):
         seedlist = self._get_seedlist()
