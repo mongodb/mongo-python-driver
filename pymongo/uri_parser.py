@@ -18,13 +18,12 @@ import re
 import warnings
 import sys
 
-from urllib.parse import unquote_plus, unquote
+from urllib.parse import unquote
 
 try:
     from dns import resolver
-    _HAVE_DNSPYTHON = True
-except ImportError:
-    _HAVE_DNSPYTHON = False
+except:
+    pass
 
 from pymongo.common import (
     SRV_SERVICE_NAME,
@@ -167,7 +166,7 @@ def _parse_options(opts, delim):
             if key.lower() == 'authmechanismproperties':
                 val = value
             else:
-                val = unquote_plus(value)
+                val = unquote(value)
             options[key] = val
 
     return options
@@ -488,7 +487,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
     if path_part:
         dbase, _, opts = path_part.partition('?')
         if dbase:
-            dbase = unquote_plus(dbase)
+            dbase = unquote(dbase)
             if '.' in dbase:
                 dbase, collection = dbase.split('.', 1)
             if _BAD_DB_CHARS.search(dbase):
@@ -512,7 +511,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
         raise InvalidURI("Any '/' in a unix domain socket must be"
                          " percent-encoded: %s" % host_part)
 
-    hosts = unquote_plus(hosts)
+    hosts = unquote(hosts)
     fqdn = None
 
     if is_srv:

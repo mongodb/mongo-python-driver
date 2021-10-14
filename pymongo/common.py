@@ -19,7 +19,7 @@ import datetime
 import warnings
 
 from collections import abc, OrderedDict
-from urllib.parse import unquote_plus
+from urllib.parse import unquote
 
 from bson import SON
 from bson.binary import UuidRepresentation
@@ -406,7 +406,7 @@ def validate_read_preference_tags(name, value):
             tags = {}
             for tag in tag_set.split(","):
                 key, val = tag.split(":")
-                tags[unquote_plus(key)] = unquote_plus(val)
+                tags[unquote(key)] = unquote(val)
             tag_sets.append(tags)
         except Exception:
             raise ValueError("%r not a valid "
@@ -442,7 +442,7 @@ def validate_auth_mechanism_properties(option, value):
         if key == 'CANONICALIZE_HOST_NAME':
             props[key] = validate_boolean_or_string(key, val)
         else:
-            props[key] = unquote_plus(val)
+            props[key] = unquote(val)
 
     return props
 

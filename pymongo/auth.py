@@ -319,8 +319,7 @@ def _authenticate_gssapi(credentials, sock_info):
 
         if password is not None:
             if _USE_PRINCIPAL:
-                # Note that, though we use unquote_plus for unquoting URI
-                # options, we use quote here. Microsoft's UrlUnescape (used
+                # Microsoft's UrlUnescape (used
                 # by WinKerberos) doesn't support +.
                 principal = ":".join((quote(username), quote(password)))
                 result, ctx = kerberos.authGSSClientInit(
