@@ -71,10 +71,10 @@ def parse_userinfo(userinfo):
         # without subdelimeters to the resulting string after round-tripping.
         # One round trip means to quote once and then unquote.
 
-    quoted_value_no_sdelims = "".join(
+    unquoted_value_no_sdelims = "".join(
         [ch for ch in userinfo if ch not in SUBDELIMS])
-    quoted_value = quote_plus(quoted_value_no_sdelims)
-    if quoted_value_no_sdelims != unquote_plus(quoted_value):
+    quoted_value = quote_plus(unquoted_value_no_sdelims)
+    if unquoted_value_no_sdelims != unquote_plus(quoted_value):
         raise InvalidURI("Username and password must be escaped according to "
                          "RFC 3986, use urllib.parse.quote_plus")
     user, _, passwd = userinfo.partition(":")
