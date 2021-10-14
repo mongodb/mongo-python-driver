@@ -202,10 +202,10 @@ when it encounters unescaped percent signs in username and password.
 MongoClient uses `unquote` rather than `unquote_plus` for login info
 ....................................................................
 
-``MongoClient()`` now uses `urllib.parse.unquote` rather than `urllib.parse
-.unquote_plus`, meaning that space characters are no longer converted to
-plus signs. This means that if you were previously quoting your login
-information using quote_plus, you must now switch to quote.
+``MongoClient()`` now uses `urllib.parse.unquote` rather than
+`urllib.parse.unquote_plus`, meaning that space characters are no longer
+converted to plus signs. This means that if you were previously quoting your
+login information using quote_plus, you must now switch to quote.
 
 Database
 --------
