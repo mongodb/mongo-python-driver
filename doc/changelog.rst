@@ -162,6 +162,12 @@ Breaking Changes in 4.0
   projection will now return the entire document, not just the ``"_id"`` field.
 - ``MongoClient()`` now raises a :exc:`~pymongo.errors.ConfigurationError`
   when more than one URI is passed into the ``hosts`` argument.
+- ``MongoClient()`` now raises an exc:`~pymongo.errors.InvalidURI` exception
+  when it encounters unescaped percent signs in username and password.
+- ``MongoClient()`` now uses `urllib.parse.unquote` rather than
+  `urllib.parse.unquote_plus`, meaning that space characters are no longer
+  converted to plus signs. This means that if you were previously quoting
+  your login information using quote_plus, you must now switch to quote.
 
 Notable improvements
 ....................
