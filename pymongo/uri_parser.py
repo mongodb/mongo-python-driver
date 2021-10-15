@@ -62,7 +62,8 @@ def parse_userinfo(userinfo):
     :Paramaters:
         - `userinfo`: A string of the form <username>:<password>
     """
-    if '@' in userinfo or userinfo.count(':') > 1 or _unquoted_percent(userinfo):
+    if ('@' in userinfo or userinfo.count(':') > 1 or
+            _unquoted_percent(userinfo)):
         raise InvalidURI("Username and password must be escaped according to "
                          "RFC 3986, use urllib.parse.quote")
 
@@ -427,9 +428,10 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
         - 'srv_service_name` (optional): A custom SRV service name
 
     .. versionchanged:: 4.0
-       Reserved characters that are sub-delimiters ("!", "$", "&", "'",
-       "(", ")", "*", "+", ",", ";", "=") as per RFC 3986 need not be
-       escaped. However, "%" does need to be escaped.
+       To better follow RFC 3986, unquoted percent signs ("%") are no longer
+       supported and plus signs ("+") are no longer decoded into spaces (" ")
+       when decoding username and password. To avoid these issues, use
+       :py:func:`urllib.parse.quote` when building the URI.
 
     .. versionchanged:: 3.9
         Added the ``normalize`` parameter.

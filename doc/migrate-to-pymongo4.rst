@@ -203,10 +203,11 @@ MongoClient uses `unquote` rather than `unquote_plus` for login info
 ....................................................................
 
 :class:`~pymongo.mongo_client.MongoClient` now uses
-:meth:`urllib.parse.unquote` rather than
-:meth:`urllib.parse.unquote_plus`, meaning that space characters are no
+:py:func:`urllib.parse.unquote` rather than
+:py:func:`urllib.parse.unquote_plus`, meaning that space characters are no
 longer converted to plus signs. This means that if you were previously
-quoting your login information using quote_plus, you must now switch to quote.
+quoting your login information using :py:func:`urllib.parse.quote_plus`, you
+must now switch to :py:func:`urllib.parse.quote`.
 
 Database
 --------
