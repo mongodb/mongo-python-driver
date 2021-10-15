@@ -56,7 +56,13 @@ def create_test(test_case):
         if not _HAVE_DNSPYTHON:
             raise unittest.SkipTest("DNS tests require the dnspython module")
         uri = test_case['uri']
-        seeds = test_case['seeds']
+        num_seeds = None
+        seeds = None
+        try:
+            seeds = test_case['seeds']
+        except:
+            #if we don't have seeds then we are running the srvMaxHosts tests
+            num_seeds = test_case['numSeeds']
         hosts = test_case['hosts']
         options = test_case.get('options', {})
         if 'ssl' in options:
@@ -106,9 +112,13 @@ def create_test(test_case):
                     copts['tlsAllowInvalidHostnames'] = True
 
                 client = MongoClient(uri, **copts)
-                wait_until(
-                    lambda: hosts == client.nodes,
-                    'match test hosts to client nodes')
+                if num_seeds:
+                    wait_until(lambda: len(client.nodes) == num_seeds,
+                               "wait until we connect to our node")
+                else:
+                    wait_until(
+                        lambda: hosts == client.nodes,
+                        'match test hosts to client nodes')
         else:
             try:
                 parse_uri(uri)

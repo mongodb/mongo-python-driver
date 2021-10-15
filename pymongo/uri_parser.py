@@ -473,7 +473,10 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
 
     if srv_service_name is None:
         srv_service_name = options.get("srvServiceName", SRV_SERVICE_NAME)
-
+    if options.get("replicaSet") and srv_max_hosts != 0:
+        raise InvalidURI("You cannot specify replicaSet with srvMaxHosts")
+    if options.get("loadBalanced") and srv_max_hosts != 0:
+        raise InvalidURI("You cannot specify loadBalanced with srvMaxHosts")
     if '@' in host_part:
         userinfo, _, hosts = host_part.rpartition('@')
         user, passwd = parse_userinfo(userinfo)
