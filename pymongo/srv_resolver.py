@@ -115,8 +115,7 @@ class _SrvResolver(object):
                 raise ConfigurationError("Invalid SRV host: %s" % (node[0],))
         if(self.__srv_max_hosts != 0):
             ret = list(zip(results, nodes))
-            random.shuffle(ret)
-            ret = ret[:min(self.__srv_max_hosts, len(ret))]
+            ret = random.sample(ret, min(self.__srv_max_hosts, len(ret)))
             return [i[0] for i in ret], [i[1] for i in ret]
         return results, nodes
     def get_hosts(self):
