@@ -65,7 +65,7 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.settings import TOPOLOGY_TYPE
 from pymongo.srv_resolver import _HAVE_DNSPYTHON
 from pymongo.topology import _ErrorContext
-from pymongo.topology_description import TopologyDescription
+from pymongo.topology_description import TopologyDescription, _updated_topology_description_srv_polling
 from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   client_knobs,
@@ -1629,17 +1629,21 @@ class TestClient(IntegrationTest):
              connect=False)
         self.assertEqual(client._topology_settings._srv_service_name,
                          'customname')
-
     def test_srv_max_hosts(self):
-        uri = uri_parser.parse_uri(
+        client = MongoClient(
             'mongodb+srv://test1.test.build.10gen.cc/')
-        self.assertGreater(len(uri["nodelist"]), 1)
-        uri = uri_parser.parse_uri(
-        'mongodb+srv://test1.test.build.10gen.cc/', srv_max_hosts=1)
-        self.assertEqual(len(uri["nodelist"]), 1)
-        uri = uri_parser.parse_uri(
-        'mongodb+srv://test1.test.build.10gen.cc/?srvMaxHosts=1')
-        self.assertEqual(len(uri["nodelist"]), 1)
+        self.assertGreater(len(client.topology_description.server_descriptions()), 1)
+        client = MongoClient(
+            'mongodb+srv://test1.test.build.10gen.cc/', srvmaxhosts=1)
+        self.assertEqual(len(client.topology_description.server_descriptions()), 1)
+        client = MongoClient(
+            'mongodb+srv://test1.test.build.10gen.cc/?srvMaxHosts=1')
+        self.assertEqual(len(client.topology_description.server_descriptions()), 1)
+        _updated_topology_description_srv_polling(
+            client.topology_description, {(
+                                                        'localhost.test.build.10gen.cc', 27019): None})
+        self.assertEqual(len(client.topology_description.server_descriptions()), 1)
+
 
 class TestExhaustCursor(IntegrationTest):
     """Test that clients properly handle errors from exhaust cursors."""

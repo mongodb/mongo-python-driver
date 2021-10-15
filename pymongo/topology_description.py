@@ -15,6 +15,7 @@
 """Represent a deployment of MongoDB servers."""
 
 from collections import namedtuple
+from random import sample
 
 from pymongo import common
 from pymongo.errors import ConfigurationError
@@ -452,14 +453,15 @@ def _updated_topology_description_srv_polling(topology_description, seedlist):
         if address not in seedlist:
             sds.pop(address)
 
-    if topology_description._srv_max_hosts != 0:
+    if topology_description._topology_settings._srv_max_hosts != 0:
         available_new_hosts = set(seedlist) - set(sds.keys())
-        new_hosts_needed = topology_description._srv_max_hosts - len(sds)
+        new_hosts_needed = topology_description._topology_settings._srv_max_hosts - len(sds)
         if new_hosts_needed > 0:
-            seedlist = random.sample(available_new_hosts, min(new_hosts_needed,
+            seedlist = sample(available_new_hosts, min(new_hosts_needed,
                                                               len(available_new_hosts)))
         elif new_hosts_needed < 0:
-            while len(sds) > topology_description._srv_max_hosts:
+            while len(sds) > \
+                    topology_description._topology_settings._srv_max_hosts:
                 sds.pop()
     # Add SDs corresponding to servers recently added to the SRV record.
     for address in seedlist:
