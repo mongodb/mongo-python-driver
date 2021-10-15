@@ -15,6 +15,7 @@
 """Support for resolving hosts and options from mongodb+srv:// URIs."""
 
 import ipaddress
+import random
 
 try:
     from dns import resolver
@@ -112,9 +113,12 @@ class _SrvResolver(object):
                 raise ConfigurationError("Invalid SRV host: %s" % (node[0],))
             if self.__plist != nlist:
                 raise ConfigurationError("Invalid SRV host: %s" % (node[0],))
-
+        if(self.__srv_max_hosts != 0):
+            ret = list(zip(results, nodes))
+            random.shuffle(ret)
+            ret = ret[:min(self.__srv_max_hosts, len(ret))]
+            return [i[0] for i in ret], [i[1] for i in ret]
         return results, nodes
-
     def get_hosts(self):
         _, nodes = self._get_srv_response_and_hosts(True)
         return nodes

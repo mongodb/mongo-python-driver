@@ -706,6 +706,7 @@ class Topology(object):
                 was_writable = self._servers[address].description.is_writable
                 # Update server description.
                 self._servers[address].description = sd
+
                 # Update is_writable value of the pool, if it changed.
                 if was_writable != sd.is_writable:
                     self._servers[address].pool.update_is_writable(
