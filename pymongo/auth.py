@@ -319,8 +319,6 @@ def _authenticate_gssapi(credentials, sock_info):
 
         if password is not None:
             if _USE_PRINCIPAL:
-                # Microsoft's UrlUnescape (used
-                # by WinKerberos) doesn't support +.
                 principal = ":".join((quote(username), quote(password)))
                 result, ctx = kerberos.authGSSClientInit(
                     service, principal, gssflags=kerberos.GSS_C_MUTUAL_FLAG)

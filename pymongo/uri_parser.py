@@ -18,12 +18,7 @@ import re
 import warnings
 import sys
 
-from urllib.parse import unquote
-
-try:
-    from dns import resolver
-except:
-    pass
+from urllib.parse import unquote, unquote_plus
 
 from pymongo.common import (
     SRV_SERVICE_NAME,
@@ -41,11 +36,11 @@ DEFAULT_PORT = 27017
 
 
 def _unquoted_percent(s):
-    """Check for unescaped percent signs
+    """Check for unescaped percent signs.
 
     :Paramaters:
-        - `s`: A string. `s` can have things like '%25', '%2525', '%E2%85%A8'
-               and 'Ⅸ' but cannot have unquoted percent like '%foo'.
+        - `s`: A string. `s` can have things like '%25', '%2525',
+           and '%E2%85%A8' but cannot have unquoted percent like '%foo'.
     """
     for i in range(len(s)):
         if s[i] == '%':
@@ -66,11 +61,6 @@ def parse_userinfo(userinfo):
 
     :Paramaters:
         - `userinfo`: A string of the form <username>:<password>
-
-    .. versionchanged:: 4.0
-       Reserved characters that are sub-delimiters ("!", "$", "&", "'",
-       "(", ")", "*", "+", ",", ";", "=") as per RFC 3986 need not be
-       escaped.
     """
     if '@' in userinfo or userinfo.count(':') > 1 or _unquoted_percent(userinfo):
         raise InvalidURI("Username and password must be escaped according to "
@@ -166,7 +156,7 @@ def _parse_options(opts, delim):
             if key.lower() == 'authmechanismproperties':
                 val = value
             else:
-                val = unquote(value)
+                val = unquote_plus(value)
             options[key] = val
 
     return options
@@ -436,6 +426,11 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
           wait for a response from the DNS server.
         - 'srv_service_name` (optional): A custom SRV service name
 
+    .. versionchanged:: 4.0
+       Reserved characters that are sub-delimiters ("!", "$", "&", "'",
+       "(", ")", "*", "+", ",", ";", "=") as per RFC 3986 need not be
+       escaped. However, "%" does need to be escaped.
+
     .. versionchanged:: 3.9
         Added the ``normalize`` parameter.
 
@@ -487,7 +482,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
     if path_part:
         dbase, _, opts = path_part.partition('?')
         if dbase:
-            dbase = unquote(dbase)
+            dbase = unquote_plus(dbase)
             if '.' in dbase:
                 dbase, collection = dbase.split('.', 1)
             if _BAD_DB_CHARS.search(dbase):
@@ -511,7 +506,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
         raise InvalidURI("Any '/' in a unix domain socket must be"
                          " percent-encoded: %s" % host_part)
 
-    hosts = unquote(hosts)
+    hosts = unquote_plus(hosts)
     fqdn = None
 
     if is_srv:
