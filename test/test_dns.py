@@ -50,6 +50,16 @@ class TestDNSLoadBalanced(unittest.TestCase):
         pass
 
 
+class TestDNSSharded(unittest.TestCase):
+    TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                             'srv_seedlist', 'sharded')
+    load_balanced = False
+
+    @client_context.require_mongos
+    def setUp(self):
+        pass
+
+
 def create_test(test_case):
 
     def run_test(self):
@@ -58,7 +68,7 @@ def create_test(test_case):
         uri = test_case['uri']
         seeds = test_case.get('seeds')
         num_seeds = test_case.get('numSeeds', len(seeds or []))
-        hosts = test_case['hosts']
+        hosts = test_case.get('hosts')
         num_hosts = test_case.get("numHosts", len(hosts or []))
 
         options = test_case.get('options', {})
@@ -143,6 +153,7 @@ def create_tests(cls):
 
 create_tests(TestDNSRepl)
 create_tests(TestDNSLoadBalanced)
+create_tests(TestDNSSharded)
 
 
 class TestParsingErrors(unittest.TestCase):
