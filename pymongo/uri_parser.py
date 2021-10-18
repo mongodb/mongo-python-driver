@@ -475,7 +475,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
     if options.get("replicaSet") and (options.get("srvMaxHosts") or
                                       srv_max_hosts):
         raise InvalidURI("You cannot specify replicaSet with srvMaxHosts")
-    if options.get("loadBalanced") and (options.get("srvMaxHosts") or
+    if options.get("loadBalanced") == True and (options.get("srvMaxHosts") or
                                       srv_max_hosts):
         raise InvalidURI("You cannot specify loadBalanced with srvMaxHosts")
     if '@' in host_part:
@@ -529,6 +529,9 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
     elif not is_srv and options.get("srvServiceName") is not None:
         raise ConfigurationError("The srvServiceName option is only allowed "
                                  "with 'mongodb+srv://' URIs")
+    elif not is_srv and options.get("srvMaxHosts") is not None:
+        raise ConfigurationError("The srvMaxHosts option is only allowed "
+        "with 'mongodb+srv://' URIs")
     else:
         nodes = split_hosts(hosts, default_port=default_port)
 
