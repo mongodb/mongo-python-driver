@@ -132,6 +132,8 @@ def create_test(test_case):
                 if num_hosts is not None:
                     wait_until(lambda: num_hosts == len(client.nodes),
                                "wait to connect to num_hosts")
+                # XXX: we should block until SRV poller runs at least once
+                # and re-run these assertions.
         else:
             try:
                 parse_uri(uri)
