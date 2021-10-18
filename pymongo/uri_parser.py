@@ -472,12 +472,6 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
             options.update(split_options(opts, validate, warn, normalize))
     if srv_service_name is None:
         srv_service_name = options.get("srvServiceName", SRV_SERVICE_NAME)
-    if options.get("replicaSet") and (options.get("srvMaxHosts") or
-                                      srv_max_hosts):
-        raise InvalidURI("You cannot specify replicaSet with srvMaxHosts")
-    if options.get("loadBalanced") == True and (options.get("srvMaxHosts") or
-                                      srv_max_hosts):
-        raise InvalidURI("You cannot specify loadBalanced with srvMaxHosts")
     if '@' in host_part:
         userinfo, _, hosts = host_part.rpartition('@')
         user, passwd = parse_userinfo(userinfo)
@@ -514,6 +508,10 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
                                     srv_max_hosts)
         nodes = dns_resolver.get_hosts()
         dns_options = dns_resolver.get_options()
+        if options.get("loadBalanced") == True and (options.get("srvMaxHosts")
+                                                    or srv_max_hosts):
+            raise InvalidURI(
+                "You cannot specify loadBalanced with srvMaxHosts")
         if dns_options:
             parsed_dns_options = split_options(
                 dns_options, validate, warn, normalize)
@@ -524,6 +522,10 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
             for opt, val in parsed_dns_options.items():
                 if opt not in options:
                     options[opt] = val
+            if (options.get("replicaSet") or parsed_dns_options.get(
+                    "replicaSet")) and (
+                options.get("srvMaxHosts") or srv_max_hosts):
+                raise InvalidURI("You cannot specify replicaSet with srvMaxHosts")
         if "tls" not in options and "ssl" not in options:
             options["tls"] = True if validate else 'true'
     elif not is_srv and options.get("srvServiceName") is not None:

@@ -56,14 +56,11 @@ def create_test(test_case):
         if not _HAVE_DNSPYTHON:
             raise unittest.SkipTest("DNS tests require the dnspython module")
         uri = test_case['uri']
-        num_seeds = None
-        seeds = None
-        try:
-            seeds = test_case['seeds']
-        except:
-            #if we don't have seeds then we are running the srvMaxHosts tests
-            num_seeds = test_case['numSeeds']
+        seeds = test_case.get('seeds')
+        num_seeds = test_case.get('numSeeds', len(seeds or []))
         hosts = test_case['hosts']
+        num_hosts = test_case.get("numHosts", len(hosts or []))
+
         options = test_case.get('options', {})
         if 'ssl' in options:
             options['tls'] = options.pop('ssl')
@@ -81,9 +78,12 @@ def create_test(test_case):
         if hosts:
             hosts = frozenset(split_hosts(','.join(hosts)))
 
-        if seeds:
+        if seeds or num_seeds:
             result = parse_uri(uri, validate=True)
-            self.assertEqual(sorted(result['nodelist']), sorted(seeds))
+            if seeds is not None:
+                self.assertEqual(sorted(result['nodelist']), sorted(seeds))
+            if num_seeds is not None:
+                self.assertEqual(len(result['nodelist']), num_seeds)
             if options:
                 opts = result['options']
                 if 'readpreferencetags' in opts:
@@ -112,13 +112,16 @@ def create_test(test_case):
                     copts['tlsAllowInvalidHostnames'] = True
 
                 client = MongoClient(uri, **copts)
-                if num_seeds:
-                    wait_until(lambda: len(client.nodes) == num_seeds,
-                               "wait until we connect to our node")
-                else:
+                if num_seeds is not None:
+                    self.assertEqual(len(client._topology_settings.seeds),
+                                     num_seeds)
+                if hosts is not None:
                     wait_until(
                         lambda: hosts == client.nodes,
                         'match test hosts to client nodes')
+                if num_hosts is not None:
+                    wait_until(lambda: num_hosts == len(client.nodes),
+                               "wait to connect to num_hosts")
         else:
             try:
                 parse_uri(uri)
