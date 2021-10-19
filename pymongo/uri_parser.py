@@ -522,10 +522,9 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
             for opt, val in parsed_dns_options.items():
                 if opt not in options:
                     options[opt] = val
-            if (options.get("replicaSet") or parsed_dns_options.get(
-                    "replicaSet")) and (
-                options.get("srvMaxHosts") or srv_max_hosts):
-                raise InvalidURI("You cannot specify replicaSet with srvMaxHosts")
+        if (options.get("replicaSet") and
+                (options.get("srvMaxHosts") or srv_max_hosts)):
+            raise InvalidURI("You cannot specify replicaSet with srvMaxHosts")
         if "tls" not in options and "ssl" not in options:
             options["tls"] = True if validate else 'true'
     elif not is_srv and options.get("srvServiceName") is not None:
