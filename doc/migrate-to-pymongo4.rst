@@ -196,7 +196,8 @@ when more than one URI is passed into the ``hosts`` argument.
 MongoClient raises exception when given unescaped percent sign in login info
 ............................................................................
 
-:class:`~pymongo.mongo_client.MongoClient` now raises an exc:`~pymongo.errors.InvalidURI` exception
+:class:`~pymongo.mongo_client.MongoClient` now raises an
+:exc:`~pymongo.errors.InvalidURI` exception
 when it encounters unescaped percent signs in username and password.
 
 MongoClient uses `unquote` rather than `unquote_plus` for login info

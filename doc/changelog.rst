@@ -162,7 +162,8 @@ Breaking Changes in 4.0
   projection will now return the entire document, not just the ``"_id"`` field.
 - :class:`~pymongo.mongo_client.MongoClient` now raises a :exc:`~pymongo.errors.ConfigurationError`
   when more than one URI is passed into the ``hosts`` argument.
-- :class:`~pymongo.mongo_client.MongoClient`` now raises an exc:`~pymongo.errors.InvalidURI` exception
+- :class:`~pymongo.mongo_client.MongoClient`` now raises an
+  :exc:`~pymongo.errors.InvalidURI` exception
   when it encounters unescaped percent signs in username and password when
   parsing MongoDB URIs.
 - :class:`~pymongo.mongo_client.MongoClient` now uses
