@@ -458,15 +458,12 @@ def _updated_topology_description_srv_polling(topology_description, seedlist):
             sds.pop(address)
 
     if topology_description.srv_max_hosts != 0:
-        available_new_hosts = set(seedlist) - set(sds.keys())
-        new_hosts_needed = topology_description.srv_max_hosts - len(sds)
-        if new_hosts_needed > 0:
-            seedlist = sample(available_new_hosts, min(new_hosts_needed,
-                                                              len(available_new_hosts)))
-        elif new_hosts_needed < 0:
-            while (len(sds) >
-                    topology_description.srv_max_hosts):
-                sds.pop()
+        new_hosts = set(seedlist) - set(sds.keys())
+        n_to_add = topology_description.srv_max_hosts - len(sds)
+        if n_to_add > 0:
+            seedlist = sample(new_hosts, min(n_to_add, len(new_hosts)))
+        else:
+            seedlist = []
     # Add SDs corresponding to servers recently added to the SRV record.
     for address in seedlist:
         if address not in sds:

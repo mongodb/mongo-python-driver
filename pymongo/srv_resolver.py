@@ -116,7 +116,7 @@ class _SrvResolver(object):
         if(self.__srv_max_hosts != 0):
             ret = list(zip(results, nodes))
             ret = random.sample(ret, min(self.__srv_max_hosts, len(ret)))
-            return [i[0] for i in ret], [i[1] for i in ret]
+            results, nodes = list(zip(*ret))
         return results, nodes
     def get_hosts(self):
         _, nodes = self._get_srv_response_and_hosts(True)
