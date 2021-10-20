@@ -161,8 +161,7 @@ class ClientUnitTest(unittest.TestCase):
         self.assertRaises(ConfigurationError, MongoClient, [])
 
     def test_max_pool_size_zero(self):
-        with self.assertRaises(ValueError):
-            MongoClient(maxPoolSize=0)
+        MongoClient(maxPoolSize=0)
 
     def test_uri_detection(self):
         self.assertRaises(

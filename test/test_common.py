@@ -167,9 +167,6 @@ class TestCommon(IntegrationTest):
         self.assertEqual(direct, direct2)
         self.assertFalse(direct != direct2)
 
-    def test_max_pool_size_zero(self):
-        rs_or_single_client(maxPoolSize=0)
-
 
 if __name__ == "__main__":
     unittest.main()

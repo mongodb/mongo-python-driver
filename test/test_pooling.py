@@ -486,10 +486,6 @@ class TestPoolMaxSize(_TestPoolingBase):
         self.assertEqual(nthreads, self.n_passed)
         self.assertTrue(len(cx_pool.sockets) > 1)
 
-    def test_max_pool_size_zero(self):
-        with self.assertRaises(ValueError):
-            rs_or_single_client(maxPoolSize=0)
-
     def test_max_pool_size_with_connection_failure(self):
         # The pool acquires its semaphore before attempting to connect; ensure
         # it releases the semaphore on connection failure.
