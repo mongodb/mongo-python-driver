@@ -179,7 +179,8 @@ def create_tests(test_path):
             if not filename.endswith('.json'):
                 # skip everything that is not a test specification
                 continue
-            with open(os.path.join(dirpath, filename)) as scenario_stream:
+            json_path = os.path.join(dirpath, filename)
+            with open(json_path, encoding="utf-8") as scenario_stream:
                 scenario_def = json.load(scenario_stream)
 
             for testcase in scenario_def['tests']:

@@ -160,8 +160,19 @@ Breaking Changes in 4.0
   are passed to the server as-is rather than the previous behavior which
   substituted in a projection of ``{"_id": 1}``. This means that an empty
   projection will now return the entire document, not just the ``"_id"`` field.
-- ``MongoClient()`` now raises a :exc:`~pymongo.errors.ConfigurationError`
+- :class:`~pymongo.mongo_client.MongoClient` now raises a :exc:`~pymongo.errors.ConfigurationError`
   when more than one URI is passed into the ``hosts`` argument.
+- :class:`~pymongo.mongo_client.MongoClient`` now raises an
+  :exc:`~pymongo.errors.InvalidURI` exception
+  when it encounters unescaped percent signs in username and password when
+  parsing MongoDB URIs.
+- :class:`~pymongo.mongo_client.MongoClient` now uses
+  :py::func:`urllib.parse.unquote` rather than
+  :py:func:`urllib.parse.unquote_plus`,
+  meaning that plus signs ("+") are no longer converted to spaces (" "). This
+  means that if you were previously quoting your login information using
+  quote_plus, you must now switch to quote. Additionally, be aware that this
+  change only occurs when parsing login information from the URI.
 
 Notable improvements
 ....................
