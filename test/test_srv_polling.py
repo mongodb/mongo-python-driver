@@ -35,11 +35,11 @@ WAIT_TIME = 0.1
 
 class SrvPollingKnobs(object):
     def __init__(self, ttl_time=None, min_srv_rescan_interval=None,
-                 dns_resolver_nodelist_response=None,
+                 nodelist_callback=None,
                  count_resolver_calls=False):
         self.ttl_time = ttl_time
         self.min_srv_rescan_interval = min_srv_rescan_interval
-        self.dns_resolver_nodelist_response = dns_resolver_nodelist_response
+        self.nodelist_callback = nodelist_callback
         self.count_resolver_calls = count_resolver_calls
 
         self.old_min_srv_rescan_interval = None
@@ -55,8 +55,8 @@ class SrvPollingKnobs(object):
 
         def mock_get_hosts_and_min_ttl(resolver, *args):
             nodes, ttl = self.old_dns_resolver_response(resolver)
-            if self.dns_resolver_nodelist_response is not None:
-                nodes = self.dns_resolver_nodelist_response()
+            if self.nodelist_callback is not None:
+                nodes = self.nodelist_callback()
             if self.ttl_time is not None:
                 ttl = self.ttl_time
             return nodes, ttl
@@ -154,7 +154,7 @@ class TestSrvPolling(unittest.TestCase):
             self.assert_nodelist_change(self.BASE_SRV_RESPONSE, client)
             # Patch list of hosts returned by DNS query.
             with SrvPollingKnobs(
-                    dns_resolver_nodelist_response=dns_resolver_response,
+                    nodelist_callback=dns_resolver_response,
                     count_resolver_calls=count_resolver_calls):
                 assertion_method(expected_response, client)
 
@@ -207,7 +207,7 @@ class TestSrvPolling(unittest.TestCase):
 
         with SrvPollingKnobs(
                 ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME,
-                dns_resolver_nodelist_response=initial_callback,
+                nodelist_callback=initial_callback,
                 count_resolver_calls=True):
             # Client uses unpatched method to get initial nodelist
             client = MongoClient(self.CONNECTION_STRING)
@@ -216,7 +216,7 @@ class TestSrvPolling(unittest.TestCase):
 
         with SrvPollingKnobs(
                 ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME,
-                dns_resolver_nodelist_response=final_callback):
+                nodelist_callback=final_callback):
             # Nodelist should reflect new valid DNS resolver response.
             self.assert_nodelist_change(response_final, client)
 
@@ -230,6 +230,47 @@ class TestSrvPolling(unittest.TestCase):
             raise ConfigurationError
         self._test_recover_from_initial(erroring_seedlist)
 
+    def test_10_all_dns_selected(self):
+        response = [("localhost.test.build.10gen.cc", 27017),
+                    ("localhost.test.build.10gen.cc", 27017),
+                    ("localhost.test.build.10gen.cc", 27019),
+                    ("localhost.test.build.10gen.cc", 27020)]
+
+        def nodelist_callback():
+            return response
+
+        with SrvPollingKnobs(
+                ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME,
+                nodelist_callback=nodelist_callback):
+            client = MongoClient(self.CONNECTION_STRING, srvMaxHosts=0)
+            sleep(2*common.MIN_SRV_RESCAN_INTERVAL)
+            expected_topology = {
+                ("localhost.test.build.10gen.cc", 27017),
+                ("localhost.test.build.10gen.cc",  27019),
+                ("localhost.test.build.10gen.cc",  27020)}
+            final_topology = set(
+                client.topology_description.server_descriptions())
+            self.assertEqual(final_topology, final_topology | expected_topology)
+
+    def test_11_all_dns_selected(self):
+        response = [("localhost.test.build.10gen.cc", 27019),
+                    ("localhost.test.build.10gen.cc", 27020)]
+
+        def nodelist_callback():
+            return response
+
+        with SrvPollingKnobs(
+                ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME):
+            client = MongoClient(self.CONNECTION_STRING, srvMaxHosts=2)
+            #self.assert_nodelist_change(response, client)
+            with SrvPollingKnobs(nodelist_callback=nodelist_callback):
+                sleep(2*common.MIN_SRV_RESCAN_INTERVAL)
+                expected_topology = {
+                    ("localhost.test.build.10gen.cc",  27019),
+                    ("localhost.test.build.10gen.cc",  27020)}
+                final_topology = set(
+                    client.topology_description.server_descriptions())
+                self.assertSetEqual(final_topology, final_topology | expected_topology)
 
 if __name__ == '__main__':
     unittest.main()
