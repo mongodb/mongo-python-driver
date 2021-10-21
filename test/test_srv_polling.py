@@ -113,7 +113,8 @@ class TestSrvPolling(unittest.TestCase):
             if set(expected_nodelist) == set(nodelist):
                 return True
             return False
-        wait_until(predicate, "see expected nodelist", timeout=100*WAIT_TIME)
+        wait_until(predicate, "see expected nodelist",
+                   timeout=100*WAIT_TIME)
 
     def assert_nodelist_nochange(self, expected_nodelist, client):
         """Check if the client._topology ever deviates from seeing all nodes
@@ -256,6 +257,26 @@ class TestSrvPolling(unittest.TestCase):
             client = MongoClient(self.CONNECTION_STRING, srvMaxHosts=2)
             with SrvPollingKnobs(nodelist_callback=nodelist_callback):
                 self.assert_nodelist_change(response, client)
+
+    def test_12_new_dns_randomly_selected(self):
+        response = [("localhost.test.build.10gen.cc", 27020),
+                    ("localhost.test.build.10gen.cc", 27019),
+                    ("localhost.test.build.10gen.cc", 27017)]
+
+        def nodelist_callback():
+            return response
+
+        with SrvPollingKnobs(
+                ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME):
+            client = MongoClient(self.CONNECTION_STRING, srvMaxHosts=2)
+            with SrvPollingKnobs(nodelist_callback=nodelist_callback):
+                sleep(2*common.MIN_SRV_RESCAN_INTERVAL)
+                final_topology = \
+                    set(client.topology_description.server_descriptions())
+
+                self.assertSetEqual(final_topology, final_topology | {(
+                    "localhost.test.build.10gen.cc", 27017)})
+                self.assertEqual(len(final_topology), 2)
 
 
 if __name__ == '__main__':

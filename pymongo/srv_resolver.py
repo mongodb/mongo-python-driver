@@ -48,7 +48,7 @@ _INVALID_HOST_MSG = (
 
 class _SrvResolver(object):
     def __init__(self, fqdn,
-                 connect_timeout, srv_service_name, srv_max_hosts):
+                 connect_timeout, srv_service_name, srv_max_hosts=0):
         self.__fqdn = fqdn
         self.__srv = srv_service_name
         self.__connect_timeout = connect_timeout or CONNECT_TIMEOUT
@@ -112,10 +112,9 @@ class _SrvResolver(object):
             if self.__plist != nlist:
                 raise ConfigurationError("Invalid SRV host: %s" % (node[0],))
         if(self.__srv_max_hosts != 0):
-            ret = list(zip(results, nodes))
-            ret = random.sample(ret, min(self.__srv_max_hosts, len(ret)))
-            results, nodes = list(zip(*ret))
+            nodes = random.sample(nodes, min(self.__srv_max_hosts, len(nodes)))
         return results, nodes
+
     def get_hosts(self):
         _, nodes = self._get_srv_response_and_hosts(True)
         return nodes
