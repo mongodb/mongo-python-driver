@@ -630,7 +630,7 @@ URI_OPTIONS_VALIDATOR_MAP = {
     'wtimeoutms': validate_non_negative_integer,
     'zlibcompressionlevel': validate_zlib_compression_level,
     'srvservicename': validate_string,
-    'srvmaxhosts': validate_integer
+    'srvmaxhosts': validate_non_negative_integer
 }
 
 # Dictionary where keys are the names of URI options specific to pymongo,
