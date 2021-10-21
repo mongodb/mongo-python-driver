@@ -264,7 +264,7 @@ class TestSrvPolling(unittest.TestCase):
                 ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME):
             client = MongoClient(self.CONNECTION_STRING, srvMaxHosts=2)
             with SrvPollingKnobs(nodelist_callback=nodelist_callback):
-                self.assert_nodelist_change(nodelist_callback, client)
+                self.assert_nodelist_change(response, client)
                 sleep(2*common.MIN_SRV_RESCAN_INTERVAL)
                 expected_topology = {
                     ("localhost.test.build.10gen.cc",  27019),
@@ -272,7 +272,8 @@ class TestSrvPolling(unittest.TestCase):
                 final_topology = set(
                     client.topology_description.server_descriptions())
                 self.assertSetEqual(final_topology, final_topology |
-                expected_topology)
+                                  expected_topology)
+
 
 if __name__ == '__main__':
     unittest.main()
