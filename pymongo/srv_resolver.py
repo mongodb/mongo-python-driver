@@ -23,8 +23,6 @@ try:
 except ImportError:
     _HAVE_DNSPYTHON = False
 
-from random import sample
-
 from pymongo.common import CONNECT_TIMEOUT
 from pymongo.errors import ConfigurationError
 
