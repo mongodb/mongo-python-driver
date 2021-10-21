@@ -35,7 +35,7 @@ from bson.codec_options import CodecOptions, TypeEncoder, TypeRegistry
 from bson.son import SON
 from bson.tz_util import utc
 import pymongo
-from pymongo import message, monitoring
+from pymongo import event_loggers, message, monitoring
 from pymongo.command_cursor import CommandCursor
 from pymongo.common import CONNECT_TIMEOUT, _UUID_REPRESENTATIONS
 from pymongo.compression_support import _HAVE_SNAPPY, _HAVE_ZSTD
@@ -463,6 +463,17 @@ class ClientUnitTest(unittest.TestCase):
         # Conflicting kwargs should raise InvalidURI
         with self.assertRaises(InvalidURI):
             MongoClient(ssl=True, tls=False)
+
+    def test_event_listeners(self):
+        c = MongoClient(event_listeners=[], connect=False)
+        self.assertEqual(c.event_listeners, [])
+        listeners = [event_loggers.CommandLogger(),
+                     event_loggers.HeartbeatLogger(),
+                     event_loggers.ServerLogger(),
+                     event_loggers.TopologyLogger(),
+                     event_loggers.ConnectionPoolLogger()]
+        c = MongoClient(event_listeners=listeners)
+        self.assertEqual(c.event_listeners, listeners)
 
 
 class TestClient(IntegrationTest):
