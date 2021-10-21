@@ -258,6 +258,5 @@ class TestSrvPolling(unittest.TestCase):
                 self.assert_nodelist_change(response, client)
 
 
-
 if __name__ == '__main__':
     unittest.main()
