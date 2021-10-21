@@ -1132,7 +1132,7 @@ class Pool:
         self.size_cond = threading.Condition(self.lock)
         self.requests = 0
         self.max_pool_size = self.opts.max_pool_size
-        if self.max_pool_size is None:
+        if self.max_pool_size is None or self.max_pool_size == 0:
             self.max_pool_size = float('inf')
         # The second portion of the wait queue.
         # Enforces: maxConnecting

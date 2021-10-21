@@ -207,7 +207,9 @@ class MongoClient(common.BaseObject):
           - `maxPoolSize` (optional): The maximum allowable number of
             concurrent connections to each connected server. Requests to a
             server will block if there are `maxPoolSize` outstanding
-            connections to the requested server. Defaults to 100. Cannot be 0.
+            connections to the requested server. Defaults to 100. Can be
+            either 0 or None, in which case there is no limit on the number
+            of concurrent connections.
           - `minPoolSize` (optional): The minimum required number of concurrent
             connections that the pool will maintain to each connected server.
             Default is 0.
