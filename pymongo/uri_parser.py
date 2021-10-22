@@ -484,7 +484,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
 
     hosts = unquote_plus(hosts)
     fqdn = None
-
+    srv_max_hosts = srv_max_hosts or options.get("srvMaxHosts")
     if is_srv:
         if options.get('directConnection'):
             raise ConfigurationError(
@@ -500,7 +500,6 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
             raise InvalidURI(
                 "%s URIs must not include a port number" % (SRV_SCHEME,))
 
-        srv_max_hosts = srv_max_hosts or options.get("srvMaxHosts")
         # Use the connection timeout. connectTimeoutMS passed as a keyword
         # argument overrides the same option passed in the connection string.
         connect_timeout = connect_timeout or options.get("connectTimeoutMS")
@@ -508,10 +507,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
                                     srv_max_hosts)
         nodes = dns_resolver.get_hosts()
         dns_options = dns_resolver.get_options()
-        if options.get("loadBalanced") == True and (options.get("srvMaxHosts")
-                                                    or srv_max_hosts):
-            raise InvalidURI(
-                "You cannot specify loadBalanced with srvMaxHosts")
+
         if dns_options:
             parsed_dns_options = split_options(
                 dns_options, validate, warn, normalize)
@@ -522,17 +518,19 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
             for opt, val in parsed_dns_options.items():
                 if opt not in options:
                     options[opt] = val
-        if (options.get("replicaSet") and
-                (options.get("srvMaxHosts") or srv_max_hosts)):
+        if options.get("loadBalanced") is True and srv_max_hosts:
+            raise InvalidURI(
+                "You cannot specify loadBalanced with srvMaxHosts")
+        if options.get("replicaSet") and srv_max_hosts:
             raise InvalidURI("You cannot specify replicaSet with srvMaxHosts")
         if "tls" not in options and "ssl" not in options:
             options["tls"] = True if validate else 'true'
     elif not is_srv and options.get("srvServiceName") is not None:
         raise ConfigurationError("The srvServiceName option is only allowed "
                                  "with 'mongodb+srv://' URIs")
-    elif not is_srv and options.get("srvMaxHosts") is not None:
+    elif not is_srv and srv_max_hosts:
         raise ConfigurationError("The srvMaxHosts option is only allowed "
-        "with 'mongodb+srv://' URIs")
+                                 "with 'mongodb+srv://' URIs")
     else:
         nodes = split_hosts(hosts, default_port=default_port)
 
