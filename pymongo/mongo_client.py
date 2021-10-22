@@ -895,7 +895,7 @@ class MongoClient(common.BaseObject):
 
         See :mod:`~pymongo.monitoring` for details.
         """
-        return self._event_listeners.event_listeners
+        return self._event_listeners.event_listeners()
 
     @property
     def topology_description(self):

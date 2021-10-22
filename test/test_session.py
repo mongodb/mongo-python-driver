@@ -104,7 +104,7 @@ class TestSession(IntegrationTest):
         self.assertLessEqual(used_lsids, current_lsids)
 
     def _test_ops(self, client, *ops):
-        listener = client.event_listeners()[0][0]
+        listener = client.event_listeners[0]
 
         for f, args, kw in ops:
             with client.start_session() as s:
@@ -626,7 +626,7 @@ class TestSession(IntegrationTest):
             lambda cursor: list(cursor))
 
     def _test_unacknowledged_ops(self, client, *ops):
-        listener = client.event_listeners()[0][0]
+        listener = client.event_listeners[0]
 
         for f, args, kw in ops:
             with client.start_session() as s:
