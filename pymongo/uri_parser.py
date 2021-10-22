@@ -507,7 +507,6 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
                                     srv_max_hosts)
         nodes = dns_resolver.get_hosts()
         dns_options = dns_resolver.get_options()
-
         if dns_options:
             parsed_dns_options = split_options(
                 dns_options, validate, warn, normalize)
