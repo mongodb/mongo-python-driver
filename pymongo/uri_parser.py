@@ -542,7 +542,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
             for opt, val in parsed_dns_options.items():
                 if opt not in options:
                     options[opt] = val
-        if options.get("loadBalanced") is True and srv_max_hosts:
+        if options.get("loadBalanced") and srv_max_hosts:
             raise InvalidURI(
                 "You cannot specify loadBalanced with srvMaxHosts")
         if options.get("replicaSet") and srv_max_hosts:
