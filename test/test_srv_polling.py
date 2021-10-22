@@ -278,6 +278,13 @@ class TestSrvPolling(unittest.TestCase):
                     "localhost.test.build.10gen.cc", 27017)})
                 self.assertEqual(len(final_topology), 2)
 
+    def test_does_not_flipflop(self):
+        client = MongoClient(self.CONNECTION_STRING, srvMaxHosts=1)
+        old = set(client.topology_description.server_descriptions().keys())
+        sleep(15)
+        new = set(client.topology_description.server_descriptions().keys())
+        self.assertSetEqual(old, new)
+
 
 if __name__ == '__main__':
     unittest.main()
