@@ -233,7 +233,6 @@ class TestSrvPolling(unittest.TestCase):
 
     def test_10_all_dns_selected(self):
         response = [("localhost.test.build.10gen.cc", 27017),
-                    ("localhost.test.build.10gen.cc", 27017),
                     ("localhost.test.build.10gen.cc", 27019),
                     ("localhost.test.build.10gen.cc", 27020)]
 
