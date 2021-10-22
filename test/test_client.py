@@ -472,7 +472,7 @@ class ClientUnitTest(unittest.TestCase):
                      event_loggers.ServerLogger(),
                      event_loggers.TopologyLogger(),
                      event_loggers.ConnectionPoolLogger()]
-        c = MongoClient(event_listeners=listeners)
+        c = MongoClient(event_listeners=listeners, connect=False)
         self.assertEqual(c.event_listeners, listeners)
 
 
