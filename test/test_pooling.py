@@ -421,6 +421,7 @@ class TestPoolMaxSize(_TestPoolingBase):
     def test_max_pool_size(self):
         max_pool_size = 4
         c = rs_or_single_client(maxPoolSize=max_pool_size)
+        self.addCleanup(c.close)
         collection = c[DB].test
 
         # Need one document.
@@ -456,6 +457,7 @@ class TestPoolMaxSize(_TestPoolingBase):
 
     def test_max_pool_size_none(self):
         c = rs_or_single_client(maxPoolSize=None)
+        self.addCleanup(c.close)
         collection = c[DB].test
 
         # Need one document.
@@ -483,10 +485,14 @@ class TestPoolMaxSize(_TestPoolingBase):
         joinall(threads)
         self.assertEqual(nthreads, self.n_passed)
         self.assertTrue(len(cx_pool.sockets) > 1)
+        self.assertEqual(cx_pool.max_pool_size, float('inf'))
+
 
     def test_max_pool_size_zero(self):
-        with self.assertRaises(ValueError):
-            rs_or_single_client(maxPoolSize=0)
+        c = rs_or_single_client(maxPoolSize=0)
+        self.addCleanup(c.close)
+        pool = get_pool(c)
+        self.assertEqual(pool.max_pool_size, float('inf'))
 
     def test_max_pool_size_with_connection_failure(self):
         # The pool acquires its semaphore before attempting to connect; ensure

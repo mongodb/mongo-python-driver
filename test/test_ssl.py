@@ -20,7 +20,7 @@ import sys
 
 sys.path[0:0] = [""]
 
-from urllib.parse import quote_plus
+from urllib.parse import quote
 
 from pymongo import MongoClient, ssl_support
 from pymongo.errors import (ConfigurationError,
@@ -500,6 +500,7 @@ class TestSSL(IntegrationTest):
             ssl=True,
             tlsAllowInvalidCertificates=True,
             tlsCertificateKeyFile=CLIENT_PEM)
+        self.addCleanup(noauth.close)
 
         with self.assertRaises(OperationFailure):
             noauth.pymongo_test.test.find_one()
@@ -512,6 +513,7 @@ class TestSSL(IntegrationTest):
             tlsAllowInvalidCertificates=True,
             tlsCertificateKeyFile=CLIENT_PEM,
             event_listeners=[listener])
+        self.addCleanup(auth.close)
 
         # No error
         auth.pymongo_test.test.find_one()
@@ -524,11 +526,12 @@ class TestSSL(IntegrationTest):
 
         uri = ('mongodb://%s@%s:%d/?authMechanism='
                'MONGODB-X509' % (
-                   quote_plus(MONGODB_X509_USERNAME), host, port))
+                   quote(MONGODB_X509_USERNAME), host, port))
         client = MongoClient(uri,
                              ssl=True,
                              tlsAllowInvalidCertificates=True,
                              tlsCertificateKeyFile=CLIENT_PEM)
+        self.addCleanup(client.close)
         # No error
         client.pymongo_test.test.find_one()
 
@@ -537,15 +540,18 @@ class TestSSL(IntegrationTest):
                              ssl=True,
                              tlsAllowInvalidCertificates=True,
                              tlsCertificateKeyFile=CLIENT_PEM)
+        self.addCleanup(client.close)
         # No error
         client.pymongo_test.test.find_one()
         # Auth should fail if username and certificate do not match
         uri = ('mongodb://%s@%s:%d/?authMechanism='
                'MONGODB-X509' % (
-                   quote_plus("not the username"), host, port))
+                   quote("not the username"), host, port))
 
         bad_client = MongoClient(
-            uri, ssl=True, tlsAllowInvalidCertificates=True, tlsCertificateKeyFile=CLIENT_PEM)
+            uri, ssl=True, tlsAllowInvalidCertificates=True,
+            tlsCertificateKeyFile=CLIENT_PEM)
+        self.addCleanup(bad_client.close)
 
         with self.assertRaises(OperationFailure):
             bad_client.pymongo_test.test.find_one()
@@ -557,6 +563,7 @@ class TestSSL(IntegrationTest):
                 ssl=True,
                 tlsAllowInvalidCertificates=True,
                 tlsCertificateKeyFile=CLIENT_PEM)
+        self.addCleanup(bad_client.close)
 
         with self.assertRaises(OperationFailure):
             bad_client.pymongo_test.test.find_one()
@@ -564,7 +571,7 @@ class TestSSL(IntegrationTest):
         # Invalid certificate (using CA certificate as client certificate)
         uri = ('mongodb://%s@%s:%d/?authMechanism='
                'MONGODB-X509' % (
-                   quote_plus(MONGODB_X509_USERNAME), host, port))
+                   quote(MONGODB_X509_USERNAME), host, port))
         try:
             connected(MongoClient(uri,
                                   ssl=True,

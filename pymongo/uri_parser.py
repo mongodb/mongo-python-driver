@@ -18,7 +18,7 @@ import re
 import warnings
 import sys
 
-from urllib.parse import unquote_plus
+from urllib.parse import unquote, unquote_plus
 
 from pymongo.common import (
     SRV_SERVICE_NAME,
@@ -35,10 +35,26 @@ SRV_SCHEME_LEN = len(SRV_SCHEME)
 DEFAULT_PORT = 27017
 
 
+def _unquoted_percent(s):
+    """Check for unescaped percent signs.
+
+    :Paramaters:
+        - `s`: A string. `s` can have things like '%25', '%2525',
+           and '%E2%85%A8' but cannot have unquoted percent like '%foo'.
+    """
+    for i in range(len(s)):
+        if s[i] == '%':
+            sub = s[i:i+3]
+            # If unquoting yields the same string this means there was an
+            # unquoted %.
+            if unquote(sub) == sub:
+                return True
+    return False
+
 def parse_userinfo(userinfo):
     """Validates the format of user information in a MongoDB URI.
-    Reserved characters like ':', '/', '+' and '@' must be escaped
-    following RFC 3986.
+    Reserved characters that are gen-delimiters (":", "/", "?", "#", "[",
+    "]", "@") as per RFC 3986 must be escaped.
 
     Returns a 2-tuple containing the unescaped username followed
     by the unescaped password.
@@ -46,14 +62,17 @@ def parse_userinfo(userinfo):
     :Paramaters:
         - `userinfo`: A string of the form <username>:<password>
     """
-    if '@' in userinfo or userinfo.count(':') > 1:
+    if ('@' in userinfo or userinfo.count(':') > 1 or
+            _unquoted_percent(userinfo)):
         raise InvalidURI("Username and password must be escaped according to "
-                         "RFC 3986, use urllib.parse.quote_plus")
+                         "RFC 3986, use urllib.parse.quote")
+
     user, _, passwd = userinfo.partition(":")
     # No password is expected with GSSAPI authentication.
     if not user:
         raise InvalidURI("The empty string is not valid username.")
-    return unquote_plus(user), unquote_plus(passwd)
+
+    return unquote(user), unquote(passwd)
 
 
 def parse_ipv6_literal_host(entity, default_port):
@@ -408,6 +427,12 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
         - `connect_timeout` (optional): The maximum time in milliseconds to
           wait for a response from the DNS server.
         - 'srv_service_name` (optional): A custom SRV service name
+
+    .. versionchanged:: 4.0
+       To better follow RFC 3986, unquoted percent signs ("%") are no longer
+       supported and plus signs ("+") are no longer decoded into spaces (" ")
+       when decoding username and password. To avoid these issues, use
+       :py:func:`urllib.parse.quote` when building the URI.
 
     .. versionchanged:: 3.9
         Added the ``normalize`` parameter.

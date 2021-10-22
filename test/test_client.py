@@ -35,7 +35,7 @@ from bson.codec_options import CodecOptions, TypeEncoder, TypeRegistry
 from bson.son import SON
 from bson.tz_util import utc
 import pymongo
-from pymongo import message, monitoring, uri_parser
+from pymongo import event_loggers, message, monitoring
 from pymongo.command_cursor import CommandCursor
 from pymongo.common import CONNECT_TIMEOUT, _UUID_REPRESENTATIONS
 from pymongo.compression_support import _HAVE_SNAPPY, _HAVE_ZSTD
@@ -161,8 +161,7 @@ class ClientUnitTest(unittest.TestCase):
         self.assertRaises(ConfigurationError, MongoClient, [])
 
     def test_max_pool_size_zero(self):
-        with self.assertRaises(ValueError):
-            MongoClient(maxPoolSize=0)
+        MongoClient(maxPoolSize=0)
 
     def test_uri_detection(self):
         self.assertRaises(
@@ -463,6 +462,17 @@ class ClientUnitTest(unittest.TestCase):
         # Conflicting kwargs should raise InvalidURI
         with self.assertRaises(InvalidURI):
             MongoClient(ssl=True, tls=False)
+
+    def test_event_listeners(self):
+        c = MongoClient(event_listeners=[], connect=False)
+        self.assertEqual(c.event_listeners, [])
+        listeners = [event_loggers.CommandLogger(),
+                     event_loggers.HeartbeatLogger(),
+                     event_loggers.ServerLogger(),
+                     event_loggers.TopologyLogger(),
+                     event_loggers.ConnectionPoolLogger()]
+        c = MongoClient(event_listeners=listeners, connect=False)
+        self.assertEqual(c.event_listeners, listeners)
 
 
 class TestClient(IntegrationTest):
@@ -1552,6 +1562,7 @@ class TestClient(IntegrationTest):
 
     @unittest.skipIf(sys.platform.startswith('java'),
                      'Jython does not support gc.get_objects')
+    @unittest.skipIf('PyPy' in sys.version, 'PYTHON-2927 fails often on PyPy')
     def test_continuous_network_errors(self):
         def server_description_count():
             i = 0

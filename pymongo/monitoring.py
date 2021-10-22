@@ -1318,10 +1318,11 @@ class _EventListeners(object):
 
     def event_listeners(self):
         """List of registered event listeners."""
-        return (self.__command_listeners[:],
-                self.__server_heartbeat_listeners[:],
-                self.__server_listeners[:],
-                self.__topology_listeners[:])
+        return (self.__command_listeners[:] +
+                self.__server_heartbeat_listeners[:] +
+                self.__server_listeners[:] +
+                self.__topology_listeners[:] +
+                self.__cmap_listeners)
 
     def publish_command_start(self, command, database_name,
                               request_id, connection_id, op_id=None,

@@ -52,6 +52,7 @@ class TestReadWriteConcernSpec(IntegrationTest):
         listener = EventListener()
         # Client with default readConcern and writeConcern
         client = rs_or_single_client(event_listeners=[listener])
+        self.addCleanup(client.close)
         collection = client.pymongo_test.collection
         # Prepare for tests of find() and aggregate().
         collection.insert_many([{} for _ in range(10)])
@@ -209,6 +210,7 @@ class TestReadWriteConcernSpec(IntegrationTest):
     def test_write_error_details_exposes_errinfo(self):
         listener = EventListener()
         client = rs_or_single_client(event_listeners=[listener])
+        self.addCleanup(client.close)
         db = client.errinfotest
         self.addCleanup(client.drop_database, "errinfotest")
         validator = {"x": {"$type": "string"}}

@@ -24,7 +24,8 @@ sys.path[0:0] = [""]
 
 from pymongo.common import INTERNAL_URI_OPTION_NAME_MAP, validate
 from pymongo.compression_support import _HAVE_SNAPPY
-from pymongo.uri_parser import parse_uri
+from pymongo.srv_resolver import _HAVE_DNSPYTHON
+from pymongo.uri_parser import parse_uri, SRV_SCHEME
 from test import clear_warning_registry, unittest
 
 
@@ -92,7 +93,8 @@ def create_test(test, test_workdir):
         compressors = (test.get('options') or {}).get('compressors', [])
         if 'snappy' in compressors and not _HAVE_SNAPPY:
             self.skipTest('This test needs the snappy module.')
-
+        if test['uri'].startswith(SRV_SCHEME) and not _HAVE_DNSPYTHON:
+            self.skipTest("This test needs dnspython package.")
         valid = True
         warning = False
 
@@ -177,7 +179,8 @@ def create_tests(test_path):
             if not filename.endswith('.json'):
                 # skip everything that is not a test specification
                 continue
-            with open(os.path.join(dirpath, filename)) as scenario_stream:
+            json_path = os.path.join(dirpath, filename)
+            with open(json_path, encoding="utf-8") as scenario_stream:
                 scenario_def = json.load(scenario_stream)
 
             for testcase in scenario_def['tests']:

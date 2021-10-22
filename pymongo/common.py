@@ -607,7 +607,7 @@ URI_OPTIONS_VALIDATOR_MAP = {
     'journal': validate_boolean_or_string,
     'localthresholdms': validate_positive_float_or_zero,
     'maxidletimems': validate_timeout_or_none,
-    'maxpoolsize': validate_positive_integer_or_none,
+    'maxpoolsize': validate_non_negative_integer_or_none,
     'maxstalenessseconds': validate_max_staleness,
     'readconcernlevel': validate_string_or_none,
     'readpreference': validate_read_preference_mode,

@@ -190,8 +190,25 @@ now you must create a new instance.
 MongoClient raises exception when given more than one URI
 .........................................................
 
-``MongoClient()`` now raises a :exc:`~pymongo.errors.ConfigurationError`
+:class:`~pymongo.mongo_client.MongoClient` now raises a :exc:`~pymongo.errors.ConfigurationError`
 when more than one URI is passed into the ``hosts`` argument.
+
+MongoClient raises exception when given unescaped percent sign in login info
+............................................................................
+
+:class:`~pymongo.mongo_client.MongoClient` now raises an
+:exc:`~pymongo.errors.InvalidURI` exception
+when it encounters unescaped percent signs in username and password.
+
+MongoClient uses `unquote` rather than `unquote_plus` for login info
+....................................................................
+
+:class:`~pymongo.mongo_client.MongoClient` now uses
+:py:func:`urllib.parse.unquote` rather than
+:py:func:`urllib.parse.unquote_plus`, meaning that space characters are no
+longer converted to plus signs. This means that if you were previously
+quoting your login information using :py:func:`urllib.parse.quote_plus`, you
+must now switch to :py:func:`urllib.parse.quote`.
 
 Database
 --------
