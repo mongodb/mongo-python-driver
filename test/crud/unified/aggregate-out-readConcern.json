@@ -262,11 +262,6 @@
     },
     {
       "description": "readConcern available with out stage",
-      "runOnRequirements": [
-        {
-          "maxServerVersion": "5.0.99"
-        }
-      ],
       "operations": [
         {
           "object": "collection_readConcern_available",
