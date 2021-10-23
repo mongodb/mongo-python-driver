@@ -704,8 +704,8 @@ class MongoClient(common.BaseObject):
 
         if srv_service_name is None:
             srv_service_name = opts.get("srvServiceName", common.SRV_SERVICE_NAME)
-        if srv_max_hosts is None:
-            srv_max_hosts = opts.get("srvmaxhosts")
+
+        srv_max_hosts = srv_max_hosts or opts.get("srvmaxhosts")
         # Handle security-option conflicts in combined options.
         opts = _handle_security_options(opts)
         # Normalize combined options.
