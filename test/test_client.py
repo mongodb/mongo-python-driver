@@ -1653,9 +1653,6 @@ class TestClient(IntegrationTest):
             'mongodb+srv://test1.test.build.10gen.cc/?srvMaxHosts=1')
         self.assertEqual(
             len(client.topology_description.server_descriptions()), 1)
-        _updated_topology_description_srv_polling(
-            client.topology_description, {(
-                                                        'localhost.test.build.10gen.cc', 27019): None})
         self.assertEqual(len(client.topology_description.server_descriptions()), 1)
 
 

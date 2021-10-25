@@ -241,6 +241,7 @@ class TestSrvPolling(unittest.TestCase):
         with SrvPollingKnobs(ttl_time=WAIT_TIME,
                              min_srv_rescan_interval=WAIT_TIME):
             client = MongoClient(self.CONNECTION_STRING, srvMaxHosts=0)
+            self.addCleanup(client.close)
             with SrvPollingKnobs(nodelist_callback=nodelist_callback):
                 self.assert_nodelist_change(response, client)
 
@@ -254,6 +255,7 @@ class TestSrvPolling(unittest.TestCase):
         with SrvPollingKnobs(
                 ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME):
             client = MongoClient(self.CONNECTION_STRING, srvMaxHosts=2)
+            self.addCleanup(client.close)
             with SrvPollingKnobs(nodelist_callback=nodelist_callback):
                 self.assert_nodelist_change(response, client)
 
@@ -268,21 +270,24 @@ class TestSrvPolling(unittest.TestCase):
         with SrvPollingKnobs(
                 ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME):
             client = MongoClient(self.CONNECTION_STRING, srvMaxHosts=2)
+            self.addCleanup(client.close)
             with SrvPollingKnobs(nodelist_callback=nodelist_callback):
                 sleep(2*common.MIN_SRV_RESCAN_INTERVAL)
-                final_topology = \
-                    set(client.topology_description.server_descriptions())
-
-                self.assertSetEqual(final_topology, final_topology | {(
-                    "localhost.test.build.10gen.cc", 27017)})
+                final_topology = set(
+                    client.topology_description.server_descriptions())
+                self.assertIn(("localhost.test.build.10gen.cc", 27017),
+                              final_topology)
                 self.assertEqual(len(final_topology), 2)
 
     def test_does_not_flipflop(self):
-        client = MongoClient(self.CONNECTION_STRING, srvMaxHosts=1)
-        old = set(client.topology_description.server_descriptions().keys())
-        sleep(15)
-        new = set(client.topology_description.server_descriptions().keys())
-        self.assertSetEqual(old, new)
+        with SrvPollingKnobs(
+                ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME):
+            client = MongoClient(self.CONNECTION_STRING, srvMaxHosts=1)
+            self.addCleanup(client.close)
+            old = set(client.topology_description.server_descriptions())
+            sleep(4*WAIT_TIME)
+            new = set(client.topology_description.server_descriptions())
+            self.assertSetEqual(old, new)
 
 
 if __name__ == '__main__':

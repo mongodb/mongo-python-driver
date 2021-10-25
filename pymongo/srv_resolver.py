@@ -111,7 +111,7 @@ class _SrvResolver(object):
                 raise ConfigurationError("Invalid SRV host: %s" % (node[0],))
             if self.__plist != nlist:
                 raise ConfigurationError("Invalid SRV host: %s" % (node[0],))
-        if(self.__srv_max_hosts != 0):
+        if self.__srv_max_hosts:
             nodes = random.sample(nodes, min(self.__srv_max_hosts, len(nodes)))
         return results, nodes
 
