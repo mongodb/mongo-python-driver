@@ -23,6 +23,8 @@ BINARY_SUBTYPE = 0
 
 This is the default subtype for binary data.
 """
+COLUMN_SUBTYPE = 0x07
+"""BSON binary subtype for columns"""
 
 FUNCTION_SUBTYPE = 1
 """BSON binary subtype for functions.
