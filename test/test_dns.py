@@ -50,14 +50,27 @@ class TestDNSLoadBalanced(unittest.TestCase):
         pass
 
 
+class TestDNSSharded(unittest.TestCase):
+    TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                             'srv_seedlist', 'sharded')
+    load_balanced = False
+
+    @client_context.require_mongos
+    def setUp(self):
+        pass
+
+
 def create_test(test_case):
 
     def run_test(self):
         if not _HAVE_DNSPYTHON:
             raise unittest.SkipTest("DNS tests require the dnspython module")
         uri = test_case['uri']
-        seeds = test_case['seeds']
-        hosts = test_case['hosts']
+        seeds = test_case.get('seeds')
+        num_seeds = test_case.get('numSeeds', len(seeds or []))
+        hosts = test_case.get('hosts')
+        num_hosts = test_case.get("numHosts", len(hosts or []))
+
         options = test_case.get('options', {})
         if 'ssl' in options:
             options['tls'] = options.pop('ssl')
@@ -75,9 +88,12 @@ def create_test(test_case):
         if hosts:
             hosts = frozenset(split_hosts(','.join(hosts)))
 
-        if seeds:
+        if seeds or num_seeds:
             result = parse_uri(uri, validate=True)
-            self.assertEqual(sorted(result['nodelist']), sorted(seeds))
+            if seeds is not None:
+                self.assertEqual(sorted(result['nodelist']), sorted(seeds))
+            if num_seeds is not None:
+                self.assertEqual(len(result['nodelist']), num_seeds)
             if options:
                 opts = result['options']
                 if 'readpreferencetags' in opts:
@@ -106,9 +122,18 @@ def create_test(test_case):
                     copts['tlsAllowInvalidHostnames'] = True
 
                 client = MongoClient(uri, **copts)
-                wait_until(
-                    lambda: hosts == client.nodes,
-                    'match test hosts to client nodes')
+                if num_seeds is not None:
+                    self.assertEqual(len(client._topology_settings.seeds),
+                                     num_seeds)
+                if hosts is not None:
+                    wait_until(
+                        lambda: hosts == client.nodes,
+                        'match test hosts to client nodes')
+                if num_hosts is not None:
+                    wait_until(lambda: num_hosts == len(client.nodes),
+                               "wait to connect to num_hosts")
+                # XXX: we should block until SRV poller runs at least once
+                # and re-run these assertions.
         else:
             try:
                 parse_uri(uri)
@@ -130,6 +155,7 @@ def create_tests(cls):
 
 create_tests(TestDNSRepl)
 create_tests(TestDNSLoadBalanced)
+create_tests(TestDNSSharded)
 
 
 class TestParsingErrors(unittest.TestCase):

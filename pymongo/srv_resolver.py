@@ -15,6 +15,7 @@
 """Support for resolving hosts and options from mongodb+srv:// URIs."""
 
 import ipaddress
+import random
 
 try:
     from dns import resolver
@@ -24,7 +25,6 @@ except ImportError:
 
 from pymongo.common import CONNECT_TIMEOUT
 from pymongo.errors import ConfigurationError
-
 
 # dnspython can return bytes or str from various parts
 # of its API depending on version. We always want str.
@@ -48,11 +48,11 @@ _INVALID_HOST_MSG = (
 
 class _SrvResolver(object):
     def __init__(self, fqdn,
-                 connect_timeout, srv_service_name):
+                 connect_timeout, srv_service_name, srv_max_hosts=0):
         self.__fqdn = fqdn
         self.__srv = srv_service_name
         self.__connect_timeout = connect_timeout or CONNECT_TIMEOUT
-
+        self.__srv_max_hosts = srv_max_hosts or 0
         # Validate the fully qualified domain name.
         try:
             ipaddress.ip_address(fqdn)
@@ -111,7 +111,8 @@ class _SrvResolver(object):
                 raise ConfigurationError("Invalid SRV host: %s" % (node[0],))
             if self.__plist != nlist:
                 raise ConfigurationError("Invalid SRV host: %s" % (node[0],))
-
+        if self.__srv_max_hosts:
+            nodes = random.sample(nodes, min(self.__srv_max_hosts, len(nodes)))
         return results, nodes
 
     def get_hosts(self):

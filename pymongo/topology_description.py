@@ -15,6 +15,7 @@
 """Represent a deployment of MongoDB servers."""
 
 from collections import namedtuple
+from random import sample
 
 from pymongo import common
 from pymongo.errors import ConfigurationError
@@ -222,6 +223,10 @@ class TopologyDescription(object):
     @property
     def heartbeat_frequency(self):
         return self._topology_settings.heartbeat_frequency
+
+    @property
+    def srv_max_hosts(self):
+        return self._topology_settings._srv_max_hosts
 
     def apply_selector(self, selector, address, custom_selector=None):
 
@@ -446,16 +451,23 @@ def _updated_topology_description_srv_polling(topology_description, seedlist):
     if set(sds.keys()) == set(seedlist):
         return topology_description
 
-    # Add SDs corresponding to servers recently added to the SRV record.
-    for address in seedlist:
-        if address not in sds:
-            sds[address] = ServerDescription(address)
 
     # Remove SDs corresponding to servers no longer part of the SRV record.
     for address in list(sds.keys()):
         if address not in seedlist:
             sds.pop(address)
 
+    if topology_description.srv_max_hosts != 0:
+        new_hosts = set(seedlist) - set(sds.keys())
+        n_to_add = topology_description.srv_max_hosts - len(sds)
+        if n_to_add > 0:
+            seedlist = sample(new_hosts, min(n_to_add, len(new_hosts)))
+        else:
+            seedlist = []
+    # Add SDs corresponding to servers recently added to the SRV record.
+    for address in seedlist:
+        if address not in sds:
+            sds[address] = ServerDescription(address)
     return TopologyDescription(
         topology_description.topology_type,
         sds,

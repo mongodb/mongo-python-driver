@@ -393,7 +393,8 @@ def _check_options(nodes, options):
 
 
 def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
-              normalize=True, connect_timeout=None, srv_service_name=None):
+              normalize=True, connect_timeout=None, srv_service_name=None,
+              srv_max_hosts=None):
     """Parse and validate a MongoDB URI.
 
     Returns a dict of the form::
@@ -494,10 +495,8 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
 
         if opts:
             options.update(split_options(opts, validate, warn, normalize))
-
     if srv_service_name is None:
         srv_service_name = options.get("srvServiceName", SRV_SERVICE_NAME)
-
     if '@' in host_part:
         userinfo, _, hosts = host_part.rpartition('@')
         user, passwd = parse_userinfo(userinfo)
@@ -510,7 +509,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
 
     hosts = unquote_plus(hosts)
     fqdn = None
-
+    srv_max_hosts = srv_max_hosts or options.get("srvMaxHosts")
     if is_srv:
         if options.get('directConnection'):
             raise ConfigurationError(
@@ -529,7 +528,8 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
         # Use the connection timeout. connectTimeoutMS passed as a keyword
         # argument overrides the same option passed in the connection string.
         connect_timeout = connect_timeout or options.get("connectTimeoutMS")
-        dns_resolver = _SrvResolver(fqdn, connect_timeout, srv_service_name)
+        dns_resolver = _SrvResolver(fqdn, connect_timeout, srv_service_name,
+                                    srv_max_hosts)
         nodes = dns_resolver.get_hosts()
         dns_options = dns_resolver.get_options()
         if dns_options:
@@ -542,10 +542,18 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
             for opt, val in parsed_dns_options.items():
                 if opt not in options:
                     options[opt] = val
+        if options.get("loadBalanced") and srv_max_hosts:
+            raise InvalidURI(
+                "You cannot specify loadBalanced with srvMaxHosts")
+        if options.get("replicaSet") and srv_max_hosts:
+            raise InvalidURI("You cannot specify replicaSet with srvMaxHosts")
         if "tls" not in options and "ssl" not in options:
             options["tls"] = True if validate else 'true'
     elif not is_srv and options.get("srvServiceName") is not None:
         raise ConfigurationError("The srvServiceName option is only allowed "
+                                 "with 'mongodb+srv://' URIs")
+    elif not is_srv and srv_max_hosts:
+        raise ConfigurationError("The srvMaxHosts option is only allowed "
                                  "with 'mongodb+srv://' URIs")
     else:
         nodes = split_hosts(hosts, default_port=default_port)

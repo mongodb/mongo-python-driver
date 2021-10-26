@@ -65,7 +65,7 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.settings import TOPOLOGY_TYPE
 from pymongo.srv_resolver import _HAVE_DNSPYTHON
 from pymongo.topology import _ErrorContext
-from pymongo.topology_description import TopologyDescription
+from pymongo.topology_description import TopologyDescription, _updated_topology_description_srv_polling
 from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   client_knobs,
@@ -1641,6 +1641,20 @@ class TestClient(IntegrationTest):
         self.assertEqual(client._topology_settings._srv_service_name,
                          'customname')
 
+    def test_srv_max_hosts_kwarg(self):
+        client = MongoClient(
+            'mongodb+srv://test1.test.build.10gen.cc/')
+        self.assertGreater(
+            len(client.topology_description.server_descriptions()), 1)
+        client = MongoClient(
+            'mongodb+srv://test1.test.build.10gen.cc/', srvmaxhosts=1)
+        self.assertEqual(
+            len(client.topology_description.server_descriptions()), 1)
+        client = MongoClient(
+            'mongodb+srv://test1.test.build.10gen.cc/?srvMaxHosts=1',
+            srvmaxhosts=2)
+        self.assertEqual(
+            len(client.topology_description.server_descriptions()), 2)
 
 
 class TestExhaustCursor(IntegrationTest):
