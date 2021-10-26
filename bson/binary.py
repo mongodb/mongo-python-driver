@@ -171,6 +171,7 @@ MD5_SUBTYPE = 5
 
 COLUMN_SUBTYPE = 7
 """BSON binary subtype for columns.
+
 .. versionadded:: 4.0
 """
 
