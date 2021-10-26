@@ -1640,6 +1640,7 @@ class TestClient(IntegrationTest):
              connect=False)
         self.assertEqual(client._topology_settings._srv_service_name,
                          'customname')
+
     def test_srv_max_hosts(self):
         client = MongoClient(
             'mongodb+srv://test1.test.build.10gen.cc/')
