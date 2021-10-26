@@ -299,15 +299,13 @@ class TestSrvPolling(unittest.TestCase):
         def nodelist_callback():
             return response
 
-        client = MongoClient(
-            "mongodb+srv://test22.test.build.10gen.cc/?srvServiceName"
-            "=customname")
         with SrvPollingKnobs(
-                nodelist_callback=nodelist_callback):
-            sleep(2*common.MIN_SRV_RESCAN_INTERVAL)
-            final_topology = set(client.topology_description.server_descriptions())
-            self.assertIn(response[0], final_topology)
-            self.assertIn(response[1], final_topology)
+                ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME):
+            client = MongoClient(
+                "mongodb+srv://test22.test.build.10gen.cc/?srvServiceName"
+                "=customname")
+            with SrvPollingKnobs(nodelist_callback=nodelist_callback):
+                self.assert_nodelist_change(response, client)
 
 
 if __name__ == '__main__':
