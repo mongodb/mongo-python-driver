@@ -289,6 +289,26 @@ class TestSrvPolling(unittest.TestCase):
             new = set(client.topology_description.server_descriptions())
             self.assertSetEqual(old, new)
 
+    def test_srv_service_name(self):
+        # Construct a valid final response callback distinct from base.
+        response = [
+            ("localhost.test.build.10gen.cc.", 27019),
+            ("localhost.test.build.10gen.cc.", 27020)
+        ]
+
+        def nodelist_callback():
+            return response
+
+        client = MongoClient(
+            "mongodb+srv://test22.test.build.10gen.cc/?srvServiceName"
+            "=customname")
+        with SrvPollingKnobs(
+                nodelist_callback=nodelist_callback):
+            sleep(2*common.MIN_SRV_RESCAN_INTERVAL)
+            final_topology = set(client.topology_description.server_descriptions())
+            self.assertIn(response[0], final_topology)
+            self.assertIn(response[1], final_topology)
+
 
 if __name__ == '__main__':
     unittest.main()
