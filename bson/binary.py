@@ -169,6 +169,12 @@ MD5_SUBTYPE = 5
 """BSON binary subtype for an MD5 hash.
 """
 
+COLUMN_SUBTYPE = 7
+"""BSON binary subtype for columns.
+
+.. versionadded:: 4.0
+"""
+
 USER_DEFINED_SUBTYPE = 128
 """BSON binary subtype for any user defined structure.
 """
