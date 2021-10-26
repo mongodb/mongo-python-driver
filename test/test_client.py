@@ -1641,7 +1641,7 @@ class TestClient(IntegrationTest):
         self.assertEqual(client._topology_settings._srv_service_name,
                          'customname')
 
-    def test_srv_max_hosts(self):
+    def test_srv_max_hosts_kwarg(self):
         client = MongoClient(
             'mongodb+srv://test1.test.build.10gen.cc/')
         self.assertGreater(
@@ -1651,10 +1651,10 @@ class TestClient(IntegrationTest):
         self.assertEqual(
             len(client.topology_description.server_descriptions()), 1)
         client = MongoClient(
-            'mongodb+srv://test1.test.build.10gen.cc/?srvMaxHosts=1')
+            'mongodb+srv://test1.test.build.10gen.cc/?srvMaxHosts=1',
+            srvmaxhosts=2)
         self.assertEqual(
-            len(client.topology_description.server_descriptions()), 1)
-        self.assertEqual(len(client.topology_description.server_descriptions()), 1)
+            len(client.topology_description.server_descriptions()), 2)
 
 
 class TestExhaustCursor(IntegrationTest):

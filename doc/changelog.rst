@@ -179,6 +179,10 @@ Notable improvements
 
 - Enhanced connection pooling to create connections more efficiently and
   avoid connection storms.
+- :class:`~pymongo.mongo_client.MongoClient` now accepts a URI and keyword
+  argument `srvMaxHosts` that limits the number of simultaneous connections a
+  client can have. If there are more than `srvMaxHosts` potential hosts it will
+  randomly choose a subset of hosts to connect to.
 
 Issues Resolved
 ...............
