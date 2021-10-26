@@ -23,8 +23,6 @@ BINARY_SUBTYPE = 0
 
 This is the default subtype for binary data.
 """
-COLUMN_SUBTYPE = 0x07
-"""BSON binary subtype for columns"""
 
 FUNCTION_SUBTYPE = 1
 """BSON binary subtype for functions.
@@ -169,6 +167,11 @@ UUID_REPRESENTATION_NAMES = {
 
 MD5_SUBTYPE = 5
 """BSON binary subtype for an MD5 hash.
+"""
+
+COLUMN_SUBTYPE = 7
+"""BSON binary subtype for columns.
+.. versionadded:: 4.0
 """
 
 USER_DEFINED_SUBTYPE = 128
