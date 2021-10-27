@@ -178,8 +178,10 @@ MongoClient.max_bson_size/max_message_size/max_write_batch_size are removed
 
 Removed :attr:`pymongo.mongo_client.MongoClient.max_bson_size`,
 :attr:`pymongo.mongo_client.MongoClient.max_message_size`, and
-:attr:`pymongo.mongo_client.MongoClient.max_write_batch_size`.
-Use the `hello command`_ instead. Code like this::
+:attr:`pymongo.mongo_client.MongoClient.max_write_batch_size`. These helpers
+were incorrect when in ``loadBalanced=true mode`` and ambiguous in clusters
+with mixed versions. Use the `hello command`_ to get the authoritative
+value from the remote server instead. Code like this::
 
     max_bson_size = client.max_bson_size
     max_message_size = client.max_message_size
