@@ -851,7 +851,7 @@ class TestCollection(IntegrationTest):
             lambda: 0 == db.test.count_documents({}), 'delete 2 documents')
 
     def test_command_document_too_large(self):
-        large = '*' * (self.client.max_bson_size + _COMMAND_OVERHEAD)
+        large = '*' * (client_context.max_bson_size + _COMMAND_OVERHEAD)
         coll = self.db.test
         self.assertRaises(
             DocumentTooLarge, coll.insert_one, {'data': large})
@@ -862,7 +862,7 @@ class TestCollection(IntegrationTest):
             DocumentTooLarge, coll.delete_one, {'data': large})
 
     def test_write_large_document(self):
-        max_size = self.db.client.max_bson_size
+        max_size = client_context.max_bson_size
         half_size = int(max_size / 2)
         max_str = "x" * max_size
         half_str = "x" * half_size
@@ -1879,7 +1879,7 @@ class TestCollection(IntegrationTest):
     def test_numerous_inserts(self):
         # Ensure we don't exceed server's maxWriteBatchSize size limit.
         self.db.test.drop()
-        n_docs = self.client.max_write_batch_size + 100
+        n_docs = client_context.max_write_batch_size + 100
         self.db.test.insert_many([{} for _ in range(n_docs)])
         self.assertEqual(n_docs, self.db.test.count_documents({}))
         self.db.test.drop()
@@ -1888,7 +1888,7 @@ class TestCollection(IntegrationTest):
         # Tests legacy insert.
         db = self.client.test_insert_large_batch
         self.addCleanup(self.client.drop_database, 'test_insert_large_batch')
-        max_bson_size = self.client.max_bson_size
+        max_bson_size = client_context.max_bson_size
         # Write commands are limited to 16MB + 16k per batch
         big_string = 'x' * int(max_bson_size / 2)
 

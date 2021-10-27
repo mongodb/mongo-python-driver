@@ -640,12 +640,10 @@ class TestClient(IntegrationTest):
 
         c = rs_or_single_client(connect=False)
         self.assertEqual(c.codec_options, CodecOptions())
-        self.assertIsInstance(c.max_bson_size, int)
         c = rs_or_single_client(connect=False)
         self.assertFalse(c.primary)
         self.assertFalse(c.secondaries)
         c = rs_or_single_client(connect=False)
-        self.assertIsInstance(c.max_write_batch_size, int)
         self.assertIsInstance(c.topology_description, TopologyDescription)
         self.assertEqual(c.topology_description, c._topology._description)
 
@@ -1834,17 +1832,6 @@ class TestClientLazyConnect(IntegrationTest):
             self.assertEqual(NTHREADS, len(results))
 
         lazy_client_trial(reset, find_one, test, self._get_client)
-
-    def test_max_bson_size(self):
-        c = self._get_client()
-
-        # max_bson_size will cause the client to connect.
-        hello = c.db.command(HelloCompat.LEGACY_CMD)
-        self.assertEqual(hello['maxBsonObjectSize'], c.max_bson_size)
-        if 'maxMessageSizeBytes' in hello:
-            self.assertEqual(
-                hello['maxMessageSizeBytes'],
-                c.max_message_size)
 
 
 class TestMongoClientFailover(MockClientTest):

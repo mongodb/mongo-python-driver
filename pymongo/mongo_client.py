@@ -1054,39 +1054,6 @@ class MongoClient(common.BaseObject):
         return frozenset(s.address for s in description.known_servers)
 
     @property
-    def max_bson_size(self):
-        """The largest BSON object the connected server accepts in bytes.
-
-        If the client is not connected, this will block until a connection is
-        established or raise ServerSelectionTimeoutError if no server is
-        available.
-        """
-        return self._server_property('max_bson_size')
-
-    @property
-    def max_message_size(self):
-        """The largest message the connected server accepts in bytes.
-
-        If the client is not connected, this will block until a connection is
-        established or raise ServerSelectionTimeoutError if no server is
-        available.
-        """
-        return self._server_property('max_message_size')
-
-    @property
-    def max_write_batch_size(self):
-        """The maxWriteBatchSize reported by the server.
-
-        If the client is not connected, this will block until a connection is
-        established or raise ServerSelectionTimeoutError if no server is
-        available.
-
-        Returns a default value when connected to server versions prior to
-        MongoDB 2.6.
-        """
-        return self._server_property('max_write_batch_size')
-
-    @property
     def local_threshold_ms(self):
         """The local threshold for this instance."""
         return self.__options.local_threshold_ms

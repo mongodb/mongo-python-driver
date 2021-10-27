@@ -33,6 +33,9 @@ Breaking Changes in 4.0
   :meth:`pymongo.mongo_client.MongoClient.unlock`, and
   :attr:`pymongo.mongo_client.MongoClient.is_locked`.
 - Removed :meth:`pymongo.mongo_client.MongoClient.database_names`.
+- Removed :attr:`pymongo.mongo_client.MongoClient.max_bson_size`.
+- Removed :attr:`pymongo.mongo_client.MongoClient.max_message_size`.
+- Removed :attr:`pymongo.mongo_client.MongoClient.max_write_batch_size`.
 - Removed :meth:`pymongo.database.Database.eval`,
   :data:`pymongo.database.Database.system_js` and
   :class:`pymongo.database.SystemJS`.
