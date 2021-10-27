@@ -60,7 +60,8 @@ from pymongo.errors import (AutoReconnect,
                             ServerSelectionTimeoutError)
 from pymongo.pool import ConnectionClosedReason
 from pymongo.read_preferences import ReadPreference
-from pymongo.server_selectors import writable_server_selector
+from pymongo.server_selectors import (any_server_selector,
+                                      writable_server_selector)
 from pymongo.server_type import SERVER_TYPE
 from pymongo.topology import (Topology,
                               _ErrorContext)
@@ -796,9 +797,8 @@ class MongoClient(common.BaseObject):
         the server may change. In such cases, store a local reference to a
         ServerDescription first, then use its properties.
         """
-        server = self._topology.select_server(
-            writable_server_selector)
-
+        topology = self._get_topology()  # Starts monitors if necessary.
+        server = topology.select_server(writable_server_selector)
         return getattr(server.description, attr_name)
 
     def watch(self, pipeline=None, full_document=None, resume_after=None,
@@ -937,16 +937,16 @@ class MongoClient(common.BaseObject):
 
         .. versionadded:: 3.0
         """
-        topology_type = self._topology._description.topology_type
+        # Block until we discover the topology type.
+        self._get_topology().select_server(any_server_selector)
+        td = self.topology_description
+        topology_type = td.topology_type
         if (topology_type == TOPOLOGY_TYPE.Sharded and
-                len(self.topology_description.server_descriptions()) > 1):
+                len(td.server_descriptions()) > 1):
             raise InvalidOperation(
                 'Cannot use "address" property when load balancing among'
                 ' mongoses, use "nodes" instead.')
-        if topology_type not in (TOPOLOGY_TYPE.ReplicaSetWithPrimary,
-                                 TOPOLOGY_TYPE.Single,
-                                 TOPOLOGY_TYPE.LoadBalanced,
-                                 TOPOLOGY_TYPE.Sharded):
+        if topology_type == TOPOLOGY_TYPE.ReplicaSetNoPrimary:
             return None
         return self._server_property('address')
 

@@ -644,18 +644,18 @@ class TestClient(IntegrationTest):
         self.assertFalse(c.primary)
         self.assertFalse(c.secondaries)
         c = rs_or_single_client(connect=False)
-        self.assertIsInstance(c.topology_description, TopologyDescription)
-        self.assertEqual(c.topology_description, c._topology._description)
-
         if client_context.is_rs:
             # The primary's host and port are from the replica set config.
             self.assertIsNotNone(c.address)
         else:
             self.assertEqual(c.address, (host, port))
+        self.assertIsInstance(c.topology_description, TopologyDescription)
+        self.assertEqual(c.topology_description, c._topology._description)
 
         bad_host = "somedomainthatdoesntexist.org"
         c = MongoClient(bad_host, port, connectTimeoutMS=1,
-                        serverSelectionTimeoutMS=10)
+                        serverSelectionTimeoutMS=10, connect=False)
+        self.assertRaises(ServerSelectionTimeoutError, lambda: c.address)
         self.assertRaises(ConnectionFailure, c.pymongo_test.test.find_one)
 
     def test_init_disconnected_with_auth(self):
