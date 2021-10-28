@@ -1641,6 +1641,8 @@ class TestClient(IntegrationTest):
         self.assertEqual(client._topology_settings._srv_service_name,
                          'customname')
 
+    @unittest.skipUnless(
+        _HAVE_DNSPYTHON, "DNS-related tests need dnspython to be installed")
     def test_srv_max_hosts_kwarg(self):
         client = MongoClient(
             'mongodb+srv://test1.test.build.10gen.cc/')
