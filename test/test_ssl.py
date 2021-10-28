@@ -20,7 +20,7 @@ import sys
 
 sys.path[0:0] = [""]
 
-from urllib.parse import quote
+from urllib.parse import quote_plus
 
 from pymongo import MongoClient, ssl_support
 from pymongo.errors import (ConfigurationError,
@@ -526,7 +526,7 @@ class TestSSL(IntegrationTest):
 
         uri = ('mongodb://%s@%s:%d/?authMechanism='
                'MONGODB-X509' % (
-                   quote(MONGODB_X509_USERNAME), host, port))
+                   quote_plus(MONGODB_X509_USERNAME), host, port))
         client = MongoClient(uri,
                              ssl=True,
                              tlsAllowInvalidCertificates=True,
@@ -546,7 +546,7 @@ class TestSSL(IntegrationTest):
         # Auth should fail if username and certificate do not match
         uri = ('mongodb://%s@%s:%d/?authMechanism='
                'MONGODB-X509' % (
-                   quote("not the username"), host, port))
+                   quote_plus("not the username"), host, port))
 
         bad_client = MongoClient(
             uri, ssl=True, tlsAllowInvalidCertificates=True,
@@ -571,7 +571,7 @@ class TestSSL(IntegrationTest):
         # Invalid certificate (using CA certificate as client certificate)
         uri = ('mongodb://%s@%s:%d/?authMechanism='
                'MONGODB-X509' % (
-                   quote(MONGODB_X509_USERNAME), host, port))
+                   quote_plus(MONGODB_X509_USERNAME), host, port))
         try:
             connected(MongoClient(uri,
                                   ssl=True,

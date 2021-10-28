@@ -43,7 +43,7 @@ class TestURI(unittest.TestCase):
         self.assertTrue(parse_userinfo('user:password'))
         self.assertEqual(('us:r', 'p@ssword'),
                          parse_userinfo('us%3Ar:p%40ssword'))
-        self.assertEqual(('us+er', 'p+ssword'),
+        self.assertEqual(('us er', 'p ssword'),
                          parse_userinfo('us+er:p+ssword'))
         self.assertEqual(('us er', 'p ssword'),
                          parse_userinfo('us%20er:p%20ssword'))
