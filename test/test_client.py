@@ -676,15 +676,24 @@ class TestClient(IntegrationTest):
         self.assertRaises(ConnectionFailure, c.pymongo_test.test.find_one)
 
     def test_equality(self):
-        c = connected(rs_or_single_client())
+        c = rs_or_single_client()
+        self.addCleanup(c.close)
         self.assertEqual(client_context.client, c)
-
         # Explicitly test inequality
         self.assertFalse(client_context.client != c)
 
+        c = rs_or_single_client('invalid.com', connect=False)
+        self.addCleanup(c.close)
+        self.assertNotEqual(client_context.client, c)
+        self.assertTrue(client_context.client != c)
+
     def test_hashable(self):
-        c = connected(rs_or_single_client())
+        c = rs_or_single_client()
+        self.addCleanup(c.close)
         self.assertIn(c, {client_context.client})
+        c = rs_or_single_client('invalid.com', connect=False)
+        self.addCleanup(c.close)
+        self.assertNotIn(c, {client_context.client})
 
     def test_host_w_port(self):
         with self.assertRaises(ValueError):
@@ -1635,19 +1644,19 @@ class TestClient(IntegrationTest):
         client = MongoClient(
             'mongodb+srv://user:password@test22.test.build.10gen.cc',
             srvServiceName='customname', connect=False)
-        self.assertEqual(client._topology_settings._srv_service_name,
+        self.assertEqual(client._topology_settings.srv_service_name,
                          'customname')
         client = MongoClient(
             'mongodb+srv://user:password@test22.test.build.10gen.cc'
             '/?srvServiceName=shouldbeoverriden',
             srvServiceName='customname', connect=False)
-        self.assertEqual(client._topology_settings._srv_service_name,
+        self.assertEqual(client._topology_settings.srv_service_name,
                          'customname')
         client = MongoClient(
              'mongodb+srv://user:password@test22.test.build.10gen.cc'
              '/?srvServiceName=customname',
              connect=False)
-        self.assertEqual(client._topology_settings._srv_service_name,
+        self.assertEqual(client._topology_settings.srv_service_name,
                          'customname')
 
     @unittest.skipUnless(

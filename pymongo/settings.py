@@ -39,9 +39,9 @@ class TopologySettings(object):
                  heartbeat_frequency=common.HEARTBEAT_FREQUENCY,
                  server_selector=None,
                  fqdn=None,
-                 srv_service_name=common.SRV_SERVICE_NAME,
                  direct_connection=False,
                  load_balanced=None,
+                 srv_service_name=common.SRV_SERVICE_NAME,
                  srv_max_hosts=0):
         """Represent MongoClient's configuration.
 
@@ -62,11 +62,11 @@ class TopologySettings(object):
         self._server_selection_timeout = server_selection_timeout
         self._server_selector = server_selector
         self._fqdn = fqdn
-        self._srv_service_name = srv_service_name
         self._heartbeat_frequency = heartbeat_frequency
-        self._srv_max_hosts = srv_max_hosts or 0
         self._direct = direct_connection
         self._load_balanced = load_balanced
+        self._srv_service_name = srv_service_name
+        self._srv_max_hosts = srv_max_hosts or 0
 
         self._topology_id = ObjectId()
         # Store the allocation traceback to catch unclosed clients in the
@@ -130,6 +130,16 @@ class TopologySettings(object):
     def load_balanced(self):
         """True if the client was configured to connect to a load balancer."""
         return self._load_balanced
+
+    @property
+    def srv_service_name(self):
+        """The srvServiceName."""
+        return self._srv_service_name
+
+    @property
+    def srv_max_hosts(self):
+        """The srvMaxHosts."""
+        return self._srv_max_hosts
 
     def get_topology_type(self):
         if self.load_balanced:
