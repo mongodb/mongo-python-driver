@@ -646,7 +646,8 @@ class TestClient(IntegrationTest):
         c = rs_or_single_client(connect=False)
         self.assertIsInstance(c.topology_description, TopologyDescription)
         self.assertEqual(c.topology_description, c._topology._description)
-
+        self.assertIsNone(c.address)  # PYTHON-2981
+        c.admin.command('ping')  # connect
         if client_context.is_rs:
             # The primary's host and port are from the replica set config.
             self.assertIsNotNone(c.address)
