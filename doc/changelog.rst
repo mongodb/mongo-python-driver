@@ -166,13 +166,6 @@ Breaking Changes in 4.0
   :exc:`~pymongo.errors.InvalidURI` exception
   when it encounters unescaped percent signs in username and password when
   parsing MongoDB URIs.
-- :class:`~pymongo.mongo_client.MongoClient` now uses
-  :py::func:`urllib.parse.unquote` rather than
-  :py:func:`urllib.parse.unquote_plus`,
-  meaning that plus signs ("+") are no longer converted to spaces (" "). This
-  means that if you were previously quoting your login information using
-  quote_plus, you must now switch to quote. Additionally, be aware that this
-  change only occurs when parsing login information from the URI.
 
 Notable improvements
 ....................

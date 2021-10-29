@@ -18,7 +18,7 @@ import re
 import warnings
 import sys
 
-from urllib.parse import unquote, unquote_plus
+from urllib.parse import unquote_plus
 
 from pymongo.common import (
     SRV_SERVICE_NAME,
@@ -47,7 +47,7 @@ def _unquoted_percent(s):
             sub = s[i:i+3]
             # If unquoting yields the same string this means there was an
             # unquoted %.
-            if unquote(sub) == sub:
+            if unquote_plus(sub) == sub:
                 return True
     return False
 
@@ -65,14 +65,14 @@ def parse_userinfo(userinfo):
     if ('@' in userinfo or userinfo.count(':') > 1 or
             _unquoted_percent(userinfo)):
         raise InvalidURI("Username and password must be escaped according to "
-                         "RFC 3986, use urllib.parse.quote")
+                         "RFC 3986, use urllib.parse.quote_plus")
 
     user, _, passwd = userinfo.partition(":")
     # No password is expected with GSSAPI authentication.
     if not user:
         raise InvalidURI("The empty string is not valid username.")
 
-    return unquote(user), unquote(passwd)
+    return unquote_plus(user), unquote_plus(passwd)
 
 
 def parse_ipv6_literal_host(entity, default_port):
@@ -430,9 +430,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
 
     .. versionchanged:: 4.0
        To better follow RFC 3986, unquoted percent signs ("%") are no longer
-       supported and plus signs ("+") are no longer decoded into spaces (" ")
-       when decoding username and password. To avoid these issues, use
-       :py:func:`urllib.parse.quote` when building the URI.
+       supported.
 
     .. versionchanged:: 3.9
         Added the ``normalize`` parameter.

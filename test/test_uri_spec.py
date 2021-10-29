@@ -143,6 +143,9 @@ def create_test(test, test_workdir):
                 options['database'] += "." + options['collection']
             for elm in auth:
                 if auth[elm] is not None:
+                    # We have to do this because while the spec requires
+                    # "+"->"+", unquote_plus does "+"->" "
+                    options[elm] = options[elm].replace(" ", "+")
                     self.assertEqual(auth[elm], options[elm],
                                      "Expected %s but got %s"
                                      % (auth[elm], options[elm]))
