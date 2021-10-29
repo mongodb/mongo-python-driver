@@ -17,6 +17,7 @@
 import copy
 import sys
 import warnings
+from urllib.parse import quote_plus
 
 sys.path[0:0] = [""]
 
@@ -511,6 +512,15 @@ class TestURI(unittest.TestCase):
                 ', did you forget to percent-escape the token with '
                 'quote_plus?'):
             parse_uri(uri)
+
+    def test_special_chars(self):
+        user = "user@ /9+:?~!$&'()*+,;="
+        pwd = "pwd@ /9+:?~!$&'()*+,;="
+        uri = 'mongodb://%s:%s@localhost' % (quote_plus(user), quote_plus(pwd))
+        res = parse_uri(uri)
+        print(res)
+        self.assertEqual(user, res['username'])
+        self.assertEqual(pwd, res['password'])
 
 
 if __name__ == "__main__":
