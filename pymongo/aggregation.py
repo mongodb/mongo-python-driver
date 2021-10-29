@@ -19,7 +19,7 @@ from bson.son import SON
 from pymongo import common
 from pymongo.collation import validate_collation_or_none
 from pymongo.errors import ConfigurationError
-from pymongo.read_preferences import ReadPreference
+from pymongo.read_preferences import _AggWritePref
 
 
 class _AggregationCommand(object):
@@ -70,6 +70,7 @@ class _AggregationCommand(object):
             options.pop('collation', None))
 
         self._max_await_time_ms = options.pop('maxAwaitTimeMS', None)
+        self._write_preference = None
 
     @property
     def _aggregation_target(self):
@@ -97,9 +98,12 @@ class _AggregationCommand(object):
                 result, session, server, sock_info, secondary_ok)
 
     def get_read_preference(self, session):
+        if self._write_preference:
+            return self._write_preference
+        pref = self._target._read_preference_for(session)
         if self._performs_write:
-            return ReadPreference.PRIMARY
-        return self._target._read_preference_for(session)
+            self._write_preference = pref = _AggWritePref(pref)
+        return pref
 
     def get_cursor(self, session, server, sock_info, secondary_ok):
         # Serialize command.

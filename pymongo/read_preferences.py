@@ -424,6 +424,46 @@ class Nearest(_ServerMode):
                 self.max_staleness, selection))
 
 
+class _AggWritePref:
+    """Agg $out/$merge write preference.
+
+    * If selection via pref contains a 5.0 server, uses pref read preference.
+    * Otherwise uses Primary().
+
+    :Parameters:
+      - `pref`: The read preference to use on MongoDB 5.0+.
+    """
+
+    __slots__ = ('pref', 'effective_pref')
+
+    def __init__(self, pref):
+        self.pref = pref
+        self.effective_pref = None
+
+    def __call__(self, selection):
+        """Apply this read preference to a Selection."""
+        # Apply the original selection:
+        pref_selection = self.pref(selection)
+        # Filter 5.0+ or writable servers:
+        suitable = [s for s in pref_selection.server_descriptions
+                    if s.max_wire_version >= 13 or s.is_writable]
+        if suitable:
+            self.effective_pref = self.pref
+            return pref_selection.with_server_descriptions(suitable)
+        # Otherwise fallback to using the primary:
+        self.effective_pref = ReadPreference.PRIMARY
+        return selection.primary_selection
+
+    def __repr__(self):
+        return "_AggWritePref(pref=%r)" % (self.pref,)
+
+    # Proxy other calls to the effective_pref so that _AggWritePref can be
+    # used in place
+    def __getattr__(self, name):
+        return getattr(self.effective_pref, name)
+
+
+
 _ALL_READ_PREFERENCES = (Primary, PrimaryPreferred,
                          Secondary, SecondaryPreferred, Nearest)
 

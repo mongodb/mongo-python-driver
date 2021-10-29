@@ -19,7 +19,7 @@ from random import sample
 
 from pymongo import common
 from pymongo.errors import ConfigurationError
-from pymongo.read_preferences import ReadPreference
+from pymongo.read_preferences import ReadPreference, _AggWritePref
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import Selection
 from pymongo.server_type import SERVER_TYPE
@@ -273,7 +273,8 @@ class TopologyDescription(object):
             # Ignore selectors when explicit address is requested.
             description = self.server_descriptions().get(address)
             return [description] if description else []
-        elif self.topology_type == TOPOLOGY_TYPE.Sharded:
+        elif (self.topology_type == TOPOLOGY_TYPE.Sharded and
+              not isinstance(selector, _AggWritePref)):
             # Ignore read preference.
             selection = Selection.from_topology_description(self)
         else:
