@@ -143,6 +143,7 @@ def create_test(test, test_workdir):
                 options['database'] += "." + options['collection']
             for elm in auth:
                 if auth[elm] is not None:
+                    options[elm] = options[elm].replace(" ", "+")
                     self.assertEqual(auth[elm], options[elm],
                                      "Expected %s but got %s"
                                      % (auth[elm], options[elm]))

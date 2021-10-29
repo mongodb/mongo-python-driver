@@ -253,8 +253,8 @@
         }
       ],
       "auth": {
-        "username": "!$&'()* ,;=",
-        "password": "!$&'()* ,;=",
+        "username": "!$&'()*+,;=",
+        "password": "!$&'()*+,;=",
         "db": "admin"
       },
       "options": {
