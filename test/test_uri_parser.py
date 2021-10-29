@@ -518,7 +518,6 @@ class TestURI(unittest.TestCase):
         pwd = "pwd@ /9+:?~!$&'()*+,;="
         uri = 'mongodb://%s:%s@localhost' % (quote_plus(user), quote_plus(pwd))
         res = parse_uri(uri)
-        print(res)
         self.assertEqual(user, res['username'])
         self.assertEqual(pwd, res['password'])
 
