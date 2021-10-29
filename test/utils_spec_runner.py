@@ -178,12 +178,16 @@ class SpecRunner(IntegrationTest):
     def kill_all_sessions(self):
         clients = self.mongos_clients if self.mongos_clients else [self.client]
         for client in clients:
+            client
             try:
                 client.admin.command('killAllSessions', [])
-            except OperationFailure:
+            except OperationFailure as exc:
                 # "operation was interrupted" by killing the command's
                 # own session.
-                pass
+                if exc.code in [11601, 13, 59]:
+                    pass
+                else:
+                    raise exc
 
     def check_command_result(self, expected_result, result):
         # Only compare the keys in the expected result.
