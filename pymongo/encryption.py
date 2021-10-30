@@ -261,7 +261,7 @@ class _Encrypter(object):
         self._internal_client = None
 
         def _get_internal_client(encrypter, mongo_client):
-            if mongo_client.max_pool_size is None:
+            if mongo_client.options.pool_options.max_pool_size is None:
                 # Unlimited pool size, use the same client.
                 return mongo_client
             # Else - limited pool size, use an internal client.

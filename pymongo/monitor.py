@@ -123,7 +123,7 @@ class Monitor(MonitorBase):
         self._server_description = server_description
         self._pool = pool
         self._settings = topology_settings
-        self._listeners = self._settings._pool_options.event_listeners
+        self._listeners = self._settings._pool_options._event_listeners
         pub = self._listeners is not None
         self._publish = pub and self._listeners.enabled_for_server_heartbeat
         self._cancel_context = None

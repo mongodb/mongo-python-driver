@@ -290,7 +290,7 @@ class TestSdamMonitoring(IntegrationTest):
             'data': data,
         }
         with self.fail_point(fail_insert):
-            if self.test_client.retry_writes:
+            if self.test_client.options.retry_writes:
                 self.coll.insert_one({})
             else:
                 with self.assertRaises(expected_error):

@@ -36,6 +36,13 @@ Breaking Changes in 4.0
 - Removed :attr:`pymongo.mongo_client.MongoClient.max_bson_size`.
 - Removed :attr:`pymongo.mongo_client.MongoClient.max_message_size`.
 - Removed :attr:`pymongo.mongo_client.MongoClient.max_write_batch_size`.
+- Removed :attr:`pymongo.mongo_client.MongoClient.event_listeners`.
+- Removed :attr:`pymongo.mongo_client.MongoClient.max_pool_size`.
+- Removed :attr:`pymongo.mongo_client.MongoClient.max_idle_time_ms`.
+- Removed :attr:`pymongo.mongo_client.MongoClient.local_threshold_ms`.
+- Removed :attr:`pymongo.mongo_client.MongoClient.server_selection_timeout`.
+- Removed :attr:`pymongo.mongo_client.MongoClient.retry_writes`.
+- Removed :attr:`pymongo.mongo_client.MongoClient.retry_reads`.
 - Removed :meth:`pymongo.database.Database.eval`,
   :data:`pymongo.database.Database.system_js` and
   :class:`pymongo.database.SystemJS`.
@@ -180,6 +187,8 @@ Notable improvements
   will connect to. More specifically, when a mongodb+srv:// connection string
   resolves to more than `srvMaxHosts` number of hosts, the client will randomly
   choose a `srvMaxHosts` sized subset of hosts.
+- Added :attr:`pymongo.mongo_client.MongoClient.options` for read-only access
+  to a client's configuration options.
 
 Issues Resolved
 ...............
@@ -2121,7 +2130,7 @@ Important new features:
 - The ``max_pool_size`` option for :class:`~pymongo.mongo_client.MongoClient`
   and :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient` now
   actually caps the number of sockets the pool will open concurrently.
-  Once the pool has reached :attr:`~pymongo.mongo_client.MongoClient.max_pool_size`
+  Once the pool has reaches max_pool_size
   operations will block waiting for a socket to become available. If
   ``waitQueueTimeoutMS`` is set, an operation that blocks waiting for a socket
   will raise :exc:`~pymongo.errors.ConnectionFailure` after the timeout. By

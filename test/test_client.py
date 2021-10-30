@@ -128,10 +128,10 @@ class ClientUnitTest(unittest.TestCase):
         # socket.Socket.settimeout takes a float in seconds
         self.assertEqual(20.0, pool_opts.connect_timeout)
         self.assertEqual(None, pool_opts.wait_queue_timeout)
-        self.assertEqual(None, pool_opts.ssl_context)
+        self.assertEqual(None, pool_opts._ssl_context)
         self.assertEqual(None, options.replica_set_name)
         self.assertEqual(ReadPreference.PRIMARY, client.read_preference)
-        self.assertAlmostEqual(12, client.server_selection_timeout)
+        self.assertAlmostEqual(12, client.options.server_selection_timeout)
 
     def test_connect_timeout(self):
         client = MongoClient(connect=False, connectTimeoutMS=None,
@@ -465,14 +465,14 @@ class ClientUnitTest(unittest.TestCase):
 
     def test_event_listeners(self):
         c = MongoClient(event_listeners=[], connect=False)
-        self.assertEqual(c.event_listeners, [])
+        self.assertEqual(c.options.event_listeners, [])
         listeners = [event_loggers.CommandLogger(),
                      event_loggers.HeartbeatLogger(),
                      event_loggers.ServerLogger(),
                      event_loggers.TopologyLogger(),
                      event_loggers.ConnectionPoolLogger()]
         c = MongoClient(event_listeners=listeners, connect=False)
-        self.assertEqual(c.event_listeners, listeners)
+        self.assertEqual(c.options.event_listeners, listeners)
 
 
 class TestClient(IntegrationTest):
@@ -635,7 +635,7 @@ class TestClient(IntegrationTest):
         c = rs_or_single_client(connect=False)
         self.assertIsInstance(c.is_mongos, bool)
         c = rs_or_single_client(connect=False)
-        self.assertIsInstance(c.max_pool_size, int)
+        self.assertIsInstance(c.options.pool_options.max_pool_size, int)
         self.assertIsInstance(c.nodes, frozenset)
 
         c = rs_or_single_client(connect=False)
@@ -1003,8 +1003,8 @@ class TestClient(IntegrationTest):
         self.assertEqual(10.5, get_pool(client).opts.connect_timeout)
         self.assertEqual(10.5, get_pool(client).opts.socket_timeout)
         self.assertEqual(10.5, get_pool(client).opts.max_idle_time_seconds)
-        self.assertEqual(10500, client.max_idle_time_ms)
-        self.assertEqual(10.5, client.server_selection_timeout)
+        self.assertEqual(10.5, client.options.pool_options.max_idle_time_seconds)
+        self.assertEqual(10.5, client.options.server_selection_timeout)
 
     def test_socket_timeout_ms_validation(self):
         c = rs_or_single_client(socketTimeoutMS=10 * 1000)
@@ -1044,10 +1044,10 @@ class TestClient(IntegrationTest):
 
     def test_server_selection_timeout(self):
         client = MongoClient(serverSelectionTimeoutMS=100, connect=False)
-        self.assertAlmostEqual(0.1, client.server_selection_timeout)
+        self.assertAlmostEqual(0.1, client.options.server_selection_timeout)
 
         client = MongoClient(serverSelectionTimeoutMS=0, connect=False)
-        self.assertAlmostEqual(0, client.server_selection_timeout)
+        self.assertAlmostEqual(0, client.options.server_selection_timeout)
 
         self.assertRaises(ValueError, MongoClient,
                           serverSelectionTimeoutMS="foo", connect=False)
@@ -1058,20 +1058,20 @@ class TestClient(IntegrationTest):
 
         client = MongoClient(
             'mongodb://localhost/?serverSelectionTimeoutMS=100', connect=False)
-        self.assertAlmostEqual(0.1, client.server_selection_timeout)
+        self.assertAlmostEqual(0.1, client.options.server_selection_timeout)
 
         client = MongoClient(
             'mongodb://localhost/?serverSelectionTimeoutMS=0', connect=False)
-        self.assertAlmostEqual(0, client.server_selection_timeout)
+        self.assertAlmostEqual(0, client.options.server_selection_timeout)
 
         # Test invalid timeout in URI ignored and set to default.
         client = MongoClient(
             'mongodb://localhost/?serverSelectionTimeoutMS=-1', connect=False)
-        self.assertAlmostEqual(30, client.server_selection_timeout)
+        self.assertAlmostEqual(30, client.options.server_selection_timeout)
 
         client = MongoClient(
             'mongodb://localhost/?serverSelectionTimeoutMS=', connect=False)
-        self.assertAlmostEqual(30, client.server_selection_timeout)
+        self.assertAlmostEqual(30, client.options.server_selection_timeout)
 
     def test_waitQueueTimeoutMS(self):
         client = rs_or_single_client(waitQueueTimeoutMS=2000)
@@ -1379,7 +1379,7 @@ class TestClient(IntegrationTest):
     def test_compression(self):
         def compression_settings(client):
             pool_options = client._MongoClient__options.pool_options
-            return pool_options.compression_settings
+            return pool_options._compression_settings
 
         uri = "mongodb://localhost:27017/?compressors=zlib"
         client = MongoClient(uri, connect=False)

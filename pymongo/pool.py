@@ -256,6 +256,17 @@ def _cond_wait(condition, deadline):
 
 
 class PoolOptions(object):
+    """Read only connection pool options for a MongoClient.
+
+    Should not be instantiated directly by application developers. Access
+    a client's pool options via
+    :attr:`~pymongo.client_options.ClientOptions.pool_options` instead::
+
+      pool_opts = client.options.pool_options
+      pool_opts.max_pool_size
+      pool_opts.min_pool_size
+
+    """
 
     __slots__ = ('__max_pool_size', '__min_pool_size',
                  '__max_idle_time_seconds',
@@ -394,7 +405,7 @@ class PoolOptions(object):
         return self.__wait_queue_timeout
 
     @property
-    def ssl_context(self):
+    def _ssl_context(self):
         """An SSLContext instance or None.
         """
         return self.__ssl_context
@@ -406,7 +417,7 @@ class PoolOptions(object):
         return self.__tls_allow_invalid_hostnames
 
     @property
-    def event_listeners(self):
+    def _event_listeners(self):
         """An instance of pymongo.monitoring._EventListeners.
         """
         return self.__event_listeners
@@ -424,7 +435,7 @@ class PoolOptions(object):
         return self.__driver
 
     @property
-    def compression_settings(self):
+    def _compression_settings(self):
         return self.__compression_settings
 
     @property
@@ -506,9 +517,9 @@ class SocketInfo(object):
         self.hello_ok = None
         self.is_mongos = False
         self.op_msg_enabled = False
-        self.listeners = pool.opts.event_listeners
+        self.listeners = pool.opts._event_listeners
         self.enabled_for_cmap = pool.enabled_for_cmap
-        self.compression_settings = pool.opts.compression_settings
+        self.compression_settings = pool.opts._compression_settings
         self.compression_context = None
         self.socket_checker = SocketChecker()
         # Support for mechanism negotiation on the initial handshake.
@@ -1000,7 +1011,7 @@ def _configured_socket(address, options):
     Sets socket's SSL and timeout options.
     """
     sock = _create_connection(address, options)
-    ssl_context = options.ssl_context
+    ssl_context = options._ssl_context
 
     if ssl_context is not None:
         host = address[0]
@@ -1123,8 +1134,8 @@ class Pool:
         # Don't publish events in Monitor pools.
         self.enabled_for_cmap = (
                 self.handshake and
-                self.opts.event_listeners is not None and
-                self.opts.event_listeners.enabled_for_cmap)
+                self.opts._event_listeners is not None and
+                self.opts._event_listeners.enabled_for_cmap)
 
         # The first portion of the wait queue.
         # Enforces: maxPoolSize
@@ -1141,7 +1152,7 @@ class Pool:
         self._max_connecting = self.opts.max_connecting
         self._pending = 0
         if self.enabled_for_cmap:
-            self.opts.event_listeners.publish_pool_created(
+            self.opts._event_listeners.publish_pool_created(
                 self.address, self.opts.non_default_options)
         # Similar to active_sockets but includes threads in the wait queue.
         self.operation_count = 0
@@ -1158,7 +1169,7 @@ class Pool:
             if self.state != PoolState.READY:
                 self.state = PoolState.READY
                 if self.enabled_for_cmap:
-                    self.opts.event_listeners.publish_pool_ready(self.address)
+                    self.opts._event_listeners.publish_pool_ready(self.address)
 
     @property
     def closed(self):
@@ -1197,7 +1208,7 @@ class Pool:
             self._max_connecting_cond.notify_all()
             self.size_cond.notify_all()
 
-        listeners = self.opts.event_listeners
+        listeners = self.opts._event_listeners
         # CMAP spec says that close() MUST close sockets before publishing the
         # PoolClosedEvent but that reset() SHOULD close sockets *after*
         # publishing the PoolClearedEvent.
@@ -1301,7 +1312,7 @@ class Pool:
             conn_id = self.next_connection_id
             self.next_connection_id += 1
 
-        listeners = self.opts.event_listeners
+        listeners = self.opts._event_listeners
         if self.enabled_for_cmap:
             listeners.publish_connection_created(self.address, conn_id)
 
@@ -1353,7 +1364,7 @@ class Pool:
           - `all_credentials`: dict, maps auth source to MongoCredential.
           - `handler` (optional): A _MongoClientErrorHandler.
         """
-        listeners = self.opts.event_listeners
+        listeners = self.opts._event_listeners
         if self.enabled_for_cmap:
             listeners.publish_connection_check_out_started(self.address)
 
@@ -1391,7 +1402,7 @@ class Pool:
     def _raise_if_not_ready(self, emit_event):
         if self.state != PoolState.READY:
             if self.enabled_for_cmap and emit_event:
-                self.opts.event_listeners.publish_connection_check_out_failed(
+                self.opts._event_listeners.publish_connection_check_out_failed(
                     self.address, ConnectionCheckOutFailedReason.CONN_ERROR)
             _raise_connection_failure(
                 self.address, AutoReconnect('connection pool paused'))
@@ -1406,7 +1417,7 @@ class Pool:
 
         if self.closed:
             if self.enabled_for_cmap:
-                self.opts.event_listeners.publish_connection_check_out_failed(
+                self.opts._event_listeners.publish_connection_check_out_failed(
                     self.address, ConnectionCheckOutFailedReason.POOL_CLOSED)
             raise _PoolClosedError(
                 'Attempted to check out a connection from closed connection '
@@ -1486,7 +1497,7 @@ class Pool:
                 self.size_cond.notify()
 
             if self.enabled_for_cmap and not emitted_event:
-                self.opts.event_listeners.publish_connection_check_out_failed(
+                self.opts._event_listeners.publish_connection_check_out_failed(
                     self.address, ConnectionCheckOutFailedReason.CONN_ERROR)
             raise
 
@@ -1505,7 +1516,7 @@ class Pool:
         sock_info.pinned_txn = False
         sock_info.pinned_cursor = False
         self.__pinned_sockets.discard(sock_info)
-        listeners = self.opts.event_listeners
+        listeners = self.opts._event_listeners
         if self.enabled_for_cmap:
             listeners.publish_connection_checked_in(self.address, sock_info.id)
         if self.pid != os.getpid():
@@ -1578,7 +1589,7 @@ class Pool:
         return False
 
     def _raise_wait_queue_timeout(self):
-        listeners = self.opts.event_listeners
+        listeners = self.opts._event_listeners
         if self.enabled_for_cmap:
             listeners.publish_connection_check_out_failed(
                 self.address, ConnectionCheckOutFailedReason.TIMEOUT)
