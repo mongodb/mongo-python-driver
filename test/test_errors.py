@@ -45,8 +45,8 @@ class TestErrors(PyMongoTestCase):
             self.assertIn("full error", traceback.format_exc())
 
     def _test_unicode_strs(self, exc):
-        if 'PyPy' in sys.version:
-            # PyPy displays unicode in repr differently.
+        if sys.implementation.name == 'pypy' and sys.implementation.version < (7, 3, 7):
+            # PyPy used to display unicode in repr differently.
             self.assertEqual("unicode \U0001f40d, full error: {"
                              "'errmsg': 'unicode \\U0001f40d'}", str(exc))
         else:
