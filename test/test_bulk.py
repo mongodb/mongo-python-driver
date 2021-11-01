@@ -283,7 +283,7 @@ class TestBulk(BulkTestBase):
 
     def test_numerous_inserts(self):
         # Ensure we don't exceed server's maxWriteBatchSize size limit.
-        n_docs = self.client.max_write_batch_size + 100
+        n_docs = client_context.max_write_batch_size + 100
         requests = [InsertOne({}) for _ in range(n_docs)]
         result = self.coll.bulk_write(requests, ordered=False)
         self.assertEqual(n_docs, result.inserted_count)
@@ -344,7 +344,7 @@ class TestBulk(BulkTestBase):
             self.coll.bulk_write([{}])
 
     def test_upsert_large(self):
-        big = 'a' * (client_context.client.max_bson_size - 37)
+        big = 'a' * (client_context.max_bson_size - 37)
         result = self.coll.bulk_write([
             UpdateOne({'x': 1}, {'$set': {'s': big}}, upsert=True)])
         self.assertEqualResponse(
@@ -566,7 +566,7 @@ class TestBulk(BulkTestBase):
             result)
 
     def test_large_inserts_ordered(self):
-        big = 'x' * self.coll.database.client.max_bson_size
+        big = 'x' * client_context.max_bson_size
         requests = [
             InsertOne({'b': 1, 'a': 1}),
             InsertOne({'big': big}),
@@ -599,7 +599,7 @@ class TestBulk(BulkTestBase):
         self.assertEqual(6, self.coll.count_documents({}))
 
     def test_large_inserts_unordered(self):
-        big = 'x' * self.coll.database.client.max_bson_size
+        big = 'x' * client_context.max_bson_size
         requests = [
             InsertOne({'b': 1, 'a': 1}),
             InsertOne({'big': big}),

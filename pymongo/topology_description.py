@@ -228,21 +228,32 @@ class TopologyDescription(object):
     def srv_max_hosts(self):
         return self._topology_settings._srv_max_hosts
 
-    def apply_selector(self, selector, address, custom_selector=None):
+    def _apply_local_threshold(self, selection):
+        if not selection:
+            return []
+        # Round trip time in seconds.
+        fastest = min(
+            s.round_trip_time for s in selection.server_descriptions)
+        threshold = self._topology_settings.local_threshold_ms / 1000.0
+        return [s for s in selection.server_descriptions
+                if (s.round_trip_time - fastest) <= threshold]
 
-        def apply_local_threshold(selection):
-            if not selection:
-                return []
+    def apply_selector(self, selector, address=None, custom_selector=None):
+        """List of servers matching the provided selector(s).
 
-            settings = self._topology_settings
+        :Parameters:
+          - `selector`: a callable that takes a Selection as input and returns
+            a Selection as output. For example, an instance of a read
+            preference from :mod:`~pymongo.read_preferences`.
+          - `address` (optional): A server address to select.
+          - `custom_selector` (optional): A callable that augments server
+            selection rules. Accepts a list of
+            :class:`~pymongo.server_description.ServerDescription` objects and
+            return a list of server descriptions that should be considered
+            suitable for the desired operation.
 
-            # Round trip time in seconds.
-            fastest = min(
-                s.round_trip_time for s in selection.server_descriptions)
-            threshold = settings.local_threshold_ms / 1000.0
-            return [s for s in selection.server_descriptions
-                    if (s.round_trip_time - fastest) <= threshold]
-
+        .. versionadded:: 3.4
+        """
         if getattr(selector, 'min_wire_version', 0):
             common_wv = self.common_wire_version
             if common_wv and common_wv < selector.min_wire_version:
@@ -271,7 +282,7 @@ class TopologyDescription(object):
         if custom_selector is not None and selection:
             selection = selection.with_server_descriptions(
                 custom_selector(selection.server_descriptions))
-        return apply_local_threshold(selection)
+        return self._apply_local_threshold(selection)
 
     def has_readable_server(self, read_preference=ReadPreference.PRIMARY):
         """Does this topology have any readable servers available matching the
@@ -288,7 +299,7 @@ class TopologyDescription(object):
         .. versionadded:: 3.4
         """
         common.validate_read_preference("read_preference", read_preference)
-        return any(self.apply_selector(read_preference, None))
+        return any(self.apply_selector(read_preference))
 
     def has_writable_server(self):
         """Does this topology have a writable server available?

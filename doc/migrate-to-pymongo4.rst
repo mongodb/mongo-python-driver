@@ -173,6 +173,29 @@ can be changed to this::
 
     names = client.list_database_names()
 
+MongoClient.max_bson_size/max_message_size/max_write_batch_size are removed
+...........................................................................
+
+Removed :attr:`pymongo.mongo_client.MongoClient.max_bson_size`,
+:attr:`pymongo.mongo_client.MongoClient.max_message_size`, and
+:attr:`pymongo.mongo_client.MongoClient.max_write_batch_size`. These helpers
+were incorrect when in ``loadBalanced=true mode`` and ambiguous in clusters
+with mixed versions. Use the `hello command`_ to get the authoritative
+value from the remote server instead. Code like this::
+
+    max_bson_size = client.max_bson_size
+    max_message_size = client.max_message_size
+    max_write_batch_size = client.max_write_batch_size
+
+can be changed to this::
+
+    doc = client.admin.command('hello')
+    max_bson_size = doc['maxBsonObjectSize']
+    max_message_size = doc['maxMessageSizeBytes']
+    max_write_batch_size = doc['maxWriteBatchSize']
+
+.. _hello command: https://docs.mongodb.com/manual/reference/command/hello/
+
 ``tz_aware`` defaults to ``False``
 ..................................
 
