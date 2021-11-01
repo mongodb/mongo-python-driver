@@ -49,8 +49,9 @@ class TestErrors(PyMongoTestCase):
         if sys.version_info[0] == 2:
             self.assertEqual("unicode \xf0\x9f\x90\x8d, full error: {"
                              "'errmsg': u'unicode \\U0001f40d'}", str(exc))
-        elif 'PyPy' in sys.version:
-            # PyPy displays unicode in repr differently.
+        elif (sys.implementation.name == 'pypy' and
+              sys.implementation.version < (7, 3, 7)):
+            # PyPy used to display unicode in repr differently.
             self.assertEqual("unicode \U0001f40d, full error: {"
                              "'errmsg': 'unicode \\U0001f40d'}", str(exc))
         else:
