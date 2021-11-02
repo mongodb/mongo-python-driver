@@ -23,7 +23,9 @@ import functools
 import os
 import re
 import sys
+import time
 import types
+import signal
 
 from collections import abc
 
@@ -67,6 +69,27 @@ from test.utils import (
 
 
 JSON_OPTS = json_util.JSONOptions(tz_aware=False)
+
+IS_INTERRUPTED = False
+WIN32 = sys.platform in ("win32", "cygwin")
+
+
+def interrupt_handler(signum, frame):
+    global IS_INTERRUPTED
+    # Set the IS_INTERRUPTED flag here and perform the necessary cleanup
+    # before actually exiting in workload_runner. This is because signals
+    # are handled asynchronously which can cause the interrupt handlers to
+    # fire more than once. Consequently, the handler itself should be
+    # re-entrant (invokable multiple times without needing to wait for prior
+    # invocations to return/complete) which is made possible by this pattern.
+    IS_INTERRUPTED = True
+
+
+if WIN32:
+    # CTRL_BREAK_EVENT is mapped to SIGBREAK
+    signal.signal(signal.SIGBREAK, interrupt_handler)
+else:
+    signal.signal(signal.SIGINT, interrupt_handler)
 
 
 def with_metaclass(meta, *bases):
@@ -1048,6 +1071,46 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         pool = get_pool(client)
         self.assertEqual(spec['connections'], pool.active_sockets)
 
+    def _testOperation_loop(self, spec):
+        global IS_INTERRUPTED
+        failure_key = spec.get('storeFailuresAsEntity')
+        error_key = spec.get('storeErrorsAsEntity')
+        successes_key = spec.get('storeSuccessesAsEntity')
+        iteration_key = spec.get('storeIterationsAsEntity')
+        if failure_key:
+            self.entity_map[failure_key] = []
+        if error_key:
+            self.entity_map[error_key] = []
+        if successes_key:
+            self.entity_map[successes_key] = []
+        if iteration_key:
+            self.entity_map[iteration_key] = 0
+        while True:
+            if IS_INTERRUPTED:
+                break
+            try:
+                for op in spec["operations"]:
+                    self.run_entity_operation(op)
+                    if iteration_key:
+                        self.entity_map._entities[iteration_key] += 1
+                    if successes_key:
+                        self.entity_map._entities[successes_key] += 1
+            except AssertionError as exc:
+                if failure_key or error_key:
+                    self.entity_map._entities[failure_key or error_key] += [{
+                        "error": exc,
+                        "time":
+                            time.time()}]
+                else:
+                    raise exc
+            except Exception as exc:
+                if error_key:
+                    self.entity_map._entities[error_key] += [
+                        {"error": exc, "time":
+                            time.time()}]
+                else:
+                    raise exc
+
     def run_special_operation(self, spec):
         opname = spec['name']
         method_name = '_testOperation_%s' % (opname,)
@@ -1060,11 +1123,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def run_operations(self, spec):
         for op in spec:
-            target = op['object']
-            if target != 'testRunner':
-                self.run_entity_operation(op)
-            else:
+            if op['object'] == 'testRunner':
                 self.run_special_operation(op)
+            else:
+                self.run_entity_operation(op)
+
 
     def check_events(self, spec):
         for event_spec in spec:
@@ -1131,15 +1194,13 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
         # process operations
         self.run_operations(spec['operations'])
+        self.verify_outcome(spec.get('outcome', []))
 
         # process expectEvents
         if 'expectEvents' in spec:
             expect_events = spec['expectEvents']
             self.assertTrue(expect_events, 'expectEvents must be non-empty')
             self.check_events(expect_events)
-
-        # process outcome
-        self.verify_outcome(spec.get('outcome', []))
 
 
 class UnifiedSpecTestMeta(type):
