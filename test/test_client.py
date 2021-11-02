@@ -36,6 +36,7 @@ from bson.son import SON
 from bson.tz_util import utc
 import pymongo
 from pymongo import event_loggers, message, monitoring
+from pymongo.client_options import ClientOptions
 from pymongo.command_cursor import CommandCursor
 from pymongo.common import CONNECT_TIMEOUT, _UUID_REPRESENTATIONS
 from pymongo.compression_support import _HAVE_SNAPPY, _HAVE_ZSTD
@@ -56,7 +57,7 @@ from pymongo.hello import HelloCompat
 from pymongo.mongo_client import MongoClient
 from pymongo.monitoring import (ServerHeartbeatListener,
                                 ServerHeartbeatStartedEvent)
-from pymongo.pool import SocketInfo, _METADATA
+from pymongo.pool import SocketInfo, _METADATA, PoolOptions
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import (readable_server_selector,
@@ -473,6 +474,15 @@ class ClientUnitTest(unittest.TestCase):
                      event_loggers.ConnectionPoolLogger()]
         c = MongoClient(event_listeners=listeners, connect=False)
         self.assertEqual(c.options.event_listeners, listeners)
+
+    def test_client_options(self):
+        c = MongoClient(connect=False)
+        self.assertIsInstance(c.options, ClientOptions)
+        self.assertIsInstance(c.options.pool_options, PoolOptions)
+        self.assertEqual(c.options.server_selection_timeout, 30)
+        self.assertEqual(c.options.pool_options.max_idle_time_seconds, None)
+        self.assertIsInstance(c.options.retry_writes, bool)
+        self.assertIsInstance(c.options.retry_reads, bool)
 
 
 class TestClient(IntegrationTest):
