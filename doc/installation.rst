@@ -83,7 +83,7 @@ If you'd rather install directly from the source (i.e. to stay on the
 bleeding edge), install the C extension dependencies then check out the
 latest source from GitHub and install the driver from the resulting tree::
 
-  $ git clone git://github.com/mongodb/mongo-python-driver.git pymongo
+  $ git clone https://github.com/mongodb/mongo-python-driver.git pymongo
   $ cd pymongo/
   $ python3 setup.py install
 
