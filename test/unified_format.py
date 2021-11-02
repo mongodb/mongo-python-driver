@@ -1091,10 +1091,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             try:
                 for op in spec["operations"]:
                     self.run_entity_operation(op)
-                    if iteration_key:
-                        self.entity_map._entities[iteration_key] += 1
                     if successes_key:
                         self.entity_map._entities[successes_key] += 1
+                if iteration_key:
+                    self.entity_map._entities[iteration_key] += 1
             except AssertionError as exc:
                 if failure_key or error_key:
                     self.entity_map._entities[failure_key or error_key] += [{
