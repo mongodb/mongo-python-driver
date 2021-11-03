@@ -73,7 +73,7 @@ class Topology(object):
     """Monitor a topology of one or more servers."""
     def __init__(self, topology_settings):
         self._topology_id = topology_settings._topology_id
-        self._listeners = topology_settings._pool_options.event_listeners
+        self._listeners = topology_settings._pool_options._event_listeners
         pub = self._listeners is not None
         self._publish_server = pub and self._listeners.enabled_for_server
         self._publish_tp = pub and self._listeners.enabled_for_topology
@@ -728,9 +728,9 @@ class Topology(object):
         monitor_pool_options = PoolOptions(
             connect_timeout=options.connect_timeout,
             socket_timeout=options.connect_timeout,
-            ssl_context=options.ssl_context,
+            ssl_context=options._ssl_context,
             tls_allow_invalid_hostnames=options.tls_allow_invalid_hostnames,
-            event_listeners=options.event_listeners,
+            event_listeners=options._event_listeners,
             appname=options.appname,
             driver=options.driver,
             pause_enabled=False,

@@ -48,19 +48,19 @@ _TEST_PATH = os.path.join(
 class TestClientOptions(PyMongoTestCase):
     def test_default(self):
         client = MongoClient(connect=False)
-        self.assertEqual(client.retry_reads, True)
+        self.assertEqual(client.options.retry_reads, True)
 
     def test_kwargs(self):
         client = MongoClient(retryReads=True, connect=False)
-        self.assertEqual(client.retry_reads, True)
+        self.assertEqual(client.options.retry_reads, True)
         client = MongoClient(retryReads=False, connect=False)
-        self.assertEqual(client.retry_reads, False)
+        self.assertEqual(client.options.retry_reads, False)
 
     def test_uri(self):
         client = MongoClient('mongodb://h/?retryReads=true', connect=False)
-        self.assertEqual(client.retry_reads, True)
+        self.assertEqual(client.options.retry_reads, True)
         client = MongoClient('mongodb://h/?retryReads=false', connect=False)
-        self.assertEqual(client.retry_reads, False)
+        self.assertEqual(client.options.retry_reads, False)
 
 
 class TestSpec(SpecRunner):

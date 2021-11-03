@@ -153,8 +153,12 @@ def _parse_pool_options(options):
 
 
 class ClientOptions(object):
+    """Read only configuration options for a MongoClient.
 
-    """ClientOptions"""
+    Should not be instantiated directly by application developers. Access
+    a client's options via :attr:`pymongo.mongo_client.MongoClient.options`
+    instead.
+    """
 
     def __init__(self, username, password, database, options):
         self.__options = options
@@ -200,7 +204,7 @@ class ClientOptions(object):
         return self.__codec_options
 
     @property
-    def credentials(self):
+    def _credentials(self):
         """A :class:`~pymongo.auth.MongoCredentials` instance or None."""
         return self.__credentials
 
@@ -272,3 +276,13 @@ class ClientOptions(object):
     def load_balanced(self):
         """True if the client was configured to connect to a load balancer."""
         return self.__load_balanced
+
+    @property
+    def event_listeners(self):
+        """The event listeners registered for this client.
+
+        See :mod:`~pymongo.monitoring` for details.
+
+        .. versionadded:: 4.0
+        """
+        return self.__pool_options._event_listeners.event_listeners()

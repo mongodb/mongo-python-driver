@@ -14,7 +14,6 @@
 
          Raises :class:`~pymongo.errors.InvalidName` if an invalid database name is used.
 
-      .. autoattribute:: event_listeners
       .. autoattribute:: topology_description
       .. autoattribute:: address
       .. autoattribute:: primary
@@ -22,16 +21,12 @@
       .. autoattribute:: arbiters
       .. autoattribute:: is_primary
       .. autoattribute:: is_mongos
-      .. autoattribute:: max_pool_size
-      .. autoattribute:: min_pool_size
-      .. autoattribute:: max_idle_time_ms
       .. autoattribute:: nodes
-      .. autoattribute:: local_threshold_ms
-      .. autoattribute:: server_selection_timeout
       .. autoattribute:: codec_options
       .. autoattribute:: read_preference
       .. autoattribute:: write_concern
       .. autoattribute:: read_concern
+      .. autoattribute:: options
       .. automethod:: start_session
       .. automethod:: list_databases
       .. automethod:: list_database_names

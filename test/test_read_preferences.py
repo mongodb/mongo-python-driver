@@ -209,20 +209,16 @@ class TestReadPreferences(TestReadPreferencesBase):
 
     def test_threshold_validation(self):
         self.assertEqual(17, rs_client(
-            localThresholdMS=17
-        ).local_threshold_ms)
+            localThresholdMS=17, connect=False).options.local_threshold_ms)
 
         self.assertEqual(42, rs_client(
-            localThresholdMS=42
-        ).local_threshold_ms)
+            localThresholdMS=42, connect=False).options.local_threshold_ms)
 
         self.assertEqual(666, rs_client(
-            localthresholdms=666
-        ).local_threshold_ms)
+            localThresholdMS=666, connect=False).options.local_threshold_ms)
 
         self.assertEqual(0, rs_client(
-            localthresholdms=0
-        ).local_threshold_ms)
+            localThresholdMS=0, connect=False).options.local_threshold_ms)
 
         self.assertRaises(ValueError,
                           rs_client,

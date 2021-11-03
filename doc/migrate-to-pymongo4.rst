@@ -196,6 +196,37 @@ can be changed to this::
 
 .. _hello command: https://docs.mongodb.com/manual/reference/command/hello/
 
+MongoClient.event_listeners and other configuration option helpers are removed
+..............................................................................
+
+The following client configuration option helpers are removed:
+- :attr:`pymongo.mongo_client.MongoClient.event_listeners`.
+- :attr:`pymongo.mongo_client.MongoClient.max_pool_size`.
+- :attr:`pymongo.mongo_client.MongoClient.max_idle_time_ms`.
+- :attr:`pymongo.mongo_client.MongoClient.local_threshold_ms`.
+- :attr:`pymongo.mongo_client.MongoClient.server_selection_timeout`.
+- :attr:`pymongo.mongo_client.MongoClient.retry_writes`.
+- :attr:`pymongo.mongo_client.MongoClient.retry_reads`.
+
+These helpers have been replaced by
+:attr:`pymongo.mongo_client.MongoClient.options`. Code like this::
+
+    client.event_listeners
+    client.local_threshold_ms
+    client.server_selection_timeout
+    client.max_pool_size
+    client.min_pool_size
+    client.max_idle_time_ms
+
+can be changed to this::
+
+    client.options.event_listeners
+    client.options.local_threshold_ms
+    client.options.server_selection_timeout
+    client.options.pool_options.max_pool_size
+    client.options.pool_options.min_pool_size
+    client.options.pool_options.max_idle_time_seconds
+
 ``tz_aware`` defaults to ``False``
 ..................................
 

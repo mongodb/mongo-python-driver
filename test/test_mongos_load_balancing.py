@@ -127,7 +127,7 @@ class TestMongosLoadBalancing(MockClientTest):
 
     def test_local_threshold(self):
         client = connected(self.mock_client(localThresholdMS=30))
-        self.assertEqual(30, client.local_threshold_ms)
+        self.assertEqual(30, client.options.local_threshold_ms)
         wait_until(lambda: len(client.nodes) == 3, 'connect to all mongoses')
         topology = client._topology
 
@@ -139,7 +139,7 @@ class TestMongosLoadBalancing(MockClientTest):
         client.admin.command('ping')
 
         client = connected(self.mock_client(localThresholdMS=0))
-        self.assertEqual(0, client.local_threshold_ms)
+        self.assertEqual(0, client.options.local_threshold_ms)
         # No error
         client.db.command('ping')
         # Our chosen mongos goes down.

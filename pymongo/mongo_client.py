@@ -722,14 +722,14 @@ class MongoClient(common.BaseObject):
         self.__lock = threading.Lock()
         self.__kill_cursors_queue = []
 
-        self._event_listeners = options.pool_options.event_listeners
+        self._event_listeners = options.pool_options._event_listeners
         super(MongoClient, self).__init__(options.codec_options,
                                           options.read_preference,
                                           options.write_concern,
                                           options.read_concern)
 
         self.__all_credentials = {}
-        creds = options.credentials
+        creds = options._credentials
         if creds:
             self.__all_credentials[creds.source] = creds
 
@@ -894,14 +894,6 @@ class MongoClient(common.BaseObject):
             start_after)
 
     @property
-    def event_listeners(self):
-        """The event listeners registered for this client.
-
-        See :mod:`~pymongo.monitoring` for details.
-        """
-        return self._event_listeners.event_listeners()
-
-    @property
     def topology_description(self):
         """The description of the connected MongoDB deployment.
 
@@ -1006,40 +998,6 @@ class MongoClient(common.BaseObject):
         return self._server_property('server_type') == SERVER_TYPE.Mongos
 
     @property
-    def max_pool_size(self):
-        """The maximum allowable number of concurrent connections to each
-        connected server. Requests to a server will block if there are
-        `maxPoolSize` outstanding connections to the requested server.
-        Defaults to 100. Can be either 0 or None, in which case there is no
-        limit on the number of concurrent connections.
-
-        When a server's pool has reached `max_pool_size`, operations for that
-        server block waiting for a socket to be returned to the pool. If
-        ``waitQueueTimeoutMS`` is set, a blocked operation will raise
-        :exc:`~pymongo.errors.ConnectionFailure` after a timeout.
-        By default ``waitQueueTimeoutMS`` is not set.
-        """
-        return self.__options.pool_options.max_pool_size
-
-    @property
-    def min_pool_size(self):
-        """The minimum required number of concurrent connections that the pool
-        will maintain to each connected server. Default is 0.
-        """
-        return self.__options.pool_options.min_pool_size
-
-    @property
-    def max_idle_time_ms(self):
-        """The maximum number of milliseconds that a connection can remain
-        idle in the pool before being removed and replaced. Defaults to
-        `None` (no limit).
-        """
-        seconds = self.__options.pool_options.max_idle_time_seconds
-        if seconds is None:
-            return None
-        return 1000 * seconds
-
-    @property
     def nodes(self):
         """Set of all currently connected servers.
 
@@ -1054,38 +1012,15 @@ class MongoClient(common.BaseObject):
         return frozenset(s.address for s in description.known_servers)
 
     @property
-    def local_threshold_ms(self):
-        """The local threshold for this instance."""
-        return self.__options.local_threshold_ms
+    def options(self):
+        """The configuration options for this client.
 
-    @property
-    def server_selection_timeout(self):
-        """The server selection timeout for this instance in seconds."""
-        return self.__options.server_selection_timeout
+        :Returns:
+          An instance of :class:`~pymongo.client_options.ClientOptions`.
 
-    @property
-    def retry_writes(self):
-        """If this instance should retry supported write operations."""
-        return self.__options.retry_writes
-
-    @property
-    def retry_reads(self):
-        """If this instance should retry supported write operations."""
-        return self.__options.retry_reads
-
-    def _is_writable(self):
-        """Attempt to connect to a writable server, or return False.
+        .. versionadded:: 4.0
         """
-        topology = self._get_topology()  # Starts monitors if necessary.
-        try:
-            svr = topology.select_server(writable_server_selector)
-
-            # When directly connected to a secondary, arbiter, etc.,
-            # select_server returns it, whatever the selector. Check
-            # again if the server is writable.
-            return svr.description.is_writable
-        except ConnectionFailure:
-            return False
+        return self.__options
 
     def _end_sessions(self, session_ids):
         """Send endSessions command(s) with the given session ids."""
@@ -1282,7 +1217,7 @@ class MongoClient(common.BaseObject):
 
         Re-raises any exception thrown by func().
         """
-        retryable = (retryable and self.retry_writes
+        retryable = (retryable and self.options.retry_writes
                      and session and not session.in_transaction)
         return self._retry_internal(retryable, func, session, bulk)
 
@@ -1353,7 +1288,7 @@ class MongoClient(common.BaseObject):
         Re-raises any exception thrown by func().
         """
         retryable = (retryable and
-                     self.retry_reads
+                     self.options.retry_reads
                      and not (session and session.in_transaction))
         last_error = None
         retrying = False
