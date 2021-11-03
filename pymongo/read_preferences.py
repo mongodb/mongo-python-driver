@@ -442,26 +442,23 @@ class _AggWritePref:
 
     def __call__(self, selection):
         """Apply this read preference to a Selection."""
+        has_50 = any(s for s in selection.server_descriptions
+                     if s.max_wire_version >= 13)
+        if not has_50:
+            # Fallback to using the primary:
+            self.effective_pref = ReadPreference.PRIMARY
+            return selection.primary_selection
         # Apply the original selection:
-        pref_selection = self.pref(selection)
-        # Filter 5.0+ or writable servers:
-        suitable = [s for s in pref_selection.server_descriptions
-                    if s.max_wire_version >= 13 or s.is_writable]
-        if suitable:
-            self.effective_pref = self.pref
-            return pref_selection.with_server_descriptions(suitable)
-        # Otherwise fallback to using the primary:
-        self.effective_pref = ReadPreference.PRIMARY
-        return selection.primary_selection
+        self.effective_pref = self.pref
+        return self.pref(selection)
 
     def __repr__(self):
         return "_AggWritePref(pref=%r)" % (self.pref,)
 
     # Proxy other calls to the effective_pref so that _AggWritePref can be
-    # used in place
+    # used in place of an actual read preference.
     def __getattr__(self, name):
         return getattr(self.effective_pref, name)
-
 
 
 _ALL_READ_PREFERENCES = (Primary, PrimaryPreferred,

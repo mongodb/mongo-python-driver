@@ -275,6 +275,8 @@ class TopologyDescription(object):
             return [description] if description else []
         elif (self.topology_type == TOPOLOGY_TYPE.Sharded and
               not isinstance(selector, _AggWritePref)):
+            # TODO: adjust _AggWritePref for sharded clusters once we select
+            # a server.
             # Ignore read preference.
             selection = Selection.from_topology_description(self)
         else:
