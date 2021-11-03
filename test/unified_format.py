@@ -211,7 +211,7 @@ class NonLazyCursor(object):
 
 class EventListenerUtil(CMAPListener, CommandListener):
     def __init__(self, observe_events, ignore_commands,
-                 observe_sensitive_commands):
+                 observe_sensitive_commands, store_events, entity_map):
         self._event_types = set(name.lower() for name in observe_events)
         if observe_sensitive_commands:
             self._observe_sensitive_commands = True
@@ -220,6 +220,14 @@ class EventListenerUtil(CMAPListener, CommandListener):
             self._observe_sensitive_commands = False
             self._ignore_commands = _SENSITIVE_COMMANDS | set(ignore_commands)
             self._ignore_commands.add('configurefailpoint')
+        self._event_mapping = {}
+        self.entity_map = entity_map
+        if store_events:
+            for i in store_events:
+                id = i["id"]
+                events = (i.lower() for i in i["events"])
+                self._event_mapping[events] = id
+                self.entity_map[id] = []
         super(EventListenerUtil, self).__init__()
 
     def get_events(self, event_type):
@@ -230,6 +238,11 @@ class EventListenerUtil(CMAPListener, CommandListener):
     def add_event(self, event):
         if type(event).__name__.lower() in self._event_types:
             super(EventListenerUtil, self).add_event(event)
+            for event_types in self._event_mapping.keys():
+                if type(event).__name__.lower() in event_types:
+                    self.entity_map[self._event_mapping[
+                        event_types]].append(event)
+            print(self.entity_map)
 
     def _command_event(self, event):
         if event.command_name.lower() not in self._ignore_commands:
@@ -292,13 +305,16 @@ class EntityMapUtil(object):
             kwargs = {}
             observe_events = spec.get('observeEvents', [])
             ignore_commands = spec.get('ignoreCommandMonitoringEvents', [])
+
             observe_sensitive_commands = spec.get(
                 'observeSensitiveCommands', False)
             # TODO: PYTHON-2511 support storeEventsAsEntities
             if len(observe_events) or len(ignore_commands):
                 ignore_commands = [cmd.lower() for cmd in ignore_commands]
                 listener = EventListenerUtil(
-                    observe_events, ignore_commands, observe_sensitive_commands)
+                    observe_events, ignore_commands,
+                    observe_sensitive_commands,
+                    spec.get("storeEventsAsEntities"), self._entities)
                 self._listeners[spec['id']] = listener
                 kwargs['event_listeners'] = [listener]
             if spec.get('useMultipleMongoses'):
