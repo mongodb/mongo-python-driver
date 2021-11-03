@@ -158,7 +158,7 @@ class TestGridfs(IntegrationTest):
         self.assertEqual(oid, raw["_id"])
         self.assertTrue(isinstance(raw["uploadDate"], datetime.datetime))
         self.assertEqual(255 * 1024, raw["chunkSize"])
-        self.assertTrue(isinstance(raw["md5"], str))
+        self.assertNotIn("md5", raw)
 
     def test_corrupt_chunk(self):
         files_id = self.fs.put(b'foobar')
@@ -484,21 +484,6 @@ class TestGridfs(IntegrationTest):
 
     def test_md5(self):
         gin = self.fs.new_file()
-        gin.write(b"includes md5 sum")
-        gin.close()
-        self.assertIsNotNone(gin.md5)
-        md5sum = gin.md5
-
-        gout = self.fs.get(gin._id)
-        self.assertIsNotNone(gout.md5)
-        self.assertEqual(md5sum, gout.md5)
-
-        _id = self.fs.put(b"also includes md5 sum")
-        gout = self.fs.get(_id)
-        self.assertIsNotNone(gout.md5)
-
-        fs = gridfs.GridFS(self.db, disable_md5=True)
-        gin = fs.new_file()
         gin.write(b"no md5 sum")
         gin.close()
         self.assertIsNone(gin.md5)
@@ -506,7 +491,7 @@ class TestGridfs(IntegrationTest):
         gout = self.fs.get(gin._id)
         self.assertIsNone(gout.md5)
 
-        _id = fs.put(b"still no md5 sum")
+        _id = self.fs.put(b"still no md5 sum")
         gout = self.fs.get(_id)
         self.assertIsNone(gout.md5)
 

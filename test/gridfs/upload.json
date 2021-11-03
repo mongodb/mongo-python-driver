@@ -29,7 +29,6 @@
                 "length": 0,
                 "chunkSize": 4,
                 "uploadDate": "*actual",
-                "md5": "d41d8cd98f00b204e9800998ecf8427e",
                 "filename": "filename"
               }
             ]
@@ -62,7 +61,6 @@
                 "length": 1,
                 "chunkSize": 4,
                 "uploadDate": "*actual",
-                "md5": "47ed733b8d10be225eceba344d533586",
                 "filename": "filename"
               }
             ]
@@ -108,7 +106,6 @@
                 "length": 3,
                 "chunkSize": 4,
                 "uploadDate": "*actual",
-                "md5": "bafae3a174ab91fc70db7a6aa50f4f52",
                 "filename": "filename"
               }
             ]
@@ -154,7 +151,6 @@
                 "length": 4,
                 "chunkSize": 4,
                 "uploadDate": "*actual",
-                "md5": "7e7c77cff5705d1f7574a25ef6662117",
                 "filename": "filename"
               }
             ]
@@ -200,7 +196,6 @@
                 "length": 5,
                 "chunkSize": 4,
                 "uploadDate": "*actual",
-                "md5": "283d4fea5dded59cf837d3047328f5af",
                 "filename": "filename"
               }
             ]
@@ -254,7 +249,6 @@
                 "length": 8,
                 "chunkSize": 4,
                 "uploadDate": "*actual",
-                "md5": "dd254cdc958e53abaa67da9f797125f5",
                 "filename": "filename"
               }
             ]
@@ -309,7 +303,6 @@
                 "length": 1,
                 "chunkSize": 4,
                 "uploadDate": "*actual",
-                "md5": "47ed733b8d10be225eceba344d533586",
                 "filename": "filename",
                 "contentType": "image/jpeg"
               }
@@ -359,7 +352,6 @@
                 "length": 1,
                 "chunkSize": 4,
                 "uploadDate": "*actual",
-                "md5": "47ed733b8d10be225eceba344d533586",
                 "filename": "filename",
                 "metadata": {
                   "x": 1

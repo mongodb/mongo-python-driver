@@ -130,7 +130,7 @@ class TestGridfs(IntegrationTest):
         self.assertEqual(oid, raw["_id"])
         self.assertTrue(isinstance(raw["uploadDate"], datetime.datetime))
         self.assertEqual(255 * 1024, raw["chunkSize"])
-        self.assertTrue(isinstance(raw["md5"], str))
+        self.assertNotIn("md5", raw)
 
     def test_corrupt_chunk(self):
         files_id = self.fs.upload_from_stream("test_filename",
@@ -464,41 +464,20 @@ class TestGridfs(IntegrationTest):
         self.assertEqual(file1.read(), file2.read())
 
     def test_md5(self):
-        gin = self.fs.open_upload_stream("has md5")
-        gin.write(b"includes md5 sum")
-        gin.close()
-        self.assertIsNotNone(gin.md5)
-        md5sum = gin.md5
-
-        gout = self.fs.open_download_stream(gin._id)
-        self.assertIsNotNone(gout.md5)
-        self.assertEqual(md5sum, gout.md5)
-
-        gin = self.fs.open_upload_stream_with_id(ObjectId(), "also has md5")
-        gin.write(b"also includes md5 sum")
-        gin.close()
-        self.assertIsNotNone(gin.md5)
-        md5sum = gin.md5
-
-        gout = self.fs.open_download_stream(gin._id)
-        self.assertIsNotNone(gout.md5)
-        self.assertEqual(md5sum, gout.md5)
-
-        fs = gridfs.GridFSBucket(self.db, disable_md5=True)
-        gin = fs.open_upload_stream("no md5")
+        gin = self.fs.open_upload_stream("no md5")
         gin.write(b"no md5 sum")
         gin.close()
         self.assertIsNone(gin.md5)
 
-        gout = fs.open_download_stream(gin._id)
+        gout = self.fs.open_download_stream(gin._id)
         self.assertIsNone(gout.md5)
 
-        gin = fs.open_upload_stream_with_id(ObjectId(), "also no md5")
+        gin = self.fs.open_upload_stream_with_id(ObjectId(), "also no md5")
         gin.write(b"also no md5 sum")
         gin.close()
         self.assertIsNone(gin.md5)
 
-        gout = fs.open_download_stream(gin._id)
+        gout = self.fs.open_download_stream(gin._id)
         self.assertIsNone(gout.md5)
 
 

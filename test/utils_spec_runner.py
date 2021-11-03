@@ -270,9 +270,7 @@ class SpecRunner(IntegrationTest):
         if object_name == 'gridfsbucket':
             # Only create the GridFSBucket when we need it (for the gridfs
             # retryable reads tests).
-            obj = GridFSBucket(
-                database, bucket_name=collection.name,
-                disable_md5=True)
+            obj = GridFSBucket(database, bucket_name=collection.name)
         else:
             objects = {
                 'client': database.client,

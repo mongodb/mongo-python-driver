@@ -14,7 +14,6 @@
 
 """Tools for representing files stored in GridFS."""
 import datetime
-import hashlib
 import io
 import math
 import os
@@ -115,8 +114,7 @@ def _disallow_transactions(session):
 class GridIn(object):
     """Class to write data to GridFS.
     """
-    def __init__(
-            self, root_collection, session=None, disable_md5=False, **kwargs):
+    def __init__(self, root_collection, session=None, **kwargs):
         """Write a file to GridFS
 
         Application developers should generally not need to
@@ -152,11 +150,13 @@ class GridIn(object):
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession` to use for all
             commands
-          - `disable_md5` (optional): When True, an MD5 checksum will not be
-            computed for the uploaded file. Useful in environments where
-            MD5 cannot be used for regulatory or other reasons. Defaults to
-            False.
           - `**kwargs` (optional): file level options (see above)
+
+        .. versionchanged:: 4.0
+           Removed the `disable_md5` parameter.
+
+        .. versionchanged:: 3.7
+           Added the `disable_md5` parameter.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -183,8 +183,6 @@ class GridIn(object):
         coll = _clear_entity_type_registry(
             root_collection, read_preference=ReadPreference.PRIMARY)
 
-        if not disable_md5:
-            kwargs["md5"] = hashlib.md5()
         # Defaults
         kwargs["_id"] = kwargs.get("_id", ObjectId())
         kwargs["chunkSize"] = kwargs.get("chunkSize", DEFAULT_CHUNK_SIZE)
