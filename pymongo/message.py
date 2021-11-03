@@ -39,6 +39,7 @@ from bson.son import SON
 
 try:
     from pymongo import _cmessage
+
     _use_c = True
 except ImportError:
     _use_c = False
@@ -54,7 +55,6 @@ from pymongo.hello import HelloCompat
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
-
 MAX_INT32 = 2147483647
 MIN_INT32 = -2147483648
 
@@ -65,9 +65,9 @@ _INSERT = 0
 _UPDATE = 1
 _DELETE = 2
 
-_EMPTY   = b''
+_EMPTY = b''
 _BSONOBJ = b'\x03'
-_ZERO_8  = b'\x00'
+_ZERO_8 = b'\x00'
 _ZERO_16 = b'\x00\x00'
 _ZERO_32 = b'\x00\x00\x00\x00'
 _ZERO_64 = b'\x00\x00\x00\x00\x00\x00\x00\x00'
@@ -161,7 +161,6 @@ _OPTIONS = SON([
     ('noCursorTimeout', 16),
     ('awaitData', 32),
     ('allowPartialResults', 128)])
-
 
 _MODIFIERS = SON([
     ('$query', 'filter'),
@@ -492,19 +491,20 @@ class _CursorAddress(tuple):
 _pack_compression_header = struct.Struct("<iiiiiiB").pack
 _COMPRESSION_HEADER_SIZE = 25
 
+
 def _compress(operation, data, ctx):
     """Takes message data, compresses it, and adds an OP_COMPRESSED header."""
     compressed = ctx.compress(data)
     request_id = _randint()
 
     header = _pack_compression_header(
-        _COMPRESSION_HEADER_SIZE + len(compressed), # Total message length
-        request_id, # Request id
-        0, # responseTo
-        2012, # operation id
-        operation, # original operation id
-        len(data), # uncompressed message length
-        ctx.compressor_id) # compressor id
+        _COMPRESSION_HEADER_SIZE + len(compressed),  # Total message length
+        request_id,  # Request id
+        0,  # responseTo
+        2012,  # operation id
+        operation,  # original operation id
+        len(data),  # uncompressed message length
+        ctx.compressor_id)  # compressor id
     return request_id, header + compressed
 
 
@@ -568,6 +568,8 @@ def _op_msg_uncompressed(flags, command, identifier, docs, check_keys, opts):
         flags, command, identifier, docs, check_keys, opts)
     request_id, op_message = __pack_message(2013, data)
     return request_id, op_message, total_size, max_bson_size
+
+
 if _use_c:
     _op_msg_uncompressed = _cmessage._op_msg
 
@@ -651,6 +653,8 @@ def _query_uncompressed(options, collection_name, num_to_skip, num_to_return,
         check_keys)
     rid, msg = __pack_message(2004, op_query)
     return rid, msg, max_bson_size
+
+
 if _use_c:
     _query_uncompressed = _cmessage._query_message
 
@@ -689,6 +693,8 @@ def _get_more_uncompressed(collection_name, num_to_return, cursor_id):
     """Internal getMore message helper."""
     return __pack_message(
         2005, _get_more_impl(collection_name, num_to_return, cursor_id))
+
+
 if _use_c:
     _get_more_uncompressed = _cmessage._get_more_message
 
@@ -915,6 +921,7 @@ def _raise_document_too_large(operation, doc_size, max_size):
         # about size for update and delete
         raise DocumentTooLarge("%r command document too large" % (operation,))
 
+
 # OP_MSG -------------------------------------------------------------
 
 
@@ -1000,6 +1007,8 @@ def _encode_batched_op_msg(
     to_send, _ = _batched_op_msg_impl(
         operation, command, docs, check_keys, ack, opts, ctx, buf)
     return buf.getvalue(), to_send
+
+
 if _use_c:
     _encode_batched_op_msg = _cmessage._encode_batched_op_msg
 
@@ -1040,6 +1049,8 @@ def _batched_op_msg(
     buf.write(_pack_int(length))
 
     return request_id, buf.getvalue(), to_send
+
+
 if _use_c:
     _batched_op_msg = _cmessage._batched_op_msg
 
@@ -1073,6 +1084,8 @@ def _encode_batched_write_command(
     to_send, _ = _batched_write_command_impl(
         namespace, operation, command, docs, check_keys, opts, ctx, buf)
     return buf.getvalue(), to_send
+
+
 if _use_c:
     _encode_batched_write_command = _cmessage._encode_batched_write_command
 
