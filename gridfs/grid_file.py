@@ -269,9 +269,6 @@ class GridIn(object):
         """Flush `data` to a chunk.
         """
         self.__ensure_indexes()
-        if 'md5' in self._file:
-            self._file['md5'].update(data)
-
         if not data:
             return
         assert(len(data) <= self.chunk_size)
@@ -299,9 +296,6 @@ class GridIn(object):
         """
         try:
             self.__flush_buffer()
-
-            if "md5" in self._file:
-                self._file["md5"] = self._file["md5"].hexdigest()
             # The GridFS spec says length SHOULD be an Int64.
             self._file["length"] = Int64(self._position)
             self._file["uploadDate"] = datetime.datetime.utcnow()
