@@ -80,8 +80,7 @@ class TestGridFileNoConnect(unittest.TestCase):
 class TestGridFile(IntegrationTest):
 
     def setUp(self):
-        self.db.drop_collection('fs.files')
-        self.db.drop_collection('fs.chunks')
+        self.cleanup_colls(self.db.fs.files, self.db.fs.chunks)
 
     def test_basic(self):
         f = GridIn(self.db.fs, filename="test")

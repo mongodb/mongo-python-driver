@@ -86,10 +86,8 @@ class TestGridfs(IntegrationTest):
             cls.db, bucket_name="alt")
 
     def setUp(self):
-        self.db.drop_collection("fs.files")
-        self.db.drop_collection("fs.chunks")
-        self.db.drop_collection("alt.files")
-        self.db.drop_collection("alt.chunks")
+        self.cleanup_colls(self.db.fs.files, self.db.fs.chunks,
+                           self.db.alt.files, self.db.alt.chunks)
 
     def test_basic(self):
         oid = self.fs.upload_from_stream("test_filename",
@@ -105,7 +103,6 @@ class TestGridfs(IntegrationTest):
         self.assertEqual(0, self.db.fs.chunks.count_documents({}))
 
     def test_multi_chunk_delete(self):
-        self.db.fs.drop()
         self.assertEqual(0, self.db.fs.files.count_documents({}))
         self.assertEqual(0, self.db.fs.chunks.count_documents({}))
         gfs = gridfs.GridFSBucket(self.db)
@@ -147,12 +144,11 @@ class TestGridfs(IntegrationTest):
             self.fs.delete(files_id)
 
     def test_upload_ensures_index(self):
-        # setUp has dropped collections.
-        names = self.db.list_collection_names()
-        self.assertFalse([name for name in names if name.startswith('fs')])
-
         chunks = self.db.fs.chunks
         files = self.db.fs.files
+        # Ensure the collections are removed.
+        chunks.drop()
+        files.drop()
         self.fs.upload_from_stream("filename", b"junk")
 
         self.assertTrue(any(

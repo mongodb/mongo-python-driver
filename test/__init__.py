@@ -949,6 +949,13 @@ class IntegrationTest(PyMongoTestCase):
         else:
             cls.credentials = {}
 
+    def cleanup_colls(self, *collections):
+        """Cleanup collections faster than drop_collection."""
+        for c in collections:
+            c = self.client[c.database.name][c.name]
+            c.delete_many({})
+            c.drop_indexes()
+
     def patch_system_certs(self, ca_certs):
         patcher = SystemCertsPatcher(ca_certs)
         self.addCleanup(patcher.disable)

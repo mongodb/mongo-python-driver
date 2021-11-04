@@ -97,10 +97,8 @@ class TestGridfs(IntegrationTest):
         cls.alt = gridfs.GridFS(cls.db, "alt")
 
     def setUp(self):
-        self.db.drop_collection("fs.files")
-        self.db.drop_collection("fs.chunks")
-        self.db.drop_collection("alt.files")
-        self.db.drop_collection("alt.chunks")
+        self.cleanup_colls(self.db.fs.files, self.db.fs.chunks,
+                           self.db.alt.files, self.db.alt.chunks)
 
     def test_basic(self):
         oid = self.fs.put(b"hello world")
@@ -174,12 +172,11 @@ class TestGridfs(IntegrationTest):
             self.fs.delete(files_id)
 
     def test_put_ensures_index(self):
-        # setUp has dropped collections.
-        names = self.db.list_collection_names()
-        self.assertFalse([name for name in names if name.startswith('fs')])
-
         chunks = self.db.fs.chunks
         files = self.db.fs.files
+        # Ensure the collections are removed.
+        chunks.drop()
+        files.drop()
         self.fs.put(b"junk")
 
         self.assertTrue(any(
