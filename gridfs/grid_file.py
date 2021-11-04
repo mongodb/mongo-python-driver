@@ -153,7 +153,8 @@ class GridIn(object):
           - `**kwargs` (optional): file level options (see above)
 
         .. versionchanged:: 4.0
-           Removed the `disable_md5` parameter.
+           Removed the `disable_md5` parameter. See
+           :ref:`removed-gridfs-checksum` for details.
 
         .. versionchanged:: 3.7
            Added the `disable_md5` parameter.

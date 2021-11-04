@@ -822,11 +822,13 @@ The json_mode parameter for :const:`bson.json_util.dumps` now defaults to
 GridFS changes
 --------------
 
+.. _removed-gridfs-checksum:
+
 disable_md5 parameter is removed
 ................................
 
 Removed the `disable_md5` option for :class:`~gridfs.GridFSBucket` and
-:class:`~gridfs.GridFS`. MD5 checksums are now always disabled in GridFS.
+:class:`~gridfs.GridFS`. GridFS no longer generates checksums.
 Applications that desire a file digest should implement it outside GridFS
 and store it with other file metadata. For example::
 

@@ -50,7 +50,8 @@ class GridFS(object):
           - `collection` (optional): root collection to use
 
         .. versionchanged:: 4.0
-           Removed the `disable_md5` parameter.
+           Removed the `disable_md5` parameter. See
+           :ref:`removed-gridfs-checksum` for details.
 
         .. versionchanged:: 3.11
            Running a GridFS operation in a transaction now always raises an
@@ -444,7 +445,8 @@ class GridFSBucket(object):
             ``None`` (the default) db.read_preference is used.
 
         .. versionchanged:: 4.0
-           Removed the `disable_md5` parameter.
+           Removed the `disable_md5` parameter. See
+           :ref:`removed-gridfs-checksum` for details.
 
         .. versionchanged:: 3.11
            Running a GridFSBucket operation in a transaction now always raises

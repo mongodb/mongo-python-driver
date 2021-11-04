@@ -178,7 +178,7 @@ Breaking Changes in 4.0
   when it encounters unescaped percent signs in username and password when
   parsing MongoDB URIs.
 - Removed the `disable_md5` parameter for :class:`~gridfs.GridFSBucket` and
-  :class:`~gridfs.GridFS`. MD5 checksums are now always disabled in GridFS.
+  :class:`~gridfs.GridFS`. See :ref:`removed-gridfs-checksum` for details.
 
 Notable improvements
 ....................
