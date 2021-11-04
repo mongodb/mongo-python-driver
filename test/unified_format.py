@@ -308,14 +308,13 @@ class EntityMapUtil(object):
             observe_sensitive_commands = spec.get(
                 'observeSensitiveCommands', False)
             # TODO: PYTHON-2511 support storeEventsAsEntities
-            if len(observe_events) or len(ignore_commands):
-                ignore_commands = [cmd.lower() for cmd in ignore_commands]
-                listener = EventListenerUtil(
-                    observe_events, ignore_commands,
-                    observe_sensitive_commands,
-                    spec.get("storeEventsAsEntities"), self._entities)
-                self._listeners[spec['id']] = listener
-                kwargs['event_listeners'] = [listener]
+            ignore_commands = [cmd.lower() for cmd in ignore_commands]
+            listener = EventListenerUtil(
+                observe_events, ignore_commands,
+                observe_sensitive_commands,
+                spec.get("storeEventsAsEntities"), self)
+            self._listeners[spec['id']] = listener
+            kwargs['event_listeners'] = [listener]
             if spec.get('useMultipleMongoses'):
                 if client_context.load_balancer or client_context.serverless:
                     kwargs['h'] = client_context.MULTI_MONGOS_LB_URI
