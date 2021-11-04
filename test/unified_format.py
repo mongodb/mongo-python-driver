@@ -1111,17 +1111,14 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                     self.entity_map._entities[iteration_key] += 1
             except AssertionError as exc:
                 if failure_key or error_key:
-                    self.entity_map._entities[failure_key or error_key] += [{
-                        "error": exc,
-                        "time":
-                            time.time()}]
+                    self.entity_map[failure_key or error_key].append({
+                        "error": exc, "time": time.time()})
                 else:
                     raise exc
             except Exception as exc:
                 if error_key:
-                    self.entity_map._entities[error_key] += [
-                        {"error": exc, "time":
-                            time.time()}]
+                    self.entity_map[error_key].append(
+                        {"error": exc, "time": time.time()})
                 else:
                     raise exc
 
