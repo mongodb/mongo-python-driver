@@ -819,6 +819,30 @@ Changed the default JSON encoding representation from legacy to relaxed.
 The json_mode parameter for :const:`bson.json_util.dumps` now defaults to
 :const:`~bson.json_util.RELAXED_JSON_OPTIONS`.
 
+GridFS changes
+--------------
+
+disable_md5 parameter is removed
+................................
+
+Removed the `disable_md5` option for :class:`~gridfs.GridFSBucket` and
+:class:`~gridfs.GridFS`. MD5 checksums are now always disabled in GridFS.
+Applications that desire a file digest should implement it outside GridFS
+and store it with other file metadata. For example::
+
+  import hashlib
+  my_db = MongoClient().test
+  fs = GridFSBucket(my_db)
+  grid_in = fs.open_upload_stream("test_file")
+  file_data = b'...'
+  sha356 = hashlib.sha256(file_data).hexdigest()
+  grid_in.write(file_data)
+  grid_in.sha356 = sha356  # Set the custom 'sha356' field
+  grid_in.close()
+
+Note that for large files, the checksum may need to be computed in chunks
+to avoid the excessive memory needed to load the entire file at once.
+
 Removed features with no migration path
 ---------------------------------------
 
