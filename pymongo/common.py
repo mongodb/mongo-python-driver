@@ -372,10 +372,7 @@ def validate_read_preference_mode(dummy, value):
 def validate_auth_mechanism(option, value):
     """Validate the authMechanism URI option.
     """
-    # CRAM-MD5 is for server testing only. Undocumented,
-    # unsupported, may be removed at any time. You have
-    # been warned.
-    if value not in MECHANISMS and value != 'CRAM-MD5':
+    if value not in MECHANISMS:
         raise ValueError("%s must be in %s" % (option, tuple(MECHANISMS)))
     return value
 

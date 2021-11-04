@@ -421,31 +421,6 @@ def _authenticate_plain(credentials, sock_info):
     sock_info.command(source, cmd)
 
 
-def _authenticate_cram_md5(credentials, sock_info):
-    """Authenticate using CRAM-MD5 (RFC 2195)
-    """
-    source = credentials.source
-    username = credentials.username
-    password = credentials.password
-    # The password used as the mac key is the
-    # same as what we use for MONGODB-CR
-    passwd = _password_digest(username, password)
-    cmd = SON([('saslStart', 1),
-               ('mechanism', 'CRAM-MD5'),
-               ('payload', Binary(b'')),
-               ('autoAuthorize', 1)])
-    response = sock_info.command(source, cmd)
-    # MD5 as implicit default digest for digestmod is deprecated
-    # in python 3.4
-    mac = hmac.HMAC(key=passwd.encode('utf-8'), digestmod=hashlib.md5)
-    mac.update(response['payload'])
-    challenge = username.encode('utf-8') + b' ' + mac.hexdigest().encode('utf-8')
-    cmd = SON([('saslContinue', 1),
-               ('conversationId', response['conversationId']),
-               ('payload', Binary(challenge))])
-    sock_info.command(source, cmd)
-
-
 def _authenticate_x509(credentials, sock_info):
     """Authenticate using MONGODB-X509.
     """
@@ -497,7 +472,6 @@ def _authenticate_default(credentials, sock_info):
 
 
 _AUTH_MAP = {
-    'CRAM-MD5': _authenticate_cram_md5,
     'GSSAPI': _authenticate_gssapi,
     'MONGODB-CR': _authenticate_mongo_cr,
     'MONGODB-X509': _authenticate_x509,
