@@ -413,7 +413,8 @@
     {
       "description": "A successful find event with a getmore and the server kills the cursor (<= 4.4)",
       "ignore_if_server_version_less_than": "3.1",
-s      "ignore_if_topology_type": [
+      "ignore_if_server_version_greater_than": "4.4",
+      "ignore_if_topology_type": [
         "sharded"
       ],
       "operation": {
