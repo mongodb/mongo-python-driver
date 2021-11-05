@@ -672,7 +672,7 @@ class TestGridFileCustomType(IntegrationTest):
         self.assertEqual(["foo"], two.aliases)
         self.assertEqual({"foo": 'red', "bar": 'blue'}, two.metadata)
         self.assertEqual(3, two.bar)
-        self.assertEqual("5eb63bbbe01eeed093cb22bb8f5acdc3", two.md5)
+        self.assertEqual(None, two.md5)
 
         for attr in ["_id", "name", "content_type", "length", "chunk_size",
                      "upload_date", "aliases", "metadata", "md5"]:

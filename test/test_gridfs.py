@@ -97,10 +97,8 @@ class TestGridfs(IntegrationTest):
         cls.alt = gridfs.GridFS(cls.db, "alt")
 
     def setUp(self):
-        self.db.drop_collection("fs.files")
-        self.db.drop_collection("fs.chunks")
-        self.db.drop_collection("alt.files")
-        self.db.drop_collection("alt.chunks")
+        self.cleanup_colls(self.db.fs.files, self.db.fs.chunks,
+                           self.db.alt.files, self.db.alt.chunks)
 
     def test_basic(self):
         oid = self.fs.put(b"hello world")
@@ -158,7 +156,7 @@ class TestGridfs(IntegrationTest):
         self.assertEqual(oid, raw["_id"])
         self.assertTrue(isinstance(raw["uploadDate"], datetime.datetime))
         self.assertEqual(255 * 1024, raw["chunkSize"])
-        self.assertTrue(isinstance(raw["md5"], str))
+        self.assertNotIn("md5", raw)
 
     def test_corrupt_chunk(self):
         files_id = self.fs.put(b'foobar')
@@ -174,12 +172,11 @@ class TestGridfs(IntegrationTest):
             self.fs.delete(files_id)
 
     def test_put_ensures_index(self):
-        # setUp has dropped collections.
-        names = self.db.list_collection_names()
-        self.assertFalse([name for name in names if name.startswith('fs')])
-
         chunks = self.db.fs.chunks
         files = self.db.fs.files
+        # Ensure the collections are removed.
+        chunks.drop()
+        files.drop()
         self.fs.put(b"junk")
 
         self.assertTrue(any(
@@ -484,21 +481,6 @@ class TestGridfs(IntegrationTest):
 
     def test_md5(self):
         gin = self.fs.new_file()
-        gin.write(b"includes md5 sum")
-        gin.close()
-        self.assertIsNotNone(gin.md5)
-        md5sum = gin.md5
-
-        gout = self.fs.get(gin._id)
-        self.assertIsNotNone(gout.md5)
-        self.assertEqual(md5sum, gout.md5)
-
-        _id = self.fs.put(b"also includes md5 sum")
-        gout = self.fs.get(_id)
-        self.assertIsNotNone(gout.md5)
-
-        fs = gridfs.GridFS(self.db, disable_md5=True)
-        gin = fs.new_file()
         gin.write(b"no md5 sum")
         gin.close()
         self.assertIsNone(gin.md5)
@@ -506,7 +488,7 @@ class TestGridfs(IntegrationTest):
         gout = self.fs.get(gin._id)
         self.assertIsNone(gout.md5)
 
-        _id = fs.put(b"still no md5 sum")
+        _id = self.fs.put(b"still no md5 sum")
         gout = self.fs.get(_id)
         self.assertIsNone(gout.md5)
 

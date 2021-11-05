@@ -66,10 +66,8 @@ class TestAllScenarios(IntegrationTest):
             "download_by_name": cls.fs.open_download_stream_by_name}
 
     def init_db(self, data, test):
-        self.db.drop_collection("fs.files")
-        self.db.drop_collection("fs.chunks")
-        self.db.drop_collection("expected.files")
-        self.db.drop_collection("expected.chunks")
+        self.cleanup_colls(self.db.fs.files, self.db.fs.chunks,
+                           self.db.expected.files, self.db.expected.chunks)
 
         # Read in data.
         if data['files']:

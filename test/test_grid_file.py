@@ -80,8 +80,7 @@ class TestGridFileNoConnect(unittest.TestCase):
 class TestGridFile(IntegrationTest):
 
     def setUp(self):
-        self.db.drop_collection('fs.files')
-        self.db.drop_collection('fs.chunks')
+        self.cleanup_colls(self.db.fs.files, self.db.fs.chunks)
 
     def test_basic(self):
         f = GridIn(self.db.fs, filename="test")
@@ -112,7 +111,7 @@ class TestGridFile(IntegrationTest):
         f = GridIn(self.db.fs)
         f.write(b"hello world\n")
         f.close()
-        self.assertEqual("6f5902ac237024bdd0c176cb93063dc4", f.md5)
+        self.assertEqual(None, f.md5)
 
     def test_alternate_collection(self):
         self.db.alt.files.delete_many({})
@@ -127,9 +126,6 @@ class TestGridFile(IntegrationTest):
 
         g = GridOut(self.db.alt, f._id)
         self.assertEqual(b"hello world", g.read())
-
-        # test that md5 still works...
-        self.assertEqual("5eb63bbbe01eeed093cb22bb8f5acdc3", g.md5)
 
     def test_grid_in_default_opts(self):
         self.assertRaises(TypeError, GridIn, "foo")
@@ -194,7 +190,7 @@ class TestGridFile(IntegrationTest):
 
         self.assertEqual({"foo": 1}, a.metadata)
 
-        self.assertEqual("d41d8cd98f00b204e9800998ecf8427e", a.md5)
+        self.assertEqual(None, a.md5)
         self.assertRaises(AttributeError, setattr, a, "md5", 5)
 
         # Make sure custom attributes that were set both before and after
@@ -225,7 +221,7 @@ class TestGridFile(IntegrationTest):
         self.assertTrue(isinstance(b.upload_date, datetime.datetime))
         self.assertEqual(None, b.aliases)
         self.assertEqual(None, b.metadata)
-        self.assertEqual("d41d8cd98f00b204e9800998ecf8427e", b.md5)
+        self.assertEqual(None, b.md5)
 
         for attr in ["_id", "name", "content_type", "length", "chunk_size",
                      "upload_date", "aliases", "metadata", "md5"]:
@@ -266,7 +262,7 @@ class TestGridFile(IntegrationTest):
         self.assertEqual(["foo"], two.aliases)
         self.assertEqual({"foo": 1, "bar": 2}, two.metadata)
         self.assertEqual(3, two.bar)
-        self.assertEqual("5eb63bbbe01eeed093cb22bb8f5acdc3", two.md5)
+        self.assertEqual(None, two.md5)
 
         for attr in ["_id", "name", "content_type", "length", "chunk_size",
                      "upload_date", "aliases", "metadata", "md5"]:

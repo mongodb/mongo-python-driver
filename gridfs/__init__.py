@@ -39,7 +39,7 @@ from gridfs.grid_file import (GridIn,
 class GridFS(object):
     """An instance of GridFS on top of a single Database.
     """
-    def __init__(self, database, collection="fs", disable_md5=False):
+    def __init__(self, database, collection="fs"):
         """Create a new instance of :class:`GridFS`.
 
         Raises :class:`TypeError` if `database` is not an instance of
@@ -48,13 +48,17 @@ class GridFS(object):
         :Parameters:
           - `database`: database to use
           - `collection` (optional): root collection to use
-          - `disable_md5` (optional): When True, MD5 checksums will not be
-            computed for uploaded files. Useful in environments where MD5
-            cannot be used for regulatory or other reasons. Defaults to False.
+
+        .. versionchanged:: 4.0
+           Removed the `disable_md5` parameter. See
+           :ref:`removed-gridfs-checksum` for details.
 
         .. versionchanged:: 3.11
            Running a GridFS operation in a transaction now always raises an
            error. GridFS does not support multi-document transactions.
+
+        .. versionchanged:: 3.7
+           Added the `disable_md5` parameter.
 
         .. versionchanged:: 3.1
            Indexes are only ensured on the first write to the DB.
@@ -77,7 +81,6 @@ class GridFS(object):
         self.__collection = database[collection]
         self.__files = self.__collection.files
         self.__chunks = self.__collection.chunks
-        self.__disable_md5 = disable_md5
 
     def new_file(self, **kwargs):
         """Create a new file in GridFS.
@@ -93,8 +96,7 @@ class GridFS(object):
         :Parameters:
           - `**kwargs` (optional): keyword arguments for file creation
         """
-        return GridIn(
-            self.__collection, disable_md5=self.__disable_md5, **kwargs)
+        return GridIn(self.__collection, **kwargs)
 
     def put(self, data, **kwargs):
         """Put data in GridFS as a new file.
@@ -126,8 +128,7 @@ class GridFS(object):
         .. versionchanged:: 3.0
            w=0 writes to GridFS are now prohibited.
         """
-        grid_file = GridIn(
-            self.__collection, disable_md5=self.__disable_md5, **kwargs)
+        grid_file = GridIn(self.__collection, **kwargs)
         try:
             grid_file.write(data)
         finally:
@@ -423,7 +424,7 @@ class GridFSBucket(object):
 
     def __init__(self, db, bucket_name="fs",
                  chunk_size_bytes=DEFAULT_CHUNK_SIZE, write_concern=None,
-                 read_preference=None, disable_md5=False):
+                 read_preference=None):
         """Create a new instance of :class:`GridFSBucket`.
 
         Raises :exc:`TypeError` if `database` is not an instance of
@@ -442,13 +443,17 @@ class GridFSBucket(object):
             (the default) db.write_concern is used.
           - `read_preference` (optional): The read preference to use. If
             ``None`` (the default) db.read_preference is used.
-          - `disable_md5` (optional): When True, MD5 checksums will not be
-            computed for uploaded files. Useful in environments where MD5
-            cannot be used for regulatory or other reasons. Defaults to False.
+
+        .. versionchanged:: 4.0
+           Removed the `disable_md5` parameter. See
+           :ref:`removed-gridfs-checksum` for details.
 
         .. versionchanged:: 3.11
-           Running a GridFS operation in a transaction now always raises an
-           error. GridFSBucket does not support multi-document transactions.
+           Running a GridFSBucket operation in a transaction now always raises
+           an error. GridFSBucket does not support multi-document transactions.
+
+        .. versionchanged:: 3.7
+           Added the `disable_md5` parameter.
 
         .. versionadded:: 3.1
 
@@ -465,8 +470,6 @@ class GridFSBucket(object):
 
         self._bucket_name = bucket_name
         self._collection = db[bucket_name]
-        self._disable_md5 = disable_md5
-
         self._chunks = self._collection.chunks.with_options(
             write_concern=write_concern,
             read_preference=read_preference)
@@ -522,11 +525,7 @@ class GridFSBucket(object):
         if metadata is not None:
             opts["metadata"] = metadata
 
-        return GridIn(
-            self._collection,
-            session=session,
-            disable_md5=self._disable_md5,
-            **opts)
+        return GridIn(self._collection, session=session, **opts)
 
     def open_upload_stream_with_id(
             self, file_id, filename, chunk_size_bytes=None, metadata=None,
@@ -579,11 +578,7 @@ class GridFSBucket(object):
         if metadata is not None:
             opts["metadata"] = metadata
 
-        return GridIn(
-            self._collection,
-            session=session,
-            disable_md5=self._disable_md5,
-            **opts)
+        return GridIn(self._collection, session=session, **opts)
 
     def upload_from_stream(self, filename, source, chunk_size_bytes=None,
                            metadata=None, session=None):
