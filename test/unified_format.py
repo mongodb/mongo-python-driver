@@ -71,25 +71,11 @@ from test.utils import (
 JSON_OPTS = json_util.JSONOptions(tz_aware=False)
 
 IS_INTERRUPTED = False
-WIN32 = sys.platform in ("win32", "cygwin")
 
 
-def interrupt_handler(signum, frame):
+def interrupt_loop():
     global IS_INTERRUPTED
-    # Set the IS_INTERRUPTED flag here and perform the necessary cleanup
-    # before actually exiting in workload_runner. This is because signals
-    # are handled asynchronously which can cause the interrupt handlers to
-    # fire more than once. Consequently, the handler itself should be
-    # re-entrant (invokable multiple times without needing to wait for prior
-    # invocations to return/complete) which is made possible by this pattern.
     IS_INTERRUPTED = True
-
-
-if WIN32:
-    # CTRL_BREAK_EVENT is mapped to SIGBREAK
-    signal.signal(signal.SIGBREAK, interrupt_handler)
-else:
-    signal.signal(signal.SIGINT, interrupt_handler)
 
 
 def with_metaclass(meta, *bases):
@@ -226,7 +212,11 @@ class EventListenerUtil(CMAPListener, CommandListener):
             for i in store_events:
                 id = i["id"]
                 events = (i.lower() for i in i["events"])
-                self._event_mapping[events] = id
+                for i in events:
+                    if i in self._event_mapping:
+                        self._event_mapping[i].append(id)
+                    else:
+                        self._event_mapping[i] = [id]
                 self.entity_map[id] = []
         super(EventListenerUtil, self).__init__()
 
@@ -236,12 +226,14 @@ class EventListenerUtil(CMAPListener, CommandListener):
         return [e for e in self.events if 'Command' not in type(e).__name__]
 
     def add_event(self, event):
-        if type(event).__name__.lower() in self._event_types:
+        event_name = type(event).__name__.lower()
+        if event_name in self._event_types:
             super(EventListenerUtil, self).add_event(event)
-            for event_types in self._event_mapping.keys():
-                if type(event).__name__.lower() in event_types:
-                    self.entity_map[self._event_mapping[
-                        event_types]].append(event)
+        for id in self._event_mapping.get(event_name,[]):
+            if id in self.entity_map._entities.keys():
+                self.entity_map[id].append(event)
+            else:
+                self.entity_map[id] = [event]
 
     def _command_event(self, event):
         if event.command_name.lower() not in self._ignore_commands:
@@ -304,10 +296,8 @@ class EntityMapUtil(object):
             kwargs = {}
             observe_events = spec.get('observeEvents', [])
             ignore_commands = spec.get('ignoreCommandMonitoringEvents', [])
-
             observe_sensitive_commands = spec.get(
                 'observeSensitiveCommands', False)
-            # TODO: PYTHON-2511 support storeEventsAsEntities
             ignore_commands = [cmd.lower() for cmd in ignore_commands]
             listener = EventListenerUtil(
                 observe_events, ignore_commands,
@@ -1205,13 +1195,15 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
         # process operations
         self.run_operations(spec['operations'])
-        self.verify_outcome(spec.get('outcome', []))
 
         # process expectEvents
         if 'expectEvents' in spec:
             expect_events = spec['expectEvents']
             self.assertTrue(expect_events, 'expectEvents must be non-empty')
             self.check_events(expect_events)
+
+        # process outcome
+        self.verify_outcome(spec.get('outcome', []))
 
 
 class UnifiedSpecTestMeta(type):
