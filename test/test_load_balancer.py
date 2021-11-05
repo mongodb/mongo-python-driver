@@ -45,7 +45,7 @@ class TestLB(IntegrationTest):
         nconns = len(pool.sockets)
         self.db.test.find_one({})
         self.assertEqual(len(pool.sockets), nconns)
-        self.db.test.aggregate([{'$limit': 1}])
+        list(self.db.test.aggregate([{'$limit': 1}]))
         self.assertEqual(len(pool.sockets), nconns)
 
     @client_context.require_load_balancer
