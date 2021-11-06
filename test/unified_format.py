@@ -16,7 +16,7 @@
 
 https://github.com/mongodb/specifications/blob/master/source/unified-test-format/unified-test-format.rst
 """
-
+import collections
 import copy
 import datetime
 import functools
@@ -25,7 +25,6 @@ import re
 import sys
 import time
 import types
-import signal
 
 from collections import abc
 
@@ -206,17 +205,14 @@ class EventListenerUtil(CMAPListener, CommandListener):
             self._observe_sensitive_commands = False
             self._ignore_commands = _SENSITIVE_COMMANDS | set(ignore_commands)
             self._ignore_commands.add('configurefailpoint')
-        self._event_mapping = {}
+        self._event_mapping = collections.defaultdict(list)
         self.entity_map = entity_map
         if store_events:
             for i in store_events:
                 id = i["id"]
                 events = (i.lower() for i in i["events"])
                 for i in events:
-                    if i in self._event_mapping:
-                        self._event_mapping[i].append(id)
-                    else:
-                        self._event_mapping[i] = [id]
+                    self._event_mapping[i].append(id)
                 self.entity_map[id] = []
         super(EventListenerUtil, self).__init__()
 
@@ -229,8 +225,8 @@ class EventListenerUtil(CMAPListener, CommandListener):
         event_name = type(event).__name__.lower()
         if event_name in self._event_types:
             super(EventListenerUtil, self).add_event(event)
-        for id in self._event_mapping.get(event_name,[]):
-            if id in self.entity_map._entities.keys():
+        for id in self._event_mapping[event_name]:
+            if id in self.entity_map:
                 self.entity_map[id].append(event)
             else:
                 self.entity_map[id] = [event]
@@ -267,6 +263,12 @@ class EntityMapUtil(object):
         self._listeners = {}
         self._session_lsids = {}
         self.test = test_class
+
+    def __contains__(self, item):
+        return item in self._entities
+
+    def __len__(self):
+        return len(self._entities)
 
     def __getitem__(self, item):
         try:
@@ -1076,7 +1078,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self.assertEqual(spec['connections'], pool.active_sockets)
 
     def _testOperation_loop(self, spec):
-        global IS_INTERRUPTED
         failure_key = spec.get('storeFailuresAsEntity')
         error_key = spec.get('storeErrorsAsEntity')
         successes_key = spec.get('storeSuccessesAsEntity')
@@ -1086,7 +1087,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if error_key:
             self.entity_map[error_key] = []
         if successes_key:
-            self.entity_map[successes_key] = []
+            self.entity_map[successes_key] = 0
         if iteration_key:
             self.entity_map[iteration_key] = 0
         while True:
@@ -1106,8 +1107,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 else:
                     raise exc
             except Exception as exc:
-                if error_key:
-                    self.entity_map[error_key].append(
+                if error_key or failure_key:
+                    self.entity_map[error_key or failure_key].append(
                         {"error": exc, "time": time.time()})
                 else:
                     raise exc
