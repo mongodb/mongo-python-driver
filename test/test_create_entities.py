@@ -15,13 +15,12 @@ import unittest
 
 from test.unified_format import UnifiedSpecTestMixinV1
 
+from pymongo.monitoring import PoolCreatedEvent
+
 
 class TestCreateEntities(unittest.TestCase):
-
-    def setUp(self):
-        self.scenario_runner = UnifiedSpecTestMixinV1()
-
     def test_store_events_as_entities(self):
+        self.scenario_runner = UnifiedSpecTestMixinV1()
         spec = {
             "description": "blank",
             "schemaVersion": "1.2",
@@ -53,8 +52,11 @@ class TestCreateEntities(unittest.TestCase):
         final_entity_map = self.scenario_runner.entity_map
         self.assertIn("events1", final_entity_map)
         self.assertGreater(len(final_entity_map["events1"]), 0)
+        for event in final_entity_map["events1"]:
+            self.assertEqual(type(event), PoolCreatedEvent)
 
     def test_store_all_others_as_entities(self):
+        self.scenario_runner = UnifiedSpecTestMixinV1()
         spec = {
             "description": "Find",
             "schemaVersion": "1.2",
@@ -95,7 +97,7 @@ class TestCreateEntities(unittest.TestCase):
                                 "storeSuccessesAsEntity": "successes",
                                 "storeFailuresAsEntity": "failures",
                                 "storeErrorsAsEntity": "errors",
-                                "numIterations": 100,
+                                "numIterations": 5,
                                 "operations": [
                                     {
                                       "name": "insertOne",
@@ -131,5 +133,10 @@ class TestCreateEntities(unittest.TestCase):
         self.scenario_runner.setUp()
         self.scenario_runner.run_scenario(spec["tests"][0])
         final_entity_map = self.scenario_runner.entity_map
-        for entity in ["errors", "failures", "successes", "iterations"]:
+        for entity in ["errors", "failures"]:
             self.assertIn(entity, final_entity_map)
+            self.assertGreaterEqual(len(final_entity_map[entity]), 0)
+            self.assertEqual(type(final_entity_map[entity]), list)
+        for entity in ["successes", "iterations"]:
+            self.assertIn(entity, final_entity_map)
+            self.assertEqual(type(final_entity_map[entity]), int)

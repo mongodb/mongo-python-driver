@@ -226,10 +226,7 @@ class EventListenerUtil(CMAPListener, CommandListener):
         if event_name in self._event_types:
             super(EventListenerUtil, self).add_event(event)
         for id in self._event_mapping[event_name]:
-            if id in self.entity_map:
-                self.entity_map[id].append(event)
-            else:
-                self.entity_map[id] = [event]
+            self.entity_map[id].append(event)
 
     def _command_event(self, event):
         if event.command_name.lower() not in self._ignore_commands:
