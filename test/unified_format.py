@@ -1082,7 +1082,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         error_key = spec.get('storeErrorsAsEntity')
         successes_key = spec.get('storeSuccessesAsEntity')
         iteration_key = spec.get('storeIterationsAsEntity')
-        iterations_key = spec.get('numIterations')
+        iteration_limiter_key = spec.get('numIterations')
         if failure_key:
             self.entity_map[failure_key] = []
         if error_key:
@@ -1093,7 +1093,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.entity_map[iteration_key] = 0
         i = 0
         while True:
-            if iterations_key is not None and i >= iterations_key:
+            if iteration_limiter_key and i >= iteration_limiter_key:
                 break
             i += 1
             if IS_INTERRUPTED:

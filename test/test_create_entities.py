@@ -133,4 +133,3 @@ class TestCreateEntities(unittest.TestCase):
         final_entity_map = self.scenario_runner.entity_map
         for entity in ["errors", "failures", "successes", "iterations"]:
             self.assertIn(entity, final_entity_map)
-            self.assertGreater(len(final_entity_map), 0)
