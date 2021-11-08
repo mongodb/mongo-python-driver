@@ -520,6 +520,14 @@ class TestPoolMaxSize(_TestPoolingBase):
             self.assertNotIn('waiting for socket from pool',
                              str(context.exception))
 
+    def test_min_pool_size_always_positive(self):
+        c = rs_or_single_client(maxPoolSize=10)
+        self.addCleanup(c.close)
+        pool = get_pool(c)
+        with pool.get_socket(None):
+            pool.close()
+        self.assertGreaterEqual(pool.active_sockets, 0)
+
 
 if __name__ == "__main__":
     unittest.main()
