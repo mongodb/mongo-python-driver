@@ -46,6 +46,7 @@ from pymongo.errors import (ConfigurationError,
                             EncryptionError,
                             InvalidOperation,
                             ServerSelectionTimeoutError)
+from pymongo.encryption_options import AutoEncryptionOpts
 from pymongo.mongo_client import MongoClient
 from pymongo.pool import _configured_socket, PoolOptions
 from pymongo.read_concern import ReadConcern
@@ -106,20 +107,23 @@ class _EncryptionIO(MongoCryptCallback):
         """
         endpoint = kms_context.endpoint
         message = kms_context.message
-        host, port = parse_host(endpoint, _HTTPS_PORT)
-        # Enable strict certificate verification, OCSP, match hostname, and
-        # SNI using the system default CA certificates.
-        ctx = get_ssl_context(
-            None,   # certfile
-            None,   # passphrase
-            None,   # ca_certs
-            None,   # crlfile
-            False,  # allow_invalid_certificates
-            False,  # allow_invalid_hostnames
-            False)  # disable_ocsp_endpoint_check
+        provider = kms_context.kms_provider
+        ctx = self.opts._tls_options.get(provider)
+        if not ctx:
+            # Enable strict certificate verification, OCSP, match hostname, and
+            # SNI using the system default CA certificates.
+            ctx = get_ssl_context(
+                None,   # certfile
+                None,   # passphrase
+                None,   # ca_certs
+                None,   # crlfile
+                False,  # allow_invalid_certificates
+                False,  # allow_invalid_hostnames
+                False)  # disable_ocsp_endpoint_check
         opts = PoolOptions(connect_timeout=_KMS_CONNECT_TIMEOUT,
                            socket_timeout=_KMS_CONNECT_TIMEOUT,
                            ssl_context=ctx)
+        host, port = parse_host(endpoint, _HTTPS_PORT)
         conn = _configured_socket((host, port), opts)
         try:
             conn.sendall(message)
@@ -359,7 +363,7 @@ class ClientEncryption(object):
     """Explicit client-side field level encryption."""
 
     def __init__(self, kms_providers, key_vault_namespace, key_vault_client,
-                 codec_options):
+                 codec_options, tls_options=None):
         """Explicit client-side field level encryption.
 
         The ClientEncryption class encapsulates explicit operations on a key
@@ -411,6 +415,11 @@ class ClientEncryption(object):
             should be the same CodecOptions instance configured on the
             MongoClient, Database, or Collection used to access application
             data.
+          - `tls_options` (optional): A map of KMS provider names to TLS
+            options to use when creating secure connections to KMS providers.
+
+        .. versionchanged:: 4.0
+           Added the `tls_options` parameter.
 
         .. versionadded:: 3.9
         """
@@ -432,7 +441,9 @@ class ClientEncryption(object):
         db, coll = key_vault_namespace.split('.', 1)
         key_vault_coll = key_vault_client[db][coll]
 
-        self._io_callbacks = _EncryptionIO(None, key_vault_coll, None, None)
+        opts = AutoEncryptionOpts(kms_providers, key_vault_namespace,
+                                  tls_options=tls_options)
+        self._io_callbacks = _EncryptionIO(None, key_vault_coll, None, opts)
         self._encryption = ExplicitEncrypter(
             self._io_callbacks, MongoCryptOptions(kms_providers, None))
 

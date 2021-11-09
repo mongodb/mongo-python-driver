@@ -20,6 +20,7 @@ import sys
 
 from urllib.parse import unquote_plus
 
+from pymongo.client_options import _parse_ssl_options
 from pymongo.common import (
     SRV_SERVICE_NAME,
     get_validated_options, INTERNAL_URI_OPTION_NAME_MAP,
@@ -567,6 +568,36 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
         'options': options,
         'fqdn': fqdn
     }
+
+
+def _parse_fle_tls_options(tls_options):
+    if not tls_options:
+        return {}
+    contexts = {}
+    for provider, opts in tls_options.items():
+        if not isinstance(opts, dict):
+            raise TypeError(f'tls_options["{provider}"] must be a dict')
+        opts.setdefault('tls', True)
+        opts = _CaseInsensitiveDictionary(opts)
+        opts = _handle_security_options(opts)
+        opts = _normalize_options(opts)
+        opts = validate_options(opts)
+        ssl_context, allow_invalid_hostnames = _parse_ssl_options(opts)
+        if ssl_context is None:
+            raise ConfigurationError('TLS is required for KMS providers')
+        if allow_invalid_hostnames:
+            raise ConfigurationError('Insecure TLS options prohibited')
+
+        for n in ['tlsInsecure',
+                  'tlsAllowInvalidCertificates',
+                  'tlsAllowInvalidHostnames',
+                  'tlsDisableOCSPEndpointCheck',
+                  'tlsDisableCertificateRevocationCheck']:
+            if n in opts:
+                raise ConfigurationError(
+                    f'Insecure TLS options prohibited: {n}')
+            contexts[provider] = ssl_context
+    return contexts
 
 
 if __name__ == '__main__':

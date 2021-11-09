@@ -23,6 +23,7 @@ except ImportError:
     _HAVE_PYMONGOCRYPT = False
 
 from pymongo.errors import ConfigurationError
+from pymongo.uri_parser import _parse_fle_tls_options
 
 
 class AutoEncryptionOpts(object):
@@ -35,7 +36,8 @@ class AutoEncryptionOpts(object):
                  mongocryptd_uri='mongodb://localhost:27020',
                  mongocryptd_bypass_spawn=False,
                  mongocryptd_spawn_path='mongocryptd',
-                 mongocryptd_spawn_args=None):
+                 mongocryptd_spawn_args=None,
+                 tls_options=None):
         """Options to configure automatic client-side field level encryption.
 
         Automatic client-side field level encryption requires MongoDB 4.2
@@ -118,6 +120,11 @@ class AutoEncryptionOpts(object):
             ``['--idleShutdownTimeoutSecs=60']``. If the list does not include
             the ``idleShutdownTimeoutSecs`` option then
             ``'--idleShutdownTimeoutSecs=60'`` will be added.
+          - `tls_options` (optional):  A map of KMS provider names to TLS
+            options to use when creating secure connections to KMS providers.
+
+        .. versionchanged:: 4.0
+           Added the `tls_options` parameter.
 
         .. versionadded:: 3.9
         """
@@ -142,14 +149,4 @@ class AutoEncryptionOpts(object):
         if not any('idleShutdownTimeoutSecs' in s
                    for s in self._mongocryptd_spawn_args):
             self._mongocryptd_spawn_args.append('--idleShutdownTimeoutSecs=60')
-
-
-def validate_auto_encryption_opts_or_none(option, value):
-    """Validate the driver keyword arg."""
-    if value is None:
-        return value
-    if not isinstance(value, AutoEncryptionOpts):
-        raise TypeError("%s must be an instance of AutoEncryptionOpts" % (
-            option,))
-
-    return value
+        self._tls_options = _parse_fle_tls_options(tls_options)
