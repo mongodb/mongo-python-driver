@@ -291,10 +291,14 @@ class TestPooling(_TestPoolingBase):
     def test_return_socket_after_reset(self):
         pool = self.create_pool()
         with pool.get_socket({}) as sock:
+            self.assertEqual(pool.active_sockets, 1)
+            self.assertEqual(pool.operation_count, 1)
             pool.reset()
 
         self.assertTrue(sock.closed)
         self.assertEqual(0, len(pool.sockets))
+        self.assertEqual(pool.active_sockets, 0)
+        self.assertEqual(pool.operation_count, 0)
 
     def test_pool_check(self):
         # Test that Pool recovers from two connection failures in a row.
