@@ -226,7 +226,7 @@ class EventListenerUtil(CMAPListener, CommandListener):
         if event_name in self._event_types:
             super(EventListenerUtil, self).add_event(event)
         for id in self._event_mapping[event_name]:
-            self.entity_map[id].append(event)
+            self.entity_map[id].append(str(event))
 
     def _command_event(self, event):
         if event.command_name.lower() not in self._ignore_commands:
@@ -284,7 +284,7 @@ class EntityMapUtil(object):
 
         self._entities[key] = value
 
-    def _create_entity(self, entity_spec):
+    def _create_entity(self, entity_spec, uri=None):
         if len(entity_spec) != 1:
             self.test.fail(
                 "Entity spec %s did not contain exactly one top-level key" % (
@@ -315,7 +315,10 @@ class EntityMapUtil(object):
                 kwargs['server_api'] = ServerApi(
                     server_api['version'], strict=server_api.get('strict'),
                     deprecation_errors=server_api.get('deprecationErrors'))
-            client = rs_or_single_client(**kwargs)
+            if uri:
+                client = rs_or_single_client(h=uri, **kwargs)
+            else:
+                client = rs_or_single_client(**kwargs)
             self[spec['id']] = client
             self.test.addCleanup(client.close)
             return
@@ -366,9 +369,9 @@ class EntityMapUtil(object):
         self.test.fail(
             'Unable to create entity of unknown type %s' % (entity_type,))
 
-    def create_entities_from_spec(self, entity_spec):
+    def create_entities_from_spec(self, entity_spec, uri=None):
         for spec in entity_spec:
-            self._create_entity(spec)
+            self._create_entity(spec, uri=uri)
 
     def get_listener_for_client(self, client_name):
         client = self[client_name]
@@ -718,7 +721,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def setUpClass(cls):
         # super call creates internal client cls.client
         super(UnifiedSpecTestMixinV1, cls).setUpClass()
-
         # process file-level runOnRequirements
         run_on_spec = cls.TEST_SPEC.get('runOnRequirements', [])
         if not cls.should_run_on(run_on_spec):
@@ -733,7 +735,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def setUp(self):
         super(UnifiedSpecTestMixinV1, self).setUp()
-
         # process schemaVersion
         # note: we check major schema version during class generation
         # note: we do this here because we cannot run assertions in setUpClass
@@ -1105,13 +1106,13 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             except AssertionError as exc:
                 if failure_key or error_key:
                     self.entity_map[failure_key or error_key].append({
-                        "error": exc, "time": time.time()})
+                        "error": exc, "time": time.time(), "type": type(exc)})
                 else:
                     raise exc
             except Exception as exc:
                 if error_key or failure_key:
                     self.entity_map[error_key or failure_key].append(
-                        {"error": exc, "time": time.time()})
+                        {"error": exc, "time": time.time(), "type": type(exc)})
                 else:
                     raise exc
 
@@ -1174,7 +1175,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.assertListEqual(sorted_expected_documents,
                                      actual_documents)
 
-    def run_scenario(self, spec):
+    def run_scenario(self, spec, uri=None):
         # maybe skip test manually
         self.maybe_skip_test(spec)
 
@@ -1191,8 +1192,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         # process createEntities
         self.entity_map = EntityMapUtil(self)
         self.entity_map.create_entities_from_spec(
-            self.TEST_SPEC.get('createEntities', []))
-
+            self.TEST_SPEC.get('createEntities', []), uri=uri)
         # process initialData
         self.insert_initial_data(self.TEST_SPEC.get('initialData', []))
 
