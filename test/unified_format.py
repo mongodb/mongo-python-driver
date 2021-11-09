@@ -16,13 +16,14 @@
 
 https://github.com/mongodb/specifications/blob/master/source/unified-test-format/unified-test-format.rst
 """
-
+import collections
 import copy
 import datetime
 import functools
 import os
 import re
 import sys
+import time
 import types
 
 from collections import abc
@@ -67,6 +68,13 @@ from test.utils import (
 
 
 JSON_OPTS = json_util.JSONOptions(tz_aware=False)
+
+IS_INTERRUPTED = False
+
+
+def interrupt_loop():
+    global IS_INTERRUPTED
+    IS_INTERRUPTED = True
 
 
 def with_metaclass(meta, *bases):
@@ -188,7 +196,7 @@ class NonLazyCursor(object):
 
 class EventListenerUtil(CMAPListener, CommandListener):
     def __init__(self, observe_events, ignore_commands,
-                 observe_sensitive_commands):
+                 observe_sensitive_commands, store_events, entity_map):
         self._event_types = set(name.lower() for name in observe_events)
         if observe_sensitive_commands:
             self._observe_sensitive_commands = True
@@ -197,6 +205,15 @@ class EventListenerUtil(CMAPListener, CommandListener):
             self._observe_sensitive_commands = False
             self._ignore_commands = _SENSITIVE_COMMANDS | set(ignore_commands)
             self._ignore_commands.add('configurefailpoint')
+        self._event_mapping = collections.defaultdict(list)
+        self.entity_map = entity_map
+        if store_events:
+            for i in store_events:
+                id = i["id"]
+                events = (i.lower() for i in i["events"])
+                for i in events:
+                    self._event_mapping[i].append(id)
+                self.entity_map[id] = []
         super(EventListenerUtil, self).__init__()
 
     def get_events(self, event_type):
@@ -205,8 +222,11 @@ class EventListenerUtil(CMAPListener, CommandListener):
         return [e for e in self.events if 'Command' not in type(e).__name__]
 
     def add_event(self, event):
-        if type(event).__name__.lower() in self._event_types:
+        event_name = type(event).__name__.lower()
+        if event_name in self._event_types:
             super(EventListenerUtil, self).add_event(event)
+        for id in self._event_mapping[event_name]:
+            self.entity_map[id].append(event)
 
     def _command_event(self, event):
         if event.command_name.lower() not in self._ignore_commands:
@@ -241,6 +261,12 @@ class EntityMapUtil(object):
         self._session_lsids = {}
         self.test = test_class
 
+    def __contains__(self, item):
+        return item in self._entities
+
+    def __len__(self):
+        return len(self._entities)
+
     def __getitem__(self, item):
         try:
             return self._entities[item]
@@ -271,13 +297,13 @@ class EntityMapUtil(object):
             ignore_commands = spec.get('ignoreCommandMonitoringEvents', [])
             observe_sensitive_commands = spec.get(
                 'observeSensitiveCommands', False)
-            # TODO: PYTHON-2511 support storeEventsAsEntities
-            if len(observe_events) or len(ignore_commands):
-                ignore_commands = [cmd.lower() for cmd in ignore_commands]
-                listener = EventListenerUtil(
-                    observe_events, ignore_commands, observe_sensitive_commands)
-                self._listeners[spec['id']] = listener
-                kwargs['event_listeners'] = [listener]
+            ignore_commands = [cmd.lower() for cmd in ignore_commands]
+            listener = EventListenerUtil(
+                observe_events, ignore_commands,
+                observe_sensitive_commands,
+                spec.get("storeEventsAsEntities"), self)
+            self._listeners[spec['id']] = listener
+            kwargs['event_listeners'] = [listener]
             if spec.get('useMultipleMongoses'):
                 if client_context.load_balancer or client_context.serverless:
                     kwargs['h'] = client_context.MULTI_MONGOS_LB_URI
@@ -1048,6 +1074,47 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         pool = get_pool(client)
         self.assertEqual(spec['connections'], pool.active_sockets)
 
+    def _testOperation_loop(self, spec):
+        failure_key = spec.get('storeFailuresAsEntity')
+        error_key = spec.get('storeErrorsAsEntity')
+        successes_key = spec.get('storeSuccessesAsEntity')
+        iteration_key = spec.get('storeIterationsAsEntity')
+        iteration_limiter_key = spec.get('numIterations')
+        if failure_key:
+            self.entity_map[failure_key] = []
+        if error_key:
+            self.entity_map[error_key] = []
+        if successes_key:
+            self.entity_map[successes_key] = 0
+        if iteration_key:
+            self.entity_map[iteration_key] = 0
+        i = 0
+        while True:
+            if iteration_limiter_key and i >= iteration_limiter_key:
+                break
+            i += 1
+            if IS_INTERRUPTED:
+                break
+            try:
+                for op in spec["operations"]:
+                    self.run_entity_operation(op)
+                    if successes_key:
+                        self.entity_map._entities[successes_key] += 1
+                if iteration_key:
+                    self.entity_map._entities[iteration_key] += 1
+            except AssertionError as exc:
+                if failure_key or error_key:
+                    self.entity_map[failure_key or error_key].append({
+                        "error": exc, "time": time.time()})
+                else:
+                    raise exc
+            except Exception as exc:
+                if error_key or failure_key:
+                    self.entity_map[error_key or failure_key].append(
+                        {"error": exc, "time": time.time()})
+                else:
+                    raise exc
+
     def run_special_operation(self, spec):
         opname = spec['name']
         method_name = '_testOperation_%s' % (opname,)
@@ -1060,11 +1127,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def run_operations(self, spec):
         for op in spec:
-            target = op['object']
-            if target != 'testRunner':
-                self.run_entity_operation(op)
-            else:
+            if op['object'] == 'testRunner':
                 self.run_special_operation(op)
+            else:
+                self.run_entity_operation(op)
+
 
     def check_events(self, spec):
         for event_spec in spec:
