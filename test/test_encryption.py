@@ -516,6 +516,10 @@ GCP_CREDS = {
     'email': os.environ.get('FLE_GCP_EMAIL', ''),
     'privateKey': os.environ.get('FLE_GCP_PRIVATEKEY', '')}
 
+KMIP = {'endpoint': os.environ.get('FLE_KMIP_ENDPOINT', 'localhost:5698')}
+KMS_TLS_OPTS = {'kmip': {'tlsCAFile': CA_PEM,
+                         'tlsCertificateKeyFile': CLIENT_PEM}}
+
 
 class TestSpec(SpecRunner):
 
@@ -550,6 +554,9 @@ class TestSpec(SpecRunner):
             kms_providers['gcp'] = GCP_CREDS
             if not any(AZURE_CREDS.values()):
                 self.skipTest('GCP environment credentials are not set')
+        if 'kmip' in kms_providers:
+            kms_providers['kmip'] = KMIP
+            opts['kms_tls_options'] = KMS_TLS_OPTS
         if 'key_vault_namespace' not in opts:
             opts['key_vault_namespace'] = 'keyvault.datakeys'
         opts = dict(opts)
@@ -631,6 +638,13 @@ LOCAL_MASTER_KEY = base64.b64decode(
     b'Mng0NCt4ZHVUYUJCa1kxNkVyNUR1QURhZ2h2UzR2d2RrZzh0cFBwM3R6NmdWMDFBMUN3YkQ'
     b'5aXRRMkhGRGdQV09wOGVNYUMxT2k3NjZKelhaQmRCZGJkTXVyZG9uSjFk')
 
+ALL_KMS_PROVIDERS = {
+    'aws': AWS_CREDS,
+    'azure': AZURE_CREDS,
+    'gcp': GCP_CREDS,
+    'kmip': KMIP,
+    'local': {'key': LOCAL_MASTER_KEY}}
+
 LOCAL_KEY_ID = Binary(
     base64.b64decode(b'LOCALAAAAAAAAAAAAAAAAA=='), UUID_SUBTYPE)
 AWS_KEY_ID = Binary(
@@ -639,6 +653,8 @@ AZURE_KEY_ID = Binary(
     base64.b64decode(b'AZUREAAAAAAAAAAAAAAAAA=='), UUID_SUBTYPE)
 GCP_KEY_ID = Binary(
     base64.b64decode(b'GCPAAAAAAAAAAAAAAAAAAA=='), UUID_SUBTYPE)
+KMIP_KEY_ID = Binary(
+    base64.b64decode(b'KMIPAAAAAAAAAAAAAAAAAA=='), UUID_SUBTYPE)
 
 
 def create_with_schema(coll, json_schema):
@@ -661,10 +677,7 @@ def create_key_vault(vault, *data_keys):
 
 class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
 
-    KMS_PROVIDERS = {'aws': AWS_CREDS,
-                     'azure': AZURE_CREDS,
-                     'gcp': GCP_CREDS,
-                     'local': {'key': LOCAL_MASTER_KEY}}
+    KMS_PROVIDERS = ALL_KMS_PROVIDERS
 
     MASTER_KEYS = {
         'aws': {
@@ -679,6 +692,10 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
             'location': 'global',
             'keyRing': 'key-ring-csfle',
             'keyName': 'key-name-csfle'},
+        'kmip': {
+            'keyId': '1',
+            'endpoint': KMIP['endpoint'],  # TODO: is this needed?
+        },
         'local': None
     }
 
@@ -710,11 +727,13 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
             }
         }
         opts = AutoEncryptionOpts(
-            cls.KMS_PROVIDERS, 'keyvault.datakeys', schema_map=schemas)
+            cls.KMS_PROVIDERS, 'keyvault.datakeys', schema_map=schemas,
+            kms_tls_options=KMS_TLS_OPTS)
         cls.client_encrypted = rs_or_single_client(
             auto_encryption_opts=opts, uuidRepresentation='standard')
         cls.client_encryption = ClientEncryption(
-            cls.KMS_PROVIDERS, 'keyvault.datakeys', cls.client, OPTS)
+            cls.KMS_PROVIDERS, 'keyvault.datakeys', cls.client, OPTS,
+            kms_tls_options=KMS_TLS_OPTS)
 
     @classmethod
     def tearDownClass(cls):
@@ -783,6 +802,9 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
                          'GCP environment credentials are not set')
     def test_data_key_gcp(self):
         self.run_test('gcp')
+
+    def test_data_key_kmip(self):
+        self.run_test('kmip')
 
 
 class TestExternalKeyVault(EncryptionIntegrationTest):
@@ -882,10 +904,7 @@ class TestCorpus(EncryptionIntegrationTest):
 
     @staticmethod
     def kms_providers():
-        return {'aws': AWS_CREDS,
-                'azure': AZURE_CREDS,
-                'gcp': GCP_CREDS,
-                'local': {'key': LOCAL_MASTER_KEY}}
+        return ALL_KMS_PROVIDERS
 
     @staticmethod
     def fix_up_schema(json_schema):
@@ -923,7 +942,8 @@ class TestCorpus(EncryptionIntegrationTest):
             json_data('corpus', 'corpus-key-local.json'),
             json_data('corpus', 'corpus-key-aws.json'),
             json_data('corpus', 'corpus-key-azure.json'),
-            json_data('corpus', 'corpus-key-gcp.json'))
+            json_data('corpus', 'corpus-key-gcp.json'),
+            json_data('corpus', 'corpus-key-kmip.json'))
         self.addCleanup(vault.drop)
 
         client_encrypted = rs_or_single_client(
@@ -932,7 +952,7 @@ class TestCorpus(EncryptionIntegrationTest):
 
         client_encryption = ClientEncryption(
             self.kms_providers(), 'keyvault.datakeys', client_context.client,
-            OPTS)
+            OPTS, kms_tls_options=KMS_TLS_OPTS)
         self.addCleanup(client_encryption.close)
 
         corpus = self.fix_up_curpus(json_data('corpus', 'corpus.json'))
@@ -940,7 +960,7 @@ class TestCorpus(EncryptionIntegrationTest):
         for key, value in corpus.items():
             corpus_copied[key] = copy.deepcopy(value)
             if key in ('_id', 'altname_aws', 'altname_azure', 'altname_gcp',
-                       'altname_local'):
+                       'altname_local', 'altname_kmip'):
                 continue
             if value['method'] == 'auto':
                 continue
@@ -948,7 +968,7 @@ class TestCorpus(EncryptionIntegrationTest):
                 identifier = value['identifier']
                 self.assertIn(identifier, ('id', 'altname'))
                 kms = value['kms']
-                self.assertIn(kms, ('local', 'aws', 'azure', 'gcp'))
+                self.assertIn(kms, ('local', 'aws', 'azure', 'gcp', 'kmip'))
                 if identifier == 'id':
                     if kms == 'local':
                         kwargs = dict(key_id=LOCAL_KEY_ID)
@@ -956,8 +976,10 @@ class TestCorpus(EncryptionIntegrationTest):
                         kwargs = dict(key_id=AWS_KEY_ID)
                     elif kms == 'azure':
                         kwargs = dict(key_id=AZURE_KEY_ID)
-                    else:
+                    elif kms == 'gcp':
                         kwargs = dict(key_id=GCP_KEY_ID)
+                    else:
+                        kwargs = dict(key_id=KMIP_KEY_ID)
                 else:
                     kwargs = dict(key_alt_name=kms)
 
@@ -990,7 +1012,7 @@ class TestCorpus(EncryptionIntegrationTest):
         corpus_encrypted_actual = coll.find_one()
         for key, value in corpus_encrypted_actual.items():
             if key in ('_id', 'altname_aws', 'altname_azure',
-                       'altname_gcp', 'altname_local'):
+                       'altname_gcp', 'altname_local', 'altname_kmip'):
                 continue
 
             if value['algo'] == 'det':
@@ -1011,7 +1033,8 @@ class TestCorpus(EncryptionIntegrationTest):
                 self.assertEqual(value['value'], corpus[key]['value'], key)
 
     def test_corpus(self):
-        opts = AutoEncryptionOpts(self.kms_providers(), 'keyvault.datakeys')
+        opts = AutoEncryptionOpts(self.kms_providers(), 'keyvault.datakeys',
+                                  kms_tls_options=KMS_TLS_OPTS)
         self._test_corpus(opts)
 
     def test_corpus_local_schema(self):
@@ -1019,7 +1042,8 @@ class TestCorpus(EncryptionIntegrationTest):
         schemas = {'db.coll': self.fix_up_schema(
             json_data('corpus', 'corpus-schema.json'))}
         opts = AutoEncryptionOpts(
-            self.kms_providers(), 'keyvault.datakeys', schema_map=schemas)
+            self.kms_providers(), 'keyvault.datakeys', schema_map=schemas,
+            kms_tls_options=KMS_TLS_OPTS)
         self._test_corpus(opts)
 
 
@@ -1142,21 +1166,25 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
     def setUp(self):
         kms_providers = {'aws': AWS_CREDS,
                          'azure': AZURE_CREDS,
-                         'gcp': GCP_CREDS}
+                         'gcp': GCP_CREDS,
+                         'kmip': KMIP}
         self.client_encryption = ClientEncryption(
             kms_providers=kms_providers,
             key_vault_namespace='keyvault.datakeys',
             key_vault_client=client_context.client,
-            codec_options=OPTS)
+            codec_options=OPTS,
+            kms_tls_options=KMS_TLS_OPTS)
 
         kms_providers_invalid = copy.deepcopy(kms_providers)
         kms_providers_invalid['azure']['identityPlatformEndpoint'] = 'example.com:443'
         kms_providers_invalid['gcp']['endpoint'] = 'example.com:443'
+        kms_providers_invalid['kmip']['endpoint'] = 'doesnotexist.local:5698'
         self.client_encryption_invalid = ClientEncryption(
             kms_providers=kms_providers_invalid,
             key_vault_namespace='keyvault.datakeys',
             key_vault_client=client_context.client,
-            codec_options=OPTS)
+            codec_options=OPTS,
+            kms_tls_options=KMS_TLS_OPTS)
 
     def tearDown(self):
         self.client_encryption.close()
@@ -1288,6 +1316,33 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
         with self.assertRaisesRegex(EncryptionError, "Invalid KMS response"):
             self.client_encryption.create_data_key(
                 'gcp', master_key=master_key)
+
+    def test_10_kmip_invalid_endpoint(self):
+        key = {'keyId': '1'}
+        self.run_test_expected_success('kmip', key)
+        # The full error should be something like:
+        # "[Errno 8] nodename nor servname provided, or not known"
+        with self.assertRaisesRegex(EncryptionError, "servname provided"):
+            self.client_encryption_invalid.create_data_key('kmip', key)
+
+    def test_11_kmip_master_key_endpoint(self):
+        key = {'keyId': '1', 'endpoint': KMIP['endpoint']}
+        self.run_test_expected_success('kmip', key)
+        # Override invalid endpoint:
+        data_key_id = self.client_encryption_invalid.create_data_key(
+            'kmip', master_key=key)
+        encrypted = self.client_encryption_invalid.encrypt(
+            'test', Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
+            key_id=data_key_id)
+        self.assertEqual(
+            'test', self.client_encryption_invalid.decrypt(encrypted))
+
+    def test_12_kmip_master_key_invalid_endpoint(self):
+        key = {'keyId': '1', 'endpoint': 'doesnotexist.local:5698'}
+        # The full error should be something like:
+        # "[Errno 8] nodename nor servname provided, or not known"
+        with self.assertRaisesRegex(EncryptionError, "servname provided"):
+            self.client_encryption.create_data_key('kmip', key)
 
 
 class AzureGCPEncryptionTestMixin(object):

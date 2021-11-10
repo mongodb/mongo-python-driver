@@ -109,7 +109,7 @@ class _EncryptionIO(MongoCryptCallback):
         message = kms_context.message
         provider = kms_context.kms_provider
         ctx = self.opts._kms_ssl_contexts.get(provider)
-        if not ctx:
+        if ctx is None:
             # Enable strict certificate verification, OCSP, match hostname, and
             # SNI using the system default CA certificates.
             ctx = get_ssl_context(
@@ -378,9 +378,8 @@ class ClientEncryption(object):
         See :ref:`explicit-client-side-encryption` for an example.
 
         :Parameters:
-          - `kms_providers`: Map of KMS provider options. Two KMS providers
-            are supported: "aws" and "local". The kmsProviders map values
-            differ by provider:
+          - `kms_providers`: Map of KMS provider options. The `kms_providers`
+            map values differ by provider:
 
               - `aws`: Map with "accessKeyId" and "secretAccessKey" as strings.
                 These are the AWS access key ID and AWS secret access key used
@@ -396,6 +395,8 @@ class ClientEncryption(object):
                 Additionally, "endpoint" may also be specified as a string
                 (defaults to 'oauth2.googleapis.com'). These are the
                 credentials used to generate Google Cloud KMS messages.
+              - `kmip`: Map with "endpoint" as a host with required port.
+                For example: ``{"endpoint": "example.com:443"}``.
               - `local`: Map with "key" as `bytes` (96 bytes in length) or
                 a base64 encoded string which decodes
                 to 96 bytes. "key" is the master key used to encrypt/decrypt
@@ -424,7 +425,7 @@ class ClientEncryption(object):
               kms_tls_options={'kmip': {'tlsCAFile': certifi.where()}}
 
         .. versionchanged:: 4.0
-           Added the `kms_tls_options` parameter.
+           Added the `kms_tls_options` parameter and the "kmip" KMS provider.
 
         .. versionadded:: 3.9
         """
@@ -458,7 +459,7 @@ class ClientEncryption(object):
 
         :Parameters:
           - `kms_provider`: The KMS provider to use. Supported values are
-            "aws" and "local".
+            "aws", "azure", "gcp", "kmip", and "local".
           - `master_key`: Identifies a KMS-specific key used to encrypt the
             new data key. If the kmsProvider is "local" the `master_key` is
             not applicable and may be omitted.
@@ -492,6 +493,16 @@ class ClientEncryption(object):
               - `keyVersion` (string): Optional. Version of the key to use.
               - `endpoint` (string): Optional. Host with optional port.
                 Defaults to "cloudkms.googleapis.com".
+
+            If the `kms_provider` is "kmip" it is optional and has the
+            following fields::
+
+              - `keyId` (string): Optional. `keyId` is the KMIP Unique
+                Identifier to a 96 byte KMIP Secret Data managed object. If
+                keyId is omitted, the driver creates a random 96 byte KMIP
+                Secret Data managed object.
+              - `endpoint` (string): Optional. Host with optional
+                 port, e.g. "example.vault.azure.net:".
 
           - `key_alt_names` (optional): An optional list of string alternate
             names used to reference a key. If a key is created with alternate

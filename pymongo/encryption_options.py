@@ -55,9 +55,8 @@ class AutoEncryptionOpts(object):
         See :ref:`automatic-client-side-encryption` for an example.
 
         :Parameters:
-          - `kms_providers`: Map of KMS provider options. Two KMS providers
-            are supported: "aws" and "local". The kmsProviders map values
-            differ by provider:
+          - `kms_providers`: Map of KMS provider options.The kmsProviders map
+            values differ by provider:
 
               - `aws`: Map with "accessKeyId" and "secretAccessKey" as strings.
                 These are the AWS access key ID and AWS secret access key used
@@ -73,6 +72,8 @@ class AutoEncryptionOpts(object):
                 Additionally, "endpoint" may also be specified as a string
                 (defaults to 'oauth2.googleapis.com'). These are the
                 credentials used to generate Google Cloud KMS messages.
+              - `kmip`: Map with "endpoint" as a host with required port.
+                For example: ``{"endpoint": "example.com:443"}``.
               - `local`: Map with "key" as `bytes` (96 bytes in length) or
                 a base64 encoded string which decodes
                 to 96 bytes. "key" is the master key used to encrypt/decrypt
@@ -129,7 +130,7 @@ class AutoEncryptionOpts(object):
               kms_tls_options={'kmip': {'tlsCAFile': certifi.where()}}
 
         .. versionchanged:: 4.0
-           Added the `kms_tls_options` parameter.
+           Added the `kms_tls_options` parameter and the "kmip" KMS provider.
 
         .. versionadded:: 3.9
         """

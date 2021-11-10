@@ -99,6 +99,19 @@ if [ -n "$TEST_PYOPENSSL" ]; then
 fi
 
 if [ -n "$TEST_ENCRYPTION" ]; then
+    PYMONGO_CERTS=$(pwd)/test/certificates
+    # Start the mock KMS servers.
+    pushd ${DRIVERS_TOOLS}/.evergreen/csfle
+    . ./activate_venv.sh
+    # The -u options forces the stdout and stderr streams to be
+    # unbuffered.
+    python -u kms_kmip_server.py --ca_file ${PYMONGO_CERTS}/ca.pem --cert_file ${PYMONGO_CERTS}/server.pem  --port 5698 &
+    python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/expired.pem --port 8000 &
+    python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/wrong-host.pem --port 8001 &
+    trap 'kill $(jobs -p)' EXIT HUP
+    deactivate
+    popd
+
     createvirtualenv $PYTHON venv-encryption
     trap "deactivate; rm -rf venv-encryption" EXIT HUP
     PYTHON=python
@@ -146,13 +159,6 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     # Get access to the AWS temporary credentials:
     # CSFLE_AWS_TEMP_ACCESS_KEY_ID, CSFLE_AWS_TEMP_SECRET_ACCESS_KEY, CSFLE_AWS_TEMP_SESSION_TOKEN
     . $DRIVERS_TOOLS/.evergreen/csfle/set-temp-creds.sh
-
-    # Start the mock KMS servers.
-    pushd ${DRIVERS_TOOLS}/.evergreen/csfle
-    python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/expired.pem --port 8000 &
-    python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/wrong-host.pem --port 8001 &
-    trap 'kill $(jobs -p)' EXIT HUP
-    popd
 fi
 
 if [ -z "$DATA_LAKE" ]; then
