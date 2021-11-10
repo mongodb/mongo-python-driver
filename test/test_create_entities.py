@@ -53,7 +53,7 @@ class TestCreateEntities(unittest.TestCase):
         self.assertIn("events1", final_entity_map)
         self.assertGreater(len(final_entity_map["events1"]), 0)
         for event in final_entity_map["events1"]:
-            self.assertEqual(type(event), PoolCreatedEvent)
+            self.assertIn("PoolCreatedEvent", event)
 
     def test_store_all_others_as_entities(self):
         self.scenario_runner = UnifiedSpecTestMixinV1()
