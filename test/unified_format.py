@@ -1081,14 +1081,12 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         successes_key = spec.get('storeSuccessesAsEntity')
         iteration_key = spec.get('storeIterationsAsEntity')
         iteration_limiter_key = spec.get('numIterations')
-        if failure_key:
-            self.entity_map[failure_key] = []
-        if error_key:
-            self.entity_map[error_key] = []
-        if successes_key:
-            self.entity_map[successes_key] = 0
-        if iteration_key:
-            self.entity_map[iteration_key] = 0
+        for i in [failure_key, error_key]:
+            if i:
+                self.entity_map[i] = []
+        for i in [successes_key, iteration_key]:
+            if i:
+                self.entity_map[i] = 0
         i = 0
         while True:
             if iteration_limiter_key and i >= iteration_limiter_key:
@@ -1104,6 +1102,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 if iteration_key:
                     self.entity_map._entities[iteration_key] += 1
             except AssertionError as exc:
+                if iteration_key:
+                    self.entity_map._entities[iteration_key] += 1
                 if failure_key or error_key:
                     self.entity_map[failure_key or error_key].append({
                         "error": str(exc), "time": time.time(), "type": type(
@@ -1111,6 +1111,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 else:
                     raise exc
             except Exception as exc:
+                if iteration_key:
+                    self.entity_map._entities[iteration_key] += 1
                 if error_key or failure_key:
                     self.entity_map[error_key or failure_key].append(
                         {"error": str(exc), "time": time.time(), "type": type(
