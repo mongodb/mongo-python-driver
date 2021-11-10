@@ -15,8 +15,6 @@ import unittest
 
 from test.unified_format import UnifiedSpecTestMixinV1
 
-from pymongo.monitoring import PoolCreatedEvent
-
 
 class TestCreateEntities(unittest.TestCase):
     def test_store_events_as_entities(self):
