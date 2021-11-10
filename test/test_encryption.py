@@ -141,16 +141,20 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
         opts = AutoEncryptionOpts(
             {}, 'k.d', tls_options={'kmip': {'tls': True}, 'aws': {}})
         ctx = opts._tls_options['kmip']
-        self.assertEqual(ctx.check_hostname, True)
+        # On < 3.7 we check hostnames manually.
+        if sys.version_info[:2] >= (3, 7):
+            self.assertEqual(ctx.check_hostname, True)
         self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
         ctx = opts._tls_options['aws']
-        self.assertEqual(ctx.check_hostname, True)
+        if sys.version_info[:2] >= (3, 7):
+            self.assertEqual(ctx.check_hostname, True)
         self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
         opts = AutoEncryptionOpts(
             {}, 'k.d', tls_options={'kmip': {
                 'tlsCAFile': CA_PEM, 'tlsCertificateKeyFile': CLIENT_PEM}})
         ctx = opts._tls_options['kmip']
-        self.assertEqual(ctx.check_hostname, True)
+        if sys.version_info[:2] >= (3, 7):
+            self.assertEqual(ctx.check_hostname, True)
         self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
 
 
