@@ -316,9 +316,8 @@ class EntityMapUtil(object):
                     server_api['version'], strict=server_api.get('strict'),
                     deprecation_errors=server_api.get('deprecationErrors'))
             if uri:
-                client = rs_or_single_client(h=uri, **kwargs)
-            else:
-                client = rs_or_single_client(**kwargs)
+                kwargs['h'] = uri
+            client = rs_or_single_client(**kwargs)
             self[spec['id']] = client
             self.test.addCleanup(client.close)
             return
@@ -1088,6 +1087,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if i:
                 self.entity_map[i] = 0
         i = 0
+        global IS_INTERRUPTED
         while True:
             if iteration_limiter_key and i >= iteration_limiter_key:
                 break
@@ -1095,15 +1095,13 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if IS_INTERRUPTED:
                 break
             try:
+                if iteration_key:
+                    self.entity_map._entities[iteration_key] += 1
                 for op in spec["operations"]:
                     self.run_entity_operation(op)
                     if successes_key:
                         self.entity_map._entities[successes_key] += 1
-                if iteration_key:
-                    self.entity_map._entities[iteration_key] += 1
             except AssertionError as exc:
-                if iteration_key:
-                    self.entity_map._entities[iteration_key] += 1
                 if failure_key or error_key:
                     self.entity_map[failure_key or error_key].append({
                         "error": str(exc), "time": time.time(), "type": type(
@@ -1111,8 +1109,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 else:
                     raise exc
             except Exception as exc:
-                if iteration_key:
-                    self.entity_map._entities[iteration_key] += 1
                 if error_key or failure_key:
                     self.entity_map[error_key or failure_key].append(
                         {"error": str(exc), "time": time.time(), "type": type(
