@@ -108,7 +108,7 @@ class _EncryptionIO(MongoCryptCallback):
         endpoint = kms_context.endpoint
         message = kms_context.message
         provider = kms_context.kms_provider
-        ctx = self.opts._tls_options.get(provider)
+        ctx = self.opts._kms_ssl_contexts.get(provider)
         if not ctx:
             # Enable strict certificate verification, OCSP, match hostname, and
             # SNI using the system default CA certificates.
@@ -363,7 +363,7 @@ class ClientEncryption(object):
     """Explicit client-side field level encryption."""
 
     def __init__(self, kms_providers, key_vault_namespace, key_vault_client,
-                 codec_options, tls_options=None):
+                 codec_options, kms_tls_options=None):
         """Explicit client-side field level encryption.
 
         The ClientEncryption class encapsulates explicit operations on a key
@@ -415,11 +415,16 @@ class ClientEncryption(object):
             should be the same CodecOptions instance configured on the
             MongoClient, Database, or Collection used to access application
             data.
-          - `tls_options` (optional): A map of KMS provider names to TLS
+          - `kms_tls_options` (optional): A map of KMS provider names to TLS
             options to use when creating secure connections to KMS providers.
+            Accepts the same TLS options as
+            :class:`pymongo.mongo_client.MongoClient`. For example, to
+            override the system default CA file::
+
+              kms_tls_options={'kmip': {'tlsCAFile': certifi.where()}}
 
         .. versionchanged:: 4.0
-           Added the `tls_options` parameter.
+           Added the `kms_tls_options` parameter.
 
         .. versionadded:: 3.9
         """
@@ -442,7 +447,7 @@ class ClientEncryption(object):
         key_vault_coll = key_vault_client[db][coll]
 
         opts = AutoEncryptionOpts(kms_providers, key_vault_namespace,
-                                  tls_options=tls_options)
+                                  kms_tls_options=kms_tls_options)
         self._io_callbacks = _EncryptionIO(None, key_vault_coll, None, opts)
         self._encryption = ExplicitEncrypter(
             self._io_callbacks, MongoCryptOptions(kms_providers, None))

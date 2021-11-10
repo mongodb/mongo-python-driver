@@ -570,13 +570,16 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
     }
 
 
-def _parse_fle_tls_options(tls_options):
-    if not tls_options:
+def _parse_kms_tls_options(kms_tls_options):
+    """Parse KMS TLS connection options."""
+    if not kms_tls_options:
         return {}
+    if not isinstance(kms_tls_options, dict):
+        raise TypeError('kms_tls_options must be a dict')
     contexts = {}
-    for provider, opts in tls_options.items():
+    for provider, opts in kms_tls_options.items():
         if not isinstance(opts, dict):
-            raise TypeError(f'tls_options["{provider}"] must be a dict')
+            raise TypeError(f'kms_tls_options["{provider}"] must be a dict')
         opts.setdefault('tls', True)
         opts = _CaseInsensitiveDictionary(opts)
         opts = _handle_security_options(opts)

@@ -92,7 +92,7 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
         self.assertEqual(opts._mongocryptd_spawn_path, 'mongocryptd')
         self.assertEqual(
             opts._mongocryptd_spawn_args, ['--idleShutdownTimeoutSecs=60'])
-        self.assertEqual(opts._tls_options, {})
+        self.assertEqual(opts._kms_ssl_contexts, {})
 
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, 'pymongocrypt is not installed')
     def test_init_spawn_args(self):
@@ -118,11 +118,11 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
             ['--quiet', '--port=27020', '--idleShutdownTimeoutSecs=60'])
 
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, 'pymongocrypt is not installed')
-    def test_init_tls_options(self):
+    def test_init_kms_tls_options(self):
         # Error cases:
         with self.assertRaisesRegex(
-                TypeError, r'tls_options\["kmip"\] must be a dict'):
-            AutoEncryptionOpts({}, 'k.d', tls_options={'kmip': 1})
+                TypeError, r'kms_tls_options\["kmip"\] must be a dict'):
+            AutoEncryptionOpts({}, 'k.d', kms_tls_options={'kmip': 1})
         for tls_opts in [
                 {'kmip': {'tls': True, 'tlsInsecure': True}},
                 {'kmip': {'tls': True, 'tlsAllowInvalidCertificates': True}},
@@ -130,29 +130,29 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
                 {'kmip': {'tls': True, 'tlsDisableOCSPEndpointCheck': True}}]:
             with self.assertRaisesRegex(
                     ConfigurationError, 'Insecure TLS options prohibited'):
-                opts = AutoEncryptionOpts({}, 'k.d', tls_options=tls_opts)
+                opts = AutoEncryptionOpts({}, 'k.d', kms_tls_options=tls_opts)
         with self.assertRaises(FileNotFoundError):
-            AutoEncryptionOpts({}, 'k.d', tls_options={
+            AutoEncryptionOpts({}, 'k.d', kms_tls_options={
                 'kmip': {'tlsCAFile': 'does-not-exist'}})
         # Success cases:
         for tls_opts in [None, {}]:
-            opts = AutoEncryptionOpts({}, 'k.d', tls_options=tls_opts)
-            self.assertEqual(opts._tls_options, {})
+            opts = AutoEncryptionOpts({}, 'k.d', kms_tls_options=tls_opts)
+            self.assertEqual(opts._kms_ssl_contexts, {})
         opts = AutoEncryptionOpts(
-            {}, 'k.d', tls_options={'kmip': {'tls': True}, 'aws': {}})
-        ctx = opts._tls_options['kmip']
+            {}, 'k.d', kms_tls_options={'kmip': {'tls': True}, 'aws': {}})
+        ctx = opts._kms_ssl_contexts['kmip']
         # On < 3.7 we check hostnames manually.
         if sys.version_info[:2] >= (3, 7):
             self.assertEqual(ctx.check_hostname, True)
         self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
-        ctx = opts._tls_options['aws']
+        ctx = opts._kms_ssl_contexts['aws']
         if sys.version_info[:2] >= (3, 7):
             self.assertEqual(ctx.check_hostname, True)
         self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
         opts = AutoEncryptionOpts(
-            {}, 'k.d', tls_options={'kmip': {
+            {}, 'k.d', kms_tls_options={'kmip': {
                 'tlsCAFile': CA_PEM, 'tlsCertificateKeyFile': CLIENT_PEM}})
-        ctx = opts._tls_options['kmip']
+        ctx = opts._kms_ssl_contexts['kmip']
         if sys.version_info[:2] >= (3, 7):
             self.assertEqual(ctx.check_hostname, True)
         self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
