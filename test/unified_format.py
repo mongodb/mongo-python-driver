@@ -1101,23 +1101,18 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                     self.run_entity_operation(op)
                     if successes_key:
                         self.entity_map._entities[successes_key] += 1
-            except AssertionError as exc:
-                if failure_key or error_key:
-                    self.entity_map[failure_key or error_key].append({
-                        "error": str(exc),
-                        "time": time.time(),
-                        "type": type(exc)})
-                else:
-                    raise exc
             except Exception as exc:
-                if error_key or failure_key:
-                    self.entity_map[error_key or failure_key].append({
-                        "error": Zstr(exc),
-                         "time": time.time(),
-                         "type": type(exc)
-                    })
+                if isinstance(exc, AssertionError):
+                    key = failure_key or error_key
                 else:
-                    raise exc
+                    key = error_key or failure_key
+                if not key:
+                    raise
+                self.entity_map[key].append({
+                    "error": str(exc),
+                    "time": time.time(),
+                    "type": type(exc)
+                })
 
     def run_special_operation(self, spec):
         opname = spec['name']
