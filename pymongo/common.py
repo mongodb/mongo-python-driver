@@ -30,7 +30,6 @@ from pymongo.compression_support import (validate_compressors,
                                          validate_zlib_compression_level)
 from pymongo.driver_info import DriverInfo
 from pymongo.server_api import ServerApi
-from pymongo.encryption_options import validate_auto_encryption_opts_or_none
 from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _validate_event_listeners
 from pymongo.read_concern import ReadConcern
@@ -579,6 +578,18 @@ def validate_tzinfo(dummy, value):
     """
     if value is not None and not isinstance(value, datetime.tzinfo):
         raise TypeError("%s must be an instance of datetime.tzinfo" % value)
+    return value
+
+
+def validate_auto_encryption_opts_or_none(option, value):
+    """Validate the driver keyword arg."""
+    if value is None:
+        return value
+    from pymongo.encryption_options import AutoEncryptionOpts
+    if not isinstance(value, AutoEncryptionOpts):
+        raise TypeError("%s must be an instance of AutoEncryptionOpts" % (
+            option,))
+
     return value
 
 

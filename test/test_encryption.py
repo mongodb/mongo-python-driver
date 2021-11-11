@@ -17,6 +17,7 @@
 import base64
 import copy
 import os
+import ssl
 import traceback
 import socket
 import sys
@@ -50,9 +51,8 @@ from pymongo.errors import (BulkWriteError,
 from pymongo.mongo_client import MongoClient
 from pymongo.operations import InsertOne
 from pymongo.write_concern import WriteConcern
-from test.test_ssl import CA_PEM
 
-from test import (unittest,
+from test import (unittest, CA_PEM, CLIENT_PEM,
                   client_context,
                   IntegrationTest,
                   PyMongoTestCase)
@@ -92,6 +92,7 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
         self.assertEqual(opts._mongocryptd_spawn_path, 'mongocryptd')
         self.assertEqual(
             opts._mongocryptd_spawn_args, ['--idleShutdownTimeoutSecs=60'])
+        self.assertEqual(opts._kms_ssl_contexts, {})
 
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, 'pymongocrypt is not installed')
     def test_init_spawn_args(self):
@@ -115,6 +116,46 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
         self.assertEqual(
             opts._mongocryptd_spawn_args,
             ['--quiet', '--port=27020', '--idleShutdownTimeoutSecs=60'])
+
+    @unittest.skipUnless(_HAVE_PYMONGOCRYPT, 'pymongocrypt is not installed')
+    def test_init_kms_tls_options(self):
+        # Error cases:
+        with self.assertRaisesRegex(
+                TypeError, r'kms_tls_options\["kmip"\] must be a dict'):
+            AutoEncryptionOpts({}, 'k.d', kms_tls_options={'kmip': 1})
+        for tls_opts in [
+                {'kmip': {'tls': True, 'tlsInsecure': True}},
+                {'kmip': {'tls': True, 'tlsAllowInvalidCertificates': True}},
+                {'kmip': {'tls': True, 'tlsAllowInvalidHostnames': True}},
+                {'kmip': {'tls': True, 'tlsDisableOCSPEndpointCheck': True}}]:
+            with self.assertRaisesRegex(
+                    ConfigurationError, 'Insecure TLS options prohibited'):
+                opts = AutoEncryptionOpts({}, 'k.d', kms_tls_options=tls_opts)
+        with self.assertRaises(FileNotFoundError):
+            AutoEncryptionOpts({}, 'k.d', kms_tls_options={
+                'kmip': {'tlsCAFile': 'does-not-exist'}})
+        # Success cases:
+        for tls_opts in [None, {}]:
+            opts = AutoEncryptionOpts({}, 'k.d', kms_tls_options=tls_opts)
+            self.assertEqual(opts._kms_ssl_contexts, {})
+        opts = AutoEncryptionOpts(
+            {}, 'k.d', kms_tls_options={'kmip': {'tls': True}, 'aws': {}})
+        ctx = opts._kms_ssl_contexts['kmip']
+        # On < 3.7 we check hostnames manually.
+        if sys.version_info[:2] >= (3, 7):
+            self.assertEqual(ctx.check_hostname, True)
+        self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
+        ctx = opts._kms_ssl_contexts['aws']
+        if sys.version_info[:2] >= (3, 7):
+            self.assertEqual(ctx.check_hostname, True)
+        self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
+        opts = AutoEncryptionOpts(
+            {}, 'k.d', kms_tls_options={'kmip': {
+                'tlsCAFile': CA_PEM, 'tlsCertificateKeyFile': CLIENT_PEM}})
+        ctx = opts._kms_ssl_contexts['kmip']
+        if sys.version_info[:2] >= (3, 7):
+            self.assertEqual(ctx.check_hostname, True)
+        self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
 
 
 class TestClientOptions(PyMongoTestCase):
