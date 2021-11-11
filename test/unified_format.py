@@ -1111,7 +1111,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.entity_map[key].append({
                     "error": str(exc),
                     "time": time.time(),
-                    "type": type(exc)
+                    "type": type(exc).__name__
                 })
 
     def run_special_operation(self, spec):
