@@ -1820,6 +1820,10 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
             providers, 'keyvault.datakeys', self.client, OPTS,
             kms_tls_options=kms_tls_opts_ca_only)
         self.addCleanup(self.client_encryption_invalid_hostname.close)
+        # Errors when client has no cert, some examples:
+        # [SSL: TLSV13_ALERT_CERTIFICATE_REQUIRED] tlsv13 alert certificate required (_ssl.c:2623)
+        # EOF occurred in violation of protocol (_ssl.c:2384)
+        self.cert_error = 'certificate required|SSL handshake failed|EOF'
 
     def test_01_aws(self):
         key = {
@@ -1827,10 +1831,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
            'key': 'arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0',
            'endpoint': '127.0.0.1:8002',
         }
-        # Example:
-        # [SSL: TLSV13_ALERT_CERTIFICATE_REQUIRED] tlsv13 alert certificate required (_ssl.c:2623)
-        with self.assertRaisesRegex(
-                EncryptionError, 'certificate required|SSL handshake failed'):
+        with self.assertRaisesRegex(EncryptionError, self.cert_error):
             self.client_encryption_no_client_cert.create_data_key('aws', key)
         # "parse error" here means that the TLS handshake succeeded.
         with self.assertRaisesRegex(EncryptionError, 'parse error'):
@@ -1853,8 +1854,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
     def test_02_azure(self):
         key = {'keyVaultEndpoint': 'doesnotexist.local', 'keyName': 'foo'}
         # Missing client cert error.
-        with self.assertRaisesRegex(
-                EncryptionError, 'certificate required|SSL handshake failed'):
+        with self.assertRaisesRegex(EncryptionError, self.cert_error):
             self.client_encryption_no_client_cert.create_data_key('azure', key)
         # "HTTP status=404" here means that the TLS handshake succeeded.
         with self.assertRaisesRegex(EncryptionError, 'HTTP status=404'):
@@ -1873,8 +1873,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         key = {'projectId': 'foo', 'location': 'bar', 'keyRing': 'baz',
                'keyName': 'foo'}
         # Missing client cert error.
-        with self.assertRaisesRegex(
-                EncryptionError, 'certificate required|SSL handshake failed'):
+        with self.assertRaisesRegex(EncryptionError, self.cert_error):
             self.client_encryption_no_client_cert.create_data_key('gcp', key)
         # "HTTP status=404" here means that the TLS handshake succeeded.
         with self.assertRaisesRegex(EncryptionError, 'HTTP status=404'):
@@ -1890,8 +1889,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
 
     def test_04_kmip(self):
         # Missing client cert error.
-        with self.assertRaisesRegex(
-                EncryptionError, 'certificate required|SSL handshake failed'):
+        with self.assertRaisesRegex(EncryptionError, self.cert_error):
             self.client_encryption_no_client_cert.create_data_key('kmip')
         self.client_encryption_with_tls.create_data_key('kmip')
         # Expired cert error.
