@@ -17,11 +17,12 @@
 import base64
 import copy
 import os
+import re
 import ssl
-import traceback
 import socket
 import sys
 import textwrap
+import traceback
 import uuid
 
 sys.path[0:0] = [""]
@@ -1185,6 +1186,7 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             key_vault_client=client_context.client,
             codec_options=OPTS,
             kms_tls_options=KMS_TLS_OPTS)
+        self._kmip_host_error = ''
 
     def tearDown(self):
         self.client_encryption.close()
@@ -1317,12 +1319,22 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             self.client_encryption.create_data_key(
                 'gcp', master_key=master_key)
 
+    def kmip_host_error(self):
+        if self._kmip_host_error:
+            return self._kmip_host_error
+        # The full error should be something like:
+        # "[Errno 8] nodename nor servname provided, or not known"
+        try:
+            socket.getaddrinfo('doesnotexist.local', 5698, socket.AF_INET,
+                               socket.SOCK_STREAM)
+        except Exception as exc:
+            self._kmip_host_error = re.escape(str(exc))
+            return self._kmip_host_error
+
     def test_10_kmip_invalid_endpoint(self):
         key = {'keyId': '1'}
         self.run_test_expected_success('kmip', key)
-        # The full error should be something like:
-        # "[Errno 8] nodename nor servname provided, or not known"
-        with self.assertRaisesRegex(EncryptionError, "servname provided"):
+        with self.assertRaisesRegex(EncryptionError, self.kmip_host_error()):
             self.client_encryption_invalid.create_data_key('kmip', key)
 
     def test_11_kmip_master_key_endpoint(self):
@@ -1339,9 +1351,7 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
 
     def test_12_kmip_master_key_invalid_endpoint(self):
         key = {'keyId': '1', 'endpoint': 'doesnotexist.local:5698'}
-        # The full error should be something like:
-        # "[Errno 8] nodename nor servname provided, or not known"
-        with self.assertRaisesRegex(EncryptionError, "servname provided"):
+        with self.assertRaisesRegex(EncryptionError, self.kmip_host_error()):
             self.client_encryption.create_data_key('kmip', key)
 
 
