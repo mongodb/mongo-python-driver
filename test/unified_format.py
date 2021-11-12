@@ -228,7 +228,8 @@ class EventListenerUtil(CMAPListener, CommandListener):
         for id in self._event_mapping[event_name]:
             self.entity_map[id].append({
                 "name": type(event).__name__,
-                "observedAt": time.time()
+                "observedAt": time.time(),
+                "description": repr(event)
             })
 
     def _command_event(self, event):

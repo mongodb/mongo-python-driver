@@ -47,6 +47,7 @@ class TestCreateEntities(unittest.TestCase):
         self.scenario_runner.TEST_SPEC = spec
         self.scenario_runner.setUp()
         self.scenario_runner.run_scenario(spec["tests"][0])
+        self.scenario_runner.entity_map["client0"].close()
         final_entity_map = self.scenario_runner.entity_map
         self.assertIn("events1", final_entity_map)
         self.assertGreater(len(final_entity_map["events1"]), 0)
@@ -130,6 +131,7 @@ class TestCreateEntities(unittest.TestCase):
         self.scenario_runner.TEST_SPEC = spec
         self.scenario_runner.setUp()
         self.scenario_runner.run_scenario(spec["tests"][0])
+        self.scenario_runner.entity_map["client0"].close()
         final_entity_map = self.scenario_runner.entity_map
         for entity in ["errors", "failures"]:
             self.assertIn(entity, final_entity_map)
