@@ -1764,5 +1764,135 @@ class TestKmsTLSProse(EncryptionIntegrationTest):
             self.client_encrypted.create_data_key('aws', master_key=key)
 
 
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#kms-tls-options-tests
+class TestKmsTLSOptions(EncryptionIntegrationTest):
+    @unittest.skipUnless(any(AWS_CREDS.values()),
+                         'AWS environment credentials are not set')
+    def setUp(self):
+        super(TestKmsTLSOptions, self).setUp()
+        # 1, create client with only tlsCAFile.
+        providers = copy.deepcopy(ALL_KMS_PROVIDERS)
+        providers['azure']['identityPlatformEndpoint'] = '127.0.0.1:8002'
+        providers['gcp']['endpoint'] = '127.0.0.1:8002'
+        kms_tls_opts_ca_only = {
+            'aws': {'tlsCAFile': CA_PEM},
+            'azure': {'tlsCAFile': CA_PEM},
+            'gcp': {'tlsCAFile': CA_PEM},
+            'kmip': {'tlsCAFile': CA_PEM},
+        }
+        self.client_encryption_no_client_cert = ClientEncryption(
+            providers, 'keyvault.datakeys', self.client, OPTS,
+            kms_tls_options=kms_tls_opts_ca_only)
+        self.addCleanup(self.client_encryption_no_client_cert.close)
+        # 2, same providers as above but with tlsCertificateKeyFile.
+        kms_tls_opts = copy.deepcopy(kms_tls_opts_ca_only)
+        for p in kms_tls_opts:
+            kms_tls_opts[p]['tlsCertificateKeyFile'] = CLIENT_PEM
+        self.client_encryption_with_tls = ClientEncryption(
+            providers, 'keyvault.datakeys', self.client, OPTS,
+            kms_tls_options=kms_tls_opts)
+        self.addCleanup(self.client_encryption_with_tls.close)
+        # 3, update endpoints to expired host.
+        providers = copy.deepcopy(providers)
+        providers['azure']['identityPlatformEndpoint'] = '127.0.0.1:8000'
+        providers['gcp']['endpoint'] = '127.0.0.1:8000'
+        providers['kmip']['endpoint'] = '127.0.0.1:8000'
+        self.client_encryption_expired = ClientEncryption(
+            providers, 'keyvault.datakeys', self.client, OPTS,
+            kms_tls_options=kms_tls_opts_ca_only)
+        self.addCleanup(self.client_encryption_expired.close)
+        # 3, update endpoints to invalid host.
+        providers = copy.deepcopy(providers)
+        providers['azure']['identityPlatformEndpoint'] = '127.0.0.1:8001'
+        providers['gcp']['endpoint'] = '127.0.0.1:8001'
+        providers['kmip']['endpoint'] = '127.0.0.1:8001'
+        self.client_encryption_invalid_hostname = ClientEncryption(
+            providers, 'keyvault.datakeys', self.client, OPTS,
+            kms_tls_options=kms_tls_opts_ca_only)
+        self.addCleanup(self.client_encryption_invalid_hostname.close)
+
+    def test_01_aws(self):
+        key = {
+           'region': 'us-east-1',
+           'key': 'arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0',
+           'endpoint': '127.0.0.1:8002',
+        }
+        # Example:
+        # [SSL: TLSV13_ALERT_CERTIFICATE_REQUIRED] tlsv13 alert certificate required (_ssl.c:2623)
+        with self.assertRaisesRegex(
+                EncryptionError, 'certificate required|SSL handshake failed'):
+            self.client_encryption_no_client_cert.create_data_key('aws', key)
+        # "parse error" here means that the TLS handshake succeeded.
+        with self.assertRaisesRegex(EncryptionError, 'parse error'):
+            self.client_encryption_with_tls.create_data_key('aws', key)
+        # Some examples:
+        # certificate verify failed: certificate has expired (_ssl.c:1129)
+        # amazon1-2018 Python 3.6: certificate verify failed (_ssl.c:852)
+        key['endpoint'] = '127.0.0.1:8000'
+        with self.assertRaisesRegex(
+                EncryptionError, 'expired|certificate verify failed'):
+            self.client_encryption_expired.create_data_key('aws', key)
+        # Some examples:
+        # certificate verify failed: IP address mismatch, certificate is not valid for '127.0.0.1'. (_ssl.c:1129)"
+        # hostname '127.0.0.1' doesn't match 'wronghost.com'
+        key['endpoint'] = '127.0.0.1:8001'
+        with self.assertRaisesRegex(
+                EncryptionError, 'IP address mismatch|wronghost'):
+            self.client_encryption_invalid_hostname.create_data_key('aws', master_key=key)
+
+    def test_02_azure(self):
+        key = {'keyVaultEndpoint': 'doesnotexist.local', 'keyName': 'foo'}
+        # Missing client cert error.
+        with self.assertRaisesRegex(
+                EncryptionError, 'certificate required|SSL handshake failed'):
+            self.client_encryption_no_client_cert.create_data_key('azure', key)
+        # "HTTP status=404" here means that the TLS handshake succeeded.
+        with self.assertRaisesRegex(EncryptionError, 'HTTP status=404'):
+            self.client_encryption_with_tls.create_data_key('azure', key)
+        # Expired cert error.
+        with self.assertRaisesRegex(
+                EncryptionError, 'expired|certificate verify failed'):
+            self.client_encryption_expired.create_data_key('azure', key)
+        # Invalid cert hostname error.
+        with self.assertRaisesRegex(
+                EncryptionError, 'IP address mismatch|wronghost'):
+            self.client_encryption_invalid_hostname.create_data_key(
+                'azure', key)
+
+    def test_03_gcp(self):
+        key = {'projectId': 'foo', 'location': 'bar', 'keyRing': 'baz',
+               'keyName': 'foo'}
+        # Missing client cert error.
+        with self.assertRaisesRegex(
+                EncryptionError, 'certificate required|SSL handshake failed'):
+            self.client_encryption_no_client_cert.create_data_key('gcp', key)
+        # "HTTP status=404" here means that the TLS handshake succeeded.
+        with self.assertRaisesRegex(EncryptionError, 'HTTP status=404'):
+            self.client_encryption_with_tls.create_data_key('gcp', key)
+        # Expired cert error.
+        with self.assertRaisesRegex(
+                EncryptionError, 'expired|certificate verify failed'):
+            self.client_encryption_expired.create_data_key('gcp', key)
+        # Invalid cert hostname error.
+        with self.assertRaisesRegex(
+                EncryptionError, 'IP address mismatch|wronghost'):
+            self.client_encryption_invalid_hostname.create_data_key('gcp', key)
+
+    def test_04_kmip(self):
+        # Missing client cert error.
+        with self.assertRaisesRegex(
+                EncryptionError, 'certificate required|SSL handshake failed'):
+            self.client_encryption_no_client_cert.create_data_key('kmip')
+        self.client_encryption_with_tls.create_data_key('kmip')
+        # Expired cert error.
+        with self.assertRaisesRegex(
+                EncryptionError, 'expired|certificate verify failed'):
+            self.client_encryption_expired.create_data_key('kmip')
+        # Invalid cert hostname error.
+        with self.assertRaisesRegex(
+                EncryptionError, 'IP address mismatch|wronghost'):
+            self.client_encryption_invalid_hostname.create_data_key('kmip')
+
+
 if __name__ == "__main__":
     unittest.main()

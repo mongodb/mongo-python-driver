@@ -99,15 +99,15 @@ if [ -n "$TEST_PYOPENSSL" ]; then
 fi
 
 if [ -n "$TEST_ENCRYPTION" ]; then
-    PYMONGO_CERTS=$(pwd)/test/certificates
     # Start the mock KMS servers.
     pushd ${DRIVERS_TOOLS}/.evergreen/csfle
     . ./activate_venv.sh
     # The -u options forces the stdout and stderr streams to be
     # unbuffered.
-    python -u kms_kmip_server.py --ca_file ${PYMONGO_CERTS}/ca.pem --cert_file ${PYMONGO_CERTS}/server.pem  --port 5698 &
+    python -u kms_kmip_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/server.pem  --port 5698 &
     python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/expired.pem --port 8000 &
     python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/wrong-host.pem --port 8001 &
+    python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/server.pem --port 8002 --require_client_cert &
     trap 'kill $(jobs -p)' EXIT HUP
     deactivate
     popd
