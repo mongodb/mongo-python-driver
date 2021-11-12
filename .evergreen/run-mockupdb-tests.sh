@@ -15,6 +15,5 @@ trap "deactivatei, rm -rf mockuptests" EXIT HUP
 # download it from pypi.
 python -m pip install ${PROJECT_DIRECTORY}
 
-git clone https://github.com/ajdavis/pymongo-mockup-tests.git
-cd pymongo-mockup-tests
+cd ../test/mockupdb
 python setup.py test
