@@ -374,6 +374,7 @@ functions:
         background: true
         script: |
           if [ -n "${test_encryption}" ]; then
+            ${PREPARE_SHELL}
             cd ${DRIVERS_TOOLS}/.evergreen/csfle
             . ./activate_venv.sh
             # The -u options forces the stdout and stderr streams to be unbuffered.
