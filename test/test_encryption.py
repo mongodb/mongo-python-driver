@@ -1822,8 +1822,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         self.addCleanup(self.client_encryption_invalid_hostname.close)
         # Errors when client has no cert, some examples:
         # [SSL: TLSV13_ALERT_CERTIFICATE_REQUIRED] tlsv13 alert certificate required (_ssl.c:2623)
-        # EOF occurred in violation of protocol (_ssl.c:2384)
-        self.cert_error = 'certificate required|SSL handshake failed|EOF'
+        self.cert_error = 'certificate required|SSL handshake failed'
 
     def test_01_aws(self):
         key = {
