@@ -102,9 +102,9 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     # Start the mock KMS servers.
     pushd ${DRIVERS_TOOLS}/.evergreen/csfle
     . ./activate_venv.sh
-    # The -u options forces the stdout and stderr streams to be
-    # unbuffered.
-    python -u kms_kmip_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/server.pem  --port 5698 &
+    # The -u options forces the stdout and stderr streams to be unbuffered.
+    # TMPDIR is required to avoid "AF_UNIX path too long" errors.
+    TMPDIR="$(dirname $DRIVERS_TOOLS)" python -u kms_kmip_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/server.pem  --port 5698 &
     python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/expired.pem --port 8000 &
     python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/wrong-host.pem --port 8001 &
     python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/server.pem --port 8002 --require_client_cert &
