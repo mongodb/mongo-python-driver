@@ -1822,7 +1822,10 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         self.addCleanup(self.client_encryption_invalid_hostname.close)
         # Errors when client has no cert, some examples:
         # [SSL: TLSV13_ALERT_CERTIFICATE_REQUIRED] tlsv13 alert certificate required (_ssl.c:2623)
-        self.cert_error = 'certificate required|SSL handshake failed'
+        # On Windows this error might be:
+        # [WinError 10054] An existing connection was forcibly closed by the remote host
+        self.cert_error = ('certificate required|SSL handshake failed|'
+                           'forcibly closed')
 
     def test_01_aws(self):
         key = {
@@ -1848,7 +1851,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         key['endpoint'] = '127.0.0.1:8001'
         with self.assertRaisesRegex(
                 EncryptionError, 'IP address mismatch|wronghost'):
-            self.client_encryption_invalid_hostname.create_data_key('aws', master_key=key)
+            self.client_encryption_invalid_hostname.create_data_key('aws', key)
 
     def test_02_azure(self):
         key = {'keyVaultEndpoint': 'doesnotexist.local', 'keyName': 'foo'}
