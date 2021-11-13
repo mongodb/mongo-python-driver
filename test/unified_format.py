@@ -226,7 +226,11 @@ class EventListenerUtil(CMAPListener, CommandListener):
         if event_name in self._event_types:
             super(EventListenerUtil, self).add_event(event)
         for id in self._event_mapping[event_name]:
-            self.entity_map[id].append(str(event))
+            self.entity_map[id].append({
+                "name": type(event).__name__,
+                "observedAt": time.time(),
+                "description": repr(event)
+            })
 
     def _command_event(self, event):
         if event.command_name.lower() not in self._ignore_commands:
