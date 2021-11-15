@@ -15,8 +15,6 @@ import unittest
 
 from test.unified_format import UnifiedSpecTestMixinV1
 
-from pymongo.monitoring import PoolCreatedEvent
-
 
 class TestCreateEntities(unittest.TestCase):
     def test_store_events_as_entities(self):
@@ -49,11 +47,12 @@ class TestCreateEntities(unittest.TestCase):
         self.scenario_runner.TEST_SPEC = spec
         self.scenario_runner.setUp()
         self.scenario_runner.run_scenario(spec["tests"][0])
+        self.scenario_runner.entity_map["client0"].close()
         final_entity_map = self.scenario_runner.entity_map
         self.assertIn("events1", final_entity_map)
         self.assertGreater(len(final_entity_map["events1"]), 0)
         for event in final_entity_map["events1"]:
-            self.assertEqual(type(event), PoolCreatedEvent)
+            self.assertIn("PoolCreatedEvent", event["name"])
 
     def test_store_all_others_as_entities(self):
         self.scenario_runner = UnifiedSpecTestMixinV1()
@@ -132,6 +131,7 @@ class TestCreateEntities(unittest.TestCase):
         self.scenario_runner.TEST_SPEC = spec
         self.scenario_runner.setUp()
         self.scenario_runner.run_scenario(spec["tests"][0])
+        self.scenario_runner.entity_map["client0"].close()
         final_entity_map = self.scenario_runner.entity_map
         for entity in ["errors", "failures"]:
             self.assertIn(entity, final_entity_map)
