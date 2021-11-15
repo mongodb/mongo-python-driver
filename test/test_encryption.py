@@ -1778,6 +1778,9 @@ class TestKmsTLSProse(EncryptionIntegrationTest):
 class TestKmsTLSOptions(EncryptionIntegrationTest):
     @unittest.skipUnless(any(AWS_CREDS.values()),
                          'AWS environment credentials are not set')
+    @unittest.skipIf(sys.version_info[:2] >= (3, 10) and
+                     sys.platform == 'win32',
+                     'These tests hang with Python 3.10 on Windows')
     def setUp(self):
         super(TestKmsTLSOptions, self).setUp()
         # 1, create client with only tlsCAFile.
@@ -1831,7 +1834,6 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
             # EOF occurred in violation of protocol (_ssl.c:2384)
             if sys.version_info[:2] >= (3, 10):
                 self.cert_error += '|forcibly closed'
-
 
     def test_01_aws(self):
         key = {
