@@ -216,6 +216,8 @@ class MongoClient(common.BaseObject):
           - `maxIdleTimeMS` (optional): The maximum number of milliseconds that
             a connection can remain idle in the pool before being removed and
             replaced. Defaults to `None` (no limit).
+          - `maxConnecting` (optional): The maximum number of connections that
+            each pool can establish concurrently. Defaults to `2`.
           - `socketTimeoutMS`: (integer or None) Controls how long (in
             milliseconds) the driver will wait for a response after sending an
             ordinary (non-monitoring) database operation before concluding that
@@ -506,7 +508,8 @@ class MongoClient(common.BaseObject):
            arguments.
            The default for `uuidRepresentation` was changed from
            ``pythonLegacy`` to ``unspecified``.
-           Added the ``srvServiceName`` URI and keyword argument.
+           Added the ``srvServiceName`` and ``maxConnecting`` URI and keyword
+           argument.
 
         .. versionchanged:: 3.12
            Added the ``server_api`` keyword argument.
