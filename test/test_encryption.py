@@ -695,7 +695,7 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
             'keyName': 'key-name-csfle'},
         'kmip': {
             'keyId': '1',
-            'endpoint': KMIP['endpoint'],  # TODO: is this needed?
+            'endpoint': KMIP['endpoint'],
         },
         'local': None
     }
