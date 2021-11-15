@@ -12,6 +12,7 @@ trap "deactivatei, rm -rf mockuptests" EXIT HUP
 
 # Install PyMongo from git clone so mockup-tests don't
 # download it from pypi.
-${PYTHON_BINARY} -m pip install ${PROJECT_DIRECTORY}
-${PYTHON_BINARY} -m pip install pymongo mockupdb bson
-${PYTHON_BINARY} -m unittest discover tests/mockupdb
+python -m pip install ${PROJECT_DIRECTORY}
+python -m pip install mockupdb bson
+cd tests/mockupdb
+python -m unittest discover
