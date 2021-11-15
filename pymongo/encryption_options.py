@@ -55,8 +55,8 @@ class AutoEncryptionOpts(object):
         See :ref:`automatic-client-side-encryption` for an example.
 
         :Parameters:
-          - `kms_providers`: Map of KMS provider options.The kmsProviders map
-            values differ by provider:
+          - `kms_providers`: Map of KMS provider options. The `kms_providers`
+            map values differ by provider:
 
               - `aws`: Map with "accessKeyId" and "secretAccessKey" as strings.
                 These are the AWS access key ID and AWS secret access key used
