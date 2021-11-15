@@ -14,4 +14,5 @@ trap "deactivatei, rm -rf mockuptests" EXIT HUP
 # download it from pypi.
 ${PYTHON_BINARY} -m pip install ${PROJECT_DIRECTORY}
 ${PYTHON_BINARY} -m pip install pymongo mockupdb bson
-${PYTHON_BINARY} -m unittest discover /tests/mockupdb
+echo $PWD
+${PYTHON_BINARY} -m unittest discover ../tests/mockupdb
