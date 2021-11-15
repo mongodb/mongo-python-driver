@@ -14,5 +14,8 @@ trap "deactivatei, rm -rf mockuptests" EXIT HUP
 # download it from pypi.
 python -m pip install ${PROJECT_DIRECTORY}
 python -m pip install mockupdb bson
+echo "SEARCH FOR THIS!!"
+ls ${PROJECT_DIRECTORY}
+ls ${PROJECT_DIRECTORY/tests}
 cd ${PROJECT_DIRECTORY}/tests/mockupdb
 python -m unittest discover
