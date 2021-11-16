@@ -1775,9 +1775,6 @@ class TestKmsTLSProse(EncryptionIntegrationTest):
 class TestKmsTLSOptions(EncryptionIntegrationTest):
     @unittest.skipUnless(any(AWS_CREDS.values()),
                          'AWS environment credentials are not set')
-    @unittest.skipIf(sys.version_info[:2] >= (3, 10) and
-                     sys.platform == 'win32',
-                     'These tests hang with Python 3.10 on Windows')
     def setUp(self):
         super(TestKmsTLSOptions, self).setUp()
         # 1, create client with only tlsCAFile.
@@ -1822,7 +1819,8 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         self.addCleanup(self.client_encryption_invalid_hostname.close)
         # Errors when client has no cert, some examples:
         # [SSL: TLSV13_ALERT_CERTIFICATE_REQUIRED] tlsv13 alert certificate required (_ssl.c:2623)
-        self.cert_error = 'certificate required|SSL handshake failed'
+        self.cert_error = ('certificate required|SSL handshake failed|'
+                           'KMS connection closed')
         # On Windows this error might be:
         # [WinError 10054] An existing connection was forcibly closed by the remote host
         if sys.platform == 'win32':
