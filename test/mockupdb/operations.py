@@ -66,7 +66,7 @@ operations = [
         not_master=not_master_reply_to_query),
     Operation(
         'count',
-        lambda client: client.db.collection.count(),
+        lambda client: client.db.collection.count_documents({}),
         reply={'n': 1},
         op_type='may-use-secondary',
         not_master=not_master_reply_to_command),
@@ -79,7 +79,7 @@ operations = [
     Operation(
         'mapreduce',
         lambda client: client.db.collection.map_reduce(
-            'function() {}', 'function() {}', 'out_collection'),
+            'function() {}', 'function() {}'),
         reply={'result': {'db': 'db', 'collection': 'out_collection'}},
         op_type='must-use-primary',
         not_master=not_master_reply_to_command),
