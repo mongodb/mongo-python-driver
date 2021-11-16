@@ -1828,7 +1828,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
             # On Windows Python 3.10+ this error might be:
             # EOF occurred in violation of protocol (_ssl.c:2384)
             if sys.version_info[:2] >= (3, 10):
-                self.cert_error += '|forcibly closed'
+                self.cert_error += '|EOF'
 
     def test_01_aws(self):
         key = {
