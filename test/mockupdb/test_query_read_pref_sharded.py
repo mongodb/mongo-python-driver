@@ -23,7 +23,7 @@ from pymongo.read_preferences import (Primary,
                                       Nearest)
 from mockupdb import MockupDB, going, Command, OpMsg
 
-from tests import unittest
+import unittest
 
 
 class TestQueryAndReadModeSharded(unittest.TestCase):

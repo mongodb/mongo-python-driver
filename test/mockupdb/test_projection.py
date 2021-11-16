@@ -18,7 +18,7 @@ from bson import SON
 from mockupdb import Command, MockupDB, OpQuery, going
 from pymongo import MongoClient
 
-from tests import unittest
+import unittest
 
 
 class TestProjection(unittest.TestCase):

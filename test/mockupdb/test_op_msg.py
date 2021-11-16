@@ -19,7 +19,7 @@ from pymongo import MongoClient, WriteConcern, version_tuple
 from pymongo.operations import InsertOne, UpdateOne, DeleteOne
 from pymongo.cursor import CursorType
 
-from tests import unittest
+import unittest
 
 
 Operation = namedtuple(

@@ -20,8 +20,8 @@ Just make sure SlaveOkay is *not* set on primary reads.
 from mockupdb import MockupDB, going
 from pymongo import MongoClient
 
-from tests import unittest
-from tests.operations import operations
+import unittest
+from test.operations import operations
 
 
 class TestSlaveOkayRS(unittest.TestCase):

@@ -16,7 +16,7 @@ from mockupdb import MockupDB
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
 
-from tests import unittest
+import unittest
 
 
 class TestAuthRecoveringMember(unittest.TestCase):

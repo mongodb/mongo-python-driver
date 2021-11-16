@@ -31,8 +31,8 @@ except ImportError:
 from mockupdb import MockupDB, going
 from pymongo import MongoClient
 
-from tests import unittest
-from tests.operations import operations
+import unittest
+from test.operations import operations
 
 
 class TestSlaveOkaySharded(unittest.TestCase):

@@ -20,8 +20,8 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.errors import ConnectionFailure
 from pymongo import MongoClient, version_tuple
 
-from tests import unittest
-from tests.operations import operations
+import unittest
+from test.operations import operations
 
 
 class TestResetAndRequestCheck(unittest.TestCase):

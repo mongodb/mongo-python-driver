@@ -17,7 +17,7 @@ from mockupdb import (MockupDB, going, OpInsert, OpMsg, absent, Command,
                       OP_MSG_FLAGS)
 from pymongo import MongoClient, WriteConcern, version_tuple
 
-from tests import unittest
+import unittest
 
 
 class TestLegacyCRUD(unittest.TestCase):

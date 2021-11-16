@@ -22,7 +22,7 @@ from pymongo import (MongoClient,
                      DeleteMany,
                      version_tuple)
 
-from tests import unittest
+import unittest
 
 
 class TestClusterTime(unittest.TestCase):

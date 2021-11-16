@@ -17,7 +17,7 @@
 from mockupdb import going, MockupDB, OpGetMore, OpQuery, Command
 from pymongo import MongoClient
 
-from tests import unittest
+import unittest
 
 
 class TestStartingFromOverflow(unittest.TestCase):

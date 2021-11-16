@@ -22,7 +22,7 @@ from pymongo.errors import ConnectionFailure
 from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo import MongoClient
 
-from tests import unittest
+import unittest
 
 
 class TestNetworkDisconnectPrimary(unittest.TestCase):

@@ -17,7 +17,7 @@ from mockupdb import MockupDB, OpReply, OpMsg, absent, Command, go
 from pymongo import MongoClient, version as pymongo_version, version_tuple
 from pymongo.errors import OperationFailure
 
-from tests import unittest
+import unittest
 
 
 def _check_handshake_data(request):

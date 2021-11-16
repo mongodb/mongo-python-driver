@@ -19,7 +19,7 @@ from bson import SON
 from mockupdb import going, MockupDB, OpGetMore
 from pymongo import MongoClient
 
-from tests import unittest
+import unittest
 
 
 class TestListIndexes(unittest.TestCase):

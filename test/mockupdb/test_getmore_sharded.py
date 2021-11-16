@@ -22,7 +22,7 @@ except ImportError:
 
 from mockupdb import MockupDB, going
 
-from tests import unittest
+import unittest
 
 
 class TestGetmoreSharded(unittest.TestCase):

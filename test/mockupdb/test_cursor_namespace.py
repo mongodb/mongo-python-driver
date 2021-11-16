@@ -17,7 +17,7 @@
 from mockupdb import going, MockupDB
 from pymongo import MongoClient, version_tuple
 
-from tests import unittest
+import unittest
 
 
 class TestCursorNamespace(unittest.TestCase):

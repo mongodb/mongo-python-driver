@@ -24,8 +24,8 @@ except ImportError:
 from mockupdb import MockupDB, go
 from pymongo import MongoClient
 
-from tests import unittest
-from tests.operations import upgrades
+import unittest
+from test.operations import upgrades
 
 
 class TestMixedVersionSharded(unittest.TestCase):

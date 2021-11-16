@@ -15,7 +15,7 @@
 from mockupdb import MockupDB, going
 from pymongo import MongoClient
 
-from tests import unittest
+import unittest
 
 
 class TestMaxStalenessMongos(unittest.TestCase):

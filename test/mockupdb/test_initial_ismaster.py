@@ -17,7 +17,7 @@ import time
 from mockupdb import MockupDB, wait_until
 from pymongo import MongoClient
 
-from tests import unittest
+import unittest
 
 
 class TestInitialIsMaster(unittest.TestCase):
