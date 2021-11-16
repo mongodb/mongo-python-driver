@@ -21,7 +21,7 @@ from pymongo.errors import ConnectionFailure
 from pymongo import MongoClient, version_tuple
 
 import unittest
-from test.operations import operations
+from operations import operations
 
 
 class TestResetAndRequestCheck(unittest.TestCase):

@@ -32,7 +32,7 @@ from mockupdb import MockupDB, going
 from pymongo import MongoClient
 
 import unittest
-from test.operations import operations
+from operations import operations
 
 
 class TestSlaveOkaySharded(unittest.TestCase):

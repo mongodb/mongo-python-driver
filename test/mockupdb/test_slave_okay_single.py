@@ -28,7 +28,7 @@ from pymongo.read_preferences import (make_read_preference,
 from pymongo.topology_description import TOPOLOGY_TYPE
 
 import unittest
-from test.operations import operations
+from operations import operations
 
 
 def topology_type_name(client):

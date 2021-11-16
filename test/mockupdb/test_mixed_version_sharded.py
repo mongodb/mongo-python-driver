@@ -25,7 +25,7 @@ from mockupdb import MockupDB, go
 from pymongo import MongoClient
 
 import unittest
-from test.operations import upgrades
+from operations import upgrades
 
 
 class TestMixedVersionSharded(unittest.TestCase):

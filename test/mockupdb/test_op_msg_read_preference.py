@@ -22,7 +22,7 @@ from pymongo.read_preferences import (make_read_preference,
                                       _MONGOS_MODES)
 
 import unittest
-from test.operations import operations
+from operations import operations
 
 
 class OpMsgReadPrefBase(unittest.TestCase):
