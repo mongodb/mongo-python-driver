@@ -185,6 +185,8 @@ Notable improvements
 
 - Enhanced connection pooling to create connections more efficiently and
   avoid connection storms.
+- Added the ``maxConnecting`` URI and
+  :class:`~pymongo.mongo_client.MongoClient` keyword argument.
 - :class:`~pymongo.mongo_client.MongoClient` now accepts a URI and keyword
   argument `srvMaxHosts` that limits the number of mongos-like hosts a client
   will connect to. More specifically, when a mongodb+srv:// connection string

@@ -138,6 +138,7 @@ def _parse_pool_options(options):
         options.get('zlibcompressionlevel', -1))
     ssl_context, tls_allow_invalid_hostnames = _parse_ssl_options(options)
     load_balanced = options.get('loadbalanced')
+    max_connecting = options.get('maxconnecting', common.MAX_CONNECTING)
     return PoolOptions(max_pool_size,
                        min_pool_size,
                        max_idle_time_seconds,
@@ -148,6 +149,7 @@ def _parse_pool_options(options):
                        appname,
                        driver,
                        compression_settings,
+                       max_connecting=max_connecting,
                        server_api=server_api,
                        load_balanced=load_balanced)
 
