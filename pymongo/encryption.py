@@ -130,6 +130,8 @@ class _EncryptionIO(MongoCryptCallback):
             conn.sendall(message)
             while kms_context.bytes_needed > 0:
                 data = conn.recv(kms_context.bytes_needed)
+                if not data:
+                    raise OSError('KMS connection closed')
                 kms_context.feed(data)
         finally:
             conn.close()
