@@ -693,10 +693,7 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
             'location': 'global',
             'keyRing': 'key-ring-csfle',
             'keyName': 'key-name-csfle'},
-        'kmip': {
-            'keyId': '1',
-            'endpoint': KMIP['endpoint'],
-        },
+        'kmip': {},
         'local': None
     }
 
