@@ -179,6 +179,8 @@ Breaking Changes in 4.0
   parsing MongoDB URIs.
 - Removed the `disable_md5` parameter for :class:`~gridfs.GridFSBucket` and
   :class:`~gridfs.GridFS`. See :ref:`removed-gridfs-checksum` for details.
+- PyMongoCrypt 1.2.0 or later is now required for client side field level
+  encryption support.
 
 Notable improvements
 ....................
@@ -194,6 +196,9 @@ Notable improvements
   choose a `srvMaxHosts` sized subset of hosts.
 - Added :attr:`pymongo.mongo_client.MongoClient.options` for read-only access
   to a client's configuration options.
+- Support for the "kmip" KMS provider for client side field level encryption.
+  See the docstring for :class:`~pymongo.encryption_options.AutoEncryptionOpts`
+  and :mod:`~pymongo.encryption`.
 
 Issues Resolved
 ...............

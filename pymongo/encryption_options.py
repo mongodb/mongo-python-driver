@@ -129,6 +129,10 @@ class AutoEncryptionOpts(object):
 
               kms_tls_options={'kmip': {'tlsCAFile': certifi.where()}}
 
+            Or to supply a client certificate::
+
+              kms_tls_options={'kmip': {'tlsCertificateKeyFile': 'client.pem'}}
+
         .. versionchanged:: 4.0
            Added the `kms_tls_options` parameter and the "kmip" KMS provider.
 
