@@ -16,7 +16,7 @@ import copy
 import itertools
 
 from mockupdb import MockupDB, going, CommandBase
-from pymongo import MongoClient, ReadPreference, version_tuple
+from pymongo import MongoClient, ReadPreference
 from pymongo.read_preferences import (make_read_preference,
                                       read_pref_mode_from_name,
                                       _MONGOS_MODES)
@@ -31,8 +31,6 @@ class OpMsgReadPrefBase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         super(OpMsgReadPrefBase, cls).setUpClass()
-        if version_tuple < (3, 7):
-            raise unittest.SkipTest("requires PyMongo 3.7")
 
     @classmethod
     def add_test(cls, mode, test_name, test):

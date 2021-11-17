@@ -15,7 +15,7 @@
 """Test list_indexes with more than one batch."""
 
 from mockupdb import going, MockupDB
-from pymongo import MongoClient, version_tuple
+from pymongo import MongoClient
 
 import unittest
 
@@ -57,7 +57,6 @@ class TestCursorNamespace(unittest.TestCase):
             return list(self.client.test.collection.aggregate([]))
         self._test_cursor_namespace(op, 'aggregate')
 
-    @unittest.skipUnless(version_tuple >= (3, 11, -1), 'Fixed in pymongo 3.11')
     def test_find_cursor(self):
         def op():
             return list(self.client.test.collection.find())
@@ -71,7 +70,6 @@ class TestCursorNamespace(unittest.TestCase):
 
 class TestKillCursorsNamespace(unittest.TestCase):
     @classmethod
-    @unittest.skipUnless(version_tuple >= (3, 12, -1), 'Fixed in pymongo 3.12')
     def setUpClass(cls):
         cls.server = MockupDB(auto_ismaster={'maxWireVersion': 6})
         cls.server.run()

@@ -15,7 +15,7 @@
 from collections import namedtuple
 
 from mockupdb import MockupDB, going, OpMsg, OpMsgReply, OP_MSG_FLAGS
-from pymongo import MongoClient, WriteConcern, version_tuple
+from pymongo import MongoClient, WriteConcern
 from pymongo.operations import InsertOne, UpdateOne, DeleteOne
 from pymongo.cursor import CursorType
 
@@ -274,24 +274,21 @@ class TestOpMsg(unittest.TestCase):
         future()  # No error.
 
 
-def operation_test(op, decorator):
-    @decorator()
+def operation_test(op):
     def test(self):
         self._test_operation(op)
     return test
 
 
-def create_tests(ops, decorator):
+def create_tests(ops):
     for op in ops:
         test_name = "test_op_msg_%s" % (op.name,)
-        setattr(TestOpMsg, test_name, operation_test(op, decorator))
+        setattr(TestOpMsg, test_name, operation_test(op))
 
 
-create_tests(operations, lambda: unittest.skipUnless(
-    version_tuple >= (3, 7), "requires PyMongo 3.7"))
+create_tests(operations)
 
-create_tests(operations_312, lambda: unittest.skipUnless(
-    version_tuple >= (3, 12), "requires PyMongo 3.12"))
+create_tests(operations_312)
 
 if __name__ == '__main__':
     unittest.main()

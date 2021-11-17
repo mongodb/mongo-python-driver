@@ -18,7 +18,7 @@ import itertools
 from mockupdb import MockupDB, going, wait_until
 from pymongo.server_type import SERVER_TYPE
 from pymongo.errors import ConnectionFailure
-from pymongo import MongoClient, version_tuple
+from pymongo import MongoClient
 
 import unittest
 from operations import operations
@@ -44,8 +44,7 @@ class TestResetAndRequestCheck(unittest.TestCase):
 
         kwargs = {'socketTimeoutMS': 100}
         # Disable retryable reads when pymongo supports it.
-        if version_tuple[:3] >= (3, 9):
-            kwargs['retryReads'] = False
+        kwargs['retryReads'] = False
         self.client = MongoClient(self.server.uri, **kwargs)
         wait_until(lambda: self.client.nodes, 'connect to standalone')
 

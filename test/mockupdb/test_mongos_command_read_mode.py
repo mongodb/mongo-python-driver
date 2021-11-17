@@ -46,7 +46,9 @@ class TestMongosCommandReadMode(unittest.TestCase):
 
         with going(secondary_collection.aggregate, []):
 
-            command = server.receives(OpMsg({"aggregate": "collection", "pipeline": []}))
+            command = server.receives(OpMsg({"aggregate": "collection",
+                                             "pipeline": [],
+                                             '$readPreference': {'mode': 'secondary'}}))
             command.ok(result=[{}])
             self.assertTrue(command.slave_ok, 'SlaveOkay not set')
 
