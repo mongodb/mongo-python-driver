@@ -28,23 +28,23 @@ Example: Moving a document between different databases/collections
   >>> client.drop_database('db')
   >>> client.drop_database('replica_db')
   >>> db = client.db
-  >>> result = db.test.insert_many([{'a': 1},
-  ...                               {'b': 1},
-  ...                               {'c': 1},
-  ...                               {'d': 1}])
+  >>> result = db.test.insert_many([{'_id': 1, 'a': 1},
+  ...                               {'_id': 2, 'b': 1},
+  ...                               {'_id': 3, 'c': 1},
+  ...                               {'_id': 4, 'd': 1}])
   >>> replica_db = client.replica_db
   >>> for doc in db.test.find():
   ...    print(f"raw document: {doc.raw}")
   ...    print(f"decoded document: {bson.decode(doc.raw)}")
   ...    result = replica_db.test.insert_one(doc)
   raw document: b'...'
-  decoded document: {'_id': ObjectId('...'), 'a': 1}
+  decoded document: {'_id': 1, 'a': 1}
   raw document: b'...'
-  decoded document: {'_id': ObjectId('...'), 'b': 1}
+  decoded document: {'_id': 2, 'b': 1}
   raw document: b'...'
-  decoded document: {'_id': ObjectId('...'), 'c': 1}
+  decoded document: {'_id': 3, 'c': 1}
   raw document: b'...'
-  decoded document: {'_id': ObjectId('...'), 'd': 1}
+  decoded document: {'_id': 4, 'd': 1}
 
 For use cases like moving documents across different databases or writing binary
 blobs to disk, using raw BSON documents provides better speed and avoids the
