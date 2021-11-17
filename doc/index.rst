@@ -34,9 +34,6 @@ everything you need to know to use **PyMongo**.
 :doc:`migrate-to-pymongo4`
   A PyMongo 3.x to 4.x migration guide.
 
-:doc:`migrate-to-pymongo3`
-  A PyMongo 2.x to 3.x migration guide.
-
 :doc:`python3`
   Frequently asked questions about python 3 support.
 
@@ -123,5 +120,4 @@ Indices and tables
    changelog
    python3
    migrate-to-pymongo4
-   migrate-to-pymongo3
    developer/index
