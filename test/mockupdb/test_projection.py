@@ -15,7 +15,7 @@
 """PyMongo shouldn't append projection fields to "find" command, PYTHON-1479."""
 
 from bson import SON
-from mockupdb import Command, MockupDB, OpQuery, going
+from mockupdb import MockupDB, OpMsg, going, OpMsgReply, go
 from pymongo import MongoClient
 
 import unittest
@@ -26,30 +26,17 @@ class TestProjection(unittest.TestCase):
         q = {}
         fields = {'foo': True}
 
-        # OP_QUERY,
+        # OP_MSG,
         server = MockupDB(auto_ismaster=True,
-                          min_wire_version=0, max_wire_version=3)
+                          min_wire_version=6, max_wire_version=10)
         server.run()
         self.addCleanup(server.stop)
         client = MongoClient(server.uri)
         cursor = client.test.collection.find(q, fields)
-        with going(next, cursor):
-            request = server.receives(OpQuery(q, fields=fields))
-            request.reply([], cursor_id=0)
-
-        # "find" command.
-        server = MockupDB(auto_ismaster=True,
-                          min_wire_version=0, max_wire_version=4)
-        server.run()
-        self.addCleanup(server.stop)
-        client = MongoClient(server.uri)
-        cursor = client.test.collection.find(q, fields)
-        cmd = Command(SON([('find', 'collection'), ('filter', q),
-                           ('projection', fields)]))
-
-        with going(next, cursor):
-            request = server.receives(cmd)
-            request.ok(cursor={'id': 0, 'firstBatch': []})
+        _ = go(next, cursor)
+        request = server.receives(OpMsg({"find": "collection", "filter": q,
+                   "projection": fields}))
+        request.replies(cursor={"id": 0, "firstBatch": []})
 
 
 if __name__ == '__main__':

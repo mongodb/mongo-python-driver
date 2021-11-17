@@ -77,20 +77,6 @@ operations = [
         op_type='may-use-secondary',
         not_master=not_master_reply_to_command),
     Operation(
-        'mapreduce',
-        lambda client: client.db.collection.map_reduce(
-            'function() {}', 'function() {}'),
-        reply={'result': {'db': 'db', 'collection': 'out_collection'}},
-        op_type='must-use-primary',
-        not_master=not_master_reply_to_command),
-    Operation(
-        'inline_mapreduce',
-        lambda client: client.db.collection.inline_map_reduce(
-            'function() {}', 'function() {}', {'out': {'inline': 1}}),
-        reply={'results': []},
-        op_type='may-use-secondary',
-        not_master=not_master_reply_to_command),
-    Operation(
         'options',
         lambda client: client.db.collection.options(),
         reply={'cursor': {'id': 0, 'firstBatch': []}},
@@ -109,12 +95,6 @@ operations = [
         reply={'ok': 1},
         op_type='always-use-secondary',
         not_master=OpReply(ok=0, errmsg='node is recovering')),
-    Operation(
-        'listCollections',
-        lambda client: client.db.collection_names(),
-        reply={'cursor': {'id': 0, 'firstBatch': []}},
-        op_type='must-use-primary',
-        not_master=not_master_reply_to_command),
     Operation(
         'listIndexes',
         lambda client: client.db.collection.index_information(),

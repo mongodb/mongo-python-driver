@@ -126,52 +126,9 @@ operations = [
         reply=None),
     # Legacy methods
     Operation(
-        'insert',
-        lambda coll: coll.insert({}),
-        request=OpMsg({"insert": "coll"}, flags=0),
-        reply={'ok': 1, 'n': 1}),
-    Operation(
-        'insert-w0',
-        lambda coll: coll.with_options(
-            write_concern=WriteConcern(w=0)).insert({}),
-        request=OpMsg({"insert": "coll"}, flags=OP_MSG_FLAGS['moreToCome']),
-        reply=None),
-    Operation(
         'insert-w0-argument',
-        lambda coll: coll.insert({}, w=0),
+        lambda coll: coll.insert_one({}),
         request=OpMsg({"insert": "coll"}, flags=OP_MSG_FLAGS['moreToCome']),
-        reply=None),
-    Operation(
-        'update',
-        lambda coll: coll.update({"_id": 1}, {"new": 1}),
-        request=OpMsg({"update": "coll"}, flags=0),
-        reply={'ok': 1, 'n': 1, 'nModified': 1}),
-    Operation(
-        'update-w0',
-        lambda coll: coll.with_options(
-            write_concern=WriteConcern(w=0)).update({"_id": 1}, {"new": 1}),
-        request=OpMsg({"update": "coll"}, flags=OP_MSG_FLAGS['moreToCome']),
-        reply=None),
-    Operation(
-        'update-w0-argument',
-        lambda coll: coll.update({"_id": 1}, {"new": 1}, w=0),
-        request=OpMsg({"update": "coll"}, flags=OP_MSG_FLAGS['moreToCome']),
-        reply=None),
-    Operation(
-        'remove',
-        lambda coll: coll.remove({"_id": 1}),
-        request=OpMsg({"delete": "coll"}, flags=0),
-        reply={'ok': 1, 'n': 1}),
-    Operation(
-        'remove-w0',
-        lambda coll: coll.with_options(
-            write_concern=WriteConcern(w=0)).remove({"_id": 1}),
-        request=OpMsg({"delete": "coll"}, flags=OP_MSG_FLAGS['moreToCome']),
-        reply=None),
-    Operation(
-        'remove-w0-argument',
-        lambda coll: coll.remove({"_id": 1}, w=0),
-        request=OpMsg({"delete": "coll"}, flags=OP_MSG_FLAGS['moreToCome']),
         reply=None),
     Operation(
         'bulk_write_insert',

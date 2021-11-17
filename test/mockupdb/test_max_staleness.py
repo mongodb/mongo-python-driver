@@ -21,7 +21,7 @@ import unittest
 class TestMaxStalenessMongos(unittest.TestCase):
     def test_mongos(self):
         mongos = MockupDB()
-        mongos.autoresponds('ismaster', maxWireVersion=5,
+        mongos.autoresponds('ismaster', maxWireVersion=6,
                             ismaster=True, msg='isdbgrid')
         mongos.run()
         self.addCleanup(mongos.stop)

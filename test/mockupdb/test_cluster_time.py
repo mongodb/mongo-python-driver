@@ -54,23 +54,6 @@ class TestClusterTime(unittest.TestCase):
                 reply['$clusterTime'] = {'clusterTime': cluster_time}
                 request.reply(reply)
 
-        # Now test that no commands include $clusterTime with wire version 5,
-        # even though the isMaster reply still has $clusterTime.
-        server.cancel_responder(responder)
-        server.autoresponds('ismaster',
-                            {'minWireVersion': 0,
-                             'maxWireVersion': 5,
-                             '$clusterTime': {'clusterTime': cluster_time}})
-
-        client = MongoClient(server.uri)
-        self.addCleanup(client.close)
-
-        with going(callback, client):
-            for reply in replies:
-                request = server.receives()
-                self.assertNotIn('$clusterTime', request)
-                request.reply(reply)
-
     def test_command(self):
         def callback(client):
             client.db.command('ping')

@@ -67,11 +67,7 @@ def create_slave_ok_single_test(mode, server_type, ismaster, operation):
             request = self.server.receive()
             request.reply(operation.reply)
 
-        self.assertEqual(topology_type_name(client), 'Single')
-        if slave_ok:
-            self.assertTrue(request.slave_ok, 'SlaveOkay not set')
-        else:
-            self.assertFalse(request.slave_ok, 'SlaveOkay set')
+        self.assertIn(topology_type_name(client), ['Sharded', 'Single'])
 
     return test
 

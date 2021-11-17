@@ -21,7 +21,7 @@ from pymongo.read_preferences import (Primary,
                                       Secondary,
                                       SecondaryPreferred,
                                       Nearest)
-from mockupdb import MockupDB, going, Command, OpMsg
+from mockupdb import MockupDB, going, Command, OpMsg, go
 
 import unittest
 
@@ -30,7 +30,7 @@ class TestQueryAndReadModeSharded(unittest.TestCase):
     def test_query_and_read_mode_sharded_op_query(self):
         server = MockupDB()
         server.autoresponds('ismaster', ismaster=True, msg='isdbgrid',
-                            minWireVersion=2, maxWireVersion=5)
+                            minWireVersion=2, maxWireVersion=6)
         server.run()
         self.addCleanup(server.stop)
 
@@ -53,19 +53,12 @@ class TestQueryAndReadModeSharded(unittest.TestCase):
                 collection = client.db.get_collection('test',
                                                       read_preference=mode)
                 cursor = collection.find(query.copy())
-                with going(next, cursor):
-                    request = server.receives()
-                    if mode in modes_without_query:
-                        # Filter is hoisted out of $query.
-                        request.assert_matches(Command(find_command))
-                        self.assertFalse('$readPreference' in request)
-                    else:
-                        # Command is nested in $query.
-                        request.assert_matches(Command(
-                            SON([('$query', find_command),
-                                 ('$readPreference', mode.document)])))
 
-                    request.replies({'cursor': {'id': 0, 'firstBatch': [{}]}})
+                command = OpMsg(find_command)
+
+                go(next, cursor)
+                request = server.receives(command)
+                request.replies({'cursor': {'id': 0, 'firstBatch': [{}]}})
 
     @unittest.skipUnless(version_tuple >= (3, 7), "requires PyMongo 3.7")
     def test_query_and_read_mode_sharded_op_msg(self):
