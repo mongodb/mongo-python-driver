@@ -431,7 +431,7 @@ can be changed to this with PyMongo 2.9 or later:
   >>> from pymongo.errors import ConnectionFailure
   >>> client = MongoClient(connect=False)
   >>> try:
-  ...     client.admin.command("ping")
+  ...     result = client.admin.command("ping")
   ... except ConnectionFailure:
   ...     print("Server not available")
   >>>
