@@ -177,6 +177,9 @@ Breaking Changes in 4.0
   :exc:`~pymongo.errors.InvalidURI` exception
   when it encounters unescaped percent signs in username and password when
   parsing MongoDB URIs.
+- Comparing two :class:`~pymongo.mongo_client.MongoClient` instances now
+  uses a set of immutable properties rather than
+  :attr:`~pymongo.mongo_client.MongoClient.address` which can change.
 - Removed the `disable_md5` parameter for :class:`~gridfs.GridFSBucket` and
   :class:`~gridfs.GridFS`. See :ref:`removed-gridfs-checksum` for details.
 - PyMongoCrypt 1.2.0 or later is now required for client side field level

@@ -676,7 +676,8 @@ class TestClient(IntegrationTest):
         self.assertRaises(ConnectionFailure, c.pymongo_test.test.find_one)
 
     def test_equality(self):
-        c = rs_or_single_client()
+        seed = '%s:%s' % list(self.client._topology_settings.seeds)[0]
+        c = rs_or_single_client(seed, connect=False)
         self.addCleanup(c.close)
         self.assertEqual(client_context.client, c)
         # Explicitly test inequality
@@ -686,9 +687,16 @@ class TestClient(IntegrationTest):
         self.addCleanup(c.close)
         self.assertNotEqual(client_context.client, c)
         self.assertTrue(client_context.client != c)
+        # Seeds differ:
+        self.assertNotEqual(MongoClient('a', connect=False),
+                            MongoClient('b', connect=False))
+        # Same seeds but out of order still compares equal:
+        self.assertEqual(MongoClient(['a', 'b', 'c'], connect=False),
+                         MongoClient(['c', 'a', 'b'], connect=False))
 
     def test_hashable(self):
-        c = rs_or_single_client()
+        seed = '%s:%s' % list(self.client._topology_settings.seeds)[0]
+        c = rs_or_single_client(seed, connect=False)
         self.addCleanup(c.close)
         self.assertIn(c, {client_context.client})
         c = rs_or_single_client('invalid.com', connect=False)
