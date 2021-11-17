@@ -748,9 +748,9 @@ class MongoClient(common.BaseObject):
             server_selector=options.server_selector,
             heartbeat_frequency=options.heartbeat_frequency,
             fqdn=fqdn,
-            srv_service_name=srv_service_name,
             direct_connection=options.direct_connection,
             load_balanced=options.load_balanced,
+            srv_service_name=srv_service_name,
             srv_max_hosts=srv_max_hosts
         )
 
@@ -1337,14 +1337,14 @@ class MongoClient(common.BaseObject):
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
-            return self.address == other.address
+            return self._topology == other._topology
         return NotImplemented
 
     def __ne__(self, other):
         return not self == other
 
     def __hash__(self):
-        return hash(self.address)
+        return hash(self._topology)
 
     def _repr_helper(self):
         def option_repr(option, value):

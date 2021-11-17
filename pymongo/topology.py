@@ -803,6 +803,20 @@ class Topology(object):
             msg = 'CLOSED '
         return '<%s %s%r>' % (self.__class__.__name__, msg, self._description)
 
+    def eq_props(self):
+        """The properties to use for MongoClient/Topology equality checks."""
+        ts = self._settings
+        return (tuple(sorted(ts.seeds)), ts.replica_set_name, ts.fqdn,
+                ts.srv_service_name)
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.eq_props() == other.eq_props()
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(self.eq_props())
+
 
 class _ErrorContext(object):
     """An error with context for SDAM error handling."""
