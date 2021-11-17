@@ -1881,7 +1881,9 @@ Changes in Version 2.9
 Version 2.9 provides an upgrade path to PyMongo 3.x. Most of the API changes
 from PyMongo 3.0 have been backported in a backward compatible way, allowing
 applications to be written against PyMongo >= 2.9, rather then PyMongo 2.x or
-PyMongo 3.x. See the :doc:`/migrate-to-pymongo3` for detailed examples.
+PyMongo 3.x. See the `PyMongo 3 Migration Guide
+<https://pymongo.readthedocs.io/en/3.12.1/migrate-to-pymongo3.html>`_ for
+detailed examples.
 
 .. note:: There are a number of new deprecations in this release for features
   that were removed in PyMongo 3.0.

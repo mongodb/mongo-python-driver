@@ -25,7 +25,8 @@ completely migrated to PyMongo 4. Most of the key new methods and options from
 PyMongo 4.0 are backported in PyMongo 3.12 making migration much easier.
 
 .. note:: Users of PyMongo 2.X who wish to upgrade to 4.x must first upgrade
-   to PyMongo 3.x by following the :doc:`migrate-to-pymongo3`.
+   to PyMongo 3.x by following the `PyMongo 3 Migration Guide
+   <https://pymongo.readthedocs.io/en/3.12.1/migrate-to-pymongo3.html>`_.
 
 Python 3.6+
 -----------
