@@ -126,11 +126,6 @@ operations = [
         reply=None),
     # Legacy methods
     Operation(
-        'insert-w0-argument',
-        lambda coll: coll.insert_one({}),
-        request=OpMsg({"insert": "coll"}, flags=OP_MSG_FLAGS['moreToCome']),
-        reply=None),
-    Operation(
         'bulk_write_insert',
         lambda coll: coll.bulk_write([InsertOne({}), InsertOne({})]),
         request=OpMsg({"insert": "coll"}, flags=0),
@@ -260,8 +255,7 @@ class TestOpMsg(unittest.TestCase):
                 replies = [op.reply]
 
             for expected_request in expected_requests:
-                request = self.server.receives()
-                request.assert_matches(expected_request)
+                request = self.server.receives(expected_request)
                 reply = None
                 if replies:
                     reply = replies.pop(0)

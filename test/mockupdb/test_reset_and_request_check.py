@@ -102,9 +102,9 @@ class TestResetAndRequestCheck(unittest.TestCase):
 
         with self.assertRaises(ConnectionFailure):
             with going(operation.function, self.client):
-                self.server.receives().replies(operation.not_master)
+                request = self.server.receives()
                 before = self.ismaster_time
-                time.sleep(1)
+                request.replies(operation.not_master)
 
         # Server is rediscovered.
         topology = self.client._topology
@@ -137,6 +137,7 @@ def generate_reset_tests():
         test_name = '%s_%s' % (name, operation.name.replace(' ', '_'))
         test.__name__ = test_name
         setattr(TestResetAndRequestCheck, test_name, test)
+
 
 generate_reset_tests()
 
