@@ -633,7 +633,9 @@ class Topology(object):
             if hasattr(error, 'code'):
                 err_code = error.code
             else:
-                err_code = error.details.get('code', -1)
+                # Default error code if one does not exist.
+                default = 10107 if isinstance(error, NotPrimaryError) else None
+                err_code = error.details.get('code', default)
             if err_code in helpers._NOT_PRIMARY_CODES:
                 is_shutting_down = err_code in helpers._SHUTDOWN_CODES
                 # Mark server Unknown, clear the pool, and request check.

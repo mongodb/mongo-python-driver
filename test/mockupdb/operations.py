@@ -52,11 +52,7 @@ secondaries in a replica set, or select a mongos for secondary reads in a
 sharded cluster (PYTHON-868).
 """
 
-not_master_reply_to_query = OpMsgReply(
-    {'$err': 'not master'},
-    flags=REPLY_FLAGS['QueryFailure'])
-
-not_master_reply_to_command = OpMsgReply(ok=0, errmsg='not master')
+not_master_reply = OpMsgReply(ok=0, errmsg='not master')
 
 operations = [
     Operation(
@@ -64,31 +60,31 @@ operations = [
         lambda client: client.db.collection.find_one(),
         reply={'cursor': {'id': 0, 'firstBatch': []}},
         op_type='may-use-secondary',
-        not_master=not_master_reply_to_query),
+        not_master=not_master_reply),
     Operation(
         'count',
         lambda client: client.db.collection.count_documents({}),
         reply={'n': 1},
         op_type='may-use-secondary',
-        not_master=not_master_reply_to_command),
+        not_master=not_master_reply),
     Operation(
         'aggregate',
         lambda client: client.db.collection.aggregate([]),
         reply={'cursor': {'id': 0, 'firstBatch': []}},
         op_type='may-use-secondary',
-        not_master=not_master_reply_to_command),
+        not_master=not_master_reply),
     Operation(
         'options',
         lambda client: client.db.collection.options(),
         reply={'cursor': {'id': 0, 'firstBatch': []}},
         op_type='must-use-primary',
-        not_master=not_master_reply_to_command),
+        not_master=not_master_reply),
     Operation(
         'command',
         lambda client: client.db.command('foo'),
         reply={'ok': 1},
         op_type='must-use-primary',  # Ignores client's read preference.
-        not_master=not_master_reply_to_command),
+        not_master=not_master_reply),
     Operation(
         'secondary command',
         lambda client:
@@ -101,7 +97,7 @@ operations = [
         lambda client: client.db.collection.index_information(),
         reply={'cursor': {'id': 0, 'firstBatch': []}},
         op_type='must-use-primary',
-        not_master=not_master_reply_to_command),
+        not_master=not_master_reply),
 ]
 
 
