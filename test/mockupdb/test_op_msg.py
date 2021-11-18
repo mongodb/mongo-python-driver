@@ -15,7 +15,7 @@
 from collections import namedtuple
 
 from mockupdb import MockupDB, going, OpMsg, OpMsgReply, OP_MSG_FLAGS
-from pymongo import MongoClient, WriteConcern, version_tuple
+from pymongo import MongoClient, WriteConcern
 from pymongo.operations import InsertOne, UpdateOne, DeleteOne
 from pymongo.cursor import CursorType
 
@@ -125,54 +125,6 @@ operations = [
         request=OpMsg({"delete": "coll"}, flags=OP_MSG_FLAGS['moreToCome']),
         reply=None),
     # Legacy methods
-    Operation(
-        'insert',
-        lambda coll: coll.insert({}),
-        request=OpMsg({"insert": "coll"}, flags=0),
-        reply={'ok': 1, 'n': 1}),
-    Operation(
-        'insert-w0',
-        lambda coll: coll.with_options(
-            write_concern=WriteConcern(w=0)).insert({}),
-        request=OpMsg({"insert": "coll"}, flags=OP_MSG_FLAGS['moreToCome']),
-        reply=None),
-    Operation(
-        'insert-w0-argument',
-        lambda coll: coll.insert({}, w=0),
-        request=OpMsg({"insert": "coll"}, flags=OP_MSG_FLAGS['moreToCome']),
-        reply=None),
-    Operation(
-        'update',
-        lambda coll: coll.update({"_id": 1}, {"new": 1}),
-        request=OpMsg({"update": "coll"}, flags=0),
-        reply={'ok': 1, 'n': 1, 'nModified': 1}),
-    Operation(
-        'update-w0',
-        lambda coll: coll.with_options(
-            write_concern=WriteConcern(w=0)).update({"_id": 1}, {"new": 1}),
-        request=OpMsg({"update": "coll"}, flags=OP_MSG_FLAGS['moreToCome']),
-        reply=None),
-    Operation(
-        'update-w0-argument',
-        lambda coll: coll.update({"_id": 1}, {"new": 1}, w=0),
-        request=OpMsg({"update": "coll"}, flags=OP_MSG_FLAGS['moreToCome']),
-        reply=None),
-    Operation(
-        'remove',
-        lambda coll: coll.remove({"_id": 1}),
-        request=OpMsg({"delete": "coll"}, flags=0),
-        reply={'ok': 1, 'n': 1}),
-    Operation(
-        'remove-w0',
-        lambda coll: coll.with_options(
-            write_concern=WriteConcern(w=0)).remove({"_id": 1}),
-        request=OpMsg({"delete": "coll"}, flags=OP_MSG_FLAGS['moreToCome']),
-        reply=None),
-    Operation(
-        'remove-w0-argument',
-        lambda coll: coll.remove({"_id": 1}, w=0),
-        request=OpMsg({"delete": "coll"}, flags=OP_MSG_FLAGS['moreToCome']),
-        reply=None),
     Operation(
         'bulk_write_insert',
         lambda coll: coll.bulk_write([InsertOne({}), InsertOne({})]),
@@ -303,8 +255,7 @@ class TestOpMsg(unittest.TestCase):
                 replies = [op.reply]
 
             for expected_request in expected_requests:
-                request = self.server.receives()
-                request.assert_matches(expected_request)
+                request = self.server.receives(expected_request)
                 reply = None
                 if replies:
                     reply = replies.pop(0)
@@ -317,24 +268,21 @@ class TestOpMsg(unittest.TestCase):
         future()  # No error.
 
 
-def operation_test(op, decorator):
-    @decorator()
+def operation_test(op):
     def test(self):
         self._test_operation(op)
     return test
 
 
-def create_tests(ops, decorator):
+def create_tests(ops):
     for op in ops:
         test_name = "test_op_msg_%s" % (op.name,)
-        setattr(TestOpMsg, test_name, operation_test(op, decorator))
+        setattr(TestOpMsg, test_name, operation_test(op))
 
 
-create_tests(operations, lambda: unittest.skipUnless(
-    version_tuple >= (3, 7), "requires PyMongo 3.7"))
+create_tests(operations)
 
-create_tests(operations_312, lambda: unittest.skipUnless(
-    version_tuple >= (3, 12), "requires PyMongo 3.12"))
+create_tests(operations_312)
 
 if __name__ == '__main__':
     unittest.main()

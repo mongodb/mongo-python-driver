@@ -15,7 +15,7 @@
 import itertools
 
 from bson import SON
-from mockupdb import MockupDB, going
+from mockupdb import MockupDB, going, OpMsg, go
 from pymongo import MongoClient, ReadPreference
 from pymongo.read_preferences import (make_read_preference,
                                       read_pref_mode_from_name,
@@ -29,7 +29,7 @@ class TestMongosCommandReadMode(unittest.TestCase):
     def test_aggregate(self):
         server = MockupDB()
         server.autoresponds('ismaster', ismaster=True, msg='isdbgrid',
-                            minWireVersion=2, maxWireVersion=5)
+                            minWireVersion=2, maxWireVersion=6)
         self.addCleanup(server.stop)
         server.run()
 
@@ -39,18 +39,16 @@ class TestMongosCommandReadMode(unittest.TestCase):
         with going(collection.aggregate, []):
             command = server.receives(aggregate='collection', pipeline=[])
             self.assertFalse(command.slave_ok, 'SlaveOkay set')
-            self.assertNotIn('$readPreference', command)
             command.ok(result=[{}])
 
         secondary_collection = collection.with_options(
             read_preference=ReadPreference.SECONDARY)
 
         with going(secondary_collection.aggregate, []):
-            command = server.receives(
-                {'$query': SON([('aggregate', 'collection'),
-                                ('pipeline', []),
-                                ('cursor', {})]),
-                 '$readPreference': {'mode': 'secondary'}})
+
+            command = server.receives(OpMsg({"aggregate": "collection",
+                                             "pipeline": [],
+                                             '$readPreference': {'mode': 'secondary'}}))
             command.ok(result=[{}])
             self.assertTrue(command.slave_ok, 'SlaveOkay not set')
 
@@ -61,37 +59,28 @@ def create_mongos_read_mode_test(mode, operation):
         self.addCleanup(server.stop)
         server.run()
         server.autoresponds('ismaster', ismaster=True, msg='isdbgrid',
-                            minWireVersion=2, maxWireVersion=5)
+                            minWireVersion=2, maxWireVersion=6)
 
         pref = make_read_preference(read_pref_mode_from_name(mode),
                                     tag_sets=None)
 
         client = MongoClient(server.uri, read_preference=pref)
         self.addCleanup(client.close)
-        with going(operation.function, client) as future:
+
+        with going(operation.function, client):
             request = server.receive()
             request.reply(operation.reply)
-
-        future()  # No error.
 
         if operation.op_type == 'always-use-secondary':
             self.assertEqual(ReadPreference.SECONDARY.document,
                              request.doc.get('$readPreference'))
             slave_ok = mode != 'primary'
-            self.assertIn('$query', request.doc)
         elif operation.op_type == 'must-use-primary':
-            self.assertNotIn('$readPreference', request)
-            self.assertNotIn('$query', request.doc)
             slave_ok = False
         elif operation.op_type == 'may-use-secondary':
             slave_ok = mode != 'primary'
-            if mode in ('primary', 'secondaryPreferred'):
-                self.assertNotIn('$readPreference', request)
-                self.assertNotIn('$query', request.doc)
-            else:
-                self.assertEqual(pref.document,
-                                 request.doc.get('$readPreference'))
-                self.assertIn('$query', request.doc)
+            self.assertEqual(pref.document,
+                             request.doc.get('$readPreference'))
         else:
             self.fail('unrecognized op_type %r' % operation.op_type)
 

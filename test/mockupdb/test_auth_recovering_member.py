@@ -44,7 +44,7 @@ class TestAuthRecoveringMember(unittest.TestCase):
         # error. If it raises AutoReconnect we know it actually tried the
         # server, and that's wrong.
         with self.assertRaises(ServerSelectionTimeoutError):
-            client.db.authenticate('user', 'password')
+            client.db.command("ping")
 
 if __name__ == '__main__':
     unittest.main()

@@ -23,29 +23,6 @@ import unittest
 
 
 class TestListIndexes(unittest.TestCase):
-    def test_list_indexes_opquery(self):
-        server = MockupDB(auto_ismaster={'maxWireVersion': 3})
-        server.run()
-        self.addCleanup(server.stop)
-        client = MongoClient(server.uri)
-        self.addCleanup(client.close)
-        with going(client.test.collection.list_indexes) as cursor:
-            request = server.receives(
-                listIndexes='collection', namespace='test')
-            request.reply({'cursor': {
-                'firstBatch': [{'name': 'index_0'}],
-                'id': 123}})
-
-        with going(list, cursor()) as indexes:
-            request = server.receives(OpGetMore,
-                                      namespace='test.collection',
-                                      cursor_id=123)
-
-            request.reply([{'name': 'index_1'}], cursor_id=0)
-
-        self.assertEqual([{'name': 'index_0'}, {'name': 'index_1'}], indexes())
-        for index_info in indexes():
-            self.assertIsInstance(index_info, SON)
 
     def test_list_indexes_command(self):
         server = MockupDB(auto_ismaster={'maxWireVersion': 6})

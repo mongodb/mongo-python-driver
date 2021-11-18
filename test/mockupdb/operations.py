@@ -15,6 +15,7 @@
 from collections import namedtuple
 
 from mockupdb import *
+from mockupdb import OpMsgReply
 from pymongo import ReadPreference
 
 __all__ = ['operations', 'upgrades']
@@ -51,11 +52,11 @@ secondaries in a replica set, or select a mongos for secondary reads in a
 sharded cluster (PYTHON-868).
 """
 
-not_master_reply_to_query = OpReply(
+not_master_reply_to_query = OpMsgReply(
     {'$err': 'not master'},
     flags=REPLY_FLAGS['QueryFailure'])
 
-not_master_reply_to_command = OpReply(ok=0, errmsg='not master')
+not_master_reply_to_command = OpMsgReply(ok=0, errmsg='not master')
 
 operations = [
     Operation(
@@ -74,20 +75,6 @@ operations = [
         'aggregate',
         lambda client: client.db.collection.aggregate([]),
         reply={'cursor': {'id': 0, 'firstBatch': []}},
-        op_type='may-use-secondary',
-        not_master=not_master_reply_to_command),
-    Operation(
-        'mapreduce',
-        lambda client: client.db.collection.map_reduce(
-            'function() {}', 'function() {}'),
-        reply={'result': {'db': 'db', 'collection': 'out_collection'}},
-        op_type='must-use-primary',
-        not_master=not_master_reply_to_command),
-    Operation(
-        'inline_mapreduce',
-        lambda client: client.db.collection.inline_map_reduce(
-            'function() {}', 'function() {}', {'out': {'inline': 1}}),
-        reply={'results': []},
         op_type='may-use-secondary',
         not_master=not_master_reply_to_command),
     Operation(
@@ -110,12 +97,6 @@ operations = [
         op_type='always-use-secondary',
         not_master=OpReply(ok=0, errmsg='node is recovering')),
     Operation(
-        'listCollections',
-        lambda client: client.db.collection_names(),
-        reply={'cursor': {'id': 0, 'firstBatch': []}},
-        op_type='must-use-primary',
-        not_master=not_master_reply_to_command),
-    Operation(
         'listIndexes',
         lambda client: client.db.collection.index_information(),
         reply={'cursor': {'id': 0, 'firstBatch': []}},
@@ -130,19 +111,9 @@ Upgrade = namedtuple('Upgrade',
                      ['name', 'function', 'old', 'new', 'wire_version'])
 
 upgrades = [
-    Upgrade('index_information',
-            lambda client: client.db.collection.index_information(),
-            old=OpQuery(namespace='db.system.indexes'),
-            new=Command('listIndexes', 'collection', namespace='db'),
-            wire_version=3),
-    Upgrade('collection_names',
-            lambda client: client.db.collection_names(),
-            old=Command('aggregate', 'system.namespaces', namespace='db'),
-            new=Command('listCollections', namespace='db'),
-            wire_version=3),
-    Upgrade('options',
-            lambda client: client.db.collection.options(),
-            old=Command('aggregate', 'system.namespaces', namespace='db'),
-            new=Command('listCollections', namespace='db'),
-            wire_version=3),
+    Upgrade('estimated_document_count',
+            lambda client: client.db.collection.estimated_document_count(),
+            old=OpMsg('count', 'collection', namespace='db'),
+            new=OpMsg('aggregate', 'collection', namespace='db'),
+            wire_version=12),
 ]

@@ -14,7 +14,7 @@
 
 
 from mockupdb import MockupDB, OpReply, OpMsg, absent, Command, go
-from pymongo import MongoClient, version as pymongo_version, version_tuple
+from pymongo import MongoClient, version as pymongo_version
 from pymongo.errors import OperationFailure
 
 import unittest
@@ -33,7 +33,6 @@ def _check_handshake_data(request):
 
 
 class TestHandshake(unittest.TestCase):
-    @unittest.skipUnless(version_tuple >= (3, 4), "requires PyMongo 3.4")
     def test_client_handshake_data(self):
         primary, secondary = MockupDB(), MockupDB()
         for server in primary, secondary:
@@ -72,20 +71,14 @@ class TestHandshake(unittest.TestCase):
         primary.receives('ismaster', 1, client=absent).ok(error_response)
         secondary.receives('ismaster', 1, client=absent).ok(error_response)
 
-        # PyMongo 3.11+ closes the monitoring connection on command errors.
-        if version_tuple >= (3, 11, -1):
-            # The heartbeat retry (on a new connection) does have client data.
-            heartbeat = primary.receives('ismaster')
-            _check_handshake_data(heartbeat)
-            heartbeat.ok(primary_response)
+        # The heartbeat retry (on a new connection) does have client data.
+        heartbeat = primary.receives('ismaster')
+        _check_handshake_data(heartbeat)
+        heartbeat.ok(primary_response)
 
-            heartbeat = secondary.receives('ismaster')
-            _check_handshake_data(heartbeat)
-            heartbeat.ok(secondary_response)
-        else:
-            # The heartbeat retry has no client data after a command failure.
-            primary.receives('ismaster', 1, client=absent).ok(error_response)
-            secondary.receives('ismaster', 1, client=absent).ok(error_response)
+        heartbeat = secondary.receives('ismaster')
+        _check_handshake_data(heartbeat)
+        heartbeat.ok(secondary_response)
 
         # Still no client data.
         primary.receives('ismaster', 1, client=absent).ok(primary_response)
@@ -113,15 +106,11 @@ class TestHandshake(unittest.TestCase):
                     request.ok(primary_response)
             else:
                 # Command succeeds.
-                if version_tuple >= (3, 7):
-                    request.assert_matches(OpMsg('whatever'))
-                else:
-                    request.assert_matches(Command('whatever'))
+                request.assert_matches(OpMsg('whatever'))
                 request.ok()
                 assert future()
                 return
 
-    @unittest.skipUnless(version_tuple >= (3, 11, -1), "requires PyMongo 3.11")
     def test_client_handshake_saslSupportedMechs(self):
         server = MockupDB()
         server.run()
