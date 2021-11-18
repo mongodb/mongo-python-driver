@@ -66,11 +66,10 @@ def create_mongos_read_mode_test(mode, operation):
 
         client = MongoClient(server.uri, read_preference=pref)
         self.addCleanup(client.close)
-        future = go(operation.function, client)
-        request = server.receive()
-        request.reply(operation.reply)
 
-        future()  # No error.
+        with going(operation.function, client):
+            request = server.receive()
+            request.reply(operation.reply)
 
         if operation.op_type == 'always-use-secondary':
             self.assertEqual(ReadPreference.SECONDARY.document,
