@@ -15,6 +15,7 @@
 from collections import namedtuple
 
 from mockupdb import *
+from mockupdb import OpMsgReply
 from pymongo import ReadPreference
 
 __all__ = ['operations', 'upgrades']
@@ -51,11 +52,11 @@ secondaries in a replica set, or select a mongos for secondary reads in a
 sharded cluster (PYTHON-868).
 """
 
-not_master_reply_to_query = OpReply(
+not_master_reply_to_query = OpMsgReply(
     {'$err': 'not master'},
     flags=REPLY_FLAGS['QueryFailure'])
 
-not_master_reply_to_command = OpReply(ok=0, errmsg='not master')
+not_master_reply_to_command = OpMsgReply(ok=0, errmsg='not master')
 
 operations = [
     Operation(
