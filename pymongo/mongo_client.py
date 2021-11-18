@@ -1170,8 +1170,8 @@ class MongoClient(common.BaseObject):
         # for topology type Single."
         # Thread safe: if the type is single it cannot change.
         topology = self._get_topology()
-        single = topology.description.topology_type == TOPOLOGY_TYPE.Single
         server = self._select_server(read_preference, session)
+        single = topology.description.topology_type == TOPOLOGY_TYPE.Single
 
         with self._get_socket(server, session) as sock_info:
             secondary_ok = (single and not sock_info.is_mongos) or (
