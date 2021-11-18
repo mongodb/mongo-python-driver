@@ -60,7 +60,7 @@ from test.version import Version
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), 'retryable_writes')
+    os.path.dirname(os.path.realpath(__file__)), 'retryable_writes', 'legacy')
 
 
 class TestAllScenarios(SpecRunner):
