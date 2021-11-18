@@ -8,7 +8,7 @@ set -o errexit
 ${PYTHON_BINARY} setup.py clean
 
 createvirtualenv ${PYTHON_BINARY} mockuptests
-trap "deactivate, rm -rf mockuptests" EXIT HUP
+trap "deactivate; rm -rf mockuptests" EXIT HUP
 
 # Install PyMongo from git clone so mockup-tests don't
 # download it from pypi.
