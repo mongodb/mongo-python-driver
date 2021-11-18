@@ -105,6 +105,7 @@ class TestResetAndRequestCheck(unittest.TestCase):
                 request = self.server.receives()
                 before = self.ismaster_time
                 request.replies(operation.not_master)
+                time.sleep(1)
 
         # Server is rediscovered.
         topology = self.client._topology
