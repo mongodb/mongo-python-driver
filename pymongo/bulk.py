@@ -28,7 +28,7 @@ from pymongo.common import (validate_is_mapping,
                             validate_is_document_type,
                             validate_ok_for_replace,
                             validate_ok_for_update)
-from pymongo.helpers import _RETRYABLE_ERROR_CODES
+from pymongo.helpers import _RETRYABLE_ERROR_CODES, _get_wce_doc
 from pymongo.collation import validate_collation_or_none
 from pymongo.errors import (BulkWriteError,
                             ConfigurationError,
@@ -119,9 +119,9 @@ def _merge_command(run, full_result, offset, result):
             replacement["op"] = run.ops[idx]
             full_result["writeErrors"].append(replacement)
 
-    wc_error = result.get("writeConcernError")
-    if wc_error:
-        full_result["writeConcernErrors"].append(wc_error)
+    wce = _get_wce_doc(result)
+    if wce:
+        full_result["writeConcernErrors"].append(wce)
 
 
 def _raise_bulk_write_error(full_result):
