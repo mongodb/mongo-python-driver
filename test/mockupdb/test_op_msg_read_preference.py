@@ -158,14 +158,11 @@ def create_op_msg_read_mode_test(mode, operation):
         else:
             self.fail('unrecognized op_type %r' % operation.op_type)
         # For single mongod we send primaryPreferred instead of primary.
-        if (expected_pref == ReadPreference.PRIMARY and self.single_mongod
-                and operation.name != "command"):
+        if expected_pref == ReadPreference.PRIMARY and self.single_mongod:
             expected_pref = ReadPreference.PRIMARY_PREFERRED
-        with going(operation.function, client) as future:
+        with going(operation.function, client):
             request = expected_server.receive()
             request.reply(operation.reply)
-
-        future()  # No error.
 
         self.assertEqual(expected_pref.document,
                          request.doc.get('$readPreference'))
