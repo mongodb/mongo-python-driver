@@ -220,6 +220,18 @@ def _raise_write_concern_error(error):
         error.get("errmsg"), error.get("code"), error)
 
 
+def _get_wce_doc(result):
+    """Return the writeConcernError or None."""
+    wce = result.get("writeConcernError")
+    if wce:
+        # The server reports errorLabels at the top level but it's more
+        # convenient to attach it to the writeConcernError doc itself.
+        error_labels = result.get("errorLabels")
+        if error_labels:
+            wce["errorLabels"] = error_labels
+    return wce
+
+
 def _check_write_command_response(result):
     """Backward compatibility helper for write command error handling.
     """
@@ -228,12 +240,9 @@ def _check_write_command_response(result):
     if write_errors:
         _raise_last_write_error(write_errors)
 
-    error = result.get("writeConcernError")
-    if error:
-        error_labels = result.get("errorLabels")
-        if error_labels:
-            error.update({'errorLabels': error_labels})
-        _raise_write_concern_error(error)
+    wce = _get_wce_doc(result)
+    if wce:
+        _raise_write_concern_error(wce)
 
 
 def _raise_last_error(bulk_write_result):

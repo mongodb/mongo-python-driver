@@ -1,6 +1,21 @@
 Changelog
 =========
 
+Changes in Version 3.12.2
+-------------------------
+
+Issues Resolved
+...............
+
+Version 3.12.2 fixes a bug that prevented PyMongo from retrying bulk writes
+after a ``writeConcernError`` on MongoDB 4.4+ (`PYTHON-2984`_).
+
+See the `PyMongo 3.12.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PYTHON-2984: https://jira.mongodb.org/browse/PYTHON-2984
+.. _PyMongo 3.12.2 release notes in JIRA:https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=32310
+
 Changes in Version 3.12.1
 -------------------------
 
