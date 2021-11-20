@@ -58,6 +58,17 @@
       .. automethod:: create_index
       .. automethod:: create_indexes
       .. automethod:: drop_index
+      .. describe:: reindex
+
+         Removed. Run the `reIndex command`_ directly instead. Code like this::
+
+           >>> result = database.my_collection.reindex()
+
+         can be changed to this::
+
+           >>> result = database.command('reIndex', 'my_collection')
+
+         .. _reIndex command: https://docs.mongodb.com/manual/reference/command/reIndex/
       .. automethod:: drop_indexes
       .. automethod:: list_indexes
       .. automethod:: index_information
