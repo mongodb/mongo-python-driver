@@ -886,6 +886,48 @@ functions:
         content_type: ${content_type|application/gzip}
         display_name: Release files
 
+  "download and merge releases":
+    - command: shell.exec
+      params:
+        silent: true
+        script: |
+          export AWS_ACCESS_KEY_ID=${aws_key}
+          export AWS_SECRET_ACCESS_KEY=${aws_secret}
+
+          # Download all the task coverage files.
+          aws s3 cp --recursive s3://mciuploads/${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/release/ release/
+    - command: shell.exec
+      params:
+        script: |
+          set -o xtrace
+          ${PREPARE_SHELL}
+          # Combine releases into one directory.
+          ls -la release/
+          mkdir releases
+          for REL in release/*; do
+            tar zxvf $REL -C releases/
+          done
+          # Build source distribution.
+          cd src/
+          /opt/python/3.6/bin/python3 setup.py sdist
+          cp dist/* ../releases
+    - command: archive.targz_pack
+      params:
+        target: "release-files-all.tgz"
+        source_dir: "releases/"
+        include:
+          - "*"
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: release-files-all.tgz
+        remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/release-all/${task_id}-${execution}-release-files-all.tar.gz
+        bucket: mciuploads
+        permissions: public-read
+        content_type: ${content_type|application/gzip}
+        display_name: Release files all
+
 pre:
   - func: "fetch source"
   - func: "prepare resources"
@@ -971,7 +1013,7 @@ tasks:
                valgrind --version || true
 
     - name: "release"
-      tags: ["release"]
+      tags: ["release_tag"]
       exec_timeout_secs: 216000  # 60 minutes (manylinux task is slow).
       commands:
         - command: shell.exec
@@ -985,7 +1027,7 @@ tasks:
         - func: "upload release"
 
     - name: "release-old-manylinux"
-      tags: ["release"]
+      tags: ["release_tag"]
       exec_timeout_secs: 216000  # 60 minutes (manylinux task is slow).
       commands:
         - command: shell.exec
@@ -997,6 +1039,13 @@ tasks:
               ${PREPARE_SHELL}
               .evergreen/build-manylinux.sh BUILD_WITH_TAG
         - func: "upload release"
+
+    - name: "release-combine"
+      depends_on:
+        - name: ".release_tag"
+          patch_optional: true
+      commands:
+        - func: "download and merge releases"
 
 # Standard test tasks {{{
 
@@ -2541,6 +2590,7 @@ buildvariants:
       then:
         add_tasks:
           - name: "release-old-manylinux"
+          - name: "release-combine"
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available
