@@ -586,7 +586,7 @@ class Collection(common.BaseObject):
                 check_keys=False, multi=False,
                 write_concern=None, op_id=None, ordered=True,
                 bypass_doc_val=False, collation=None, array_filters=None,
-                hint=None, session=None, retryable_write=False):
+                hint=None, session=None, retryable_write=False, let=None):
         """Internal update / replace helper."""
         common.validate_boolean("upsert", upsert)
         collation = validate_collation_or_none(collation)
@@ -596,6 +596,9 @@ class Collection(common.BaseObject):
                           ('u', document),
                           ('multi', multi),
                           ('upsert', upsert)])
+        if let is not None:
+            common.validate_is_document_type("let", let)
+            update_doc["let"] = let
         if collation is not None:
             if not acknowledged:
                 raise ConfigurationError(
@@ -656,7 +659,7 @@ class Collection(common.BaseObject):
             check_keys=False, multi=False,
             write_concern=None, op_id=None, ordered=True,
             bypass_doc_val=False, collation=None, array_filters=None,
-            hint=None, session=None):
+            hint=None, session=None, let=None):
         """Internal update / replace helper."""
         def _update(session, sock_info, retryable_write):
             return self._update(
@@ -665,7 +668,7 @@ class Collection(common.BaseObject):
                 write_concern=write_concern, op_id=op_id, ordered=ordered,
                 bypass_doc_val=bypass_doc_val, collation=collation,
                 array_filters=array_filters, hint=hint, session=session,
-                retryable_write=retryable_write)
+                retryable_write=retryable_write, let=let)
 
         return self.__database.client._retryable_write(
             (write_concern or self.write_concern).acknowledged and not multi,
@@ -752,7 +755,7 @@ class Collection(common.BaseObject):
     def update_one(self, filter, update, upsert=False,
                    bypass_document_validation=False,
                    collation=None, array_filters=None, hint=None,
-                   session=None):
+                   session=None, let=None):
         """Update a single document matching the filter.
 
           >>> for doc in db.test.find():
@@ -823,7 +826,7 @@ class Collection(common.BaseObject):
                 write_concern=write_concern,
                 bypass_doc_val=bypass_document_validation,
                 collation=collation, array_filters=array_filters,
-                hint=hint, session=session),
+                hint=hint, session=session, let=let),
             write_concern.acknowledged)
 
     def update_many(self, filter, update, upsert=False, array_filters=None,
