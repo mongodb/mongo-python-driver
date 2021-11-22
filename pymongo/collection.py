@@ -596,9 +596,6 @@ class Collection(common.BaseObject):
                           ('u', document),
                           ('multi', multi),
                           ('upsert', upsert)])
-        if let is not None:
-            common.validate_is_document_type("let", let)
-            update_doc["let"] = let
         if collation is not None:
             if not acknowledged:
                 raise ConfigurationError(
@@ -622,6 +619,9 @@ class Collection(common.BaseObject):
         command = SON([('update', self.name),
                        ('ordered', ordered),
                        ('updates', [update_doc])])
+        if let is not None:
+            common.validate_is_document_type("let", let)
+            command["let"] = let
         if not write_concern.is_server_default:
             command['writeConcern'] = write_concern.document
 
