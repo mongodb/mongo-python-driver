@@ -868,6 +868,16 @@ functions:
           # Remove all Docker images
           docker rmi -f $(docker images -a -q) &> /dev/null || true
 
+  "build release":
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        script: |
+          set -o xtrace
+          ${PREPARE_SHELL}
+          .evergreen/release.sh
+
   "upload release":
     - command: archive.targz_pack
       params:
@@ -1021,22 +1031,31 @@ tasks:
                genhtml --version || true
                valgrind --version || true
 
-    - name: "release"
+    - name: "release-mac"
       tags: ["release_tag"]
+      run_on: macos-1014
+      commands:
+        - func: "build release"
+        - func: "upload release"
+
+    - name: "release-windows"
+      tags: ["release_tag"]
+      run_on: windows-64-vsMulti-small
+      commands:
+        - func: "build release"
+        - func: "upload release"
+
+    - name: "release-manylinux"
+      tags: ["release_tag"]
+      run_on: ubuntu2004-large
       exec_timeout_secs: 216000  # 60 minutes (manylinux task is slow).
       commands:
-        - command: shell.exec
-          type: test
-          params:
-            working_dir: "src"
-            script: |
-              set -o xtrace
-              ${PREPARE_SHELL}
-              .evergreen/release.sh
+        - func: "build release"
         - func: "upload release"
 
     - name: "release-old-manylinux"
       tags: ["release_tag"]
+      run_on: ubuntu2004-large
       exec_timeout_secs: 216000  # 60 minutes (manylinux task is slow).
       commands:
         - command: shell.exec
@@ -1050,6 +1069,8 @@ tasks:
         - func: "upload release"
 
     - name: "release-combine"
+      tags: ["release_tag"]
+      run_on: ubuntu2004-small
       depends_on:
         - name: "*"
           variant: ".release_tag"
@@ -2023,15 +2044,6 @@ axes:
         variables:
            COVERAGE: "coverage"
 
-  - id: release-axis
-    display_name: "Release"
-    values:
-      - id: "release"
-        display_name: "Release"
-        tags: ["release_tag"]
-        variables:
-           RELEASE: "release"
-
   # Run encryption tests?
   - id: encryption
     display_name: "Encryption"
@@ -2596,22 +2608,12 @@ buildvariants:
   tasks:
     - name: "load-balancer-test"
 
-- matrix_name: "Release"
-  matrix_spec:
-    platform: [ubuntu-20.04, windows-64-vsMulti-small, macos-1014]
-    release-axis: "*"
-  display_name: "Release ${platform}"
+- name: Release
+  display_name: Release
   batchtime: 20160 # 14 days
+  tags: ["release_tag"]
   tasks:
-    - name: "release"
-  rules:
-    - if:
-        platform: ubuntu-20.04
-        release-axis: "*"
-      then:
-        add_tasks:
-          - name: "release-old-manylinux"
-          - name: "release-combine"
+  - ".release_tag"
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available
