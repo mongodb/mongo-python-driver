@@ -831,7 +831,7 @@ class Collection(common.BaseObject):
 
     def update_many(self, filter, update, upsert=False, array_filters=None,
                     bypass_document_validation=False, collation=None,
-                    hint=None, session=None):
+                    hint=None, session=None, let=None):
         """Update one or more documents that match the filter.
 
           >>> for doc in db.test.find():
@@ -902,7 +902,7 @@ class Collection(common.BaseObject):
                 write_concern=write_concern,
                 bypass_doc_val=bypass_document_validation,
                 collation=collation, array_filters=array_filters,
-                hint=hint, session=session),
+                hint=hint, session=session, let=let),
             write_concern.acknowledged)
 
     def drop(self, session=None):
@@ -934,7 +934,8 @@ class Collection(common.BaseObject):
     def _delete(
             self, sock_info, criteria, multi,
             write_concern=None, op_id=None, ordered=True,
-            collation=None, hint=None, session=None, retryable_write=False):
+            collation=None, hint=None, session=None, retryable_write=False,
+            let=None):
         """Internal delete helper."""
         common.validate_is_mapping("filter", criteria)
         write_concern = write_concern or self.write_concern
@@ -961,6 +962,9 @@ class Collection(common.BaseObject):
         if not write_concern.is_server_default:
             command['writeConcern'] = write_concern.document
 
+        if let is not None:
+            common.validate_is_document_type("let", let)
+            command["let"] = let
         # Delete command.
         result = sock_info.command(
             self.__database.name,
@@ -976,20 +980,21 @@ class Collection(common.BaseObject):
     def _delete_retryable(
             self, criteria, multi,
             write_concern=None, op_id=None, ordered=True,
-            collation=None, hint=None, session=None):
+            collation=None, hint=None, session=None, let=None):
         """Internal delete helper."""
         def _delete(session, sock_info, retryable_write):
             return self._delete(
                 sock_info, criteria, multi,
                 write_concern=write_concern, op_id=op_id, ordered=ordered,
                 collation=collation, hint=hint, session=session,
-                retryable_write=retryable_write)
+                retryable_write=retryable_write, let=let)
 
         return self.__database.client._retryable_write(
             (write_concern or self.write_concern).acknowledged and not multi,
             _delete, session)
 
-    def delete_one(self, filter, collation=None, hint=None, session=None):
+    def delete_one(self, filter, collation=None, hint=None, session=None,
+                   let=None):
         """Delete a single document matching the filter.
 
           >>> db.test.count_documents({'x': 1})
@@ -1030,10 +1035,11 @@ class Collection(common.BaseObject):
             self._delete_retryable(
                 filter, False,
                 write_concern=write_concern,
-                collation=collation, hint=hint, session=session),
+                collation=collation, hint=hint, session=session, let=let),
             write_concern.acknowledged)
 
-    def delete_many(self, filter, collation=None, hint=None, session=None):
+    def delete_many(self, filter, collation=None, hint=None, session=None,
+                    let=None):
         """Delete one or more documents matching the filter.
 
           >>> db.test.count_documents({'x': 1})
@@ -1074,7 +1080,7 @@ class Collection(common.BaseObject):
             self._delete_retryable(
                 filter, True,
                 write_concern=write_concern,
-                collation=collation, hint=hint, session=session),
+                collation=collation, hint=hint, session=session, let=let),
             write_concern.acknowledged)
 
     def find_one(self, filter=None, *args, **kwargs):
