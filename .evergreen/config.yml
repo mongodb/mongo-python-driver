@@ -880,7 +880,7 @@ functions:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
         local_file: release-files.tgz
-        remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/release/${task_id}-${execution}-release-files.tar.gz
+        remote_file: ${UPLOAD_BUCKET}/release/${revision}/${task_id}-${execution}-release-files.tar.gz
         bucket: mciuploads
         permissions: public-read
         content_type: ${content_type|application/gzip}
@@ -895,15 +895,24 @@ functions:
           export AWS_SECRET_ACCESS_KEY=${aws_secret}
 
           # Download all the task coverage files.
-          aws s3 cp --recursive s3://mciuploads/${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/release/ release/
+          aws s3 cp --recursive s3://mciuploads/${UPLOAD_BUCKET}/release/${revision}/ release/
     - command: shell.exec
       params:
+        shell: "bash"
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
           # Combine releases into one directory.
           ls -la release/
           mkdir releases
+          # Copy old manylinux release first since we want the newer manylinux
+          # wheels to override them.
+          mkdir old_manylinux
+          if mv release/*old_manylinux* old_manylinux; then
+            for REL in old_manylinux/*; do
+              tar zxvf $REL -C releases/
+            done
+          fi
           for REL in release/*; do
             tar zxvf $REL -C releases/
           done
@@ -922,7 +931,7 @@ functions:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
         local_file: release-files-all.tgz
-        remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/release-all/${task_id}-${execution}-release-files-all.tar.gz
+        remote_file: ${UPLOAD_BUCKET}/release-all/${revision}/${task_id}-${execution}-release-files-all.tar.gz
         bucket: mciuploads
         permissions: public-read
         content_type: ${content_type|application/gzip}
