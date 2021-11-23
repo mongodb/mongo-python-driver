@@ -167,9 +167,7 @@ class Cursor(object):
         spec = filter
         if spec is None:
             spec = {}
-        if let:
-            validate_is_document_type("let", let)
-        self.__let == let
+
         validate_is_mapping("filter", spec)
         if not isinstance(skip, int):
             raise TypeError("skip must be an instance of int")
@@ -200,6 +198,10 @@ class Cursor(object):
         if projection is not None:
             projection = helpers._fields_list_to_dict(projection, "projection")
 
+        if let:
+            validate_is_document_type("let", let)
+
+        self.__let = let
         self.__spec = spec
         self.__projection = projection
         self.__skip = skip
