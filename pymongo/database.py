@@ -69,6 +69,13 @@ class Database(common.BaseObject):
 
         .. seealso:: The MongoDB documentation on `databases <https://dochub.mongodb.org/core/databases>`_.
 
+        .. versionchanged:: 4.0
+           Removed the eval, system_js, error, last_status, previous_error,
+           reset_error_history, authenticate, logout, collection_names,
+           current_op, add_user, remove_user, profiling_level,
+           set_profiling_level, and profiling_info methods.
+           See the :ref:`pymongo4-migration-guide`.
+
         .. versionchanged:: 3.2
            Added the read_concern option.
 

@@ -504,6 +504,11 @@ class MongoClient(common.BaseObject):
         .. seealso:: The MongoDB documentation on `connections <https://dochub.mongodb.org/core/connections>`_.
 
         .. versionchanged:: 4.0
+           Removed the fsync, unlock, is_locked, database_names, and
+           close_cursor methods.
+           See the :ref:`pymongo4-migration-guide`.
+
+        .. versionchanged:: 4.0
            Removed the ``waitQueueMultiple`` and ``socketKeepAlive`` keyword
            arguments.
            The default for `uuidRepresentation` was changed from
