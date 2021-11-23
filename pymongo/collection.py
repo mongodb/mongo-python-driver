@@ -115,6 +115,13 @@ class Collection(common.BaseObject):
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the create collection command
 
+        ..versionchanged:: 4.0
+           Removed the reindex, map_reduce, inline_map_reduce,
+           parallel_scan, initialize_unordered_bulk_op,
+           initialize_ordered_bulk_op, group, count, insert, save,
+           update, remove, find_and_modify, and ensure_index methods. See the
+           migration guide: :doc:`migrate-to-pymongo4.rst`.
+
         .. versionchanged:: 3.6
            Added ``session`` parameter.
 
