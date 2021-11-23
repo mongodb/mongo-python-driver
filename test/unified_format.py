@@ -558,6 +558,7 @@ class MatchEvaluatorUtil(object):
             for key, value in expectation.items():
                 if value == {'$$exists': False}:
                     expected_keys.remove(key)
+            print(expected_keys, set(actual.keys()))
             self.test.assertEqual(expected_keys, set(actual.keys()))
 
     def match_result(self, expectation, actual,

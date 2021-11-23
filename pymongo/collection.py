@@ -962,9 +962,10 @@ class Collection(common.BaseObject):
         if not write_concern.is_server_default:
             command['writeConcern'] = write_concern.document
 
-        if let is not None:
+        if let:
             common.validate_is_document_type("let", let)
             command["let"] = let
+
         # Delete command.
         result = sock_info.command(
             self.__database.name,
