@@ -32,8 +32,8 @@
                 }
               ]
             },
-            "commandName": "aggregate",
-            "databaseName": "test"
+            "command_name": "aggregate",
+            "database_name": "test"
           }
         }
       ]
