@@ -1042,7 +1042,8 @@ tasks:
 
     - name: "release-combine"
       depends_on:
-        - name: ".release_tag"
+        - name: "*"
+          variant: ".release_tag"
           patch_optional: true
       commands:
         - func: "download and merge releases"
@@ -2013,6 +2014,15 @@ axes:
         variables:
            COVERAGE: "coverage"
 
+  - id: release-axis
+    display_name: "Release"
+    values:
+      - id: "release"
+        display_name: "Release"
+        tags: ["release_tag"]
+        variables:
+           RELEASE: "release"
+
   # Run encryption tests?
   - id: encryption
     display_name: "Encryption"
@@ -2580,6 +2590,7 @@ buildvariants:
 - matrix_name: "Release"
   matrix_spec:
     platform: [ubuntu-20.04, windows-64-vsMulti-small, macos-1014]
+    release-axis: "*"
   display_name: "Release ${platform}"
   batchtime: 20160 # 14 days
   tasks:
@@ -2587,6 +2598,7 @@ buildvariants:
   rules:
     - if:
         platform: ubuntu-20.04
+        release-axis: "*"
       then:
         add_tasks:
           - name: "release-old-manylinux"
