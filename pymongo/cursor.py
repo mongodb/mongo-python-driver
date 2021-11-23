@@ -24,7 +24,8 @@ from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.son import SON
 from pymongo import helpers
-from pymongo.common import validate_boolean, validate_is_mapping
+from pymongo.common import (validate_boolean, validate_is_mapping,
+                            validate_is_document_type)
 from pymongo.collation import validate_collation_or_none
 from pymongo.errors import (ConnectionFailure,
                             InvalidOperation,
@@ -140,7 +141,7 @@ class Cursor(object):
                  collation=None, hint=None, max_scan=None, max_time_ms=None,
                  max=None, min=None, return_key=None, show_record_id=None,
                  snapshot=None, comment=None, session=None,
-                 allow_disk_use=None):
+                 allow_disk_use=None, let=None):
         """Create a new cursor.
 
         Should not be called directly by application developers - see
@@ -166,7 +167,9 @@ class Cursor(object):
         spec = filter
         if spec is None:
             spec = {}
-
+        if let:
+            validate_is_document_type("let", let)
+        self.__let == let
         validate_is_mapping("filter", spec)
         if not isinstance(skip, int):
             raise TypeError("skip must be an instance of int")
@@ -370,6 +373,8 @@ class Cursor(object):
             operators["$explain"] = True
         if self.__hint:
             operators["$hint"] = self.__hint
+        if self.__let:
+            operators["let"] = self.__let
         if self.__comment:
             operators["$comment"] = self.__comment
         if self.__max_scan:
