@@ -309,7 +309,9 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
-          bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/build-mongohouse-local.sh
+          # The mongohouse build script needs to be passed the VARIANT variable, see
+          # https://github.com/10gen/mongohouse/blob/973cc11/evergreen.yaml#L31
+          VARIANT=rhel7 bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/build-mongohouse-local.sh
     - command: shell.exec
       type: setup
       params:
@@ -2795,8 +2797,8 @@ buildvariants:
 
 - matrix_name: "data-lake-spec-tests"
   matrix_spec:
-    platform: ubuntu-16.04
-    python-version: ["2.7", "3.4", "3.8"]
+    platform: rhel70
+    python-version: ["2.7", "3.4", "3.6"]
     auth: "auth"
     c-extensions: "*"
   display_name: "Atlas Data Lake ${python-version} ${c-extensions}"
