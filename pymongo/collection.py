@@ -2235,7 +2235,7 @@ class Collection(common.BaseObject):
     def __find_and_modify(self, filter, projection, sort, upsert=None,
                           return_document=ReturnDocument.BEFORE,
                           array_filters=None, hint=None, session=None,
-                          **kwargs):
+                          let=None, **kwargs):
         """Internal findAndModify helper."""
 
         common.validate_is_mapping("filter", filter)
@@ -2246,6 +2246,8 @@ class Collection(common.BaseObject):
         cmd = SON([("findAndModify", self.__name),
                    ("query", filter),
                    ("new", return_document)])
+        if let:
+            cmd["let"] = let
         cmd.update(kwargs)
         if projection is not None:
             cmd["fields"] = helpers._fields_list_to_dict(projection,
@@ -2293,7 +2295,7 @@ class Collection(common.BaseObject):
 
     def find_one_and_delete(self, filter,
                             projection=None, sort=None, hint=None,
-                            session=None, **kwargs):
+                            session=None, let=None, **kwargs):
         """Finds a single document and deletes it, returning the document.
 
           >>> db.test.count_documents({'x': 1})
@@ -2359,13 +2361,13 @@ class Collection(common.BaseObject):
         .. versionadded:: 3.0
         """
         kwargs['remove'] = True
-        return self.__find_and_modify(filter, projection, sort,
+        return self.__find_and_modify(filter, projection, sort, let=let,
                                       hint=hint, session=session, **kwargs)
 
     def find_one_and_replace(self, filter, replacement,
                              projection=None, sort=None, upsert=False,
                              return_document=ReturnDocument.BEFORE,
-                             hint=None, session=None, **kwargs):
+                             hint=None, session=None, let=None, **kwargs):
         """Finds a single document and replaces it, returning either the
         original or the replaced document.
 
@@ -2439,14 +2441,14 @@ class Collection(common.BaseObject):
         common.validate_ok_for_replace(replacement)
         kwargs['update'] = replacement
         return self.__find_and_modify(filter, projection,
-                                      sort, upsert, return_document,
+                                      sort, upsert, return_document, let=let,
                                       hint=hint, session=session, **kwargs)
 
     def find_one_and_update(self, filter, update,
                             projection=None, sort=None, upsert=False,
                             return_document=ReturnDocument.BEFORE,
                             array_filters=None, hint=None, session=None,
-                            **kwargs):
+                            let=None, **kwargs):
         """Finds a single document and updates it, returning either the
         original or the updated document.
 
@@ -2564,7 +2566,7 @@ class Collection(common.BaseObject):
         kwargs['update'] = update
         return self.__find_and_modify(filter, projection,
                                       sort, upsert, return_document,
-                                      array_filters, hint=hint,
+                                      array_filters, hint=hint, let=let,
                                       session=session, **kwargs)
 
     def __iter__(self):
