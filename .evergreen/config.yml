@@ -837,6 +837,16 @@ functions:
           # Remove all Docker images
           docker rmi -f $(docker images -a -q) &> /dev/null || true
 
+  "build release":
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        script: |
+          set -o xtrace
+          ${PREPARE_SHELL}
+          .evergreen/release.sh
+
   "upload release":
     - command: archive.targz_pack
       params:
@@ -849,11 +859,62 @@ functions:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
         local_file: release-files.tgz
-        remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/release/${task_id}-${execution}-release-files.tar.gz
+        remote_file: ${UPLOAD_BUCKET}/release/${revision}/${task_id}-${execution}-release-files.tar.gz
         bucket: mciuploads
         permissions: public-read
         content_type: ${content_type|application/gzip}
         display_name: Release files
+
+  "download and merge releases":
+    - command: shell.exec
+      params:
+        silent: true
+        script: |
+          export AWS_ACCESS_KEY_ID=${aws_key}
+          export AWS_SECRET_ACCESS_KEY=${aws_secret}
+
+          # Download all the task coverage files.
+          aws s3 cp --recursive s3://mciuploads/${UPLOAD_BUCKET}/release/${revision}/ release/
+    - command: shell.exec
+      params:
+        shell: "bash"
+        script: |
+          set -o xtrace
+          ${PREPARE_SHELL}
+          # Combine releases into one directory.
+          ls -la release/
+          mkdir releases
+          # Copy old manylinux release first since we want the newer manylinux
+          # wheels to override them.
+          mkdir old_manylinux
+          if mv release/*old_manylinux* old_manylinux; then
+            for REL in old_manylinux/*; do
+              tar zxvf $REL -C releases/
+            done
+          fi
+          for REL in release/*; do
+            tar zxvf $REL -C releases/
+          done
+          # Build source distribution.
+          cd src/
+          /opt/python/3.6/bin/python3 setup.py sdist
+          cp dist/* ../releases
+    - command: archive.targz_pack
+      params:
+        target: "release-files-all.tgz"
+        source_dir: "releases/"
+        include:
+          - "*"
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: release-files-all.tgz
+        remote_file: ${UPLOAD_BUCKET}/release-all/${revision}/${task_id}-${execution}-release-files-all.tar.gz
+        bucket: mciuploads
+        permissions: public-read
+        content_type: ${content_type|application/gzip}
+        display_name: Release files all
 
 pre:
   - func: "fetch source"
@@ -940,22 +1001,31 @@ tasks:
                genhtml --version || true
                valgrind --version || true
 
-    - name: "release"
-      tags: ["release"]
+    - name: "release-mac"
+      tags: ["release_tag"]
+      run_on: macos-1014
+      commands:
+        - func: "build release"
+        - func: "upload release"
+
+    - name: "release-windows"
+      tags: ["release_tag"]
+      run_on: windows-64-vsMulti-small
+      commands:
+        - func: "build release"
+        - func: "upload release"
+
+    - name: "release-manylinux"
+      tags: ["release_tag"]
+      run_on: ubuntu2004-large
       exec_timeout_secs: 216000  # 60 minutes (manylinux task is slow).
       commands:
-        - command: shell.exec
-          type: test
-          params:
-            working_dir: "src"
-            script: |
-              set -o xtrace
-              ${PREPARE_SHELL}
-              .evergreen/release.sh
+        - func: "build release"
         - func: "upload release"
 
     - name: "release-old-manylinux"
-      tags: ["release"]
+      tags: ["release_tag"]
+      run_on: ubuntu2004-large
       exec_timeout_secs: 216000  # 60 minutes (manylinux task is slow).
       commands:
         - command: shell.exec
@@ -967,6 +1037,16 @@ tasks:
               ${PREPARE_SHELL}
               .evergreen/build-manylinux.sh BUILD_WITH_TAG
         - func: "upload release"
+
+    - name: "release-combine"
+      tags: ["release_tag"]
+      run_on: ubuntu2004-small
+      depends_on:
+        - name: "*"
+          variant: ".release_tag"
+          patch_optional: true
+      commands:
+        - func: "download and merge releases"
 
 # Standard test tasks {{{
 
@@ -2899,19 +2979,12 @@ buildvariants:
   tasks:
     - name: "load-balancer-test"
 
-- matrix_name: "Release"
-  matrix_spec:
-    platform: [ubuntu-20.04, windows-64-vsMulti-small, macos-1014]
-  display_name: "Release ${platform}"
+- name: Release
+  display_name: Release
   batchtime: 20160 # 14 days
+  tags: ["release_tag"]
   tasks:
-    - name: "release"
-  rules:
-    - if:
-        platform: ubuntu-20.04
-      then:
-        add_tasks:
-          - name: "release-old-manylinux"
+  - ".release_tag"
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available
