@@ -798,6 +798,8 @@ class Collection(common.BaseObject):
             MongoDB 4.2 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `let` (optional): Specifies a document with a list of variables
+            that can then be accessed using the form `$$<variable_name>`.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
@@ -874,6 +876,8 @@ class Collection(common.BaseObject):
             MongoDB 4.2 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `let` (optional): Specifies a document with a list of variables
+            that can then be accessed using the form `$$<variable_name>`.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
@@ -1019,6 +1023,8 @@ class Collection(common.BaseObject):
             MongoDB 4.4 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `let` (optional): Specifies a document with a list of variables
+            that can then be accessed using the form `$$<variable_name>`.
 
         :Returns:
           - An instance of :class:`~pymongo.results.DeleteResult`.
@@ -1064,6 +1070,8 @@ class Collection(common.BaseObject):
             MongoDB 4.4 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `let` (optional): Specifies a document with a list of variables
+            that can then be accessed using the form `$$<variable_name>`.
 
         :Returns:
           - An instance of :class:`~pymongo.results.DeleteResult`.
@@ -2342,6 +2350,8 @@ class Collection(common.BaseObject):
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
+          - `let` (optional): Specifies a document with a list of variables
+            that can then be accessed using the form `$$<variable_name>`.
 
         .. versionchanged:: 3.11
            Added ``hint`` parameter.
@@ -2417,6 +2427,8 @@ class Collection(common.BaseObject):
             MongoDB 4.4 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `let` (optional): Specifies a document with a list of variables
+            that can then be accessed using the form `$$<variable_name>`.
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
@@ -2538,6 +2550,8 @@ class Collection(common.BaseObject):
             MongoDB 4.4 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `let` (optional): Specifies a document with a list of variables
+            that can then be accessed using the form `$$<variable_name>`.
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
