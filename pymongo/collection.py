@@ -619,7 +619,7 @@ class Collection(common.BaseObject):
         command = SON([('update', self.name),
                        ('ordered', ordered),
                        ('updates', [update_doc])])
-        if let is not None:
+        if let:
             common.validate_is_document_type("let", let)
             command["let"] = let
         if not write_concern.is_server_default:
