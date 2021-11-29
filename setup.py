@@ -36,7 +36,7 @@ except ImportError:
     except ImportError:
         _HAVE_SPHINX = False
 
-version = "4.0.dev0"
+version = "4.0"
 
 f = open("README.rst")
 try:
