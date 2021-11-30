@@ -2178,6 +2178,7 @@ class TestCollection(IntegrationTest):
         with self.assertRaises(NotImplementedError):
             bool(Collection(self.db, 'test'))
 
+    @client_context.require_version_min(5, 0, 0)
     def test_helpers_with_let(self):
         c = self.db.test
         helpers = [("delete_many", ({}, {})), ("delete_one", ({}, {})),
@@ -2188,8 +2189,10 @@ class TestCollection(IntegrationTest):
                    ("aggregate", ([], {}))]
         for let in [10, "str"]:
             for helper, args in helpers:
-                with self.assertRaises(TypeError):
+                with self.assertRaises(TypeError) as cm:
                     getattr(c, helper)(*args, let=let)
+                self.assertIn("let must be an instance of dict",
+                              str(cm.exception))
         for helper, args in helpers:
             getattr(c, helper)(*args, let={})
 
