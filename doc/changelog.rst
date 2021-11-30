@@ -1,6 +1,22 @@
 Changelog
 =========
 
+Changes in Version 4.1
+----------------------
+
+- :meth:`pymongo.collection.Collection.update_one`,
+  :meth:`pymongo.collection.Collection.update_many`,
+  :meth:`pymongo.collection.Collection.delete_one`,
+  :meth:`pymongo.collection.Collection.delete_many`,
+  :meth:`pymongo.collection.Collection.aggregate`,
+  :meth:`pymongo.collection.Collection.find_one_and_delete`,
+  :meth:`pymongo.collection.Collection.find_one_and_replace`,
+  :meth:`pymongo.collection.Collection.find_one_and_update`,
+  and :meth:`pymongo.collection.Collection.find` all support a new keyword
+  argument ``let`` which is a map of parameter names and values. Parameters
+  can then be accessed as variables in an aggregate expression context.
+
+
 Changes in Version 4.0
 ----------------------
 
