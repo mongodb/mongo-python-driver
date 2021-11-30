@@ -62,8 +62,8 @@ class _SrvResolver(object):
 
         try:
             self.__plist = self.__fqdn.split(".")[1:]
-        except Exception:
-            raise ConfigurationError(_INVALID_HOST_MSG % (fqdn,))
+        except Exception as exc:
+            raise ConfigurationError(_INVALID_HOST_MSG % (fqdn,)) from exc
         self.__slen = len(self.__plist)
         if self.__slen < 2:
             raise ConfigurationError(_INVALID_HOST_MSG % (fqdn,))
@@ -76,7 +76,7 @@ class _SrvResolver(object):
             # No TXT records
             return None
         except Exception as exc:
-            raise ConfigurationError(str(exc))
+            raise ConfigurationError(str(exc)) from exc
         if len(results) > 1:
             raise ConfigurationError('Only one TXT record is supported')
         return (
@@ -92,7 +92,7 @@ class _SrvResolver(object):
                 # Raise the original error.
                 raise
             # Else, raise all errors as ConfigurationError.
-            raise ConfigurationError(str(exc))
+            raise ConfigurationError(str(exc)) from exc
         return results
 
     def _get_srv_response_and_hosts(self, encapsulate_errors):
