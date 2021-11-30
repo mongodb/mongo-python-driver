@@ -620,7 +620,7 @@ class Collection(common.BaseObject):
                        ('ordered', ordered),
                        ('updates', [update_doc])])
         if let:
-            common.validate_is_document_type("let", let)
+            common.validate_is_mapping("let", let)
             command["let"] = let
         if not write_concern.is_server_default:
             command['writeConcern'] = write_concern.document
@@ -804,6 +804,8 @@ class Collection(common.BaseObject):
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
 
+        .. versionchanged:: 4.1
+           Added ``let`` parameter.
         .. versionchanged:: 3.11
            Added ``hint`` parameter.
         .. versionchanged:: 3.9
@@ -882,6 +884,8 @@ class Collection(common.BaseObject):
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
 
+        .. versionchanged:: 4.1
+           Added ``let`` parameter.
         .. versionchanged:: 3.11
            Added ``hint`` parameter.
         .. versionchanged:: 3.9
@@ -1029,6 +1033,8 @@ class Collection(common.BaseObject):
         :Returns:
           - An instance of :class:`~pymongo.results.DeleteResult`.
 
+        .. versionchanged:: 4.1
+           Added ``let`` parameter.
         .. versionchanged:: 3.11
            Added ``hint`` parameter.
         .. versionchanged:: 3.6
@@ -1076,6 +1082,8 @@ class Collection(common.BaseObject):
         :Returns:
           - An instance of :class:`~pymongo.results.DeleteResult`.
 
+        .. versionchanged:: 4.1
+           Added ``let`` parameter.
         .. versionchanged:: 3.11
            Added ``hint`` parameter.
         .. versionchanged:: 3.6
@@ -1900,15 +1908,18 @@ class Collection(common.BaseObject):
         return options
 
     def _aggregate(self, aggregation_command, pipeline, cursor_class, session,
-                   explicit_session, **kwargs):
+                   explicit_session, let=None, **kwargs):
         cmd = aggregation_command(
             self, cursor_class, pipeline, kwargs, explicit_session,
             user_fields={'cursor': {'firstBatch': 1}})
+        if let:
+            common.validate_is_mapping("let", let)
+            cmd["let"] = let
         return self.__database.client._retryable_read(
             cmd.get_cursor, cmd.get_read_preference(session), session,
             retryable=not cmd._performs_write)
 
-    def aggregate(self, pipeline, session=None, **kwargs):
+    def aggregate(self, pipeline, session=None, let=None, **kwargs):
         """Perform an aggregation using the aggregation framework on this
         collection.
 
@@ -1955,6 +1966,8 @@ class Collection(common.BaseObject):
           A :class:`~pymongo.command_cursor.CommandCursor` over the result
           set.
 
+        .. versionchanged:: 4.1
+           Added ``let`` parameter.
         .. versionchanged:: 4.0
            Removed the ``useCursor`` option.
         .. versionchanged:: 3.9
@@ -1984,6 +1997,7 @@ class Collection(common.BaseObject):
                                    CommandCursor,
                                    session=s,
                                    explicit_session=session is not None,
+                                   let=let,
                                    **kwargs)
 
     def aggregate_raw_batches(self, pipeline, session=None, **kwargs):
@@ -2255,6 +2269,7 @@ class Collection(common.BaseObject):
                    ("query", filter),
                    ("new", return_document)])
         if let:
+            common.validate_is_mapping("let", let)
             cmd["let"] = let
         cmd.update(kwargs)
         if projection is not None:
@@ -2353,6 +2368,8 @@ class Collection(common.BaseObject):
           - `let` (optional): Specifies a document with a list of variables
             that can then be accessed using the form `$$<variable_name>`.
 
+        .. versionchanged:: 4.1
+           Added ``let`` parameter.
         .. versionchanged:: 3.11
            Added ``hint`` parameter.
         .. versionchanged:: 3.6
@@ -2433,6 +2450,8 @@ class Collection(common.BaseObject):
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
 
+        .. versionchanged:: 4.1
+           Added ``let`` parameter.
         .. versionchanged:: 3.11
            Added the ``hint`` option.
         .. versionchanged:: 3.6
@@ -2556,6 +2575,8 @@ class Collection(common.BaseObject):
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
 
+        .. versionchanged:: 4.1
+           Added ``let`` parameter.
         .. versionchanged:: 3.11
            Added the ``hint`` option.
         .. versionchanged:: 3.9

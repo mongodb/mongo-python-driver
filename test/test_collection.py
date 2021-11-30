@@ -2178,6 +2178,21 @@ class TestCollection(IntegrationTest):
         with self.assertRaises(NotImplementedError):
             bool(Collection(self.db, 'test'))
 
+    def test_helpers_with_let(self):
+        c = self.db.test
+        helpers = [("delete_many", ({}, {})), ("delete_one", ({}, {})),
+                   ("find", ({})), ("update_many", ({}, {'$inc': {'x': 3}})),
+                   ("update_one", ({}, {'$inc': {'x': 3}})),
+                   ("find_one_and_delete", ({}, {})),
+                   ("find_one_and_replace", ({}, {})),
+                   ("aggregate", ([], {}))]
+        for let in [10, "str"]:
+            for helper, args in helpers:
+                with self.assertRaises(TypeError):
+                    getattr(c, helper)(*args, let=let)
+        for helper, args in helpers:
+            getattr(c, helper)(*args, let={})
+
 
 if __name__ == "__main__":
     unittest.main()
