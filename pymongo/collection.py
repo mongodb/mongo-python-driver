@@ -798,8 +798,10 @@ class Collection(common.BaseObject):
             MongoDB 4.2 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
-          - `let` (optional): Specifies a document with a list of variables
-            that can then be accessed using the form `$$<variable_name>`.
+          - `let` (optional): Map of parameter names and values. Values must be
+            constant or closed expressions that do not reference document 
+            fields. Parameters can then be accessed as variables in an 
+            aggregate expression context (e.g. "$$var").
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
@@ -878,8 +880,10 @@ class Collection(common.BaseObject):
             MongoDB 4.2 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
-          - `let` (optional): Specifies a document with a list of variables
-            that can then be accessed using the form `$$<variable_name>`.
+          - `let` (optional): Map of parameter names and values. Values must be
+            constant or closed expressions that do not reference document 
+            fields. Parameters can then be accessed as variables in an 
+            aggregate expression context (e.g. "$$var").
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
@@ -1027,8 +1031,10 @@ class Collection(common.BaseObject):
             MongoDB 4.4 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
-          - `let` (optional): Specifies a document with a list of variables
-            that can then be accessed using the form `$$<variable_name>`.
+          - `let` (optional): Map of parameter names and values. Values must be
+            constant or closed expressions that do not reference document 
+            fields. Parameters can then be accessed as variables in an 
+            aggregate expression context (e.g. "$$var").
 
         :Returns:
           - An instance of :class:`~pymongo.results.DeleteResult`.
@@ -1076,8 +1082,10 @@ class Collection(common.BaseObject):
             MongoDB 4.4 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
-          - `let` (optional): Specifies a document with a list of variables
-            that can then be accessed using the form `$$<variable_name>`.
+          - `let` (optional): Map of parameter names and values. Values must be
+            constant or closed expressions that do not reference document 
+            fields. Parameters can then be accessed as variables in an 
+            aggregate expression context (e.g. "$$var").
 
         :Returns:
           - An instance of :class:`~pymongo.results.DeleteResult`.
@@ -1910,11 +1918,9 @@ class Collection(common.BaseObject):
     def _aggregate(self, aggregation_command, pipeline, cursor_class, session,
                    explicit_session, let=None, **kwargs):
         cmd = aggregation_command(
-            self, cursor_class, pipeline, kwargs, explicit_session,
+            self, cursor_class, pipeline, kwargs, explicit_session, let,
             user_fields={'cursor': {'firstBatch': 1}})
-        if let:
-            common.validate_is_mapping("let", let)
-            cmd["let"] = let
+
         return self.__database.client._retryable_read(
             cmd.get_cursor, cmd.get_read_preference(session), session,
             retryable=not cmd._performs_write)
@@ -2365,8 +2371,10 @@ class Collection(common.BaseObject):
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
-          - `let` (optional): Specifies a document with a list of variables
-            that can then be accessed using the form `$$<variable_name>`.
+          - `let` (optional): Map of parameter names and values. Values must be
+            constant or closed expressions that do not reference document 
+            fields. Parameters can then be accessed as variables in an 
+            aggregate expression context (e.g. "$$var").
 
         .. versionchanged:: 4.1
            Added ``let`` parameter.
@@ -2444,8 +2452,10 @@ class Collection(common.BaseObject):
             MongoDB 4.4 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
-          - `let` (optional): Specifies a document with a list of variables
-            that can then be accessed using the form `$$<variable_name>`.
+          - `let` (optional): Map of parameter names and values. Values must be
+            constant or closed expressions that do not reference document 
+            fields. Parameters can then be accessed as variables in an 
+            aggregate expression context (e.g. "$$var").
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
@@ -2569,8 +2579,10 @@ class Collection(common.BaseObject):
             MongoDB 4.4 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
-          - `let` (optional): Specifies a document with a list of variables
-            that can then be accessed using the form `$$<variable_name>`.
+          - `let` (optional): Map of parameter names and values. Values must be
+            constant or closed expressions that do not reference document 
+            fields. Parameters can then be accessed as variables in an 
+            aggregate expression context (e.g. "$$var").
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
