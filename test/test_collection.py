@@ -2178,6 +2178,23 @@ class TestCollection(IntegrationTest):
         with self.assertRaises(NotImplementedError):
             bool(Collection(self.db, 'test'))
 
+    @client_context.require_version_min(5, 0, 0)
+    def test_helpers_with_let(self):
+        c = self.db.test
+        helpers = [(c.delete_many, ({}, {})), (c.delete_one, ({}, {})),
+                   (c.find, ({})), (c.update_many, ({}, {'$inc': {'x': 3}})),
+                   (c.update_one, ({}, {'$inc': {'x': 3}})),
+                   (c.find_one_and_delete, ({}, {})),
+                   (c.find_one_and_replace, ({}, {})),
+                   (c.aggregate, ([], {}))]
+        for let in [10, "str"]:
+            for helper, args in helpers:
+                with self.assertRaisesRegex(TypeError,
+                                            "let must be an instance of dict"):
+                    helper(*args, let=let)
+        for helper, args in helpers:
+            helper(*args, let={})
+
 
 if __name__ == "__main__":
     unittest.main()

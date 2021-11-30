@@ -30,7 +30,7 @@ class _AggregationCommand(object):
     :meth:`pymongo.database.Database.aggregate` instead.
     """
     def __init__(self, target, cursor_class, pipeline, options,
-                 explicit_session, user_fields=None, result_processor=None):
+                 explicit_session, let=None, user_fields=None, result_processor=None):
         if "explain" in options:
             raise ConfigurationError("The explain option is not supported. "
                                      "Use Database.command instead.")
@@ -44,6 +44,9 @@ class _AggregationCommand(object):
             self._performs_write = True
 
         common.validate_is_mapping('options', options)
+        if let:
+            common.validate_is_mapping("let", let)
+            options["let"] = let
         self._options = options
 
         # This is the batchSize that will be used for setting the initial

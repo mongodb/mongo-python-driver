@@ -593,7 +593,7 @@ class Collection(common.BaseObject):
                 check_keys=False, multi=False,
                 write_concern=None, op_id=None, ordered=True,
                 bypass_doc_val=False, collation=None, array_filters=None,
-                hint=None, session=None, retryable_write=False):
+                hint=None, session=None, retryable_write=False, let=None):
         """Internal update / replace helper."""
         common.validate_boolean("upsert", upsert)
         collation = validate_collation_or_none(collation)
@@ -626,6 +626,9 @@ class Collection(common.BaseObject):
         command = SON([('update', self.name),
                        ('ordered', ordered),
                        ('updates', [update_doc])])
+        if let:
+            common.validate_is_mapping("let", let)
+            command["let"] = let
         if not write_concern.is_server_default:
             command['writeConcern'] = write_concern.document
 
@@ -663,7 +666,7 @@ class Collection(common.BaseObject):
             check_keys=False, multi=False,
             write_concern=None, op_id=None, ordered=True,
             bypass_doc_val=False, collation=None, array_filters=None,
-            hint=None, session=None):
+            hint=None, session=None, let=None):
         """Internal update / replace helper."""
         def _update(session, sock_info, retryable_write):
             return self._update(
@@ -672,7 +675,7 @@ class Collection(common.BaseObject):
                 write_concern=write_concern, op_id=op_id, ordered=ordered,
                 bypass_doc_val=bypass_doc_val, collation=collation,
                 array_filters=array_filters, hint=hint, session=session,
-                retryable_write=retryable_write)
+                retryable_write=retryable_write, let=let)
 
         return self.__database.client._retryable_write(
             (write_concern or self.write_concern).acknowledged and not multi,
@@ -759,7 +762,7 @@ class Collection(common.BaseObject):
     def update_one(self, filter, update, upsert=False,
                    bypass_document_validation=False,
                    collation=None, array_filters=None, hint=None,
-                   session=None):
+                   session=None, let=None):
         """Update a single document matching the filter.
 
           >>> for doc in db.test.find():
@@ -802,10 +805,16 @@ class Collection(common.BaseObject):
             MongoDB 4.2 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `let` (optional): Map of parameter names and values. Values must be
+            constant or closed expressions that do not reference document 
+            fields. Parameters can then be accessed as variables in an 
+            aggregate expression context (e.g. "$$var").
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
 
+        .. versionchanged:: 4.1
+           Added ``let`` parameter.
         .. versionchanged:: 3.11
            Added ``hint`` parameter.
         .. versionchanged:: 3.9
@@ -830,12 +839,12 @@ class Collection(common.BaseObject):
                 write_concern=write_concern,
                 bypass_doc_val=bypass_document_validation,
                 collation=collation, array_filters=array_filters,
-                hint=hint, session=session),
+                hint=hint, session=session, let=let),
             write_concern.acknowledged)
 
     def update_many(self, filter, update, upsert=False, array_filters=None,
                     bypass_document_validation=False, collation=None,
-                    hint=None, session=None):
+                    hint=None, session=None, let=None):
         """Update one or more documents that match the filter.
 
           >>> for doc in db.test.find():
@@ -878,10 +887,16 @@ class Collection(common.BaseObject):
             MongoDB 4.2 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `let` (optional): Map of parameter names and values. Values must be
+            constant or closed expressions that do not reference document 
+            fields. Parameters can then be accessed as variables in an 
+            aggregate expression context (e.g. "$$var").
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
 
+        .. versionchanged:: 4.1
+           Added ``let`` parameter.
         .. versionchanged:: 3.11
            Added ``hint`` parameter.
         .. versionchanged:: 3.9
@@ -906,7 +921,7 @@ class Collection(common.BaseObject):
                 write_concern=write_concern,
                 bypass_doc_val=bypass_document_validation,
                 collation=collation, array_filters=array_filters,
-                hint=hint, session=session),
+                hint=hint, session=session, let=let),
             write_concern.acknowledged)
 
     def drop(self, session=None):
@@ -938,7 +953,8 @@ class Collection(common.BaseObject):
     def _delete(
             self, sock_info, criteria, multi,
             write_concern=None, op_id=None, ordered=True,
-            collation=None, hint=None, session=None, retryable_write=False):
+            collation=None, hint=None, session=None, retryable_write=False,
+            let=None):
         """Internal delete helper."""
         common.validate_is_mapping("filter", criteria)
         write_concern = write_concern or self.write_concern
@@ -965,6 +981,10 @@ class Collection(common.BaseObject):
         if not write_concern.is_server_default:
             command['writeConcern'] = write_concern.document
 
+        if let:
+            common.validate_is_document_type("let", let)
+            command["let"] = let
+
         # Delete command.
         result = sock_info.command(
             self.__database.name,
@@ -980,20 +1000,21 @@ class Collection(common.BaseObject):
     def _delete_retryable(
             self, criteria, multi,
             write_concern=None, op_id=None, ordered=True,
-            collation=None, hint=None, session=None):
+            collation=None, hint=None, session=None, let=None):
         """Internal delete helper."""
         def _delete(session, sock_info, retryable_write):
             return self._delete(
                 sock_info, criteria, multi,
                 write_concern=write_concern, op_id=op_id, ordered=ordered,
                 collation=collation, hint=hint, session=session,
-                retryable_write=retryable_write)
+                retryable_write=retryable_write, let=let)
 
         return self.__database.client._retryable_write(
             (write_concern or self.write_concern).acknowledged and not multi,
             _delete, session)
 
-    def delete_one(self, filter, collation=None, hint=None, session=None):
+    def delete_one(self, filter, collation=None, hint=None, session=None,
+                   let=None):
         """Delete a single document matching the filter.
 
           >>> db.test.count_documents({'x': 1})
@@ -1017,10 +1038,16 @@ class Collection(common.BaseObject):
             MongoDB 4.4 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `let` (optional): Map of parameter names and values. Values must be
+            constant or closed expressions that do not reference document 
+            fields. Parameters can then be accessed as variables in an 
+            aggregate expression context (e.g. "$$var").
 
         :Returns:
           - An instance of :class:`~pymongo.results.DeleteResult`.
 
+        .. versionchanged:: 4.1
+           Added ``let`` parameter.
         .. versionchanged:: 3.11
            Added ``hint`` parameter.
         .. versionchanged:: 3.6
@@ -1034,10 +1061,11 @@ class Collection(common.BaseObject):
             self._delete_retryable(
                 filter, False,
                 write_concern=write_concern,
-                collation=collation, hint=hint, session=session),
+                collation=collation, hint=hint, session=session, let=let),
             write_concern.acknowledged)
 
-    def delete_many(self, filter, collation=None, hint=None, session=None):
+    def delete_many(self, filter, collation=None, hint=None, session=None,
+                    let=None):
         """Delete one or more documents matching the filter.
 
           >>> db.test.count_documents({'x': 1})
@@ -1061,10 +1089,16 @@ class Collection(common.BaseObject):
             MongoDB 4.4 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `let` (optional): Map of parameter names and values. Values must be
+            constant or closed expressions that do not reference document 
+            fields. Parameters can then be accessed as variables in an 
+            aggregate expression context (e.g. "$$var").
 
         :Returns:
           - An instance of :class:`~pymongo.results.DeleteResult`.
 
+        .. versionchanged:: 4.1
+           Added ``let`` parameter.
         .. versionchanged:: 3.11
            Added ``hint`` parameter.
         .. versionchanged:: 3.6
@@ -1078,7 +1112,7 @@ class Collection(common.BaseObject):
             self._delete_retryable(
                 filter, True,
                 write_concern=write_concern,
-                collation=collation, hint=hint, session=session),
+                collation=collation, hint=hint, session=session, let=let),
             write_concern.acknowledged)
 
     def find_one(self, filter=None, *args, **kwargs):
@@ -1889,15 +1923,16 @@ class Collection(common.BaseObject):
         return options
 
     def _aggregate(self, aggregation_command, pipeline, cursor_class, session,
-                   explicit_session, **kwargs):
+                   explicit_session, let=None, **kwargs):
         cmd = aggregation_command(
-            self, cursor_class, pipeline, kwargs, explicit_session,
+            self, cursor_class, pipeline, kwargs, explicit_session, let,
             user_fields={'cursor': {'firstBatch': 1}})
+
         return self.__database.client._retryable_read(
             cmd.get_cursor, cmd.get_read_preference(session), session,
             retryable=not cmd._performs_write)
 
-    def aggregate(self, pipeline, session=None, **kwargs):
+    def aggregate(self, pipeline, session=None, let=None, **kwargs):
         """Perform an aggregation using the aggregation framework on this
         collection.
 
@@ -1944,6 +1979,8 @@ class Collection(common.BaseObject):
           A :class:`~pymongo.command_cursor.CommandCursor` over the result
           set.
 
+        .. versionchanged:: 4.1
+           Added ``let`` parameter.
         .. versionchanged:: 4.0
            Removed the ``useCursor`` option.
         .. versionchanged:: 3.9
@@ -1973,6 +2010,7 @@ class Collection(common.BaseObject):
                                    CommandCursor,
                                    session=s,
                                    explicit_session=session is not None,
+                                   let=let,
                                    **kwargs)
 
     def aggregate_raw_batches(self, pipeline, session=None, **kwargs):
@@ -2232,7 +2270,7 @@ class Collection(common.BaseObject):
     def __find_and_modify(self, filter, projection, sort, upsert=None,
                           return_document=ReturnDocument.BEFORE,
                           array_filters=None, hint=None, session=None,
-                          **kwargs):
+                          let=None, **kwargs):
         """Internal findAndModify helper."""
 
         common.validate_is_mapping("filter", filter)
@@ -2243,6 +2281,9 @@ class Collection(common.BaseObject):
         cmd = SON([("findAndModify", self.__name),
                    ("query", filter),
                    ("new", return_document)])
+        if let:
+            common.validate_is_mapping("let", let)
+            cmd["let"] = let
         cmd.update(kwargs)
         if projection is not None:
             cmd["fields"] = helpers._fields_list_to_dict(projection,
@@ -2290,7 +2331,7 @@ class Collection(common.BaseObject):
 
     def find_one_and_delete(self, filter,
                             projection=None, sort=None, hint=None,
-                            session=None, **kwargs):
+                            session=None, let=None, **kwargs):
         """Finds a single document and deletes it, returning the document.
 
           >>> db.test.count_documents({'x': 1})
@@ -2337,7 +2378,13 @@ class Collection(common.BaseObject):
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
+          - `let` (optional): Map of parameter names and values. Values must be
+            constant or closed expressions that do not reference document 
+            fields. Parameters can then be accessed as variables in an 
+            aggregate expression context (e.g. "$$var").
 
+        .. versionchanged:: 4.1
+           Added ``let`` parameter.
         .. versionchanged:: 3.11
            Added ``hint`` parameter.
         .. versionchanged:: 3.6
@@ -2356,13 +2403,13 @@ class Collection(common.BaseObject):
         .. versionadded:: 3.0
         """
         kwargs['remove'] = True
-        return self.__find_and_modify(filter, projection, sort,
+        return self.__find_and_modify(filter, projection, sort, let=let,
                                       hint=hint, session=session, **kwargs)
 
     def find_one_and_replace(self, filter, replacement,
                              projection=None, sort=None, upsert=False,
                              return_document=ReturnDocument.BEFORE,
-                             hint=None, session=None, **kwargs):
+                             hint=None, session=None, let=None, **kwargs):
         """Finds a single document and replaces it, returning either the
         original or the replaced document.
 
@@ -2412,10 +2459,16 @@ class Collection(common.BaseObject):
             MongoDB 4.4 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `let` (optional): Map of parameter names and values. Values must be
+            constant or closed expressions that do not reference document 
+            fields. Parameters can then be accessed as variables in an 
+            aggregate expression context (e.g. "$$var").
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
 
+        .. versionchanged:: 4.1
+           Added ``let`` parameter.
         .. versionchanged:: 3.11
            Added the ``hint`` option.
         .. versionchanged:: 3.6
@@ -2436,14 +2489,14 @@ class Collection(common.BaseObject):
         common.validate_ok_for_replace(replacement)
         kwargs['update'] = replacement
         return self.__find_and_modify(filter, projection,
-                                      sort, upsert, return_document,
+                                      sort, upsert, return_document, let=let,
                                       hint=hint, session=session, **kwargs)
 
     def find_one_and_update(self, filter, update,
                             projection=None, sort=None, upsert=False,
                             return_document=ReturnDocument.BEFORE,
                             array_filters=None, hint=None, session=None,
-                            **kwargs):
+                            let=None, **kwargs):
         """Finds a single document and updates it, returning either the
         original or the updated document.
 
@@ -2533,10 +2586,16 @@ class Collection(common.BaseObject):
             MongoDB 4.4 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `let` (optional): Map of parameter names and values. Values must be
+            constant or closed expressions that do not reference document 
+            fields. Parameters can then be accessed as variables in an 
+            aggregate expression context (e.g. "$$var").
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
 
+        .. versionchanged:: 4.1
+           Added ``let`` parameter.
         .. versionchanged:: 3.11
            Added the ``hint`` option.
         .. versionchanged:: 3.9
@@ -2561,7 +2620,7 @@ class Collection(common.BaseObject):
         kwargs['update'] = update
         return self.__find_and_modify(filter, projection,
                                       sort, upsert, return_document,
-                                      array_filters, hint=hint,
+                                      array_filters, hint=hint, let=let,
                                       session=session, **kwargs)
 
     def __iter__(self):
