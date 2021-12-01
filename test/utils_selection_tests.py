@@ -63,7 +63,7 @@ def make_server_description(server, hosts):
         return ServerDescription(clean_node(server['address']), Hello({}))
 
     hello_response = {'ok': True, 'hosts': hosts}
-    if server_type != "Standalone" and server_type != "Mongos":
+    if server_type not in ("Standalone", "Mongos", "RSGhost", "RSGhost"):
         hello_response['setName'] = "rs"
 
     if server_type == "RSPrimary":
@@ -72,6 +72,8 @@ def make_server_description(server, hosts):
         hello_response['secondary'] = True
     elif server_type == "Mongos":
         hello_response['msg'] = 'isdbgrid'
+    elif server_type == "RSGhost":
+        hello_response['isreplicaset'] = True
 
     hello_response['lastWrite'] = {
         'lastWriteDate': make_last_write_date(server)
@@ -149,7 +151,7 @@ def create_topology(scenario_def, **kwargs):
 
     # Assert that descriptions match
     assert (scenario_def['topology_description']['type'] ==
-           topology.description.topology_type_name)
+           topology.description.topology_type_name), topology.description.topology_type_name
 
     return topology
 
