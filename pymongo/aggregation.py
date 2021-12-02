@@ -19,7 +19,7 @@ from bson.son import SON
 from pymongo import common
 from pymongo.collation import validate_collation_or_none
 from pymongo.errors import ConfigurationError
-from pymongo.read_preferences import _AggWritePref
+from pymongo.read_preferences import _AggWritePref, ReadPreference
 
 
 class _AggregationCommand(object):
@@ -101,7 +101,7 @@ class _AggregationCommand(object):
         if self._write_preference:
             return self._write_preference
         pref = self._target._read_preference_for(session)
-        if self._performs_write:
+        if self._performs_write and pref != ReadPreference.PRIMARY:
             self._write_preference = pref = _AggWritePref(pref)
         return pref
 

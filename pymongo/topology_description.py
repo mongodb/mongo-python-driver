@@ -263,24 +263,24 @@ class TopologyDescription(object):
                                              selector.min_wire_version,
                                              common_wv))
 
+        if isinstance(selector, _AggWritePref):
+            selector.selection_hook(self)
+
         if self.topology_type == TOPOLOGY_TYPE.Unknown:
             return []
         elif self.topology_type in (TOPOLOGY_TYPE.Single,
                                     TOPOLOGY_TYPE.LoadBalanced):
             # Ignore selectors for standalone and load balancer mode.
             return self.known_servers
-        elif address:
+        if address:
             # Ignore selectors when explicit address is requested.
             description = self.server_descriptions().get(address)
             return [description] if description else []
-        elif (self.topology_type == TOPOLOGY_TYPE.Sharded and
-              not isinstance(selector, _AggWritePref)):
-            # TODO: adjust _AggWritePref for sharded clusters once we select
-            # a server.
-            # Ignore read preference.
-            selection = Selection.from_topology_description(self)
-        else:
-            selection = selector(Selection.from_topology_description(self))
+
+        selection = Selection.from_topology_description(self)
+        # Ignore read preference for sharded clusters.
+        if self.topology_type != TOPOLOGY_TYPE.Sharded:
+            selection = selector(selection)
 
         # Apply custom selector followed by localThresholdMS.
         if custom_selector is not None and selection:

@@ -438,19 +438,20 @@ class _AggWritePref:
 
     def __init__(self, pref):
         self.pref = pref
-        self.effective_pref = None
+        self.effective_pref = ReadPreference.PRIMARY
+
+    def selection_hook(self, topology_description):
+        common_wv = topology_description.common_wire_version
+        if (topology_description.has_readable_server(
+                ReadPreference.PRIMARY_PREFERRED) and
+            common_wv and common_wv < 13):
+            self.effective_pref = ReadPreference.PRIMARY
+        else:
+            self.effective_pref = self.pref
 
     def __call__(self, selection):
         """Apply this read preference to a Selection."""
-        has_50 = any(s for s in selection.server_descriptions
-                     if s.max_wire_version >= 13)
-        if not has_50:
-            # Fallback to using the primary:
-            self.effective_pref = ReadPreference.PRIMARY
-            return selection.primary_selection
-        # Apply the original selection:
-        self.effective_pref = self.pref
-        return self.pref(selection)
+        return self.effective_pref(selection)
 
     def __repr__(self):
         return "_AggWritePref(pref=%r)" % (self.pref,)
