@@ -63,7 +63,7 @@ def make_server_description(server, hosts):
         return ServerDescription(clean_node(server['address']), Hello({}))
 
     hello_response = {'ok': True, 'hosts': hosts}
-    if server_type not in ("Standalone", "Mongos", "RSGhost", "RSGhost"):
+    if server_type not in ("Standalone", "Mongos", "RSGhost"):
         hello_response['setName'] = "rs"
 
     if server_type == "RSPrimary":
@@ -74,6 +74,8 @@ def make_server_description(server, hosts):
         hello_response['msg'] = 'isdbgrid'
     elif server_type == "RSGhost":
         hello_response['isreplicaset'] = True
+    elif server_type == "RSArbiter":
+        hello_response['arbiterOnly'] = True
 
     hello_response['lastWrite'] = {
         'lastWriteDate': make_last_write_date(server)
