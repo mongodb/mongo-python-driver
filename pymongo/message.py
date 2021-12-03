@@ -579,9 +579,9 @@ def _op_msg(flags, command, dbname, read_preference, secondary_ok, check_keys,
     # getMore commands do not send $readPreference.
     if read_preference is not None and "$readPreference" not in command:
         if secondary_ok and not read_preference.mode:
-            command["$readPreference"] = (
-                ReadPreference.PRIMARY_PREFERRED.document)
-        else:
+            read_preference = ReadPreference.PRIMARY_PREFERRED
+        # Only send $readPreference if it's not primary (the default).
+        if read_preference.mode:
             command["$readPreference"] = read_preference.document
     name = next(iter(command))
     try:

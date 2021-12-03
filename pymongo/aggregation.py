@@ -92,11 +92,6 @@ class _AggregationCommand(object):
         """The database against which the aggregation command is run."""
         raise NotImplementedError
 
-    def _process_result(self, result, session, server, sock_info, secondary_ok):
-        if self._result_processor:
-            self._result_processor(
-                result, session, server, sock_info, secondary_ok)
-
     def get_read_preference(self, session):
         if self._write_preference:
             return self._write_preference
@@ -145,7 +140,8 @@ class _AggregationCommand(object):
             client=self._database.client,
             user_fields=self._user_fields)
 
-        self._process_result(result, session, server, sock_info, secondary_ok)
+        if self._result_processor:
+            self._result_processor(result, sock_info)
 
         # Extract cursor from result or mock/fake one if necessary.
         if 'cursor' in result:
