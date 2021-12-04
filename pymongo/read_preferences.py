@@ -427,7 +427,8 @@ class Nearest(_ServerMode):
 class _AggWritePref:
     """Agg $out/$merge write preference.
 
-    * If selection via pref contains a 5.0 server, uses pref read preference.
+    * If there are no readable servers, or there is any pre-5.0 server, use
+      `pref` read preference.
     * Otherwise uses Primary().
 
     :Parameters:
