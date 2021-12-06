@@ -1,3 +1,4 @@
+
 .. _handling-uuid-data-example:
 
 Handling UUID Data
@@ -12,7 +13,7 @@ to MongoDB and retrieve them as native :class:`uuid.UUID` objects::
   from uuid import uuid4
 
   # use the 'standard' representation for cross-language compatibility.
-  client = MongoClient(uuid_representation=UuidRepresentation.STANDARD)
+  client = MongoClient(uuidRepresentation='standard')
   collection = client.get_database('uuid_db').get_collection('uuid_coll')
 
   # remove all documents from collection
