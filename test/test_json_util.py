@@ -262,6 +262,15 @@ class TestJsonUtil(unittest.TestCase):
             '{"$regex": ".*", "$options": "mx"}',
             json_util.dumps(re.compile(b'.*', re.M | re.X)))
 
+    def test_regex_validation(self):
+        non_str_types = [10, {}, []]
+        docs = [{"$regex": i} for i in non_str_types]
+        for doc in docs:
+            self.assertEqual(doc, json_util.loads(json.dumps(doc)))
+
+        doc = {"$regex": ""}
+        self.assertIsInstance(json_util.loads(json.dumps(doc)), Regex)
+
     def test_minkey(self):
         self.round_trip({"m": MinKey()})
 
