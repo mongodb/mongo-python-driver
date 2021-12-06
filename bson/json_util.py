@@ -505,7 +505,7 @@ def object_hook(dct, json_options=DEFAULT_JSON_OPTIONS):
 def _parse_legacy_regex(doc):
     pattern = doc["$regex"]
     # Check if this is the $regex query operator.
-    if isinstance(pattern, Regex):
+    if not isinstance(pattern, (text_type, bytes)):
         return doc
     flags = 0
     # PyMongo always adds $options but some other tools may not.
