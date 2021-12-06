@@ -68,7 +68,7 @@ class Server(object):
         """Check the server's state soon."""
         self._monitor.request_check()
 
-    def run_operation(self, sock_info, operation, set_secondary_okay, listeners,
+    def run_operation(self, sock_info, operation, read_preference, listeners,
                       unpack_res):
         """Run a _Query or _GetMore operation and return a Response object.
 
@@ -95,7 +95,7 @@ class Server(object):
             request_id = 0
         else:
             message = operation.get_message(
-                set_secondary_okay, sock_info, use_cmd)
+                read_preference, sock_info, use_cmd)
             request_id, data, max_doc_size = self._split_message(message)
 
         if publish:

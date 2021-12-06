@@ -100,7 +100,7 @@ class _AggregationCommand(object):
             self._write_preference = pref = _AggWritePref(pref)
         return pref
 
-    def get_cursor(self, session, server, sock_info, secondary_ok):
+    def get_cursor(self, session, server, sock_info, read_preference):
         # Serialize command.
         cmd = SON([("aggregate", self._aggregation_target),
                    ("pipeline", self._pipeline)])
@@ -129,8 +129,7 @@ class _AggregationCommand(object):
         result = sock_info.command(
             self._database.name,
             cmd,
-            secondary_ok,
-            self.get_read_preference(session),
+            read_preference,
             self._target.codec_options,
             parse_write_concern_error=True,
             read_concern=read_concern,

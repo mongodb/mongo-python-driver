@@ -477,7 +477,7 @@ class Database(common.BaseObject):
             batch_size, collation, start_at_operation_time, session,
             start_after)
 
-    def _command(self, sock_info, command, secondary_ok=False, value=1, check=True,
+    def _command(self, sock_info, command, value=1, check=True,
                  allowable_errors=None, read_preference=ReadPreference.PRIMARY,
                  codec_options=DEFAULT_CODEC_OPTIONS,
                  write_concern=None,
@@ -491,7 +491,6 @@ class Database(common.BaseObject):
             return sock_info.command(
                 self.__name,
                 command,
-                secondary_ok,
                 read_preference,
                 codec_options,
                 check,
@@ -590,8 +589,8 @@ class Database(common.BaseObject):
             read_preference = ((session and session._txn_read_preference())
                                or ReadPreference.PRIMARY)
         with self.__client._socket_for_reads(
-                read_preference, session) as (sock_info, secondary_ok):
-            return self._command(sock_info, command, secondary_ok, value,
+                read_preference, session) as (sock_info, read_preference):
+            return self._command(sock_info, command, value,
                                  check, allowable_errors, read_preference,
                                  codec_options, session=session, **kwargs)
 
@@ -603,16 +602,15 @@ class Database(common.BaseObject):
             read_preference = ((session and session._txn_read_preference())
                                or ReadPreference.PRIMARY)
 
-        def _cmd(session, server, sock_info, secondary_ok):
-            return self._command(sock_info, command, secondary_ok, value,
+        def _cmd(session, server, sock_info, read_preference):
+            return self._command(sock_info, command, value,
                                  check, allowable_errors, read_preference,
                                  codec_options, session=session, **kwargs)
 
         return self.__client._retryable_read(
             _cmd, read_preference, session)
 
-    def _list_collections(self, sock_info, secondary_okay, session,
-                          read_preference, **kwargs):
+    def _list_collections(self, sock_info, session, read_preference, **kwargs):
         """Internal listCollections helper."""
 
         coll = self.get_collection(
@@ -623,7 +621,7 @@ class Database(common.BaseObject):
         with self.__client._tmp_session(
                 session, close=False) as tmp_session:
             cursor = self._command(
-                sock_info, cmd, secondary_okay,
+                sock_info, cmd,
                 read_preference=read_preference,
                 session=tmp_session)["cursor"]
             cmd_cursor = CommandCursor(
@@ -659,9 +657,9 @@ class Database(common.BaseObject):
         read_pref = ((session and session._txn_read_preference())
                      or ReadPreference.PRIMARY)
 
-        def _cmd(session, server, sock_info, secondary_okay):
+        def _cmd(session, server, sock_info, read_preference):
             return self._list_collections(
-                sock_info, secondary_okay, session, read_preference=read_pref,
+                sock_info, session, read_preference=read_preference,
                 **kwargs)
 
         return self.__client._retryable_read(

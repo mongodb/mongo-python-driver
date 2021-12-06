@@ -36,6 +36,7 @@ from pymongo.errors import (ConfigurationError,
                             InvalidOperation,
                             OperationFailure)
 from pymongo.read_concern import ReadConcern
+from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   unittest,
@@ -1257,7 +1258,9 @@ class TestCursor(IntegrationTest):
         client = rs_or_single_client(
             event_listeners=[listener])
         self.addCleanup(client.close)
-        coll = client[self.db.name].test
+        # We never send primary read preference so override the default.
+        coll = client[self.db.name].get_collection(
+            'test', read_preference=ReadPreference.PRIMARY_PREFERRED)
 
         coll.delete_many({})
         coll.insert_many([{} for _ in range(5)])
@@ -1267,7 +1270,10 @@ class TestCursor(IntegrationTest):
         started = listener.results['started']
         self.assertEqual(2, len(started))
         self.assertEqual('find', started[0].command_name)
-        self.assertIn('$readPreference', started[0].command)
+        if client_context.is_rs or client_context.is_mongos:
+            self.assertIn('$readPreference', started[0].command)
+        else:
+            self.assertNotIn('$readPreference', started[0].command)
         self.assertEqual('getMore', started[1].command_name)
         self.assertNotIn('$readPreference', started[1].command)
 

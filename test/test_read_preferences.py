@@ -597,8 +597,11 @@ class TestMongosAndReadPreference(IntegrationTest):
             started = listener.results['started']
             self.assertEqual(len(started), 1, started)
             cmd = started[0].command
-            self.assertIn('$readPreference', cmd)
-            self.assertEqual(cmd['$readPreference'], pref.document)
+            if client_context.is_rs or client_context.is_mongos:
+                self.assertIn('$readPreference', cmd)
+                self.assertEqual(cmd['$readPreference'], pref.document)
+            else:
+                self.assertNotIn('$readPreference', cmd)
 
     def test_maybe_add_read_preference(self):
 
