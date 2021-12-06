@@ -620,6 +620,10 @@ class SocketInfo(object):
         self.supports_sessions = (
             hello.logical_session_timeout_minutes is not None)
         self.hello_ok = hello.hello_ok
+        self.is_repl = hello.server_type in (
+            SERVER_TYPE.RSPrimary, SERVER_TYPE.RSSecondary,
+            SERVER_TYPE.RSArbiter, SERVER_TYPE.RSOther, SERVER_TYPE.RSGhost)
+        self.is_standalone = hello.server_type == SERVER_TYPE.Standalone
         self.is_mongos = hello.server_type == SERVER_TYPE.Mongos
         if performing_handshake and self.compression_settings:
             ctx = self.compression_settings.get_compression_context(
