@@ -14,8 +14,6 @@
 
 """Logical sessions for ordering sequential operations.
 
-Requires MongoDB 3.6.
-
 .. versionadded:: 3.6
 
 Causally Consistent Reads

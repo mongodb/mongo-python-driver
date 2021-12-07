@@ -97,9 +97,8 @@ the "MongoDB Challenge-Response" protocol::
 Default Authentication Mechanism
 --------------------------------
 
-If no mechanism is specified, PyMongo automatically uses MONGODB-CR when
-connected to a pre-3.0 version of MongoDB, SCRAM-SHA-1 when connected to
-MongoDB 3.0 through 3.6, and negotiates the mechanism to use (SCRAM-SHA-1
+If no mechanism is specified, PyMongo automatically SCRAM-SHA-1 when connected
+to MongoDB 3.6 and negotiates the mechanism to use (SCRAM-SHA-1
 or SCRAM-SHA-256) when connected to MongoDB 4.0+.
 
 Default Database and "authSource"
@@ -125,15 +124,12 @@ MONGODB-X509
 ------------
 .. versionadded:: 2.6
 
-The MONGODB-X509 mechanism authenticates a username derived from the
-distinguished subject name of the X.509 certificate presented by the driver
-during TLS/SSL negotiation. This authentication method requires the use of
-TLS/SSL connections with certificate validation and is available in
-MongoDB 2.6 and newer::
+The MONGODB-X509 mechanism authenticates via the X.509 certificate presented
+by the driver during TLS/SSL negotiation. This authentication method requires
+the use of TLS/SSL connections with certificate validation::
 
   >>> from pymongo import MongoClient
   >>> client = MongoClient('example.com',
-  ...                      username="<X.509 derived username>"
   ...                      authMechanism="MONGODB-X509",
   ...                      tls=True,
   ...                      tlsCertificateKeyFile='/path/to/client.pem',
@@ -142,15 +138,12 @@ MongoDB 2.6 and newer::
 MONGODB-X509 authenticates against the $external virtual database, so you
 do not have to specify a database in the URI::
 
-  >>> uri = "mongodb://<X.509 derived username>@example.com/?authMechanism=MONGODB-X509"
+  >>> uri = "mongodb://example.com/?authMechanism=MONGODB-X509"
   >>> client = MongoClient(uri,
   ...                      tls=True,
   ...                      tlsCertificateKeyFile='/path/to/client.pem',
   ...                      tlsCAFile='/path/to/ca.pem')
   >>>
-
-.. versionchanged:: 3.4
-  When connected to MongoDB >= 3.4 the username is no longer required.
 
 .. _gssapi:
 

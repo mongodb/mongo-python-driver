@@ -65,8 +65,7 @@ class DeleteOne(object):
         :Parameters:
           - `filter`: A query that matches the document to delete.
           - `collation` (optional): An instance of
-            :class:`~pymongo.collation.Collation`. This option is only
-            supported on MongoDB 3.4 and above.
+            :class:`~pymongo.collation.Collation`.
           - `hint` (optional): An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
@@ -119,8 +118,7 @@ class DeleteMany(object):
         :Parameters:
           - `filter`: A query that matches the documents to delete.
           - `collation` (optional): An instance of
-            :class:`~pymongo.collation.Collation`. This option is only
-            supported on MongoDB 3.4 and above.
+            :class:`~pymongo.collation.Collation`.
           - `hint` (optional): An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
@@ -177,8 +175,7 @@ class ReplaceOne(object):
           - `upsert` (optional): If ``True``, perform an insert if no documents
             match the filter.
           - `collation` (optional): An instance of
-            :class:`~pymongo.collation.Collation`. This option is only
-            supported on MongoDB 3.4 and above.
+            :class:`~pymongo.collation.Collation`.
           - `hint` (optional): An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
@@ -287,10 +284,9 @@ class UpdateOne(_UpdateOp):
           - `upsert` (optional): If ``True``, perform an insert if no documents
             match the filter.
           - `collation` (optional): An instance of
-            :class:`~pymongo.collation.Collation`. This option is only
-            supported on MongoDB 3.4 and above.
+            :class:`~pymongo.collation.Collation`.
           - `array_filters` (optional): A list of filters specifying which
-            array elements an update should apply. Requires MongoDB 3.6+.
+            array elements an update should apply.
           - `hint` (optional): An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
@@ -335,10 +331,9 @@ class UpdateMany(_UpdateOp):
           - `upsert` (optional): If ``True``, perform an insert if no documents
             match the filter.
           - `collation` (optional): An instance of
-            :class:`~pymongo.collation.Collation`. This option is only
-            supported on MongoDB 3.4 and above.
+            :class:`~pymongo.collation.Collation`.
           - `array_filters` (optional): A list of filters specifying which
-            array elements an update should apply. Requires MongoDB 3.6+.
+            array elements an update should apply.
           - `hint` (optional): An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
@@ -404,9 +399,9 @@ class IndexModel(object):
             this collection after <int> seconds. The indexed field must
             be a UTC datetime or the data will not expire.
           - `partialFilterExpression`: A document that specifies a filter for
-            a partial index. Requires MongoDB >= 3.2.
+            a partial index.
           - `collation`: An instance of :class:`~pymongo.collation.Collation`
-            that specifies the collation to use in MongoDB >= 3.4.
+            that specifies the collation to use.
           - `wildcardProjection`: Allows users to include or exclude specific
             field paths from a `wildcard index`_ using the { "$**" : 1} key
             pattern. Requires MongoDB >= 4.2.

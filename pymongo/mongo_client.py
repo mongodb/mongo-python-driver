@@ -247,10 +247,9 @@ class MongoClient(common.BaseObject):
             between periodic server checks, or None to accept the default
             frequency of 10 seconds.
           - `appname`: (string or None) The name of the application that
-            created this MongoClient instance. MongoDB 3.4 and newer will
-            print this value in the server log upon establishing each
-            connection. It is also recorded in the slow query log and
-            profile collections.
+            created this MongoClient instance. The server will log this value
+            upon establishing each connection. It is also recorded in the slow
+            query log and profile collections.
           - `driver`: (pair or None) A driver implemented on top of PyMongo can
             pass a :class:`~pymongo.driver_info.DriverInfo` to add its name,
             version, and platform to the message printed in the server log when
@@ -259,7 +258,7 @@ class MongoClient(common.BaseObject):
             :mod:`~pymongo.monitoring` for details.
           - `retryWrites`: (boolean) Whether supported write operations
             executed within this MongoClient will be retried once after a
-            network error on MongoDB 3.6+. Defaults to ``True``.
+            network error. Defaults to ``True``.
             The supported write operations are:
 
               - :meth:`~pymongo.collection.Collection.bulk_write`, as long as
@@ -281,7 +280,7 @@ class MongoClient(common.BaseObject):
             https://github.com/mongodb/specifications/blob/master/source/retryable-writes/retryable-writes.rst
           - `retryReads`: (boolean) Whether supported read operations
             executed within this MongoClient will be retried once after a
-            network error on MongoDB 3.6+. Defaults to ``True``.
+            network error. Defaults to ``True``.
             The supported read operations are:
             :meth:`~pymongo.collection.Collection.find`,
             :meth:`~pymongo.collection.Collection.find_one`,
@@ -315,9 +314,8 @@ class MongoClient(common.BaseObject):
             zlib support requires the Python standard library zlib module. zstd
             requires the `zstandard <https://pypi.org/project/zstandard/>`_
             package. By default no compression is used. Compression support
-            must also be enabled on the server. MongoDB 3.4+ supports snappy
-            compression. MongoDB 3.6 adds support for zlib. MongoDB 4.2 adds
-            support for zstd.
+            must also be enabled on the server. MongoDB 3.6+ supports snappy
+            and zlib compression. MongoDB 4.2+ adds support for zstd.
           - `zlibCompressionLevel`: (int) The zlib compression level to use
             when zlib is used as the wire protocol compressor. Supported values
             are -1 through 9. -1 tells the zlib library to use its default
@@ -355,10 +353,8 @@ class MongoClient(common.BaseObject):
             will cause **write operations to wait indefinitely**.
           - `journal`: If ``True`` block until write operations have been
             committed to the journal. Cannot be used in combination with
-            `fsync`. Prior to MongoDB 2.6 this option was ignored if the server
-            was running without journaling. Starting with MongoDB 2.6 write
-            operations will fail with an exception if this option is used when
-            the server is running without journaling.
+            `fsync`. Write operations will fail with an exception if this
+            option is used when the server is running without journaling.
           - `fsync`: If ``True`` and the server is running without journaling,
             blocks until the server has synced all data files to disk. If the
             server is running with journaling, this acts the same as the `j`
@@ -406,11 +402,9 @@ class MongoClient(common.BaseObject):
           - `authSource`: The database to authenticate on. Defaults to the
             database specified in the URI, if provided, or to "admin".
           - `authMechanism`: See :data:`~pymongo.auth.MECHANISMS` for options.
-            If no mechanism is specified, PyMongo automatically uses MONGODB-CR
-            when connected to a pre-3.0 version of MongoDB, SCRAM-SHA-1 when
-            connected to MongoDB 3.0 through 3.6, and negotiates the mechanism
-            to use (SCRAM-SHA-1 or SCRAM-SHA-256) when connected to MongoDB
-            4.0+.
+            If no mechanism is specified, PyMongo automatically SCRAM-SHA-1
+            when connected to MongoDB 3.6 and negotiates the mechanism to use
+            (SCRAM-SHA-1 or SCRAM-SHA-256) when connected to MongoDB 4.0+.
           - `authMechanismProperties`: Used to specify authentication mechanism
             specific options. To specify the service name for GSSAPI
             authentication pass authMechanismProperties='SERVICE_NAME:<service
@@ -1053,8 +1047,8 @@ class MongoClient(common.BaseObject):
     def close(self):
         """Cleanup client resources and disconnect from MongoDB.
 
-        On MongoDB >= 3.6, end all server sessions created by this client by
-        sending one or more endSessions commands.
+        End all server sessions created by this client by sending one or more
+        endSessions commands.
 
         Close all sockets in the connection pools and stop the monitor threads.
 
@@ -1565,8 +1559,6 @@ class MongoClient(common.BaseObject):
         :class:`~pymongo.client_session.SessionOptions`. See the
         :mod:`~pymongo.client_session` module for details and examples.
 
-        Requires MongoDB 3.6.
-
         A :class:`~pymongo.client_session.ClientSession` may only be used with
         the MongoClient that started it. :class:`ClientSession` instances are
         **not thread-safe or fork-safe**. They can only be used by one thread
@@ -1722,8 +1714,7 @@ class MongoClient(common.BaseObject):
            Added ``session`` parameter.
 
         .. note:: The :attr:`~pymongo.mongo_client.MongoClient.write_concern` of
-           this client is automatically applied to this operation when using
-           MongoDB >= 3.4.
+           this client is automatically applied to this operation.
 
         .. versionchanged:: 3.4
            Apply this client's write concern automatically to this operation

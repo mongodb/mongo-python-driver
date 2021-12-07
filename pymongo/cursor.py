@@ -773,8 +773,7 @@ class Cursor(object):
                     ('field2', pymongo.DESCENDING)]):
                 print(doc)
 
-        Beginning with MongoDB version 2.6, text search results can be
-        sorted by relevance::
+        Text search results can be sorted by relevance::
 
             cursor = db.test.find(
                 {'$text': {'$search': 'some words'}},
@@ -837,8 +836,8 @@ class Cursor(object):
     def explain(self):
         """Returns an explain plan record for this cursor.
 
-        .. note:: Starting with MongoDB 3.2 :meth:`explain` uses
-          the default verbosity mode of the `explain command
+        .. note:: This method uses the default verbosity mode of the
+          `explain command
           <https://docs.mongodb.com/manual/reference/command/explain/>`_,
           ``allPlansExecution``. To use a different verbosity use
           :meth:`~pymongo.database.Database.command` to run the explain
@@ -943,8 +942,6 @@ class Cursor(object):
 
     def collation(self, collation):
         """Adds a :class:`~pymongo.collation.Collation` to this query.
-
-        This option is only supported on MongoDB 3.4 and above.
 
         Raises :exc:`TypeError` if `collation` is not an instance of
         :class:`~pymongo.collation.Collation` or a ``dict``. Raises

@@ -118,13 +118,7 @@ class UpdateResult(_WriteResult):
 
     @property
     def modified_count(self):
-        """The number of documents modified.
-
-        .. note:: modified_count is only reported by MongoDB 2.6 and later.
-          When connected to an earlier server version, or in certain mixed
-          version sharding configurations, this attribute will be set to
-          ``None``.
-        """
+        """The number of documents modified. """
         self._raise_if_unacknowledged("modified_count")
         return self.__raw_result.get("nModified")
 
@@ -195,13 +189,7 @@ class BulkWriteResult(_WriteResult):
 
     @property
     def modified_count(self):
-        """The number of documents modified.
-
-        .. note:: modified_count is only reported by MongoDB 2.6 and later.
-          When connected to an earlier server version, or in certain mixed
-          version sharding configurations, this attribute will be set to
-          ``None``.
-        """
+        """The number of documents modified."""
         self._raise_if_unacknowledged("modified_count")
         return self.__bulk_api_result.get("nModified")
 

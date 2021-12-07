@@ -102,7 +102,7 @@ RETRY_WRITES = True
 # Default value for retryReads.
 RETRY_READS = True
 
-# mongod/s 2.6 and above return code 59 when a command doesn't exist.
+# The error code returned when a command doesn't exist.
 COMMAND_NOT_FOUND_CODES = (59,)
 
 # Error codes to ignore if GridFS calls createIndex on a secondary
