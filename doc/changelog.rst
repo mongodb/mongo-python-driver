@@ -1,6 +1,27 @@
 Changelog
 =========
 
+Changes in Version 4.0.1
+-------------------------
+
+Issues Resolved
+...............
+
+Version 4.0.1 fixes a number of bugs:
+
+- Fixed a bug that prevented :meth:`bson.json_util.loads` from
+  decoding a document with a non-string "$regex" field (`PYTHON-3028`_).
+- Fixed a bug where a client may select a hidden/ghost or not yet initialized
+  replica set member leading to unexpected "connection pool paused" errors
+  (`PYTHON-3027`_).
+
+See the `PyMongo 4.0.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PYTHON-3027: https://jira.mongodb.org/browse/PYTHON-3027
+.. _PYTHON-3028: https://jira.mongodb.org/browse/PYTHON-3028
+.. _PyMongo 4.0.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=32504
+
 Changes in Version 4.0
 ----------------------
 
