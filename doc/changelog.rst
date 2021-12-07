@@ -1,6 +1,21 @@
 Changelog
 =========
 
+Changes in Version 3.12.3
+-------------------------
+
+Issues Resolved
+...............
+
+Version 3.12.3 fixes a bug that prevented :meth:`bson.json_util.loads` from
+decoding a document with a non-string "$regex" field (`PYTHON-3028`_).
+
+See the `PyMongo 3.12.3 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PYTHON-3028: https://jira.mongodb.org/browse/PYTHON-3028
+.. _PyMongo 3.12.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=32505
+
 Changes in Version 3.12.2
 -------------------------
 
