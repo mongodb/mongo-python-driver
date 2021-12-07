@@ -147,7 +147,7 @@ class _AggregationCommand(object):
         if 'cursor' in result:
             cursor = result['cursor']
         else:
-            # Pre-MongoDB 2.6 or unacknowledged write. Fake a cursor.
+            # Unacknowledged $out/$merge write. Fake a cursor.
             cursor = {
                 "id": 0,
                 "firstBatch": result.get("result", []),

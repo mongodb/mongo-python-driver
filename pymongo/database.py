@@ -321,8 +321,6 @@ class Database(common.BaseObject):
         See the `aggregation pipeline`_ documentation for a list of stages
         that are supported.
 
-        Introduced in MongoDB 3.6.
-
         .. code-block:: python
 
            # Lists all operations currently running on the server.
@@ -716,8 +714,7 @@ class Database(common.BaseObject):
             :class:`~pymongo.client_session.ClientSession`.
 
         .. note:: The :attr:`~pymongo.database.Database.write_concern` of
-           this database is automatically applied to this operation when using
-           MongoDB >= 3.4.
+           this database is automatically applied to this operation.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.

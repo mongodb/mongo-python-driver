@@ -15,8 +15,6 @@
 """Tools for working with the BSON decimal128 type.
 
 .. versionadded:: 3.4
-
-.. note:: The Decimal128 BSON type requires MongoDB 3.4+.
 """
 
 import decimal

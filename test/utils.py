@@ -928,7 +928,7 @@ def is_greenthread_patched():
 
 
 def disable_replication(client):
-    """Disable replication on all secondaries, requires MongoDB 3.2."""
+    """Disable replication on all secondaries."""
     for host, port in client.secondaries:
         secondary = single_client(host, port)
         secondary.admin.command('configureFailPoint', 'stopReplProducer',
@@ -936,7 +936,7 @@ def disable_replication(client):
 
 
 def enable_replication(client):
-    """Enable replication on all secondaries, requires MongoDB 3.2."""
+    """Enable replication on all secondaries."""
     for host, port in client.secondaries:
         secondary = single_client(host, port)
         secondary.admin.command('configureFailPoint', 'stopReplProducer',

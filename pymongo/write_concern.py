@@ -33,11 +33,9 @@ class WriteConcern(object):
           to complete. If replication does not complete in the given
           timeframe, a timeout exception is raised.
         - `j`: If ``True`` block until write operations have been committed
-          to the journal. Cannot be used in combination with `fsync`. Prior
-          to MongoDB 2.6 this option was ignored if the server was running
-          without journaling. Starting with MongoDB 2.6 write operations will
-          fail with an exception if this option is used when the server is
-          running without journaling.
+          to the journal. Cannot be used in combination with `fsync`. Write
+          operations will fail with an exception if this option is used when
+          the server is running without journaling.
         - `fsync`: If ``True`` and the server is running without journaling,
           blocks until the server has synced all data files to disk. If the
           server is running with journaling, this acts the same as the `j`

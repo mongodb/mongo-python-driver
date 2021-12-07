@@ -107,8 +107,7 @@ class Collection(common.BaseObject):
             default) database.read_concern is used.
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`. If a collation is provided,
-            it will be passed to the create collection command. This option is
-            only supported on MongoDB 3.4 and above.
+            it will be passed to the create collection command.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession` that is used with
             the create collection command
@@ -209,8 +208,7 @@ class Collection(common.BaseObject):
           - `read_concern` (optional) - An instance of
             :class:`~pymongo.read_concern.ReadConcern`.
           - `write_concern`: An instance of
-            :class:`~pymongo.write_concern.WriteConcern`. This option is only
-            valid for MongoDB 3.4 and above.
+            :class:`~pymongo.write_concern.WriteConcern`.
           - `collation` (optional) - An instance of
             :class:`~pymongo.collation.Collation`.
           - `session` (optional): a
@@ -720,10 +718,9 @@ class Collection(common.BaseObject):
             match the filter.
           - `bypass_document_validation`: (optional) If ``True``, allows the
             write to opt-out of document level validation. Default is
-            ``False``. This option is only supported on MongoDB 3.2 and above.
+            ``False``.
           - `collation` (optional): An instance of
-            :class:`~pymongo.collation.Collation`. This option is only supported
-            on MongoDB 3.4 and above.
+            :class:`~pymongo.collation.Collation`.
           - `hint` (optional): An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
@@ -790,13 +787,11 @@ class Collection(common.BaseObject):
             match the filter.
           - `bypass_document_validation`: (optional) If ``True``, allows the
             write to opt-out of document level validation. Default is
-            ``False``. This option is only supported on MongoDB 3.2 and above.
+            ``False``.
           - `collation` (optional): An instance of
-            :class:`~pymongo.collation.Collation`. This option is only supported
-            on MongoDB 3.4 and above.
+            :class:`~pymongo.collation.Collation`.
           - `array_filters` (optional): A list of filters specifying which
-            array elements an update should apply. This option is only
-            supported on MongoDB 3.6 and above.
+            array elements an update should apply.
           - `hint` (optional): An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
@@ -872,13 +867,11 @@ class Collection(common.BaseObject):
             match the filter.
           - `bypass_document_validation` (optional): If ``True``, allows the
             write to opt-out of document level validation. Default is
-            ``False``. This option is only supported on MongoDB 3.2 and above.
+            ``False``.
           - `collation` (optional): An instance of
-            :class:`~pymongo.collation.Collation`. This option is only supported
-            on MongoDB 3.4 and above.
+            :class:`~pymongo.collation.Collation`.
           - `array_filters` (optional): A list of filters specifying which
-            array elements an update should apply. This option is only
-            supported on MongoDB 3.6 and above.
+            array elements an update should apply.
           - `hint` (optional): An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
@@ -1028,8 +1021,7 @@ class Collection(common.BaseObject):
         :Parameters:
           - `filter`: A query that matches the document to delete.
           - `collation` (optional): An instance of
-            :class:`~pymongo.collation.Collation`. This option is only supported
-            on MongoDB 3.4 and above.
+            :class:`~pymongo.collation.Collation`.
           - `hint` (optional): An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
@@ -1079,8 +1071,7 @@ class Collection(common.BaseObject):
         :Parameters:
           - `filter`: A query that matches the documents to delete.
           - `collation` (optional): An instance of
-            :class:`~pymongo.collation.Collation`. This option is only supported
-            on MongoDB 3.4 and above.
+            :class:`~pymongo.collation.Collation`.
           - `hint` (optional): An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
@@ -1226,8 +1217,7 @@ class Collection(common.BaseObject):
           - `batch_size` (optional): Limits the number of documents returned in
             a single batch.
           - `collation` (optional): An instance of
-            :class:`~pymongo.collation.Collation`. This option is only supported
-            on MongoDB 3.4 and above.
+            :class:`~pymongo.collation.Collation`.
           - `return_key` (optional): If True, return only the index keys in
             each document.
           - `show_record_id` (optional): If True, adds a field ``$recordId`` in
@@ -1472,12 +1462,10 @@ class Collection(common.BaseObject):
           - `maxTimeMS` (int): The maximum amount of time to allow this
             operation to run, in milliseconds.
           - `collation` (optional): An instance of
-            :class:`~pymongo.collation.Collation`. This option is only supported
-            on MongoDB 3.4 and above.
+            :class:`~pymongo.collation.Collation`.
           - `hint` (string or list of tuples): The index to use. Specify either
             the index name as a string or the index specification as a list of
             tuples (e.g. [('a', pymongo.ASCENDING), ('b', pymongo.ASCENDING)]).
-            This option is only supported on MongoDB 3.6 and above.
 
         The :meth:`count_documents` method obeys the :attr:`read_preference` of
         this :class:`Collection`.
@@ -1494,8 +1482,6 @@ class Collection(common.BaseObject):
            +-------------+-------------------------------------+
            | $nearSphere | `$geoWithin`_ with `$centerSphere`_ |
            +-------------+-------------------------------------+
-
-           $expr requires MongoDB 3.6+
 
         :Parameters:
           - `filter` (required): A query document that selects which documents
@@ -1554,13 +1540,8 @@ class Collection(common.BaseObject):
           - `**kwargs` (optional): optional arguments to the createIndexes
             command (like maxTimeMS) can be passed as keyword arguments.
 
-        .. note:: `create_indexes` uses the `createIndexes`_ command
-           introduced in MongoDB **2.6** and cannot be used with earlier
-           versions.
-
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
-           this collection is automatically applied to this operation when using
-           MongoDB >= 3.4.
+           this collection is automatically applied to this operation.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter. Added support for arbitrary keyword
@@ -1665,9 +1646,9 @@ class Collection(common.BaseObject):
             this collection after <int> seconds. The indexed field must
             be a UTC datetime or the data will not expire.
           - `partialFilterExpression`: A document that specifies a filter for
-            a partial index. Requires MongoDB >=3.2.
+            a partial index.
           - `collation` (optional): An instance of
-            :class:`~pymongo.collation.Collation`. Requires MongoDB >= 3.4.
+            :class:`~pymongo.collation.Collation`.
           - `wildcardProjection`: Allows users to include or exclude specific
             field paths from a `wildcard index`_ using the {"$**" : 1} key
             pattern. Requires MongoDB >= 4.2.
@@ -1683,8 +1664,7 @@ class Collection(common.BaseObject):
           using the option will fail if a duplicate value is detected.
 
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
-           this collection is automatically applied to this operation when using
-           MongoDB >= 3.4.
+           this collection is automatically applied to this operation.
 
         :Parameters:
           - `keys`: a single key or a list of (key, direction)
@@ -1733,8 +1713,7 @@ class Collection(common.BaseObject):
             command (like maxTimeMS) can be passed as keyword arguments.
 
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
-           this collection is automatically applied to this operation when using
-           MongoDB >= 3.4.
+           this collection is automatically applied to this operation.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter. Added support for arbitrary keyword
@@ -1772,8 +1751,7 @@ class Collection(common.BaseObject):
             command (like maxTimeMS) can be passed as keyword arguments.
 
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
-           this collection is automatically applied to this operation when using
-           MongoDB >= 3.4.
+           this collection is automatically applied to this operation.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter. Added support for arbitrary keyword
@@ -1946,8 +1924,7 @@ class Collection(common.BaseObject):
            example is included in the :ref:`aggregate-examples` documentation.
 
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
-           this collection is automatically applied to this operation when using
-           MongoDB >= 3.4.
+           this collection is automatically applied to this operation.
 
         :Parameters:
           - `pipeline`: a list of aggregation pipeline stages
@@ -2060,8 +2037,6 @@ class Collection(common.BaseObject):
         :class:`~pymongo.change_stream.CollectionChangeStream` cursor which
         iterates over changes on this collection.
 
-        Introduced in MongoDB 3.6.
-
         .. code-block:: python
 
            with db.collection.watch() as stream:
@@ -2172,8 +2147,7 @@ class Collection(common.BaseObject):
             (i.e. ``dropTarget=True``)
 
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
-           this collection is automatically applied to this operation when using
-           MongoDB >= 3.4.
+           this collection is automatically applied to this operation.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -2219,8 +2193,7 @@ class Collection(common.BaseObject):
           - `maxTimeMS` (int): The maximum amount of time to allow the count
             command to run, in milliseconds.
           - `collation` (optional): An instance of
-            :class:`~pymongo.collation.Collation`. This option is only supported
-            on MongoDB 3.4 and above.
+            :class:`~pymongo.collation.Collation`.
 
         The :meth:`distinct` method obeys the :attr:`read_preference` of
         this :class:`Collection`.
@@ -2576,8 +2549,7 @@ class Collection(common.BaseObject):
             :attr:`ReturnDocument.AFTER`, returns the updated
             or inserted document.
           - `array_filters` (optional): A list of filters specifying which
-            array elements an update should apply. This option is only
-            supported on MongoDB 3.6 and above.
+            array elements an update should apply.
           - `hint` (optional): An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to

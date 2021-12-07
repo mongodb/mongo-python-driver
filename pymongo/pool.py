@@ -873,7 +873,7 @@ class SocketInfo(object):
         return self.socket_checker.socket_closed(self.sock)
 
     def send_cluster_time(self, command, session, client):
-        """Add cluster time for MongoDB >= 3.6."""
+        """Add $clusterTime."""
         if client:
             client._send_cluster_time(command, session)
 

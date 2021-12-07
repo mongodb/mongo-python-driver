@@ -343,8 +343,7 @@ class TestCursor(IntegrationTest):
         for _ in a:
             break
         b = a.explain()
-        # "cursor" pre MongoDB 2.7.6, "executionStats" post
-        self.assertTrue("cursor" in b or "executionStats" in b)
+        self.assertIn("executionStats", b)
 
     def test_explain_with_read_concern(self):
         # Do not add readConcern level to explain.
