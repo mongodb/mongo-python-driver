@@ -427,9 +427,9 @@ class Nearest(_ServerMode):
 class _AggWritePref:
     """Agg $out/$merge write preference.
 
-    * If there are no readable servers, or there is any pre-5.0 server, use
-      `pref` read preference.
-    * Otherwise uses Primary().
+    * If there are readable servers and there is any pre-5.0 server, use
+      primary read preference.
+    * Otherwise use `pref` read preference.
 
     :Parameters:
       - `pref`: The read preference to use on MongoDB 5.0+.
