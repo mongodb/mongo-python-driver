@@ -28,12 +28,8 @@ createvirtualenv () {
         . $VENVPATH/bin/activate
     fi
 
-    PYVER=$(${PYTHON} -c "import sys; sys.stdout.write('.'.join(str(val) for val in sys.version_info[:2]))")
-    # pip fails to upgrade in a Python 3.6 venv on Windows.
-    if [ $PYVER != "3.6" -o "Windows_NT" != "$OS" ] ; then
-        python -m pip install --upgrade pip
-        python -m pip install --upgrade setuptools wheel
-    fi
+    python -m pip install --upgrade pip
+    python -m pip install --upgrade setuptools wheel
 }
 
 # Usage:
