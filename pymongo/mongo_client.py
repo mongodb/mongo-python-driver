@@ -1144,12 +1144,11 @@ class MongoClient(common.BaseObject):
     @contextlib.contextmanager
     def _socket_from_server(self, read_preference, server, session):
         assert read_preference is not None, "read_preference must not be None"
-        # TODO: update this comment.
         # Get a socket for a server matching the read preference, and yield
-        # sock_info, read_preference. Server Selection Spec: "SecondaryOK must
-        # be sent to mongods with topology type Single. If the server type is
-        # Mongos, follow the rules for passing read preference to mongos, even
-        # for topology type Single."
+        # sock_info with the effective read preference. The Server Selection
+        # Spec says not to send any $readPreference to standalones and to
+        # always send primaryPreferred when directly connected to a repl set
+        # member.
         # Thread safe: if the type is single it cannot change.
         topology = self._get_topology()
         single = topology.description.topology_type == TOPOLOGY_TYPE.Single
