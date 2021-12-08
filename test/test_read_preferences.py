@@ -433,7 +433,9 @@ class TestCommandAndReadPreference(IntegrationTest):
                                [{'$project': {'_id': 1}}])
 
     def test_aggregate_write(self):
-        self._test_coll_helper(False, self.c.pymongo_test.test,
+        # 5.0 servers support $out on secondaries.
+        secondary_ok = client_context.version.at_least(5, 0)
+        self._test_coll_helper(secondary_ok, self.c.pymongo_test.test,
                                'aggregate',
                                [{'$project': {'_id': 1}}, {'$out': "agg_write_test"}])
 

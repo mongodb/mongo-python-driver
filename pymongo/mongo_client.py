@@ -1155,7 +1155,7 @@ class MongoClient(common.BaseObject):
 
         with self._get_socket(server, session) as sock_info:
             secondary_ok = (single and not sock_info.is_mongos) or (
-                read_preference != ReadPreference.PRIMARY)
+                read_preference.mode != ReadPreference.PRIMARY.mode)
             yield sock_info, secondary_ok
 
     @contextlib.contextmanager

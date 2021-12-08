@@ -1915,9 +1915,9 @@ class Collection(common.BaseObject):
         collection.
 
         The :meth:`aggregate` method obeys the :attr:`read_preference` of this
-        :class:`Collection`, except when ``$out`` or ``$merge`` are used, in
-        which case  :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY`
-        is used.
+        :class:`Collection`, except when ``$out`` or ``$merge`` are used on
+        MongoDB <5.0, in which case
+        :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY` is used.
 
         .. note:: This method does not support the 'explain' option. Please
            use :meth:`~pymongo.database.Database.command` instead. An
@@ -1958,6 +1958,8 @@ class Collection(common.BaseObject):
 
         .. versionchanged:: 4.1
            Added ``let`` parameter.
+           Support $merge and $out executing on secondaries according to the
+           collection's :attr:`read_preference`.
         .. versionchanged:: 4.0
            Removed the ``useCursor`` option.
         .. versionchanged:: 3.9
