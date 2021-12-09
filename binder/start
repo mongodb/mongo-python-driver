@@ -1,7 +1,7 @@
  #!/bin/bash
 
-pushd binder
-./init &
-popd
+# pushd binder
+# ./init &
+# popd
 
  exec "$@" 
