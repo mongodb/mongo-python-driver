@@ -220,6 +220,7 @@ class Monitor(MonitorBase):
         except ReferenceError:
             raise
         except Exception as error:
+            print(error)
             _sanitize(error)
             sd = self._server_description
             address = sd.address
@@ -246,7 +247,7 @@ class Monitor(MonitorBase):
 
         if self._cancel_context and self._cancel_context.cancelled:
             self._reset_connection()
-        with self._pool.get_socket({}) as sock_info:
+        with self._pool.get_socket() as sock_info:
             self._cancel_context = sock_info.cancel_context
             response, round_trip_time = self._check_with_socket(sock_info)
             if not response.awaitable:
@@ -275,11 +276,10 @@ class Monitor(MonitorBase):
             response = conn._hello(
                 cluster_time,
                 self._server_description.topology_version,
-                self._settings.heartbeat_frequency,
-                None)
+                self._settings.heartbeat_frequency)
         else:
             # New connection handshake or polling hello (MongoDB <4.4).
-            response = conn._hello(cluster_time, None, None, None)
+            response = conn._hello(cluster_time, None, None)
         return response, time.monotonic() - start
 
 
@@ -388,7 +388,7 @@ class _RttMonitor(MonitorBase):
 
     def _ping(self):
         """Run a "hello" command and return the RTT."""
-        with self._pool.get_socket({}) as sock_info:
+        with self._pool.get_socket() as sock_info:
             if self._executor._stopped:
                 raise Exception('_RttMonitor closed')
             start = time.monotonic()

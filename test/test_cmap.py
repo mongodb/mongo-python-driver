@@ -120,7 +120,7 @@ class TestCMAP(IntegrationTest):
     def check_out(self, op):
         """Run the 'checkOut' operation."""
         label = op['label']
-        with self.pool.get_socket({}) as sock_info:
+        with self.pool.get_socket() as sock_info:
             # Call 'pin_cursor' so we can hold the socket.
             sock_info.pin_cursor()
             if label:
@@ -452,7 +452,7 @@ class TestCMAP(IntegrationTest):
         self.assertEqual(1, listener.event_count(PoolClearedEvent))
         self.assertEqual(PoolState.READY, pool.state)
         # Checking out a connection should succeed
-        with pool.get_socket({}):
+        with pool.get_socket():
             pass
 
 
