@@ -7,4 +7,6 @@ pip install git+https://github.com/blink1073/mtools@pymongo-4
 
 pip install -e .
 
-m 4.4.0
+yes | m 4.4.0
+
+m
