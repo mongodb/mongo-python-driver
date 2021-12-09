@@ -1,0 +1,10 @@
+#!/usr/bin/env python3
+import sys
+import shutil
+import os
+
+argv = sys.argv[1:]
+print(argv)
+
+
+os.execv(shutil.which(argv[0]), argv)
