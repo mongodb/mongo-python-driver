@@ -1,4 +1,4 @@
-name: pymongo
+name: pymongo_demo
 
 channels:
   - conda-forge
