@@ -441,9 +441,7 @@ class Collection(common.BaseObject):
         return BulkWriteResult({}, False)
 
     def _insert_one(
-            self, doc, ordered,
-            check_keys, write_concern, op_id, bypass_doc_val,
-            session):
+            self, doc, ordered, write_concern, op_id, bypass_doc_val, session):
         """Internal helper for inserting a single document."""
         write_concern = write_concern or self.write_concern
         acknowledged = write_concern.acknowledged
@@ -462,7 +460,6 @@ class Collection(common.BaseObject):
                 command,
                 write_concern=write_concern,
                 codec_options=self.__write_response_codec_options,
-                check_keys=check_keys,
                 session=session,
                 client=self.__database.client,
                 retryable_write=retryable_write)
@@ -520,7 +517,7 @@ class Collection(common.BaseObject):
         write_concern = self._write_concern_for(session)
         return InsertOneResult(
             self._insert_one(
-                document, ordered=True, check_keys=False,
+                document, ordered=True,
                 write_concern=write_concern, op_id=None,
                 bypass_doc_val=bypass_document_validation, session=session),
             write_concern.acknowledged)
@@ -588,8 +585,7 @@ class Collection(common.BaseObject):
         return InsertManyResult(inserted_ids, write_concern.acknowledged)
 
     def _update(self, sock_info, criteria, document, upsert=False,
-                check_keys=False, multi=False,
-                write_concern=None, op_id=None, ordered=True,
+                multi=False, write_concern=None, op_id=None, ordered=True,
                 bypass_doc_val=False, collation=None, array_filters=None,
                 hint=None, session=None, retryable_write=False, let=None):
         """Internal update / replace helper."""
@@ -660,16 +656,14 @@ class Collection(common.BaseObject):
         return result
 
     def _update_retryable(
-            self, criteria, document, upsert=False,
-            check_keys=False, multi=False,
+            self, criteria, document, upsert=False, multi=False,
             write_concern=None, op_id=None, ordered=True,
             bypass_doc_val=False, collation=None, array_filters=None,
             hint=None, session=None, let=None):
         """Internal update / replace helper."""
         def _update(session, sock_info, retryable_write):
             return self._update(
-                sock_info, criteria, document, upsert=upsert,
-                check_keys=check_keys, multi=multi,
+                sock_info, criteria, document, upsert=upsert, multi=multi,
                 write_concern=write_concern, op_id=op_id, ordered=ordered,
                 bypass_doc_val=bypass_doc_val, collation=collation,
                 array_filters=array_filters, hint=hint, session=session,
@@ -830,7 +824,7 @@ class Collection(common.BaseObject):
         write_concern = self._write_concern_for(session)
         return UpdateResult(
             self._update_retryable(
-                filter, update, upsert, check_keys=False,
+                filter, update, upsert=False,
                 write_concern=write_concern,
                 bypass_doc_val=bypass_document_validation,
                 collation=collation, array_filters=array_filters,
@@ -910,7 +904,7 @@ class Collection(common.BaseObject):
         write_concern = self._write_concern_for(session)
         return UpdateResult(
             self._update_retryable(
-                filter, update, upsert, check_keys=False, multi=True,
+                filter, update, upsert=False, multi=True,
                 write_concern=write_concern,
                 bypass_doc_val=bypass_document_validation,
                 collation=collation, array_filters=array_filters,

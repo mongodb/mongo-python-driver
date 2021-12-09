@@ -331,7 +331,7 @@ class _Query(object):
             spec = self.as_command(sock_info)[0]
             request_id, msg, size, _ = _op_msg(
                 0, spec, self.db, self.read_preference,
-                set_secondary_ok, False, self.codec_options,
+                set_secondary_ok, self.codec_options,
                 ctx=sock_info.compression_context)
             return request_id, msg, size
 
@@ -430,7 +430,7 @@ class _GetMore(object):
                 flags = 0
             request_id, msg, size, _ = _op_msg(
                 flags, spec, self.db, None,
-                False, False, self.codec_options,
+                False, self.codec_options,
                 ctx=sock_info.compression_context)
             return request_id, msg, size
 
@@ -526,7 +526,7 @@ _pack_op_msg_flags_type = struct.Struct("<IB").pack
 _pack_byte = struct.Struct("<B").pack
 
 
-def _op_msg_no_header(flags, command, identifier, docs, check_keys, opts):
+def _op_msg_no_header(flags, command, identifier, docs, opts):
     """Get a OP_MSG message.
 
     Note: this method handles multiple documents in a type one payload but
@@ -541,7 +541,7 @@ def _op_msg_no_header(flags, command, identifier, docs, check_keys, opts):
     if identifier:
         type_one = _pack_byte(1)
         cstring = _make_c_string(identifier)
-        encoded_docs = [_dict_to_bson(doc, check_keys, opts) for doc in docs]
+        encoded_docs = [_dict_to_bson(doc, False, opts) for doc in docs]
         size = len(cstring) + sum(len(doc) for doc in encoded_docs) + 4
         encoded_size = _pack_int(size)
         total_size += size
@@ -553,26 +553,26 @@ def _op_msg_no_header(flags, command, identifier, docs, check_keys, opts):
     return b''.join(data), total_size, max_doc_size
 
 
-def _op_msg_compressed(flags, command, identifier, docs, check_keys, opts,
+def _op_msg_compressed(flags, command, identifier, docs, opts,
                        ctx):
     """Internal OP_MSG message helper."""
     msg, total_size, max_bson_size = _op_msg_no_header(
-        flags, command, identifier, docs, check_keys, opts)
+        flags, command, identifier, docs, opts)
     rid, msg = _compress(2013, msg, ctx)
     return rid, msg, total_size, max_bson_size
 
 
-def _op_msg_uncompressed(flags, command, identifier, docs, check_keys, opts):
+def _op_msg_uncompressed(flags, command, identifier, docs, opts):
     """Internal compressed OP_MSG message helper."""
     data, total_size, max_bson_size = _op_msg_no_header(
-        flags, command, identifier, docs, check_keys, opts)
+        flags, command, identifier, docs, opts)
     request_id, op_message = __pack_message(2013, data)
     return request_id, op_message, total_size, max_bson_size
 if _use_c:
     _op_msg_uncompressed = _cmessage._op_msg
 
 
-def _op_msg(flags, command, dbname, read_preference, secondary_ok, check_keys,
+def _op_msg(flags, command, dbname, read_preference, secondary_ok,
             opts, ctx=None):
     """Get a OP_MSG message."""
     command['$db'] = dbname
@@ -593,9 +593,9 @@ def _op_msg(flags, command, dbname, read_preference, secondary_ok, check_keys,
     try:
         if ctx:
             return _op_msg_compressed(
-                flags, command, identifier, docs, check_keys, opts, ctx)
+                flags, command, identifier, docs, opts, ctx)
         return _op_msg_uncompressed(
-            flags, command, identifier, docs, check_keys, opts)
+            flags, command, identifier, docs, opts)
     finally:
         # Add the field back to the command.
         if identifier:
@@ -603,9 +603,9 @@ def _op_msg(flags, command, dbname, read_preference, secondary_ok, check_keys,
 
 
 def _query_impl(options, collection_name, num_to_skip, num_to_return,
-                query, field_selector, opts, check_keys):
+                query, field_selector, opts):
     """Get an OP_QUERY message."""
-    encoded = _dict_to_bson(query, check_keys, opts)
+    encoded = _dict_to_bson(query, False, opts)
     if field_selector:
         efs = _dict_to_bson(field_selector, False, opts)
     else:
@@ -622,7 +622,7 @@ def _query_impl(options, collection_name, num_to_skip, num_to_return,
 
 def _query_compressed(options, collection_name, num_to_skip,
                       num_to_return, query, field_selector,
-                      opts, check_keys=False, ctx=None):
+                      opts, ctx=None):
     """Internal compressed query message helper."""
     op_query, max_bson_size = _query_impl(
         options,
@@ -631,14 +631,13 @@ def _query_compressed(options, collection_name, num_to_skip,
         num_to_return,
         query,
         field_selector,
-        opts,
-        check_keys)
+        opts)
     rid, msg = _compress(2004, op_query, ctx)
     return rid, msg, max_bson_size
 
 
 def _query_uncompressed(options, collection_name, num_to_skip, num_to_return,
-                        query, field_selector, opts, check_keys=False):
+                        query, field_selector, opts):
     """Internal query message helper."""
     op_query, max_bson_size = _query_impl(
         options,
@@ -647,8 +646,7 @@ def _query_uncompressed(options, collection_name, num_to_skip, num_to_return,
         num_to_return,
         query,
         field_selector,
-        opts,
-        check_keys)
+        opts)
     rid, msg = __pack_message(2004, op_query)
     return rid, msg, max_bson_size
 if _use_c:
@@ -656,15 +654,14 @@ if _use_c:
 
 
 def _query(options, collection_name, num_to_skip, num_to_return,
-           query, field_selector, opts, check_keys=False, ctx=None):
+           query, field_selector, opts, ctx=None):
     """Get a **query** message."""
     if ctx:
         return _query_compressed(options, collection_name, num_to_skip,
                                  num_to_return, query, field_selector,
-                                 opts, check_keys, ctx)
+                                 opts, ctx)
     return _query_uncompressed(options, collection_name, num_to_skip,
-                               num_to_return, query, field_selector, opts,
-                               check_keys)
+                               num_to_return, query, field_selector, opts)
 
 
 _pack_long_long = struct.Struct("<q").pack
@@ -726,8 +723,7 @@ class _BulkWriteContext(object):
     def _batch_command(self, cmd, docs):
         namespace = self.db_name + '.$cmd'
         request_id, msg, to_send = _do_batched_op_msg(
-            namespace, self.op_type, cmd, docs, self.check_keys,
-            self.codec, self)
+            namespace, self.op_type, cmd, docs, self.codec, self)
         if not to_send:
             raise InvalidOperation("cannot do an empty bulk write")
         return request_id, msg, to_send
@@ -747,11 +743,6 @@ class _BulkWriteContext(object):
         # the documents are encoded to BSON.
         self.unack_write(cmd, request_id, msg, 0, to_send)
         return to_send
-
-    @property
-    def check_keys(self):
-        """Should we check keys for this operation type?"""
-        return False
 
     @property
     def max_bson_size(self):
@@ -871,8 +862,7 @@ class _EncryptedBulkWriteContext(_BulkWriteContext):
     def _batch_command(self, cmd, docs):
         namespace = self.db_name + '.$cmd'
         msg, to_send = _encode_batched_write_command(
-            namespace, self.op_type, cmd, docs, self.check_keys,
-            self.codec, self)
+            namespace, self.op_type, cmd, docs, self.codec, self)
         if not to_send:
             raise InvalidOperation("cannot do an empty bulk write")
 
@@ -926,7 +916,7 @@ _OP_MSG_MAP = {
 
 
 def _batched_op_msg_impl(
-        operation, command, docs, check_keys, ack, opts, ctx, buf):
+        operation, command, docs, ack, opts, ctx, buf):
     """Create a batched OP_MSG write."""
     max_bson_size = ctx.max_bson_size
     max_write_batch_size = ctx.max_write_batch_size
@@ -950,14 +940,11 @@ def _batched_op_msg_impl(
     except KeyError:
         raise InvalidOperation('Unknown command')
 
-    if operation in (_UPDATE, _DELETE):
-        check_keys = False
-
     to_send = []
     idx = 0
     for doc in docs:
         # Encode the current operation
-        value = _dict_to_bson(doc, check_keys, opts)
+        value = _dict_to_bson(doc, False, opts)
         doc_length = len(value)
         new_message_size = buf.tell() + doc_length
         # Does first document exceed max_message_size?
@@ -991,26 +978,26 @@ def _batched_op_msg_impl(
 
 
 def _encode_batched_op_msg(
-        operation, command, docs, check_keys, ack, opts, ctx):
+        operation, command, docs, ack, opts, ctx):
     """Encode the next batched insert, update, or delete operation
     as OP_MSG.
     """
     buf = _BytesIO()
 
     to_send, _ = _batched_op_msg_impl(
-        operation, command, docs, check_keys, ack, opts, ctx, buf)
+        operation, command, docs, ack, opts, ctx, buf)
     return buf.getvalue(), to_send
 if _use_c:
     _encode_batched_op_msg = _cmessage._encode_batched_op_msg
 
 
 def _batched_op_msg_compressed(
-        operation, command, docs, check_keys, ack, opts, ctx):
+        operation, command, docs, ack, opts, ctx):
     """Create the next batched insert, update, or delete operation
     with OP_MSG, compressed.
     """
     data, to_send = _encode_batched_op_msg(
-        operation, command, docs, check_keys, ack, opts, ctx)
+        operation, command, docs, ack, opts, ctx)
 
     request_id, msg = _compress(
         2013,
@@ -1020,7 +1007,7 @@ def _batched_op_msg_compressed(
 
 
 def _batched_op_msg(
-        operation, command, docs, check_keys, ack, opts, ctx):
+        operation, command, docs, ack, opts, ctx):
     """OP_MSG implementation entry point."""
     buf = _BytesIO()
 
@@ -1030,7 +1017,7 @@ def _batched_op_msg(
     buf.write(b"\x00\x00\x00\x00\xdd\x07\x00\x00")
 
     to_send, length = _batched_op_msg_impl(
-        operation, command, docs, check_keys, ack, opts, ctx, buf)
+        operation, command, docs, ack, opts, ctx, buf)
 
     # Header - request id and message length
     buf.seek(4)
@@ -1045,7 +1032,7 @@ if _use_c:
 
 
 def _do_batched_op_msg(
-        namespace, operation, command, docs, check_keys, opts, ctx):
+        namespace, operation, command, docs, opts, ctx):
     """Create the next batched insert, update, or delete operation
     using OP_MSG.
     """
@@ -1056,29 +1043,29 @@ def _do_batched_op_msg(
         ack = True
     if ctx.sock_info.compression_context:
         return _batched_op_msg_compressed(
-            operation, command, docs, check_keys, ack, opts, ctx)
+            operation, command, docs, ack, opts, ctx)
     return _batched_op_msg(
-        operation, command, docs, check_keys, ack, opts, ctx)
+        operation, command, docs, ack, opts, ctx)
 
 
 # End OP_MSG -----------------------------------------------------
 
 
 def _encode_batched_write_command(
-        namespace, operation, command, docs, check_keys, opts, ctx):
+        namespace, operation, command, docs, opts, ctx):
     """Encode the next batched insert, update, or delete command.
     """
     buf = _BytesIO()
 
     to_send, _ = _batched_write_command_impl(
-        namespace, operation, command, docs, check_keys, opts, ctx, buf)
+        namespace, operation, command, docs, opts, ctx, buf)
     return buf.getvalue(), to_send
 if _use_c:
     _encode_batched_write_command = _cmessage._encode_batched_write_command
 
 
 def _batched_write_command_impl(
-        namespace, operation, command, docs, check_keys, opts, ctx, buf):
+        namespace, operation, command, docs, opts, ctx, buf):
     """Create a batched OP_QUERY write command."""
     max_bson_size = ctx.max_bson_size
     max_write_batch_size = ctx.max_write_batch_size
@@ -1108,9 +1095,6 @@ def _batched_write_command_impl(
     except KeyError:
         raise InvalidOperation('Unknown command')
 
-    if operation in (_UPDATE, _DELETE):
-        check_keys = False
-
     # Where to write list document length
     list_start = buf.tell() - 4
     to_send = []
@@ -1118,7 +1102,7 @@ def _batched_write_command_impl(
     for doc in docs:
         # Encode the current operation
         key = str(idx).encode('utf8')
-        value = encode(doc, check_keys, opts)
+        value = _dict_to_bson(doc, False, opts)
         # Is there enough room to add this document? max_cmd_size accounts for
         # the two trailing null bytes.
         doc_too_large = len(value) > max_cmd_size

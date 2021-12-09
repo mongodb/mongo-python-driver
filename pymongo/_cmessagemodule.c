@@ -67,7 +67,6 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     struct module_state *state = GETSTATE(self);
 
     int request_id = rand();
-    PyObject* cluster_time = NULL;
     unsigned int flags;
     char* collection_name = NULL;
     Py_ssize_t collection_name_length;
@@ -79,18 +78,16 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     codec_options_t options;
     buffer_t buffer = NULL;
     int length_location, message_length;
-    unsigned char check_keys = 0;
     PyObject* result = NULL;
 
-    if (!PyArg_ParseTuple(args, "Iet#iiOOO&|b",
+    if (!PyArg_ParseTuple(args, "Iet#iiOOO&",
                           &flags,
                           "utf-8",
                           &collection_name,
                           &collection_name_length,
                           &num_to_skip, &num_to_return,
                           &query, &field_selector,
-                          convert_codec_options, &options,
-                          &check_keys)) {
+                          convert_codec_options, &options)) {
         return NULL;
     }
     buffer = buffer_new();
@@ -104,29 +101,6 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
         goto fail;
     }
 
-    /* Pop $clusterTime from dict and write it at the end, avoiding an error
-     * from the $-prefix and check_keys.
-     *
-     * If "dict" is a defaultdict we don't want to call PyMapping_GetItemString
-     * on it. That would **create** an _id where one didn't previously exist
-     * (PYTHON-871).
-     */
-    if (PyDict_Check(query)) {
-        cluster_time = PyDict_GetItemString(query, "$clusterTime");
-        if (cluster_time) {
-            /* PyDict_GetItemString returns a borrowed reference. */
-            Py_INCREF(cluster_time);
-            if (-1 == PyMapping_DelItemString(query, "$clusterTime")) {
-                goto fail;
-            }
-        }
-    } else if (PyMapping_HasKeyString(query, "$clusterTime")) {
-        cluster_time = PyMapping_GetItemString(query, "$clusterTime");
-        if (!cluster_time
-                || -1 == PyMapping_DelItemString(query, "$clusterTime")) {
-            goto fail;
-        }
-    }
     if (!buffer_write_int32(buffer, (int32_t)request_id) ||
         !buffer_write_bytes(buffer, "\x00\x00\x00\x00\xd4\x07\x00\x00", 8) ||
         !buffer_write_int32(buffer, (int32_t)flags) ||
@@ -138,35 +112,8 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     }
 
     begin = buffer_get_position(buffer);
-    if (!write_dict(state->_cbson, buffer, query, check_keys, &options, 1)) {
+    if (!write_dict(state->_cbson, buffer, query, 0, &options, 1)) {
         goto fail;
-    }
-
-    /* back up a byte and write $clusterTime */
-    if (cluster_time) {
-        int length;
-        char zero = 0;
-
-        buffer_update_position(buffer, buffer_get_position(buffer) - 1);
-        if (!write_pair(state->_cbson, buffer, "$clusterTime", 12, cluster_time,
-                        0, &options, 1)) {
-            goto fail;
-        }
-
-        if (!buffer_write_bytes(buffer, &zero, 1)) {
-            goto fail;
-        }
-
-        length = buffer_get_position(buffer) - begin;
-        buffer_write_int32_at_position(buffer, begin, (int32_t)length);
-
-        /* undo popping $clusterTime */
-        if (-1 == PyMapping_SetItemString(
-                query, "$clusterTime", cluster_time)) {
-            goto fail;
-        }
-
-        Py_CLEAR(cluster_time);
     }
 
     max_size = buffer_get_position(buffer) - begin;
@@ -196,7 +143,6 @@ fail:
     if (buffer) {
         buffer_free(buffer);
     }
-    Py_XDECREF(cluster_time);
     return result;
 }
 
@@ -274,7 +220,6 @@ static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
     Py_ssize_t identifier_length = 0;
     PyObject* docs;
     PyObject* doc;
-    unsigned char check_keys = 0;
     codec_options_t options;
     buffer_t buffer = NULL;
     int length_location, message_length;
@@ -283,15 +228,14 @@ static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
     PyObject* result = NULL;
     PyObject* iterator = NULL;
 
-    /*flags, command, identifier, docs, check_keys, opts*/
-    if (!PyArg_ParseTuple(args, "IOet#ObO&",
+    /*flags, command, identifier, docs, opts*/
+    if (!PyArg_ParseTuple(args, "IOet#OO&",
                           &flags,
                           &command,
                           "utf-8",
                           &identifier,
                           &identifier_length,
                           &docs,
-                          &check_keys,
                           convert_codec_options, &options)) {
         return NULL;
     }
@@ -340,8 +284,7 @@ static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
         }
         while ((doc = PyIter_Next(iterator)) != NULL) {
             int encoded_doc_size = write_dict(
-                      state->_cbson, buffer, doc, check_keys,
-                      &options, 1);
+                      state->_cbson, buffer, doc, 0, &options, 1);
             if (!encoded_doc_size) {
                 Py_CLEAR(doc);
                 goto fail;
@@ -400,7 +343,7 @@ _set_document_too_large(int size, long max) {
 
 static int
 _batched_op_msg(
-        unsigned char op, unsigned char check_keys, unsigned char ack,
+        unsigned char op, unsigned char ack,
         PyObject* command, PyObject* docs, PyObject* ctx,
         PyObject* to_publish, codec_options_t options,
         buffer_t buffer, struct module_state *state) {
@@ -471,16 +414,12 @@ _batched_op_msg(
         }
     case _UPDATE:
         {
-            /* MongoDB does key validation for update. */
-            check_keys = 0;
             if (!buffer_write_bytes(buffer, "updates\x00", 8))
                 goto fail;
             break;
         }
     case _DELETE:
         {
-            /* Never check keys in a delete command. */
-            check_keys = 0;
             if (!buffer_write_bytes(buffer, "deletes\x00", 8))
                 goto fail;
             break;
@@ -510,8 +449,7 @@ _batched_op_msg(
         int cur_size;
         int doc_too_large = 0;
         int unacked_doc_too_large = 0;
-        if (!write_dict(state->_cbson, buffer, doc, check_keys,
-                        &options, 1)) {
+        if (!write_dict(state->_cbson, buffer, doc, 0, &options, 1)) {
             goto fail;
         }
         cur_size = buffer_get_position(buffer) - cur_doc_begin;
@@ -584,7 +522,6 @@ fail:
 static PyObject*
 _cbson_encode_batched_op_msg(PyObject* self, PyObject* args) {
     unsigned char op;
-    unsigned char check_keys;
     unsigned char ack;
     PyObject* command;
     PyObject* docs;
@@ -595,8 +532,8 @@ _cbson_encode_batched_op_msg(PyObject* self, PyObject* args) {
     buffer_t buffer;
     struct module_state *state = GETSTATE(self);
 
-    if (!PyArg_ParseTuple(args, "bOObbO&O",
-                          &op, &command, &docs, &check_keys, &ack,
+    if (!PyArg_ParseTuple(args, "bOObO&O",
+                          &op, &command, &docs, &ack,
                           convert_codec_options, &options,
                           &ctx)) {
         return NULL;
@@ -611,7 +548,6 @@ _cbson_encode_batched_op_msg(PyObject* self, PyObject* args) {
 
     if (!_batched_op_msg(
             op,
-            check_keys,
             ack,
             command,
             docs,
@@ -637,7 +573,6 @@ fail:
 static PyObject*
 _cbson_batched_op_msg(PyObject* self, PyObject* args) {
     unsigned char op;
-    unsigned char check_keys;
     unsigned char ack;
     int request_id;
     int position;
@@ -650,8 +585,8 @@ _cbson_batched_op_msg(PyObject* self, PyObject* args) {
     buffer_t buffer;
     struct module_state *state = GETSTATE(self);
 
-    if (!PyArg_ParseTuple(args, "bOObbO&O",
-                          &op, &command, &docs, &check_keys, &ack,
+    if (!PyArg_ParseTuple(args, "bOObO&O",
+                          &op, &command, &docs, &ack,
                           convert_codec_options, &options,
                           &ctx)) {
         return NULL;
@@ -676,7 +611,6 @@ _cbson_batched_op_msg(PyObject* self, PyObject* args) {
 
     if (!_batched_op_msg(
             op,
-            check_keys,
             ack,
             command,
             docs,
@@ -707,7 +641,7 @@ fail:
 
 static int
 _batched_write_command(
-        char* ns, Py_ssize_t ns_len, unsigned char op, int check_keys,
+        char* ns, Py_ssize_t ns_len, unsigned char op,
         PyObject* command, PyObject* docs, PyObject* ctx,
         PyObject* to_publish, codec_options_t options,
         buffer_t buffer, struct module_state *state) {
@@ -786,16 +720,12 @@ _batched_write_command(
         }
     case _UPDATE:
         {
-            /* MongoDB does key validation for update. */
-            check_keys = 0;
             if (!buffer_write_bytes(buffer, "updates\x00", 8))
                 goto fail;
             break;
         }
     case _DELETE:
         {
-            /* Never check keys in a delete command. */
-            check_keys = 0;
             if (!buffer_write_bytes(buffer, "deletes\x00", 8))
                 goto fail;
             break;
@@ -838,8 +768,7 @@ _batched_write_command(
             goto fail;
         }
         cur_doc_begin = buffer_get_position(buffer);
-        if (!write_dict(state->_cbson, buffer, doc,
-                        check_keys, &options, 1)) {
+        if (!write_dict(state->_cbson, buffer, doc, 0, &options, 1)) {
             goto fail;
         }
 
@@ -915,7 +844,6 @@ static PyObject*
 _cbson_encode_batched_write_command(PyObject* self, PyObject* args) {
     char *ns = NULL;
     unsigned char op;
-    unsigned char check_keys;
     Py_ssize_t ns_len;
     PyObject* command;
     PyObject* docs;
@@ -926,8 +854,8 @@ _cbson_encode_batched_write_command(PyObject* self, PyObject* args) {
     buffer_t buffer;
     struct module_state *state = GETSTATE(self);
 
-    if (!PyArg_ParseTuple(args, "et#bOObO&O", "utf-8",
-                          &ns, &ns_len, &op, &command, &docs, &check_keys,
+    if (!PyArg_ParseTuple(args, "et#bOOO&O", "utf-8",
+                          &ns, &ns_len, &op, &command, &docs,
                           convert_codec_options, &options,
                           &ctx)) {
         return NULL;
@@ -945,7 +873,6 @@ _cbson_encode_batched_write_command(PyObject* self, PyObject* args) {
             ns,
             ns_len,
             op,
-            check_keys,
             command,
             docs,
             ctx,
