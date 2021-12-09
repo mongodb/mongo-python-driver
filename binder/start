@@ -1,7 +1,0 @@
- #!/bin/bash
-
-# pushd binder
-# ./init &
-# popd
-
- exec "$@" 
