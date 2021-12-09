@@ -9,7 +9,8 @@ dependencies:
   - python >=3.6,<3.11.0
   - jupyterlab >=3.0.0,<4.0.0
   - pip
-  - pymongo >=4
+  - pymongo
   - nodejs
+  - dnspython
   - pip:
     - mtools
