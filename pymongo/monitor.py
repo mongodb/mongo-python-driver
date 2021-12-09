@@ -220,7 +220,6 @@ class Monitor(MonitorBase):
         except ReferenceError:
             raise
         except Exception as error:
-            print(error)
             _sanitize(error)
             sd = self._server_description
             address = sd.address
