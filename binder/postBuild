@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -eux
+
+npm install -g m
+
+pip install -e .
+
+m 4.4.0
+
+mkdir 440_psa_tls
+
+cd binder
+
+./init &
