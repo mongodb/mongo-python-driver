@@ -2,9 +2,13 @@
 import sys
 import shutil
 import os
+import subprocess
 
+# Start the local mongodb as a background task
+binder_folder = os.path.join(os.getcwd(), 'binder')
+subprocess.Popen(['init'], shell=True, cwd=binder_folder, close_fds=True)
+
+# Launch Jupyter
 argv = sys.argv[1:]
 print(argv)
-
-
 os.execv(shutil.which(argv[0]), argv)
