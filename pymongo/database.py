@@ -277,28 +277,29 @@ class Database(common.BaseObject):
         as keyword arguments to this method. Valid options include, but are not
         limited to:
 
-          - ``size``: desired initial size for the collection (in
+          - ``size`` (int): desired initial size for the collection (in
             bytes). For capped collections this size is the max
             size of the collection.
-          - ``capped``: if True, this is a capped collection
-          - ``max``: maximum number of objects if capped (optional)
-          - ``timeseries``: a document specifying configuration options for
+          - ``capped`` (bool): if True, this is a capped collection
+          - ``max`` (int): maximum number of objects if capped (optional)
+          - ``timeseries`` (dict): a document specifying configuration options for
             timeseries collections
-          - ``expireAfterSeconds``: the number of seconds after which a
+          - ``expireAfterSeconds` (int)`: the number of seconds after which a
             document in a timeseries collection expires
-          - ``validator``: a document specifying validation rules or expressions 
+          - ``validator`` (dict): a document specifying validation rules or expressions 
             for the collection
-          - ``validationLevel``: determines how strictly MongoDB applies the 
+          - ``validationLevel`` (str): how strictly to apply the 
             validation rules to existing documents during an update
-          - ``validationAction``: determines whether to error on invalid documents
+          - ``validationAction`` (str): whether to error on invalid documents
             or just warn about the violations but allow invalid documents to 
             be inserted
-          - ``indexOptionDefaults``: a document specifying a default configuration
+          - ``indexOptionDefaults`` (dict): a document specifying a default configuration
             for indexes when creating a collection
-          - ``viewOn``: the name of the source collection or view from which 
+          - ``viewOn`` (str): the name of the source collection or view from which 
             to create the view
-          - ``pipeline``: a list of aggregation pipeline stages
-          - ``comment``: a user-provided comment to attach to this command
+          - ``pipeline`` (list): a list of aggregation pipeline stages
+          - ``comment`` (str): a user-provided comment to attach to this command.  
+          This option is only supported on MongoDB >= 4.4.
 
         .. versionchanged:: 3.11
            This method is now supported inside multi-document transactions
