@@ -5,7 +5,7 @@ npm install -g m
 
 pip install git+https://github.com/blink1073/mtools@pymongo-4
 
-pip install -e .
+pip install -e ".[srv]"
 
 yes | m $(cat binder/VERSION)
 
