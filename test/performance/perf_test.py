@@ -47,9 +47,7 @@ OUTPUT_FILE = os.environ.get('OUTPUT_FILE')
 result_data = []
 
 def tearDownModule():
-    output = json.dumps({
-        'results': result_data
-        }, indent=4)
+    output = json.dumps(result_data, indent=4)
     if OUTPUT_FILE:
         with open(OUTPUT_FILE, 'w') as opf:
             opf.write(output)
