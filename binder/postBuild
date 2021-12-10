@@ -12,11 +12,3 @@ cd binder
 yes | m $(cat VERSION)
 
 m
-
-./init
-
-python ./bootstrap.py
-
-mlaunch kill 
-
-rm -rf ./data
