@@ -7,7 +7,7 @@ HERE = os.path.abspath(os.path.dirname(__file__))
 
 client = MongoClient()
 
-for path in glob.glob(os.path.join(HERE, 'data', '*.json')):
+for path in glob.glob(os.path.join(HERE, 'sample_data', '*.json')):
     with open(path) as fid:
         entries = [json.loads(line) for line in fid]
     for entry in entries:
