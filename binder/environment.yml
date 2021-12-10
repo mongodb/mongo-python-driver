@@ -11,6 +11,5 @@ dependencies:
   - pip
   - pymongo
   - nodejs
-  - dnspython
   - pip:
     - mtools
