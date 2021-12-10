@@ -77,9 +77,9 @@ class Server(object):
         Can raise ConnectionFailure, OperationFailure, etc.
 
         :Parameters:
+          - `sock_info` - A SocketInfo instance.
           - `operation`: A _Query or _GetMore object.
           - `set_secondary_okay`: Pass to operation.get_message.
-          - `all_credentials`: dict, maps auth source to MongoCredential.
           - `listeners`: Instance of _EventListeners or None.
           - `unpack_res`: A callable that decodes the wire protocol response.
         """
@@ -200,8 +200,8 @@ class Server(object):
 
         return response
 
-    def get_socket(self, all_credentials, handler=None):
-        return self.pool.get_socket(all_credentials, handler)
+    def get_socket(self, handler=None):
+        return self.pool.get_socket(handler)
 
     @property
     def description(self):

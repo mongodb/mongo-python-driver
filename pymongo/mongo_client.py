@@ -729,11 +729,6 @@ class MongoClient(common.BaseObject):
                                           options.write_concern,
                                           options.read_concern)
 
-        self.__all_credentials = {}
-        creds = options._credentials
-        if creds:
-            self.__all_credentials[creds.source] = creds
-
         self._topology_settings = TopologySettings(
             seeds=seeds,
             replica_set_name=options.replica_set_name,
@@ -1090,8 +1085,7 @@ class MongoClient(common.BaseObject):
             if in_txn and session._pinned_connection:
                 yield session._pinned_connection
                 return
-            with server.get_socket(
-                    self.__all_credentials, handler=err_handler) as sock_info:
+            with server.get_socket(handler=err_handler) as sock_info:
                 # Pin this session to the selected server or connection.
                 if (in_txn and server.description.server_type in (
                         SERVER_TYPE.Mongos, SERVER_TYPE.LoadBalancer)):
@@ -1535,7 +1529,7 @@ class MongoClient(common.BaseObject):
         maintain connection pool parameters."""
         try:
             self._process_kill_cursors()
-            self._topology.update_pool(self.__all_credentials)
+            self._topology.update_pool()
         except Exception as exc:
             if isinstance(exc, InvalidOperation) and self._topology._closed:
                 return

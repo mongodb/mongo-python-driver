@@ -117,8 +117,9 @@ def _parse_ssl_options(options):
     return None, allow_invalid_hostnames
 
 
-def _parse_pool_options(options):
+def _parse_pool_options(username, password, database, options):
     """Parse connection pool options."""
+    credentials = _parse_credentials(username, password, database, options)
     max_pool_size = options.get('maxpoolsize', common.MAX_POOL_SIZE)
     min_pool_size = options.get('minpoolsize', common.MIN_POOL_SIZE)
     max_idle_time_seconds = options.get(
@@ -151,7 +152,8 @@ def _parse_pool_options(options):
                        compression_settings,
                        max_connecting=max_connecting,
                        server_api=server_api,
-                       load_balanced=load_balanced)
+                       load_balanced=load_balanced,
+                       credentials=credentials)
 
 
 class ClientOptions(object):
@@ -164,10 +166,7 @@ class ClientOptions(object):
 
     def __init__(self, username, password, database, options):
         self.__options = options
-
         self.__codec_options = _parse_codec_options(options)
-        self.__credentials = _parse_credentials(
-            username, password, database, options)
         self.__direct_connection = options.get('directconnection')
         self.__local_threshold_ms = options.get(
             'localthresholdms', common.LOCAL_THRESHOLD_MS)
@@ -175,7 +174,8 @@ class ClientOptions(object):
         # common.SERVER_SELECTION_TIMEOUT because it is set directly by tests.
         self.__server_selection_timeout = options.get(
             'serverselectiontimeoutms', common.SERVER_SELECTION_TIMEOUT)
-        self.__pool_options = _parse_pool_options(options)
+        self.__pool_options = _parse_pool_options(
+            username, password, database, options)
         self.__read_preference = _parse_read_preference(options)
         self.__replica_set_name = options.get('replicaset')
         self.__write_concern = _parse_write_concern(options)
@@ -204,11 +204,6 @@ class ClientOptions(object):
     def codec_options(self):
         """A :class:`~bson.codec_options.CodecOptions` instance."""
         return self.__codec_options
-
-    @property
-    def _credentials(self):
-        """A :class:`~pymongo.auth.MongoCredentials` instance or None."""
-        return self.__credentials
 
     @property
     def direct_connection(self):

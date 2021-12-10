@@ -498,7 +498,7 @@ class TestClient(IntegrationTest):
             client = rs_or_single_client()
             server = client._get_topology().select_server(
                 readable_server_selector)
-            with server._pool.get_socket({}) as sock_info:
+            with server._pool.get_socket() as sock_info:
                 pass
             self.assertEqual(1, len(server._pool.sockets))
             self.assertTrue(sock_info in server._pool.sockets)
@@ -511,7 +511,7 @@ class TestClient(IntegrationTest):
                                          minPoolSize=1)
             server = client._get_topology().select_server(
                 readable_server_selector)
-            with server._pool.get_socket({}) as sock_info:
+            with server._pool.get_socket() as sock_info:
                 pass
             # When the reaper runs at the same time as the get_socket, two
             # sockets could be created and checked into the pool.
@@ -530,7 +530,7 @@ class TestClient(IntegrationTest):
                                          maxPoolSize=1)
             server = client._get_topology().select_server(
                 readable_server_selector)
-            with server._pool.get_socket({}) as sock_info:
+            with server._pool.get_socket() as sock_info:
                 pass
             # When the reaper runs at the same time as the get_socket,
             # maxPoolSize=1 should prevent two sockets from being created.
@@ -547,11 +547,11 @@ class TestClient(IntegrationTest):
             client = rs_or_single_client(maxIdleTimeMS=500)
             server = client._get_topology().select_server(
                 readable_server_selector)
-            with server._pool.get_socket({}) as sock_info_one:
+            with server._pool.get_socket() as sock_info_one:
                 pass
             # Assert that the pool does not close sockets prematurely.
             time.sleep(.300)
-            with server._pool.get_socket({}) as sock_info_two:
+            with server._pool.get_socket() as sock_info_two:
                 pass
             self.assertIs(sock_info_one, sock_info_two)
             wait_until(
@@ -574,7 +574,7 @@ class TestClient(IntegrationTest):
                        "pool initialized with 10 sockets")
 
             # Assert that if a socket is closed, a new one takes its place
-            with server._pool.get_socket({}) as sock_info:
+            with server._pool.get_socket() as sock_info:
                 sock_info.close_socket(None)
             wait_until(lambda: 10 == len(server._pool.sockets),
                        "a closed socket gets replaced from the pool")
@@ -586,12 +586,12 @@ class TestClient(IntegrationTest):
             client = rs_or_single_client(maxIdleTimeMS=500)
             server = client._get_topology().select_server(
                 readable_server_selector)
-            with server._pool.get_socket({}) as sock_info:
+            with server._pool.get_socket() as sock_info:
                 pass
             self.assertEqual(1, len(server._pool.sockets))
             time.sleep(1) #  Sleep so that the socket becomes stale.
 
-            with server._pool.get_socket({}) as new_sock_info:
+            with server._pool.get_socket() as new_sock_info:
                 self.assertNotEqual(sock_info, new_sock_info)
             self.assertEqual(1, len(server._pool.sockets))
             self.assertFalse(sock_info in server._pool.sockets)
@@ -601,11 +601,11 @@ class TestClient(IntegrationTest):
             client = rs_or_single_client()
             server = client._get_topology().select_server(
                 readable_server_selector)
-            with server._pool.get_socket({}) as sock_info:
+            with server._pool.get_socket() as sock_info:
                 pass
             self.assertEqual(1, len(server._pool.sockets))
             time.sleep(1)
-            with server._pool.get_socket({}) as new_sock_info:
+            with server._pool.get_socket() as new_sock_info:
                 self.assertEqual(sock_info, new_sock_info)
             self.assertEqual(1, len(server._pool.sockets))
 
@@ -1106,7 +1106,7 @@ class TestClient(IntegrationTest):
 
     def test_socketKeepAlive(self):
         pool = get_pool(self.client)
-        with pool.get_socket({}) as sock_info:
+        with pool.get_socket() as sock_info:
             keepalive = sock_info.sock.getsockopt(socket.SOL_SOCKET,
                                                   socket.SO_KEEPALIVE)
             self.assertTrue(keepalive)
@@ -1325,8 +1325,8 @@ class TestClient(IntegrationTest):
         socket_info = one(pool.sockets)
         socket_info.sock.close()
 
-        # SocketInfo.check_auth logs in with the new credential, but gets a
-        # socket.error. Should be reraised as AutoReconnect.
+        # SocketInfo.authenticate logs, but gets a socket.error. Should be
+        # reraised as AutoReconnect.
         self.assertRaises(AutoReconnect, c.test.collection.find_one)
 
         # No semaphore leak, the pool is allowed to make a new socket.
@@ -1521,8 +1521,7 @@ class TestClient(IntegrationTest):
         try:
             while True:
                 for _ in range(10):
-                    client._topology.update_pool(
-                        client._MongoClient__all_credentials)
+                    client._topology.update_pool()
                 if generation != pool.gen.get_overall():
                     break
         finally:

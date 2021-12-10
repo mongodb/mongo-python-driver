@@ -195,7 +195,7 @@ def _authenticate_scram(credentials, sock_info, mechanism):
     # Make local
     _hmac = hmac.HMAC
 
-    ctx = sock_info.auth_ctx.get(credentials)
+    ctx = sock_info.auth_ctx
     if ctx and ctx.speculate_succeeded():
         nonce, first_bare = ctx.scram_data
         res = ctx.speculative_authenticate
@@ -424,7 +424,7 @@ def _authenticate_plain(credentials, sock_info):
 def _authenticate_x509(credentials, sock_info):
     """Authenticate using MONGODB-X509.
     """
-    ctx = sock_info.auth_ctx.get(credentials)
+    ctx = sock_info.auth_ctx
     if ctx and ctx.speculate_succeeded():
         # MONGODB-X509 is done after the speculative auth step.
         return
@@ -454,8 +454,8 @@ def _authenticate_mongo_cr(credentials, sock_info):
 
 def _authenticate_default(credentials, sock_info):
     if sock_info.max_wire_version >= 7:
-        if credentials in sock_info.negotiated_mechanisms:
-            mechs = sock_info.negotiated_mechanisms[credentials]
+        if sock_info.negotiated_mechs:
+            mechs = sock_info.negotiated_mechs
         else:
             source = credentials.source
             cmd = sock_info.hello_cmd()

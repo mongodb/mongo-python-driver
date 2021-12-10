@@ -118,7 +118,7 @@ class SocketGetter(MongoThread):
         self.state = 'get_socket'
 
         # Call 'pin_cursor' so we can hold the socket.
-        with self.pool.get_socket({}) as sock:
+        with self.pool.get_socket() as sock:
             sock.pin_cursor()
             self.sock = sock
 
@@ -196,10 +196,10 @@ class TestPooling(_TestPoolingBase):
         # Test Pool's _check_closed() method doesn't close a healthy socket.
         cx_pool = self.create_pool(max_pool_size=10)
         cx_pool._check_interval_seconds = 0  # Always check.
-        with cx_pool.get_socket({}) as sock_info:
+        with cx_pool.get_socket() as sock_info:
             pass
 
-        with cx_pool.get_socket({}) as new_sock_info:
+        with cx_pool.get_socket() as new_sock_info:
             self.assertEqual(sock_info, new_sock_info)
 
         self.assertEqual(1, len(cx_pool.sockets))
@@ -208,11 +208,11 @@ class TestPooling(_TestPoolingBase):
         # get_socket() returns socket after a non-network error.
         cx_pool = self.create_pool(max_pool_size=1, wait_queue_timeout=1)
         with self.assertRaises(ZeroDivisionError):
-            with cx_pool.get_socket({}) as sock_info:
+            with cx_pool.get_socket() as sock_info:
                 1 / 0
 
         # Socket was returned, not closed.
-        with cx_pool.get_socket({}) as new_sock_info:
+        with cx_pool.get_socket() as new_sock_info:
             self.assertEqual(sock_info, new_sock_info)
 
         self.assertEqual(1, len(cx_pool.sockets))
@@ -221,7 +221,7 @@ class TestPooling(_TestPoolingBase):
         # Test that Pool removes explicitly closed socket.
         cx_pool = self.create_pool()
 
-        with cx_pool.get_socket({}) as sock_info:
+        with cx_pool.get_socket() as sock_info:
             # Use SocketInfo's API to close the socket.
             sock_info.close_socket(None)
 
@@ -233,20 +233,20 @@ class TestPooling(_TestPoolingBase):
         cx_pool = self.create_pool(max_pool_size=1, wait_queue_timeout=1)
         cx_pool._check_interval_seconds = 0  # Always check.
 
-        with cx_pool.get_socket({}) as sock_info:
+        with cx_pool.get_socket() as sock_info:
             # Simulate a closed socket without telling the SocketInfo it's
             # closed.
             sock_info.sock.close()
             self.assertTrue(sock_info.socket_closed())
 
-        with cx_pool.get_socket({}) as new_sock_info:
+        with cx_pool.get_socket() as new_sock_info:
             self.assertEqual(0, len(cx_pool.sockets))
             self.assertNotEqual(sock_info, new_sock_info)
 
         self.assertEqual(1, len(cx_pool.sockets))
 
         # Semaphore was released.
-        with cx_pool.get_socket({}):
+        with cx_pool.get_socket():
             pass
 
     def test_socket_closed(self):
@@ -290,7 +290,7 @@ class TestPooling(_TestPoolingBase):
 
     def test_return_socket_after_reset(self):
         pool = self.create_pool()
-        with pool.get_socket({}) as sock:
+        with pool.get_socket() as sock:
             self.assertEqual(pool.active_sockets, 1)
             self.assertEqual(pool.operation_count, 1)
             pool.reset()
@@ -309,7 +309,7 @@ class TestPooling(_TestPoolingBase):
         cx_pool._check_interval_seconds = 0  # Always check.
         self.addCleanup(cx_pool.close)
 
-        with cx_pool.get_socket({}) as sock_info:
+        with cx_pool.get_socket() as sock_info:
             # Simulate a closed socket without telling the SocketInfo it's
             # closed.
             sock_info.sock.close()
@@ -317,12 +317,12 @@ class TestPooling(_TestPoolingBase):
         # Swap pool's address with a bad one.
         address, cx_pool.address = cx_pool.address, ('foo.com', 1234)
         with self.assertRaises(AutoReconnect):
-            with cx_pool.get_socket({}):
+            with cx_pool.get_socket():
                 pass
 
         # Back to normal, semaphore was correctly released.
         cx_pool.address = address
-        with cx_pool.get_socket({}):
+        with cx_pool.get_socket():
             pass
 
     def test_wait_queue_timeout(self):
@@ -331,10 +331,10 @@ class TestPooling(_TestPoolingBase):
             max_pool_size=1, wait_queue_timeout=wait_queue_timeout)
         self.addCleanup(pool.close)
 
-        with pool.get_socket({}) as sock_info:
+        with pool.get_socket() as sock_info:
             start = time.time()
             with self.assertRaises(ConnectionFailure):
-                with pool.get_socket({}):
+                with pool.get_socket():
                     pass
 
         duration = time.time() - start
@@ -349,7 +349,7 @@ class TestPooling(_TestPoolingBase):
         self.addCleanup(pool.close)
 
         # Reach max_size.
-        with pool.get_socket({}) as s1:
+        with pool.get_socket() as s1:
             t = SocketGetter(self.c, pool)
             t.start()
             while t.state != 'get_socket':
@@ -370,7 +370,7 @@ class TestPooling(_TestPoolingBase):
         socks = []
         for _ in range(2):
             # Call 'pin_cursor' so we can hold the socket.
-            with pool.get_socket({}) as sock:
+            with pool.get_socket() as sock:
                 sock.pin_cursor()
                 socks.append(sock)
 
@@ -515,7 +515,7 @@ class TestPoolMaxSize(_TestPoolingBase):
         # socket from pool" instead of AutoReconnect.
         for i in range(2):
             with self.assertRaises(AutoReconnect) as context:
-                with test_pool.get_socket({}):
+                with test_pool.get_socket():
                     pass
 
             # Testing for AutoReconnect instead of ConnectionFailure, above,

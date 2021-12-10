@@ -30,6 +30,7 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.saslprep import HAVE_STRINGPREP
 from test import client_context, IntegrationTest, SkipTest, unittest, Version
 from test.utils import (delay,
+                        get_pool,
                         ignore_deprecations,
                         single_client,
                         rs_or_single_client,
@@ -521,10 +522,12 @@ class TestSCRAM(IntegrationTest):
 
     def test_cache(self):
         client = single_client()
+        credentials = client.options.pool_options._credentials
+        cache = credentials.cache
+        self.assertIsNotNone(cache)
+        self.assertIsNone(cache.data)
         # Force authentication.
         client.admin.command('ping')
-        all_credentials = client._MongoClient__all_credentials
-        credentials = all_credentials.get('admin')
         cache = credentials.cache
         self.assertIsNotNone(cache)
         data = cache.data
@@ -535,19 +538,6 @@ class TestSCRAM(IntegrationTest):
         self.assertIsInstance(skey, bytes)
         self.assertIsInstance(salt, bytes)
         self.assertIsInstance(iterations, int)
-
-        pool = next(iter(client._topology._servers.values()))._pool
-        with pool.get_socket(all_credentials) as sock_info:
-            authset = sock_info.authset
-        cached = set(all_credentials.values())
-        self.assertEqual(len(cached), 1)
-        self.assertFalse(authset - cached)
-        self.assertFalse(cached - authset)
-
-        sock_credentials = next(iter(authset))
-        sock_cache = sock_credentials.cache
-        self.assertIsNotNone(sock_cache)
-        self.assertEqual(sock_cache.data, data)
 
     def test_scram_threaded(self):
 
