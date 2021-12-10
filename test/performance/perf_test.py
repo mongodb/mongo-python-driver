@@ -83,12 +83,18 @@ class PerformanceTest(object):
         print('Running %s. MEDIAN=%s' % (self.__class__.__name__,
                                          self.percentile(50)))
         result_data.append({
-            'name': name,
-            'results': {
-                '1': {
-                    'ops_per_sec': result
-                }
-            }
+            'info': {
+                'test_name': name,
+                'args': {
+                   'threads': 1,
+                },
+            },
+            'metrics': [
+                {
+                    'name': 'ops_per_sec',
+                    'value': result
+                },
+            ]
         })
 
     def before(self):
