@@ -26,7 +26,7 @@ print(cmd)
 subprocess.check_call(cmd, cwd=HERE)
 
 # Bootstrap some data
-client = MongoClient(directConnection=True))
+client = MongoClient(directConnection=True)
 
 for path in glob.glob(os.path.join(HERE, 'sample_data', '*.json')):
     with open(path) as fid:
