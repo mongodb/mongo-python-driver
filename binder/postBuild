@@ -11,4 +11,10 @@ yes | m $(cat binder/VERSION)
 
 m
 
+./binder/init
+
 python ./binder/bootstrap.py
+
+mlaunch kill 
+
+rm -rf ./binder/data
