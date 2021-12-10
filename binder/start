@@ -2,11 +2,26 @@
 import sys
 import shutil
 import os
+import shlex
 import subprocess
 
+HERE = os.path.abspath(os.path.dirname(__file__))
+
+with open(os.path.join(HERE, 'VERSION')) as fid:
+    VERSION = fid.read().strip()
+
+with open(os.path.join(HERE, 'PORT')) as fid:
+    PORT = fid.read().strip()
+
 # Start the local mongodb as a background task
-binder_folder = os.path.join(os.getcwd(), 'binder')
-subprocess.check_call(['bash', 'init'], shell=True, cwd=binder_folder)
+MONGODB_BIN = subprocess.check_output(['m', 'bin', VERSION]).decode('utf-8').strip()
+
+cmd = ['mlaunch', 'init', '--replicaset', '--name', 'repl0', '--nodes', '3', '--binarypath',
+MONGODB_BIN, '--port', PORT, '--hostname', 'localhost', '--setParameter',
+'enableTestCommands=1']
+
+print(cmd)
+subprocess.check_call(cmd, cwd=HERE)
 
 # Launch Jupyter
 argv = sys.argv[1:]
