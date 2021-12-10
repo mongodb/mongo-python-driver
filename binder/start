@@ -6,7 +6,7 @@ import subprocess
 
 # Start the local mongodb as a background task
 binder_folder = os.path.join(os.getcwd(), 'binder')
-subprocess.run(['init'], shell=True, cwd=binder_folder)
+subprocess.check_call(['init'], shell=True, cwd=binder_folder)
 
 # Launch Jupyter
 argv = sys.argv[1:]
