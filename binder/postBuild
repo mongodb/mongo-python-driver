@@ -10,3 +10,5 @@ pip install -e ".[srv]"
 yes | m $(cat binder/VERSION)
 
 m
+
+python ./binder/bootstrap.py
