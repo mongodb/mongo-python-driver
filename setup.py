@@ -315,7 +315,6 @@ setup(
     description="Python driver for MongoDB <http://www.mongodb.org>",
     long_description=readme_content,
     author="The MongoDB Python Team",
-    author_email="mongodb-user@googlegroups.com",
     url="http://github.com/mongodb/mongo-python-driver",
     keywords=["mongo", "mongodb", "pymongo", "gridfs", "bson"],
     install_requires=[],
