@@ -284,22 +284,23 @@ class Database(common.BaseObject):
           - ``max`` (int): maximum number of objects if capped (optional)
           - ``timeseries`` (dict): a document specifying configuration options for
             timeseries collections
-          - ``expireAfterSeconds` (int)`: the number of seconds after which a
+          - ``expireAfterSeconds`` (int): the number of seconds after which a
             document in a timeseries collection expires
           - ``validator`` (dict): a document specifying validation rules or expressions 
             for the collection
           - ``validationLevel`` (str): how strictly to apply the 
-            validation rules to existing documents during an update
-          - ``validationAction`` (str): whether to error on invalid documents
-            or just warn about the violations but allow invalid documents to 
-            be inserted
+            validation rules to existing documents during an update.  The default level
+            is "strict"
+          - ``validationAction`` (str): whether to "error" on invalid documents
+            (the default) or just "warn" about the violations but allow invalid 
+            documents to be inserted
           - ``indexOptionDefaults`` (dict): a document specifying a default configuration
             for indexes when creating a collection
           - ``viewOn`` (str): the name of the source collection or view from which 
             to create the view
           - ``pipeline`` (list): a list of aggregation pipeline stages
           - ``comment`` (str): a user-provided comment to attach to this command.  
-          This option is only supported on MongoDB >= 4.4.
+            This option is only supported on MongoDB >= 4.4.
 
         .. versionchanged:: 3.11
            This method is now supported inside multi-document transactions
