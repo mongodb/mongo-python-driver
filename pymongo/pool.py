@@ -505,6 +505,7 @@ class SocketInfo(object):
         self.supports_sessions = False
         self.hello_ok = None
         self.is_mongos = False
+        self.is_arbiter = False
         self.op_msg_enabled = False
         self.listeners = pool.opts._event_listeners
         self.enabled_for_cmap = pool.enabled_for_cmap
@@ -609,6 +610,7 @@ class SocketInfo(object):
             hello.logical_session_timeout_minutes is not None)
         self.hello_ok = hello.hello_ok
         self.is_mongos = hello.server_type == SERVER_TYPE.Mongos
+        self.is_arbiter = hello.server_type == SERVER_TYPE.RSArbiter
         if performing_handshake and self.compression_settings:
             ctx = self.compression_settings.get_compression_context(
                 hello.compressors)
@@ -795,7 +797,7 @@ class SocketInfo(object):
         # the connection.
         if not self.ready:
             creds = self.opts._credentials
-            if creds:
+            if creds and not self.is_arbiter:
                 auth.authenticate(creds, self)
             self.ready = True
             if self.enabled_for_cmap:
@@ -1062,8 +1064,6 @@ class PoolState(object):
     CLOSED = 3
 
 
-# Do *not* explicitly inherit from object or Jython won't call __del__
-# http://bugs.jython.org/issue1057
 class Pool:
     def __init__(self, address, options, handshake=True):
         """
