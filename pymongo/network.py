@@ -41,7 +41,7 @@ _UNPACK_HEADER = struct.Struct("<iiii").unpack
 def command(sock_info, dbname, spec, secondary_ok, is_mongos,
             read_preference, codec_options, session, client, check=True,
             allowable_errors=None, address=None,
-            check_keys=False, listeners=None, max_bson_size=None,
+            listeners=None, max_bson_size=None,
             read_concern=None,
             parse_write_concern_error=False,
             collation=None,
@@ -65,7 +65,6 @@ def command(sock_info, dbname, spec, secondary_ok, is_mongos,
       - `check`: raise OperationFailure if there are errors
       - `allowable_errors`: errors to ignore if `check` is True
       - `address`: the (host, port) of `sock`
-      - `check_keys`: if True, check `spec` for invalid keys
       - `listeners`: An instance of :class:`~pymongo.monitoring.EventListeners`
       - `max_bson_size`: The maximum encoded bson size for this server
       - `read_concern`: The read concern for this command.
@@ -107,16 +106,13 @@ def command(sock_info, dbname, spec, secondary_ok, is_mongos,
 
     if (client and client._encrypter and
             not client._encrypter._bypass_auto_encryption):
-        spec = orig = client._encrypter.encrypt(
-            dbname, spec, check_keys, codec_options)
-        # We already checked the keys, no need to do it again.
-        check_keys = False
+        spec = orig = client._encrypter.encrypt(dbname, spec, codec_options)
 
     if use_op_msg:
         flags = _OpMsg.MORE_TO_COME if unacknowledged else 0
         flags |= _OpMsg.EXHAUST_ALLOWED if exhaust_allowed else 0
         request_id, msg, size, max_doc_size = message._op_msg(
-            flags, spec, dbname, read_preference, secondary_ok, check_keys,
+            flags, spec, dbname, read_preference, secondary_ok,
             codec_options, ctx=compression_ctx)
         # If this is an unacknowledged write then make sure the encoded doc(s)
         # are small enough, otherwise rely on the server to return an error.
@@ -125,7 +121,7 @@ def command(sock_info, dbname, spec, secondary_ok, is_mongos,
             message._raise_document_too_large(name, size, max_bson_size)
     else:
         request_id, msg, size = message._query(
-            flags, ns, 0, -1, spec, None, codec_options, check_keys,
+            flags, ns, 0, -1, spec, None, codec_options,
             compression_ctx)
 
     if (max_bson_size is not None

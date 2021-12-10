@@ -644,7 +644,7 @@ class SocketInfo(object):
     def command(self, dbname, spec, secondary_ok=False,
                 read_preference=ReadPreference.PRIMARY,
                 codec_options=DEFAULT_CODEC_OPTIONS, check=True,
-                allowable_errors=None, check_keys=False,
+                allowable_errors=None,
                 read_concern=None,
                 write_concern=None,
                 parse_write_concern_error=False,
@@ -665,7 +665,6 @@ class SocketInfo(object):
           - `codec_options`: a CodecOptions instance
           - `check`: raise OperationFailure if there are errors
           - `allowable_errors`: errors to ignore if `check` is True
-          - `check_keys`: if True, check `spec` for invalid keys
           - `read_concern`: The read concern for this command.
           - `write_concern`: The write concern for this command.
           - `parse_write_concern_error`: Whether to parse the
@@ -707,7 +706,7 @@ class SocketInfo(object):
             return command(self, dbname, spec, secondary_ok,
                            self.is_mongos, read_preference, codec_options,
                            session, client, check, allowable_errors,
-                           self.address, check_keys, listeners,
+                           self.address, listeners,
                            self.max_bson_size, read_concern,
                            parse_write_concern_error=parse_write_concern_error,
                            collation=collation,
