@@ -824,7 +824,7 @@ class Collection(common.BaseObject):
         write_concern = self._write_concern_for(session)
         return UpdateResult(
             self._update_retryable(
-                filter, update, upsert=False,
+                filter, update, upsert,
                 write_concern=write_concern,
                 bypass_doc_val=bypass_document_validation,
                 collation=collation, array_filters=array_filters,
@@ -904,7 +904,7 @@ class Collection(common.BaseObject):
         write_concern = self._write_concern_for(session)
         return UpdateResult(
             self._update_retryable(
-                filter, update, upsert=False, multi=True,
+                filter, update, upsert, multi=True,
                 write_concern=write_concern,
                 bypass_doc_val=bypass_document_validation,
                 collation=collation, array_filters=array_filters,
