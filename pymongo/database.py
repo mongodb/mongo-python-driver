@@ -286,6 +286,19 @@ class Database(common.BaseObject):
             timeseries collections
           - ``expireAfterSeconds``: the number of seconds after which a
             document in a timeseries collection expires
+          - ``validator``: a document specifying validation rules or expressions 
+            for the collection
+          - ``validationLevel``: determines how strictly MongoDB applies the 
+            validation rules to existing documents during an update
+          - ``validationAction``: determines whether to error on invalid documents
+            or just warn about the violations but allow invalid documents to 
+            be inserted
+          - ``indexOptionDefaults``: a document specifying a default configuration
+            for indexes when creating a collection
+          - ``viewOn``: the name of the source collection or view from which 
+            to create the view
+          - ``pipeline``: a list of aggregation pipeline stages
+          - ``comment``: a user-provided comment to attach to this command
 
         .. versionchanged:: 3.11
            This method is now supported inside multi-document transactions
