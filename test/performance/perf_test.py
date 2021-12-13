@@ -77,7 +77,7 @@ class PerformanceTest(object):
     def tearDown(self):
         name = self.__class__.__name__
         median = self.percentile(50)
-        result = self.data_size / median
+        bytes_per_sec = self.data_size / median
         print('Running %s. MEDIAN=%s' % (self.__class__.__name__,
                                          self.percentile(50)))
         result_data.append({
@@ -89,8 +89,8 @@ class PerformanceTest(object):
             },
             'metrics': [
                 {
-                    'name': 'ops_per_sec',
-                    'value': result
+                    'name': 'bytes_per_sec',
+                    'value': bytes_per_sec
                 },
             ]
         })
