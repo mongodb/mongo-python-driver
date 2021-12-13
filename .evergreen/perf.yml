@@ -133,9 +133,8 @@ functions:
         file_location: src/report.json
 
   "send dashboard data":
-    - command: json.send
+    - command: perf.send
       params:
-        name: perf
         file: src/results.json
 
   "cleanup":

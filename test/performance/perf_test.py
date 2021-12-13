@@ -47,9 +47,7 @@ OUTPUT_FILE = os.environ.get('OUTPUT_FILE')
 result_data = []
 
 def tearDownModule():
-    output = json.dumps({
-        'results': result_data
-        }, indent=4)
+    output = json.dumps(result_data, indent=4)
     if OUTPUT_FILE:
         with open(OUTPUT_FILE, 'w') as opf:
             opf.write(output)
@@ -79,16 +77,22 @@ class PerformanceTest(object):
     def tearDown(self):
         name = self.__class__.__name__
         median = self.percentile(50)
-        result = self.data_size / median
+        bytes_per_sec = self.data_size / median
         print('Running %s. MEDIAN=%s' % (self.__class__.__name__,
                                          self.percentile(50)))
         result_data.append({
-            'name': name,
-            'results': {
-                '1': {
-                    'ops_per_sec': result
-                }
-            }
+            'info': {
+                'test_name': name,
+                'args': {
+                   'threads': 1,
+                },
+            },
+            'metrics': [
+                {
+                    'name': 'bytes_per_sec',
+                    'value': bytes_per_sec
+                },
+            ]
         })
 
     def before(self):
