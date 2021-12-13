@@ -1,46 +1,13 @@
 #!/usr/bin/env python3
 import sys
 import shutil
-import glob
-import json
 import os
-import shlex
 import subprocess
-from pymongo import MongoClient
 
 HERE = os.path.abspath(os.path.dirname(__file__))
 
-# Get config variables
-with open(os.path.join(HERE, 'VERSION')) as fid:
-    VERSION = fid.read().strip()
-
-with open(os.path.join(HERE, 'PORT')) as fid:
-    PORT = fid.read().strip()
-
-# Start the local mongodb as a background task
-MONGODB_BIN = subprocess.check_output(['m', 'bin', VERSION]).decode('utf-8').strip()
-
-cmd = ['mlaunch', 'init', '--replicaset', '--name', 'repl0', '--nodes', '3', '--binarypath',
-MONGODB_BIN, '--port', PORT, '--priority', '--hostname', 'localhost', '--setParameter',
-'enableTestCommands=1']
-
-print(' '.join(cmd))
-subprocess.check_call(cmd, cwd=HERE)
-
-# Bootstrap some data
-client = MongoClient()
-
-for path in glob.glob(os.path.join(HERE, 'sample_data', '*.json')):
-    with open(path) as fid:
-        entries = [json.loads(line) for line in fid]
-    for entry in entries:
-        del entry['_id']
-
-    name, _ = os.path.splitext(os.path.basename(path))
-    print(name, len(entries))
-
-    collection = client.sample_mflix[name]
-    collection.insert_many(entries)
+# Start the mongo server again
+subprocess.check_call(["mlaunch", "start"], cwd=HERE)
 
 # Launch Jupyter
 argv = sys.argv[1:]

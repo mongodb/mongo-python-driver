@@ -11,5 +11,6 @@ dependencies:
   - pip
   - pymongo
   - nodejs
+  - mongo-tools
   - pip:
     - mtools
