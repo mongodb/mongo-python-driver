@@ -4,7 +4,7 @@ set -o errexit
 
 APACHE=$(command -v apache2 || command -v /usr/lib/apache2/mpm-prefork/apache2) || true
 if [ -n "$APACHE" ]; then
-    APACHE_CONFIG=apache22ubuntu1204.conf
+    APACHE_CONFIG=apache24ubuntu161404.conf
 else
     APACHE=$(command -v httpd) || true
     if [ -z "$APACHE" ]; then

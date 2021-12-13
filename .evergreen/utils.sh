@@ -9,11 +9,11 @@ set -o xtrace
 createvirtualenv () {
     PYTHON=$1
     VENVPATH=$2
-    if $PYTHON -m venv -h>/dev/null; then
+    if $PYTHON -m virtualenv --version; then
+        VIRTUALENV="$PYTHON -m virtualenv"
+    elif $PYTHON -m venv -h>/dev/null; then
         # System virtualenv might not be compatible with the python3 on our path
         VIRTUALENV="$PYTHON -m venv"
-    elif $PYTHON -m virtualenv --version; then
-        VIRTUALENV="$PYTHON -m virtualenv"
     else
         echo "Cannot test without virtualenv"
         exit 1

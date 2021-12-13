@@ -77,8 +77,7 @@ if [ -z "$PYTHON_BINARY" ]; then
 elif [ "$COMPRESSORS" = "snappy" ]; then
     createvirtualenv $PYTHON_BINARY snappytest
     trap "deactivate; rm -rf snappytest" EXIT HUP
-    # 0.5.2 has issues in pypy3(.5)
-    python -m pip install python-snappy==0.5.1
+    python -m pip install python-snappy
     PYTHON=python
 elif [ "$COMPRESSORS" = "zstd" ]; then
     createvirtualenv $PYTHON_BINARY zstdtest

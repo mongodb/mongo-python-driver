@@ -1770,6 +1770,7 @@ axes:
         run_on: ubuntu1804-small
         batchtime: 10080  # 7 days
         variables:
+          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/ubuntu1804-64/master/latest/libmongocrypt.tar.gz
           python3_binary: "/opt/python/3.8/bin/python3"
       - id: ubuntu-20.04
         display_name: "Ubuntu 20.04"
@@ -2196,51 +2197,27 @@ buildvariants:
   tasks:
     - ".4.2"
 
-- matrix_name: "tests-python-version-amazon1-test-ssl"
+- matrix_name: "tests-python-version-ubuntu18-test-ssl"
   matrix_spec:
-    platform: awslinux
-    python-version: &amazon1-pythons ["3.6", "3.7", "3.8", "3.9", "pypy3.6", "pypy3.7"]
+    platform: ubuntu-18.04
+    python-version: "*"
     auth-ssl: "*"
     coverage: "*"
   display_name: "${python-version} ${platform} ${auth-ssl} ${coverage}"
   tasks: *all-server-versions
 
-- matrix_name: "tests-python-version-ubuntu20-ssl"
-  matrix_spec:
-    platform: ubuntu-20.04
-    python-version: ["3.10"]
-    auth-ssl: "*"
-  display_name: "${python-version} ${platform} ${auth-ssl} ${coverage}"
-  tasks:
-    - ".latest"
-    - ".5.0"
-    - ".4.4"
-
 - matrix_name: "tests-pyopenssl"
   matrix_spec:
-    platform: awslinux
-    python-version: ["3.6", "3.7", "3.8", "3.9"]
+    platform: ubuntu-18.04
+    python-version: "*"
     auth: "*"
     ssl: "ssl"
     pyopenssl: "*"
   # Only test "noauth" with Python 3.7.
   exclude_spec:
-    platform: awslinux
-    python-version: ["3.6", "3.8", "3.9"]
+    platform: ubuntu-18.04
+    python-version: ["3.6", "3.8", "3.9", "3.10", "pypy3.6", "pypy3.7"]
     auth: "noauth"
-    ssl: "ssl"
-    pyopenssl: "*"
-  display_name: "PyOpenSSL ${platform} ${python-version} ${auth}"
-  tasks:
-    - '.replica_set'
-    # Test standalone and sharded only on 5.0 and later.
-    - '.5.0'
-
-- matrix_name: "tests-pyopenssl-pypy"
-  matrix_spec:
-    platform: debian92
-    python-version: ["pypy3.6", "pypy3.7"]
-    auth: "auth"
     ssl: "ssl"
     pyopenssl: "*"
   display_name: "PyOpenSSL ${platform} ${python-version} ${auth}"
@@ -2270,10 +2247,10 @@ buildvariants:
   tasks:
     - '.replica_set'
 
-- matrix_name: "tests-python-version-amazon1-test-encryption"
+- matrix_name: "tests-python-version-ubuntu18-test-encryption"
   matrix_spec:
-    platform: awslinux
-    python-version: ["3.6", "3.7", "3.8", "3.9"]
+    platform: ubuntu-18.04
+    python-version: "*"
     auth-ssl: noauth-nossl
 # TODO: dependency error for 'coverage-report' task:
 # dependency tests-python-version-rhel62-test-encryption_.../test-2.6-standalone is not present in the project config
@@ -2282,25 +2259,16 @@ buildvariants:
   display_name: "Encryption ${python-version} ${platform} ${auth-ssl}"
   tasks: *encryption-server-versions
 
-- matrix_name: "tests-pypy-debian-test-encryption"
+- matrix_name: "tests-python-version-ubuntu18-without-c-extensions"
   matrix_spec:
-    platform: debian92
-    python-version: ["pypy3.6", "pypy3.7"]
-    auth-ssl: noauth-nossl
-    encryption: "*"
-  display_name: "Encryption ${python-version} ${platform} ${auth-ssl}"
-  tasks: *encryption-server-versions
-
-- matrix_name: "tests-python-version-amazon1-without-c-extensions"
-  matrix_spec:
-    platform: awslinux
-    python-version: *amazon1-pythons
+    platform: ubuntu-18.04
+    python-version: "*"
     c-extensions: without-c-extensions
     auth-ssl: noauth-nossl
     coverage: "*"
   exclude_spec:
    # These interpreters are always tested without extensions.
-   - platform: awslinux
+   - platform: ubuntu-18.04
      python-version: ["pypy3.6", "pypy3.7"]
      c-extensions: "*"
      auth-ssl: "*"
@@ -2310,9 +2278,8 @@ buildvariants:
 
 - matrix_name: "tests-python-version-ubuntu18-compression"
   matrix_spec:
-    # Ubuntu 16.04 images have libsnappy-dev installed, and provides OpenSSL 1.0.2 for testing Python 3.7
     platform: ubuntu-18.04
-    python-version: ["3.6", "3.7", "3.8", "3.9", "pypy3.6", "pypy3.7"]
+    python-version: "*"
     c-extensions: "*"
     compression: "*"
   exclude_spec:
@@ -2321,11 +2288,6 @@ buildvariants:
      python-version: ["pypy3.6", "pypy3.7"]
      c-extensions: "with-c-extensions"
      compression: "*"
-   # PYTHON-2365 Some tests fail with CPython 3.8+ and python-snappy
-   - platform: ubuntu-18.04
-     python-version: ["3.8", "3.9"]
-     c-extensions: "*"
-     compression: ["snappy"]
   display_name: "${compression} ${c-extensions} ${python-version} ${platform}"
   tasks:
     - "test-latest-standalone"
@@ -2343,16 +2305,16 @@ buildvariants:
           - "test-4.0-standalone"
           - "test-3.6-standalone"
 
-- matrix_name: "tests-python-version-green-framework-amazon1"
+- matrix_name: "tests-python-version-green-framework-ubuntu18"
   matrix_spec:
-    platform: awslinux
-    python-version: *amazon1-pythons
+    platform: ubuntu-18.04
+    python-version: "*"
     green-framework: "*"
     auth-ssl: "*"
   exclude_spec:
    # Don't test green frameworks on these Python versions.
-   - platform: awslinux
-     python-version: ["pypy3.6", "pypy3.7"]
+   - platform: ubuntu-18.04
+     python-version: ["pypy3.6", "pypy3.7", "system-python3"]
      green-framework: "*"
      auth-ssl: "*"
   display_name: "${green-framework} ${python-version} ${platform} ${auth-ssl}"
@@ -2374,12 +2336,13 @@ buildvariants:
   display_name: "${platform} ${python-version-windows-32} ${auth-ssl}"
   tasks: *all-server-versions
 
-- matrix_name: "tests-python-version-supports-openssl-110-test-ssl"
+- matrix_name: "tests-python-version-supports-openssl-102-test-ssl"
   matrix_spec:
-    platform: debian92
-    python-version: *amazon1-pythons
+    platform: awslinux
+    # Python 3.10+ requires OpenSSL 1.1.1+
+    python-version: ["3.6", "3.7", "3.8", "3.9", "pypy3.6", "pypy3.7"]
     auth-ssl: "*"
-  display_name: "${python-version} OpenSSL 1.1.0 ${platform} ${auth-ssl}"
+  display_name: "OpenSSL 1.0.2 ${python-version} ${platform} ${auth-ssl}"
   tasks:
      - ".latest"
 
@@ -2392,16 +2355,16 @@ buildvariants:
   display_name: "Encryption ${platform} ${python-version-windows} ${auth-ssl}"
   tasks: *encryption-server-versions
 
-# Storage engine tests on Amazon1 (x86_64) with Python 3.6.
+# Storage engine tests on Ubuntu 18.04 (x86_64) with Python 3.6.
 - matrix_name: "tests-storage-engines"
   matrix_spec:
-    platform: awslinux
+    platform: ubuntu-18.04
     storage-engine: "*"
     python-version: 3.6
   display_name: "Storage ${storage-engine} ${python-version} ${platform}"
   rules:
     - if:
-        platform: awslinux
+        platform: ubuntu-18.04
         storage-engine: ["inmemory"]
         python-version: "*"
       then:
@@ -2414,7 +2377,7 @@ buildvariants:
           - "test-3.6-standalone"
     - if:
         # MongoDB 4.2 drops support for MMAPv1
-        platform: awslinux
+        platform: ubuntu-18.04
         storage-engine: ["mmapv1"]
         python-version: "*"
       then:
@@ -2424,10 +2387,10 @@ buildvariants:
           - "test-3.6-standalone"
           - "test-3.6-replica_set"
 
-# enableTestCommands=0 tests on Amazon1 (x86_64) with Python 3.6.
+# enableTestCommands=0 tests on Ubuntu18 (x86_64) with Python 3.6.
 - matrix_name: "test-disableTestCommands"
   matrix_spec:
-    platform: awslinux
+    platform: ubuntu-18.04
     disableTestCommands: "*"
     python-version: "3.6"
   display_name: "Disable test commands ${python-version} ${platform}"
@@ -2436,8 +2399,8 @@ buildvariants:
 
 - matrix_name: "test-linux-enterprise-auth"
   matrix_spec:
-    platform: awslinux
-    python-version: *amazon1-pythons
+    platform: ubuntu-18.04
+    python-version: "*"
     auth: "auth"
   display_name: "Enterprise ${auth} ${platform} ${python-version}"
   tasks:
@@ -2454,12 +2417,12 @@ buildvariants:
 
 - matrix_name: "tests-mod-wsgi"
   matrix_spec:
-    platform: awslinux
+    platform: ubuntu-18.04
     python-version: ["3.6", "3.7", "3.8", "3.9"]
     mod-wsgi-version: "*"
   exclude_spec:
    # mod-wsgi 3.5 won't build against CPython 3.8+
-   - platform: awslinux
+   - platform: ubuntu-18.04
      python-version: ["3.8", "3.9"]
      mod-wsgi-version: "3"
   display_name: "${mod-wsgi-version} ${python-version} ${platform}"
@@ -2469,7 +2432,7 @@ buildvariants:
 
 - matrix_name: "mockupdb-tests"
   matrix_spec:
-    platform: awslinux
+    platform: ubuntu-18.04
     python-version: 3.6
   display_name: "MockupDB Tests"
   tasks:
@@ -2477,7 +2440,7 @@ buildvariants:
 
 - matrix_name: "tests-doctests"
   matrix_spec:
-    platform: awslinux
+    platform: ubuntu-18.04
     python-version: ["3.6"]
   display_name: "Doctests ${python-version} ${platform}"
   tasks:
@@ -2486,7 +2449,7 @@ buildvariants:
 - name: "no-server"
   display_name: "No server test"
   run_on:
-    - amazon1-2018-test
+    - ubuntu1804-test
   tasks:
     - name: "no-server"
   expansions:
@@ -2495,7 +2458,7 @@ buildvariants:
 - name: "Coverage Report"
   display_name: "Coverage Report"
   run_on:
-    - ubuntu1604-test
+    - ubuntu1804-test
   tasks:
      - name: "coverage-report"
   expansions:
@@ -2503,18 +2466,23 @@ buildvariants:
 
 - matrix_name: "atlas-connect"
   matrix_spec:
-    platform: awslinux
-    python-version: *amazon1-pythons
+    platform: ubuntu-18.04
+    python-version: "*"
   display_name: "Atlas connect ${python-version} ${platform}"
   tasks:
     - name: "atlas-connect"
 
 - matrix_name: "serverless"
   matrix_spec:
-    platform: awslinux
-    python-version: *amazon1-pythons
+    platform: ubuntu-18.04
+    python-version: "*"
     auth-ssl: auth-ssl
     serverless: "*"
+  exclude_spec:
+   - platform: ubuntu-18.04
+     python-version: ["system-python3"]
+     auth-ssl: auth-ssl
+     serverless: "*"
   display_name: "Serverless ${python-version} ${platform}"
   tasks:
     - "serverless_task_group"
@@ -2522,7 +2490,7 @@ buildvariants:
 - matrix_name: "data-lake-spec-tests"
   matrix_spec:
     platform: ubuntu-18.04
-    python-version: ["3.6", "3.9"]
+    python-version: ["3.6", "3.10"]
     auth: "auth"
     c-extensions: "*"
   display_name: "Atlas Data Lake ${python-version} ${c-extensions}"
@@ -2532,7 +2500,7 @@ buildvariants:
 - matrix_name: "versioned-api-tests"
   matrix_spec:
     platform: ubuntu-18.04
-    python-version: ["3.6", "3.9"]
+    python-version: ["3.6", "3.10"]
     auth: "auth"
     versionedApi: "*"
   display_name: "Versioned API ${versionedApi} ${python-version}"
@@ -2557,7 +2525,7 @@ buildvariants:
 - matrix_name: "ocsp-test-windows"
   matrix_spec:
     platform: windows-64-vsMulti-small
-    python-version-windows: ["3.6", "3.9"]
+    python-version-windows: ["3.6", "3.10"]
     mongodb-version: ["4.4", "5.0", "latest"]
     auth: "noauth"
     ssl: "ssl"
@@ -2604,7 +2572,7 @@ buildvariants:
     platform: ubuntu-18.04
     mongodb-version: ["5.0", "latest"]
     auth-ssl: "*"
-    python-version: ["3.6", "3.7", "3.8", "3.9", "pypy3.6", "pypy3.7"]
+    python-version: "*"
     loadbalancer: "*"
   display_name: "Load Balancer ${platform} ${python-version} ${mongodb-version} ${auth-ssl}"
   tasks:
