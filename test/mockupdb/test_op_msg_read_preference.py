@@ -148,24 +148,31 @@ def create_op_msg_read_mode_test(mode, operation):
             expected_pref = ReadPreference.SECONDARY
         elif operation.op_type == 'must-use-primary':
             expected_server = self.primary
-            expected_pref = ReadPreference.PRIMARY
+            expected_pref = None
         elif operation.op_type == 'may-use-secondary':
-            if mode in ('primary', 'primaryPreferred'):
+            if mode == 'primary':
                 expected_server = self.primary
+                expected_pref = None
+            elif mode == 'primaryPreferred':
+                expected_server = self.primary
+                expected_pref = pref
             else:
                 expected_server = self.secondary
-            expected_pref = pref
+                expected_pref = pref
         else:
             self.fail('unrecognized op_type %r' % operation.op_type)
-        # For single mongod we send primaryPreferred instead of primary.
-        if expected_pref == ReadPreference.PRIMARY and self.single_mongod:
-            expected_pref = ReadPreference.PRIMARY_PREFERRED
+        # For single mongod we omit the read preference.
+        if self.single_mongod:
+            expected_pref = None
         with going(operation.function, client):
             request = expected_server.receive()
             request.reply(operation.reply)
 
-        self.assertEqual(expected_pref.document,
-                         request.doc.get('$readPreference'))
+        actual_pref = request.doc.get('$readPreference')
+        if expected_pref:
+            self.assertEqual(expected_pref.document, actual_pref)
+        else:
+            self.assertIsNone(actual_pref)
         self.assertNotIn('$query', request.doc)
 
     return test

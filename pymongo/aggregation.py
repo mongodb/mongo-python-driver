@@ -92,11 +92,6 @@ class _AggregationCommand(object):
         """The database against which the aggregation command is run."""
         raise NotImplementedError
 
-    def _process_result(self, result, session, server, sock_info, secondary_ok):
-        if self._result_processor:
-            self._result_processor(
-                result, session, server, sock_info, secondary_ok)
-
     def get_read_preference(self, session):
         if self._write_preference:
             return self._write_preference
@@ -105,7 +100,7 @@ class _AggregationCommand(object):
             self._write_preference = pref = _AggWritePref(pref)
         return pref
 
-    def get_cursor(self, session, server, sock_info, secondary_ok):
+    def get_cursor(self, session, server, sock_info, read_preference):
         # Serialize command.
         cmd = SON([("aggregate", self._aggregation_target),
                    ("pipeline", self._pipeline)])
@@ -134,8 +129,7 @@ class _AggregationCommand(object):
         result = sock_info.command(
             self._database.name,
             cmd,
-            secondary_ok,
-            self.get_read_preference(session),
+            read_preference,
             self._target.codec_options,
             parse_write_concern_error=True,
             read_concern=read_concern,
@@ -145,7 +139,8 @@ class _AggregationCommand(object):
             client=self._database.client,
             user_fields=self._user_fields)
 
-        self._process_result(result, session, server, sock_info, secondary_ok)
+        if self._result_processor:
+            self._result_processor(result, sock_info)
 
         # Extract cursor from result or mock/fake one if necessary.
         if 'cursor' in result:

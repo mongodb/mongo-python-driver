@@ -47,17 +47,18 @@ class TestQueryAndReadModeSharded(unittest.TestCase):
             SecondaryPreferred([{'tag': 'value'}]),)
 
         for query in ({'a': 1}, {'$query': {'a': 1}},):
-            for mode in read_prefs:
+            for pref in read_prefs:
                 collection = client.db.get_collection('test',
-                                                      read_preference=mode)
+                                                      read_preference=pref)
                 cursor = collection.find(query.copy())
                 with going(next, cursor):
                     request = server.receives()
                     # Command is not nested in $query.
-                    request.assert_matches(OpMsg(
-                        SON([('find', 'test'),
-                             ('filter', {'a': 1}),
-                             ('$readPreference', mode.document)])))
+                    expected_cmd = SON([('find', 'test'),
+                                        ('filter', {'a': 1})])
+                    if pref.mode:
+                        expected_cmd['$readPreference'] = pref.document
+                    request.assert_matches(OpMsg(expected_cmd))
 
                     request.replies({'cursor': {'id': 0, 'firstBatch': [{}]}})
 

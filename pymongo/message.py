@@ -316,9 +316,9 @@ class _Query(object):
         self._as_command = cmd, self.db
         return self._as_command
 
-    def get_message(self, set_secondary_ok, sock_info, use_cmd=False):
+    def get_message(self, read_preference, sock_info, use_cmd=False):
         """Get a query message, possibly setting the secondaryOk bit."""
-        if set_secondary_ok:
+        if read_preference.mode:
             # Set the secondaryOk bit.
             flags = self.flags | 4
         else:
@@ -330,8 +330,7 @@ class _Query(object):
         if use_cmd:
             spec = self.as_command(sock_info)[0]
             request_id, msg, size, _ = _op_msg(
-                0, spec, self.db, self.read_preference,
-                set_secondary_ok, self.codec_options,
+                0, spec, self.db, read_preference, self.codec_options,
                 ctx=sock_info.compression_context)
             return request_id, msg, size
 
@@ -346,8 +345,7 @@ class _Query(object):
                 ntoreturn = self.limit
 
         if sock_info.is_mongos:
-            spec = _maybe_add_read_preference(spec,
-                                              self.read_preference)
+            spec = _maybe_add_read_preference(spec, read_preference)
 
         return _query(flags, ns, self.ntoskip, ntoreturn,
                       spec, None if use_cmd else self.fields,
@@ -429,8 +427,7 @@ class _GetMore(object):
             else:
                 flags = 0
             request_id, msg, size, _ = _op_msg(
-                flags, spec, self.db, None,
-                False, self.codec_options,
+                flags, spec, self.db, None, self.codec_options,
                 ctx=sock_info.compression_context)
             return request_id, msg, size
 
@@ -572,16 +569,13 @@ if _use_c:
     _op_msg_uncompressed = _cmessage._op_msg
 
 
-def _op_msg(flags, command, dbname, read_preference, secondary_ok,
-            opts, ctx=None):
+def _op_msg(flags, command, dbname, read_preference, opts, ctx=None):
     """Get a OP_MSG message."""
     command['$db'] = dbname
     # getMore commands do not send $readPreference.
     if read_preference is not None and "$readPreference" not in command:
-        if secondary_ok and not read_preference.mode:
-            command["$readPreference"] = (
-                ReadPreference.PRIMARY_PREFERRED.document)
-        else:
+        # Only send $readPreference if it's not primary (the default).
+        if read_preference.mode:
             command["$readPreference"] = read_preference.document
     name = next(iter(command))
     try:

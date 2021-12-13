@@ -608,6 +608,10 @@ class SocketInfo(object):
         self.supports_sessions = (
             hello.logical_session_timeout_minutes is not None)
         self.hello_ok = hello.hello_ok
+        self.is_repl = hello.server_type in (
+            SERVER_TYPE.RSPrimary, SERVER_TYPE.RSSecondary,
+            SERVER_TYPE.RSArbiter, SERVER_TYPE.RSOther, SERVER_TYPE.RSGhost)
+        self.is_standalone = hello.server_type == SERVER_TYPE.Standalone
         self.is_mongos = hello.server_type == SERVER_TYPE.Mongos
         if performing_handshake and self.compression_settings:
             ctx = self.compression_settings.get_compression_context(
@@ -641,7 +645,7 @@ class SocketInfo(object):
             response_doc.pop('serviceId', None)
         return response_doc
 
-    def command(self, dbname, spec, secondary_ok=False,
+    def command(self, dbname, spec,
                 read_preference=ReadPreference.PRIMARY,
                 codec_options=DEFAULT_CODEC_OPTIONS, check=True,
                 allowable_errors=None,
@@ -660,7 +664,6 @@ class SocketInfo(object):
         :Parameters:
           - `dbname`: name of the database on which to run the command
           - `spec`: a command document as a dict, SON, or mapping object
-          - `secondary_ok`: whether to set the secondaryOkay wire protocol bit
           - `read_preference`: a read preference
           - `codec_options`: a CodecOptions instance
           - `check`: raise OperationFailure if there are errors
@@ -703,7 +706,7 @@ class SocketInfo(object):
         if self.op_msg_enabled:
             self._raise_if_not_writable(unacknowledged)
         try:
-            return command(self, dbname, spec, secondary_ok,
+            return command(self, dbname, spec,
                            self.is_mongos, read_preference, codec_options,
                            session, client, check, allowable_errors,
                            self.address, listeners,

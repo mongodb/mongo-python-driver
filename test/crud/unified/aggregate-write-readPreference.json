@@ -237,7 +237,7 @@
                     }
                   ],
                   "$readPreference": {
-                    "mode": "primary"
+                    "$$exists": false
                   },
                   "readConcern": {
                     "level": "local"
@@ -425,7 +425,7 @@
                     }
                   ],
                   "$readPreference": {
-                    "mode": "primary"
+                    "$$exists": false
                   },
                   "readConcern": {
                     "level": "local"

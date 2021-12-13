@@ -186,7 +186,7 @@ class Collection(common.BaseObject):
     def _socket_for_writes(self, session):
         return self.__database.client._socket_for_writes(session)
 
-    def _command(self, sock_info, command, secondary_ok=False,
+    def _command(self, sock_info, command,
                  read_preference=None,
                  codec_options=None, check=True, allowable_errors=None,
                  read_concern=None,
@@ -200,7 +200,6 @@ class Collection(common.BaseObject):
         :Parameters:
           - `sock_info` - A SocketInfo instance.
           - `command` - The command itself, as a SON instance.
-          - `secondary_ok`: whether to set the secondaryOkay wire protocol bit.
           - `codec_options` (optional) - An instance of
             :class:`~bson.codec_options.CodecOptions`.
           - `check`: raise OperationFailure if there are errors
@@ -226,7 +225,6 @@ class Collection(common.BaseObject):
             return sock_info.command(
                 self.__database.name,
                 command,
-                secondary_ok,
                 read_preference or self._read_preference_for(session),
                 codec_options or self.codec_options,
                 check,
@@ -1356,14 +1354,14 @@ class Collection(common.BaseObject):
 
         return RawBatchCursor(self, *args, **kwargs)
 
-    def _count_cmd(self, session, sock_info, secondary_ok, cmd, collation):
+    def _count_cmd(self, session, sock_info, read_preference, cmd, collation):
         """Internal count command helper."""
         # XXX: "ns missing" checks can be removed when we drop support for
         # MongoDB 3.0, see SERVER-17051.
         res = self._command(
             sock_info,
             cmd,
-            secondary_ok,
+            read_preference=read_preference,
             allowable_errors=["ns missing"],
             codec_options=self.__write_response_codec_options,
             read_concern=self.read_concern,
@@ -1374,12 +1372,12 @@ class Collection(common.BaseObject):
         return int(res["n"])
 
     def _aggregate_one_result(
-            self, sock_info, secondary_ok, cmd, collation, session):
+            self, sock_info, read_preference, cmd, collation, session):
         """Internal helper to run an aggregate that returns a single result."""
         result = self._command(
             sock_info,
             cmd,
-            secondary_ok,
+            read_preference,
             allowable_errors=[26],  # Ignore NamespaceNotFound.
             codec_options=self.__write_response_codec_options,
             read_concern=self.read_concern,
@@ -1413,7 +1411,7 @@ class Collection(common.BaseObject):
             raise ConfigurationError(
                 'estimated_document_count does not support sessions')
 
-        def _cmd(session, server, sock_info, secondary_ok):
+        def _cmd(session, server, sock_info, read_preference):
             if sock_info.max_wire_version >= 12:
                 # MongoDB 4.9+
                 pipeline = [
@@ -1425,7 +1423,8 @@ class Collection(common.BaseObject):
                            ('cursor', {})])
                 cmd.update(kwargs)
                 result = self._aggregate_one_result(
-                    sock_info, secondary_ok, cmd, collation=None, session=session)
+                    sock_info, read_preference, cmd, collation=None,
+                    session=session)
                 if not result:
                     return 0
                 return int(result['n'])
@@ -1433,7 +1432,8 @@ class Collection(common.BaseObject):
                 # MongoDB < 4.9
                 cmd = SON([('count', self.__name)])
                 cmd.update(kwargs)
-                return self._count_cmd(None, sock_info, secondary_ok, cmd, None)
+                return self._count_cmd(
+                    None, sock_info, read_preference, cmd, collation=None)
 
         return self.__database.client._retryable_read(
             _cmd, self.read_preference, None)
@@ -1506,9 +1506,9 @@ class Collection(common.BaseObject):
         collation = validate_collation_or_none(kwargs.pop('collation', None))
         cmd.update(kwargs)
 
-        def _cmd(session, server, sock_info, secondary_ok):
+        def _cmd(session, server, sock_info, read_preference):
             result = self._aggregate_one_result(
-                sock_info, secondary_ok, cmd, collation, session)
+                sock_info, read_preference, cmd, collation, session)
             if not result:
                 return 0
             return result['n']
@@ -1799,12 +1799,12 @@ class Collection(common.BaseObject):
         read_pref = ((session and session._txn_read_preference())
                      or ReadPreference.PRIMARY)
 
-        def _cmd(session, server, sock_info, secondary_ok):
+        def _cmd(session, server, sock_info, read_preference):
             cmd = SON([("listIndexes", self.__name), ("cursor", {})])
             with self.__database.client._tmp_session(session, False) as s:
                 try:
-                    cursor = self._command(sock_info, cmd, secondary_ok,
-                                           read_pref,
+                    cursor = self._command(sock_info, cmd,
+                                           read_preference,
                                            codec_options,
                                            session=s)["cursor"]
                 except OperationFailure as exc:
@@ -2220,9 +2220,10 @@ class Collection(common.BaseObject):
             kwargs["query"] = filter
         collation = validate_collation_or_none(kwargs.pop('collation', None))
         cmd.update(kwargs)
-        def _cmd(session, server, sock_info, secondary_ok):
+        def _cmd(session, server, sock_info, read_preference):
             return self._command(
-                sock_info, cmd, secondary_ok, read_concern=self.read_concern,
+                sock_info, cmd, read_preference=read_preference,
+                read_concern=self.read_concern,
                 collation=collation, session=session,
                 user_fields={"values": 1})["values"]
 

@@ -38,7 +38,7 @@ from pymongo.socket_checker import _errno_from_exception
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
 
 
-def command(sock_info, dbname, spec, secondary_ok, is_mongos,
+def command(sock_info, dbname, spec, is_mongos,
             read_preference, codec_options, session, client, check=True,
             allowable_errors=None, address=None,
             listeners=None, max_bson_size=None,
@@ -56,7 +56,6 @@ def command(sock_info, dbname, spec, secondary_ok, is_mongos,
       - `sock`: a raw socket instance
       - `dbname`: name of the database on which to run the command
       - `spec`: a command document as an ordered dict type, eg SON.
-      - `secondary_ok`: whether to set the secondaryOkay wire protocol bit
       - `is_mongos`: are we connected to a mongos?
       - `read_preference`: a read preference
       - `codec_options`: a CodecOptions instance
@@ -81,7 +80,6 @@ def command(sock_info, dbname, spec, secondary_ok, is_mongos,
     """
     name = next(iter(spec))
     ns = dbname + '.$cmd'
-    flags = 4 if secondary_ok else 0
     speculative_hello = False
 
     # Publish the original command document, perhaps with lsid and $clusterTime.
@@ -112,7 +110,7 @@ def command(sock_info, dbname, spec, secondary_ok, is_mongos,
         flags = _OpMsg.MORE_TO_COME if unacknowledged else 0
         flags |= _OpMsg.EXHAUST_ALLOWED if exhaust_allowed else 0
         request_id, msg, size, max_doc_size = message._op_msg(
-            flags, spec, dbname, read_preference, secondary_ok,
+            flags, spec, dbname, read_preference,
             codec_options, ctx=compression_ctx)
         # If this is an unacknowledged write then make sure the encoded doc(s)
         # are small enough, otherwise rely on the server to return an error.
@@ -121,8 +119,7 @@ def command(sock_info, dbname, spec, secondary_ok, is_mongos,
             message._raise_document_too_large(name, size, max_bson_size)
     else:
         request_id, msg, size = message._query(
-            flags, ns, 0, -1, spec, None, codec_options,
-            compression_ctx)
+            0, ns, 0, -1, spec, None, codec_options, compression_ctx)
 
     if (max_bson_size is not None
             and size > max_bson_size + message._COMMAND_OVERHEAD):

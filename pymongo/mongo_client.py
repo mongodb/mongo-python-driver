@@ -1025,7 +1025,7 @@ class MongoClient(common.BaseObject):
             # another session.
             with self._socket_for_reads(
                     ReadPreference.PRIMARY_PREFERRED,
-                    None) as (sock_info, secondary_ok):
+                    None) as (sock_info, read_pref):
                 if not sock_info.supports_sessions:
                     return
 
@@ -1033,7 +1033,7 @@ class MongoClient(common.BaseObject):
                     spec = SON([('endSessions',
                                  session_ids[i:i + common._MAX_END_SESSIONS])])
                     sock_info.command(
-                        'admin', spec, secondary_ok=secondary_ok, client=self)
+                        'admin', spec, read_preference=read_pref, client=self)
         except PyMongoError:
             # Drivers MUST ignore any errors returned by the endSessions
             # command.
@@ -1136,39 +1136,33 @@ class MongoClient(common.BaseObject):
         return self._get_socket(server, session)
 
     @contextlib.contextmanager
-    def _secondaryok_for_server(self, read_preference, server, session):
+    def _socket_from_server(self, read_preference, server, session):
         assert read_preference is not None, "read_preference must not be None"
         # Get a socket for a server matching the read preference, and yield
-        # sock_info, secondary_ok. Server Selection Spec: "SecondaryOK must
-        # be sent to mongods with topology type Single. If the server type is
-        # Mongos, follow the rules for passing read preference to mongos, even
-        # for topology type Single."
+        # sock_info with the effective read preference. The Server Selection
+        # Spec says not to send any $readPreference to standalones and to
+        # always send primaryPreferred when directly connected to a repl set
+        # member.
         # Thread safe: if the type is single it cannot change.
         topology = self._get_topology()
         single = topology.description.topology_type == TOPOLOGY_TYPE.Single
 
         with self._get_socket(server, session) as sock_info:
-            secondary_ok = (single and not sock_info.is_mongos) or (
-                read_preference.mode != ReadPreference.PRIMARY.mode)
-            yield sock_info, secondary_ok
+            if single:
+                if sock_info.is_repl:
+                    # Use primary preferred to ensure any repl set member
+                    # can handle the request.
+                    read_preference = ReadPreference.PRIMARY_PREFERRED
+                elif sock_info.is_standalone:
+                    # Don't send read preference to standalones.
+                    read_preference = ReadPreference.PRIMARY
+            yield sock_info, read_preference
 
-    @contextlib.contextmanager
     def _socket_for_reads(self, read_preference, session):
         assert read_preference is not None, "read_preference must not be None"
-        # Get a socket for a server matching the read preference, and yield
-        # sock_info, secondary_ok. Server Selection Spec: "SecondaryOK must be
-        # sent to mongods with topology type Single. If the server type is
-        # Mongos, follow the rules for passing read preference to mongos, even
-        # for topology type Single."
-        # Thread safe: if the type is single it cannot change.
         topology = self._get_topology()
         server = self._select_server(read_preference, session)
-        single = topology.description.topology_type == TOPOLOGY_TYPE.Single
-
-        with self._get_socket(server, session) as sock_info:
-            secondary_ok = (single and not sock_info.is_mongos) or (
-                read_preference != ReadPreference.PRIMARY)
-            yield sock_info, secondary_ok
+        return self._socket_from_server(read_preference, server, session)
 
     def _should_pin_cursor(self, session):
         return (self.__options.load_balanced and
@@ -1195,9 +1189,9 @@ class MongoClient(common.BaseObject):
                         operation.sock_mgr.sock, operation, True,
                         self._event_listeners, unpack_res)
 
-        def _cmd(session, server, sock_info, secondary_ok):
+        def _cmd(session, server, sock_info, read_preference):
             return server.run_operation(
-                sock_info, operation, secondary_ok, self._event_listeners,
+                sock_info, operation, read_preference, self._event_listeners,
                 unpack_res)
 
         return self._retryable_read(
@@ -1292,13 +1286,13 @@ class MongoClient(common.BaseObject):
             try:
                 server = self._select_server(
                     read_pref, session, address=address)
-                with self._secondaryok_for_server(read_pref, server, session) as (
-                            sock_info, secondary_ok):
+                with self._socket_from_server(read_pref, server, session) as (
+                            sock_info, read_pref):
                     if retrying and not retryable:
                         # A retry is not possible because this server does
                         # not support retryable reads, raise the last error.
                         raise last_error
-                    return func(session, server, sock_info, secondary_ok)
+                    return func(session, server, sock_info, read_pref)
             except ServerSelectionTimeoutError:
                 if retrying:
                     # The application may think the write was never attempted

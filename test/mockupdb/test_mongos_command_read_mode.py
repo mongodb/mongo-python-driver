@@ -79,8 +79,11 @@ def create_mongos_read_mode_test(mode, operation):
             slave_ok = False
         elif operation.op_type == 'may-use-secondary':
             slave_ok = mode != 'primary'
-            self.assertEqual(pref.document,
-                             request.doc.get('$readPreference'))
+            actual_pref = request.doc.get('$readPreference')
+            if mode == 'primary':
+                self.assertIsNone(actual_pref)
+            else:
+                self.assertEqual(pref.document, actual_pref)
         else:
             self.fail('unrecognized op_type %r' % operation.op_type)
 
