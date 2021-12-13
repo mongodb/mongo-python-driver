@@ -196,6 +196,11 @@ def check_outcome(self, topology, outcome):
     self.assertEqual(topology_type_name(expected_topology_type),
                      topology_type_name(topology.description.topology_type))
 
+    self.assertEqual(outcome.get('maxSetVersion'),
+                     topology.description.max_set_version)
+    self.assertEqual(outcome.get('maxElectionId'),
+                     topology.description.max_election_id)
+
 
 def create_test(scenario_def):
     def run_scenario(self):

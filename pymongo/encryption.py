@@ -301,30 +301,24 @@ class _Encrypter(object):
             opts._kms_providers, schema_map))
         self._closed = False
 
-    def encrypt(self, database, cmd, check_keys, codec_options):
+    def encrypt(self, database, cmd, codec_options):
         """Encrypt a MongoDB command.
 
         :Parameters:
           - `database`: The database for this command.
           - `cmd`: A command document.
-          - `check_keys`: If True, check `cmd` for invalid keys.
           - `codec_options`: The CodecOptions to use while encoding `cmd`.
 
         :Returns:
           The encrypted command to execute.
         """
         self._check_closed()
-        # Workaround for $clusterTime which is incompatible with
-        # check_keys.
-        cluster_time = check_keys and cmd.pop('$clusterTime', None)
-        encoded_cmd = _dict_to_bson(cmd, check_keys, codec_options)
+        encoded_cmd = _dict_to_bson(cmd, False, codec_options)
         with _wrap_encryption_errors():
             encrypted_cmd = self._auto_encrypter.encrypt(database, encoded_cmd)
             # TODO: PYTHON-1922 avoid decoding the encrypted_cmd.
             encrypt_cmd = _inflate_bson(
                 encrypted_cmd, DEFAULT_RAW_BSON_OPTIONS)
-            if cluster_time:
-                encrypt_cmd['$clusterTime'] = cluster_time
             return encrypt_cmd
 
     def decrypt(self, response):

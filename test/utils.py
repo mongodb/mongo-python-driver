@@ -269,7 +269,7 @@ class MockPool(object):
     def stale_generation(self, gen, service_id):
         return self.gen.stale(gen, service_id)
 
-    def get_socket(self, all_credentials, handler=None):
+    def get_socket(self, handler=None):
         return MockSocketInfo()
 
     def return_socket(self, *args, **kwargs):

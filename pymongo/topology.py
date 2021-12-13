@@ -444,7 +444,7 @@ class Topology(object):
             return self._description.known_servers
         return self._description.readable_servers
 
-    def update_pool(self, all_credentials):
+    def update_pool(self):
         # Remove any stale sockets and add new sockets if pool is too small.
         servers = []
         with self._lock:
@@ -456,7 +456,7 @@ class Topology(object):
 
         for server, generation in servers:
             try:
-                server.pool.remove_stale_sockets(generation, all_credentials)
+                server.pool.remove_stale_sockets(generation)
             except PyMongoError as exc:
                 ctx = _ErrorContext(exc, 0, generation, False, None)
                 self.handle_error(server.description.address, ctx)

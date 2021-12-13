@@ -44,7 +44,7 @@ def create_test(test_case):
             self.assertRaises(Exception, MongoClient, uri, connect=False)
         else:
             client = MongoClient(uri, connect=False)
-            credentials = client._MongoClient__options._credentials
+            credentials = client.options.pool_options._credentials
             if credential is None:
                 self.assertIsNone(credentials)
             else:

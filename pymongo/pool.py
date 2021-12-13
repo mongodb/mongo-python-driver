@@ -275,7 +275,8 @@ class PoolOptions(object):
                  '__ssl_context', '__tls_allow_invalid_hostnames',
                  '__event_listeners', '__appname', '__driver', '__metadata',
                  '__compression_settings', '__max_connecting',
-                 '__pause_enabled', '__server_api', '__load_balanced')
+                 '__pause_enabled', '__server_api', '__load_balanced',
+                 '__credentials')
 
     def __init__(self, max_pool_size=MAX_POOL_SIZE,
                  min_pool_size=MIN_POOL_SIZE,
@@ -285,7 +286,8 @@ class PoolOptions(object):
                  tls_allow_invalid_hostnames=False,
                  event_listeners=None, appname=None, driver=None,
                  compression_settings=None, max_connecting=MAX_CONNECTING,
-                 pause_enabled=True, server_api=None, load_balanced=None):
+                 pause_enabled=True, server_api=None, load_balanced=None,
+                 credentials=None):
         self.__max_pool_size = max_pool_size
         self.__min_pool_size = min_pool_size
         self.__max_idle_time_seconds = max_idle_time_seconds
@@ -302,6 +304,7 @@ class PoolOptions(object):
         self.__pause_enabled = pause_enabled
         self.__server_api = server_api
         self.__load_balanced = load_balanced
+        self.__credentials = credentials
         self.__metadata = copy.deepcopy(_METADATA)
         if appname:
             self.__metadata['application'] = {'name': appname}
@@ -324,6 +327,11 @@ class PoolOptions(object):
             if driver.platform:
                 self.__metadata['platform'] = "%s|%s" % (
                     _METADATA['platform'], driver.platform)
+
+    @property
+    def _credentials(self):
+        """A :class:`~pymongo.auth.MongoCredentials` instance or None."""
+        return self.__credentials
 
     @property
     def non_default_options(self):
@@ -457,25 +465,6 @@ class PoolOptions(object):
         return self.__load_balanced
 
 
-def _negotiate_creds(all_credentials):
-    """Return one credential that needs mechanism negotiation, if any.
-    """
-    if all_credentials:
-        for creds in all_credentials.values():
-            if creds.mechanism == 'DEFAULT' and creds.username:
-                return creds
-    return None
-
-
-def _speculative_context(all_credentials):
-    """Return the _AuthContext to use for speculative auth, if any.
-    """
-    if all_credentials and len(all_credentials) == 1:
-        creds = next(iter(all_credentials.values()))
-        return auth._AuthContext.from_credentials(creds)
-    return None
-
-
 class _CancellationContext(object):
     def __init__(self):
         self._cancelled = False
@@ -504,7 +493,7 @@ class SocketInfo(object):
         self.sock = sock
         self.address = address
         self.id = id
-        self.authset = set()
+        self.authed = set()
         self.closed = False
         self.last_checkin_time = time.monotonic()
         self.performed_handshake = False
@@ -523,9 +512,8 @@ class SocketInfo(object):
         self.compression_context = None
         self.socket_checker = SocketChecker()
         # Support for mechanism negotiation on the initial handshake.
-        # Maps credential to saslSupportedMechs.
-        self.negotiated_mechanisms = {}
-        self.auth_ctx = {}
+        self.negotiated_mechs = None
+        self.auth_ctx = None
 
         # The pool's generation changes with each reset() so we can close
         # sockets created before the last reset.
@@ -567,11 +555,10 @@ class SocketInfo(object):
         else:
             return SON([(HelloCompat.LEGACY_CMD, 1), ('helloOk', True)])
 
-    def hello(self, all_credentials=None):
-        return self._hello(None, None, None, all_credentials)
+    def hello(self):
+        return self._hello(None, None, None)
 
-    def _hello(self, cluster_time, topology_version,
-                  heartbeat_frequency, all_credentials):
+    def _hello(self, cluster_time, topology_version, heartbeat_frequency):
         cmd = self.hello_cmd()
         performing_handshake = not self.performed_handshake
         awaitable = False
@@ -594,14 +581,15 @@ class SocketInfo(object):
         if not performing_handshake and cluster_time is not None:
             cmd['$clusterTime'] = cluster_time
 
-        # XXX: Simplify in PyMongo 4.0 when all_credentials is always a single
-        # unchangeable value per MongoClient.
-        creds = _negotiate_creds(all_credentials)
+        creds = self.opts._credentials
         if creds:
-            cmd['saslSupportedMechs'] = creds.source + '.' + creds.username
-        auth_ctx = _speculative_context(all_credentials)
-        if auth_ctx:
-            cmd['speculativeAuthenticate'] = auth_ctx.speculate_command()
+            if creds.mechanism == 'DEFAULT' and creds.username:
+                cmd['saslSupportedMechs'] = creds.source + '.' + creds.username
+            auth_ctx = auth._AuthContext.from_credentials(creds)
+            if auth_ctx:
+                cmd['speculativeAuthenticate'] = auth_ctx.speculate_command()
+        else:
+            auth_ctx = None
 
         doc = self.command('admin', cmd, publish_events=False,
                            exhaust_allowed=awaitable)
@@ -632,11 +620,11 @@ class SocketInfo(object):
 
         self.op_msg_enabled = True
         if creds:
-            self.negotiated_mechanisms[creds] = hello.sasl_supported_mechs
+            self.negotiated_mechs = hello.sasl_supported_mechs
         if auth_ctx:
             auth_ctx.parse_response(hello)
             if auth_ctx.speculate_succeeded():
-                self.auth_ctx[auth_ctx.credentials] = auth_ctx
+                self.auth_ctx = auth_ctx
         if self.opts.load_balanced:
             if not hello.service_id:
                 raise ConfigurationError(
@@ -660,7 +648,7 @@ class SocketInfo(object):
     def command(self, dbname, spec,
                 read_preference=ReadPreference.PRIMARY,
                 codec_options=DEFAULT_CODEC_OPTIONS, check=True,
-                allowable_errors=None, check_keys=False,
+                allowable_errors=None,
                 read_concern=None,
                 write_concern=None,
                 parse_write_concern_error=False,
@@ -680,7 +668,6 @@ class SocketInfo(object):
           - `codec_options`: a CodecOptions instance
           - `check`: raise OperationFailure if there are errors
           - `allowable_errors`: errors to ignore if `check` is True
-          - `check_keys`: if True, check `spec` for invalid keys
           - `read_concern`: The read concern for this command.
           - `write_concern`: The write concern for this command.
           - `parse_write_concern_error`: Whether to parse the
@@ -722,7 +709,7 @@ class SocketInfo(object):
             return command(self, dbname, spec,
                            self.is_mongos, read_preference, codec_options,
                            session, client, check, allowable_errors,
-                           self.address, check_keys, listeners,
+                           self.address, listeners,
                            self.max_bson_size, read_concern,
                            parse_write_concern_error=parse_write_concern_error,
                            collation=collation,
@@ -802,40 +789,20 @@ class SocketInfo(object):
         helpers._check_command_response(result, self.max_wire_version)
         return result
 
-    def check_auth(self, all_credentials):
-        """Update this socket's authentication.
+    def authenticate(self):
+        """Authenticate to the server if needed.
 
-        Log in or out to bring this socket's credentials up to date with
-        those provided. Can raise ConnectionFailure or OperationFailure.
-
-        :Parameters:
-          - `all_credentials`: dict, maps auth source to MongoCredential.
+        Can raise ConnectionFailure or OperationFailure.
         """
-        if all_credentials:
-            for credentials in all_credentials.values():
-                if credentials not in self.authset:
-                    self.authenticate(credentials)
-
         # CMAP spec says to publish the ready event only after authenticating
         # the connection.
         if not self.ready:
+            creds = self.opts._credentials
+            if creds:
+                auth.authenticate(creds, self)
             self.ready = True
             if self.enabled_for_cmap:
                 self.listeners.publish_connection_ready(self.address, self.id)
-
-    def authenticate(self, credentials):
-        """Log in to the server and store these credentials in `authset`.
-
-        Can raise ConnectionFailure or OperationFailure.
-
-        :Parameters:
-          - `credentials`: A MongoCredential.
-        """
-        auth.authenticate(credentials, self)
-        self.authset.add(credentials)
-        # negotiated_mechanisms are no longer needed.
-        self.negotiated_mechanisms.pop(credentials, None)
-        self.auth_ctx.pop(credentials, None)
 
     def validate_session(self, client, session):
         """Validate this session before use with client.
@@ -1248,7 +1215,7 @@ class Pool:
     def stale_generation(self, gen, service_id):
         return self.gen.stale(gen, service_id)
 
-    def remove_stale_sockets(self, reference_generation, all_credentials):
+    def remove_stale_sockets(self, reference_generation):
         """Removes stale sockets then adds new ones if pool is too small and
         has not been reset. The `reference_generation` argument specifies the
         `generation` at the point in time this operation was requested on the
@@ -1284,7 +1251,7 @@ class Pool:
                         return
                     self._pending += 1
                     incremented = True
-                sock_info = self.connect(all_credentials)
+                sock_info = self.connect()
                 with self.lock:
                     # Close connection and return if the pool was reset during
                     # socket creation or while acquiring the pool lock.
@@ -1303,7 +1270,7 @@ class Pool:
                     self.requests -= 1
                     self.size_cond.notify()
 
-    def connect(self, all_credentials=None):
+    def connect(self):
         """Connect to Mongo and return a new SocketInfo.
 
         Can raise ConnectionFailure.
@@ -1334,10 +1301,10 @@ class Pool:
         sock_info = SocketInfo(sock, self, self.address, conn_id)
         try:
             if self.handshake:
-                sock_info.hello(all_credentials)
+                sock_info.hello()
                 self.is_writable = sock_info.is_writable
 
-            sock_info.check_auth(all_credentials)
+            sock_info.authenticate()
         except BaseException:
             sock_info.close_socket(ConnectionClosedReason.ERROR)
             raise
@@ -1345,7 +1312,7 @@ class Pool:
         return sock_info
 
     @contextlib.contextmanager
-    def get_socket(self, all_credentials, handler=None):
+    def get_socket(self, handler=None):
         """Get a socket from the pool. Use with a "with" statement.
 
         Returns a :class:`SocketInfo` object wrapping a connected
@@ -1353,25 +1320,20 @@ class Pool:
 
         This method should always be used in a with-statement::
 
-            with pool.get_socket(credentials) as socket_info:
+            with pool.get_socket() as socket_info:
                 socket_info.send_message(msg)
                 data = socket_info.receive_message(op_code, request_id)
-
-        The socket is logged in or out as needed to match ``all_credentials``
-        using the correct authentication mechanism for the server's wire
-        protocol version.
 
         Can raise ConnectionFailure or OperationFailure.
 
         :Parameters:
-          - `all_credentials`: dict, maps auth source to MongoCredential.
           - `handler` (optional): A _MongoClientErrorHandler.
         """
         listeners = self.opts._event_listeners
         if self.enabled_for_cmap:
             listeners.publish_connection_check_out_started(self.address)
 
-        sock_info = self._get_socket(all_credentials)
+        sock_info = self._get_socket()
         if self.enabled_for_cmap:
             listeners.publish_connection_checked_out(
                 self.address, sock_info.id)
@@ -1410,7 +1372,7 @@ class Pool:
             _raise_connection_failure(
                 self.address, AutoReconnect('connection pool paused'))
 
-    def _get_socket(self, all_credentials):
+    def _get_socket(self):
         """Get or create a SocketInfo. Can raise ConnectionFailure."""
         # We use the pid here to avoid issues with fork / multiprocessing.
         # See test.test_client:TestClient.test_fork for an example of
@@ -1483,12 +1445,11 @@ class Pool:
                         continue
                 else:  # We need to create a new connection
                     try:
-                        sock_info = self.connect(all_credentials)
+                        sock_info = self.connect()
                     finally:
                         with self._max_connecting_cond:
                             self._pending -= 1
                             self._max_connecting_cond.notify()
-            sock_info.check_auth(all_credentials)
         except BaseException:
             if sock_info:
                 # We checked out a socket but authentication failed.
