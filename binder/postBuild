@@ -3,8 +3,6 @@ set -eux
 
 npm install -g m
 
-pip install git+https://github.com/blink1073/mtools@pymongo-4
-
 pip install -e ".[srv]"
 
 cd binder
@@ -24,7 +22,7 @@ enableTestCommands=1"
 echo $cmd
 eval $cmd
 
-mongorestore --gzip --archive=sampledata.archive.gz
+mongorestore --host localhost:$PORT --gzip --archive=sampledata.archive.gz
 rm sampledata.archive.gz
 
 mlaunch kill
