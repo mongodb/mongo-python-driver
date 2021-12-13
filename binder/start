@@ -2,6 +2,7 @@
 import sys
 import shutil
 import glob
+import json
 import os
 import shlex
 import subprocess
@@ -20,14 +21,14 @@ with open(os.path.join(HERE, 'PORT')) as fid:
 MONGODB_BIN = subprocess.check_output(['m', 'bin', VERSION]).decode('utf-8').strip()
 
 cmd = ['mlaunch', 'init', '--replicaset', '--name', 'repl0', '--nodes', '3', '--binarypath',
-MONGODB_BIN, '--port', PORT, '--hostname', 'localhost', '--setParameter',
+MONGODB_BIN, '--port', PORT, '--priority', '--hostname', 'localhost', '--setParameter',
 'enableTestCommands=1']
 
-print(cmd)
+print(' '.join(cmd))
 subprocess.check_call(cmd, cwd=HERE)
 
 # Bootstrap some data
-client = MongoClient(directConnection=True)
+client = MongoClient()
 
 for path in glob.glob(os.path.join(HERE, 'sample_data', '*.json')):
     with open(path) as fid:
