@@ -2512,8 +2512,10 @@ buildvariants:
 
 - matrix_name: "ocsp-test"
   matrix_spec:
-    platform: awslinux
-    python-version: ["3.6", "3.9", "pypy3.6", "pypy3.7"]
+    # OCSP stapling is not supported on Ubuntu 18.04.
+    # See https://jira.mongodb.org/browse/SERVER-51364.
+    platform: ubuntu-20.04
+    python-version: ["3.6", "3.10", "pypy3.6", "pypy3.7"]
     mongodb-version: ["4.4", "5.0", "latest"]
     auth: "noauth"
     ssl: "ssl"
