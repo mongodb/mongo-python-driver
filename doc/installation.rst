@@ -37,44 +37,44 @@ GSSAPI authentication requires `pykerberos
 <https://pypi.python.org/pypi/winkerberos>`_ on Windows. The correct
 dependency can be installed automatically along with PyMongo::
 
-  $ python3 -m pip install pymongo[gssapi]
+  $ python3 -m pip install "pymongo[gssapi]"
 
 :ref:`MONGODB-AWS` authentication requires `pymongo-auth-aws
 <https://pypi.org/project/pymongo-auth-aws/>`_::
 
-  $ python3 -m pip install pymongo[aws]
+  $ python3 -m pip install "pymongo[aws]"
 
 Support for mongodb+srv:// URIs requires `dnspython
 <https://pypi.python.org/pypi/dnspython>`_::
 
-  $ python3 -m pip install pymongo[srv]
+  $ python3 -m pip install "pymongo[srv]"
 
 :ref:`OCSP` requires `PyOpenSSL
 <https://pypi.org/project/pyOpenSSL/>`_, `requests
 <https://pypi.org/project/requests/>`_ and `service_identity
 <https://pypi.org/project/service_identity/>`_::
 
-  $ python3 -m pip install pymongo[ocsp]
+  $ python3 -m pip install "pymongo[ocsp]"
 
 Wire protocol compression with snappy requires `python-snappy
 <https://pypi.org/project/python-snappy>`_::
 
-  $ python3 -m pip install pymongo[snappy]
+  $ python3 -m pip install "pymongo[snappy]"
 
 Wire protocol compression with zstandard requires `zstandard
 <https://pypi.org/project/zstandard>`_::
 
-  $ python3 -m pip install pymongo[zstd]
+  $ python3 -m pip install "pymongo[zstd]"
 
 :ref:`Client-Side Field Level Encryption` requires `pymongocrypt
 <https://pypi.org/project/pymongocrypt/>`_::
 
-  $ python3 -m pip install pymongo[encryption]
+  $ python3 -m pip install "pymongo[encryption]"
 
 You can install all dependencies automatically with the following
 command::
 
-  $ python3 -m pip install pymongo[gssapi,aws,ocsp,snappy,srv,zstd,encryption]
+  $ python3 -m pip install "pymongo[gssapi,aws,ocsp,snappy,srv,zstd,encryption]"
 
 Installing from source
 ----------------------
