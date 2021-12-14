@@ -24,7 +24,7 @@ enableTestCommands=1"
 echo $cmd
 eval $cmd
 
-mongorestore --host localhost:$PORT --gzip --archive=sampledata.archive.gz
+mongorestore --host repl0/localhost:$PORT --gzip --archive=sampledata.archive.gz
 rm sampledata.archive.gz
 
 mlaunch kill
