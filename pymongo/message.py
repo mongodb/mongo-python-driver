@@ -309,10 +309,8 @@ class _Query(object):
         sock_info.send_cluster_time(cmd, session, self.client)
         # Support auto encryption
         client = self.client
-        if (client._encrypter and
-                not client._encrypter._bypass_auto_encryption):
-            cmd = client._encrypter.encrypt(
-                self.db, cmd, False, self.codec_options)
+        if client._encrypter and not client._encrypter._bypass_auto_encryption:
+            cmd = client._encrypter.encrypt(self.db, cmd, self.codec_options)
         self._as_command = cmd, self.db
         return self._as_command
 
@@ -409,10 +407,8 @@ class _GetMore(object):
         sock_info.send_cluster_time(cmd, self.session, self.client)
         # Support auto encryption
         client = self.client
-        if (client._encrypter and
-                not client._encrypter._bypass_auto_encryption):
-            cmd = client._encrypter.encrypt(
-                self.db, cmd, False, self.codec_options)
+        if client._encrypter and not client._encrypter._bypass_auto_encryption:
+            cmd = client._encrypter.encrypt(self.db, cmd, self.codec_options)
         self._as_command = cmd, self.db
         return self._as_command
 
