@@ -13,5 +13,6 @@ dependencies:
   - nodejs
   - mongo-tools
   - pandas
+  - nbconvert
   - pip:
     - mtools

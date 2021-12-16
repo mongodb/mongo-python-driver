@@ -1,0 +1,35 @@
+name: Notebook Tests
+
+on:
+  push:
+  pull_request:
+
+defaults:
+  run:
+    shell: bash -l {0}
+
+jobs:
+  test:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Base setup
+      uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+
+    - name: Setup conda
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        auto-update-conda: true
+        environment-file: binder/environment.yml
+        activate-environment: pymongo_demo
+        python-version: "3.9"
+
+    - name: Run the postBuild script
+      run: ./binder/postBuild
+
+    - name: Restart the mongo servers
+      run: mlaunch start
+
+    - name: Run nbconvert on the notebooks
+      run: |
+        ls notebooks/*.ipynb | xargs jupyter nbconvert --to notebook --execute --ExecutePreprocessor.timeout=60 --stdout > /dev/null;
