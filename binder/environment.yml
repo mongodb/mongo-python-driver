@@ -14,5 +14,6 @@ dependencies:
   - mongo-tools
   - pandas
   - nbconvert
+  - psutil
   - pip:
     - mtools
