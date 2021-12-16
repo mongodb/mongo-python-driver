@@ -30,7 +30,9 @@ jobs:
       run: ./binder/postBuild
 
     - name: Restart the mongo servers
-      run: mlaunch start
+      run: |
+        cd binder
+        mlaunch start
 
     - name: Run nbconvert on the notebooks
       run: |
