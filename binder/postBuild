@@ -1,20 +1,14 @@
 #!/usr/bin/env bash
 set -eux
 
+pushd binder
+
+# Install `m`` and a local mongod server.
 npm install -g m
-
-pip install git+https://github.com/blink1073/mtools@pymongo-4
-
-pip install -e ".[srv]"
-
-cd binder
-
 yes | m $(cat VERSION)
-
 m
 
-wget https://atlas-education-staging.s3.amazonaws.com/sampledata.archive.gz
-
+# Launch a replicaset using `mlaunch``.
 VERSION=`cat VERSION`
 PORT=`cat PORT`
 MONGODB_BIN=`m bin $VERSION`
@@ -24,7 +18,15 @@ enableTestCommands=1"
 echo $cmd
 eval $cmd
 
+# Download sample data and add content to the database.
+wget https://atlas-education-staging.s3.amazonaws.com/sampledata.archive.gz
 mongorestore --host repl0/localhost:$PORT --nsInclude="sample_mflix.*" --gzip --archive=sampledata.archive.gz
 rm sampledata.archive.gz
 
+# Kill the server (we will restart it with the existing data during launch).
 mlaunch kill
+
+popd
+
+# Install ourselves
+pip install -e ".[srv]"

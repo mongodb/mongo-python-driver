@@ -9,7 +9,9 @@ dependencies:
   - python >=3.6,<3.11.0
   - jupyterlab >=3.0.0,<4.0.0
   - pip
-  - pymongo
+  # TODO: remove pin when a new mtools is released with
+  # https://github.com/rueckstiess/mtools/pull/845
+  - pymongo >=3.12.0,<4.0.0
   - nodejs
   - mongo-tools
   - pandas
