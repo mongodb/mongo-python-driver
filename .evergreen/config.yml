@@ -1923,6 +1923,10 @@ axes:
         display_name: "PyPy 3.7"
         variables:
            PYTHON_BINARY: "/opt/python/pypy3.7/bin/pypy3"
+      - id: "pypy3.8"
+        display_name: "PyPy 3.8"
+        variables:
+           PYTHON_BINARY: "/opt/python/pypy3.8/bin/pypy3"
       - id: "system-python3"
         display_name: "Python3"
         variables:
@@ -2216,7 +2220,7 @@ buildvariants:
   # Only test "noauth" with Python 3.7.
   exclude_spec:
     platform: ubuntu-18.04
-    python-version: ["3.6", "3.8", "3.9", "3.10", "pypy3.6", "pypy3.7"]
+    python-version: ["3.6", "3.8", "3.9", "3.10", "pypy3.6", "pypy3.7", "pypy3.8"]
     auth: "noauth"
     ssl: "ssl"
     pyopenssl: "*"
@@ -2269,7 +2273,7 @@ buildvariants:
   exclude_spec:
    # These interpreters are always tested without extensions.
    - platform: ubuntu-18.04
-     python-version: ["pypy3.6", "pypy3.7"]
+     python-version: ["pypy3.6", "pypy3.7", "pypy3.8"]
      c-extensions: "*"
      auth-ssl: "*"
      coverage: "*"
@@ -2285,7 +2289,7 @@ buildvariants:
   exclude_spec:
    # These interpreters are always tested without extensions.
    - platform: ubuntu-18.04
-     python-version: ["pypy3.6", "pypy3.7"]
+     python-version: ["pypy3.6", "pypy3.7", "pypy3.8"]
      c-extensions: "with-c-extensions"
      compression: "*"
   display_name: "${compression} ${c-extensions} ${python-version} ${platform}"
@@ -2314,7 +2318,7 @@ buildvariants:
   exclude_spec:
    # Don't test green frameworks on these Python versions.
    - platform: ubuntu-18.04
-     python-version: ["pypy3.6", "pypy3.7", "system-python3"]
+     python-version: ["pypy3.6", "pypy3.7", "pypy3.8", "system-python3"]
      green-framework: "*"
      auth-ssl: "*"
   display_name: "${green-framework} ${python-version} ${platform} ${auth-ssl}"
@@ -2340,7 +2344,7 @@ buildvariants:
   matrix_spec:
     platform: awslinux
     # Python 3.10+ requires OpenSSL 1.1.1+
-    python-version: ["3.6", "3.7", "3.8", "3.9", "pypy3.6", "pypy3.7"]
+    python-version: ["3.6", "3.7", "3.8", "3.9", "pypy3.6", "pypy3.7", "pypy3.8"]
     auth-ssl: "*"
   display_name: "OpenSSL 1.0.2 ${python-version} ${platform} ${auth-ssl}"
   tasks:
@@ -2515,7 +2519,7 @@ buildvariants:
     # OCSP stapling is not supported on Ubuntu 18.04.
     # See https://jira.mongodb.org/browse/SERVER-51364.
     platform: ubuntu-20.04
-    python-version: ["3.6", "3.10", "pypy3.6", "pypy3.7"]
+    python-version: ["3.6", "3.10", "pypy3.6", "pypy3.8"]
     mongodb-version: ["4.4", "5.0", "latest"]
     auth: "noauth"
     ssl: "ssl"
