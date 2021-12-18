@@ -77,7 +77,7 @@ class Server(object):
         Can raise ConnectionFailure, OperationFailure, etc.
 
         :Parameters:
-          - `sock_info` - A SocketInfo instance.
+          - `sock_info`: A SocketInfo instance.
           - `operation`: A _Query or _GetMore object.
           - `set_secondary_okay`: Pass to operation.get_message.
           - `listeners`: Instance of _EventListeners or None.
