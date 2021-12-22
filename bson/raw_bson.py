@@ -52,10 +52,14 @@ overhead of decoding or encoding BSON.
 """
 
 from collections.abc import Mapping as _Mapping
+from typing import Any, Final, ItemsView, Iterator, Optional
 
 from bson import _raw_to_dict, _get_object_size
 from bson.codec_options import (
-    DEFAULT_CODEC_OPTIONS as DEFAULT, _RAW_BSON_DOCUMENT_MARKER)
+    CodecOptions,
+    DEFAULT_CODEC_OPTIONS as DEFAULT, 
+    _RAW_BSON_DOCUMENT_MARKER
+)
 from bson.son import SON
 
 
@@ -70,7 +74,7 @@ class RawBSONDocument(_Mapping):
     __slots__ = ('__raw', '__inflated_doc', '__codec_options')
     _type_marker = _RAW_BSON_DOCUMENT_MARKER
 
-    def __init__(self, bson_bytes, codec_options=None):
+    def __init__(self, bson_bytes: bytes, codec_options: Optional[CodecOptions] = None) -> None:
         """Create a new :class:`RawBSONDocument`
 
         :class:`RawBSONDocument` is a representation of a BSON document that
@@ -119,11 +123,11 @@ class RawBSONDocument(_Mapping):
         _get_object_size(bson_bytes, 0, len(bson_bytes))
 
     @property
-    def raw(self):
+    def raw(self) -> bytes:
         """The raw BSON bytes composing this document."""
         return self.__raw
 
-    def items(self):
+    def items(self) -> ItemsView:
         """Lazily decode and iterate elements in this document."""
         return self.__inflated.items()
 
@@ -137,21 +141,21 @@ class RawBSONDocument(_Mapping):
                 self.__raw, self.__codec_options)
         return self.__inflated_doc
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: str) -> Any:
         return self.__inflated[item]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         return iter(self.__inflated)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.__inflated)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, RawBSONDocument):
             return self.__raw == other.raw
         return NotImplemented
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return ("RawBSONDocument(%r, codec_options=%r)"
                 % (self.raw, self.__codec_options))
 
@@ -170,7 +174,7 @@ def _inflate_bson(bson_bytes, codec_options):
         bson_bytes, 4, len(bson_bytes)-1, codec_options, SON())
 
 
-DEFAULT_RAW_BSON_OPTIONS = DEFAULT.with_options(document_class=RawBSONDocument)
+DEFAULT_RAW_BSON_OPTIONS: Final[CodecOptions] = DEFAULT.with_options(document_class=RawBSONDocument)
 """The default :class:`~bson.codec_options.CodecOptions` for
 :class:`RawBSONDocument`.
 """

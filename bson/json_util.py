@@ -91,6 +91,7 @@ import datetime
 import json
 import math
 import re
+from typing import Any, Final, List, Optional, Mapping, Tuple, Type, TypeVar, cast
 import uuid
 
 import bson
@@ -121,7 +122,7 @@ _RE_OPT_TABLE = {
 
 
 class DatetimeRepresentation:
-    LEGACY = 0
+    LEGACY: Final[int] = 0
     """Legacy MongoDB Extended JSON datetime representation.
 
     :class:`datetime.datetime` instances will be encoded to JSON in the
@@ -132,7 +133,7 @@ class DatetimeRepresentation:
     .. versionadded:: 3.4
     """
 
-    NUMBERLONG = 1
+    NUMBERLONG: Final[int] = 1
     """NumberLong datetime representation.
 
     :class:`datetime.datetime` instances will be encoded to JSON in the
@@ -143,7 +144,7 @@ class DatetimeRepresentation:
     .. versionadded:: 3.4
     """
 
-    ISO8601 = 2
+    ISO8601: Final[int] = 2
     """ISO-8601 datetime representation.
 
     :class:`datetime.datetime` instances greater than or equal to the Unix
@@ -157,7 +158,7 @@ class DatetimeRepresentation:
 
 
 class JSONMode:
-    LEGACY = 0
+    LEGACY: Final[int] =0
     """Legacy Extended JSON representation.
 
     In this mode, :func:`~bson.json_util.dumps` produces PyMongo's legacy
@@ -168,7 +169,7 @@ class JSONMode:
     .. versionadded:: 3.5
     """
 
-    RELAXED = 1
+    RELAXED: Final[int] =1
     """Relaxed Extended JSON representation.
 
     In this mode, :func:`~bson.json_util.dumps` produces Relaxed Extended JSON,
@@ -184,7 +185,7 @@ class JSONMode:
     .. versionadded:: 3.5
     """
 
-    CANONICAL = 2
+    CANONICAL: Final[int] =2
     """Canonical Extended JSON representation.
 
     In this mode, :func:`~bson.json_util.dumps` produces Canonical Extended
@@ -197,6 +198,9 @@ class JSONMode:
 
     .. versionadded:: 3.5
     """
+
+
+_JSONOptions = TypeVar("_JSONOptions", bound="JSONOptions")
 
 
 class JSONOptions(CodecOptions):
@@ -246,11 +250,16 @@ class JSONOptions(CodecOptions):
     .. versionchanged:: 4.0
        Changed default value of `tz_aware` to False.
     """
+    json_mode: int
+    strict_number_long: bool
+    datetime_representation: int
+    strict_uuid: bool
 
-    def __new__(cls, strict_number_long=None,
-                datetime_representation=None,
-                strict_uuid=None, json_mode=JSONMode.RELAXED,
-                *args, **kwargs):
+    def __new__(cls: Type[_JSONOptions], strict_number_long: bool = None,
+                datetime_representation: Optional[int] = None,
+                strict_uuid: Optional[bool] = None, 
+                json_mode: int = JSONMode.RELAXED,
+                *args, **kwargs) -> _JSONOptions:
         kwargs["tz_aware"] = kwargs.get("tz_aware", False)
         if kwargs["tz_aware"]:
             kwargs["tzinfo"] = kwargs.get("tzinfo", utc)
@@ -333,7 +342,7 @@ class JSONOptions(CodecOptions):
             'json_mode': self.json_mode})
         return options_dict
 
-    def with_options(self, **kwargs):
+    def with_options(self, **kwargs) -> _JSONOptions:  # type: ignore[override]
         """
         Make a copy of this JSONOptions, overriding some options::
 
@@ -351,10 +360,10 @@ class JSONOptions(CodecOptions):
                     'strict_uuid', 'json_mode'):
             opts[opt] = kwargs.get(opt, getattr(self, opt))
         opts.update(kwargs)
-        return JSONOptions(**opts)
+        return cast(_JSONOptions, JSONOptions(**opts))
 
 
-LEGACY_JSON_OPTIONS = JSONOptions(json_mode=JSONMode.LEGACY)
+LEGACY_JSON_OPTIONS: Final[JSONOptions] = JSONOptions(json_mode=JSONMode.LEGACY)
 """:class:`JSONOptions` for encoding to PyMongo's legacy JSON format.
 
 .. seealso:: The documentation for :const:`bson.json_util.JSONMode.LEGACY`.
@@ -362,7 +371,7 @@ LEGACY_JSON_OPTIONS = JSONOptions(json_mode=JSONMode.LEGACY)
 .. versionadded:: 3.5
 """
 
-CANONICAL_JSON_OPTIONS = JSONOptions(json_mode=JSONMode.CANONICAL)
+CANONICAL_JSON_OPTIONS: Final[JSONOptions] = JSONOptions(json_mode=JSONMode.CANONICAL)
 """:class:`JSONOptions` for Canonical Extended JSON.
 
 .. seealso:: The documentation for :const:`bson.json_util.JSONMode.CANONICAL`.
@@ -370,7 +379,7 @@ CANONICAL_JSON_OPTIONS = JSONOptions(json_mode=JSONMode.CANONICAL)
 .. versionadded:: 3.5
 """
 
-RELAXED_JSON_OPTIONS = JSONOptions(json_mode=JSONMode.RELAXED)
+RELAXED_JSON_OPTIONS: Final[JSONOptions] = JSONOptions(json_mode=JSONMode.RELAXED)
 """:class:`JSONOptions` for Relaxed Extended JSON.
 
 .. seealso:: The documentation for :const:`bson.json_util.JSONMode.RELAXED`.
@@ -378,7 +387,7 @@ RELAXED_JSON_OPTIONS = JSONOptions(json_mode=JSONMode.RELAXED)
 .. versionadded:: 3.5
 """
 
-DEFAULT_JSON_OPTIONS = RELAXED_JSON_OPTIONS
+DEFAULT_JSON_OPTIONS: Final[JSONOptions] = RELAXED_JSON_OPTIONS
 """The default :class:`JSONOptions` for JSON encoding/decoding.
 
 The same as :const:`RELAXED_JSON_OPTIONS`.
@@ -391,7 +400,7 @@ The same as :const:`RELAXED_JSON_OPTIONS`.
 """
 
 
-def dumps(obj, *args, **kwargs):
+def dumps(obj: Any, *args, **kwargs) -> str:
     """Helper function that wraps :func:`json.dumps`.
 
     Recursive function that handles all BSON types including
@@ -413,7 +422,7 @@ def dumps(obj, *args, **kwargs):
     return json.dumps(_json_convert(obj, json_options), *args, **kwargs)
 
 
-def loads(s, *args, **kwargs):
+def loads(s: str, *args, **kwargs) -> Any:
     """Helper function that wraps :func:`json.loads`.
 
     Automatically passes the object_hook for BSON type conversion.
@@ -455,11 +464,11 @@ def _json_convert(obj, json_options=DEFAULT_JSON_OPTIONS):
         return obj
 
 
-def object_pairs_hook(pairs, json_options=DEFAULT_JSON_OPTIONS):
+def object_pairs_hook(pairs: List[Tuple[str, Any]], json_options: JSONOptions = DEFAULT_JSON_OPTIONS):
     return object_hook(json_options.document_class(pairs), json_options)
 
 
-def object_hook(dct, json_options=DEFAULT_JSON_OPTIONS):
+def object_hook(dct: Mapping[str, Any], json_options: JSONOptions = DEFAULT_JSON_OPTIONS):
     if "$oid" in dct:
         return _parse_canonical_oid(dct)
     if (isinstance(dct.get('$ref'), str) and
@@ -768,7 +777,7 @@ def _encode_binary(data, subtype, json_options):
         ('subType', "%02x" % subtype)])}
 
 
-def default(obj, json_options=DEFAULT_JSON_OPTIONS):
+def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS):
     # We preserve key order when rendering SON, DBRef, etc. as JSON by
     # returning a SON for those types instead of a dict.
     if isinstance(obj, ObjectId):
@@ -781,8 +790,8 @@ def default(obj, json_options=DEFAULT_JSON_OPTIONS):
             if not obj.tzinfo:
                 obj = obj.replace(tzinfo=utc)
             if obj >= EPOCH_AWARE:
-                off = obj.tzinfo.utcoffset(obj)
-                if (off.days, off.seconds, off.microseconds) == (0, 0, 0):
+                off = obj.tzinfo.utcoffset(obj)  # type: ignore
+                if (off.days, off.seconds, off.microseconds) == (0, 0, 0):  # type: ignore
                     tz_string = 'Z'
                 else:
                     tz_string = obj.strftime('%z')

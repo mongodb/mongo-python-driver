@@ -61,9 +61,10 @@ import platform
 import re
 import struct
 import sys
+from typing import Any, BinaryIO, Final, Iterator, List, Mapping, Tuple, Type, TypeVar
 import uuid
 
-from codecs import (utf_8_decode as _utf_8_decode,
+from codecs import (utf_8_decode as _utf_8_decode,  # type: ignore
                     utf_8_encode as _utf_8_encode)
 from collections import abc as _abc
 
@@ -90,37 +91,37 @@ from bson.tz_util import utc
 
 
 try:
-    from bson import _cbson
+    from bson import _cbson  # type: ignore
     _USE_C = True
 except ImportError:
     _USE_C = False
 
 
-EPOCH_AWARE = datetime.datetime.fromtimestamp(0, utc)
-EPOCH_NAIVE = datetime.datetime.utcfromtimestamp(0)
+EPOCH_AWARE: Final[datetime.datetime] = datetime.datetime.fromtimestamp(0, utc)
+EPOCH_NAIVE: Final[datetime.datetime]  = datetime.datetime.utcfromtimestamp(0)
 
 
-BSONNUM = b"\x01" # Floating point
-BSONSTR = b"\x02" # UTF-8 string
-BSONOBJ = b"\x03" # Embedded document
-BSONARR = b"\x04" # Array
-BSONBIN = b"\x05" # Binary
-BSONUND = b"\x06" # Undefined
-BSONOID = b"\x07" # ObjectId
-BSONBOO = b"\x08" # Boolean
-BSONDAT = b"\x09" # UTC Datetime
-BSONNUL = b"\x0A" # Null
-BSONRGX = b"\x0B" # Regex
-BSONREF = b"\x0C" # DBRef
-BSONCOD = b"\x0D" # Javascript code
-BSONSYM = b"\x0E" # Symbol
-BSONCWS = b"\x0F" # Javascript code with scope
-BSONINT = b"\x10" # 32bit int
-BSONTIM = b"\x11" # Timestamp
-BSONLON = b"\x12" # 64bit int
-BSONDEC = b"\x13" # Decimal128
-BSONMIN = b"\xFF" # Min key
-BSONMAX = b"\x7F" # Max key
+BSONNUM: Final[bytes] = b"\x01" # Floating point
+BSONSTR: Final[bytes] = b"\x02" # UTF-8 string
+BSONOBJ: Final[bytes] = b"\x03" # Embedded document
+BSONARR: Final[bytes] = b"\x04" # Array
+BSONBIN: Final[bytes] = b"\x05" # Binary
+BSONUND: Final[bytes] = b"\x06" # Undefined
+BSONOID: Final[bytes] = b"\x07" # ObjectId
+BSONBOO: Final[bytes] = b"\x08" # Boolean
+BSONDAT: Final[bytes] = b"\x09" # UTC Datetime
+BSONNUL: Final[bytes] = b"\x0A" # Null
+BSONRGX: Final[bytes] = b"\x0B" # Regex
+BSONREF: Final[bytes] = b"\x0C" # DBRef
+BSONCOD: Final[bytes] = b"\x0D" # Javascript code
+BSONSYM: Final[bytes] = b"\x0E" # Symbol
+BSONCWS: Final[bytes] = b"\x0F" # Javascript code with scope
+BSONINT: Final[bytes] = b"\x10" # 32bit int
+BSONTIM: Final[bytes] = b"\x11" # Timestamp
+BSONLON: Final[bytes] = b"\x12" # 64bit int
+BSONDEC: Final[bytes] = b"\x13" # Decimal128
+BSONMIN: Final[bytes] = b"\xFF" # Min key
+BSONMAX: Final[bytes] = b"\x7F" # Max key
 
 
 _UNPACK_FLOAT_FROM = struct.Struct("<d").unpack_from
@@ -131,7 +132,7 @@ _UNPACK_LONG_FROM = struct.Struct("<q").unpack_from
 _UNPACK_TIMESTAMP_FROM = struct.Struct("<II").unpack_from
 
 
-def get_data_and_view(data):
+def get_data_and_view(data: Any) -> Tuple[Any, memoryview]:
     if isinstance(data, (bytes, bytearray)):
         return data, memoryview(data)
     view = memoryview(data)
@@ -844,7 +845,11 @@ _CODEC_OPTIONS_TYPE_ERROR = TypeError(
     "codec_options must be an instance of CodecOptions")
 
 
-def encode(document, check_keys=False, codec_options=DEFAULT_CODEC_OPTIONS):
+_DocumentIn = Mapping[str, Any]
+_DocumentOut = Any
+
+
+def encode(document: _DocumentIn, check_keys: bool = False, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> bytes:
     """Encode a document to BSON.
 
     A document can be any mapping type (like :class:`dict`).
@@ -871,7 +876,7 @@ def encode(document, check_keys=False, codec_options=DEFAULT_CODEC_OPTIONS):
     return _dict_to_bson(document, check_keys, codec_options)
 
 
-def decode(data, codec_options=DEFAULT_CODEC_OPTIONS):
+def decode(data: bytes, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> _DocumentOut:
     """Decode BSON to a document.
 
     By default, returns a BSON document represented as a Python
@@ -881,11 +886,11 @@ def decode(data, codec_options=DEFAULT_CODEC_OPTIONS):
         >>> import collections  # From Python standard library.
         >>> import bson
         >>> from bson.codec_options import CodecOptions
-        >>> data = bson.encode({'a': 1})
-        >>> decoded_doc = bson.decode(data)
+        >>> data: Final[bytes] = bson.encode({'a': 1})
+        >>> decoded_doc: Final[bytes] = bson.decode(data)
         <type 'dict'>
         >>> options = CodecOptions(document_class=collections.OrderedDict)
-        >>> decoded_doc = bson.decode(data, codec_options=options)
+        >>> decoded_doc: Final[bytes] = bson.decode(data, codec_options=options)
         >>> type(decoded_doc)
         <class 'collections.OrderedDict'>
 
@@ -903,7 +908,7 @@ def decode(data, codec_options=DEFAULT_CODEC_OPTIONS):
     return _bson_to_dict(data, codec_options)
 
 
-def decode_all(data, codec_options=DEFAULT_CODEC_OPTIONS):
+def decode_all(data: bytes, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> List[_DocumentOut]:
     """Decode BSON data to multiple documents.
 
     `data` must be a bytes-like object implementing the buffer protocol that
@@ -1033,7 +1038,7 @@ def _decode_all_selective(data, codec_options, fields):
     return [_decode_selective(_doc, fields, codec_options,)]
 
 
-def decode_iter(data, codec_options=DEFAULT_CODEC_OPTIONS):
+def decode_iter(data: bytes, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> Iterator[_DocumentOut]:
     """Decode BSON data to multiple documents as a generator.
 
     Works similarly to the decode_all function, but yields one document at a
@@ -1066,7 +1071,7 @@ def decode_iter(data, codec_options=DEFAULT_CODEC_OPTIONS):
         yield _bson_to_dict(elements, codec_options)
 
 
-def decode_file_iter(file_obj, codec_options=DEFAULT_CODEC_OPTIONS):
+def decode_file_iter(file_obj: BinaryIO, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> Iterator[_DocumentOut]:
     """Decode bson data from a file to multiple documents as a generator.
 
     Works similarly to the decode_all function, but reads from the file object
@@ -1095,7 +1100,7 @@ def decode_file_iter(file_obj, codec_options=DEFAULT_CODEC_OPTIONS):
         yield _bson_to_dict(elements, codec_options)
 
 
-def is_valid(bson):
+def is_valid(bson: bytes) -> bool:
     """Check that the given string represents valid :class:`BSON` data.
 
     Raises :class:`TypeError` if `bson` is not an instance of
@@ -1115,6 +1120,9 @@ def is_valid(bson):
         return False
 
 
+_BSON = TypeVar("_BSON", bound="BSON")
+
+
 class BSON(bytes):
     """BSON (Binary JSON) data.
 
@@ -1124,8 +1132,8 @@ class BSON(bytes):
     """
 
     @classmethod
-    def encode(cls, document, check_keys=False,
-               codec_options=DEFAULT_CODEC_OPTIONS):
+    def encode(cls: Type[_BSON], document: _DocumentIn, check_keys: bool = False,
+               codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> _BSON:
         """Encode a document to a new :class:`BSON` instance.
 
         A document can be any mapping type (like :class:`dict`).
@@ -1149,7 +1157,7 @@ class BSON(bytes):
         """
         return cls(encode(document, check_keys, codec_options))
 
-    def decode(self, codec_options=DEFAULT_CODEC_OPTIONS):
+    def decode(self, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> _DocumentOut:  # type: ignore[override]
         """Decode this BSON data.
 
         By default, returns a BSON document represented as a Python
@@ -1159,11 +1167,11 @@ class BSON(bytes):
             >>> import collections  # From Python standard library.
             >>> import bson
             >>> from bson.codec_options import CodecOptions
-            >>> data = bson.BSON.encode({'a': 1})
-            >>> decoded_doc = bson.BSON(data).decode()
+            >>> data: Final[bytes] = bson.BSON.encode({'a': 1})
+            >>> decoded_doc: Final[bytes] = bson.BSON(data).decode()
             <type 'dict'>
             >>> options = CodecOptions(document_class=collections.OrderedDict)
-            >>> decoded_doc = bson.BSON(data).decode(codec_options=options)
+            >>> decoded_doc: Final[bytes] = bson.BSON(data).decode(codec_options=options)
             >>> type(decoded_doc)
             <class 'collections.OrderedDict'>
 
@@ -1183,7 +1191,7 @@ class BSON(bytes):
         return decode(self, codec_options)
 
 
-def has_c():
+def has_c() -> bool:
     """Is the C extension installed?
     """
     return _USE_C

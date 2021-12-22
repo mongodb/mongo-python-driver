@@ -26,3 +26,26 @@ jobs:
       - name: Run tests
         run: |
           python setup.py test
+
+  mypytest:
+    name: Run mypy
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.6, '3.10']
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install -U pip mypy
+          pip install -e .
+      - name: Run mypy
+        run: |
+          mypy --strict bson
+          #mypy --strict gridfs
+          #mypy --strict pymongo

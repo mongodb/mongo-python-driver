@@ -16,7 +16,7 @@
 
 import abc
 import datetime
-import warnings
+from typing import Any, Callable, Final, Iterable, MutableMapping, Optional, Type, TypeVar, Union, cast
 
 from collections import namedtuple
 from collections.abc import MutableMapping as _MutableMapping
@@ -24,6 +24,8 @@ from collections.abc import MutableMapping as _MutableMapping
 from bson.binary import (UuidRepresentation,
                          ALL_UUID_REPRESENTATIONS,
                          UUID_REPRESENTATION_NAMES)
+from bson.raw_bson import RawBSONDocument
+
 
 def _abstractproperty(func):
     return property(abc.abstractmethod(func))
@@ -47,12 +49,12 @@ class TypeEncoder(abc.ABC):
     See :ref:`custom-type-type-codec` documentation for an example.
     """
     @_abstractproperty
-    def python_type(self):
+    def python_type(self) -> Any:
         """The Python type to be converted into something serializable."""
         pass
 
     @abc.abstractmethod
-    def transform_python(self, value):
+    def transform_python(self, value: Any) -> Any:
         """Convert the given Python object into something serializable."""
         pass
 
@@ -67,12 +69,12 @@ class TypeDecoder(abc.ABC):
     See :ref:`custom-type-type-codec` documentation for an example.
     """
     @_abstractproperty
-    def bson_type(self):
+    def bson_type(self) -> Any:
         """The BSON type to be converted into our own type."""
         pass
 
     @abc.abstractmethod
-    def transform_bson(self, value):
+    def transform_bson(self, value: Any) -> Any:
         """Convert the given BSON value into our own type."""
         pass
 
@@ -91,6 +93,9 @@ class TypeCodec(TypeEncoder, TypeDecoder):
     """
     pass
 
+
+Codec = Union[TypeEncoder, TypeDecoder, TypeCodec]
+Fallback = Callable[[Any], Any]
 
 class TypeRegistry(object):
     """Encapsulates type codecs used in encoding and / or decoding BSON, as
@@ -118,7 +123,7 @@ class TypeRegistry(object):
         :mod:`bson` can encode. See :ref:`fallback-encoder-callable`
         documentation for an example.
     """
-    def __init__(self, type_codecs=None, fallback_encoder=None):
+    def __init__(self, type_codecs: Optional[Iterable[Codec]] = None, fallback_encoder: Optional[Fallback] = None) -> None:
         self.__type_codecs = list(type_codecs or [])
         self._fallback_encoder = fallback_encoder
         self._encoder_map = {}
@@ -153,12 +158,12 @@ class TypeRegistry(object):
                            (codec, pytype))
                 raise TypeError(err_msg)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return ('%s(type_codecs=%r, fallback_encoder=%r)' % (
             self.__class__.__name__, self.__type_codecs,
             self._fallback_encoder))
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> Any:
         if not isinstance(other, type(self)):
             return NotImplemented
         return ((self._decoder_map == other._decoder_map) and
@@ -166,10 +171,13 @@ class TypeRegistry(object):
                 (self._fallback_encoder == other._fallback_encoder))
 
 
-_options_base = namedtuple(
+_options_base = namedtuple(  # type: ignore
     'CodecOptions',
     ('document_class', 'tz_aware', 'uuid_representation',
      'unicode_decode_error_handler', 'tzinfo', 'type_registry'))
+
+
+_CodecOptions = TypeVar("_CodecOptions", bound="CodecOptions")
 
 
 class CodecOptions(_options_base):
@@ -248,11 +256,12 @@ class CodecOptions(_options_base):
        and stored back to the server.
     """
 
-    def __new__(cls, document_class=dict,
-                tz_aware=False,
-                uuid_representation=UuidRepresentation.UNSPECIFIED,
-                unicode_decode_error_handler="strict",
-                tzinfo=None, type_registry=None):
+    def __new__(cls: Type[_CodecOptions], document_class: Union[Type[MutableMapping], Type[RawBSONDocument]] = dict,
+                tz_aware: bool = False,
+                uuid_representation: Optional[int] = UuidRepresentation.UNSPECIFIED,
+                unicode_decode_error_handler: Optional[str] = "strict",
+                tzinfo: Optional[datetime.tzinfo] = None, 
+                type_registry: Optional[TypeRegistry] = None) -> _CodecOptions:
         if not (issubclass(document_class, _MutableMapping) or
                 _raw_document_class(document_class)):
             raise TypeError("document_class must be dict, bson.son.SON, "
@@ -263,7 +272,7 @@ class CodecOptions(_options_base):
         if uuid_representation not in ALL_UUID_REPRESENTATIONS:
             raise ValueError("uuid_representation must be a value "
                              "from bson.binary.UuidRepresentation")
-        if not isinstance(unicode_decode_error_handler, (str, None)):
+        if not isinstance(unicode_decode_error_handler, (str, None)):  # type: ignore
             raise ValueError("unicode_decode_error_handler must be a string "
                              "or None")
         if tzinfo is not None:
@@ -310,10 +319,10 @@ class CodecOptions(_options_base):
             'tzinfo': self.tzinfo,
             'type_registry': self.type_registry}
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '%s(%s)' % (self.__class__.__name__, self._arguments_repr())
 
-    def with_options(self, **kwargs):
+    def with_options(self, **kwargs) -> _CodecOptions:
         """Make a copy of this CodecOptions, overriding some options::
 
             >>> from bson.codec_options import DEFAULT_CODEC_OPTIONS
@@ -327,10 +336,10 @@ class CodecOptions(_options_base):
         """
         opts = self._options_dict()
         opts.update(kwargs)
-        return CodecOptions(**opts)
+        return cast(_CodecOptions, CodecOptions(**opts))
 
 
-DEFAULT_CODEC_OPTIONS = CodecOptions()
+DEFAULT_CODEC_OPTIONS: Final[CodecOptions] = CodecOptions()
 
 
 def _parse_codec_options(options):

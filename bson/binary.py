@@ -12,30 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any, Final, Mapping, Tuple, Type, TypeVar, cast
 from uuid import UUID
-from warnings import warn
 
 """Tools for representing BSON binary data.
 """
 
-BINARY_SUBTYPE = 0
+BINARY_SUBTYPE: Final[int] = 0
 """BSON binary subtype for binary data.
 
 This is the default subtype for binary data.
 """
 
-FUNCTION_SUBTYPE = 1
+FUNCTION_SUBTYPE: Final[int] = 1
 """BSON binary subtype for functions.
 """
 
-OLD_BINARY_SUBTYPE = 2
+OLD_BINARY_SUBTYPE: Final[int] = 2
 """Old BSON binary subtype for binary data.
 
 This is the old default subtype, the current
 default is :data:`BINARY_SUBTYPE`.
 """
 
-OLD_UUID_SUBTYPE = 3
+OLD_UUID_SUBTYPE: Final[int] = 3
 """Old BSON binary subtype for a UUID.
 
 :class:`uuid.UUID` instances will automatically be encoded
@@ -47,7 +47,7 @@ by :mod:`bson` using this subtype when using
 .. versionadded:: 2.1
 """
 
-UUID_SUBTYPE = 4
+UUID_SUBTYPE: Final[int] = 4
 """BSON binary subtype for a UUID.
 
 This is the standard BSON binary subtype for UUIDs.
@@ -58,7 +58,7 @@ by :mod:`bson` using this subtype when using
 
 
 class UuidRepresentation:
-    UNSPECIFIED = 0
+    UNSPECIFIED: Final[int]  = 0
     """An unspecified UUID representation.
 
     When configured, :class:`uuid.UUID` instances will **not** be
@@ -75,7 +75,7 @@ class UuidRepresentation:
     .. versionadded:: 3.11
     """
 
-    STANDARD = UUID_SUBTYPE
+    STANDARD: Final[int] = UUID_SUBTYPE
     """The standard UUID representation.
 
     :class:`uuid.UUID` instances will automatically be encoded to
@@ -87,7 +87,7 @@ class UuidRepresentation:
     .. versionadded:: 3.11
     """
 
-    PYTHON_LEGACY = OLD_UUID_SUBTYPE
+    PYTHON_LEGACY: Final[int] = OLD_UUID_SUBTYPE
     """The Python legacy UUID representation.
 
     :class:`uuid.UUID` instances will automatically be encoded to
@@ -99,7 +99,7 @@ class UuidRepresentation:
     .. versionadded:: 3.11
     """
 
-    JAVA_LEGACY = 5
+    JAVA_LEGACY: Final[int] = 5
     """The Java legacy UUID representation.
 
     :class:`uuid.UUID` instances will automatically be encoded to
@@ -111,7 +111,7 @@ class UuidRepresentation:
     .. versionadded:: 3.11
     """
 
-    CSHARP_LEGACY = 6
+    CSHARP_LEGACY: Final[int] = 6
     """The C#/.net legacy UUID representation.
 
     :class:`uuid.UUID` instances will automatically be encoded to
@@ -124,19 +124,19 @@ class UuidRepresentation:
     """
 
 
-STANDARD = UuidRepresentation.STANDARD
+STANDARD: Final[int] = UuidRepresentation.STANDARD
 """An alias for :data:`UuidRepresentation.STANDARD`.
 
 .. versionadded:: 3.0
 """
 
-PYTHON_LEGACY = UuidRepresentation.PYTHON_LEGACY
+PYTHON_LEGACY: Final[int] = UuidRepresentation.PYTHON_LEGACY
 """An alias for :data:`UuidRepresentation.PYTHON_LEGACY`.
 
 .. versionadded:: 3.0
 """
 
-JAVA_LEGACY = UuidRepresentation.JAVA_LEGACY
+JAVA_LEGACY: Final[int] = UuidRepresentation.JAVA_LEGACY
 """An alias for :data:`UuidRepresentation.JAVA_LEGACY`.
 
 .. versionchanged:: 3.6
@@ -144,7 +144,7 @@ JAVA_LEGACY = UuidRepresentation.JAVA_LEGACY
 .. versionadded:: 2.3
 """
 
-CSHARP_LEGACY = UuidRepresentation.CSHARP_LEGACY
+CSHARP_LEGACY: Final[int] = UuidRepresentation.CSHARP_LEGACY
 """An alias for :data:`UuidRepresentation.CSHARP_LEGACY`.
 
 .. versionchanged:: 3.6
@@ -152,32 +152,35 @@ CSHARP_LEGACY = UuidRepresentation.CSHARP_LEGACY
 .. versionadded:: 2.3
 """
 
-ALL_UUID_SUBTYPES = (OLD_UUID_SUBTYPE, UUID_SUBTYPE)
-ALL_UUID_REPRESENTATIONS = (UuidRepresentation.UNSPECIFIED,
-                            UuidRepresentation.STANDARD,
-                            UuidRepresentation.PYTHON_LEGACY,
-                            UuidRepresentation.JAVA_LEGACY,
-                            UuidRepresentation.CSHARP_LEGACY)
-UUID_REPRESENTATION_NAMES = {
+ALL_UUID_SUBTYPES: Final[Tuple[int, int]] = (OLD_UUID_SUBTYPE, UUID_SUBTYPE)
+ALL_UUID_REPRESENTATIONS: Final[Tuple[int, int, int, int, int]] = (
+    UuidRepresentation.UNSPECIFIED,
+    UuidRepresentation.STANDARD,
+    UuidRepresentation.PYTHON_LEGACY,
+    UuidRepresentation.JAVA_LEGACY,
+    UuidRepresentation.CSHARP_LEGACY)
+UUID_REPRESENTATION_NAMES: Final[Mapping[int, str]] = {
     UuidRepresentation.UNSPECIFIED: 'UuidRepresentation.UNSPECIFIED',
     UuidRepresentation.STANDARD: 'UuidRepresentation.STANDARD',
     UuidRepresentation.PYTHON_LEGACY: 'UuidRepresentation.PYTHON_LEGACY',
     UuidRepresentation.JAVA_LEGACY: 'UuidRepresentation.JAVA_LEGACY',
     UuidRepresentation.CSHARP_LEGACY: 'UuidRepresentation.CSHARP_LEGACY'}
 
-MD5_SUBTYPE = 5
+MD5_SUBTYPE: Final[int] = 5
 """BSON binary subtype for an MD5 hash.
 """
 
-COLUMN_SUBTYPE = 7
+COLUMN_SUBTYPE: Final[int] = 7
 """BSON binary subtype for columns.
 
 .. versionadded:: 4.0
 """
 
-USER_DEFINED_SUBTYPE = 128
+USER_DEFINED_SUBTYPE: Final[int] = 128
 """BSON binary subtype for any user defined structure.
 """
+
+_Binary = TypeVar("_Binary", bound="Binary")
 
 
 class Binary(bytes):
@@ -208,8 +211,9 @@ class Binary(bytes):
     """
 
     _type_marker = 5
+    __subtype: int
 
-    def __new__(cls, data, subtype=BINARY_SUBTYPE):
+    def __new__(cls: Type[_Binary], data: bytes, subtype: int = BINARY_SUBTYPE) -> _Binary:
         if not isinstance(subtype, int):
             raise TypeError("subtype must be an instance of int")
         if subtype >= 256 or subtype < 0:
@@ -220,7 +224,7 @@ class Binary(bytes):
         return self
 
     @classmethod
-    def from_uuid(cls, uuid, uuid_representation=UuidRepresentation.STANDARD):
+    def from_uuid(cls: Type[_Binary], uuid: UUID, uuid_representation: int = UuidRepresentation.STANDARD) -> _Binary:
         """Create a BSON Binary object from a Python UUID.
 
         Creates a :class:`~bson.binary.Binary` object from a
@@ -271,7 +275,7 @@ class Binary(bytes):
 
         return cls(payload, subtype)
 
-    def as_uuid(self, uuid_representation=UuidRepresentation.STANDARD):
+    def as_uuid(self, uuid_representation: int = UuidRepresentation.STANDARD) -> UUID:
         """Create a Python UUID from this BSON Binary object.
 
         Decodes this binary object as a native :class:`uuid.UUID` instance
@@ -316,19 +320,19 @@ class Binary(bytes):
                 self.subtype, UUID_REPRESENTATION_NAMES[uuid_representation]))
 
     @property
-    def subtype(self):
+    def subtype(self) -> int:
         """Subtype of this binary data.
         """
         return self.__subtype
 
-    def __getnewargs__(self):
+    def __getnewargs__(self) -> Tuple[bytes, int]:  # type: ignore[override]
         # Work around http://bugs.python.org/issue7382
         data = super(Binary, self).__getnewargs__()[0]
         if not isinstance(data, bytes):
             data = data.encode('latin-1')
         return data, self.__subtype
 
-    def __eq__(self, other):
+    def __eq__(self, other : Any) -> bool:
         if isinstance(other, Binary):
             return ((self.__subtype, bytes(self)) ==
                     (other.subtype, bytes(other)))
@@ -337,11 +341,11 @@ class Binary(bytes):
         # subclass of str...
         return False
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return super(Binary, self).__hash__() ^ hash(self.__subtype)
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "Binary(%s, %s)" % (bytes.__repr__(self), self.__subtype)

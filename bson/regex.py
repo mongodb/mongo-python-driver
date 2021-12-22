@@ -16,12 +16,13 @@
 """
 
 import re
+from typing import Any, Pattern, Type, TypeVar, Union, cast
 
 from bson.son import RE_TYPE
 from bson._helpers import _getstate_slots, _setstate_slots
 
 
-def str_flags_to_int(str_flags):
+def str_flags_to_int(str_flags: str) -> int:
     flags = 0
     if "i" in str_flags:
         flags |= re.IGNORECASE
@@ -39,6 +40,9 @@ def str_flags_to_int(str_flags):
     return flags
 
 
+_Regex = TypeVar("_Regex", bound="Regex")
+
+
 class Regex(object):
     """BSON regular expression data."""
     __slots__ = ("pattern", "flags")
@@ -49,7 +53,7 @@ class Regex(object):
     _type_marker = 11
 
     @classmethod
-    def from_native(cls, regex):
+    def from_native(cls: Type[_Regex], regex: Pattern[Any]) -> _Regex:
         """Convert a Python regular expression into a ``Regex`` instance.
 
         Note that in Python 3, a regular expression compiled from a
@@ -78,9 +82,9 @@ class Regex(object):
                 "regex must be a compiled regular expression, not %s"
                 % type(regex))
 
-        return Regex(regex.pattern, regex.flags)
+        return cast(_Regex, Regex(regex.pattern, regex.flags))
 
-    def __init__(self, pattern, flags=0):
+    def __init__(self, pattern: Union[str, bytes], flags: Union[str, int] = 0):
         """BSON regular expression data.
 
         This class is useful to store and retrieve regular expressions that are
@@ -103,21 +107,21 @@ class Regex(object):
             raise TypeError(
                 "flags must be a string or int, not %s" % type(flags))
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, Regex):
             return self.pattern == other.pattern and self.flags == other.flags
         else:
             return NotImplemented
 
-    __hash__ = None
+    __hash__ = None  # type: ignore
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "Regex(%r, %r)" % (self.pattern, self.flags)
 
-    def try_compile(self):
+    def try_compile(self) -> Pattern[Any]:
         """Compile this :class:`Regex` as a Python regular expression.
 
         .. warning::

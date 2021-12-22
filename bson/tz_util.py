@@ -14,10 +14,12 @@
 
 """Timezone related utilities for BSON."""
 
-from datetime import (timedelta,
+from datetime import (datetime, timedelta,
                       tzinfo)
+from time import time
+from typing import Any, Final, Optional, Tuple, Union
 
-ZERO = timedelta(0)
+ZERO: Final[timedelta] = timedelta(0)
 
 
 class FixedOffset(tzinfo):
@@ -28,25 +30,25 @@ class FixedOffset(tzinfo):
     Defining __getinitargs__ enables pickling / copying.
     """
 
-    def __init__(self, offset, name):
+    def __init__(self, offset: Union[float, timedelta], name: str) -> None:
         if isinstance(offset, timedelta):
             self.__offset = offset
         else:
             self.__offset = timedelta(minutes=offset)
         self.__name = name
 
-    def __getinitargs__(self):
+    def __getinitargs__(self) -> Tuple[timedelta, str]:
         return self.__offset, self.__name
 
-    def utcoffset(self, dt):
+    def utcoffset(self, dt: Optional[datetime]) -> timedelta:
         return self.__offset
 
-    def tzname(self, dt):
+    def tzname(self, dt: Optional[datetime]) -> str:
         return self.__name
 
-    def dst(self, dt):
+    def dst(self, dt: Optional[datetime]) -> timedelta:
         return ZERO
 
 
-utc = FixedOffset(0, "UTC")
+utc: Final[FixedOffset] = FixedOffset(0, "UTC")
 """Fixed offset timezone representing UTC."""
