@@ -61,7 +61,7 @@ import platform
 import re
 import struct
 import sys
-from typing import Any, BinaryIO, Final, Iterator, List, Mapping, Tuple, Type, TypeVar
+from typing import Any, BinaryIO, Final, Generator, Iterator, List, Mapping, NoReturn, Tuple, Type, TypeVar, Union
 import uuid
 
 from codecs import (utf_8_decode as _utf_8_decode,  # type: ignore
@@ -139,31 +139,31 @@ def get_data_and_view(data: Any) -> Tuple[Any, memoryview]:
     return view.tobytes(), view
 
 
-def _raise_unknown_type(element_type, element_name):
+def _raise_unknown_type(element_type: int, element_name: str) -> NoReturn:
     """Unknown type helper."""
     raise InvalidBSON("Detected unknown BSON type %r for fieldname '%s'. Are "
                       "you using the latest driver version?" % (
                           chr(element_type).encode(), element_name))
 
 
-def _get_int(data, view, position, dummy0, dummy1, dummy2):
+def _get_int(data: Any, view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any) -> Tuple[Any, int]:
     """Decode a BSON int32 to python int."""
     return _UNPACK_INT_FROM(data, position)[0], position + 4
 
 
-def _get_c_string(data, view, position, opts):
+def _get_c_string(data: Any, view: Any, position: int, opts: Any) -> Tuple[Any, int]:
     """Decode a BSON 'C' string to python str."""
     end = data.index(b"\x00", position)
     return _utf_8_decode(view[position:end],
                          opts.unicode_decode_error_handler, True)[0], end + 1
 
 
-def _get_float(data, view, position, dummy0, dummy1, dummy2):
+def _get_float(data: Any, view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any) -> Tuple[Any, int]:
     """Decode a BSON double to python float."""
     return _UNPACK_FLOAT_FROM(data, position)[0], position + 8
 
 
-def _get_string(data, view, position, obj_end, opts, dummy):
+def _get_string(data: Any, view: Any, position: int, obj_end: int, opts: Any, dummy: Any) -> Tuple[Any, str]:
     """Decode a BSON string to python str."""
     length = _UNPACK_INT_FROM(data, position)[0]
     position += 4
@@ -176,7 +176,7 @@ def _get_string(data, view, position, obj_end, opts, dummy):
                          opts.unicode_decode_error_handler, True)[0], end + 1
 
 
-def _get_object_size(data, position, obj_end):
+def _get_object_size(data: Any, position: int, obj_end: int) -> Tuple[Any, int]:
     """Validate and return a BSON document's size."""
     try:
         obj_size = _UNPACK_INT_FROM(data, position)[0]
@@ -193,7 +193,7 @@ def _get_object_size(data, position, obj_end):
     return obj_size, end
 
 
-def _get_object(data, view, position, obj_end, opts, dummy):
+def _get_object(data: Any, view: Any, position: int, obj_end: int, opts: Any, dummy: Any) -> Tuple[Any, int]:
     """Decode a BSON subdocument to opts.document_class or bson.dbref.DBRef."""
     obj_size, end = _get_object_size(data, position, obj_end)
     if _raw_document_class(opts.document_class):
@@ -212,7 +212,7 @@ def _get_object(data, view, position, obj_end, opts, dummy):
     return obj, position
 
 
-def _get_array(data, view, position, obj_end, opts, element_name):
+def _get_array(data: Any, view: Any, position: int, obj_end: int, opts: Any, element_name: str) -> Tuple[Any, int]:
     """Decode a BSON array to python list."""
     size = _UNPACK_INT_FROM(data, position)[0]
     end = position + size - 1
@@ -221,7 +221,7 @@ def _get_array(data, view, position, obj_end, opts, element_name):
 
     position += 4
     end -= 1
-    result = []
+    result: List[Any] = []
 
     # Avoid doing global and attribute lookups in the loop.
     append = result.append
@@ -251,7 +251,7 @@ def _get_array(data, view, position, obj_end, opts, element_name):
     return result, position + 1
 
 
-def _get_binary(data, view, position, obj_end, opts, dummy1):
+def _get_binary(data: Any, view: Any, position: int, obj_end: int, opts: Any, dummy1: Any) -> Tuple[Any, int]:
     """Decode a BSON binary to bson.binary.Binary or python UUID."""
     length, subtype = _UNPACK_LENGTH_SUBTYPE_FROM(data, position)
     position += 5
@@ -284,13 +284,13 @@ def _get_binary(data, view, position, obj_end, opts, dummy1):
     return value, end
 
 
-def _get_oid(data, view, position, dummy0, dummy1, dummy2):
+def _get_oid(data: Any, view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any) -> Tuple[ObjectId, int]:
     """Decode a BSON ObjectId to bson.objectid.ObjectId."""
     end = position + 12
     return ObjectId(data[position:end]), end
 
 
-def _get_boolean(data, view, position, dummy0, dummy1, dummy2):
+def _get_boolean(data: Any, view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any) -> Tuple[bool, int]:
     """Decode a BSON true/false to python True/False."""
     end = position + 1
     boolean_byte = data[position:end]
@@ -301,19 +301,19 @@ def _get_boolean(data, view, position, dummy0, dummy1, dummy2):
     raise InvalidBSON('invalid boolean value: %r' % boolean_byte)
 
 
-def _get_date(data, view, position, dummy0, opts, dummy1):
+def _get_date(data: Any, view: Any, position: int, dummy0: int, opts: Any, dummy1: Any) -> Tuple[datetime.datetime, int]:
     """Decode a BSON datetime to python datetime.datetime."""
     return _millis_to_datetime(
         _UNPACK_LONG_FROM(data, position)[0], opts), position + 8
 
 
-def _get_code(data, view, position, obj_end, opts, element_name):
+def _get_code(data: Any, view: Any, position: int, obj_end: int, opts: Any, element_name: str) -> Tuple[Code, int]:
     """Decode a BSON code to bson.code.Code."""
     code, position = _get_string(data, view, position, obj_end, opts, element_name)
     return Code(code), position
 
 
-def _get_code_w_scope(data, view, position, obj_end, opts, element_name):
+def _get_code_w_scope(data: Any, view: Any, position: int, obj_end: int, opts: Any, element_name: str) -> Tuple[Code, int]:
     """Decode a BSON code_w_scope to bson.code.Code."""
     code_end = position + _UNPACK_INT_FROM(data, position)[0]
     code, position = _get_string(
@@ -324,7 +324,7 @@ def _get_code_w_scope(data, view, position, obj_end, opts, element_name):
     return Code(code, scope), position
 
 
-def _get_regex(data, view, position, dummy0, opts, dummy1):
+def _get_regex(data: Any, view: Any, position: int, dummy0: Any, opts: Any, dummy1: Any) -> Tuple[Regex, int]:
     """Decode a BSON regex to bson.regex.Regex or a python pattern object."""
     pattern, position = _get_c_string(data, view, position, opts)
     bson_flags, position = _get_c_string(data, view, position, opts)
@@ -332,7 +332,7 @@ def _get_regex(data, view, position, dummy0, opts, dummy1):
     return bson_re, position
 
 
-def _get_ref(data, view, position, obj_end, opts, element_name):
+def _get_ref(data: Any, view: Any, position: int, obj_end: int, opts: Any, element_name: str) -> Tuple[DBRef, int]:
     """Decode (deprecated) BSON DBPointer to bson.dbref.DBRef."""
     collection, position = _get_string(
         data, view, position, obj_end, opts, element_name)
@@ -340,18 +340,18 @@ def _get_ref(data, view, position, obj_end, opts, element_name):
     return DBRef(collection, oid), position
 
 
-def _get_timestamp(data, view, position, dummy0, dummy1, dummy2):
+def _get_timestamp(data: Any, view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any) -> Tuple[Timestamp, int]:
     """Decode a BSON timestamp to bson.timestamp.Timestamp."""
     inc, timestamp = _UNPACK_TIMESTAMP_FROM(data, position)
     return Timestamp(timestamp, inc), position + 8
 
 
-def _get_int64(data, view, position, dummy0, dummy1, dummy2):
+def _get_int64(data: Any, view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any) -> Tuple[Int64, int]:
     """Decode a BSON int64 to bson.int64.Int64."""
     return Int64(_UNPACK_LONG_FROM(data, position)[0]), position + 8
 
 
-def _get_decimal128(data, view, position, dummy0, dummy1, dummy2):
+def _get_decimal128(data: Any, view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any) -> Tuple[Decimal128, int]:
     """Decode a BSON decimal128 to bson.decimal128.Decimal128."""
     end = position + 16
     return Decimal128.from_bid(data[position:end]), end
@@ -388,10 +388,10 @@ _ELEMENT_GETTER = {
 
 
 if _USE_C:
-    def _element_to_dict(data, view, position, obj_end, opts):
+    def _element_to_dict(data: Any, view: Any, position: int, obj_end: int, opts: Any) -> Any:
         return _cbson._element_to_dict(data, position, obj_end, opts)
 else:
-    def _element_to_dict(data, view, position, obj_end, opts):
+    def _element_to_dict(data: Any, view: Any, position: int, obj_end: int, opts: Any) -> Any:
         """Decode a single key, value pair."""
         element_type = data[position]
         position += 1
@@ -411,12 +411,12 @@ else:
         return element_name, value, position
 
 
-def _raw_to_dict(data, position, obj_end, opts, result):
+def _raw_to_dict(data: Any, position: int, obj_end: int, opts: Any, result: Any) -> Any:
     data, view = get_data_and_view(data)
     return _elements_to_dict(data, view, position, obj_end, opts, result)
 
 
-def _elements_to_dict(data, view, position, obj_end, opts, result=None):
+def _elements_to_dict(data: Any, view: Any, position: int, obj_end: int, opts: Any, result: Any = None) -> Any:
     """Decode a BSON document into result."""
     if result is None:
         result = opts.document_class()
@@ -429,7 +429,7 @@ def _elements_to_dict(data, view, position, obj_end, opts, result=None):
     return result
 
 
-def _bson_to_dict(data, opts):
+def _bson_to_dict(data: Any, opts: Any) -> Any:
     """Decode a BSON string to document_class."""
     data, view = get_data_and_view(data)
     try:
@@ -455,7 +455,7 @@ _PACK_TIMESTAMP = struct.Struct("<II").pack
 _LIST_NAMES = tuple((str(i) + "\x00").encode('utf8') for i in range(1000))
 
 
-def gen_list_name():
+def gen_list_name() -> Generator[str]:
     """Generate "keys" for encoded lists in the sequence
     b"0\x00", b"1\x00", b"2\x00", ...
 
@@ -470,7 +470,7 @@ def gen_list_name():
         yield (str(next(counter)) + "\x00").encode('utf8')
 
 
-def _make_c_string_check(string):
+def _make_c_string_check(string: Union[str, bytes]) -> bytes:
     """Make a 'C' string, checking for embedded NUL characters."""
     if isinstance(string, bytes):
         if b"\x00" in string:
@@ -489,7 +489,7 @@ def _make_c_string_check(string):
         return _utf_8_encode(string)[0] + b"\x00"
 
 
-def _make_c_string(string):
+def _make_c_string(string: Union[str, bytes]) -> bytes:
     """Make a 'C' string."""
     if isinstance(string, bytes):
         try:
@@ -502,7 +502,7 @@ def _make_c_string(string):
         return _utf_8_encode(string)[0] + b"\x00"
 
 
-def _make_name(string):
+def _make_name(string: str) -> bytes:
     """Make a 'C' string suitable for a BSON key."""
     # Keys can only be text in python 3.
     if "\x00" in string:
@@ -511,7 +511,7 @@ def _make_name(string):
     return _utf_8_encode(string)[0] + b"\x00"
 
 
-def _encode_float(name, value, dummy0, dummy1):
+def _encode_float(name: str, value: Any, dummy0: Any, dummy1: Any) -> bytes:
     """Encode a float."""
     return b"\x01" + name + _PACK_FLOAT(value)
 

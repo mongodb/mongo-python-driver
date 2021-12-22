@@ -63,7 +63,7 @@ from bson.codec_options import (
 from bson.son import SON
 
 
-class RawBSONDocument(_Mapping):
+class RawBSONDocument(_Mapping[str, Any]):
     """Representation for a MongoDB document that provides access to the raw
     BSON bytes that compose it.
 
@@ -160,7 +160,7 @@ class RawBSONDocument(_Mapping):
                 % (self.raw, self.__codec_options))
 
 
-def _inflate_bson(bson_bytes, codec_options):
+def _inflate_bson(bson_bytes: bytes, codec_options: CodecOptions) -> Any:
     """Inflates the top level fields of a BSON document.
 
     :Parameters:
