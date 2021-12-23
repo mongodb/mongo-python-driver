@@ -41,7 +41,6 @@ from gridfs.grid_file import (GridIn,
                               DEFAULT_CHUNK_SIZE,
                               _clear_entity_type_registry,
                               _disallow_transactions)
-from tornado.util import ObjectDict
 
 
 class GridFS(object):

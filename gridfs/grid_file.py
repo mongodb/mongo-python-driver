@@ -17,7 +17,7 @@ import datetime
 import io
 import math
 import os
-from typing import Any, Final, Iterable, List, Mapping, Optional, Protocol, TypeVar, cast
+from typing import Any, Iterable, List, Mapping, Optional, TypeVar, cast
 
 from bson.int64 import Int64
 from bson.son import SON
@@ -36,16 +36,16 @@ from pymongo.read_preferences import ReadPreference
 
 from gridfs.errors import CorruptGridFile, FileExists, NoFile
 
-_SEEK_SET: Final[int] = os.SEEK_SET
-_SEEK_CUR: Final[int] = os.SEEK_CUR
-_SEEK_END: Final[int] = os.SEEK_END
+_SEEK_SET: int = os.SEEK_SET
+_SEEK_CUR: int = os.SEEK_CUR
+_SEEK_END: int = os.SEEK_END
 
-EMPTY: Final[bytes] = b""
-NEWLN: Final[bytes]= b"\n"
+EMPTY: bytes = b""
+NEWLN: bytes = b"\n"
 
 """Default chunk size, in bytes."""
 # Slightly under a power of 2, to work well with server's record allocations.
-DEFAULT_CHUNK_SIZE: Final[int] = 255 * 1024
+DEFAULT_CHUNK_SIZE: int = 255 * 1024
 
 _C_INDEX: SON[str, Any] = SON([("files_id", ASCENDING), ("n", ASCENDING)])
 _F_INDEX: SON[str, Any] = SON([("filename", ASCENDING), ("uploadDate", ASCENDING)])
@@ -405,7 +405,7 @@ class GridIn(object):
         """
         return cast(_GridIn, self)
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Support for the context manager protocol.
 
         Close the file and allow exceptions to propagate.
@@ -705,7 +705,7 @@ class GridOut(io.IOBase):
         """
         return cast(_GridOut, self)
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Makes it possible to use :class:`GridOut` files
         with the context manager protocol.
         """
