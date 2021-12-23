@@ -61,7 +61,7 @@ import platform
 import re
 import struct
 import sys
-from typing import Any, BinaryIO, Callable,  Generator, Iterator, List, Mapping, NoReturn, Sequence, Tuple, Type, TypeVar, Union, cast
+from typing import Any, BinaryIO, Callable, Dict,  Generator, Iterator, List, Mapping, NoReturn, Sequence, Tuple, Type, TypeVar, Union, cast
 import uuid
 
 from codecs import (utf_8_decode as _utf_8_decode,  # type: ignore
@@ -363,7 +363,7 @@ def _get_decimal128(data: Any, view: Any, position: int, dummy0: Any, dummy1: An
 #   - position: int, beginning of object in 'data' to decode
 #   - obj_end: int, end of object to decode in 'data' if variable-length type
 #   - opts: a CodecOptions
-_ELEMENT_GETTER: dict[int, Callable[..., Tuple[Any, int]]]= {
+_ELEMENT_GETTER: Dict[int, Callable[..., Tuple[Any, int]]]= {
     ord(BSONNUM): _get_float,
     ord(BSONSTR): _get_string,
     ord(BSONOBJ): _get_object,

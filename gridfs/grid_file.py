@@ -17,7 +17,7 @@ import datetime
 import io
 import math
 import os
-from typing import Any, Final, Iterable, List, Literal, Mapping, Optional, Protocol, TypeVar, cast
+from typing import Any, Final, Iterable, List, Mapping, Optional, Protocol, TypeVar, cast
 
 from bson.int64 import Int64
 from bson.son import SON
@@ -325,10 +325,10 @@ class GridIn(object):
     def read(self, size: Optional[int] = -1) -> None:
         raise io.UnsupportedOperation('read')
 
-    def readable(self) -> Literal[False]:
+    def readable(self) -> bool:
         return False
 
-    def seekable(self)-> Literal[False]:
+    def seekable(self)-> bool:
         return False
 
     def write(self, data: Any) -> None:
@@ -397,7 +397,7 @@ class GridIn(object):
         for line in sequence:
             self.write(line)
 
-    def writeable(self) -> Literal[True]:
+    def writeable(self) -> bool:
         return True
 
     def __enter__(self) -> _GridIn:
@@ -405,7 +405,7 @@ class GridIn(object):
         """
         return cast(_GridIn, self)
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Literal[False]:
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
         """Support for the context manager protocol.
 
         Close the file and allow exceptions to propagate.
@@ -508,7 +508,7 @@ class GridOut(io.IOBase):
             return self._file[name]
         raise AttributeError("GridOut object has no attribute '%s'" % name)
 
-    def readable(self) -> Literal[True]:
+    def readable(self) -> bool:
         return True
 
     def readchunk(self) -> bytes:
@@ -659,7 +659,7 @@ class GridOut(io.IOBase):
             self.__chunk_iter = None
         return new_pos
 
-    def seekable(self) -> Literal[True]:
+    def seekable(self) -> bool:
         return True
 
     def __iter__(self) -> _GridOutIterator:  # type: ignore[override]
@@ -696,7 +696,7 @@ class GridOut(io.IOBase):
     def writelines(self, lines: Any) -> None:
         raise io.UnsupportedOperation('writelines')
 
-    def writable(self) -> Literal[False]:
+    def writable(self) -> bool:
         return False
 
     def __enter__(self) -> _GridOut:
@@ -705,7 +705,7 @@ class GridOut(io.IOBase):
         """
         return cast(_GridOut, self)
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Literal[False]:
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
         """Makes it possible to use :class:`GridOut` files
         with the context manager protocol.
         """
@@ -719,7 +719,7 @@ class GridOut(io.IOBase):
         # GridOut is read-only, so flush does nothing.
         pass
 
-    def isatty(self) -> Literal[False]:
+    def isatty(self) -> bool:
         return False
 
     def truncate(self, size: Optional[int] = None) -> int:

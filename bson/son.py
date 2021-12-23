@@ -20,7 +20,7 @@ dictionary."""
 
 import copy
 import re
-from typing import Any, Dict, Generic, Iterable, Iterator, List, Mapping, Optional, Pattern, Tuple, Type, TypeVar, Union, cast
+from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional, Pattern, Tuple, Type, TypeVar, Union, cast
 
 from collections.abc import Mapping as _Mapping
 
@@ -32,7 +32,7 @@ _T = TypeVar("_T")
 _SON = TypeVar("_SON", bound="SON")  # type: ignore[type-arg]
 
 
-class SON(dict[_Key, _Value]):
+class SON(Dict[_Key, _Value]):
     """SON data.
 
     A subclass of dict that maintains ordering of keys and provides a

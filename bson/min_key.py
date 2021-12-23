@@ -14,7 +14,7 @@
 
 """Representation for the MongoDB internal MinKey type.
 """
-from typing import Any, Literal
+from typing import Any
 
 
 class MinKey(object):
@@ -38,7 +38,7 @@ class MinKey(object):
     def __ne__(self, other: Any) -> bool:
         return not self == other
 
-    def __le__(self, dummy: Any) -> Literal[True]:
+    def __le__(self, dummy: Any) -> bool:
         return True
 
     def __lt__(self, other: Any) -> bool:
@@ -47,7 +47,7 @@ class MinKey(object):
     def __ge__(self, other: Any) -> bool:
         return isinstance(other, MinKey)
 
-    def __gt__(self, dummy: Any) -> Literal[False]:
+    def __gt__(self, dummy: Any) -> bool:
         return False
 
     def __repr__(self) -> str:

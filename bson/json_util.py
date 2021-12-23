@@ -91,7 +91,7 @@ import datetime
 import json
 import math
 import re
-from typing import Any,  List, Optional, Mapping, Tuple, Type, TypeVar, Union, cast
+from typing import Any, Dict,  List, Optional, Mapping, Tuple, Type, TypeVar, Union, cast
 import uuid
 
 import bson
@@ -334,7 +334,7 @@ class JSONOptions(CodecOptions):
                     self.json_mode,
                     super(JSONOptions, self)._arguments_repr()))
 
-    def _options_dict(self) -> dict[Any, Any]:
+    def _options_dict(self) -> Dict[Any, Any]:
         # TODO: PYTHON-2442 use _asdict() instead
         options_dict = super(JSONOptions, self)._options_dict()
         options_dict.update({

@@ -14,7 +14,7 @@
 
 """Representation for the MongoDB internal MaxKey type.
 """
-from typing import Any, Literal
+from typing import Any
 
 
 class MaxKey(object):
@@ -41,10 +41,10 @@ class MaxKey(object):
     def __le__(self, other: Any) -> bool:
         return isinstance(other, MaxKey)
 
-    def __lt__(self, dummy: Any) -> Literal[False]:
+    def __lt__(self, dummy: Any) -> bool:
         return False
 
-    def __ge__(self, dummy: Any) -> Literal[True]:
+    def __ge__(self, dummy: Any) -> bool:
         return True
 
     def __gt__(self, other: Any) -> bool:
