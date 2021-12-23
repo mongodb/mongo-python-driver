@@ -418,7 +418,7 @@ class GridIn(object):
 
 _GridOutIterator = TypeVar("_GridOutIterator", bound="GridOutIterator")
 _GridOut = TypeVar("_GridOut", bound="GridOut")
-__GridOutChunkIterator = TypeVar("__GridOutChunkIterator", bound="_GridOutChunkIterator")
+_GridOutChunkIterator_ = TypeVar("_GridOutChunkIterator_", bound="_GridOutChunkIterator")
 
 
 class GridOut(io.IOBase):
@@ -757,8 +757,8 @@ class _GridOutChunkIterator(object):
             return self._chunk_size
         return self._length - (self._chunk_size * (self._num_chunks - 1))
 
-    def __iter__(self) -> __GridOutChunkIterator:
-        return cast(__GridOutChunkIterator, self)
+    def __iter__(self) -> _GridOutChunkIterator_:
+        return cast(_GridOutChunkIterator_, self)
 
     def _create_cursor(self) -> None:
         filter = {"files_id": self._id}
