@@ -570,7 +570,7 @@ def _encode_binary(name: bytes, value: Binary, dummy0: Any, dummy1: Any) -> byte
     """Encode bson.binary.Binary."""
     subtype = value.subtype
     if subtype == 2:
-        value = _PACK_INT(len(value)) + value
+        value = cast(Binary, _PACK_INT(len(value)) + value)
     return b"\x05" + name + _PACK_LENGTH_SUBTYPE(len(value), subtype) + cast(bytes, value)
 
 
