@@ -15,6 +15,7 @@
 """Watch changes on a collection, a database, or the entire cluster."""
 
 import copy
+from typing import Any, Iterable, List, Mapping, Optional, TypeVar, Union
 
 from bson import _bson_to_dict
 from bson.raw_bson import RawBSONDocument
@@ -22,13 +23,26 @@ from bson.raw_bson import RawBSONDocument
 from pymongo import common
 from pymongo.aggregation import (_CollectionAggregationCommand,
                                  _DatabaseAggregationCommand)
+from pymongo.client_session import ClientSession
 from pymongo.collation import validate_collation_or_none
+from pymongo.collation import Collation
+from pymongo.collection import Collection
+from pymongo.database import Database
+from pymongo.mongo_client import MongoClient
+
+
+
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (ConnectionFailure,
                             CursorNotFound,
                             InvalidOperation,
                             OperationFailure,
                             PyMongoError)
+
+
+_Collation = Union[Mapping[str, Any], Collation]
+_DocumentOut = Any
+_ChangeStream = TypeVar("_ChangeStream", bound="ChangeStream")
 
 
 # The change streams spec considers the following server errors from the
@@ -66,9 +80,19 @@ class ChangeStream(object):
     .. versionadded:: 3.6
     .. seealso:: The MongoDB documentation on `changeStreams <https://dochub.mongodb.org/core/changeStreams>`_.
     """
-    def __init__(self, target, pipeline, full_document, resume_after,
-                 max_await_time_ms, batch_size, collation,
-                 start_at_operation_time, session, start_after):
+    def __init__(
+        self,
+        target: Union[MongoClient, Database, Collection],
+        pipeline: Optional[List[Mapping[str, Any]]],
+        full_document: Optional[str],
+        resume_after: Optional[Mapping[str, Any]],
+        max_await_time_ms: Optional[int],
+        batch_size: Optional[int],
+        collation: Optional[_Collation],
+        start_at_operation_time: Optional[Mapping[str, Any]],
+        session: Optional[ClientSession],
+        start_after: Optional[Mapping[str, Any]],
+    ) -> None:
         if pipeline is None:
             pipeline = []
         elif not isinstance(pipeline, list):
@@ -197,15 +221,15 @@ class ChangeStream(object):
             pass
         self._cursor = self._create_cursor()
 
-    def close(self):
+    def close(self) -> None:
         """Close this ChangeStream."""
         self._cursor.close()
 
-    def __iter__(self):
+    def __iter__(self) -> Iterable[Mapping[str, Any]]:
         return self
 
     @property
-    def resume_token(self):
+    def resume_token(self) -> Optional[Mapping[str, Any]]:
         """The cached resume token that will be used to resume after the most
         recently returned change.
 
@@ -213,7 +237,7 @@ class ChangeStream(object):
         """
         return copy.deepcopy(self._resume_token)
 
-    def next(self):
+    def next(self) -> _DocumentOut:
         """Advance the cursor.
 
         This method blocks until the next change document is returned or an
@@ -255,7 +279,7 @@ class ChangeStream(object):
     __next__ = next
 
     @property
-    def alive(self):
+    def alive(self) -> bool:
         """Does this cursor have the potential to return more data?
 
         .. note:: Even if :attr:`alive` is ``True``, :meth:`next` can raise
@@ -265,7 +289,7 @@ class ChangeStream(object):
         """
         return self._cursor.alive
 
-    def try_next(self):
+    def try_next(self) -> Optional[_DocumentOut]:
         """Advance the cursor without blocking indefinitely.
 
         This method returns the next change document without waiting
@@ -354,10 +378,10 @@ class ChangeStream(object):
             return _bson_to_dict(change.raw, self._orig_codec_options)
         return change
 
-    def __enter__(self):
+    def __enter__(self) -> _ChangeStream:
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
 

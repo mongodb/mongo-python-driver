@@ -13,18 +13,31 @@
 # limitations under the License.
 
 """Database level operations."""
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, TypeVar, Union
 
-from bson.codec_options import DEFAULT_CODEC_OPTIONS
+from bson.code import Code
+from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
 from bson.son import SON
-from pymongo import common
+from pymongo import MongoClient, common
 from pymongo.aggregation import _DatabaseAggregationCommand
-from pymongo.change_stream import DatabaseChangeStream
+from pymongo.change_stream import DatabaseChangeStream, ChangeStream
+from pymongo.client_session import ClientSession
+from pymongo.collation import Collation
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (CollectionInvalid,
                             InvalidName)
-from pymongo.read_preferences import ReadPreference
+from pymongo.read_concern import ReadConcern
+from pymongo.read_preferences import ReadPreference, _ServerMode
+from pymongo.write_concern import WriteConcern
+
+
+_Database = TypeVar("_Database", bound="Database", covariant=True)
+_Pipeline = List[Mapping[str, Any]]
+_Collation = Union[Mapping[str, Any], Collation]
+_Code = Union[str, Code]
+_DocumentOut = Any
 
 
 def _check_name(name):
@@ -43,8 +56,14 @@ class Database(common.BaseObject):
     """A Mongo database.
     """
 
-    def __init__(self, client, name, codec_options=None, read_preference=None,
-                 write_concern=None, read_concern=None):
+    def __init__(self,
+        client: MongoClient,
+        name: str,
+        codec_options: Optional[CodecOptions] = None,
+        read_preference: Optional[_ServerMode] = None,
+        write_concern: Optional[WriteConcern] = None,
+        read_concern: Optional[ReadConcern] = None,
+    ) -> None:
         """Get a database by client and name.
 
         Raises :class:`TypeError` if `name` is not an instance of
@@ -107,17 +126,21 @@ class Database(common.BaseObject):
         self.__client = client
 
     @property
-    def client(self):
+    def client(self) -> MongoClient:
         """The client instance for this :class:`Database`."""
         return self.__client
 
     @property
-    def name(self):
+    def name(self) -> str:
         """The name of this :class:`Database`."""
         return self.__name
 
-    def with_options(self, codec_options=None, read_preference=None,
-                     write_concern=None, read_concern=None):
+    def with_options(self,
+        codec_options: Optional[CodecOptions] = None,
+        read_preference: Optional[_ServerMode] = None,
+        write_concern: Optional[WriteConcern] = None,
+        read_concern: Optional[ReadConcern] = None,
+    ) -> _Database:
         """Get a clone of this database changing the specified settings.
 
           >>> db1.read_preference
@@ -156,22 +179,22 @@ class Database(common.BaseObject):
                         write_concern or self.write_concern,
                         read_concern or self.read_concern)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, Database):
             return (self.__client == other.client and
                     self.__name == other.name)
         return NotImplemented
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.__client, self.__name))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "Database(%r, %r)" % (self.__client, self.__name)
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Collection:
         """Get a collection of this database by name.
 
         Raises InvalidName if an invalid collection name is used.
@@ -185,7 +208,7 @@ class Database(common.BaseObject):
                 " collection, use database[%r]." % (name, name, name))
         return self.__getitem__(name)
 
-    def __getitem__(self, name):
+    def __getitem__(self, name: str) -> Collection:
         """Get a collection of this database by name.
 
         Raises InvalidName if an invalid collection name is used.
@@ -195,8 +218,13 @@ class Database(common.BaseObject):
         """
         return Collection(self, name)
 
-    def get_collection(self, name, codec_options=None, read_preference=None,
-                       write_concern=None, read_concern=None):
+    def get_collection(self,
+        name: str,
+        codec_options: Optional[CodecOptions] = None,
+        read_preference: Optional[_ServerMode] = None,
+        write_concern: Optional[WriteConcern] = None,
+        read_concern: Optional[ReadConcern] = None,
+    ) -> Collection:
         """Get a :class:`~pymongo.collection.Collection` with the given name
         and options.
 
@@ -238,9 +266,15 @@ class Database(common.BaseObject):
             self, name, False, codec_options, read_preference,
             write_concern, read_concern)
 
-    def create_collection(self, name, codec_options=None,
-                          read_preference=None, write_concern=None,
-                          read_concern=None, session=None, **kwargs):
+    def create_collection(self,
+        name: str,
+        codec_options: Optional[CodecOptions] = None,
+        read_preference: Optional[_ServerMode] = None,
+        write_concern: Optional[WriteConcern] = None,
+        read_concern: Optional[ReadConcern] = None,
+        session: Optional[ClientSession] = None,
+        **kwargs: Any,
+    ) -> Collection:
         """Create a new :class:`~pymongo.collection.Collection` in this
         database.
 
@@ -286,20 +320,20 @@ class Database(common.BaseObject):
             timeseries collections
           - ``expireAfterSeconds`` (int): the number of seconds after which a
             document in a timeseries collection expires
-          - ``validator`` (dict): a document specifying validation rules or expressions 
+          - ``validator`` (dict): a document specifying validation rules or expressions
             for the collection
-          - ``validationLevel`` (str): how strictly to apply the 
+          - ``validationLevel`` (str): how strictly to apply the
             validation rules to existing documents during an update.  The default level
             is "strict"
           - ``validationAction`` (str): whether to "error" on invalid documents
-            (the default) or just "warn" about the violations but allow invalid 
+            (the default) or just "warn" about the violations but allow invalid
             documents to be inserted
           - ``indexOptionDefaults`` (dict): a document specifying a default configuration
             for indexes when creating a collection
-          - ``viewOn`` (str): the name of the source collection or view from which 
+          - ``viewOn`` (str): the name of the source collection or view from which
             to create the view
           - ``pipeline`` (list): a list of aggregation pipeline stages
-          - ``comment`` (str): a user-provided comment to attach to this command.  
+          - ``comment`` (str): a user-provided comment to attach to this command.
             This option is only supported on MongoDB >= 4.4.
 
         .. versionchanged:: 3.11
@@ -330,7 +364,11 @@ class Database(common.BaseObject):
                               read_preference, write_concern,
                               read_concern, session=s, **kwargs)
 
-    def aggregate(self, pipeline, session=None, **kwargs):
+    def aggregate(self,
+      pipeline: _Pipeline,
+      session: Optional[ClientSession] = None,
+      **kwargs: Any
+    ) -> CommandCursor:
         """Perform a database-level aggregation.
 
         See the `aggregation pipeline`_ documentation for a list of stages
@@ -400,9 +438,17 @@ class Database(common.BaseObject):
                 cmd.get_cursor, cmd.get_read_preference(s), s,
                 retryable=not cmd._performs_write)
 
-    def watch(self, pipeline=None, full_document=None, resume_after=None,
-              max_await_time_ms=None, batch_size=None, collation=None,
-              start_at_operation_time=None, session=None, start_after=None):
+    def watch(self,
+        pipeline: Optional[_Pipeline] = None,
+        full_document: Optional[bool] = None,
+        resume_after: Optional[Mapping[str, Any]] = None,
+        max_await_time_ms: Optional[int] = None,
+        batch_size: Optional[int] = None,
+        collation: Optional[_Collation] = None,
+        start_at_operation_time: Optional[Mapping[str, Any]] = None,
+        session: Optional[ClientSession] = None,
+        start_after: Optional[Mapping[str, Any]] = None,
+    ) -> ChangeStream:
         """Watch changes on this database.
 
         Performs an aggregation with an implicit initial ``$changeStream``
@@ -515,9 +561,16 @@ class Database(common.BaseObject):
                 session=s,
                 client=self.__client)
 
-    def command(self, command, value=1, check=True,
-                allowable_errors=None, read_preference=None,
-                codec_options=DEFAULT_CODEC_OPTIONS, session=None, **kwargs):
+    def command(self,
+        command: Union[str, Mapping[str, Any]],
+        value: Any = 1,
+        check: bool = True,
+        allowable_errors: Optional[Sequence[Union[str, int]]] = None,
+        read_preference: Optional[_ServerMode] = None,
+        codec_options: Optional[CodecOptions] = DEFAULT_CODEC_OPTIONS,
+        session: Optional[ClientSession] = None,
+        **kwargs: Any,
+    ) -> _DocumentOut:
         """Issue a MongoDB command.
 
         Send command `command` to the database and return the
@@ -648,7 +701,11 @@ class Database(common.BaseObject):
         cmd_cursor._maybe_pin_connection(sock_info)
         return cmd_cursor
 
-    def list_collections(self, session=None, filter=None, **kwargs):
+    def list_collections(self,
+      session: Optional[ClientSession] = None,
+      filter: Optional[Mapping[str, Any]] = None,
+      **kwargs: Any
+    ) -> CommandCursor:
         """Get a cursor over the collections of this database.
 
         :Parameters:
@@ -680,7 +737,11 @@ class Database(common.BaseObject):
         return self.__client._retryable_read(
             _cmd, read_pref, session)
 
-    def list_collection_names(self, session=None, filter=None, **kwargs):
+    def list_collection_names(self,
+        session: Optional[ClientSession] = None,
+        filter: Optional[Mapping[str, Any]] = None,
+        **kwargs: Any
+    ) -> List[str]:
         """Get a list of all the collection names in this database.
 
         For example, to list all non-system collections::
@@ -717,7 +778,10 @@ class Database(common.BaseObject):
         return [result["name"]
                 for result in self.list_collections(session=session, **kwargs)]
 
-    def drop_collection(self, name_or_collection, session=None):
+    def drop_collection(self,
+        name_or_collection: Union[str, Collection],
+        session: Optional[ClientSession] = None
+    ) -> Dict[str, Any]:
         """Drop a collection.
 
         :Parameters:
@@ -752,9 +816,13 @@ class Database(common.BaseObject):
                 parse_write_concern_error=True,
                 session=session)
 
-    def validate_collection(self, name_or_collection,
-                            scandata=False, full=False, session=None,
-                            background=None):
+    def validate_collection(self,
+        name_or_collection: Union[str, Collection],
+        scandata: bool = False,
+        full: bool = False,
+        session: Optional[ClientSession] = None,
+        background: Optional[bool] = None,
+    ) -> Dict[str, Any]:
         """Validate a collection.
 
         Returns a dict of validation info. Raises CollectionInvalid if
@@ -827,20 +895,23 @@ class Database(common.BaseObject):
 
         return result
 
-    def __iter__(self):
+    def __iter__(self) -> _Database:
         return self
 
-    def __next__(self):
+    def __next__(self) -> _Database:
         raise TypeError("'Database' object is not iterable")
 
     next = __next__
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         raise NotImplementedError("Database objects do not implement truth "
                                   "value testing or bool(). Please compare "
                                   "with None instead: database is not None")
 
-    def dereference(self, dbref, session=None, **kwargs):
+    def dereference(self, dbref: DBRef,
+        session: Optional[ClientSession] = None,
+        **kwargs: Any
+    ) -> _DocumentOut:
         """Dereference a :class:`~bson.dbref.DBRef`, getting the
         document it points to.
 

@@ -32,18 +32,18 @@ For example, a simple command logger might be implemented like this::
 
     class CommandLogger(monitoring.CommandListener):
 
-        def started(self, event):
+        def started(self, event: ) -> None:
             logging.info("Command {0.command_name} with request id "
                          "{0.request_id} started on server "
                          "{0.connection_id}".format(event))
 
-        def succeeded(self, event):
+        def succeeded(self, event: ) -> None:
             logging.info("Command {0.command_name} with request id "
                          "{0.request_id} on server {0.connection_id} "
                          "succeeded in {0.duration_micros} "
                          "microseconds".format(event))
 
-        def failed(self, event):
+        def failed(self, event: ) -> None:
             logging.info("Command {0.command_name} with request id "
                          "{0.request_id} on server {0.connection_id} "
                          "failed in {0.duration_micros} "
@@ -55,11 +55,11 @@ Server discovery and monitoring events are also available. For example::
 
     class ServerLogger(monitoring.ServerListener):
 
-        def opened(self, event):
+        def opened(self, event: ) -> None:
             logging.info("Server {0.server_address} added to topology "
                          "{0.topology_id}".format(event))
 
-        def description_changed(self, event):
+        def description_changed(self, event: ) -> None:
             previous_server_type = event.previous_description.server_type
             new_server_type = event.new_description.server_type
             if new_server_type != previous_server_type:
@@ -69,34 +69,34 @@ Server discovery and monitoring events are also available. For example::
                     "{0.previous_description.server_type_name} to "
                     "{0.new_description.server_type_name}".format(event))
 
-        def closed(self, event):
+        def closed(self, event: ) -> None:
             logging.warning("Server {0.server_address} removed from topology "
                             "{0.topology_id}".format(event))
 
 
     class HeartbeatLogger(monitoring.ServerHeartbeatListener):
 
-        def started(self, event):
+        def started(self, event: ) -> None:
             logging.info("Heartbeat sent to server "
                          "{0.connection_id}".format(event))
 
-        def succeeded(self, event):
+        def succeeded(self, event: ) -> None:
             # The reply.document attribute was added in PyMongo 3.4.
             logging.info("Heartbeat to server {0.connection_id} "
                          "succeeded with reply "
                          "{0.reply.document}".format(event))
 
-        def failed(self, event):
+        def failed(self, event: ) -> None:
             logging.warning("Heartbeat to server {0.connection_id} "
                             "failed with error {0.reply}".format(event))
 
     class TopologyLogger(monitoring.TopologyListener):
 
-        def opened(self, event):
+        def opened(self, event: ) -> None:
             logging.info("Topology with id {0.topology_id} "
                          "opened".format(event))
 
-        def description_changed(self, event):
+        def description_changed(self, event: ) -> None:
             logging.info("Topology description updated for "
                          "topology id {0.topology_id}".format(event))
             previous_topology_type = event.previous_description.topology_type
@@ -114,7 +114,7 @@ Server discovery and monitoring events are also available. For example::
             if not event.new_description.has_readable_server():
                 logging.warning("No readable servers available.")
 
-        def closed(self, event):
+        def closed(self, event: ) -> None:
             logging.info("Topology with id {0.topology_id} "
                          "closed".format(event))
 
@@ -122,41 +122,41 @@ Connection monitoring and pooling events are also available. For example::
 
     class ConnectionPoolLogger(ConnectionPoolListener):
 
-        def pool_created(self, event):
+        def pool_created(self, event: ) -> None:
             logging.info("[pool {0.address}] pool created".format(event))
 
-        def pool_cleared(self, event):
+        def pool_cleared(self, event: ) -> None:
             logging.info("[pool {0.address}] pool cleared".format(event))
 
-        def pool_closed(self, event):
+        def pool_closed(self, event: ) -> None:
             logging.info("[pool {0.address}] pool closed".format(event))
 
-        def connection_created(self, event):
+        def connection_created(self, event: ) -> None:
             logging.info("[pool {0.address}][conn #{0.connection_id}] "
                          "connection created".format(event))
 
-        def connection_ready(self, event):
+        def connection_ready(self, event: ) -> None:
             logging.info("[pool {0.address}][conn #{0.connection_id}] "
                          "connection setup succeeded".format(event))
 
-        def connection_closed(self, event):
+        def connection_closed(self, event: ) -> None:
             logging.info("[pool {0.address}][conn #{0.connection_id}] "
                          "connection closed, reason: "
                          "{0.reason}".format(event))
 
-        def connection_check_out_started(self, event):
+        def connection_check_out_started(self, event: ) -> None:
             logging.info("[pool {0.address}] connection check out "
                          "started".format(event))
 
-        def connection_check_out_failed(self, event):
+        def connection_check_out_failed(self, event: ) -> None:
             logging.info("[pool {0.address}] connection check out "
                          "failed, reason: {0.reason}".format(event))
 
-        def connection_checked_out(self, event):
+        def connection_checked_out(self, event: ) -> None:
             logging.info("[pool {0.address}][conn #{0.connection_id}] "
                          "connection checked out of pool".format(event))
 
-        def connection_checked_in(self, event):
+        def connection_checked_in(self, event: ) -> None:
             logging.info("[pool {0.address}][conn #{0.connection_id}] "
                          "connection checked into pool".format(event))
 
@@ -181,9 +181,16 @@ will not add that listener to existing client instances.
 """
 
 from collections import abc, namedtuple
+from typing import Any, Dict, Mapping, Optional, Tuple, TypeVar
+from bson.objectid import ObjectId
 
 from pymongo.hello import HelloCompat
 from pymongo.helpers import _handle_exception
+from pymongo.server_description import ServerDescription
+from pymongo.topology_description import TopologyDescription
+
+
+_CommandStartedEvent = TypeVar("_CommandStartedEvent", bound="CommandStartedEvent", covariant=True)
 
 _Listeners = namedtuple('Listeners',
                         ('command_listeners', 'server_listeners',
@@ -192,315 +199,6 @@ _Listeners = namedtuple('Listeners',
 
 _LISTENERS = _Listeners([], [], [], [], [])
 
-
-class _EventListener(object):
-    """Abstract base class for all event listeners."""
-
-
-class CommandListener(_EventListener):
-    """Abstract base class for command listeners.
-
-    Handles `CommandStartedEvent`, `CommandSucceededEvent`,
-    and `CommandFailedEvent`.
-    """
-
-    def started(self, event):
-        """Abstract method to handle a `CommandStartedEvent`.
-
-        :Parameters:
-          - `event`: An instance of :class:`CommandStartedEvent`.
-        """
-        raise NotImplementedError
-
-    def succeeded(self, event):
-        """Abstract method to handle a `CommandSucceededEvent`.
-
-        :Parameters:
-          - `event`: An instance of :class:`CommandSucceededEvent`.
-        """
-        raise NotImplementedError
-
-    def failed(self, event):
-        """Abstract method to handle a `CommandFailedEvent`.
-
-        :Parameters:
-          - `event`: An instance of :class:`CommandFailedEvent`.
-        """
-        raise NotImplementedError
-
-
-class ConnectionPoolListener(_EventListener):
-    """Abstract base class for connection pool listeners.
-
-    Handles all of the connection pool events defined in the Connection
-    Monitoring and Pooling Specification:
-    :class:`PoolCreatedEvent`, :class:`PoolClearedEvent`,
-    :class:`PoolClosedEvent`, :class:`ConnectionCreatedEvent`,
-    :class:`ConnectionReadyEvent`, :class:`ConnectionClosedEvent`,
-    :class:`ConnectionCheckOutStartedEvent`,
-    :class:`ConnectionCheckOutFailedEvent`,
-    :class:`ConnectionCheckedOutEvent`,
-    and :class:`ConnectionCheckedInEvent`.
-
-    .. versionadded:: 3.9
-    """
-
-    def pool_created(self, event):
-        """Abstract method to handle a :class:`PoolCreatedEvent`.
-
-        Emitted when a Connection Pool is created.
-
-        :Parameters:
-          - `event`: An instance of :class:`PoolCreatedEvent`.
-        """
-        raise NotImplementedError
-
-    def pool_ready(self, event):
-        """Abstract method to handle a :class:`PoolReadyEvent`.
-
-        Emitted when a Connection Pool is marked ready.
-
-        :Parameters:
-          - `event`: An instance of :class:`PoolReadyEvent`.
-
-        .. versionadded:: 4.0
-        """
-        raise NotImplementedError
-
-    def pool_cleared(self, event):
-        """Abstract method to handle a `PoolClearedEvent`.
-
-        Emitted when a Connection Pool is cleared.
-
-        :Parameters:
-          - `event`: An instance of :class:`PoolClearedEvent`.
-        """
-        raise NotImplementedError
-
-    def pool_closed(self, event):
-        """Abstract method to handle a `PoolClosedEvent`.
-
-        Emitted when a Connection Pool is closed.
-
-        :Parameters:
-          - `event`: An instance of :class:`PoolClosedEvent`.
-        """
-        raise NotImplementedError
-
-    def connection_created(self, event):
-        """Abstract method to handle a :class:`ConnectionCreatedEvent`.
-
-        Emitted when a Connection Pool creates a Connection object.
-
-        :Parameters:
-          - `event`: An instance of :class:`ConnectionCreatedEvent`.
-        """
-        raise NotImplementedError
-
-    def connection_ready(self, event):
-        """Abstract method to handle a :class:`ConnectionReadyEvent`.
-
-        Emitted when a Connection has finished its setup, and is now ready to
-        use.
-
-        :Parameters:
-          - `event`: An instance of :class:`ConnectionReadyEvent`.
-        """
-        raise NotImplementedError
-
-    def connection_closed(self, event):
-        """Abstract method to handle a :class:`ConnectionClosedEvent`.
-
-        Emitted when a Connection Pool closes a Connection.
-
-        :Parameters:
-          - `event`: An instance of :class:`ConnectionClosedEvent`.
-        """
-        raise NotImplementedError
-
-    def connection_check_out_started(self, event):
-        """Abstract method to handle a :class:`ConnectionCheckOutStartedEvent`.
-
-        Emitted when the driver starts attempting to check out a connection.
-
-        :Parameters:
-          - `event`: An instance of :class:`ConnectionCheckOutStartedEvent`.
-        """
-        raise NotImplementedError
-
-    def connection_check_out_failed(self, event):
-        """Abstract method to handle a :class:`ConnectionCheckOutFailedEvent`.
-
-        Emitted when the driver's attempt to check out a connection fails.
-
-        :Parameters:
-          - `event`: An instance of :class:`ConnectionCheckOutFailedEvent`.
-        """
-        raise NotImplementedError
-
-    def connection_checked_out(self, event):
-        """Abstract method to handle a :class:`ConnectionCheckedOutEvent`.
-
-        Emitted when the driver successfully checks out a Connection.
-
-        :Parameters:
-          - `event`: An instance of :class:`ConnectionCheckedOutEvent`.
-        """
-        raise NotImplementedError
-
-    def connection_checked_in(self, event):
-        """Abstract method to handle a :class:`ConnectionCheckedInEvent`.
-
-        Emitted when the driver checks in a Connection back to the Connection
-        Pool.
-
-        :Parameters:
-          - `event`: An instance of :class:`ConnectionCheckedInEvent`.
-        """
-        raise NotImplementedError
-
-
-class ServerHeartbeatListener(_EventListener):
-    """Abstract base class for server heartbeat listeners.
-
-    Handles `ServerHeartbeatStartedEvent`, `ServerHeartbeatSucceededEvent`,
-    and `ServerHeartbeatFailedEvent`.
-
-    .. versionadded:: 3.3
-    """
-
-    def started(self, event):
-        """Abstract method to handle a `ServerHeartbeatStartedEvent`.
-
-        :Parameters:
-          - `event`: An instance of :class:`ServerHeartbeatStartedEvent`.
-        """
-        raise NotImplementedError
-
-    def succeeded(self, event):
-        """Abstract method to handle a `ServerHeartbeatSucceededEvent`.
-
-        :Parameters:
-          - `event`: An instance of :class:`ServerHeartbeatSucceededEvent`.
-        """
-        raise NotImplementedError
-
-    def failed(self, event):
-        """Abstract method to handle a `ServerHeartbeatFailedEvent`.
-
-        :Parameters:
-          - `event`: An instance of :class:`ServerHeartbeatFailedEvent`.
-        """
-        raise NotImplementedError
-
-
-class TopologyListener(_EventListener):
-    """Abstract base class for topology monitoring listeners.
-    Handles `TopologyOpenedEvent`, `TopologyDescriptionChangedEvent`, and
-    `TopologyClosedEvent`.
-
-    .. versionadded:: 3.3
-    """
-
-    def opened(self, event):
-        """Abstract method to handle a `TopologyOpenedEvent`.
-
-        :Parameters:
-          - `event`: An instance of :class:`TopologyOpenedEvent`.
-        """
-        raise NotImplementedError
-
-    def description_changed(self, event):
-        """Abstract method to handle a `TopologyDescriptionChangedEvent`.
-
-        :Parameters:
-          - `event`: An instance of :class:`TopologyDescriptionChangedEvent`.
-        """
-        raise NotImplementedError
-
-    def closed(self, event):
-        """Abstract method to handle a `TopologyClosedEvent`.
-
-        :Parameters:
-          - `event`: An instance of :class:`TopologyClosedEvent`.
-        """
-        raise NotImplementedError
-
-
-class ServerListener(_EventListener):
-    """Abstract base class for server listeners.
-    Handles `ServerOpeningEvent`, `ServerDescriptionChangedEvent`, and
-    `ServerClosedEvent`.
-
-    .. versionadded:: 3.3
-    """
-
-    def opened(self, event):
-        """Abstract method to handle a `ServerOpeningEvent`.
-
-        :Parameters:
-          - `event`: An instance of :class:`ServerOpeningEvent`.
-        """
-        raise NotImplementedError
-
-    def description_changed(self, event):
-        """Abstract method to handle a `ServerDescriptionChangedEvent`.
-
-        :Parameters:
-          - `event`: An instance of :class:`ServerDescriptionChangedEvent`.
-        """
-        raise NotImplementedError
-
-    def closed(self, event):
-        """Abstract method to handle a `ServerClosedEvent`.
-
-        :Parameters:
-          - `event`: An instance of :class:`ServerClosedEvent`.
-        """
-        raise NotImplementedError
-
-
-def _to_micros(dur):
-    """Convert duration 'dur' to microseconds."""
-    return int(dur.total_seconds() * 10e5)
-
-
-def _validate_event_listeners(option, listeners):
-    """Validate event listeners"""
-    if not isinstance(listeners, abc.Sequence):
-        raise TypeError("%s must be a list or tuple" % (option,))
-    for listener in listeners:
-        if not isinstance(listener, _EventListener):
-            raise TypeError("Listeners for %s must be either a "
-                            "CommandListener, ServerHeartbeatListener, "
-                            "ServerListener, TopologyListener, or "
-                            "ConnectionPoolListener." % (option,))
-    return listeners
-
-
-def register(listener):
-    """Register a global event listener.
-
-    :Parameters:
-      - `listener`: A subclasses of :class:`CommandListener`,
-        :class:`ServerHeartbeatListener`, :class:`ServerListener`,
-        :class:`TopologyListener`, or :class:`ConnectionPoolListener`.
-    """
-    if not isinstance(listener, _EventListener):
-        raise TypeError("Listeners for %s must be either a "
-                        "CommandListener, ServerHeartbeatListener, "
-                        "ServerListener, TopologyListener, or "
-                        "ConnectionPoolListener." % (listener,))
-    if isinstance(listener, CommandListener):
-        _LISTENERS.command_listeners.append(listener)
-    if isinstance(listener, ServerHeartbeatListener):
-        _LISTENERS.server_heartbeat_listeners.append(listener)
-    if isinstance(listener, ServerListener):
-        _LISTENERS.server_listeners.append(listener)
-    if isinstance(listener, TopologyListener):
-        _LISTENERS.topology_listeners.append(listener)
-    if isinstance(listener, ConnectionPoolListener):
-        _LISTENERS.cmap_listeners.append(listener)
 
 # Note - to avoid bugs from forgetting which if these is all lowercase and
 # which are camelCase, and at the same time avoid having to add a test for
@@ -519,14 +217,23 @@ def _is_speculative_authenticate(command_name, doc):
     return False
 
 
+_Document = Mapping[str, Any]
+_Address = Tuple[str, Optional[int]]
+
+
 class _CommandEvent(object):
     """Base class for command events."""
 
     __slots__ = ("__cmd_name", "__rqst_id", "__conn_id", "__op_id",
                  "__service_id")
 
-    def __init__(self, command_name, request_id, connection_id, operation_id,
-                 service_id=None):
+    def __init__(self,
+        command_name: str,
+        request_id: int,
+        connection_id: _Address,
+        operation_id: Optional[int],
+        service_id: Optional[ObjectId] = None,
+    ) -> None:
         self.__cmd_name = command_name
         self.__rqst_id = request_id
         self.__conn_id = connection_id
@@ -534,22 +241,22 @@ class _CommandEvent(object):
         self.__service_id = service_id
 
     @property
-    def command_name(self):
+    def command_name(self) -> str:
         """The command name."""
         return self.__cmd_name
 
     @property
-    def request_id(self):
+    def request_id(self) -> int:
         """The request id for this operation."""
         return self.__rqst_id
 
     @property
-    def connection_id(self):
+    def connection_id(self) -> _Address:
         """The address (host, port) of the server this command was sent to."""
         return self.__conn_id
 
     @property
-    def service_id(self):
+    def service_id(self) -> Optional[ObjectId]:
         """The service_id this command was sent to, or ``None``.
 
         .. versionadded:: 3.12
@@ -557,7 +264,7 @@ class _CommandEvent(object):
         return self.__service_id
 
     @property
-    def operation_id(self):
+    def operation_id(self) -> Optional[int]:
         """An id for this series of events or None."""
         return self.__op_id
 
@@ -576,13 +283,20 @@ class CommandStartedEvent(_CommandEvent):
     """
     __slots__ = ("__cmd", "__db")
 
-    def __init__(self, command, database_name, *args, service_id=None):
+    def __init__(self,
+        command: _Document,
+        database_name: str,
+        request_id: int,
+        connection_id: _Address,
+        operation_id: Optional[int],
+        service_id: Optional[ObjectId] = ...,
+    ) -> None:
         if not command:
             raise ValueError("%r is not a valid command" % (command,))
         # Command name must be first key.
         command_name = next(iter(command))
         super(CommandStartedEvent, self).__init__(
-            command_name, *args, service_id=service_id)
+            command_name, request_id, connection_id, operation_id, service_id=service_id)
         cmd_name, cmd_doc = command_name.lower(), command[command_name]
         if (cmd_name in _SENSITIVE_COMMANDS or
                 _is_speculative_authenticate(cmd_name, command)):
@@ -592,16 +306,16 @@ class CommandStartedEvent(_CommandEvent):
         self.__db = database_name
 
     @property
-    def command(self):
+    def command(self) -> _Document:
         """The command document."""
         return self.__cmd
 
     @property
-    def database_name(self):
+    def database_name(self) -> str:
         """The name of the database this command was run against."""
         return self.__db
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             "<%s %s db: %r, command: %r, operation_id: %s, "
             "service_id: %s>") % (
@@ -1675,3 +1389,313 @@ class _EventListeners(object):
                 subscriber.connection_checked_in(event)
             except Exception:
                 _handle_exception()
+
+
+class _EventListener(object):
+    """Abstract base class for all event listeners."""
+
+
+class CommandListener(_EventListener):
+    """Abstract base class for command listeners.
+
+    Handles `CommandStartedEvent`, `CommandSucceededEvent`,
+    and `CommandFailedEvent`.
+    """
+
+    def started(self, event: CommandStartedEvent) -> None:
+        """Abstract method to handle a `CommandStartedEvent`.
+
+        :Parameters:
+          - `event`: An instance of :class:`CommandStartedEvent`.
+        """
+        raise NotImplementedError
+
+    def succeeded(self, event: CommandStartedEvent) -> None:
+        """Abstract method to handle a `CommandSucceededEvent`.
+
+        :Parameters:
+          - `event`: An instance of :class:`CommandSucceededEvent`.
+        """
+        raise NotImplementedError
+
+    def failed(self, event: CommandStartedEvent) -> None:
+        """Abstract method to handle a `CommandFailedEvent`.
+
+        :Parameters:
+          - `event`: An instance of :class:`CommandFailedEvent`.
+        """
+        raise NotImplementedError
+
+
+class ConnectionPoolListener(_EventListener):
+    """Abstract base class for connection pool listeners.
+
+    Handles all of the connection pool events defined in the Connection
+    Monitoring and Pooling Specification:
+    :class:`PoolCreatedEvent`, :class:`PoolClearedEvent`,
+    :class:`PoolClosedEvent`, :class:`ConnectionCreatedEvent`,
+    :class:`ConnectionReadyEvent`, :class:`ConnectionClosedEvent`,
+    :class:`ConnectionCheckOutStartedEvent`,
+    :class:`ConnectionCheckOutFailedEvent`,
+    :class:`ConnectionCheckedOutEvent`,
+    and :class:`ConnectionCheckedInEvent`.
+
+    .. versionadded:: 3.9
+    """
+
+    def pool_created(self, event: PoolCreatedEvent) -> None:
+        """Abstract method to handle a :class:`PoolCreatedEvent`.
+
+        Emitted when a Connection Pool is created.
+
+        :Parameters:
+          - `event`: An instance of :class:`PoolCreatedEvent`.
+        """
+        raise NotImplementedError
+
+    def pool_ready(self, event: PoolCreatedEvent) -> None
+        """Abstract method to handle a :class:`PoolReadyEvent`.
+
+        Emitted when a Connection Pool is marked ready.
+
+        :Parameters:
+          - `event`: An instance of :class:`PoolReadyEvent`.
+
+        .. versionadded:: 4.0
+        """
+        raise NotImplementedError
+
+    def pool_cleared(self, event: PoolClearedEvent) -> None:
+        """Abstract method to handle a `PoolClearedEvent`.
+
+        Emitted when a Connection Pool is cleared.
+
+        :Parameters:
+          - `event`: An instance of :class:`PoolClearedEvent`.
+        """
+        raise NotImplementedError
+
+    def pool_closed(self, event: PoolClosedEvent) -> None:
+        """Abstract method to handle a `PoolClosedEvent`.
+
+        Emitted when a Connection Pool is closed.
+
+        :Parameters:
+          - `event`: An instance of :class:`PoolClosedEvent`.
+        """
+        raise NotImplementedError
+
+    def connection_created(self, event: ConnectionCreatedEvent) -> None:
+        """Abstract method to handle a :class:`ConnectionCreatedEvent`.
+
+        Emitted when a Connection Pool creates a Connection object.
+
+        :Parameters:
+          - `event`: An instance of :class:`ConnectionCreatedEvent`.
+        """
+        raise NotImplementedError
+
+    def connection_ready(self, event: ConnectionReadyEvent) -> None:
+        """Abstract method to handle a :class:`ConnectionReadyEvent`.
+
+        Emitted when a Connection has finished its setup, and is now ready to
+        use.
+
+        :Parameters:
+          - `event`: An instance of :class:`ConnectionReadyEvent`.
+        """
+        raise NotImplementedError
+
+    def connection_closed(self, event: ConnectionClosedEvent) -> None:
+        """Abstract method to handle a :class:`ConnectionClosedEvent`.
+
+        Emitted when a Connection Pool closes a Connection.
+
+        :Parameters:
+          - `event`: An instance of :class:`ConnectionClosedEvent`.
+        """
+        raise NotImplementedError
+
+    def connection_check_out_started(self, event: ConnectionCheckOutStartedEvent) -> None:
+        """Abstract method to handle a :class:`ConnectionCheckOutStartedEvent`.
+
+        Emitted when the driver starts attempting to check out a connection.
+
+        :Parameters:
+          - `event`: An instance of :class:`ConnectionCheckOutStartedEvent`.
+        """
+        raise NotImplementedError
+
+    def connection_check_out_failed(self, event: ConnectionCheckOutFailedEvent) -> None:
+        """Abstract method to handle a :class:`ConnectionCheckOutFailedEvent`.
+
+        Emitted when the driver's attempt to check out a connection fails.
+
+        :Parameters:
+          - `event`: An instance of :class:`ConnectionCheckOutFailedEvent`.
+        """
+        raise NotImplementedError
+
+    def connection_checked_out(self, event: ConnectionCheckedOutEvent) -> None:
+        """Abstract method to handle a :class:`ConnectionCheckedOutEvent`.
+
+        Emitted when the driver successfully checks out a Connection.
+
+        :Parameters:
+          - `event`: An instance of :class:`ConnectionCheckedOutEvent`.
+        """
+        raise NotImplementedError
+
+    def connection_checked_in(self, event: ConnectionCheckedInEvent) -> None:
+        """Abstract method to handle a :class:`ConnectionCheckedInEvent`.
+
+        Emitted when the driver checks in a Connection back to the Connection
+        Pool.
+
+        :Parameters:
+          - `event`: An instance of :class:`ConnectionCheckedInEvent`.
+        """
+        raise NotImplementedError
+
+
+class ServerHeartbeatListener(_EventListener):
+    """Abstract base class for server heartbeat listeners.
+
+    Handles `ServerHeartbeatStartedEvent`, `ServerHeartbeatSucceededEvent`,
+    and `ServerHeartbeatFailedEvent`.
+
+    .. versionadded:: 3.3
+    """
+
+    def started(self, event: ServerHeartbeatStartedEvent) -> None:
+        """Abstract method to handle a `ServerHeartbeatStartedEvent`.
+
+        :Parameters:
+          - `event`: An instance of :class:`ServerHeartbeatStartedEvent`.
+        """
+        raise NotImplementedError
+
+    def succeeded(self, event: ServerHeartbeatSucceededEvent) -> None:
+        """Abstract method to handle a `ServerHeartbeatSucceededEvent`.
+
+        :Parameters:
+          - `event`: An instance of :class:`ServerHeartbeatSucceededEvent`.
+        """
+        raise NotImplementedError
+
+    def failed(self, event: ServerHeartbeatFailedEvent) -> None:
+        """Abstract method to handle a `ServerHeartbeatFailedEvent`.
+
+        :Parameters:
+          - `event`: An instance of :class:`ServerHeartbeatFailedEvent`.
+        """
+        raise NotImplementedError
+
+
+class TopologyListener(_EventListener):
+    """Abstract base class for topology monitoring listeners.
+    Handles `TopologyOpenedEvent`, `TopologyDescriptionChangedEvent`, and
+    `TopologyClosedEvent`.
+
+    .. versionadded:: 3.3
+    """
+
+    def opened(self, event: TopologyOpenedEvent) -> None:
+        """Abstract method to handle a `TopologyOpenedEvent`.
+
+        :Parameters:
+          - `event`: An instance of :class:`TopologyOpenedEvent`.
+        """
+        raise NotImplementedError
+
+    def description_changed(self, event: TopologyDescriptionChangedEvent) -> None:
+        """Abstract method to handle a `TopologyDescriptionChangedEvent`.
+
+        :Parameters:
+          - `event`: An instance of :class:`TopologyDescriptionChangedEvent`.
+        """
+        raise NotImplementedError
+
+    def closed(self, event: TopologyClosedEvent) -> None:
+        """Abstract method to handle a `TopologyClosedEvent`.
+
+        :Parameters:
+          - `event`: An instance of :class:`TopologyClosedEvent`.
+        """
+        raise NotImplementedError
+
+
+class ServerListener(_EventListener):
+    """Abstract base class for server listeners.
+    Handles `ServerOpeningEvent`, `ServerDescriptionChangedEvent`, and
+    `ServerClosedEvent`.
+
+    .. versionadded:: 3.3
+    """
+
+    def opened(self, event: ServerOpeningEvent) -> None:
+        """Abstract method to handle a `ServerOpeningEvent`.
+
+        :Parameters:
+          - `event`: An instance of :class:`ServerOpeningEvent`.
+        """
+        raise NotImplementedError
+
+    def description_changed(self, event: ServerDescriptionChangedEvent) -> None:
+        """Abstract method to handle a `ServerDescriptionChangedEvent`.
+
+        :Parameters:
+          - `event`: An instance of :class:`ServerDescriptionChangedEvent`.
+        """
+        raise NotImplementedError
+
+    def closed(self, event: ServerClosedEvent) -> None:
+        """Abstract method to handle a `ServerClosedEvent`.
+
+        :Parameters:
+          - `event`: An instance of :class:`ServerClosedEvent`.
+        """
+        raise NotImplementedError
+
+
+def _to_micros(dur):
+    """Convert duration 'dur' to microseconds."""
+    return int(dur.total_seconds() * 10e5)
+
+
+def _validate_event_listeners(option, listeners):
+    """Validate event listeners"""
+    if not isinstance(listeners, abc.Sequence):
+        raise TypeError("%s must be a list or tuple" % (option,))
+    for listener in listeners:
+        if not isinstance(listener, _EventListener):
+            raise TypeError("Listeners for %s must be either a "
+                            "CommandListener, ServerHeartbeatListener, "
+                            "ServerListener, TopologyListener, or "
+                            "ConnectionPoolListener." % (option,))
+    return listeners
+
+
+def register(listener: _EventListener) -> None:
+    """Register a global event listener.
+
+    :Parameters:
+      - `listener`: A subclasses of :class:`CommandListener`,
+        :class:`ServerHeartbeatListener`, :class:`ServerListener`,
+        :class:`TopologyListener`, or :class:`ConnectionPoolListener`.
+    """
+    if not isinstance(listener, _EventListener):
+        raise TypeError("Listeners for %s must be either a "
+                        "CommandListener, ServerHeartbeatListener, "
+                        "ServerListener, TopologyListener, or "
+                        "ConnectionPoolListener." % (listener,))
+    if isinstance(listener, CommandListener):
+        _LISTENERS.command_listeners.append(listener)
+    if isinstance(listener, ServerHeartbeatListener):
+        _LISTENERS.server_heartbeat_listeners.append(listener)
+    if isinstance(listener, ServerListener):
+        _LISTENERS.server_listeners.append(listener)
+    if isinstance(listener, TopologyListener):
+        _LISTENERS.topology_listeners.append(listener)
+    if isinstance(listener, ConnectionPoolListener):
+        _LISTENERS.cmap_listeners.append(listener)

@@ -15,8 +15,7 @@
 """Support for explicit client-side field level encryption."""
 
 import contextlib
-import os
-import subprocess
+from typing import Any, List, Mapping, Optional, TypeVar
 import uuid
 import weakref
 
@@ -349,17 +348,25 @@ class _Encrypter(object):
 
 class Algorithm(object):
     """An enum that defines the supported encryption algorithms."""
-    AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic = (
+    AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic: str = (
         "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic")
-    AEAD_AES_256_CBC_HMAC_SHA_512_Random = (
+    AEAD_AES_256_CBC_HMAC_SHA_512_Random: str = (
         "AEAD_AES_256_CBC_HMAC_SHA_512-Random")
+
+
+_ClientEncryption = TypeVar("_ClientEncryption", bound="ClientEncryption", covariant=True)
 
 
 class ClientEncryption(object):
     """Explicit client-side field level encryption."""
 
-    def __init__(self, kms_providers, key_vault_namespace, key_vault_client,
-                 codec_options, kms_tls_options=None):
+    def __init__(self,
+        kms_providers: Mapping[str, Any],
+        key_vault_namespace: str,
+        key_vault_client: MongoClient,
+        codec_options: CodecOptions,
+        kms_tls_options: Optional[Mapping[str, Any]] = None
+    ) -> None:
         """Explicit client-side field level encryption.
 
         The ClientEncryption class encapsulates explicit operations on a key
@@ -453,8 +460,11 @@ class ClientEncryption(object):
         self._encryption = ExplicitEncrypter(
             self._io_callbacks, MongoCryptOptions(kms_providers, None))
 
-    def create_data_key(self, kms_provider, master_key=None,
-                        key_alt_names=None):
+    def create_data_key(self,
+        kms_provider: str,
+        master_key: Optional[Mapping[str, Any]] = None,
+        key_alt_names: Optional[List[str]] = None
+    ) -> Binary:
         """Create and insert a new data key into the key vault collection.
 
         :Parameters:
@@ -526,7 +536,12 @@ class ClientEncryption(object):
                 kms_provider, master_key=master_key,
                 key_alt_names=key_alt_names)
 
-    def encrypt(self, value, algorithm, key_id=None, key_alt_name=None):
+    def encrypt(self,
+        value: Any,
+        algorithm: str,
+        key_id: Optional[Binary] = None,
+        key_alt_name: Optional[str] = None
+    ) -> Binary:
         """Encrypt a BSON value with a given key and algorithm.
 
         Note that exactly one of ``key_id`` or  ``key_alt_name`` must be
@@ -557,7 +572,7 @@ class ClientEncryption(object):
                 doc, algorithm, key_id=key_id, key_alt_name=key_alt_name)
             return decode(encrypted_doc)['v']
 
-    def decrypt(self, value):
+    def decrypt(self, value: Binary) -> Any:
         """Decrypt an encrypted value.
 
         :Parameters:
@@ -578,17 +593,17 @@ class ClientEncryption(object):
             return decode(decrypted_doc,
                           codec_options=self._codec_options)['v']
 
-    def __enter__(self):
+    def __enter__(self) -> _ClientEncryption:
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
     def _check_closed(self):
         if self._encryption is None:
             raise InvalidOperation("Cannot use closed ClientEncryption")
 
-    def close(self):
+    def close(self) -> None:
         """Release resources.
 
         Note that using this class in a with-statement will automatically call

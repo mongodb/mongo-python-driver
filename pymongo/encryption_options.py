@@ -15,6 +15,7 @@
 """Support for automatic client-side field level encryption."""
 
 import copy
+from typing import Any, List, Mapping, Optional
 
 try:
     import pymongocrypt
@@ -22,6 +23,7 @@ try:
 except ImportError:
     _HAVE_PYMONGOCRYPT = False
 
+from pymongo.mongo_client import MongoClient
 from pymongo.errors import ConfigurationError
 from pymongo.uri_parser import _parse_kms_tls_options
 
@@ -29,15 +31,18 @@ from pymongo.uri_parser import _parse_kms_tls_options
 class AutoEncryptionOpts(object):
     """Options to configure automatic client-side field level encryption."""
 
-    def __init__(self, kms_providers, key_vault_namespace,
-                 key_vault_client=None,
-                 schema_map=None,
-                 bypass_auto_encryption=False,
-                 mongocryptd_uri='mongodb://localhost:27020',
-                 mongocryptd_bypass_spawn=False,
-                 mongocryptd_spawn_path='mongocryptd',
-                 mongocryptd_spawn_args=None,
-                 kms_tls_options=None):
+    def __init__(self,
+        kms_providers: Mapping[str, Any],
+        key_vault_namespace: str,
+        key_vault_client: Optional[MongoClient] = None,
+        schema_map: Optional[Mapping[str, Any]] = None,
+        bypass_auto_encryption: bool = None,
+        mongocryptd_uri: str = 'mongodb://localhost:27020',
+        mongocryptd_bypass_spawn: bool = False,
+        mongocryptd_spawn_path: str = 'mongocryptd',
+        mongocryptd_spawn_args: Optional[List[str]] = None,
+        kms_tls_options: Optional[Mapping[str, Any]] = None
+    ) -> None:
         """Options to configure automatic client-side field level encryption.
 
         Automatic client-side field level encryption requires MongoDB 4.2

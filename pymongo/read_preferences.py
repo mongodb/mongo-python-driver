@@ -22,6 +22,7 @@ from pymongo.server_selectors import (member_with_tags_server_selector,
                                       secondary_with_tags_server_selector)
 
 
+from typing import Any, Dict, List, Mapping, Optional
 _PRIMARY = 0
 _PRIMARY_PREFERRED = 1
 _SECONDARY = 2
@@ -93,6 +94,8 @@ def _validate_hedge(hedge):
     return hedge
 
 
+_Hedge = Mapping[str, Any]
+_TagSets = List[Mapping[str, Any]]
 class _ServerMode(object):
     """Base class for all read preferences.
     """
@@ -100,7 +103,7 @@ class _ServerMode(object):
     __slots__ = ("__mongos_mode", "__mode", "__tag_sets", "__max_staleness",
                  "__hedge")
 
-    def __init__(self, mode, tag_sets=None, max_staleness=-1, hedge=None):
+    def __init__(self, mode: int, tag_sets: Optional[_TagSets] = None, max_staleness: int = -1, hedge: Optional[_Hedge] = None) -> None:
         self.__mongos_mode = _MONGOS_MODES[mode]
         self.__mode = mode
         self.__tag_sets = _validate_tag_sets(tag_sets)
@@ -108,19 +111,19 @@ class _ServerMode(object):
         self.__hedge = _validate_hedge(hedge)
 
     @property
-    def name(self):
+    def name(self) -> str:
         """The name of this read preference.
         """
         return self.__class__.__name__
 
     @property
-    def mongos_mode(self):
+    def mongos_mode(self) -> str:
         """The mongos mode of this read preference.
         """
         return self.__mongos_mode
 
     @property
-    def document(self):
+    def document(self) -> Dict[str, Any]:
         """Read preference as a document.
         """
         doc = {'mode': self.__mongos_mode}
@@ -133,13 +136,13 @@ class _ServerMode(object):
         return doc
 
     @property
-    def mode(self):
+    def mode(self) -> int:
         """The mode of this read preference instance.
         """
         return self.__mode
 
     @property
-    def tag_sets(self):
+    def tag_sets(self) -> _TagSets:
         """Set ``tag_sets`` to a list of dictionaries like [{'dc': 'ny'}] to
         read only from members whose ``dc`` tag has the value ``"ny"``.
         To specify a priority-order for tag sets, provide a list of
@@ -154,14 +157,14 @@ class _ServerMode(object):
         return list(self.__tag_sets) if self.__tag_sets else [{}]
 
     @property
-    def max_staleness(self):
+    def max_staleness(self) -> int:
         """The maximum estimated length of time (in seconds) a replica set
         secondary can fall behind the primary in replication before it will
         no longer be selected for operations, or -1 for no maximum."""
         return self.__max_staleness
 
     @property
-    def hedge(self):
+    def hedge(self) -> Optional[_Hedge]:
         """The read preference ``hedge`` parameter.
 
         A dictionary that configures how the server will perform hedged reads.
@@ -185,7 +188,7 @@ class _ServerMode(object):
         return self.__hedge
 
     @property
-    def min_wire_version(self):
+    def min_wire_version(self) -> int:
         """The wire protocol version the server must support.
 
         Some read preferences impose version requirements on all servers (e.g.
@@ -201,7 +204,7 @@ class _ServerMode(object):
         return "%s(tag_sets=%r, max_staleness=%r, hedge=%r)" % (
             self.name, self.__tag_sets, self.__max_staleness, self.__hedge)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, _ServerMode):
             return (self.mode == other.mode and
                     self.tag_sets == other.tag_sets and
@@ -209,7 +212,7 @@ class _ServerMode(object):
                     self.hedge == other.hedge)
         return NotImplemented
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other
 
     def __getstate__(self):
@@ -243,17 +246,17 @@ class Primary(_ServerMode):
 
     __slots__ = ()
 
-    def __init__(self):
+    def __init__(self) -> None:
         super(Primary, self).__init__(_PRIMARY)
 
-    def __call__(self, selection):
+    def __call__(self, selection: Any):
         """Apply this read preference to a Selection."""
         return selection.primary_selection
 
     def __repr__(self):
         return "Primary()"
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, _ServerMode):
             return other.mode == _PRIMARY
         return NotImplemented
@@ -289,11 +292,11 @@ class PrimaryPreferred(_ServerMode):
 
     __slots__ = ()
 
-    def __init__(self, tag_sets=None, max_staleness=-1, hedge=None):
+    def __init__(self, tag_sets: Optional[_TagSets] = None, max_staleness: int = -1, hedge: Optional[_Hedge] = None) -> None:
         super(PrimaryPreferred, self).__init__(
             _PRIMARY_PREFERRED, tag_sets, max_staleness, hedge)
 
-    def __call__(self, selection):
+    def __call__(self, selection: Any):
         """Apply this read preference to Selection."""
         if selection.primary:
             return selection.primary_selection
@@ -329,11 +332,11 @@ class Secondary(_ServerMode):
 
     __slots__ = ()
 
-    def __init__(self, tag_sets=None, max_staleness=-1, hedge=None):
+    def __init__(self, tag_sets: Optional[_TagSets] = None, max_staleness: int = -1, hedge: Optional[_Hedge] = None) -> None:
         super(Secondary, self).__init__(
             _SECONDARY, tag_sets, max_staleness, hedge)
 
-    def __call__(self, selection):
+    def __call__(self, selection: Any):
         """Apply this read preference to Selection."""
         return secondary_with_tags_server_selector(
             self.tag_sets,
@@ -370,11 +373,11 @@ class SecondaryPreferred(_ServerMode):
 
     __slots__ = ()
 
-    def __init__(self, tag_sets=None, max_staleness=-1, hedge=None):
+    def __init__(self, tag_sets: Optional[_TagSets] = None, max_staleness: int = -1, hedge: Optional[_Hedge] = None) -> None:
         super(SecondaryPreferred, self).__init__(
             _SECONDARY_PREFERRED, tag_sets, max_staleness, hedge)
 
-    def __call__(self, selection):
+    def __call__(self, selection: Any):
         """Apply this read preference to Selection."""
         secondaries = secondary_with_tags_server_selector(
             self.tag_sets,
@@ -412,11 +415,11 @@ class Nearest(_ServerMode):
 
     __slots__ = ()
 
-    def __init__(self, tag_sets=None, max_staleness=-1, hedge=None):
+    def __init__(self, tag_sets: Optional[_TagSets] = None, max_staleness: int = -1, hedge: Optional[_Hedge] = None) -> None:
         super(Nearest, self).__init__(
             _NEAREST, tag_sets, max_staleness, hedge)
 
-    def __call__(self, selection):
+    def __call__(self, selection: Any):
         """Apply this read preference to Selection."""
         return member_with_tags_server_selector(
             self.tag_sets,
@@ -467,7 +470,7 @@ _ALL_READ_PREFERENCES = (Primary, PrimaryPreferred,
                          Secondary, SecondaryPreferred, Nearest)
 
 
-def make_read_preference(mode, tag_sets, max_staleness=-1):
+def make_read_preference(mode: int, tag_sets: Optional[_TagSets], max_staleness: int = -1) -> _ServerMode:
     if mode == _PRIMARY:
         if tag_sets not in (None, [{}]):
             raise ConfigurationError("Read preference primary "
@@ -538,14 +541,14 @@ class ReadPreference(object):
 
     - ``NEAREST``: Read from any shard member.
     """
-    PRIMARY = Primary()
-    PRIMARY_PREFERRED = PrimaryPreferred()
-    SECONDARY = Secondary()
-    SECONDARY_PREFERRED = SecondaryPreferred()
-    NEAREST = Nearest()
+    PRIMARY: Primary = Primary()
+    PRIMARY_PREFERRED: PrimaryPreferred = PrimaryPreferred()
+    SECONDARY: Secondary = Secondary()
+    SECONDARY_PREFERRED: SecondaryPreferred = SecondaryPreferred()
+    NEAREST: Nearest = Nearest()
 
 
-def read_pref_mode_from_name(name):
+def read_pref_mode_from_name(name: str) -> int:
     """Get the read preference mode from mongos/uri name.
     """
     return _MONGOS_MODES.index(name)
@@ -553,10 +556,11 @@ def read_pref_mode_from_name(name):
 
 class MovingAverage(object):
     """Tracks an exponentially-weighted moving average."""
-    def __init__(self):
+    average: Optional[float]
+    def __init__(self) -> None:
         self.average = None
 
-    def add_sample(self, sample):
+    def add_sample(self, sample: float) -> None:
         if sample < 0:
             # Likely system time change while waiting for hello response
             # and not using time.monotonic. Ignore it, the next one will
@@ -569,9 +573,9 @@ class MovingAverage(object):
             # average with alpha = 0.2.
             self.average = 0.8 * self.average + 0.2 * sample
 
-    def get(self):
+    def get(self) -> Optional[float]:
         """Get the calculated average, or None if no samples yet."""
         return self.average
 
-    def reset(self):
+    def reset(self) -> None:
         self.average = None
