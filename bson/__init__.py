@@ -562,16 +562,16 @@ def _encode_list(name: bytes, value: Sequence[Any], check_keys: bool, opts: Any)
 
 def _encode_text(name: bytes, value: str, dummy0: Any, dummy1: Any) -> bytes:
     """Encode a python str."""
-    bvalue = cast(bytes, _utf_8_encode(value)[0])
-    return b"\x02" + name + _PACK_INT(len(value) + 1) + bvalue + b"\x00"
+    value = _utf_8_encode(value)[0]  # type: ignore
+    return b"\x02" + name + _PACK_INT(len(value) + 1) + value + b"\x00"  # type: ignore
 
 
 def _encode_binary(name: bytes, value: Binary, dummy0: Any, dummy1: Any) -> bytes:
     """Encode bson.binary.Binary."""
     subtype = value.subtype
     if subtype == 2:
-        value = cast(Binary, _PACK_INT(len(value)) + cast(bytes, value))
-    return b"\x05" + name + _PACK_LENGTH_SUBTYPE(len(value), subtype) + cast(bytes, value)
+        value = _PACK_INT(len(value)) + bytes, value  # type: ignore
+    return b"\x05" + name + _PACK_LENGTH_SUBTYPE(len(value), subtype) + value  # type: ignore
 
 
 def _encode_uuid(name: bytes, value: uuid.UUID, dummy: Any, opts: Any) -> bytes:
@@ -886,11 +886,11 @@ def decode(data: bytes, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> 
         >>> import collections  # From Python standard library.
         >>> import bson
         >>> from bson.codec_options import CodecOptions
-        >>> data: bytes = bson.encode({'a': 1})
-        >>> decoded_doc: bytes = bson.decode(data)
+        >>> data = bson.encode({'a': 1})
+        >>> decoded_doc = bson.decode(data)
         <type 'dict'>
         >>> options = CodecOptions(document_class=collections.OrderedDict)
-        >>> decoded_doc: bytes = bson.decode(data, codec_options=options)
+        >>> decoded_doc = bson.decode(data, codec_options=options)
         >>> type(decoded_doc)
         <class 'collections.OrderedDict'>
 
@@ -1167,11 +1167,11 @@ class BSON(bytes):
             >>> import collections  # From Python standard library.
             >>> import bson
             >>> from bson.codec_options import CodecOptions
-            >>> data: bytes = bson.BSON.encode({'a': 1})
-            >>> decoded_doc: bytes = bson.BSON(data).decode()
+            >>> data = bson.BSON.encode({'a': 1})
+            >>> decoded_doc = bson.BSON(data).decode()
             <type 'dict'>
             >>> options = CodecOptions(document_class=collections.OrderedDict)
-            >>> decoded_doc: bytes = bson.BSON(data).decode(codec_options=options)
+            >>> decoded_doc = bson.BSON(data).decode(codec_options=options)
             >>> type(decoded_doc)
             <class 'collections.OrderedDict'>
 
