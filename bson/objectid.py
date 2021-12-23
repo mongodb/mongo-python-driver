@@ -26,7 +26,6 @@ import time
 from typing import Any, NoReturn, Optional, Type, TypeVar, Union
 
 from random import SystemRandom
-from typing_extensions import TypeGuard
 
 from bson.errors import InvalidId
 from bson.tz_util import utc
@@ -145,7 +144,7 @@ class ObjectId(object):
         return cls(oid)
 
     @classmethod
-    def is_valid(cls: Type[_ObjectId], oid: Any) -> TypeGuard[_ObjectId]:
+    def is_valid(cls: Type[_ObjectId], oid: Any) -> bool:
         """Checks if a `oid` string is valid or not.
 
         :Parameters:

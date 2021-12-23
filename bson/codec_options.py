@@ -20,7 +20,6 @@ from typing import Any, Callable, Dict,  Iterable, Mapping, MutableMapping, Opti
 
 from collections import namedtuple
 from collections.abc import MutableMapping as _MutableMapping
-from typing_extensions import TypeGuard
 
 from bson.binary import (UuidRepresentation,
                          ALL_UUID_REPRESENTATIONS,
@@ -34,7 +33,7 @@ def _abstractproperty(func: Callable[..., Any]) -> property:
 _RAW_BSON_DOCUMENT_MARKER = 101
 
 
-def _raw_document_class(document_class: Any) -> TypeGuard[RawBSONDocument]:
+def _raw_document_class(document_class: Any) -> bool:
     """Determine if a document_class is a RawBSONDocument class."""
     marker = getattr(document_class, '_type_marker', None)
     return marker == _RAW_BSON_DOCUMENT_MARKER

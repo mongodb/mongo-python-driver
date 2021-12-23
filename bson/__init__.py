@@ -197,7 +197,7 @@ def _get_object(data: Any, view: Any, position: int, obj_end: int, opts: Any, du
     """Decode a BSON subdocument to opts.document_class or bson.dbref.DBRef."""
     obj_size, end = _get_object_size(data, position, obj_end)
     if _raw_document_class(opts.document_class):
-        return (opts.document_class(data[position:end + 1], opts), # type: ignore
+        return (opts.document_class(data[position:end + 1], opts),
                 position + obj_size)
 
     obj = _elements_to_dict(data, view, position + 4, end, opts)
@@ -434,7 +434,7 @@ def _bson_to_dict(data: Any, opts: Any) -> Any:
     data, view = get_data_and_view(data)
     try:
         if _raw_document_class(opts.document_class):
-            return opts.document_class(data, opts)  # type: ignore
+            return opts.document_class(data, opts)
         _, end = _get_object_size(data, 0, len(data))
         return _elements_to_dict(data, view, 4, end, opts)
     except InvalidBSON:
@@ -525,7 +525,7 @@ def _encode_bytes(name: bytes, value: bytes, dummy0: Any, dummy1: Any) -> bytes:
 def _encode_mapping(name: bytes, value: Any, check_keys: bool, opts: Any) -> bytes:
     """Encode a mapping type."""
     if _raw_document_class(value):
-        return b'\x03' + name + value.raw
+        return b'\x03' + name + cast(bytes, cast(Any, value).raw)
     data = b"".join([_element_to_bson(key, val, check_keys, opts)
                      for key, val in value.items()])
     return b"\x03" + name + _PACK_INT(len(data) + 5) + data + b"\x00"
@@ -798,7 +798,7 @@ def _element_to_bson(key: Any, value: Any, check_keys: bool, opts: Any) -> bytes
 def _dict_to_bson(doc: Any, check_keys: bool, opts: Any, top_level: bool = True) -> bytes:
     """Encode a document to BSON."""
     if _raw_document_class(doc):
-        return doc.raw
+        return cast(bytes, doc.raw)
     try:
         elements = []
         if top_level and "_id" in doc:
