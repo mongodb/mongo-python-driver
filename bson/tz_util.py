@@ -17,9 +17,9 @@
 from datetime import (datetime, timedelta,
                       tzinfo)
 from time import time
-from typing import Any, Final, Optional, Tuple, Union
+from typing import Any,  Optional, Tuple, Union
 
-ZERO: Final[timedelta] = timedelta(0)
+ZERO: timedelta = timedelta(0)
 
 
 class FixedOffset(tzinfo):
@@ -50,5 +50,5 @@ class FixedOffset(tzinfo):
         return ZERO
 
 
-utc: Final[FixedOffset] = FixedOffset(0, "UTC")
+utc: FixedOffset = FixedOffset(0, "UTC")
 """Fixed offset timezone representing UTC."""

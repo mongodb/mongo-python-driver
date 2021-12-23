@@ -12,30 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Final, Mapping, Tuple, Type, TypeVar, cast
+from typing import Any,  Mapping, Tuple, Type, TypeVar, cast
 from uuid import UUID
 
 """Tools for representing BSON binary data.
 """
 
-BINARY_SUBTYPE: Final[int] = 0
+BINARY_SUBTYPE: int = 0
 """BSON binary subtype for binary data.
 
 This is the default subtype for binary data.
 """
 
-FUNCTION_SUBTYPE: Final[int] = 1
+FUNCTION_SUBTYPE: int = 1
 """BSON binary subtype for functions.
 """
 
-OLD_BINARY_SUBTYPE: Final[int] = 2
+OLD_BINARY_SUBTYPE: int = 2
 """Old BSON binary subtype for binary data.
 
 This is the old default subtype, the current
 default is :data:`BINARY_SUBTYPE`.
 """
 
-OLD_UUID_SUBTYPE: Final[int] = 3
+OLD_UUID_SUBTYPE: int = 3
 """Old BSON binary subtype for a UUID.
 
 :class:`uuid.UUID` instances will automatically be encoded
@@ -47,7 +47,7 @@ by :mod:`bson` using this subtype when using
 .. versionadded:: 2.1
 """
 
-UUID_SUBTYPE: Final[int] = 4
+UUID_SUBTYPE: int = 4
 """BSON binary subtype for a UUID.
 
 This is the standard BSON binary subtype for UUIDs.
@@ -58,7 +58,7 @@ by :mod:`bson` using this subtype when using
 
 
 class UuidRepresentation:
-    UNSPECIFIED: Final[int]  = 0
+    UNSPECIFIED: int  = 0
     """An unspecified UUID representation.
 
     When configured, :class:`uuid.UUID` instances will **not** be
@@ -69,74 +69,74 @@ class UuidRepresentation:
     code. When decoding a BSON binary field with a UUID subtype, a
     :class:`~bson.binary.Binary` instance will be returned instead of a
     :class:`uuid.UUID` instance.
-    
+
     See :ref:`unspecified-representation-details` for details.
 
     .. versionadded:: 3.11
     """
 
-    STANDARD: Final[int] = UUID_SUBTYPE
+    STANDARD: int = UUID_SUBTYPE
     """The standard UUID representation.
 
     :class:`uuid.UUID` instances will automatically be encoded to
     and decoded from BSON binary, using RFC-4122 byte order with
     binary subtype :data:`UUID_SUBTYPE`.
-    
+
     See :ref:`standard-representation-details` for details.
 
     .. versionadded:: 3.11
     """
 
-    PYTHON_LEGACY: Final[int] = OLD_UUID_SUBTYPE
+    PYTHON_LEGACY: int = OLD_UUID_SUBTYPE
     """The Python legacy UUID representation.
 
     :class:`uuid.UUID` instances will automatically be encoded to
     and decoded from BSON binary, using RFC-4122 byte order with
     binary subtype :data:`OLD_UUID_SUBTYPE`.
-    
+
     See :ref:`python-legacy-representation-details` for details.
 
     .. versionadded:: 3.11
     """
 
-    JAVA_LEGACY: Final[int] = 5
+    JAVA_LEGACY: int = 5
     """The Java legacy UUID representation.
 
     :class:`uuid.UUID` instances will automatically be encoded to
     and decoded from BSON binary subtype :data:`OLD_UUID_SUBTYPE`,
     using the Java driver's legacy byte order.
-    
+
     See :ref:`java-legacy-representation-details` for details.
 
     .. versionadded:: 3.11
     """
 
-    CSHARP_LEGACY: Final[int] = 6
+    CSHARP_LEGACY: int = 6
     """The C#/.net legacy UUID representation.
 
     :class:`uuid.UUID` instances will automatically be encoded to
     and decoded from BSON binary subtype :data:`OLD_UUID_SUBTYPE`,
     using the C# driver's legacy byte order.
-    
+
     See :ref:`csharp-legacy-representation-details` for details.
 
     .. versionadded:: 3.11
     """
 
 
-STANDARD: Final[int] = UuidRepresentation.STANDARD
+STANDARD: int = UuidRepresentation.STANDARD
 """An alias for :data:`UuidRepresentation.STANDARD`.
 
 .. versionadded:: 3.0
 """
 
-PYTHON_LEGACY: Final[int] = UuidRepresentation.PYTHON_LEGACY
+PYTHON_LEGACY: int = UuidRepresentation.PYTHON_LEGACY
 """An alias for :data:`UuidRepresentation.PYTHON_LEGACY`.
 
 .. versionadded:: 3.0
 """
 
-JAVA_LEGACY: Final[int] = UuidRepresentation.JAVA_LEGACY
+JAVA_LEGACY: int = UuidRepresentation.JAVA_LEGACY
 """An alias for :data:`UuidRepresentation.JAVA_LEGACY`.
 
 .. versionchanged:: 3.6
@@ -144,7 +144,7 @@ JAVA_LEGACY: Final[int] = UuidRepresentation.JAVA_LEGACY
 .. versionadded:: 2.3
 """
 
-CSHARP_LEGACY: Final[int] = UuidRepresentation.CSHARP_LEGACY
+CSHARP_LEGACY: int = UuidRepresentation.CSHARP_LEGACY
 """An alias for :data:`UuidRepresentation.CSHARP_LEGACY`.
 
 .. versionchanged:: 3.6
@@ -152,31 +152,31 @@ CSHARP_LEGACY: Final[int] = UuidRepresentation.CSHARP_LEGACY
 .. versionadded:: 2.3
 """
 
-ALL_UUID_SUBTYPES: Final[Tuple[int, int]] = (OLD_UUID_SUBTYPE, UUID_SUBTYPE)
-ALL_UUID_REPRESENTATIONS: Final[Tuple[int, int, int, int, int]] = (
+ALL_UUID_SUBTYPES: Tuple[int, int] = (OLD_UUID_SUBTYPE, UUID_SUBTYPE)
+ALL_UUID_REPRESENTATIONS: Tuple[int, int, int, int, int] = (
     UuidRepresentation.UNSPECIFIED,
     UuidRepresentation.STANDARD,
     UuidRepresentation.PYTHON_LEGACY,
     UuidRepresentation.JAVA_LEGACY,
     UuidRepresentation.CSHARP_LEGACY)
-UUID_REPRESENTATION_NAMES: Final[Mapping[int, str]] = {
+UUID_REPRESENTATION_NAMES: Mapping[int, str] = {
     UuidRepresentation.UNSPECIFIED: 'UuidRepresentation.UNSPECIFIED',
     UuidRepresentation.STANDARD: 'UuidRepresentation.STANDARD',
     UuidRepresentation.PYTHON_LEGACY: 'UuidRepresentation.PYTHON_LEGACY',
     UuidRepresentation.JAVA_LEGACY: 'UuidRepresentation.JAVA_LEGACY',
     UuidRepresentation.CSHARP_LEGACY: 'UuidRepresentation.CSHARP_LEGACY'}
 
-MD5_SUBTYPE: Final[int] = 5
+MD5_SUBTYPE: int = 5
 """BSON binary subtype for an MD5 hash.
 """
 
-COLUMN_SUBTYPE: Final[int] = 7
+COLUMN_SUBTYPE: int = 7
 """BSON binary subtype for columns.
 
 .. versionadded:: 4.0
 """
 
-USER_DEFINED_SUBTYPE: Final[int] = 128
+USER_DEFINED_SUBTYPE: int = 128
 """BSON binary subtype for any user defined structure.
 """
 

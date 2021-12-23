@@ -61,7 +61,7 @@ import platform
 import re
 import struct
 import sys
-from typing import Any, BinaryIO, Callable, Final, Generator, Iterator, List, Mapping, NoReturn, Sequence, Tuple, Type, TypeVar, Union, cast
+from typing import Any, BinaryIO, Callable,  Generator, Iterator, List, Mapping, NoReturn, Sequence, Tuple, Type, TypeVar, Union, cast
 import uuid
 
 from codecs import (utf_8_decode as _utf_8_decode,  # type: ignore
@@ -97,31 +97,31 @@ except ImportError:
     _USE_C = False
 
 
-EPOCH_AWARE: Final[datetime.datetime] = datetime.datetime.fromtimestamp(0, utc)
-EPOCH_NAIVE: Final[datetime.datetime]  = datetime.datetime.utcfromtimestamp(0)
+EPOCH_AWARE: datetime.datetime = datetime.datetime.fromtimestamp(0, utc)
+EPOCH_NAIVE: datetime.datetime  = datetime.datetime.utcfromtimestamp(0)
 
 
-BSONNUM: Final[bytes] = b"\x01" # Floating point
-BSONSTR: Final[bytes] = b"\x02" # UTF-8 string
-BSONOBJ: Final[bytes] = b"\x03" # Embedded document
-BSONARR: Final[bytes] = b"\x04" # Array
-BSONBIN: Final[bytes] = b"\x05" # Binary
-BSONUND: Final[bytes] = b"\x06" # Undefined
-BSONOID: Final[bytes] = b"\x07" # ObjectId
-BSONBOO: Final[bytes] = b"\x08" # Boolean
-BSONDAT: Final[bytes] = b"\x09" # UTC Datetime
-BSONNUL: Final[bytes] = b"\x0A" # Null
-BSONRGX: Final[bytes] = b"\x0B" # Regex
-BSONREF: Final[bytes] = b"\x0C" # DBRef
-BSONCOD: Final[bytes] = b"\x0D" # Javascript code
-BSONSYM: Final[bytes] = b"\x0E" # Symbol
-BSONCWS: Final[bytes] = b"\x0F" # Javascript code with scope
-BSONINT: Final[bytes] = b"\x10" # 32bit int
-BSONTIM: Final[bytes] = b"\x11" # Timestamp
-BSONLON: Final[bytes] = b"\x12" # 64bit int
-BSONDEC: Final[bytes] = b"\x13" # Decimal128
-BSONMIN: Final[bytes] = b"\xFF" # Min key
-BSONMAX: Final[bytes] = b"\x7F" # Max key
+BSONNUM: bytes = b"\x01" # Floating point
+BSONSTR: bytes = b"\x02" # UTF-8 string
+BSONOBJ: bytes = b"\x03" # Embedded document
+BSONARR: bytes = b"\x04" # Array
+BSONBIN: bytes = b"\x05" # Binary
+BSONUND: bytes = b"\x06" # Undefined
+BSONOID: bytes = b"\x07" # ObjectId
+BSONBOO: bytes = b"\x08" # Boolean
+BSONDAT: bytes = b"\x09" # UTC Datetime
+BSONNUL: bytes = b"\x0A" # Null
+BSONRGX: bytes = b"\x0B" # Regex
+BSONREF: bytes = b"\x0C" # DBRef
+BSONCOD: bytes = b"\x0D" # Javascript code
+BSONSYM: bytes = b"\x0E" # Symbol
+BSONCWS: bytes = b"\x0F" # Javascript code with scope
+BSONINT: bytes = b"\x10" # 32bit int
+BSONTIM: bytes = b"\x11" # Timestamp
+BSONLON: bytes = b"\x12" # 64bit int
+BSONDEC: bytes = b"\x13" # Decimal128
+BSONMIN: bytes = b"\xFF" # Min key
+BSONMAX: bytes = b"\x7F" # Max key
 
 
 _UNPACK_FLOAT_FROM = struct.Struct("<d").unpack_from
@@ -886,11 +886,11 @@ def decode(data: bytes, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> 
         >>> import collections  # From Python standard library.
         >>> import bson
         >>> from bson.codec_options import CodecOptions
-        >>> data: Final[bytes] = bson.encode({'a': 1})
-        >>> decoded_doc: Final[bytes] = bson.decode(data)
+        >>> data: bytes = bson.encode({'a': 1})
+        >>> decoded_doc: bytes = bson.decode(data)
         <type 'dict'>
         >>> options = CodecOptions(document_class=collections.OrderedDict)
-        >>> decoded_doc: Final[bytes] = bson.decode(data, codec_options=options)
+        >>> decoded_doc: bytes = bson.decode(data, codec_options=options)
         >>> type(decoded_doc)
         <class 'collections.OrderedDict'>
 
@@ -1167,11 +1167,11 @@ class BSON(bytes):
             >>> import collections  # From Python standard library.
             >>> import bson
             >>> from bson.codec_options import CodecOptions
-            >>> data: Final[bytes] = bson.BSON.encode({'a': 1})
-            >>> decoded_doc: Final[bytes] = bson.BSON(data).decode()
+            >>> data: bytes = bson.BSON.encode({'a': 1})
+            >>> decoded_doc: bytes = bson.BSON(data).decode()
             <type 'dict'>
             >>> options = CodecOptions(document_class=collections.OrderedDict)
-            >>> decoded_doc: Final[bytes] = bson.BSON(data).decode(codec_options=options)
+            >>> decoded_doc: bytes = bson.BSON(data).decode(codec_options=options)
             >>> type(decoded_doc)
             <class 'collections.OrderedDict'>
 

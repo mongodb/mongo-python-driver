@@ -91,7 +91,7 @@ import datetime
 import json
 import math
 import re
-from typing import Any, Final, List, Optional, Mapping, Tuple, Type, TypeVar, Union, cast
+from typing import Any,  List, Optional, Mapping, Tuple, Type, TypeVar, Union, cast
 import uuid
 
 import bson
@@ -123,7 +123,7 @@ _RE_OPT_TABLE = {
 
 
 class DatetimeRepresentation:
-    LEGACY: Final[int] = 0
+    LEGACY: int = 0
     """Legacy MongoDB Extended JSON datetime representation.
 
     :class:`datetime.datetime` instances will be encoded to JSON in the
@@ -134,7 +134,7 @@ class DatetimeRepresentation:
     .. versionadded:: 3.4
     """
 
-    NUMBERLONG: Final[int] = 1
+    NUMBERLONG: int = 1
     """NumberLong datetime representation.
 
     :class:`datetime.datetime` instances will be encoded to JSON in the
@@ -145,7 +145,7 @@ class DatetimeRepresentation:
     .. versionadded:: 3.4
     """
 
-    ISO8601: Final[int] = 2
+    ISO8601: int = 2
     """ISO-8601 datetime representation.
 
     :class:`datetime.datetime` instances greater than or equal to the Unix
@@ -159,7 +159,7 @@ class DatetimeRepresentation:
 
 
 class JSONMode:
-    LEGACY: Final[int] =0
+    LEGACY: int =0
     """Legacy Extended JSON representation.
 
     In this mode, :func:`~bson.json_util.dumps` produces PyMongo's legacy
@@ -170,7 +170,7 @@ class JSONMode:
     .. versionadded:: 3.5
     """
 
-    RELAXED: Final[int] =1
+    RELAXED: int =1
     """Relaxed Extended JSON representation.
 
     In this mode, :func:`~bson.json_util.dumps` produces Relaxed Extended JSON,
@@ -186,7 +186,7 @@ class JSONMode:
     .. versionadded:: 3.5
     """
 
-    CANONICAL: Final[int] =2
+    CANONICAL: int =2
     """Canonical Extended JSON representation.
 
     In this mode, :func:`~bson.json_util.dumps` produces Canonical Extended
@@ -256,10 +256,10 @@ class JSONOptions(CodecOptions):
     datetime_representation: int
     strict_uuid: bool
 
-    def __new__(cls: Type[_JSONOptions], 
+    def __new__(cls: Type[_JSONOptions],
                 strict_number_long: Optional[bool] = None,
                 datetime_representation: Optional[int] = None,
-                strict_uuid: Optional[bool,] = None, 
+                strict_uuid: Optional[bool,] = None,
                 json_mode: int = JSONMode.RELAXED,
                 *args: Any, **kwargs: Any) -> _JSONOptions:
         kwargs["tz_aware"] = kwargs.get("tz_aware", False)
@@ -365,7 +365,7 @@ class JSONOptions(CodecOptions):
         return cast(_JSONOptions, JSONOptions(**opts))
 
 
-LEGACY_JSON_OPTIONS: Final[JSONOptions] = JSONOptions(json_mode=JSONMode.LEGACY)
+LEGACY_JSON_OPTIONS: JSONOptions = JSONOptions(json_mode=JSONMode.LEGACY)
 """:class:`JSONOptions` for encoding to PyMongo's legacy JSON format.
 
 .. seealso:: The documentation for :const:`bson.json_util.JSONMode.LEGACY`.
@@ -373,7 +373,7 @@ LEGACY_JSON_OPTIONS: Final[JSONOptions] = JSONOptions(json_mode=JSONMode.LEGACY)
 .. versionadded:: 3.5
 """
 
-CANONICAL_JSON_OPTIONS: Final[JSONOptions] = JSONOptions(json_mode=JSONMode.CANONICAL)
+CANONICAL_JSON_OPTIONS: JSONOptions = JSONOptions(json_mode=JSONMode.CANONICAL)
 """:class:`JSONOptions` for Canonical Extended JSON.
 
 .. seealso:: The documentation for :const:`bson.json_util.JSONMode.CANONICAL`.
@@ -381,7 +381,7 @@ CANONICAL_JSON_OPTIONS: Final[JSONOptions] = JSONOptions(json_mode=JSONMode.CANO
 .. versionadded:: 3.5
 """
 
-RELAXED_JSON_OPTIONS: Final[JSONOptions] = JSONOptions(json_mode=JSONMode.RELAXED)
+RELAXED_JSON_OPTIONS: JSONOptions = JSONOptions(json_mode=JSONMode.RELAXED)
 """:class:`JSONOptions` for Relaxed Extended JSON.
 
 .. seealso:: The documentation for :const:`bson.json_util.JSONMode.RELAXED`.
@@ -389,7 +389,7 @@ RELAXED_JSON_OPTIONS: Final[JSONOptions] = JSONOptions(json_mode=JSONMode.RELAXE
 .. versionadded:: 3.5
 """
 
-DEFAULT_JSON_OPTIONS: Final[JSONOptions] = RELAXED_JSON_OPTIONS
+DEFAULT_JSON_OPTIONS: JSONOptions = RELAXED_JSON_OPTIONS
 """The default :class:`JSONOptions` for JSON encoding/decoding.
 
 The same as :const:`RELAXED_JSON_OPTIONS`.

@@ -16,7 +16,7 @@
 
 import abc
 import datetime
-from typing import Any, Callable, Dict, Final, Iterable, Mapping, MutableMapping, Optional, Type, TypeVar, Union, cast
+from typing import Any, Callable, Dict,  Iterable, Mapping, MutableMapping, Optional, Type, TypeVar, Union, cast
 
 from collections import namedtuple
 from collections.abc import MutableMapping as _MutableMapping
@@ -261,7 +261,7 @@ class CodecOptions(_options_base):
                 tz_aware: bool = False,
                 uuid_representation: Optional[int] = UuidRepresentation.UNSPECIFIED,
                 unicode_decode_error_handler: Optional[str] = "strict",
-                tzinfo: Optional[datetime.tzinfo] = None, 
+                tzinfo: Optional[datetime.tzinfo] = None,
                 type_registry: Optional[TypeRegistry] = None) -> _CodecOptions:
         if not (issubclass(document_class, _MutableMapping) or
                 _raw_document_class(document_class)):
@@ -340,7 +340,7 @@ class CodecOptions(_options_base):
         return cast(_CodecOptions, CodecOptions(**opts))
 
 
-DEFAULT_CODEC_OPTIONS: Final[CodecOptions] = CodecOptions()
+DEFAULT_CODEC_OPTIONS: CodecOptions = CodecOptions()
 
 
 def _parse_codec_options(options: Any) -> CodecOptions:
