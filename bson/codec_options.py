@@ -152,7 +152,7 @@ class TypeRegistry(object):
     def _validate_type_encoder(self, codec: Codec) -> None:
         from bson import _BUILT_IN_TYPES
         for pytype in _BUILT_IN_TYPES:
-            if issubclass(cast(TypeCodec, Codec).python_type, pytype):
+            if issubclass(cast(TypeCodec, codec).python_type, pytype):
                 err_msg = ("TypeEncoders cannot change how built-in types are "
                            "encoded (encoder %s transforms type %s)" %
                            (codec, pytype))
