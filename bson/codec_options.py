@@ -21,10 +21,10 @@ from typing import Any, Callable, Dict,  Iterable, Mapping, MutableMapping, Opti
 from collections import namedtuple
 from collections.abc import MutableMapping as _MutableMapping
 
+import bson
 from bson.binary import (UuidRepresentation,
                          ALL_UUID_REPRESENTATIONS,
                          UUID_REPRESENTATION_NAMES)
-from bson.raw_bson import RawBSONDocument
 
 
 def _abstractproperty(func: Callable[..., Any]) -> property:
@@ -178,6 +178,7 @@ _options_base = namedtuple(  # type: ignore
 
 
 _CodecOptions = TypeVar("_CodecOptions", bound="CodecOptions")
+_RawBSONDocument = TypeVar("_CodecOptions", bound="bson.raw_bson.RawBSONDocument")
 
 
 class CodecOptions(_options_base):
@@ -256,7 +257,7 @@ class CodecOptions(_options_base):
        and stored back to the server.
     """
 
-    def __new__(cls: Type[_CodecOptions], document_class: Union[Type[MutableMapping[Any, Any]], Type[RawBSONDocument]] = dict,
+    def __new__(cls: Type[_CodecOptions], document_class: Union[Type[MutableMapping[Any, Any]], Type[_RawBSONDocument]] = dict,
                 tz_aware: bool = False,
                 uuid_representation: Optional[int] = UuidRepresentation.UNSPECIFIED,
                 unicode_decode_error_handler: Optional[str] = "strict",

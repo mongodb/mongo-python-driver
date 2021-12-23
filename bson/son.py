@@ -25,7 +25,10 @@ from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional, Patte
 from collections.abc import Mapping as _Mapping
 
 
-RE_TYPE: Type[Pattern[Any]]
+# This sort of sucks, but seems to be as good as it gets...
+# This is essentially the same as re._pattern_type
+RE_TYPE: Type[Pattern[Any]] = type(re.compile(""))
+
 _Key = TypeVar("_Key", bound=str)
 _Value = TypeVar("_Value")
 _T = TypeVar("_T")
