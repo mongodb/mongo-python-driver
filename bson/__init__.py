@@ -525,7 +525,7 @@ def _encode_bytes(name: bytes, value: bytes, dummy0: Any, dummy1: Any) -> bytes:
 def _encode_mapping(name: bytes, value: Any, check_keys: bool, opts: Any) -> bytes:
     """Encode a mapping type."""
     if _raw_document_class(value):
-        return b'\x03' + name + cast(bytes, cast(Any, value).raw)
+        return b'\x03' + name + value.raw   # type: ignore
     data = b"".join([_element_to_bson(key, val, check_keys, opts)
                      for key, val in value.items()])
     return b"\x03" + name + _PACK_INT(len(data) + 5) + data + b"\x00"
@@ -570,7 +570,7 @@ def _encode_binary(name: bytes, value: Binary, dummy0: Any, dummy1: Any) -> byte
     """Encode bson.binary.Binary."""
     subtype = value.subtype
     if subtype == 2:
-        value = _PACK_INT(len(value)) + bytes  # type: ignore
+        value = _PACK_INT(len(value)) + value  # type: ignore
     return b"\x05" + name + _PACK_LENGTH_SUBTYPE(len(value), subtype) + value
 
 
