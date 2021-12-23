@@ -16,10 +16,11 @@
 
 import abc
 import datetime
-from typing import Any, Callable, Final, Iterable, MutableMapping, Optional, Type, TypeVar, Union, cast
+from typing import Any, Callable, Dict, Final, Iterable, Mapping, MutableMapping, Optional, Type, TypeVar, Union, cast
 
 from collections import namedtuple
 from collections.abc import MutableMapping as _MutableMapping
+from typing_extensions import TypeGuard
 
 from bson.binary import (UuidRepresentation,
                          ALL_UUID_REPRESENTATIONS,
@@ -27,13 +28,13 @@ from bson.binary import (UuidRepresentation,
 from bson.raw_bson import RawBSONDocument
 
 
-def _abstractproperty(func):
+def _abstractproperty(func: Callable[..., Any]) -> property:
     return property(abc.abstractmethod(func))
 
 _RAW_BSON_DOCUMENT_MARKER = 101
 
 
-def _raw_document_class(document_class):
+def _raw_document_class(document_class: Any) -> TypeGuard[RawBSONDocument]:
     """Determine if a document_class is a RawBSONDocument class."""
     marker = getattr(document_class, '_type_marker', None)
     return marker == _RAW_BSON_DOCUMENT_MARKER
@@ -149,10 +150,10 @@ class TypeRegistry(object):
                         TypeEncoder.__name__, TypeDecoder.__name__,
                         TypeCodec.__name__, codec))
 
-    def _validate_type_encoder(self, codec):
+    def _validate_type_encoder(self, codec: Codec) -> None:
         from bson import _BUILT_IN_TYPES
         for pytype in _BUILT_IN_TYPES:
-            if issubclass(codec.python_type, pytype):
+            if issubclass(cast(TypeCodec, Codec).python_type, pytype):
                 err_msg = ("TypeEncoders cannot change how built-in types are "
                            "encoded (encoder %s transforms type %s)" %
                            (codec, pytype))
@@ -256,7 +257,7 @@ class CodecOptions(_options_base):
        and stored back to the server.
     """
 
-    def __new__(cls: Type[_CodecOptions], document_class: Union[Type[MutableMapping], Type[RawBSONDocument]] = dict,
+    def __new__(cls: Type[_CodecOptions], document_class: Union[Type[MutableMapping[Any, Any]], Type[RawBSONDocument]] = dict,
                 tz_aware: bool = False,
                 uuid_representation: Optional[int] = UuidRepresentation.UNSPECIFIED,
                 unicode_decode_error_handler: Optional[str] = "strict",
@@ -292,7 +293,7 @@ class CodecOptions(_options_base):
             cls, (document_class, tz_aware, uuid_representation,
                   unicode_decode_error_handler, tzinfo, type_registry))
 
-    def _arguments_repr(self):
+    def _arguments_repr(self) -> str:
         """Representation of the arguments used to create this object."""
         document_class_repr = (
             'dict' if self.document_class is dict
@@ -308,7 +309,7 @@ class CodecOptions(_options_base):
                  self.unicode_decode_error_handler, self.tzinfo,
                  self.type_registry))
 
-    def _options_dict(self):
+    def _options_dict(self) -> Dict[str, Any]:
         """Dictionary of the arguments used to create this object."""
         # TODO: PYTHON-2442 use _asdict() instead
         return {
@@ -322,7 +323,7 @@ class CodecOptions(_options_base):
     def __repr__(self) -> str:
         return '%s(%s)' % (self.__class__.__name__, self._arguments_repr())
 
-    def with_options(self, **kwargs) -> _CodecOptions:
+    def with_options(self, **kwargs: Any) -> _CodecOptions:
         """Make a copy of this CodecOptions, overriding some options::
 
             >>> from bson.codec_options import DEFAULT_CODEC_OPTIONS
@@ -342,7 +343,7 @@ class CodecOptions(_options_base):
 DEFAULT_CODEC_OPTIONS: Final[CodecOptions] = CodecOptions()
 
 
-def _parse_codec_options(options):
+def _parse_codec_options(options: Any) -> CodecOptions:
     """Parse BSON codec options."""
     kwargs = {}
     for k in set(options) & {'document_class', 'tz_aware',

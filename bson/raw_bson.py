@@ -52,7 +52,7 @@ overhead of decoding or encoding BSON.
 """
 
 from collections.abc import Mapping as _Mapping
-from typing import Any, Final, ItemsView, Iterator, Optional
+from typing import Any, Final, ItemsView, Iterator, Optional, cast
 
 from bson import _raw_to_dict, _get_object_size
 from bson.codec_options import (
@@ -127,12 +127,12 @@ class RawBSONDocument(_Mapping[str, Any]):
         """The raw BSON bytes composing this document."""
         return self.__raw
 
-    def items(self) -> ItemsView:
+    def items(self) -> ItemsView[str, Any]:
         """Lazily decode and iterate elements in this document."""
-        return self.__inflated.items()
+        return cast(ItemsView[str, Any], self.__inflated.items())
 
     @property
-    def __inflated(self):
+    def __inflated(self) -> Any:
         if self.__inflated_doc is None:
             # We already validated the object's size when this document was
             # created, so no need to do that again.
