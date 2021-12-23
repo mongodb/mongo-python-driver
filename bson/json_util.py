@@ -259,7 +259,7 @@ class JSONOptions(CodecOptions):
     def __new__(cls: Type[_JSONOptions],
                 strict_number_long: Optional[bool] = None,
                 datetime_representation: Optional[int] = None,
-                strict_uuid: Optional[bool,] = None,
+                strict_uuid: Optional[bool] = None,
                 json_mode: int = JSONMode.RELAXED,
                 *args: Any, **kwargs: Any) -> _JSONOptions:
         kwargs["tz_aware"] = kwargs.get("tz_aware", False)

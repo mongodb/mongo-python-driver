@@ -178,7 +178,7 @@ _options_base = namedtuple(  # type: ignore
 
 
 _CodecOptions = TypeVar("_CodecOptions", bound="CodecOptions")
-_RawBSONDocument = TypeVar("_CodecOptions", bound="bson.raw_bson.RawBSONDocument")
+_RawBSONDocument = TypeVar("_RawBSONDocument", bound="bson.raw_bson.RawBSONDocument")
 
 
 class CodecOptions(_options_base):
