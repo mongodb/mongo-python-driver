@@ -51,9 +51,9 @@ class Code(str):
     """
 
     _type_marker = 13
-    __scope: Union[_Mapping[str, Any], None]
+    __scope: Union[Mapping[str, Any], None]
 
-    def __new__(cls: Type[_Code], code: Union[str, _Code], scope: Optional[_Mapping[str, Any]] = None, **kwargs: Any) -> _Code:
+    def __new__(cls: Type[_Code], code: Union[str, _Code], scope: Optional[Mapping[str, Any]] = None, **kwargs: Any) -> _Code:
         if not isinstance(code, str):
             raise TypeError("code must be an instance of str")
 
@@ -81,7 +81,7 @@ class Code(str):
         return self
 
     @property
-    def scope(self) -> Optional[_Mapping[str, Any]]:
+    def scope(self) -> Optional[Mapping[str, Any]]:
         """Scope dictionary for this instance or ``None``.
         """
         return self.__scope

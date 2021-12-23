@@ -52,7 +52,7 @@ overhead of decoding or encoding BSON.
 """
 
 from collections.abc import Mapping as _Mapping
-from typing import Any,  ItemsView, Iterator, Optional, cast
+from typing import Any, ItemsView, Iterator, Mapping, Optional, cast
 
 from bson import _raw_to_dict, _get_object_size
 from bson.codec_options import (
@@ -63,7 +63,7 @@ from bson.codec_options import (
 from bson.son import SON
 
 
-class RawBSONDocument(_Mapping[str, Any]):
+class RawBSONDocument(Mapping[str, Any]):
     """Representation for a MongoDB document that provides access to the raw
     BSON bytes that compose it.
 
