@@ -562,7 +562,7 @@ def _encode_list(name: bytes, value: Sequence[Any], check_keys: bool, opts: Any)
 
 def _encode_text(name: bytes, value: str, dummy0: Any, dummy1: Any) -> bytes:
     """Encode a python str."""
-    value = _utf_8_encode(value)[0]  # type: ignore
+    value = _utf_8_encode(value)[0]
     return b"\x02" + name + _PACK_INT(len(value) + 1) + value + b"\x00"  # type: ignore
 
 
@@ -570,8 +570,8 @@ def _encode_binary(name: bytes, value: Binary, dummy0: Any, dummy1: Any) -> byte
     """Encode bson.binary.Binary."""
     subtype = value.subtype
     if subtype == 2:
-        value = _PACK_INT(len(value)) + bytes, value  # type: ignore
-    return b"\x05" + name + _PACK_LENGTH_SUBTYPE(len(value), subtype) + value  # type: ignore
+        value = _PACK_INT(len(value)) + bytes  # type: ignore
+    return b"\x05" + name + _PACK_LENGTH_SUBTYPE(len(value), subtype) + value
 
 
 def _encode_uuid(name: bytes, value: uuid.UUID, dummy: Any, opts: Any) -> bytes:
