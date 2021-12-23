@@ -47,5 +47,5 @@ jobs:
       - name: Run mypy
         run: |
           mypy --strict bson
-          #mypy --strict gridfs
+          mypy gridfs
           #mypy --strict pymongo
