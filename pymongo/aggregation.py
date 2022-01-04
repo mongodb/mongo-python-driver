@@ -82,7 +82,6 @@ class _AggregationCommand(object):
         """The namespace in which the aggregate command is run."""
         raise NotImplementedError
 
-    @property
     def _cursor_collection(self, cursor_doc):
         """The Collection used for the aggregate command cursor."""
         raise NotImplementedError

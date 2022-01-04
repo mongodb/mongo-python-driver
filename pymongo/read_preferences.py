@@ -481,7 +481,7 @@ def make_read_preference(mode: int, tag_sets: Optional[_TagSets], max_staleness:
             raise ConfigurationError("Read preference primary cannot be "
                                      "combined with maxStalenessSeconds")
         return Primary()
-    return _ALL_READ_PREFERENCES[mode](tag_sets, max_staleness)
+    return _ALL_READ_PREFERENCES[mode](tag_sets, max_staleness)  # type: ignore
 
 
 _MODES = (

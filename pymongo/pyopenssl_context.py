@@ -27,10 +27,10 @@ from ipaddress import ip_address as _ip_address
 
 from cryptography.x509 import load_der_x509_certificate as _load_der_x509_certificate
 from OpenSSL import crypto as _crypto, SSL as _SSL
-from service_identity.pyopenssl import (
+from service_identity.pyopenssl import (  # type: ignore
     verify_hostname as _verify_hostname,
     verify_ip_address as _verify_ip_address)
-from service_identity import (
+from service_identity import (  # type: ignore
     CertificateError as _SICertificateError,
     VerificationError as _SIVerificationError)
 

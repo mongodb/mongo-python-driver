@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Result class definitions."""
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, cast
 
 from pymongo.errors import InvalidOperation
 
@@ -121,7 +121,7 @@ class UpdateResult(_WriteResult):
     def modified_count(self) -> int:
         """The number of documents modified. """
         self._raise_if_unacknowledged("modified_count")
-        return self.__raw_result.get("nModified")
+        return cast(int, self.__raw_result.get("nModified"))
 
     @property
     def upserted_id(self) -> Any:
@@ -180,36 +180,37 @@ class BulkWriteResult(_WriteResult):
     def inserted_count(self) -> int:
         """The number of documents inserted."""
         self._raise_if_unacknowledged("inserted_count")
-        return self.__bulk_api_result.get("nInserted")
+        return cast(int, self.__bulk_api_result.get("nInserted"))
 
     @property
     def matched_count(self) -> int:
         """The number of documents matched for an update."""
         self._raise_if_unacknowledged("matched_count")
-        return self.__bulk_api_result.get("nMatched")
+        return cast(int, self.__bulk_api_result.get("nMatched"))
 
     @property
     def modified_count(self) -> int:
         """The number of documents modified."""
         self._raise_if_unacknowledged("modified_count")
-        return self.__bulk_api_result.get("nModified")
+        return cast(int, self.__bulk_api_result.get("nModified"))
 
     @property
     def deleted_count(self) -> int:
         """The number of documents deleted."""
         self._raise_if_unacknowledged("deleted_count")
-        return self.__bulk_api_result.get("nRemoved")
+        return cast(int, self.__bulk_api_result.get("nRemoved"))
 
     @property
     def upserted_count(self) -> int:
         """The number of documents upserted."""
         self._raise_if_unacknowledged("upserted_count")
-        return self.__bulk_api_result.get("nUpserted")
+        return cast(int, self.__bulk_api_result.get("nUpserted"))
 
     @property
-    def upserted_ids(self) -> Dict[int, Any]:
+    def upserted_ids(self) -> Optional[Dict[int, Any]]:
         """A map of operation index to the _id of the upserted document."""
         self._raise_if_unacknowledged("upserted_ids")
         if self.__bulk_api_result:
             return dict((upsert["index"], upsert["_id"])
                         for upsert in self.bulk_api_result["upserted"])
+        return None

@@ -43,7 +43,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install -U pip mypy
-          pip install -e .
+          pip install -e ".[encryptions, ocsp, snappy, zstd, aws, srv]"
+          mypy --install-types --non-interactive
       - name: Run mypy
         run: |
           mypy --strict bson

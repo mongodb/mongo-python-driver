@@ -82,7 +82,7 @@ except ImportError:
     # Windows, various platforms we don't claim to support
     # (Jython, IronPython, ...), systems that don't provide
     # everything we need from fcntl, etc.
-    def _set_non_inheritable_non_atomic(dummy):
+    def _set_non_inheritable_non_atomic(fd):
         """Dummy function for platforms that don't provide fcntl."""
         pass
 

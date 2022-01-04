@@ -27,5 +27,7 @@ class _ServerType(NamedTuple):
     RSOther: int
     RSGhost: int
     Standalone: int
+    LoadBalancer: int
+
 
 SERVER_TYPE = _ServerType

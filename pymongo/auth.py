@@ -33,12 +33,12 @@ from pymongo.saslprep import saslprep
 HAVE_KERBEROS = True
 _USE_PRINCIPAL = False
 try:
-    import winkerberos as kerberos
+    import winkerberos as kerberos  # type: ignore
     if tuple(map(int, kerberos.__version__.split('.')[:2])) >= (0, 5):
         _USE_PRINCIPAL = True
 except ImportError:
     try:
-        import kerberos
+        import kerberos  # type: ignore
     except ImportError:
         HAVE_KERBEROS = False
 
@@ -97,7 +97,7 @@ GSSAPIProperties = namedtuple('GSSAPIProperties',
 """Mechanism properties for GSSAPI authentication."""
 
 
-_AWSProperties = namedtuple('AWSProperties', ['aws_session_token'])
+_AWSProperties = namedtuple('AWSProperties', ['aws_session_token'])  # type: ignore
 """Mechanism properties for MONGODB-AWS authentication."""
 
 

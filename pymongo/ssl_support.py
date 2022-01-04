@@ -24,7 +24,7 @@ try:
     import pymongo.pyopenssl_context as _ssl
 except ImportError:
     try:
-        import pymongo.ssl_context as _ssl
+        import pymongo.ssl_context as _ssl  # type: ignore
     except ImportError:
         HAVE_SSL = False
 
@@ -83,11 +83,11 @@ if HAVE_SSL:
         ctx.verify_mode = verify_mode
         return ctx
 else:
-    class SSLError(Exception):
+    class SSLError(Exception):  # type: ignore
         pass
     HAS_SNI = False
     IPADDR_SAFE = False
 
-    def get_ssl_context(*dummy):
+    def get_ssl_context(*dummy):  # type: ignore
         """No ssl module, raise ConfigurationError."""
         raise ConfigurationError("The ssl module is not available.")

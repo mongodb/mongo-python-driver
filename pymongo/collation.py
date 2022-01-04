@@ -163,7 +163,7 @@ class Collation(object):
                  backwards: Optional[bool] = None,
                  **kwargs: Any) -> None:
         locale = common.validate_string('locale', locale)
-        self.__document = {'locale': locale}
+        self.__document: Dict[str, Any] = {'locale': locale}
         if caseLevel is not None:
             self.__document['caseLevel'] = common.validate_boolean(
                 'caseLevel', caseLevel)

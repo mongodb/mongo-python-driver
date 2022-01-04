@@ -254,4 +254,4 @@ class ServerDescription(object):
             self.round_trip_time, errmsg)
 
     # For unittesting only. Use under no circumstances!
-    _host_to_round_trip_time = {}
+    _host_to_round_trip_time = {}  # type: ignore

@@ -193,7 +193,7 @@ from pymongo.topology_description import TopologyDescription
 
 _CommandStartedEvent = TypeVar("_CommandStartedEvent", bound="CommandStartedEvent", covariant=True)
 
-_Listeners = namedtuple('Listeners',
+_Listeners = namedtuple('Listeners',  # type: ignore
                         ('command_listeners', 'server_listeners',
                          'server_heartbeat_listeners', 'topology_listeners',
                          'cmap_listeners'))
@@ -290,7 +290,7 @@ class CommandStartedEvent(_CommandEvent):
         request_id: int,
         connection_id: _Address,
         operation_id: Optional[int],
-        service_id: Optional[ObjectId] = ...,
+        service_id: Optional[ObjectId] = None,
     ) -> None:
         if not command:
             raise ValueError("%r is not a valid command" % (command,))
@@ -301,7 +301,7 @@ class CommandStartedEvent(_CommandEvent):
         cmd_name, cmd_doc = command_name.lower(), command[command_name]
         if (cmd_name in _SENSITIVE_COMMANDS or
                 _is_speculative_authenticate(cmd_name, command)):
-            self.__cmd = {}
+            self.__cmd: _Document = {}
         else:
             self.__cmd = command
         self.__db = database_name
@@ -357,7 +357,7 @@ class CommandSucceededEvent(_CommandEvent):
         cmd_name = command_name.lower()
         if (cmd_name in _SENSITIVE_COMMANDS or
                 _is_speculative_authenticate(cmd_name, reply)):
-            self.__reply = {}
+            self.__reply: _Document = {}
         else:
             self.__reply = reply
 

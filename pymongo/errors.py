@@ -24,7 +24,7 @@ except ImportError:
     try:
         from ssl import CertificateError as _CertificateError
     except ImportError:
-        class _CertificateError(ValueError):
+        class _CertificateError(ValueError):  # type: ignore
             pass
 
 

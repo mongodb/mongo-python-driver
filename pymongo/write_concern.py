@@ -48,7 +48,7 @@ class WriteConcern(object):
     __slots__ = ("__document", "__acknowledged", "__server_default")
 
     def __init__(self, w: Optional[Union[int, str]] = None, wtimeout: Optional[int] = None, j: Optional[bool] = None, fsync: Optional[bool] = None) -> None:
-        self.__document = {}
+        self.__document: Dict[str, Any] = {}
         self.__acknowledged = True
 
         if wtimeout is not None:

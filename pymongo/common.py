@@ -38,6 +38,7 @@ from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import _MONGOS_MODES, _ServerMode
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
+ORDERED_TYPES: Tuple[SON, OrderedDict] = (SON, OrderedDict)
 
 # Defaults until we connect to a server and get updated limits.
 MAX_BSON_SIZE: int = 16 * (1024 ** 2)

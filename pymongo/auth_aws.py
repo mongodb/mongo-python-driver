@@ -15,13 +15,13 @@
 """MONGODB-AWS Authentication helpers."""
 
 try:
-    import pymongo_auth_aws
-    from pymongo_auth_aws import (AwsCredential,
+    import pymongo_auth_aws  # type: ignore
+    from pymongo_auth_aws import (AwsCredential,  # type: ignore
                                   AwsSaslContext,
                                   PyMongoAuthAwsError)
     _HAVE_MONGODB_AWS = True
 except ImportError:
-    class AwsSaslContext(object):
+    class AwsSaslContext(object):  # type: ignore
         def __init__(self, credentials):
             pass
     _HAVE_MONGODB_AWS = False

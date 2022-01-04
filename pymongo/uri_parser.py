@@ -15,7 +15,7 @@
 
 """Tools to parse and validate a MongoDB URI."""
 import re
-from typing import Any, Dict, List, MutableMapping, Optional, Tuple, TypeVar, Union
+from typing import Any, Dict, List, MutableMapping, Optional, Tuple, TypeVar, Union, cast
 import warnings
 import sys
 
@@ -112,7 +112,7 @@ def parse_host(entity: str, default_port: Optional[int] = DEFAULT_PORT) -> Tuple
                           specified in entity.
     """
     host = entity
-    port = default_port
+    port: Optional[Union[str, int]] = default_port
     if entity[0] == '[':
         host, port = parse_ipv6_literal_host(entity, default_port)
     elif entity.endswith(".sock"):
@@ -296,7 +296,7 @@ def validate_options(opts: _T, warn: bool = False) -> _T:
           invalid options will be ignored. Otherwise invalid options will
           cause errors.
     """
-    return get_validated_options(opts, warn)
+    return cast(_T, get_validated_options(opts, warn))
 
 
 def split_options(opts: str, validate: bool = True, warn: bool = False, normalize: bool = True) -> MutableMapping[str, Any]:

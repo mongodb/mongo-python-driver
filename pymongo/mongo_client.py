@@ -732,7 +732,7 @@ class MongoClient(common.BaseObject):
 
         self.__default_database_name = dbase
         self.__lock = threading.Lock()
-        self.__kill_cursors_queue = []
+        self.__kill_cursors_queue: List[Any] = []
 
         self._event_listeners = options.pool_options._event_listeners
         super(MongoClient, self).__init__(options.codec_options,
