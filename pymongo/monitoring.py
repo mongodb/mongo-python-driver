@@ -181,10 +181,11 @@ will not add that listener to existing client instances.
 """
 
 from collections import abc, namedtuple
+import datetime
 from typing import Any, Dict, Mapping, Optional, Tuple, TypeVar
 from bson.objectid import ObjectId
 
-from pymongo.hello import HelloCompat
+from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers import _handle_exception
 from pymongo.server_description import ServerDescription
 from pymongo.topology_description import TopologyDescription
@@ -339,8 +340,16 @@ class CommandSucceededEvent(_CommandEvent):
     """
     __slots__ = ("__duration_micros", "__reply")
 
-    def __init__(self, duration, reply, command_name,
-                 request_id, connection_id, operation_id, service_id=None):
+    def __init__(
+        self,
+        duration: datetime.timedelta,
+        reply: _Document,
+        command_name: str,
+        request_id: int,
+        connection_id: _Address,
+        operation_id: Optional[int],
+        service_id: Optional[ObjectId] = None,
+    ) -> None:
         super(CommandSucceededEvent, self).__init__(
             command_name, request_id, connection_id, operation_id,
             service_id=service_id)
@@ -353,16 +362,16 @@ class CommandSucceededEvent(_CommandEvent):
             self.__reply = reply
 
     @property
-    def duration_micros(self):
+    def duration_micros(self) -> int:
         """The duration of this operation in microseconds."""
         return self.__duration_micros
 
     @property
-    def reply(self):
+    def reply(self) -> _Document:
         """The server failure document for this operation."""
         return self.__reply
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             "<%s %s command: %r, operation_id: %s, duration_micros: %s, "
             "service_id: %s>") % (
@@ -386,22 +395,31 @@ class CommandFailedEvent(_CommandEvent):
     """
     __slots__ = ("__duration_micros", "__failure")
 
-    def __init__(self, duration, failure, *args, service_id=None):
-        super(CommandFailedEvent, self).__init__(*args, service_id=service_id)
+    def __init__(
+        self,
+        duration: datetime.timedelta,
+        failure: _Document,
+        command_name: str,
+        request_id: int,
+        connection_id: _Address,
+        operation_id: Optional[int],
+        service_id: Optional[ObjectId] = None,
+    ) -> None:
+        super(CommandFailedEvent, self).__init__(command_name, request_id, connection_id, operation_id, service_id=service_id)
         self.__duration_micros = _to_micros(duration)
         self.__failure = failure
 
     @property
-    def duration_micros(self):
+    def duration_micros(self) -> int:
         """The duration of this operation in microseconds."""
         return self.__duration_micros
 
     @property
-    def failure(self):
+    def failure(self) -> _Document:
         """The server failure document for this operation."""
         return self.__failure
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             "<%s %s command: %r, operation_id: %s, duration_micros: %s, "
             "failure: %r, service_id: %s>") % (
@@ -414,17 +432,17 @@ class _PoolEvent(object):
     """Base class for pool events."""
     __slots__ = ("__address",)
 
-    def __init__(self, address):
+    def __init__(self, address: _Address) -> None:
         self.__address = address
 
     @property
-    def address(self):
+    def address(self) -> _Address:
         """The address (host, port) pair of the server the pool is attempting
         to connect to.
         """
         return self.__address
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '%s(%r)' % (self.__class__.__name__, self.__address)
 
 
@@ -439,17 +457,17 @@ class PoolCreatedEvent(_PoolEvent):
     """
     __slots__ = ("__options",)
 
-    def __init__(self, address, options):
+    def __init__(self, address: _Address, options: Dict[str, Any]) -> None:
         super(PoolCreatedEvent, self).__init__(address)
         self.__options = options
 
     @property
-    def options(self):
+    def options(self) -> Dict[str, Any]:
         """Any non-default pool options that were set on this Connection Pool.
         """
         return self.__options
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '%s(%r, %r)' % (
             self.__class__.__name__, self.address, self.__options)
 
@@ -478,12 +496,12 @@ class PoolClearedEvent(_PoolEvent):
     """
     __slots__ = ("__service_id",)
 
-    def __init__(self, address, service_id=None):
+    def __init__(self, address: _Address, service_id: Optional[ObjectId] = None) -> None:
         super(PoolClearedEvent, self).__init__(address)
         self.__service_id = service_id
 
     @property
-    def service_id(self):
+    def service_id(self) -> Optional[ObjectId]:
         """Connections with this service_id are cleared.
 
         When service_id is ``None``, all connections in the pool are cleared.
@@ -492,7 +510,7 @@ class PoolClearedEvent(_PoolEvent):
         """
         return self.__service_id
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '%s(%r, %r)' % (
             self.__class__.__name__, self.address, self.__service_id)
 
@@ -516,17 +534,17 @@ class ConnectionClosedReason(object):
     .. versionadded:: 3.9
     """
 
-    STALE = 'stale'
+    STALE: str = 'stale'
     """The pool was cleared, making the connection no longer valid."""
 
-    IDLE = 'idle'
+    IDLE: str = 'idle'
     """The connection became stale by being idle for too long (maxIdleTimeMS).
     """
 
-    ERROR = 'error'
+    ERROR: str = 'error'
     """The connection experienced an error, making it no longer valid."""
 
-    POOL_CLOSED = 'poolClosed'
+    POOL_CLOSED: str = 'poolClosed'
     """The pool was closed, making the connection no longer valid."""
 
 
@@ -537,13 +555,13 @@ class ConnectionCheckOutFailedReason(object):
     .. versionadded:: 3.9
     """
 
-    TIMEOUT = 'timeout'
+    TIMEOUT: str = 'timeout'
     """The connection check out attempt exceeded the specified timeout."""
 
-    POOL_CLOSED = 'poolClosed'
+    POOL_CLOSED: str = 'poolClosed'
     """The pool was previously closed, and cannot provide new connections."""
 
-    CONN_ERROR = 'connectionError'
+    CONN_ERROR: str = 'connectionError'
     """The connection check out attempt experienced an error while setting up
     a new connection.
     """
@@ -553,23 +571,23 @@ class _ConnectionEvent(object):
     """Private base class for some connection events."""
     __slots__ = ("__address", "__connection_id")
 
-    def __init__(self, address, connection_id):
+    def __init__(self, address: _Address, connection_id: int) -> None:
         self.__address = address
         self.__connection_id = connection_id
 
     @property
-    def address(self):
+    def address(self) -> _Address:
         """The address (host, port) pair of the server this connection is
         attempting to connect to.
         """
         return self.__address
 
     @property
-    def connection_id(self):
+    def connection_id(self) -> int:
         """The ID of the Connection."""
         return self.__connection_id
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '%s(%r, %r)' % (
             self.__class__.__name__, self.__address, self.__connection_id)
 
@@ -616,12 +634,12 @@ class ConnectionClosedEvent(_ConnectionEvent):
     """
     __slots__ = ("__reason",)
 
-    def __init__(self, address, connection_id, reason):
+    def __init__(self, address: _Address, connection_id: int, reason: str) -> None:
         super(ConnectionClosedEvent, self).__init__(address, connection_id)
         self.__reason = reason
 
     @property
-    def reason(self):
+    def reason(self) -> str:
         """A reason explaining why this connection was closed.
 
         The reason must be one of the strings from the
@@ -629,7 +647,7 @@ class ConnectionClosedEvent(_ConnectionEvent):
         """
         return self.__reason
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '%s(%r, %r, %r)' % (
             self.__class__.__name__, self.address, self.connection_id,
             self.__reason)
@@ -646,17 +664,17 @@ class ConnectionCheckOutStartedEvent(object):
     """
     __slots__ = ("__address",)
 
-    def __init__(self, address):
+    def __init__(self, address: _Address) -> None:
         self.__address = address
 
     @property
-    def address(self):
+    def address(self) -> _Address:
         """The address (host, port) pair of the server this connection is
         attempting to connect to.
         """
         return self.__address
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '%s(%r)' % (self.__class__.__name__, self.__address)
 
 
@@ -672,19 +690,19 @@ class ConnectionCheckOutFailedEvent(object):
     """
     __slots__ = ("__address", "__reason")
 
-    def __init__(self, address, reason):
+    def __init__(self, address: _Address, reason: str) -> None:
         self.__address = address
         self.__reason = reason
 
     @property
-    def address(self):
+    def address(self) ->:
         """The address (host, port) pair of the server this connection is
         attempting to connect to.
         """
         return self.__address
 
     @property
-    def reason(self):
+    def reason(self) -> str:
         """A reason explaining why connection check out failed.
 
         The reason must be one of the strings from the
@@ -692,7 +710,7 @@ class ConnectionCheckOutFailedEvent(object):
         """
         return self.__reason
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '%s(%r, %r)' % (
             self.__class__.__name__, self.__address, self.__reason)
 
@@ -728,21 +746,21 @@ class _ServerEvent(object):
 
     __slots__ = ("__server_address", "__topology_id")
 
-    def __init__(self, server_address, topology_id):
+    def __init__(self, server_address: _Address, topology_id: ObjectId) -> None:
         self.__server_address = server_address
         self.__topology_id = topology_id
 
     @property
-    def server_address(self):
+    def server_address(self) -> _Address:
         """The address (host, port) pair of the server"""
         return self.__server_address
 
     @property
-    def topology_id(self):
+    def topology_id(self) -> ObjectId:
         """A unique identifier for the topology this server is a part of."""
         return self.__topology_id
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<%s %s topology_id: %s>" % (
             self.__class__.__name__, self.server_address, self.topology_id)
 
@@ -755,24 +773,24 @@ class ServerDescriptionChangedEvent(_ServerEvent):
 
     __slots__ = ('__previous_description', '__new_description')
 
-    def __init__(self, previous_description, new_description, *args):
+    def __init__(self, previous_description: ServerDescription, new_description: ServerDescription, *args: Any) -> None:
         super(ServerDescriptionChangedEvent, self).__init__(*args)
         self.__previous_description = previous_description
         self.__new_description = new_description
 
     @property
-    def previous_description(self):
+    def previous_description(self) -> ServerDescription:
         """The previous
         :class:`~pymongo.server_description.ServerDescription`."""
         return self.__previous_description
 
     @property
-    def new_description(self):
+    def new_description(self) -> ServerDescription:
         """The new
         :class:`~pymongo.server_description.ServerDescription`."""
         return self.__new_description
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<%s %s changed from: %s, to: %s>" % (
             self.__class__.__name__, self.server_address,
             self.previous_description, self.new_description)
@@ -801,15 +819,15 @@ class TopologyEvent(object):
 
     __slots__ = ('__topology_id')
 
-    def __init__(self, topology_id):
+    def __init__(self, topology_id: ObjectId) -> None:
         self.__topology_id = topology_id
 
     @property
-    def topology_id(self):
+    def topology_id(self) -> ObjectId:
         """A unique identifier for the topology this server is a part of."""
         return self.__topology_id
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<%s topology_id: %s>" % (
             self.__class__.__name__, self.topology_id)
 
@@ -822,24 +840,24 @@ class TopologyDescriptionChangedEvent(TopologyEvent):
 
     __slots__ = ('__previous_description', '__new_description')
 
-    def __init__(self, previous_description,  new_description, *args):
+    def __init__(self, previous_description: TopologyDescription, new_description: TopologyDescription, *args: Any) -> None:
         super(TopologyDescriptionChangedEvent, self).__init__(*args)
         self.__previous_description = previous_description
         self.__new_description = new_description
 
     @property
-    def previous_description(self):
+    def previous_description(self) -> TopologyDescription:
         """The previous
         :class:`~pymongo.topology_description.TopologyDescription`."""
         return self.__previous_description
 
     @property
-    def new_description(self):
+    def new_description(self) -> TopologyDescription:
         """The new
         :class:`~pymongo.topology_description.TopologyDescription`."""
         return self.__new_description
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<%s topology_id: %s changed from: %s, to: %s>" % (
             self.__class__.__name__, self.topology_id,
             self.previous_description, self.new_description)
@@ -868,16 +886,16 @@ class _ServerHeartbeatEvent(object):
 
     __slots__ = ('__connection_id')
 
-    def __init__(self, connection_id):
+    def __init__(self, connection_id: _Address) -> None:
         self.__connection_id = connection_id
 
     @property
-    def connection_id(self):
+    def connection_id(self) -> _Address:
         """The address (host, port) of the server this heartbeat was sent
         to."""
         return self.__connection_id
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<%s %s>" % (self.__class__.__name__, self.connection_id)
 
 
@@ -898,24 +916,24 @@ class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):
 
     __slots__ = ('__duration', '__reply', '__awaited')
 
-    def __init__(self, duration, reply, connection_id, awaited=False):
+    def __init__(self, duration: float, reply: Hello, connection_id: _Address, awaited: bool = False) -> None:
         super(ServerHeartbeatSucceededEvent, self).__init__(connection_id)
         self.__duration = duration
         self.__reply = reply
         self.__awaited = awaited
 
     @property
-    def duration(self):
+    def duration(self) -> float:
         """The duration of this heartbeat in microseconds."""
         return self.__duration
 
     @property
-    def reply(self):
+    def reply(self) -> Hello:
         """An instance of :class:`~pymongo.hello.Hello`."""
         return self.__reply
 
     @property
-    def awaited(self):
+    def awaited(self) -> bool:
         """Whether the heartbeat was awaited.
 
         If true, then :meth:`duration` reflects the sum of the round trip time
@@ -924,7 +942,7 @@ class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):
         """
         return self.__awaited
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<%s %s duration: %s, awaited: %s, reply: %s>" % (
             self.__class__.__name__, self.connection_id,
             self.duration, self.awaited, self.reply)
@@ -939,24 +957,24 @@ class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
 
     __slots__ = ('__duration', '__reply', '__awaited')
 
-    def __init__(self, duration, reply, connection_id, awaited=False):
+    def __init__(self, duration: float, reply: Exception, connection_id: _Address, awaited: bool = False) -> None:
         super(ServerHeartbeatFailedEvent, self).__init__(connection_id)
         self.__duration = duration
         self.__reply = reply
         self.__awaited = awaited
 
     @property
-    def duration(self):
+    def duration(self) -> float:
         """The duration of this heartbeat in microseconds."""
         return self.__duration
 
     @property
-    def reply(self):
+    def reply(self) -> Exception:
         """A subclass of :exc:`Exception`."""
         return self.__reply
 
     @property
-    def awaited(self):
+    def awaited(self) -> bool:
         """Whether the heartbeat was awaited.
 
         If true, then :meth:`duration` reflects the sum of the round trip time
@@ -965,7 +983,7 @@ class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
         """
         return self.__awaited
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<%s %s duration: %s, awaited: %s, reply: %r>" % (
             self.__class__.__name__, self.connection_id,
             self.duration, self.awaited, self.reply)
