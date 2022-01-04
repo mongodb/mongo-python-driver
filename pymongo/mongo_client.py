@@ -33,7 +33,7 @@ access:
 
 import contextlib
 import threading
-from typing import Any, Dict, FrozenSet, List, Mapping, MutableMapping, Optional, Sequence, Set, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, FrozenSet, List, Mapping, MutableMapping, Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast
 import weakref
 
 from collections import defaultdict
@@ -810,7 +810,7 @@ class MongoClient(common.BaseObject):
 
     def watch(self,
         pipeline: Optional[_Pipeline] = None,
-        full_document: Optional[bool] = None,
+        full_document: Optional[str] = None,
         resume_after: Optional[Mapping[str, Any]] = None,
         max_await_time_ms: Optional[int] = None,
         batch_size: Optional[int] = None,
@@ -1807,8 +1807,9 @@ class MongoClient(common.BaseObject):
             raise ConfigurationError(
                 'No default database name defined or provided.')
 
+        name = cast(str, self.__default_database_name or default)
         return database.Database(
-            self, self.__default_database_name or default, codec_options,
+            self, name, codec_options,
             read_preference, write_concern, read_concern)
 
     def get_database(self,
@@ -1878,13 +1879,13 @@ class MongoClient(common.BaseObject):
             write_concern=DEFAULT_WRITE_CONCERN)
 
     def __enter__(self) -> _MongoClient:
-        return self
+        return cast(_MongoClient, self)
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
     def __iter__(self) -> _MongoClient:
-        return self
+        return cast(_MongoClient, self)
 
     def __next__(self) -> None:
         raise TypeError("'MongoClient' object is not iterable")

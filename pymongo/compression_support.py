@@ -15,21 +15,21 @@
 import warnings
 
 try:
-    import snappy
+    import snappy  # type: ignore
     _HAVE_SNAPPY = True
 except ImportError:
     # python-snappy isn't available.
     _HAVE_SNAPPY = False
 
 try:
-    import zlib
+    import zlib  # type: ignore
     _HAVE_ZLIB = True
 except ImportError:
     # Python built without zlib support.
     _HAVE_ZLIB = False
 
 try:
-    from zstandard import ZstdCompressor, ZstdDecompressor
+    from zstandard import ZstdCompressor, ZstdDecompressor  # type: ignore
     _HAVE_ZSTD = True
 except ImportError:
     _HAVE_ZSTD = False

@@ -18,7 +18,7 @@ import copy
 from typing import Any, List, Mapping, Optional
 
 try:
-    import pymongocrypt
+    import pymongocrypt  # type: ignore
     _HAVE_PYMONGOCRYPT = True
 except ImportError:
     _HAVE_PYMONGOCRYPT = False

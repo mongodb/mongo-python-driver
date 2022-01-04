@@ -15,7 +15,7 @@
 """Collection level utilities for Mongo."""
 
 from collections import abc
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, TypeVar, Union
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, TypeVar, Union, cast
 
 from bson.code import Code
 from bson.objectid import ObjectId
@@ -292,13 +292,13 @@ class Collection(common.BaseObject):
         return self.__getitem__(name)
 
     def __getitem__(self, name) -> _Collection:
-        return Collection(self.__database,
+        return cast(_Collection, Collection(self.__database,
                           "%s.%s" % (self.__name, name),
                           False,
                           self.codec_options,
                           self.read_preference,
                           self.write_concern,
-                          self.read_concern)
+                          self.read_concern))
 
     def __repr__(self) -> str:
         return "Collection(%r, %r)" % (self.__database, self.__name)
@@ -376,13 +376,13 @@ class Collection(common.BaseObject):
             default) the :attr:`read_concern` of this :class:`Collection`
             is used.
         """
-        return Collection(self.__database,
+        return cast(_Collection, Collection(self.__database,
                           self.__name,
                           False,
                           codec_options or self.codec_options,
                           read_preference or self.read_preference,
                           write_concern or self.write_concern,
-                          read_concern or self.read_concern)
+                          read_concern or self.read_concern))
 
     def bulk_write(
         self,
@@ -802,6 +802,7 @@ class Collection(common.BaseObject):
         array_filters: Optional[List[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
+        let: Optional[bool] = None
     ) -> UpdateResult:
         """Update a single document matching the filter.
 
@@ -2674,7 +2675,7 @@ class Collection(common.BaseObject):
                                       session=session, **kwargs)
 
     def __iter__(self) -> _Collection:
-        return self
+        return cast(_Collection, self)
 
     def __next__(self) -> None:
         raise TypeError("'Collection' object is not iterable")

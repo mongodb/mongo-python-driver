@@ -1428,7 +1428,7 @@ class CommandListener(_EventListener):
         """
         raise NotImplementedError
 
-    def succeeded(self, event: CommandStartedEvent) -> None:
+    def succeeded(self, event: CommandSucceededEvent) -> None:
         """Abstract method to handle a `CommandSucceededEvent`.
 
         :Parameters:
@@ -1436,7 +1436,7 @@ class CommandListener(_EventListener):
         """
         raise NotImplementedError
 
-    def failed(self, event: CommandStartedEvent) -> None:
+    def failed(self, event: CommandFailedEvent) -> None:
         """Abstract method to handle a `CommandFailedEvent`.
 
         :Parameters:

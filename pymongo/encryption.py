@@ -15,16 +15,16 @@
 """Support for explicit client-side field level encryption."""
 
 import contextlib
-from typing import Any, List, Mapping, Optional, TypeVar
+from typing import Any, List, Mapping, Optional, TypeVar, cast
 import uuid
 import weakref
 
 try:
-    from pymongocrypt.auto_encrypter import AutoEncrypter
-    from pymongocrypt.errors import MongoCryptError
-    from pymongocrypt.explicit_encrypter import ExplicitEncrypter
-    from pymongocrypt.mongocrypt import MongoCryptOptions
-    from pymongocrypt.state_machine import MongoCryptCallback
+    from pymongocrypt.auto_encrypter import AutoEncrypter  # type: ignore
+    from pymongocrypt.errors import MongoCryptError  # type: ignore
+    from pymongocrypt.explicit_encrypter import ExplicitEncrypter  # type: ignore
+    from pymongocrypt.mongocrypt import MongoCryptOptions  # type: ignore
+    from pymongocrypt.state_machine import MongoCryptCallback  # type: ignore
     _HAVE_PYMONGOCRYPT = True
 except ImportError:
     _HAVE_PYMONGOCRYPT = False
@@ -456,7 +456,7 @@ class ClientEncryption(object):
 
         opts = AutoEncryptionOpts(kms_providers, key_vault_namespace,
                                   kms_tls_options=kms_tls_options)
-        self._io_callbacks = _EncryptionIO(None, key_vault_coll, None, opts)
+        self._io_callbacks: Optional[_EncryptionIO] = _EncryptionIO(None, key_vault_coll, None, opts)
         self._encryption = ExplicitEncrypter(
             self._io_callbacks, MongoCryptOptions(kms_providers, None))
 
@@ -594,7 +594,7 @@ class ClientEncryption(object):
                           codec_options=self._codec_options)['v']
 
     def __enter__(self) -> _ClientEncryption:
-        return self
+        return cast(_ClientEncryption, self)
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()

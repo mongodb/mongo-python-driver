@@ -38,7 +38,7 @@ from bson.raw_bson import (_inflate_bson, DEFAULT_RAW_BSON_OPTIONS,
 from bson.son import SON
 
 try:
-    from pymongo import _cmessage
+    from pymongo import _cmessage  # type: ignore
     _use_c = True
 except ImportError:
     _use_c = False

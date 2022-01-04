@@ -15,9 +15,11 @@
 """Python driver for MongoDB."""
 
 from typing import Any, Tuple, Union
+
 from pymongo.common import MAX_SUPPORTED_WIRE_VERSION as MAX_SUPPORTED_WIRE_VERSION, MIN_SUPPORTED_WIRE_VERSION as MIN_SUPPORTED_WIRE_VERSION
-from pymongo.mongo_replica_set_client import MongoReplicaSetClient as MongoReplicaSetClient
 from pymongo.operations import DeleteMany as DeleteMany, DeleteOne as DeleteOne, IndexModel as IndexModel, InsertOne as InsertOne, ReplaceOne as ReplaceOne, UpdateMany as UpdateMany, UpdateOne as UpdateOne
+
+
 GEOHAYSTACK: str
 OFF: int
 SLOW_ONLY: int
@@ -92,7 +94,7 @@ from pymongo.write_concern import WriteConcern
 def has_c() -> bool:
     """Is the C extension installed?"""
     try:
-        from pymongo import _cmessage
+        from pymongo import _cmessage  # type: ignore
         return True
     except ImportError:
         return False

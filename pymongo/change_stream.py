@@ -15,7 +15,7 @@
 """Watch changes on a collection, a database, or the entire cluster."""
 
 import copy
-from typing import Any, Iterable, List, Mapping, Optional, TypeVar, Union
+from typing import Any, Dict, Iterable, List, Mapping, Optional, TypeVar, Union, cast
 
 from bson import _bson_to_dict
 from bson.raw_bson import RawBSONDocument
@@ -40,7 +40,7 @@ from pymongo.errors import (ConnectionFailure,
                             PyMongoError)
 
 
-_Collation = Union[Mapping[str, Any], Collation]
+_Collation = Union[Dict[str, Any], Collation]
 _DocumentOut = Any
 _ChangeStream = TypeVar("_ChangeStream", bound="ChangeStream")
 
@@ -226,7 +226,7 @@ class ChangeStream(object):
         self._cursor.close()
 
     def __iter__(self) -> Iterable[Mapping[str, Any]]:
-        return self
+        return cast(Iterable[Mapping[str, Any]], self)
 
     @property
     def resume_token(self) -> Optional[Mapping[str, Any]]:
@@ -379,7 +379,7 @@ class ChangeStream(object):
         return change
 
     def __enter__(self) -> _ChangeStream:
-        return self
+        return cast(_ChangeStream, self)
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()

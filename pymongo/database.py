@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Database level operations."""
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, TypeVar, Union
+from typing import Any, Dict, List, Mapping, Optional, Sequence, TypeVar, Union, cast
 
 from bson.code import Code
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
@@ -172,12 +172,12 @@ class Database(common.BaseObject):
 
         .. versionadded:: 3.8
         """
-        return Database(self.client,
+        return cast(_Database, Database(self.client,
                         self.__name,
                         codec_options or self.codec_options,
                         read_preference or self.read_preference,
                         write_concern or self.write_concern,
-                        read_concern or self.read_concern)
+                        read_concern or self.read_concern))
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Database):
@@ -440,7 +440,7 @@ class Database(common.BaseObject):
 
     def watch(self,
         pipeline: Optional[_Pipeline] = None,
-        full_document: Optional[bool] = None,
+        full_document: Optional[str] = None,
         resume_after: Optional[Mapping[str, Any]] = None,
         max_await_time_ms: Optional[int] = None,
         batch_size: Optional[int] = None,
@@ -896,7 +896,7 @@ class Database(common.BaseObject):
         return result
 
     def __iter__(self) -> _Database:
-        return self
+        return cast(_Database, self)
 
     def __next__(self) -> _Database:
         raise TypeError("'Database' object is not iterable")

@@ -16,7 +16,7 @@
 
 import copy
 import threading
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, TypeVar, Union, overload
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, TypeVar, Union, cast, overload
 import warnings
 
 from collections import deque
@@ -184,6 +184,7 @@ class Cursor(object):
         self.__exhaust = False
         self.__sock_mgr = None
         self.__killed = False
+        self.__session: Optional[ClientSession]
 
         if session:
             self.__session = session
@@ -240,7 +241,7 @@ class Cursor(object):
         self.__explain = False
         self.__comment = comment
         self.__max_time_ms = max_time_ms
-        self.__max_await_time_ms = None
+        self.__max_await_time_ms: Optional[int] = None
         self.__max = max
         self.__min = min
         self.__collation = validate_collation_or_none(collation)
@@ -267,7 +268,7 @@ class Cursor(object):
         # it anytime we change __limit.
         self.__empty = False
 
-        self.__data = deque()
+        self.__data: deque = deque()
         self.__address = None
         self.__retrieved = 0
 
@@ -320,7 +321,7 @@ class Cursor(object):
         self.__retrieved = 0
         self.__killed = False
 
-        return self
+        return cast(_Cursor, self)
 
     def clone(self) -> _Cursor:
         """Get a clone of this cursor.
@@ -476,7 +477,7 @@ class Cursor(object):
             self.__exhaust = True
 
         self.__query_flags |= mask
-        return self
+        return cast(_Cursor, self)
 
     def remove_option(self, mask: int) -> _Cursor:
         """Unset arbitrary query flags using a bitmask.
@@ -492,7 +493,7 @@ class Cursor(object):
             self.__exhaust = False
 
         self.__query_flags &= ~mask
-        return self
+        return cast(_Cursor, self)
 
     def allow_disk_use(self, allow_disk_use: bool) -> _Cursor:
         """Specifies whether MongoDB can use temporary disk files while
@@ -514,7 +515,7 @@ class Cursor(object):
         self.__check_okay_to_chain()
 
         self.__allow_disk_use = allow_disk_use
-        return self
+        return cast(_Cursor, self)
 
     def limit(self, limit: int) -> _Cursor:
         """Limits the number of results to be returned by this cursor.
@@ -537,7 +538,7 @@ class Cursor(object):
 
         self.__empty = False
         self.__limit = limit
-        return self
+        return cast(_Cursor, self)
 
     def batch_size(self, batch_size: int) -> _Cursor:
         """Limits the number of documents returned in one batch. Each batch
@@ -565,7 +566,7 @@ class Cursor(object):
         self.__check_okay_to_chain()
 
         self.__batch_size = batch_size
-        return self
+        return cast(_Cursor, self)
 
     def skip(self, skip: int) -> _Cursor:
         """Skips the first `skip` results of this cursor.
@@ -586,7 +587,7 @@ class Cursor(object):
         self.__check_okay_to_chain()
 
         self.__skip = skip
-        return self
+        return cast(_Cursor, self)
 
     def max_time_ms(self, max_time_ms: Optional[int]) -> _Cursor:
         """Specifies a time limit for a query operation. If the specified
@@ -607,7 +608,7 @@ class Cursor(object):
         self.__check_okay_to_chain()
 
         self.__max_time_ms = max_time_ms
-        return self
+        return cast(_Cursor, self)
 
     def max_await_time_ms(self, max_await_time_ms: Optional[int]) -> _Cursor:
         """Specifies a time limit for a getMore operation on a
@@ -635,7 +636,7 @@ class Cursor(object):
         if self.__query_flags & CursorType.TAILABLE_AWAIT:
             self.__max_await_time_ms = max_await_time_ms
 
-        return self
+        return cast(_Cursor, self)
 
     def __getitem__(self, index: slice) -> _Cursor:
         """Get a single document or a slice of documents from this cursor.
@@ -703,7 +704,7 @@ class Cursor(object):
 
             self.__skip = skip
             self.__limit = limit
-            return self
+            return cast(_Cursor, self)
 
         if isinstance(index, int):
             if index < 0:
@@ -737,7 +738,7 @@ class Cursor(object):
         """
         self.__check_okay_to_chain()
         self.__max_scan = max_scan
-        return self
+        return cast(_Cursor, self)
 
     def max(self, spec: _Sort) -> _Cursor:
         """Adds ``max`` operator that specifies upper bound for specific index.
@@ -760,7 +761,7 @@ class Cursor(object):
 
         self.__check_okay_to_chain()
         self.__max = SON(spec)
-        return self
+        return cast(_Cursor, self)
 
     def min(self, spec: _Sort) -> _Cursor:
         """Adds ``min`` operator that specifies lower bound for specific index.
@@ -783,7 +784,7 @@ class Cursor(object):
 
         self.__check_okay_to_chain()
         self.__min = SON(spec)
-        return self
+        return cast(_Cursor, self)
 
     def sort(self, key_or_list: _Hint, direction: Optional[Union[int, str]] = None) -> _Cursor:
         """Sorts this cursor's results.
@@ -829,7 +830,7 @@ class Cursor(object):
         self.__check_okay_to_chain()
         keys = helpers._index_list(key_or_list, direction)
         self.__ordering = helpers._index_document(keys)
-        return self
+        return cast(_Cursor, self)
 
     def distinct(self, key: str) -> List[Any]:
         """Get a list of distinct values for `key` among all documents
@@ -873,7 +874,7 @@ class Cursor(object):
 
         .. seealso:: The MongoDB documentation on `explain <https://dochub.mongodb.org/core/explain>`_.
         """
-        c = self.clone()
+        c: Cursor = self.clone()
         c.__explain = True
 
         # always use a hard limit for explains
@@ -914,7 +915,7 @@ class Cursor(object):
         """
         self.__check_okay_to_chain()
         self.__set_hint(index)
-        return self
+        return cast(_Cursor, self)
 
     def comment(self, comment: Any) -> _Cursor:
         """Adds a 'comment' to the cursor.
@@ -929,7 +930,7 @@ class Cursor(object):
         """
         self.__check_okay_to_chain()
         self.__comment = comment
-        return self
+        return cast(_Cursor, self)
 
     def where(self, code: Union[str, Code]) -> _Cursor:
         """Adds a `$where`_ clause to this query.
@@ -966,7 +967,7 @@ class Cursor(object):
             code = Code(code)
 
         self.__spec["$where"] = code
-        return self
+        return cast(_Cursor, self)
 
     def collation(self, collation: Optional[_Collation]) -> _Cursor:
         """Adds a :class:`~pymongo.collation.Collation` to this query.
@@ -982,7 +983,7 @@ class Cursor(object):
         """
         self.__check_okay_to_chain()
         self.__collation = validate_collation_or_none(collation)
-        return self
+        return cast(_Cursor, self)
 
     def __send_message(self, operation):
         """Send a query or getmore operation and handles the response.
@@ -1180,9 +1181,10 @@ class Cursor(object):
         """
         if self.__explicit_session:
             return self.__session
+        return None
 
     def __iter__(self) -> _Cursor:
-        return self
+        return cast(_Cursor, self)
 
     def next(self) -> _DocumentOut:
         """Advance the cursor."""
@@ -1196,7 +1198,7 @@ class Cursor(object):
     __next__ = next
 
     def __enter__(self) -> _Cursor:
-        return self
+        return cast(_Cursor, self)
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
@@ -1283,5 +1285,5 @@ class RawBatchCursor(Cursor):
         clone = self._clone(deepcopy=True, base=Cursor(self.collection))
         return clone.explain()
 
-    def __getitem__(self, index: int) -> _Cursor:
+    def __getitem__(self, index: Any) -> _Cursor:
         raise InvalidOperation("Cannot call __getitem__ on RawBatchCursor")
