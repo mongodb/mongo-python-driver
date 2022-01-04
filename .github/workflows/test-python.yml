@@ -49,4 +49,4 @@ jobs:
         run: |
           mypy --strict bson
           mypy gridfs
-          #mypy --strict pymongo
+          mypy pymongo

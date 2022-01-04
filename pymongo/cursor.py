@@ -16,7 +16,7 @@
 
 import copy
 import threading
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, TypeVar, Union, cast, overload
+from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple, TypeVar, Union, cast, overload
 import warnings
 
 from collections import deque
@@ -134,7 +134,7 @@ class _SocketManager(object):
 _Cursor = TypeVar("_Cursor", bound="Cursor", covariant=True)
 _Sort = Sequence[Tuple[str, Union[int, str, Mapping[str, Any]]]]
 _Hint = Union[str, _Sort]
-_Collation = Union[Mapping[str, Any], Collation]
+_Collation = Union[Dict[str, Any], Collation]
 _DocumentOut = Any
 
 
@@ -193,9 +193,7 @@ class Cursor(object):
             self.__session = None
             self.__explicit_session = False
 
-        spec = filter
-        if spec is None:
-            spec = {}
+        spec = copy.copy(cast(MutableMapping[str, Any], filter) or {})
 
         validate_is_mapping("filter", spec)
         if not isinstance(skip, int):
@@ -231,7 +229,7 @@ class Cursor(object):
             validate_is_document_type("let", let)
 
         self.__let = let
-        self.__spec = spec
+        self.__spec: MutableMapping[str, Any] = spec
         self.__projection = projection
         self.__skip = skip
         self.__limit = limit
@@ -242,8 +240,8 @@ class Cursor(object):
         self.__comment = comment
         self.__max_time_ms = max_time_ms
         self.__max_await_time_ms: Optional[int] = None
-        self.__max = max
-        self.__min = min
+        self.__max: Optional[Union[SON[Any, Any], _Sort]] = max
+        self.__min: Optional[Union[SON[Any, Any], _Sort]] = min
         self.__collation = validate_collation_or_none(collation)
         self.__return_key = return_key
         self.__show_record_id = show_record_id
@@ -849,7 +847,7 @@ class Cursor(object):
 
         .. seealso:: :meth:`pymongo.collection.Collection.distinct`
         """
-        options = {}
+        options: Dict[str, Any] = {}
         if self.__spec:
             options["query"] = self.__spec
         if self.__max_time_ms is not None:

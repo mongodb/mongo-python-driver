@@ -15,7 +15,7 @@
 """Collection level utilities for Mongo."""
 
 from collections import abc
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, TypeVar, Union, cast
+from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple, TypeVar, Union, cast
 
 from bson.code import Code
 from bson.objectid import ObjectId
@@ -62,7 +62,7 @@ _IndexList = Sequence[Tuple[str, Union[int, str, Mapping[str, Any]]]]
 _IndexKeyHint = Union[str, _IndexList]
 _Pipeline = List[Mapping[str, Any]]
 _Code = Union[str, Code]
-_DocumentIn = Mapping[str, Any]
+_DocumentIn = MutableMapping[str, Any]
 _DocumentOut = Any
 
 

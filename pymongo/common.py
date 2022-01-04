@@ -16,7 +16,7 @@
 """Functions and classes common to multiple pymongo modules."""
 
 import datetime
-from typing import Any, Callable, Dict, List, Mapping, MutableMapping, Optional, Sequence, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Mapping, MutableMapping, Optional, Sequence, Tuple, Type, Union, cast
 import warnings
 
 from collections import abc, OrderedDict
@@ -38,7 +38,7 @@ from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import _MONGOS_MODES, _ServerMode
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
-ORDERED_TYPES: Tuple[SON, OrderedDict] = (SON, OrderedDict)
+ORDERED_TYPES: Tuple[Type[SON[Any, Any]], Type[OrderedDict[Any, Any]]] = (SON, OrderedDict)
 
 # Defaults until we connect to a server and get updated limits.
 MAX_BSON_SIZE: int = 16 * (1024 ** 2)
@@ -69,7 +69,7 @@ EVENTS_QUEUE_FREQUENCY: int = 1
 SERVER_SELECTION_TIMEOUT: int = 30
 
 # Spec requires at least 500ms between hello calls.
-MIN_HEARTBEAT_INTERVAL: int = 0.5
+MIN_HEARTBEAT_INTERVAL: float = 0.5
 
 # Spec requires at least 60s between SRV rescans.
 MIN_SRV_RESCAN_INTERVAL: int = 60
@@ -395,7 +395,7 @@ def validate_read_preference_tags(name: str, value: Any) -> List[Dict[str, str]]
     if not isinstance(value, list):
         value = [value]
 
-    tag_sets = []
+    tag_sets: List[Any] = []
     for tag_set in value:
         if tag_set == '':
             tag_sets.append({})
@@ -421,7 +421,7 @@ _MECHANISM_PROPS = frozenset(['SERVICE_NAME',
 def validate_auth_mechanism_properties(option: str, value: Any) -> Dict[str, Union[bool, str]]:
     """Validate authMechanismProperties."""
     value = validate_string(option, value)
-    props = {}
+    props: Dict[str, Any] = {}
     for opt in value.split(','):
         try:
             key, val = opt.split(':')
@@ -459,7 +459,7 @@ def validate_type_registry(option: Any, value: Any) -> TypeRegistry:
     if value is not None and not isinstance(value, TypeRegistry):
         raise TypeError("%s must be an instance of %s" % (
             option, TypeRegistry))
-    return value
+    return cast(TypeRegistry, value)
 
 
 def validate_list(option: str, value: Any) -> List[Any]:
@@ -753,6 +753,7 @@ def get_validated_options(options: Mapping[str, Any], warn: bool = True) -> Mapp
           invalid options will be ignored. Otherwise, invalid options will
           cause errors.
     """
+    validated_options: Mapping[str, Any]
     if isinstance(options, _CaseInsensitiveDictionary):
         validated_options = _CaseInsensitiveDictionary()
         get_normed_key = lambda x: x

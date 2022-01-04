@@ -80,7 +80,7 @@ from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
 
 _Pipeline = List[Mapping[str, Any]]
-_Collation = Union[Mapping[str, Any], Collation]
+_Collation = Union[Dict[str, Any], Collation]
 _MongoClient = TypeVar("_MongoClient", bound="MongoClient", covariant=True)
 
 
@@ -1709,7 +1709,7 @@ class MongoClient(common.BaseObject):
         .. versionadded:: 3.6
         """
         return [doc["name"]
-                for doc in self.list_databases(session, nameOnly=True)]
+                for doc in self.list_databases(session, nameOnly=True)]  # type: ignore
 
     def drop_database(self,
         name_or_database: Union[str, database.Database],

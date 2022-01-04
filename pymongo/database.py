@@ -35,7 +35,7 @@ from pymongo.write_concern import WriteConcern
 
 _Database = TypeVar("_Database", bound="Database", covariant=True)
 _Pipeline = List[Mapping[str, Any]]
-_Collation = Union[Mapping[str, Any], Collation]
+_Collation = Union[Dict[str, Any], Collation]
 _Code = Union[str, Code]
 _DocumentOut = Any
 
@@ -776,7 +776,7 @@ class Database(common.BaseObject):
                 kwargs["nameOnly"] = True
 
         return [result["name"]
-                for result in self.list_collections(session=session, **kwargs)]
+                for result in self.list_collections(session=session, **kwargs)]  # type: ignore
 
     def drop_collection(self,
         name_or_collection: Union[str, Collection],

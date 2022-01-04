@@ -25,6 +25,8 @@ from typing import Any, List, Mapping, Optional, cast
 
 from pymongo import (ASCENDING,
                      DESCENDING)
+from pymongo.collation import Collation
+from pymongo.collection import Collection
 from pymongo.common import UNAUTHORIZED_CODES, validate_string
 from pymongo.database import Database
 from pymongo.errors import ConfigurationError, OperationFailure
@@ -315,7 +317,7 @@ class GridFS(object):
             filter = {"_id": filter}
 
         _disallow_transactions(session)
-        for f in self.find(filter, *args, session=session, **kwargs):
+        for f in self.find(filter, *args, session=session, **kwargs):  # type: ignore
             return cast(GridOutCursor, f)
 
         return None
@@ -480,11 +482,11 @@ class GridFSBucket(object):
 
         self._bucket_name = bucket_name
         self._collection = db[bucket_name]
-        self._chunks = self._collection.chunks.with_options(
+        self._chunks: Collection = self._collection.chunks.with_options(
             write_concern=write_concern,
             read_preference=read_preference)
 
-        self._files = self._collection.files.with_options(
+        self._files: Collection = self._collection.files.with_options(
             write_concern=write_concern,
             read_preference=read_preference)
 

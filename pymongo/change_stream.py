@@ -108,7 +108,7 @@ class ChangeStream(object):
             self._decode_custom = True
             # Keep the type registry so that we support encoding custom types
             # in the pipeline.
-            self._target = target.with_options(
+            self._target = target.with_options(  # type: ignore
                 codec_options=target.codec_options.with_options(
                     document_class=RawBSONDocument))
         else:

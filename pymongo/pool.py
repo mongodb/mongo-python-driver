@@ -23,6 +23,7 @@ import socket
 import sys
 import threading
 import time
+from typing import Any
 import weakref
 
 from bson import DEFAULT_CODEC_OPTIONS
@@ -145,7 +146,7 @@ else:
         _set_tcp_option(sock, 'TCP_KEEPINTVL', _MAX_TCP_KEEPINTVL)
         _set_tcp_option(sock, 'TCP_KEEPCNT', _MAX_TCP_KEEPCNT)
 
-_METADATA = SON([
+_METADATA: SON[str, Any] = SON([
     ('driver', SON([('name', 'PyMongo'), ('version', __version__)])),
 ])
 
@@ -205,7 +206,7 @@ else:
 if platform.python_implementation().startswith('PyPy'):
     _METADATA['platform'] = ' '.join(
         (platform.python_implementation(),
-         '.'.join(map(str, sys.pypy_version_info)),
+         '.'.join(map(str, sys.pypy_version_info)),  # type: ignore
          '(Python %s)' % '.'.join(map(str, sys.version_info))))
 elif sys.platform.startswith('java'):
     _METADATA['platform'] = ' '.join(
