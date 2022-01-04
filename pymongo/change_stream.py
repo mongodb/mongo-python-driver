@@ -40,7 +40,7 @@ from pymongo.errors import (ConnectionFailure,
                             PyMongoError)
 
 
-_Collation = Union[Dict[str, Any], Collation]
+_Collation = Union[Mapping[str, Any], Collation]
 _DocumentOut = Any
 _ChangeStream = TypeVar("_ChangeStream", bound="ChangeStream")
 

@@ -16,7 +16,7 @@
 
 .. _collations: http://userguide.icu-project.org/collation/concepts
 """
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Mapping, Optional, Union
 
 from pymongo import common
 
@@ -214,7 +214,7 @@ class Collation(object):
         return not self == other
 
 
-def validate_collation_or_none(value: Optional[Union[Dict[str, Any], Collation]]) -> Optional[Dict[str, Any]]:
+def validate_collation_or_none(value: Optional[Union[Mapping[str, Any], Collation]]) -> Optional[Dict[str, Any]]:
     if value is None:
         return None
     if isinstance(value, Collation):

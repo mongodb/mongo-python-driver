@@ -1058,8 +1058,13 @@ class Collection(common.BaseObject):
             (write_concern or self.write_concern).acknowledged and not multi,
             _delete, session)
 
-    def delete_one(self, filter, collation=None, hint=None, session=None,
-                   let=None):
+    def delete_one(self,
+        filter: Mapping[str, Any],
+        collation: Optional[_Collation] = None,
+        hint: Optional[_IndexKeyHint] = None,
+        session: Optional[ClientSession] = None,
+        let: Optional[Any] = None
+    ) -> DeleteResult:
         """Delete a single document matching the filter.
 
           >>> db.test.count_documents({'x': 1})
@@ -1108,8 +1113,13 @@ class Collection(common.BaseObject):
                 collation=collation, hint=hint, session=session, let=let),
             write_concern.acknowledged)
 
-    def delete_many(self, filter, collation=None, hint=None, session=None,
-                    let=None):
+    def delete_many(self,
+        filter: Mapping[str, Any],
+        collation: Optional[_Collation] = None,
+        hint: Optional[_IndexKeyHint] = None,
+        session: Optional[ClientSession] = None,
+        let: Optional[Any] = None
+    ) -> DeleteResult:
         """Delete one or more documents matching the filter.
 
           >>> db.test.count_documents({'x': 1})
@@ -1158,7 +1168,7 @@ class Collection(common.BaseObject):
                 collation=collation, hint=hint, session=session, let=let),
             write_concern.acknowledged)
 
-    def find_one(self, filter=None, *args, **kwargs):
+    def find_one(self, filter: Optional[Any] = None, *args: Any, **kwargs: Any) -> Optional[_DocumentOut]:
         """Get a single document from the database.
 
         All arguments to :meth:`find` are also valid arguments for
@@ -1188,11 +1198,11 @@ class Collection(common.BaseObject):
             filter = {"_id": filter}
 
         cursor = self.find(filter, *args, **kwargs)
-        for result in cursor.limit(-1):
+        for result in cursor.limit(-1):  # type: ignore
             return result
         return None
 
-    def find(self, *args, **kwargs):
+    def find(self, *args: Any, **kwargs: Any) -> Cursor:
         """Query the database.
 
         The `filter` argument is a prototype document that all results
@@ -1381,7 +1391,7 @@ class Collection(common.BaseObject):
         """
         return Cursor(self, *args, **kwargs)
 
-    def find_raw_batches(self, *args, **kwargs):
+    def find_raw_batches(self, *args: Any, **kwargs: Any) -> RawBatchCursor:
         """Query the database and retrieve batches of raw BSON.
 
         Similar to the :meth:`find` method but returns a
@@ -1449,7 +1459,7 @@ class Collection(common.BaseObject):
         batch = result['cursor']['firstBatch']
         return batch[0] if batch else None
 
-    def estimated_document_count(self, **kwargs):
+    def estimated_document_count(self, **kwargs: Any) -> int:
         """Get an estimate of the number of documents in this collection using
         collection metadata.
 
@@ -1498,7 +1508,7 @@ class Collection(common.BaseObject):
         return self.__database.client._retryable_read(
             _cmd, self.read_preference, None)
 
-    def count_documents(self, filter, session=None, **kwargs):
+    def count_documents(self, filter: Mapping[str, Any], session: Optional[ClientSession] = None, **kwargs: Any) -> int:
         """Count the number of documents in this collection.
 
         .. note:: For a fast count of the total documents in a collection see
@@ -1576,7 +1586,7 @@ class Collection(common.BaseObject):
         return self.__database.client._retryable_read(
             _cmd, self._read_preference_for(session), session)
 
-    def create_indexes(self, indexes, session=None, **kwargs):
+    def create_indexes(self, indexes: List[IndexModel], session: Optional[ClientSession] = None, **kwargs: Any) -> List[str]:
         """Create one or more indexes on this collection.
 
           >>> from pymongo import IndexModel, ASCENDING, DESCENDING
@@ -1651,7 +1661,7 @@ class Collection(common.BaseObject):
                 session=session)
         return names
 
-    def create_index(self, keys, session=None, **kwargs):
+    def create_index(self, keys: _IndexKeyHint, session: Optional[ClientSession] = None, **kwargs: Any) -> str:
         """Creates an index on this collection.
 
         Takes either a single key or a list of (key, direction) pairs.
@@ -1754,7 +1764,7 @@ class Collection(common.BaseObject):
         index = IndexModel(keys, **kwargs)
         return self.__create_indexes([index], session, **cmd_options)[0]
 
-    def drop_indexes(self, session=None, **kwargs):
+    def drop_indexes(self, session: Optional[ClientSession] = None, **kwargs: Any) -> None:
         """Drops all indexes on this collection.
 
         Can be used on non-existant collections or collections with no indexes.
@@ -1780,7 +1790,7 @@ class Collection(common.BaseObject):
         """
         self.drop_index("*", session=session, **kwargs)
 
-    def drop_index(self, index_or_name, session=None, **kwargs):
+    def drop_index(self, index_or_name: _IndexKeyHint, session: Optional[ClientSession] = None, **kwargs: Any) -> None:
         """Drops the specified index on this collection.
 
         Can be used on non-existant collections or collections with no
@@ -1833,7 +1843,7 @@ class Collection(common.BaseObject):
                           write_concern=self._write_concern_for(session),
                           session=session)
 
-    def list_indexes(self, session=None):
+    def list_indexes(self, session: Optional[ClientSession] = None) -> CommandCursor:
         """Get a cursor over the index documents for this collection.
 
           >>> for index in db.test.list_indexes():
@@ -1854,7 +1864,7 @@ class Collection(common.BaseObject):
         .. versionadded:: 3.0
         """
         codec_options = CodecOptions(SON)
-        coll = self.with_options(codec_options=codec_options,
+        coll: Collection = self.with_options(codec_options=codec_options,
                                  read_preference=ReadPreference.PRIMARY)
         read_pref = ((session and session._txn_read_preference())
                      or ReadPreference.PRIMARY)
@@ -1882,7 +1892,7 @@ class Collection(common.BaseObject):
         return self.__database.client._retryable_read(
             _cmd, read_pref, session)
 
-    def index_information(self, session=None):
+    def index_information(self, session: Optional[ClientSession] = None) -> Dict[str, Any]:
         """Get information on this collection's indexes.
 
         Returns a dictionary where the keys are index names (as
@@ -1910,13 +1920,13 @@ class Collection(common.BaseObject):
         """
         cursor = self.list_indexes(session=session)
         info = {}
-        for index in cursor:
+        for index in cursor:  # type: ignore
             index["key"] = list(index["key"].items())
             index = dict(index)
             info[index.pop("name")] = index
         return info
 
-    def options(self, session=None):
+    def options(self, session: Optional[ClientSession] = None) -> Dict[str, Any]:
         """Get the options set on this collection.
 
         Returns a dictionary of options and their values - see
@@ -1941,7 +1951,7 @@ class Collection(common.BaseObject):
             session=session, filter={"name": self.__name})
 
         result = None
-        for doc in cursor:
+        for doc in cursor:  # type: ignore
             result = doc
             break
 
@@ -1964,7 +1974,7 @@ class Collection(common.BaseObject):
             cmd.get_cursor, cmd.get_read_preference(session), session,
             retryable=not cmd._performs_write)
 
-    def aggregate(self, pipeline, session=None, let=None, **kwargs):
+    def aggregate(self, pipeline: _Pipeline, session: Optional[ClientSession] = None, let: Optional[Any] = None, **kwargs: Any) -> CommandCursor:
         """Perform an aggregation using the aggregation framework on this
         collection.
 
@@ -2046,7 +2056,9 @@ class Collection(common.BaseObject):
                                    let=let,
                                    **kwargs)
 
-    def aggregate_raw_batches(self, pipeline, session=None, **kwargs):
+    def aggregate_raw_batches(
+        self, pipeline: _Pipeline, session: Optional[ClientSession] = None, **kwargs: Any
+    ) -> RawBatchCursor:
         """Perform an aggregation and retrieve batches of raw BSON.
 
         Similar to the :meth:`aggregate` method but returns a
@@ -2083,9 +2095,17 @@ class Collection(common.BaseObject):
                                    explicit_session=session is not None,
                                    **kwargs)
 
-    def watch(self, pipeline=None, full_document=None, resume_after=None,
-              max_await_time_ms=None, batch_size=None, collation=None,
-              start_at_operation_time=None, session=None, start_after=None):
+    def watch(self,
+        pipeline: Optional[_Pipeline] = None,
+        full_document: Optional[str] = None,
+        resume_after: Optional[Mapping[str, Any]] = None,
+        max_await_time_ms: Optional[int] = None,
+        batch_size: Optional[int] = None,
+        collation: Optional[_Collation] = None,
+        start_at_operation_time: Optional[Mapping[str, Any]] = None,
+        session: Optional[ClientSession] = None,
+        start_after: Optional[Mapping[str, Any]] = None,
+    ) -> CollectionChangeStream:
         """Watch changes on this collection.
 
         Performs an aggregation with an implicit initial ``$changeStream``
@@ -2185,7 +2205,7 @@ class Collection(common.BaseObject):
             batch_size, collation, start_at_operation_time, session,
             start_after)
 
-    def rename(self, new_name, session=None, **kwargs):
+    def rename(self, new_name: str, session: Optional[ClientSession] = None, **kwargs: Any) -> Dict[str, Any]:
         """Rename this collection.
 
         If operating in auth mode, client must be authorized as an
@@ -2236,7 +2256,9 @@ class Collection(common.BaseObject):
                     parse_write_concern_error=True,
                     session=s, client=self.__database.client)
 
-    def distinct(self, key, filter=None, session=None, **kwargs):
+    def distinct(
+        self, key: str, filter: Optional[Mapping[str, Any]] = None, session: Optional[ClientSession] = None, **kwargs: Any
+    ) -> List[Any]:
         """Get a list of distinct values for `key` among all documents
         in this collection.
 
