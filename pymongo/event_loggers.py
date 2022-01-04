@@ -26,8 +26,6 @@ or
 
 ``MongoClient(event_listeners=[CommandLogger()])``
 """
-
-
 import logging
 
 from pymongo import monitoring

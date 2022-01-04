@@ -16,11 +16,11 @@
 
 .. _collations: http://userguide.icu-project.org/collation/concepts
 """
+from typing import Any, Dict, Optional, Union
 
 from pymongo import common
 
 
-from typing import Any, Dict, Optional, Union
 class CollationStrength(object):
     """
     An enum that defines values for `strength` on a
@@ -200,17 +200,17 @@ class Collation(object):
         """
         return self.__document.copy()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         document = self.document
         return 'Collation(%s)' % (
             ', '.join('%s=%r' % (key, document[key]) for key in document),)
 
-    def __eq__(self, other: Any) -> Any:
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, Collation):
             return self.document == other.document
         return NotImplemented
 
-    def __ne__(self, other: Any) -> Any:
+    def __ne__(self, other: Any) -> bool:
         return not self == other
 
 

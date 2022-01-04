@@ -16,6 +16,7 @@
 """Functions and classes common to multiple pymongo modules."""
 
 import datetime
+from typing import Any, Callable, Dict, List, Mapping, MutableMapping, Optional, Sequence, Tuple, Type, Union
 import warnings
 
 from collections import abc, OrderedDict
@@ -29,6 +30,7 @@ from pymongo.auth import MECHANISMS
 from pymongo.compression_support import (validate_compressors,
                                          validate_zlib_compression_level)
 from pymongo.driver_info import DriverInfo
+from pymongo.encryption_options import AutoEncryptionOpts
 from pymongo.server_api import ServerApi
 from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _validate_event_listeners
@@ -36,110 +38,83 @@ from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import _MONGOS_MODES, _ServerMode
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
-from typing import Any, Callable, Dict, List, Mapping, MutableMapping, Optional, Sequence, Tuple, Type, Union
-MAX_BSON_SIZE: int
-MIN_SUPPORTED_SERVER_VERSION: str
-HEARTBEAT_FREQUENCY: int
-KILL_CURSOR_FREQUENCY: int
-EVENTS_QUEUE_FREQUENCY: int
-SERVER_SELECTION_TIMEOUT: int
-MIN_HEARTBEAT_INTERVAL: float
-MIN_SRV_RESCAN_INTERVAL: int
-CONNECT_TIMEOUT: float
-MAX_POOL_SIZE: int
-MIN_POOL_SIZE: int
-MAX_IDLE_TIME_MS: Optional[int]
-MAX_IDLE_TIME_SEC: Optional[int]
-WAIT_QUEUE_TIMEOUT: Optional[int]
-LOCAL_THRESHOLD_MS: int
-RETRY_WRITES: bool
-RETRY_READS: bool
-COMMAND_NOT_FOUND_CODES: Sequence[int]
-UNAUTHORIZED_CODES: Sequence[int]
-URI_OPTIONS_VALIDATOR_MAP: Dict[str, Callable[[Any, Any], Any]]
-NONSPEC_OPTIONS_VALIDATOR_MAP: Dict[str, Callable[[Any, Any], Any]]
-KW_VALIDATORS: Dict[str, Callable[[Any, Any], Any]]
-INTERNAL_URI_OPTION_NAME_MAP: Dict[str, str]
-URI_OPTIONS_DEPRECATION_MAP: Dict[str, Tuple[str, str]]
-TIMEOUT_OPTIONS: List[str]
-ORDERED_TYPES: Tuple[Type[Mapping], ...] = (SON, OrderedDict)
 
 # Defaults until we connect to a server and get updated limits.
-MAX_BSON_SIZE = 16 * (1024 ** 2)
+MAX_BSON_SIZE: int = 16 * (1024 ** 2)
 MAX_MESSAGE_SIZE: int = 2 * MAX_BSON_SIZE
 MIN_WIRE_VERSION: int = 0
 MAX_WIRE_VERSION: int = 0
 MAX_WRITE_BATCH_SIZE: int = 1000
 
 # What this version of PyMongo supports.
-MIN_SUPPORTED_SERVER_VERSION = "3.6"
+MIN_SUPPORTED_SERVER_VERSION: str = "3.6"
 MIN_SUPPORTED_WIRE_VERSION: int = 6
 MAX_SUPPORTED_WIRE_VERSION: int = 14
 
 # Frequency to call hello on servers, in seconds.
-HEARTBEAT_FREQUENCY = 10
+HEARTBEAT_FREQUENCY: int = 10
 
 # Frequency to clean up unclosed cursors, in seconds.
 # See MongoClient._process_kill_cursors.
-KILL_CURSOR_FREQUENCY = 1
+KILL_CURSOR_FREQUENCY: int = 1
 
 # Frequency to process events queue, in seconds.
-EVENTS_QUEUE_FREQUENCY = 1
+EVENTS_QUEUE_FREQUENCY: int = 1
 
 # How long to wait, in seconds, for a suitable server to be found before
 # aborting an operation. For example, if the client attempts an insert
 # during a replica set election, SERVER_SELECTION_TIMEOUT governs the
 # longest it is willing to wait for a new primary to be found.
-SERVER_SELECTION_TIMEOUT = 30
+SERVER_SELECTION_TIMEOUT: int = 30
 
 # Spec requires at least 500ms between hello calls.
-MIN_HEARTBEAT_INTERVAL = 0.5
+MIN_HEARTBEAT_INTERVAL: int = 0.5
 
 # Spec requires at least 60s between SRV rescans.
-MIN_SRV_RESCAN_INTERVAL = 60
+MIN_SRV_RESCAN_INTERVAL: int = 60
 
 # Default connectTimeout in seconds.
-CONNECT_TIMEOUT = 20.0
+CONNECT_TIMEOUT: float = 20.0
 
 # Default value for maxPoolSize.
-MAX_POOL_SIZE = 100
+MAX_POOL_SIZE: int = 100
 
 # Default value for minPoolSize.
-MIN_POOL_SIZE = 0
+MIN_POOL_SIZE: int = 0
 
 # The maximum number of concurrent connection creation attempts per pool.
-MAX_CONNECTING = 2
+MAX_CONNECTING: int = 2
 
 # Default value for maxIdleTimeMS.
-MAX_IDLE_TIME_MS = None
+MAX_IDLE_TIME_MS: Optional[int] = None
 
 # Default value for maxIdleTimeMS in seconds.
-MAX_IDLE_TIME_SEC = None
+MAX_IDLE_TIME_SEC: Optional[int] = None
 
 # Default value for waitQueueTimeoutMS in seconds.
-WAIT_QUEUE_TIMEOUT = None
+WAIT_QUEUE_TIMEOUT: Optional[int] = None
 
 # Default value for localThresholdMS.
-LOCAL_THRESHOLD_MS = 15
+LOCAL_THRESHOLD_MS: int = 15
 
 # Default value for retryWrites.
-RETRY_WRITES = True
+RETRY_WRITES: bool = True
 
 # Default value for retryReads.
-RETRY_READS = True
+RETRY_READS: bool = True
 
 # The error code returned when a command doesn't exist.
-COMMAND_NOT_FOUND_CODES = (59,)
+COMMAND_NOT_FOUND_CODES: Sequence[int] = (59,)
 
 # Error codes to ignore if GridFS calls createIndex on a secondary
-UNAUTHORIZED_CODES = (13, 16547, 16548)
+UNAUTHORIZED_CODES: Sequence[int] = (13, 16547, 16548)
 
 # Maximum number of sessions to send in a single endSessions command.
 # From the driver sessions spec.
 _MAX_END_SESSIONS = 10000
 
 # Default value for srvServiceName
-SRV_SERVICE_NAME = "mongodb"
+SRV_SERVICE_NAME: str = "mongodb"
 
 
 def partition_node(node: str) -> Tuple[str, int]:
@@ -545,7 +520,7 @@ def validate_driver_or_none(option: Any, value: Any) -> Optional[DriverInfo]:
     return value
 
 
-def validate_server_api_or_none(option, value):
+def validate_server_api_or_none(option: Any, value: Any) -> Optional[ServerApi]:
     """Validate the server_api keyword arg."""
     if value is None:
         return value
@@ -607,7 +582,7 @@ def validate_tzinfo(dummy: Any, value: Any) -> Optional[datetime.tzinfo]:
     return value
 
 
-def validate_auto_encryption_opts_or_none(option, value):
+def validate_auto_encryption_opts_or_none(option: Any, value: Any) -> Optional[AutoEncryptionOpts]:
     """Validate the driver keyword arg."""
     if value is None:
         return value
@@ -629,7 +604,7 @@ URI_OPTIONS_ALIAS_MAP: Dict[str, List[str]] = {
 # are functions that validate user-input values for that option. If an option
 # alias uses a different validator than its public counterpart, it should be
 # included here as a key, value pair.
-URI_OPTIONS_VALIDATOR_MAP = {
+URI_OPTIONS_VALIDATOR_MAP: Dict[str, Callable[[Any, Any], Any]] = {
     'appname': validate_appname_or_none,
     'authmechanism': validate_auth_mechanism,
     'authmechanismproperties': validate_auth_mechanism_properties,
@@ -670,7 +645,7 @@ URI_OPTIONS_VALIDATOR_MAP = {
 
 # Dictionary where keys are the names of URI options specific to pymongo,
 # and values are functions that validate user-input values for those options.
-NONSPEC_OPTIONS_VALIDATOR_MAP = {
+NONSPEC_OPTIONS_VALIDATOR_MAP: Dict[str, Callable[[Any, Any], Any]] = {
     'connect': validate_boolean_or_string,
     'driver': validate_driver_or_none,
     'server_api': validate_server_api_or_none,
@@ -687,7 +662,7 @@ NONSPEC_OPTIONS_VALIDATOR_MAP = {
 # Dictionary where keys are the names of keyword-only options for the
 # MongoClient constructor, and values are functions that validate user-input
 # values for those options.
-KW_VALIDATORS = {
+KW_VALIDATORS: Dict[str, Callable[[Any, Any], Any]] = {
     'document_class': validate_document_class,
     'type_registry': validate_type_registry,
     'read_preference': validate_read_preference,
@@ -703,14 +678,14 @@ KW_VALIDATORS = {
 # internally-used names of that URI option. Options with only one name
 # variant need not be included here. Options whose public and internal
 # names are the same need not be included here.
-INTERNAL_URI_OPTION_NAME_MAP = {
+INTERNAL_URI_OPTION_NAME_MAP: Dict[str, str] = {
     'ssl': 'tls',
 }
 
 # Map from deprecated URI option names to a tuple indicating the method of
 # their deprecation and any additional information that may be needed to
 # construct the warning message.
-URI_OPTIONS_DEPRECATION_MAP = {
+URI_OPTIONS_DEPRECATION_MAP: Dict[str, Tuple[str, str]] = {
     # format: <deprecated option name>: (<mode>, <message>),
     # Supported <mode> values:
     # - 'renamed': <message> should be the new option name. Note that case is
@@ -734,7 +709,7 @@ VALIDATORS: Dict[str, Callable[[Any, Any], Any]] = URI_OPTIONS_VALIDATOR_MAP.cop
 VALIDATORS.update(KW_VALIDATORS)
 
 # List of timeout-related options.
-TIMEOUT_OPTIONS = [
+TIMEOUT_OPTIONS: List[str] = [
     'connecttimeoutms',
     'heartbeatfrequencyms',
     'maxidletimems',

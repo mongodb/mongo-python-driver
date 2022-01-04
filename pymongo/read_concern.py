@@ -14,8 +14,9 @@
 
 """Tools for working with read concerns."""
 
-
 from typing import Any, Dict, Optional
+
+
 class ReadConcern(object):
     """ReadConcern
 

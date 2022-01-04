@@ -14,10 +14,11 @@
 
 """Tools for working with write concerns."""
 
+from typing import Any, Dict, Optional, Union
+
 from pymongo.errors import ConfigurationError
 
 
-from typing import Any, Dict, Optional, Union
 class WriteConcern(object):
     """WriteConcern
 
@@ -106,7 +107,7 @@ class WriteConcern(object):
         """
         return self.__acknowledged
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return ("WriteConcern(%s)" % (
             ", ".join("%s=%s" % kvt for kvt in self.__document.items()),))
 

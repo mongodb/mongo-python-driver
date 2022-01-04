@@ -13,17 +13,19 @@
 # limitations under the License.
 
 """Operation class definitions."""
+from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Sequence, Tuple, Union
 
 from pymongo import helpers
 from pymongo.common import validate_boolean, validate_is_mapping, validate_list
 from pymongo.collation import validate_collation_or_none
 from pymongo.helpers import _gen_index_name, _index_document, _index_list
 
-
-from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Sequence, Tuple, Union
 from bson.raw_bson import RawBSONDocument
 from pymongo.collation import Collation
+
 _DocumentIn = Union[MutableMapping[str, Any], RawBSONDocument]
+
+
 class InsertOne(object):
     """Represents an insert_one operation."""
 
@@ -44,7 +46,7 @@ class InsertOne(object):
         """Add this operation to the _Bulk instance `bulkobj`."""
         bulkobj.add_insert(self._doc)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "InsertOne(%r)" % (self._doc,)
 
     def __eq__(self, other: Any) -> bool:
@@ -59,6 +61,8 @@ class InsertOne(object):
 _IndexList = Sequence[Tuple[str, Union[int, str, Mapping[str, Any]]]]
 _IndexKeyHint = Union[str, _IndexList]
 _Collation = Union[Mapping[str, Any], Collation]
+
+
 class DeleteOne(object):
     """Represents a delete_one operation."""
 
@@ -99,7 +103,7 @@ class DeleteOne(object):
         bulkobj.add_delete(self._filter, 1, collation=self._collation,
                            hint=self._hint)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "DeleteOne(%r, %r)" % (self._filter, self._collation)
 
     def __eq__(self, other: Any) -> bool:
@@ -152,7 +156,7 @@ class DeleteMany(object):
         bulkobj.add_delete(self._filter, 0, collation=self._collation,
                            hint=self._hint)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "DeleteMany(%r, %r)" % (self._filter, self._collation)
 
     def __eq__(self, other: Any) -> bool:
@@ -225,7 +229,7 @@ class ReplaceOne(object):
     def __ne__(self, other: Any) -> bool:
         return not self == other
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "%s(%r, %r, %r, %r, %r)" % (
             self.__class__.__name__, self._filter, self._doc, self._upsert,
             self._collation, self._hint)
@@ -275,6 +279,8 @@ class _UpdateOp(object):
 
 
 _Pipeline = List[Mapping[str, Any]]
+
+
 class UpdateOne(_UpdateOp):
     """Represents an update_one operation."""
 

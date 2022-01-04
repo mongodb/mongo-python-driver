@@ -13,11 +13,11 @@
 # limitations under the License.
 
 """Result class definitions."""
+from typing import Any, Dict, List
 
 from pymongo.errors import InvalidOperation
 
 
-from typing import Any, Dict, List
 class _WriteResult(object):
     """Base class for write result classes."""
 

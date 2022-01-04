@@ -15,6 +15,7 @@
 """Utilities for choosing which member of a replica set to read from."""
 
 from collections import abc
+from typing import Any, Dict, List, Mapping, Optional
 
 from pymongo import max_staleness_selectors
 from pymongo.errors import ConfigurationError
@@ -22,7 +23,6 @@ from pymongo.server_selectors import (member_with_tags_server_selector,
                                       secondary_with_tags_server_selector)
 
 
-from typing import Any, Dict, List, Mapping, Optional
 _PRIMARY = 0
 _PRIMARY_PREFERRED = 1
 _SECONDARY = 2
@@ -96,6 +96,8 @@ def _validate_hedge(hedge):
 
 _Hedge = Mapping[str, Any]
 _TagSets = List[Mapping[str, Any]]
+
+
 class _ServerMode(object):
     """Base class for all read preferences.
     """
@@ -557,6 +559,7 @@ def read_pref_mode_from_name(name: str) -> int:
 class MovingAverage(object):
     """Tracks an exponentially-weighted moving average."""
     average: Optional[float]
+
     def __init__(self) -> None:
         self.average = None
 
