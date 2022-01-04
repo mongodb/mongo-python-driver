@@ -695,7 +695,7 @@ class ConnectionCheckOutFailedEvent(object):
         self.__reason = reason
 
     @property
-    def address(self) ->:
+    def address(self) -> _Address:
         """The address (host, port) pair of the server this connection is
         attempting to connect to.
         """
@@ -1471,7 +1471,7 @@ class ConnectionPoolListener(_EventListener):
         """
         raise NotImplementedError
 
-    def pool_ready(self, event: PoolCreatedEvent) -> None
+    def pool_ready(self, event: PoolCreatedEvent) -> None:
         """Abstract method to handle a :class:`PoolReadyEvent`.
 
         Emitted when a Connection Pool is marked ready.

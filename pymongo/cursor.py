@@ -1184,7 +1184,7 @@ class Cursor(object):
     def __iter__(self) -> _Cursor:
         return self
 
-    def next(self) _DocumentOut:
+    def next(self) -> _DocumentOut:
         """Advance the cursor."""
         if self.__empty:
             raise StopIteration

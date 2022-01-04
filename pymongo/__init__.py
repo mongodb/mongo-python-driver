@@ -69,7 +69,9 @@ def get_version_string() -> str:
         return '.'.join(map(str, version_tuple[:-1])) + version_tuple[-1]
     return '.'.join(map(str, version_tuple))
 
-__version__: str = version = get_version_string()
+__version__: str = get_version_string()
+version = __version__
+
 """Current version of PyMongo."""
 
 from pymongo.collection import ReturnDocument
