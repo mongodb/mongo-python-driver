@@ -37,7 +37,7 @@ class _TopologyType(NamedTuple):
     LoadBalanced: int
 
 
-TOPOLOGY_TYPE: _TopologyType
+TOPOLOGY_TYPE = _TopologyType
 
 # Topologies compatible with SRV record polling.
 SRV_POLLING_TOPOLOGIES: Tuple[int, int] = (TOPOLOGY_TYPE.Unknown, TOPOLOGY_TYPE.Sharded)

@@ -133,6 +133,7 @@ Classes
 
 import collections
 import time
+from typing import TYPE_CHECKING
 import uuid
 
 from collections.abc import Mapping as _Mapping
@@ -142,7 +143,6 @@ from bson.int64 import Int64
 from bson.son import SON
 from bson.timestamp import Timestamp
 
-from pymongo.cursor import _SocketManager
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             InvalidOperation,
@@ -154,6 +154,10 @@ from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_type import SERVER_TYPE
 from pymongo.write_concern import WriteConcern
+
+
+if TYPE_CHECKING:
+    from pymongo.cursor import _SocketManager
 
 
 class SessionOptions(object):

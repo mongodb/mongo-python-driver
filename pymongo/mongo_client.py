@@ -1651,7 +1651,7 @@ class MongoClient(common.BaseObject):
 
     def server_info(self,
       session: Optional[ClientSession] = None
-    ) -> Dict[str, Any]:
+    ) -> Mapping[str, Any]:
         """Get information about the MongoDB server we're connected to.
 
         :Parameters:

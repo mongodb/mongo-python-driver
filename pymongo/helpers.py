@@ -20,7 +20,6 @@ import traceback
 from collections import abc
 
 from bson.son import SON
-from pymongo import ASCENDING
 from pymongo.errors import (CursorNotFound,
                             DuplicateKeyError,
                             ExecutionTimeout,
@@ -67,6 +66,7 @@ def _index_list(key_or_list, direction=None):
 
     Takes such a list, or a single key, or a single key and direction.
     """
+    from pymongo import ASCENDING
     if direction is not None:
         return [(key_or_list, direction)]
     else:

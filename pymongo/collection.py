@@ -15,7 +15,7 @@
 """Collection level utilities for Mongo."""
 
 from collections import abc
-from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple, TypeVar, Union, cast
 
 from bson.code import Code
 from bson.objectid import ObjectId
@@ -27,7 +27,6 @@ from pymongo import (common,
                      message)
 from pymongo.aggregation import (_CollectionAggregationCommand,
                                  _CollectionRawAggregationCommand)
-from pymongo.bulk import _Bulk
 from pymongo.client_session import ClientSession
 from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
 from pymongo.collation import validate_collation_or_none
@@ -50,6 +49,11 @@ from pymongo.results import (BulkWriteResult,
                              InsertManyResult,
                              UpdateResult)
 from pymongo.write_concern import WriteConcern
+
+
+if TYPE_CHECKING:
+  from pymongo.bulk import _Bulk
+
 
 _FIND_AND_MODIFY_DOC_FIELDS = {'value': 1}
 

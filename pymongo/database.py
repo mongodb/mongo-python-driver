@@ -13,19 +13,19 @@
 # limitations under the License.
 
 """Database level operations."""
-from typing import Any, Dict, List, Mapping, Optional, Sequence, TypeVar, Union, cast
+from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Sequence, TypeVar, Union, cast
+import typing
 
 from bson.code import Code
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
+from bson.raw_bson import RawBSONDocument
 from bson.son import SON
-from pymongo import MongoClient, common
+import pymongo
+from pymongo import common
 from pymongo.aggregation import _DatabaseAggregationCommand
-from pymongo.change_stream import DatabaseChangeStream, ChangeStream
 from pymongo.client_session import ClientSession
 from pymongo.collation import Collation
-from pymongo.collection import Collection
-from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (CollectionInvalid,
                             InvalidName)
 from pymongo.read_concern import ReadConcern
@@ -37,7 +37,11 @@ _Database = TypeVar("_Database", bound="Database", covariant=True)
 _Pipeline = List[Mapping[str, Any]]
 _Collation = Union[Dict[str, Any], Collation]
 _Code = Union[str, Code]
-_DocumentOut = Any
+_MongoClient = TypeVar("_MongoClient", bound="pymongo.mongo_client.MongoClient")
+_Collection = TypeVar("_Collection", bound="pymongo.collection.Collection")
+_CommandCursor = TypeVar("_CommandCursor", bound="pymongo.command_cursor.CommandCursor")
+_ChangeStream = TypeVar("_ChangeStream", bound="pymongo.change_stream.ChangeStream")
+_DocumentOut = Union[MutableMapping[str, Any], RawBSONDocument]
 
 
 def _check_name(name):
@@ -57,7 +61,7 @@ class Database(common.BaseObject):
     """
 
     def __init__(self,
-        client: MongoClient,
+        client: _MongoClient,
         name: str,
         codec_options: Optional[CodecOptions] = None,
         read_preference: Optional[_ServerMode] = None,
@@ -126,7 +130,7 @@ class Database(common.BaseObject):
         self.__client = client
 
     @property
-    def client(self) -> MongoClient:
+    def client(self) -> _MongoClient:
         """The client instance for this :class:`Database`."""
         return self.__client
 
@@ -194,7 +198,7 @@ class Database(common.BaseObject):
     def __repr__(self) -> str:
         return "Database(%r, %r)" % (self.__client, self.__name)
 
-    def __getattr__(self, name: str) -> Collection:
+    def __getattr__(self, name: str) -> _Collection:
         """Get a collection of this database by name.
 
         Raises InvalidName if an invalid collection name is used.
@@ -208,7 +212,7 @@ class Database(common.BaseObject):
                 " collection, use database[%r]." % (name, name, name))
         return self.__getitem__(name)
 
-    def __getitem__(self, name: str) -> Collection:
+    def __getitem__(self, name: str) -> _Collection:
         """Get a collection of this database by name.
 
         Raises InvalidName if an invalid collection name is used.
@@ -224,7 +228,7 @@ class Database(common.BaseObject):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> Collection:
+    ) -> _Collection:
         """Get a :class:`~pymongo.collection.Collection` with the given name
         and options.
 
@@ -274,7 +278,7 @@ class Database(common.BaseObject):
         read_concern: Optional[ReadConcern] = None,
         session: Optional[ClientSession] = None,
         **kwargs: Any,
-    ) -> Collection:
+    ) -> _Collection:
         """Create a new :class:`~pymongo.collection.Collection` in this
         database.
 
@@ -368,7 +372,7 @@ class Database(common.BaseObject):
       pipeline: _Pipeline,
       session: Optional[ClientSession] = None,
       **kwargs: Any
-    ) -> CommandCursor:
+    ) -> _CommandCursor:
         """Perform a database-level aggregation.
 
         See the `aggregation pipeline`_ documentation for a list of stages
@@ -448,7 +452,7 @@ class Database(common.BaseObject):
         start_at_operation_time: Optional[Mapping[str, Any]] = None,
         session: Optional[ClientSession] = None,
         start_after: Optional[Mapping[str, Any]] = None,
-    ) -> ChangeStream:
+    ) -> _ChangeStream:
         """Watch changes on this database.
 
         Performs an aggregation with an implicit initial ``$changeStream``
@@ -705,7 +709,7 @@ class Database(common.BaseObject):
       session: Optional[ClientSession] = None,
       filter: Optional[Mapping[str, Any]] = None,
       **kwargs: Any
-    ) -> CommandCursor:
+    ) -> _CommandCursor:
         """Get a cursor over the collections of this database.
 
         :Parameters:
@@ -779,7 +783,7 @@ class Database(common.BaseObject):
                 for result in self.list_collections(session=session, **kwargs)]  # type: ignore
 
     def drop_collection(self,
-        name_or_collection: Union[str, Collection],
+        name_or_collection: Union[str, _Collection],
         session: Optional[ClientSession] = None
     ) -> Dict[str, Any]:
         """Drop a collection.
@@ -817,7 +821,7 @@ class Database(common.BaseObject):
                 session=session)
 
     def validate_collection(self,
-        name_or_collection: Union[str, Collection],
+        name_or_collection: Union[str, _Collection],
         scandata: bool = False,
         full: bool = False,
         session: Optional[ClientSession] = None,

@@ -13,24 +13,23 @@
 # limitations under the License.
 
 """Cursor class to iterate over Mongo query results."""
-
 import copy
 import threading
-from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple, TypeVar, Union, cast, overload
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple, TypeVar, Union, cast, overload
 import warnings
 
 from collections import deque
 
 from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
+from bson.raw_bson import RawBSONDocument
 from bson.son import SON
+import pymongo
 from pymongo import helpers
-from pymongo.client_session import ClientSession
 from pymongo.common import (validate_boolean, validate_is_mapping,
                             validate_is_document_type)
 from pymongo.collation import validate_collation_or_none
 from pymongo.collation import Collation
-from pymongo.collection import Collection
 from pymongo.errors import (ConnectionFailure,
                             InvalidOperation,
                             OperationFailure)
@@ -40,6 +39,7 @@ from pymongo.message import (_CursorAddress,
                              _Query,
                              _RawBatchQuery)
 from pymongo.response import PinnedResponse
+
 
 # These errors mean that the server has already killed the cursor so there is
 # no need to send killCursors.
@@ -135,7 +135,9 @@ _Cursor = TypeVar("_Cursor", bound="Cursor", covariant=True)
 _Sort = Sequence[Tuple[str, Union[int, str, Mapping[str, Any]]]]
 _Hint = Union[str, _Sort]
 _Collation = Union[Dict[str, Any], Collation]
-_DocumentOut = Any
+_DocumentOut = Union[MutableMapping[str, Any], RawBSONDocument]
+_Collection = TypeVar("_Collection", bound="pymongo.collection.Collection")
+_ClientSession = TypeVar("_ClientSession", bound="pymongo.client_session.ClientSession")
 
 
 class Cursor(object):
@@ -145,7 +147,7 @@ class Cursor(object):
     _getmore_class = _GetMore
 
     def __init__(self,
-        collection: Collection,
+        collection: _Collection,
         filter: Optional[Mapping[str, Any]] = None,
         projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
         skip: int = 0,
@@ -166,7 +168,7 @@ class Cursor(object):
         show_record_id: Optional[bool] = None,
         snapshot: Optional[bool] = None,
         comment: Any = None,
-        session: Optional[ClientSession] = None,
+        session: Optional[_ClientSession] = None,
         allow_disk_use: Optional[bool] = None,
         let: Optional[bool] = None
     ) -> None:
@@ -288,7 +290,7 @@ class Cursor(object):
         self.__collname = collection.name
 
     @property
-    def collection(self) -> Collection:
+    def collection(self) -> _Collection:
         """The :class:`~pymongo.collection.Collection` that this
         :class:`Cursor` is iterating.
         """
@@ -1172,7 +1174,7 @@ class Cursor(object):
         return self.__address
 
     @property
-    def session(self) -> Optional[ClientSession]:
+    def session(self) -> Optional[_ClientSession]:
         """The cursor's :class:`~pymongo.client_session.ClientSession`, or None.
 
         .. versionadded:: 3.6

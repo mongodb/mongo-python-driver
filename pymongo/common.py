@@ -16,7 +16,7 @@
 """Functions and classes common to multiple pymongo modules."""
 
 import datetime
-from typing import Any, Callable, Dict, List, Mapping, MutableMapping, Optional, Sequence, Tuple, Type, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Mapping, MutableMapping, Optional, Sequence, Tuple, Type, Union, cast
 import warnings
 
 from collections import abc, OrderedDict
@@ -30,13 +30,17 @@ from pymongo.auth import MECHANISMS
 from pymongo.compression_support import (validate_compressors,
                                          validate_zlib_compression_level)
 from pymongo.driver_info import DriverInfo
-from pymongo.encryption_options import AutoEncryptionOpts
 from pymongo.server_api import ServerApi
 from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _validate_event_listeners
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import _MONGOS_MODES, _ServerMode
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
+
+
+if TYPE_CHECKING:
+    from pymongo.encryption_options import AutoEncryptionOpts
+
 
 ORDERED_TYPES: Tuple[Type[SON[Any, Any]], Type[OrderedDict[Any, Any]]] = (SON, OrderedDict)
 
@@ -583,7 +587,7 @@ def validate_tzinfo(dummy: Any, value: Any) -> Optional[datetime.tzinfo]:
     return value
 
 
-def validate_auto_encryption_opts_or_none(option: Any, value: Any) -> Optional[AutoEncryptionOpts]:
+def validate_auto_encryption_opts_or_none(option: Any, value: Any) -> Optional[Any]:
     """Validate the driver keyword arg."""
     if value is None:
         return value

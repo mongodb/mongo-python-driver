@@ -15,10 +15,11 @@
 """CommandCursor class to iterate over command results."""
 
 from collections import deque
-from typing import Any, Mapping, Optional, Tuple, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Mapping, MutableMapping, Optional, Tuple, TypeVar, Union, cast
 
 from bson import _convert_raw_document_lists_to_streams
-from pymongo.collection import Collection
+from bson.raw_bson import RawBSONDocument
+import pymongo
 from pymongo.client_session import ClientSession
 from pymongo.cursor import _SocketManager, _CURSOR_CLOSED_ERRORS
 from pymongo.errors import (ConnectionFailure,
@@ -30,8 +31,10 @@ from pymongo.message import (_CursorAddress,
 from pymongo.response import PinnedResponse
 
 
-_DocumentOut = Any
+
+_DocumentOut = Union[MutableMapping[str, Any], RawBSONDocument]
 _CommandCursor = TypeVar("_CommandCursor", bound="CommandCursor")
+_Collection = TypeVar("_Collection", bound="pymongo.collection.Collection")
 
 
 class CommandCursor(object):
@@ -39,7 +42,7 @@ class CommandCursor(object):
     _getmore_class = _GetMore
 
     def __init__(self,
-        collection: Collection,
+        collection: _Collection,
         cursor_info: Mapping[str, Any],
         address: Optional[Tuple[str, Optional[int]]],
         batch_size: int = 0,
@@ -309,7 +312,7 @@ class RawBatchCommandCursor(CommandCursor):
     _getmore_class = _RawBatchGetMore
 
     def __init__(self,
-        collection: Collection,
+        collection: _Collection,
         cursor_info: Mapping[str, Any],
         address: Optional[Tuple[str, Optional[int]]],
         batch_size: int = 0,
