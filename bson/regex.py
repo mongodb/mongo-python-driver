@@ -81,7 +81,7 @@ class Regex(object):
 
         return Regex(regex.pattern, regex.flags)
 
-    def __init__(self, pattern: Union[str, bytes], flags: Union[str, int] = 0):
+    def __init__(self, pattern: Union[str, bytes], flags: Union[str, int] = 0) -> None:
         """BSON regular expression data.
 
         This class is useful to store and retrieve regular expressions that are
