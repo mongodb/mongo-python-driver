@@ -107,7 +107,7 @@ class WriteConcern(object):
         """
         return self.__acknowledged
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return ("WriteConcern(%s)" % (
             ", ".join("%s=%s" % kvt for kvt in self.__document.items()),))
 

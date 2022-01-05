@@ -115,7 +115,7 @@ class Regex(object):
     def __ne__(self, other: Any) -> bool:
         return not self == other
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return "Regex(%r, %r)" % (self.pattern, self.flags)
 
     def try_compile(self) -> Pattern[Any]:

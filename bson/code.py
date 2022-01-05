@@ -84,7 +84,7 @@ class Code(str):
         """
         return self.__scope
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return "Code(%s, %r)" % (str.__repr__(self), self.__scope)
 
     def __eq__(self, other: Any) -> bool:

@@ -155,7 +155,7 @@ class RawBSONDocument(Mapping[str, Any]):
             return self.__raw == other.raw
         return NotImplemented
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return ("RawBSONDocument(%r, codec_options=%r)"
                 % (self.raw, self.__codec_options))
 

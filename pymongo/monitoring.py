@@ -314,7 +314,7 @@ class CommandStartedEvent(_CommandEvent):
         """The name of the database this command was run against."""
         return self.__db
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return (
             "<%s %s db: %r, command: %r, operation_id: %s, "
             "service_id: %s>") % (
@@ -369,7 +369,7 @@ class CommandSucceededEvent(_CommandEvent):
         """The server failure document for this operation."""
         return self.__reply
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return (
             "<%s %s command: %r, operation_id: %s, duration_micros: %s, "
             "service_id: %s>") % (
@@ -417,7 +417,7 @@ class CommandFailedEvent(_CommandEvent):
         """The server failure document for this operation."""
         return self.__failure
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return (
             "<%s %s command: %r, operation_id: %s, duration_micros: %s, "
             "failure: %r, service_id: %s>") % (
@@ -440,7 +440,7 @@ class _PoolEvent(object):
         """
         return self.__address
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self.__address)
 
 
@@ -465,7 +465,7 @@ class PoolCreatedEvent(_PoolEvent):
         """
         return self.__options
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return '%s(%r, %r)' % (
             self.__class__.__name__, self.address, self.__options)
 
@@ -508,7 +508,7 @@ class PoolClearedEvent(_PoolEvent):
         """
         return self.__service_id
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return '%s(%r, %r)' % (
             self.__class__.__name__, self.address, self.__service_id)
 
@@ -585,7 +585,7 @@ class _ConnectionEvent(object):
         """The ID of the Connection."""
         return self.__connection_id
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return '%s(%r, %r)' % (
             self.__class__.__name__, self.__address, self.__connection_id)
 
@@ -645,7 +645,7 @@ class ConnectionClosedEvent(_ConnectionEvent):
         """
         return self.__reason
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return '%s(%r, %r, %r)' % (
             self.__class__.__name__, self.address, self.connection_id,
             self.__reason)
@@ -672,7 +672,7 @@ class ConnectionCheckOutStartedEvent(object):
         """
         return self.__address
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self.__address)
 
 
@@ -708,7 +708,7 @@ class ConnectionCheckOutFailedEvent(object):
         """
         return self.__reason
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return '%s(%r, %r)' % (
             self.__class__.__name__, self.__address, self.__reason)
 
@@ -758,7 +758,7 @@ class _ServerEvent(object):
         """A unique identifier for the topology this server is a part of."""
         return self.__topology_id
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return "<%s %s topology_id: %s>" % (
             self.__class__.__name__, self.server_address, self.topology_id)
 
@@ -788,7 +788,7 @@ class ServerDescriptionChangedEvent(_ServerEvent):
         :class:`~pymongo.server_description.ServerDescription`."""
         return self.__new_description
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return "<%s %s changed from: %s, to: %s>" % (
             self.__class__.__name__, self.server_address,
             self.previous_description, self.new_description)
@@ -825,7 +825,7 @@ class TopologyEvent(object):
         """A unique identifier for the topology this server is a part of."""
         return self.__topology_id
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return "<%s topology_id: %s>" % (
             self.__class__.__name__, self.topology_id)
 
@@ -855,7 +855,7 @@ class TopologyDescriptionChangedEvent(TopologyEvent):
         :class:`~pymongo.topology_description.TopologyDescription`."""
         return self.__new_description
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return "<%s topology_id: %s changed from: %s, to: %s>" % (
             self.__class__.__name__, self.topology_id,
             self.previous_description, self.new_description)
@@ -893,7 +893,7 @@ class _ServerHeartbeatEvent(object):
         to."""
         return self.__connection_id
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return "<%s %s>" % (self.__class__.__name__, self.connection_id)
 
 
@@ -940,7 +940,7 @@ class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):
         """
         return self.__awaited
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return "<%s %s duration: %s, awaited: %s, reply: %s>" % (
             self.__class__.__name__, self.connection_id,
             self.duration, self.awaited, self.reply)
@@ -981,7 +981,7 @@ class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
         """
         return self.__awaited
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return "<%s %s duration: %s, awaited: %s, reply: %r>" % (
             self.__class__.__name__, self.connection_id,
             self.duration, self.awaited, self.reply)

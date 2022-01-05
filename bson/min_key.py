@@ -50,5 +50,5 @@ class MinKey(object):
     def __gt__(self, dummy: Any) -> bool:
         return False
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return "MinKey()"

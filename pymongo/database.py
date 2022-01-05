@@ -184,7 +184,7 @@ class Database(common.BaseObject):
     def __hash__(self) -> int:
         return hash((self.__client, self.__name))
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return "Database(%r, %r)" % (self.__client, self.__name)
 
     def __getattr__(self, name: str) -> Collection:

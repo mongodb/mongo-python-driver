@@ -158,7 +158,7 @@ class TypeRegistry(object):
                            (codec, pytype))
                 raise TypeError(err_msg)
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return ('%s(type_codecs=%r, fallback_encoder=%r)' % (
             self.__class__.__name__, self.__type_codecs,
             self._fallback_encoder))
@@ -319,7 +319,7 @@ class CodecOptions(_options_base):
             'tzinfo': self.tzinfo,
             'type_registry': self.type_registry}
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, self._arguments_repr())
 
     def with_options(self, **kwargs: Any) -> "CodecOptions":

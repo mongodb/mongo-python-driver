@@ -297,7 +297,7 @@ class Decimal128(object):
             return "NaN"
         return str(dec)
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return "Decimal128('%s')" % (str(self),)
 
     def __setstate__(self, value: Tuple[int, int]) -> None:

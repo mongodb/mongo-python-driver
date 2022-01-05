@@ -50,5 +50,5 @@ class MaxKey(object):
     def __gt__(self, other: Any) -> bool:
         return not isinstance(other, MaxKey)
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return "MaxKey()"

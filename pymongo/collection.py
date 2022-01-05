@@ -296,7 +296,7 @@ class Collection(common.BaseObject):
                           self.write_concern,
                           self.read_concern)
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return "Collection(%r, %r)" % (self.__database, self.__name)
 
     def __eq__(self, other: Any) -> bool:

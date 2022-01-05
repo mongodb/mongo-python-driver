@@ -1377,7 +1377,7 @@ class MongoClient(common.BaseObject):
             and key != 'username' and key != 'password')
         return ', '.join(options)
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return ("MongoClient(%s)" % (self._repr_helper(),))
 
     def __getattr__(self, name: str) -> Database:

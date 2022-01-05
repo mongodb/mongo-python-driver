@@ -200,7 +200,7 @@ class Collation(object):
         """
         return self.__document.copy()
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         document = self.document
         return 'Collation(%s)' % (
             ', '.join('%s=%r' % (key, document[key]) for key in document),)

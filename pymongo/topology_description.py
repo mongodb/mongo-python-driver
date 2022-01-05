@@ -334,7 +334,7 @@ class TopologyDescription(object):
         """
         return self.has_readable_server(ReadPreference.PRIMARY)
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         # Sort the servers by address.
         servers = sorted(self._server_descriptions.values(),
                          key=lambda sd: sd.address)

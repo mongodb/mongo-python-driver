@@ -254,7 +254,7 @@ class ObjectId(object):
     def __str__(self) -> str:
         return binascii.hexlify(self.__id).decode()
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return "ObjectId('%s')" % (str(self),)
 
     def __eq__(self, other: Any) -> bool:

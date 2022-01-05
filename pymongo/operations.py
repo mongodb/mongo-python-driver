@@ -42,7 +42,7 @@ class InsertOne(object):
         """Add this operation to the _Bulk instance `bulkobj`."""
         bulkobj.add_insert(self._doc)
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return "InsertOne(%r)" % (self._doc,)
 
     def __eq__(self, other: Any) -> bool:
@@ -98,7 +98,7 @@ class DeleteOne(object):
         bulkobj.add_delete(self._filter, 1, collation=self._collation,
                            hint=self._hint)
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return "DeleteOne(%r, %r)" % (self._filter, self._collation)
 
     def __eq__(self, other: Any) -> bool:
@@ -151,7 +151,7 @@ class DeleteMany(object):
         bulkobj.add_delete(self._filter, 0, collation=self._collation,
                            hint=self._hint)
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return "DeleteMany(%r, %r)" % (self._filter, self._collation)
 
     def __eq__(self, other: Any) -> bool:
@@ -224,7 +224,7 @@ class ReplaceOne(object):
     def __ne__(self, other: Any) -> bool:
         return not self == other
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return "%s(%r, %r, %r, %r, %r)" % (
             self.__class__.__name__, self._filter, self._doc, self._upsert,
             self._collation, self._hint)
