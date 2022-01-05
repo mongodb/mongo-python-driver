@@ -32,6 +32,7 @@ from pymongo.database import Database
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.read_preferences import _ServerMode
 from pymongo.client_session import ClientSession
+from pymongo.typings import DocumentOut
 from pymongo.write_concern import WriteConcern
 
 from bson.objectid import ObjectId
@@ -289,7 +290,7 @@ class GridFS(object):
             name for name in self.__files.distinct("filename", session=session)
             if name is not None]
 
-    def find_one(self, filter:  Optional[Any] = None, session: Optional[ClientSession] = None, *args: Any, **kwargs: Any) -> Optional[GridOutCursor]:
+    def find_one(self, filter:  Optional[Any] = None, session: Optional[ClientSession] = None, *args: Any, **kwargs: Any) -> Optional[DocumentOut]:
         """Get a single file from gridfs.
 
         All arguments to :meth:`find` are also valid arguments for
@@ -317,8 +318,8 @@ class GridFS(object):
             filter = {"_id": filter}
 
         _disallow_transactions(session)
-        for f in self.find(filter, *args, session=session, **kwargs):  # type: ignore
-            return cast(GridOutCursor, f)
+        for f in self.find(filter, *args, session=session, **kwargs):
+            return f
 
         return None
 
@@ -742,8 +743,8 @@ class GridFSBucket(object):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        with self.open_download_stream(file_id, session=session) as gout:  # type: GridOut
-            for chunk in gout:  # type: ignore
+        with self.open_download_stream(file_id, session=session) as gout:
+            for chunk in gout:
                 destination.write(chunk)
 
     def delete(self, file_id: Any, session: Optional[ClientSession] = None) -> None:
@@ -921,8 +922,8 @@ class GridFSBucket(object):
            Added ``session`` parameter.
         """
         with self.open_download_stream_by_name(
-                filename, revision, session=session) as gout:  # type: GridOut
-            for chunk in gout:  # type: ignore
+                filename, revision, session=session) as gout:
+            for chunk in gout:
                 destination.write(chunk)
 
     def rename(self, file_id: Any, new_filename: str, session: Optional[ClientSession] = None) -> None:

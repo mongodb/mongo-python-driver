@@ -79,7 +79,7 @@ def _wrap_encryption_errors():
         raise EncryptionError(exc)
 
 
-class _EncryptionIO(MongoCryptCallback):
+class _EncryptionIO(MongoCryptCallback):  # type: ignore
     def __init__(self, client, key_vault_coll, mongocryptd_client, opts):
         """Internal class to perform I/O on behalf of pymongocrypt."""
         # Use a weak ref to break reference cycle.

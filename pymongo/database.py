@@ -769,7 +769,7 @@ class Database(common.BaseObject):
                 kwargs["nameOnly"] = True
 
         return [result["name"]
-                for result in self.list_collections(session=session, **kwargs)]  # type: ignore
+                for result in self.list_collections(session=session, **kwargs)]
 
     def drop_collection(self,
         name_or_collection: Union[str, Collection],

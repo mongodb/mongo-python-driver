@@ -22,7 +22,7 @@ except ImportError:
     _HAVE_SNAPPY = False
 
 try:
-    import zlib  # type: ignore
+    import zlib
     _HAVE_ZLIB = True
 except ImportError:
     # Python built without zlib support.

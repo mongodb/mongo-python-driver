@@ -16,7 +16,7 @@
 
 try:
     import pymongo_auth_aws  # type: ignore
-    from pymongo_auth_aws import (AwsCredential,  # type: ignore
+    from pymongo_auth_aws import (AwsCredential,
                                   AwsSaslContext,
                                   PyMongoAuthAwsError)
     _HAVE_MONGODB_AWS = True
@@ -32,7 +32,7 @@ from bson.son import SON
 from pymongo.errors import ConfigurationError, OperationFailure
 
 
-class _AwsSaslContext(AwsSaslContext):
+class _AwsSaslContext(AwsSaslContext):  # type: ignore
     # Dependency injection:
     def binary_type(self):
         """Return the bson.binary.Binary type."""

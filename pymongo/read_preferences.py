@@ -251,7 +251,7 @@ class Primary(_ServerMode):
     def __init__(self) -> None:
         super(Primary, self).__init__(_PRIMARY)
 
-    def __call__(self, selection: Any):
+    def __call__(self, selection: Any) -> Any:
         """Apply this read preference to a Selection."""
         return selection.primary_selection
 
@@ -298,7 +298,7 @@ class PrimaryPreferred(_ServerMode):
         super(PrimaryPreferred, self).__init__(
             _PRIMARY_PREFERRED, tag_sets, max_staleness, hedge)
 
-    def __call__(self, selection: Any):
+    def __call__(self, selection: Any) -> Any:
         """Apply this read preference to Selection."""
         if selection.primary:
             return selection.primary_selection
@@ -338,7 +338,7 @@ class Secondary(_ServerMode):
         super(Secondary, self).__init__(
             _SECONDARY, tag_sets, max_staleness, hedge)
 
-    def __call__(self, selection: Any):
+    def __call__(self, selection: Any) -> Any:
         """Apply this read preference to Selection."""
         return secondary_with_tags_server_selector(
             self.tag_sets,
@@ -379,7 +379,7 @@ class SecondaryPreferred(_ServerMode):
         super(SecondaryPreferred, self).__init__(
             _SECONDARY_PREFERRED, tag_sets, max_staleness, hedge)
 
-    def __call__(self, selection: Any):
+    def __call__(self, selection: Any) -> Any:
         """Apply this read preference to Selection."""
         secondaries = secondary_with_tags_server_selector(
             self.tag_sets,
@@ -421,7 +421,7 @@ class Nearest(_ServerMode):
         super(Nearest, self).__init__(
             _NEAREST, tag_sets, max_staleness, hedge)
 
-    def __call__(self, selection: Any):
+    def __call__(self, selection: Any) -> Any:
         """Apply this read preference to Selection."""
         return member_with_tags_server_selector(
             self.tag_sets,

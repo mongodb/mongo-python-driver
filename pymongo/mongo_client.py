@@ -1705,7 +1705,7 @@ class MongoClient(common.BaseObject):
         .. versionadded:: 3.6
         """
         return [doc["name"]
-                for doc in self.list_databases(session, nameOnly=True)]  # type: ignore
+                for doc in self.list_databases(session, nameOnly=True)]
 
     def drop_database(self,
         name_or_database: Union[str, database.Database],

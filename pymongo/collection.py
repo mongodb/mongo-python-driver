@@ -271,7 +271,7 @@ class Collection(common.BaseObject):
                 write_concern=self._write_concern_for(session),
                 collation=collation, session=session)
 
-    def __getattr__(self, name) -> "Collection":
+    def __getattr__(self, name: str) -> "Collection":
         """Get a sub-collection of this collection by name.
 
         Raises InvalidName if an invalid collection name is used.
@@ -287,7 +287,7 @@ class Collection(common.BaseObject):
                     name, full_name, full_name))
         return self.__getitem__(name)
 
-    def __getitem__(self, name) -> "Collection":
+    def __getitem__(self, name: str) -> "Collection":
         return Collection(self.__database,
                           "%s.%s" % (self.__name, name),
                           False,
@@ -299,13 +299,13 @@ class Collection(common.BaseObject):
     def __repr__(self) -> str:
         return "Collection(%r, %r)" % (self.__database, self.__name)
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, Collection):
             return (self.__database == other.database and
                     self.__name == other.name)
         return NotImplemented
 
-    def __ne__(self, other) -> bool:
+    def __ne__(self, other: Any) -> bool:
         return not self == other
 
     def __hash__(self) -> int:
@@ -882,7 +882,7 @@ class Collection(common.BaseObject):
         update: Union[Mapping[str, Any], Pipeline],
         upsert: bool = False,
         array_filters: Optional[List[Mapping[str, Any]]] = None,
-        bypass_document_validation: bool = None,
+        bypass_document_validation: Optional[bool] = None,
         collation: Optional[CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
@@ -1194,7 +1194,7 @@ class Collection(common.BaseObject):
             filter = {"_id": filter}
 
         cursor = self.find(filter, *args, **kwargs)
-        for result in cursor.limit(-1):  # type: ignore
+        for result in cursor.limit(-1):
             return result
         return None
 
@@ -1916,7 +1916,7 @@ class Collection(common.BaseObject):
         """
         cursor = self.list_indexes(session=session)
         info = {}
-        for index in cursor:  # type: ignore
+        for index in cursor:
             index["key"] = list(index["key"].items())
             index = dict(index)
             info[index.pop("name")] = index
@@ -1947,7 +1947,7 @@ class Collection(common.BaseObject):
             session=session, filter={"name": self.__name})
 
         result = None
-        for doc in cursor:  # type: ignore
+        for doc in cursor:
             result = doc
             break
 
