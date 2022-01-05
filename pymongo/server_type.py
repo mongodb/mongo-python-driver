@@ -30,4 +30,4 @@ class _ServerType(NamedTuple):
     LoadBalancer: int
 
 
-SERVER_TYPE = _ServerType
+SERVER_TYPE = _ServerType(*range(9))

@@ -14,7 +14,6 @@
 
 """Represent a deployment of MongoDB servers."""
 
-from collections import namedtuple
 from random import sample
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple
 
@@ -37,7 +36,7 @@ class _TopologyType(NamedTuple):
     LoadBalanced: int
 
 
-TOPOLOGY_TYPE = _TopologyType
+TOPOLOGY_TYPE = _TopologyType(*range(6))
 
 # Topologies compatible with SRV record polling.
 SRV_POLLING_TOPOLOGIES: Tuple[int, int] = (TOPOLOGY_TYPE.Unknown, TOPOLOGY_TYPE.Sharded)
