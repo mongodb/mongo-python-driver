@@ -15,11 +15,9 @@
 """CommandCursor class to iterate over command results."""
 
 from collections import deque
-from typing import TYPE_CHECKING, Any, Mapping, MutableMapping, Optional, Tuple, TypeVar, Union, cast
+from typing import Any, Mapping, Optional, Tuple, TypeVar, cast
 
 from bson import _convert_raw_document_lists_to_streams
-from bson.raw_bson import RawBSONDocument
-import pymongo
 from pymongo.client_session import ClientSession
 from pymongo.cursor import _SocketManager, _CURSOR_CLOSED_ERRORS
 from pymongo.errors import (ConnectionFailure,
@@ -29,12 +27,10 @@ from pymongo.message import (_CursorAddress,
                              _GetMore,
                              _RawBatchGetMore)
 from pymongo.response import PinnedResponse
+from pymongo.typings import DocumentOut, CollectionRef
 
 
-
-_DocumentOut = Union[MutableMapping[str, Any], RawBSONDocument]
 _CommandCursor = TypeVar("_CommandCursor", bound="CommandCursor")
-_Collection = TypeVar("_Collection", bound="pymongo.collection.Collection")
 
 
 class CommandCursor(object):
@@ -42,7 +38,7 @@ class CommandCursor(object):
     _getmore_class = _GetMore
 
     def __init__(self,
-        collection: _Collection,
+        collection: CollectionRef,
         cursor_info: Mapping[str, Any],
         address: Optional[Tuple[str, Optional[int]]],
         batch_size: int = 0,
@@ -280,7 +276,7 @@ class CommandCursor(object):
     def __iter__(self) -> _CommandCursor:
         return cast(_CommandCursor, self)
 
-    def next(self) -> _DocumentOut:
+    def next(self) -> DocumentOut:
         """Advance the cursor."""
         # Block until a document is returnable.
         while self.alive:
@@ -312,7 +308,7 @@ class RawBatchCommandCursor(CommandCursor):
     _getmore_class = _RawBatchGetMore
 
     def __init__(self,
-        collection: _Collection,
+        collection: CollectionRef,
         cursor_info: Mapping[str, Any],
         address: Optional[Tuple[str, Optional[int]]],
         batch_size: int = 0,

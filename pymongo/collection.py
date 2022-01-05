@@ -15,7 +15,7 @@
 """Collection level utilities for Mongo."""
 
 from collections import abc
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple, TypeVar, Union, cast
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, TypeVar, Union, cast
 
 from bson.code import Code
 from bson.objectid import ObjectId
@@ -28,6 +28,7 @@ from pymongo import (common,
                      message)
 from pymongo.aggregation import (_CollectionAggregationCommand,
                                  _CollectionRawAggregationCommand)
+from pymongo.bulk import _Bulk
 from pymongo.client_session import ClientSession
 from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
 from pymongo.collation import validate_collation_or_none
@@ -48,11 +49,8 @@ from pymongo.results import (BulkWriteResult,
                              InsertOneResult,
                              InsertManyResult,
                              UpdateResult)
+from pymongo.typings import CollationIn, DocumentIn, DocumentOut, DatabaseRef, Pipeline
 from pymongo.write_concern import WriteConcern
-
-
-if TYPE_CHECKING:
-  from pymongo.bulk import _Bulk
 
 
 _FIND_AND_MODIFY_DOC_FIELDS = {'value': 1}
@@ -60,16 +58,9 @@ _FIND_AND_MODIFY_DOC_FIELDS = {'value': 1}
 
 _Collection = TypeVar("_Collection", bound="Collection")
 WriteOp = Union[InsertOne, DeleteOne, DeleteMany, ReplaceOne, UpdateOne, UpdateMany]
-_Collation = Union[Mapping[str, Any], Collation]
 # Hint supports index name, "myIndex", or list of index pairs: [('x', 1), ('y', -1)]
 _IndexList = Sequence[Tuple[str, Union[int, str, Mapping[str, Any]]]]
 _IndexKeyHint = Union[str, _IndexList]
-_Pipeline = List[Mapping[str, Any]]
-_Code = Union[str, Code]
-_DocumentIn = MutableMapping[str, Any]
-_DocumentOut = Union[MutableMapping[str, Any], RawBSONDocument]
-_Database = TypeVar("_Database", bound="pymongo.database.Database")
-
 
 
 class ReturnDocument(object):
@@ -91,7 +82,7 @@ class Collection(common.BaseObject):
 
     def __init__(
         self,
-        database: _Database,
+        database: DatabaseRef,
         name: str,
         create: Optional[bool] = False,
         codec_options: Optional[CodecOptions] = None,
@@ -340,7 +331,7 @@ class Collection(common.BaseObject):
         return self.__name
 
     @property
-    def database(self) -> _Database:
+    def database(self) -> DatabaseRef:
         """The :class:`~pymongo.database.Database` that this
         :class:`Collection` is a part of.
         """
@@ -509,7 +500,7 @@ class Collection(common.BaseObject):
         if not isinstance(doc, RawBSONDocument):
             return doc.get('_id')
 
-    def insert_one(self, document: _DocumentIn,
+    def insert_one(self, document: DocumentIn,
         bypass_document_validation: bool = False,
         session: Optional[ClientSession] = None
     ) -> InsertOneResult:
@@ -562,7 +553,7 @@ class Collection(common.BaseObject):
             write_concern.acknowledged)
 
     def insert_many(self,
-        documents: Iterable[_DocumentIn],
+        documents: Iterable[DocumentIn],
         ordered: bool = True,
         bypass_document_validation: bool = False,
         session: Optional[ClientSession] = None
@@ -721,7 +712,7 @@ class Collection(common.BaseObject):
         replacement: Mapping[str, Any],
         upsert: bool = False,
         bypass_document_validation: bool = False,
-        collation: Optional[_Collation] = None,
+        collation: Optional[CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
     ) -> UpdateResult:
@@ -801,10 +792,10 @@ class Collection(common.BaseObject):
 
     def update_one(self,
         filter: Mapping[str, Any],
-        update: Union[Mapping[str, Any], _Pipeline],
+        update: Union[Mapping[str, Any], Pipeline],
         upsert: bool = False,
         bypass_document_validation: bool = False,
-        collation: Optional[_Collation] = None,
+        collation: Optional[CollationIn] = None,
         array_filters: Optional[List[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
@@ -889,11 +880,11 @@ class Collection(common.BaseObject):
 
     def update_many(self,
         filter: Mapping[str, Any],
-        update: Union[Mapping[str, Any], _Pipeline],
+        update: Union[Mapping[str, Any], Pipeline],
         upsert: bool = False,
         array_filters: Optional[List[Mapping[str, Any]]] = None,
         bypass_document_validation: bool = None,
-        collation: Optional[_Collation] = None,
+        collation: Optional[CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
         let: Optional[bool] = None
@@ -1066,7 +1057,7 @@ class Collection(common.BaseObject):
 
     def delete_one(self,
         filter: Mapping[str, Any],
-        collation: Optional[_Collation] = None,
+        collation: Optional[CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
         let: Optional[Any] = None
@@ -1121,7 +1112,7 @@ class Collection(common.BaseObject):
 
     def delete_many(self,
         filter: Mapping[str, Any],
-        collation: Optional[_Collation] = None,
+        collation: Optional[CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
         let: Optional[Any] = None
@@ -1174,7 +1165,7 @@ class Collection(common.BaseObject):
                 collation=collation, hint=hint, session=session, let=let),
             write_concern.acknowledged)
 
-    def find_one(self, filter: Optional[Any] = None, *args: Any, **kwargs: Any) -> Optional[_DocumentOut]:
+    def find_one(self, filter: Optional[Any] = None, *args: Any, **kwargs: Any) -> Optional[DocumentOut]:
         """Get a single document from the database.
 
         All arguments to :meth:`find` are also valid arguments for
@@ -1980,7 +1971,7 @@ class Collection(common.BaseObject):
             cmd.get_cursor, cmd.get_read_preference(session), session,
             retryable=not cmd._performs_write)
 
-    def aggregate(self, pipeline: _Pipeline, session: Optional[ClientSession] = None, let: Optional[Any] = None, **kwargs: Any) -> CommandCursor:
+    def aggregate(self, pipeline: Pipeline, session: Optional[ClientSession] = None, let: Optional[Any] = None, **kwargs: Any) -> CommandCursor:
         """Perform an aggregation using the aggregation framework on this
         collection.
 
@@ -2063,7 +2054,7 @@ class Collection(common.BaseObject):
                                    **kwargs)
 
     def aggregate_raw_batches(
-        self, pipeline: _Pipeline, session: Optional[ClientSession] = None, **kwargs: Any
+        self, pipeline: Pipeline, session: Optional[ClientSession] = None, **kwargs: Any
     ) -> RawBatchCursor:
         """Perform an aggregation and retrieve batches of raw BSON.
 
@@ -2102,12 +2093,12 @@ class Collection(common.BaseObject):
                                    **kwargs)
 
     def watch(self,
-        pipeline: Optional[_Pipeline] = None,
+        pipeline: Optional[Pipeline] = None,
         full_document: Optional[str] = None,
         resume_after: Optional[Mapping[str, Any]] = None,
         max_await_time_ms: Optional[int] = None,
         batch_size: Optional[int] = None,
-        collation: Optional[_Collation] = None,
+        collation: Optional[CollationIn] = None,
         start_at_operation_time: Optional[Mapping[str, Any]] = None,
         session: Optional[ClientSession] = None,
         start_after: Optional[Mapping[str, Any]] = None,
@@ -2395,7 +2386,7 @@ class Collection(common.BaseObject):
         session: Optional[ClientSession] = None,
         let: Optional[bool] = None,
         **kwargs: Any,
-    ) -> _DocumentOut:
+    ) -> DocumentOut:
         """Finds a single document and deletes it, returning the document.
 
           >>> db.test.count_documents({'x': 1})
@@ -2481,7 +2472,7 @@ class Collection(common.BaseObject):
         session: Optional[ClientSession] = None,
         let: Optional[bool] = None,
         **kwargs: Any,
-    ) -> _DocumentOut:
+    ) -> DocumentOut:
         """Finds a single document and replaces it, returning either the
         original or the replaced document.
 
@@ -2566,7 +2557,7 @@ class Collection(common.BaseObject):
 
     def find_one_and_update(self,
         filter: Mapping[str, Any],
-        update: Union[Mapping[str, Any], _Pipeline],
+        update: Union[Mapping[str, Any], Pipeline],
         projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
         sort: Optional[_IndexList] = None,
         upsert: bool = False,
@@ -2576,7 +2567,7 @@ class Collection(common.BaseObject):
         session: Optional[ClientSession] = None,
         let: Optional[bool] = None,
         **kwargs: Any,
-    ) -> _DocumentOut:
+    ) -> DocumentOut:
         """Finds a single document and updates it, returning either the
         original or the updated document.
 

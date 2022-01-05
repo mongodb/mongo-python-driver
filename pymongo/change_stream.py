@@ -34,14 +34,9 @@ from pymongo.errors import (ConnectionFailure,
                             InvalidOperation,
                             OperationFailure,
                             PyMongoError)
+from pymongo.typings import DatabaseRef, MongoClientRef, CollectionRef, CollationIn, DocumentOut
 
-
-_Collation = Union[Mapping[str, Any], Collation]
-_Collection = TypeVar("_Collection", bound="pymongo.collection.Collection")
-_DocumentOut = Union[MutableMapping[str, Any], RawBSONDocument]
 _ChangeStream = TypeVar("_ChangeStream", bound="ChangeStream")
-_MongoClient = TypeVar("_MongoClient", bound="pymongo.mongo_client.MongoClient")
-_Database = TypeVar("_Database", bound="pymongo.database.Database")
 
 
 # The change streams spec considers the following server errors from the
@@ -81,13 +76,13 @@ class ChangeStream(object):
     """
     def __init__(
         self,
-        target: Union[_MongoClient, _Database, _Collection],
+        target: Union[MongoClientRef, DatabaseRef, CollectionRef],
         pipeline: Optional[List[Mapping[str, Any]]],
         full_document: Optional[str],
         resume_after: Optional[Mapping[str, Any]],
         max_await_time_ms: Optional[int],
         batch_size: Optional[int],
-        collation: Optional[_Collation],
+        collation: Optional[CollationIn],
         start_at_operation_time: Optional[Mapping[str, Any]],
         session: Optional[ClientSession],
         start_after: Optional[Mapping[str, Any]],
@@ -236,7 +231,7 @@ class ChangeStream(object):
         """
         return copy.deepcopy(self._resume_token)
 
-    def next(self) -> _DocumentOut:
+    def next(self) -> DocumentOut:
         """Advance the cursor.
 
         This method blocks until the next change document is returned or an
@@ -288,7 +283,7 @@ class ChangeStream(object):
         """
         return self._cursor.alive
 
-    def try_next(self) -> Optional[_DocumentOut]:
+    def try_next(self) -> Optional[DocumentOut]:
         """Advance the cursor without blocking indefinitely.
 
         This method returns the next change document without waiting

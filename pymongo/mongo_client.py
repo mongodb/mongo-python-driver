@@ -71,6 +71,7 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.topology import (Topology,
                               _ErrorContext)
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
+from pymongo.typings import CollationIn, Pipeline
 from pymongo.settings import TopologySettings
 from pymongo.uri_parser import (_handle_option_deprecations,
                                 _handle_security_options,
@@ -79,8 +80,6 @@ from pymongo.uri_parser import (_handle_option_deprecations,
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
 
-_Pipeline = List[Mapping[str, Any]]
-_Collation = Union[Dict[str, Any], Collation]
 _MongoClient = TypeVar("_MongoClient", bound="MongoClient", covariant=True)
 
 
@@ -809,12 +808,12 @@ class MongoClient(common.BaseObject):
         return getattr(server.description, attr_name)
 
     def watch(self,
-        pipeline: Optional[_Pipeline] = None,
+        pipeline: Optional[Pipeline] = None,
         full_document: Optional[str] = None,
         resume_after: Optional[Mapping[str, Any]] = None,
         max_await_time_ms: Optional[int] = None,
         batch_size: Optional[int] = None,
-        collation: Optional[_Collation] = None,
+        collation: Optional[CollationIn] = None,
         start_at_operation_time: Optional[Mapping[str, Any]] = None,
         session: Optional[ClientSession] = None,
         start_after: Optional[Mapping[str, Any]] = None,

@@ -19,11 +19,7 @@ from pymongo import helpers
 from pymongo.common import validate_boolean, validate_is_mapping, validate_list
 from pymongo.collation import validate_collation_or_none
 from pymongo.helpers import _gen_index_name, _index_document, _index_list
-
-from bson.raw_bson import RawBSONDocument
-from pymongo.collation import Collation
-
-_DocumentIn = Union[MutableMapping[str, Any], RawBSONDocument]
+from pymongo.typings import DocumentIn, CollationIn, Pipeline
 
 
 class InsertOne(object):
@@ -31,7 +27,7 @@ class InsertOne(object):
 
     __slots__ = ("_doc",)
 
-    def __init__(self, document: _DocumentIn) -> None:
+    def __init__(self, document: DocumentIn) -> None:
         """Create an InsertOne instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -60,7 +56,6 @@ class InsertOne(object):
 
 _IndexList = Sequence[Tuple[str, Union[int, str, Mapping[str, Any]]]]
 _IndexKeyHint = Union[str, _IndexList]
-_Collation = Union[Mapping[str, Any], Collation]
 
 
 class DeleteOne(object):
@@ -68,7 +63,7 @@ class DeleteOne(object):
 
     __slots__ = ("_filter", "_collation", "_hint")
 
-    def __init__(self, filter: Mapping[str, Any], collation: Optional[_Collation] = None, hint: Optional[_IndexKeyHint] = None) -> None:
+    def __init__(self, filter: Mapping[str, Any], collation: Optional[CollationIn] = None, hint: Optional[_IndexKeyHint] = None) -> None:
         """Create a DeleteOne instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -121,7 +116,7 @@ class DeleteMany(object):
 
     __slots__ = ("_filter", "_collation", "_hint")
 
-    def __init__(self, filter: Mapping[str, Any], collation: Optional[_Collation] = None, hint: Optional[_IndexKeyHint] = None) -> None:
+    def __init__(self, filter: Mapping[str, Any], collation: Optional[CollationIn] = None, hint: Optional[_IndexKeyHint] = None) -> None:
         """Create a DeleteMany instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -174,7 +169,7 @@ class ReplaceOne(object):
 
     __slots__ = ("_filter", "_doc", "_upsert", "_collation", "_hint")
 
-    def __init__(self, filter: Mapping[str, Any], replacement: Mapping[str, Any], upsert: bool = False, collation: Optional[_Collation] = None,
+    def __init__(self, filter: Mapping[str, Any], replacement: Mapping[str, Any], upsert: bool = False, collation: Optional[CollationIn] = None,
                  hint: Optional[_IndexKeyHint] = None) -> None:
         """Create a ReplaceOne instance.
 
@@ -278,15 +273,12 @@ class _UpdateOp(object):
             self._collation, self._array_filters, self._hint)
 
 
-_Pipeline = List[Mapping[str, Any]]
-
-
 class UpdateOne(_UpdateOp):
     """Represents an update_one operation."""
 
     __slots__ = ()
 
-    def __init__(self, filter: Mapping[str, Any], update: Union[Mapping[str, Any], _Pipeline], upsert: bool = False, collation: Optional[_Collation] = None,
+    def __init__(self, filter: Mapping[str, Any], update: Union[Mapping[str, Any], Pipeline], upsert: bool = False, collation: Optional[CollationIn] = None,
                  array_filters: Optional[List[Mapping[str, Any]]] = None, hint: Optional[_IndexKeyHint] = None) -> None:
         """Represents an update_one operation.
 
@@ -333,7 +325,7 @@ class UpdateMany(_UpdateOp):
 
     __slots__ = ()
 
-    def __init__(self, filter: Mapping[str, Any], update: Union[Mapping[str, Any], _Pipeline], upsert: bool = False, collation: Optional[_Collation] = None,
+    def __init__(self, filter: Mapping[str, Any], update: Union[Mapping[str, Any], Pipeline], upsert: bool = False, collation: Optional[CollationIn] = None,
                  array_filters: Optional[List[Mapping[str, Any]]] = None, hint: Optional[_IndexKeyHint] = None) -> None:
         """Create an UpdateMany instance.
 

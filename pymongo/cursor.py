@@ -15,7 +15,7 @@
 """Cursor class to iterate over Mongo query results."""
 import copy
 import threading
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple, TypeVar, Union, cast, overload
+from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple, TypeVar, Union, cast, overload
 import warnings
 
 from collections import deque
@@ -39,7 +39,7 @@ from pymongo.message import (_CursorAddress,
                              _Query,
                              _RawBatchQuery)
 from pymongo.response import PinnedResponse
-
+from pymongo.typings import CollectionRef, ClientSessionRef, CollationIn, DocumentOut
 
 # These errors mean that the server has already killed the cursor so there is
 # no need to send killCursors.
@@ -134,10 +134,6 @@ class _SocketManager(object):
 _Cursor = TypeVar("_Cursor", bound="Cursor", covariant=True)
 _Sort = Sequence[Tuple[str, Union[int, str, Mapping[str, Any]]]]
 _Hint = Union[str, _Sort]
-_Collation = Union[Dict[str, Any], Collation]
-_DocumentOut = Union[MutableMapping[str, Any], RawBSONDocument]
-_Collection = TypeVar("_Collection", bound="pymongo.collection.Collection")
-_ClientSession = TypeVar("_ClientSession", bound="pymongo.client_session.ClientSession")
 
 
 class Cursor(object):
@@ -147,7 +143,7 @@ class Cursor(object):
     _getmore_class = _GetMore
 
     def __init__(self,
-        collection: _Collection,
+        collection: CollectionRef,
         filter: Optional[Mapping[str, Any]] = None,
         projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
         skip: int = 0,
@@ -158,7 +154,7 @@ class Cursor(object):
         allow_partial_results: bool = False,
         oplog_replay: bool = False,
         batch_size: int = 0,
-        collation: Optional[_Collation] = None,
+        collation: Optional[CollationIn] = None,
         hint: Optional[_Hint] = None,
         max_scan: Optional[int] = None,
         max_time_ms: Optional[int] = None,
@@ -168,7 +164,7 @@ class Cursor(object):
         show_record_id: Optional[bool] = None,
         snapshot: Optional[bool] = None,
         comment: Any = None,
-        session: Optional[_ClientSession] = None,
+        session: Optional[ClientSessionRef] = None,
         allow_disk_use: Optional[bool] = None,
         let: Optional[bool] = None
     ) -> None:
@@ -186,7 +182,7 @@ class Cursor(object):
         self.__exhaust = False
         self.__sock_mgr = None
         self.__killed = False
-        self.__session: Optional[_ClientSession]
+        self.__session: Optional[ClientSessionRef]
 
         if session:
             self.__session = session
@@ -290,7 +286,7 @@ class Cursor(object):
         self.__collname = collection.name
 
     @property
-    def collection(self) -> _Collection:
+    def collection(self) -> CollectionRef:
         """The :class:`~pymongo.collection.Collection` that this
         :class:`Cursor` is iterating.
         """
@@ -862,7 +858,7 @@ class Cursor(object):
         return self.__collection.distinct(
             key, session=self.__session, **options)
 
-    def explain(self) -> _DocumentOut:
+    def explain(self) -> DocumentOut:
         """Returns an explain plan record for this cursor.
 
         .. note:: This method uses the default verbosity mode of the
@@ -969,7 +965,7 @@ class Cursor(object):
         self.__spec["$where"] = code
         return cast(_Cursor, self)
 
-    def collation(self, collation: Optional[_Collation]) -> _Cursor:
+    def collation(self, collation: Optional[CollationIn]) -> _Cursor:
         """Adds a :class:`~pymongo.collation.Collation` to this query.
 
         Raises :exc:`TypeError` if `collation` is not an instance of
@@ -1174,19 +1170,19 @@ class Cursor(object):
         return self.__address
 
     @property
-    def session(self) -> Optional[_ClientSession]:
+    def session(self) -> Optional[ClientSessionRef]:
         """The cursor's :class:`~pymongo.client_session.ClientSession`, or None.
 
         .. versionadded:: 3.6
         """
         if self.__explicit_session:
-            return cast(Optional[_ClientSession], self.__session)
+            return cast(Optional[ClientSessionRef], self.__session)
         return None
 
     def __iter__(self) -> _Cursor:
         return cast(_Cursor, self)
 
-    def next(self) -> _DocumentOut:
+    def next(self) -> DocumentOut:
         """Advance the cursor."""
         if self.__empty:
             raise StopIteration
@@ -1277,7 +1273,7 @@ class RawBatchCursor(Cursor):
             _convert_raw_document_lists_to_streams(raw_response[0])
         return raw_response
 
-    def explain(self) -> _DocumentOut:
+    def explain(self) -> DocumentOut:
         """Returns an explain plan record for this cursor.
 
         .. seealso:: The MongoDB documentation on `explain <https://dochub.mongodb.org/core/explain>`_.

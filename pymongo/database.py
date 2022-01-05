@@ -19,9 +19,7 @@ import typing
 from bson.code import Code
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
-from bson.raw_bson import RawBSONDocument
 from bson.son import SON
-import pymongo
 from pymongo import common
 from pymongo.aggregation import _DatabaseAggregationCommand
 from pymongo.change_stream import ChangeStream, DatabaseChangeStream
@@ -33,15 +31,8 @@ from pymongo.errors import (CollectionInvalid,
                             InvalidName)
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
+from pymongo.typings import DatabaseRef, CollationIn, MongoClientRef, DocumentOut, Pipeline
 from pymongo.write_concern import WriteConcern
-
-
-_Database = TypeVar("_Database", bound="Database", covariant=True)
-_Pipeline = List[Mapping[str, Any]]
-_Collation = Union[Dict[str, Any], Collation]
-_Code = Union[str, Code]
-_MongoClient = TypeVar("_MongoClient", bound="pymongo.mongo_client.MongoClient")
-_DocumentOut = Union[MutableMapping[str, Any], RawBSONDocument]
 
 
 def _check_name(name):
@@ -61,7 +52,7 @@ class Database(common.BaseObject):
     """
 
     def __init__(self,
-        client: _MongoClient,
+        client: MongoClientRef,
         name: str,
         codec_options: Optional[CodecOptions] = None,
         read_preference: Optional[_ServerMode] = None,
@@ -130,7 +121,7 @@ class Database(common.BaseObject):
         self.__client = client
 
     @property
-    def client(self) -> _MongoClient:
+    def client(self) -> MongoClientRef:
         """The client instance for this :class:`Database`."""
         return self.__client
 
@@ -144,7 +135,7 @@ class Database(common.BaseObject):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> _Database:
+    ) -> DatabaseRef:
         """Get a clone of this database changing the specified settings.
 
           >>> db1.read_preference
@@ -176,7 +167,7 @@ class Database(common.BaseObject):
 
         .. versionadded:: 3.8
         """
-        return cast(_Database, Database(cast(Any, self.client),
+        return cast(DatabaseRef, Database(cast(Any, self.client),
                         self.__name,
                         codec_options or self.codec_options,
                         read_preference or self.read_preference,
@@ -369,7 +360,7 @@ class Database(common.BaseObject):
                               read_concern, session=s, **kwargs)
 
     def aggregate(self,
-      pipeline: _Pipeline,
+      pipeline: Pipeline,
       session: Optional[ClientSession] = None,
       **kwargs: Any
     ) -> CommandCursor:
@@ -443,12 +434,12 @@ class Database(common.BaseObject):
                 retryable=not cmd._performs_write)
 
     def watch(self,
-        pipeline: Optional[_Pipeline] = None,
+        pipeline: Optional[Pipeline] = None,
         full_document: Optional[str] = None,
         resume_after: Optional[Mapping[str, Any]] = None,
         max_await_time_ms: Optional[int] = None,
         batch_size: Optional[int] = None,
-        collation: Optional[_Collation] = None,
+        collation: Optional[CollationIn] = None,
         start_at_operation_time: Optional[Mapping[str, Any]] = None,
         session: Optional[ClientSession] = None,
         start_after: Optional[Mapping[str, Any]] = None,
@@ -574,7 +565,7 @@ class Database(common.BaseObject):
         codec_options: Optional[CodecOptions] = DEFAULT_CODEC_OPTIONS,
         session: Optional[ClientSession] = None,
         **kwargs: Any,
-    ) -> _DocumentOut:
+    ) -> DocumentOut:
         """Issue a MongoDB command.
 
         Send command `command` to the database and return the
@@ -899,10 +890,10 @@ class Database(common.BaseObject):
 
         return result
 
-    def __iter__(self) -> _Database:
-        return cast(_Database, self)
+    def __iter__(self) -> DatabaseRef:
+        return cast(DatabaseRef, self)
 
-    def __next__(self) -> _Database:
+    def __next__(self) -> DatabaseRef:
         raise TypeError("'Database' object is not iterable")
 
     next = __next__
@@ -915,7 +906,7 @@ class Database(common.BaseObject):
     def dereference(self, dbref: DBRef,
         session: Optional[ClientSession] = None,
         **kwargs: Any
-    ) -> Optional[_DocumentOut]:
+    ) -> Optional[DocumentOut]:
         """Dereference a :class:`~bson.dbref.DBRef`, getting the
         document it points to.
 
