@@ -771,13 +771,13 @@ class _GridOutChunkIterator(object):
             self._create_cursor()
         assert self._cursor is not None
         try:
-            return cast(Collection, self._cursor.next())
+            return self._cursor.next()
         except CursorNotFound:
             self._cursor.close()
             self._create_cursor()
-            return cast(Collection, self._cursor.next())
+            return self._cursor.next()
 
-    def next(self) -> Collection:
+    def next(self) -> bytes:
         try:
             chunk = self._next_with_retry()
         except StopIteration:
