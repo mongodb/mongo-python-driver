@@ -39,7 +39,6 @@ import weakref
 from collections import defaultdict
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, TypeRegistry, CodecOptions
-from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo import (common,
                      database,
@@ -51,9 +50,7 @@ from pymongo import (common,
 from pymongo.change_stream import ClusterChangeStream, ChangeStream
 from pymongo.client_options import ClientOptions
 from pymongo.client_session import ClientSession, TransactionOptions
-from pymongo.collation import Collation
 from pymongo.command_cursor import CommandCursor
-from pymongo.database import Database
 from pymongo.errors import (AutoReconnect,
                             BulkWriteError,
                             ConfigurationError,
@@ -71,7 +68,7 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.topology import (Topology,
                               _ErrorContext)
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
-from pymongo.typings import CollationIn, Pipeline
+from pymongo.typings import CollationIn, Pipeline, RawBSONDocumentRef
 from pymongo.settings import TopologySettings
 from pymongo.uri_parser import (_handle_option_deprecations,
                                 _handle_security_options,
@@ -99,7 +96,7 @@ class MongoClient(common.BaseObject):
     def __init__(self,
         host: Optional[Union[str, List[str]]] = None,
         port: Optional[int] = None,
-        document_class: Optional[Union[Type[MutableMapping], Type[RawBSONDocument]]] = dict,
+        document_class: Optional[Union[Type[MutableMapping], Type[RawBSONDocumentRef]]] = dict,
         tz_aware: Optional[bool] = None,
         connect: Optional[bool] = None,
         type_registry: Optional[TypeRegistry] = None,
@@ -1380,7 +1377,7 @@ class MongoClient(common.BaseObject):
     def __repr__(self):
         return ("MongoClient(%s)" % (self._repr_helper(),))
 
-    def __getattr__(self, name: str) -> Database:
+    def __getattr__(self, name: str) -> DatabaseRef:
         """Get a database by name.
 
         Raises :class:`~pymongo.errors.InvalidName` if an invalid
@@ -1395,7 +1392,7 @@ class MongoClient(common.BaseObject):
                 " database, use client[%r]." % (name, name, name))
         return self.__getitem__(name)
 
-    def __getitem__(self, name: str) -> Database:
+    def __getitem__(self, name: str) -> DatabaseRef:
         """Get a database by name.
 
         Raises :class:`~pymongo.errors.InvalidName` if an invalid
@@ -1758,7 +1755,7 @@ class MongoClient(common.BaseObject):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> Database:
+    ) -> database.Database:
         """Get the database named in the MongoDB connection URI.
 
         >>> uri = 'mongodb://host/my_database'
@@ -1814,7 +1811,7 @@ class MongoClient(common.BaseObject):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> Database:
+    ) -> database.Database:
         """Get a :class:`~pymongo.database.Database` with the given name and
         options.
 

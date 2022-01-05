@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Type aliases uses by PyMongo"""
+"""Type aliases used by PyMongo"""
 from typing import Any, List, Mapping, MutableMapping, TypeVar, Union
 import bson
 import pymongo
 
 
-# Common Forward References
+# Common Forward References.
 ClientSessionRef = TypeVar("ClientSessionRef", bound="pymongo.client_session.ClientSession")
 CollationRef = TypeVar("CollationRef", bound="pymongo.collation.Collation")
 CollectionRef = TypeVar("CollectionRef", bound="pymongo.collection.Collection")
@@ -27,7 +27,7 @@ DatabaseRef = TypeVar("DatabaseRef", bound="pymongo.database.Database")
 MongoClientRef = TypeVar("MongoClientRef", bound="pymongo.mongo_client.MongoClient")
 RawBSONDocumentRef = TypeVar("RawBSONDocumentRef", bound="bson.raw_bson.RawBSONDocument")
 
-# Common Shared Types
+# Common Shared Types.
 CollationIn = Union[Mapping[str, Any], CollationRef]
 DocumentIn = MutableMapping[str, Any]
 DocumentOut = Union[MutableMapping[str, Any], RawBSONDocumentRef]
