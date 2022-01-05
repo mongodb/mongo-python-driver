@@ -142,6 +142,7 @@ from bson.int64 import Int64
 from bson.son import SON
 from bson.timestamp import Timestamp
 
+from pymongo.cursor import _SocketManager
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             InvalidOperation,
