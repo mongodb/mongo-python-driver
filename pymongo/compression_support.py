@@ -29,7 +29,7 @@ except ImportError:
     _HAVE_ZLIB = False
 
 try:
-    from zstandard import ZstdCompressor, ZstdDecompressor  # type: ignore
+    from zstandard import ZstdCompressor, ZstdDecompressor
     _HAVE_ZSTD = True
 except ImportError:
     _HAVE_ZSTD = False

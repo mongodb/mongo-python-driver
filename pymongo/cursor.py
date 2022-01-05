@@ -189,9 +189,7 @@ class Cursor(object):
             self.__session = None
             self.__explicit_session = False
 
-        spec: Dict[str, Any] = {}
-        if filter:
-            spec.update(filter)
+        spec: MutableMapping[str, Any] = cast(MutableMapping[str, Any], filter) or {}
 
         validate_is_mapping("filter", spec)
         if not isinstance(skip, int):
