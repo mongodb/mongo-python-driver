@@ -46,6 +46,6 @@ jobs:
           pip install -e ".[zstd, srv]"
       - name: Run mypy
         run: |
-          mypy --strict --install-types --non-interactive bson
+          mypy --install-types --non-interactive bson
           mypy --install-types --non-interactive gridfs
           mypy --install-types --non-interactive pymongo
