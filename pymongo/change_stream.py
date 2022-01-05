@@ -15,7 +15,7 @@
 """Watch changes on a collection, a database, or the entire cluster."""
 
 import copy
-from typing import Any, Dict, Iterable, List, Mapping, Optional, TypeVar, Union, cast
+from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, TypeVar, Union, cast
 
 from bson import _bson_to_dict
 from bson.raw_bson import RawBSONDocument
@@ -27,10 +27,6 @@ from pymongo.aggregation import (_CollectionAggregationCommand,
 from pymongo.client_session import ClientSession
 from pymongo.collation import validate_collation_or_none
 from pymongo.collation import Collation
-from pymongo.database import Database
-from pymongo.mongo_client import MongoClient
-
-
 
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (ConnectionFailure,
@@ -44,6 +40,8 @@ _Collation = Union[Mapping[str, Any], Collation]
 _Collection = TypeVar("_Collection", bound="pymongo.collection.Collection")
 _DocumentOut = Union[MutableMapping[str, Any], RawBSONDocument]
 _ChangeStream = TypeVar("_ChangeStream", bound="ChangeStream")
+_MongoClient = TypeVar("_MongoClient", bound="pymongo.mongo_client.MongoClient")
+_Database = TypeVar("_Database", bound="pymongo.database.Database")
 
 
 # The change streams spec considers the following server errors from the
@@ -83,7 +81,7 @@ class ChangeStream(object):
     """
     def __init__(
         self,
-        target: Union[MongoClient, Database, _Collection],
+        target: Union[_MongoClient, _Database, _Collection],
         pipeline: Optional[List[Mapping[str, Any]]],
         full_document: Optional[str],
         resume_after: Optional[Mapping[str, Any]],

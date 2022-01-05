@@ -186,7 +186,7 @@ class Cursor(object):
         self.__exhaust = False
         self.__sock_mgr = None
         self.__killed = False
-        self.__session: Optional[ClientSession]
+        self.__session: Optional[_ClientSession]
 
         if session:
             self.__session = session
@@ -1180,7 +1180,7 @@ class Cursor(object):
         .. versionadded:: 3.6
         """
         if self.__explicit_session:
-            return self.__session
+            return cast(Optional[_ClientSession], self.__session)
         return None
 
     def __iter__(self) -> _Cursor:
@@ -1282,7 +1282,7 @@ class RawBatchCursor(Cursor):
 
         .. seealso:: The MongoDB documentation on `explain <https://dochub.mongodb.org/core/explain>`_.
         """
-        clone = self._clone(deepcopy=True, base=Cursor(self.collection))
+        clone = self._clone(deepcopy=True, base=Cursor(cast(Any, self.collection)))
         return clone.explain()
 
     def __getitem__(self, index: Any) -> _Cursor:

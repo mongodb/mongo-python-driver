@@ -22,6 +22,7 @@ from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.codec_options import CodecOptions
 from bson.son import SON
+import pymongo
 from pymongo import (common,
                      helpers,
                      message)
@@ -32,7 +33,6 @@ from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
 from pymongo.collation import validate_collation_or_none
 from pymongo.collation import Collation
 from pymongo.change_stream import CollectionChangeStream
-from pymongo.database import Database
 from pymongo.cursor import Cursor, RawBatchCursor
 from pymongo.errors import (ConfigurationError,
                             InvalidName,
@@ -67,7 +67,9 @@ _IndexKeyHint = Union[str, _IndexList]
 _Pipeline = List[Mapping[str, Any]]
 _Code = Union[str, Code]
 _DocumentIn = MutableMapping[str, Any]
-_DocumentOut = Any
+_DocumentOut = Union[MutableMapping[str, Any], RawBSONDocument]
+_Database = TypeVar("_Database", bound="pymongo.database.Database")
+
 
 
 class ReturnDocument(object):
@@ -89,7 +91,7 @@ class Collection(common.BaseObject):
 
     def __init__(
         self,
-        database: Database,
+        database: _Database,
         name: str,
         create: Optional[bool] = False,
         codec_options: Optional[CodecOptions] = None,
@@ -338,7 +340,7 @@ class Collection(common.BaseObject):
         return self.__name
 
     @property
-    def database(self) -> Database:
+    def database(self) -> _Database:
         """The :class:`~pymongo.database.Database` that this
         :class:`Collection` is a part of.
         """
