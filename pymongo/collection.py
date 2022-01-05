@@ -15,7 +15,7 @@
 """Collection level utilities for Mongo."""
 
 from collections import abc
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, TypeVar, Union, cast
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, Union
 
 from bson.code import Code
 from bson.objectid import ObjectId
@@ -56,7 +56,6 @@ from pymongo.write_concern import WriteConcern
 _FIND_AND_MODIFY_DOC_FIELDS = {'value': 1}
 
 
-_Collection = TypeVar("_Collection", bound="Collection")
 WriteOp = Union[InsertOne, DeleteOne, DeleteMany, ReplaceOne, UpdateOne, UpdateMany]
 # Hint supports index name, "myIndex", or list of index pairs: [('x', 1), ('y', -1)]
 _IndexList = Sequence[Tuple[str, Union[int, str, Mapping[str, Any]]]]
@@ -272,7 +271,7 @@ class Collection(common.BaseObject):
                 write_concern=self._write_concern_for(session),
                 collation=collation, session=session)
 
-    def __getattr__(self, name) -> _Collection:
+    def __getattr__(self, name) -> "Collection":
         """Get a sub-collection of this collection by name.
 
         Raises InvalidName if an invalid collection name is used.
@@ -288,14 +287,14 @@ class Collection(common.BaseObject):
                     name, full_name, full_name))
         return self.__getitem__(name)
 
-    def __getitem__(self, name) -> _Collection:
-        return cast(_Collection, Collection(self.__database,
+    def __getitem__(self, name) -> "Collection":
+        return Collection(self.__database,
                           "%s.%s" % (self.__name, name),
                           False,
                           self.codec_options,
                           self.read_preference,
                           self.write_concern,
-                          self.read_concern))
+                          self.read_concern)
 
     def __repr__(self) -> str:
         return "Collection(%r, %r)" % (self.__database, self.__name)
@@ -343,7 +342,7 @@ class Collection(common.BaseObject):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> _Collection:
+    ) -> "Collection":
         """Get a clone of this collection changing the specified settings.
 
           >>> coll1.read_preference
@@ -373,13 +372,13 @@ class Collection(common.BaseObject):
             default) the :attr:`read_concern` of this :class:`Collection`
             is used.
         """
-        return cast(_Collection, Collection(self.__database,
+        return Collection(self.__database,
                           self.__name,
                           False,
                           codec_options or self.codec_options,
                           read_preference or self.read_preference,
                           write_concern or self.write_concern,
-                          read_concern or self.read_concern))
+                          read_concern or self.read_concern)
 
     def bulk_write(
         self,
@@ -2693,8 +2692,8 @@ class Collection(common.BaseObject):
                                       array_filters, hint=hint, let=let,
                                       session=session, **kwargs)
 
-    def __iter__(self) -> _Collection:
-        return cast(_Collection, self)
+    def __iter__(self) -> "Collection":
+        return self
 
     def __next__(self) -> None:
         raise TypeError("'Collection' object is not iterable")

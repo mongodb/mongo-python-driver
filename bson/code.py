@@ -16,10 +16,8 @@
 """
 
 from collections.abc import Mapping as _Mapping
-from typing import Any, Mapping, Optional, Type, Union, TypeVar
+from typing import Any, Mapping, Optional, Type, Union
 
-
-_Code = TypeVar("_Code", bound="Code")
 
 
 class Code(str):
@@ -53,7 +51,7 @@ class Code(str):
     _type_marker = 13
     __scope: Union[Mapping[str, Any], None]
 
-    def __new__(cls: Type[_Code], code: Union[str, _Code], scope: Optional[Mapping[str, Any]] = None, **kwargs: Any) -> _Code:
+    def __new__(cls: Type["Code"], code: Union[str, "Code"], scope: Optional[Mapping[str, Any]] = None, **kwargs: Any) -> "Code":
         if not isinstance(code, str):
             raise TypeError("code must be an instance of str")
 

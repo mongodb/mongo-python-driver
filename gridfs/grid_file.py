@@ -17,7 +17,7 @@ import datetime
 import io
 import math
 import os
-from typing import Any, Iterable, List, Mapping, Optional, TypeVar, cast
+from typing import Any, Iterable, List, Mapping, Optional, cast
 
 from bson.int64 import Int64
 from bson.son import SON
@@ -105,9 +105,6 @@ def _disallow_transactions(session: Optional[ClientSession]) -> None:
     if session and session.in_transaction:
         raise InvalidOperation(
             'GridFS does not support multi-document transactions')
-
-
-_GridIn = TypeVar("_GridIn", bound="GridIn")
 
 
 class GridIn(object):
@@ -400,10 +397,10 @@ class GridIn(object):
     def writeable(self) -> bool:
         return True
 
-    def __enter__(self) -> _GridIn:
+    def __enter__(self) -> "GridIn":
         """Support for the context manager protocol.
         """
-        return cast(_GridIn, self)
+        return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Any:
         """Support for the context manager protocol.
@@ -414,11 +411,6 @@ class GridIn(object):
 
         # propagate exceptions
         return False
-
-
-_GridOutIterator = TypeVar("_GridOutIterator", bound="GridOutIterator")
-_GridOut = TypeVar("_GridOut", bound="GridOut")
-_GridOutChunkIterator_ = TypeVar("_GridOutChunkIterator_", bound="_GridOutChunkIterator")
 
 
 class GridOut(io.IOBase):
@@ -662,7 +654,7 @@ class GridOut(io.IOBase):
     def seekable(self) -> bool:
         return True
 
-    def __iter__(self) -> _GridOutIterator:  # type: ignore[override]
+    def __iter__(self) -> "GridOut":
         """Return an iterator over all of this file's data.
 
         The iterator will return lines (delimited by ``b'\\n'``) of
@@ -681,7 +673,7 @@ class GridOut(io.IOBase):
            Use :meth:`GridOut.readchunk` to read chunk by chunk instead
            of line by line.
         """
-        return cast(_GridOutIterator, self)
+        return self
 
     def close(self) -> None:
         """Make GridOut more generically file-like."""
@@ -699,11 +691,11 @@ class GridOut(io.IOBase):
     def writable(self) -> bool:
         return False
 
-    def __enter__(self) -> _GridOut:
+    def __enter__(self) -> "GridOut":
         """Makes it possible to use :class:`GridOut` files
         with the context manager protocol.
         """
-        return cast(_GridOut, self)
+        return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Any:
         """Makes it possible to use :class:`GridOut` files
@@ -757,8 +749,8 @@ class _GridOutChunkIterator(object):
             return self._chunk_size
         return self._length - (self._chunk_size * (self._num_chunks - 1))
 
-    def __iter__(self) -> _GridOutChunkIterator_:
-        return cast(_GridOutChunkIterator_, self)
+    def __iter__(self) -> "_GridOutChunkIterator":
+        return self
 
     def _create_cursor(self) -> None:
         filter = {"files_id": self._id}
@@ -830,17 +822,14 @@ class GridOutIterator(object):
     def __init__(self, grid_out: GridOut, chunks: Collection, session: ClientSession):
         self.__chunk_iter = _GridOutChunkIterator(grid_out, chunks, session, 0)
 
-    def __iter__(self) -> _GridOutIterator:
-        return cast(_GridOutIterator, self)
+    def __iter__(self) -> "GridOutIterator":
+        return self
 
     def next(self) -> bytes:
         chunk = self.__chunk_iter.next()
         return bytes(chunk["data"])
 
     __next__ = next
-
-
-_GridOutCursor = TypeVar("_GridOutCursor", bound="GridOutCursor")
 
 
 class GridOutCursor(Cursor):
@@ -892,7 +881,7 @@ class GridOutCursor(Cursor):
     def remove_option(self, *args: Any, **kwargs: Any) -> None:  # type: ignore
         raise NotImplementedError("Method does not exist for GridOutCursor")
 
-    def _clone_base(self, session: ClientSession) -> _GridOutCursor:
+    def _clone_base(self, session: ClientSession) -> "GridOutCursor":
         """Creates an empty GridOutCursor for information to be copied into.
         """
-        return cast(_GridOutCursor, GridOutCursor(self.__root_collection, session=session))
+        return GridOutCursor(self.__root_collection, session=session)

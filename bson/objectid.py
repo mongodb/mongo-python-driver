@@ -23,7 +23,7 @@ import os
 import struct
 import threading
 import time
-from typing import Any, NoReturn, Optional, Type, TypeVar, Union
+from typing import Any, NoReturn, Optional, Type, Union
 
 from random import SystemRandom
 
@@ -32,9 +32,6 @@ from bson.tz_util import utc
 
 
 _MAX_COUNTER_VALUE = 0xFFFFFF
-
-
-_ObjectId = TypeVar("_ObjectId", bound="ObjectId")
 
 
 def _raise_invalid_id(oid: str) -> NoReturn:
@@ -63,7 +60,7 @@ class ObjectId(object):
 
     _type_marker = 7
 
-    def __init__(self, oid: Optional[Union[str, _ObjectId, bytes]] = None) -> None:
+    def __init__(self, oid: Optional[Union[str, "ObjectId", bytes]] = None) -> None:
         """Initialize a new ObjectId.
 
         An ObjectId is a 12-byte unique identifier consisting of:
@@ -109,7 +106,7 @@ class ObjectId(object):
             self.__validate(oid)
 
     @classmethod
-    def from_datetime(cls: Type[_ObjectId], generation_time: datetime.datetime) -> _ObjectId:
+    def from_datetime(cls: Type["ObjectId"], generation_time: datetime.datetime) -> "ObjectId":
         """Create a dummy ObjectId instance with a specific generation time.
 
         This method is useful for doing range queries on a field
@@ -144,7 +141,7 @@ class ObjectId(object):
         return cls(oid)
 
     @classmethod
-    def is_valid(cls: Type[_ObjectId], oid: Any) -> bool:
+    def is_valid(cls: Type["ObjectId"], oid: Any) -> bool:
         """Checks if a `oid` string is valid or not.
 
         :Parameters:

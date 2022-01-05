@@ -33,7 +33,7 @@ access:
 
 import contextlib
 import threading
-from typing import Any, Dict, FrozenSet, List, Mapping, MutableMapping, Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast
+from typing import Any, Dict, FrozenSet, List, Mapping, MutableMapping, Optional, Set, Tuple, Type, Union, cast
 import weakref
 
 from collections import defaultdict
@@ -78,9 +78,6 @@ from pymongo.uri_parser import (_handle_option_deprecations,
                                 _normalize_options,
                                 _check_options)
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
-
-
-_MongoClient = TypeVar("_MongoClient", bound="MongoClient", covariant=True)
 
 
 class MongoClient(common.BaseObject):
@@ -1877,14 +1874,14 @@ class MongoClient(common.BaseObject):
             read_preference=ReadPreference.PRIMARY,
             write_concern=DEFAULT_WRITE_CONCERN)
 
-    def __enter__(self) -> _MongoClient:
-        return cast(_MongoClient, self)
+    def __enter__(self) -> "MongoClient":
+        return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
-    def __iter__(self) -> _MongoClient:
-        return cast(_MongoClient, self)
+    def __iter__(self) -> "MongoClient":
+        return self
 
     def __next__(self) -> None:
         raise TypeError("'MongoClient' object is not iterable")

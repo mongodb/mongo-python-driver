@@ -61,7 +61,7 @@ import platform
 import re
 import struct
 import sys
-from typing import Any, BinaryIO, Callable, Dict,  Generator, Iterator, List, Mapping, NoReturn, Sequence, Tuple, Type, TypeVar, Union, cast
+from typing import Any, BinaryIO, Callable, Dict,  Generator, Iterator, List, Mapping, NoReturn, Sequence, Tuple, Type, Union, cast
 import uuid
 
 from codecs import (utf_8_decode as _utf_8_decode,  # type: ignore
@@ -1120,9 +1120,6 @@ def is_valid(bson: bytes) -> bool:
         return False
 
 
-_BSON = TypeVar("_BSON", bound="BSON")
-
-
 class BSON(bytes):
     """BSON (Binary JSON) data.
 
@@ -1132,8 +1129,8 @@ class BSON(bytes):
     """
 
     @classmethod
-    def encode(cls: Type[_BSON], document: _DocumentIn, check_keys: bool = False,
-               codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> _BSON:
+    def encode(cls: Type["BSON"], document: _DocumentIn, check_keys: bool = False,
+               codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> "BSON":
         """Encode a document to a new :class:`BSON` instance.
 
         A document can be any mapping type (like :class:`dict`).

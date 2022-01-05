@@ -32,7 +32,6 @@ RE_TYPE: Type[Pattern[Any]] = type(re.compile(""))
 _Key = TypeVar("_Key", bound=str)
 _Value = TypeVar("_Value")
 _T = TypeVar("_T")
-_SON = TypeVar("_SON", bound="SON")  # type: ignore[type-arg]
 
 
 class SON(Dict[_Key, _Value]):
@@ -50,7 +49,7 @@ class SON(Dict[_Key, _Value]):
         self.update(data)
         self.update(kwargs)
 
-    def __new__(cls: Type[_SON], *args: Any, **kwargs: Any) -> _SON:
+    def __new__(cls: Type["SON[Any, Any]"], *args: Any, **kwargs: Any) -> "SON[Any, Any]":
         instance = super(SON, cls).__new__(cls, *args, **kwargs)
         instance.__keys = []
         return instance
@@ -70,10 +69,10 @@ class SON(Dict[_Key, _Value]):
         self.__keys.remove(key)
         dict.__delitem__(self, key)
 
-    def copy(self) -> _SON:  # type: ignore[override]
+    def copy(self) -> "SON[Any, Any]":
         other: SON[_Key, _Value] = SON()
         other.update(self)
-        return cast(_SON, other)
+        return other
 
     # TODO this is all from UserDict.DictMixin. it could probably be made more
     # efficient.
@@ -184,14 +183,14 @@ class SON(Dict[_Key, _Value]):
 
         return cast(Dict[_Key, _Value], transform_value(dict(self)))
 
-    def __deepcopy__(self, memo: Any) -> _SON:
+    def __deepcopy__(self, memo: Any) -> "SON[Any, Any]":
         out: SON[_Key, _Value] = SON()
         val_id = id(self)
         if val_id in memo:
-            return cast(_SON, memo.get(val_id))
+            return cast(SON[Any, Any], memo.get(val_id))
         memo[val_id] = out
         for k, v in self.items():
             if not isinstance(v, RE_TYPE):
                 v = copy.deepcopy(v, memo)
             out[k] = v
-        return cast(_SON, out)
+        return out

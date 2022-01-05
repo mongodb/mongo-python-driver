@@ -15,7 +15,7 @@
 """Support for explicit client-side field level encryption."""
 
 import contextlib
-from typing import Any, List, Mapping, Optional, TypeVar, cast
+from typing import Any, List, Mapping, Optional
 import uuid
 import weakref
 
@@ -354,8 +354,6 @@ class Algorithm(object):
         "AEAD_AES_256_CBC_HMAC_SHA_512-Random")
 
 
-_ClientEncryption = TypeVar("_ClientEncryption", bound="ClientEncryption", covariant=True)
-
 
 class ClientEncryption(object):
     """Explicit client-side field level encryption."""
@@ -593,8 +591,8 @@ class ClientEncryption(object):
             return decode(decrypted_doc,
                           codec_options=self._codec_options)['v']
 
-    def __enter__(self) -> _ClientEncryption:
-        return cast(_ClientEncryption, self)
+    def __enter__(self) -> "ClientEncryption":
+        return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()

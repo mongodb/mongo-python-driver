@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any,  Mapping, Tuple, Type, TypeVar, cast
+from typing import Any,  Mapping, Tuple, Type
 from uuid import UUID
 
 """Tools for representing BSON binary data.
@@ -180,8 +180,6 @@ USER_DEFINED_SUBTYPE: int = 128
 """BSON binary subtype for any user defined structure.
 """
 
-_Binary = TypeVar("_Binary", bound="Binary")
-
 
 class Binary(bytes):
     """Representation of BSON binary data.
@@ -213,7 +211,7 @@ class Binary(bytes):
     _type_marker = 5
     __subtype: int
 
-    def __new__(cls: Type[_Binary], data: bytes, subtype: int = BINARY_SUBTYPE) -> _Binary:
+    def __new__(cls: Type["Binary"], data: bytes, subtype: int = BINARY_SUBTYPE) -> "Binary":
         if not isinstance(subtype, int):
             raise TypeError("subtype must be an instance of int")
         if subtype >= 256 or subtype < 0:
@@ -224,7 +222,7 @@ class Binary(bytes):
         return self
 
     @classmethod
-    def from_uuid(cls: Type[_Binary], uuid: UUID, uuid_representation: int = UuidRepresentation.STANDARD) -> _Binary:
+    def from_uuid(cls: Type["Binary"], uuid: UUID, uuid_representation: int = UuidRepresentation.STANDARD) -> "Binary":
         """Create a BSON Binary object from a Python UUID.
 
         Creates a :class:`~bson.binary.Binary` object from a

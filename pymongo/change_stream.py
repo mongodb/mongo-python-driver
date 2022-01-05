@@ -15,7 +15,7 @@
 """Watch changes on a collection, a database, or the entire cluster."""
 
 import copy
-from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, TypeVar, Union, cast
+from typing import Any, Iterable, List, Mapping, Optional, Union, cast
 
 from bson import _bson_to_dict
 from bson.raw_bson import RawBSONDocument
@@ -35,8 +35,6 @@ from pymongo.errors import (ConnectionFailure,
                             OperationFailure,
                             PyMongoError)
 from pymongo.typings import DatabaseRef, MongoClientRef, CollectionRef, CollationIn, DocumentOut
-
-_ChangeStream = TypeVar("_ChangeStream", bound="ChangeStream")
 
 
 # The change streams spec considers the following server errors from the
@@ -372,8 +370,8 @@ class ChangeStream(object):
             return _bson_to_dict(change.raw, self._orig_codec_options)
         return change
 
-    def __enter__(self) -> _ChangeStream:
-        return cast(_ChangeStream, self)
+    def __enter__(self) -> "ChangeStream":
+        return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()

@@ -19,7 +19,7 @@
 
 import decimal
 import struct
-from typing import Any, List, Sequence, Tuple, Type, TypeVar, Union
+from typing import Any, Sequence, Tuple, Type, Union
 
 
 _PACK_64 = struct.Struct("<Q").pack
@@ -58,8 +58,6 @@ _CTX_OPTIONS = {
 
 _DEC128_CTX = decimal.Context(**_CTX_OPTIONS.copy())  # type: ignore
 _VALUE_OPTIONS = Union[decimal.Decimal, float, str, Tuple[int, Sequence[int], int]]
-
-_Decimal128 = TypeVar("_Decimal128", bound="Decimal128")
 
 
 def create_decimal128_context() -> decimal.Context:
@@ -273,7 +271,7 @@ class Decimal128(object):
             return ctx.create_decimal((sign, digits, exponent))
 
     @classmethod
-    def from_bid(cls: Type[_Decimal128], value: bytes) -> _Decimal128:
+    def from_bid(cls: Type["Decimal128"], value: bytes) -> "Decimal128":
         """Create an instance of :class:`Decimal128` from Binary Integer
         Decimal string.
 

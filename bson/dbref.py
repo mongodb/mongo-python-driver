@@ -15,12 +15,10 @@
 """Tools for manipulating DBRefs (references to MongoDB documents)."""
 
 from copy import deepcopy
-from typing import Any, Mapping, Optional, TypeVar, cast
+from typing import Any, Mapping, Optional
 
 from bson.son import SON
 from bson._helpers import _getstate_slots, _setstate_slots
-
-_DBRef = TypeVar("_DBRef", bound="DBRef")
 
 
 class DBRef(object):
@@ -124,9 +122,9 @@ class DBRef(object):
         return hash((self.__collection, self.__id, self.__database,
                      tuple(sorted(self.__kwargs.items()))))
 
-    def __deepcopy__(self, memo: Any) -> _DBRef:
+    def __deepcopy__(self, memo: Any) -> "DBRef":
         """Support function for `copy.deepcopy()`."""
-        return cast(_DBRef, DBRef(deepcopy(self.__collection, memo),
+        return DBRef(deepcopy(self.__collection, memo),
                      deepcopy(self.__id, memo),
                      deepcopy(self.__database, memo),
-                     deepcopy(self.__kwargs, memo)))
+                     deepcopy(self.__kwargs, memo))

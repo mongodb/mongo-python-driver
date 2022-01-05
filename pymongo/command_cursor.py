@@ -15,7 +15,7 @@
 """CommandCursor class to iterate over command results."""
 
 from collections import deque
-from typing import Any, Mapping, Optional, Tuple, TypeVar, cast
+from typing import Any, Iterator, Mapping, Optional, Tuple
 
 from bson import _convert_raw_document_lists_to_streams
 from pymongo.client_session import ClientSession
@@ -29,8 +29,6 @@ from pymongo.message import (_CursorAddress,
 from pymongo.response import PinnedResponse
 from pymongo.typings import DocumentOut, CollectionRef
 
-
-_CommandCursor = TypeVar("_CommandCursor", bound="CommandCursor")
 
 
 class CommandCursor(object):
@@ -109,7 +107,7 @@ class CommandCursor(object):
         """
         self.__die(True)
 
-    def batch_size(self, batch_size: int) -> _CommandCursor:
+    def batch_size(self, batch_size: int) -> "CommandCursor":
         """Limits the number of documents returned in one batch. Each batch
         requires a round trip to the server. It can be adjusted to optimize
         performance and limit data transfer.
@@ -131,7 +129,7 @@ class CommandCursor(object):
             raise ValueError("batch_size must be >= 0")
 
         self.__batch_size = batch_size == 1 and 2 or batch_size
-        return cast(_CommandCursor, self)
+        return self
 
     def _has_next(self):
         """Returns `True` if the cursor has documents remaining from the
@@ -273,8 +271,8 @@ class CommandCursor(object):
             return self.__session
         return None
 
-    def __iter__(self) -> _CommandCursor:
-        return cast(_CommandCursor, self)
+    def __iter__(self) -> Iterator[DocumentOut]:
+        return self
 
     def next(self) -> DocumentOut:
         """Advance the cursor."""
@@ -297,8 +295,8 @@ class CommandCursor(object):
         else:
             return None
 
-    def __enter__(self) -> _CommandCursor:
-        return cast(_CommandCursor, self)
+    def __enter__(self) -> "CommandCursor":
+        return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()

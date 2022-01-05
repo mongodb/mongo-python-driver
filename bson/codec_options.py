@@ -177,7 +177,6 @@ _options_base = namedtuple(  # type: ignore
      'unicode_decode_error_handler', 'tzinfo', 'type_registry'))
 
 
-_CodecOptions = TypeVar("_CodecOptions", bound="CodecOptions")
 _RawBSONDocument = TypeVar("_RawBSONDocument", bound="bson.raw_bson.RawBSONDocument")
 
 
@@ -257,12 +256,12 @@ class CodecOptions(_options_base):
        and stored back to the server.
     """
 
-    def __new__(cls: Type[_CodecOptions], document_class: Union[Type[MutableMapping[Any, Any]], Type[_RawBSONDocument]] = dict,
+    def __new__(cls: Type["CodecOptions"], document_class: Union[Type[MutableMapping[Any, Any]], Type[_RawBSONDocument]] = dict,
                 tz_aware: bool = False,
                 uuid_representation: Optional[int] = UuidRepresentation.UNSPECIFIED,
                 unicode_decode_error_handler: Optional[str] = "strict",
                 tzinfo: Optional[datetime.tzinfo] = None,
-                type_registry: Optional[TypeRegistry] = None) -> _CodecOptions:
+                type_registry: Optional[TypeRegistry] = None) -> "CodecOptions":
         if not (issubclass(document_class, _MutableMapping) or
                 _raw_document_class(document_class)):
             raise TypeError("document_class must be dict, bson.son.SON, "
@@ -323,7 +322,7 @@ class CodecOptions(_options_base):
     def __repr__(self) -> str:
         return '%s(%s)' % (self.__class__.__name__, self._arguments_repr())
 
-    def with_options(self, **kwargs: Any) -> _CodecOptions:
+    def with_options(self, **kwargs: Any) -> "CodecOptions":
         """Make a copy of this CodecOptions, overriding some options::
 
             >>> from bson.codec_options import DEFAULT_CODEC_OPTIONS
@@ -337,7 +336,7 @@ class CodecOptions(_options_base):
         """
         opts = self._options_dict()
         opts.update(kwargs)
-        return cast(_CodecOptions, CodecOptions(**opts))
+        return CodecOptions(**opts)
 
 
 DEFAULT_CODEC_OPTIONS: CodecOptions = CodecOptions()

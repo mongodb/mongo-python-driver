@@ -16,7 +16,7 @@
 """
 
 import re
-from typing import Any, Pattern, Type, TypeVar, Union, cast
+from typing import Any, Pattern, Type, Union
 
 from bson.son import RE_TYPE
 from bson._helpers import _getstate_slots, _setstate_slots
@@ -40,9 +40,6 @@ def str_flags_to_int(str_flags: str) -> int:
     return flags
 
 
-_Regex = TypeVar("_Regex", bound="Regex")
-
-
 class Regex(object):
     """BSON regular expression data."""
     __slots__ = ("pattern", "flags")
@@ -53,7 +50,7 @@ class Regex(object):
     _type_marker = 11
 
     @classmethod
-    def from_native(cls: Type[_Regex], regex: Pattern[Any]) -> _Regex:
+    def from_native(cls: Type["Regex"], regex: Pattern[Any]) -> "Regex":
         """Convert a Python regular expression into a ``Regex`` instance.
 
         Note that in Python 3, a regular expression compiled from a
@@ -82,7 +79,7 @@ class Regex(object):
                 "regex must be a compiled regular expression, not %s"
                 % type(regex))
 
-        return cast(_Regex, Regex(regex.pattern, regex.flags))
+        return Regex(regex.pattern, regex.flags)
 
     def __init__(self, pattern: Union[str, bytes], flags: Union[str, int] = 0):
         """BSON regular expression data.

@@ -182,7 +182,7 @@ will not add that listener to existing client instances.
 
 from collections import abc, namedtuple
 import datetime
-from typing import Any, Dict, Mapping, Optional, Tuple, TypeVar
+from typing import Any, Dict, Mapping, Optional, Tuple
 from bson.objectid import ObjectId
 
 from pymongo.hello import Hello, HelloCompat
@@ -190,8 +190,6 @@ from pymongo.helpers import _handle_exception
 from pymongo.server_description import ServerDescription
 from pymongo.topology_description import TopologyDescription
 
-
-_CommandStartedEvent = TypeVar("_CommandStartedEvent", bound="CommandStartedEvent", covariant=True)
 
 _Listeners = namedtuple('Listeners',  # type: ignore
                         ('command_listeners', 'server_listeners',

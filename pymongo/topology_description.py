@@ -16,7 +16,7 @@
 
 from collections import namedtuple
 from random import sample
-from typing import Any, Callable, Dict, List, Mapping, NamedTuple, Optional, Tuple, TypeVar, cast
+from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple
 
 from bson.objectid import ObjectId
 from pymongo import common
@@ -45,7 +45,6 @@ SRV_POLLING_TOPOLOGIES: Tuple[int, int] = (TOPOLOGY_TYPE.Unknown, TOPOLOGY_TYPE.
 
 _Address = Tuple[str, Optional[int]]
 _ServerSelector = Callable[[List[ServerDescription]], List[ServerDescription]]
-_TopologyDescription = TypeVar("_TopologyDescription", bound="TopologyDescription", covariant=True)
 
 
 class TopologyDescription(object):
@@ -148,12 +147,12 @@ class TopologyDescription(object):
     def has_server(self, address: _Address) -> bool:
         return address in self._server_descriptions
 
-    def reset_server(self, address: _Address) -> _TopologyDescription:
+    def reset_server(self, address: _Address) -> "TopologyDescription":
         """A copy of this description, with one server marked Unknown."""
         unknown_sd = self._server_descriptions[address].to_unknown()
         return updated_topology_description(self, unknown_sd)
 
-    def reset(self) -> _TopologyDescription:
+    def reset(self) -> "TopologyDescription":
         """A copy of this description, with all servers marked Unknown."""
         if self._topology_type == TOPOLOGY_TYPE.ReplicaSetWithPrimary:
             topology_type = TOPOLOGY_TYPE.ReplicaSetNoPrimary
@@ -164,13 +163,13 @@ class TopologyDescription(object):
         sds = dict((address, ServerDescription(address))
                    for address in self._server_descriptions)
 
-        return cast(_TopologyDescription, TopologyDescription(
+        return TopologyDescription(
             topology_type,
             sds,
             self._replica_set_name,
             self._max_set_version,
             self._max_election_id,
-            self._topology_settings))
+            self._topology_settings)
 
     def server_descriptions(self) -> Dict[_Address, ServerDescription]:
         """Dict of (address,
@@ -359,7 +358,7 @@ _SERVER_TYPE_TO_TOPOLOGY_TYPE = {
 
 def updated_topology_description(
     topology_description: TopologyDescription, server_description: ServerDescription
-) -> _TopologyDescription:
+) -> "TopologyDescription":
     """Return an updated copy of a TopologyDescription.
 
     :Parameters:
@@ -396,13 +395,13 @@ def updated_topology_description(
                     set_name, server_description.replica_set_name))
             sds[address] = server_description.to_unknown(error=error)
         # Single type never changes.
-        return cast(_TopologyDescription, TopologyDescription(
+        return TopologyDescription(
             TOPOLOGY_TYPE.Single,
             sds,
             set_name,
             max_set_version,
             max_election_id,
-            topology_description._topology_settings))
+            topology_description._topology_settings)
 
     if topology_type == TOPOLOGY_TYPE.Unknown:
         if server_type in (SERVER_TYPE.Standalone, SERVER_TYPE.LoadBalancer):
@@ -466,12 +465,12 @@ def updated_topology_description(
             topology_type = _check_has_primary(sds)
 
     # Return updated copy.
-    return cast(_TopologyDescription, TopologyDescription(topology_type,
+    return TopologyDescription(topology_type,
                                sds,
                                set_name,
                                max_set_version,
                                max_election_id,
-                               topology_description._topology_settings))
+                               topology_description._topology_settings)
 
 
 def _updated_topology_description_srv_polling(topology_description, seedlist):

@@ -91,7 +91,7 @@ import datetime
 import json
 import math
 import re
-from typing import Any, Dict,  List, Optional, Mapping, Tuple, Type, TypeVar, Union, cast
+from typing import Any, Dict,  List, Optional, Mapping, Tuple, Type, Union, cast
 import uuid
 
 import bson
@@ -201,9 +201,6 @@ class JSONMode:
     """
 
 
-_JSONOptions = TypeVar("_JSONOptions", bound="JSONOptions")
-
-
 class JSONOptions(CodecOptions):
     """Encapsulates JSON options for :func:`dumps` and :func:`loads`.
 
@@ -256,12 +253,12 @@ class JSONOptions(CodecOptions):
     datetime_representation: int
     strict_uuid: bool
 
-    def __new__(cls: Type[_JSONOptions],
+    def __new__(cls: Type["JSONOptions"],
                 strict_number_long: Optional[bool] = None,
                 datetime_representation: Optional[int] = None,
                 strict_uuid: Optional[bool] = None,
                 json_mode: int = JSONMode.RELAXED,
-                *args: Any, **kwargs: Any) -> _JSONOptions:
+                *args: Any, **kwargs: Any) -> "JSONOptions":
         kwargs["tz_aware"] = kwargs.get("tz_aware", False)
         if kwargs["tz_aware"]:
             kwargs["tzinfo"] = kwargs.get("tzinfo", utc)
@@ -272,7 +269,7 @@ class JSONOptions(CodecOptions):
             raise ValueError(
                 "JSONOptions.datetime_representation must be one of LEGACY, "
                 "NUMBERLONG, or ISO8601 from DatetimeRepresentation.")
-        self = super(JSONOptions, cls).__new__(cls, *args, **kwargs)
+        self = cast(JSONOptions, super(JSONOptions, cls).__new__(cls, *args, **kwargs))
         if json_mode not in (JSONMode.LEGACY,
                              JSONMode.RELAXED,
                              JSONMode.CANONICAL):
@@ -344,7 +341,7 @@ class JSONOptions(CodecOptions):
             'json_mode': self.json_mode})
         return options_dict
 
-    def with_options(self, **kwargs: Any) -> _JSONOptions:  # type: ignore[override]
+    def with_options(self, **kwargs: Any) -> "JSONOptions":
         """
         Make a copy of this JSONOptions, overriding some options::
 
@@ -362,7 +359,7 @@ class JSONOptions(CodecOptions):
                     'strict_uuid', 'json_mode'):
             opts[opt] = kwargs.get(opt, getattr(self, opt))
         opts.update(kwargs)
-        return cast(_JSONOptions, JSONOptions(**opts))
+        return JSONOptions(**opts)
 
 
 LEGACY_JSON_OPTIONS: JSONOptions = JSONOptions(json_mode=JSONMode.LEGACY)

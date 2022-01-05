@@ -13,10 +13,8 @@
 # limitations under the License.
 
 """Database level operations."""
-from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Sequence, TypeVar, Union, cast
-import typing
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Union, cast
 
-from bson.code import Code
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
 from bson.son import SON
@@ -31,7 +29,7 @@ from pymongo.errors import (CollectionInvalid,
                             InvalidName)
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
-from pymongo.typings import DatabaseRef, CollationIn, MongoClientRef, DocumentOut, Pipeline
+from pymongo.typings import CollationIn, MongoClientRef, DocumentOut, Pipeline
 from pymongo.write_concern import WriteConcern
 
 
@@ -135,7 +133,7 @@ class Database(common.BaseObject):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> DatabaseRef:
+    ) -> "Database":
         """Get a clone of this database changing the specified settings.
 
           >>> db1.read_preference
@@ -167,12 +165,12 @@ class Database(common.BaseObject):
 
         .. versionadded:: 3.8
         """
-        return cast(DatabaseRef, Database(cast(Any, self.client),
+        return Database(cast(Any, self.client),
                         self.__name,
                         codec_options or self.codec_options,
                         read_preference or self.read_preference,
                         write_concern or self.write_concern,
-                        read_concern or self.read_concern))
+                        read_concern or self.read_concern)
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Database):
@@ -890,10 +888,10 @@ class Database(common.BaseObject):
 
         return result
 
-    def __iter__(self) -> DatabaseRef:
-        return cast(DatabaseRef, self)
+    def __iter__(self) -> "Database":
+        return self
 
-    def __next__(self) -> DatabaseRef:
+    def __next__(self) -> "Database":
         raise TypeError("'Database' object is not iterable")
 
     next = __next__
