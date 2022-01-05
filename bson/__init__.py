@@ -61,7 +61,7 @@ import platform
 import re
 import struct
 import sys
-from typing import Any, BinaryIO, Callable, Dict,  Generator, Iterator, List, Mapping, NoReturn, Sequence, Tuple, Type, Union, cast
+from typing import TYPE_CHECKING, Any, BinaryIO, Callable, Dict,  Generator, Iterator, List, Mapping, MutableMapping, NoReturn, Sequence, Tuple, Type, Union, cast
 import uuid
 
 from codecs import (utf_8_decode as _utf_8_decode,  # type: ignore
@@ -88,6 +88,10 @@ from bson.regex import Regex
 from bson.son import SON, RE_TYPE
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
+
+# Avoid circular dependency
+if TYPE_CHECKING:
+    from bson.raw_bson import RawBSONDocument
 
 
 try:
@@ -846,7 +850,7 @@ _CODEC_OPTIONS_TYPE_ERROR = TypeError(
 
 
 _DocumentIn = Mapping[str, Any]
-_DocumentOut = Any
+_DocumentOut = Union[MutableMapping[str, Any], "RawBSONDocument"]
 
 
 def encode(document: _DocumentIn, check_keys: bool = False, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> bytes:
