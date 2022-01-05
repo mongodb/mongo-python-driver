@@ -760,7 +760,7 @@ class _GridOutChunkIterator(object):
         self._cursor = self._chunks.find(filter, sort=[("n", 1)],
                                          session=self._session)
 
-    def _next_with_retry(self) -> Collection:
+    def _next_with_retry(self) -> Mapping[str, Any]:
         """Return the next chunk and retry once on CursorNotFound.
 
         We retry on CursorNotFound to maintain backwards compatibility in
@@ -777,7 +777,7 @@ class _GridOutChunkIterator(object):
             self._create_cursor()
             return self._cursor.next()
 
-    def next(self) -> bytes:
+    def next(self) -> Mapping[str, Any]:
         try:
             chunk = self._next_with_retry()
         except StopIteration:

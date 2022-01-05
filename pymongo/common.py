@@ -780,7 +780,7 @@ def get_validated_options(options: Mapping[str, Any], warn: bool = True) -> Mapp
 
 
 # List of write-concern-related options.
-WRITE_CONCERN_OPTIONS: frozenset[str] = frozenset([
+WRITE_CONCERN_OPTIONS: frozenset = frozenset([
     'w',
     'wtimeout',
     'wtimeoutms',
