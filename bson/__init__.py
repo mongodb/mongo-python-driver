@@ -89,7 +89,7 @@ from bson.son import SON, RE_TYPE
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
 
-# Avoid circular dependency
+# Import RawBSONDocument for type-checking only to avoid circular dependency.
 if TYPE_CHECKING:
     from bson.raw_bson import RawBSONDocument
 
