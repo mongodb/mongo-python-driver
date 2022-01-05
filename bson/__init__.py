@@ -525,7 +525,7 @@ def _encode_bytes(name: bytes, value: bytes, dummy0: Any, dummy1: Any) -> bytes:
 def _encode_mapping(name: bytes, value: Any, check_keys: bool, opts: Any) -> bytes:
     """Encode a mapping type."""
     if _raw_document_class(value):
-        return b'\x03' + name + value.raw   # type: ignore
+        return b'\x03' + name + value.raw
     data = b"".join([_element_to_bson(key, val, check_keys, opts)
                      for key, val in value.items()])
     return b"\x03" + name + _PACK_INT(len(data) + 5) + data + b"\x00"
