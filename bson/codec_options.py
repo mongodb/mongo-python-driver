@@ -16,15 +16,19 @@
 
 import abc
 import datetime
-from typing import Any, Callable, Dict,  Iterable, Mapping, MutableMapping, Optional, Type, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict,  Iterable, MutableMapping, Optional, Type, Union, cast
 
 from collections import namedtuple
 from collections.abc import MutableMapping as _MutableMapping
 
-import bson
 from bson.binary import (UuidRepresentation,
                          ALL_UUID_REPRESENTATIONS,
                          UUID_REPRESENTATION_NAMES)
+
+
+# Import RawBSONDocument for type-checking only to avoid circular dependency.
+if TYPE_CHECKING:
+    from bson.raw_bson import RawBSONDocument
 
 
 def _abstractproperty(func: Callable[..., Any]) -> property:
@@ -177,9 +181,6 @@ _options_base = namedtuple(  # type: ignore
      'unicode_decode_error_handler', 'tzinfo', 'type_registry'))
 
 
-_RawBSONDocument = TypeVar("_RawBSONDocument", bound="bson.raw_bson.RawBSONDocument")
-
-
 class CodecOptions(_options_base):
     """Encapsulates options used encoding and / or decoding BSON.
 
@@ -256,7 +257,7 @@ class CodecOptions(_options_base):
        and stored back to the server.
     """
 
-    def __new__(cls: Type["CodecOptions"], document_class: Union[Type[MutableMapping[Any, Any]], Type[_RawBSONDocument]] = dict,
+    def __new__(cls: Type["CodecOptions"], document_class: Union[Type[MutableMapping[Any, Any]], Type["RawBSONDocument"]] = dict,
                 tz_aware: bool = False,
                 uuid_representation: Optional[int] = UuidRepresentation.UNSPECIFIED,
                 unicode_decode_error_handler: Optional[str] = "strict",
