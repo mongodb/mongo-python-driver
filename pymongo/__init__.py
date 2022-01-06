@@ -16,15 +16,6 @@
 
 from typing import Any, Tuple, Union
 
-from pymongo.common import MAX_SUPPORTED_WIRE_VERSION as MAX_SUPPORTED_WIRE_VERSION, MIN_SUPPORTED_WIRE_VERSION as MIN_SUPPORTED_WIRE_VERSION
-from pymongo.operations import DeleteMany as DeleteMany, DeleteOne as DeleteOne, IndexModel as IndexModel, InsertOne as InsertOne, ReplaceOne as ReplaceOne, UpdateMany as UpdateMany, UpdateOne as UpdateOne
-
-
-GEOHAYSTACK: str
-OFF: int
-SLOW_ONLY: int
-ALL: int
-version: str
 ASCENDING: int = 1
 """Ascending sort order."""
 DESCENDING: int = -1
