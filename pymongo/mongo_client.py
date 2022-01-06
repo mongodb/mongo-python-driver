@@ -1377,7 +1377,7 @@ class MongoClient(common.BaseObject):
     def __repr__(self):
         return ("MongoClient(%s)" % (self._repr_helper(),))
 
-    def __getattr__(self, name: str) -> DatabaseRef:
+    def __getattr__(self, name: str) -> database.Database:
         """Get a database by name.
 
         Raises :class:`~pymongo.errors.InvalidName` if an invalid
@@ -1392,7 +1392,7 @@ class MongoClient(common.BaseObject):
                 " database, use client[%r]." % (name, name, name))
         return self.__getitem__(name)
 
-    def __getitem__(self, name: str) -> DatabaseRef:
+    def __getitem__(self, name: str) -> database.Database:
         """Get a database by name.
 
         Raises :class:`~pymongo.errors.InvalidName` if an invalid
