@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Type aliases used by PyMongo"""
-from typing import Any, List, Mapping, MutableMapping, TypeVar, Union
+from typing import Any, List, Mapping, MutableMapping, Optional, Tuple, TypeVar, Union
 import bson
 import pymongo
 
@@ -28,6 +28,7 @@ MongoClientRef = TypeVar("MongoClientRef", bound="pymongo.mongo_client.MongoClie
 RawBSONDocumentRef = TypeVar("RawBSONDocumentRef", bound="bson.raw_bson.RawBSONDocument")
 
 # Common Shared Types.
+Address = Tuple[str, Optional[int]]
 CollationIn = Union[Mapping[str, Any], CollationRef]
 DocumentIn = MutableMapping[str, Any]
 DocumentOut = Union[MutableMapping[str, Any], RawBSONDocumentRef]

@@ -189,6 +189,8 @@ from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers import _handle_exception
 from pymongo.server_description import ServerDescription
 from pymongo.topology_description import TopologyDescription
+from pymongo.typings import Address, DocumentOut
+
 
 _Listeners = namedtuple('_Listeners',
                         ('command_listeners', 'server_listeners',
@@ -524,10 +526,6 @@ def _is_speculative_authenticate(command_name, doc):
     return False
 
 
-_Document = Mapping[str, Any]
-_Address = Tuple[str, Optional[int]]
-
-
 class _CommandEvent(object):
     """Base class for command events."""
 
@@ -538,7 +536,7 @@ class _CommandEvent(object):
         self,
         command_name: str,
         request_id: int,
-        connection_id: _Address,
+        connection_id: Address,
         operation_id: Optional[int],
         service_id: Optional[ObjectId] = None,
     ) -> None:
@@ -559,7 +557,7 @@ class _CommandEvent(object):
         return self.__rqst_id
 
     @property
-    def connection_id(self) -> _Address:
+    def connection_id(self) -> Address:
         """The address (host, port) of the server this command was sent to."""
         return self.__conn_id
 
@@ -593,10 +591,10 @@ class CommandStartedEvent(_CommandEvent):
 
     def __init__(
         self,
-        command: _Document,
+        command: DocumentOut,
         database_name: str,
         request_id: int,
-        connection_id: _Address,
+        connection_id: Address,
         operation_id: Optional[int],
         service_id: Optional[ObjectId] = None,
     ) -> None:
@@ -615,7 +613,7 @@ class CommandStartedEvent(_CommandEvent):
         self.__db = database_name
 
     @property
-    def command(self) -> _Document:
+    def command(self) -> DocumentOut:
         """The command document."""
         return self.__cmd
 
@@ -651,10 +649,10 @@ class CommandSucceededEvent(_CommandEvent):
     def __init__(
         self,
         duration: datetime.timedelta,
-        reply: _Document,
+        reply: DocumentOut,
         command_name: str,
         request_id: int,
-        connection_id: _Address,
+        connection_id: Address,
         operation_id: Optional[int],
         service_id: Optional[ObjectId] = None,
     ) -> None:
@@ -675,7 +673,7 @@ class CommandSucceededEvent(_CommandEvent):
         return self.__duration_micros
 
     @property
-    def reply(self) -> _Document:
+    def reply(self) -> DocumentOut:
         """The server failure document for this operation."""
         return self.__reply
 
@@ -706,10 +704,10 @@ class CommandFailedEvent(_CommandEvent):
     def __init__(
         self,
         duration: datetime.timedelta,
-        failure: _Document,
+        failure: DocumentOut,
         command_name: str,
         request_id: int,
-        connection_id: _Address,
+        connection_id: Address,
         operation_id: Optional[int],
         service_id: Optional[ObjectId] = None,
     ) -> None:
@@ -723,7 +721,7 @@ class CommandFailedEvent(_CommandEvent):
         return self.__duration_micros
 
     @property
-    def failure(self) -> _Document:
+    def failure(self) -> DocumentOut:
         """The server failure document for this operation."""
         return self.__failure
 
@@ -740,11 +738,11 @@ class _PoolEvent(object):
     """Base class for pool events."""
     __slots__ = ("__address",)
 
-    def __init__(self, address: _Address) -> None:
+    def __init__(self, address: Address) -> None:
         self.__address = address
 
     @property
-    def address(self) -> _Address:
+    def address(self) -> Address:
         """The address (host, port) pair of the server the pool is attempting
         to connect to.
         """
@@ -765,7 +763,7 @@ class PoolCreatedEvent(_PoolEvent):
     """
     __slots__ = ("__options",)
 
-    def __init__(self, address: _Address, options: Dict[str, Any]) -> None:
+    def __init__(self, address: Address, options: Dict[str, Any]) -> None:
         super(PoolCreatedEvent, self).__init__(address)
         self.__options = options
 
@@ -804,7 +802,7 @@ class PoolClearedEvent(_PoolEvent):
     """
     __slots__ = ("__service_id",)
 
-    def __init__(self, address: _Address, service_id: Optional[ObjectId] = None) -> None:
+    def __init__(self, address: Address, service_id: Optional[ObjectId] = None) -> None:
         super(PoolClearedEvent, self).__init__(address)
         self.__service_id = service_id
 
@@ -879,12 +877,12 @@ class _ConnectionEvent(object):
     """Private base class for some connection events."""
     __slots__ = ("__address", "__connection_id")
 
-    def __init__(self, address: _Address, connection_id: int) -> None:
+    def __init__(self, address: Address, connection_id: int) -> None:
         self.__address = address
         self.__connection_id = connection_id
 
     @property
-    def address(self) -> _Address:
+    def address(self) -> Address:
         """The address (host, port) pair of the server this connection is
         attempting to connect to.
         """
@@ -998,12 +996,12 @@ class ConnectionCheckOutFailedEvent(object):
     """
     __slots__ = ("__address", "__reason")
 
-    def __init__(self, address: _Address, reason: str) -> None:
+    def __init__(self, address: Address, reason: str) -> None:
         self.__address = address
         self.__reason = reason
 
     @property
-    def address(self) -> _Address:
+    def address(self) -> Address:
         """The address (host, port) pair of the server this connection is
         attempting to connect to.
         """
@@ -1054,12 +1052,12 @@ class _ServerEvent(object):
 
     __slots__ = ("__server_address", "__topology_id")
 
-    def __init__(self, server_address: _Address, topology_id: ObjectId) -> None:
+    def __init__(self, server_address: Address, topology_id: ObjectId) -> None:
         self.__server_address = server_address
         self.__topology_id = topology_id
 
     @property
-    def server_address(self) -> _Address:
+    def server_address(self) -> Address:
         """The address (host, port) pair of the server"""
         return self.__server_address
 
@@ -1194,11 +1192,11 @@ class _ServerHeartbeatEvent(object):
 
     __slots__ = ('__connection_id')
 
-    def __init__(self, connection_id: _Address) -> None:
+    def __init__(self, connection_id: Address) -> None:
         self.__connection_id = connection_id
 
     @property
-    def connection_id(self) -> _Address:
+    def connection_id(self) -> Address:
         """The address (host, port) of the server this heartbeat was sent
         to."""
         return self.__connection_id
@@ -1224,7 +1222,7 @@ class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):
 
     __slots__ = ('__duration', '__reply', '__awaited')
 
-    def __init__(self, duration: float, reply: Hello, connection_id: _Address, awaited: bool = False) -> None:
+    def __init__(self, duration: float, reply: Hello, connection_id: Address, awaited: bool = False) -> None:
         super(ServerHeartbeatSucceededEvent, self).__init__(connection_id)
         self.__duration = duration
         self.__reply = reply
@@ -1265,7 +1263,7 @@ class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
 
     __slots__ = ('__duration', '__reply', '__awaited')
 
-    def __init__(self, duration: float, reply: Exception, connection_id: _Address, awaited: bool = False) -> None:
+    def __init__(self, duration: float, reply: Exception, connection_id: Address, awaited: bool = False) -> None:
         super(ServerHeartbeatFailedEvent, self).__init__(connection_id)
         self.__duration = duration
         self.__reply = reply

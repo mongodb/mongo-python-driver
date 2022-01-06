@@ -24,6 +24,7 @@ from pymongo.read_preferences import ReadPreference, _AggWritePref, _ServerMode
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import Selection
 from pymongo.server_type import SERVER_TYPE
+from pymongo.typings import Address
 
 
 # Enumeration for various kinds of MongoDB cluster topologies.
@@ -42,7 +43,6 @@ TOPOLOGY_TYPE = _TopologyType(*range(6))
 SRV_POLLING_TOPOLOGIES: Tuple[int, int] = (TOPOLOGY_TYPE.Unknown, TOPOLOGY_TYPE.Sharded)
 
 
-_Address = Tuple[str, Optional[int]]
 _ServerSelector = Callable[[List[ServerDescription]], List[ServerDescription]]
 
 
@@ -50,7 +50,7 @@ class TopologyDescription(object):
     def __init__(
         self,
         topology_type: int,
-        server_descriptions: Dict[_Address, ServerDescription],
+        server_descriptions: Dict[Address, ServerDescription],
         replica_set_name: Optional[str],
         max_set_version: Optional[int],
         max_election_id: Optional[ObjectId],
@@ -143,10 +143,10 @@ class TopologyDescription(object):
         if self._incompatible_err:
             raise ConfigurationError(self._incompatible_err)
 
-    def has_server(self, address: _Address) -> bool:
+    def has_server(self, address: Address) -> bool:
         return address in self._server_descriptions
 
-    def reset_server(self, address: _Address) -> "TopologyDescription":
+    def reset_server(self, address: Address) -> "TopologyDescription":
         """A copy of this description, with one server marked Unknown."""
         unknown_sd = self._server_descriptions[address].to_unknown()
         return updated_topology_description(self, unknown_sd)
@@ -170,7 +170,7 @@ class TopologyDescription(object):
             self._max_election_id,
             self._topology_settings)
 
-    def server_descriptions(self) -> Dict[_Address, ServerDescription]:
+    def server_descriptions(self) -> Dict[Address, ServerDescription]:
         """Dict of (address,
         :class:`~pymongo.server_description.ServerDescription`)."""
         return self._server_descriptions.copy()
@@ -255,7 +255,7 @@ class TopologyDescription(object):
     def apply_selector(
         self,
         selector: Any,
-        address: Optional[_Address] = None,
+        address: Optional[Address] = None,
         custom_selector: Optional[_ServerSelector] = None
     ) -> List[ServerDescription]:
         """List of servers matching the provided selector(s).

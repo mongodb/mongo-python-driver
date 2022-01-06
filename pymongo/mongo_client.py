@@ -846,7 +846,7 @@ class MongoClient(common.BaseObject):
             except pymongo.errors.PyMongoError:
                 # The ChangeStream encountered an unrecoverable error or the
                 # resume attempt failed to recreate the cursor.
-                logging.error('None')
+                logging.error('...')
 
         For a precise description of the resume process see the
         `change streams specification`_.
@@ -1358,15 +1358,15 @@ class MongoClient(common.BaseObject):
 
             return '%s=%r' % (option, value)
 
-        # Host firstNone
+        # Host first...
         options = ['host=%r' % [
             '%s:%d' % (host, port) if port is not None else host
             for host, port in self._topology_settings.seeds]]
-        # None then everything in self._constructor_argsNone
+        # ... then everything in self._constructor_args...
         options.extend(
             option_repr(key, self.__options._options[key])
             for key in self._constructor_args)
-        # None then everything else.
+        # ... then everything else.
         options.extend(
             option_repr(key, self.__options._options[key])
             for key in self.__options._options
@@ -1826,7 +1826,7 @@ class MongoClient(common.BaseObject):
           Primary()
           >>> from pymongo import ReadPreference
           >>> db2 = client.get_database(
-          None     'test', read_preference=ReadPreference.SECONDARY)
+          ...    'test', read_preference=ReadPreference.SECONDARY)
           >>> db2.read_preference
           Secondary(tag_sets=None)
 
