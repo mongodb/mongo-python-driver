@@ -15,7 +15,7 @@
 """Utilities for choosing which member of a replica set to read from."""
 
 from collections import abc
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 from pymongo import max_staleness_selectors
 from pymongo.errors import ConfigurationError
@@ -39,15 +39,15 @@ _MONGOS_MODES = (
 )
 
 
-def _validate_tag_sets(tag_sets):
+def _validate_tag_sets(tag_sets) -> Optional[List[Mapping[str, Any]]]:
     """Validate tag sets for a MongoClient.
     """
     if tag_sets is None:
         return tag_sets
 
-    if not isinstance(tag_sets, list):
+    if not isinstance(tag_sets, (list, tuple)):
         raise TypeError((
-            "Tag sets %r invalid, must be a list") % (tag_sets,))
+            "Tag sets %r invalid, must be a sequence") % (tag_sets,))
     if len(tag_sets) == 0:
         raise ValueError((
             "Tag sets %r invalid, must be None or contain at least one set of"
@@ -60,7 +60,7 @@ def _validate_tag_sets(tag_sets):
                 "bson.son.SON or other type that inherits from "
                 "collection.Mapping" % (tags,))
 
-    return tag_sets
+    return list(tag_sets)
 
 
 def _invalid_max_staleness_msg(max_staleness):
@@ -95,7 +95,7 @@ def _validate_hedge(hedge):
 
 
 _Hedge = Mapping[str, Any]
-_TagSets = List[Mapping[str, Any]]
+_TagSets = Sequence[Mapping[str, Any]]
 
 
 class _ServerMode(object):
@@ -128,7 +128,7 @@ class _ServerMode(object):
     def document(self) -> Dict[str, Any]:
         """Read preference as a document.
         """
-        doc = {'mode': self.__mongos_mode}
+        doc: Dict[str, Any] = {'mode': self.__mongos_mode}
         if self.__tag_sets not in (None, [{}]):
             doc['tags'] = self.__tag_sets
         if self.__max_staleness != -1:

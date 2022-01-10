@@ -21,18 +21,8 @@ import time
 
 from optparse import OptionParser
 
-try:
-    from urllib2 import urlopen
-except ImportError:
-    # Python 3.
-    from urllib.request import urlopen
-
-
-try:
-    import thread
-except ImportError:
-    # Python 3.
-    import _thread as thread
+from urllib.request import urlopen
+import _thread as thread
 
 
 def parse_args():

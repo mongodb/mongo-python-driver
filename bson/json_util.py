@@ -91,7 +91,7 @@ import datetime
 import json
 import math
 import re
-from typing import Any, Dict,  List, Optional, Mapping, Tuple, Type, Union, cast
+from typing import Any, Dict, Optional, Mapping, Sequence, Tuple, Type, Union, cast
 import uuid
 
 import bson
@@ -463,7 +463,7 @@ def _json_convert(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) ->
         return obj
 
 
-def object_pairs_hook(pairs: List[Tuple[str, Any]], json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
+def object_pairs_hook(pairs: Sequence[Tuple[str, Any]], json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
     return object_hook(json_options.document_class(pairs), json_options)
 
 

@@ -22,11 +22,12 @@ import sys
 import threading
 import time
 import traceback
+from typing import Any, Dict
 import unittest
 import warnings
 
 try:
-    from xmlrunner import XMLTestRunner
+    from xmlrunner import XMLTestRunner  # type: ignore
     HAVE_XML = True
 # ValueError is raised when version 3+ is installed on Jython 2.7.
 except (ImportError, ValueError):
@@ -86,7 +87,7 @@ CLIENT_PEM = os.environ.get('CLIENT_PEM',
                             os.path.join(CERT_PATH, 'client.pem'))
 CA_PEM = os.environ.get('CA_PEM', os.path.join(CERT_PATH, 'ca.pem'))
 
-TLS_OPTIONS = dict(tls=True)
+TLS_OPTIONS: Dict[str, Any] = dict(tls=True)
 if CLIENT_PEM:
     TLS_OPTIONS['tlsCertificateKeyFile'] = CLIENT_PEM
 if CA_PEM:
@@ -102,13 +103,13 @@ if TEST_LOADBALANCER:
     # Remove after PYTHON-2712
     from pymongo import pool
     pool._MOCK_SERVICE_ID = True
-    res = parse_uri(SINGLE_MONGOS_LB_URI)
+    res = parse_uri(SINGLE_MONGOS_LB_URI or "")
     host, port = res['nodelist'][0]
     db_user = res['username'] or db_user
     db_pwd = res['password'] or db_pwd
 elif TEST_SERVERLESS:
     TEST_LOADBALANCER = True
-    res = parse_uri(SINGLE_MONGOS_LB_URI)
+    res = parse_uri(SINGLE_MONGOS_LB_URI or "")
     host, port = res['nodelist'][0]
     db_user = res['username'] or db_user
     db_pwd = res['password'] or db_pwd
@@ -1073,7 +1074,7 @@ class PymongoTestRunner(unittest.TextTestRunner):
 
 
 if HAVE_XML:
-    class PymongoXMLTestRunner(XMLTestRunner):
+    class PymongoXMLTestRunner(XMLTestRunner):  # type: ignore
         def run(self, test):
             setup()
             result = super(PymongoXMLTestRunner, self).run(test)

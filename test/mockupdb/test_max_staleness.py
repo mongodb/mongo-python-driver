@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mockupdb import MockupDB, going
+from mockupdb import MockupDB, going  # type: ignore
 from pymongo import MongoClient
 
 import unittest

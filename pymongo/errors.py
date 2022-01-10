@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Exceptions raised by PyMongo."""
-from typing import Any, Iterable, List, Mapping, Optional, Tuple, Union
+from typing import Any, Iterable, List, Mapping, Optional, Sequence, Tuple, Union
 
 from bson.errors import *
 
@@ -79,11 +79,14 @@ class AutoReconnect(ConnectionFailure):
 
     def __init__(self,
         message: str = '',
-        errors: Optional[Union[Mapping[str, Any], List[Any]]] = None
+        errors: Optional[Union[Mapping[str, Any], Sequence[Any]]] = None
     ) -> None:
         error_labels = None
-        if errors is not None and isinstance(errors, dict):
-            error_labels = errors.get('errorLabels')
+        if errors is not None:
+            if isinstance(errors, dict):
+                error_labels = errors.get('errorLabels')
+            else:
+                errors = list(errors)
         super(AutoReconnect, self).__init__(message, error_labels)
         self.errors = self.details = errors or []
 

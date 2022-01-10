@@ -16,7 +16,7 @@
 
 import datetime
 
-from mockupdb import going, MockupDB
+from mockupdb import going, MockupDB  # type: ignore
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
 

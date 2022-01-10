@@ -15,7 +15,7 @@
 """Support for explicit client-side field level encryption."""
 
 import contextlib
-from typing import Any, List, Mapping, Optional
+from typing import Any, List, Mapping, Optional, Sequence
 import uuid
 import weakref
 
@@ -461,7 +461,7 @@ class ClientEncryption(object):
     def create_data_key(self,
         kms_provider: str,
         master_key: Optional[Mapping[str, Any]] = None,
-        key_alt_names: Optional[List[str]] = None
+        key_alt_names: Optional[Sequence[str]] = None
     ) -> Binary:
         """Create and insert a new data key into the key vault collection.
 
@@ -532,7 +532,7 @@ class ClientEncryption(object):
         with _wrap_encryption_errors():
             return self._encryption.create_data_key(
                 kms_provider, master_key=master_key,
-                key_alt_names=key_alt_names)
+                key_alt_names=list(key_alt_names))
 
     def encrypt(self,
         value: Any,

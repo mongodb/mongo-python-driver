@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-try:
-    from queue import Queue
-except ImportError:
-    from Queue import Queue
+from queue import Queue
 
-from mockupdb import MockupDB, wait_until, OpReply, going, Future
+from mockupdb import MockupDB, wait_until, OpReply, going, Future  # type: ignore
 from pymongo.errors import ConnectionFailure
 from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo import MongoClient

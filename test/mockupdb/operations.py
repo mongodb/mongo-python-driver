@@ -14,15 +14,14 @@
 
 from collections import namedtuple
 
-from mockupdb import *
-from mockupdb import OpMsgReply
+from mockupdb import OpMsgReply, OpMsg, OpReply  # type: ignore
 from pymongo import ReadPreference
 
 __all__ = ['operations', 'upgrades']
 
 
 Operation = namedtuple(
-    'operation',
+    'Operation',
     ['name', 'function', 'reply', 'op_type', 'not_master'])
 """Client operations on MongoDB.
 

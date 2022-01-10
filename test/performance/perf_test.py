@@ -19,12 +19,13 @@ import os
 import sys
 import tempfile
 import time
+from typing import Any, List
 import warnings
 
 try:
     import simplejson as json
 except ImportError:
-    import json
+    import json  # type: ignore
 
 sys.path[0:0] = [""]
 
@@ -44,7 +45,7 @@ TEST_PATH = os.environ.get('TEST_PATH', os.path.join(
 
 OUTPUT_FILE = os.environ.get('OUTPUT_FILE')
 
-result_data = []
+result_data: List[Any] = []
 
 def tearDownModule():
     output = json.dumps(result_data, indent=4)

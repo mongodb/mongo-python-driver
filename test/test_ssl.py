@@ -46,13 +46,13 @@ try:
     # All of these must be available to use PyOpenSSL
     import OpenSSL
     import requests
-    import service_identity
+    import service_identity  # type: ignore
     # Ensure service_identity>=18.1 is installed
-    from service_identity.pyopenssl import verify_ip_address
+    from service_identity.pyopenssl import verify_ip_address  # type: ignore
     from pymongo.ocsp_support import _load_trusted_ca_certs
     _HAVE_PYOPENSSL = True
 except ImportError:
-    _load_trusted_ca_certs = None
+    _load_trusted_ca_certs = None  # type: ignore
 
 
 if HAVE_SSL:

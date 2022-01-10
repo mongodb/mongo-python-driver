@@ -13,9 +13,9 @@
 # limitations under the License.
 
 """Database level operations."""
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Union, cast
+from typing import Any, Dict, Generic, List, Mapping, Optional, Sequence, Union, cast
 
-from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
+from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, DocumentType
 from bson.dbref import DBRef
 from bson.son import SON
 from pymongo import common
@@ -45,14 +45,14 @@ def _check_name(name):
                               "character %r" % invalid_char)
 
 
-class Database(common.BaseObject):
+class Database(common.BaseObject, Generic[DocumentType]):
     """A Mongo database.
     """
 
     def __init__(self,
-        client: MongoClientRef,
+        client: MongoClientRef[DocumentType],
         name: str,
-        codec_options: Optional[CodecOptions] = None,
+        codec_options: Optional[CodecOptions[DocumentType]] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
@@ -119,7 +119,7 @@ class Database(common.BaseObject):
         self.__client = client
 
     @property
-    def client(self) -> MongoClientRef:
+    def client(self) -> MongoClientRef[DocumentType]:
         """The client instance for this :class:`Database`."""
         return self.__client
 

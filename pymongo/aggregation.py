@@ -37,7 +37,7 @@ class _AggregationCommand(object):
 
         self._target = target
 
-        common.validate_list('pipeline', pipeline)
+        pipeline = common.validate_list('pipeline', pipeline)
         self._pipeline = pipeline
         self._performs_write = False
         if pipeline and ("$out" in pipeline[-1] or "$merge" in pipeline[-1]):

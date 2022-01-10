@@ -14,7 +14,7 @@
 
 import time
 
-from mockupdb import MockupDB, wait_until
+from mockupdb import MockupDB, wait_until  # type: ignore
 from pymongo import MongoClient
 
 import unittest

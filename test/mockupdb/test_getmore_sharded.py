@@ -15,12 +15,9 @@
 """Test PyMongo cursor with a sharded cluster."""
 from pymongo import MongoClient
 
-try:
-    from queue import Queue
-except ImportError:
-    from Queue import Queue
+from queue import Queue
 
-from mockupdb import MockupDB, going
+from mockupdb import MockupDB, going  # type: ignore
 
 import unittest
 

@@ -226,7 +226,7 @@ class ServerEventListener(_ServerEventListener,
     """Listens to Server events."""
 
 
-class ServerAndTopologyEventListener(ServerEventListener,
+class ServerAndTopologyEventListener(ServerEventListener,  # type: ignore
                                      monitoring.TopologyListener):
     """Listens to Server and Topology events."""
 
@@ -910,7 +910,7 @@ def gevent_monkey_patched():
         warnings.simplefilter("ignore", ImportWarning)
         try:
             import socket
-            import gevent.socket
+            import gevent.socket  # type: ignore
             return socket.socket is gevent.socket.socket
         except ImportError:
             return False

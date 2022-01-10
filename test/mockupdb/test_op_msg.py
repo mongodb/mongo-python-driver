@@ -14,7 +14,7 @@
 
 from collections import namedtuple
 
-from mockupdb import MockupDB, going, OpMsg, OpMsgReply, OP_MSG_FLAGS
+from mockupdb import MockupDB, going, OpMsg, OpMsgReply, OP_MSG_FLAGS  # type: ignore
 from pymongo import MongoClient, WriteConcern
 from pymongo.operations import InsertOne, UpdateOne, DeleteOne
 from pymongo.cursor import CursorType

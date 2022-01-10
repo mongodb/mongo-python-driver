@@ -16,7 +16,7 @@
 
 from bson import SON
 
-from mockupdb import going, MockupDB, OpGetMore
+from mockupdb import going, MockupDB, OpGetMore  # type: ignore
 from pymongo import MongoClient
 
 import unittest

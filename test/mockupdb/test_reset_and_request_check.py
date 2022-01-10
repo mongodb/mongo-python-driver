@@ -15,7 +15,7 @@
 import time
 import itertools
 
-from mockupdb import MockupDB, going, wait_until
+from mockupdb import MockupDB, going, wait_until  # type: ignore
 from pymongo.server_type import SERVER_TYPE
 from pymongo.errors import ConnectionFailure
 from pymongo import MongoClient

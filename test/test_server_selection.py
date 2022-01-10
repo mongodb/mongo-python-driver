@@ -52,7 +52,7 @@ class SelectionStoreSelector(object):
 
 
 
-class TestAllScenarios(create_selection_tests(_TEST_PATH)):
+class TestAllScenarios(create_selection_tests(_TEST_PATH)):  # type: ignore
     pass
 
 

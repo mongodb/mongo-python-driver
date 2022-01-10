@@ -242,11 +242,12 @@ class _UpdateOp(object):
         if upsert is not None:
             validate_boolean("upsert", upsert)
         if array_filters is not None:
-            validate_list("array_filters", array_filters)
+            array_filters = validate_list("array_filters", array_filters)
         if hint is not None:
             if not isinstance(hint, str):
                 hint = helpers._index_document(hint)
-
+        if isinstance(doc, tuple):
+            doc = list(doc)
 
         self._filter = filter
         self._doc = doc
@@ -279,7 +280,7 @@ class UpdateOne(_UpdateOp):
     __slots__ = ()
 
     def __init__(self, filter: Mapping[str, Any], update: Union[Mapping[str, Any], Pipeline], upsert: bool = False, collation: Optional[CollationIn] = None,
-                 array_filters: Optional[List[Mapping[str, Any]]] = None, hint: Optional[_IndexKeyHint] = None) -> None:
+                 array_filters: Optional[Sequence[Mapping[str, Any]]] = None, hint: Optional[_IndexKeyHint] = None) -> None:
         """Represents an update_one operation.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -326,7 +327,7 @@ class UpdateMany(_UpdateOp):
     __slots__ = ()
 
     def __init__(self, filter: Mapping[str, Any], update: Union[Mapping[str, Any], Pipeline], upsert: bool = False, collation: Optional[CollationIn] = None,
-                 array_filters: Optional[List[Mapping[str, Any]]] = None, hint: Optional[_IndexKeyHint] = None) -> None:
+                 array_filters: Optional[Sequence[Mapping[str, Any]]] = None, hint: Optional[_IndexKeyHint] = None) -> None:
         """Create an UpdateMany instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.

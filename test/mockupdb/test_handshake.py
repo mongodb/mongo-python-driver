@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from mockupdb import MockupDB, OpReply, OpMsg, absent, Command, go
+from mockupdb import MockupDB, OpReply, OpMsg, absent, Command, go  # type: ignore
 from pymongo import MongoClient, version as pymongo_version
 from pymongo.errors import OperationFailure
 

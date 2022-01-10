@@ -33,12 +33,12 @@ access:
 
 import contextlib
 import threading
-from typing import Any, Dict, FrozenSet, List, Mapping, MutableMapping, Optional, Set, Tuple, Type, Union, cast
+from typing import Any, Dict, FrozenSet, Generic, List, Mapping, MutableMapping, Optional, Sequence, Set, Tuple, Type, Union, cast
 import weakref
 
 from collections import defaultdict
 
-from bson.codec_options import DEFAULT_CODEC_OPTIONS, TypeRegistry, CodecOptions
+from bson.codec_options import DEFAULT_CODEC_OPTIONS, TypeRegistry, CodecOptions, DocumentType
 from bson.son import SON
 from pymongo import (common,
                      database,
@@ -68,7 +68,7 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.topology import (Topology,
                               _ErrorContext)
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
-from pymongo.typings import CollationIn, Pipeline, RawBSONDocumentRef
+from pymongo.typings import CollationIn, Pipeline
 from pymongo.settings import TopologySettings
 from pymongo.uri_parser import (_handle_option_deprecations,
                                 _handle_security_options,
@@ -77,7 +77,7 @@ from pymongo.uri_parser import (_handle_option_deprecations,
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
 
-class MongoClient(common.BaseObject):
+class MongoClient(common.BaseObject, Generic[DocumentType]):
     """
     A client-side representation of a MongoDB cluster.
 
@@ -94,9 +94,9 @@ class MongoClient(common.BaseObject):
     _constructor_args = ('document_class', 'tz_aware', 'connect')
 
     def __init__(self,
-        host: Optional[Union[str, List[str]]] = None,
+        host: Optional[Union[str, Sequence[str]]] = None,
         port: Optional[int] = None,
-        document_class: Optional[Union[Type[MutableMapping], Type[RawBSONDocumentRef]]] = dict,
+        document_class: Optional[DocumentType] = dict,
         tz_aware: Optional[bool] = None,
         connect: Optional[bool] = None,
         type_registry: Optional[TypeRegistry] = None,
@@ -636,6 +636,8 @@ class MongoClient(common.BaseObject):
             host = self.HOST
         if isinstance(host, str):
             host = [host]
+        else:
+            host = list(host)
         if port is None:
             port = self.PORT
         if not isinstance(port, int):
@@ -1755,7 +1757,7 @@ class MongoClient(common.BaseObject):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> database.Database:
+    ) -> database.Database[DocumentType]:
         """Get the database named in the MongoDB connection URI.
 
         >>> uri = 'mongodb://host/my_database'
@@ -1811,7 +1813,7 @@ class MongoClient(common.BaseObject):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> database.Database:
+    ) -> database.Database[DocumentType]:
         """Get a :class:`~pymongo.database.Database` with the given name and
         options.
 

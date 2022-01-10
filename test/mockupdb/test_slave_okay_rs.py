@@ -17,7 +17,7 @@
 Just make sure SlaveOkay is *not* set on primary reads.
 """
 
-from mockupdb import MockupDB, going
+from mockupdb import MockupDB, going  # type: ignore
 from pymongo import MongoClient
 
 import unittest

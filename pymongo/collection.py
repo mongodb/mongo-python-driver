@@ -17,6 +17,8 @@
 from collections import abc
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, Union
 
+from dns.query import send_udp
+
 from bson.code import Code
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
@@ -382,7 +384,7 @@ class Collection(common.BaseObject):
 
     def bulk_write(
         self,
-        requests: List[WriteOp],
+        requests: Sequence[WriteOp],
         ordered: bool = True,
         bypass_document_validation: bool = False,
         session: Optional[ClientSession] = None
@@ -626,6 +628,8 @@ class Collection(common.BaseObject):
         collation = validate_collation_or_none(collation)
         write_concern = write_concern or self.write_concern
         acknowledged = write_concern.acknowledged
+        if isinstance(criteria, tuple):
+            criteria = list(criteria)
         update_doc = SON([('q', criteria),
                           ('u', document),
                           ('multi', multi),
@@ -641,7 +645,7 @@ class Collection(common.BaseObject):
                 raise ConfigurationError(
                     'arrayFilters is unsupported for unacknowledged writes.')
             else:
-                update_doc['arrayFilters'] = array_filters
+                update_doc['arrayFilters'] = list(array_filters)
         if hint is not None:
             if not acknowledged:
                 raise ConfigurationError(
@@ -795,7 +799,7 @@ class Collection(common.BaseObject):
         upsert: bool = False,
         bypass_document_validation: bool = False,
         collation: Optional[CollationIn] = None,
-        array_filters: Optional[List[Mapping[str, Any]]] = None,
+        array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
         let: Optional[bool] = None
@@ -881,7 +885,7 @@ class Collection(common.BaseObject):
         filter: Mapping[str, Any],
         update: Union[Mapping[str, Any], Pipeline],
         upsert: bool = False,
-        array_filters: Optional[List[Mapping[str, Any]]] = None,
+        array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
         bypass_document_validation: Optional[bool] = None,
         collation: Optional[CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
@@ -1582,7 +1586,7 @@ class Collection(common.BaseObject):
         return self.__database.client._retryable_read(
             _cmd, self._read_preference_for(session), session)
 
-    def create_indexes(self, indexes: List[IndexModel], session: Optional[ClientSession] = None, **kwargs: Any) -> List[str]:
+    def create_indexes(self, indexes: Sequence[IndexModel], session: Optional[ClientSession] = None, **kwargs: Any) -> List[str]:
         """Create one or more indexes on this collection.
 
           >>> from pymongo import IndexModel, ASCENDING, DESCENDING
@@ -2353,7 +2357,7 @@ class Collection(common.BaseObject):
                     raise ConfigurationError(
                         'arrayFilters is unsupported for unacknowledged '
                         'writes.')
-                cmd["arrayFilters"] = array_filters
+                cmd["arrayFilters"] = list(array_filters)
             if hint is not None:
                 if sock_info.max_wire_version < 8:
                     raise ConfigurationError(
@@ -2561,7 +2565,7 @@ class Collection(common.BaseObject):
         sort: Optional[_IndexList] = None,
         upsert: bool = False,
         return_document: bool = ReturnDocument.BEFORE,
-        array_filters: Optional[List[Mapping[str, Any]]] = None,
+        array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
         let: Optional[bool] = None,

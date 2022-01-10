@@ -463,10 +463,10 @@ def validate_type_registry(option: Any, value: Any) -> TypeRegistry:
 
 
 def validate_list(option: str, value: Any) -> List[Any]:
-    """Validates that 'value' is a list."""
-    if not isinstance(value, list):
+    """Validates that 'value' is a list or tuple."""
+    if not isinstance(value, (list, tuple)):
         raise TypeError("%s must be a list" % (option,))
-    return value
+    return list(value)
 
 
 def validate_list_or_none(option: Any, value: Any) -> Optional[List[Any]]:
@@ -477,8 +477,8 @@ def validate_list_or_none(option: Any, value: Any) -> Optional[List[Any]]:
 
 
 def validate_list_or_mapping(option: Any, value: Any) -> None:
-    """Validates that 'value' is a list or a document."""
-    if not isinstance(value, (abc.Mapping, list)):
+    """Validates that 'value' is a list, tuple, or a document."""
+    if not isinstance(value, (abc.Mapping, list, tuple)):
         raise TypeError("%s must either be a list or an instance of dict, "
                         "bson.son.SON, or any other type that inherits from "
                         "collections.Mapping" % (option,))

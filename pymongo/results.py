@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Result class definitions."""
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional, Sequence, cast
 
 from pymongo.errors import InvalidOperation
 
@@ -76,8 +76,8 @@ class InsertManyResult(_WriteResult):
 
     __slots__ = ("__inserted_ids", "__acknowledged")
 
-    def __init__(self, inserted_ids: List[Any], acknowledged: bool) -> None:
-        self.__inserted_ids = inserted_ids
+    def __init__(self, inserted_ids: Sequence[Any], acknowledged: bool) -> None:
+        self.__inserted_ids = list(inserted_ids)
         super(InsertManyResult, self).__init__(acknowledged)
 
     @property

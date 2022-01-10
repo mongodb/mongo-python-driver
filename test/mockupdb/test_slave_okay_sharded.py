@@ -23,12 +23,9 @@ import itertools
 from pymongo.read_preferences import make_read_preference
 from pymongo.read_preferences import read_pref_mode_from_name
 
-try:
-    from queue import Queue
-except ImportError:
-    from Queue import Queue
+from queue import Queue
 
-from mockupdb import MockupDB, going
+from mockupdb import MockupDB, going  # type: ignore
 from pymongo import MongoClient
 
 import unittest

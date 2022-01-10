@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mockupdb import MockupDB
+from mockupdb import MockupDB  # type: ignore
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
 

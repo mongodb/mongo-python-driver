@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Type aliases used by PyMongo"""
-from typing import Any, List, Mapping, MutableMapping, Optional, Tuple, TypeVar, Union
+from typing import Any, Mapping, MutableMapping, Optional, Sequence, Tuple, TypeVar, Union
 import bson
 import pymongo
 
@@ -32,4 +32,4 @@ Address = Tuple[str, Optional[int]]
 CollationIn = Union[Mapping[str, Any], CollationRef]
 DocumentIn = MutableMapping[str, Any]
 DocumentOut = Union[MutableMapping[str, Any], RawBSONDocumentRef]
-Pipeline = List[Mapping[str, Any]]
+Pipeline = Sequence[Mapping[str, Any]]

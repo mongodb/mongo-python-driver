@@ -16,7 +16,7 @@
 
 import abc
 import datetime
-from typing import TYPE_CHECKING, Any, Callable, Dict,  Iterable, MutableMapping, Optional, Type, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict,  Generic, Iterable, MutableMapping, Optional, Type, TypeVar, Union, cast
 
 from collections import namedtuple
 from collections.abc import MutableMapping as _MutableMapping
@@ -181,7 +181,10 @@ _options_base = namedtuple(  # type: ignore
      'unicode_decode_error_handler', 'tzinfo', 'type_registry'))
 
 
-class CodecOptions(_options_base):
+DocumentType = TypeVar("DocumentType", bound=Union[Type[MutableMapping[Any, Any]], Type["RawBSONDocument"]])
+
+
+class CodecOptions(Generic[DocumentType], _options_base):
     """Encapsulates options used encoding and / or decoding BSON.
 
     The `document_class` option is used to define a custom type for use
@@ -256,8 +259,9 @@ class CodecOptions(_options_base):
        retrieved from the server will be modified in the client application
        and stored back to the server.
     """
+    document_class: DocumentType
 
-    def __new__(cls: Type["CodecOptions"], document_class: Union[Type[MutableMapping[Any, Any]], Type["RawBSONDocument"]] = dict,
+    def __new__(cls: Type["CodecOptions"], document_class: DocumentType = dict,
                 tz_aware: bool = False,
                 uuid_representation: Optional[int] = UuidRepresentation.UNSPECIFIED,
                 unicode_decode_error_handler: Optional[str] = "strict",

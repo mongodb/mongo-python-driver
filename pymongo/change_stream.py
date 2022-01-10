@@ -15,7 +15,7 @@
 """Watch changes on a collection, a database, or the entire cluster."""
 
 import copy
-from typing import Any, Iterable, List, Mapping, Optional, Union, cast
+from typing import Any, Iterable, Mapping, Optional, Sequence, Union, cast
 
 from bson import _bson_to_dict
 from bson.raw_bson import RawBSONDocument
@@ -34,7 +34,7 @@ from pymongo.errors import (ConnectionFailure,
                             InvalidOperation,
                             OperationFailure,
                             PyMongoError)
-from pymongo.typings import DatabaseRef, MongoClientRef, CollectionRef, CollationIn, DocumentOut
+from pymongo.typings import DatabaseRef, MongoClientRef, CollectionRef, CollationIn, DocumentOut, Pipeline
 
 
 # The change streams spec considers the following server errors from the
@@ -75,7 +75,7 @@ class ChangeStream(object):
     def __init__(
         self,
         target: Union[MongoClientRef, DatabaseRef, CollectionRef],
-        pipeline: Optional[List[Mapping[str, Any]]],
+        pipeline: Pipeline,
         full_document: Optional[str],
         resume_after: Optional[Mapping[str, Any]],
         max_await_time_ms: Optional[int],
@@ -87,9 +87,7 @@ class ChangeStream(object):
     ) -> None:
         if pipeline is None:
             pipeline = []
-        elif not isinstance(pipeline, list):
-            raise TypeError("pipeline must be a list")
-
+        pipeline = common.validate_list('pipeline', pipeline)
         common.validate_string_or_none('full_document', full_document)
         validate_collation_or_none(collation)
         common.validate_non_negative_integer_or_none("batchSize", batch_size)

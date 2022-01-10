@@ -15,7 +15,7 @@
 import copy
 import itertools
 
-from mockupdb import MockupDB, going, CommandBase
+from mockupdb import MockupDB, going, CommandBase  # type: ignore
 from pymongo import MongoClient, ReadPreference
 from pymongo.read_preferences import (make_read_preference,
                                       read_pref_mode_from_name,
