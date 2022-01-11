@@ -18,7 +18,7 @@ from collections import deque
 from typing import Any, Generic, Iterator, Mapping, Optional, Tuple, TYPE_CHECKING
 
 from bson import _convert_raw_document_lists_to_streams
-from pymongo.client_session import ClientSession
+
 from pymongo.cursor import _SocketManager, _CURSOR_CLOSED_ERRORS
 from pymongo.errors import (ConnectionFailure,
                             InvalidOperation,
@@ -31,6 +31,7 @@ from pymongo.typings import DocumentType
 
 
 if TYPE_CHECKING:
+    from pymongo.client_session import ClientSession
     from pymongo.collection import Collection
 
 
@@ -44,7 +45,7 @@ class CommandCursor(Generic[DocumentType]):
         address: Optional[Tuple[str, Optional[int]]],
         batch_size: int = 0,
         max_await_time_ms: Optional[int] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional["ClientSession"] = None,
         explicit_session: bool = False,
     ) -> None:
         """Create a new command cursor."""
@@ -265,7 +266,7 @@ class CommandCursor(Generic[DocumentType]):
         return self.__address
 
     @property
-    def session(self) -> Optional[ClientSession]:
+    def session(self) -> Optional["ClientSession"]:
         """The cursor's :class:`~pymongo.client_session.ClientSession`, or None.
 
         .. versionadded:: 3.6
@@ -314,7 +315,7 @@ class RawBatchCommandCursor(CommandCursor, Generic[DocumentType]):
         address: Optional[Tuple[str, Optional[int]]],
         batch_size: int = 0,
         max_await_time_ms: Optional[int] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional["ClientSession"] = None,
         explicit_session: bool = False,
     ) -> None:
         """Create a new cursor / iterator over raw batches of BSON data.

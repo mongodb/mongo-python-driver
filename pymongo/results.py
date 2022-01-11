@@ -16,7 +16,6 @@
 from typing import Any, Dict, List, Mapping, Optional, Sequence, cast
 
 from pymongo.errors import InvalidOperation
-from pymongo.typings import DocumentType
 
 
 class _WriteResult(object):

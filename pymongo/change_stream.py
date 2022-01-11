@@ -23,7 +23,6 @@ from bson.raw_bson import RawBSONDocument
 from pymongo import common
 from pymongo.aggregation import (_CollectionAggregationCommand,
                                  _DatabaseAggregationCommand)
-from pymongo.client_session import ClientSession
 from pymongo.collation import validate_collation_or_none
 
 from pymongo.command_cursor import CommandCursor
@@ -60,6 +59,7 @@ _RESUMABLE_GETMORE_ERRORS = frozenset([
 
 
 if TYPE_CHECKING:
+    from pymongo.client_session import ClientSession
     from pymongo.collection import Collection
     from pymongo.database import Database
     from pymongo.mongo_client import MongoClient
@@ -86,7 +86,7 @@ class ChangeStream(Generic[DocumentType]):
         batch_size: Optional[int],
         collation: Optional[CollationIn],
         start_at_operation_time: Optional[Mapping[str, Any]],
-        session: Optional[ClientSession],
+        session: Optional["ClientSession"],
         start_after: Optional[Mapping[str, Any]],
     ) -> None:
         if pipeline is None:

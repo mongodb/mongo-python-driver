@@ -20,17 +20,13 @@ from bson.dbref import DBRef
 from bson.son import SON
 from pymongo import common
 from pymongo.aggregation import _DatabaseAggregationCommand
-from pymongo.change_stream import ChangeStream, DatabaseChangeStream
-from pymongo.client_session import ClientSession
-from pymongo.collation import Collation
+from pymongo.change_stream import DatabaseChangeStream
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (CollectionInvalid,
                             InvalidName)
-from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.typings import CollationIn, DocumentType, Pipeline
-from pymongo.write_concern import WriteConcern
 
 
 def _check_name(name):
@@ -46,7 +42,10 @@ def _check_name(name):
 
 
 if TYPE_CHECKING:
+    from pymongo.client_session import ClientSession
     from pymongo.mongo_client import MongoClient
+    from pymongo.read_concern import ReadConcern
+    from pymongo.write_concern import WriteConcern
 
 
 class Database(common.BaseObject, Generic[DocumentType]):
@@ -57,8 +56,8 @@ class Database(common.BaseObject, Generic[DocumentType]):
         name: str,
         codec_options: Optional[CodecOptions] = None,
         read_preference: Optional[_ServerMode] = None,
-        write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional[ReadConcern] = None,
+        write_concern: Optional["WriteConcern"] = None,
+        read_concern: Optional["ReadConcern"] = None,
     ) -> None:
         """Get a database by client and name.
 
@@ -134,8 +133,8 @@ class Database(common.BaseObject, Generic[DocumentType]):
     def with_options(self,
         codec_options: Optional[CodecOptions] = None,
         read_preference: Optional[_ServerMode] = None,
-        write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional[ReadConcern] = None,
+        write_concern: Optional["WriteConcern"] = None,
+        read_concern: Optional["ReadConcern"] = None,
     ) -> "Database[DocumentType]":
         """Get a clone of this database changing the specified settings.
 
@@ -204,7 +203,7 @@ class Database(common.BaseObject, Generic[DocumentType]):
                 " collection, use database[%r]." % (name, name, name))
         return self.__getitem__(name)
 
-    def __getitem__(self, name: str) -> Collection:
+    def __getitem__(self, name: str) -> "Collection":
         """Get a collection of this database by name.
 
         Raises InvalidName if an invalid collection name is used.
@@ -218,8 +217,8 @@ class Database(common.BaseObject, Generic[DocumentType]):
         name: str,
         codec_options: Optional[CodecOptions] = None,
         read_preference: Optional[_ServerMode] = None,
-        write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional[ReadConcern] = None,
+        write_concern: Optional["WriteConcern"] = None,
+        read_concern: Optional["ReadConcern"] = None,
     ) -> Collection:
         """Get a :class:`~pymongo.collection.Collection` with the given name
         and options.
@@ -266,9 +265,9 @@ class Database(common.BaseObject, Generic[DocumentType]):
         name: str,
         codec_options: Optional[CodecOptions] = None,
         read_preference: Optional[_ServerMode] = None,
-        write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional[ReadConcern] = None,
-        session: Optional[ClientSession] = None,
+        write_concern: Optional["WriteConcern"] = None,
+        read_concern: Optional["ReadConcern"] = None,
+        session: Optional["ClientSession"] = None,
         **kwargs: Any,
     ) -> Collection:
         """Create a new :class:`~pymongo.collection.Collection` in this
@@ -362,7 +361,7 @@ class Database(common.BaseObject, Generic[DocumentType]):
 
     def aggregate(self,
       pipeline: Pipeline,
-      session: Optional[ClientSession] = None,
+      session: Optional["ClientSession"] = None,
       **kwargs: Any
     ) -> CommandCursor:
         """Perform a database-level aggregation.
@@ -442,9 +441,9 @@ class Database(common.BaseObject, Generic[DocumentType]):
         batch_size: Optional[int] = None,
         collation: Optional[CollationIn] = None,
         start_at_operation_time: Optional[Mapping[str, Any]] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional["ClientSession"] = None,
         start_after: Optional[Mapping[str, Any]] = None,
-    ) -> ChangeStream:
+    ) -> DataChangeStream:
         """Watch changes on this database.
 
         Performs an aggregation with an implicit initial ``$changeStream``
@@ -564,7 +563,7 @@ class Database(common.BaseObject, Generic[DocumentType]):
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_preference: Optional[_ServerMode] = None,
         codec_options: Optional[CodecOptions] = DEFAULT_CODEC_OPTIONS,
-        session: Optional[ClientSession] = None,
+        session: Optional["ClientSession"] = None,
         **kwargs: Any,
     ) -> DocumentType:
         """Issue a MongoDB command.
@@ -698,7 +697,7 @@ class Database(common.BaseObject, Generic[DocumentType]):
         return cmd_cursor
 
     def list_collections(self,
-      session: Optional[ClientSession] = None,
+      session: Optional["ClientSession"] = None,
       filter: Optional[Mapping[str, Any]] = None,
       **kwargs: Any
     ) -> CommandCursor:
@@ -734,7 +733,7 @@ class Database(common.BaseObject, Generic[DocumentType]):
             _cmd, read_pref, session)
 
     def list_collection_names(self,
-        session: Optional[ClientSession] = None,
+        session: Optional["ClientSession"] = None,
         filter: Optional[Mapping[str, Any]] = None,
         **kwargs: Any
     ) -> List[str]:
@@ -776,7 +775,7 @@ class Database(common.BaseObject, Generic[DocumentType]):
 
     def drop_collection(self,
         name_or_collection: Union[str, Collection],
-        session: Optional[ClientSession] = None
+        session: Optional["ClientSession"] = None
     ) -> Dict[str, Any]:
         """Drop a collection.
 
@@ -816,7 +815,7 @@ class Database(common.BaseObject, Generic[DocumentType]):
         name_or_collection: Union[str, Collection],
         scandata: bool = False,
         full: bool = False,
-        session: Optional[ClientSession] = None,
+        session: Optional["ClientSession"] = None,
         background: Optional[bool] = None,
     ) -> Mapping[str, Any]:
         """Validate a collection.
@@ -905,7 +904,7 @@ class Database(common.BaseObject, Generic[DocumentType]):
                                   "with None instead: database is not None")
 
     def dereference(self, dbref: DBRef,
-        session: Optional[ClientSession] = None,
+        session: Optional["ClientSession"] = None,
         **kwargs: Any
     ) -> Optional[DocumentType]:
         """Dereference a :class:`~bson.dbref.DBRef`, getting the

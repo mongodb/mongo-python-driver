@@ -28,10 +28,8 @@ from pymongo import (common,
 from pymongo.aggregation import (_CollectionAggregationCommand,
                                  _CollectionRawAggregationCommand)
 from pymongo.bulk import _Bulk
-from pymongo.client_session import ClientSession
 from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
 from pymongo.collation import validate_collation_or_none
-from pymongo.collation import Collation
 from pymongo.change_stream import CollectionChangeStream
 from pymongo.cursor import Cursor, RawBatchCursor
 from pymongo.errors import (ConfigurationError,
@@ -41,7 +39,6 @@ from pymongo.errors import (ConfigurationError,
 from pymongo.helpers import _check_write_command_response
 from pymongo.message import _UNICODE_REPLACE_CODEC_OPTIONS
 from pymongo.operations import IndexModel, InsertOne, DeleteMany, DeleteOne, ReplaceOne, UpdateMany, UpdateOne
-from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.results import (BulkWriteResult,
                              DeleteResult,
@@ -75,7 +72,9 @@ class ReturnDocument(object):
 
 
 if TYPE_CHECKING:
+    from pymongo.client_session import ClientSession
     from pymongo.database import Database
+    from pymongo.read_concern import ReadConcern
 
 
 class Collection(common.BaseObject, Generic[DocumentType]):
@@ -90,8 +89,8 @@ class Collection(common.BaseObject, Generic[DocumentType]):
         codec_options: Optional[CodecOptions] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional[ReadConcern] = None,
-        session: Optional[ClientSession] = None,
+        read_concern: Optional["ReadConcern"] = None,
+        session: Optional["ClientSession"] = None,
         **kwargs: Any,
     ) -> None:
         """Get / create a Mongo collection.
@@ -344,7 +343,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
         codec_options: Optional[CodecOptions] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional[ReadConcern] = None,
+        read_concern: Optional["ReadConcern"] = None,
     ) -> "Collection[DocumentType]":
         """Get a clone of this collection changing the specified settings.
 
@@ -388,7 +387,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
         requests: Sequence[WriteOp],
         ordered: bool = True,
         bypass_document_validation: bool = False,
-        session: Optional[ClientSession] = None
+        session: Optional["ClientSession"] = None
     ) -> BulkWriteResult:
         """Send a batch of write operations to the server.
 
@@ -504,7 +503,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
 
     def insert_one(self, document: DocumentIn,
         bypass_document_validation: bool = False,
-        session: Optional[ClientSession] = None
+        session: Optional["ClientSession"] = None
     ) -> InsertOneResult:
         """Insert a single document.
 
@@ -558,7 +557,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
         documents: Iterable[DocumentIn],
         ordered: bool = True,
         bypass_document_validation: bool = False,
-        session: Optional[ClientSession] = None
+        session: Optional["ClientSession"] = None
     ) -> InsertManyResult:
         """Insert an iterable of documents.
 
@@ -718,7 +717,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
         bypass_document_validation: bool = False,
         collation: Optional[CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional["ClientSession"] = None,
     ) -> UpdateResult:
         """Replace a single document matching the filter.
 
@@ -802,7 +801,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
         collation: Optional[CollationIn] = None,
         array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional["ClientSession"] = None,
         let: Optional[bool] = None
     ) -> UpdateResult:
         """Update a single document matching the filter.
@@ -890,7 +889,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
         bypass_document_validation: Optional[bool] = None,
         collation: Optional[CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional["ClientSession"] = None,
         let: Optional[bool] = None
     ) -> UpdateResult:
         """Update one or more documents that match the filter.
@@ -970,7 +969,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
                 hint=hint, session=session, let=let),
             write_concern.acknowledged)
 
-    def drop(self, session: Optional[ClientSession] = None) -> None:
+    def drop(self, session: Optional["ClientSession"] = None) -> None:
         """Alias for :meth:`~pymongo.database.Database.drop_collection`.
 
         :Parameters:
@@ -1063,7 +1062,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
         filter: Mapping[str, Any],
         collation: Optional[CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional["ClientSession"] = None,
         let: Optional[Any] = None
     ) -> DeleteResult:
         """Delete a single document matching the filter.
@@ -1118,7 +1117,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
         filter: Mapping[str, Any],
         collation: Optional[CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional["ClientSession"] = None,
         let: Optional[Any] = None
     ) -> DeleteResult:
         """Delete one or more documents matching the filter.
@@ -1509,7 +1508,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
         return self.__database.client._retryable_read(
             _cmd, self.read_preference, None)
 
-    def count_documents(self, filter: Mapping[str, Any], session: Optional[ClientSession] = None, **kwargs: Any) -> int:
+    def count_documents(self, filter: Mapping[str, Any], session: Optional["ClientSession"] = None, **kwargs: Any) -> int:
         """Count the number of documents in this collection.
 
         .. note:: For a fast count of the total documents in a collection see
@@ -1587,7 +1586,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
         return self.__database.client._retryable_read(
             _cmd, self._read_preference_for(session), session)
 
-    def create_indexes(self, indexes: Sequence[IndexModel], session: Optional[ClientSession] = None, **kwargs: Any) -> List[str]:
+    def create_indexes(self, indexes: Sequence[IndexModel], session: Optional["ClientSession"] = None, **kwargs: Any) -> List[str]:
         """Create one or more indexes on this collection.
 
           >>> from pymongo import IndexModel, ASCENDING, DESCENDING
@@ -1662,7 +1661,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
                 session=session)
         return names
 
-    def create_index(self, keys: _IndexKeyHint, session: Optional[ClientSession] = None, **kwargs: Any) -> str:
+    def create_index(self, keys: _IndexKeyHint, session: Optional["ClientSession"] = None, **kwargs: Any) -> str:
         """Creates an index on this collection.
 
         Takes either a single key or a list of (key, direction) pairs.
@@ -1765,7 +1764,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
         index = IndexModel(keys, **kwargs)
         return self.__create_indexes([index], session, **cmd_options)[0]
 
-    def drop_indexes(self, session: Optional[ClientSession] = None, **kwargs: Any) -> None:
+    def drop_indexes(self, session: Optional["ClientSession"] = None, **kwargs: Any) -> None:
         """Drops all indexes on this collection.
 
         Can be used on non-existant collections or collections with no indexes.
@@ -1791,7 +1790,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
         """
         self.drop_index("*", session=session, **kwargs)
 
-    def drop_index(self, index_or_name: _IndexKeyHint, session: Optional[ClientSession] = None, **kwargs: Any) -> None:
+    def drop_index(self, index_or_name: _IndexKeyHint, session: Optional["ClientSession"] = None, **kwargs: Any) -> None:
         """Drops the specified index on this collection.
 
         Can be used on non-existant collections or collections with no
@@ -1844,7 +1843,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
                           write_concern=self._write_concern_for(session),
                           session=session)
 
-    def list_indexes(self, session: Optional[ClientSession] = None) -> CommandCursor[MutableMapping[str, Any]]:
+    def list_indexes(self, session: Optional["ClientSession"] = None) -> CommandCursor[MutableMapping[str, Any]]:
         """Get a cursor over the index documents for this collection.
 
           >>> for index in db.test.list_indexes():
@@ -1893,7 +1892,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
         return self.__database.client._retryable_read(
             _cmd, read_pref, session)
 
-    def index_information(self, session: Optional[ClientSession] = None) -> MutableMapping[str, Any]:
+    def index_information(self, session: Optional["ClientSession"] = None) -> MutableMapping[str, Any]:
         """Get information on this collection's indexes.
 
         Returns a dictionary where the keys are index names (as
@@ -1927,7 +1926,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
             info[index.pop("name")] = index
         return info
 
-    def options(self, session: Optional[ClientSession] = None) -> MutableMapping[str, Any]:
+    def options(self, session: Optional["ClientSession"] = None) -> MutableMapping[str, Any]:
         """Get the options set on this collection.
 
         Returns a dictionary of options and their values - see
@@ -1975,7 +1974,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
             cmd.get_cursor, cmd.get_read_preference(session), session,
             retryable=not cmd._performs_write)
 
-    def aggregate(self, pipeline: Pipeline, session: Optional[ClientSession] = None, let: Optional[Any] = None, **kwargs: Any) -> CommandCursor[DocumentType]:
+    def aggregate(self, pipeline: Pipeline, session: Optional["ClientSession"] = None, let: Optional[Any] = None, **kwargs: Any) -> CommandCursor[DocumentType]:
         """Perform an aggregation using the aggregation framework on this
         collection.
 
@@ -2058,7 +2057,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
                                    **kwargs)
 
     def aggregate_raw_batches(
-        self, pipeline: Pipeline, session: Optional[ClientSession] = None, **kwargs: Any
+        self, pipeline: Pipeline, session: Optional["ClientSession"] = None, **kwargs: Any
     ) -> RawBatchCursor[DocumentType]:
         """Perform an aggregation and retrieve batches of raw BSON.
 
@@ -2104,7 +2103,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
         batch_size: Optional[int] = None,
         collation: Optional[CollationIn] = None,
         start_at_operation_time: Optional[Mapping[str, Any]] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional["ClientSession"] = None,
         start_after: Optional[Mapping[str, Any]] = None,
     ) -> CollectionChangeStream[DocumentType]:
         """Watch changes on this collection.
@@ -2206,7 +2205,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
             batch_size, collation, start_at_operation_time, session,
             start_after)
 
-    def rename(self, new_name: str, session: Optional[ClientSession] = None, **kwargs: Any) -> MutableMapping[str, Any]:
+    def rename(self, new_name: str, session: Optional["ClientSession"] = None, **kwargs: Any) -> MutableMapping[str, Any]:
         """Rename this collection.
 
         If operating in auth mode, client must be authorized as an
@@ -2258,7 +2257,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
                     session=s, client=self.__database.client)
 
     def distinct(
-        self, key: str, filter: Optional[Mapping[str, Any]] = None, session: Optional[ClientSession] = None, **kwargs: Any
+        self, key: str, filter: Optional[Mapping[str, Any]] = None, session: Optional["ClientSession"] = None, **kwargs: Any
     ) -> List[Any]:
         """Get a list of distinct values for `key` among all documents
         in this collection.
@@ -2387,7 +2386,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
         projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
         sort: Optional[_IndexList] = None,
         hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional["ClientSession"] = None,
         let: Optional[bool] = None,
         **kwargs: Any,
     ) -> DocumentType:
@@ -2473,7 +2472,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
         upsert: bool = False,
         return_document: bool = ReturnDocument.BEFORE,
         hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional["ClientSession"] = None,
         let: Optional[bool] = None,
         **kwargs: Any,
     ) -> DocumentType:
@@ -2568,7 +2567,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
         return_document: bool = ReturnDocument.BEFORE,
         array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional["ClientSession"] = None,
         let: Optional[bool] = None,
         **kwargs: Any,
     ) -> DocumentType:
