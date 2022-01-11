@@ -1876,13 +1876,13 @@ class MongoClient(common.BaseObject, Generic[DocumentType]):
             read_preference=ReadPreference.PRIMARY,
             write_concern=DEFAULT_WRITE_CONCERN)
 
-    def __enter__(self) -> "MongoClient":
+    def __enter__(self) -> "MongoClient[DocumentType]":
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
-    def __iter__(self) -> "MongoClient":
+    def __iter__(self) -> "MongoClient[DocumentType]":
         return self
 
     def __next__(self) -> None:
