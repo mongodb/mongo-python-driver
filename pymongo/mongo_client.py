@@ -33,12 +33,13 @@ access:
 
 import contextlib
 import threading
-from typing import Any, Dict, FrozenSet, Generic, List, Mapping, MutableMapping, Optional, Sequence, Set, Tuple, Type, Union, cast
+from typing import Any, Dict, FrozenSet, Generic, List, Mapping, MutableMapping, Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast
 import weakref
 
 from collections import defaultdict
 
-from bson.codec_options import DEFAULT_CODEC_OPTIONS, TypeRegistry, CodecOptions, DocumentType
+import bson
+from bson.codec_options import DEFAULT_CODEC_OPTIONS, TypeRegistry, CodecOptions
 from bson.son import SON
 from pymongo import (common,
                      database,
@@ -77,6 +78,9 @@ from pymongo.uri_parser import (_handle_option_deprecations,
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
 
+DocumentType = TypeVar('DocumentType', Mapping[str, Any], MutableMapping[str, Any])
+
+
 class MongoClient(common.BaseObject, Generic[DocumentType]):
     """
     A client-side representation of a MongoDB cluster.
@@ -96,7 +100,7 @@ class MongoClient(common.BaseObject, Generic[DocumentType]):
     def __init__(self,
         host: Optional[Union[str, Sequence[str]]] = None,
         port: Optional[int] = None,
-        document_class: Optional[DocumentType] = dict,
+        document_class: Type[DocumentType] = dict,
         tz_aware: Optional[bool] = None,
         connect: Optional[bool] = None,
         type_registry: Optional[TypeRegistry] = None,
@@ -624,7 +628,7 @@ class MongoClient(common.BaseObject, Generic[DocumentType]):
 
                client.__my_database__
         """
-        self.__init_kwargs = {'host': host,
+        self.__init_kwargs: dict[str, Any] = {'host': host,
                               'port': port,
                               'document_class': document_class,
                               'tz_aware': tz_aware,

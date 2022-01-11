@@ -75,7 +75,7 @@ class ChangeStream(object):
     def __init__(
         self,
         target: Union[MongoClientRef, DatabaseRef, CollectionRef],
-        pipeline: Pipeline,
+        pipeline: Optional[Pipeline],
         full_document: Optional[str],
         resume_after: Optional[Mapping[str, Any]],
         max_await_time_ms: Optional[int],

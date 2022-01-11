@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Type aliases used by PyMongo"""
-from typing import Any, Mapping, MutableMapping, Optional, Sequence, Tuple, TypeVar, Union
+from typing import Any, Mapping, MutableMapping, Optional, Sequence, Tuple, Type, TypeVar, Union
 import bson
 import pymongo
 

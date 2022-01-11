@@ -134,14 +134,24 @@ _Sort = Sequence[Tuple[str, Union[int, str, Mapping[str, Any]]]]
 _Hint = Union[str, _Sort]
 
 
-class Cursor(object):
+
+from typing import TypeVar, TYPE_CHECKING, Generic
+DocumentType = TypeVar('DocumentType', Mapping[str, Any], MutableMapping[str, Any])
+
+
+if TYPE_CHECKING:
+    from pymongo.collection import Collection
+
+
+
+class Cursor(object, Generic[DocumentType]):
     """A cursor / iterator over Mongo query results.
     """
     _query_class = _Query
     _getmore_class = _GetMore
 
     def __init__(self,
-        collection: CollectionRef,
+        collection: "Collection[DocumentType]",
         filter: Optional[Mapping[str, Any]] = None,
         projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
         skip: int = 0,
@@ -175,7 +185,7 @@ class Cursor(object):
         """
         # Initialize all attributes used in __del__ before possibly raising
         # an error to avoid attribute errors during garbage collection.
-        self.__collection = collection
+        self.__collection: Collection[DocumentType] = collection
         self.__id = None
         self.__exhaust = False
         self.__sock_mgr = None
@@ -284,7 +294,7 @@ class Cursor(object):
         self.__collname = collection.name
 
     @property
-    def collection(self) -> CollectionRef:
+    def collection(self) -> "Collection[DocumentType]":
         """The :class:`~pymongo.collection.Collection` that this
         :class:`Cursor` is iterating.
         """
@@ -1174,7 +1184,7 @@ class Cursor(object):
         .. versionadded:: 3.6
         """
         if self.__explicit_session:
-            return cast(Optional[ClientSessionRef], self.__session)
+            return self.__session
         return None
 
     def __iter__(self) -> "Cursor":
@@ -1244,13 +1254,13 @@ class Cursor(object):
         return y
 
 
-class RawBatchCursor(Cursor):
+class RawBatchCursor(Cursor, Generic[DocumentType]):
     """A cursor / iterator over raw batches of BSON data from a query result."""
 
     _query_class = _RawBatchQuery
     _getmore_class = _RawBatchGetMore
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, collection: "Collection[DocumentType]", *args: Any, **kwargs: Any) -> None:
         """Create a new cursor / iterator over raw batches of BSON data.
 
         Should not be called directly by application developers -
@@ -1259,7 +1269,7 @@ class RawBatchCursor(Cursor):
 
         .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
         """
-        super(RawBatchCursor, self).__init__(*args, **kwargs)
+        super(RawBatchCursor, self).__init__(collection, *args, **kwargs)
 
     def _unpack_response(self, response, cursor_id, codec_options,
                          user_fields=None, legacy_response=False):

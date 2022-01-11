@@ -13,9 +13,12 @@
 # limitations under the License.
 
 """Result class definitions."""
-from typing import Any, Dict, List, Optional, Sequence, cast
+from typing import Any, Dict, Generic, List, Mapping, MutableMapping, Optional, Sequence, TypeVar, cast
 
 from pymongo.errors import InvalidOperation
+
+
+DocumentType = TypeVar('DocumentType', Mapping[str, Any], MutableMapping[str, Any])
 
 
 class _WriteResult(object):
@@ -92,7 +95,7 @@ class InsertManyResult(_WriteResult):
         return self.__inserted_ids
 
 
-class UpdateResult(_WriteResult):
+class UpdateResult(_WriteResult, Generic[DocumentType]):
     """The return type for :meth:`~pymongo.collection.Collection.update_one`,
     :meth:`~pymongo.collection.Collection.update_many`, and
     :meth:`~pymongo.collection.Collection.replace_one`.
@@ -100,12 +103,12 @@ class UpdateResult(_WriteResult):
 
     __slots__ = ("__raw_result", "__acknowledged")
 
-    def __init__(self, raw_result: Dict[str, Any], acknowledged: bool) -> None:
-        self.__raw_result = raw_result
+    def __init__(self, raw_result: DocumentType, acknowledged: bool) -> None:
+        self.__raw_result: DocumentType = raw_result
         super(UpdateResult, self).__init__(acknowledged)
 
     @property
-    def raw_result(self) -> Dict[str, Any]:
+    def raw_result(self) -> DocumentType:
         """The raw result document returned by the server."""
         return self.__raw_result
 
@@ -132,18 +135,18 @@ class UpdateResult(_WriteResult):
         return self.__raw_result.get("upserted")
 
 
-class DeleteResult(_WriteResult):
+class DeleteResult(_WriteResult, Generic[DocumentType]):
     """The return type for :meth:`~pymongo.collection.Collection.delete_one`
     and :meth:`~pymongo.collection.Collection.delete_many`"""
 
     __slots__ = ("__raw_result", "__acknowledged")
 
-    def __init__(self, raw_result: Dict[str, Any], acknowledged: bool) -> None:
-        self.__raw_result = raw_result
+    def __init__(self, raw_result: DocumentType, acknowledged: bool) -> None:
+        self.__raw_result: DocumentType = raw_result
         super(DeleteResult, self).__init__(acknowledged)
 
     @property
-    def raw_result(self) -> Dict[str, Any]:
+    def raw_result(self) -> DocumentType:
         """The raw result document returned by the server."""
         return self.__raw_result
 

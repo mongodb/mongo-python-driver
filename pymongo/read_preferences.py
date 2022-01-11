@@ -39,7 +39,7 @@ _MONGOS_MODES = (
 )
 
 
-def _validate_tag_sets(tag_sets) -> Optional[List[Mapping[str, Any]]]:
+def _validate_tag_sets(tag_sets):
     """Validate tag sets for a MongoClient.
     """
     if tag_sets is None:

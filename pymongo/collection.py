@@ -15,7 +15,7 @@
 """Collection level utilities for Mongo."""
 
 from collections import abc
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Generic, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Type, TypeVar, Tuple, Union, TYPE_CHECKING
 
 from dns.query import send_udp
 
@@ -51,7 +51,7 @@ from pymongo.results import (BulkWriteResult,
                              InsertOneResult,
                              InsertManyResult,
                              UpdateResult)
-from pymongo.typings import CollationIn, DocumentIn, DocumentOut, DatabaseRef, Pipeline
+from pymongo.typings import CollationIn, DocumentIn, Pipeline
 from pymongo.write_concern import WriteConcern
 
 
@@ -77,13 +77,20 @@ class ReturnDocument(object):
     """Return the updated/replaced or inserted document."""
 
 
-class Collection(common.BaseObject):
+DocumentType = TypeVar('DocumentType', Mapping[str, Any], MutableMapping[str, Any])
+
+
+if TYPE_CHECKING:
+    from pymongo.database import Database
+
+
+class Collection(common.BaseObject, Generic[DocumentType]):
     """A Mongo collection.
     """
 
     def __init__(
         self,
-        database: DatabaseRef,
+        database: "Database[DocumentType]",
         name: str,
         create: Optional[bool] = False,
         codec_options: Optional[CodecOptions] = None,
@@ -190,7 +197,7 @@ class Collection(common.BaseObject):
                               "null character")
         collation = validate_collation_or_none(kwargs.pop('collation', None))
 
-        self.__database = database
+        self.__database: Database[DocumentType] = database
         self.__name = name
         self.__full_name = "%s.%s" % (self.__database.name, self.__name)
         if create or kwargs or collation:
@@ -273,7 +280,7 @@ class Collection(common.BaseObject):
                 write_concern=self._write_concern_for(session),
                 collation=collation, session=session)
 
-    def __getattr__(self, name: str) -> "Collection":
+    def __getattr__(self, name: str) -> "Collection[DocumentType]":
         """Get a sub-collection of this collection by name.
 
         Raises InvalidName if an invalid collection name is used.
@@ -289,7 +296,7 @@ class Collection(common.BaseObject):
                     name, full_name, full_name))
         return self.__getitem__(name)
 
-    def __getitem__(self, name: str) -> "Collection":
+    def __getitem__(self, name: str) -> "Collection[DocumentType]":
         return Collection(self.__database,
                           "%s.%s" % (self.__name, name),
                           False,
@@ -332,7 +339,7 @@ class Collection(common.BaseObject):
         return self.__name
 
     @property
-    def database(self) -> DatabaseRef:
+    def database(self) -> "Database[DocumentType]":
         """The :class:`~pymongo.database.Database` that this
         :class:`Collection` is a part of.
         """
@@ -344,7 +351,7 @@ class Collection(common.BaseObject):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> "Collection":
+    ) -> "Collection[DocumentType]":
         """Get a clone of this collection changing the specified settings.
 
           >>> coll1.read_preference
@@ -718,7 +725,7 @@ class Collection(common.BaseObject):
         collation: Optional[CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
-    ) -> UpdateResult:
+    ) -> UpdateResult[DocumentType]:
         """Replace a single document matching the filter.
 
           >>> for doc in db.test.find({}):
@@ -803,7 +810,7 @@ class Collection(common.BaseObject):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
         let: Optional[bool] = None
-    ) -> UpdateResult:
+    ) -> UpdateResult[DocumentType]:
         """Update a single document matching the filter.
 
           >>> for doc in db.test.find():
@@ -891,7 +898,7 @@ class Collection(common.BaseObject):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
         let: Optional[bool] = None
-    ) -> UpdateResult:
+    ) -> UpdateResult[DocumentType]:
         """Update one or more documents that match the filter.
 
           >>> for doc in db.test.find():
@@ -1064,7 +1071,7 @@ class Collection(common.BaseObject):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
         let: Optional[Any] = None
-    ) -> DeleteResult:
+    ) -> DeleteResult[DocumentType]:
         """Delete a single document matching the filter.
 
           >>> db.test.count_documents({'x': 1})
@@ -1119,7 +1126,7 @@ class Collection(common.BaseObject):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
         let: Optional[Any] = None
-    ) -> DeleteResult:
+    ) -> DeleteResult[DocumentType]:
         """Delete one or more documents matching the filter.
 
           >>> db.test.count_documents({'x': 1})
@@ -1168,7 +1175,7 @@ class Collection(common.BaseObject):
                 collation=collation, hint=hint, session=session, let=let),
             write_concern.acknowledged)
 
-    def find_one(self, filter: Optional[Any] = None, *args: Any, **kwargs: Any) -> Optional[DocumentOut]:
+    def find_one(self, filter: Optional[Any] = None, *args: Any, **kwargs: Any) -> Optional[DocumentType]:
         """Get a single document from the database.
 
         All arguments to :meth:`find` are also valid arguments for
@@ -1202,7 +1209,7 @@ class Collection(common.BaseObject):
             return result
         return None
 
-    def find(self, *args: Any, **kwargs: Any) -> Cursor:
+    def find(self, *args: Any, **kwargs: Any) -> Cursor[DocumentType]:
         """Query the database.
 
         The `filter` argument is a prototype document that all results
@@ -1391,7 +1398,7 @@ class Collection(common.BaseObject):
         """
         return Cursor(self, *args, **kwargs)
 
-    def find_raw_batches(self, *args: Any, **kwargs: Any) -> RawBatchCursor:
+    def find_raw_batches(self, *args: Any, **kwargs: Any) -> RawBatchCursor[DocumentType]:
         """Query the database and retrieve batches of raw BSON.
 
         Similar to the :meth:`find` method but returns a
@@ -1843,7 +1850,7 @@ class Collection(common.BaseObject):
                           write_concern=self._write_concern_for(session),
                           session=session)
 
-    def list_indexes(self, session: Optional[ClientSession] = None) -> CommandCursor:
+    def list_indexes(self, session: Optional[ClientSession] = None) -> CommandCursor[DocumentType]:
         """Get a cursor over the index documents for this collection.
 
           >>> for index in db.test.list_indexes():
@@ -1974,7 +1981,7 @@ class Collection(common.BaseObject):
             cmd.get_cursor, cmd.get_read_preference(session), session,
             retryable=not cmd._performs_write)
 
-    def aggregate(self, pipeline: Pipeline, session: Optional[ClientSession] = None, let: Optional[Any] = None, **kwargs: Any) -> CommandCursor:
+    def aggregate(self, pipeline: Pipeline, session: Optional[ClientSession] = None, let: Optional[Any] = None, **kwargs: Any) -> CommandCursor[DocumentType]:
         """Perform an aggregation using the aggregation framework on this
         collection.
 
@@ -2058,7 +2065,7 @@ class Collection(common.BaseObject):
 
     def aggregate_raw_batches(
         self, pipeline: Pipeline, session: Optional[ClientSession] = None, **kwargs: Any
-    ) -> RawBatchCursor:
+    ) -> RawBatchCursor[DocumentType]:
         """Perform an aggregation and retrieve batches of raw BSON.
 
         Similar to the :meth:`aggregate` method but returns a
@@ -2105,7 +2112,7 @@ class Collection(common.BaseObject):
         start_at_operation_time: Optional[Mapping[str, Any]] = None,
         session: Optional[ClientSession] = None,
         start_after: Optional[Mapping[str, Any]] = None,
-    ) -> CollectionChangeStream:
+    ) -> CollectionChangeStream[DocumentType]:
         """Watch changes on this collection.
 
         Performs an aggregation with an implicit initial ``$changeStream``
@@ -2389,7 +2396,7 @@ class Collection(common.BaseObject):
         session: Optional[ClientSession] = None,
         let: Optional[bool] = None,
         **kwargs: Any,
-    ) -> DocumentOut:
+    ) -> DocumentType:
         """Finds a single document and deletes it, returning the document.
 
           >>> db.test.count_documents({'x': 1})
@@ -2475,7 +2482,7 @@ class Collection(common.BaseObject):
         session: Optional[ClientSession] = None,
         let: Optional[bool] = None,
         **kwargs: Any,
-    ) -> DocumentOut:
+    ) -> DocumentType:
         """Finds a single document and replaces it, returning either the
         original or the replaced document.
 
@@ -2570,7 +2577,7 @@ class Collection(common.BaseObject):
         session: Optional[ClientSession] = None,
         let: Optional[bool] = None,
         **kwargs: Any,
-    ) -> DocumentOut:
+    ) -> DocumentType:
         """Finds a single document and updates it, returning either the
         original or the updated document.
 
@@ -2696,7 +2703,7 @@ class Collection(common.BaseObject):
                                       array_filters, hint=hint, let=let,
                                       session=session, **kwargs)
 
-    def __iter__(self) -> "Collection":
+    def __iter__(self) -> "Collection[DocumentType]":
         return self
 
     def __next__(self) -> None:

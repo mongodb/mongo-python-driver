@@ -181,10 +181,7 @@ _options_base = namedtuple(  # type: ignore
      'unicode_decode_error_handler', 'tzinfo', 'type_registry'))
 
 
-DocumentType = TypeVar("DocumentType", bound=Union[Type[MutableMapping[Any, Any]], Type["RawBSONDocument"]])
-
-
-class CodecOptions(Generic[DocumentType], _options_base):
+class CodecOptions(_options_base):
     """Encapsulates options used encoding and / or decoding BSON.
 
     The `document_class` option is used to define a custom type for use
@@ -259,9 +256,7 @@ class CodecOptions(Generic[DocumentType], _options_base):
        retrieved from the server will be modified in the client application
        and stored back to the server.
     """
-    document_class: DocumentType
-
-    def __new__(cls: Type["CodecOptions"], document_class: DocumentType = dict,
+    def __new__(cls: Type["CodecOptions"], document_class: Union[Type[MutableMapping], Type["RawBSONDocument"]] = dict,
                 tz_aware: bool = False,
                 uuid_representation: Optional[int] = UuidRepresentation.UNSPECIFIED,
                 unicode_decode_error_handler: Optional[str] = "strict",

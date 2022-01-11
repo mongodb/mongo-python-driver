@@ -13,9 +13,9 @@
 # limitations under the License.
 
 """Database level operations."""
-from typing import Any, Dict, Generic, List, Mapping, Optional, Sequence, Union, cast
+from typing import TYPE_CHECKING, Any, Dict, Generic, List, Mapping, MutableMapping, Optional, Sequence, Type, TypeVar, Union, cast
 
-from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, DocumentType
+from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
 from bson.son import SON
 from pymongo import common
@@ -45,14 +45,22 @@ def _check_name(name):
                               "character %r" % invalid_char)
 
 
+DocumentType = TypeVar('DocumentType', Mapping[str, Any], MutableMapping[str, Any])
+
+
+if TYPE_CHECKING:
+    from pymongo.mongo_client import MongoClient
+
+
 class Database(common.BaseObject, Generic[DocumentType]):
     """A Mongo database.
     """
+    _document_type: Type[DocumentType]
 
     def __init__(self,
-        client: MongoClientRef[DocumentType],
+        client: "MongoClient[DocumentType]",
         name: str,
-        codec_options: Optional[CodecOptions[DocumentType]] = None,
+        codec_options: Optional[CodecOptions] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
@@ -116,10 +124,10 @@ class Database(common.BaseObject, Generic[DocumentType]):
             _check_name(name)
 
         self.__name = name
-        self.__client = client
+        self.__client: MongoClient[DocumentType] = client
 
     @property
-    def client(self) -> MongoClientRef[DocumentType]:
+    def client(self) -> "MongoClient[DocumentType]":
         """The client instance for this :class:`Database`."""
         return self.__client
 
@@ -165,7 +173,7 @@ class Database(common.BaseObject, Generic[DocumentType]):
 
         .. versionadded:: 3.8
         """
-        return Database(cast(Any, self.client),
+        return Database(self.client,
                         self.__name,
                         codec_options or self.codec_options,
                         read_preference or self.read_preference,
