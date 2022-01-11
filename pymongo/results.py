@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Result class definitions."""
-from typing import Any, Dict, Generic, List, Optional, Sequence, cast
+from typing import Any, Dict, List, Mapping, Optional, Sequence, cast
 
 from pymongo.errors import InvalidOperation
 from pymongo.typings import DocumentType
@@ -93,7 +93,7 @@ class InsertManyResult(_WriteResult):
         return self.__inserted_ids
 
 
-class UpdateResult(_WriteResult, Generic[DocumentType]):
+class UpdateResult(_WriteResult):
     """The return type for :meth:`~pymongo.collection.Collection.update_one`,
     :meth:`~pymongo.collection.Collection.update_many`, and
     :meth:`~pymongo.collection.Collection.replace_one`.
@@ -103,16 +103,13 @@ class UpdateResult(_WriteResult, Generic[DocumentType]):
 
     # Workaround for Python 3.6 conflict with Generic type
     # ValueError: '_UpdateResult__raw_result' in __slots__ conflicts with class variable
-    @classmethod
-    def __new__(cls, *args: Any, **kwargs: Any) -> "UpdateResult":
-        return _WriteResult.__new__(*args, **kwargs)
 
-    def __init__(self, raw_result: DocumentType, acknowledged: bool) -> None:
-        self.__raw_result: DocumentType = raw_result
+    def __init__(self, raw_result: Mapping[str, Any], acknowledged: bool) -> None:
+        self.__raw_result = raw_result
         super(UpdateResult, self).__init__(acknowledged)
 
     @property
-    def raw_result(self) -> DocumentType:
+    def raw_result(self) -> Mapping[str, Any]:
         """The raw result document returned by the server."""
         return self.__raw_result
 
@@ -139,18 +136,18 @@ class UpdateResult(_WriteResult, Generic[DocumentType]):
         return self.__raw_result.get("upserted")
 
 
-class DeleteResult(_WriteResult, Generic[DocumentType]):
+class DeleteResult(_WriteResult):
     """The return type for :meth:`~pymongo.collection.Collection.delete_one`
     and :meth:`~pymongo.collection.Collection.delete_many`"""
 
     __slots__ = ("__raw_result", "__acknowledged")
 
-    def __init__(self, raw_result: DocumentType, acknowledged: bool) -> None:
-        self.__raw_result: DocumentType = raw_result
+    def __init__(self, raw_result: Mapping[str, Any], acknowledged: bool) -> None:
+        self.__raw_result = raw_result
         super(DeleteResult, self).__init__(acknowledged)
 
     @property
-    def raw_result(self) -> DocumentType:
+    def raw_result(self) -> Mapping[str, Any]:
         """The raw result document returned by the server."""
         return self.__raw_result
 
@@ -161,12 +158,12 @@ class DeleteResult(_WriteResult, Generic[DocumentType]):
         return self.__raw_result.get("n", 0)
 
 
-class BulkWriteResult(_WriteResult, Generic[DocumentType]):
+class BulkWriteResult(_WriteResult):
     """An object wrapper for bulk API write results."""
 
     __slots__ = ("__bulk_api_result", "__acknowledged")
 
-    def __init__(self, bulk_api_result: DocumentType, acknowledged: bool) -> None:
+    def __init__(self, bulk_api_result: Mapping[str, Any], acknowledged: bool) -> None:
         """Create a BulkWriteResult instance.
 
         :Parameters:
@@ -175,11 +172,11 @@ class BulkWriteResult(_WriteResult, Generic[DocumentType]):
             then all properties of this object will raise
             :exc:`~pymongo.errors.InvalidOperation`.
         """
-        self.__bulk_api_result: DocumentType = bulk_api_result
+        self.__bulk_api_result = bulk_api_result
         super(BulkWriteResult, self).__init__(acknowledged)
 
     @property
-    def bulk_api_result(self) -> DocumentType:
+    def bulk_api_result(self) -> Mapping[str, Any]:
         """The raw bulk API result."""
         return self.__bulk_api_result
 

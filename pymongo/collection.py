@@ -719,7 +719,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
         collation: Optional[CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
-    ) -> UpdateResult[DocumentType]:
+    ) -> UpdateResult:
         """Replace a single document matching the filter.
 
           >>> for doc in db.test.find({}):
@@ -804,7 +804,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
         let: Optional[bool] = None
-    ) -> UpdateResult[DocumentType]:
+    ) -> UpdateResult:
         """Update a single document matching the filter.
 
           >>> for doc in db.test.find():
@@ -892,7 +892,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
         let: Optional[bool] = None
-    ) -> UpdateResult[DocumentType]:
+    ) -> UpdateResult:
         """Update one or more documents that match the filter.
 
           >>> for doc in db.test.find():
@@ -1065,7 +1065,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
         let: Optional[Any] = None
-    ) -> DeleteResult[DocumentType]:
+    ) -> DeleteResult:
         """Delete a single document matching the filter.
 
           >>> db.test.count_documents({'x': 1})
@@ -1120,7 +1120,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional[ClientSession] = None,
         let: Optional[Any] = None
-    ) -> DeleteResult[DocumentType]:
+    ) -> DeleteResult:
         """Delete one or more documents matching the filter.
 
           >>> db.test.count_documents({'x': 1})
