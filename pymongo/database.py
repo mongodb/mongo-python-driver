@@ -29,7 +29,7 @@ from pymongo.errors import (CollectionInvalid,
                             InvalidName)
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
-from pymongo.typings import CollationIn, MongoClientRef, DocumentOut, Pipeline
+from pymongo.typings import CollationIn, DocumentType, Pipeline
 from pymongo.write_concern import WriteConcern
 
 
@@ -45,9 +45,6 @@ def _check_name(name):
                               "character %r" % invalid_char)
 
 
-DocumentType = TypeVar('DocumentType', Mapping[str, Any], MutableMapping[str, Any])
-
-
 if TYPE_CHECKING:
     from pymongo.mongo_client import MongoClient
 
@@ -55,8 +52,6 @@ if TYPE_CHECKING:
 class Database(common.BaseObject, Generic[DocumentType]):
     """A Mongo database.
     """
-    _document_type: Type[DocumentType]
-
     def __init__(self,
         client: "MongoClient[DocumentType]",
         name: str,
@@ -141,7 +136,7 @@ class Database(common.BaseObject, Generic[DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional[ReadConcern] = None,
-    ) -> "Database":
+    ) -> "Database[DocumentType]":
         """Get a clone of this database changing the specified settings.
 
           >>> db1.read_preference
@@ -571,7 +566,7 @@ class Database(common.BaseObject, Generic[DocumentType]):
         codec_options: Optional[CodecOptions] = DEFAULT_CODEC_OPTIONS,
         session: Optional[ClientSession] = None,
         **kwargs: Any,
-    ) -> DocumentOut:
+    ) -> DocumentType:
         """Issue a MongoDB command.
 
         Send command `command` to the database and return the
@@ -896,10 +891,10 @@ class Database(common.BaseObject, Generic[DocumentType]):
 
         return result
 
-    def __iter__(self) -> "Database":
+    def __iter__(self) -> "Database[DocumentType]":
         return self
 
-    def __next__(self) -> "Database":
+    def __next__(self) -> "Database[DocumentType]":
         raise TypeError("'Database' object is not iterable")
 
     next = __next__
@@ -912,7 +907,7 @@ class Database(common.BaseObject, Generic[DocumentType]):
     def dereference(self, dbref: DBRef,
         session: Optional[ClientSession] = None,
         **kwargs: Any
-    ) -> Optional[DocumentOut]:
+    ) -> Optional[DocumentType]:
         """Dereference a :class:`~bson.dbref.DBRef`, getting the
         document it points to.
 

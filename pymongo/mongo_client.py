@@ -33,7 +33,7 @@ access:
 
 import contextlib
 import threading
-from typing import Any, Dict, FrozenSet, Generic, List, Mapping, MutableMapping, Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast
+from typing import Any, FrozenSet, Generic, List, Mapping, Optional, Sequence, Set, Tuple, Type, Union, cast
 import weakref
 
 from collections import defaultdict
@@ -69,16 +69,13 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.topology import (Topology,
                               _ErrorContext)
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
-from pymongo.typings import CollationIn, Pipeline
+from pymongo.typings import CollationIn, DocumentType, Pipeline
 from pymongo.settings import TopologySettings
 from pymongo.uri_parser import (_handle_option_deprecations,
                                 _handle_security_options,
                                 _normalize_options,
                                 _check_options)
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
-
-
-DocumentType = TypeVar('DocumentType', Mapping[str, Any], MutableMapping[str, Any])
 
 
 class MongoClient(common.BaseObject, Generic[DocumentType]):

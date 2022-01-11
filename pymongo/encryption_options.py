@@ -15,7 +15,7 @@
 """Support for automatic client-side field level encryption."""
 
 import copy
-from typing import Any, List, Mapping, Optional, Sequence
+from typing import Any, List, Mapping, Optional, Sequence, TYPE_CHECKING
 
 try:
     import pymongocrypt  # type: ignore
@@ -24,8 +24,11 @@ except ImportError:
     _HAVE_PYMONGOCRYPT = False
 
 from pymongo.errors import ConfigurationError
-from pymongo.typings import MongoClientRef
 from pymongo.uri_parser import _parse_kms_tls_options
+
+
+if TYPE_CHECKING:
+  from pymongo.mongo_client import MongoClient
 
 
 class AutoEncryptionOpts(object):
@@ -34,7 +37,7 @@ class AutoEncryptionOpts(object):
     def __init__(self,
         kms_providers: Mapping[str, Any],
         key_vault_namespace: str,
-        key_vault_client: Optional[MongoClientRef] = None,
+        key_vault_client: Optional["MongoClient"] = None,
         schema_map: Optional[Mapping[str, Any]] = None,
         bypass_auto_encryption: Optional[bool] = None,
         mongocryptd_uri: str = 'mongodb://localhost:27020',

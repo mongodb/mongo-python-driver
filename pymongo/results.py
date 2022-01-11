@@ -13,12 +13,10 @@
 # limitations under the License.
 
 """Result class definitions."""
-from typing import Any, Dict, Generic, List, Mapping, MutableMapping, Optional, Sequence, TypeVar, cast
+from typing import Any, Dict, Generic, List, Optional, Sequence, cast
 
 from pymongo.errors import InvalidOperation
-
-
-DocumentType = TypeVar('DocumentType', Mapping[str, Any], MutableMapping[str, Any])
+from pymongo.typings import DocumentType
 
 
 class _WriteResult(object):
@@ -157,12 +155,12 @@ class DeleteResult(_WriteResult, Generic[DocumentType]):
         return self.__raw_result.get("n", 0)
 
 
-class BulkWriteResult(_WriteResult):
+class BulkWriteResult(_WriteResult, Generic[DocumentType]):
     """An object wrapper for bulk API write results."""
 
     __slots__ = ("__bulk_api_result", "__acknowledged")
 
-    def __init__(self, bulk_api_result: Dict[str, Any], acknowledged: bool) -> None:
+    def __init__(self, bulk_api_result: DocumentType, acknowledged: bool) -> None:
         """Create a BulkWriteResult instance.
 
         :Parameters:
@@ -171,11 +169,11 @@ class BulkWriteResult(_WriteResult):
             then all properties of this object will raise
             :exc:`~pymongo.errors.InvalidOperation`.
         """
-        self.__bulk_api_result = bulk_api_result
+        self.__bulk_api_result: DocumentType = bulk_api_result
         super(BulkWriteResult, self).__init__(acknowledged)
 
     @property
-    def bulk_api_result(self) -> Dict[str, Any]:
+    def bulk_api_result(self) -> DocumentType:
         """The raw bulk API result."""
         return self.__bulk_api_result
 

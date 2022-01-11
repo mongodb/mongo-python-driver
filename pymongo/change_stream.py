@@ -15,18 +15,16 @@
 """Watch changes on a collection, a database, or the entire cluster."""
 
 import copy
-from typing import Any, Iterable, Mapping, Optional, Sequence, Union, cast
+from typing import Any, Generic, Iterable, Mapping, Optional, Sequence, Union, cast,  TYPE_CHECKING
 
 from bson import _bson_to_dict
 from bson.raw_bson import RawBSONDocument
 
-import pymongo
 from pymongo import common
 from pymongo.aggregation import (_CollectionAggregationCommand,
                                  _DatabaseAggregationCommand)
 from pymongo.client_session import ClientSession
 from pymongo.collation import validate_collation_or_none
-from pymongo.collation import Collation
 
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (ConnectionFailure,
@@ -34,7 +32,7 @@ from pymongo.errors import (ConnectionFailure,
                             InvalidOperation,
                             OperationFailure,
                             PyMongoError)
-from pymongo.typings import DatabaseRef, MongoClientRef, CollectionRef, CollationIn, DocumentOut, Pipeline
+from pymongo.typings import CollationIn, DocumentType, Pipeline
 
 
 # The change streams spec considers the following server errors from the
@@ -61,7 +59,13 @@ _RESUMABLE_GETMORE_ERRORS = frozenset([
 ])
 
 
-class ChangeStream(object):
+if TYPE_CHECKING:
+    from pymongo.collection import Collection
+    from pymongo.database import Database
+    from pymongo.mongo_client import MongoClient
+
+
+class ChangeStream(object, Generic[DocumentType]):
     """The internal abstract base class for change stream cursors.
 
     Should not be called directly by application developers. Use
@@ -74,7 +78,7 @@ class ChangeStream(object):
     """
     def __init__(
         self,
-        target: Union[MongoClientRef, DatabaseRef, CollectionRef],
+        target: Union["MongoClient[DocumentType]", "Database[DocumentType]", "Collection[DocumentType]"],
         pipeline: Optional[Pipeline],
         full_document: Optional[str],
         resume_after: Optional[Mapping[str, Any]],
@@ -227,7 +231,7 @@ class ChangeStream(object):
         """
         return copy.deepcopy(self._resume_token)
 
-    def next(self) -> DocumentOut:
+    def next(self) -> DocumentType:
         """Advance the cursor.
 
         This method blocks until the next change document is returned or an
@@ -279,7 +283,7 @@ class ChangeStream(object):
         """
         return self._cursor.alive
 
-    def try_next(self) -> Optional[DocumentOut]:
+    def try_next(self) -> Optional[DocumentType]:
         """Advance the cursor without blocking indefinitely.
 
         This method returns the next change document without waiting
@@ -375,7 +379,7 @@ class ChangeStream(object):
         self.close()
 
 
-class CollectionChangeStream(ChangeStream):
+class CollectionChangeStream(ChangeStream, Generic[DocumentType]):
     """A change stream that watches changes on a single collection.
 
     Should not be called directly by application developers. Use
@@ -392,7 +396,7 @@ class CollectionChangeStream(ChangeStream):
         return self._target.database.client
 
 
-class DatabaseChangeStream(ChangeStream):
+class DatabaseChangeStream(ChangeStream, Generic[DocumentType]):
     """A change stream that watches changes on all collections in a database.
 
     Should not be called directly by application developers. Use

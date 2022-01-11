@@ -189,7 +189,7 @@ from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers import _handle_exception
 from pymongo.server_description import ServerDescription
 from pymongo.topology_description import TopologyDescription
-from pymongo.typings import Address, DocumentOut
+from pymongo.typings import Address
 
 
 _Listeners = namedtuple('_Listeners',
@@ -198,6 +198,9 @@ _Listeners = namedtuple('_Listeners',
                          'cmap_listeners'))
 
 _LISTENERS = _Listeners([], [], [], [], [])
+
+
+DocumentOut = Mapping[str, Any]
 
 
 class _EventListener(object):

@@ -15,7 +15,7 @@
 """CommandCursor class to iterate over command results."""
 
 from collections import deque
-from typing import Any, Iterator, Mapping, Optional, Tuple
+from typing import Any, Generic, Iterator, Mapping, Optional, Tuple, TYPE_CHECKING
 
 from bson import _convert_raw_document_lists_to_streams
 from pymongo.client_session import ClientSession
@@ -27,16 +27,19 @@ from pymongo.message import (_CursorAddress,
                              _GetMore,
                              _RawBatchGetMore)
 from pymongo.response import PinnedResponse
-from pymongo.typings import DocumentOut, CollectionRef
+from pymongo.typings import DocumentType
 
 
+if TYPE_CHECKING:
+    from pymongo.collection import Collection
 
-class CommandCursor(object):
+
+class CommandCursor(object, Generic[DocumentType]):
     """A cursor / iterator over command cursors."""
     _getmore_class = _GetMore
 
     def __init__(self,
-        collection: CollectionRef,
+        collection: "Collection[DocumentType]",
         cursor_info: Mapping[str, Any],
         address: Optional[Tuple[str, Optional[int]]],
         batch_size: int = 0,
@@ -46,7 +49,7 @@ class CommandCursor(object):
     ) -> None:
         """Create a new command cursor."""
         self.__sock_mgr = None
-        self.__collection = collection
+        self.__collection: Collection[DocumentType] = collection
         self.__id = cursor_info['id']
         self.__data = deque(cursor_info['firstBatch'])
         self.__postbatchresumetoken = cursor_info.get('postBatchResumeToken')
@@ -107,7 +110,7 @@ class CommandCursor(object):
         """
         self.__die(True)
 
-    def batch_size(self, batch_size: int) -> "CommandCursor":
+    def batch_size(self, batch_size: int) -> "CommandCursor[DocumentType]":
         """Limits the number of documents returned in one batch. Each batch
         requires a round trip to the server. It can be adjusted to optimize
         performance and limit data transfer.
@@ -271,10 +274,10 @@ class CommandCursor(object):
             return self.__session
         return None
 
-    def __iter__(self) -> Iterator[DocumentOut]:
+    def __iter__(self) -> Iterator[DocumentType]:
         return self
 
-    def next(self) -> DocumentOut:
+    def next(self) -> DocumentType:
         """Advance the cursor."""
         # Block until a document is returnable.
         while self.alive:
@@ -295,18 +298,18 @@ class CommandCursor(object):
         else:
             return None
 
-    def __enter__(self) -> "CommandCursor":
+    def __enter__(self) -> "CommandCursor[DocumentType]":
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
 
-class RawBatchCommandCursor(CommandCursor):
+class RawBatchCommandCursor(CommandCursor, Generic[DocumentType]):
     _getmore_class = _RawBatchGetMore
 
     def __init__(self,
-        collection: CollectionRef,
+        collection: "Collection[DocumentType]",
         cursor_info: Mapping[str, Any],
         address: Optional[Tuple[str, Optional[int]]],
         batch_size: int = 0,

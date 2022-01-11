@@ -15,21 +15,18 @@
 """Cursor class to iterate over Mongo query results."""
 import copy
 import threading
-from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple, Union, cast
+from typing import Any, Dict, Generic, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple, Union, cast, TYPE_CHECKING
 import warnings
 
 from collections import deque
 
 from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
-from bson.raw_bson import RawBSONDocument
 from bson.son import SON
-import pymongo
 from pymongo import helpers
 from pymongo.common import (validate_boolean, validate_is_mapping,
                             validate_is_document_type)
 from pymongo.collation import validate_collation_or_none
-from pymongo.collation import Collation
 from pymongo.errors import (ConnectionFailure,
                             InvalidOperation,
                             OperationFailure)
@@ -39,7 +36,7 @@ from pymongo.message import (_CursorAddress,
                              _Query,
                              _RawBatchQuery)
 from pymongo.response import PinnedResponse
-from pymongo.typings import CollectionRef, ClientSessionRef, CollationIn, DocumentOut
+from pymongo.typings import CollationIn, DocumentType
 
 # These errors mean that the server has already killed the cursor so there is
 # no need to send killCursors.
@@ -134,14 +131,9 @@ _Sort = Sequence[Tuple[str, Union[int, str, Mapping[str, Any]]]]
 _Hint = Union[str, _Sort]
 
 
-
-from typing import TypeVar, TYPE_CHECKING, Generic
-DocumentType = TypeVar('DocumentType', Mapping[str, Any], MutableMapping[str, Any])
-
-
 if TYPE_CHECKING:
     from pymongo.collection import Collection
-
+    from pymongo.client_session import ClientSession
 
 
 class Cursor(object, Generic[DocumentType]):
@@ -172,7 +164,7 @@ class Cursor(object, Generic[DocumentType]):
         show_record_id: Optional[bool] = None,
         snapshot: Optional[bool] = None,
         comment: Any = None,
-        session: Optional[ClientSessionRef] = None,
+        session: Optional["ClientSession"] = None,
         allow_disk_use: Optional[bool] = None,
         let: Optional[bool] = None
     ) -> None:
@@ -190,7 +182,7 @@ class Cursor(object, Generic[DocumentType]):
         self.__exhaust = False
         self.__sock_mgr = None
         self.__killed = False
-        self.__session: Optional[ClientSessionRef]
+        self.__session: Optional["ClientSession"]
 
         if session:
             self.__session = session
@@ -309,7 +301,7 @@ class Cursor(object, Generic[DocumentType]):
     def __del__(self) -> None:
         self.__die()
 
-    def rewind(self) -> "Cursor":
+    def rewind(self) -> "Cursor[DocumentType]":
         """Rewind this cursor to its unevaluated state.
 
         Reset this cursor if it has been partially or completely evaluated.
@@ -327,7 +319,7 @@ class Cursor(object, Generic[DocumentType]):
 
         return self
 
-    def clone(self) -> "Cursor":
+    def clone(self) -> "Cursor[DocumentType]":
         """Get a clone of this cursor.
 
         Returns a new Cursor instance with options matching those that have
@@ -462,7 +454,7 @@ class Cursor(object, Generic[DocumentType]):
         if self.__retrieved or self.__id is not None:
             raise InvalidOperation("cannot set options after executing query")
 
-    def add_option(self, mask: int) -> "Cursor":
+    def add_option(self, mask: int) -> "Cursor[DocumentType]":
         """Set arbitrary query flags using a bitmask.
 
         To set the tailable flag:
@@ -483,7 +475,7 @@ class Cursor(object, Generic[DocumentType]):
         self.__query_flags |= mask
         return self
 
-    def remove_option(self, mask: int) -> "Cursor":
+    def remove_option(self, mask: int) -> "Cursor[DocumentType]":
         """Unset arbitrary query flags using a bitmask.
 
         To unset the tailable flag:
@@ -499,7 +491,7 @@ class Cursor(object, Generic[DocumentType]):
         self.__query_flags &= ~mask
         return self
 
-    def allow_disk_use(self, allow_disk_use: bool) -> "Cursor":
+    def allow_disk_use(self, allow_disk_use: bool) -> "Cursor[DocumentType]":
         """Specifies whether MongoDB can use temporary disk files while
         processing a blocking sort operation.
 
@@ -521,7 +513,7 @@ class Cursor(object, Generic[DocumentType]):
         self.__allow_disk_use = allow_disk_use
         return self
 
-    def limit(self, limit: int) -> "Cursor":
+    def limit(self, limit: int) -> "Cursor[DocumentType]":
         """Limits the number of results to be returned by this cursor.
 
         Raises :exc:`TypeError` if `limit` is not an integer. Raises
@@ -544,7 +536,7 @@ class Cursor(object, Generic[DocumentType]):
         self.__limit = limit
         return self
 
-    def batch_size(self, batch_size: int) -> "Cursor":
+    def batch_size(self, batch_size: int) -> "Cursor[DocumentType]":
         """Limits the number of documents returned in one batch. Each batch
         requires a round trip to the server. It can be adjusted to optimize
         performance and limit data transfer.
@@ -572,7 +564,7 @@ class Cursor(object, Generic[DocumentType]):
         self.__batch_size = batch_size
         return self
 
-    def skip(self, skip: int) -> "Cursor":
+    def skip(self, skip: int) -> "Cursor[DocumentType]":
         """Skips the first `skip` results of this cursor.
 
         Raises :exc:`TypeError` if `skip` is not an integer. Raises
@@ -593,7 +585,7 @@ class Cursor(object, Generic[DocumentType]):
         self.__skip = skip
         return self
 
-    def max_time_ms(self, max_time_ms: Optional[int]) -> "Cursor":
+    def max_time_ms(self, max_time_ms: Optional[int]) -> "Cursor[DocumentType]":
         """Specifies a time limit for a query operation. If the specified
         time is exceeded, the operation will be aborted and
         :exc:`~pymongo.errors.ExecutionTimeout` is raised. If `max_time_ms`
@@ -614,7 +606,7 @@ class Cursor(object, Generic[DocumentType]):
         self.__max_time_ms = max_time_ms
         return self
 
-    def max_await_time_ms(self, max_await_time_ms: Optional[int]) -> "Cursor":
+    def max_await_time_ms(self, max_await_time_ms: Optional[int]) -> "Cursor[DocumentType]":
         """Specifies a time limit for a getMore operation on a
         :attr:`~pymongo.cursor.CursorType.TAILABLE_AWAIT` cursor. For all other
         types of cursor max_await_time_ms is ignored.
@@ -642,7 +634,7 @@ class Cursor(object, Generic[DocumentType]):
 
         return self
 
-    def __getitem__(self, index: slice) -> "Cursor":
+    def __getitem__(self, index: slice) -> "Cursor[DocumentType]":
         """Get a single document or a slice of documents from this cursor.
 
         .. warning:: A :class:`~Cursor` is not a Python :class:`list`. Each
@@ -724,7 +716,7 @@ class Cursor(object, Generic[DocumentType]):
         raise TypeError("index %r cannot be applied to Cursor "
                         "instances" % index)
 
-    def max_scan(self, max_scan: Optional[int]) -> "Cursor":
+    def max_scan(self, max_scan: Optional[int]) -> "Cursor[DocumentType]":
         """**DEPRECATED** - Limit the number of documents to scan when
         performing the query.
 
@@ -744,7 +736,7 @@ class Cursor(object, Generic[DocumentType]):
         self.__max_scan = max_scan
         return self
 
-    def max(self, spec: _Sort) -> "Cursor":
+    def max(self, spec: _Sort) -> "Cursor[DocumentType]":
         """Adds ``max`` operator that specifies upper bound for specific index.
 
         When using ``max``, :meth:`~hint` should also be configured to ensure
@@ -767,7 +759,7 @@ class Cursor(object, Generic[DocumentType]):
         self.__max = SON(spec)
         return self
 
-    def min(self, spec: _Sort) -> "Cursor":
+    def min(self, spec: _Sort) -> "Cursor[DocumentType]":
         """Adds ``min`` operator that specifies lower bound for specific index.
 
         When using ``min``, :meth:`~hint` should also be configured to ensure
@@ -790,7 +782,7 @@ class Cursor(object, Generic[DocumentType]):
         self.__min = SON(spec)
         return self
 
-    def sort(self, key_or_list: _Hint, direction: Optional[Union[int, str]] = None) -> "Cursor":
+    def sort(self, key_or_list: _Hint, direction: Optional[Union[int, str]] = None) -> "Cursor[DocumentType]":
         """Sorts this cursor's results.
 
         Pass a field name and a direction, either
@@ -866,7 +858,7 @@ class Cursor(object, Generic[DocumentType]):
         return self.__collection.distinct(
             key, session=self.__session, **options)
 
-    def explain(self) -> DocumentOut:
+    def explain(self) -> DocumentType:
         """Returns an explain plan record for this cursor.
 
         .. note:: This method uses the default verbosity mode of the
@@ -896,7 +888,7 @@ class Cursor(object, Generic[DocumentType]):
         else:
             self.__hint = helpers._index_document(index)
 
-    def hint(self, index: Optional[_Hint]) -> "Cursor":
+    def hint(self, index: Optional[_Hint]) -> "Cursor[DocumentType]":
         """Adds a 'hint', telling Mongo the proper index to use for the query.
 
         Judicious use of hints can greatly improve query
@@ -921,7 +913,7 @@ class Cursor(object, Generic[DocumentType]):
         self.__set_hint(index)
         return self
 
-    def comment(self, comment: Any) -> "Cursor":
+    def comment(self, comment: Any) -> "Cursor[DocumentType]":
         """Adds a 'comment' to the cursor.
 
         http://docs.mongodb.org/manual/reference/operator/comment/
@@ -936,7 +928,7 @@ class Cursor(object, Generic[DocumentType]):
         self.__comment = comment
         return self
 
-    def where(self, code: Union[str, Code]) -> "Cursor":
+    def where(self, code: Union[str, Code]) -> "Cursor[DocumentType]":
         """Adds a `$where`_ clause to this query.
 
         The `code` argument must be an instance of :class:`basestring`
@@ -973,7 +965,7 @@ class Cursor(object, Generic[DocumentType]):
         self.__spec["$where"] = code
         return self
 
-    def collation(self, collation: Optional[CollationIn]) -> "Cursor":
+    def collation(self, collation: Optional[CollationIn]) -> "Cursor[DocumentType]":
         """Adds a :class:`~pymongo.collation.Collation` to this query.
 
         Raises :exc:`TypeError` if `collation` is not an instance of
@@ -1178,7 +1170,7 @@ class Cursor(object, Generic[DocumentType]):
         return self.__address
 
     @property
-    def session(self) -> Optional[ClientSessionRef]:
+    def session(self) -> Optional["ClientSession"]:
         """The cursor's :class:`~pymongo.client_session.ClientSession`, or None.
 
         .. versionadded:: 3.6
@@ -1187,10 +1179,10 @@ class Cursor(object, Generic[DocumentType]):
             return self.__session
         return None
 
-    def __iter__(self) -> "Cursor":
+    def __iter__(self) -> "Cursor[DocumentType]":
         return self
 
-    def next(self) -> DocumentOut:
+    def next(self) -> DocumentType:
         """Advance the cursor."""
         if self.__empty:
             raise StopIteration
@@ -1201,13 +1193,13 @@ class Cursor(object, Generic[DocumentType]):
 
     __next__ = next
 
-    def __enter__(self) -> "Cursor":
+    def __enter__(self) -> "Cursor[DocumentType]":
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
-    def __copy__(self) -> "Cursor":
+    def __copy__(self) -> "Cursor[DocumentType]":
         """Support function for `copy.copy()`.
 
         .. versionadded:: 2.4
@@ -1281,7 +1273,7 @@ class RawBatchCursor(Cursor, Generic[DocumentType]):
             _convert_raw_document_lists_to_streams(raw_response[0])
         return raw_response
 
-    def explain(self) -> DocumentOut:
+    def explain(self) -> DocumentType:
         """Returns an explain plan record for this cursor.
 
         .. seealso:: The MongoDB documentation on `explain <https://dochub.mongodb.org/core/explain>`_.
@@ -1289,5 +1281,5 @@ class RawBatchCursor(Cursor, Generic[DocumentType]):
         clone = self._clone(deepcopy=True, base=Cursor(cast(Any, self.collection)))
         return clone.explain()
 
-    def __getitem__(self, index: Any) -> "Cursor":
+    def __getitem__(self, index: Any) -> "Cursor[DocumentType]":
         raise InvalidOperation("Cannot call __getitem__ on RawBatchCursor")

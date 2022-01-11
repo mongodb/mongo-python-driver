@@ -15,7 +15,7 @@
 """Collection level utilities for Mongo."""
 
 from collections import abc
-from typing import Any, Dict, Generic, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Type, TypeVar, Tuple, Union, TYPE_CHECKING
+from typing import Any, Dict, Generic, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple, Union, TYPE_CHECKING
 
 from dns.query import send_udp
 
@@ -24,7 +24,6 @@ from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.codec_options import CodecOptions
 from bson.son import SON
-import pymongo
 from pymongo import (common,
                      helpers,
                      message)
@@ -51,7 +50,7 @@ from pymongo.results import (BulkWriteResult,
                              InsertOneResult,
                              InsertManyResult,
                              UpdateResult)
-from pymongo.typings import CollationIn, DocumentIn, Pipeline
+from pymongo.typings import CollationIn, DocumentIn, DocumentType, Pipeline
 from pymongo.write_concern import WriteConcern
 
 
@@ -75,9 +74,6 @@ class ReturnDocument(object):
     """
     AFTER: bool = True
     """Return the updated/replaced or inserted document."""
-
-
-DocumentType = TypeVar('DocumentType', Mapping[str, Any], MutableMapping[str, Any])
 
 
 if TYPE_CHECKING:
@@ -1850,7 +1846,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
                           write_concern=self._write_concern_for(session),
                           session=session)
 
-    def list_indexes(self, session: Optional[ClientSession] = None) -> CommandCursor[DocumentType]:
+    def list_indexes(self, session: Optional[ClientSession] = None) -> CommandCursor[MutableMapping[str, Any]]:
         """Get a cursor over the index documents for this collection.
 
           >>> for index in db.test.list_indexes():
@@ -1899,7 +1895,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
         return self.__database.client._retryable_read(
             _cmd, read_pref, session)
 
-    def index_information(self, session: Optional[ClientSession] = None) -> Dict[str, Any]:
+    def index_information(self, session: Optional[ClientSession] = None) -> MutableMapping[str, Any]:
         """Get information on this collection's indexes.
 
         Returns a dictionary where the keys are index names (as
@@ -1933,7 +1929,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
             info[index.pop("name")] = index
         return info
 
-    def options(self, session: Optional[ClientSession] = None) -> Dict[str, Any]:
+    def options(self, session: Optional[ClientSession] = None) -> MutableMapping[str, Any]:
         """Get the options set on this collection.
 
         Returns a dictionary of options and their values - see
@@ -2212,7 +2208,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
             batch_size, collation, start_at_operation_time, session,
             start_after)
 
-    def rename(self, new_name: str, session: Optional[ClientSession] = None, **kwargs: Any) -> Dict[str, Any]:
+    def rename(self, new_name: str, session: Optional[ClientSession] = None, **kwargs: Any) -> MutableMapping[str, Any]:
         """Rename this collection.
 
         If operating in auth mode, client must be authorized as an
