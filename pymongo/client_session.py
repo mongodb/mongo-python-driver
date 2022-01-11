@@ -455,7 +455,7 @@ class ClientSession(Generic[DocumentType]):
     :meth:`~pymongo.mongo_client.MongoClient.start_session`.
     """
     def __init__(
-        self, client: "MongoClient[DocumentType]", server_session: Any, options: SessionOptions, authset: Any, implicit: bool
+        self, client: "MongoClient[DocumentType]", server_session: Any, options: SessionOptions, implicit: bool
     ) -> None:
         # A MongoClient, a _ServerSession, a SessionOptions, and a set.
         self._client: MongoClient[DocumentType] = client

@@ -101,6 +101,12 @@ class UpdateResult(_WriteResult, Generic[DocumentType]):
 
     __slots__ = ("__raw_result", "__acknowledged")
 
+    # Workaround for Python 3.6 conflict with Generic type
+    # ValueError: '_UpdateResult__raw_result' in __slots__ conflicts with class variable
+    @classmethod
+    def __new__(cls, *args: Any, **kwargs: Any) -> "UpdateResult":
+        return _WriteResult.__new__(*args, **kwargs)
+
     def __init__(self, raw_result: DocumentType, acknowledged: bool) -> None:
         self.__raw_result: DocumentType = raw_result
         super(UpdateResult, self).__init__(acknowledged)
