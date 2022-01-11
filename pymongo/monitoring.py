@@ -182,7 +182,7 @@ will not add that listener to existing client instances.
 
 from collections import abc, namedtuple
 import datetime
-from typing import Any, Dict, Mapping, Optional, Tuple
+from typing import Any, Dict, Mapping, Optional
 from bson.objectid import ObjectId
 
 from pymongo.hello import Hello, HelloCompat

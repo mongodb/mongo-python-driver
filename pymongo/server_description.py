@@ -15,10 +15,13 @@
 """Represent one server the driver is connected to."""
 
 import time
+from typing import Any, Mapping, Optional, Set, Tuple
 
 from bson import EPOCH_NAIVE
+from bson.objectid import ObjectId
 from pymongo.server_type import SERVER_TYPE
 from pymongo.hello import Hello
+from pymongo.typings import Address
 
 
 class ServerDescription(object):
@@ -41,11 +44,12 @@ class ServerDescription(object):
         '_topology_version')
 
     def __init__(
-            self,
-            address,
-            hello=None,
-            round_trip_time=None,
-            error=None):
+        self,
+        address: Address,
+        hello: Optional[Hello] = None,
+        round_trip_time: Optional[float] = None,
+        error: Optional[Exception] = None,
+    ) -> None:
         self._address = address
         if not hello:
             hello = Hello({})
@@ -83,17 +87,17 @@ class ServerDescription(object):
             self._last_write_date = None
 
     @property
-    def address(self):
+    def address(self) -> Address:
         """The address (host, port) of this server."""
         return self._address
 
     @property
-    def server_type(self):
+    def server_type(self) -> int:
         """The type of this server."""
         return self._server_type
 
     @property
-    def server_type_name(self):
+    def server_type_name(self) -> str:
         """The server type as a human readable string.
 
         .. versionadded:: 3.4
@@ -101,78 +105,78 @@ class ServerDescription(object):
         return SERVER_TYPE._fields[self._server_type]
 
     @property
-    def all_hosts(self):
+    def all_hosts(self) -> Set[Tuple[str, int]]:
         """List of hosts, passives, and arbiters known to this server."""
         return self._all_hosts
 
     @property
-    def tags(self):
+    def tags(self) -> Mapping[str, Any]:
         return self._tags
 
     @property
-    def replica_set_name(self):
+    def replica_set_name(self) -> Optional[str]:
         """Replica set name or None."""
         return self._replica_set_name
 
     @property
-    def primary(self):
+    def primary(self) -> Optional[Tuple[str, int]]:
         """This server's opinion about who the primary is, or None."""
         return self._primary
 
     @property
-    def max_bson_size(self):
+    def max_bson_size(self) -> int:
         return self._max_bson_size
 
     @property
-    def max_message_size(self):
+    def max_message_size(self) -> int:
         return self._max_message_size
 
     @property
-    def max_write_batch_size(self):
+    def max_write_batch_size(self) -> int:
         return self._max_write_batch_size
 
     @property
-    def min_wire_version(self):
+    def min_wire_version(self) -> int:
         return self._min_wire_version
 
     @property
-    def max_wire_version(self):
+    def max_wire_version(self) -> int:
         return self._max_wire_version
 
     @property
-    def set_version(self):
+    def set_version(self) -> Optional[int]:
         return self._set_version
 
     @property
-    def election_id(self):
+    def election_id(self) -> Optional[ObjectId]:
         return self._election_id
 
     @property
-    def cluster_time(self):
+    def cluster_time(self)-> Optional[Mapping[str, Any]]:
         return self._cluster_time
 
     @property
-    def election_tuple(self):
+    def election_tuple(self) -> Tuple[Optional[int], Optional[ObjectId]]:
         return self._set_version, self._election_id
 
     @property
-    def me(self):
+    def me(self) -> Optional[Tuple[str, int]]:
         return self._me
 
     @property
-    def logical_session_timeout_minutes(self):
+    def logical_session_timeout_minutes(self) -> Optional[int]:
         return self._ls_timeout_minutes
 
     @property
-    def last_write_date(self):
+    def last_write_date(self) -> Optional[float]:
         return self._last_write_date
 
     @property
-    def last_update_time(self):
+    def last_update_time(self) -> float:
         return self._last_update_time
 
     @property
-    def round_trip_time(self):
+    def round_trip_time(self) -> Optional[float]:
         """The current average latency or None."""
         # This override is for unittesting only!
         if self._address in self._host_to_round_trip_time:
@@ -181,28 +185,28 @@ class ServerDescription(object):
         return self._round_trip_time
 
     @property
-    def error(self):
+    def error(self) -> Optional[Exception]:
         """The last error attempting to connect to the server, or None."""
         return self._error
 
     @property
-    def is_writable(self):
+    def is_writable(self) -> bool:
         return self._is_writable
 
     @property
-    def is_readable(self):
+    def is_readable(self) -> bool:
         return self._is_readable
 
     @property
-    def mongos(self):
+    def mongos(self) -> bool:
         return self._server_type == SERVER_TYPE.Mongos
 
     @property
-    def is_server_type_known(self):
+    def is_server_type_known(self) -> bool:
         return self.server_type != SERVER_TYPE.Unknown
 
     @property
-    def retryable_writes_supported(self):
+    def retryable_writes_supported(self) -> bool:
         """Checks if this server supports retryable writes."""
         return ((
             self._ls_timeout_minutes is not None and
@@ -210,20 +214,20 @@ class ServerDescription(object):
                 or self._server_type == SERVER_TYPE.LoadBalancer)
 
     @property
-    def retryable_reads_supported(self):
+    def retryable_reads_supported(self) -> bool:
         """Checks if this server supports retryable writes."""
         return self._max_wire_version >= 6
 
     @property
-    def topology_version(self):
+    def topology_version(self) -> Optional[Mapping[str, Any]]:
         return self._topology_version
 
-    def to_unknown(self, error=None):
+    def to_unknown(self,  error: Optional[Exception] = None) -> "ServerDescription":
         unknown = ServerDescription(self.address, error=error)
         unknown._topology_version = self.topology_version
         return unknown
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, ServerDescription):
             return ((self._address == other.address) and
                     (self._server_type == other.server_type) and
@@ -242,7 +246,7 @@ class ServerDescription(object):
 
         return NotImplemented
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other
 
     def __repr__(self):

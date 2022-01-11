@@ -15,7 +15,7 @@
 """Support for explicit client-side field level encryption."""
 
 import contextlib
-from typing import Any, List, Mapping, Optional, Sequence
+from typing import Any, Mapping, Optional, Sequence
 import uuid
 import weakref
 

@@ -32,7 +32,6 @@ from pymongo.database import Database
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.read_preferences import _ServerMode
 from pymongo.client_session import ClientSession
-from pymongo.typings import DocumentOut
 from pymongo.write_concern import WriteConcern
 
 from bson.objectid import ObjectId
@@ -290,7 +289,7 @@ class GridFS(object):
             name for name in self.__files.distinct("filename", session=session)
             if name is not None]
 
-    def find_one(self, filter:  Optional[Any] = None, session: Optional[ClientSession] = None, *args: Any, **kwargs: Any) -> Optional[DocumentOut]:
+    def find_one(self, filter:  Optional[Any] = None, session: Optional[ClientSession] = None, *args: Any, **kwargs: Any) ->  Optional[GridOut]:
         """Get a single file from gridfs.
 
         All arguments to :meth:`find` are also valid arguments for

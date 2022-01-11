@@ -133,7 +133,7 @@ Classes
 
 import collections
 import time
-from typing import TYPE_CHECKING, Any, Callable, ContextManager, Generic, Mapping, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Callable, ContextManager, Generic, Mapping, Optional, TypeVar
 import uuid
 
 from collections.abc import Mapping as _Mapping

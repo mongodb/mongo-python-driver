@@ -15,7 +15,7 @@
 """Watch changes on a collection, a database, or the entire cluster."""
 
 import copy
-from typing import Any, Generic, Iterable, Mapping, Optional, Sequence, Union, cast,  TYPE_CHECKING
+from typing import Any, Generic, Iterable, Mapping, Optional, Union, cast,  TYPE_CHECKING
 
 from bson import _bson_to_dict
 from bson.raw_bson import RawBSONDocument

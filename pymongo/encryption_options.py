@@ -15,7 +15,7 @@
 """Support for automatic client-side field level encryption."""
 
 import copy
-from typing import Any, List, Mapping, Optional, Sequence, TYPE_CHECKING
+from typing import Any, Mapping, Optional, Sequence, TYPE_CHECKING
 
 try:
     import pymongocrypt  # type: ignore

@@ -15,7 +15,7 @@
 """Utilities for choosing which member of a replica set to read from."""
 
 from collections import abc
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+from typing import Any, Dict, Mapping, Optional, Sequence
 
 from pymongo import max_staleness_selectors
 from pymongo.errors import ConfigurationError
