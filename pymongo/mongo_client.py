@@ -816,7 +816,7 @@ class MongoClient(common.BaseObject, Generic[DocumentType]):
         start_at_operation_time: Optional[Mapping[str, Any]] = None,
         session: Optional[client_session.ClientSession] = None,
         start_after: Optional[Mapping[str, Any]] = None,
-    ) -> ChangeStream:
+    ) -> ChangeStream[DocumentType]:
         """Watch changes on this cluster.
 
         Performs an aggregation with an implicit initial ``$changeStream``
@@ -1382,7 +1382,7 @@ class MongoClient(common.BaseObject, Generic[DocumentType]):
     def __repr__(self):
         return ("MongoClient(%s)" % (self._repr_helper(),))
 
-    def __getattr__(self, name: str) -> database.Database:
+    def __getattr__(self, name: str) -> database.Database[DocumentType]:
         """Get a database by name.
 
         Raises :class:`~pymongo.errors.InvalidName` if an invalid
@@ -1397,7 +1397,7 @@ class MongoClient(common.BaseObject, Generic[DocumentType]):
                 " database, use client[%r]." % (name, name, name))
         return self.__getitem__(name)
 
-    def __getitem__(self, name: str) -> database.Database:
+    def __getitem__(self, name: str) -> database.Database[DocumentType]:
         """Get a database by name.
 
         Raises :class:`~pymongo.errors.InvalidName` if an invalid
@@ -1558,7 +1558,7 @@ class MongoClient(common.BaseObject, Generic[DocumentType]):
         causal_consistency: Optional[bool] = None,
         default_transaction_options: Optional[client_session.TransactionOptions] = None,
         snapshot: Optional[bool] = None,
-    ) -> client_session.ClientSession:
+    ) -> client_session.ClientSession[DocumentType]:
         """Start a logical session.
 
         This method takes the same parameters as
@@ -1666,7 +1666,7 @@ class MongoClient(common.BaseObject, Generic[DocumentType]):
     def list_databases(self,
         session: Optional[client_session.ClientSession] = None,
         **kwargs: Any
-    ) -> CommandCursor:
+    ) -> CommandCursor[DocumentType]:
         """Get a cursor over the databases of the connected server.
 
         :Parameters:
