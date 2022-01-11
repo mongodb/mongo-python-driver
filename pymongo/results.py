@@ -100,9 +100,6 @@ class UpdateResult(_WriteResult):
 
     __slots__ = ("__raw_result", "__acknowledged")
 
-    # Workaround for Python 3.6 conflict with Generic type
-    # ValueError: '_UpdateResult__raw_result' in __slots__ conflicts with class variable
-
     def __init__(self, raw_result: Mapping[str, Any], acknowledged: bool) -> None:
         self.__raw_result = raw_result
         super(UpdateResult, self).__init__(acknowledged)

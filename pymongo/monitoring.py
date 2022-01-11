@@ -182,14 +182,17 @@ will not add that listener to existing client instances.
 
 from collections import abc, namedtuple
 import datetime
-from typing import Any, Dict, Mapping, Optional
+from typing import TYPE_CHECKING, Any, Dict, Mapping, Optional
 from bson.objectid import ObjectId
 
 from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers import _handle_exception
-from pymongo.server_description import ServerDescription
-from pymongo.topology_description import TopologyDescription
 from pymongo.typings import Address
+
+
+if TYPE_CHECKING:
+    from pymongo.server_description import ServerDescription
+    from pymongo.topology_description import TopologyDescription
 
 
 _Listeners = namedtuple('_Listeners',
@@ -1082,19 +1085,19 @@ class ServerDescriptionChangedEvent(_ServerEvent):
 
     __slots__ = ('__previous_description', '__new_description')
 
-    def __init__(self, previous_description: ServerDescription, new_description: ServerDescription, *args: Any) -> None:
+    def __init__(self, previous_description: "ServerDescription", new_description: "ServerDescription", *args: Any) -> None:
         super(ServerDescriptionChangedEvent, self).__init__(*args)
         self.__previous_description = previous_description
         self.__new_description = new_description
 
     @property
-    def previous_description(self) -> ServerDescription:
+    def previous_description(self) -> "ServerDescription":
         """The previous
         :class:`~pymongo.server_description.ServerDescription`."""
         return self.__previous_description
 
     @property
-    def new_description(self) -> ServerDescription:
+    def new_description(self) -> "ServerDescription":
         """The new
         :class:`~pymongo.server_description.ServerDescription`."""
         return self.__new_description
@@ -1149,19 +1152,19 @@ class TopologyDescriptionChangedEvent(TopologyEvent):
 
     __slots__ = ('__previous_description', '__new_description')
 
-    def __init__(self, previous_description: TopologyDescription, new_description: TopologyDescription, *args: Any) -> None:
+    def __init__(self, previous_description: "TopologyDescription", new_description: "TopologyDescription", *args: Any) -> None:
         super(TopologyDescriptionChangedEvent, self).__init__(*args)
         self.__previous_description = previous_description
         self.__new_description = new_description
 
     @property
-    def previous_description(self) -> TopologyDescription:
+    def previous_description(self) -> "TopologyDescription":
         """The previous
         :class:`~pymongo.topology_description.TopologyDescription`."""
         return self.__previous_description
 
     @property
-    def new_description(self) -> TopologyDescription:
+    def new_description(self) -> "TopologyDescription":
         """The new
         :class:`~pymongo.topology_description.TopologyDescription`."""
         return self.__new_description

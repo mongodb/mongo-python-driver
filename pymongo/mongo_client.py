@@ -33,7 +33,7 @@ access:
 
 import contextlib
 import threading
-from typing import Any, Dict, FrozenSet, Generic, List, Mapping, Optional, Sequence, Set, Tuple, Type, Union, cast
+from typing import TYPE_CHECKING, Any, Dict, FrozenSet, Generic, List, Mapping, Optional, Sequence, Set, Tuple, Type, Union, cast
 import weakref
 
 from collections import defaultdict
@@ -50,7 +50,6 @@ from pymongo import (common,
                      client_session)
 from pymongo.change_stream import ClusterChangeStream, ChangeStream
 from pymongo.client_options import ClientOptions
-from pymongo.client_session import ClientSession, TransactionOptions
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (AutoReconnect,
                             BulkWriteError,
@@ -62,7 +61,6 @@ from pymongo.errors import (AutoReconnect,
                             PyMongoError,
                             ServerSelectionTimeoutError)
 from pymongo.pool import ConnectionClosedReason
-from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
@@ -76,6 +74,10 @@ from pymongo.uri_parser import (_handle_option_deprecations,
                                 _normalize_options,
                                 _check_options)
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
+
+
+if TYPE_CHECKING:
+    from pymongo.read_concern import ReadConcern
 
 
 class MongoClient(common.BaseObject, Generic[DocumentType]):
@@ -812,7 +814,7 @@ class MongoClient(common.BaseObject, Generic[DocumentType]):
         batch_size: Optional[int] = None,
         collation: Optional[CollationIn] = None,
         start_at_operation_time: Optional[Mapping[str, Any]] = None,
-        session: Optional[ClientSession] = None,
+        session: Optional[client_session.ClientSession] = None,
         start_after: Optional[Mapping[str, Any]] = None,
     ) -> ChangeStream:
         """Watch changes on this cluster.
@@ -1554,9 +1556,9 @@ class MongoClient(common.BaseObject, Generic[DocumentType]):
 
     def start_session(self,
         causal_consistency: Optional[bool] = None,
-        default_transaction_options: Optional[TransactionOptions] = None,
+        default_transaction_options: Optional[client_session.TransactionOptions] = None,
         snapshot: Optional[bool] = None,
-    ) -> ClientSession:
+    ) -> client_session.ClientSession:
         """Start a logical session.
 
         This method takes the same parameters as
@@ -1646,7 +1648,7 @@ class MongoClient(common.BaseObject, Generic[DocumentType]):
             session._process_response(reply)
 
     def server_info(self,
-      session: Optional[ClientSession] = None
+      session: Optional[client_session.ClientSession] = None
     ) -> Mapping[str, Any]:
         """Get information about the MongoDB server we're connected to.
 
@@ -1662,7 +1664,7 @@ class MongoClient(common.BaseObject, Generic[DocumentType]):
                                   session=session)
 
     def list_databases(self,
-        session: Optional[ClientSession] = None,
+        session: Optional[client_session.ClientSession] = None,
         **kwargs: Any
     ) -> CommandCursor:
         """Get a cursor over the databases of the connected server.
@@ -1694,7 +1696,7 @@ class MongoClient(common.BaseObject, Generic[DocumentType]):
         return CommandCursor(admin["$cmd"], cursor, None)
 
     def list_database_names(self,
-        session: Optional[ClientSession] = None
+        session: Optional[client_session.ClientSession] = None
     ) -> List[str]:
         """Get a list of the names of all databases on the connected server.
 
@@ -1709,7 +1711,7 @@ class MongoClient(common.BaseObject, Generic[DocumentType]):
 
     def drop_database(self,
         name_or_database: Union[str, database.Database],
-        session: Optional[ClientSession] = None
+        session: Optional[client_session.ClientSession] = None
     ) -> None:
         """Drop a database.
 
@@ -1757,7 +1759,7 @@ class MongoClient(common.BaseObject, Generic[DocumentType]):
         codec_options: Optional[CodecOptions] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional[ReadConcern] = None,
+        read_concern: Optional["ReadConcern"] = None,
     ) -> database.Database[DocumentType]:
         """Get the database named in the MongoDB connection URI.
 
@@ -1813,7 +1815,7 @@ class MongoClient(common.BaseObject, Generic[DocumentType]):
         codec_options: Optional[CodecOptions] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional[ReadConcern] = None,
+        read_concern: Optional["ReadConcern"] = None,
     ) -> database.Database[DocumentType]:
         """Get a :class:`~pymongo.database.Database` with the given name and
         options.
