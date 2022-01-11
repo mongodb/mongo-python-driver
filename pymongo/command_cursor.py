@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     from pymongo.collection import Collection
 
 
-class CommandCursor(object, Generic[DocumentType]):
+class CommandCursor(Generic[DocumentType]):
     """A cursor / iterator over command cursors."""
     _getmore_class = _GetMore
 

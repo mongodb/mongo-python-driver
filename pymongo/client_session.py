@@ -442,7 +442,7 @@ if TYPE_CHECKING:
     from pymongo.mongo_client import MongoClient
 
 
-class ClientSession(object, Generic[DocumentType]):
+class ClientSession(Generic[DocumentType]):
     """A session for ordering sequential operations.
 
     :class:`ClientSession` instances are **not thread-safe or fork-safe**.

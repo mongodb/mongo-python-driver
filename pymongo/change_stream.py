@@ -65,7 +65,7 @@ if TYPE_CHECKING:
     from pymongo.mongo_client import MongoClient
 
 
-class ChangeStream(object, Generic[DocumentType]):
+class ChangeStream(Generic[DocumentType]):
     """The internal abstract base class for change stream cursors.
 
     Should not be called directly by application developers. Use

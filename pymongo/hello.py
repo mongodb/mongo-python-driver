@@ -61,7 +61,7 @@ def _get_server_type(doc):
         return SERVER_TYPE.Standalone
 
 
-class Hello(object, Generic[DocumentType]):
+class Hello(Generic[DocumentType]):
     """Parse a hello response from the server.
 
     .. versionadded:: 3.12

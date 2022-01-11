@@ -136,7 +136,7 @@ if TYPE_CHECKING:
     from pymongo.client_session import ClientSession
 
 
-class Cursor(object, Generic[DocumentType]):
+class Cursor(Generic[DocumentType]):
     """A cursor / iterator over Mongo query results.
     """
     _query_class = _Query
