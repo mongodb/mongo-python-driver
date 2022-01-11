@@ -189,7 +189,7 @@ class Database(common.BaseObject, Generic[DocumentType]):
     def __repr__(self):
         return "Database(%r, %r)" % (self.__client, self.__name)
 
-    def __getattr__(self, name: str) -> Collection:
+    def __getattr__(self, name: str) -> Collection[DocumentType]:
         """Get a collection of this database by name.
 
         Raises InvalidName if an invalid collection name is used.
@@ -203,7 +203,7 @@ class Database(common.BaseObject, Generic[DocumentType]):
                 " collection, use database[%r]." % (name, name, name))
         return self.__getitem__(name)
 
-    def __getitem__(self, name: str) -> "Collection":
+    def __getitem__(self, name: str) -> "Collection[DocumentType]":
         """Get a collection of this database by name.
 
         Raises InvalidName if an invalid collection name is used.
@@ -219,7 +219,7 @@ class Database(common.BaseObject, Generic[DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
-    ) -> Collection:
+    ) -> Collection[DocumentType]:
         """Get a :class:`~pymongo.collection.Collection` with the given name
         and options.
 
@@ -269,7 +269,7 @@ class Database(common.BaseObject, Generic[DocumentType]):
         read_concern: Optional["ReadConcern"] = None,
         session: Optional["ClientSession"] = None,
         **kwargs: Any,
-    ) -> Collection:
+    ) -> Collection[DocumentType]:
         """Create a new :class:`~pymongo.collection.Collection` in this
         database.
 
@@ -363,7 +363,7 @@ class Database(common.BaseObject, Generic[DocumentType]):
       pipeline: Pipeline,
       session: Optional["ClientSession"] = None,
       **kwargs: Any
-    ) -> CommandCursor:
+    ) -> CommandCursor[DocumentType]:
         """Perform a database-level aggregation.
 
         See the `aggregation pipeline`_ documentation for a list of stages
@@ -443,7 +443,7 @@ class Database(common.BaseObject, Generic[DocumentType]):
         start_at_operation_time: Optional[Mapping[str, Any]] = None,
         session: Optional["ClientSession"] = None,
         start_after: Optional[Mapping[str, Any]] = None,
-    ) -> DataChangeStream:
+    ) -> DatabaseChangeStream[DocumentType]:
         """Watch changes on this database.
 
         Performs an aggregation with an implicit initial ``$changeStream``
@@ -700,7 +700,7 @@ class Database(common.BaseObject, Generic[DocumentType]):
       session: Optional["ClientSession"] = None,
       filter: Optional[Mapping[str, Any]] = None,
       **kwargs: Any
-    ) -> CommandCursor:
+    ) -> CommandCursor[DocumentType]:
         """Get a cursor over the collections of this database.
 
         :Parameters:
