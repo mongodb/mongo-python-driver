@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Operation class definitions."""
-from typing import Any, Dict, Mapping, Optional, Tuple, Union
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
 
 from pymongo import helpers
 from pymongo.common import validate_boolean, validate_is_mapping, validate_list

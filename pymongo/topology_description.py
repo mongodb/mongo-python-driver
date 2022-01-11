@@ -95,7 +95,7 @@ class TopologyDescription(object):
                  for s in readable_servers):
             self._ls_timeout_minutes = None
         else:
-            self._ls_timeout_minutes = min(s.logical_session_timeout_minutes
+            self._ls_timeout_minutes = min(s.logical_session_timeout_minutes  # type: ignore
                                            for s in readable_servers)
 
     def _init_incompatible_err(self):

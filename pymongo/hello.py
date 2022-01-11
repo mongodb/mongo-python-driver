@@ -71,7 +71,7 @@ class Hello(object, Generic[DocumentType]):
 
     def __init__(self, doc: DocumentType, awaitable: bool = False) -> None:
         self._server_type = _get_server_type(doc)
-        self._doc = doc
+        self._doc: DocumentType = doc
         self._is_writable = self._server_type in (
             SERVER_TYPE.RSPrimary,
             SERVER_TYPE.Standalone,
@@ -170,6 +170,7 @@ class Hello(object, Generic[DocumentType]):
         me = self._doc.get('me')
         if me:
             return common.clean_node(me)
+        return None
 
     @property
     def last_write_date(self) -> Optional[datetime.datetime]:

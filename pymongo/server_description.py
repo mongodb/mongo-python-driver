@@ -15,7 +15,7 @@
 """Represent one server the driver is connected to."""
 
 import time
-from typing import Any, Mapping, Optional, Set, Tuple
+from typing import Any, Mapping, Optional, Set, Tuple, cast
 
 from bson import EPOCH_NAIVE
 from bson.objectid import ObjectId
@@ -75,10 +75,11 @@ class ServerDescription(object):
         self._last_update_time = time.monotonic()
         self._error = error
         self._topology_version = hello.topology_version
-        if error:
-            if hasattr(error, 'details') and isinstance(error.details, dict):
-                self._topology_version = error.details.get('topologyVersion')
+        if error and hasattr(error, 'details'):
+            if isinstance(cast(Any, error).details, dict):
+                self._topology_version = cast(Any, error).details.get('topologyVersion')
 
+        self._last_write_date: Optional[float]
         if hello.last_write_date:
             # Convert from datetime to seconds.
             delta = hello.last_write_date - EPOCH_NAIVE
