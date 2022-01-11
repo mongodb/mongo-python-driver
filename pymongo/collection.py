@@ -17,8 +17,6 @@
 from collections import abc
 from typing import Any, Generic, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple, Union, TYPE_CHECKING
 
-from dns.query import send_udp
-
 from bson.code import Code
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument

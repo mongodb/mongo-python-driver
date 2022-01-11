@@ -33,7 +33,7 @@ access:
 
 import contextlib
 import threading
-from typing import Any, FrozenSet, Generic, List, Mapping, Optional, Sequence, Set, Tuple, Type, Union, cast
+from typing import Any, Dict, FrozenSet, Generic, List, Mapping, Optional, Sequence, Set, Tuple, Type, Union, cast
 import weakref
 
 from collections import defaultdict
@@ -625,7 +625,7 @@ class MongoClient(common.BaseObject, Generic[DocumentType]):
 
                client.__my_database__
         """
-        self.__init_kwargs: dict[str, Any] = {'host': host,
+        self.__init_kwargs: Dict[str, Any] = {'host': host,
                               'port': port,
                               'document_class': document_class,
                               'tz_aware': tz_aware,
