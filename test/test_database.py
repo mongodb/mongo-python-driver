@@ -247,10 +247,10 @@ class TestDatabase(IntegrationTest):
             self.assertTrue(False)
 
         colls2 = db.list_collections(filter={"name": {"$regex": "^test$"}})
-        self.assertEqual(1, len(list(colls)))
+        self.assertEqual(1, len(list(colls2)))
 
         colls3 = db.list_collections(filter={"name": {"$regex": "^test.mike$"}})
-        self.assertEqual(1, len(list(colls)))
+        self.assertEqual(1, len(list(colls3)))
 
         db.drop_collection("test")
 
@@ -630,7 +630,7 @@ class TestDatabase(IntegrationTest):
                    'read_preference': ReadPreference.PRIMARY,
                    'write_concern': WriteConcern(w=1),
                    'read_concern': ReadConcern(level="local")}
-        db2 = db1.with_options(**newopts)  # type: ignore
+        db2 = db1.with_options(**newopts)
         for opt in newopts:
             self.assertEqual(
                 getattr(db2, opt), newopts.get(opt, getattr(db1, opt)))
