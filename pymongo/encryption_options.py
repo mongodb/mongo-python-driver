@@ -38,7 +38,7 @@ class AutoEncryptionOpts(object):
         key_vault_namespace: str,
         key_vault_client: Optional["MongoClient"] = None,
         schema_map: Optional[Mapping[str, Any]] = None,
-        bypass_auto_encryption: Optional[bool] = None,
+        bypass_auto_encryption: Optional[bool] = False,
         mongocryptd_uri: str = 'mongodb://localhost:27020',
         mongocryptd_bypass_spawn: bool = False,
         mongocryptd_spawn_path: str = 'mongocryptd',
