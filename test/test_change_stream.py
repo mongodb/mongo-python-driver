@@ -1045,6 +1045,8 @@ class TestCollectionChangeStream(TestChangeStreamBase, APITestsMixin,
 
 class TestAllLegacyScenarios(IntegrationTest):
     RUN_ON_LOAD_BALANCER = True
+    listener: AllowListEventListener
+    client: MongoClient
 
     @classmethod
     @client_context.require_connection
