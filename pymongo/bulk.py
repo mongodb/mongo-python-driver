@@ -411,9 +411,6 @@ class _Bulk(object):
         if self.uses_array_filters:
             raise ConfigurationError(
                 'arrayFilters is unsupported for unacknowledged writes.')
-        if self.uses_hint:
-            raise ConfigurationError(
-                'hint is unsupported for unacknowledged writes.')
         # Cannot have both unacknowledged writes and bypass document validation.
         if self.bypass_doc_val:
             raise OperationFailure("Cannot set bypass_document_validation with"
