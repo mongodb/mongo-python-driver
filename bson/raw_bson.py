@@ -107,7 +107,7 @@ class RawBSONDocument(Mapping[str, Any]):
           `document_class` must be :class:`RawBSONDocument`.
         """
         self.__raw = bson_bytes
-        self.__inflated_doc = None
+        self.__inflated_doc: Optional[Mapping[str, Any]] = None
         # Can't default codec_options to DEFAULT_RAW_BSON_OPTIONS in signature,
         # it refers to this class RawBSONDocument.
         if codec_options is None:
@@ -127,10 +127,10 @@ class RawBSONDocument(Mapping[str, Any]):
 
     def items(self) -> ItemsView[str, Any]:
         """Lazily decode and iterate elements in this document."""
-        return cast(ItemsView[str, Any], self.__inflated.items())
+        return self.__inflated.items()
 
     @property
-    def __inflated(self) -> Any:
+    def __inflated(self) -> Mapping[str, Any]:
         if self.__inflated_doc is None:
             # We already validated the object's size when this document was
             # created, so no need to do that again.
@@ -158,7 +158,7 @@ class RawBSONDocument(Mapping[str, Any]):
                 % (self.raw, self.__codec_options))
 
 
-def _inflate_bson(bson_bytes: bytes, codec_options: CodecOptions) -> Any:
+def _inflate_bson(bson_bytes: bytes, codec_options: CodecOptions) -> Mapping[Any, Any]:
     """Inflates the top level fields of a BSON document.
 
     :Parameters:

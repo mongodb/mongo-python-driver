@@ -132,7 +132,9 @@ class ObjectId(object):
             as the generation time for the resulting ObjectId.
         """
         if generation_time.utcoffset() is not None:
-            generation_time = generation_time - generation_time.utcoffset()  # type: ignore
+            offset =  generation_time.utcoffset()
+            assert offset is not None
+            generation_time = generation_time - offset
         timestamp = calendar.timegm(generation_time.timetuple())
         oid = struct.pack(
             ">I", int(timestamp)) + b"\x00\x00\x00\x00\x00\x00\x00\x00"

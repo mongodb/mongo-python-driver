@@ -55,7 +55,9 @@ class Timestamp(object):
         """
         if isinstance(time, datetime.datetime):
             if time.utcoffset() is not None:
-                time = time - time.utcoffset()  # type: ignore
+                offset = time.utcoffset()
+                assert offset is not None
+                time = time - offset
             time = int(calendar.timegm(time.timetuple()))
         if not isinstance(time, int):
             raise TypeError("time must be an instance of int")

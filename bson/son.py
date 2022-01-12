@@ -21,8 +21,9 @@ dictionary."""
 import copy
 import re
 from collections.abc import Mapping as _Mapping
-from typing import (Any, Dict, Iterable, Iterator, List, Mapping, Optional,
-                    Pattern, Tuple, Type, TypeVar, Union, cast)
+from typing import (Any, Dict, Iterable, Iterator, List, Mapping,
+                    MutableMapping, Optional, Pattern, Tuple, Type, TypeVar,
+                    Union, cast)
 
 # This sort of sucks, but seems to be as good as it gets...
 # This is essentially the same as re._pattern_type
@@ -48,7 +49,7 @@ class SON(Dict[_Key, _Value]):
         self.update(data)
         self.update(kwargs)
 
-    def __new__(cls: Type["SON[Any, Any]"], *args: Any, **kwargs: Any) -> "SON[Any, Any]":
+    def __new__(cls: Type["SON[_Key, _Value]"], *args: Any, **kwargs: Any) -> "SON[_Key, _Value]":
         instance = super(SON, cls).__new__(cls, *args, **kwargs)
         instance.__keys = []
         return instance
@@ -68,7 +69,7 @@ class SON(Dict[_Key, _Value]):
         self.__keys.remove(key)
         dict.__delitem__(self, key)
 
-    def copy(self) -> "SON[Any, Any]":
+    def copy(self) -> "SON[_Key, _Value]":
         other: SON[_Key, _Value] = SON()
         other.update(self)
         return other
@@ -98,11 +99,11 @@ class SON(Dict[_Key, _Value]):
         self.__keys = []
         super(SON, self).clear()
 
-    def setdefault(self, key: _Key, default: Optional[Union[_Value, _T]] = None) -> Union[_Value, _T, None]:  # type: ignore[override]
+    def setdefault(self, key: _Key, default: _Value) -> _Value:  # type: ignore[override]
         try:
             return self[key]
         except KeyError:
-            self[key] = cast(_Value, default)
+            self[key] = default
         return default
 
     def pop(self, key: _Key, *args: Union[_Value, _T]) -> Union[_Value, _T]:
@@ -155,7 +156,7 @@ class SON(Dict[_Key, _Value]):
         if isinstance(other, SON):
             return len(self) == len(other) and list(self.items()) == \
                    list(other.items())
-        return cast(bool, self.to_dict() == other)
+        return  self.to_dict() == other
 
     def __ne__(self, other: Any) -> bool:
         return not self == other
@@ -170,26 +171,28 @@ class SON(Dict[_Key, _Value]):
         recursive.
         """
 
-        def transform_value(value: Union[List[_Value], Dict[_Key, _Value]]) -> Union[List[_Value], Dict[_Key, _Value]]:
+        def transform_value(value: Any) -> Any:
             if isinstance(value, list):
-                return [transform_value(v) for v in value]  # type: ignore
+                return [transform_value(v) for v in value]
             elif isinstance(value, _Mapping):
                 return dict([
-                    (k, transform_value(v))  # type: ignore
+                    (k, transform_value(v))
                     for k, v in value.items()])
             else:
                 return value
 
-        return cast(Dict[_Key, _Value], transform_value(dict(self)))
+        return transform_value(dict(self))
 
-    def __deepcopy__(self, memo: Any) -> "SON[Any, Any]":
+    def __deepcopy__(self, memo: MutableMapping[int, "SON[_Key, _Value]"]) -> "SON[_Key, _Value]":
         out: SON[_Key, _Value] = SON()
         val_id = id(self)
         if val_id in memo:
-            return cast(SON[Any, Any], memo.get(val_id))
+            value = memo.get(val_id)
+            assert value is not None
+            return value
         memo[val_id] = out
         for k, v in self.items():
             if not isinstance(v, RE_TYPE):
-                v = copy.deepcopy(v, memo)
+                v = copy.deepcopy(v, dict(memo))
             out[k] = v
         return out

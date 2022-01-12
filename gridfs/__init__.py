@@ -675,7 +675,7 @@ class GridFSBucket(object):
         """
         with self.open_upload_stream_with_id(
                 file_id, filename, chunk_size_bytes, metadata,
-                session=session) as gin:  # type: GridIn
+                session=session) as gin:
             gin.write(source)
 
     def open_download_stream(self, file_id: Any, session: Optional[ClientSession] = None) -> GridOut:
@@ -817,7 +817,7 @@ class GridFSBucket(object):
         """
         return GridOutCursor(self._collection, *args, **kwargs)
 
-    def open_download_stream_by_name(self, filename: str, revision: Optional[int] = -1, session: Optional[ClientSession] = None) -> GridOut:
+    def open_download_stream_by_name(self, filename: str, revision: int = -1, session: Optional[ClientSession] = None) -> GridOut:
         """Opens a Stream from which the application can read the contents of
         `filename` and optional `revision`.
 
@@ -859,8 +859,6 @@ class GridFSBucket(object):
         query = {"filename": filename}
         _disallow_transactions(session)
         cursor = self._files.find(query, session=session)
-        if revision is None:
-          revision = -1
         if revision < 0:
             skip = abs(revision) - 1
             cursor.limit(-1).skip(skip).sort("uploadDate", DESCENDING)
@@ -875,7 +873,7 @@ class GridFSBucket(object):
                 "no version %d for filename %r" % (revision, filename))
 
     def download_to_stream_by_name(self, filename: str, destination: Any,
-                                   revision: Optional[int] = -1,
+                                   revision: int = -1,
                                    session: Optional[ClientSession] = None) -> None:
         """Write the contents of `filename` (with optional `revision`) to
         `destination`.

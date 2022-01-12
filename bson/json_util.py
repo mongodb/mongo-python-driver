@@ -789,7 +789,8 @@ def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
             if not obj.tzinfo:
                 obj = obj.replace(tzinfo=utc)
             if obj >= EPOCH_AWARE:
-                off = obj.tzinfo.utcoffset(obj)  # type: ignore
+                assert obj.tzinfo is not None
+                off = obj.tzinfo.utcoffset(obj)
                 if (off.days, off.seconds, off.microseconds) == (0, 0, 0):  # type: ignore
                     tz_string = 'Z'
                 else:

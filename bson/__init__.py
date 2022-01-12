@@ -57,17 +57,16 @@ bytes [#bytes]_                          binary         both
 import calendar
 import datetime
 import itertools
-import platform
 import re
 import struct
 import sys
 import uuid
 from codecs import utf_8_decode as _utf_8_decode  # type: ignore
-from codecs import utf_8_encode as _utf_8_encode
+from codecs import utf_8_encode as _utf_8_encode  # type: ignore
 from collections import abc as _abc
 from typing import (TYPE_CHECKING, Any, BinaryIO, Callable, Dict, Generator,
                     Iterator, List, Mapping, MutableMapping, NoReturn,
-                    Sequence, Tuple, Type, Union, cast)
+                    Sequence, Tuple, Type, TypeVar, Union, cast)
 
 from bson.binary import (ALL_UUID_SUBTYPES, CSHARP_LEGACY, JAVA_LEGACY,
                          OLD_UUID_SUBTYPE, STANDARD, UUID_SUBTYPE, Binary,
@@ -413,7 +412,10 @@ else:
         return element_name, value, position
 
 
-def _raw_to_dict(data: Any, position: int, obj_end: int, opts: Any, result: Any) -> Any:
+_T = TypeVar("_T", bound=MutableMapping[Any, Any])
+
+
+def _raw_to_dict(data: Any, position: int, obj_end: int, opts: Any, result: _T) -> _T:
     data, view = get_data_and_view(data)
     return _elements_to_dict(data, view, position, obj_end, opts, result)
 
@@ -1034,7 +1036,7 @@ def _decode_all_selective(data: Any, codec_options: CodecOptions, fields: Any) -
 
     # Decode documents for internal use.
     from bson.raw_bson import RawBSONDocument
-    internal_codec_options: CodecOptions = codec_options.with_options(
+    internal_codec_options = codec_options.with_options(
         document_class=RawBSONDocument, type_registry=None)
     _doc = _bson_to_dict(data, internal_codec_options)
     return [_decode_selective(_doc, fields, codec_options,)]

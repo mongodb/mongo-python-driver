@@ -766,7 +766,7 @@ class _GridOutChunkIterator(object):
         """
         if self._cursor is None:
             self._create_cursor()
-        assert self._cursor is not None
+            assert self._cursor is not None
         try:
             return self._cursor.next()
         except CursorNotFound:
