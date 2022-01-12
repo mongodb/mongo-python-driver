@@ -27,11 +27,13 @@ from cryptography.x509 import \
     load_der_x509_certificate as _load_der_x509_certificate
 from OpenSSL import SSL as _SSL
 from OpenSSL import crypto as _crypto
-from service_identity import \
-    CertificateError as _SICertificateError  # type: ignore
+from service_identity import (  # type: ignore
+    CertificateError as _SICertificateError
+)
 from service_identity import VerificationError as _SIVerificationError
-from service_identity.pyopenssl import \
-    verify_hostname as _verify_hostname  # type: ignore
+from service_identity.pyopenssl import (  # type: ignore
+    verify_hostname as _verify_hostname
+)
 from service_identity.pyopenssl import verify_ip_address as _verify_ip_address
 
 from pymongo.errors import ConfigurationError as _ConfigurationError
@@ -129,7 +131,7 @@ class _sslConn(_SSL.Connection):
 
     def recv_into(self, *args, **kwargs):
         try:
-            return self._call(super(_sslConn, self).recv_into, *args, **kwargs) # type: ignore
+            return self._call(super(_sslConn, self).recv_into, *args, **kwargs)
         except _SSL.SysCallError as exc:
             # Suppress ragged EOFs to match the stdlib.
             if self.suppress_ragged_eofs and _ragged_eof(exc):
@@ -144,7 +146,7 @@ class _sslConn(_SSL.Connection):
         while total_sent < total_length:
             try:
                 sent = self._call(
-                    super(_sslConn, self).send, view[total_sent:], flags)  # type: ignore
+                    super(_sslConn, self).send, view[total_sent:], flags)
             # XXX: It's not clear if this can actually happen. PyOpenSSL
             # doesn't appear to have any interrupt handling, nor any interrupt
             # errors for OpenSSL connections.
@@ -293,7 +295,7 @@ class SSLContext(object):
         """Attempt to load CA certs from Windows trust store."""
         cert_store = self._ctx.get_cert_store()
         oid = _stdlibssl.Purpose.SERVER_AUTH.oid
-        for cert, encoding, trust in _stdlibssl.enum_certificates(store):  # type: ignore
+        for cert, encoding, trust in _stdlibssl.enum_certificates(store):
             if encoding == "x509_asn":
                 if trust is True or oid in trust:
                     cert_store.add_cert(

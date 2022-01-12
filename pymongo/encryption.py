@@ -22,8 +22,9 @@ from typing import Any, Mapping, Optional, Sequence
 try:
     from pymongocrypt.auto_encrypter import AutoEncrypter  # type: ignore
     from pymongocrypt.errors import MongoCryptError  # type: ignore
-    from pymongocrypt.explicit_encrypter import \
-        ExplicitEncrypter  # type: ignore
+    from pymongocrypt.explicit_encrypter import (  # type: ignore
+        ExplicitEncrypter
+    )
     from pymongocrypt.mongocrypt import MongoCryptOptions  # type: ignore
     from pymongocrypt.state_machine import MongoCryptCallback  # type: ignore
     _HAVE_PYMONGOCRYPT = True

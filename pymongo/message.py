@@ -1163,7 +1163,7 @@ class _OpReply(object):
             error_object = bson.BSON(self.documents).decode()
             # Fake the ok field if it doesn't exist.
             if hasattr(error_object, "setdefault"):
-                error_object.setdefault("ok", 0)  # type: ignore
+                error_object.setdefault("ok", 0)
             if error_object["$err"].startswith(HelloCompat.LEGACY_ERROR):
                 raise NotPrimaryError(error_object["$err"], error_object)
             elif error_object.get("code") == 50:

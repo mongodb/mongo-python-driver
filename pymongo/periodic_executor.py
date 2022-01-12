@@ -65,7 +65,7 @@ class PeriodicExecutor(object):
                 # join should not block indefinitely because there is no
                 # other work done outside the while loop in self._run.
                 try:
-                    self._thread.join()  # type: ignore
+                    self._thread.join()
                 except ReferenceError:
                     # Thread terminated.
                     pass
@@ -73,7 +73,7 @@ class PeriodicExecutor(object):
             self._stopped = False
         started = False
         try:
-            started = self._thread and self._thread.is_alive()  # type: ignore
+            started = self._thread and self._thread.is_alive()
         except ReferenceError:
             # Thread terminated.
             pass

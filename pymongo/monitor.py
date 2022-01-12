@@ -51,7 +51,7 @@ class MonitorBase(object):
             if monitor is None:
                 return False  # Stop the executor.
             if hasattr(monitor, '_run'):
-                monitor._run()  # type: ignore
+                monitor._run()
             return True
 
         executor = periodic_executor.PeriodicExecutor(

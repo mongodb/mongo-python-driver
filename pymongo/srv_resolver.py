@@ -39,7 +39,7 @@ def maybe_decode(text):
 def _resolve(*args, **kwargs):
     if hasattr(resolver, 'resolve'):
         # dnspython >= 2
-        return resolver.resolve(*args, **kwargs)  # type: ignore
+        return resolver.resolve(*args, **kwargs)
     # dnspython 1.X
     return resolver.query(*args, **kwargs)
 
