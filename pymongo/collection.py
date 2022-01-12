@@ -608,9 +608,9 @@ class Collection(common.BaseObject):
             else:
                 update_doc['arrayFilters'] = array_filters
         if hint is not None:
-            if not acknowledged:
+            if sock_info.max_wire_version < 8:
                 raise ConfigurationError(
-                    'hint is unsupported for unacknowledged writes.')
+                    'Must be connected to MongoDB 4.2+ to use hint on update commands.')
             if not isinstance(hint, str):
                 hint = helpers._index_document(hint)
             update_doc['hint'] = hint
@@ -954,9 +954,9 @@ class Collection(common.BaseObject):
             else:
                 delete_doc['collation'] = collation
         if hint is not None:
-            if not acknowledged:
+            if sock_info.max_wire_version < 9:
                 raise ConfigurationError(
-                    'hint is unsupported for unacknowledged writes.')
+                    'Must be connected to MongoDB 4.4+ to use hint on delete commands.')
             if not isinstance(hint, str):
                 hint = helpers._index_document(hint)
             delete_doc['hint'] = hint
@@ -2277,12 +2277,9 @@ class Collection(common.BaseObject):
                         'writes.')
                 cmd["arrayFilters"] = array_filters
             if hint is not None:
-                if sock_info.max_wire_version < 8:
+                if sock_info.max_wire_version < 9:
                     raise ConfigurationError(
-                        'Must be connected to MongoDB 4.2+ to use hint.')
-                if not write_concern.acknowledged:
-                    raise ConfigurationError(
-                        'hint is unsupported for unacknowledged writes.')
+                        'Must be connected to MongoDB 4.4+ to use hint on find and modify commands.')
                 cmd['hint'] = hint
             if not write_concern.is_server_default:
                 cmd['writeConcern'] = write_concern.document
