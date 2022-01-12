@@ -19,8 +19,8 @@ import calendar
 import datetime
 from typing import Any, Union
 
-from bson.tz_util import utc
 from bson._helpers import _getstate_slots, _setstate_slots
+from bson.tz_util import utc
 
 UPPERBOUND = 4294967296
 

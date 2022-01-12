@@ -15,39 +15,33 @@
 """Collection level utilities for Mongo."""
 
 from collections import abc
-from typing import Any, Generic, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple, Union, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, Generic, Iterable, List, Mapping,
+                    MutableMapping, Optional, Sequence, Tuple, Union)
 
 from bson.code import Code
+from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
-from bson.codec_options import CodecOptions
 from bson.son import SON
-from pymongo import (common,
-                     helpers,
-                     message)
+from pymongo import common, helpers, message
 from pymongo.aggregation import (_CollectionAggregationCommand,
                                  _CollectionRawAggregationCommand)
 from pymongo.bulk import _Bulk
-from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
-from pymongo.collation import validate_collation_or_none
 from pymongo.change_stream import CollectionChangeStream
+from pymongo.collation import validate_collation_or_none
+from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
 from pymongo.cursor import Cursor, RawBatchCursor
-from pymongo.errors import (ConfigurationError,
-                            InvalidName,
-                            InvalidOperation,
+from pymongo.errors import (ConfigurationError, InvalidName, InvalidOperation,
                             OperationFailure)
 from pymongo.helpers import _check_write_command_response
 from pymongo.message import _UNICODE_REPLACE_CODEC_OPTIONS
-from pymongo.operations import IndexModel, InsertOne, DeleteMany, DeleteOne, ReplaceOne, UpdateMany, UpdateOne
+from pymongo.operations import (DeleteMany, DeleteOne, IndexModel, InsertOne,
+                                ReplaceOne, UpdateMany, UpdateOne)
 from pymongo.read_preferences import ReadPreference, _ServerMode
-from pymongo.results import (BulkWriteResult,
-                             DeleteResult,
-                             InsertOneResult,
-                             InsertManyResult,
-                             UpdateResult)
+from pymongo.results import (BulkWriteResult, DeleteResult, InsertManyResult,
+                             InsertOneResult, UpdateResult)
 from pymongo.typings import CollationIn, DocumentIn, DocumentType, Pipeline
 from pymongo.write_concern import WriteConcern
-
 
 _FIND_AND_MODIFY_DOC_FIELDS = {'value': 1}
 

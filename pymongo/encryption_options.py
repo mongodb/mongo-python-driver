@@ -15,7 +15,7 @@
 """Support for automatic client-side field level encryption."""
 
 import copy
-from typing import Any, Mapping, Optional, Sequence, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence
 
 try:
     import pymongocrypt  # type: ignore
@@ -25,7 +25,6 @@ except ImportError:
 
 from pymongo.errors import ConfigurationError
 from pymongo.uri_parser import _parse_kms_tls_options
-
 
 if TYPE_CHECKING:
   from pymongo.mongo_client import MongoClient

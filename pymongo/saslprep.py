@@ -29,6 +29,7 @@ except ImportError:
 else:
     HAVE_STRINGPREP = True
     import unicodedata
+
     # RFC4013 section 2.3 prohibited output.
     _PROHIBITED = (
         # A strict reading of RFC 4013 requires table c12 here, but

@@ -15,14 +15,15 @@
 """Support for explicit client-side field level encryption."""
 
 import contextlib
-from typing import Any, Mapping, Optional, Sequence
 import uuid
 import weakref
+from typing import Any, Mapping, Optional, Sequence
 
 try:
     from pymongocrypt.auto_encrypter import AutoEncrypter  # type: ignore
     from pymongocrypt.errors import MongoCryptError  # type: ignore
-    from pymongocrypt.explicit_encrypter import ExplicitEncrypter  # type: ignore
+    from pymongocrypt.explicit_encrypter import \
+        ExplicitEncrypter  # type: ignore
     from pymongocrypt.mongocrypt import MongoCryptOptions  # type: ignore
     from pymongocrypt.state_machine import MongoCryptCallback  # type: ignore
     _HAVE_PYMONGOCRYPT = True
@@ -31,29 +32,22 @@ except ImportError:
     MongoCryptCallback = object
 
 from bson import _dict_to_bson, decode, encode
+from bson.binary import STANDARD, UUID_SUBTYPE, Binary
 from bson.codec_options import CodecOptions
-from bson.binary import (Binary,
-                         STANDARD,
-                         UUID_SUBTYPE)
 from bson.errors import BSONError
-from bson.raw_bson import (DEFAULT_RAW_BSON_OPTIONS,
-                           RawBSONDocument,
+from bson.raw_bson import (DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument,
                            _inflate_bson)
 from bson.son import SON
-
-from pymongo.errors import (ConfigurationError,
-                            EncryptionError,
-                            InvalidOperation,
-                            ServerSelectionTimeoutError)
+from pymongo.daemon import _spawn_daemon
 from pymongo.encryption_options import AutoEncryptionOpts
+from pymongo.errors import (ConfigurationError, EncryptionError,
+                            InvalidOperation, ServerSelectionTimeoutError)
 from pymongo.mongo_client import MongoClient
-from pymongo.pool import _configured_socket, PoolOptions
+from pymongo.pool import PoolOptions, _configured_socket
 from pymongo.read_concern import ReadConcern
 from pymongo.ssl_support import get_ssl_context
 from pymongo.uri_parser import parse_host
 from pymongo.write_concern import WriteConcern
-from pymongo.daemon import _spawn_daemon
-
 
 _HTTPS_PORT = 443
 _KMS_CONNECT_TIMEOUT = 10  # TODO: CDRIVER-3262 will define this value.

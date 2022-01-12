@@ -180,15 +180,14 @@ will not add that listener to existing client instances.
   handler first.
 """
 
-from collections import abc, namedtuple
 import datetime
+from collections import abc, namedtuple
 from typing import TYPE_CHECKING, Any, Dict, Mapping, Optional
-from bson.objectid import ObjectId
 
+from bson.objectid import ObjectId
 from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers import _handle_exception
 from pymongo.typings import Address
-
 
 if TYPE_CHECKING:
     from pymongo.server_description import ServerDescription

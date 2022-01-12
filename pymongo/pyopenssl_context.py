@@ -20,29 +20,26 @@ import socket as _socket
 import ssl as _stdlibssl
 import sys as _sys
 import time as _time
-
 from errno import EINTR as _EINTR
-
 from ipaddress import ip_address as _ip_address
 
-from cryptography.x509 import load_der_x509_certificate as _load_der_x509_certificate
-from OpenSSL import crypto as _crypto, SSL as _SSL
-from service_identity.pyopenssl import (  # type: ignore
-    verify_hostname as _verify_hostname,
-    verify_ip_address as _verify_ip_address)
-from service_identity import (  # type: ignore
-    CertificateError as _SICertificateError,
-    VerificationError as _SIVerificationError)
+from cryptography.x509 import \
+    load_der_x509_certificate as _load_der_x509_certificate
+from OpenSSL import SSL as _SSL
+from OpenSSL import crypto as _crypto
+from service_identity import \
+    CertificateError as _SICertificateError  # type: ignore
+from service_identity import VerificationError as _SIVerificationError
+from service_identity.pyopenssl import \
+    verify_hostname as _verify_hostname  # type: ignore
+from service_identity.pyopenssl import verify_ip_address as _verify_ip_address
 
-from pymongo.errors import (
-    _CertificateError,
-    ConfigurationError as _ConfigurationError)
-from pymongo.ocsp_support import (
-    _load_trusted_ca_certs,
-    _ocsp_callback)
+from pymongo.errors import ConfigurationError as _ConfigurationError
+from pymongo.errors import _CertificateError
 from pymongo.ocsp_cache import _OCSPCache
-from pymongo.socket_checker import (
-    _errno_from_exception, SocketChecker as _SocketChecker)
+from pymongo.ocsp_support import _load_trusted_ca_certs, _ocsp_callback
+from pymongo.socket_checker import SocketChecker as _SocketChecker
+from pymongo.socket_checker import _errno_from_exception
 
 try:
     import certifi

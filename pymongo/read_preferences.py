@@ -22,7 +22,6 @@ from pymongo.errors import ConfigurationError
 from pymongo.server_selectors import (member_with_tags_server_selector,
                                       secondary_with_tags_server_selector)
 
-
 _PRIMARY = 0
 _PRIMARY_PREFERRED = 1
 _SECONDARY = 2

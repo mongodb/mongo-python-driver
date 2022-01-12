@@ -19,7 +19,6 @@ from collections.abc import Mapping as _Mapping
 from typing import Any, Mapping, Optional, Type, Union
 
 
-
 class Code(str):
     """BSON's JavaScript code type.
 

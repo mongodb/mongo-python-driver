@@ -15,26 +15,22 @@
 """Cursor class to iterate over Mongo query results."""
 import copy
 import threading
-from typing import Any, Dict, Generic, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple, Union, cast, TYPE_CHECKING
 import warnings
-
 from collections import deque
+from typing import (TYPE_CHECKING, Any, Dict, Generic, Iterable, List, Mapping,
+                    MutableMapping, Optional, Sequence, Tuple, Union, cast)
 
 from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.son import SON
 from pymongo import helpers
-from pymongo.common import (validate_boolean, validate_is_mapping,
-                            validate_is_document_type)
 from pymongo.collation import validate_collation_or_none
-from pymongo.errors import (ConnectionFailure,
-                            InvalidOperation,
+from pymongo.common import (validate_boolean, validate_is_document_type,
+                            validate_is_mapping)
+from pymongo.errors import (ConnectionFailure, InvalidOperation,
                             OperationFailure)
-from pymongo.message import (_CursorAddress,
-                             _GetMore,
-                             _RawBatchGetMore,
-                             _Query,
-                             _RawBatchQuery)
+from pymongo.message import (_CursorAddress, _GetMore, _Query,
+                             _RawBatchGetMore, _RawBatchQuery)
 from pymongo.response import PinnedResponse
 from pymongo.typings import CollationIn, DocumentType
 
@@ -132,8 +128,8 @@ _Hint = Union[str, _Sort]
 
 
 if TYPE_CHECKING:
-    from pymongo.collection import Collection
     from pymongo.client_session import ClientSession
+    from pymongo.collection import Collection
 
 
 class Cursor(Generic[DocumentType]):

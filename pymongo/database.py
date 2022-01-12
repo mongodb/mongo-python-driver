@@ -13,7 +13,8 @@
 # limitations under the License.
 
 """Database level operations."""
-from typing import TYPE_CHECKING, Any, Dict, Generic, List, Mapping, Optional, Sequence, Union
+from typing import (TYPE_CHECKING, Any, Dict, Generic, List, Mapping, Optional,
+                    Sequence, Union)
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
@@ -23,8 +24,7 @@ from pymongo.aggregation import _DatabaseAggregationCommand
 from pymongo.change_stream import DatabaseChangeStream
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
-from pymongo.errors import (CollectionInvalid,
-                            InvalidName)
+from pymongo.errors import CollectionInvalid, InvalidName
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.typings import CollationIn, DocumentType, Pipeline
 

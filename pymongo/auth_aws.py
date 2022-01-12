@@ -16,8 +16,7 @@
 
 try:
     import pymongo_auth_aws  # type: ignore
-    from pymongo_auth_aws import (AwsCredential,
-                                  AwsSaslContext,
+    from pymongo_auth_aws import (AwsCredential, AwsSaslContext,
                                   PyMongoAuthAwsError)
     _HAVE_MONGODB_AWS = True
 except ImportError:

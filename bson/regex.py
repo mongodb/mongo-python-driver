@@ -18,8 +18,8 @@
 import re
 from typing import Any, Pattern, Type, Union
 
-from bson.son import RE_TYPE
 from bson._helpers import _getstate_slots, _setstate_slots
+from bson.son import RE_TYPE
 
 
 def str_flags_to_int(str_flags: str) -> int:

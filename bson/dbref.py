@@ -17,8 +17,8 @@
 from copy import deepcopy
 from typing import Any, Mapping, Optional
 
-from bson.son import SON
 from bson._helpers import _getstate_slots, _setstate_slots
+from bson.son import SON
 
 
 class DBRef(object):

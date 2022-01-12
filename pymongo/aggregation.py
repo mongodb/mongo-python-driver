@@ -15,11 +15,10 @@
 """Perform aggregation operations on a collection or database."""
 
 from bson.son import SON
-
 from pymongo import common
 from pymongo.collation import validate_collation_or_none
 from pymongo.errors import ConfigurationError
-from pymongo.read_preferences import _AggWritePref, ReadPreference
+from pymongo.read_preferences import ReadPreference, _AggWritePref
 
 
 class _AggregationCommand(object):

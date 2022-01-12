@@ -61,31 +61,29 @@ import platform
 import re
 import struct
 import sys
-from typing import TYPE_CHECKING, Any, BinaryIO, Callable, Dict,  Generator, Iterator, List, Mapping, MutableMapping, NoReturn, Sequence, Tuple, Type, Union, cast
 import uuid
-
-from codecs import (utf_8_decode as _utf_8_decode,  # type: ignore
-                    utf_8_encode as _utf_8_encode)
+from codecs import utf_8_decode as _utf_8_decode  # type: ignore
+from codecs import utf_8_encode as _utf_8_encode
 from collections import abc as _abc
+from typing import (TYPE_CHECKING, Any, BinaryIO, Callable, Dict, Generator,
+                    Iterator, List, Mapping, MutableMapping, NoReturn,
+                    Sequence, Tuple, Type, Union, cast)
 
-from bson.binary import (Binary, UuidRepresentation, ALL_UUID_SUBTYPES,
-                         OLD_UUID_SUBTYPE,
-                         JAVA_LEGACY, CSHARP_LEGACY, STANDARD,
-                         UUID_SUBTYPE)
+from bson.binary import (ALL_UUID_SUBTYPES, CSHARP_LEGACY, JAVA_LEGACY,
+                         OLD_UUID_SUBTYPE, STANDARD, UUID_SUBTYPE, Binary,
+                         UuidRepresentation)
 from bson.code import Code
-from bson.codec_options import (
-    CodecOptions, DEFAULT_CODEC_OPTIONS, _raw_document_class)
+from bson.codec_options import (DEFAULT_CODEC_OPTIONS, CodecOptions,
+                                _raw_document_class)
 from bson.dbref import DBRef
 from bson.decimal128 import Decimal128
-from bson.errors import (InvalidBSON,
-                         InvalidDocument,
-                         InvalidStringData)
+from bson.errors import InvalidBSON, InvalidDocument, InvalidStringData
 from bson.int64 import Int64
 from bson.max_key import MaxKey
 from bson.min_key import MinKey
 from bson.objectid import ObjectId
 from bson.regex import Regex
-from bson.son import SON, RE_TYPE
+from bson.son import RE_TYPE, SON
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
 

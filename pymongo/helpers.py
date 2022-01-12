@@ -16,19 +16,14 @@
 
 import sys
 import traceback
-from typing import Any
-
 from collections import abc
+from typing import Any
 
 from bson.son import SON
 from pymongo import ASCENDING
-from pymongo.errors import (CursorNotFound,
-                            DuplicateKeyError,
-                            ExecutionTimeout,
-                            NotPrimaryError,
-                            OperationFailure,
-                            WriteError,
-                            WriteConcernError,
+from pymongo.errors import (CursorNotFound, DuplicateKeyError,
+                            ExecutionTimeout, NotPrimaryError,
+                            OperationFailure, WriteConcernError, WriteError,
                             WTimeoutError)
 from pymongo.hello import HelloCompat
 

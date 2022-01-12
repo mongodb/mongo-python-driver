@@ -15,24 +15,19 @@
 """Watch changes on a collection, a database, or the entire cluster."""
 
 import copy
-from typing import Any, Dict, Generic, Iterable, Mapping, Optional, Union, cast,  TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, Dict, Generic, Iterable, Mapping,
+                    Optional, Union, cast)
 
 from bson import _bson_to_dict
 from bson.raw_bson import RawBSONDocument
-
 from pymongo import common
 from pymongo.aggregation import (_CollectionAggregationCommand,
                                  _DatabaseAggregationCommand)
 from pymongo.collation import validate_collation_or_none
-
 from pymongo.command_cursor import CommandCursor
-from pymongo.errors import (ConnectionFailure,
-                            CursorNotFound,
-                            InvalidOperation,
-                            OperationFailure,
-                            PyMongoError)
+from pymongo.errors import (ConnectionFailure, CursorNotFound,
+                            InvalidOperation, OperationFailure, PyMongoError)
 from pymongo.typings import CollationIn, DocumentType, Pipeline
-
 
 # The change streams spec considers the following server errors from the
 # getMore command non-resumable. All other getMore errors are resumable.

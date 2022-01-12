@@ -54,12 +54,10 @@ overhead of decoding or encoding BSON.
 from collections.abc import Mapping as _Mapping
 from typing import Any, ItemsView, Iterator, Mapping, Optional, cast
 
-from bson import _raw_to_dict, _get_object_size
-from bson.codec_options import (
-    CodecOptions,
-    DEFAULT_CODEC_OPTIONS as DEFAULT,
-    _RAW_BSON_DOCUMENT_MARKER
-)
+from bson import _get_object_size, _raw_to_dict
+from bson.codec_options import _RAW_BSON_DOCUMENT_MARKER
+from bson.codec_options import DEFAULT_CODEC_OPTIONS as DEFAULT
+from bson.codec_options import CodecOptions
 from bson.son import SON
 
 

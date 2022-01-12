@@ -18,51 +18,38 @@ import copy
 import ipaddress
 import os
 import platform
-import ssl
 import socket
+import ssl
 import sys
 import threading
 import time
-from typing import Any
 import weakref
+from typing import Any
 
 from bson import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
-from pymongo import auth, helpers, __version__
+from pymongo import __version__, auth, helpers
 from pymongo.client_session import _validate_session_write_concern
-from pymongo.common import (MAX_BSON_SIZE,
-                            MAX_CONNECTING,
-                            MAX_IDLE_TIME_SEC,
-                            MAX_MESSAGE_SIZE,
-                            MAX_POOL_SIZE,
-                            MAX_WIRE_VERSION,
-                            MAX_WRITE_BATCH_SIZE,
-                            MIN_POOL_SIZE,
-                            ORDERED_TYPES,
+from pymongo.common import (MAX_BSON_SIZE, MAX_CONNECTING, MAX_IDLE_TIME_SEC,
+                            MAX_MESSAGE_SIZE, MAX_POOL_SIZE, MAX_WIRE_VERSION,
+                            MAX_WRITE_BATCH_SIZE, MIN_POOL_SIZE, ORDERED_TYPES,
                             WAIT_QUEUE_TIMEOUT)
-from pymongo.errors import (AutoReconnect,
-                            _CertificateError,
-                            ConnectionFailure,
-                            ConfigurationError,
-                            InvalidOperation,
-                            DocumentTooLarge,
-                            NetworkTimeout,
-                            NotPrimaryError,
-                            OperationFailure,
-                            PyMongoError)
-from pymongo.hello import HelloCompat, Hello
+from pymongo.errors import (AutoReconnect, ConfigurationError,
+                            ConnectionFailure, DocumentTooLarge,
+                            InvalidOperation, NetworkTimeout, NotPrimaryError,
+                            OperationFailure, PyMongoError, _CertificateError)
+from pymongo.hello import Hello, HelloCompat
 from pymongo.monitoring import (ConnectionCheckOutFailedReason,
                                 ConnectionClosedReason)
-from pymongo.network import (command,
-                             receive_message)
+from pymongo.network import command, receive_message
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
-from pymongo.ssl_support import (
-    SSLError as _SSLError,
-    HAS_SNI as _HAVE_SNI,
-    IPADDR_SAFE as _IPADDR_SAFE)
+from pymongo.ssl_support import HAS_SNI as _HAVE_SNI
+from pymongo.ssl_support import IPADDR_SAFE as _IPADDR_SAFE
+from pymongo.ssl_support import SSLError as _SSLError
+
 
 # For SNI support. According to RFC6066, section 3, IPv4 and IPv6 literals are
 # not permitted for SNI hostname.
@@ -74,7 +61,7 @@ def is_ip_address(address):
         return False
 
 try:
-    from fcntl import fcntl, F_GETFD, F_SETFD, FD_CLOEXEC
+    from fcntl import F_GETFD, F_SETFD, FD_CLOEXEC, fcntl
     def _set_non_inheritable_non_atomic(fd):
         """Set the close-on-exec flag on the given file descriptor."""
         flags = fcntl(fd, F_GETFD)

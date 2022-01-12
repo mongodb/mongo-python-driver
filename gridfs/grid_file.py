@@ -19,22 +19,19 @@ import math
 import os
 from typing import Any, Iterable, List, Mapping, Optional, cast
 
-from bson.int64 import Int64
-from bson.son import SON
 from bson.binary import Binary
+from bson.int64 import Int64
 from bson.objectid import ObjectId
+from bson.son import SON
+from gridfs.errors import CorruptGridFile, FileExists, NoFile
 from pymongo import ASCENDING
+from pymongo.client_session import ClientSession
 from pymongo.collection import Collection
 from pymongo.cursor import Cursor
-from pymongo.errors import (ConfigurationError,
-                            CursorNotFound,
-                            DuplicateKeyError,
-                            InvalidOperation,
+from pymongo.errors import (ConfigurationError, CursorNotFound,
+                            DuplicateKeyError, InvalidOperation,
                             OperationFailure)
-from pymongo.client_session import ClientSession
 from pymongo.read_preferences import ReadPreference
-
-from gridfs.errors import CorruptGridFile, FileExists, NoFile
 
 _SEEK_SET: int = os.SEEK_SET
 _SEEK_CUR: int = os.SEEK_CUR

@@ -15,20 +15,16 @@
 """CommandCursor class to iterate over command results."""
 
 from collections import deque
-from typing import Any, Generic, Iterator, Mapping, Optional, Tuple, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, Generic, Iterator, Mapping, Optional,
+                    Tuple)
 
 from bson import _convert_raw_document_lists_to_streams
-
-from pymongo.cursor import _SocketManager, _CURSOR_CLOSED_ERRORS
-from pymongo.errors import (ConnectionFailure,
-                            InvalidOperation,
+from pymongo.cursor import _CURSOR_CLOSED_ERRORS, _SocketManager
+from pymongo.errors import (ConnectionFailure, InvalidOperation,
                             OperationFailure)
-from pymongo.message import (_CursorAddress,
-                             _GetMore,
-                             _RawBatchGetMore)
+from pymongo.message import _CursorAddress, _GetMore, _RawBatchGetMore
 from pymongo.response import PinnedResponse
 from pymongo.typings import DocumentType
-
 
 if TYPE_CHECKING:
     from pymongo.client_session import ClientSession

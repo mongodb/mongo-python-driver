@@ -21,7 +21,6 @@ import decimal
 import struct
 from typing import Any, Sequence, Tuple, Type, Union
 
-
 _PACK_64 = struct.Struct("<Q").pack
 _UNPACK_64 = struct.Struct("<Q").unpack
 

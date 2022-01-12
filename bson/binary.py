@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any,  Mapping, Tuple, Type
+from typing import Any, Mapping, Tuple, Type
 from uuid import UUID
 
 """Tools for representing BSON binary data.

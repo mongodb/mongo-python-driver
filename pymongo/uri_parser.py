@@ -15,20 +15,18 @@
 
 """Tools to parse and validate a MongoDB URI."""
 import re
-from typing import Any, Dict, List, MutableMapping, Optional, Tuple, TypeVar, Union, cast
-import warnings
 import sys
-
+import warnings
+from typing import (Any, Dict, List, MutableMapping, Optional, Tuple, TypeVar,
+                    Union, cast)
 from urllib.parse import unquote_plus
 
 from pymongo.client_options import _parse_ssl_options
-from pymongo.common import (
-    SRV_SERVICE_NAME,
-    get_validated_options, INTERNAL_URI_OPTION_NAME_MAP,
-    URI_OPTIONS_DEPRECATION_MAP, _CaseInsensitiveDictionary)
+from pymongo.common import (INTERNAL_URI_OPTION_NAME_MAP, SRV_SERVICE_NAME,
+                            URI_OPTIONS_DEPRECATION_MAP,
+                            _CaseInsensitiveDictionary, get_validated_options)
 from pymongo.errors import ConfigurationError, InvalidURI
 from pymongo.srv_resolver import _HAVE_DNSPYTHON, _SrvResolver
-
 
 SCHEME: str= 'mongodb://'
 SCHEME_LEN: int = len(SCHEME)

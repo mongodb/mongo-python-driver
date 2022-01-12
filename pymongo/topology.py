@@ -19,38 +19,29 @@ import queue
 import random
 import threading
 import time
-from typing import Any
 import warnings
 import weakref
+from typing import Any
 
-from pymongo import (common,
-                     helpers,
-                     periodic_executor)
+from pymongo import common, helpers, periodic_executor
 from pymongo.client_session import _ServerSessionPool
-from pymongo.errors import (ConnectionFailure,
-                            ConfigurationError,
-                            NetworkTimeout,
-                            NotPrimaryError,
-                            OperationFailure,
-                            PyMongoError,
-                            ServerSelectionTimeoutError,
-                            WriteError,
-                            InvalidOperation)
+from pymongo.errors import (ConfigurationError, ConnectionFailure,
+                            InvalidOperation, NetworkTimeout, NotPrimaryError,
+                            OperationFailure, PyMongoError,
+                            ServerSelectionTimeoutError, WriteError)
 from pymongo.hello import Hello
 from pymongo.monitor import SrvMonitor
 from pymongo.pool import PoolOptions
 from pymongo.server import Server
 from pymongo.server_description import ServerDescription
-from pymongo.server_selectors import (any_server_selector,
+from pymongo.server_selectors import (Selection, any_server_selector,
                                       arbiter_server_selector,
-                                      secondary_server_selector,
                                       readable_server_selector,
-                                      writable_server_selector,
-                                      Selection)
-from pymongo.topology_description import (updated_topology_description,
-                                          _updated_topology_description_srv_polling,
-                                          TopologyDescription,
-                                          SRV_POLLING_TOPOLOGIES, TOPOLOGY_TYPE)
+                                      secondary_server_selector,
+                                      writable_server_selector)
+from pymongo.topology_description import (
+    SRV_POLLING_TOPOLOGIES, TOPOLOGY_TYPE, TopologyDescription,
+    _updated_topology_description_srv_polling, updated_topology_description)
 
 
 def process_events_queue(queue_ref):

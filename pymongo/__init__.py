@@ -68,19 +68,15 @@ version = __version__
 """Current version of PyMongo."""
 
 from pymongo.collection import ReturnDocument
-from pymongo.common import (MIN_SUPPORTED_WIRE_VERSION,
-                            MAX_SUPPORTED_WIRE_VERSION)
+from pymongo.common import (MAX_SUPPORTED_WIRE_VERSION,
+                            MIN_SUPPORTED_WIRE_VERSION)
 from pymongo.cursor import CursorType
 from pymongo.mongo_client import MongoClient
-from pymongo.operations import (IndexModel,
-                                InsertOne,
-                                DeleteOne,
-                                DeleteMany,
-                                UpdateOne,
-                                UpdateMany,
-                                ReplaceOne)
+from pymongo.operations import (DeleteMany, DeleteOne, IndexModel, InsertOne,
+                                ReplaceOne, UpdateMany, UpdateOne)
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
+
 
 def has_c() -> bool:
     """Is the C extension installed?"""

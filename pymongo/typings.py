@@ -13,8 +13,8 @@
 # limitations under the License.
 
 """Type aliases used by PyMongo"""
-from typing import Any, Mapping, MutableMapping, Optional, Sequence, Tuple, Type, TypeVar, Union, TYPE_CHECKING
-
+from typing import (TYPE_CHECKING, Any, Mapping, MutableMapping, Optional,
+                    Sequence, Tuple, Type, TypeVar, Union)
 
 if TYPE_CHECKING:
     from pymongo.collation import Collation

@@ -91,14 +91,14 @@ import datetime
 import json
 import math
 import re
-from typing import Any, Dict, Optional, Mapping, Sequence, Tuple, Type, Union, cast
 import uuid
+from typing import (Any, Dict, Mapping, Optional, Sequence, Tuple, Type, Union,
+                    cast)
 
 import bson
-from bson.son import SON, RE_TYPE
 from bson import EPOCH_AWARE
-from bson.binary import (Binary, UuidRepresentation, ALL_UUID_SUBTYPES,
-                         UUID_SUBTYPE)
+from bson.binary import (ALL_UUID_SUBTYPES, UUID_SUBTYPE, Binary,
+                         UuidRepresentation)
 from bson.code import Code
 from bson.codec_options import CodecOptions
 from bson.dbref import DBRef
@@ -108,9 +108,9 @@ from bson.max_key import MaxKey
 from bson.min_key import MinKey
 from bson.objectid import ObjectId
 from bson.regex import Regex
+from bson.son import RE_TYPE, SON
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
-
 
 _RE_OPT_TABLE = {
     "i": re.I,

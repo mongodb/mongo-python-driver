@@ -14,8 +14,8 @@
 
 """Type codes for MongoDB servers."""
 
-from typing import NamedTuple
 from collections import namedtuple
+from typing import NamedTuple
 
 
 class _ServerType(NamedTuple):

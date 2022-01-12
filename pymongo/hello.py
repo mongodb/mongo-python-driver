@@ -18,8 +18,8 @@ import copy
 import datetime
 import itertools
 from typing import Any, Generic, List, Mapping, Optional, Set, Tuple
-from bson.objectid import ObjectId
 
+from bson.objectid import ObjectId
 from pymongo import common
 from pymongo.server_type import SERVER_TYPE
 from pymongo.typings import DocumentType

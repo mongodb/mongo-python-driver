@@ -17,11 +17,10 @@
 from datetime import datetime
 
 from bson import _decode_all_selective
-
 from pymongo.errors import NotPrimaryError, OperationFailure
 from pymongo.helpers import _check_command_response
 from pymongo.message import _convert_exception, _OpMsg
-from pymongo.response import Response, PinnedResponse
+from pymongo.response import PinnedResponse, Response
 from pymongo.server_type import SERVER_TYPE
 
 _CURSOR_DOC_FIELDS = {'cursor': {'firstBatch': 1, 'nextBatch': 1}}
