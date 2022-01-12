@@ -23,6 +23,7 @@ MongoDB.
 import datetime
 import random
 import struct
+from typing import Any
 
 from io import BytesIO as _BytesIO
 
@@ -456,6 +457,7 @@ class _RawBatchGetMore(_GetMore):
 
 class _CursorAddress(tuple):
     """The server address (host, port) of a cursor, with namespace property."""
+    __namespace: Any
 
     def __new__(cls, address, namespace):
         self = tuple.__new__(cls, address)
@@ -761,6 +763,7 @@ class _BulkWriteContext(object):
         """A proxy for SocketInfo.unack_write that handles event publishing.
         """
         if self.publish:
+            assert self.start_time is not None
             duration = datetime.datetime.now() - self.start_time
             cmd = self._start(cmd, request_id, docs)
             start = datetime.datetime.now()
@@ -776,6 +779,7 @@ class _BulkWriteContext(object):
                 self._succeed(request_id, reply, duration)
         except Exception as exc:
             if self.publish:
+                assert self.start_time is not None
                 duration = (datetime.datetime.now() - start) + duration
                 if isinstance(exc, OperationFailure):
                     failure = _convert_write_result(
@@ -794,6 +798,7 @@ class _BulkWriteContext(object):
         """A proxy for SocketInfo.write_command that handles event publishing.
         """
         if self.publish:
+            assert self.start_time is not None
             duration = datetime.datetime.now() - self.start_time
             self._start(cmd, request_id, docs)
             start = datetime.datetime.now()
@@ -1166,11 +1171,12 @@ class _OpReply(object):
         elif self.flags & 2:
             error_object = bson.BSON(self.documents).decode()
             # Fake the ok field if it doesn't exist.
-            error_object.setdefault("ok", 0)
+            if hasattr(error_object, "setdefault"):
+                error_object.setdefault("ok", 0)  # type: ignore
             if error_object["$err"].startswith(HelloCompat.LEGACY_ERROR):
                 raise NotPrimaryError(error_object["$err"], error_object)
             elif error_object.get("code") == 50:
-                raise ExecutionTimeout(error_object.get("$err"),
+                raise ExecutionTimeout(error_object.get("$err", ""),
                                        error_object.get("code"),
                                        error_object)
             raise OperationFailure("database error: %s" %

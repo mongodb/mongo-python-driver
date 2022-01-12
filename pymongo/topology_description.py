@@ -120,14 +120,14 @@ class TopologyDescription(object):
                 self._incompatible_err = (
                     "Server at %s:%d requires wire version %d, but this "
                     "version of PyMongo only supports up to %d."
-                    % (s.address[0], s.address[1],
+                    % (s.address[0], s.address[1],  # type: ignore
                        s.min_wire_version, common.MAX_SUPPORTED_WIRE_VERSION))
 
             elif server_too_old:
                 self._incompatible_err = (
                     "Server at %s:%d reports wire version %d, but this "
                     "version of PyMongo requires at least %d (MongoDB %s)."
-                    % (s.address[0], s.address[1],
+                    % (s.address[0], s.address[1],  # type: ignore
                        s.max_wire_version,
                        common.MIN_SUPPORTED_WIRE_VERSION,
                        common.MIN_SUPPORTED_SERVER_VERSION))

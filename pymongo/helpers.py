@@ -16,6 +16,7 @@
 
 import sys
 import traceback
+from typing import Any
 
 from collections import abc
 
@@ -95,7 +96,7 @@ def _index_document(index_list):
     if not len(index_list):
         raise ValueError("key_or_list must not be the empty list")
 
-    index = SON()
+    index: SON[str, Any] = SON()
     for (key, value) in index_list:
         if not isinstance(key, str):
             raise TypeError(

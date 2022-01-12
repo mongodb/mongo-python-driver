@@ -16,6 +16,7 @@
 
 import threading
 import time
+from typing import Optional
 import weakref
 
 
@@ -41,7 +42,7 @@ class PeriodicExecutor(object):
         self._min_interval = min_interval
         self._target = target
         self._stopped = False
-        self._thread = None
+        self._thread: Optional[threading.Thread] = None
         self._name = name
         self._skip_sleep = False
 
@@ -64,7 +65,7 @@ class PeriodicExecutor(object):
                 # join should not block indefinitely because there is no
                 # other work done outside the while loop in self._run.
                 try:
-                    self._thread.join()
+                    self._thread.join()  # type: ignore
                 except ReferenceError:
                     # Thread terminated.
                     pass
@@ -72,7 +73,7 @@ class PeriodicExecutor(object):
             self._stopped = False
         started = False
         try:
-            started = self._thread and self._thread.is_alive()
+            started = self._thread and self._thread.is_alive()  # type: ignore
         except ReferenceError:
             # Thread terminated.
             pass

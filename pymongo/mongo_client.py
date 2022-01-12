@@ -773,7 +773,7 @@ class MongoClient(common.BaseObject, Generic[DocumentType]):
 
         # We strongly reference the executor and it weakly references us via
         # this closure. When the client is freed, stop the executor soon.
-        self_ref = weakref.ref(self, executor.close)
+        self_ref: Any = weakref.ref(self, executor.close)
         self._kill_cursors_executor = executor
 
         if connect:
@@ -1230,7 +1230,7 @@ class MongoClient(common.BaseObject, Generic[DocumentType]):
     def _retry_internal(self, retryable, func, session, bulk):
         """Internal retryable write helper."""
         max_wire_version = 0
-        last_error = None
+        last_error: Optional[Exception] = None
         retrying = False
 
         def is_retrying():
@@ -1255,6 +1255,7 @@ class MongoClient(common.BaseObject, Generic[DocumentType]):
                         if is_retrying():
                             # A retry is not possible because this server does
                             # not support sessions raise the last error.
+                            assert last_error is not None
                             raise last_error
                         retryable = False
                     return func(session, sock_info, retryable)
@@ -1263,6 +1264,7 @@ class MongoClient(common.BaseObject, Generic[DocumentType]):
                     # The application may think the write was never attempted
                     # if we raise ServerSelectionTimeoutError on the retry
                     # attempt. Raise the original exception instead.
+                    assert last_error is not None
                     raise last_error
                 # A ServerSelectionTimeoutError error indicates that there may
                 # be a persistent outage. Attempting to retry in this case will
@@ -1296,7 +1298,7 @@ class MongoClient(common.BaseObject, Generic[DocumentType]):
         retryable = (retryable and
                      self.options.retry_reads
                      and not (session and session.in_transaction))
-        last_error = None
+        last_error: Optional[Exception] = None
         retrying = False
 
         while True:
@@ -1308,6 +1310,7 @@ class MongoClient(common.BaseObject, Generic[DocumentType]):
                     if retrying and not retryable:
                         # A retry is not possible because this server does
                         # not support retryable reads, raise the last error.
+                        assert last_error is not None
                         raise last_error
                     return func(session, server, sock_info, read_pref)
             except ServerSelectionTimeoutError:
@@ -1315,6 +1318,7 @@ class MongoClient(common.BaseObject, Generic[DocumentType]):
                     # The application may think the write was never attempted
                     # if we raise ServerSelectionTimeoutError on the retry
                     # attempt. Raise the original exception instead.
+                    assert last_error is not None
                     raise last_error
                 # A ServerSelectionTimeoutError error indicates that there may
                 # be a persistent outage. Attempting to retry in this case will
@@ -1896,6 +1900,8 @@ def _retryable_error_doc(exc):
     if isinstance(exc, BulkWriteError):
         # Check the last writeConcernError to determine if this
         # BulkWriteError is retryable.
+        if not exc.details:
+          return None
         wces = exc.details['writeConcernErrors']
         wce = wces[-1] if wces else None
         return wce

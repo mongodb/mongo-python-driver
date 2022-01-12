@@ -140,7 +140,7 @@ def _build_credentials_tuple(mech, source, user, passwd, extra, database):
 
         properties = extra.get('authmechanismproperties', {})
         aws_session_token = properties.get('AWS_SESSION_TOKEN')
-        props = _AWSProperties(aws_session_token=aws_session_token)
+        props = _AWSProperties(aws_session_token=aws_session_token)  # type: ignore
         # user can be None for temporary link-local EC2 credentials.
         return MongoCredential(mech, '$external', user, passwd, props, None)
     elif mech == 'PLAIN':
@@ -494,7 +494,7 @@ class _AuthContext(object):
     def from_credentials(creds):
         spec_cls = _SPECULATIVE_AUTH_MAP.get(creds.mechanism)
         if spec_cls:
-            return spec_cls(creds)
+            return spec_cls(creds)  # type: ignore
         return None
 
     def speculate_command(self):
@@ -545,5 +545,6 @@ def authenticate(credentials, sock_info):
     """Authenticate sock_info."""
     mechanism = credentials.mechanism
     auth_func = _AUTH_MAP.get(mechanism)
-    auth_func(credentials, sock_info)
+    if auth_func:
+        auth_func(credentials, sock_info)  # type: ignore
 

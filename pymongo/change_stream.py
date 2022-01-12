@@ -15,7 +15,7 @@
 """Watch changes on a collection, a database, or the entire cluster."""
 
 import copy
-from typing import Any, Generic, Iterable, Mapping, Optional, Union, cast,  TYPE_CHECKING
+from typing import Any, Dict, Generic, Iterable, Mapping, Optional, Union, cast,  TYPE_CHECKING
 
 from bson import _bson_to_dict
 from bson.raw_bson import RawBSONDocument
@@ -135,7 +135,7 @@ class ChangeStream(Generic[DocumentType]):
 
     def _change_stream_options(self):
         """Return the options dict for the $changeStream pipeline stage."""
-        options = {}
+        options: Dict[str, Any] = {}
         if self._full_document is not None:
             options['fullDocument'] = self._full_document
 

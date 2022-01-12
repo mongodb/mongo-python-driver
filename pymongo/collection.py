@@ -602,7 +602,7 @@ class Collection(common.BaseObject, Generic[DocumentType]):
                 or isinstance(documents, abc.Mapping)
                 or not documents):
             raise TypeError("documents must be a non-empty list")
-        inserted_ids = []
+        inserted_ids: List[ObjectId] = []
         def gen():
             """A generator that validates documents and handles _ids."""
             for document in documents:

@@ -178,9 +178,9 @@ class Cursor(Generic[DocumentType]):
         # Initialize all attributes used in __del__ before possibly raising
         # an error to avoid attribute errors during garbage collection.
         self.__collection: Collection[DocumentType] = collection
-        self.__id = None
+        self.__id: Any = None
         self.__exhaust = False
-        self.__sock_mgr = None
+        self.__sock_mgr: Any = None
         self.__killed = False
         self.__session: Optional["ClientSession"]
 
@@ -422,7 +422,7 @@ class Cursor(Generic[DocumentType]):
 
         if operators:
             # Make a shallow copy so we can cleanly rewind or clone.
-            spec = self.__spec.copy()
+            spec = copy.copy(self.__spec)
 
             # Allow-listed commands must be wrapped in $query.
             if "$query" not in spec:
@@ -1219,6 +1219,7 @@ class Cursor(Generic[DocumentType]):
         Regular expressions cannot be deep copied but as they are immutable we
         don't have to copy them when cloning.
         """
+        y: Any
         if not hasattr(x, 'items'):
             y, is_list, iterator = [], True, enumerate(x)
         else:

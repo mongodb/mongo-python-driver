@@ -1086,7 +1086,7 @@ class Pool:
         # LIFO pool. Sockets are ordered on idle time. Sockets claimed
         # and returned to pool from the left side. Stale sockets removed
         # from the right side.
-        self.sockets = collections.deque()
+        self.sockets: collections.deque = collections.deque()
         self.lock = threading.Lock()
         self.active_sockets = 0
         # Monotonically increasing connection ID required for CMAP Events.
@@ -1163,8 +1163,8 @@ class Pool:
             if service_id is None:
                 sockets, self.sockets = self.sockets, collections.deque()
             else:
-                discard = collections.deque()
-                keep = collections.deque()
+                discard: collections.deque = collections.deque()
+                keep: collections.deque = collections.deque()
                 for sock_info in self.sockets:
                     if sock_info.service_id == service_id:
                         discard.append(sock_info)

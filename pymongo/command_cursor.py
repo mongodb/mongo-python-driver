@@ -49,7 +49,7 @@ class CommandCursor(Generic[DocumentType]):
         explicit_session: bool = False,
     ) -> None:
         """Create a new command cursor."""
-        self.__sock_mgr = None
+        self.__sock_mgr: Any = None
         self.__collection: Collection[DocumentType] = collection
         self.__id = cursor_info['id']
         self.__data = deque(cursor_info['firstBatch'])

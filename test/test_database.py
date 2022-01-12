@@ -57,6 +57,7 @@ from test.test_custom_types import DECIMAL_CODECOPTS
 class TestDatabaseNoConnect(unittest.TestCase):
     """Test Database features on a client that does not connect.
     """
+    client: MongoClient
 
     @classmethod
     def setUpClass(cls):
@@ -102,6 +103,7 @@ class TestDatabaseNoConnect(unittest.TestCase):
 
 
 class TestDatabase(IntegrationTest):
+    client: MongoClient
 
     def test_equality(self):
         self.assertNotEqual(Database(self.client, "test"),
@@ -632,6 +634,8 @@ class TestDatabase(IntegrationTest):
 
 
 class TestDatabaseAggregation(IntegrationTest):
+    client: MongoClient
+
     def setUp(self):
         self.pipeline = [{"$listLocalSessions": {}},
                          {"$limit": 1},

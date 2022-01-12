@@ -17,6 +17,7 @@
 import atexit
 import threading
 import time
+from typing import Any, Mapping, cast
 import weakref
 
 from pymongo import common, periodic_executor
@@ -50,7 +51,8 @@ class MonitorBase(object):
             monitor = self_ref()
             if monitor is None:
                 return False  # Stop the executor.
-            monitor._run()
+            if hasattr(monitor, '_run'):
+                monitor._run()  # type: ignore
             return True
 
         executor = periodic_executor.PeriodicExecutor(
@@ -214,8 +216,9 @@ class Monitor(MonitorBase):
                 return self._check_once()
             except (OperationFailure, NotPrimaryError) as exc:
                 # Update max cluster time even when hello fails.
-                self._topology.receive_cluster_time(
-                    exc.details.get('$clusterTime'))
+                if hasattr(exc.details, 'get'):
+                    self._topology.receive_cluster_time(
+                        cast(Mapping[str, Any], exc.details).get('$clusterTime'))
                 raise
         except ReferenceError:
             raise

@@ -132,7 +132,7 @@ class _sslConn(_SSL.Connection):
 
     def recv_into(self, *args, **kwargs):
         try:
-            return self._call(super(_sslConn, self).recv_into, *args, **kwargs)
+            return self._call(super(_sslConn, self).recv_into, *args, **kwargs) # type: ignore
         except _SSL.SysCallError as exc:
             # Suppress ragged EOFs to match the stdlib.
             if self.suppress_ragged_eofs and _ragged_eof(exc):
@@ -147,7 +147,7 @@ class _sslConn(_SSL.Connection):
         while total_sent < total_length:
             try:
                 sent = self._call(
-                    super(_sslConn, self).send, view[total_sent:], flags)
+                    super(_sslConn, self).send, view[total_sent:], flags)  # type: ignore
             # XXX: It's not clear if this can actually happen. PyOpenSSL
             # doesn't appear to have any interrupt handling, nor any interrupt
             # errors for OpenSSL connections.
@@ -296,7 +296,7 @@ class SSLContext(object):
         """Attempt to load CA certs from Windows trust store."""
         cert_store = self._ctx.get_cert_store()
         oid = _stdlibssl.Purpose.SERVER_AUTH.oid
-        for cert, encoding, trust in _stdlibssl.enum_certificates(store):
+        for cert, encoding, trust in _stdlibssl.enum_certificates(store):  # type: ignore
             if encoding == "x509_asn":
                 if trust is True or oid in trust:
                     cert_store.add_cert(
