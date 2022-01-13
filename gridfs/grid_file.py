@@ -625,7 +625,7 @@ class GridOut(io.IOBase):
 
         .. versionchanged:: 4.1
            The method now returns the new position in the file, to
-           conform to the behavior of :attr:`io.IOBase.seek()`.
+           conform to the behavior of :meth:`io.IOBase.seek`.
         """
         if whence == _SEEK_SET:
             new_pos = pos
