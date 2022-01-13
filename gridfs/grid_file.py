@@ -872,10 +872,10 @@ class GridOutCursor(Cursor):
 
     __next__ = next
 
-    def add_option(self, *args: Any, **kwargs: Any) -> None:  # type: ignore
+    def add_option(self, *args: Any, **kwargs: Any) -> None:
         raise NotImplementedError("Method does not exist for GridOutCursor")
 
-    def remove_option(self, *args: Any, **kwargs: Any) -> None:  # type: ignore
+    def remove_option(self, *args: Any, **kwargs: Any) -> None:
         raise NotImplementedError("Method does not exist for GridOutCursor")
 
     def _clone_base(self, session: ClientSession) -> "GridOutCursor":
