@@ -13,8 +13,6 @@
 # limitations under the License.
 
 """Exceptions raised by PyMongo."""
-from typing import (Any, Iterable, List, Mapping, Optional, Sequence, Tuple,
-                    Union)
 
 from bson.errors import *
 
@@ -25,21 +23,18 @@ except ImportError:
     try:
         from ssl import CertificateError as _CertificateError
     except ImportError:
-        class _CertificateError(ValueError):  # type: ignore
+        class _CertificateError(ValueError):
             pass
 
 
 class PyMongoError(Exception):
     """Base class for all PyMongo exceptions."""
-    def __init__(self,
-        message: str = '',
-        error_labels: Optional[Iterable[str]] = None
-    ) -> None:
+    def __init__(self, message='', error_labels=None):
         super(PyMongoError, self).__init__(message)
         self._message = message
         self._error_labels = set(error_labels or [])
 
-    def has_error_label(self, label: str) -> bool:
+    def has_error_label(self, label):
         """Return True if this error contains the given label.
 
         .. versionadded:: 3.7
@@ -75,19 +70,10 @@ class AutoReconnect(ConnectionFailure):
 
     Subclass of :exc:`~pymongo.errors.ConnectionFailure`.
     """
-    errors: Union[Mapping[str, Any], List[Any]]
-    details: Union[Mapping[str, Any], List[Any]]
-
-    def __init__(self,
-        message: str = '',
-        errors: Optional[Union[Mapping[str, Any], Sequence[Any]]] = None
-    ) -> None:
+    def __init__(self, message='', errors=None):
         error_labels = None
-        if errors is not None:
-            if isinstance(errors, dict):
-                error_labels = errors.get('errorLabels')
-            else:
-                errors = list(errors)
+        if errors is not None and isinstance(errors, dict):
+            error_labels = errors.get('errorLabels')
         super(AutoReconnect, self).__init__(message, error_labels)
         self.errors = self.details = errors or []
 
@@ -123,10 +109,7 @@ class NotPrimaryError(AutoReconnect):
 
     .. versionadded:: 3.12
     """
-    def __init__(self,
-        message: str = '',
-        errors: Optional[Union[Mapping[str, Any], List[Any]]] = None
-    ) -> None:
+    def __init__(self, message='', errors=None):
         super(NotPrimaryError, self).__init__(
             _format_detailed_error(message, errors), errors=errors)
 
@@ -156,12 +139,7 @@ class OperationFailure(PyMongoError):
        The :attr:`details` attribute.
     """
 
-    def __init__(self,
-        error: str,
-        code: Optional[int] = None,
-        details: Optional[Mapping[str, Any]] = None,
-        max_wire_version: Optional[int] = None,
-    ) -> None:
+    def __init__(self, error, code=None, details=None, max_wire_version=None):
         error_labels = None
         if details is not None:
             error_labels = details.get('errorLabels')
@@ -176,13 +154,13 @@ class OperationFailure(PyMongoError):
         return self.__max_wire_version
 
     @property
-    def code(self) -> Optional[int]:
+    def code(self):
         """The error code returned by the server, if any.
         """
         return self.__code
 
     @property
-    def details(self) -> Optional[Mapping[str, Any]]:
+    def details(self):
         """The complete error document returned by the server.
 
         Depending on the error that occurred, the error document
@@ -247,11 +225,11 @@ class BulkWriteError(OperationFailure):
 
     .. versionadded:: 2.7
     """
-    def __init__(self, results: Mapping[str, Any]) -> None:
+    def __init__(self, results):
         super(BulkWriteError, self).__init__(
             "batch op errors occurred", 65, results)
 
-    def __reduce__(self) -> Tuple[Any, Any]:
+    def __reduce__(self):
         return self.__class__, (self.details,)
 
 
@@ -286,12 +264,12 @@ class EncryptionError(PyMongoError):
     .. versionadded:: 3.9
     """
 
-    def __init__(self, cause: Exception) -> None:
+    def __init__(self, cause):
         super(EncryptionError, self).__init__(str(cause))
         self.__cause = cause
 
     @property
-    def cause(self) -> Exception:
+    def cause(self):
         """The exception that caused this encryption or decryption error."""
         return self.__cause
 

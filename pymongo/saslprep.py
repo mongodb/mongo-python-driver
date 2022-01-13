@@ -13,13 +13,13 @@
 # limitations under the License.
 
 """An implementation of RFC4013 SASLprep."""
-from typing import Any, Optional
+
 
 try:
     import stringprep
 except ImportError:
     HAVE_STRINGPREP = False
-    def saslprep(data: Any, prohibit_unassigned_code_points: Optional[bool] = True) -> str:
+    def saslprep(data):
         """SASLprep dummy"""
         if isinstance(data, str):
             raise TypeError(
@@ -29,7 +29,6 @@ except ImportError:
 else:
     HAVE_STRINGPREP = True
     import unicodedata
-
     # RFC4013 section 2.3 prohibited output.
     _PROHIBITED = (
         # A strict reading of RFC 4013 requires table c12 here, but
@@ -45,7 +44,7 @@ else:
         stringprep.in_table_c8,
         stringprep.in_table_c9)
 
-    def saslprep(data: Any, prohibit_unassigned_code_points: Optional[bool] = True) -> str:
+    def saslprep(data, prohibit_unassigned_code_points=True):
         """An implementation of RFC4013 SASLprep.
 
         :Parameters:
@@ -61,8 +60,6 @@ else:
         :Returns:
         The SASLprep'ed version of `data`.
         """
-        prohibited: Any
-
         if not isinstance(data, str):
             return data
 

@@ -16,14 +16,18 @@
 
 import sys
 import traceback
+
 from collections import abc
-from typing import Any
 
 from bson.son import SON
 from pymongo import ASCENDING
-from pymongo.errors import (CursorNotFound, DuplicateKeyError,
-                            ExecutionTimeout, NotPrimaryError,
-                            OperationFailure, WriteConcernError, WriteError,
+from pymongo.errors import (CursorNotFound,
+                            DuplicateKeyError,
+                            ExecutionTimeout,
+                            NotPrimaryError,
+                            OperationFailure,
+                            WriteError,
+                            WriteConcernError,
                             WTimeoutError)
 from pymongo.hello import HelloCompat
 
@@ -91,7 +95,7 @@ def _index_document(index_list):
     if not len(index_list):
         raise ValueError("key_or_list must not be the empty list")
 
-    index: SON[str, Any] = SON()
+    index = SON()
     for (key, value) in index_list:
         if not isinstance(key, str):
             raise TypeError(

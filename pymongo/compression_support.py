@@ -15,7 +15,7 @@
 import warnings
 
 try:
-    import snappy  # type: ignore
+    import snappy
     _HAVE_SNAPPY = True
 except ImportError:
     # python-snappy isn't available.
@@ -99,7 +99,7 @@ class CompressionSettings(object):
                 return ZstdContext()
 
 
-def _zlib_no_compress(data, level=None):
+def _zlib_no_compress(data):
     """Compress data with zlib level 0."""
     cobj = zlib.compressobj(0)
     return b"".join([cobj.compress(data), cobj.flush()])
@@ -124,7 +124,7 @@ class ZlibContext(object):
         elif level == 0:
             self.compress = _zlib_no_compress
         else:
-            self.compress = lambda data, _: zlib.compress(data, level)
+            self.compress = lambda data: zlib.compress(data, level)
 
 
 class ZstdContext(object):

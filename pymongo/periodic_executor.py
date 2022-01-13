@@ -17,7 +17,6 @@
 import threading
 import time
 import weakref
-from typing import Optional
 
 
 class PeriodicExecutor(object):
@@ -42,7 +41,7 @@ class PeriodicExecutor(object):
         self._min_interval = min_interval
         self._target = target
         self._stopped = False
-        self._thread: Optional[threading.Thread] = None
+        self._thread = None
         self._name = name
         self._skip_sleep = False
 

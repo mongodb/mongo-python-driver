@@ -15,40 +15,46 @@
 """Support for explicit client-side field level encryption."""
 
 import contextlib
+import os
+import subprocess
 import uuid
 import weakref
-from typing import Any, Mapping, Optional, Sequence
 
 try:
-    from pymongocrypt.auto_encrypter import AutoEncrypter  # type: ignore
-    from pymongocrypt.errors import MongoCryptError  # type: ignore
-    from pymongocrypt.explicit_encrypter import (  # type: ignore
-        ExplicitEncrypter
-    )
-    from pymongocrypt.mongocrypt import MongoCryptOptions  # type: ignore
-    from pymongocrypt.state_machine import MongoCryptCallback  # type: ignore
+    from pymongocrypt.auto_encrypter import AutoEncrypter
+    from pymongocrypt.errors import MongoCryptError
+    from pymongocrypt.explicit_encrypter import ExplicitEncrypter
+    from pymongocrypt.mongocrypt import MongoCryptOptions
+    from pymongocrypt.state_machine import MongoCryptCallback
     _HAVE_PYMONGOCRYPT = True
 except ImportError:
     _HAVE_PYMONGOCRYPT = False
     MongoCryptCallback = object
 
 from bson import _dict_to_bson, decode, encode
-from bson.binary import STANDARD, UUID_SUBTYPE, Binary
 from bson.codec_options import CodecOptions
+from bson.binary import (Binary,
+                         STANDARD,
+                         UUID_SUBTYPE)
 from bson.errors import BSONError
-from bson.raw_bson import (DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument,
+from bson.raw_bson import (DEFAULT_RAW_BSON_OPTIONS,
+                           RawBSONDocument,
                            _inflate_bson)
 from bson.son import SON
-from pymongo.daemon import _spawn_daemon
+
+from pymongo.errors import (ConfigurationError,
+                            EncryptionError,
+                            InvalidOperation,
+                            ServerSelectionTimeoutError)
 from pymongo.encryption_options import AutoEncryptionOpts
-from pymongo.errors import (ConfigurationError, EncryptionError,
-                            InvalidOperation, ServerSelectionTimeoutError)
 from pymongo.mongo_client import MongoClient
-from pymongo.pool import PoolOptions, _configured_socket
+from pymongo.pool import _configured_socket, PoolOptions
 from pymongo.read_concern import ReadConcern
 from pymongo.ssl_support import get_ssl_context
 from pymongo.uri_parser import parse_host
 from pymongo.write_concern import WriteConcern
+from pymongo.daemon import _spawn_daemon
+
 
 _HTTPS_PORT = 443
 _KMS_CONNECT_TIMEOUT = 10  # TODO: CDRIVER-3262 will define this value.
@@ -74,10 +80,9 @@ def _wrap_encryption_errors():
         raise EncryptionError(exc)
 
 
-class _EncryptionIO(MongoCryptCallback):  # type: ignore
+class _EncryptionIO(MongoCryptCallback):
     def __init__(self, client, key_vault_coll, mongocryptd_client, opts):
         """Internal class to perform I/O on behalf of pymongocrypt."""
-        self.client_ref: Any
         # Use a weak ref to break reference cycle.
         if client is not None:
             self.client_ref = weakref.ref(client)
@@ -344,23 +349,17 @@ class _Encrypter(object):
 
 class Algorithm(object):
     """An enum that defines the supported encryption algorithms."""
-    AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic: str = (
+    AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic = (
         "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic")
-    AEAD_AES_256_CBC_HMAC_SHA_512_Random: str = (
+    AEAD_AES_256_CBC_HMAC_SHA_512_Random = (
         "AEAD_AES_256_CBC_HMAC_SHA_512-Random")
-
 
 
 class ClientEncryption(object):
     """Explicit client-side field level encryption."""
 
-    def __init__(self,
-        kms_providers: Mapping[str, Any],
-        key_vault_namespace: str,
-        key_vault_client: MongoClient,
-        codec_options: CodecOptions,
-        kms_tls_options: Optional[Mapping[str, Any]] = None
-    ) -> None:
+    def __init__(self, kms_providers, key_vault_namespace, key_vault_client,
+                 codec_options, kms_tls_options=None):
         """Explicit client-side field level encryption.
 
         The ClientEncryption class encapsulates explicit operations on a key
@@ -450,15 +449,12 @@ class ClientEncryption(object):
 
         opts = AutoEncryptionOpts(kms_providers, key_vault_namespace,
                                   kms_tls_options=kms_tls_options)
-        self._io_callbacks: Optional[_EncryptionIO] = _EncryptionIO(None, key_vault_coll, None, opts)
+        self._io_callbacks = _EncryptionIO(None, key_vault_coll, None, opts)
         self._encryption = ExplicitEncrypter(
             self._io_callbacks, MongoCryptOptions(kms_providers, None))
 
-    def create_data_key(self,
-        kms_provider: str,
-        master_key: Optional[Mapping[str, Any]] = None,
-        key_alt_names: Optional[Sequence[str]] = None
-    ) -> Binary:
+    def create_data_key(self, kms_provider, master_key=None,
+                        key_alt_names=None):
         """Create and insert a new data key into the key vault collection.
 
         :Parameters:
@@ -525,19 +521,12 @@ class ClientEncryption(object):
           :data:`~bson.binary.UUID_SUBTYPE`.
         """
         self._check_closed()
-        if key_alt_names is not None:
-            key_alt_names = list(key_alt_names)
         with _wrap_encryption_errors():
             return self._encryption.create_data_key(
                 kms_provider, master_key=master_key,
                 key_alt_names=key_alt_names)
 
-    def encrypt(self,
-        value: Any,
-        algorithm: str,
-        key_id: Optional[Binary] = None,
-        key_alt_name: Optional[str] = None
-    ) -> Binary:
+    def encrypt(self, value, algorithm, key_id=None, key_alt_name=None):
         """Encrypt a BSON value with a given key and algorithm.
 
         Note that exactly one of ``key_id`` or  ``key_alt_name`` must be
@@ -568,7 +557,7 @@ class ClientEncryption(object):
                 doc, algorithm, key_id=key_id, key_alt_name=key_alt_name)
             return decode(encrypted_doc)['v']
 
-    def decrypt(self, value: Binary) -> Any:
+    def decrypt(self, value):
         """Decrypt an encrypted value.
 
         :Parameters:
@@ -589,17 +578,17 @@ class ClientEncryption(object):
             return decode(decrypted_doc,
                           codec_options=self._codec_options)['v']
 
-    def __enter__(self) -> "ClientEncryption":
+    def __enter__(self):
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
     def _check_closed(self):
         if self._encryption is None:
             raise InvalidOperation("Cannot use closed ClientEncryption")
 
-    def close(self) -> None:
+    def close(self):
         """Release resources.
 
         Note that using this class in a with-statement will automatically call

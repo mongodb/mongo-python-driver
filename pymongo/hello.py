@@ -14,15 +14,10 @@
 
 """Helpers for the 'hello' and legacy hello commands."""
 
-import copy
-import datetime
 import itertools
-from typing import Any, Generic, List, Mapping, Optional, Set, Tuple
 
-from bson.objectid import ObjectId
 from pymongo import common
 from pymongo.server_type import SERVER_TYPE
-from pymongo.typings import DocumentType
 
 
 class HelloCompat:
@@ -61,7 +56,7 @@ def _get_server_type(doc):
         return SERVER_TYPE.Standalone
 
 
-class Hello(Generic[DocumentType]):
+class Hello(object):
     """Parse a hello response from the server.
 
     .. versionadded:: 3.12
@@ -69,9 +64,9 @@ class Hello(Generic[DocumentType]):
     __slots__ = ('_doc', '_server_type', '_is_writable', '_is_readable',
                  '_awaitable')
 
-    def __init__(self, doc: DocumentType, awaitable: bool = False) -> None:
+    def __init__(self, doc, awaitable=False):
         self._server_type = _get_server_type(doc)
-        self._doc: DocumentType = doc
+        self._doc = doc
         self._is_writable = self._server_type in (
             SERVER_TYPE.RSPrimary,
             SERVER_TYPE.Standalone,
@@ -84,19 +79,19 @@ class Hello(Generic[DocumentType]):
         self._awaitable = awaitable
 
     @property
-    def document(self) -> DocumentType:
+    def document(self):
         """The complete hello command response document.
 
         .. versionadded:: 3.4
         """
-        return copy.deepcopy(self._doc)
+        return self._doc.copy()
 
     @property
-    def server_type(self) -> int:
+    def server_type(self):
         return self._server_type
 
     @property
-    def all_hosts(self) -> Set[Tuple[str, int]]:
+    def all_hosts(self):
         """List of hosts, passives, and arbiters known to this server."""
         return set(map(common.clean_node, itertools.chain(
             self._doc.get('hosts', []),
@@ -104,12 +99,12 @@ class Hello(Generic[DocumentType]):
             self._doc.get('arbiters', []))))
 
     @property
-    def tags(self) -> Mapping[str, Any]:
+    def tags(self):
         """Replica set member tags or empty dict."""
         return self._doc.get('tags', {})
 
     @property
-    def primary(self) -> Optional[Tuple[str, int]]:
+    def primary(self):
         """This server's opinion about who the primary is, or None."""
         if self._doc.get('primary'):
             return common.partition_node(self._doc['primary'])
@@ -117,71 +112,70 @@ class Hello(Generic[DocumentType]):
             return None
 
     @property
-    def replica_set_name(self) -> Optional[str]:
+    def replica_set_name(self):
         """Replica set name or None."""
         return self._doc.get('setName')
 
     @property
-    def max_bson_size(self) -> int:
+    def max_bson_size(self):
         return self._doc.get('maxBsonObjectSize', common.MAX_BSON_SIZE)
 
     @property
-    def max_message_size(self) -> int:
+    def max_message_size(self):
         return self._doc.get('maxMessageSizeBytes', 2 * self.max_bson_size)
 
     @property
-    def max_write_batch_size(self) -> int:
+    def max_write_batch_size(self):
         return self._doc.get('maxWriteBatchSize', common.MAX_WRITE_BATCH_SIZE)
 
     @property
-    def min_wire_version(self) -> int:
+    def min_wire_version(self):
         return self._doc.get('minWireVersion', common.MIN_WIRE_VERSION)
 
     @property
-    def max_wire_version(self) -> int:
+    def max_wire_version(self):
         return self._doc.get('maxWireVersion', common.MAX_WIRE_VERSION)
 
     @property
-    def set_version(self) -> Optional[int]:
+    def set_version(self):
         return self._doc.get('setVersion')
 
     @property
-    def election_id(self) -> Optional[ObjectId]:
+    def election_id(self):
         return self._doc.get('electionId')
 
     @property
-    def cluster_time(self) -> Optional[Mapping[str, Any]]:
+    def cluster_time(self):
         return self._doc.get('$clusterTime')
 
     @property
-    def logical_session_timeout_minutes(self) -> Optional[int]:
+    def logical_session_timeout_minutes(self):
         return self._doc.get('logicalSessionTimeoutMinutes')
 
     @property
-    def is_writable(self) -> bool:
+    def is_writable(self):
         return self._is_writable
 
     @property
-    def is_readable(self) -> bool:
+    def is_readable(self):
         return self._is_readable
 
     @property
-    def me(self) -> Optional[Tuple[str, int]]:
+    def me(self):
         me = self._doc.get('me')
         if me:
             return common.clean_node(me)
-        return None
 
     @property
-    def last_write_date(self) -> Optional[datetime.datetime]:
+    def last_write_date(self):
         return self._doc.get('lastWrite', {}).get('lastWriteDate')
 
     @property
-    def compressors(self) -> Optional[List[str]]:
+    def compressors(self):
         return self._doc.get('compression')
 
     @property
-    def sasl_supported_mechs(self) -> List[str]:
+    def sasl_supported_mechs(self):
         """Supported authentication mechanisms for the current user.
 
         For example::
@@ -193,22 +187,22 @@ class Hello(Generic[DocumentType]):
         return self._doc.get('saslSupportedMechs', [])
 
     @property
-    def speculative_authenticate(self) -> Optional[Mapping[str, Any]]:
+    def speculative_authenticate(self):
         """The speculativeAuthenticate field."""
         return self._doc.get('speculativeAuthenticate')
 
     @property
-    def topology_version(self) -> Optional[Mapping[str, Any]]:
+    def topology_version(self):
         return self._doc.get('topologyVersion')
 
     @property
-    def awaitable(self) -> bool:
+    def awaitable(self):
         return self._awaitable
 
     @property
-    def service_id(self) -> Optional[ObjectId]:
+    def service_id(self):
         return self._doc.get('serviceId')
 
     @property
-    def hello_ok(self) -> bool:
+    def hello_ok(self):
         return self._doc.get('helloOk', False)

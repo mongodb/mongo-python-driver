@@ -15,10 +15,9 @@
 """Support for automatic client-side field level encryption."""
 
 import copy
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence
 
 try:
-    import pymongocrypt  # type: ignore
+    import pymongocrypt
     _HAVE_PYMONGOCRYPT = True
 except ImportError:
     _HAVE_PYMONGOCRYPT = False
@@ -26,25 +25,19 @@ except ImportError:
 from pymongo.errors import ConfigurationError
 from pymongo.uri_parser import _parse_kms_tls_options
 
-if TYPE_CHECKING:
-  from pymongo.mongo_client import MongoClient
-
 
 class AutoEncryptionOpts(object):
     """Options to configure automatic client-side field level encryption."""
 
-    def __init__(self,
-        kms_providers: Mapping[str, Any],
-        key_vault_namespace: str,
-        key_vault_client: Optional["MongoClient"] = None,
-        schema_map: Optional[Mapping[str, Any]] = None,
-        bypass_auto_encryption: Optional[bool] = False,
-        mongocryptd_uri: str = 'mongodb://localhost:27020',
-        mongocryptd_bypass_spawn: bool = False,
-        mongocryptd_spawn_path: str = 'mongocryptd',
-        mongocryptd_spawn_args: Optional[Sequence[str]] = None,
-        kms_tls_options: Optional[Mapping[str, Any]] = None
-    ) -> None:
+    def __init__(self, kms_providers, key_vault_namespace,
+                 key_vault_client=None,
+                 schema_map=None,
+                 bypass_auto_encryption=False,
+                 mongocryptd_uri='mongodb://localhost:27020',
+                 mongocryptd_bypass_spawn=False,
+                 mongocryptd_spawn_path='mongocryptd',
+                 mongocryptd_spawn_args=None,
+                 kms_tls_options=None):
         """Options to configure automatic client-side field level encryption.
 
         Automatic client-side field level encryption requires MongoDB 4.2
@@ -159,9 +152,8 @@ class AutoEncryptionOpts(object):
         self._mongocryptd_uri = mongocryptd_uri
         self._mongocryptd_bypass_spawn = mongocryptd_bypass_spawn
         self._mongocryptd_spawn_path = mongocryptd_spawn_path
-        if mongocryptd_spawn_args is None:
-            mongocryptd_spawn_args = ['--idleShutdownTimeoutSecs=60']
-        self._mongocryptd_spawn_args = copy.copy(list(mongocryptd_spawn_args))
+        self._mongocryptd_spawn_args = (copy.copy(mongocryptd_spawn_args) or
+                                        ['--idleShutdownTimeoutSecs=60'])
         if not isinstance(self._mongocryptd_spawn_args, list):
             raise TypeError('mongocryptd_spawn_args must be a list')
         if not any('idleShutdownTimeoutSecs' in s

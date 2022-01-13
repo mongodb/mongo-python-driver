@@ -15,9 +15,9 @@
 """Tools to parse mongo client options."""
 
 from bson.codec_options import _parse_codec_options
-from pymongo import common
 from pymongo.auth import _build_credentials_tuple
 from pymongo.common import validate_boolean
+from pymongo import common
 from pymongo.compression_support import CompressionSettings
 from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _EventListeners

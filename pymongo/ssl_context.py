@@ -32,7 +32,6 @@ IS_PYOPENSSL = False
 SSLError = _ssl.SSLError
 
 from ssl import SSLContext
-
 if hasattr(_ssl, "VERIFY_CRL_CHECK_LEAF"):
     from ssl import VERIFY_CRL_CHECK_LEAF
 # Python 3.7 uses OpenSSL's hostname matching implementation

@@ -15,24 +15,25 @@
 
 """Tools to parse and validate a MongoDB URI."""
 import re
-import sys
 import warnings
-from typing import (Any, Dict, List, MutableMapping, Optional, Tuple, TypeVar,
-                    Union, cast)
+import sys
+
 from urllib.parse import unquote_plus
 
 from pymongo.client_options import _parse_ssl_options
-from pymongo.common import (INTERNAL_URI_OPTION_NAME_MAP, SRV_SERVICE_NAME,
-                            URI_OPTIONS_DEPRECATION_MAP,
-                            _CaseInsensitiveDictionary, get_validated_options)
+from pymongo.common import (
+    SRV_SERVICE_NAME,
+    get_validated_options, INTERNAL_URI_OPTION_NAME_MAP,
+    URI_OPTIONS_DEPRECATION_MAP, _CaseInsensitiveDictionary)
 from pymongo.errors import ConfigurationError, InvalidURI
 from pymongo.srv_resolver import _HAVE_DNSPYTHON, _SrvResolver
 
-SCHEME: str= 'mongodb://'
-SCHEME_LEN: int = len(SCHEME)
-SRV_SCHEME: str = 'mongodb+srv://'
-SRV_SCHEME_LEN: int = len(SRV_SCHEME)
-DEFAULT_PORT: int = 27017
+
+SCHEME = 'mongodb://'
+SCHEME_LEN = len(SCHEME)
+SRV_SCHEME = 'mongodb+srv://'
+SRV_SCHEME_LEN = len(SRV_SCHEME)
+DEFAULT_PORT = 27017
 
 
 def _unquoted_percent(s):
@@ -51,7 +52,7 @@ def _unquoted_percent(s):
                 return True
     return False
 
-def parse_userinfo(userinfo: str) -> Tuple[str, str]:
+def parse_userinfo(userinfo):
     """Validates the format of user information in a MongoDB URI.
     Reserved characters that are gen-delimiters (":", "/", "?", "#", "[",
     "]", "@") as per RFC 3986 must be escaped.
@@ -75,7 +76,7 @@ def parse_userinfo(userinfo: str) -> Tuple[str, str]:
     return unquote_plus(user), unquote_plus(passwd)
 
 
-def parse_ipv6_literal_host(entity: str, default_port: Optional[int]) -> Tuple[str, Optional[Union[str, int]]]:
+def parse_ipv6_literal_host(entity, default_port):
     """Validates an IPv6 literal host:port string.
 
     Returns a 2-tuple of IPv6 literal followed by port where
@@ -97,7 +98,7 @@ def parse_ipv6_literal_host(entity: str, default_port: Optional[int]) -> Tuple[s
     return entity[1: i], entity[i + 2:]
 
 
-def parse_host(entity: str, default_port: Optional[int] = DEFAULT_PORT) -> Tuple[str, Optional[int]]:
+def parse_host(entity, default_port=DEFAULT_PORT):
     """Validates a host string
 
     Returns a 2-tuple of host followed by port where port is default_port
@@ -110,7 +111,7 @@ def parse_host(entity: str, default_port: Optional[int] = DEFAULT_PORT) -> Tuple
                           specified in entity.
     """
     host = entity
-    port: Optional[Union[str, int]] = default_port
+    port = default_port
     if entity[0] == '[':
         host, port = parse_ipv6_literal_host(entity, default_port)
     elif entity.endswith(".sock"):
@@ -278,10 +279,7 @@ def _normalize_options(options):
     return options
 
 
-_T = TypeVar("_T", bound=MutableMapping)
-
-
-def validate_options(opts: _T, warn: bool = False) -> _T:
+def validate_options(opts, warn=False):
     """Validates and normalizes options passed in a MongoDB URI.
 
     Returns a new dictionary of validated and normalized options. If warn is
@@ -294,10 +292,10 @@ def validate_options(opts: _T, warn: bool = False) -> _T:
           invalid options will be ignored. Otherwise invalid options will
           cause errors.
     """
-    return cast(_T, get_validated_options(opts, warn))
+    return get_validated_options(opts, warn)
 
 
-def split_options(opts: str, validate: bool = True, warn: bool = False, normalize: bool = True) -> MutableMapping[str, Any]:
+def split_options(opts, validate=True, warn=False, normalize=True):
     """Takes the options portion of a MongoDB URI, validates each option
     and returns the options in a dictionary.
 
@@ -342,7 +340,7 @@ def split_options(opts: str, validate: bool = True, warn: bool = False, normaliz
     return options
 
 
-def split_hosts(hosts: str, default_port: Optional[int] = DEFAULT_PORT) -> List[Tuple[str, Optional[int]]]:
+def split_hosts(hosts, default_port=DEFAULT_PORT):
     """Takes a string of the form host1[:port],host2[:port]... and
     splits it into (host, port) tuples. If [:port] isn't present the
     default_port is used.
@@ -395,16 +393,9 @@ def _check_options(nodes, options):
                 'Cannot specify replicaSet with loadBalanced=true')
 
 
-def parse_uri(
-    uri: str,
-    default_port: Optional[int] = DEFAULT_PORT,
-    validate: bool = True,
-    warn: bool = False,
-    normalize: bool = True,
-    connect_timeout: Optional[float] = None,
-    srv_service_name: Optional[str] = None,
-    srv_max_hosts: Optional[int] = None
-) -> Dict[str, Any]:
+def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
+              normalize=True, connect_timeout=None, srv_service_name=None,
+              srv_max_hosts=None):
     """Parse and validate a MongoDB URI.
 
     Returns a dict of the form::

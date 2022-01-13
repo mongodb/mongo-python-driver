@@ -15,19 +15,21 @@
 """Watch changes on a collection, a database, or the entire cluster."""
 
 import copy
-from typing import (TYPE_CHECKING, Any, Dict, Generic, Iterable, Mapping,
-                    Optional, Union, cast)
 
 from bson import _bson_to_dict
 from bson.raw_bson import RawBSONDocument
+
 from pymongo import common
 from pymongo.aggregation import (_CollectionAggregationCommand,
                                  _DatabaseAggregationCommand)
 from pymongo.collation import validate_collation_or_none
 from pymongo.command_cursor import CommandCursor
-from pymongo.errors import (ConnectionFailure, CursorNotFound,
-                            InvalidOperation, OperationFailure, PyMongoError)
-from pymongo.typings import CollationIn, DocumentType, Pipeline
+from pymongo.errors import (ConnectionFailure,
+                            CursorNotFound,
+                            InvalidOperation,
+                            OperationFailure,
+                            PyMongoError)
+
 
 # The change streams spec considers the following server errors from the
 # getMore command non-resumable. All other getMore errors are resumable.
@@ -53,14 +55,7 @@ _RESUMABLE_GETMORE_ERRORS = frozenset([
 ])
 
 
-if TYPE_CHECKING:
-    from pymongo.client_session import ClientSession
-    from pymongo.collection import Collection
-    from pymongo.database import Database
-    from pymongo.mongo_client import MongoClient
-
-
-class ChangeStream(Generic[DocumentType]):
+class ChangeStream(object):
     """The internal abstract base class for change stream cursors.
 
     Should not be called directly by application developers. Use
@@ -71,22 +66,14 @@ class ChangeStream(Generic[DocumentType]):
     .. versionadded:: 3.6
     .. seealso:: The MongoDB documentation on `changeStreams <https://dochub.mongodb.org/core/changeStreams>`_.
     """
-    def __init__(
-        self,
-        target: Union["MongoClient[DocumentType]", "Database[DocumentType]", "Collection[DocumentType]"],
-        pipeline: Optional[Pipeline],
-        full_document: Optional[str],
-        resume_after: Optional[Mapping[str, Any]],
-        max_await_time_ms: Optional[int],
-        batch_size: Optional[int],
-        collation: Optional[CollationIn],
-        start_at_operation_time: Optional[Mapping[str, Any]],
-        session: Optional["ClientSession"],
-        start_after: Optional[Mapping[str, Any]],
-    ) -> None:
+    def __init__(self, target, pipeline, full_document, resume_after,
+                 max_await_time_ms, batch_size, collation,
+                 start_at_operation_time, session, start_after):
         if pipeline is None:
             pipeline = []
-        pipeline = common.validate_list('pipeline', pipeline)
+        elif not isinstance(pipeline, list):
+            raise TypeError("pipeline must be a list")
+
         common.validate_string_or_none('full_document', full_document)
         validate_collation_or_none(collation)
         common.validate_non_negative_integer_or_none("batchSize", batch_size)
@@ -97,7 +84,7 @@ class ChangeStream(Generic[DocumentType]):
             self._decode_custom = True
             # Keep the type registry so that we support encoding custom types
             # in the pipeline.
-            self._target = target.with_options(  # type: ignore
+            self._target = target.with_options(
                 codec_options=target.codec_options.with_options(
                     document_class=RawBSONDocument))
         else:
@@ -130,7 +117,7 @@ class ChangeStream(Generic[DocumentType]):
 
     def _change_stream_options(self):
         """Return the options dict for the $changeStream pipeline stage."""
-        options: Dict[str, Any] = {}
+        options = {}
         if self._full_document is not None:
             options['fullDocument'] = self._full_document
 
@@ -210,15 +197,15 @@ class ChangeStream(Generic[DocumentType]):
             pass
         self._cursor = self._create_cursor()
 
-    def close(self) -> None:
+    def close(self):
         """Close this ChangeStream."""
         self._cursor.close()
 
-    def __iter__(self) -> Iterable[Mapping[str, Any]]:
-        return cast(Iterable[Mapping[str, Any]], self)
+    def __iter__(self):
+        return self
 
     @property
-    def resume_token(self) -> Optional[Mapping[str, Any]]:
+    def resume_token(self):
         """The cached resume token that will be used to resume after the most
         recently returned change.
 
@@ -226,7 +213,7 @@ class ChangeStream(Generic[DocumentType]):
         """
         return copy.deepcopy(self._resume_token)
 
-    def next(self) -> DocumentType:
+    def next(self):
         """Advance the cursor.
 
         This method blocks until the next change document is returned or an
@@ -268,7 +255,7 @@ class ChangeStream(Generic[DocumentType]):
     __next__ = next
 
     @property
-    def alive(self) -> bool:
+    def alive(self):
         """Does this cursor have the potential to return more data?
 
         .. note:: Even if :attr:`alive` is ``True``, :meth:`next` can raise
@@ -278,7 +265,7 @@ class ChangeStream(Generic[DocumentType]):
         """
         return self._cursor.alive
 
-    def try_next(self) -> Optional[DocumentType]:
+    def try_next(self):
         """Advance the cursor without blocking indefinitely.
 
         This method returns the next change document without waiting
@@ -367,14 +354,14 @@ class ChangeStream(Generic[DocumentType]):
             return _bson_to_dict(change.raw, self._orig_codec_options)
         return change
 
-    def __enter__(self) -> "ChangeStream":
+    def __enter__(self):
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
 
-class CollectionChangeStream(ChangeStream, Generic[DocumentType]):
+class CollectionChangeStream(ChangeStream):
     """A change stream that watches changes on a single collection.
 
     Should not be called directly by application developers. Use
@@ -391,7 +378,7 @@ class CollectionChangeStream(ChangeStream, Generic[DocumentType]):
         return self._target.database.client
 
 
-class DatabaseChangeStream(ChangeStream, Generic[DocumentType]):
+class DatabaseChangeStream(ChangeStream):
     """A change stream that watches changes on all collections in a database.
 
     Should not be called directly by application developers. Use

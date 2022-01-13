@@ -16,9 +16,7 @@
 
 import errno
 import select
-import socket
 import sys
-from typing import Any, Optional
 
 # PYTHON-2320: Jython does not fully support poll on SSL sockets,
 # https://bugs.jython.org/issue2900
@@ -36,19 +34,17 @@ def _errno_from_exception(exc):
 
 class SocketChecker(object):
 
-    def __init__(self) -> None:
-        self._poller: Optional[select.poll]
+    def __init__(self):
         if _HAVE_POLL:
             self._poller = select.poll()
         else:
             self._poller = None
 
-    def select(self, sock: Any, read: bool = False, write: bool = False, timeout: int = 0) -> bool:
+    def select(self, sock, read=False, write=False, timeout=0):
         """Select for reads or writes with a timeout in seconds (or None).
 
         Returns True if the socket is readable/writable, False on timeout.
         """
-        res: Any
         while True:
             try:
                 if self._poller:
@@ -78,12 +74,12 @@ class SocketChecker(object):
                     # ready: subsets of the first three arguments. Return
                     # True if any of the lists are not empty.
                     return any(res)
-            except (_SelectError, IOError) as exc:  # type: ignore
+            except (_SelectError, IOError) as exc:
                 if _errno_from_exception(exc) in (errno.EINTR, errno.EAGAIN):
                     continue
                 raise
 
-    def socket_closed(self, sock: Any) -> bool:
+    def socket_closed(self, sock):
         """Return True if we know socket has been closed, False otherwise.
         """
         try:

@@ -14,48 +14,34 @@
 
 """Represent a deployment of MongoDB servers."""
 
+from collections import namedtuple
 from random import sample
-from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple
 
-from bson.objectid import ObjectId
 from pymongo import common
 from pymongo.errors import ConfigurationError
-from pymongo.read_preferences import ReadPreference, _AggWritePref, _ServerMode
+from pymongo.read_preferences import ReadPreference, _AggWritePref
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import Selection
 from pymongo.server_type import SERVER_TYPE
-from pymongo.typings import Address
 
 
 # Enumeration for various kinds of MongoDB cluster topologies.
-class _TopologyType(NamedTuple):
-    Single: int
-    ReplicaSetNoPrimary: int
-    ReplicaSetWithPrimary: int
-    Sharded: int
-    Unknown: int
-    LoadBalanced: int
-
-
-TOPOLOGY_TYPE = _TopologyType(*range(6))
+TOPOLOGY_TYPE = namedtuple('TopologyType', [
+    'Single', 'ReplicaSetNoPrimary', 'ReplicaSetWithPrimary', 'Sharded',
+    'Unknown', 'LoadBalanced'])(*range(6))
 
 # Topologies compatible with SRV record polling.
-SRV_POLLING_TOPOLOGIES: Tuple[int, int] = (TOPOLOGY_TYPE.Unknown, TOPOLOGY_TYPE.Sharded)
-
-
-_ServerSelector = Callable[[List[ServerDescription]], List[ServerDescription]]
+SRV_POLLING_TOPOLOGIES = (TOPOLOGY_TYPE.Unknown, TOPOLOGY_TYPE.Sharded)
 
 
 class TopologyDescription(object):
-    def __init__(
-        self,
-        topology_type: int,
-        server_descriptions: Dict[Address, ServerDescription],
-        replica_set_name: Optional[str],
-        max_set_version: Optional[int],
-        max_election_id: Optional[ObjectId],
-        topology_settings: Any,
-    ) -> None:
+    def __init__(self,
+                 topology_type,
+                 server_descriptions,
+                 replica_set_name,
+                 max_set_version,
+                 max_election_id,
+                 topology_settings):
         """Representation of a deployment of MongoDB servers.
 
         :Parameters:
@@ -95,7 +81,7 @@ class TopologyDescription(object):
                  for s in readable_servers):
             self._ls_timeout_minutes = None
         else:
-            self._ls_timeout_minutes = min(s.logical_session_timeout_minutes  # type: ignore
+            self._ls_timeout_minutes = min(s.logical_session_timeout_minutes
                                            for s in readable_servers)
 
     def _init_incompatible_err(self):
@@ -134,7 +120,7 @@ class TopologyDescription(object):
 
                 break
 
-    def check_compatible(self) -> None:
+    def check_compatible(self):
         """Raise ConfigurationError if any server is incompatible.
 
         A server is incompatible if its wire protocol version range does not
@@ -143,15 +129,15 @@ class TopologyDescription(object):
         if self._incompatible_err:
             raise ConfigurationError(self._incompatible_err)
 
-    def has_server(self, address: Address) -> bool:
+    def has_server(self, address):
         return address in self._server_descriptions
 
-    def reset_server(self, address: Address) -> "TopologyDescription":
+    def reset_server(self, address):
         """A copy of this description, with one server marked Unknown."""
         unknown_sd = self._server_descriptions[address].to_unknown()
         return updated_topology_description(self, unknown_sd)
 
-    def reset(self) -> "TopologyDescription":
+    def reset(self):
         """A copy of this description, with all servers marked Unknown."""
         if self._topology_type == TOPOLOGY_TYPE.ReplicaSetWithPrimary:
             topology_type = TOPOLOGY_TYPE.ReplicaSetNoPrimary
@@ -170,18 +156,18 @@ class TopologyDescription(object):
             self._max_election_id,
             self._topology_settings)
 
-    def server_descriptions(self) -> Dict[Address, ServerDescription]:
+    def server_descriptions(self):
         """Dict of (address,
         :class:`~pymongo.server_description.ServerDescription`)."""
         return self._server_descriptions.copy()
 
     @property
-    def topology_type(self) -> int:
+    def topology_type(self):
         """The type of this topology."""
         return self._topology_type
 
     @property
-    def topology_type_name(self) -> str:
+    def topology_type_name(self):
         """The topology type as a human readable string.
 
         .. versionadded:: 3.4
@@ -189,44 +175,44 @@ class TopologyDescription(object):
         return TOPOLOGY_TYPE._fields[self._topology_type]
 
     @property
-    def replica_set_name(self) -> Optional[str]:
+    def replica_set_name(self):
         """The replica set name."""
         return self._replica_set_name
 
     @property
-    def max_set_version(self) -> Optional[int]:
+    def max_set_version(self):
         """Greatest setVersion seen from a primary, or None."""
         return self._max_set_version
 
     @property
-    def max_election_id(self) -> Optional[ObjectId]:
+    def max_election_id(self):
         """Greatest electionId seen from a primary, or None."""
         return self._max_election_id
 
     @property
-    def logical_session_timeout_minutes(self) -> Optional[int]:
+    def logical_session_timeout_minutes(self):
         """Minimum logical session timeout, or None."""
         return self._ls_timeout_minutes
 
     @property
-    def known_servers(self) -> List[ServerDescription]:
+    def known_servers(self):
         """List of Servers of types besides Unknown."""
         return [s for s in self._server_descriptions.values()
                 if s.is_server_type_known]
 
     @property
-    def has_known_servers(self) -> bool:
+    def has_known_servers(self):
         """Whether there are any Servers of types besides Unknown."""
         return any(s for s in self._server_descriptions.values()
                    if s.is_server_type_known)
 
     @property
-    def readable_servers(self) -> List[ServerDescription]:
+    def readable_servers(self):
         """List of readable Servers."""
         return [s for s in self._server_descriptions.values() if s.is_readable]
 
     @property
-    def common_wire_version(self) -> Optional[int]:
+    def common_wire_version(self):
         """Minimum of all servers' max wire versions, or None."""
         servers = self.known_servers
         if servers:
@@ -235,11 +221,11 @@ class TopologyDescription(object):
         return None
 
     @property
-    def heartbeat_frequency(self) -> int:
+    def heartbeat_frequency(self):
         return self._topology_settings.heartbeat_frequency
 
     @property
-    def srv_max_hosts(self) -> int:
+    def srv_max_hosts(self):
         return self._topology_settings._srv_max_hosts
 
     def _apply_local_threshold(self, selection):
@@ -252,12 +238,7 @@ class TopologyDescription(object):
         return [s for s in selection.server_descriptions
                 if (s.round_trip_time - fastest) <= threshold]
 
-    def apply_selector(
-        self,
-        selector: Any,
-        address: Optional[Address] = None,
-        custom_selector: Optional[_ServerSelector] = None
-    ) -> List[ServerDescription]:
+    def apply_selector(self, selector, address=None, custom_selector=None):
         """List of servers matching the provided selector(s).
 
         :Parameters:
@@ -307,7 +288,7 @@ class TopologyDescription(object):
                 custom_selector(selection.server_descriptions))
         return self._apply_local_threshold(selection)
 
-    def has_readable_server(self, read_preference: _ServerMode =ReadPreference.PRIMARY) -> bool:
+    def has_readable_server(self, read_preference=ReadPreference.PRIMARY):
         """Does this topology have any readable servers available matching the
         given read preference?
 
@@ -324,7 +305,7 @@ class TopologyDescription(object):
         common.validate_read_preference("read_preference", read_preference)
         return any(self.apply_selector(read_preference))
 
-    def has_writable_server(self) -> bool:
+    def has_writable_server(self):
         """Does this topology have a writable server available?
 
         .. note:: When connected directly to a single server this method
@@ -355,9 +336,7 @@ _SERVER_TYPE_TO_TOPOLOGY_TYPE = {
 }
 
 
-def updated_topology_description(
-    topology_description: TopologyDescription, server_description: ServerDescription
-) -> "TopologyDescription":
+def updated_topology_description(topology_description, server_description):
     """Return an updated copy of a TopologyDescription.
 
     :Parameters:

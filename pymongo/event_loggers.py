@@ -26,6 +26,8 @@ or
 
 ``MongoClient(event_listeners=[CommandLogger()])``
 """
+
+
 import logging
 
 from pymongo import monitoring
@@ -40,18 +42,18 @@ class CommandLogger(monitoring.CommandListener):
     logs them at the `INFO` severity level using :mod:`logging`.
     .. versionadded:: 3.11
     """
-    def started(self, event: monitoring.CommandStartedEvent) -> None:
+    def started(self, event):
         logging.info("Command {0.command_name} with request id "
                      "{0.request_id} started on server "
                      "{0.connection_id}".format(event))
 
-    def succeeded(self, event: monitoring.CommandSucceededEvent) -> None:
+    def succeeded(self, event):
         logging.info("Command {0.command_name} with request id "
                      "{0.request_id} on server {0.connection_id} "
                      "succeeded in {0.duration_micros} "
                      "microseconds".format(event))
 
-    def failed(self, event: monitoring.CommandFailedEvent) -> None:
+    def failed(self, event):
         logging.info("Command {0.command_name} with request id "
                      "{0.request_id} on server {0.connection_id} "
                      "failed in {0.duration_micros} "
@@ -68,11 +70,11 @@ class ServerLogger(monitoring.ServerListener):
 
     .. versionadded:: 3.11
     """
-    def opened(self, event: monitoring.ServerOpeningEvent) -> None:
+    def opened(self, event):
         logging.info("Server {0.server_address} added to topology "
                      "{0.topology_id}".format(event))
 
-    def description_changed(self, event: monitoring.ServerDescriptionChangedEvent) -> None:
+    def description_changed(self, event):
         previous_server_type = event.previous_description.server_type
         new_server_type = event.new_description.server_type
         if new_server_type != previous_server_type:
@@ -82,7 +84,7 @@ class ServerLogger(monitoring.ServerListener):
                 "{0.previous_description.server_type_name} to "
                 "{0.new_description.server_type_name}".format(event))
 
-    def closed(self, event: monitoring.ServerClosedEvent) -> None:
+    def closed(self, event):
         logging.warning("Server {0.server_address} removed from topology "
                         "{0.topology_id}".format(event))
 
@@ -97,17 +99,17 @@ class HeartbeatLogger(monitoring.ServerHeartbeatListener):
 
     .. versionadded:: 3.11
     """
-    def started(self, event: monitoring.ServerHeartbeatStartedEvent) -> None:
+    def started(self, event):
         logging.info("Heartbeat sent to server "
                      "{0.connection_id}".format(event))
 
-    def succeeded(self, event: monitoring.ServerHeartbeatSucceededEvent) -> None:
+    def succeeded(self, event):
         # The reply.document attribute was added in PyMongo 3.4.
         logging.info("Heartbeat to server {0.connection_id} "
                      "succeeded with reply "
                      "{0.reply.document}".format(event))
 
-    def failed(self, event: monitoring.ServerHeartbeatFailedEvent) -> None:
+    def failed(self, event):
         logging.warning("Heartbeat to server {0.connection_id} "
                         "failed with error {0.reply}".format(event))
 
@@ -122,11 +124,11 @@ class TopologyLogger(monitoring.TopologyListener):
 
     .. versionadded:: 3.11
     """
-    def opened(self, event: monitoring.TopologyOpenedEvent) -> None:
+    def opened(self, event):
         logging.info("Topology with id {0.topology_id} "
                      "opened".format(event))
 
-    def description_changed(self, event: monitoring.TopologyDescriptionChangedEvent) -> None:
+    def description_changed(self, event):
         logging.info("Topology description updated for "
                      "topology id {0.topology_id}".format(event))
         previous_topology_type = event.previous_description.topology_type
@@ -144,7 +146,7 @@ class TopologyLogger(monitoring.TopologyListener):
         if not event.new_description.has_readable_server():
             logging.warning("No readable servers available.")
 
-    def closed(self, event: monitoring.TopologyClosedEvent) -> None:
+    def closed(self, event):
         logging.info("Topology with id {0.topology_id} "
                      "closed".format(event))
 
@@ -166,43 +168,43 @@ class ConnectionPoolLogger(monitoring.ConnectionPoolListener):
 
     .. versionadded:: 3.11
     """
-    def pool_created(self, event: monitoring.PoolCreatedEvent) -> None:
+    def pool_created(self, event):
         logging.info("[pool {0.address}] pool created".format(event))
 
     def pool_ready(self, event):
         logging.info("[pool {0.address}] pool ready".format(event))
 
-    def pool_cleared(self, event: monitoring.PoolClearedEvent) -> None:
+    def pool_cleared(self, event):
         logging.info("[pool {0.address}] pool cleared".format(event))
 
-    def pool_closed(self, event: monitoring.PoolClosedEvent) -> None:
+    def pool_closed(self, event):
         logging.info("[pool {0.address}] pool closed".format(event))
 
-    def connection_created(self, event: monitoring.ConnectionCreatedEvent) -> None:
+    def connection_created(self, event):
         logging.info("[pool {0.address}][conn #{0.connection_id}] "
                      "connection created".format(event))
 
-    def connection_ready(self, event: monitoring.ConnectionReadyEvent) -> None:
+    def connection_ready(self, event):
         logging.info("[pool {0.address}][conn #{0.connection_id}] "
                      "connection setup succeeded".format(event))
 
-    def connection_closed(self, event: monitoring.ConnectionClosedEvent) -> None:
+    def connection_closed(self, event):
         logging.info("[pool {0.address}][conn #{0.connection_id}] "
                      "connection closed, reason: "
                      "{0.reason}".format(event))
 
-    def connection_check_out_started(self, event: monitoring.ConnectionCheckOutStartedEvent) -> None:
+    def connection_check_out_started(self, event):
         logging.info("[pool {0.address}] connection check out "
                      "started".format(event))
 
-    def connection_check_out_failed(self, event: monitoring.ConnectionCheckOutFailedEvent) -> None:
+    def connection_check_out_failed(self, event):
         logging.info("[pool {0.address}] connection check out "
                      "failed, reason: {0.reason}".format(event))
 
-    def connection_checked_out(self, event: monitoring.ConnectionCheckedOutEvent) -> None:
+    def connection_checked_out(self, event):
         logging.info("[pool {0.address}][conn #{0.connection_id}] "
                      "connection checked out of pool".format(event))
 
-    def connection_checked_in(self, event: monitoring.ConnectionCheckedInEvent) -> None:
+    def connection_checked_in(self, event):
         logging.info("[pool {0.address}][conn #{0.connection_id}] "
                      "connection checked into pool".format(event))

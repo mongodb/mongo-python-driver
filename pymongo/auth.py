@@ -19,6 +19,7 @@ import hashlib
 import hmac
 import os
 import socket
+
 from base64 import standard_b64decode, standard_b64encode
 from collections import namedtuple
 from urllib.parse import quote
@@ -32,12 +33,12 @@ from pymongo.saslprep import saslprep
 HAVE_KERBEROS = True
 _USE_PRINCIPAL = False
 try:
-    import winkerberos as kerberos  # type: ignore
+    import winkerberos as kerberos
     if tuple(map(int, kerberos.__version__.split('.')[:2])) >= (0, 5):
         _USE_PRINCIPAL = True
 except ImportError:
     try:
-        import kerberos  # type: ignore
+        import kerberos
     except ImportError:
         HAVE_KERBEROS = False
 
@@ -96,7 +97,7 @@ GSSAPIProperties = namedtuple('GSSAPIProperties',
 """Mechanism properties for GSSAPI authentication."""
 
 
-_AWSProperties = namedtuple('AWSProperties', ['aws_session_token'])  # type: ignore
+_AWSProperties = namedtuple('AWSProperties', ['aws_session_token'])
 """Mechanism properties for MONGODB-AWS authentication."""
 
 
@@ -544,6 +545,5 @@ def authenticate(credentials, sock_info):
     """Authenticate sock_info."""
     mechanism = credentials.mechanism
     auth_func = _AUTH_MAP.get(mechanism)
-    if auth_func:
-        auth_func(credentials, sock_info)
+    auth_func(credentials, sock_info)
 

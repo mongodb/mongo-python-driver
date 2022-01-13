@@ -14,8 +14,6 @@
 
 """Tools for working with read concerns."""
 
-from typing import Any, Dict, Optional
-
 
 class ReadConcern(object):
     """ReadConcern
@@ -31,7 +29,7 @@ class ReadConcern(object):
 
     """
 
-    def __init__(self, level: Optional[str] = None) -> None:
+    def __init__(self, level=None):
         if level is None or isinstance(level, str):
             self.__level = level
         else:
@@ -39,18 +37,18 @@ class ReadConcern(object):
                 'level must be a string or None.')
 
     @property
-    def level(self) -> Optional[str]:
+    def level(self):
         """The read concern level."""
         return self.__level
 
     @property
-    def ok_for_legacy(self) -> bool:
+    def ok_for_legacy(self):
         """Return ``True`` if this read concern is compatible with
         old wire protocol versions."""
         return self.level is None or self.level == 'local'
 
     @property
-    def document(self) -> Dict[str, Any]:
+    def document(self):
         """The document representation of this read concern.
 
         .. note::
@@ -62,7 +60,7 @@ class ReadConcern(object):
             doc['level'] = self.level
         return doc
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other):
         if isinstance(other, ReadConcern):
             return self.document == other.document
         return NotImplemented
@@ -73,4 +71,4 @@ class ReadConcern(object):
         return 'ReadConcern()'
 
 
-DEFAULT_READ_CONCERN: ReadConcern = ReadConcern()
+DEFAULT_READ_CONCERN = ReadConcern()

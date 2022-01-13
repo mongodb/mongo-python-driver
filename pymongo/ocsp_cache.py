@@ -21,7 +21,7 @@ from threading import Lock
 
 class _OCSPCache(object):
     """A cache for OCSP responses."""
-    CACHE_KEY_TYPE = namedtuple('OcspResponseCacheKey',  # type: ignore
+    CACHE_KEY_TYPE = namedtuple('OcspResponseCacheKey',
                                 ['hash_algorithm', 'issuer_name_hash',
                                  'issuer_key_hash', 'serial_number'])
 

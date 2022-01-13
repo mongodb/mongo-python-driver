@@ -15,12 +15,13 @@
 """MONGODB-AWS Authentication helpers."""
 
 try:
-    import pymongo_auth_aws  # type: ignore
-    from pymongo_auth_aws import (AwsCredential, AwsSaslContext,
+    import pymongo_auth_aws
+    from pymongo_auth_aws import (AwsCredential,
+                                  AwsSaslContext,
                                   PyMongoAuthAwsError)
     _HAVE_MONGODB_AWS = True
 except ImportError:
-    class AwsSaslContext(object):  # type: ignore
+    class AwsSaslContext(object):
         def __init__(self, credentials):
             pass
     _HAVE_MONGODB_AWS = False
@@ -31,7 +32,7 @@ from bson.son import SON
 from pymongo.errors import ConfigurationError, OperationFailure
 
 
-class _AwsSaslContext(AwsSaslContext):  # type: ignore
+class _AwsSaslContext(AwsSaslContext):
     # Dependency injection:
     def binary_type(self):
         """Return the bson.binary.Binary type."""

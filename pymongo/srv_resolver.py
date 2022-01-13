@@ -26,7 +26,6 @@ except ImportError:
 from pymongo.common import CONNECT_TIMEOUT
 from pymongo.errors import ConfigurationError
 
-
 # dnspython can return bytes or str from various parts
 # of its API depending on version. We always want str.
 def maybe_decode(text):

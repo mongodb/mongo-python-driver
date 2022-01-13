@@ -24,7 +24,7 @@ try:
     import pymongo.pyopenssl_context as _ssl
 except ImportError:
     try:
-        import pymongo.ssl_context as _ssl  # type: ignore
+        import pymongo.ssl_context as _ssl
     except ImportError:
         HAVE_SSL = False
 
@@ -74,7 +74,7 @@ if HAVE_SSL:
                 raise ConfigurationError(
                     "tlsCRLFile cannot be used with PyOpenSSL")
             # Match the server's behavior.
-            setattr(ctx, 'verify_flags', getattr(_ssl, "VERIFY_CRL_CHECK_LEAF", 0))
+            ctx.verify_flags = getattr(_ssl, "VERIFY_CRL_CHECK_LEAF", 0)
             ctx.load_verify_locations(crlfile)
         if ca_certs is not None:
             ctx.load_verify_locations(ca_certs)
@@ -83,11 +83,11 @@ if HAVE_SSL:
         ctx.verify_mode = verify_mode
         return ctx
 else:
-    class SSLError(Exception):  # type: ignore
+    class SSLError(Exception):
         pass
     HAS_SNI = False
     IPADDR_SAFE = False
 
-    def get_ssl_context(*dummy):  # type: ignore
+    def get_ssl_context(*dummy):
         """No ssl module, raise ConfigurationError."""
         raise ConfigurationError("The ssl module is not available.")

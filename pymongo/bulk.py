@@ -17,22 +17,30 @@
 .. versionadded:: 2.7
 """
 import copy
+
 from itertools import islice
 
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo.client_session import _validate_session_write_concern
-from pymongo.collation import validate_collation_or_none
-from pymongo.common import (validate_is_document_type, validate_is_mapping,
-                            validate_ok_for_replace, validate_ok_for_update)
-from pymongo.errors import (BulkWriteError, ConfigurationError,
-                            InvalidOperation, OperationFailure)
+from pymongo.common import (validate_is_mapping,
+                            validate_is_document_type,
+                            validate_ok_for_replace,
+                            validate_ok_for_update)
 from pymongo.helpers import _RETRYABLE_ERROR_CODES, _get_wce_doc
-from pymongo.message import (_DELETE, _INSERT, _UPDATE, _BulkWriteContext,
-                             _EncryptedBulkWriteContext, _randint)
+from pymongo.collation import validate_collation_or_none
+from pymongo.errors import (BulkWriteError,
+                            ConfigurationError,
+                            InvalidOperation,
+                            OperationFailure)
+from pymongo.message import (_INSERT, _UPDATE, _DELETE,
+                             _randint,
+                             _BulkWriteContext,
+                             _EncryptedBulkWriteContext)
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
+
 
 _DELETE_ALL = 0
 _DELETE_ONE = 1

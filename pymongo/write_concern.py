@@ -14,8 +14,6 @@
 
 """Tools for working with write concerns."""
 
-from typing import Any, Dict, Optional, Union
-
 from pymongo.errors import ConfigurationError
 
 
@@ -47,8 +45,8 @@ class WriteConcern(object):
 
     __slots__ = ("__document", "__acknowledged", "__server_default")
 
-    def __init__(self, w: Optional[Union[int, str]] = None, wtimeout: Optional[int] = None, j: Optional[bool] = None, fsync: Optional[bool] = None) -> None:
-        self.__document: Dict[str, Any] = {}
+    def __init__(self, w=None, wtimeout=None, j=None, fsync=None):
+        self.__document = {}
         self.__acknowledged = True
 
         if wtimeout is not None:
@@ -86,12 +84,12 @@ class WriteConcern(object):
         self.__server_default = not self.__document
 
     @property
-    def is_server_default(self) -> bool:
+    def is_server_default(self):
         """Does this WriteConcern match the server default."""
         return self.__server_default
 
     @property
-    def document(self) -> Dict[str, Any]:
+    def document(self):
         """The document representation of this write concern.
 
         .. note::
@@ -101,7 +99,7 @@ class WriteConcern(object):
         return self.__document.copy()
 
     @property
-    def acknowledged(self) -> bool:
+    def acknowledged(self):
         """If ``True`` write operations will wait for acknowledgement before
         returning.
         """
@@ -111,15 +109,15 @@ class WriteConcern(object):
         return ("WriteConcern(%s)" % (
             ", ".join("%s=%s" % kvt for kvt in self.__document.items()),))
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other):
         if isinstance(other, WriteConcern):
             return self.__document == other.document
         return NotImplemented
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other):
         if isinstance(other, WriteConcern):
             return self.__document != other.document
         return NotImplemented
 
 
-DEFAULT_WRITE_CONCERN: WriteConcern = WriteConcern()
+DEFAULT_WRITE_CONCERN = WriteConcern()
