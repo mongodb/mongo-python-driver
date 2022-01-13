@@ -1984,7 +1984,7 @@ class TestMongoClientFailover(MockClientTest):
     def test_gevent_task(self):
         if not gevent_monkey_patched():
             raise SkipTest("Must be running monkey patched by gevent")
-        from gevent import spawn  # type: ignore
+        from gevent import spawn
         def poller():
             while True:
                 client_context.client.pymongo_test.test.insert_one({})

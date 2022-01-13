@@ -15,16 +15,13 @@
 """Test the collation module."""
 
 import functools
-from typing import Any
 import warnings
 
 from pymongo.collation import (
     Collation,
     CollationCaseFirst, CollationStrength, CollationAlternate,
     CollationMaxVariable)
-from pymongo.database import Database
 from pymongo.errors import ConfigurationError
-from pymongo.mongo_client import MongoClient
 from pymongo.operations import (DeleteMany, DeleteOne, IndexModel, ReplaceOne,
                                 UpdateMany, UpdateOne)
 from pymongo.write_concern import WriteConcern
@@ -81,12 +78,6 @@ class TestCollationObject(unittest.TestCase):
 
 
 class TestCollation(IntegrationTest):
-    listener: EventListener
-    client: MongoClient
-    db: Database
-    collation: Collation
-    warn_context: Any
-
     @classmethod
     @client_context.require_connection
     def setUpClass(cls):

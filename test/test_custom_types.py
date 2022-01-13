@@ -89,7 +89,7 @@ class UndecipherableInt64Type(object):
 
 
 class UndecipherableIntDecoder(TypeDecoder):
-    bson_type = Int64  # type: ignore
+    bson_type = Int64
     def transform_bson(self, value):
         return UndecipherableInt64Type(value)
 
@@ -109,7 +109,7 @@ UNINT_CODECOPTS = CodecOptions(type_registry=TypeRegistry(
 
 
 class UppercaseTextDecoder(TypeDecoder):
-    bson_type = str  # type: ignore
+    bson_type = str
     def transform_bson(self, value):
         return value.upper()
 

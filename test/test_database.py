@@ -17,7 +17,6 @@
 import datetime
 import re
 import sys
-from typing import Any, Dict, List, Mapping, cast
 
 sys.path[0:0] = [""]
 
@@ -58,7 +57,6 @@ from test.test_custom_types import DECIMAL_CODECOPTS
 class TestDatabaseNoConnect(unittest.TestCase):
     """Test Database features on a client that does not connect.
     """
-    client: MongoClient
 
     @classmethod
     def setUpClass(cls):
@@ -104,8 +102,6 @@ class TestDatabaseNoConnect(unittest.TestCase):
 
 
 class TestDatabase(IntegrationTest):
-    client: MongoClient
-    db: Database
 
     def test_equality(self):
         self.assertNotEqual(Database(self.client, "test"),
@@ -147,7 +143,7 @@ class TestDatabase(IntegrationTest):
         test = db.create_collection("test")
         self.assertTrue("test" in db.list_collection_names())
         test.insert_one({"hello": "world"})
-        self.assertEqual(cast(Any, db.test.find_one())["hello"], "world")
+        self.assertEqual(db.test.find_one()["hello"], "world")
 
         db.drop_collection("test.foo")
         db.create_collection("test.foo")
@@ -229,7 +225,7 @@ class TestDatabase(IntegrationTest):
             self.assertTrue("$" not in coll)
 
         # Duplicate check.
-        coll_cnt: Dict[str, Any] = {}
+        coll_cnt = {}
         for coll in colls:
             try:
                 # Found duplicate.
@@ -246,29 +242,29 @@ class TestDatabase(IntegrationTest):
         else:
             self.assertTrue(False)
 
-        colls2 = db.list_collections(filter={"name": {"$regex": "^test$"}})
-        self.assertEqual(1, len(list(colls2)))
+        colls = db.list_collections(filter={"name": {"$regex": "^test$"}})
+        self.assertEqual(1, len(list(colls)))
 
-        colls3 = db.list_collections(filter={"name": {"$regex": "^test.mike$"}})
-        self.assertEqual(1, len(list(colls3)))
+        colls = db.list_collections(filter={"name": {"$regex": "^test.mike$"}})
+        self.assertEqual(1, len(list(colls)))
 
         db.drop_collection("test")
 
         db.create_collection("test", capped=True, size=4096)
         results = db.list_collections(filter={'options.capped': True})
-        colls4 = [result["name"] for result in results]
+        colls = [result["name"] for result in results]
 
         # Checking only capped collections are present
-        self.assertTrue("test" in colls4)
-        self.assertFalse("test.mike" in colls4)
+        self.assertTrue("test" in colls)
+        self.assertFalse("test.mike" in colls)
 
         # No collection containing a '$'.
-        for coll in colls4:
+        for coll in colls:
             self.assertTrue("$" not in coll)
 
         # Duplicate check.
         coll_cnt = {}
-        for coll in colls4:
+        for coll in colls:
             try:
                 # Found duplicate.
                 coll_cnt[coll] += 1
@@ -278,8 +274,8 @@ class TestDatabase(IntegrationTest):
         coll_cnt = {}
 
         # Checking if is there any collection which don't exists.
-        if (len(set(colls4) - set(["test"])) == 0 or
-            len(set(colls4) - set(["test","system.indexes"])) == 0):
+        if (len(set(colls) - set(["test"])) == 0 or
+            len(set(colls) - set(["test","system.indexes"])) == 0):
             self.assertTrue(True)
         else:
             self.assertTrue(False)
@@ -430,7 +426,7 @@ class TestDatabase(IntegrationTest):
         self.assertRaises(TypeError, db.dereference, None)
 
         self.assertEqual(None, db.dereference(DBRef("test", ObjectId())))
-        obj: Dict[str, Any] = {"x": True}
+        obj = {"x": True}
         key = db.test.insert_one(obj).inserted_id
         self.assertEqual(obj, db.dereference(DBRef("test", key)))
         self.assertEqual(obj,
@@ -470,7 +466,6 @@ class TestDatabase(IntegrationTest):
         self.assertEqual(None, db.test.find_one({"hello": "test"}))
 
         b = db.test.find_one()
-        assert b is not None
         b["hello"] = "mike"
         db.test.replace_one({"_id": b["_id"]}, b)
 
@@ -487,12 +482,12 @@ class TestDatabase(IntegrationTest):
         db = self.client.pymongo_test
         db.test.drop()
         db.test.insert_one({"x": 9223372036854775807})
-        retrieved = cast(Any, db.test.find_one())['x']
+        retrieved = db.test.find_one()['x']
         self.assertEqual(Int64(9223372036854775807), retrieved)
         self.assertIsInstance(retrieved, Int64)
         db.test.delete_many({})
         db.test.insert_one({"x": Int64(1)})
-        retrieved = cast(Any, db.test.find_one())['x']
+        retrieved = db.test.find_one()['x']
         self.assertEqual(Int64(1), retrieved)
         self.assertIsInstance(retrieved, Int64)
 
@@ -514,8 +509,8 @@ class TestDatabase(IntegrationTest):
             length += 1
         self.assertEqual(length, 2)
 
-        db.test.delete_one(cast(Any, db.test.find_one()))
-        db.test.delete_one(cast(Any, db.test.find_one()))
+        db.test.delete_one(db.test.find_one())
+        db.test.delete_one(db.test.find_one())
         self.assertEqual(db.test.find_one(), None)
 
         db.test.insert_one({"x": 1})
@@ -637,10 +632,8 @@ class TestDatabase(IntegrationTest):
 
 
 class TestDatabaseAggregation(IntegrationTest):
-    client: MongoClient
-
     def setUp(self):
-        self.pipeline: List[Mapping[str, Any]] = [{"$listLocalSessions": {}},
+        self.pipeline = [{"$listLocalSessions": {}},
                          {"$limit": 1},
                          {"$addFields": {"dummy": "dummy field"}},
                          {"$project": {"_id": 0, "dummy": 1}}]
@@ -655,7 +648,6 @@ class TestDatabaseAggregation(IntegrationTest):
     @client_context.require_no_mongos
     def test_database_aggregation_fake_cursor(self):
         coll_name = "test_output"
-        write_stage: Dict[str, Any]
         if client_context.version < (4, 3):
             db_name = "admin"
             write_stage = {"$out": coll_name}

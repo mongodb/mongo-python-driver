@@ -20,7 +20,7 @@ import contextlib
 import re
 import sys
 
-from codecs import utf_8_decode  # type: ignore
+from codecs import utf_8_decode
 from collections import defaultdict
 
 sys.path[0:0] = [""]
