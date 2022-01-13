@@ -254,10 +254,11 @@ class _Bulk(object):
                 yield run
 
     def _execute_command(self, generator, write_concern, session,
-                         sock_info, op_id, retryable, full_result):
+                         sock_info, op_id, retryable, full_result, final_write_concern=None):
         db_name = self.collection.database.name
         client = self.collection.database.client
         listeners = client._event_listeners
+        final_write_concern = final_write_concern or write_concern
 
         if not self.current_run:
             self.current_run = next(generator)
@@ -273,6 +274,8 @@ class _Bulk(object):
                 run.op_type, self.collection.codec_options)
 
             while run.idx_offset < len(run.ops):
+                if run.idx_offset == len(run.ops) - 1:
+                    write_concern = final_write_concern
                 cmd = SON([(cmd_name, self.collection.name),
                            ('ordered', self.ordered)])
                 if not write_concern.is_server_default:
@@ -377,7 +380,7 @@ class _Bulk(object):
                 run.idx_offset += len(to_send)
             self.current_run = run = next(generator, None)
 
-    def execute_command_no_results(self, sock_info, generator):
+    def execute_command_no_results(self, sock_info, generator, write_concern=None):
         """Execute write commands with OP_MSG and w=0 WriteConcern, ordered.
         """
         full_result = {
@@ -393,16 +396,16 @@ class _Bulk(object):
         # Ordered bulk writes have to be acknowledged so that we stop
         # processing at the first error, even when the application
         # specified unacknowledged writeConcern.
-        write_concern = WriteConcern()
+        loop_write_concern = WriteConcern()
         op_id = _randint()
         try:
             self._execute_command(
-                generator, write_concern, None,
-                sock_info, op_id, False, full_result)
+                generator, loop_write_concern, None,
+                sock_info, op_id, False, full_result, write_concern)
         except OperationFailure:
             pass
 
-    def execute_no_results(self, sock_info, generator):
+    def execute_no_results(self, sock_info, generator, write_concern=None):
         """Execute all operations, returning no results (w=0).
         """
         if self.uses_collation:
@@ -417,7 +420,7 @@ class _Bulk(object):
                                    " unacknowledged write concern")
 
         if self.ordered:
-            return self.execute_command_no_results(sock_info, generator)
+            return self.execute_command_no_results(sock_info, generator, write_concern)
         return self.execute_op_msg_no_results(sock_info, generator)
 
     def execute(self, write_concern, session):
@@ -440,6 +443,6 @@ class _Bulk(object):
         client = self.collection.database.client
         if not write_concern.acknowledged:
             with client._socket_for_writes(session) as sock_info:
-                self.execute_no_results(sock_info, generator)
+                self.execute_no_results(sock_info, generator, write_concern)
         else:
             return self.execute_command(generator, write_concern, session)
