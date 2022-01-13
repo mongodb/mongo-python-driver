@@ -123,7 +123,7 @@ _RE_OPT_TABLE = {
 
 
 class DatetimeRepresentation:
-    LEGACY: int = 0
+    LEGACY = 0
     """Legacy MongoDB Extended JSON datetime representation.
 
     :class:`datetime.datetime` instances will be encoded to JSON in the
@@ -134,7 +134,7 @@ class DatetimeRepresentation:
     .. versionadded:: 3.4
     """
 
-    NUMBERLONG: int = 1
+    NUMBERLONG = 1
     """NumberLong datetime representation.
 
     :class:`datetime.datetime` instances will be encoded to JSON in the
@@ -145,7 +145,7 @@ class DatetimeRepresentation:
     .. versionadded:: 3.4
     """
 
-    ISO8601: int = 2
+    ISO8601 = 2
     """ISO-8601 datetime representation.
 
     :class:`datetime.datetime` instances greater than or equal to the Unix
@@ -159,7 +159,7 @@ class DatetimeRepresentation:
 
 
 class JSONMode:
-    LEGACY: int =0
+    LEGACY = 0
     """Legacy Extended JSON representation.
 
     In this mode, :func:`~bson.json_util.dumps` produces PyMongo's legacy
@@ -170,7 +170,7 @@ class JSONMode:
     .. versionadded:: 3.5
     """
 
-    RELAXED: int =1
+    RELAXED = 1
     """Relaxed Extended JSON representation.
 
     In this mode, :func:`~bson.json_util.dumps` produces Relaxed Extended JSON,
@@ -186,7 +186,7 @@ class JSONMode:
     .. versionadded:: 3.5
     """
 
-    CANONICAL: int =2
+    CANONICAL = 2
     """Canonical Extended JSON representation.
 
     In this mode, :func:`~bson.json_util.dumps` produces Canonical Extended
@@ -788,8 +788,8 @@ def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
                 DatetimeRepresentation.ISO8601):
             if not obj.tzinfo:
                 obj = obj.replace(tzinfo=utc)
-            if obj >= EPOCH_AWARE:
                 assert obj.tzinfo is not None
+            if obj >= EPOCH_AWARE:
                 off = obj.tzinfo.utcoffset(obj)
                 if (off.days, off.seconds, off.microseconds) == (0, 0, 0):  # type: ignore
                     tz_string = 'Z'

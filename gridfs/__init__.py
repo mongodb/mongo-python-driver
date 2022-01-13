@@ -628,7 +628,7 @@ class GridFSBucket(object):
            Added ``session`` parameter.
         """
         with self.open_upload_stream(
-                filename, chunk_size_bytes, metadata, session=session) as gin:  # type: GridIn
+                filename, chunk_size_bytes, metadata, session=session) as gin:
             gin.write(source)
 
         return cast(ObjectId, gin._id)

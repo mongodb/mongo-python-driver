@@ -22,8 +22,7 @@ import copy
 import re
 from collections.abc import Mapping as _Mapping
 from typing import (Any, Dict, Iterable, Iterator, List, Mapping,
-                    MutableMapping, Optional, Pattern, Tuple, Type, TypeVar,
-                    Union, cast)
+                    Optional, Pattern, Tuple, Type, TypeVar, Union)
 
 # This sort of sucks, but seems to be as good as it gets...
 # This is essentially the same as re._pattern_type
@@ -156,7 +155,7 @@ class SON(Dict[_Key, _Value]):
         if isinstance(other, SON):
             return len(self) == len(other) and list(self.items()) == \
                    list(other.items())
-        return  self.to_dict() == other
+        return self.to_dict() == other
 
     def __ne__(self, other: Any) -> bool:
         return not self == other
@@ -183,7 +182,7 @@ class SON(Dict[_Key, _Value]):
 
         return transform_value(dict(self))
 
-    def __deepcopy__(self, memo: MutableMapping[int, "SON[_Key, _Value]"]) -> "SON[_Key, _Value]":
+    def __deepcopy__(self, memo: Dict[int, "SON[_Key, _Value]"]) -> "SON[_Key, _Value]":
         out: SON[_Key, _Value] = SON()
         val_id = id(self)
         if val_id in memo:
@@ -193,6 +192,6 @@ class SON(Dict[_Key, _Value]):
         memo[val_id] = out
         for k, v in self.items():
             if not isinstance(v, RE_TYPE):
-                v = copy.deepcopy(v, dict(memo))
+                v = copy.deepcopy(v, memo)
             out[k] = v
         return out

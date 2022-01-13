@@ -96,8 +96,8 @@ class TypeCodec(TypeEncoder, TypeDecoder):
     pass
 
 
-Codec = Union[TypeEncoder, TypeDecoder, TypeCodec]
-Fallback = Callable[[Any], Any]
+_Codec = Union[TypeEncoder, TypeDecoder, TypeCodec]
+_Fallback = Callable[[Any], Any]
 
 class TypeRegistry(object):
     """Encapsulates type codecs used in encoding and / or decoding BSON, as
@@ -125,7 +125,7 @@ class TypeRegistry(object):
         :mod:`bson` can encode. See :ref:`fallback-encoder-callable`
         documentation for an example.
     """
-    def __init__(self, type_codecs: Optional[Iterable[Codec]] = None, fallback_encoder: Optional[Fallback] = None) -> None:
+    def __init__(self, type_codecs: Optional[Iterable[_Codec]] = None, fallback_encoder: Optional[_Fallback] = None) -> None:
         self.__type_codecs = list(type_codecs or [])
         self._fallback_encoder = fallback_encoder
         self._encoder_map = {}
@@ -151,7 +151,7 @@ class TypeRegistry(object):
                         TypeEncoder.__name__, TypeDecoder.__name__,
                         TypeCodec.__name__, codec))
 
-    def _validate_type_encoder(self, codec: Codec) -> None:
+    def _validate_type_encoder(self, codec: _Codec) -> None:
         from bson import _BUILT_IN_TYPES
         for pytype in _BUILT_IN_TYPES:
             if issubclass(cast(TypeCodec, codec).python_type, pytype):

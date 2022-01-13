@@ -54,9 +54,8 @@ class Timestamp(object):
           - `inc`: the incrementing counter
         """
         if isinstance(time, datetime.datetime):
-            if time.utcoffset() is not None:
-                offset = time.utcoffset()
-                assert offset is not None
+            offset = time.utcoffset()
+            if offset is not None:
                 time = time - offset
             time = int(calendar.timegm(time.timetuple()))
         if not isinstance(time, int):

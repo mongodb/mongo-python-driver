@@ -131,9 +131,8 @@ class ObjectId(object):
           - `generation_time`: :class:`~datetime.datetime` to be used
             as the generation time for the resulting ObjectId.
         """
-        if generation_time.utcoffset() is not None:
-            offset =  generation_time.utcoffset()
-            assert offset is not None
+        offset =  generation_time.utcoffset()
+        if offset is not None:
             generation_time = generation_time - offset
         timestamp = calendar.timegm(generation_time.timetuple())
         oid = struct.pack(

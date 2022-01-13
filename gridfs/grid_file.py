@@ -33,16 +33,16 @@ from pymongo.errors import (ConfigurationError, CursorNotFound,
                             OperationFailure)
 from pymongo.read_preferences import ReadPreference
 
-_SEEK_SET: int = os.SEEK_SET
-_SEEK_CUR: int = os.SEEK_CUR
-_SEEK_END: int = os.SEEK_END
+_SEEK_SET = os.SEEK_SET
+_SEEK_CUR = os.SEEK_CUR
+_SEEK_END = os.SEEK_END
 
-EMPTY: bytes = b""
-NEWLN: bytes = b"\n"
+EMPTY = b""
+NEWLN = b"\n"
 
 """Default chunk size, in bytes."""
 # Slightly under a power of 2, to work well with server's record allocations.
-DEFAULT_CHUNK_SIZE: int = 255 * 1024
+DEFAULT_CHUNK_SIZE = 255 * 1024
 
 _C_INDEX: SON[str, Any] = SON([("files_id", ASCENDING), ("n", ASCENDING)])
 _F_INDEX: SON[str, Any] = SON([("filename", ASCENDING), ("uploadDate", ASCENDING)])
@@ -572,14 +572,12 @@ class GridOut(io.IOBase):
         data.seek(0)
         return data.read(size)
 
-    def readline(self, size: Optional[int] = -1) -> bytes:
+    def readline(self, size: int = -1) -> bytes:  # type: ignore[override]
         """Read one line or up to `size` bytes from the file.
 
         :Parameters:
          - `size` (optional): the maximum number of bytes to read
         """
-        if size is None:
-            size = -1
         remainder = int(self.length) - self.__position
         if size < 0 or size > remainder:
             size = remainder
@@ -624,6 +622,10 @@ class GridOut(io.IOBase):
            positioning, :attr:`os.SEEK_CUR` (``1``) to seek relative
            to the current position, :attr:`os.SEEK_END` (``2``) to
            seek relative to the file's end.
+
+        .. versionchanged:: 4.1
+           The method now returns the new position in the file, to
+           conform to the behavior of :attr:`io.IOBase.seek()`.
         """
         if whence == _SEEK_SET:
             new_pos = pos

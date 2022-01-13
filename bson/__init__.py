@@ -98,31 +98,31 @@ except ImportError:
     _USE_C = False
 
 
-EPOCH_AWARE: datetime.datetime = datetime.datetime.fromtimestamp(0, utc)
-EPOCH_NAIVE: datetime.datetime  = datetime.datetime.utcfromtimestamp(0)
+EPOCH_AWARE = datetime.datetime.fromtimestamp(0, utc)
+EPOCH_NAIVE = datetime.datetime.utcfromtimestamp(0)
 
 
-BSONNUM: bytes = b"\x01" # Floating point
-BSONSTR: bytes = b"\x02" # UTF-8 string
-BSONOBJ: bytes = b"\x03" # Embedded document
-BSONARR: bytes = b"\x04" # Array
-BSONBIN: bytes = b"\x05" # Binary
-BSONUND: bytes = b"\x06" # Undefined
-BSONOID: bytes = b"\x07" # ObjectId
-BSONBOO: bytes = b"\x08" # Boolean
-BSONDAT: bytes = b"\x09" # UTC Datetime
-BSONNUL: bytes = b"\x0A" # Null
-BSONRGX: bytes = b"\x0B" # Regex
-BSONREF: bytes = b"\x0C" # DBRef
-BSONCOD: bytes = b"\x0D" # Javascript code
-BSONSYM: bytes = b"\x0E" # Symbol
-BSONCWS: bytes = b"\x0F" # Javascript code with scope
-BSONINT: bytes = b"\x10" # 32bit int
-BSONTIM: bytes = b"\x11" # Timestamp
-BSONLON: bytes = b"\x12" # 64bit int
-BSONDEC: bytes = b"\x13" # Decimal128
-BSONMIN: bytes = b"\xFF" # Min key
-BSONMAX: bytes = b"\x7F" # Max key
+BSONNUM = b"\x01" # Floating point
+BSONSTR = b"\x02" # UTF-8 string
+BSONOBJ = b"\x03" # Embedded document
+BSONARR = b"\x04" # Array
+BSONBIN = b"\x05" # Binary
+BSONUND = b"\x06" # Undefined
+BSONOID = b"\x07" # ObjectId
+BSONBOO = b"\x08" # Boolean
+BSONDAT = b"\x09" # UTC Datetime
+BSONNUL = b"\x0A" # Null
+BSONRGX = b"\x0B" # Regex
+BSONREF = b"\x0C" # DBRef
+BSONCOD = b"\x0D" # Javascript code
+BSONSYM = b"\x0E" # Symbol
+BSONCWS = b"\x0F" # Javascript code with scope
+BSONINT = b"\x10" # 32bit int
+BSONTIM = b"\x11" # Timestamp
+BSONLON = b"\x12" # 64bit int
+BSONDEC = b"\x13" # Decimal128
+BSONMIN = b"\xFF" # Min key
+BSONMAX = b"\x7F" # Max key
 
 
 _UNPACK_FLOAT_FROM = struct.Struct("<d").unpack_from
