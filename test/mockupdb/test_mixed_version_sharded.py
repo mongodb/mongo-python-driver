@@ -18,7 +18,7 @@ import time
 
 from queue import Queue
 
-from mockupdb import MockupDB, go, OpMsg  # type: ignore
+from mockupdb import MockupDB, go, OpMsg
 from pymongo import MongoClient
 
 import unittest

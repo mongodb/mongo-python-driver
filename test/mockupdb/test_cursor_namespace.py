@@ -14,7 +14,7 @@
 
 """Test list_indexes with more than one batch."""
 
-from mockupdb import going, MockupDB  # type: ignore
+from mockupdb import going, MockupDB
 from pymongo import MongoClient
 
 import unittest

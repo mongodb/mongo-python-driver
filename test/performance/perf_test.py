@@ -45,7 +45,7 @@ TEST_PATH = os.environ.get('TEST_PATH', os.path.join(
 
 OUTPUT_FILE = os.environ.get('OUTPUT_FILE')
 
-result_data: List[Any] = []
+result_data: List = []
 
 def tearDownModule():
     output = json.dumps(result_data, indent=4)

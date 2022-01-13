@@ -25,7 +25,7 @@ from pymongo.read_preferences import read_pref_mode_from_name
 
 from queue import Queue
 
-from mockupdb import MockupDB, going  # type: ignore
+from mockupdb import MockupDB, going
 from pymongo import MongoClient
 
 import unittest

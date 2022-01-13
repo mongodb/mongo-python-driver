@@ -14,7 +14,7 @@
 
 from queue import Queue
 
-from mockupdb import MockupDB, wait_until, OpReply, going, Future  # type: ignore
+from mockupdb import MockupDB, wait_until, OpReply, going, Future
 from pymongo.errors import ConnectionFailure
 from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo import MongoClient

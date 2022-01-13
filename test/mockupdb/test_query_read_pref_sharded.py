@@ -21,7 +21,7 @@ from pymongo.read_preferences import (Primary,
                                       Secondary,
                                       SecondaryPreferred,
                                       Nearest)
-from mockupdb import MockupDB, going, OpMsg  # type: ignore
+from mockupdb import MockupDB, going, OpMsg
 
 import unittest
 

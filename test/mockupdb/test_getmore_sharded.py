@@ -17,7 +17,7 @@ from pymongo import MongoClient
 
 from queue import Queue
 
-from mockupdb import MockupDB, going  # type: ignore
+from mockupdb import MockupDB, going
 
 import unittest
 

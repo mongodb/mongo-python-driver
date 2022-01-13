@@ -21,7 +21,7 @@ PyMongo 4.1 brings a number of improvements including:
   $merge and $out executing on secondaries on MongoDB >=5.0.
   aggregate() now always obeys the collection's :attr:`read_preference` on
   MongoDB >= 5.0.
-- :meth:~gridfs.GridOut.seek` now returns the new position in the file, to
+- :meth:`gridfs.GridOut.seek` now returns the new position in the file, to
   conform to the behavior of :meth:`io.IOBase.seek`.
 
 

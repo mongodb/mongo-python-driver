@@ -15,7 +15,7 @@
 import itertools
 
 from bson import SON
-from mockupdb import MockupDB, going, OpMsg, go  # type: ignore
+from mockupdb import MockupDB, going, OpMsg, go
 from pymongo import MongoClient, ReadPreference
 from pymongo.read_preferences import (make_read_preference,
                                       read_pref_mode_from_name,

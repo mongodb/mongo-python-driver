@@ -14,7 +14,7 @@
 
 from collections import namedtuple
 
-from mockupdb import OpMsgReply, OpMsg, OpReply  # type: ignore
+from mockupdb import OpMsgReply, OpMsg, OpReply
 from pymongo import ReadPreference
 
 __all__ = ['operations', 'upgrades']

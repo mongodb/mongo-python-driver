@@ -15,7 +15,7 @@
 """Test $clusterTime handling."""
 
 from bson import Timestamp
-from mockupdb import going, MockupDB  # type: ignore
+from mockupdb import going, MockupDB
 from pymongo import (MongoClient,
                      InsertOne,
                      UpdateOne,
