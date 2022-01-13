@@ -186,7 +186,7 @@ class SON(Dict[_Key, _Value]):
         out: SON[_Key, _Value] = SON()
         val_id = id(self)
         if val_id in memo:
-            return memo.get(val_id)  # type: ignore
+            return memo[val_id]
         memo[val_id] = out
         for k, v in self.items():
             if not isinstance(v, RE_TYPE):
