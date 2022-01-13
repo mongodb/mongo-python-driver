@@ -15,14 +15,15 @@
 """Setstate and getstate functions for objects with __slots__, allowing
     compatibility with default pickling protocol
 """
+from typing import Any, Mapping
 
 
-def _setstate_slots(self, state):
+def _setstate_slots(self: Any, state: Any) -> None:
     for slot, value in state.items():
         setattr(self, slot, value)
 
 
-def _mangle_name(name, prefix):
+def _mangle_name(name: str, prefix: str) -> str:
     if name.startswith("__"):
         prefix = "_"+prefix
     else:
@@ -30,7 +31,7 @@ def _mangle_name(name, prefix):
     return prefix + name
 
 
-def _getstate_slots(self):
+def _getstate_slots(self: Any) -> Mapping[Any, Any]:
     prefix = self.__class__.__name__
     ret = dict()
     for name in self.__slots__:

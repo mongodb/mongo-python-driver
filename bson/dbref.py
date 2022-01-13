@@ -15,9 +15,11 @@
 """Tools for manipulating DBRefs (references to MongoDB documents)."""
 
 from copy import deepcopy
+from typing import Any, Mapping, Optional
 
-from bson.son import SON
 from bson._helpers import _getstate_slots, _setstate_slots
+from bson.son import SON
+
 
 class DBRef(object):
     """A reference to a document stored in MongoDB.
@@ -28,7 +30,7 @@ class DBRef(object):
     # DBRef isn't actually a BSON "type" so this number was arbitrarily chosen.
     _type_marker = 100
 
-    def __init__(self, collection, id, database=None, _extra={}, **kwargs):
+    def __init__(self, collection: str, id: Any, database: Optional[str] = None, _extra: Mapping[str, Any] = {}, **kwargs: Any) -> None:
         """Initialize a new :class:`DBRef`.
 
         Raises :class:`TypeError` if `collection` or `database` is not
@@ -58,32 +60,32 @@ class DBRef(object):
         self.__kwargs = kwargs
 
     @property
-    def collection(self):
+    def collection(self) -> str:
         """Get the name of this DBRef's collection.
         """
         return self.__collection
 
     @property
-    def id(self):
+    def id(self) -> Any:
         """Get this DBRef's _id.
         """
         return self.__id
 
     @property
-    def database(self):
+    def database(self) -> Optional[str]:
         """Get the name of this DBRef's database.
 
         Returns None if this DBRef doesn't specify a database.
         """
         return self.__database
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: Any) -> Any:
         try:
             return self.__kwargs[key]
         except KeyError:
             raise AttributeError(key)
 
-    def as_doc(self):
+    def as_doc(self) -> SON[str, Any]:
         """Get the SON document representation of this DBRef.
 
         Generally not needed by application developers
@@ -103,7 +105,7 @@ class DBRef(object):
         return "DBRef(%r, %r, %r%s)" % (self.collection, self.id,
                                         self.database, extra)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, DBRef):
             us = (self.__database, self.__collection,
                   self.__id, self.__kwargs)
@@ -112,15 +114,15 @@ class DBRef(object):
             return us == them
         return NotImplemented
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         """Get a hash value for this :class:`DBRef`."""
         return hash((self.__collection, self.__id, self.__database,
                      tuple(sorted(self.__kwargs.items()))))
 
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, memo: Any) -> "DBRef":
         """Support function for `copy.deepcopy()`."""
         return DBRef(deepcopy(self.__collection, memo),
                      deepcopy(self.__id, memo),

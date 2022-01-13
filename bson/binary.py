@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any, Tuple, Type
 from uuid import UUID
-from warnings import warn
 
 """Tools for representing BSON binary data.
 """
@@ -69,7 +69,7 @@ class UuidRepresentation:
     code. When decoding a BSON binary field with a UUID subtype, a
     :class:`~bson.binary.Binary` instance will be returned instead of a
     :class:`uuid.UUID` instance.
-    
+
     See :ref:`unspecified-representation-details` for details.
 
     .. versionadded:: 3.11
@@ -81,7 +81,7 @@ class UuidRepresentation:
     :class:`uuid.UUID` instances will automatically be encoded to
     and decoded from BSON binary, using RFC-4122 byte order with
     binary subtype :data:`UUID_SUBTYPE`.
-    
+
     See :ref:`standard-representation-details` for details.
 
     .. versionadded:: 3.11
@@ -93,7 +93,7 @@ class UuidRepresentation:
     :class:`uuid.UUID` instances will automatically be encoded to
     and decoded from BSON binary, using RFC-4122 byte order with
     binary subtype :data:`OLD_UUID_SUBTYPE`.
-    
+
     See :ref:`python-legacy-representation-details` for details.
 
     .. versionadded:: 3.11
@@ -105,7 +105,7 @@ class UuidRepresentation:
     :class:`uuid.UUID` instances will automatically be encoded to
     and decoded from BSON binary subtype :data:`OLD_UUID_SUBTYPE`,
     using the Java driver's legacy byte order.
-    
+
     See :ref:`java-legacy-representation-details` for details.
 
     .. versionadded:: 3.11
@@ -117,7 +117,7 @@ class UuidRepresentation:
     :class:`uuid.UUID` instances will automatically be encoded to
     and decoded from BSON binary subtype :data:`OLD_UUID_SUBTYPE`,
     using the C# driver's legacy byte order.
-    
+
     See :ref:`csharp-legacy-representation-details` for details.
 
     .. versionadded:: 3.11
@@ -153,11 +153,12 @@ CSHARP_LEGACY = UuidRepresentation.CSHARP_LEGACY
 """
 
 ALL_UUID_SUBTYPES = (OLD_UUID_SUBTYPE, UUID_SUBTYPE)
-ALL_UUID_REPRESENTATIONS = (UuidRepresentation.UNSPECIFIED,
-                            UuidRepresentation.STANDARD,
-                            UuidRepresentation.PYTHON_LEGACY,
-                            UuidRepresentation.JAVA_LEGACY,
-                            UuidRepresentation.CSHARP_LEGACY)
+ALL_UUID_REPRESENTATIONS = (
+    UuidRepresentation.UNSPECIFIED,
+    UuidRepresentation.STANDARD,
+    UuidRepresentation.PYTHON_LEGACY,
+    UuidRepresentation.JAVA_LEGACY,
+    UuidRepresentation.CSHARP_LEGACY)
 UUID_REPRESENTATION_NAMES = {
     UuidRepresentation.UNSPECIFIED: 'UuidRepresentation.UNSPECIFIED',
     UuidRepresentation.STANDARD: 'UuidRepresentation.STANDARD',
@@ -208,8 +209,9 @@ class Binary(bytes):
     """
 
     _type_marker = 5
+    __subtype: int
 
-    def __new__(cls, data, subtype=BINARY_SUBTYPE):
+    def __new__(cls: Type["Binary"], data: bytes, subtype: int = BINARY_SUBTYPE) -> "Binary":
         if not isinstance(subtype, int):
             raise TypeError("subtype must be an instance of int")
         if subtype >= 256 or subtype < 0:
@@ -220,7 +222,7 @@ class Binary(bytes):
         return self
 
     @classmethod
-    def from_uuid(cls, uuid, uuid_representation=UuidRepresentation.STANDARD):
+    def from_uuid(cls: Type["Binary"], uuid: UUID, uuid_representation: int = UuidRepresentation.STANDARD) -> "Binary":
         """Create a BSON Binary object from a Python UUID.
 
         Creates a :class:`~bson.binary.Binary` object from a
@@ -271,7 +273,7 @@ class Binary(bytes):
 
         return cls(payload, subtype)
 
-    def as_uuid(self, uuid_representation=UuidRepresentation.STANDARD):
+    def as_uuid(self, uuid_representation: int = UuidRepresentation.STANDARD) -> UUID:
         """Create a Python UUID from this BSON Binary object.
 
         Decodes this binary object as a native :class:`uuid.UUID` instance
@@ -316,19 +318,19 @@ class Binary(bytes):
                 self.subtype, UUID_REPRESENTATION_NAMES[uuid_representation]))
 
     @property
-    def subtype(self):
+    def subtype(self) -> int:
         """Subtype of this binary data.
         """
         return self.__subtype
 
-    def __getnewargs__(self):
+    def __getnewargs__(self) -> Tuple[bytes, int]:  # type: ignore[override]
         # Work around http://bugs.python.org/issue7382
         data = super(Binary, self).__getnewargs__()[0]
         if not isinstance(data, bytes):
             data = data.encode('latin-1')
         return data, self.__subtype
 
-    def __eq__(self, other):
+    def __eq__(self, other : Any) -> bool:
         if isinstance(other, Binary):
             return ((self.__subtype, bytes(self)) ==
                     (other.subtype, bytes(other)))
@@ -337,10 +339,10 @@ class Binary(bytes):
         # subclass of str...
         return False
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return super(Binary, self).__hash__() ^ hash(self.__subtype)
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other
 
     def __repr__(self):
