@@ -53,7 +53,6 @@ _WRITE_CONCERN_ERROR = 64
 _COMMANDS = ('insert', 'update', 'delete')
 
 
-
 class _Run(object):
     """Represents a batch of write operations.
     """
@@ -408,11 +407,11 @@ class _Bulk(object):
         # Ordered bulk writes have to be acknowledged so that we stop
         # processing at the first error, even when the application
         # specified unacknowledged writeConcern.
-        loop_write_concern = WriteConcern()
+        initial_write_concern = WriteConcern()
         op_id = _randint()
         try:
             self._execute_command(
-                generator, loop_write_concern, None,
+                generator, initial_write_concern, None,
                 sock_info, op_id, False, full_result, write_concern)
         except OperationFailure:
             pass
