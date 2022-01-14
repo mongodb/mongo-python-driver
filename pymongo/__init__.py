@@ -14,20 +14,20 @@
 
 """Python driver for MongoDB."""
 
-from typing import Any, Tuple, Union
+from typing import Tuple, Union
 
-ASCENDING: int = 1
+ASCENDING = 1
 """Ascending sort order."""
-DESCENDING: int = -1
+DESCENDING = -1
 """Descending sort order."""
 
-GEO2D: str = "2d"
+GEO2D = "2d"
 """Index specifier for a 2-dimensional `geospatial index`_.
 
 .. _geospatial index: http://docs.mongodb.org/manual/core/2d/
 """
 
-GEOSPHERE: str = "2dsphere"
+GEOSPHERE = "2dsphere"
 """Index specifier for a `spherical geospatial index`_.
 
 .. versionadded:: 2.5
@@ -35,7 +35,7 @@ GEOSPHERE: str = "2dsphere"
 .. _spherical geospatial index: http://docs.mongodb.org/manual/core/2dsphere/
 """
 
-HASHED: str = "hashed"
+HASHED = "hashed"
 """Index specifier for a `hashed index`_.
 
 .. versionadded:: 2.5
@@ -43,7 +43,7 @@ HASHED: str = "hashed"
 .. _hashed index: http://docs.mongodb.org/manual/core/index-hashed/
 """
 
-TEXT: str = "text"
+TEXT = "text"
 """Index specifier for a `text index`_.
 
 .. seealso:: MongoDB's `Atlas Search
