@@ -17,6 +17,7 @@
 import threading
 import time
 import weakref
+from typing import Any, Optional
 
 
 class PeriodicExecutor(object):
@@ -41,7 +42,7 @@ class PeriodicExecutor(object):
         self._min_interval = min_interval
         self._target = target
         self._stopped = False
-        self._thread = None
+        self._thread: Optional[threading.Thread] = None
         self._name = name
         self._skip_sleep = False
 
@@ -52,7 +53,7 @@ class PeriodicExecutor(object):
         return '<%s(name=%s) object at 0x%x>' % (
             self.__class__.__name__, self._name, id(self))
 
-    def open(self):
+    def open(self) -> None:
         """Start. Multiple calls have no effect.
 
         Not safe to call from multiple threads at once.
@@ -64,13 +65,14 @@ class PeriodicExecutor(object):
                 # join should not block indefinitely because there is no
                 # other work done outside the while loop in self._run.
                 try:
+                    assert self._thread is not None
                     self._thread.join()
                 except ReferenceError:
                     # Thread terminated.
                     pass
             self._thread_will_exit = False
             self._stopped = False
-        started = False
+        started: Any = False
         try:
             started = self._thread and self._thread.is_alive()
         except ReferenceError:
@@ -84,7 +86,7 @@ class PeriodicExecutor(object):
             _register_executor(self)
             thread.start()
 
-    def close(self, dummy=None):
+    def close(self, dummy: Any = None) -> None:
         """Stop. To restart, call open().
 
         The dummy parameter allows an executor's close method to be a weakref
@@ -92,7 +94,7 @@ class PeriodicExecutor(object):
         """
         self._stopped = True
 
-    def join(self, timeout=None):
+    def join(self, timeout: Optional[int] = None) -> None:
         if self._thread is not None:
             try:
                 self._thread.join(timeout)
@@ -100,14 +102,14 @@ class PeriodicExecutor(object):
                 # Thread already terminated, or not yet started.
                 pass
 
-    def wake(self):
+    def wake(self) -> None:
         """Execute the target function soon."""
         self._event = True
 
-    def update_interval(self, new_interval):
+    def update_interval(self, new_interval: int) -> None:
         self._interval = new_interval
 
-    def skip_sleep(self):
+    def skip_sleep(self) -> None:
         self._skip_sleep = True
 
     def __should_stop(self):

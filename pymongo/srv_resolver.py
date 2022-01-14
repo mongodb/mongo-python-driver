@@ -26,6 +26,7 @@ except ImportError:
 from pymongo.common import CONNECT_TIMEOUT
 from pymongo.errors import ConfigurationError
 
+
 # dnspython can return bytes or str from various parts
 # of its API depending on version. We always want str.
 def maybe_decode(text):
@@ -38,7 +39,7 @@ def maybe_decode(text):
 def _resolve(*args, **kwargs):
     if hasattr(resolver, 'resolve'):
         # dnspython >= 2
-        return resolver.resolve(*args, **kwargs)
+        return resolver.resolve(*args, **kwargs)  # type: ignore
     # dnspython 1.X
     return resolver.query(*args, **kwargs)
 

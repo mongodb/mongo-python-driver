@@ -16,6 +16,7 @@
 
 .. _collations: http://userguide.icu-project.org/collation/concepts
 """
+from typing import Any, Dict, Mapping, Optional, Union
 
 from pymongo import common
 
@@ -26,19 +27,19 @@ class CollationStrength(object):
     :class:`~pymongo.collation.Collation`.
     """
 
-    PRIMARY = 1
+    PRIMARY: int = 1
     """Differentiate base (unadorned) characters."""
 
-    SECONDARY = 2
+    SECONDARY: int = 2
     """Differentiate character accents."""
 
-    TERTIARY = 3
+    TERTIARY: int = 3
     """Differentiate character case."""
 
-    QUATERNARY = 4
+    QUATERNARY: int = 4
     """Differentiate words with and without punctuation."""
 
-    IDENTICAL = 5
+    IDENTICAL: int = 5
     """Differentiate unicode code point (characters are exactly identical)."""
 
 
@@ -48,10 +49,10 @@ class CollationAlternate(object):
     :class:`~pymongo.collation.Collation`.
     """
 
-    NON_IGNORABLE = 'non-ignorable'
+    NON_IGNORABLE: str = 'non-ignorable'
     """Spaces and punctuation are treated as base characters."""
 
-    SHIFTED = 'shifted'
+    SHIFTED: str = 'shifted'
     """Spaces and punctuation are *not* considered base characters.
 
     Spaces and punctuation are distinguished regardless when the
@@ -67,10 +68,10 @@ class CollationMaxVariable(object):
     :class:`~pymongo.collation.Collation`.
     """
 
-    PUNCT = 'punct'
+    PUNCT: str = 'punct'
     """Both punctuation and spaces are ignored."""
 
-    SPACE = 'space'
+    SPACE: str = 'space'
     """Spaces alone are ignored."""
 
 
@@ -80,13 +81,13 @@ class CollationCaseFirst(object):
     :class:`~pymongo.collation.Collation`.
     """
 
-    UPPER = 'upper'
+    UPPER: str = 'upper'
     """Sort uppercase characters first."""
 
-    LOWER = 'lower'
+    LOWER: str = 'lower'
     """Sort lowercase characters first."""
 
-    OFF = 'off'
+    OFF: str = 'off'
     """Default for locale or collation strength."""
 
 
@@ -151,18 +152,18 @@ class Collation(object):
 
     __slots__ = ("__document",)
 
-    def __init__(self, locale,
-                 caseLevel=None,
-                 caseFirst=None,
-                 strength=None,
-                 numericOrdering=None,
-                 alternate=None,
-                 maxVariable=None,
-                 normalization=None,
-                 backwards=None,
-                 **kwargs):
+    def __init__(self, locale: str,
+                 caseLevel: Optional[bool] = None,
+                 caseFirst: Optional[str] = None,
+                 strength: Optional[int] = None,
+                 numericOrdering: Optional[bool] = None,
+                 alternate: Optional[str] = None,
+                 maxVariable: Optional[str] = None,
+                 normalization: Optional[bool] = None,
+                 backwards: Optional[bool] = None,
+                 **kwargs: Any) -> None:
         locale = common.validate_string('locale', locale)
-        self.__document = {'locale': locale}
+        self.__document: Dict[str, Any] = {'locale': locale}
         if caseLevel is not None:
             self.__document['caseLevel'] = common.validate_boolean(
                 'caseLevel', caseLevel)
@@ -190,7 +191,7 @@ class Collation(object):
         self.__document.update(kwargs)
 
     @property
-    def document(self):
+    def document(self) -> Dict[str, Any]:
         """The document representation of this collation.
 
         .. note::
@@ -204,16 +205,16 @@ class Collation(object):
         return 'Collation(%s)' % (
             ', '.join('%s=%r' % (key, document[key]) for key in document),)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, Collation):
             return self.document == other.document
         return NotImplemented
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other
 
 
-def validate_collation_or_none(value):
+def validate_collation_or_none(value: Optional[Union[Mapping[str, Any], Collation]]) -> Optional[Dict[str, Any]]:
     if value is None:
         return None
     if isinstance(value, Collation):

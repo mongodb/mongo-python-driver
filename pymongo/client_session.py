@@ -134,25 +134,23 @@ Classes
 import collections
 import time
 import uuid
-
 from collections.abc import Mapping as _Mapping
+from typing import (TYPE_CHECKING, Any, Callable, ContextManager, Generic,
+                    Mapping, Optional, TypeVar)
 
 from bson.binary import Binary
 from bson.int64 import Int64
 from bson.son import SON
 from bson.timestamp import Timestamp
-
 from pymongo.cursor import _SocketManager
-from pymongo.errors import (ConfigurationError,
-                            ConnectionFailure,
-                            InvalidOperation,
-                            OperationFailure,
-                            PyMongoError,
+from pymongo.errors import (ConfigurationError, ConnectionFailure,
+                            InvalidOperation, OperationFailure, PyMongoError,
                             WTimeoutError)
 from pymongo.helpers import _RETRYABLE_ERROR_CODES
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_type import SERVER_TYPE
+from pymongo.typings import _DocumentType
 from pymongo.write_concern import WriteConcern
 
 
@@ -172,10 +170,12 @@ class SessionOptions(object):
     .. versionchanged:: 3.12
        Added the ``snapshot`` parameter.
     """
-    def __init__(self,
-                 causal_consistency=None,
-                 default_transaction_options=None,
-                 snapshot=False):
+    def __init__(
+        self,
+        causal_consistency: Optional[bool] = None,
+        default_transaction_options: Optional["TransactionOptions"] = None,
+        snapshot: Optional[bool] = False,
+    ) -> None:
         if snapshot:
             if causal_consistency:
                 raise ConfigurationError('snapshot reads do not support '
@@ -194,12 +194,12 @@ class SessionOptions(object):
         self._snapshot = snapshot
 
     @property
-    def causal_consistency(self):
+    def causal_consistency(self) -> bool:
         """Whether causal consistency is configured."""
         return self._causal_consistency
 
     @property
-    def default_transaction_options(self):
+    def default_transaction_options(self) -> Optional["TransactionOptions"]:
         """The default TransactionOptions to use for transactions started on
         this session.
 
@@ -208,7 +208,7 @@ class SessionOptions(object):
         return self._default_transaction_options
 
     @property
-    def snapshot(self):
+    def snapshot(self) -> Optional[bool]:
         """Whether snapshot reads are configured.
 
         .. versionadded:: 3.12
@@ -243,8 +243,13 @@ class TransactionOptions(object):
 
     .. versionadded:: 3.7
     """
-    def __init__(self, read_concern=None, write_concern=None,
-                 read_preference=None, max_commit_time_ms=None):
+    def __init__(
+        self,
+        read_concern: Optional[ReadConcern] = None,
+        write_concern: Optional[WriteConcern] = None,
+        read_preference: Optional[_ServerMode] = None,
+        max_commit_time_ms: Optional[int] = None
+    ) -> None:
         self._read_concern = read_concern
         self._write_concern = write_concern
         self._read_preference = read_preference
@@ -274,23 +279,23 @@ class TransactionOptions(object):
                     "max_commit_time_ms must be an integer or None")
 
     @property
-    def read_concern(self):
+    def read_concern(self) -> Optional[ReadConcern]:
         """This transaction's :class:`~pymongo.read_concern.ReadConcern`."""
         return self._read_concern
 
     @property
-    def write_concern(self):
+    def write_concern(self) -> Optional[WriteConcern]:
         """This transaction's :class:`~pymongo.write_concern.WriteConcern`."""
         return self._write_concern
 
     @property
-    def read_preference(self):
+    def read_preference(self) -> Optional[_ServerMode]:
         """This transaction's :class:`~pymongo.read_preferences.ReadPreference`.
         """
         return self._read_preference
 
     @property
-    def max_commit_time_ms(self):
+    def max_commit_time_ms(self) -> Optional[int]:
         """The maxTimeMS to use when running a commitTransaction command.
 
         .. versionadded:: 3.9
@@ -427,7 +432,13 @@ def _within_time_limit(start_time):
     return time.monotonic() - start_time < _WITH_TRANSACTION_RETRY_TIME_LIMIT
 
 
-class ClientSession(object):
+_T = TypeVar("_T")
+
+if TYPE_CHECKING:
+    from pymongo.mongo_client import MongoClient
+
+
+class ClientSession(Generic[_DocumentType]):
     """A session for ordering sequential operations.
 
     :class:`ClientSession` instances are **not thread-safe or fork-safe**.
@@ -439,9 +450,11 @@ class ClientSession(object):
     :class:`ClientSession`, call
     :meth:`~pymongo.mongo_client.MongoClient.start_session`.
     """
-    def __init__(self, client, server_session, options, implicit):
+    def __init__(
+        self, client: "MongoClient[_DocumentType]", server_session: Any, options: SessionOptions, implicit: bool
+    ) -> None:
         # A MongoClient, a _ServerSession, a SessionOptions, and a set.
-        self._client = client
+        self._client: MongoClient[_DocumentType] = client
         self._server_session = server_session
         self._options = options
         self._cluster_time = None
@@ -451,7 +464,7 @@ class ClientSession(object):
         self._implicit = implicit
         self._transaction = _Transaction(None, client)
 
-    def end_session(self):
+    def end_session(self) -> None:
         """Finish this session. If a transaction has started, abort it.
 
         It is an error to use the session after the session has ended.
@@ -474,39 +487,39 @@ class ClientSession(object):
         if self._server_session is None:
             raise InvalidOperation("Cannot use ended session")
 
-    def __enter__(self):
+    def __enter__(self) -> "ClientSession[_DocumentType]":
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self._end_session(lock=True)
 
     @property
-    def client(self):
+    def client(self) -> "MongoClient[_DocumentType]":
         """The :class:`~pymongo.mongo_client.MongoClient` this session was
         created from.
         """
         return self._client
 
     @property
-    def options(self):
+    def options(self) -> SessionOptions:
         """The :class:`SessionOptions` this session was created with."""
         return self._options
 
     @property
-    def session_id(self):
+    def session_id(self) -> Mapping[str, Any]:
         """A BSON document, the opaque server session identifier."""
         self._check_ended()
         return self._server_session.session_id
 
     @property
-    def cluster_time(self):
+    def cluster_time(self) -> Optional[Mapping[str, Any]]:
         """The cluster time returned by the last operation executed
         in this session.
         """
         return self._cluster_time
 
     @property
-    def operation_time(self):
+    def operation_time(self) -> Optional[Timestamp]:
         """The operation time returned by the last operation executed
         in this session.
         """
@@ -522,8 +535,14 @@ class ClientSession(object):
             return val
         return getattr(self.client, name)
 
-    def with_transaction(self, callback, read_concern=None, write_concern=None,
-                         read_preference=None, max_commit_time_ms=None):
+    def with_transaction(
+        self,
+        callback: Callable[["ClientSession"], _T],
+        read_concern: Optional[ReadConcern] = None,
+        write_concern: Optional[WriteConcern] = None,
+        read_preference: Optional[_ServerMode] = None,
+        max_commit_time_ms: Optional[int] = None,
+    ) -> _T:
         """Execute a callback in a transaction.
 
         This method starts a transaction on this session, executes ``callback``
@@ -649,8 +668,13 @@ class ClientSession(object):
                 # Commit succeeded.
                 return ret
 
-    def start_transaction(self, read_concern=None, write_concern=None,
-                          read_preference=None, max_commit_time_ms=None):
+    def start_transaction(
+        self,
+        read_concern: Optional[ReadConcern] = None,
+        write_concern: Optional[WriteConcern] = None,
+        read_preference: Optional[_ServerMode] = None,
+        max_commit_time_ms: Optional[int] = None,
+    ) -> ContextManager:
         """Start a multi-statement transaction.
 
         Takes the same arguments as :class:`TransactionOptions`.
@@ -685,7 +709,7 @@ class ClientSession(object):
         self._start_retryable_write()
         return _TransactionContext(self)
 
-    def commit_transaction(self):
+    def commit_transaction(self) -> None:
         """Commit a multi-statement transaction.
 
         .. versionadded:: 3.7
@@ -729,7 +753,7 @@ class ClientSession(object):
         finally:
             self._transaction.state = _TxnState.COMMITTED
 
-    def abort_transaction(self):
+    def abort_transaction(self) -> None:
         """Abort a multi-statement transaction.
 
         .. versionadded:: 3.7
@@ -804,7 +828,7 @@ class ClientSession(object):
             if cluster_time["clusterTime"] > self._cluster_time["clusterTime"]:
                 self._cluster_time = cluster_time
 
-    def advance_cluster_time(self, cluster_time):
+    def advance_cluster_time(self, cluster_time: Mapping[str, Any]) -> None:
         """Update the cluster time for this session.
 
         :Parameters:
@@ -827,7 +851,7 @@ class ClientSession(object):
             if operation_time > self._operation_time:
                 self._operation_time = operation_time
 
-    def advance_operation_time(self, operation_time):
+    def advance_operation_time(self, operation_time: Timestamp) -> None:
         """Update the operation time for this session.
 
         :Parameters:
@@ -856,12 +880,12 @@ class ClientSession(object):
                 self._transaction.recovery_token = recovery_token
 
     @property
-    def has_ended(self):
+    def has_ended(self) -> bool:
         """True if this session is finished."""
         return self._server_session is None
 
     @property
-    def in_transaction(self):
+    def in_transaction(self) -> bool:
         """True if this session has an active multi-statement transaction.
 
         .. versionadded:: 3.10

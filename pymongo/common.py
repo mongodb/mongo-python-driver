@@ -17,8 +17,9 @@
 
 import datetime
 import warnings
-
-from collections import abc, OrderedDict
+from collections import OrderedDict, abc
+from typing import (Any, Callable, Dict, List, Mapping, MutableMapping,
+                    Optional, Sequence, Tuple, Type, Union, cast)
 from urllib.parse import unquote_plus
 
 from bson import SON
@@ -29,94 +30,94 @@ from pymongo.auth import MECHANISMS
 from pymongo.compression_support import (validate_compressors,
                                          validate_zlib_compression_level)
 from pymongo.driver_info import DriverInfo
-from pymongo.server_api import ServerApi
 from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _validate_event_listeners
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import _MONGOS_MODES, _ServerMode
+from pymongo.server_api import ServerApi
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
-ORDERED_TYPES = (SON, OrderedDict)
+ORDERED_TYPES: Tuple[Type[Any], Type[Any]] = (SON, OrderedDict)
 
 # Defaults until we connect to a server and get updated limits.
-MAX_BSON_SIZE = 16 * (1024 ** 2)
-MAX_MESSAGE_SIZE = 2 * MAX_BSON_SIZE
-MIN_WIRE_VERSION = 0
-MAX_WIRE_VERSION = 0
-MAX_WRITE_BATCH_SIZE = 1000
+MAX_BSON_SIZE: int = 16 * (1024 ** 2)
+MAX_MESSAGE_SIZE: int = 2 * MAX_BSON_SIZE
+MIN_WIRE_VERSION: int = 0
+MAX_WIRE_VERSION: int = 0
+MAX_WRITE_BATCH_SIZE: int = 1000
 
 # What this version of PyMongo supports.
-MIN_SUPPORTED_SERVER_VERSION = "3.6"
-MIN_SUPPORTED_WIRE_VERSION = 6
-MAX_SUPPORTED_WIRE_VERSION = 14
+MIN_SUPPORTED_SERVER_VERSION: str = "3.6"
+MIN_SUPPORTED_WIRE_VERSION: int = 6
+MAX_SUPPORTED_WIRE_VERSION: int = 14
 
 # Frequency to call hello on servers, in seconds.
-HEARTBEAT_FREQUENCY = 10
+HEARTBEAT_FREQUENCY: int = 10
 
 # Frequency to clean up unclosed cursors, in seconds.
 # See MongoClient._process_kill_cursors.
-KILL_CURSOR_FREQUENCY = 1
+KILL_CURSOR_FREQUENCY: int = 1
 
 # Frequency to process events queue, in seconds.
-EVENTS_QUEUE_FREQUENCY = 1
+EVENTS_QUEUE_FREQUENCY: int = 1
 
 # How long to wait, in seconds, for a suitable server to be found before
 # aborting an operation. For example, if the client attempts an insert
 # during a replica set election, SERVER_SELECTION_TIMEOUT governs the
 # longest it is willing to wait for a new primary to be found.
-SERVER_SELECTION_TIMEOUT = 30
+SERVER_SELECTION_TIMEOUT: int = 30
 
 # Spec requires at least 500ms between hello calls.
-MIN_HEARTBEAT_INTERVAL = 0.5
+MIN_HEARTBEAT_INTERVAL: float = 0.5
 
 # Spec requires at least 60s between SRV rescans.
-MIN_SRV_RESCAN_INTERVAL = 60
+MIN_SRV_RESCAN_INTERVAL: int = 60
 
 # Default connectTimeout in seconds.
-CONNECT_TIMEOUT = 20.0
+CONNECT_TIMEOUT: float = 20.0
 
 # Default value for maxPoolSize.
-MAX_POOL_SIZE = 100
+MAX_POOL_SIZE: int = 100
 
 # Default value for minPoolSize.
-MIN_POOL_SIZE = 0
+MIN_POOL_SIZE: int = 0
 
 # The maximum number of concurrent connection creation attempts per pool.
-MAX_CONNECTING = 2
+MAX_CONNECTING: int = 2
 
 # Default value for maxIdleTimeMS.
-MAX_IDLE_TIME_MS = None
+MAX_IDLE_TIME_MS: Optional[int] = None
 
 # Default value for maxIdleTimeMS in seconds.
-MAX_IDLE_TIME_SEC = None
+MAX_IDLE_TIME_SEC: Optional[int] = None
 
 # Default value for waitQueueTimeoutMS in seconds.
-WAIT_QUEUE_TIMEOUT = None
+WAIT_QUEUE_TIMEOUT: Optional[int] = None
 
 # Default value for localThresholdMS.
-LOCAL_THRESHOLD_MS = 15
+LOCAL_THRESHOLD_MS: int = 15
 
 # Default value for retryWrites.
-RETRY_WRITES = True
+RETRY_WRITES: bool = True
 
 # Default value for retryReads.
-RETRY_READS = True
+RETRY_READS: bool = True
 
 # The error code returned when a command doesn't exist.
-COMMAND_NOT_FOUND_CODES = (59,)
+COMMAND_NOT_FOUND_CODES: Sequence[int] = (59,)
 
 # Error codes to ignore if GridFS calls createIndex on a secondary
-UNAUTHORIZED_CODES = (13, 16547, 16548)
+UNAUTHORIZED_CODES: Sequence[int] = (13, 16547, 16548)
 
 # Maximum number of sessions to send in a single endSessions command.
 # From the driver sessions spec.
 _MAX_END_SESSIONS = 10000
 
 # Default value for srvServiceName
-SRV_SERVICE_NAME = "mongodb"
+SRV_SERVICE_NAME: str = "mongodb"
 
 
-def partition_node(node):
+def partition_node(node: str) -> Tuple[str, int]:
     """Split a host:port string into (host, int(port)) pair."""
     host = node
     port = 27017
@@ -128,7 +129,7 @@ def partition_node(node):
     return host, port
 
 
-def clean_node(node):
+def clean_node(node: str) -> Tuple[str, int]:
     """Split and normalize a node name from a hello response."""
     host, port = partition_node(node)
 
@@ -139,7 +140,7 @@ def clean_node(node):
     return host.lower(), port
 
 
-def raise_config_error(key, dummy):
+def raise_config_error(key: str, dummy: Any) -> None:
     """Raise ConfigurationError with the given key name."""
     raise ConfigurationError("Unknown option %s" % (key,))
 
@@ -154,14 +155,14 @@ _UUID_REPRESENTATIONS = {
 }
 
 
-def validate_boolean(option, value):
+def validate_boolean(option: str, value: Any) -> bool:
     """Validates that 'value' is True or False."""
     if isinstance(value, bool):
         return value
     raise TypeError("%s must be True or False" % (option,))
 
 
-def validate_boolean_or_string(option, value):
+def validate_boolean_or_string(option: str, value: Any) -> bool:
     """Validates that value is True, False, 'true', or 'false'."""
     if isinstance(value, str):
         if value not in ('true', 'false'):
@@ -171,7 +172,7 @@ def validate_boolean_or_string(option, value):
     return validate_boolean(option, value)
 
 
-def validate_integer(option, value):
+def validate_integer(option: str, value: Any) -> int:
     """Validates that 'value' is an integer (or basestring representation).
     """
     if isinstance(value, int):
@@ -185,7 +186,7 @@ def validate_integer(option, value):
     raise TypeError("Wrong type for %s, value must be an integer" % (option,))
 
 
-def validate_positive_integer(option, value):
+def validate_positive_integer(option: str, value: Any) -> int:
     """Validate that 'value' is a positive integer, which does not include 0.
     """
     val = validate_integer(option, value)
@@ -195,7 +196,7 @@ def validate_positive_integer(option, value):
     return val
 
 
-def validate_non_negative_integer(option, value):
+def validate_non_negative_integer(option: str, value: Any) -> int:
     """Validate that 'value' is a positive integer or 0.
     """
     val = validate_integer(option, value)
@@ -205,7 +206,7 @@ def validate_non_negative_integer(option, value):
     return val
 
 
-def validate_readable(option, value):
+def validate_readable(option: str, value: Any) -> Optional[str]:
     """Validates that 'value' is file-like and readable.
     """
     if value is None:
@@ -217,7 +218,7 @@ def validate_readable(option, value):
     return value
 
 
-def validate_positive_integer_or_none(option, value):
+def validate_positive_integer_or_none(option: str, value: Any) -> Optional[int]:
     """Validate that 'value' is a positive integer or None.
     """
     if value is None:
@@ -225,7 +226,7 @@ def validate_positive_integer_or_none(option, value):
     return validate_positive_integer(option, value)
 
 
-def validate_non_negative_integer_or_none(option, value):
+def validate_non_negative_integer_or_none(option: str, value: Any) -> Optional[int]:
     """Validate that 'value' is a positive integer or 0 or None.
     """
     if value is None:
@@ -233,7 +234,7 @@ def validate_non_negative_integer_or_none(option, value):
     return validate_non_negative_integer(option, value)
 
 
-def validate_string(option, value):
+def validate_string(option: str, value: Any) -> str:
     """Validates that 'value' is an instance of `str`.
     """
     if isinstance(value, str):
@@ -242,7 +243,7 @@ def validate_string(option, value):
                     "str" % (option,))
 
 
-def validate_string_or_none(option, value):
+def validate_string_or_none(option: str, value: Any) -> Optional[str]:
     """Validates that 'value' is an instance of `basestring` or `None`.
     """
     if value is None:
@@ -250,7 +251,7 @@ def validate_string_or_none(option, value):
     return validate_string(option, value)
 
 
-def validate_int_or_basestring(option, value):
+def validate_int_or_basestring(option: str, value: Any) -> Union[int, str]:
     """Validates that 'value' is an integer or string.
     """
     if isinstance(value, int):
@@ -264,7 +265,7 @@ def validate_int_or_basestring(option, value):
                     "integer or a string" % (option,))
 
 
-def validate_non_negative_int_or_basestring(option, value):
+def validate_non_negative_int_or_basestring(option: Any, value: Any) -> Union[int, str]:
     """Validates that 'value' is an integer or string.
     """
     if isinstance(value, int):
@@ -279,7 +280,7 @@ def validate_non_negative_int_or_basestring(option, value):
                     "non negative integer or a string" % (option,))
 
 
-def validate_positive_float(option, value):
+def validate_positive_float(option: str, value: Any) -> float:
     """Validates that 'value' is a float, or can be converted to one, and is
        positive.
     """
@@ -299,7 +300,7 @@ def validate_positive_float(option, value):
     return value
 
 
-def validate_positive_float_or_zero(option, value):
+def validate_positive_float_or_zero(option: str, value: Any) -> float:
     """Validates that 'value' is 0 or a positive float, or can be converted to
     0 or a positive float.
     """
@@ -308,7 +309,7 @@ def validate_positive_float_or_zero(option, value):
     return validate_positive_float(option, value)
 
 
-def validate_timeout_or_none(option, value):
+def validate_timeout_or_none(option: str, value: Any) -> Optional[float]:
     """Validates a timeout specified in milliseconds returning
     a value in floating point seconds.
     """
@@ -317,7 +318,7 @@ def validate_timeout_or_none(option, value):
     return validate_positive_float(option, value) / 1000.0
 
 
-def validate_timeout_or_zero(option, value):
+def validate_timeout_or_zero(option: str, value: Any) -> float:
     """Validates a timeout specified in milliseconds returning
     a value in floating point seconds for the case where None is an error
     and 0 is valid. Setting the timeout to nothing in the URI string is a
@@ -330,7 +331,7 @@ def validate_timeout_or_zero(option, value):
     return validate_positive_float(option, value) / 1000.0
 
 
-def validate_timeout_or_none_or_zero(option, value):
+def validate_timeout_or_none_or_zero(option: Any, value: Any) -> Optional[float]:
     """Validates a timeout specified in milliseconds returning
     a value in floating point seconds. value=0 and value="0" are treated the
     same as value=None which means unlimited timeout.
@@ -340,7 +341,7 @@ def validate_timeout_or_none_or_zero(option, value):
     return validate_positive_float(option, value) / 1000.0
 
 
-def validate_max_staleness(option, value):
+def validate_max_staleness(option: str, value: Any) -> int:
     """Validates maxStalenessSeconds according to the Max Staleness Spec."""
     if value == -1 or value == "-1":
         # Default: No maximum staleness.
@@ -348,7 +349,7 @@ def validate_max_staleness(option, value):
     return validate_positive_integer(option, value)
 
 
-def validate_read_preference(dummy, value):
+def validate_read_preference(dummy: Any, value: Any) -> _ServerMode:
     """Validate a read preference.
     """
     if not isinstance(value, _ServerMode):
@@ -356,7 +357,7 @@ def validate_read_preference(dummy, value):
     return value
 
 
-def validate_read_preference_mode(dummy, value):
+def validate_read_preference_mode(dummy: Any, value: Any) -> _ServerMode:
     """Validate read preference mode for a MongoClient.
 
     .. versionchanged:: 3.5
@@ -368,7 +369,7 @@ def validate_read_preference_mode(dummy, value):
     return value
 
 
-def validate_auth_mechanism(option, value):
+def validate_auth_mechanism(option: str, value: Any) -> str:
     """Validate the authMechanism URI option.
     """
     if value not in MECHANISMS:
@@ -376,7 +377,7 @@ def validate_auth_mechanism(option, value):
     return value
 
 
-def validate_uuid_representation(dummy, value):
+def validate_uuid_representation(dummy: Any, value: Any) -> int:
     """Validate the uuid representation option selected in the URI.
     """
     try:
@@ -387,13 +388,13 @@ def validate_uuid_representation(dummy, value):
                          "%s" % (value, tuple(_UUID_REPRESENTATIONS)))
 
 
-def validate_read_preference_tags(name, value):
+def validate_read_preference_tags(name: str, value: Any) -> List[Dict[str, str]]:
     """Parse readPreferenceTags if passed as a client kwarg.
     """
     if not isinstance(value, list):
         value = [value]
 
-    tag_sets = []
+    tag_sets: List[Any] = []
     for tag_set in value:
         if tag_set == '':
             tag_sets.append({})
@@ -416,10 +417,10 @@ _MECHANISM_PROPS = frozenset(['SERVICE_NAME',
                               'AWS_SESSION_TOKEN'])
 
 
-def validate_auth_mechanism_properties(option, value):
+def validate_auth_mechanism_properties(option: str, value: Any) -> Dict[str, Union[bool, str]]:
     """Validate authMechanismProperties."""
     value = validate_string(option, value)
-    props = {}
+    props: Dict[str, Any] = {}
     for opt in value.split(','):
         try:
             key, val = opt.split(':')
@@ -443,7 +444,7 @@ def validate_auth_mechanism_properties(option, value):
     return props
 
 
-def validate_document_class(option, value):
+def validate_document_class(option: str, value: Any) -> Union[MutableMapping, RawBSONDocument]:
     """Validate the document_class option."""
     if not issubclass(value, (abc.MutableMapping, RawBSONDocument)):
         raise TypeError("%s must be dict, bson.son.SON, "
@@ -452,37 +453,37 @@ def validate_document_class(option, value):
     return value
 
 
-def validate_type_registry(option, value):
+def validate_type_registry(option: Any, value: Any) -> TypeRegistry:
     """Validate the type_registry option."""
     if value is not None and not isinstance(value, TypeRegistry):
         raise TypeError("%s must be an instance of %s" % (
             option, TypeRegistry))
-    return value
+    return cast(TypeRegistry, value)
 
 
-def validate_list(option, value):
-    """Validates that 'value' is a list."""
-    if not isinstance(value, list):
+def validate_list(option: str, value: Any) -> List[Any]:
+    """Validates that 'value' is a list or tuple."""
+    if not isinstance(value, (list, tuple)):
         raise TypeError("%s must be a list" % (option,))
-    return value
+    return list(value)
 
 
-def validate_list_or_none(option, value):
+def validate_list_or_none(option: Any, value: Any) -> Optional[List[Any]]:
     """Validates that 'value' is a list or None."""
     if value is None:
         return value
     return validate_list(option, value)
 
 
-def validate_list_or_mapping(option, value):
-    """Validates that 'value' is a list or a document."""
-    if not isinstance(value, (abc.Mapping, list)):
+def validate_list_or_mapping(option: Any, value: Any) -> None:
+    """Validates that 'value' is a list, tuple, or a document."""
+    if not isinstance(value, (abc.Mapping, list, tuple)):
         raise TypeError("%s must either be a list or an instance of dict, "
                         "bson.son.SON, or any other type that inherits from "
                         "collections.Mapping" % (option,))
 
 
-def validate_is_mapping(option, value):
+def validate_is_mapping(option: str, value: Any) -> None:
     """Validate the type of method arguments that expect a document."""
     if not isinstance(value, abc.Mapping):
         raise TypeError("%s must be an instance of dict, bson.son.SON, or "
@@ -490,7 +491,7 @@ def validate_is_mapping(option, value):
                         "collections.Mapping" % (option,))
 
 
-def validate_is_document_type(option, value):
+def validate_is_document_type(option: str, value: Any) -> None:
     """Validate the type of method arguments that expect a MongoDB document."""
     if not isinstance(value, (abc.MutableMapping, RawBSONDocument)):
         raise TypeError("%s must be an instance of dict, bson.son.SON, "
@@ -499,7 +500,7 @@ def validate_is_document_type(option, value):
                         "collections.MutableMapping" % (option,))
 
 
-def validate_appname_or_none(option, value):
+def validate_appname_or_none(option: str, value: Any) -> Optional[str]:
     """Validate the appname option."""
     if value is None:
         return value
@@ -510,7 +511,7 @@ def validate_appname_or_none(option, value):
     return value
 
 
-def validate_driver_or_none(option, value):
+def validate_driver_or_none(option: Any, value: Any) -> Optional[DriverInfo]:
     """Validate the driver keyword arg."""
     if value is None:
         return value
@@ -519,7 +520,7 @@ def validate_driver_or_none(option, value):
     return value
 
 
-def validate_server_api_or_none(option, value):
+def validate_server_api_or_none(option: Any, value: Any) -> Optional[ServerApi]:
     """Validate the server_api keyword arg."""
     if value is None:
         return value
@@ -528,7 +529,7 @@ def validate_server_api_or_none(option, value):
     return value
 
 
-def validate_is_callable_or_none(option, value):
+def validate_is_callable_or_none(option: Any, value: Any) -> Optional[Callable]:
     """Validates that 'value' is a callable."""
     if value is None:
         return value
@@ -537,7 +538,7 @@ def validate_is_callable_or_none(option, value):
     return value
 
 
-def validate_ok_for_replace(replacement):
+def validate_ok_for_replace(replacement: Mapping[str, Any]) -> None:
     """Validate a replacement document."""
     validate_is_mapping("replacement", replacement)
     # Replacement can be {}
@@ -547,7 +548,7 @@ def validate_ok_for_replace(replacement):
             raise ValueError('replacement can not include $ operators')
 
 
-def validate_ok_for_update(update):
+def validate_ok_for_update(update: Any) -> None:
     """Validate an update document."""
     validate_list_or_mapping("update", update)
     # Update cannot be {}.
@@ -563,7 +564,7 @@ def validate_ok_for_update(update):
 _UNICODE_DECODE_ERROR_HANDLERS = frozenset(['strict', 'replace', 'ignore'])
 
 
-def validate_unicode_decode_error_handler(dummy, value):
+def validate_unicode_decode_error_handler(dummy: Any, value: str) -> str:
     """Validate the Unicode decode error handler option of CodecOptions.
     """
     if value not in _UNICODE_DECODE_ERROR_HANDLERS:
@@ -573,7 +574,7 @@ def validate_unicode_decode_error_handler(dummy, value):
     return value
 
 
-def validate_tzinfo(dummy, value):
+def validate_tzinfo(dummy: Any, value: Any) -> Optional[datetime.tzinfo]:
     """Validate the tzinfo option
     """
     if value is not None and not isinstance(value, datetime.tzinfo):
@@ -581,7 +582,7 @@ def validate_tzinfo(dummy, value):
     return value
 
 
-def validate_auto_encryption_opts_or_none(option, value):
+def validate_auto_encryption_opts_or_none(option: Any, value: Any) -> Optional[Any]:
     """Validate the driver keyword arg."""
     if value is None:
         return value
@@ -595,7 +596,7 @@ def validate_auto_encryption_opts_or_none(option, value):
 
 # Dictionary where keys are the names of public URI options, and values
 # are lists of aliases for that option.
-URI_OPTIONS_ALIAS_MAP = {
+URI_OPTIONS_ALIAS_MAP: Dict[str, List[str]] = {
     'tls': ['ssl'],
 }
 
@@ -603,7 +604,7 @@ URI_OPTIONS_ALIAS_MAP = {
 # are functions that validate user-input values for that option. If an option
 # alias uses a different validator than its public counterpart, it should be
 # included here as a key, value pair.
-URI_OPTIONS_VALIDATOR_MAP = {
+URI_OPTIONS_VALIDATOR_MAP: Dict[str, Callable[[Any, Any], Any]] = {
     'appname': validate_appname_or_none,
     'authmechanism': validate_auth_mechanism,
     'authmechanismproperties': validate_auth_mechanism_properties,
@@ -644,7 +645,7 @@ URI_OPTIONS_VALIDATOR_MAP = {
 
 # Dictionary where keys are the names of URI options specific to pymongo,
 # and values are functions that validate user-input values for those options.
-NONSPEC_OPTIONS_VALIDATOR_MAP = {
+NONSPEC_OPTIONS_VALIDATOR_MAP: Dict[str, Callable[[Any, Any], Any]] = {
     'connect': validate_boolean_or_string,
     'driver': validate_driver_or_none,
     'server_api': validate_server_api_or_none,
@@ -661,7 +662,7 @@ NONSPEC_OPTIONS_VALIDATOR_MAP = {
 # Dictionary where keys are the names of keyword-only options for the
 # MongoClient constructor, and values are functions that validate user-input
 # values for those options.
-KW_VALIDATORS = {
+KW_VALIDATORS: Dict[str, Callable[[Any, Any], Any]] = {
     'document_class': validate_document_class,
     'type_registry': validate_type_registry,
     'read_preference': validate_read_preference,
@@ -677,14 +678,14 @@ KW_VALIDATORS = {
 # internally-used names of that URI option. Options with only one name
 # variant need not be included here. Options whose public and internal
 # names are the same need not be included here.
-INTERNAL_URI_OPTION_NAME_MAP = {
+INTERNAL_URI_OPTION_NAME_MAP: Dict[str, str] = {
     'ssl': 'tls',
 }
 
 # Map from deprecated URI option names to a tuple indicating the method of
 # their deprecation and any additional information that may be needed to
 # construct the warning message.
-URI_OPTIONS_DEPRECATION_MAP = {
+URI_OPTIONS_DEPRECATION_MAP: Dict[str, Tuple[str, str]] = {
     # format: <deprecated option name>: (<mode>, <message>),
     # Supported <mode> values:
     # - 'renamed': <message> should be the new option name. Note that case is
@@ -704,11 +705,11 @@ for optname, aliases in URI_OPTIONS_ALIAS_MAP.items():
                 URI_OPTIONS_VALIDATOR_MAP[optname])
 
 # Map containing all URI option and keyword argument validators.
-VALIDATORS = URI_OPTIONS_VALIDATOR_MAP.copy()
+VALIDATORS: Dict[str, Callable[[Any, Any], Any]] = URI_OPTIONS_VALIDATOR_MAP.copy()
 VALIDATORS.update(KW_VALIDATORS)
 
 # List of timeout-related options.
-TIMEOUT_OPTIONS = [
+TIMEOUT_OPTIONS: List[str] = [
     'connecttimeoutms',
     'heartbeatfrequencyms',
     'maxidletimems',
@@ -722,7 +723,7 @@ TIMEOUT_OPTIONS = [
 _AUTH_OPTIONS = frozenset(['authmechanismproperties'])
 
 
-def validate_auth_option(option, value):
+def validate_auth_option(option: str, value: Any) -> Tuple[str, Any]:
     """Validate optional authentication parameters.
     """
     lower, value = validate(option, value)
@@ -732,7 +733,7 @@ def validate_auth_option(option, value):
     return option, value
 
 
-def validate(option, value):
+def validate(option: str, value: Any) -> Tuple[str, Any]:
     """Generic validation function.
     """
     lower = option.lower()
@@ -741,7 +742,7 @@ def validate(option, value):
     return option, value
 
 
-def get_validated_options(options, warn=True):
+def get_validated_options(options: Mapping[str, Any], warn: bool = True) -> MutableMapping[str, Any]:
     """Validate each entry in options and raise a warning if it is not valid.
     Returns a copy of options with invalid entries removed.
 
@@ -751,6 +752,7 @@ def get_validated_options(options, warn=True):
           invalid options will be ignored. Otherwise, invalid options will
           cause errors.
     """
+    validated_options: MutableMapping[str, Any]
     if isinstance(options, _CaseInsensitiveDictionary):
         validated_options = _CaseInsensitiveDictionary()
         get_normed_key = lambda x: x
@@ -777,7 +779,7 @@ def get_validated_options(options, warn=True):
 
 
 # List of write-concern-related options.
-WRITE_CONCERN_OPTIONS = frozenset([
+WRITE_CONCERN_OPTIONS: frozenset = frozenset([
     'w',
     'wtimeout',
     'wtimeoutms',
@@ -794,8 +796,8 @@ class BaseObject(object):
     SHOULD NOT BE USED BY DEVELOPERS EXTERNAL TO MONGODB.
     """
 
-    def __init__(self, codec_options, read_preference, write_concern,
-                 read_concern):
+    def __init__(self, codec_options: CodecOptions, read_preference: _ServerMode, write_concern: WriteConcern,
+                 read_concern: ReadConcern) -> None:
 
         if not isinstance(codec_options, CodecOptions):
             raise TypeError("codec_options must be an instance of "
@@ -819,14 +821,14 @@ class BaseObject(object):
         self.__read_concern = read_concern
 
     @property
-    def codec_options(self):
+    def codec_options(self) -> CodecOptions:
         """Read only access to the :class:`~bson.codec_options.CodecOptions`
         of this instance.
         """
         return self.__codec_options
 
     @property
-    def write_concern(self):
+    def write_concern(self) -> WriteConcern:
         """Read only access to the :class:`~pymongo.write_concern.WriteConcern`
         of this instance.
 
@@ -844,7 +846,7 @@ class BaseObject(object):
         return self.write_concern
 
     @property
-    def read_preference(self):
+    def read_preference(self) -> _ServerMode:
         """Read only access to the read preference of this instance.
 
         .. versionchanged:: 3.0
@@ -861,7 +863,7 @@ class BaseObject(object):
         return self.__read_preference
 
     @property
-    def read_concern(self):
+    def read_concern(self) -> ReadConcern:
         """Read only access to the :class:`~pymongo.read_concern.ReadConcern`
         of this instance.
 

@@ -19,9 +19,9 @@ import hashlib
 import hmac
 import os
 import socket
-
 from base64 import standard_b64decode, standard_b64encode
 from collections import namedtuple
+from typing import Callable, Mapping
 from urllib.parse import quote
 
 from bson.binary import Binary
@@ -33,12 +33,12 @@ from pymongo.saslprep import saslprep
 HAVE_KERBEROS = True
 _USE_PRINCIPAL = False
 try:
-    import winkerberos as kerberos
+    import winkerberos as kerberos  # type: ignore
     if tuple(map(int, kerberos.__version__.split('.')[:2])) >= (0, 5):
         _USE_PRINCIPAL = True
 except ImportError:
     try:
-        import kerberos
+        import kerberos  # type: ignore
     except ImportError:
         HAVE_KERBEROS = False
 
@@ -97,7 +97,7 @@ GSSAPIProperties = namedtuple('GSSAPIProperties',
 """Mechanism properties for GSSAPI authentication."""
 
 
-_AWSProperties = namedtuple('AWSProperties', ['aws_session_token'])
+_AWSProperties = namedtuple('_AWSProperties', ['aws_session_token'])
 """Mechanism properties for MONGODB-AWS authentication."""
 
 
@@ -140,9 +140,9 @@ def _build_credentials_tuple(mech, source, user, passwd, extra, database):
 
         properties = extra.get('authmechanismproperties', {})
         aws_session_token = properties.get('AWS_SESSION_TOKEN')
-        props = _AWSProperties(aws_session_token=aws_session_token)
+        aws_props = _AWSProperties(aws_session_token=aws_session_token)
         # user can be None for temporary link-local EC2 credentials.
-        return MongoCredential(mech, '$external', user, passwd, props, None)
+        return MongoCredential(mech, '$external', user, passwd, aws_props, None)
     elif mech == 'PLAIN':
         source_database = source or database or '$external'
         return MongoCredential(mech, source_database, user, passwd, None, None)
@@ -471,7 +471,7 @@ def _authenticate_default(credentials, sock_info):
         return _authenticate_scram(credentials, sock_info, 'SCRAM-SHA-1')
 
 
-_AUTH_MAP = {
+_AUTH_MAP: Mapping[str, Callable] = {
     'GSSAPI': _authenticate_gssapi,
     'MONGODB-CR': _authenticate_mongo_cr,
     'MONGODB-X509': _authenticate_x509,
@@ -532,7 +532,7 @@ class _X509Context(_AuthContext):
         return cmd
 
 
-_SPECULATIVE_AUTH_MAP = {
+_SPECULATIVE_AUTH_MAP: Mapping[str, Callable] = {
     'MONGODB-X509': _X509Context,
     'SCRAM-SHA-1': functools.partial(_ScramContext, mechanism='SCRAM-SHA-1'),
     'SCRAM-SHA-256': functools.partial(_ScramContext,
@@ -545,5 +545,6 @@ def authenticate(credentials, sock_info):
     """Authenticate sock_info."""
     mechanism = credentials.mechanism
     auth_func = _AUTH_MAP.get(mechanism)
-    auth_func(credentials, sock_info)
+    if auth_func:
+        auth_func(credentials, sock_info)
 
