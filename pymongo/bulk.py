@@ -266,6 +266,8 @@ class _Bulk(object):
         # sock_info.command validates the session, but we use
         # sock_info.write_command.
         sock_info.validate_session(client, session)
+        last_run = False
+
         while run:
             # Check to see if this is the last run by peeking.
             # On the last run we use the final write concern.
@@ -273,7 +275,7 @@ class _Bulk(object):
                 next_run = next(generator)
                 generator = chain([next_run], generator)
             except StopIteration:
-                write_concern = final_write_concern or write_concern
+                last_run = True
 
             cmd_name = _COMMANDS[run.op_type]
             bwc = self.bulk_ctx_class(
@@ -281,6 +283,11 @@ class _Bulk(object):
                 run.op_type, self.collection.codec_options)
 
             while run.idx_offset < len(run.ops):
+                # If this is the last possible operation, use the
+                # final write concern.
+                if last_run and run.ops - run.idx_offset == 1:
+                    write_concern = final_write_concern
+
                 cmd = SON([(cmd_name, self.collection.name),
                            ('ordered', self.ordered)])
                 if not write_concern.is_server_default:
