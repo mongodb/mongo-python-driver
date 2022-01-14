@@ -75,10 +75,10 @@ _QUERY_OPTIONS = {
 
 
 class CursorType(object):
-    NON_TAILABLE: int = 0
+    NON_TAILABLE = 0
     """The standard cursor type."""
 
-    TAILABLE: int = _QUERY_OPTIONS["tailable_cursor"]
+    TAILABLE = _QUERY_OPTIONS["tailable_cursor"]
     """The tailable cursor type.
 
     Tailable cursors are only for use with capped collections. They are not
@@ -87,7 +87,7 @@ class CursorType(object):
     iteration of the cursor will continue from the last document received.
     """
 
-    TAILABLE_AWAIT: int = TAILABLE | _QUERY_OPTIONS["await_data"]
+    TAILABLE_AWAIT = TAILABLE | _QUERY_OPTIONS["await_data"]
     """A tailable cursor with the await option set.
 
     Creates a tailable cursor that will wait for a few seconds after returning
@@ -95,7 +95,7 @@ class CursorType(object):
     during the query.
     """
 
-    EXHAUST: int = _QUERY_OPTIONS["exhaust"]
+    EXHAUST = _QUERY_OPTIONS["exhaust"]
     """An exhaust cursor.
 
     MongoDB will stream batched results to the client without waiting for the
@@ -824,7 +824,7 @@ class Cursor(Generic[_DocumentType]):
         self.__ordering = helpers._index_document(keys)
         return self
 
-    def distinct(self, key: str) -> List[Any]:
+    def distinct(self, key: str) -> List:
         """Get a list of distinct values for `key` among all documents
         in the result set of this query.
 
@@ -866,7 +866,7 @@ class Cursor(Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `explain <https://dochub.mongodb.org/core/explain>`_.
         """
-        c: Cursor = self.clone()
+        c = self.clone()
         c.__explain = True
 
         # always use a hard limit for explains

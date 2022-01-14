@@ -27,19 +27,19 @@ class CollationStrength(object):
     :class:`~pymongo.collation.Collation`.
     """
 
-    PRIMARY: int = 1
+    PRIMARY = 1
     """Differentiate base (unadorned) characters."""
 
-    SECONDARY: int = 2
+    SECONDARY = 2
     """Differentiate character accents."""
 
-    TERTIARY: int = 3
+    TERTIARY = 3
     """Differentiate character case."""
 
-    QUATERNARY: int = 4
+    QUATERNARY = 4
     """Differentiate words with and without punctuation."""
 
-    IDENTICAL: int = 5
+    IDENTICAL = 5
     """Differentiate unicode code point (characters are exactly identical)."""
 
 
@@ -49,10 +49,10 @@ class CollationAlternate(object):
     :class:`~pymongo.collation.Collation`.
     """
 
-    NON_IGNORABLE: str = 'non-ignorable'
+    NON_IGNORABLE = 'non-ignorable'
     """Spaces and punctuation are treated as base characters."""
 
-    SHIFTED: str = 'shifted'
+    SHIFTED = 'shifted'
     """Spaces and punctuation are *not* considered base characters.
 
     Spaces and punctuation are distinguished regardless when the
@@ -68,10 +68,10 @@ class CollationMaxVariable(object):
     :class:`~pymongo.collation.Collation`.
     """
 
-    PUNCT: str = 'punct'
+    PUNCT = 'punct'
     """Both punctuation and spaces are ignored."""
 
-    SPACE: str = 'space'
+    SPACE = 'space'
     """Spaces alone are ignored."""
 
 
@@ -81,13 +81,13 @@ class CollationCaseFirst(object):
     :class:`~pymongo.collation.Collation`.
     """
 
-    UPPER: str = 'upper'
+    UPPER = 'upper'
     """Sort uppercase characters first."""
 
-    LOWER: str = 'lower'
+    LOWER = 'lower'
     """Sort lowercase characters first."""
 
-    OFF: str = 'off'
+    OFF = 'off'
     """Default for locale or collation strength."""
 
 

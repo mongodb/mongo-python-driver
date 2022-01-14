@@ -40,50 +40,50 @@ from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 ORDERED_TYPES: Tuple[Type[Any], Type[Any]] = (SON, OrderedDict)
 
 # Defaults until we connect to a server and get updated limits.
-MAX_BSON_SIZE: int = 16 * (1024 ** 2)
+MAX_BSON_SIZE = 16 * (1024 ** 2)
 MAX_MESSAGE_SIZE: int = 2 * MAX_BSON_SIZE
-MIN_WIRE_VERSION: int = 0
-MAX_WIRE_VERSION: int = 0
-MAX_WRITE_BATCH_SIZE: int = 1000
+MIN_WIRE_VERSION = 0
+MAX_WIRE_VERSION = 0
+MAX_WRITE_BATCH_SIZE = 1000
 
 # What this version of PyMongo supports.
-MIN_SUPPORTED_SERVER_VERSION: str = "3.6"
-MIN_SUPPORTED_WIRE_VERSION: int = 6
-MAX_SUPPORTED_WIRE_VERSION: int = 14
+MIN_SUPPORTED_SERVER_VERSION = "3.6"
+MIN_SUPPORTED_WIRE_VERSION = 6
+MAX_SUPPORTED_WIRE_VERSION = 14
 
 # Frequency to call hello on servers, in seconds.
-HEARTBEAT_FREQUENCY: int = 10
+HEARTBEAT_FREQUENCY = 10
 
 # Frequency to clean up unclosed cursors, in seconds.
 # See MongoClient._process_kill_cursors.
-KILL_CURSOR_FREQUENCY: int = 1
+KILL_CURSOR_FREQUENCY = 1
 
 # Frequency to process events queue, in seconds.
-EVENTS_QUEUE_FREQUENCY: int = 1
+EVENTS_QUEUE_FREQUENCY = 1
 
 # How long to wait, in seconds, for a suitable server to be found before
 # aborting an operation. For example, if the client attempts an insert
 # during a replica set election, SERVER_SELECTION_TIMEOUT governs the
 # longest it is willing to wait for a new primary to be found.
-SERVER_SELECTION_TIMEOUT: int = 30
+SERVER_SELECTION_TIMEOUT = 30
 
 # Spec requires at least 500ms between hello calls.
-MIN_HEARTBEAT_INTERVAL: float = 0.5
+MIN_HEARTBEAT_INTERVAL = 0.5
 
 # Spec requires at least 60s between SRV rescans.
-MIN_SRV_RESCAN_INTERVAL: int = 60
+MIN_SRV_RESCAN_INTERVAL = 60
 
 # Default connectTimeout in seconds.
-CONNECT_TIMEOUT: float = 20.0
+CONNECT_TIMEOUT = 20.0
 
 # Default value for maxPoolSize.
-MAX_POOL_SIZE: int = 100
+MAX_POOL_SIZE = 100
 
 # Default value for minPoolSize.
-MIN_POOL_SIZE: int = 0
+MIN_POOL_SIZE = 0
 
 # The maximum number of concurrent connection creation attempts per pool.
-MAX_CONNECTING: int = 2
+MAX_CONNECTING = 2
 
 # Default value for maxIdleTimeMS.
 MAX_IDLE_TIME_MS: Optional[int] = None
@@ -95,13 +95,13 @@ MAX_IDLE_TIME_SEC: Optional[int] = None
 WAIT_QUEUE_TIMEOUT: Optional[int] = None
 
 # Default value for localThresholdMS.
-LOCAL_THRESHOLD_MS: int = 15
+LOCAL_THRESHOLD_MS = 15
 
 # Default value for retryWrites.
-RETRY_WRITES: bool = True
+RETRY_WRITES = True
 
 # Default value for retryReads.
-RETRY_READS: bool = True
+RETRY_READS = True
 
 # The error code returned when a command doesn't exist.
 COMMAND_NOT_FOUND_CODES: Sequence[int] = (59,)
@@ -114,7 +114,7 @@ UNAUTHORIZED_CODES: Sequence[int] = (13, 16547, 16548)
 _MAX_END_SESSIONS = 10000
 
 # Default value for srvServiceName
-SRV_SERVICE_NAME: str = "mongodb"
+SRV_SERVICE_NAME = "mongodb"
 
 
 def partition_node(node: str) -> Tuple[str, int]:
@@ -394,7 +394,7 @@ def validate_read_preference_tags(name: str, value: Any) -> List[Dict[str, str]]
     if not isinstance(value, list):
         value = [value]
 
-    tag_sets: List[Any] = []
+    tag_sets: List = []
     for tag_set in value:
         if tag_set == '':
             tag_sets.append({})
@@ -461,14 +461,14 @@ def validate_type_registry(option: Any, value: Any) -> TypeRegistry:
     return cast(TypeRegistry, value)
 
 
-def validate_list(option: str, value: Any) -> List[Any]:
+def validate_list(option: str, value: Any) -> List:
     """Validates that 'value' is a list or tuple."""
     if not isinstance(value, (list, tuple)):
         raise TypeError("%s must be a list" % (option,))
     return list(value)
 
 
-def validate_list_or_none(option: Any, value: Any) -> Optional[List[Any]]:
+def validate_list_or_none(option: Any, value: Any) -> Optional[List]:
     """Validates that 'value' is a list or None."""
     if value is None:
         return value

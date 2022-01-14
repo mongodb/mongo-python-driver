@@ -75,8 +75,8 @@ class AutoReconnect(ConnectionFailure):
 
     Subclass of :exc:`~pymongo.errors.ConnectionFailure`.
     """
-    errors: Union[Mapping[str, Any], List[Any]]
-    details: Union[Mapping[str, Any], List[Any]]
+    errors: Union[Mapping[str, Any], List]
+    details: Union[Mapping[str, Any], List]
 
     def __init__(self,
         message: str = '',
@@ -125,7 +125,7 @@ class NotPrimaryError(AutoReconnect):
     """
     def __init__(self,
         message: str = '',
-        errors: Optional[Union[Mapping[str, Any], List[Any]]] = None
+        errors: Optional[Union[Mapping[str, Any], List]] = None
     ) -> None:
         super(NotPrimaryError, self).__init__(
             _format_detailed_error(message, errors), errors=errors)

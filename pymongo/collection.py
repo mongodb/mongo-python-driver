@@ -46,7 +46,7 @@ from pymongo.write_concern import WriteConcern
 _FIND_AND_MODIFY_DOC_FIELDS = {'value': 1}
 
 
-WriteOp = Union[InsertOne, DeleteOne, DeleteMany, ReplaceOne, UpdateOne, UpdateMany]
+_WriteOp = Union[InsertOne, DeleteOne, DeleteMany, ReplaceOne, UpdateOne, UpdateMany]
 # Hint supports index name, "myIndex", or list of index pairs: [('x', 1), ('y', -1)]
 _IndexList = Sequence[Tuple[str, Union[int, str, Mapping[str, Any]]]]
 _IndexKeyHint = Union[str, _IndexList]
@@ -57,11 +57,11 @@ class ReturnDocument(object):
     :meth:`~pymongo.collection.Collection.find_one_and_replace` and
     :meth:`~pymongo.collection.Collection.find_one_and_update`.
     """
-    BEFORE: bool = False
+    BEFORE = False
     """Return the original document before it was updated/replaced, or
     ``None`` if no document matches the query.
     """
-    AFTER: bool = True
+    AFTER = True
     """Return the updated/replaced or inserted document."""
 
 
@@ -378,7 +378,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def bulk_write(
         self,
-        requests: Sequence[WriteOp],
+        requests: Sequence[_WriteOp],
         ordered: bool = True,
         bypass_document_validation: bool = False,
         session: Optional["ClientSession"] = None
@@ -1858,7 +1858,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 3.0
         """
         codec_options = CodecOptions(SON)
-        coll: Collection = self.with_options(codec_options=codec_options,
+        coll = self.with_options(codec_options=codec_options,
                                  read_preference=ReadPreference.PRIMARY)
         read_pref = ((session and session._txn_read_preference())
                      or ReadPreference.PRIMARY)
@@ -2252,7 +2252,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def distinct(
         self, key: str, filter: Optional[Mapping[str, Any]] = None, session: Optional["ClientSession"] = None, **kwargs: Any
-    ) -> List[Any]:
+    ) -> List:
         """Get a list of distinct values for `key` among all documents
         in this collection.
 

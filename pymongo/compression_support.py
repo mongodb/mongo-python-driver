@@ -127,7 +127,7 @@ class ZlibContext(object):
         elif level == 0:
             self.compress = _zlib_no_compress
         else:
-           self.compresss = lambda data, _: zlib.compress(data, level)
+            self.compresss = lambda data, _: zlib.compress(data, level)
 
 
 class ZstdContext(object):

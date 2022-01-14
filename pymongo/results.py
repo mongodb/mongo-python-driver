@@ -81,7 +81,7 @@ class InsertManyResult(_WriteResult):
         super(InsertManyResult, self).__init__(acknowledged)
 
     @property
-    def inserted_ids(self) -> List[Any]:
+    def inserted_ids(self) -> List:
         """A list of _ids of the inserted documents, in the order provided.
 
         .. note:: If ``False`` is passed for the `ordered` parameter to

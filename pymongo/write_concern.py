@@ -122,4 +122,4 @@ class WriteConcern(object):
         return NotImplemented
 
 
-DEFAULT_WRITE_CONCERN: WriteConcern = WriteConcern()
+DEFAULT_WRITE_CONCERN = WriteConcern()

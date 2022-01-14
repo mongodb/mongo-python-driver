@@ -89,7 +89,7 @@ class Hello(Generic[_DocumentType]):
 
         .. versionadded:: 3.4
         """
-        return copy.deepcopy(self._doc)
+        return copy.copy(self._doc)
 
     @property
     def server_type(self) -> int:

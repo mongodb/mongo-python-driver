@@ -304,7 +304,7 @@ class UpdateOne(_UpdateOp):
         .. versionchanged:: 3.11
            Added the `hint` option.
         .. versionchanged:: 3.9
-           Added the ability to accept a _Pipeline as the `update`.
+           Added the ability to accept a pipeline as the `update`.
         .. versionchanged:: 3.6
            Added the `array_filters` option.
         .. versionchanged:: 3.5
@@ -351,7 +351,7 @@ class UpdateMany(_UpdateOp):
         .. versionchanged:: 3.11
            Added the `hint` option.
         .. versionchanged:: 3.9
-           Added the ability to accept a _Pipeline as the `update`.
+           Added the ability to accept a pipeline as the `update`.
         .. versionchanged:: 3.6
            Added the `array_filters` option.
         .. versionchanged:: 3.5
