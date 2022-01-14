@@ -187,8 +187,7 @@ class Cursor(Generic[_DocumentType]):
             self.__session = None
             self.__explicit_session = False
 
-        spec: MutableMapping[str, Any] = cast(MutableMapping[str, Any], filter) or {}
-
+        spec: Mapping[str, Any] = filter or {}
         validate_is_mapping("filter", spec)
         if not isinstance(skip, int):
             raise TypeError("skip must be an instance of int")
@@ -223,7 +222,8 @@ class Cursor(Generic[_DocumentType]):
             validate_is_document_type("let", let)
 
         self.__let = let
-        self.__spec: MutableMapping[str, Any] = spec
+        self.__spec = spec
+        self.__has_filter = filter is not None
         self.__projection = projection
         self.__skip = skip
         self.__limit = limit
@@ -958,7 +958,15 @@ class Cursor(Generic[_DocumentType]):
         if not isinstance(code, Code):
             code = Code(code)
 
-        self.__spec["$where"] = code
+        # Avoid overwriting a filter argument that was given by the user
+        # when updating the spec.
+        spec: Dict[str, Any]
+        if self.__has_filter:
+            spec = dict(self.__spec)
+        else:
+            spec = cast(Dict, self.__spec)
+        spec["$where"] = code
+        self.__spec = spec
         return self
 
     def collation(self, collation: Optional[_CollationIn]) -> "Cursor[_DocumentType]":
