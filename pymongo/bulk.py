@@ -285,7 +285,7 @@ class _Bulk(object):
             while run.idx_offset < len(run.ops):
                 # If this is the last possible operation, use the
                 # final write concern.
-                if last_run and run.ops - run.idx_offset == 1:
+                if last_run and (run.ops - run.idx_offset) == 1:
                     write_concern = final_write_concern
 
                 cmd = SON([(cmd_name, self.collection.name),
