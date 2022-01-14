@@ -15,11 +15,10 @@
 """Perform aggregation operations on a collection or database."""
 
 from bson.son import SON
-
 from pymongo import common
 from pymongo.collation import validate_collation_or_none
 from pymongo.errors import ConfigurationError
-from pymongo.read_preferences import _AggWritePref, ReadPreference
+from pymongo.read_preferences import ReadPreference, _AggWritePref
 
 
 class _AggregationCommand(object):
@@ -37,7 +36,7 @@ class _AggregationCommand(object):
 
         self._target = target
 
-        common.validate_list('pipeline', pipeline)
+        pipeline = common.validate_list('pipeline', pipeline)
         self._pipeline = pipeline
         self._performs_write = False
         if pipeline and ("$out" in pipeline[-1] or "$merge" in pipeline[-1]):
@@ -82,7 +81,6 @@ class _AggregationCommand(object):
         """The namespace in which the aggregate command is run."""
         raise NotImplementedError
 
-    @property
     def _cursor_collection(self, cursor_doc):
         """The Collection used for the aggregate command cursor."""
         raise NotImplementedError

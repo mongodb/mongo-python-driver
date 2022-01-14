@@ -21,35 +21,27 @@ import threading
 import time
 import warnings
 import weakref
+from typing import Any
 
-from pymongo import (common,
-                     helpers,
-                     periodic_executor)
+from pymongo import common, helpers, periodic_executor
 from pymongo.client_session import _ServerSessionPool
-from pymongo.errors import (ConnectionFailure,
-                            ConfigurationError,
-                            NetworkTimeout,
-                            NotPrimaryError,
-                            OperationFailure,
-                            PyMongoError,
-                            ServerSelectionTimeoutError,
-                            WriteError,
-                            InvalidOperation)
+from pymongo.errors import (ConfigurationError, ConnectionFailure,
+                            InvalidOperation, NetworkTimeout, NotPrimaryError,
+                            OperationFailure, PyMongoError,
+                            ServerSelectionTimeoutError, WriteError)
 from pymongo.hello import Hello
 from pymongo.monitor import SrvMonitor
 from pymongo.pool import PoolOptions
 from pymongo.server import Server
 from pymongo.server_description import ServerDescription
-from pymongo.server_selectors import (any_server_selector,
+from pymongo.server_selectors import (Selection, any_server_selector,
                                       arbiter_server_selector,
-                                      secondary_server_selector,
                                       readable_server_selector,
-                                      writable_server_selector,
-                                      Selection)
-from pymongo.topology_description import (updated_topology_description,
-                                          _updated_topology_description_srv_polling,
-                                          TopologyDescription,
-                                          SRV_POLLING_TOPOLOGIES, TOPOLOGY_TYPE)
+                                      secondary_server_selector,
+                                      writable_server_selector)
+from pymongo.topology_description import (
+    SRV_POLLING_TOPOLOGIES, TOPOLOGY_TYPE, TopologyDescription,
+    _updated_topology_description_srv_polling, updated_topology_description)
 
 
 def process_events_queue(queue_ref):
@@ -80,12 +72,13 @@ class Topology(object):
 
         # Create events queue if there are publishers.
         self._events = None
-        self.__events_executor = None
+        self.__events_executor: Any = None
 
         if self._publish_server or self._publish_tp:
             self._events = queue.Queue(maxsize=100)
 
         if self._publish_tp:
+            assert self._events is not None
             self._events.put((self._listeners.publish_topology_opened,
                              (self._topology_id,)))
         self._settings = topology_settings
@@ -99,6 +92,7 @@ class Topology(object):
 
         self._description = topology_description
         if self._publish_tp:
+            assert self._events is not None
             initial_td = TopologyDescription(TOPOLOGY_TYPE.Unknown, {}, None,
                                              None, None, self._settings)
             self._events.put((
@@ -107,6 +101,7 @@ class Topology(object):
 
         for seed in topology_settings.seeds:
             if self._publish_server:
+                assert self._events is not None
                 self._events.put((self._listeners.publish_server_opened,
                                  (seed, self._topology_id)))
 
@@ -296,6 +291,7 @@ class Topology(object):
         suppress_event = ((self._publish_server or self._publish_tp)
                           and sd_old == server_description)
         if self._publish_server and not suppress_event:
+            assert self._events is not None
             self._events.put((
                 self._listeners.publish_server_description_changed,
                 (sd_old, server_description,
@@ -306,6 +302,7 @@ class Topology(object):
         self._receive_cluster_time_no_lock(server_description.cluster_time)
 
         if self._publish_tp and not suppress_event:
+            assert self._events is not None
             self._events.put((
                 self._listeners.publish_topology_description_changed,
                 (td_old, self._description, self._topology_id)))
@@ -354,6 +351,7 @@ class Topology(object):
         self._update_servers()
 
         if self._publish_tp:
+            assert self._events is not None
             self._events.put((
                 self._listeners.publish_topology_description_changed,
                 (td_old, self._description, self._topology_id)))
@@ -485,6 +483,7 @@ class Topology(object):
 
         # Publish only after releasing the lock.
         if self._publish_tp:
+            assert self._events is not None
             self._events.put((self._listeners.publish_topology_closed,
                               (self._topology_id,)))
         if self._publish_server or self._publish_tp:

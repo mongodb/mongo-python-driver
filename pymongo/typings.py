@@ -1,4 +1,4 @@
-# Copyright 2014-2015 MongoDB, Inc.
+# Copyright 2014-2022 MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,22 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Type codes for MongoDB servers."""
+"""Type aliases used by PyMongo"""
+from typing import (TYPE_CHECKING, Any, Mapping, MutableMapping, Optional,
+                    Sequence, Tuple, Type, TypeVar, Union)
 
-from collections import namedtuple
-from typing import NamedTuple
-
-
-class _ServerType(NamedTuple):
-    Unknown: int
-    Mongos: int
-    RSPrimary: int
-    RSSecondary: int
-    RSArbiter: int
-    RSOther: int
-    RSGhost: int
-    Standalone: int
-    LoadBalancer: int
+if TYPE_CHECKING:
+    from pymongo.collation import Collation
 
 
-SERVER_TYPE = _ServerType(*range(9))
+# Common Shared Types.
+_Address = Tuple[str, Optional[int]]
+_CollationIn = Union[Mapping[str, Any], "Collation"]
+_DocumentIn = MutableMapping[str, Any]
+_Pipeline = Sequence[Mapping[str, Any]]
+_DocumentType = TypeVar('_DocumentType', Mapping[str, Any], MutableMapping[str, Any])

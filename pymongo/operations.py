@@ -13,11 +13,13 @@
 # limitations under the License.
 
 """Operation class definitions."""
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
 
 from pymongo import helpers
-from pymongo.common import validate_boolean, validate_is_mapping, validate_list
 from pymongo.collation import validate_collation_or_none
+from pymongo.common import validate_boolean, validate_is_mapping, validate_list
 from pymongo.helpers import _gen_index_name, _index_document, _index_list
+from pymongo.typings import _CollationIn, _DocumentIn, _Pipeline
 
 
 class InsertOne(object):
@@ -25,7 +27,7 @@ class InsertOne(object):
 
     __slots__ = ("_doc",)
 
-    def __init__(self, document):
+    def __init__(self, document: _DocumentIn) -> None:
         """Create an InsertOne instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -43,13 +45,17 @@ class InsertOne(object):
     def __repr__(self):
         return "InsertOne(%r)" % (self._doc,)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if type(other) == type(self):
             return other._doc == self._doc
         return NotImplemented
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other
+
+
+_IndexList = Sequence[Tuple[str, Union[int, str, Mapping[str, Any]]]]
+_IndexKeyHint = Union[str, _IndexList]
 
 
 class DeleteOne(object):
@@ -57,7 +63,7 @@ class DeleteOne(object):
 
     __slots__ = ("_filter", "_collation", "_hint")
 
-    def __init__(self, filter, collation=None, hint=None):
+    def __init__(self, filter: Mapping[str, Any], collation: Optional[_CollationIn] = None, hint: Optional[_IndexKeyHint] = None) -> None:
         """Create a DeleteOne instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -95,13 +101,13 @@ class DeleteOne(object):
     def __repr__(self):
         return "DeleteOne(%r, %r)" % (self._filter, self._collation)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if type(other) == type(self):
             return ((other._filter, other._collation) ==
                     (self._filter, self._collation))
         return NotImplemented
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other
 
 
@@ -110,7 +116,7 @@ class DeleteMany(object):
 
     __slots__ = ("_filter", "_collation", "_hint")
 
-    def __init__(self, filter, collation=None, hint=None):
+    def __init__(self, filter: Mapping[str, Any], collation: Optional[_CollationIn] = None, hint: Optional[_IndexKeyHint] = None) -> None:
         """Create a DeleteMany instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -148,13 +154,13 @@ class DeleteMany(object):
     def __repr__(self):
         return "DeleteMany(%r, %r)" % (self._filter, self._collation)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if type(other) == type(self):
             return ((other._filter, other._collation) ==
                     (self._filter, self._collation))
         return NotImplemented
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other
 
 
@@ -163,8 +169,8 @@ class ReplaceOne(object):
 
     __slots__ = ("_filter", "_doc", "_upsert", "_collation", "_hint")
 
-    def __init__(self, filter, replacement, upsert=False, collation=None,
-                 hint=None):
+    def __init__(self, filter: Mapping[str, Any], replacement: Mapping[str, Any], upsert: bool = False, collation: Optional[_CollationIn] = None,
+                 hint: Optional[_IndexKeyHint] = None) -> None:
         """Create a ReplaceOne instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -207,7 +213,7 @@ class ReplaceOne(object):
         bulkobj.add_replace(self._filter, self._doc, self._upsert,
                             collation=self._collation, hint=self._hint)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if type(other) == type(self):
             return (
                 (other._filter, other._doc, other._upsert, other._collation,
@@ -215,7 +221,7 @@ class ReplaceOne(object):
                                   self._collation, other._hint))
         return NotImplemented
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other
 
     def __repr__(self):
@@ -236,11 +242,12 @@ class _UpdateOp(object):
         if upsert is not None:
             validate_boolean("upsert", upsert)
         if array_filters is not None:
-            validate_list("array_filters", array_filters)
+            array_filters = validate_list("array_filters", array_filters)
         if hint is not None:
             if not isinstance(hint, str):
                 hint = helpers._index_document(hint)
-
+        if isinstance(doc, tuple):
+            doc = list(doc)
 
         self._filter = filter
         self._doc = doc
@@ -272,8 +279,8 @@ class UpdateOne(_UpdateOp):
 
     __slots__ = ()
 
-    def __init__(self, filter, update, upsert=False, collation=None,
-                 array_filters=None, hint=None):
+    def __init__(self, filter: Mapping[str, Any], update: Union[Mapping[str, Any], _Pipeline], upsert: bool = False, collation: Optional[_CollationIn] = None,
+                 array_filters: Optional[Sequence[Mapping[str, Any]]] = None, hint: Optional[_IndexKeyHint] = None) -> None:
         """Represents an update_one operation.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -297,7 +304,7 @@ class UpdateOne(_UpdateOp):
         .. versionchanged:: 3.11
            Added the `hint` option.
         .. versionchanged:: 3.9
-           Added the ability to accept a pipeline as the `update`.
+           Added the ability to accept a _Pipeline as the `update`.
         .. versionchanged:: 3.6
            Added the `array_filters` option.
         .. versionchanged:: 3.5
@@ -319,8 +326,8 @@ class UpdateMany(_UpdateOp):
 
     __slots__ = ()
 
-    def __init__(self, filter, update, upsert=False, collation=None,
-                 array_filters=None, hint=None):
+    def __init__(self, filter: Mapping[str, Any], update: Union[Mapping[str, Any], _Pipeline], upsert: bool = False, collation: Optional[_CollationIn] = None,
+                 array_filters: Optional[Sequence[Mapping[str, Any]]] = None, hint: Optional[_IndexKeyHint] = None) -> None:
         """Create an UpdateMany instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -344,7 +351,7 @@ class UpdateMany(_UpdateOp):
         .. versionchanged:: 3.11
            Added the `hint` option.
         .. versionchanged:: 3.9
-           Added the ability to accept a pipeline as the `update`.
+           Added the ability to accept a _Pipeline as the `update`.
         .. versionchanged:: 3.6
            Added the `array_filters` option.
         .. versionchanged:: 3.5
@@ -366,7 +373,7 @@ class IndexModel(object):
 
     __slots__ = ("__document",)
 
-    def __init__(self, keys, **kwargs):
+    def __init__(self, keys: _IndexKeyHint, **kwargs: Any) -> None:
         """Create an Index instance.
 
         For use with :meth:`~pymongo.collection.Collection.create_indexes`.
@@ -437,7 +444,7 @@ class IndexModel(object):
             self.__document['collation'] = collation
 
     @property
-    def document(self):
+    def document(self) -> Dict[str, Any]:
         """An index document suitable for passing to the createIndexes
         command.
         """

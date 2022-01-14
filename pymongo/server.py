@@ -17,11 +17,10 @@
 from datetime import datetime
 
 from bson import _decode_all_selective
-
 from pymongo.errors import NotPrimaryError, OperationFailure
 from pymongo.helpers import _check_command_response
 from pymongo.message import _convert_exception, _OpMsg
-from pymongo.response import Response, PinnedResponse
+from pymongo.response import PinnedResponse, Response
 from pymongo.server_type import SERVER_TYPE
 
 _CURSOR_DOC_FIELDS = {'cursor': {'firstBatch': 1, 'nextBatch': 1}}
@@ -59,6 +58,8 @@ class Server(object):
         Reconnect with open().
         """
         if self._publish:
+            assert self._listener is not None
+            assert self._events is not None
             self._events.put((self._listener.publish_server_closed,
                               (self._description.address, self._topology_id)))
         self._monitor.close()
@@ -168,6 +169,8 @@ class Server(object):
                     reply.raw_command_response())
                 docs = _decode_all_selective(
                     decrypted, operation.codec_options, user_fields)
+
+        response: Response
 
         if client._should_pin_cursor(operation.session) or operation.exhaust:
             sock_info.pin_cursor()
