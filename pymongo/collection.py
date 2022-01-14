@@ -608,9 +608,9 @@ class Collection(common.BaseObject):
             else:
                 update_doc['arrayFilters'] = array_filters
         if hint is not None:
-            if sock_info.max_wire_version < 8:
+            if not acknowledged and sock_info.max_wire_version < 8:
                 raise ConfigurationError(
-                    'Must be connected to MongoDB 4.2+ to use hint on update commands.')
+                    'Must be connected to MongoDB 4.2+ to use hint on unacknowledged update commands.')
             if not isinstance(hint, str):
                 hint = helpers._index_document(hint)
             update_doc['hint'] = hint
@@ -954,9 +954,9 @@ class Collection(common.BaseObject):
             else:
                 delete_doc['collation'] = collation
         if hint is not None:
-            if sock_info.max_wire_version < 9:
+            if not acknowledged and sock_info.max_wire_version < 9:
                 raise ConfigurationError(
-                    'Must be connected to MongoDB 4.4+ to use hint on delete commands.')
+                    'Must be connected to MongoDB 4.4+ to use hint on unacknowledged delete commands.')
             if not isinstance(hint, str):
                 hint = helpers._index_document(hint)
             delete_doc['hint'] = hint
@@ -2270,16 +2270,20 @@ class Collection(common.BaseObject):
         write_concern = self._write_concern_for_cmd(cmd, session)
 
         def _find_and_modify(session, sock_info, retryable_write):
+            acknowledged = write_concern.acknowledged
             if array_filters is not None:
-                if not write_concern.acknowledged:
+                if not acknowledged:
                     raise ConfigurationError(
                         'arrayFilters is unsupported for unacknowledged '
                         'writes.')
                 cmd["arrayFilters"] = array_filters
             if hint is not None:
-                if sock_info.max_wire_version < 9:
+                if sock_info.max_wire_version < 8:
                     raise ConfigurationError(
-                        'Must be connected to MongoDB 4.4+ to use hint on find and modify commands.')
+                        'Must be connected to MongoDB 4.2+ to use hint on find and modify commands.')
+                elif (not acknowledged and sock_info.max_wire_version < 9):
+                    raise ConfigurationError(
+                        'Must be connected to MongoDB 4.4+ to use hint on unacknowledged find and modify commands.')
                 cmd['hint'] = hint
             if not write_concern.is_server_default:
                 cmd['writeConcern'] = write_concern.document
