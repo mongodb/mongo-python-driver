@@ -18,7 +18,7 @@
 """
 import copy
 
-from itertools import islice
+from itertools import islice, chain
 
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
@@ -51,6 +51,7 @@ _UNKNOWN_ERROR = 8
 _WRITE_CONCERN_ERROR = 64
 
 _COMMANDS = ('insert', 'update', 'delete')
+
 
 
 class _Run(object):
@@ -258,7 +259,6 @@ class _Bulk(object):
         db_name = self.collection.database.name
         client = self.collection.database.client
         listeners = client._event_listeners
-        final_write_concern = final_write_concern or write_concern
 
         if not self.current_run:
             self.current_run = next(generator)
@@ -268,14 +268,20 @@ class _Bulk(object):
         # sock_info.write_command.
         sock_info.validate_session(client, session)
         while run:
+            # Check to see if this is the last run by peeking.
+            # On the last run we use the final write concern.
+            try:
+                next_run = next(generator)
+                generator = chain([next_run], generator)
+            except StopIteration:
+                write_concern = final_write_concern or write_concern
+
             cmd_name = _COMMANDS[run.op_type]
             bwc = self.bulk_ctx_class(
                 db_name, cmd_name, sock_info, op_id, listeners, session,
                 run.op_type, self.collection.codec_options)
 
             while run.idx_offset < len(run.ops):
-                if run.idx_offset == len(run.ops) - 1:
-                    write_concern = final_write_concern
                 cmd = SON([(cmd_name, self.collection.name),
                            ('ordered', self.ordered)])
                 if not write_concern.is_server_default:
@@ -293,25 +299,31 @@ class _Bulk(object):
                 sock_info.send_cluster_time(cmd, session, client)
                 sock_info.add_server_api(cmd)
                 ops = islice(run.ops, run.idx_offset, None)
+
                 # Run as many ops as possible in one command.
-                result, to_send = bwc.execute(cmd, ops, client)
+                if write_concern.acknowledged:
+                    result, to_send = bwc.execute(cmd, ops, client)
 
-                # Retryable writeConcernErrors halt the execution of this run.
-                wce = result.get('writeConcernError', {})
-                if wce.get('code', 0) in _RETRYABLE_ERROR_CODES:
-                    # Synthesize the full bulk result without modifying the
-                    # current one because this write operation may be retried.
-                    full = copy.deepcopy(full_result)
-                    _merge_command(run, full, run.idx_offset, result)
-                    _raise_bulk_write_error(full)
+                    # Retryable writeConcernErrors halt the execution of this run.
+                    wce = result.get('writeConcernError', {})
+                    if wce.get('code', 0) in _RETRYABLE_ERROR_CODES:
+                        # Synthesize the full bulk result without modifying the
+                        # current one because this write operation may be retried.
+                        full = copy.deepcopy(full_result)
+                        _merge_command(run, full, run.idx_offset, result)
+                        _raise_bulk_write_error(full)
 
-                _merge_command(run, full_result, run.idx_offset, result)
-                # We're no longer in a retry once a command succeeds.
-                self.retrying = False
-                self.started_retryable_write = False
+                    _merge_command(run, full_result, run.idx_offset, result)
 
-                if self.ordered and "writeErrors" in result:
-                    break
+                    # We're no longer in a retry once a command succeeds.
+                    self.retrying = False
+                    self.started_retryable_write = False
+
+                    if self.ordered and "writeErrors" in result:
+                        break
+                else:
+                    to_send = bwc.execute_unack(cmd, ops, client)
+
                 run.idx_offset += len(to_send)
 
             # We're supposed to continue if errors are
