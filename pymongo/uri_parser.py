@@ -28,11 +28,11 @@ from pymongo.common import (INTERNAL_URI_OPTION_NAME_MAP, SRV_SERVICE_NAME,
 from pymongo.errors import ConfigurationError, InvalidURI
 from pymongo.srv_resolver import _HAVE_DNSPYTHON, _SrvResolver
 
-SCHEME: str= 'mongodb://'
-SCHEME_LEN: int = len(SCHEME)
-SRV_SCHEME: str = 'mongodb+srv://'
-SRV_SCHEME_LEN: int = len(SRV_SCHEME)
-DEFAULT_PORT: int = 27017
+SCHEME = 'mongodb://'
+SCHEME_LEN = len(SCHEME)
+SRV_SCHEME = 'mongodb+srv://'
+SRV_SCHEME_LEN = len(SRV_SCHEME)
+DEFAULT_PORT = 27017
 
 
 def _unquoted_percent(s):

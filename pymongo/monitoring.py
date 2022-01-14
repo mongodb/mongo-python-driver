@@ -202,7 +202,7 @@ _Listeners = namedtuple('_Listeners',
 _LISTENERS = _Listeners([], [], [], [], [])
 
 
-DocumentOut = Mapping[str, Any]
+_DocumentOut = Mapping[str, Any]
 
 
 class _EventListener(object):
@@ -596,7 +596,7 @@ class CommandStartedEvent(_CommandEvent):
 
     def __init__(
         self,
-        command: DocumentOut,
+        command: _DocumentOut,
         database_name: str,
         request_id: int,
         connection_id: _Address,
@@ -618,7 +618,7 @@ class CommandStartedEvent(_CommandEvent):
         self.__db = database_name
 
     @property
-    def command(self) -> DocumentOut:
+    def command(self) -> _DocumentOut:
         """The command document."""
         return self.__cmd
 
@@ -654,7 +654,7 @@ class CommandSucceededEvent(_CommandEvent):
     def __init__(
         self,
         duration: datetime.timedelta,
-        reply: DocumentOut,
+        reply: _DocumentOut,
         command_name: str,
         request_id: int,
         connection_id: _Address,
@@ -678,7 +678,7 @@ class CommandSucceededEvent(_CommandEvent):
         return self.__duration_micros
 
     @property
-    def reply(self) -> DocumentOut:
+    def reply(self) -> _DocumentOut:
         """The server failure document for this operation."""
         return self.__reply
 
@@ -709,7 +709,7 @@ class CommandFailedEvent(_CommandEvent):
     def __init__(
         self,
         duration: datetime.timedelta,
-        failure: DocumentOut,
+        failure: _DocumentOut,
         command_name: str,
         request_id: int,
         connection_id: _Address,
@@ -726,7 +726,7 @@ class CommandFailedEvent(_CommandEvent):
         return self.__duration_micros
 
     @property
-    def failure(self) -> DocumentOut:
+    def failure(self) -> _DocumentOut:
         """The server failure document for this operation."""
         return self.__failure
 
@@ -845,17 +845,17 @@ class ConnectionClosedReason(object):
     .. versionadded:: 3.9
     """
 
-    STALE: str = 'stale'
+    STALE = 'stale'
     """The pool was cleared, making the connection no longer valid."""
 
-    IDLE: str = 'idle'
+    IDLE = 'idle'
     """The connection became stale by being idle for too long (maxIdleTimeMS).
     """
 
-    ERROR: str = 'error'
+    ERROR = 'error'
     """The connection experienced an error, making it no longer valid."""
 
-    POOL_CLOSED: str = 'poolClosed'
+    POOL_CLOSED = 'poolClosed'
     """The pool was closed, making the connection no longer valid."""
 
 
@@ -866,13 +866,13 @@ class ConnectionCheckOutFailedReason(object):
     .. versionadded:: 3.9
     """
 
-    TIMEOUT: str = 'timeout'
+    TIMEOUT = 'timeout'
     """The connection check out attempt exceeded the specified timeout."""
 
-    POOL_CLOSED: str = 'poolClosed'
+    POOL_CLOSED = 'poolClosed'
     """The pool was previously closed, and cannot provide new connections."""
 
-    CONN_ERROR: str = 'connectionError'
+    CONN_ERROR = 'connectionError'
     """The connection check out attempt experienced an error while setting up
     a new connection.
     """

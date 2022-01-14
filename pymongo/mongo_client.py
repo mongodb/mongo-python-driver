@@ -77,8 +77,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     resources related to this, including background threads for monitoring,
     and connection pools.
     """
-    HOST: str = "localhost"
-    PORT: int = 27017
+    HOST = "localhost"
+    PORT = 27017
     # Define order to retrieve options from ClientOptions for __repr__.
     # No host/port; these are retrieved from TopologySettings.
     _constructor_args = ('document_class', 'tz_aware', 'connect')
@@ -718,7 +718,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         self.__default_database_name = dbase
         self.__lock = threading.Lock()
-        self.__kill_cursors_queue: List[Any] = []
+        self.__kill_cursors_queue: List = []
 
         self._event_listeners = options.pool_options._event_listeners
         super(MongoClient, self).__init__(options.codec_options,

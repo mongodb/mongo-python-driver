@@ -73,4 +73,4 @@ class ReadConcern(object):
         return 'ReadConcern()'
 
 
-DEFAULT_READ_CONCERN: ReadConcern = ReadConcern()
+DEFAULT_READ_CONCERN = ReadConcern()
