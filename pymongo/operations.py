@@ -161,10 +161,10 @@ class DeleteMany(object):
 class ReplaceOne(object):
     """Represents a replace_one operation."""
 
-    __slots__ = ("_filter", "_doc", "_upsert", "_collation", "_hint")
+    __slots__ = ("_filter", "_doc", "_upsert", "_collation", "_hint", "_let")
 
     def __init__(self, filter, replacement, upsert=False, collation=None,
-                 hint=None):
+                 hint=None, let=None):
         """Create a ReplaceOne instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -182,11 +182,16 @@ class ReplaceOne(object):
             :meth:`~pymongo.collection.Collection.create_index` (e.g.
             ``[('field', ASCENDING)]``). This option is only supported on
             MongoDB 4.2 and above.
+          - `let` (optional): A map of parameter names and values. Parameters
+            can then be accessed as variables in an aggregate expression
+            context.
 
         .. versionchanged:: 3.11
            Added the ``hint`` option.
         .. versionchanged:: 3.5
            Added the ``collation`` option.
+        .. versionchanged:: 4.1
+           Added the ``let`` option
         """
         if filter is not None:
             validate_is_mapping("filter", filter)
@@ -195,24 +200,29 @@ class ReplaceOne(object):
         if hint is not None:
             if not isinstance(hint, str):
                 hint = helpers._index_document(hint)
+        if let is not None:
+            validate_is_mapping("let", let)
 
         self._filter = filter
         self._doc = replacement
         self._upsert = upsert
         self._collation = collation
         self._hint = hint
+        self._let = let
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
         bulkobj.add_replace(self._filter, self._doc, self._upsert,
-                            collation=self._collation, hint=self._hint)
+                            collation=self._collation, hint=self._hint,
+                            let=self._let)
 
     def __eq__(self, other):
         if type(other) == type(self):
             return (
                 (other._filter, other._doc, other._upsert, other._collation,
-                 other._hint) == (self._filter, self._doc, self._upsert,
-                                  self._collation, other._hint))
+                 other._hint, other._let) == (self._filter, self._doc,
+                                          self._upsert,
+                                  self._collation, other._hint, self._let))
         return NotImplemented
 
     def __ne__(self, other):
