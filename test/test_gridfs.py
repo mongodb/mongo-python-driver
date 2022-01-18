@@ -27,6 +27,7 @@ from io import BytesIO
 sys.path[0:0] = [""]
 
 from bson.binary import Binary
+from pymongo.database import Database
 from pymongo.mongo_client import MongoClient
 from pymongo.errors import (ConfigurationError,
                             NotPrimaryError,
@@ -78,6 +79,7 @@ class JustRead(threading.Thread):
 
 
 class TestGridfsNoConnect(unittest.TestCase):
+    db: Database
 
     @classmethod
     def setUpClass(cls):

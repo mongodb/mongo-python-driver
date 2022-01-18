@@ -490,6 +490,7 @@ class TestGridfsBucketReplicaSet(IntegrationTest):
 
     @classmethod
     def tearDownClass(cls):
+        assert client_context.client is not None
         client_context.client.drop_database('gfsbucketreplica')
 
     def test_gridfs_replica_set(self):
