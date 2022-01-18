@@ -52,7 +52,7 @@ class SelectionStoreSelector(object):
 
 
 
-class TestAllScenarios(create_selection_tests(_TEST_PATH)):
+class TestAllScenarios(create_selection_tests(_TEST_PATH)):  # type: ignore
     pass
 
 
@@ -125,7 +125,7 @@ class TestCustomServerSelectorFunction(IntegrationTest):
     def test_latency_threshold_application(self):
         selector = SelectionStoreSelector()
 
-        scenario_def = {
+        scenario_def: dict = {
             'topology_description': {
                 'type': 'ReplicaSetWithPrimary', 'servers': [
                     {'address': 'b:27017',
@@ -160,6 +160,7 @@ class TestCustomServerSelectorFunction(IntegrationTest):
         # Invoke server selection and assert no filtering based on latency
         # prior to custom server selection logic kicking in.
         server = topology.select_server(ReadPreference.NEAREST)
+        assert selector.selection is not None
         self.assertEqual(
             len(selector.selection),
             len(topology.description.server_descriptions()))

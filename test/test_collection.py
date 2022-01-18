@@ -120,11 +120,12 @@ class TestCollectionNoConnect(unittest.TestCase):
 
 
 class TestCollection(IntegrationTest):
+    w: int
 
     @classmethod
     def setUpClass(cls):
         super(TestCollection, cls).setUpClass()
-        cls.w = client_context.w
+        cls.w = client_context.w  # type: ignore
 
     @classmethod
     def tearDownClass(cls):
@@ -1733,8 +1734,8 @@ class TestCollection(IntegrationTest):
 
         db.test.insert_many([{"x": i} for i in range(1, 4)])
 
-        self.assertEqual(1, db.test.find_one()["x"])
-        self.assertEqual(2, db.test.find_one(skip=1, limit=2)["x"])
+        self.assertEqual(1, db.test.find_one()["x"])  # type: ignore
+        self.assertEqual(2, db.test.find_one(skip=1, limit=2)["x"])  # type: ignore
 
     def test_find_with_sort(self):
         db = self.db
@@ -1743,8 +1744,8 @@ class TestCollection(IntegrationTest):
         db.test.insert_many([{"x": 2}, {"x": 1}, {"x": 3}])
 
         self.assertEqual(2, db.test.find_one()["x"])
-        self.assertEqual(1, db.test.find_one(sort=[("x", 1)])["x"])
-        self.assertEqual(3, db.test.find_one(sort=[("x", -1)])["x"])
+        self.assertEqual(1, db.test.find_one(sort=[("x", 1)])["x"])  # type: ignore
+        self.assertEqual(3, db.test.find_one(sort=[("x", -1)])["x"])  # type: ignore
 
         def to_list(things):
             return [thing["x"] for thing in things]
@@ -1979,7 +1980,7 @@ class TestCollection(IntegrationTest):
 
         bad = BadGetAttr([('foo', 'bar')])
         c.insert_one({'bad': bad})
-        self.assertEqual('bar', c.find_one()['bad']['foo'])
+        self.assertEqual('bar', c.find_one()['bad']['foo'])  # type: ignore
 
     def test_array_filters_validation(self):
         # array_filters must be a list.
@@ -2164,7 +2165,7 @@ class TestCollection(IntegrationTest):
         c.drop()
         c.insert_one({'r': re.compile('.*')})
 
-        self.assertTrue(isinstance(c.find_one()['r'], Regex))
+        self.assertTrue(isinstance(c.find_one()['r'], Regex))  # type: ignore
         for doc in c.find():
             self.assertTrue(isinstance(doc['r'], Regex))
 
@@ -2195,9 +2196,9 @@ class TestCollection(IntegrationTest):
             for helper, args in helpers:
                 with self.assertRaisesRegex(TypeError,
                                             "let must be an instance of dict"):
-                    helper(*args, let=let)
+                    helper(*args, let=let)  # type: ignore
         for helper, args in helpers:
-            helper(*args, let={})
+            helper(*args, let={})  # type: ignore
 
 
 if __name__ == "__main__":

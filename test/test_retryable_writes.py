@@ -135,6 +135,7 @@ def non_retryable_single_statement_ops(coll):
 class IgnoreDeprecationsTest(IntegrationTest):
     RUN_ON_LOAD_BALANCER = True
     RUN_ON_SERVERLESS = True
+    deprecation_filter: DeprecationFilter
 
     @classmethod
     def setUpClass(cls):
@@ -148,6 +149,7 @@ class IgnoreDeprecationsTest(IntegrationTest):
 
 
 class TestRetryableWritesMMAPv1(IgnoreDeprecationsTest):
+    knobs: client_knobs
 
     @classmethod
     def setUpClass(cls):
@@ -180,6 +182,8 @@ class TestRetryableWritesMMAPv1(IgnoreDeprecationsTest):
 
 
 class TestRetryableWrites(IgnoreDeprecationsTest):
+    listener: OvertCommandListener
+    knobs: client_knobs
 
     @classmethod
     @client_context.require_no_mmap
@@ -426,6 +430,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
 class TestWriteConcernError(IntegrationTest):
     RUN_ON_LOAD_BALANCER = True
     RUN_ON_SERVERLESS = True
+    fail_insert: dict
 
     @classmethod
     @client_context.require_replica_set

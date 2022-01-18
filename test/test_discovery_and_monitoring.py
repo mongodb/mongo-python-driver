@@ -364,10 +364,12 @@ class TestIntegration(SpecRunner):
             def marked_unknown(e):
                 return (isinstance(e, monitoring.ServerDescriptionChangedEvent)
                         and not e.new_description.is_server_type_known)
+            assert self.server_listener is not None
             return len(self.server_listener.matching(marked_unknown))
         # Only support CMAP events for now.
         self.assertTrue(event.startswith('Pool') or event.startswith('Conn'))
         event_type = getattr(monitoring, event)
+        assert self.pool_listener is not None
         return self.pool_listener.event_count(event_type)
 
     def assert_event_count(self, event, count):

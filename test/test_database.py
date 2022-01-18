@@ -17,6 +17,7 @@
 import datetime
 import re
 import sys
+from typing import Any
 
 sys.path[0:0] = [""]
 
@@ -57,6 +58,7 @@ from test.test_custom_types import DECIMAL_CODECOPTS
 class TestDatabaseNoConnect(unittest.TestCase):
     """Test Database features on a client that does not connect.
     """
+    client: MongoClient
 
     @classmethod
     def setUpClass(cls):
@@ -143,7 +145,7 @@ class TestDatabase(IntegrationTest):
         test = db.create_collection("test")
         self.assertTrue("test" in db.list_collection_names())
         test.insert_one({"hello": "world"})
-        self.assertEqual(db.test.find_one()["hello"], "world")
+        self.assertEqual(db.test.find_one()["hello"], "world")  # type: ignore
 
         db.drop_collection("test.foo")
         db.create_collection("test.foo")
@@ -198,6 +200,7 @@ class TestDatabase(IntegrationTest):
             self.assertNotIn("nameOnly", results["started"][0].command)
 
         # Should send nameOnly (except on 2.6).
+        filter: Any
         for filter in (None, {}, {'name': {'$in': ['capped', 'non_capped']}}):
             results.clear()
             names = db.list_collection_names(filter=filter)
@@ -225,7 +228,7 @@ class TestDatabase(IntegrationTest):
             self.assertTrue("$" not in coll)
 
         # Duplicate check.
-        coll_cnt = {}
+        coll_cnt: dict = {}
         for coll in colls:
             try:
                 # Found duplicate.
@@ -233,7 +236,7 @@ class TestDatabase(IntegrationTest):
                 self.assertTrue(False)
             except KeyError:
                 coll_cnt[coll] = 1
-        coll_cnt = {}
+        coll_cnt: dict = {}
 
         # Checking if is there any collection which don't exists.
         if (len(set(colls) - set(["test","test.mike"])) == 0 or
@@ -466,6 +469,7 @@ class TestDatabase(IntegrationTest):
         self.assertEqual(None, db.test.find_one({"hello": "test"}))
 
         b = db.test.find_one()
+        assert b is not None
         b["hello"] = "mike"
         db.test.replace_one({"_id": b["_id"]}, b)
 
@@ -482,12 +486,12 @@ class TestDatabase(IntegrationTest):
         db = self.client.pymongo_test
         db.test.drop()
         db.test.insert_one({"x": 9223372036854775807})
-        retrieved = db.test.find_one()['x']
+        retrieved = db.test.find_one()['x']  # type: ignore
         self.assertEqual(Int64(9223372036854775807), retrieved)
         self.assertIsInstance(retrieved, Int64)
         db.test.delete_many({})
         db.test.insert_one({"x": Int64(1)})
-        retrieved = db.test.find_one()['x']
+        retrieved = db.test.find_one()['x']  # type: ignore
         self.assertEqual(Int64(1), retrieved)
         self.assertIsInstance(retrieved, Int64)
 

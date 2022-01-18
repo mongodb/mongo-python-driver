@@ -35,6 +35,7 @@ class TestDecimal128(unittest.TestCase):
             b'\x00@cR\xbf\xc6\x01\x00\x00\x00\x00\x00\x00\x00\x1c0')
         coll.insert_one({'dec128': dec128})
         doc = coll.find_one({'dec128': dec128})
+        assert doc is not None
         self.assertIsNotNone(doc)
         self.assertEqual(doc['dec128'], dec128)
 

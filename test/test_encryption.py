@@ -25,6 +25,8 @@ import textwrap
 import traceback
 import uuid
 
+from typing import Any, Mapping, Optional, no_type_check
+
 sys.path[0:0] = [""]
 
 from bson import encode, json_util
@@ -38,6 +40,7 @@ from bson.json_util import JSONOptions
 from bson.son import SON
 
 from pymongo import encryption
+from pymongo.collection import Collection
 from pymongo.cursor import CursorType
 from pymongo.encryption import (Algorithm,
                                 ClientEncryption)
@@ -57,7 +60,7 @@ from test import (unittest, CA_PEM, CLIENT_PEM,
                   client_context,
                   IntegrationTest,
                   PyMongoTestCase)
-from test.utils import (TestCreator,
+from test.utils import (EventListener, TestCreator,
                         camel_to_snake_args,
                         OvertCommandListener,
                         TopologyEventListener,
@@ -136,6 +139,7 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
             AutoEncryptionOpts({}, 'k.d', kms_tls_options={
                 'kmip': {'tlsCAFile': 'does-not-exist'}})
         # Success cases:
+        tls_opts: Any
         for tls_opts in [None, {}]:
             opts = AutoEncryptionOpts({}, 'k.d', kms_tls_options=tls_opts)
             self.assertEqual(opts._kms_ssl_contexts, {})
@@ -179,6 +183,7 @@ class TestClientOptions(PyMongoTestCase):
 
 class EncryptionIntegrationTest(IntegrationTest):
     """Base class for encryption integration tests."""
+    listener: EventListener
 
     @classmethod
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, 'pymongocrypt is not installed')
@@ -401,14 +406,14 @@ class TestExplicitSimple(EncryptionIntegrationTest):
 
         msg = 'value to decrypt must be a bson.binary.Binary with subtype 6'
         with self.assertRaisesRegex(TypeError, msg):
-            client_encryption.decrypt('str')
+            client_encryption.decrypt('str')  # type: ignore
         with self.assertRaisesRegex(TypeError, msg):
             client_encryption.decrypt(Binary(b'123'))
 
         msg = 'key_id must be a bson.binary.Binary with subtype 4'
         algo = Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic
         with self.assertRaisesRegex(TypeError, msg):
-            client_encryption.encrypt('str', algo, key_id=uuid.uuid4())
+            client_encryption.encrypt('str', algo, key_id=uuid.uuid4())  # type: ignore
         with self.assertRaisesRegex(TypeError, msg):
             client_encryption.encrypt('str', algo, key_id=Binary(b'123'))
 
@@ -428,7 +433,7 @@ class TestExplicitSimple(EncryptionIntegrationTest):
     def test_codec_options(self):
         with self.assertRaisesRegex(TypeError, 'codec_options must be'):
             ClientEncryption(
-                KMS_PROVIDERS, 'keyvault.datakeys', client_context.client, None)
+                KMS_PROVIDERS, 'keyvault.datakeys', client_context.client, None)  # type: ignore
 
         opts = CodecOptions(uuid_representation=JAVA_LEGACY)
         client_encryption_legacy = ClientEncryption(
@@ -680,7 +685,7 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
 
     KMS_PROVIDERS = ALL_KMS_PROVIDERS
 
-    MASTER_KEYS = {
+    MASTER_KEYS: Mapping[str, Any] = {
         'aws': {
             'region': 'us-east-1',
             'key': 'arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-'
@@ -696,6 +701,10 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
         'kmip': {},
         'local': None
     }
+
+    vault: Any
+    client_encrypted: MongoClient
+    client_encryption: ClientEncryption
 
     @classmethod
     @unittest.skipUnless(any([all(AWS_CREDS.values()),
@@ -767,6 +776,7 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
             {'_id': provider_name, 'value': encrypted})
         doc_decrypted = self.client_encrypted.db.coll.find_one(
             {'_id': provider_name})
+        assert doc_decrypted is not None
         self.assertEqual(doc_decrypted['value'], 'hello %s' % (provider_name,))
 
         # Encrypt by key_alt_name.
@@ -845,7 +855,7 @@ class TestExternalKeyVault(EncryptionIntegrationTest):
                 client_encrypted.db.coll.insert_one({"encrypted": "test"})
             # AuthenticationFailed error.
             self.assertIsInstance(ctx.exception.cause, OperationFailure)
-            self.assertEqual(ctx.exception.cause.code, 18)
+            self.assertEqual(ctx.exception.cause.code, 18)  # type: ignore
         else:
             client_encrypted.db.coll.insert_one({"encrypted": "test"})
 
@@ -858,7 +868,7 @@ class TestExternalKeyVault(EncryptionIntegrationTest):
                     key_id=LOCAL_KEY_ID)
             # AuthenticationFailed error.
             self.assertIsInstance(ctx.exception.cause, OperationFailure)
-            self.assertEqual(ctx.exception.cause.code, 18)
+            self.assertEqual(ctx.exception.cause.code, 18)  # type: ignore
         else:
             client_encryption.encrypt(
                 "test", Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
@@ -954,7 +964,7 @@ class TestCorpus(EncryptionIntegrationTest):
         self.addCleanup(client_encryption.close)
 
         corpus = self.fix_up_curpus(json_data('corpus', 'corpus.json'))
-        corpus_copied = SON()
+        corpus_copied: SON = SON()
         for key, value in corpus.items():
             corpus_copied[key] = copy.deepcopy(value)
             if key in ('_id', 'altname_aws', 'altname_azure', 'altname_gcp',
@@ -990,7 +1000,7 @@ class TestCorpus(EncryptionIntegrationTest):
 
                 try:
                     encrypted_val = client_encryption.encrypt(
-                        value['value'], algo, **kwargs)
+                        value['value'], algo, **kwargs)  # type: ignore
                     if not value['allowed']:
                         self.fail('encrypt should have failed: %r: %r' % (
                             key, value))
@@ -1051,6 +1061,9 @@ _16_MiB = 16777216
 
 class TestBsonSizeBatches(EncryptionIntegrationTest):
     """Prose tests for BSON size limits and batch splitting."""
+    coll: Collection
+    coll_encrypted: Collection
+    client_encrypted: MongoClient
 
     @classmethod
     def setUpClass(cls):
@@ -1145,7 +1158,7 @@ class TestBsonSizeBatches(EncryptionIntegrationTest):
         doc['_id'] = 'encryption_exceeds_16mib_bulk'
         with self.assertRaises(BulkWriteError) as ctx:
             self.coll_encrypted.bulk_write([InsertOne(doc)])
-        err = ctx.exception.details['writeErrors'][0]
+        err = ctx.exception.details['writeErrors'][0]  # type: ignore
         self.assertEqual(2, err['code'])
         self.assertIn('object to insert too large', err['errmsg'])
 
@@ -1353,17 +1366,19 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
 
 
 class AzureGCPEncryptionTestMixin(object):
-    DEK = None
-    KMS_PROVIDER_MAP = None
+    DEK: Any = None
+    KMS_PROVIDER_MAP: Any = None
     KEYVAULT_DB = 'keyvault'
     KEYVAULT_COLL = 'datakeys'
 
+    @no_type_check
     def setUp(self):
         keyvault = self.client.get_database(
             self.KEYVAULT_DB).get_collection(
             self.KEYVAULT_COLL)
         create_key_vault(keyvault, self.DEK)
 
+    @no_type_check
     def _test_explicit(self, expectation):
         client_encryption = ClientEncryption(
             self.KMS_PROVIDER_MAP,
@@ -1380,6 +1395,7 @@ class AzureGCPEncryptionTestMixin(object):
         self.assertEqual(bytes(ciphertext), base64.b64decode(expectation))
         self.assertEqual(client_encryption.decrypt(ciphertext), 'string0')
 
+    @no_type_check
     def _test_automatic(self, expectation_extjson, payload):
         encrypted_db = "db"
         encrypted_coll = "coll"
@@ -1418,6 +1434,9 @@ class AzureGCPEncryptionTestMixin(object):
 
 class TestAzureEncryption(AzureGCPEncryptionTestMixin,
                           EncryptionIntegrationTest):
+    SCHEMA_MAP: Any
+    KMS_PROVIDER_MAP: dict
+
     @classmethod
     @unittest.skipUnless(any(AZURE_CREDS.values()),
                          'Azure environment credentials are not set')
@@ -1444,6 +1463,9 @@ class TestAzureEncryption(AzureGCPEncryptionTestMixin,
 
 class TestGCPEncryption(AzureGCPEncryptionTestMixin,
                         EncryptionIntegrationTest):
+    SCHEMA_MAP: Any
+    KMS_PROVIDER_MAP: dict
+
     @classmethod
     @unittest.skipUnless(any(GCP_CREDS.values()),
                          'GCP environment credentials are not set')
@@ -1778,7 +1800,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
     def setUp(self):
         super(TestKmsTLSOptions, self).setUp()
         # 1, create client with only tlsCAFile.
-        providers = copy.deepcopy(ALL_KMS_PROVIDERS)
+        providers: dict = copy.deepcopy(ALL_KMS_PROVIDERS)
         providers['azure']['identityPlatformEndpoint'] = '127.0.0.1:8002'
         providers['gcp']['endpoint'] = '127.0.0.1:8002'
         kms_tls_opts_ca_only = {
