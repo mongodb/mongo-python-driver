@@ -196,7 +196,7 @@ class _Bulk(object):
         self.ops.append((_UPDATE, cmd))
 
     def add_replace(self, selector, replacement, upsert=False,
-                    collation=None, hint=None, let=None):
+                    collation=None, hint=None):
         """Create a replace document and add it to the list of ops.
         """
         validate_ok_for_replace(replacement)
@@ -209,8 +209,6 @@ class _Bulk(object):
         if hint is not None:
             self.uses_hint = True
             cmd['hint'] = hint
-        if let is not None:
-            cmd['let'] = let
         self.ops.append((_UPDATE, cmd))
 
     def add_delete(self, selector, limit, collation=None, hint=None):
