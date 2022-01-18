@@ -889,7 +889,7 @@ class TestCursor(IntegrationTest):
 
         # Every attribute should be the same.
         cursor2 = cursor.clone()
-        self.assertEqual(cursor.__dict__, cursor2.__dict__)
+        self.assertDictEqual(cursor.__dict__, cursor2.__dict__)
 
         # Shallow copies can so can mutate
         cursor2 = copy.copy(cursor)
