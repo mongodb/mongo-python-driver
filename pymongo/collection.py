@@ -673,7 +673,7 @@ class Collection(common.BaseObject):
 
     def replace_one(self, filter, replacement, upsert=False,
                     bypass_document_validation=False, collation=None,
-                    hint=None, session=None):
+                    hint=None, session=None, let=None):
         """Replace a single document matching the filter.
 
           >>> for doc in db.test.find({}):
@@ -738,14 +738,15 @@ class Collection(common.BaseObject):
         """
         common.validate_is_mapping("filter", filter)
         common.validate_ok_for_replace(replacement)
-
+        if let:
+            common.validate_is_mapping("let", let)
         write_concern = self._write_concern_for(session)
         return UpdateResult(
             self._update_retryable(
                 filter, replacement, upsert,
                 write_concern=write_concern,
                 bypass_doc_val=bypass_document_validation,
-                collation=collation, hint=hint, session=session),
+                collation=collation, hint=hint, session=session, let=let),
             write_concern.acknowledged)
 
     def update_one(self, filter, update, upsert=False,
