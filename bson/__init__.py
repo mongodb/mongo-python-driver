@@ -853,6 +853,7 @@ _CODEC_OPTIONS_TYPE_ERROR = TypeError(
 
 _DocumentIn = Mapping[str, Any]
 _DocumentOut = Union[MutableMapping[str, Any], "RawBSONDocument"]
+_ReadableBuffer = Union[bytes, memoryview, "mmap", "array"]
 
 
 def encode(document: _DocumentIn, check_keys: bool = False, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> bytes:
@@ -882,7 +883,7 @@ def encode(document: _DocumentIn, check_keys: bool = False, codec_options: Codec
     return _dict_to_bson(document, check_keys, codec_options)
 
 
-def decode(data: Union[bytes, memoryview, "mmap", "array"], codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> _DocumentOut:
+def decode(data: _ReadableBuffer, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> _DocumentOut:
     """Decode BSON to a document.
 
     By default, returns a BSON document represented as a Python
@@ -914,7 +915,7 @@ def decode(data: Union[bytes, memoryview, "mmap", "array"], codec_options: Codec
     return _bson_to_dict(data, codec_options)
 
 
-def decode_all(data: ReadableBuffer, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> List[_DocumentOut]:
+def decode_all(data: _ReadableBuffer, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> List[_DocumentOut]:
     """Decode BSON data to multiple documents.
 
     `data` must be a bytes-like object implementing the buffer protocol that
