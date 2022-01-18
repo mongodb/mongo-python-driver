@@ -14,6 +14,7 @@
 
 import copy
 import itertools
+from typing import Any
 
 from mockupdb import MockupDB, going, CommandBase
 from pymongo import MongoClient, ReadPreference
@@ -148,7 +149,7 @@ def create_op_msg_read_mode_test(mode, operation):
                                     tag_sets=None)
 
         client = self.setup_client(read_preference=pref)
-
+        expected_pref: Any
         if operation.op_type == 'always-use-secondary':
             expected_server = self.secondary
             expected_pref = ReadPreference.SECONDARY
