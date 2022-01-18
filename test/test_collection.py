@@ -20,8 +20,11 @@ import contextlib
 import re
 import sys
 
-from codecs import utf_8_decode
+from codecs import utf_8_decode  # type: ignore
 from collections import defaultdict
+from typing import no_type_check
+
+from pymongo.database import Database
 
 sys.path[0:0] = [""]
 
@@ -66,6 +69,7 @@ from test.utils import (get_pool, is_mongos,
 class TestCollectionNoConnect(unittest.TestCase):
     """Test Collection features on a client that does not connect.
     """
+    db: Database
 
     @classmethod
     def setUpClass(cls):
@@ -1117,6 +1121,7 @@ class TestCollection(IntegrationTest):
         doc = next(db.test.find({}, ["mike"]))
         self.assertFalse("extra thing" in doc)
 
+    @no_type_check
     def test_fields_specifier_as_dict(self):
         db = self.db
         db.test.delete_many({})
@@ -1333,7 +1338,7 @@ class TestCollection(IntegrationTest):
         self.assertTrue(result.acknowledged)
         self.assertEqual(1, db.test.count_documents({"y": 1}))
         self.assertEqual(0, db.test.count_documents({"x": 1}))
-        self.assertEqual(db.test.find_one(id1)["y"], 1)
+        self.assertEqual(db.test.find_one(id1)["y"], 1)  # type: ignore
 
         replacement = RawBSONDocument(encode({"_id": id1, "z": 1}))
         result = db.test.replace_one({"y": 1}, replacement, True)
@@ -1344,7 +1349,7 @@ class TestCollection(IntegrationTest):
         self.assertTrue(result.acknowledged)
         self.assertEqual(1, db.test.count_documents({"z": 1}))
         self.assertEqual(0, db.test.count_documents({"y": 1}))
-        self.assertEqual(db.test.find_one(id1)["z"], 1)
+        self.assertEqual(db.test.find_one(id1)["z"], 1)  # type: ignore
 
         result = db.test.replace_one({"x": 2}, {"y": 2}, True)
         self.assertTrue(isinstance(result, UpdateResult))
@@ -1377,7 +1382,7 @@ class TestCollection(IntegrationTest):
         self.assertTrue(result.modified_count in (None, 1))
         self.assertIsNone(result.upserted_id)
         self.assertTrue(result.acknowledged)
-        self.assertEqual(db.test.find_one(id1)["x"], 6)
+        self.assertEqual(db.test.find_one(id1)["x"], 6)  # type: ignore
 
         id2 = db.test.insert_one({"x": 1}).inserted_id
         result = db.test.update_one({"x": 6}, {"$inc": {"x": 1}})
@@ -1386,8 +1391,8 @@ class TestCollection(IntegrationTest):
         self.assertTrue(result.modified_count in (None, 1))
         self.assertIsNone(result.upserted_id)
         self.assertTrue(result.acknowledged)
-        self.assertEqual(db.test.find_one(id1)["x"], 7)
-        self.assertEqual(db.test.find_one(id2)["x"], 1)
+        self.assertEqual(db.test.find_one(id1)["x"], 7)  # type: ignore
+        self.assertEqual(db.test.find_one(id2)["x"], 1)  # type: ignore
 
         result = db.test.update_one({"x": 2}, {"$set": {"y": 1}}, True)
         self.assertTrue(isinstance(result, UpdateResult))
@@ -1587,12 +1592,12 @@ class TestCollection(IntegrationTest):
 
         # Test that batchSize is handled properly.
         cursor = db.test.aggregate([], batchSize=5)
-        self.assertEqual(5, len(cursor._CommandCursor__data))
+        self.assertEqual(5, len(cursor._CommandCursor__data))  # type: ignore
         # Force a getMore
-        cursor._CommandCursor__data.clear()
+        cursor._CommandCursor__data.clear()  # type: ignore
         next(cursor)
         # batchSize - 1
-        self.assertEqual(4, len(cursor._CommandCursor__data))
+        self.assertEqual(4, len(cursor._CommandCursor__data))  # type: ignore
         # Exhaust the cursor. There shouldn't be any errors.
         for doc in cursor:
             pass
@@ -1679,13 +1684,14 @@ class TestCollection(IntegrationTest):
         with self.write_concern_collection() as coll:
             coll.rename('foo')
 
+    @no_type_check
     def test_find_one(self):
         db = self.db
         db.drop_collection("test")
 
         _id = db.test.insert_one({"hello": "world", "foo": "bar"}).inserted_id
 
-        self.assertEqual("world", db.test.find_one()["hello"])
+        self.assertEqual("world", db.test.find_one()["hello"])  # type: ignore
         self.assertEqual(db.test.find_one(_id), db.test.find_one())
         self.assertEqual(db.test.find_one(None), db.test.find_one())
         self.assertEqual(db.test.find_one({}), db.test.find_one())

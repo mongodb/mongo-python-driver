@@ -530,7 +530,7 @@ class TestBSON(unittest.TestCase):
     def test_aware_datetime(self):
         aware = datetime.datetime(1993, 4, 4, 2,
                                   tzinfo=FixedOffset(555, "SomeZone"))
-        as_utc = (aware - aware.utcoffset()).replace(tzinfo=utc)
+        as_utc = (aware - aware.utcoffset()).replace(tzinfo=utc)  # type: ignore
         self.assertEqual(datetime.datetime(1993, 4, 3, 16, 45, tzinfo=utc),
                          as_utc)
         after = decode(encode({"date": aware}), CodecOptions(tz_aware=True))[
@@ -591,7 +591,7 @@ class TestBSON(unittest.TestCase):
     def test_naive_decode(self):
         aware = datetime.datetime(1993, 4, 4, 2,
                                   tzinfo=FixedOffset(555, "SomeZone"))
-        naive_utc = (aware - aware.utcoffset()).replace(tzinfo=None)
+        naive_utc = (aware - aware.utcoffset()).replace(tzinfo=None)  # type: ignore
         self.assertEqual(datetime.datetime(1993, 4, 3, 16, 45), naive_utc)
         after = decode(encode({"date": aware}))["date"]
         self.assertEqual(None, after.tzinfo)
@@ -603,9 +603,9 @@ class TestBSON(unittest.TestCase):
 
     @unittest.skip('Disabled due to http://bugs.python.org/issue25222')
     def test_bad_encode(self):
-        evil_list = {'a': []}
+        evil_list: dict = {'a': []}
         evil_list['a'].append(evil_list)
-        evil_dict = {}
+        evil_dict: dict = {}
         evil_dict['a'] = evil_dict
         for evil_data in [evil_dict, evil_list]:
             self.assertRaises(Exception, encode, evil_data)
