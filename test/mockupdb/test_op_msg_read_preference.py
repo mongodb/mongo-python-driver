@@ -28,6 +28,8 @@ from operations import operations
 
 class OpMsgReadPrefBase(unittest.TestCase):
     single_mongod = False
+    primary: MockupDB
+    secondary: MockupDB
 
     @classmethod
     def setUpClass(cls):
@@ -45,8 +47,6 @@ class OpMsgReadPrefBase(unittest.TestCase):
 
 
 class TestOpMsgMongos(OpMsgReadPrefBase):
-    primary: MockupDB
-    secondary: MockupDB
 
     @classmethod
     def setUpClass(cls):
@@ -68,8 +68,6 @@ class TestOpMsgMongos(OpMsgReadPrefBase):
 
 
 class TestOpMsgReplicaSet(OpMsgReadPrefBase):
-    primary: MockupDB
-    secondary: MockupDB
 
     @classmethod
     def setUpClass(cls):
@@ -122,8 +120,6 @@ class TestOpMsgReplicaSet(OpMsgReadPrefBase):
 
 class TestOpMsgSingle(OpMsgReadPrefBase):
     single_mongod = True
-    primary: MockupDB
-    secondary: MockupDB
 
     @classmethod
     def setUpClass(cls):

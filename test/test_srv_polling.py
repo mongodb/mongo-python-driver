@@ -17,6 +17,7 @@
 import sys
 
 from time import sleep
+from typing import Any
 
 sys.path[0:0] = [""]
 
@@ -54,6 +55,7 @@ class SrvPollingKnobs(object):
             common.MIN_SRV_RESCAN_INTERVAL = self.min_srv_rescan_interval
 
         def mock_get_hosts_and_min_ttl(resolver, *args):
+            assert self.old_dns_resolver_response is not None
             nodes, ttl = self.old_dns_resolver_response(resolver)
             if self.nodelist_callback is not None:
                 nodes = self.nodelist_callback()
@@ -61,20 +63,22 @@ class SrvPollingKnobs(object):
                 ttl = self.ttl_time
             return nodes, ttl
 
+        patch_func: Any
         if self.count_resolver_calls:
             patch_func = FunctionCallRecorder(mock_get_hosts_and_min_ttl)
         else:
             patch_func = mock_get_hosts_and_min_ttl
 
-        pymongo.srv_resolver._SrvResolver.get_hosts_and_min_ttl = patch_func
+        pymongo.srv_resolver._SrvResolver.get_hosts_and_min_ttl = patch_func  # type: ignore
 
     def __enter__(self):
         self.enable()
 
     def disable(self):
-        common.MIN_SRV_RESCAN_INTERVAL = self.old_min_srv_rescan_interval
-        pymongo.srv_resolver._SrvResolver.get_hosts_and_min_ttl = \
+        common.MIN_SRV_RESCAN_INTERVAL = self.old_min_srv_rescan_interval  # type: ignore
+        pymongo.srv_resolver._SrvResolver.get_hosts_and_min_ttl = (  # type: ignore
             self.old_dns_resolver_response
+        )
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.disable()
@@ -128,7 +132,7 @@ class TestSrvPolling(unittest.TestCase):
             msg = "Client nodelist %s changed unexpectedly (expected %s)"
             raise self.fail(msg % (nodelist, expected_nodelist))
         self.assertGreaterEqual(
-            pymongo.srv_resolver._SrvResolver.get_hosts_and_min_ttl.call_count,
+            pymongo.srv_resolver._SrvResolver.get_hosts_and_min_ttl.call_count,  # type: ignore
             1, "resolver was never called")
         return True
 
@@ -196,7 +200,7 @@ class TestSrvPolling(unittest.TestCase):
             self.run_scenario(response_callback, False)
 
     def test_dns_record_lookup_empty(self):
-        response = []
+        response: list = []
         self.run_scenario(response, False)
 
     def _test_recover_from_initial(self, initial_callback):
