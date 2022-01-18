@@ -48,7 +48,9 @@ import pymongo.errors
 from bson.son import SON
 from pymongo import common, message
 from pymongo.common import partition_node
+from pymongo.database import Database
 from pymongo.hello import HelloCompat
+from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from pymongo.ssl_support import HAVE_SSL, _ssl
 from pymongo.uri_parser import parse_uri
@@ -932,6 +934,9 @@ class PyMongoTestCase(unittest.TestCase):
 
 class IntegrationTest(PyMongoTestCase):
     """Base class for TestCases that need a connection to MongoDB to pass."""
+    client: MongoClient
+    db: Database
+    credentials: dict[str, str]
 
     @classmethod
     @client_context.require_connection

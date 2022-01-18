@@ -27,6 +27,7 @@ import time
 import types
 
 from collections import abc
+from typing import Any, cast
 
 from bson import json_util, Code, Decimal128, DBRef, SON, Int64, MaxKey, MinKey
 from bson.binary import Binary
@@ -296,7 +297,7 @@ class EntityMapUtil(object):
 
         entity_type, spec = next(iter(entity_spec.items()))
         if entity_type == 'client':
-            kwargs = {}
+            kwargs: dict = {}
             observe_events = spec.get('observeEvents', [])
             ignore_commands = spec.get('ignoreCommandMonitoringEvents', [])
             observe_sensitive_commands = spec.get(
@@ -523,11 +524,11 @@ class MatchEvaluatorUtil(object):
                 nested = expectation[key_to_compare]
                 if isinstance(nested, abc.Mapping) and len(nested) == 1:
                     opname, spec = next(iter(nested.items()))
-                    if opname.startswith('$$'):
+                    if cast(str, opname).startswith('$$'):
                         is_special_op = True
         elif len(expectation) == 1:
             opname, spec = next(iter(expectation.items()))
-            if opname.startswith('$$'):
+            if cast(str, opname).startswith('$$'):
                 is_special_op = True
                 key_to_compare = None
 
@@ -691,6 +692,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     SCHEMA_VERSION = Version.from_string('1.5')
     RUN_ON_LOAD_BALANCER = True
     RUN_ON_SERVERLESS = True
+    TEST_SPEC: Any
 
     @staticmethod
     def should_run_on(run_on_spec):
@@ -1213,6 +1215,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
 class UnifiedSpecTestMeta(type):
     """Metaclass for generating test classes."""
+    TEST_SPEC: Any
+    EXPECTED_FAILURES: Any
+
     def __init__(cls, *args, **kwargs):
         super(UnifiedSpecTestMeta, cls).__init__(*args, **kwargs)
 
@@ -1258,7 +1263,7 @@ def generate_test_classes(test_path, module=__name__, class_name_prefix='',
         """Utility that creates the base class to use for test generation.
         This is needed to ensure that cls.TEST_SPEC is appropriately set when
         the metaclass __init__ is invoked."""
-        class SpecTestBase(with_metaclass(UnifiedSpecTestMeta)):
+        class SpecTestBase(with_metaclass(UnifiedSpecTestMeta)):  # type: ignore
             TEST_SPEC = test_spec
             EXPECTED_FAILURES = expected_failures
         return SpecTestBase

@@ -16,6 +16,7 @@
 
 import pickle
 import sys
+from typing import Any
 sys.path[0:0] = [""]
 
 from bson import encode, decode
@@ -44,10 +45,10 @@ class TestDBRef(unittest.TestCase):
         a = DBRef("coll", ObjectId())
 
         def foo():
-            a.collection = "blah"
+            a.collection = "blah"  # type: ignore
 
         def bar():
-            a.id = "aoeu"
+            a.id = "aoeu"  # type: ignore
 
         self.assertEqual("coll", a.collection)
         a.id
@@ -136,6 +137,7 @@ class TestDBRef(unittest.TestCase):
 # https://github.com/mongodb/specifications/blob/master/source/dbref.rst#test-plan
 class TestDBRefSpec(unittest.TestCase):
     def test_decoding_1_2_3(self):
+        doc: Any
         for doc in [
             # 1, Valid documents MUST be decoded to a DBRef:
             {"$ref": "coll0", "$id": ObjectId("60a6fe9a54f4180c86309efa")},
@@ -183,6 +185,7 @@ class TestDBRefSpec(unittest.TestCase):
                 self.assertIsInstance(dbref, dict)
 
     def test_encoding_1_2(self):
+        doc: dict[str, Any]
         for doc in [
             # 1, Encoding DBRefs with basic fields:
             {"$ref": "coll0", "$id": ObjectId("60a6fe9a54f4180c86309efa")},

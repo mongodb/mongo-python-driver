@@ -18,6 +18,7 @@ import functools
 import threading
 
 from collections import abc
+from typing import List, cast
 
 from bson import decode, encode
 from bson.binary import Binary
@@ -34,7 +35,7 @@ from pymongo.errors import (BulkWriteError,
                             PyMongoError)
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
-from pymongo.results import _WriteResult, BulkWriteResult
+from pymongo.results import _WriteResult, BulkWriteResult, InsertManyResult, UpdateResult
 from pymongo.write_concern import WriteConcern
 
 from test import (client_context,
@@ -86,6 +87,8 @@ class SpecRunnerThread(threading.Thread):
 
 
 class SpecRunner(IntegrationTest):
+    mongos_clients: List
+    knobs: client_knobs
 
     @classmethod
     def setUpClass(cls):
@@ -203,7 +206,7 @@ class SpecRunner(IntegrationTest):
                 # SPEC-869: Only BulkWriteResult has upserted_count.
                 if (prop == "upserted_count"
                         and not isinstance(result, BulkWriteResult)):
-                    if result.upserted_id is not None:
+                    if cast(UpdateResult, result).upserted_id is not None:
                         upserted_count = 1
                     else:
                         upserted_count = 0
@@ -219,14 +222,15 @@ class SpecRunner(IntegrationTest):
                         ids = expected_result[res]
                         if isinstance(ids, dict):
                             ids = [ids[str(i)] for i in range(len(ids))]
-                        self.assertEqual(ids, result.inserted_ids, prop)
+
+                        self.assertEqual(ids, cast(InsertManyResult, result).inserted_ids, prop)
                 elif prop == "upserted_ids":
                     # Convert indexes from strings to integers.
                     ids = expected_result[res]
                     expected_ids = {}
                     for str_index in ids:
                         expected_ids[int(str_index)] = ids[str_index]
-                    self.assertEqual(expected_ids, result.upserted_ids, prop)
+                    self.assertEqual(expected_ids, cast(BulkWriteResult, result).upserted_ids, prop)
                 else:
                     self.assertEqual(
                         getattr(result, prop), expected_result[res], prop)
@@ -465,6 +469,7 @@ class SpecRunner(IntegrationTest):
         """Allow specs to override a test's setup."""
         db_name = self.get_scenario_db_name(scenario_def)
         coll_name = self.get_scenario_coll_name(scenario_def)
+        assert client_context.client is not None
         db = client_context.client.get_database(
             db_name, write_concern=WriteConcern(w='majority'))
         coll = db[coll_name]
@@ -569,6 +574,7 @@ class SpecRunner(IntegrationTest):
 
             # Read from the primary with local read concern to ensure causal
             # consistency.
+            assert client_context.client is not None
             outcome_coll = client_context.client[
                 collection.database.name].get_collection(
                 outcome_coll_name,

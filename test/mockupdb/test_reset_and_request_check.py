@@ -27,7 +27,7 @@ from operations import operations
 class TestResetAndRequestCheck(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(TestResetAndRequestCheck, self).__init__(*args, **kwargs)
-        self.ismaster_time = 0
+        self.ismaster_time = 0.0
         self.client = None
         self.server = None
 
@@ -56,6 +56,8 @@ class TestResetAndRequestCheck(unittest.TestCase):
         # Application operation fails. Test that client resets server
         # description and does *not* schedule immediate check.
         self.setup_server()
+        assert self.server is not None
+        assert self.client is not None
 
         # Network error on application operation.
         with self.assertRaises(ConnectionFailure):
@@ -81,6 +83,8 @@ class TestResetAndRequestCheck(unittest.TestCase):
         # Application operation times out. Test that client does *not* reset
         # server description and does *not* schedule immediate check.
         self.setup_server()
+        assert self.server is not None
+        assert self.client is not None
 
         with self.assertRaises(ConnectionFailure):
             with going(operation.function, self.client):
@@ -91,6 +95,7 @@ class TestResetAndRequestCheck(unittest.TestCase):
         # Server is *not* Unknown.
         topology = self.client._topology
         server = topology.select_server_by_address(self.server.address, 0)
+        assert server is not None
         self.assertEqual(SERVER_TYPE.Standalone, server.description.server_type)
 
         after = self.ismaster_time
@@ -99,6 +104,8 @@ class TestResetAndRequestCheck(unittest.TestCase):
     def _test_not_master(self, operation):
         # Application operation gets a "not master" error.
         self.setup_server()
+        assert self.server is not None
+        assert self.client is not None
 
         with self.assertRaises(ConnectionFailure):
             with going(operation.function, self.client):
@@ -110,6 +117,7 @@ class TestResetAndRequestCheck(unittest.TestCase):
         # Server is rediscovered.
         topology = self.client._topology
         server = topology.select_server_by_address(self.server.address, 0)
+        assert server is not None
         self.assertEqual(SERVER_TYPE.Standalone, server.description.server_type)
 
         after = self.ismaster_time
