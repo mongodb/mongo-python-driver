@@ -50,13 +50,13 @@ class TestCommon(IntegrationTest):
             "uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
         legacy_opts = coll.codec_options
         coll.insert_one({'uu': uu})
-        self.assertEqual(uu, coll.find_one({'uu': uu})['uu'])
+        self.assertEqual(uu, coll.find_one({'uu': uu})['uu'])  # type: ignore
         coll = self.db.get_collection(
             "uuid", CodecOptions(uuid_representation=STANDARD))
         self.assertEqual(STANDARD, coll.codec_options.uuid_representation)
         self.assertEqual(None, coll.find_one({'uu': uu}))
         uul = Binary.from_uuid(uu, PYTHON_LEGACY)
-        self.assertEqual(uul, coll.find_one({'uu': uul})['uu'])
+        self.assertEqual(uul, coll.find_one({'uu': uul})['uu'])  # type: ignore
 
         # Test count_documents
         self.assertEqual(0, coll.count_documents({'uu': uu}))
@@ -81,9 +81,9 @@ class TestCommon(IntegrationTest):
         coll.update_one({'_id': uu}, {'$set': {'i': 2}})
         coll = self.db.get_collection(
             "uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
-        self.assertEqual(1, coll.find_one({'_id': uu})['i'])
+        self.assertEqual(1, coll.find_one({'_id': uu})['i'])  # type: ignore
         coll.update_one({'_id': uu}, {'$set': {'i': 2}})
-        self.assertEqual(2, coll.find_one({'_id': uu})['i'])
+        self.assertEqual(2, coll.find_one({'_id': uu})['i'])  # type: ignore
 
         # Test Cursor.distinct
         self.assertEqual([2], coll.find({'_id': uu}).distinct('i'))
@@ -98,7 +98,7 @@ class TestCommon(IntegrationTest):
             "uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
         self.assertEqual(2, coll.find_one_and_update({'_id': uu},
                                                      {'$set': {'i': 5}})['i'])
-        self.assertEqual(5, coll.find_one({'_id': uu})['i'])
+        self.assertEqual(5, coll.find_one({'_id': uu})['i'])  # type: ignore
 
         # Test command
         self.assertEqual(5, self.db.command(

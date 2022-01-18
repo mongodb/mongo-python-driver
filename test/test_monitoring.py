@@ -435,7 +435,6 @@ class TestCommandMonitoring(IntegrationTest):
     @client_context.require_replica_set
     @client_context.require_secondaries_count(1)
     def test_not_primary_error(self):
-        assert client_context.client is not None
         address = next(iter(client_context.client.secondaries))
         client = single_client(*address, event_listeners=[self.listener])
         # Clear authentication command results from the listener.

@@ -18,6 +18,7 @@ import glob
 import json
 import os
 import sys
+from pymongo import client_options
 
 sys.path[0:0] = [""]
 
@@ -121,7 +122,7 @@ def create_test(test_case):
                     # tests.
                     copts['tlsAllowInvalidHostnames'] = True
 
-                client = MongoClient(uri, **copts)
+                client = MongoClient(uri, **copts)  # type: ignore
                 if num_seeds is not None:
                     self.assertEqual(len(client._topology_settings.seeds),
                                      num_seeds)

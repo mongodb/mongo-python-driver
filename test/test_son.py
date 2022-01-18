@@ -19,6 +19,8 @@ import pickle
 import re
 import sys
 
+from typing import Any
+
 sys.path[0:0] = [""]
 
 from bson.son import SON
@@ -191,7 +193,7 @@ class TestSON(unittest.TestCase):
 
     def test_keys(self):
         # Test to make sure that set operations do not throw an error
-        d = SON().keys()
+        d: Any = SON().keys()
         for i in [OrderedDict, dict]:
             try:
                 d - i().keys()

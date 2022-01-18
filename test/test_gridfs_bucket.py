@@ -211,7 +211,7 @@ class TestGridfs(IntegrationTest):
         self.fs.upload_from_stream("test", b"hello")
 
         threads = []
-        results = []
+        results: list = []
         for i in range(10):
             threads.append(JustRead(self.fs, 10, results))
             threads[i].start()
@@ -490,7 +490,6 @@ class TestGridfsBucketReplicaSet(IntegrationTest):
 
     @classmethod
     def tearDownClass(cls):
-        assert client_context.client is not None
         client_context.client.drop_database('gfsbucketreplica')
 
     def test_gridfs_replica_set(self):

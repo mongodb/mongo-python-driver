@@ -91,6 +91,8 @@ class TestGridfsNoConnect(unittest.TestCase):
 
 
 class TestGridfs(IntegrationTest):
+    fs: gridfs.GridFS
+    alt: gridfs.GridFS
 
     @classmethod
     def setUpClass(cls):
@@ -154,6 +156,7 @@ class TestGridfs(IntegrationTest):
         self.assertEqual(0, self.db.fs.chunks.count_documents({}))
 
         raw = self.db.fs.files.find_one()
+        assert raw is not None
         self.assertEqual(0, raw["length"])
         self.assertEqual(oid, raw["_id"])
         self.assertTrue(isinstance(raw["uploadDate"], datetime.datetime))
@@ -215,7 +218,7 @@ class TestGridfs(IntegrationTest):
         self.fs.put(b"hello", _id="test")
 
         threads = []
-        results = []
+        results: list = []
         for i in range(10):
             threads.append(JustRead(self.fs, 10, results))
             threads[i].start()
@@ -398,6 +401,7 @@ class TestGridfs(IntegrationTest):
         # Test fix that guards against PHP-237
         self.fs.put(b"", filename="empty")
         doc = self.db.fs.files.find_one({"filename": "empty"})
+        assert doc is not None
         doc.pop("length")
         self.db.fs.files.replace_one({"_id": doc["_id"]}, doc)
         f = self.fs.get_last_version(filename="empty")
@@ -449,23 +453,32 @@ class TestGridfs(IntegrationTest):
         # but will still call __del__.
         cursor = GridOutCursor.__new__(GridOutCursor)  # Skip calling __init__
         with self.assertRaises(TypeError):
-            cursor.__init__(self.db.fs.files, {}, {"_id": True})
+            cursor.__init__(self.db.fs.files, {}, {"_id": True})  # type: ignore
         cursor.__del__()  # no error
 
     def test_gridfs_find_one(self):
         self.assertEqual(None, self.fs.find_one())
 
         id1 = self.fs.put(b'test1', filename='file1')
-        self.assertEqual(b'test1', self.fs.find_one().read())
+        res = self.fs.find_one()
+        assert res is not None
+        self.assertEqual(b'test1', res.read())
 
         id2 = self.fs.put(b'test2', filename='file2', meta='data')
-        self.assertEqual(b'test1', self.fs.find_one(id1).read())
-        self.assertEqual(b'test2', self.fs.find_one(id2).read())
+        res1 = self.fs.find_one(id1)
+        assert res1 is not None
+        self.assertEqual(b'test1', res1.read())
+        res2 = self.fs.find_one(id2)
+        assert res2 is not None
+        self.assertEqual(b'test2', res2.read())
 
-        self.assertEqual(b'test1',
-                         self.fs.find_one({'filename': 'file1'}).read())
+        res3 = self.fs.find_one({'filename': 'file1'})
+        assert res3 is not None
+        self.assertEqual(b'test1', res3.read())
 
-        self.assertEqual('data', self.fs.find_one(id2).meta)
+        res4 = self.fs.find_one(id2)
+        assert res4 is not None
+        self.assertEqual('data', res4.meta)
 
     def test_grid_in_non_int_chunksize(self):
         # Lua, and perhaps other buggy GridFS clients, store size as a float.

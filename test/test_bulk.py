@@ -19,6 +19,7 @@ import sys
 sys.path[0:0] = [""]
 
 from bson.objectid import ObjectId
+from pymongo.collection import Collection
 from pymongo.common import partition_node
 from pymongo.errors import (BulkWriteError,
                             ConfigurationError,
@@ -36,6 +37,8 @@ from test.utils import (remove_all_users,
 
 
 class BulkTestBase(IntegrationTest):
+    coll = Collection
+    coll_w0 = Collection
 
     @classmethod
     def setUpClass(cls):

@@ -226,6 +226,8 @@ def _all_users(db):
 
 
 class ClientContext(object):
+    client: MongoClient
+
     MULTI_MONGOS_LB_URI = MULTI_MONGOS_LB_URI
 
     def __init__(self):
@@ -251,7 +253,7 @@ class ClientContext(object):
         self.server_is_resolvable = is_server_resolvable()
         self.default_client_options = {}
         self.sessions_enabled = False
-        self.client = None
+        self.client = None  # type: ignore
         self.conn_lock = threading.Lock()
         self.is_data_lake = False
         self.load_balancer = TEST_LOADBALANCER

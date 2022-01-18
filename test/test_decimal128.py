@@ -28,7 +28,6 @@ class TestDecimal128(unittest.TestCase):
 
     @client_context.require_connection
     def test_round_trip(self):
-        assert client_context.client is not None
         coll = client_context.client.pymongo_test.test
         coll.drop()
 

@@ -672,7 +672,6 @@ class TestMongosAndReadPreference(IntegrationTest):
 
     @client_context.require_mongos
     def test_mongos(self):
-        assert client_context.client is not None
         res = client_context.client.config.shards.find_one()
         assert res is not None
         shard = res['host']
@@ -705,7 +704,6 @@ class TestMongosAndReadPreference(IntegrationTest):
     @client_context.require_mongos
     def test_mongos_max_staleness(self):
         # Sanity check that we're sending maxStalenessSeconds
-        assert client_context.client is not None
         coll = client_context.client.pymongo_test.get_collection(
             "test", read_preference=SecondaryPreferred(max_staleness=120))
         # No error

@@ -41,6 +41,8 @@ from test.utils import ignore_deprecations
 
 
 class TestBinary(unittest.TestCase):
+    csharp_data: bytes
+    java_data: bytes
 
     @classmethod
     def setUpClass(cls):
@@ -354,6 +356,8 @@ class TestBinary(unittest.TestCase):
 
 
 class TestUuidSpecExplicitCoding(unittest.TestCase):
+    uuid: uuid.UUID
+
     @classmethod
     def setUpClass(cls):
         super(TestUuidSpecExplicitCoding, cls).setUpClass()
@@ -457,6 +461,8 @@ class TestUuidSpecExplicitCoding(unittest.TestCase):
 
 
 class TestUuidSpecImplicitCoding(IntegrationTest):
+    uuid: uuid.UUID
+
     @classmethod
     def setUpClass(cls):
         super(TestUuidSpecImplicitCoding, cls).setUpClass()

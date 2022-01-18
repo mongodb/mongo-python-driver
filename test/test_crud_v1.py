@@ -53,7 +53,7 @@ def check_result(self, expected_result, result):
             # SPEC-869: Only BulkWriteResult has upserted_count.
             if (prop == "upserted_count"
                     and not isinstance(result, BulkWriteResult)):
-                if result.upserted_id is not None:
+                if result.upserted_id is not None:  # type: ignore
                     upserted_count = 1
                 else:
                     upserted_count = 0
@@ -69,14 +69,14 @@ def check_result(self, expected_result, result):
                     ids = expected_result[res]
                     if isinstance(ids, dict):
                         ids = [ids[str(i)] for i in range(len(ids))]
-                    self.assertEqual(ids, result.inserted_ids, msg)
+                    self.assertEqual(ids, result.inserted_ids, msg)  # type: ignore
             elif prop == "upserted_ids":
                 # Convert indexes from strings to integers.
                 ids = expected_result[res]
                 expected_ids = {}
                 for str_index in ids:
                     expected_ids[int(str_index)] = ids[str_index]
-                self.assertEqual(expected_ids, result.upserted_ids, msg)
+                self.assertEqual(expected_ids, result.upserted_ids, msg)  # type: ignore
             else:
                 self.assertEqual(
                     getattr(result, prop), expected_result[res], msg)

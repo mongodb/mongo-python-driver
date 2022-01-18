@@ -469,7 +469,6 @@ class SpecRunner(IntegrationTest):
         """Allow specs to override a test's setup."""
         db_name = self.get_scenario_db_name(scenario_def)
         coll_name = self.get_scenario_coll_name(scenario_def)
-        assert client_context.client is not None
         db = client_context.client.get_database(
             db_name, write_concern=WriteConcern(w='majority'))
         coll = db[coll_name]
@@ -574,7 +573,6 @@ class SpecRunner(IntegrationTest):
 
             # Read from the primary with local read concern to ensure causal
             # consistency.
-            assert client_context.client is not None
             outcome_coll = client_context.client[
                 collection.database.name].get_collection(
                 outcome_coll_name,

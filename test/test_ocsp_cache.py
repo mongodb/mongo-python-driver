@@ -21,6 +21,8 @@ import random
 import sys
 from time import sleep
 
+from typing import Any
+
 sys.path[0:0] = [""]
 
 from pymongo.ocsp_cache import _OCSPCache
@@ -28,14 +30,18 @@ from test import unittest
 
 
 class TestOcspCache(unittest.TestCase):
+    MockHashAlgorithm: Any
+    MockOcspRequest: Any
+    MockOcspResponse: Any
+
     @classmethod
     def setUpClass(cls):
-        cls.MockHashAlgorithm = namedtuple(
+        cls.MockHashAlgorithm = namedtuple(  # type: ignore
             "MockHashAlgorithm", ['name'])
-        cls.MockOcspRequest = namedtuple(
+        cls.MockOcspRequest = namedtuple(  # type: ignore
             "MockOcspRequest", ['hash_algorithm', 'issuer_name_hash',
                                 'issuer_key_hash', 'serial_number'])
-        cls.MockOcspResponse = namedtuple(
+        cls.MockOcspResponse = namedtuple(  # type: ignore
             "MockOcspResponse", ["this_update", "next_update"])
 
     def setUp(self):

@@ -22,6 +22,8 @@ import sys
 import time
 import threading
 
+from typing import no_type_check
+
 sys.path[0:0] = [""]
 
 from bson import decode_all
@@ -57,8 +59,9 @@ class TestCursor(IntegrationTest):
             re.compile("^key.*"): {"a": [re.compile("^hm.*")]}})
 
         cursor2 = copy.deepcopy(cursor)
-        self.assertEqual(cursor._Cursor__spec, cursor2._Cursor__spec)
+        self.assertEqual(cursor._Cursor__spec, cursor2._Cursor__spec)  # type: ignore
 
+    @no_type_check
     def test_add_remove_option(self):
         cursor = self.db.test.find()
         self.assertEqual(0, cursor._Cursor__query_flags)
@@ -125,6 +128,7 @@ class TestCursor(IntegrationTest):
         cursor.remove_option(128)
         self.assertEqual(0, cursor._Cursor__query_flags)
 
+    @no_type_check
     def test_add_remove_option_exhaust(self):
         # Exhaust - which mongos doesn't support
         if client_context.is_mongos:
@@ -149,9 +153,9 @@ class TestCursor(IntegrationTest):
         self.assertRaises(TypeError, coll.find().allow_disk_use, 'baz')
 
         cursor = coll.find().allow_disk_use(True)
-        self.assertEqual(True, cursor._Cursor__allow_disk_use)
+        self.assertEqual(True, cursor._Cursor__allow_disk_use)  # type: ignore
         cursor = coll.find().allow_disk_use(False)
-        self.assertEqual(False, cursor._Cursor__allow_disk_use)
+        self.assertEqual(False, cursor._Cursor__allow_disk_use)  # type: ignore
 
     def test_max_time_ms(self):
         db = self.db
@@ -165,15 +169,15 @@ class TestCursor(IntegrationTest):
         coll.find().max_time_ms(1)
 
         cursor = coll.find().max_time_ms(999)
-        self.assertEqual(999, cursor._Cursor__max_time_ms)
+        self.assertEqual(999, cursor._Cursor__max_time_ms)  # type: ignore
         cursor = coll.find().max_time_ms(10).max_time_ms(1000)
-        self.assertEqual(1000, cursor._Cursor__max_time_ms)
+        self.assertEqual(1000, cursor._Cursor__max_time_ms)  # type: ignore
 
         cursor = coll.find().max_time_ms(999)
         c2 = cursor.clone()
-        self.assertEqual(999, c2._Cursor__max_time_ms)
-        self.assertTrue("$maxTimeMS" in cursor._Cursor__query_spec())
-        self.assertTrue("$maxTimeMS" in c2._Cursor__query_spec())
+        self.assertEqual(999, c2._Cursor__max_time_ms)  # type: ignore
+        self.assertTrue("$maxTimeMS" in cursor._Cursor__query_spec())  # type: ignore
+        self.assertTrue("$maxTimeMS" in c2._Cursor__query_spec())  # type: ignore
 
         self.assertTrue(coll.find_one(max_time_ms=1000))
 
@@ -199,6 +203,7 @@ class TestCursor(IntegrationTest):
                                      "maxTimeAlwaysTimeOut",
                                      mode="off")
 
+    @no_type_check
     def test_max_await_time_ms(self):
         db = self.db
         db.pymongo_test.drop()
@@ -528,6 +533,7 @@ class TestCursor(IntegrationTest):
         with self.assertRaises(InvalidOperation):
             list(coll.find().max([("j", 3)]))
 
+    @no_type_check
     def test_batch_size(self):
         db = self.db
         db.test.drop()
@@ -581,6 +587,7 @@ class TestCursor(IntegrationTest):
         next(cur)
         self.assertEqual(0, len(cur._Cursor__data))
 
+    @no_type_check
     def test_limit_and_batch_size(self):
         db = self.db
         db.test.drop()
@@ -829,6 +836,7 @@ class TestCursor(IntegrationTest):
 
     # oplog_reply, and snapshot are all deprecated.
     @ignore_deprecations
+    @no_type_check
     def test_clone(self):
         self.db.test.insert_many([{"x": i} for i in range(1, 4)])
 
@@ -1002,6 +1010,7 @@ class TestCursor(IntegrationTest):
 
         self.assertRaises(IndexError, lambda: self.db.test.find()[10:8])
 
+    @no_type_check
     def test_getitem_numeric_index(self):
         self.db.drop_collection("test")
         self.db.test.insert_many([{"i": i} for i in range(100)])
@@ -1025,7 +1034,7 @@ class TestCursor(IntegrationTest):
         self.assertEqual(self.db.test, self.db.test.find().collection)
 
         def set_coll():
-            self.db.test.find().collection = "hello"
+            self.db.test.find().collection = "hello"  # type: ignore
 
         self.assertRaises(AttributeError, set_coll)
 
@@ -1077,9 +1086,9 @@ class TestCursor(IntegrationTest):
         # __getitem__(index)
         for cursor in (db.test.find(cursor_type=CursorType.TAILABLE),
                        db.test.find(cursor_type=CursorType.TAILABLE_AWAIT)):
-            self.assertEqual(4, cursor[0]["x"])
-            self.assertEqual(5, cursor[1]["x"])
-            self.assertEqual(6, cursor[2]["x"])
+            self.assertEqual(4, cursor[0]["x"])  # type: ignore
+            self.assertEqual(5, cursor[1]["x"])  # type: ignore
+            self.assertEqual(6, cursor[2]["x"])  # type: ignore
 
             cursor.rewind()
             self.assertEqual([4], [doc["x"] for doc in cursor[0:1]])
