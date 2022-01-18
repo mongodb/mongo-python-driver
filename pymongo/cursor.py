@@ -339,7 +339,7 @@ class Cursor(Generic[_DocumentType]):
                            "batch_size", "max_scan",
                            "query_flags", "collation", "empty",
                            "show_record_id", "return_key", "allow_disk_use",
-                           "snapshot", "exhaust")
+                           "snapshot", "exhaust", "has_filter")
         data = dict((k, v) for k, v in self.__dict__.items()
                     if k.startswith('_Cursor__') and k[9:] in values_to_clone)
         if deepcopy:
