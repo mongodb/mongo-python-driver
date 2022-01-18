@@ -721,10 +721,16 @@ class Collection(common.BaseObject):
             MongoDB 4.2 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `let` (optional): Map of parameter names and values. Values must be
+            constant or closed expressions that do not reference document
+            fields. Parameters can then be accessed as variables in an
+            aggregate expression context (e.g. "$$var").
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
 
+        .. versionchanged:: 4.1
+           Added ``let`` parameter.
         .. versionchanged:: 3.11
            Added ``hint`` parameter.
         .. versionchanged:: 3.6
