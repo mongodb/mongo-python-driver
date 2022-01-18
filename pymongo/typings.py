@@ -17,12 +17,13 @@ from typing import (TYPE_CHECKING, Any, Mapping, MutableMapping, Optional,
                     Sequence, Tuple, Type, TypeVar, Union)
 
 if TYPE_CHECKING:
+    from bson.raw_bson import RawBSONDocument
     from pymongo.collation import Collation
 
 
 # Common Shared Types.
 _Address = Tuple[str, Optional[int]]
 _CollationIn = Union[Mapping[str, Any], "Collation"]
-_DocumentIn = MutableMapping[str, Any]
+_DocumentIn = Union[MutableMapping[str, Any], "RawBSONDocument"]
 _Pipeline = Sequence[Mapping[str, Any]]
 _DocumentType = TypeVar('_DocumentType', Mapping[str, Any], MutableMapping[str, Any])

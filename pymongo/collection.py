@@ -1961,6 +1961,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             return {}
 
         options = result.get("options", {})
+        assert options is not None
         if "create" in options:
             del options["create"]
 

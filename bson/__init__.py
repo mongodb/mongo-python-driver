@@ -64,7 +64,7 @@ import uuid
 from codecs import utf_8_decode as _utf_8_decode  # type: ignore
 from codecs import utf_8_encode as _utf_8_encode  # type: ignore
 from collections import abc as _abc
-from typing import (TYPE_CHECKING, Any, BinaryIO, Callable, Dict, Generator,
+from typing import (IO, TYPE_CHECKING, Any, BinaryIO, Callable, Dict, Generator,
                     Iterator, List, Mapping, MutableMapping, NoReturn,
                     Sequence, Tuple, Type, TypeVar, Union, cast)
 
@@ -88,6 +88,8 @@ from bson.tz_util import utc
 
 # Import RawBSONDocument for type-checking only to avoid circular dependency.
 if TYPE_CHECKING:
+    from array import array
+    from mmap import mmap
     from bson.raw_bson import RawBSONDocument
 
 
@@ -880,7 +882,7 @@ def encode(document: _DocumentIn, check_keys: bool = False, codec_options: Codec
     return _dict_to_bson(document, check_keys, codec_options)
 
 
-def decode(data: bytes, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> _DocumentOut:
+def decode(data: Union[bytes, memoryview, "mmap", "array"], codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> _DocumentOut:
     """Decode BSON to a document.
 
     By default, returns a BSON document represented as a Python
@@ -912,7 +914,7 @@ def decode(data: bytes, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> 
     return _bson_to_dict(data, codec_options)
 
 
-def decode_all(data: bytes, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> List[_DocumentOut]:
+def decode_all(data: ReadableBuffer, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> List[_DocumentOut]:
     """Decode BSON data to multiple documents.
 
     `data` must be a bytes-like object implementing the buffer protocol that
@@ -1075,7 +1077,7 @@ def decode_iter(data: bytes, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS
         yield _bson_to_dict(elements, codec_options)
 
 
-def decode_file_iter(file_obj: BinaryIO, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> Iterator[_DocumentOut]:
+def decode_file_iter(file_obj: Union[BinaryIO, IO], codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> Iterator[_DocumentOut]:
     """Decode bson data from a file to multiple documents as a generator.
 
     Works similarly to the decode_all function, but reads from the file object
