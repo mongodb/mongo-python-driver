@@ -45,7 +45,7 @@ class TestResetAndRequestCheck(unittest.TestCase):
         kwargs = {'socketTimeoutMS': 100}
         # Disable retryable reads when pymongo supports it.
         kwargs['retryReads'] = False
-        self.client = MongoClient(self.server.uri, **kwargs)
+        self.client = MongoClient(self.server.uri, **kwargs)  # type: ignore
         wait_until(lambda: self.client.nodes, 'connect to standalone')
 
     def tearDown(self):

@@ -106,7 +106,9 @@ class TestObjectId(unittest.TestCase):
 
         aware = datetime.datetime(1993, 4, 4, 2,
                                   tzinfo=FixedOffset(555, "SomeZone"))
-        as_utc = (aware - aware.utcoffset()).replace(tzinfo=utc)
+        offset = aware.utcoffset()
+        assert offset is not None
+        as_utc = (aware - offset).replace(tzinfo=utc)
         oid = ObjectId.from_datetime(aware)
         self.assertEqual(as_utc, oid.generation_time)
 

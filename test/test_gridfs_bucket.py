@@ -77,6 +77,8 @@ class JustRead(threading.Thread):
 
 
 class TestGridfs(IntegrationTest):
+    fs: gridfs.GridFSBucket
+    alt: gridfs.GridFSBucket
 
     @classmethod
     def setUpClass(cls):
@@ -123,6 +125,7 @@ class TestGridfs(IntegrationTest):
         self.assertEqual(0, self.db.fs.chunks.count_documents({}))
 
         raw = self.db.fs.files.find_one()
+        assert raw is not None
         self.assertEqual(0, raw["length"])
         self.assertEqual(oid, raw["_id"])
         self.assertTrue(isinstance(raw["uploadDate"], datetime.datetime))
@@ -322,6 +325,7 @@ class TestGridfs(IntegrationTest):
         # Test fix that guards against PHP-237
         self.fs.upload_from_stream("empty", b"")
         doc = self.db.fs.files.find_one({"filename": "empty"})
+        assert doc is not None
         doc.pop("length")
         self.db.fs.files.replace_one({"_id": doc["_id"]}, doc)
         fstr = self.fs.open_download_stream_by_name("empty")

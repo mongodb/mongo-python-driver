@@ -492,6 +492,7 @@ class TestSSL(IntegrationTest):
     @ignore_deprecations
     def test_mongodb_x509_auth(self):
         host, port = client_context.host, client_context.port
+        assert client_context.client is not None
         self.addCleanup(remove_all_users, client_context.client['$external'])
 
         # Give x509 user all necessary privileges.

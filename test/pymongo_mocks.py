@@ -150,7 +150,7 @@ class MockClient(MongoClient):
         client_options = client_context.default_client_options.copy()
         client_options.update(kwargs)
 
-        super(MockClient, self).__init__(*args, **client_options)
+        super(MockClient, self).__init__(*args, **client_options)  # type: ignore
 
     def kill_host(self, host):
         """Host is like 'a:1'."""

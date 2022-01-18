@@ -23,6 +23,7 @@ from test.utils import single_client, rs_or_single_client, OvertCommandListener
 
 
 class TestReadConcern(IntegrationTest):
+    listener: OvertCommandListener
 
     @classmethod
     @client_context.require_connection
@@ -31,11 +32,13 @@ class TestReadConcern(IntegrationTest):
         cls.listener = OvertCommandListener()
         cls.client = single_client(event_listeners=[cls.listener])
         cls.db = cls.client.pymongo_test
+        assert client_context.client is not None
         client_context.client.pymongo_test.create_collection('coll')
 
     @classmethod
     def tearDownClass(cls):
         cls.client.close()
+        assert client_context.client is not None
         client_context.client.pymongo_test.drop_collection('coll')
         super(TestReadConcern, cls).tearDownClass()
 

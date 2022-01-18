@@ -16,6 +16,7 @@ import copy
 import datetime
 import sys
 import time
+from typing import Any
 import warnings
 
 sys.path[0:0] = [""]
@@ -43,6 +44,7 @@ from test.utils import (EventListener,
 
 
 class TestCommandMonitoring(IntegrationTest):
+    listener: EventListener
 
     @classmethod
     @client_context.require_connection
@@ -433,6 +435,7 @@ class TestCommandMonitoring(IntegrationTest):
     @client_context.require_replica_set
     @client_context.require_secondaries_count(1)
     def test_not_primary_error(self):
+        assert client_context.client is not None
         address = next(iter(client_context.client.secondaries))
         client = single_client(*address, event_listeners=[self.listener])
         # Clear authentication command results from the listener.
@@ -754,7 +757,7 @@ class TestCommandMonitoring(IntegrationTest):
 
         # delete_one
         self.listener.results.clear()
-        res = coll.delete_one({'x': 3})
+        res2 = coll.delete_one({'x': 3})
         results = self.listener.results
         started = results['started'][0]
         succeeded = results['succeeded'][0]
@@ -1091,6 +1094,8 @@ class TestCommandMonitoring(IntegrationTest):
 
 
 class TestGlobalListener(IntegrationTest):
+    listener: EventListener
+    saved_listeners: Any
 
     @classmethod
     @client_context.require_connection

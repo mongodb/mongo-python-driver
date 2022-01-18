@@ -55,6 +55,9 @@ def camel_to_snake(camel):
 
 
 class TestAllScenarios(IntegrationTest):
+    fs: gridfs.GridFSBucket
+    str_to_cmd: dict
+
     @classmethod
     def setUpClass(cls):
         super(TestAllScenarios, cls).setUpClass()

@@ -185,7 +185,7 @@ class TestDBRefSpec(unittest.TestCase):
                 self.assertIsInstance(dbref, dict)
 
     def test_encoding_1_2(self):
-        doc: dict[str, Any]
+        doc: Any
         for doc in [
             # 1, Encoding DBRefs with basic fields:
             {"$ref": "coll0", "$id": ObjectId("60a6fe9a54f4180c86309efa")},
