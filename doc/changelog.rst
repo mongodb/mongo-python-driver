@@ -4,7 +4,7 @@ Changelog
 Changes in Version 4.1
 ----------------------
 
-PyMongo 4.0 brings a number of improvements including:
+PyMongo 4.1 brings a number of improvements including:
 
 - :meth:`pymongo.collection.Collection.update_one`,
   :meth:`pymongo.collection.Collection.update_many`,
@@ -14,9 +14,11 @@ PyMongo 4.0 brings a number of improvements including:
   :meth:`pymongo.collection.Collection.find_one_and_delete`,
   :meth:`pymongo.collection.Collection.find_one_and_replace`,
   :meth:`pymongo.collection.Collection.find_one_and_update`,
-  and :meth:`pymongo.collection.Collection.find` all support a new keyword
-  argument ``let`` which is a map of parameter names and values. Parameters
-  can then be accessed as variables in an aggregate expression context.
+  :meth:`pymongo.collection.Collection.find`,
+  and :meth:`pymongo.collection.Collection.replace_one `all support a new
+  keyword argument ``let`` which is a map of parameter names and values.
+  Parameters can then be accessed as variables in an aggregate expression
+  context.
 - :meth:`~pymongo.collection.Collection.aggregate` now supports
   $merge and $out executing on secondaries on MongoDB >=5.0.
   aggregate() now always obeys the collection's :attr:`read_preference` on
