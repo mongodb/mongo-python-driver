@@ -60,7 +60,7 @@ if TYPE_CHECKING:
     from pymongo.mongo_client import MongoClient
 
 
-class ChangeStream(Generic[_DocumentType], Iterator[Mapping[str, Any]]):
+class ChangeStream(Generic[_DocumentType]):
     """The internal abstract base class for change stream cursors.
 
     Should not be called directly by application developers. Use
@@ -214,7 +214,7 @@ class ChangeStream(Generic[_DocumentType], Iterator[Mapping[str, Any]]):
         """Close this ChangeStream."""
         self._cursor.close()
 
-    def __iter__(self) -> Iterator[Mapping[str, Any]]:
+    def __iter__(self) -> Iterator[_DocumentType]:
         return self
 
     @property

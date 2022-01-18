@@ -544,7 +544,6 @@ _SPECULATIVE_AUTH_MAP: Mapping[str, Callable] = {
 def authenticate(credentials, sock_info):
     """Authenticate sock_info."""
     mechanism = credentials.mechanism
-    auth_func = _AUTH_MAP.get(mechanism)
-    if auth_func:
-        auth_func(credentials, sock_info)
+    auth_func = _AUTH_MAP[mechanism]
+    auth_func(credentials, sock_info)
 
