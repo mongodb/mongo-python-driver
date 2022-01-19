@@ -328,6 +328,17 @@ class _Bulk(object):
                     if self.ordered and "writeErrors" in result:
                         break
                 else:
+                    # Guard against unsupported unacklowedged writes.
+                    if self.uses_hint:
+                        if run.op_type == _DELETE:
+                            if sock_info.max_wire_version < 9:
+                                raise ConfigurationError(
+                                    'Must be connected to MongoDB 4.4+ to use hint on unacknowledged delete commands.')
+                        elif run.op_type == _UPDATE:
+                             if sock_info.max_wire_version < 8:
+                                raise ConfigurationError(
+                                    'Must be connected to MongoDB 4.2+ to use hint on unacknowledged update commands.')
+
                     to_send = bwc.execute_unack(cmd, ops, client)
 
                 run.idx_offset += len(to_send)
