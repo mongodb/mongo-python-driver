@@ -24,7 +24,7 @@ try:
     import pymongo.pyopenssl_context as _ssl
 except ImportError:
     try:
-        import pymongo.ssl_context as _ssl  # type: ignore
+        import pymongo.ssl_context as _ssl  # type: ignore[no-redef]
     except ImportError:
         HAVE_SSL = False
 

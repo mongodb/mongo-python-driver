@@ -61,8 +61,8 @@ import re
 import struct
 import sys
 import uuid
-from codecs import utf_8_decode as _utf_8_decode  # type: ignore
-from codecs import utf_8_encode as _utf_8_encode  # type: ignore
+from codecs import utf_8_decode as _utf_8_decode  # type: ignore[attr-defined]
+from codecs import utf_8_encode as _utf_8_encode  # type: ignore[attr-defined]
 from collections import abc as _abc
 from typing import (IO, TYPE_CHECKING, Any, BinaryIO, Callable, Dict, Generator,
                     Iterator, List, Mapping, MutableMapping, NoReturn,
@@ -94,7 +94,7 @@ if TYPE_CHECKING:
 
 
 try:
-    from bson import _cbson  # type: ignore
+    from bson import _cbson  # type: ignore[attr-defined]
     _USE_C = True
 except ImportError:
     _USE_C = False

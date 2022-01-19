@@ -27,11 +27,11 @@ from cryptography.x509 import \
     load_der_x509_certificate as _load_der_x509_certificate
 from OpenSSL import SSL as _SSL
 from OpenSSL import crypto as _crypto
-from service_identity import (  # type: ignore
+from service_identity import (  # type: ignore[import]
     CertificateError as _SICertificateError
 )
 from service_identity import VerificationError as _SIVerificationError
-from service_identity.pyopenssl import (  # type: ignore
+from service_identity.pyopenssl import (  # type: ignore[import]
     verify_hostname as _verify_hostname
 )
 from service_identity.pyopenssl import verify_ip_address as _verify_ip_address

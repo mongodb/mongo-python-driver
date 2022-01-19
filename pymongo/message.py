@@ -39,7 +39,7 @@ from bson.raw_bson import (DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument,
 from bson.son import SON
 
 try:
-    from pymongo import _cmessage  # type: ignore
+    from pymongo import _cmessage  # type: ignore[attr-defined]
     _use_c = True
 except ImportError:
     _use_c = False

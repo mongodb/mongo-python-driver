@@ -81,7 +81,7 @@ from pymongo.write_concern import WriteConcern
 def has_c() -> bool:
     """Is the C extension installed?"""
     try:
-        from pymongo import _cmessage  # type: ignore
+        from pymongo import _cmessage  # type: ignore[attr-defined]
         return True
     except ImportError:
         return False

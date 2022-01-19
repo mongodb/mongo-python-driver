@@ -33,7 +33,7 @@ except:
     pass
 
 try:
-    from pymongo import _cmessage  # type: ignore
+    from pymongo import _cmessage  # type: ignore[attr-defined]
     sys.exit("could still import _cmessage")
 except ImportError:
     pass
