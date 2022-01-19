@@ -712,7 +712,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         collation: Optional[_CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
-        let: Optional[bool] = None
+        let: Optional[Mapping[str, Any]] = None
     ) -> UpdateResult:
         """Replace a single document matching the filter.
 
@@ -804,7 +804,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
-        let: Optional[bool] = None
+        let: Optional[Mapping[str, Any]] = None
     ) -> UpdateResult:
         """Update a single document matching the filter.
 
@@ -892,7 +892,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         collation: Optional[_CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
-        let: Optional[bool] = None
+        let: Optional[Mapping[str, Any]] = None
     ) -> UpdateResult:
         """Update one or more documents that match the filter.
 
@@ -1065,7 +1065,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         collation: Optional[_CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
-        let: Optional[Any] = None
+        let: Optional[Mapping[str, Any]] = None
     ) -> DeleteResult:
         """Delete a single document matching the filter.
 
@@ -1120,7 +1120,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         collation: Optional[_CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
-        let: Optional[Any] = None
+        let: Optional[Mapping[str, Any]] = None
     ) -> DeleteResult:
         """Delete one or more documents matching the filter.
 
@@ -1977,7 +1977,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             cmd.get_cursor, cmd.get_read_preference(session), session,
             retryable=not cmd._performs_write)
 
-    def aggregate(self, pipeline: _Pipeline, session: Optional["ClientSession"] = None, let: Optional[Any] = None, **kwargs: Any) -> CommandCursor[_DocumentType]:
+    def aggregate(self, pipeline: _Pipeline, session: Optional["ClientSession"] = None, let: Optional[Mapping[str, Any]] = None, **kwargs: Any) -> CommandCursor[_DocumentType]:
         """Perform an aggregation using the aggregation framework on this
         collection.
 
@@ -2391,7 +2391,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         sort: Optional[_IndexList] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
-        let: Optional[bool] = None,
+        let: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> _DocumentType:
         """Finds a single document and deletes it, returning the document.
@@ -2477,7 +2477,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         return_document: bool = ReturnDocument.BEFORE,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
-        let: Optional[bool] = None,
+        let: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> _DocumentType:
         """Finds a single document and replaces it, returning either the
@@ -2572,7 +2572,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
-        let: Optional[bool] = None,
+        let: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> _DocumentType:
         """Finds a single document and updates it, returning either the
