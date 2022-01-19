@@ -261,6 +261,7 @@ class _Bulk(object):
 
         if not self.current_run:
             self.current_run = next(generator)
+            self.next_run = None
         run = self.current_run
 
         # sock_info.command validates the session, but we use
@@ -269,13 +270,10 @@ class _Bulk(object):
         last_run = False
 
         while run:
-            # Check to see if this is the last run by peeking.
-            # On the last run we use the final write concern.
-            try:
-                next_run = next(generator)
-                generator = chain([next_run], generator)
-            except StopIteration:
-                last_run = True
+            if not self.retrying:
+                self.next_run = next(generator, None)
+                if self.next_run is None:
+                    last_run = True
 
             cmd_name = _COMMANDS[run.op_type]
             bwc = self.bulk_ctx_class(
@@ -348,7 +346,7 @@ class _Bulk(object):
             if self.ordered and full_result['writeErrors']:
                 break
             # Reset our state
-            self.current_run = run = next(generator, None)
+            self.current_run = run = self.next_run
 
     def execute_command(self, generator, write_concern, session):
         """Execute using write commands.
