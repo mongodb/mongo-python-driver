@@ -18,7 +18,7 @@
 """
 import copy
 
-from itertools import islice, chain
+from itertools import islice
 
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
@@ -326,7 +326,7 @@ class _Bulk(object):
                     if self.ordered and "writeErrors" in result:
                         break
                 else:
-                    # Guard against unsupported unacklowedged writes.
+                    # Guard against unsupported unacknowledged writes.
                     if self.uses_hint:
                         if run.op_type == _DELETE:
                             if sock_info.max_wire_version < 9:
