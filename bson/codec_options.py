@@ -233,7 +233,8 @@ class CodecOptions(_options_base):
       - `unicode_decode_error_handler`: The error handler to apply when
         a Unicode-related error occurs during BSON decoding that would
         otherwise raise :exc:`UnicodeDecodeError`. Valid options include
-        'strict', 'replace', and 'ignore'. Defaults to 'strict'.
+        'strict', 'replace', 'backslashreplace', 'surrogateescape', and
+        'ignore'. Defaults to 'strict'.
       - `tzinfo`: A :class:`~datetime.tzinfo` subclass that specifies the
         timezone to/from which :class:`~datetime.datetime` objects should be
         encoded/decoded.

@@ -994,57 +994,32 @@ class TestCodecOptions(unittest.TestCase):
     def test_unicode_decode_error_handler(self):
         enc = encode({"keystr": "foobar"})
 
-        # Test handling of bad key value.
+        # Test handling of bad key value, bad string value, and both.
         invalid_key = enc[:7] + b'\xe9' + enc[8:]
-        replaced_key = b'ke\xe9str'.decode('utf-8', 'replace')
-        ignored_key = b'ke\xe9str'.decode('utf-8', 'ignore')
-
-        dec = decode(invalid_key,
-                     CodecOptions(unicode_decode_error_handler="replace"))
-        self.assertEqual(dec, {replaced_key: "foobar"})
-
-        dec = decode(invalid_key,
-                     CodecOptions(unicode_decode_error_handler="ignore"))
-        self.assertEqual(dec, {ignored_key: "foobar"})
-
-        self.assertRaises(InvalidBSON, decode, invalid_key, CodecOptions(
-            unicode_decode_error_handler="strict"))
-        self.assertRaises(InvalidBSON, decode, invalid_key, CodecOptions())
-        self.assertRaises(InvalidBSON, decode, invalid_key)
-
-        # Test handing of bad string value.
-        invalid_val = BSON(enc[:18] + b'\xe9' + enc[19:])
-        replaced_val = b'fo\xe9bar'.decode('utf-8', 'replace')
-        ignored_val = b'fo\xe9bar'.decode('utf-8', 'ignore')
-
-        dec = decode(invalid_val,
-                     CodecOptions(unicode_decode_error_handler="replace"))
-        self.assertEqual(dec, {"keystr": replaced_val})
-
-        dec = decode(invalid_val,
-                     CodecOptions(unicode_decode_error_handler="ignore"))
-        self.assertEqual(dec, {"keystr": ignored_val})
-
-        self.assertRaises(InvalidBSON, decode, invalid_val, CodecOptions(
-            unicode_decode_error_handler="strict"))
-        self.assertRaises(InvalidBSON, decode, invalid_val, CodecOptions())
-        self.assertRaises(InvalidBSON, decode, invalid_val)
-
-        # Test handing bad key + bad value.
+        invalid_val = enc[:18] + b'\xe9' + enc[19:]
         invalid_both = enc[:7] + b'\xe9' + enc[8:18] + b'\xe9' + enc[19:]
 
-        dec = decode(invalid_both,
-                     CodecOptions(unicode_decode_error_handler="replace"))
-        self.assertEqual(dec, {replaced_key: replaced_val})
+        # Ensure that strict mode raises an error.
+        for invalid in [invalid_key, invalid_val, invalid_both]:
+            self.assertRaises(InvalidBSON, decode, invalid, CodecOptions(
+                unicode_decode_error_handler="strict"))
+            self.assertRaises(InvalidBSON, decode, invalid, CodecOptions())
+            self.assertRaises(InvalidBSON, decode, invalid)
 
-        dec = decode(invalid_both,
-                     CodecOptions(unicode_decode_error_handler="ignore"))
-        self.assertEqual(dec, {ignored_key: ignored_val})
-
-        self.assertRaises(InvalidBSON, decode, invalid_both, CodecOptions(
-            unicode_decode_error_handler="strict"))
-        self.assertRaises(InvalidBSON, decode, invalid_both, CodecOptions())
-        self.assertRaises(InvalidBSON, decode, invalid_both)
+        # Test all other error handlers.
+        for handler in ['replace', 'backslashreplace', 'surrogateescape',
+                        'ignore']:
+            expected_key = b'ke\xe9str'.decode('utf-8', handler)
+            expected_val = b'fo\xe9bar'.decode('utf-8', handler)
+            doc = decode(invalid_key,
+                         CodecOptions(unicode_decode_error_handler=handler))
+            self.assertEqual(doc, {expected_key: "foobar"})
+            doc = decode(invalid_val,
+                         CodecOptions(unicode_decode_error_handler=handler))
+            self.assertEqual(doc, {"keystr": expected_val})
+            doc = decode(invalid_both,
+                         CodecOptions(unicode_decode_error_handler=handler))
+            self.assertEqual(doc, {expected_key: expected_val})
 
         # Test handling bad error mode.
         dec = decode(enc,
