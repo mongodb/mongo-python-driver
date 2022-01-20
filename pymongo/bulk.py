@@ -149,12 +149,14 @@ class _Bulk(object):
         self.bypass_doc_val = bypass_document_validation
         self.uses_collation = False
         self.uses_array_filters = False
-        self.uses_hint = False
+        self.uses_hint_update = False
+        self.uses_hint_delete = False
         self.is_retryable = True
         self.retrying = False
         self.started_retryable_write = False
         # Extra state so that we know where to pick up on a retry attempt.
         self.current_run = None
+        self.next_run = None
 
     @property
     def bulk_ctx_class(self):
@@ -188,7 +190,7 @@ class _Bulk(object):
             self.uses_array_filters = True
             cmd['arrayFilters'] = array_filters
         if hint is not None:
-            self.uses_hint = True
+            self.uses_hint_update = True
             cmd['hint'] = hint
         if multi:
             # A bulk_write containing an update_many is not retryable.
@@ -207,7 +209,7 @@ class _Bulk(object):
             self.uses_collation = True
             cmd['collation'] = collation
         if hint is not None:
-            self.uses_hint = True
+            self.uses_hint_update = True
             cmd['hint'] = hint
         self.ops.append((_UPDATE, cmd))
 
@@ -220,7 +222,7 @@ class _Bulk(object):
             self.uses_collation = True
             cmd['collation'] = collation
         if hint is not None:
-            self.uses_hint = True
+            self.uses_hint_delete = True
             cmd['hint'] = hint
         if limit == _DELETE_ALL:
             # A bulk_write containing a delete_many is not retryable.
@@ -254,7 +256,8 @@ class _Bulk(object):
                 yield run
 
     def _execute_command(self, generator, write_concern, session,
-                         sock_info, op_id, retryable, full_result, final_write_concern=None):
+                         sock_info, op_id, retryable, full_result,
+                         final_write_concern=None):
         db_name = self.collection.database.name
         client = self.collection.database.client
         listeners = client._event_listeners
@@ -326,17 +329,6 @@ class _Bulk(object):
                     if self.ordered and "writeErrors" in result:
                         break
                 else:
-                    # Guard against unsupported unacknowledged writes.
-                    if self.uses_hint:
-                        if run.op_type == _DELETE:
-                            if sock_info.max_wire_version < 9:
-                                raise ConfigurationError(
-                                    'Must be connected to MongoDB 4.4+ to use hint on unacknowledged delete commands.')
-                        elif run.op_type == _UPDATE:
-                             if sock_info.max_wire_version < 8:
-                                raise ConfigurationError(
-                                    'Must be connected to MongoDB 4.2+ to use hint on unacknowledged update commands.')
-
                     to_send = bwc.execute_unack(cmd, ops, client)
 
                 run.idx_offset += len(to_send)
@@ -407,7 +399,7 @@ class _Bulk(object):
                 run.idx_offset += len(to_send)
             self.current_run = run = next(generator, None)
 
-    def execute_command_no_results(self, sock_info, generator, write_concern=None):
+    def execute_command_no_results(self, sock_info, generator, write_concern):
         """Execute write commands with OP_MSG and w=0 WriteConcern, ordered.
         """
         full_result = {
@@ -432,7 +424,7 @@ class _Bulk(object):
         except OperationFailure:
             pass
 
-    def execute_no_results(self, sock_info, generator, write_concern=None):
+    def execute_no_results(self, sock_info, generator, write_concern):
         """Execute all operations, returning no results (w=0).
         """
         if self.uses_collation:
@@ -441,6 +433,14 @@ class _Bulk(object):
         if self.uses_array_filters:
             raise ConfigurationError(
                 'arrayFilters is unsupported for unacknowledged writes.')
+        # Guard against unsupported unacknowledged writes.
+        unack = write_concern and not write_concern.acknowledged
+        if unack and self.uses_hint_delete and sock_info.max_wire_version < 9:
+            raise ConfigurationError(
+                'Must be connected to MongoDB 4.4+ to use hint on unacknowledged delete commands.')
+        if unack and self.uses_hint_update and sock_info.max_wire_version < 8:
+            raise ConfigurationError(
+                'Must be connected to MongoDB 4.2+ to use hint on unacknowledged update commands.')
         # Cannot have both unacknowledged writes and bypass document validation.
         if self.bypass_doc_val:
             raise OperationFailure("Cannot set bypass_document_validation with"
