@@ -551,6 +551,7 @@ class SocketInfo(object):
 
     def hello_cmd(self):
         if self.opts.server_api or self.hello_ok or self.opts.load_balanced:
+            self.op_msg_enabled = True
             return SON([(HelloCompat.CMD, 1)])
         else:
             return SON([(HelloCompat.LEGACY_CMD, 1), ('helloOk', True)])
@@ -592,7 +593,8 @@ class SocketInfo(object):
             auth_ctx = None
 
         doc = self.command('admin', cmd, publish_events=False,
-                           exhaust_allowed=awaitable)
+                           exhaust_allowed=awaitable, use,
+                           use_op_msg=self.op_msg_enabled)
         # PYTHON-2712 will remove this topologyVersion fallback logic.
         if self.opts.load_balanced and _MOCK_SERVICE_ID:
             process_id = doc.get('topologyVersion', {}).get('processId')
