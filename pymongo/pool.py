@@ -593,7 +593,7 @@ class SocketInfo(object):
             auth_ctx = None
 
         doc = self.command('admin', cmd, publish_events=False,
-                           exhaust_allowed=awaitable, use,
+                           exhaust_allowed=awaitable,
                            use_op_msg=self.op_msg_enabled)
         # PYTHON-2712 will remove this topologyVersion fallback logic.
         if self.opts.load_balanced and _MOCK_SERVICE_ID:
