@@ -21,6 +21,7 @@ from test import client_context, SkipTest, unittest
 
 
 class TestClientContext(unittest.TestCase):
+    @client_context.require_connection
     def test_must_connect(self):
         if 'PYMONGO_MUST_CONNECT' not in os.environ:
             raise SkipTest('PYMONGO_MUST_CONNECT is not set')
@@ -30,6 +31,7 @@ class TestClientContext(unittest.TestCase):
                         'PYMONGO_MUST_CONNECT is set. Failed attempts:\n%s' %
                         (client_context.connection_attempt_info(),))
 
+    @client_context.require_connection
     def test_serverless(self):
         if 'TEST_SERVERLESS' not in os.environ:
             raise SkipTest('TEST_SERVERLESS is not set')
