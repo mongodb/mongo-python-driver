@@ -332,7 +332,8 @@ class MongoClient(common.BaseObject):
           - `unicode_decode_error_handler`: The error handler to apply when
             a Unicode-related error occurs during BSON decoding that would
             otherwise raise :exc:`UnicodeDecodeError`. Valid options include
-            'strict', 'replace', and 'ignore'. Defaults to 'strict'.
+            'strict', 'replace', 'backslashreplace', 'surrogateescape', and
+            'ignore'. Defaults to 'strict'.
           - `srvServiceName`: (string) The SRV service name to use for
             "mongodb+srv://" URIs. Defaults to "mongodb". Use it like so::
 
