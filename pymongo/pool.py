@@ -682,7 +682,6 @@ class SocketInfo(object):
             using the TypeDecoders from codec_options, passed to
             bson._decode_all_selective.
         """
-
         self.validate_session(client, session)
         session = _validate_session_write_concern(session, write_concern)
 
@@ -697,6 +696,7 @@ class SocketInfo(object):
         if (write_concern and
                 not write_concern.is_server_default):
             spec['writeConcern'] = write_concern.document
+
         self.add_server_api(spec)
         if session:
             session._apply_to(spec, retryable_write, read_preference,
