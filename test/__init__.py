@@ -96,7 +96,6 @@ COMPRESSORS = os.environ.get("COMPRESSORS")
 MONGODB_API_VERSION = os.environ.get("MONGODB_API_VERSION")
 TEST_LOADBALANCER = bool(os.environ.get("TEST_LOADBALANCER"))
 TEST_SERVERLESS = bool(os.environ.get("TEST_SERVERLESS"))
-PYMONGO_MUST_CONNECT = bool(os.environ.get("PYMONGO_MUST_CONNECT"))
 SINGLE_MONGOS_LB_URI = os.environ.get("SINGLE_MONGOS_LB_URI")
 MULTI_MONGOS_LB_URI = os.environ.get("MULTI_MONGOS_LB_URI")
 if TEST_LOADBALANCER:
@@ -262,8 +261,6 @@ class ClientContext(object):
         if MONGODB_API_VERSION:
             server_api = ServerApi(MONGODB_API_VERSION)
             self.default_client_options["server_api"] = server_api
-        if PYMONGO_MUST_CONNECT:
-            self.init()
 
     @property
     def client_options(self):
