@@ -23,6 +23,7 @@ from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
+from bson.timestamp import Timestamp
 from pymongo import common, helpers, message
 from pymongo.aggregation import (_CollectionAggregationCommand,
                                  _CollectionRawAggregationCommand)
@@ -2105,7 +2106,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         max_await_time_ms: Optional[int] = None,
         batch_size: Optional[int] = None,
         collation: Optional[_CollationIn] = None,
-        start_at_operation_time: Optional[Mapping[str, Any]] = None,
+        start_at_operation_time: Optional[Mapping[str, Timestamp]] = None,
         session: Optional["ClientSession"] = None,
         start_after: Optional[Mapping[str, Any]] = None,
     ) -> CollectionChangeStream[_DocumentType]:

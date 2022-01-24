@@ -42,6 +42,7 @@ import bson
 from bson.codec_options import (DEFAULT_CODEC_OPTIONS, CodecOptions,
                                 TypeRegistry)
 from bson.son import SON
+from bson.timestamp import Timestamp
 from pymongo import (client_session, common, database, helpers, message,
                      periodic_executor, uri_parser)
 from pymongo.change_stream import ChangeStream, ClusterChangeStream
@@ -801,7 +802,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         max_await_time_ms: Optional[int] = None,
         batch_size: Optional[int] = None,
         collation: Optional[_CollationIn] = None,
-        start_at_operation_time: Optional[Mapping[str, Any]] = None,
+        start_at_operation_time: Optional[Mapping[str, Timestamp]] = None,
         session: Optional[client_session.ClientSession] = None,
         start_after: Optional[Mapping[str, Any]] = None,
     ) -> ChangeStream[_DocumentType]:

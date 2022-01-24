@@ -19,6 +19,7 @@ from typing import (TYPE_CHECKING, Any, Dict, Generic, List, Mapping, Optional,
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
 from bson.son import SON
+from bson.timestamp import Timestamp
 from pymongo import common
 from pymongo.aggregation import _DatabaseAggregationCommand
 from pymongo.change_stream import DatabaseChangeStream
@@ -440,7 +441,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         max_await_time_ms: Optional[int] = None,
         batch_size: Optional[int] = None,
         collation: Optional[_CollationIn] = None,
-        start_at_operation_time: Optional[Mapping[str, Any]] = None,
+        start_at_operation_time: Optional[Mapping[str, Timestamp]] = None,
         session: Optional["ClientSession"] = None,
         start_after: Optional[Mapping[str, Any]] = None,
     ) -> DatabaseChangeStream[_DocumentType]:

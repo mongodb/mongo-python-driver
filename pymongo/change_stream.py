@@ -20,6 +20,7 @@ from typing import (TYPE_CHECKING, Any, Dict, Generic, Iterator, Mapping,
 
 from bson import _bson_to_dict
 from bson.raw_bson import RawBSONDocument
+from bson.timestamp import Timestamp
 from pymongo import common
 from pymongo.aggregation import (_CollectionAggregationCommand,
                                  _DatabaseAggregationCommand)
@@ -80,7 +81,7 @@ class ChangeStream(Generic[_DocumentType]):
         max_await_time_ms: Optional[int],
         batch_size: Optional[int],
         collation: Optional[_CollationIn],
-        start_at_operation_time: Optional[Mapping[str, Any]],
+        start_at_operation_time: Optional[Mapping[str, Timestamp]],
         session: Optional["ClientSession"],
         start_after: Optional[Mapping[str, Any]],
     ) -> None:
@@ -408,7 +409,7 @@ class DatabaseChangeStream(ChangeStream, Generic[_DocumentType]):
         return self._target.client
 
 
-class ClusterChangeStream(DatabaseChangeStream):
+class ClusterChangeStream(DatabaseChangeStream, Generic[_DocumentType]):
     """A change stream that watches changes on all collections in the cluster.
 
     Should not be called directly by application developers. Use
