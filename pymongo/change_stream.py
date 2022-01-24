@@ -215,7 +215,7 @@ class ChangeStream(Generic[_DocumentType]):
         """Close this ChangeStream."""
         self._cursor.close()
 
-    def __iter__(self) -> Iterator[_DocumentType]:
+    def __iter__(self) -> "Iterator[ChangeStream[_DocumentType]]":
         return self
 
     @property
