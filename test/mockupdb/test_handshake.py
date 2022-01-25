@@ -19,66 +19,54 @@ from mockupdb import (MockupDB, OpReply, OpMsg, OpMsgReply, OpQuery, absent,
 from pymongo import MongoClient, version as pymongo_version
 from pymongo.errors import OperationFailure, AutoReconnect
 from pymongo.server_api import ServerApi, ServerApiVersion
-
+from bson.objectid import ObjectId
 import unittest
 from copy import deepcopy
 import time
 
-def test_handshake_with_option(self, protocol, num_servers, **kwargs):
-    primary = MockupDB(verbose=False)
-    secondaries = [MockupDB(verbose=False) for _ in range(num_servers-1)]
-    servers = [primary]+secondaries
+def test_hello_with_option(self, protocol, **kwargs):
     hello = "ismaster" if isinstance(protocol(), OpQuery) else "hello"
-    # set up a custom handler to log and then immediately close all
-    # connections.
-    # this makes sure that we only are checking the hello command, because
-    # after the first hello it has been closed
-    self.reqs = []
-    def hangup(r):
-        self.reqs.append(deepcopy([r.doc, type(r)]))
-        return r.hangup()
-    for server in servers:
-        server.autoresponds(hangup)
-        server.run()
-        self.addCleanup(server.stop)
-    hosts = [server.address_string for server in servers if not kwargs.get(
-        "loadBalanced") or server == primary]
-    address_str = "mongodb://"+','.join(hosts)
-    # we need a special dict because MongoClient uses "server_api" and all
-    # of the commands use "apiVersion"
+    # `db.command("hello"|"ismaster")` commands are the same for primaries and
+    # secondaries, so we only need one server.
+    primary = MockupDB()
+    # Set up a custom handler to save the first request from the driver.
+    self.handshake_req = None
+    def respond(r):
+        if self.handshake_req == None:
+            # We use deepcopy here to avoid execption `OSError`.
+            self.handshake_req = deepcopy([r.doc, type(r)])
+        reply_kwargs = {}
+        if kwargs.get("loadBalanced"):
+            reply_kwargs["serviceId"] = ObjectId()
+        return r.reply(OpMsgReply(minWireVersion=0, maxWireVersion=13,
+                                  **kwargs, **reply_kwargs))
+    primary.autoresponds(respond)
+    primary.run()
+    self.addCleanup(primary.stop)
+
+
+    # We need a special dict because MongoClient uses "server_api" and all
+    # of the commands use "apiVersion".
     k_map = {("apiVersion", "1"):("server_api", ServerApi(
                                         ServerApiVersion.V1))}
-    client = MongoClient(address_str,
-                         appname='my app',
-                         heartbeatFrequencyMS=100000000,
+    client = MongoClient("mongodb://"+primary.address_string,
+                         appname='my app', # For _check_handshake_data()
                          **dict([k_map.get((k, v), (k, v)) for k, v
                                  in kwargs.items()]))
     
     self.addCleanup(client.close)
-    future = go(client.db.command, "whatever")
-    # wait for the first len(hosts)*mult requests (to ensure the
-    # re-connection hellos are also OpMsg)
-    mult = 1 if kwargs.get("loadBalanced") else random.randint(2, 4)
-    while len(self.reqs) < len(hosts)*mult:
-        time.sleep(.01)
 
-    # we do this checking in here rather than hangup() because hangup runs
+    # We have an autoresponder luckily, so no need for `go()`.
+    client.db.command(hello)
+
+    # We do this checking in here rather than hangup() because hangup runs
     # in another Python thread so there are some funky things with error
     # handling within that thread, and we want to be able to use
-    # self.assertRaises
-    for i, t in self.reqs:
-        i = t(i)
-        i.assert_matches(t(hello, **kwargs))
-        _check_handshake_data(i)
-    if mult == 1:
-        with self.assertRaisesRegex(AutoReconnect,
-                                    primary.address_string+": connection "
-                                                               "closed"):
-            future(timeout=1)
-    else:
-        with self.assertRaisesRegex(AssertionError, "timed out waiting for "
-                                                    "<bound method"):
-            future(timeout=0)
+    # self.assertRaises().
+    i, t = self.handshake_req
+    i = t(i)
+    i.assert_matches(protocol(hello, **kwargs))
+    _check_handshake_data(i)
 
 def _check_handshake_data(request):
     assert 'client' in request
@@ -217,19 +205,21 @@ class TestHandshake(unittest.TestCase):
                     return
 
     def test_handshake_load_balanced(self):
-        test_handshake_with_option(self, OpMsg, 10, loadBalanced=True)
+        test_hello_with_option(self, OpMsg, loadBalanced=True)
         with self.assertRaisesRegex(AssertionError, "does not match"):
-            test_handshake_with_option(self, Command, 10, loadBalanced=True)
+            test_hello_with_option(self, Command, loadBalanced=True)
 
     def test_handshake_versioned_api(self):
-        test_handshake_with_option(self, OpMsg, 10, apiVersion="1")
+        test_hello_with_option(self, OpMsg, apiVersion="1")
         with self.assertRaisesRegex(AssertionError, "does not match"):
-            test_handshake_with_option(self, Command, 10, apiVersion="1")
+            test_hello_with_option(self, Command, apiVersion="1")
 
     def test_handshake_not_either(self):
-        # if we don't specify either option then it should be using
-        # OP_QUERY for the initial step of the handshake
-        test_handshake_with_option(self, Command, 10)
+        # If we don't specify either option then it should be using
+        # OP_QUERY for the initial step of the handshake.
+        test_hello_with_option(self, Command)
+        with self.assertRaisesRegex(AssertionError, "does not match"):
+            test_hello_with_option(self, OpMsg)
 
 if __name__ == '__main__':
     unittest.main()
