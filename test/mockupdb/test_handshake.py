@@ -12,61 +12,57 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import mockupdb
-from mockupdb import MockupDB, OpReply, OpMsg, OpMsgReply, OpQuery, absent, \
-                                                             Command, go
+from mockupdb import (MockupDB, OpReply, OpMsg, OpMsgReply, OpQuery, absent,
+                      Command, go, Request)
 from pymongo import MongoClient, version as pymongo_version
 from pymongo.errors import OperationFailure
 from pymongo.server_api import ServerApi
 
 import unittest
+from copy import deepcopy
+import time
 
-
-def test_handshake_with_option(self, compare_protocol, num_servers, **kwargs):
-    primary = MockupDB(verbose=False, min_wire_version=6,
-                            max_wire_version=20)
-    secondaries = [MockupDB(verbose=False, min_wire_version=6,
-                            max_wire_version=20) for _ in range(num_servers-1)]
+def test_handshake_with_option(self, protocol, num_servers, **kwargs):
+    primary = MockupDB(verbose=False)
+    secondaries = [MockupDB(verbose=False) for _ in range(num_servers-1)]
     servers = [primary]+secondaries
-    hello = "ismaster" if isinstance(compare_protocol(), OpQuery) else "hello"
+    hello = "ismaster" if isinstance(protocol(), OpQuery) else "hello"
 
+    # set up a custom handler to log and then immediately close all connections
+    # this makes sure that we only are checking the hello command, because
+    # after the first response it has been closed
+    reqs = []
+    def hangup(response):
+        reqs.append(deepcopy([response.doc, response.__class__]))
+        return response.hangup()
     for server in servers:
+        server.autoresponds(hangup)
         server.run()
         self.addCleanup(server.stop)
-    hosts = [server.address_string for server in servers]
-    primary_response = OpMsgReply('hello',
-                                     hosts=hosts,
-                                     secondary=False,
-                                     minWireVersion=6, maxWireVersion=20,
-                                     serviceId=int(kwargs.get(
-                                         "loadBalanced", "0")))
-    secondary_response = OpMsgReply('hello', False,
-                                 hosts=hosts,
-                                 secondary=True,
-                                 minWireVersion=6, maxWireVersion=20,)
-    address_str = "mongodb://"+','.join(hosts) if not kwargs.get("loadBalanced") else primary.address_string
+    hosts = [server.address_string for server in servers if not kwargs.get(
+        "loadBalanced") or server == primary]
+    address_str = "mongodb://"+','.join(hosts)
     client = MongoClient(address_str,
                          appname='my app',
-                         heartbeatFrequencyMS=500,
-                         **kwargs)  # Speed up the test.
+                         heartbeatFrequencyMS=500, # Speed up the test.
+                         **kwargs)
+    if isinstance(kwargs.get("server_api"), ServerApi):
+        kwargs.pop("server_api", None)
+        kwargs["apiVersion"] = "1"
 
     self.addCleanup(client.close)
-    future = go(client.db.command, 'whatever')
-    # the primary always receives a handshake
-    i = primary.receives(compare_protocol(hello))
-    _check_handshake_data(i)
-    i.ok(primary_response)
-    # check each secondary to see if it received messages, if it did then
-    # check them to make sure they're OP_MSG "hello"s
-    for server in secondaries:
-        if server.requests_count == 0:
-            continue
-        while not server._request_q.empty():
-            i = server._request_q.get_nowait()
-            i.assert_matches(compare_protocol(hello))
-            i.ok(secondary_response)
+    future = go(client.db.command, "whatever")
+    time.sleep(.1)
+    # check each server to see if it received messages, if it did then
+    # check them to make sure they match our protocol and kwargs
+    assert len(reqs) == len(hosts)
+    for i, t in reqs:
+        i = Request(i)
+        i.assert_matches(Request(hello, **kwargs))
+        _check_handshake_data(i)
+        assert t == protocol
 
 def _check_handshake_data(request):
-
     assert 'client' in request
     data = request['client']
 
@@ -210,6 +206,7 @@ class TestHandshake(unittest.TestCase):
 
     def test_handshake_not_either(self):
         # if we don't specify either option then it should be using
+        # OP_QUERY for the initial step of the handshake
         test_handshake_with_option(self, Command, 10)
 
 if __name__ == '__main__':
