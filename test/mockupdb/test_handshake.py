@@ -13,14 +13,58 @@
 # limitations under the License.
 
 
-from mockupdb import MockupDB, OpReply, OpMsg, absent, Command, go
+from mockupdb import MockupDB, OpReply, OpMsg, OpMsgReply, absent, Command, go
 from pymongo import MongoClient, version as pymongo_version
 from pymongo.errors import OperationFailure
+from pymongo.server_api import ServerApi
 
 import unittest
 
 
+def test_handshake_with_option(self, compare_protocol, num_servers, **kwargs):
+    primary = MockupDB(verbose=False, min_wire_version=6,
+                            max_wire_version=20)
+    secondaries = [MockupDB(verbose=False, min_wire_version=6,
+                            max_wire_version=20) for _ in range(num_servers-1)]
+    servers = [primary]+secondaries
+    for server in servers:
+        server.run()
+        self.addCleanup(server.stop)
+    hosts = [server.address_string for server in servers]
+    primary_response = OpMsgReply("hello",
+                                     hosts=hosts,
+                                     secondary=False,
+                                     minWireVersion=6, maxWireVersion=20,
+                                     serviceId=int(kwargs.get(
+                                         "loadBalanced", "0")))
+    secondary_response = OpMsgReply('hello', False,
+                                 hosts=hosts,
+                                 secondary=True,
+                                 minWireVersion=6, maxWireVersion=20,)
+    address_str = "mongodb://"+','.join(hosts) if not kwargs.get("loadBalanced") else primary.address_string
+    client = MongoClient(address_str,
+                         appname='my app',
+                         heartbeatFrequencyMS=500,
+                         **kwargs)  # Speed up the test.
+
+    self.addCleanup(client.close)
+    future = go(client.db.command, 'whatever')
+    # the primary always receives a handshake
+    i = primary.receives(OpMsg("hello"))
+    _check_handshake_data(i)
+    i.ok(primary_response)
+    # check each secondary to see if it received messages, if it did then
+    # check them to make sure they're OP_MSG "hello"s
+    for server in secondaries:
+        if server.requests_count == 0:
+            continue
+        while not server._request_q.empty():
+            i = server._request_q.get_nowait()
+            i.assert_matches(OpMsg("hello"))
+            i.ok(secondary_response)
+
 def _check_handshake_data(request):
+
     assert 'client' in request
     data = request['client']
 
@@ -155,6 +199,12 @@ class TestHandshake(unittest.TestCase):
                     with self.assertRaises(OperationFailure):
                         future()
                     return
+
+    def test_handshake_load_balanced(self):
+        test_handshake_with_option(self, OpMsg, 10, loadBalanced=True)
+
+    def test_handshake_versioned_api(self):
+        test_handshake_with_option(self, OpMsg, 10, server_api=ServerApi("1"))
 
 
 if __name__ == '__main__':
