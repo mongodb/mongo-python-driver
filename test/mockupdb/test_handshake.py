@@ -22,7 +22,6 @@ from pymongo.server_api import ServerApi, ServerApiVersion
 from bson.objectid import ObjectId
 
 import unittest
-from copy import deepcopy
 
 def test_hello_with_option(self, protocol, **kwargs):
     hello = "ismaster" if isinstance(protocol(), OpQuery) else "hello"
@@ -32,14 +31,13 @@ def test_hello_with_option(self, protocol, **kwargs):
     # Set up a custom handler to save the first request from the driver.
     self.handshake_req = None
     def respond(r):
+        # Only save the very first request from the driver.
         if self.handshake_req == None:
-            # We use deepcopy here to avoid execption `OSError`.
-            self.handshake_req = deepcopy([r.doc, type(r)])
-        reply_kwargs = {}
-        if kwargs.get("loadBalanced"):
-            reply_kwargs["serviceId"] = ObjectId()
+            self.handshake_req = r
+        load_balanced_kwargs = {"serviceId": ObjectId()} if kwargs.get(
+            "loadBalanced") else {}
         return r.reply(OpMsgReply(minWireVersion=0, maxWireVersion=13,
-                                  **kwargs, **reply_kwargs))
+                                  **kwargs, **load_balanced_kwargs))
     primary.autoresponds(respond)
     primary.run()
     self.addCleanup(primary.stop)
@@ -56,16 +54,14 @@ def test_hello_with_option(self, protocol, **kwargs):
     self.addCleanup(client.close)
 
     # We have an autoresponder luckily, so no need for `go()`.
-    client.db.command(hello)
+    assert client.db.command(hello)["ok"], f"%s command failed" % (hello)
 
     # We do this checking in here rather than hangup() because hangup runs
     # in another Python thread so there are some funky things with error
     # handling within that thread, and we want to be able to use
     # self.assertRaises().
-    i, t = self.handshake_req
-    i = t(i)
-    i.assert_matches(protocol(hello, **kwargs))
-    _check_handshake_data(i)
+    self.handshake_req.assert_matches(protocol(hello, **kwargs))
+    _check_handshake_data(self.handshake_req)
 
 def _check_handshake_data(request):
     assert 'client' in request
