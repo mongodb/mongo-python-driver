@@ -11,18 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import random
 
 import mockupdb
 from mockupdb import (MockupDB, OpReply, OpMsg, OpMsgReply, OpQuery, absent,
-                      Command, go, Request)
+                      Command, go)
+
 from pymongo import MongoClient, version as pymongo_version
-from pymongo.errors import OperationFailure, AutoReconnect
+from pymongo.errors import OperationFailure
 from pymongo.server_api import ServerApi, ServerApiVersion
 from bson.objectid import ObjectId
+
 import unittest
 from copy import deepcopy
-import time
 
 def test_hello_with_option(self, protocol, **kwargs):
     hello = "ismaster" if isinstance(protocol(), OpQuery) else "hello"
@@ -43,7 +43,6 @@ def test_hello_with_option(self, protocol, **kwargs):
     primary.autoresponds(respond)
     primary.run()
     self.addCleanup(primary.stop)
-
 
     # We need a special dict because MongoClient uses "server_api" and all
     # of the commands use "apiVersion".
