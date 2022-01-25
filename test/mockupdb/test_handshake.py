@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import mockupdb
 from mockupdb import (MockupDB, OpReply, OpMsg, OpMsgReply, OpQuery, absent,
                       Command, go)
 
@@ -22,6 +21,7 @@ from pymongo.server_api import ServerApi, ServerApiVersion
 from bson.objectid import ObjectId
 
 import unittest
+
 
 def test_hello_with_option(self, protocol, **kwargs):
     hello = "ismaster" if isinstance(protocol(), OpQuery) else "hello"
@@ -62,6 +62,7 @@ def test_hello_with_option(self, protocol, **kwargs):
     # self.assertRaises().
     self.handshake_req.assert_matches(protocol(hello, **kwargs))
     _check_handshake_data(self.handshake_req)
+
 
 def _check_handshake_data(request):
     assert 'client' in request
