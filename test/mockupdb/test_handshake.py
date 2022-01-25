@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
-from mockupdb import MockupDB, OpReply, OpMsg, OpMsgReply, absent, Command, go
+import mockupdb
+from mockupdb import MockupDB, OpReply, OpMsg, OpMsgReply, OpQuery, absent, \
+                                                             Command, go
 from pymongo import MongoClient, version as pymongo_version
 from pymongo.errors import OperationFailure
 from pymongo.server_api import ServerApi
@@ -27,11 +27,13 @@ def test_handshake_with_option(self, compare_protocol, num_servers, **kwargs):
     secondaries = [MockupDB(verbose=False, min_wire_version=6,
                             max_wire_version=20) for _ in range(num_servers-1)]
     servers = [primary]+secondaries
+    hello = "ismaster" if isinstance(compare_protocol(), OpQuery) else "hello"
+
     for server in servers:
         server.run()
         self.addCleanup(server.stop)
     hosts = [server.address_string for server in servers]
-    primary_response = OpMsgReply("hello",
+    primary_response = OpMsgReply('hello',
                                      hosts=hosts,
                                      secondary=False,
                                      minWireVersion=6, maxWireVersion=20,
@@ -50,7 +52,7 @@ def test_handshake_with_option(self, compare_protocol, num_servers, **kwargs):
     self.addCleanup(client.close)
     future = go(client.db.command, 'whatever')
     # the primary always receives a handshake
-    i = primary.receives(OpMsg("hello"))
+    i = primary.receives(compare_protocol(hello))
     _check_handshake_data(i)
     i.ok(primary_response)
     # check each secondary to see if it received messages, if it did then
@@ -60,7 +62,7 @@ def test_handshake_with_option(self, compare_protocol, num_servers, **kwargs):
             continue
         while not server._request_q.empty():
             i = server._request_q.get_nowait()
-            i.assert_matches(OpMsg("hello"))
+            i.assert_matches(compare_protocol(hello))
             i.ok(secondary_response)
 
 def _check_handshake_data(request):
@@ -206,6 +208,9 @@ class TestHandshake(unittest.TestCase):
     def test_handshake_versioned_api(self):
         test_handshake_with_option(self, OpMsg, 10, server_api=ServerApi("1"))
 
+    def test_handshake_not_either(self):
+        # if we don't specify either option then it should be using
+        test_handshake_with_option(self, Command, 10)
 
 if __name__ == '__main__':
     unittest.main()
