@@ -3,20 +3,16 @@ set -eux
 
 pushd binder
 
+PORT=`cat PORT`
+VERSION=`cat VERSION`
+
 # Install `m`` and a local mongod server.
 npm install -g m
-yes | m $(cat VERSION)
+yes | m $VERSION
 m
 
 # Launch a replicaset using `mlaunch``.
-VERSION=`cat VERSION`
-PORT=`cat PORT`
-MONGODB_BIN=`m bin $VERSION`
-cmd="mlaunch init --replicaset --name repl0 --nodes 3 --binarypath \
-$MONGODB_BIN --priority --port $PORT --hostname localhost --setParameter \
-enableTestCommands=1"
-echo $cmd
-eval $cmd
+bash ./init
 
 # Download sample data and add content to the database.
 wget https://atlas-education-staging.s3.amazonaws.com/sampledata.archive.gz

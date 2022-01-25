@@ -1,13 +1,10 @@
 VERSION=`cat VERSION`
 PORT=`cat PORT`
 MONGODB_BIN=`m bin $VERSION`
-mlaunch init --replicaset --name repl0 --nodes 3 --binarypath \
-$MONGODB_BIN --port $PORT --hostname localhost --setParameter \
-enableTestCommands=1 
-mongo
-VERSION=`cat VERSION`
-PORT=`cat PORT`
-MONGODB_BIN=`m bin $VERSION`
-CMD="$MONGODB_BIN/mongo mongodb://localhost:$PORT/?replicaSet=repl0"
-echo "$CMD"
-$CMD
+
+pkill mongod
+rm -rf data
+
+mlaunch init --binarypath \
+$MONGODB_BIN --replicaset --name repl0 --nodes 3 --port $PORT --hostname localhost --setParameter --priority \
+enableTestCommands=1

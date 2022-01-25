@@ -1,8 +1,0 @@
-VERSION=`cat VERSION`
-PORT=`cat PORT`
-MONGODB_BIN=`m bin $VERSION`
-CMD="$MONGODB_BIN/mongo --ssl --sslCAFile <path/to/ca.pem> \
---sslPEMKeyFile <path/to/client.pem> \
-mongodb://localhost:$PORT/?replicaSet=repl0"
-echo "$CMD"
-$CMD
