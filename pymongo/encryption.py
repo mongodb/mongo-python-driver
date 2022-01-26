@@ -525,8 +525,6 @@ class ClientEncryption(object):
           :data:`~bson.binary.UUID_SUBTYPE`.
         """
         self._check_closed()
-        if key_alt_names is not None:
-            key_alt_names = list(key_alt_names)
         with _wrap_encryption_errors():
             return self._encryption.create_data_key(
                 kms_provider, master_key=master_key,

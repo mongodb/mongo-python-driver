@@ -441,7 +441,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         max_await_time_ms: Optional[int] = None,
         batch_size: Optional[int] = None,
         collation: Optional[_CollationIn] = None,
-        start_at_operation_time: Optional[Mapping[str, Timestamp]] = None,
+        start_at_operation_time: Optional[Timestamp] = None,
         session: Optional["ClientSession"] = None,
         start_after: Optional[Mapping[str, Any]] = None,
     ) -> DatabaseChangeStream[_DocumentType]:

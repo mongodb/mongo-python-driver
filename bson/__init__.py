@@ -883,7 +883,7 @@ def encode(document: _DocumentIn, check_keys: bool = False, codec_options: Codec
     return _dict_to_bson(document, check_keys, codec_options)
 
 
-def decode(data: _ReadableBuffer, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> _DocumentOut:
+def decode(data: _ReadableBuffer, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> Dict[str, Any]:
     """Decode BSON to a document.
 
     By default, returns a BSON document represented as a Python
@@ -915,7 +915,7 @@ def decode(data: _ReadableBuffer, codec_options: CodecOptions = DEFAULT_CODEC_OP
     return _bson_to_dict(data, codec_options)
 
 
-def decode_all(data: _ReadableBuffer, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> List[_DocumentOut]:
+def decode_all(data: _ReadableBuffer, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> List[Dict[str, Any]]:
     """Decode BSON data to multiple documents.
 
     `data` must be a bytes-like object implementing the buffer protocol that
@@ -1161,7 +1161,7 @@ class BSON(bytes):
         """
         return cls(encode(document, check_keys, codec_options))
 
-    def decode(self, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> _DocumentOut:  # type: ignore[override]
+    def decode(self, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> Dict[str, Any]:  # type: ignore[override]
         """Decode this BSON data.
 
         By default, returns a BSON document represented as a Python

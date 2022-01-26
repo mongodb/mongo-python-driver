@@ -161,7 +161,7 @@ class AutoEncryptionOpts(object):
         self._mongocryptd_spawn_path = mongocryptd_spawn_path
         if mongocryptd_spawn_args is None:
             mongocryptd_spawn_args = ['--idleShutdownTimeoutSecs=60']
-        self._mongocryptd_spawn_args = copy.copy(list(mongocryptd_spawn_args))
+        self._mongocryptd_spawn_args = list(mongocryptd_spawn_args)
         if not isinstance(self._mongocryptd_spawn_args, list):
             raise TypeError('mongocryptd_spawn_args must be a list')
         if not any('idleShutdownTimeoutSecs' in s

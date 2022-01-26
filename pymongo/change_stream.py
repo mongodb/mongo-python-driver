@@ -81,7 +81,7 @@ class ChangeStream(Generic[_DocumentType]):
         max_await_time_ms: Optional[int],
         batch_size: Optional[int],
         collation: Optional[_CollationIn],
-        start_at_operation_time: Optional[Mapping[str, Timestamp]],
+        start_at_operation_time: Optional[Timestamp],
         session: Optional["ClientSession"],
         start_after: Optional[Mapping[str, Any]],
     ) -> None:
