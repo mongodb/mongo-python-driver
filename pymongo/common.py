@@ -37,7 +37,7 @@ from pymongo.read_preferences import _MONGOS_MODES, _ServerMode
 from pymongo.server_api import ServerApi
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
-ORDERED_TYPES: Tuple[Type[Any], Type[Any]] = (SON, OrderedDict)
+ORDERED_TYPES: Sequence[Type] = (SON, OrderedDict)
 
 # Defaults until we connect to a server and get updated limits.
 MAX_BSON_SIZE = 16 * (1024 ** 2)
@@ -444,7 +444,7 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> Dict[str, Uni
     return props
 
 
-def validate_document_class(option: str, value: Any) -> Union[MutableMapping, RawBSONDocument]:
+def validate_document_class(option: str, value: Any) -> Union[Type[MutableMapping], Type[RawBSONDocument]]:
     """Validate the document_class option."""
     if not issubclass(value, (abc.MutableMapping, RawBSONDocument)):
         raise TypeError("%s must be dict, bson.son.SON, "
@@ -779,7 +779,7 @@ def get_validated_options(options: Mapping[str, Any], warn: bool = True) -> Muta
 
 
 # List of write-concern-related options.
-WRITE_CONCERN_OPTIONS: frozenset = frozenset([
+WRITE_CONCERN_OPTIONS = frozenset([
     'w',
     'wtimeout',
     'wtimeoutms',

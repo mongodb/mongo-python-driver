@@ -118,7 +118,7 @@ class ZlibContext(object):
     compressor_id = 2
 
     def __init__(self, level):
-        self.compress: Callable[[bytes, int], bytes]
+        self.compress: Callable[[bytes], bytes]
 
         # Jython zlib.compress doesn't support -1
         if level == -1:

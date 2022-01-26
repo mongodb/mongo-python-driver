@@ -676,7 +676,7 @@ class SocketInfo(object):
         session = _validate_session_write_concern(session, write_concern)
 
         # Ensure command name remains in first place.
-        if not isinstance(spec, ORDERED_TYPES):
+        if not isinstance(spec, ORDERED_TYPES):  # type:ignore[arg-type]
             spec = SON(spec)
 
         if not (write_concern is None or write_concern.acknowledged or

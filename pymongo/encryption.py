@@ -20,13 +20,13 @@ import weakref
 from typing import Any, Mapping, Optional, Sequence
 
 try:
-    from pymongocrypt.auto_encrypter import AutoEncrypter  # type: ignore[import]
-    from pymongocrypt.errors import MongoCryptError  # type: ignore[import]
-    from pymongocrypt.explicit_encrypter import (  # type: ignore[import]
+    from pymongocrypt.auto_encrypter import AutoEncrypter
+    from pymongocrypt.errors import MongoCryptError
+    from pymongocrypt.explicit_encrypter import (
         ExplicitEncrypter
     )
-    from pymongocrypt.mongocrypt import MongoCryptOptions  # type: ignore[import]
-    from pymongocrypt.state_machine import MongoCryptCallback  # type: ignore[import]
+    from pymongocrypt.mongocrypt import MongoCryptOptions
+    from pymongocrypt.state_machine import MongoCryptCallback
     _HAVE_PYMONGOCRYPT = True
 except ImportError:
     _HAVE_PYMONGOCRYPT = False

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Type aliases used by PyMongo"""
-from typing import (TYPE_CHECKING, Any, Mapping, MutableMapping, Optional,
+from typing import (TYPE_CHECKING, Any, Dict, Mapping, MutableMapping, Optional,
                     Sequence, Tuple, Type, TypeVar, Union)
 
 if TYPE_CHECKING:
@@ -26,4 +26,4 @@ _Address = Tuple[str, Optional[int]]
 _CollationIn = Union[Mapping[str, Any], "Collation"]
 _DocumentIn = Union[MutableMapping[str, Any], "RawBSONDocument"]
 _Pipeline = Sequence[Mapping[str, Any]]
-_DocumentType = TypeVar('_DocumentType', Mapping[str, Any], MutableMapping[str, Any])
+_DocumentType = TypeVar('_DocumentType', Mapping[str, Any], MutableMapping[str, Any], Dict[str, Any])

@@ -18,7 +18,7 @@ import threading
 import warnings
 from collections import deque
 from typing import (TYPE_CHECKING, Any, Dict, Generic, Iterable, List, Mapping,
-                    MutableMapping, Optional, Sequence, Tuple, Union, cast)
+                    MutableMapping, Optional, Sequence, Tuple, Union, cast, overload)
 
 from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
@@ -630,7 +630,15 @@ class Cursor(Generic[_DocumentType]):
 
         return self
 
+    @overload
+    def __getitem__(self, index: int) -> _DocumentType:
+        ...
+
+    @overload
     def __getitem__(self, index: slice) -> "Cursor[_DocumentType]":
+        ...
+
+    def __getitem__(self, index):
         """Get a single document or a slice of documents from this cursor.
 
         .. warning:: A :class:`~Cursor` is not a Python :class:`list`. Each

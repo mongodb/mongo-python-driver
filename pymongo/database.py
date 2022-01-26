@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Database level operations."""
-from typing import (TYPE_CHECKING, Any, Dict, Generic, List, Mapping, Optional,
+from typing import (TYPE_CHECKING, Any, Dict, Generic, List, Mapping, MutableMapping, Optional,
                     Sequence, Union)
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
@@ -558,7 +558,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 client=self.__client)
 
     def command(self,
-        command: Union[str, Mapping[str, Any]],
+        command: Union[str, MutableMapping[str, Any]],
         value: Any = 1,
         check: bool = True,
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
@@ -566,7 +566,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         codec_options: Optional[CodecOptions] = DEFAULT_CODEC_OPTIONS,
         session: Optional["ClientSession"] = None,
         **kwargs: Any,
-    ) -> _DocumentType:
+    ) -> Dict[str, Any]:
         """Issue a MongoDB command.
 
         Send command `command` to the database and return the
@@ -701,7 +701,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
       session: Optional["ClientSession"] = None,
       filter: Optional[Mapping[str, Any]] = None,
       **kwargs: Any
-    ) -> CommandCursor[_DocumentType]:
+    ) -> CommandCursor[Dict[str, Any]]:
         """Get a cursor over the collections of this database.
 
         :Parameters:
@@ -818,7 +818,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         full: bool = False,
         session: Optional["ClientSession"] = None,
         background: Optional[bool] = None,
-    ) -> Mapping[str, Any]:
+    ) -> Dict[str, Any]:
         """Validate a collection.
 
         Returns a dict of validation info. Raises CollectionInvalid if

@@ -18,7 +18,7 @@ import copy
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence
 
 try:
-    import pymongocrypt  # type: ignore[import]
+    import pymongocrypt
     _HAVE_PYMONGOCRYPT = True
 except ImportError:
     _HAVE_PYMONGOCRYPT = False
