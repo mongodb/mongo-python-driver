@@ -54,11 +54,11 @@ def test_hello_with_option(self, protocol, **kwargs):
     self.addCleanup(client.close)
 
     # We have an autoresponder luckily, so no need for `go()`.
-    assert client.db.command(hello)["ok"], f"%s command failed" % (hello)
+    assert client.db.command(hello)
 
-    # We do this checking in here rather than hangup() because hangup runs
-    # in another Python thread so there are some funky things with error
-    # handling within that thread, and we want to be able to use
+    # We do this checking here rather than in the autoresponder `respond()`
+    # because it runs in another Python thread so there are some funky things
+    # with error handling within that thread, and we want to be able to use 
     # self.assertRaises().
     self.handshake_req.assert_matches(protocol(hello, **kwargs))
     _check_handshake_data(self.handshake_req)
