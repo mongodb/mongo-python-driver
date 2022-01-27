@@ -1688,6 +1688,16 @@ tasks:
             TOPOLOGY: "sharded_cluster"
         - func: "run load-balancer"
         - func: "run tests"
+
+    - name: "test-fips-standalone"
+      tags: ["fips"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "latest"
+            TOPOLOGY: "server"
+            PYTHON_BINARY: "/opt/mongodbtoolchain/v3/bin/python3"
+        - func: "run tests"
 # }}}
     - name: "coverage-report"
       tags: ["coverage"]
@@ -1755,6 +1765,12 @@ axes:
       - id: rhel70
         display_name: "RHEL 7.0"
         run_on: rhel70-small
+        batchtime: 10080  # 7 days
+        variables:
+          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-70-64-bit/master/latest/libmongocrypt.tar.gz
+      - id: rhel70-fips
+        display_name: "RHEL 7.0 FIPS"
+        run_on: rhel70-fips
         batchtime: 10080  # 7 days
         variables:
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-70-64-bit/master/latest/libmongocrypt.tar.gz
@@ -2156,6 +2172,16 @@ buildvariants:
   tasks:
     - ".4.0"
     - ".3.6"
+
+- matrix_name: "tests-fips"
+  matrix_spec:
+    platform:
+      - rhel70-fips
+    auth: "auth"
+    ssl: "ssl"
+  display_name: "${platform} ${auth} ${ssl}"
+  tasks:
+    - "test-fips-standalone"
 
 - matrix_name: "test-macos"
   matrix_spec:
