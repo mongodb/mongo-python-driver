@@ -21,7 +21,7 @@ from pymongo.server_api import ServerApi, ServerApiVersion
 from bson.objectid import ObjectId
 
 import unittest
-
+from copy import deepcopy
 
 
 def test_hello_with_option(self, protocol, **kwargs):
@@ -85,16 +85,16 @@ class TestHandshake(unittest.TestCase):
             self.addCleanup(server.stop)
 
         hosts = [server.address_string for server in (primary, secondary)]
-        primary_response = OpReply('ismaster', True,
-                                   setName='rs', hosts=hosts,
-                                   minWireVersion=2, maxWireVersion=6)
-        error_response = OpReply(
+        primary_response = {'hello': 1,
+                                   "setName":'rs', "hosts":hosts,
+                                   "minWireVersion":2, "maxWireVersion":13}
+        error_response = OpMsgReply(
             0, errmsg='Cache Reader No keys found for HMAC ...', code=211)
 
-        secondary_response = OpReply('ismaster', False,
-                                     setName='rs', hosts=hosts,
-                                     secondary=True,
-                                     minWireVersion=2, maxWireVersion=5)
+        secondary_response = {'hello': 1,
+                                   "setName":'rs', "hosts":hosts,
+                                   "secondary": True,
+                                   "minWireVersion":2, "maxWireVersion":13}
 
         client = MongoClient(primary.uri,
                              replicaSet='rs',
@@ -106,65 +106,67 @@ class TestHandshake(unittest.TestCase):
         # New monitoring sockets send data during handshake.
         heartbeat = primary.receives(Command('ismaster'))
         _check_handshake_data(heartbeat)
-        heartbeat.ok(primary_response)
+        heartbeat.ok(**primary_response)
 
         heartbeat = secondary.receives(Command('ismaster'))
         _check_handshake_data(heartbeat)
-        heartbeat.ok(secondary_response)
+        heartbeat.ok(**secondary_response)
 
         # Subsequent heartbeats have no client data.
         primary.receives(OpMsg('hello', 1, client=absent)).ok(error_response)
-        secondary.receives(OpMsg('ismaster', 1, client=absent)).ok(
+        secondary.receives(OpMsg('hello', 1, client=absent)).ok(
             error_response)
 
         # The heartbeat retry (on a new connection) does have client data.
-        heartbeat = secondary.receives(Command('ismaster'))
-        _check_handshake_data(heartbeat)
-        heartbeat.ok(secondary_response)
-
         heartbeat = primary.receives(Command('ismaster'))
         _check_handshake_data(heartbeat)
-        heartbeat.ok(primary_response)
+        heartbeat.ok(**primary_response)
 
+        heartbeat = secondary.receives(Command('ismaster'))
+        _check_handshake_data(heartbeat)
+        heartbeat.ok(**secondary_response)
 
 
         # Still no client data.
-        primary.receives(OpMsg('hello', 1, client=absent)).ok(primary_response)
-        secondary.receives(Command('ismaster', 1, client=absent)).ok(
-            secondary_response)
+        primary.receives(OpMsg('hello', 1, client=absent)).ok(**primary_response)
+        secondary.receives(OpMsg('hello', 1, client=absent)).ok(
+        **secondary_response)
 
         # After a disconnect, next ismaster has client data again.
         primary.receives('hello', 1, client=absent).hangup()
         heartbeat = primary.receives('ismaster')
         _check_handshake_data(heartbeat)
-        heartbeat.ok(primary_response)
+        heartbeat.ok(**primary_response)
 
-        secondary.autoresponds('hello', secondary_response)
+        secondary.autoresponds('ismaster', **secondary_response)
+        secondary.autoresponds('hello', **secondary_response)
 
         # Start a command, so the client opens an application socket.
-        future = go(client.db.command, 'whatever')
+        future = go(client.db.collection.find_one, {"_id":1})
 
         for request in primary:
-            if request.matches(OpMsg('ismaster')):
+            print(request)
+            if request.matches(OpMsg('hello')):
                 if request.client_port == heartbeat.client_port:
-                    print("found monitor")
                     # This is the monitor again, keep going.
-                    request.ok(primary_response)
+                    print("Monitor message:", type(request), request)
+                    request.ok(**primary_response)
                 else:
-                    # Handshaking a new application socket.
-                    print("handshaking socket")
-                    _check_handshake_data(request)
-                    request.ok(primary_response)
-            elif request.matches(OpMsg('whatever')):
+                    print("Found an op_msg hello")
+                    with self.assertRaises(AssertionError):
+                        _check_handshake_data(request)
+                    request.ok()
+            elif request.matches(Command('ismaster')):
+                print(request)
+                # Handshaking a new application socket.
+                _check_handshake_data(request)
+                request.ok(**primary_response)
+            else:
                 # Command succeeds.
+                request.assert_matches(OpMsg('whatever'))
                 request.ok()
                 assert future()
-            else:
-                request.ok(primary_response)
-        is_success = lambda f: (f.done() and not f.cancelled() and
-                                not f.exception)
-        print(is_success(future))
-        assert is_success(future)
+                return
 
     def test_client_handshake_saslSupportedMechs(self):
         server = MockupDB()
@@ -236,6 +238,7 @@ class TestHandshake(unittest.TestCase):
         def responder(request):
             if request.matches(OpMsg, saslStart=1):
                 self.found_auth_msg = True
+                # Immediately closes the connection with
                 request.reply(OpMsgReply(**primary_response,
                                          **{'payload':
                                                     b'r=wPleNM8S5p8gMaffMDF7Py4ru9bnmmoqb0'
