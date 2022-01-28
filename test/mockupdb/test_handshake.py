@@ -87,6 +87,7 @@ class TestHandshake(unittest.TestCase):
         hosts = [server.address_string for server in (primary, secondary)]
         primary_response = {'hello': 1,
                                    "setName":'rs', "hosts":hosts,
+                                   "secondary": True,
                                    "minWireVersion":2, "maxWireVersion":13}
         error_response = OpMsgReply(
             0, errmsg='Cache Reader No keys found for HMAC ...', code=211)
@@ -136,37 +137,40 @@ class TestHandshake(unittest.TestCase):
         primary.receives('hello', 1, client=absent).hangup()
         heartbeat = primary.receives('ismaster')
         _check_handshake_data(heartbeat)
+        heartbeat_client_port = deepcopy(heartbeat.client_port)
         heartbeat.ok(**primary_response)
 
         secondary.autoresponds('ismaster', **secondary_response)
         secondary.autoresponds('hello', **secondary_response)
 
         # Start a command, so the client opens an application socket.
-        future = go(client.db.collection.find_one, {"_id":1})
+        future = go(client.db.command, "whatever")
 
         for request in primary:
-            print(request)
+            print("Message from port", request.client_port, ":", type(request),
+                  request)
             if request.matches(OpMsg('hello')):
                 if request.client_port == heartbeat.client_port:
                     # This is the monitor again, keep going.
-                    print("Monitor message:", type(request), request)
                     request.ok(**primary_response)
                 else:
                     print("Found an op_msg hello")
                     with self.assertRaises(AssertionError):
                         _check_handshake_data(request)
-                    request.ok()
+                    request.ok(**primary_response)
             elif request.matches(Command('ismaster')):
                 print(request)
                 # Handshaking a new application socket.
                 _check_handshake_data(request)
                 request.ok(**primary_response)
-            else:
+            elif request.matches(OpMsg("whatever")):
                 # Command succeeds.
                 request.assert_matches(OpMsg('whatever'))
-                request.ok()
+                request.ok(**primary_response)
                 assert future()
                 return
+            else:
+                request.ok(**primary_response)
 
     def test_client_handshake_saslSupportedMechs(self):
         server = MockupDB()
