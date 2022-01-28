@@ -16,11 +16,12 @@ from mockupdb import (MockupDB, OpReply, OpMsg, OpMsgReply, OpQuery, absent,
                       Command, go)
 
 from pymongo import MongoClient, version as pymongo_version
-from pymongo.errors import OperationFailure
+from pymongo.errors import OperationFailure, AutoReconnect
 from pymongo.server_api import ServerApi, ServerApiVersion
 from bson.objectid import ObjectId
 
 import unittest
+
 
 
 def test_hello_with_option(self, protocol, **kwargs):
@@ -216,6 +217,52 @@ class TestHandshake(unittest.TestCase):
         test_hello_with_option(self, Command)
         with self.assertRaisesRegex(AssertionError, "does not match"):
             test_hello_with_option(self, OpMsg)
+
+    def test_handshake_max_wire(self):
+        server = MockupDB()
+        server.run()
+        self.addCleanup(server.stop)
+        client  = MongoClient(server.uri,
+                              username='username',
+                              password='password',
+                              appname='my app',
+                              heartBeatFrequencyMS=500,
+                              )
+        primary_response = OpMsgReply(hello=1,
+                                      minWireVersion=0, maxWireVersion=6)
+
+        # New monitoring sockets send data during handshake.
+        heartbeat = server.receives(Command('ismaster'))
+        heartbeat.ok(primary_response)
+
+        future = go(client.db.command, 'whatever')
+        for request in server:
+            if request.matches('hello'):
+                if request.client_port == heartbeat.client_port:
+                    # This is the monitor again, keep going.
+                    print("got the monitor")
+                    request.ok(primary_response)
+            elif request.matches(OpMsg({})):
+                # Handshaking a new application socket should send
+                # saslSupportedMechs and speculativeAuthenticate.
+                self.assertEqual(request['saslSupportedMechs'],
+                                 'admin.username')
+                self.assertIn(
+                    'saslStart', request['speculativeAuthenticate'])
+                auth = {'conversationId': 1, 'done': False,
+                        'payload': b'r=wPleNM8S5p8gMaffMDF7Py4ru9bnmmoqb0'
+                                   b'1WNPsil6o=pAvr6B1garhlwc6MKNQ93ZfFky'
+                                   b'tXdF9r,s=4dcxugMJq2P4hQaDbGXZR8uR3ei'
+                                   b'PHrSmh4uhkg==,i=15000'}
+                request.ok('ismaster', True,
+                           saslSupportedMechs=['SCRAM-SHA-256'],
+                           speculativeAuthenticate=auth,
+                           minWireVersion=2, maxWireVersion=6)
+                # Authentication should immediately fail with:
+                # OperationFailure: Server returned an invalid nonce.
+                with self.assertRaises(OperationFailure):
+                    future()
+                return
 
 if __name__ == '__main__':
     unittest.main()
