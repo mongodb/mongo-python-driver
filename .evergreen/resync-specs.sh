@@ -1,23 +1,22 @@
 #!/bin/bash
 # exit when any command fails
 set -ex
-PYMONGO=/dev/null
-SPECS=/dev/null
-# Usage: resync_specs.sh [-b|c] spec
-# Required arguments:
-#  spec     determines which folder the spec tests will be copied from.
-# Optional flags:
-# -b  is used to add a string to the blocklist for that next run. Can be used
-#     any number of times on a single command to block multiple patterns. It
-#     ONLY filters based on the name of the FILE. See notes on blacklist
-#     feature below.
-#
-# -c  is used to set a branch or commit that will be checked out in the
-#     specifications repo before copying.
-#
-# -s  is used to set a unique path to the specs repo for that specific run
-#
-# -p  does the same thing but for the pymongo repo
+PYMONGO=~/Work/mongo-python-driver
+SPECS=~/Work/specifications
+help (){
+echo "Usage: resync_specs.sh [-bcsp] spec"
+echo "Required arguments:"
+echo " spec     determines which folder the spec tests will be copied from."
+echo "Optional flags:"
+echo " -b  is used to add a string to the blocklist for that next run. Can be used"
+echo "     any number of times on a single command to block multiple patterns. It"
+echo "     ONLY filters based on the name of the FILE. See notes on blocklist"
+echo "     feature in the source code."
+echo " -c  is used to set a branch or commit that will be checked out in the"
+echo "     specifications repo before copying."
+echo " -s  is used to set a unique path to the specs repo for that specific run"
+echo " -p  does the same thing but for the pymongo repo"
+}
 #
 # Notes on blocklist feature:
 # It is a string of space separated flags and values. To successfully filter
@@ -30,38 +29,39 @@ SPECS=/dev/null
 #   -b "*create-min-size-error.json"
 #   -b "*min-size-error.json"
 #   -b "*size-error.json"
-# You get the idea.
+# However, as you go down the list, it would also exclude a bunch of other
+# files.
 # These would NOT exclude that file:
 #   -b "*tests/pool-create-min-size-error.json"
 #   -b "*connection-monitoring-and-pooling/tests/pool-create-min-size-error"
 # Etc.
 
 # Parse flag args
-#BLACKLIST="-not -name *wait-queue-fairness.json" # PYTHON-2511
-BLACKLIST=""
+BRANCH="master"
+BLOCKLIST=""
 while getopts 'b:c:s:p:' flag; do
   echo "${flag} ${OPTARG}"
   case "${flag}" in
-    b) BLACKLIST+=" -not -iname $OPTARG"
+    b) BLOCKLIST+=" -not -iname $OPTARG"
       ;;
-    c) git -C $SPECS checkout "${OPTARG}"
+    c) BRANCH="${OPTARG}"
       ;;
     s) SPECS="${OPTARG}"
       ;;
     p) PYMONGO="${OPTARG}"
       ;;
-    *) echo "{$USAGE}"; exit 0
+    *) help; exit 0
       ;;
   esac
 done
 shift $((OPTIND-1))
-echo $BLACKLIST
-
 # Ensure the JSON files are up to date.
 cd $SPECS/source
 make
+cd -
+git -C $SPECS checkout $BRANCH
 
-# Usage:
+
 # cpjson unified-test-format/tests/invalid unified-test-format/invalid
 # * param1: Path to spec tests dir in specifications repo
 # * param2: Path to where the corresponding tests live in Python.
@@ -69,16 +69,18 @@ cpjson () {
     rm -f $PYMONGO/test/$2/*.json
     cp $SPECS/source/$1/*.json $PYMONGO/test/$2
 }
-
+DIFF_FILE=$(mktemp tmp.XXXX)
 cpjson2 () {
     find $PYMONGO/test/$2 -name '*.json' -type f -delete
-    find $SPECS/source/$1 \
-                  -name '*.json'\
-                  $BLACKLIST \
-                  | cpio -pdmv $PYMONGO/test/$2
+    find $SPECS/source/$1 -name '*.json' $BLOCKLIST | cpio -pdm $PYMONGO/test/$2
+    set +e
+    find $SPECS/source/$1/*.json -exec basename {} \; -exec diff $SPECS/source/$1/{}\
+    $PYMONGO/test/$2/{} >> "$DIFF_FILE" \; -exec printf {} \;
+    set -e
+    #diff -r -x "*.yml" --exclude-from=../.gitignore $SPECS/source/$1\
+    #$PYMONGO/test/$2 >>
 }
 
-echo "$@"
 for spec in "$@"
 do
   case "$spec" in
@@ -89,7 +91,7 @@ do
       cpjson2 max-staleness/tests/ max_staleness/
       ;;
     connection*string)
-      cpjson2 connection-string/tests/ connection_string/test  	
+      cpjson2 connection-string/tests/ connection_string/test
       ;;
     change*streams)
       cpjson2 change-streams/tests/ change_streams/
@@ -104,30 +106,36 @@ do
       cpjson2 crud/tests/ crud/
       ;;
     load*balancer)
-      cpjson load-balancers/tests load_balancer/
+      cpjson2 load-balancers/tests load_balancer/
       ;;
     initial-dns-seedlist-discovery|srv_seedlist)
       cpjson2 initial-dns-seedlist-discovery/tests/ srv_seedlist/
       ;;
     old_srv_seedlist)
-      cpjson initial-dns-seedlist-discovery/tests srv_seedlist
+      cpjson2 initial-dns-seedlist-discovery/tests srv_seedlist
       ;;
     retryable*reads)
-      cpjson retryable-reads/tests/ retryable_reads
+      cpjson2 retryable-reads/tests/ retryable_reads
       ;;
     retryable*writes)
       cpjson2 retryable-writes/tests/ retryable_writes
       ;;
     sdam|SDAM)
-      cpjson server-discovery-and-monitoring/tests/errors discovery_and_monitoring/errors
-      cpjson server-discovery-and-monitoring/tests/rs discovery_and_monitoring/rs
-      cpjson server-discovery-and-monitoring/tests/sharded discovery_and_monitoring/sharded
-      cpjson server-discovery-and-monitoring/tests/single discovery_and_monitoring/single
-      cpjson server-discovery-and-monitoring/tests/integration discovery_and_monitoring_integration
-      cpjson server-discovery-and-monitoring/tests/load-balanced discovery_and_monitoring/load-balanced
+      cpjson2 server-discovery-and-monitoring/tests/errors \
+      discovery_and_monitoring/errors
+      cpjson2 server-discovery-and-monitoring/tests/rs \
+      discovery_and_monitoring/rs
+      cpjson2 server-discovery-and-monitoring/tests/sharded \
+      discovery_and_monitoring/sharded
+      cpjson2 server-discovery-and-monitoring/tests/single \
+      discovery_and_monitoring/single
+      cpjson2 server-discovery-and-monitoring/tests/integration \
+      discovery_and_monitoring_integration
+      cpjson2 server-discovery-and-monitoring/tests/load-balanced \
+      discovery_and_monitoring/load-balanced
       ;;
     sdam*monitoring)
-      cpjson server-discovery-and-monitoring/tests/monitoring sdam_monitoring
+      cpjson2 server-discovery-and-monitoring/tests/monitoring sdam_monitoring
       ;;
     server*selection)
       cpjson2 server-selection/tests/ server_selection/
@@ -137,22 +145,23 @@ do
       ;;
     transactions|transactions-convenient-api)
       cpjson2 transactions/tests/ transactions/
-      cpjson transactions-convenient-api/tests/ transactions-convenient-api
-      rm $PYMONGO/test/transactions/legacy/errors-client.json  # PYTHON-1894
+      cpjson2 transactions-convenient-api/tests/ transactions-convenient-api
       ;;
     unified)
       cpjson2 unified-test-format/tests/ unified-test-format/
-      #rm $PYMONGO/test/unified-test-format/*/*storeEventsAsEntities*.json
       ;;
     uri|uri*options)
-      cpjson uri-options/tests uri_options
+      cpjson2 uri-options/tests uri_options
       ;;
     versioned-api)
-      cpjson versioned-api/tests versioned-api
+      cpjson2 versioned-api/tests versioned-api
       ;;
     *)
       echo "Do not know how to resync spec tests for '${spec}'"
-      exit 1
+      help
       ;;
   esac
 done
+echo "These are the files you are ignoring in your resync"
+cat $DIFF_FILE
+rm -f "tmp.*"
