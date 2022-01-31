@@ -1,6 +1,6 @@
 #!/bin/bash
 # exit when any command fails
-set -ex
+set -e
 PYMONGO=~/Work/mongo-python-driver
 SPECS=~/Work/specifications
 help (){
@@ -9,40 +9,28 @@ echo "Required arguments:"
 echo " spec     determines which folder the spec tests will be copied from."
 echo "Optional flags:"
 echo " -b  is used to add a string to the blocklist for that next run. Can be used"
-echo "     any number of times on a single command to block multiple patterns. It"
-echo "     ONLY filters based on the name of the FILE. See notes on blocklist"
-echo "     feature in the source code."
+echo "     any number of times on a single command to block multiple patterns."
+echo "     See notes on blocklist feature in the source code."
 echo " -c  is used to set a branch or commit that will be checked out in the"
 echo "     specifications repo before copying."
-echo " -s  is used to set a unique path to the specs repo for that specific run"
-echo " -p  does the same thing but for the pymongo repo"
+echo " -s  is used to set a unique path to the specs repo for that specific"
+echo "     run."
+echo " -p  does the same thing but for the pymongo repo."
 }
-#
+
 # Notes on blocklist feature:
 # It is a string of space separated flags and values. To successfully filter
 # commands using this you must specify asterisks before and after a string
-# if you want to match it in the middle of the string. It also only searches
-# the filename. To illustrate this, if given this path:
-# specifications/source/connection-monitoring-and-pooling/tests/pool-create-min-size-error.json
-# The following would exclude it:
-#   -b "pool-create-min-size-error.json"
-#   -b "*create-min-size-error.json"
-#   -b "*min-size-error.json"
-#   -b "*size-error.json"
-# However, as you go down the list, it would also exclude a bunch of other
-# files.
-# These would NOT exclude that file:
-#   -b "*tests/pool-create-min-size-error.json"
-#   -b "*connection-monitoring-and-pooling/tests/pool-create-min-size-error"
-# Etc.
+# if you want to match it in the middle of the string. It searches both the
+# filename and the names in the path of the file.
 
 # Parse flag args
 BRANCH="master"
-BLOCKLIST=""
+BLOCKLIST=''
 while getopts 'b:c:s:p:' flag; do
   echo "${flag} ${OPTARG}"
   case "${flag}" in
-    b) BLOCKLIST+=" -not -iname $OPTARG"
+    b) BLOCKLIST+=" -not -name $OPTARG"
       ;;
     c) BRANCH="${OPTARG}"
       ;;
@@ -55,30 +43,34 @@ while getopts 'b:c:s:p:' flag; do
   esac
 done
 shift $((OPTIND-1))
+
+if [ -z $BRANCH ]
+then
+git -C $SPECS checkout $BRANCH
+fi
+
+# https://serverfault.com/questions/72744/command-to-prepend-string-to-each-line
+function prepend() { while read line; do echo "${1}${line}"; done; }
+
 # Ensure the JSON files are up to date.
 cd $SPECS/source
 make
 cd -
-git -C $SPECS checkout $BRANCH
-
-
-# cpjson unified-test-format/tests/invalid unified-test-format/invalid
+# cpjson2 unified-test-format/tests/invalid unified-test-format/invalid
 # * param1: Path to spec tests dir in specifications repo
 # * param2: Path to where the corresponding tests live in Python.
-cpjson () {
-    rm -f $PYMONGO/test/$2/*.json
-    cp $SPECS/source/$1/*.json $PYMONGO/test/$2
-}
-DIFF_FILE=$(mktemp tmp.XXXX)
+TOTAL_DIFF=""
 cpjson2 () {
-    find $PYMONGO/test/$2 -name '*.json' -type f -delete
-    find $SPECS/source/$1 -name '*.json' $BLOCKLIST | cpio -pdm $PYMONGO/test/$2
+    find "$PYMONGO"/test/$2 -type f -delete
+    cd "$SPECS"/source/$1
+    find . -name '*.json' ${BLOCKLIST:+$BLOCKLIST} | cpio -pdm \
+    "$PYMONGO"/test/$2
     set +e
-    find $SPECS/source/$1/*.json -exec basename {} \; -exec diff $SPECS/source/$1/{}\
-    $PYMONGO/test/$2/{} >> "$DIFF_FILE" \; -exec printf {} \;
+    printf "\nIgnored files for ${PWD}"
+    printf "\n%s\n" "$(diff <(find . -name "*.json" | sort) \
+    <(find . -name '*.json' ${BLOCKLIST:+$BLOCKLIST} | sort))" | \
+    sed -e 's|^[0-9]||g'
     set -e
-    #diff -r -x "*.yml" --exclude-from=../.gitignore $SPECS/source/$1\
-    #$PYMONGO/test/$2 >>
 }
 
 for spec in "$@"
@@ -162,6 +154,3 @@ do
       ;;
   esac
 done
-echo "These are the files you are ignoring in your resync"
-cat $DIFF_FILE
-rm -f "tmp.*"
