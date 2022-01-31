@@ -3,6 +3,7 @@
 set -e
 PYMONGO=~/Work/mongo-python-driver
 SPECS=~/Work/specifications
+
 help (){
 echo "Usage: resync_specs.sh [-bcsp] spec"
 echo "Required arguments:"
@@ -10,7 +11,7 @@ echo " spec     determines which folder the spec tests will be copied from."
 echo "Optional flags:"
 echo " -b  is used to add a string to the blocklist for that next run. Can be used"
 echo "     any number of times on a single command to block multiple patterns."
-echo "     Utilizes ."
+echo "     You can use wildcards."
 echo " -c  is used to set a branch or commit that will be checked out in the"
 echo "     specifications repo before copying."
 echo " -s  is used to set a unique path to the specs repo for that specific"
@@ -19,12 +20,11 @@ echo " -p  does the same thing but for the pymongo repo."
 }
 
 # Parse flag args
-BRANCH="master"
-BLOCKLIST=''
+BRANCH=""
+BLOCKLIST='.*\.yml'
 while getopts 'b:c:s:p:' flag; do
-  echo "${flag} ${OPTARG}"
   case "${flag}" in
-    b) BLOCKLIST+=" -not -name $OPTARG"
+    b) BLOCKLIST+="|"$OPTARG""
       ;;
     c) BRANCH="${OPTARG}"
       ;;
@@ -50,16 +50,15 @@ cd -
 # cpjson2 unified-test-format/tests/invalid unified-test-format/invalid
 # * param1: Path to spec tests dir in specifications repo
 # * param2: Path to where the corresponding tests live in Python.
-TOTAL_DIFF=""
 cpjson2 () {
     find "$PYMONGO"/test/$2 -type f -delete
     cd "$SPECS"/source/$1
-    find . -name '*.json' ${BLOCKLIST:+$BLOCKLIST} | cpio -pdm \
-    "$PYMONGO"/test/$2
+    find . -name '*.json' | grep -Ev "${BLOCKLIST}" | cpio -pdm \
+    $PYMONGO/test/$2
     printf "\nIgnored files for ${PWD}"
-    printf "\n%s\n" "$(diff <(find . -name "*.json" | sort) \
-    <(find . -name '*.json' ${BLOCKLIST:+$BLOCKLIST} | sort))" | \
-    sed -e 's|^[0-9]||g' | sed -e 's|< ./||g'
+    printf "\n%s\n" "$(diff <(find . -name '*.json' | sort) \
+    <(find . -name '*.json' | grep -Ev "${BLOCKLIST}" | sort))" | \
+    sed -e '/^[0-9]/d' | sed -e 's|< ./||g'
 }
 
 for spec in "$@"
