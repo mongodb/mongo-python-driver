@@ -15,6 +15,9 @@
 """Test the bulk API."""
 
 import sys
+import uuid
+from bson.binary import UuidRepresentation
+from bson.codec_options import CodecOptions
 
 sys.path[0:0] = [""]
 
@@ -374,6 +377,27 @@ class TestBulk(BulkTestBase):
              'upserted': [{'index': 0, '_id': 0},
                           {'index': 1, '_id': 1},
                           {'index': 2, '_id': 2}]},
+            result.bulk_api_result)
+
+    def test_upsert_uuid_standard(self):
+        options = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
+        coll = self.coll.with_options(codec_options=options)
+        uuids = [uuid.uuid4() for i in range(3)]
+        result = coll.bulk_write([
+            UpdateOne({'_id': uuids[0]}, {'$set': {'a': 0}}, upsert=True),
+            ReplaceOne({'a': 1}, {'_id': uuids[1]}, upsert=True),
+            # This is just here to make the counts right in all cases.
+            ReplaceOne({'_id': uuids[2]}, {'_id': uuids[2]}, upsert=True),
+        ])
+        self.assertEqualResponse(
+            {'nMatched': 0,
+             'nModified': 0,
+             'nUpserted': 3,
+             'nInserted': 0,
+             'nRemoved': 0,
+             'upserted': [{'index': 0, '_id': uuids[0]},
+                          {'index': 1, '_id': uuids[1]},
+                          {'index': 2, '_id': uuids[2]}]},
             result.bulk_api_result)
 
     def test_single_ordered_batch(self):
