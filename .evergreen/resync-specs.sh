@@ -19,13 +19,13 @@ help (){
   echo "Notes:"
   echo "You can export the environment variable MDB_SPECS to set the specs"
   echo " repo similar to -s, but this will persist between runs until you "
-  echo "unset it"
+  echo "unset it."
 }
 
 # Parse flag args
 BRANCH=""
 BLOCKLIST='.*\.yml'
-while getopts 'b:c:s:p:' flag; do
+while getopts 'b:c:s:' flag; do
   case "${flag}" in
     b) BLOCKLIST+="|"$OPTARG""
       ;;
