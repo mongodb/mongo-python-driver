@@ -16,6 +16,10 @@ help (){
   echo "     specifications repo before copying."
   echo " -s  is used to set a unique path to the specs repo for that specific"
   echo "     run."
+  echo "Notes:"
+  echo "You can export the environment variable MDB_SPECS to set the specs"
+  echo " repo similar to -s, but this will persist between runs until you "
+  echo "unset it"
 }
 
 # Parse flag args
