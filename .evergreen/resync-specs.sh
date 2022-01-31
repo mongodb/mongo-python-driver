@@ -10,19 +10,13 @@ echo " spec     determines which folder the spec tests will be copied from."
 echo "Optional flags:"
 echo " -b  is used to add a string to the blocklist for that next run. Can be used"
 echo "     any number of times on a single command to block multiple patterns."
-echo "     See notes on blocklist feature in the source code."
+echo "     Utilizes ."
 echo " -c  is used to set a branch or commit that will be checked out in the"
 echo "     specifications repo before copying."
 echo " -s  is used to set a unique path to the specs repo for that specific"
 echo "     run."
 echo " -p  does the same thing but for the pymongo repo."
 }
-
-# Notes on blocklist feature:
-# It is a string of space separated flags and values. To successfully filter
-# commands using this you must specify asterisks before and after a string
-# if you want to match it in the middle of the string. It searches both the
-# filename and the names in the path of the file.
 
 # Parse flag args
 BRANCH="master"
@@ -49,9 +43,6 @@ then
 git -C $SPECS checkout $BRANCH
 fi
 
-# https://serverfault.com/questions/72744/command-to-prepend-string-to-each-line
-function prepend() { while read line; do echo "${1}${line}"; done; }
-
 # Ensure the JSON files are up to date.
 cd $SPECS/source
 make
@@ -65,12 +56,10 @@ cpjson2 () {
     cd "$SPECS"/source/$1
     find . -name '*.json' ${BLOCKLIST:+$BLOCKLIST} | cpio -pdm \
     "$PYMONGO"/test/$2
-    set +e
     printf "\nIgnored files for ${PWD}"
     printf "\n%s\n" "$(diff <(find . -name "*.json" | sort) \
     <(find . -name '*.json' ${BLOCKLIST:+$BLOCKLIST} | sort))" | \
-    sed -e 's|^[0-9]||g'
-    set -e
+    sed -e 's|^[0-9]||g' | sed -e 's|< ./||g'
 }
 
 for spec in "$@"
