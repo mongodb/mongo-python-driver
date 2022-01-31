@@ -48,3 +48,16 @@ just make your changes to the inline documentation of the appropriate
 branch and submit a `pull request <https://help.github.com/articles/using-pull-requests>`_.
 You might also use the GitHub `Edit <https://github.com/blog/844-forking-with-the-edit-button>`_
 button.
+
+Re-sync Spec Tests
+-----------------
+
+If you would like to re-sync the copy of the specification tests in the
+PyMongo repository with that which is inside the specifications repo, please
+use the script provided in ``.evergreen/resync-specs.sh``. It allows a
+variety of flag arguments (which you can find by typing ``./resync-specs.sh--help``
+) and also the spec arguments, which must come last and which determine what
+folders will be copied from and to. It supports
+filtering using regex patterns, and it will show you which files it ignored
+when using this feature so you can ensure you are not leaving any important
+tests behind.
