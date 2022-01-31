@@ -88,6 +88,7 @@ class TestHandshake(unittest.TestCase):
 
         hosts = [server.address_string for server in (primary, secondary)]
         primary_response = {'hello': 1,
+                            'ok': 1,
                             "setName": 'rs', "hosts": hosts,
                             "secondary": True,
                             "minWireVersion": 2, "maxWireVersion": 13}
@@ -95,6 +96,7 @@ class TestHandshake(unittest.TestCase):
             0, errmsg='Cache Reader No keys found for HMAC ...', code=211)
 
         secondary_response = {'hello': 1,
+                              'ok': 1,
                               "setName": 'rs', "hosts": hosts,
                               "secondary": True,
                               "minWireVersion": 2, "maxWireVersion": 13}
@@ -109,11 +111,11 @@ class TestHandshake(unittest.TestCase):
         # New monitoring sockets send data during handshake.
         heartbeat = primary.receives(Command('ismaster'))
         _check_handshake_data(heartbeat)
-        heartbeat.ok(**primary_response)
+        heartbeat.ok(OpMsgReply(**primary_response))
 
         heartbeat = secondary.receives(Command('ismaster'))
         _check_handshake_data(heartbeat)
-        heartbeat.ok(**secondary_response)
+        heartbeat.ok(OpMsgReply(**secondary_response))
 
         # Subsequent heartbeats have no client data.
         primary.receives(OpMsg('hello', 1, client=absent)).ok(error_response)
@@ -123,56 +125,59 @@ class TestHandshake(unittest.TestCase):
         # The heartbeat retry (on a new connection) does have client data.
         heartbeat = primary.receives(Command('ismaster'))
         _check_handshake_data(heartbeat)
-        heartbeat.ok(**primary_response)
+        heartbeat.reply(OpMsgReply(**primary_response))
 
         heartbeat = secondary.receives(Command('ismaster'))
         _check_handshake_data(heartbeat)
-        heartbeat.ok(**secondary_response)
+        heartbeat.reply(OpMsgReply(**secondary_response))
 
         # Still no client data.
-        primary.receives(OpMsg('hello', 1, client=absent)).ok(
-            **primary_response)
-        secondary.receives(OpMsg('hello', 1, client=absent)).ok(
-            **secondary_response)
+        primary.receives(OpMsg('hello', 1, client=absent)).reply(
+            OpMsgReply(**primary_response))
+        secondary.receives(OpMsg('hello', 1, client=absent)).reply(
+            OpMsgReply(**secondary_response))
 
         # After a disconnect, next ismaster has client data again.
         primary.receives('hello', 1, client=absent).hangup()
         heartbeat = primary.receives('ismaster')
         _check_handshake_data(heartbeat)
-        heartbeat.ok(**primary_response)
-
-        secondary.autoresponds('ismaster', **secondary_response)
-        secondary.autoresponds('hello', **secondary_response)
-
+        hb_port = deepcopy(heartbeat.client_port)
+        heartbeat.reply(OpMsgReply(**primary_response))
+        primary.receives(OpMsg('hello')).hangup()
+        secondary.receives(OpMsg('hello')).hangup()
+        secondary.autoresponds('ismaster', OpMsgReply(**secondary_response))
+        secondary.autoresponds('hello', OpMsgReply(**secondary_response))
+        secondary.autoresponds('whatever', OpMsgReply(**secondary_response))
         # Start a command, so the client opens an application socket.
         future = go(client.db.command, "whatever")
-
+        message_counter = 0
         for request in primary:
-            print("Message from port", request.client_port, ":", type(request),
-                  request)
             if request.matches(OpMsg('hello')):
-                if request.client_port == heartbeat.client_port:
+                if request.client_port == hb_port:
                     # This is the monitor again, keep going.
-                    request.ok(OpMsgReply(**primary_response))
+                    request.reply(OpMsgReply(**primary_response))
                 else:
-                    print("Found an op_msg hello")
+                    # Subsequent hellos do not have client data
+                    message_counter += 1
                     with self.assertRaises(AssertionError):
                         _check_handshake_data(request)
-                    request.ok(OpMsgReply(**primary_response))
+                    request.reply(OpMsgReply(isWritablePrimary=True,
+                                             **primary_response))
             elif request.matches(Command('ismaster')):
-                print(request)
-                print("found a new application socket")
+                message_counter += 1
                 # Handshaking a new application socket.
                 _check_handshake_data(request)
-                request.ok(OpMsgReply(**primary_response))
+                request.reply(OpMsgReply(**primary_response))
             elif request.matches(OpMsg("whatever")):
+                message_counter +=1
                 # Command succeeds.
                 request.assert_matches(OpMsg('whatever'))
-                request.ok(OpMsgReply(**primary_response))
+                request.reply(OpMsgReply(**primary_response))
                 assert future()
                 return
             else:
-                request.ok(OpMsgReply(**primary_response))
+                request.reply(OpMsgReply(**primary_response))
+        assert message_counter == 3
 
     def test_client_handshake_saslSupportedMechs(self):
         server = MockupDB()
