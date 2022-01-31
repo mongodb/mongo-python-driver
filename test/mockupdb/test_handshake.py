@@ -31,6 +31,7 @@ def test_hello_with_option(self, protocol, **kwargs):
     primary = MockupDB()
     # Set up a custom handler to save the first request from the driver.
     self.handshake_req = None
+
     def respond(r):
         # Only save the very first request from the driver.
         if self.handshake_req == None:
@@ -39,19 +40,20 @@ def test_hello_with_option(self, protocol, **kwargs):
             "loadBalanced") else {}
         return r.reply(OpMsgReply(minWireVersion=0, maxWireVersion=13,
                                   **kwargs, **load_balanced_kwargs))
+
     primary.autoresponds(respond)
     primary.run()
     self.addCleanup(primary.stop)
 
     # We need a special dict because MongoClient uses "server_api" and all
     # of the commands use "apiVersion".
-    k_map = {("apiVersion", "1"):("server_api", ServerApi(
-                                        ServerApiVersion.V1))}
-    client = MongoClient("mongodb://"+primary.address_string,
-                         appname='my app', # For _check_handshake_data()
+    k_map = {("apiVersion", "1"): ("server_api", ServerApi(
+        ServerApiVersion.V1))}
+    client = MongoClient("mongodb://" + primary.address_string,
+                         appname='my app',  # For _check_handshake_data()
                          **dict([k_map.get((k, v), (k, v)) for k, v
                                  in kwargs.items()]))
-    
+
     self.addCleanup(client.close)
 
     # We have an autoresponder luckily, so no need for `go()`.
@@ -86,16 +88,16 @@ class TestHandshake(unittest.TestCase):
 
         hosts = [server.address_string for server in (primary, secondary)]
         primary_response = {'hello': 1,
-                                   "setName":'rs', "hosts":hosts,
-                                   "secondary": True,
-                                   "minWireVersion":2, "maxWireVersion":13}
+                            "setName": 'rs', "hosts": hosts,
+                            "secondary": True,
+                            "minWireVersion": 2, "maxWireVersion": 13}
         error_response = OpMsgReply(
             0, errmsg='Cache Reader No keys found for HMAC ...', code=211)
 
         secondary_response = {'hello': 1,
-                                   "setName":'rs', "hosts":hosts,
-                                   "secondary": True,
-                                   "minWireVersion":2, "maxWireVersion":13}
+                              "setName": 'rs', "hosts": hosts,
+                              "secondary": True,
+                              "minWireVersion": 2, "maxWireVersion": 13}
 
         client = MongoClient(primary.uri,
                              replicaSet='rs',
@@ -127,17 +129,16 @@ class TestHandshake(unittest.TestCase):
         _check_handshake_data(heartbeat)
         heartbeat.ok(**secondary_response)
 
-
         # Still no client data.
-        primary.receives(OpMsg('hello', 1, client=absent)).ok(**primary_response)
+        primary.receives(OpMsg('hello', 1, client=absent)).ok(
+            **primary_response)
         secondary.receives(OpMsg('hello', 1, client=absent)).ok(
-        **secondary_response)
+            **secondary_response)
 
         # After a disconnect, next ismaster has client data again.
         primary.receives('hello', 1, client=absent).hangup()
         heartbeat = primary.receives('ismaster')
         _check_handshake_data(heartbeat)
-        heartbeat_client_port = deepcopy(heartbeat.client_port)
         heartbeat.ok(**primary_response)
 
         secondary.autoresponds('ismaster', **secondary_response)
@@ -152,25 +153,26 @@ class TestHandshake(unittest.TestCase):
             if request.matches(OpMsg('hello')):
                 if request.client_port == heartbeat.client_port:
                     # This is the monitor again, keep going.
-                    request.ok(**primary_response)
+                    request.ok(OpMsgReply(**primary_response))
                 else:
                     print("Found an op_msg hello")
                     with self.assertRaises(AssertionError):
                         _check_handshake_data(request)
-                    request.ok(**primary_response)
+                    request.ok(OpMsgReply(**primary_response))
             elif request.matches(Command('ismaster')):
                 print(request)
+                print("found a new application socket")
                 # Handshaking a new application socket.
                 _check_handshake_data(request)
-                request.ok(**primary_response)
+                request.ok(OpMsgReply(**primary_response))
             elif request.matches(OpMsg("whatever")):
                 # Command succeeds.
                 request.assert_matches(OpMsg('whatever'))
-                request.ok(**primary_response)
+                request.ok(OpMsgReply(**primary_response))
                 assert future()
                 return
             else:
-                request.ok(**primary_response)
+                request.ok(OpMsgReply(**primary_response))
 
     def test_client_handshake_saslSupportedMechs(self):
         server = MockupDB()
@@ -236,36 +238,40 @@ class TestHandshake(unittest.TestCase):
 
     def test_handshake_max_wire(self):
         server = MockupDB()
-        primary_response = {"hello":1, "ok":1,
-                                      "minWireVersion":0, "maxWireVersion":6}
+        primary_response = {"hello": 1, "ok": 1,
+                            "minWireVersion": 0, "maxWireVersion": 6}
         self.found_auth_msg = False
+
         def responder(request):
             if request.matches(OpMsg, saslStart=1):
                 self.found_auth_msg = True
                 # Immediately closes the connection with
                 request.reply(OpMsgReply(**primary_response,
                                          **{'payload':
-                                                    b'r=wPleNM8S5p8gMaffMDF7Py4ru9bnmmoqb0'
-                                                    b'1WNPsil6o=pAvr6B1garhlwc6MKNQ93ZfFky'
-                                                    b'tXdF9r,'
-                                                    b's=4dcxugMJq2P4hQaDbGXZR8uR3ei'
-                                                    b'PHrSmh4uhkg==,i=15000',
-                                            "saslSupportedMechs": ["SCRAM-SHA-1"]}))
+                                                b'r=wPleNM8S5p8gMaffMDF7Py4ru9bnmmoqb0'
+                                                b'1WNPsil6o=pAvr6B1garhlwc6MKNQ93ZfFky'
+                                                b'tXdF9r,'
+                                                b's=4dcxugMJq2P4hQaDbGXZR8uR3ei'
+                                                b'PHrSmh4uhkg==,i=15000',
+                                            "saslSupportedMechs": [
+                                                "SCRAM-SHA-1"]}))
             else:
                 return request.reply(OpMsgReply(**primary_response))
 
         server.autoresponds(responder)
         self.addCleanup(server.stop)
         server.run()
-        client  = MongoClient(server.uri,
-                              username='username',
-                              password='password',
-                              appname='my app',
-                              )
+        client = MongoClient(server.uri,
+                             username='username',
+                             password='password',
+                             appname='my app',
+                             )
         self.addCleanup(client.close)
-        self.assertRaises(OperationFailure, client.db.collection.find_one, {"a":1})
+        self.assertRaises(OperationFailure, client.db.collection.find_one,
+                          {"a": 1})
         assert self.found_auth_msg, """Could not find authentication command 
                                        with correct protocol"""
+
 
 if __name__ == '__main__':
     unittest.main()
