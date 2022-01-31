@@ -108,7 +108,6 @@ def _merge_command(run, full_result, offset, result, codec_options):
                 _id = doc['_id']
                 if rep == UuidRepresentation.UNSPECIFIED:
                     if isinstance(_id, uuid.UUID):
-                        import pdb; pdb.set_trace()
                         _id = Binary.from_uuid(_id)
                 elif isinstance(_id, Binary):
                     _id = _id.as_uuid(rep)
