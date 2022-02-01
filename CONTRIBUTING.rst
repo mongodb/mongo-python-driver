@@ -55,13 +55,16 @@ Re-sync Spec Tests
 If you would like to re-sync the copy of the specification tests in the
 PyMongo repository with that which is inside the `specifications repo
 <https://github.com/mongodb/specifications>`_, please
-use the script provided in ``.evergreen/resync-specs.sh``. It allows a
-variety of flag arguments (which you can find by typing ``./resync-specs.sh --help``
-) and also the spec arguments, which must come last and which determine what
-folders will be copied from and to. It supports
-filtering using regex patterns, and it will show you which files it ignored
-when using this feature so you can ensure you are not leaving any important
-tests behind.
+use the script provided in ``.evergreen/resync-specs.sh``.::
+
+    git clone git@github.com:mongodb/specifications.git
+    export MDB_SPECS=~/specifications
+    cd ~/mongo-python-driver/.evergreen
+    ./resync-specs.sh -b "connection-string*" crud bson-corpus
+    cd ..
+
+The ``-b`` flag adds as a regex pattern to block files you do not wish to
+update in PyMongo.
 This is primarily helpful if you are implementing a new feature in PyMongo
 that has spec tests already implemented, or if you are attempting to
 validate new spec tests in PyMongo.

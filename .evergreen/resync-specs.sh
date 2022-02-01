@@ -23,7 +23,7 @@ help (){
 }
 
 # Parse flag args
-BRANCH=""
+BRANCH=''
 BLOCKLIST='.*\.yml'
 while getopts 'b:c:s:' flag; do
   case "${flag}" in
@@ -48,7 +48,7 @@ fi
 cd $SPECS/source
 make
 cd -
-# cpjson2 unified-test-format/tests/invalid unified-test-format/invalid
+# cpjson unified-test-format/tests/invalid unified-test-format/invalid
 # * param1: Path to spec tests dir in specifications repo
 # * param2: Path to where the corresponding tests live in Python.
 cpjson () {
