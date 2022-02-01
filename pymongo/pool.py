@@ -25,6 +25,7 @@ import threading
 import time
 import weakref
 
+from bson import _decode_all_selective, codec_options
 from bson import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
 from pymongo import auth, helpers, __version__
@@ -775,7 +776,7 @@ class SocketInfo(object):
         self._raise_if_not_writable(True)
         self.send_message(msg, max_doc_size)
 
-    def write_command(self, request_id, msg):
+    def write_command(self, request_id, msg, codec_options=DEFAULT_CODEC_OPTIONS):
         """Send "insert" etc. command, returning response as a dict.
 
         Can raise ConnectionFailure or OperationFailure.
@@ -786,7 +787,7 @@ class SocketInfo(object):
         """
         self.send_message(msg, 0)
         reply = self.receive_message(request_id)
-        result = reply.command_response()
+        result = reply.command_response(codec_options=codec_options)
 
         # Raises NotPrimaryError or OperationFailure.
         helpers._check_command_response(result, self.max_wire_version)

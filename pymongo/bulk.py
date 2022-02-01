@@ -17,11 +17,9 @@
 .. versionadded:: 2.7
 """
 import copy
-import uuid
 
 from itertools import islice
 
-from bson.binary import Binary, UuidRepresentation
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
@@ -86,7 +84,7 @@ class _Run(object):
         self.ops.append(operation)
 
 
-def _merge_command(run, full_result, offset, result, codec_options):
+def _merge_command(run, full_result, offset, result):
     """Merge a write command result into the full bulk result.
     """
     affected = result.get("n", 0)
@@ -101,17 +99,8 @@ def _merge_command(run, full_result, offset, result, codec_options):
         upserted = result.get("upserted")
         if upserted:
             n_upserted = len(upserted)
-            rep = codec_options.uuid_representation
             for doc in upserted:
                 doc["index"] = run.index(doc["index"] + offset)
-                # Normalize uuid representation.
-                _id = doc['_id']
-                if rep == UuidRepresentation.UNSPECIFIED:
-                    if isinstance(_id, uuid.UUID):
-                        _id = Binary.from_uuid(_id)
-                elif isinstance(_id, Binary):
-                    _id = _id.as_uuid(rep)
-                doc['_id'] = _id
             full_result["upserted"].extend(upserted)
             full_result["nUpserted"] += n_upserted
             full_result["nMatched"] += (affected - n_upserted)
@@ -272,7 +261,6 @@ class _Bulk(object):
         db_name = self.collection.database.name
         client = self.collection.database.client
         listeners = client._event_listeners
-        codec_options = self.collection.codec_options
 
         if not self.current_run:
             self.current_run = next(generator)
@@ -293,7 +281,7 @@ class _Bulk(object):
             cmd_name = _COMMANDS[run.op_type]
             bwc = self.bulk_ctx_class(
                 db_name, cmd_name, sock_info, op_id, listeners, session,
-                run.op_type, codec_options)
+                run.op_type, self.collection.codec_options)
 
             while run.idx_offset < len(run.ops):
                 # If this is the last possible operation, use the
@@ -329,10 +317,10 @@ class _Bulk(object):
                         # Synthesize the full bulk result without modifying the
                         # current one because this write operation may be retried.
                         full = copy.deepcopy(full_result)
-                        _merge_command(run, full, run.idx_offset, result, codec_options)
+                        _merge_command(run, full, run.idx_offset, result)
                         _raise_bulk_write_error(full)
 
-                    _merge_command(run, full_result, run.idx_offset, result, codec_options)
+                    _merge_command(run, full_result, run.idx_offset, result)
 
                     # We're no longer in a retry once a command succeeds.
                     self.retrying = False
