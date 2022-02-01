@@ -2,7 +2,6 @@
 # exit when any command fails
 set -e
 PYMONGO=$(dirname $(cd $(dirname $0); pwd))
-echo $PYMONGO
 SPECS=${MDB_SPECS:-~/Work/specifications}
 
 help (){
