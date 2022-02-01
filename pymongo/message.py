@@ -1205,9 +1205,9 @@ class _OpReply(object):
         return bson._decode_all_selective(
             self.documents, codec_options, user_fields)
 
-    def command_response(self):
+    def command_response(self, codec_options):
         """Unpack a command response."""
-        docs = self.unpack_response()
+        docs = self.unpack_response(codec_options=codec_options)
         assert self.number_returned == 1
         return docs[0]
 
@@ -1273,7 +1273,7 @@ class _OpMsg(object):
         return bson._decode_all_selective(
             self.payload_document, codec_options, user_fields)
 
-    def command_response(self, codec_options=_UNICODE_REPLACE_CODEC_OPTIONS):
+    def command_response(self, codec_options):
         """Unpack a command response."""
         return self.unpack_response(codec_options=codec_options)[0]
 
