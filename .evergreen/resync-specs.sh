@@ -1,7 +1,7 @@
 #!/bin/bash
 # exit when any command fails
 set -e
-PYMONGO=$(dirname $(cd $(dirname $0); pwd))
+PYMONGO=$(dirname "$(cd "$(dirname "$0")"; pwd)")
 SPECS=${MDB_SPECS:-~/Work/specifications}
 
 help (){
@@ -27,7 +27,7 @@ BRANCH=''
 BLOCKLIST='.*\.yml'
 while getopts 'b:c:s:' flag; do
   case "${flag}" in
-    b) BLOCKLIST+="|"$OPTARG""
+    b) BLOCKLIST+="|$OPTARG"
       ;;
     c) BRANCH="${OPTARG}"
       ;;
