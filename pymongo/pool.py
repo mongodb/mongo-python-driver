@@ -25,7 +25,6 @@ import threading
 import time
 import weakref
 
-from bson import _decode_all_selective, codec_options
 from bson import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
 from pymongo import auth, helpers, __version__
