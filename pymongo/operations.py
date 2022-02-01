@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Operation class definitions."""
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 from pymongo import helpers
 from pymongo.collation import validate_collation_or_none
@@ -242,12 +242,10 @@ class _UpdateOp(object):
         if upsert is not None:
             validate_boolean("upsert", upsert)
         if array_filters is not None:
-            array_filters = validate_list("array_filters", array_filters)
+            validate_list("array_filters", array_filters)
         if hint is not None:
             if not isinstance(hint, str):
                 hint = helpers._index_document(hint)
-        if isinstance(doc, tuple):
-            doc = list(doc)
 
         self._filter = filter
         self._doc = doc
@@ -280,7 +278,7 @@ class UpdateOne(_UpdateOp):
     __slots__ = ()
 
     def __init__(self, filter: Mapping[str, Any], update: Union[Mapping[str, Any], _Pipeline], upsert: bool = False, collation: Optional[_CollationIn] = None,
-                 array_filters: Optional[Sequence[Mapping[str, Any]]] = None, hint: Optional[_IndexKeyHint] = None) -> None:
+                 array_filters: Optional[List[Mapping[str, Any]]] = None, hint: Optional[_IndexKeyHint] = None) -> None:
         """Represents an update_one operation.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -327,7 +325,7 @@ class UpdateMany(_UpdateOp):
     __slots__ = ()
 
     def __init__(self, filter: Mapping[str, Any], update: Union[Mapping[str, Any], _Pipeline], upsert: bool = False, collation: Optional[_CollationIn] = None,
-                 array_filters: Optional[Sequence[Mapping[str, Any]]] = None, hint: Optional[_IndexKeyHint] = None) -> None:
+                 array_filters: Optional[List[Mapping[str, Any]]] = None, hint: Optional[_IndexKeyHint] = None) -> None:
         """Create an UpdateMany instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.

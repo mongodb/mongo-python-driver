@@ -623,8 +623,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         collation = validate_collation_or_none(collation)
         write_concern = write_concern or self.write_concern
         acknowledged = write_concern.acknowledged
-        if isinstance(criteria, tuple):
-            criteria = list(criteria)
         update_doc = SON([('q', criteria),
                           ('u', document),
                           ('multi', multi),
@@ -640,7 +638,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 raise ConfigurationError(
                     'arrayFilters is unsupported for unacknowledged writes.')
             else:
-                update_doc['arrayFilters'] = list(array_filters)
+                update_doc['arrayFilters'] = array_filters
         if hint is not None:
             if not acknowledged and sock_info.max_wire_version < 8:
                 raise ConfigurationError(

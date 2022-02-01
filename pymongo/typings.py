@@ -1,4 +1,4 @@
-# Copyright 2014-2022 MongoDB, Inc.
+# Copyright 2022-Present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,8 +13,8 @@
 # limitations under the License.
 
 """Type aliases used by PyMongo"""
-from typing import (TYPE_CHECKING, Any, Dict, Mapping, MutableMapping, Optional,
-                    Sequence, Tuple, Type, TypeVar, Union)
+from typing import (TYPE_CHECKING, Any, Dict, List, Mapping, MutableMapping, Optional,
+                    Tuple, Type, TypeVar, Union)
 
 if TYPE_CHECKING:
     from bson.raw_bson import RawBSONDocument
@@ -25,5 +25,5 @@ if TYPE_CHECKING:
 _Address = Tuple[str, Optional[int]]
 _CollationIn = Union[Mapping[str, Any], "Collation"]
 _DocumentIn = Union[MutableMapping[str, Any], "RawBSONDocument"]
-_Pipeline = Sequence[Mapping[str, Any]]
+_Pipeline = List[Mapping[str, Any]]
 _DocumentType = TypeVar('_DocumentType', Mapping[str, Any], MutableMapping[str, Any], Dict[str, Any])

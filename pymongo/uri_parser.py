@@ -278,8 +278,6 @@ def _normalize_options(options):
     return options
 
 
-
-
 def validate_options(opts: Mapping[str, Any], warn: bool = False) -> MutableMapping[str, Any]:
     """Validates and normalizes options passed in a MongoDB URI.
 

@@ -542,11 +542,11 @@ class ReadPreference(object):
 
     - ``NEAREST``: Read from any shard member.
     """
-    PRIMARY: Primary = Primary()
-    PRIMARY_PREFERRED: PrimaryPreferred = PrimaryPreferred()
-    SECONDARY: Secondary = Secondary()
-    SECONDARY_PREFERRED: SecondaryPreferred = SecondaryPreferred()
-    NEAREST: Nearest = Nearest()
+    PRIMARY = Primary()
+    PRIMARY_PREFERRED = PrimaryPreferred()
+    SECONDARY = Secondary()
+    SECONDARY_PREFERRED = SecondaryPreferred()
+    NEAREST = Nearest()
 
 
 def read_pref_mode_from_name(name: str) -> int:

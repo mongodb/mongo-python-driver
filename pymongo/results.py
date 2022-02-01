@@ -76,8 +76,8 @@ class InsertManyResult(_WriteResult):
 
     __slots__ = ("__inserted_ids", "__acknowledged")
 
-    def __init__(self, inserted_ids: Sequence[Any], acknowledged: bool) -> None:
-        self.__inserted_ids = list(inserted_ids)
+    def __init__(self, inserted_ids: List[Any], acknowledged: bool) -> None:
+        self.__inserted_ids = inserted_ids
         super(InsertManyResult, self).__init__(acknowledged)
 
     @property
@@ -100,12 +100,12 @@ class UpdateResult(_WriteResult):
 
     __slots__ = ("__raw_result", "__acknowledged")
 
-    def __init__(self, raw_result: Mapping[str, Any], acknowledged: bool) -> None:
+    def __init__(self, raw_result: Dict[str, Any], acknowledged: bool) -> None:
         self.__raw_result = raw_result
         super(UpdateResult, self).__init__(acknowledged)
 
     @property
-    def raw_result(self) -> Mapping[str, Any]:
+    def raw_result(self) -> Dict[str, Any]:
         """The raw result document returned by the server."""
         return self.__raw_result
 
@@ -138,12 +138,12 @@ class DeleteResult(_WriteResult):
 
     __slots__ = ("__raw_result", "__acknowledged")
 
-    def __init__(self, raw_result: Mapping[str, Any], acknowledged: bool) -> None:
+    def __init__(self, raw_result: Dict[str, Any], acknowledged: bool) -> None:
         self.__raw_result = raw_result
         super(DeleteResult, self).__init__(acknowledged)
 
     @property
-    def raw_result(self) -> Mapping[str, Any]:
+    def raw_result(self) -> Dict[str, Any]:
         """The raw result document returned by the server."""
         return self.__raw_result
 
@@ -159,7 +159,7 @@ class BulkWriteResult(_WriteResult):
 
     __slots__ = ("__bulk_api_result", "__acknowledged")
 
-    def __init__(self, bulk_api_result: Mapping[str, Any], acknowledged: bool) -> None:
+    def __init__(self, bulk_api_result: Dict[str, Any], acknowledged: bool) -> None:
         """Create a BulkWriteResult instance.
 
         :Parameters:
@@ -172,7 +172,7 @@ class BulkWriteResult(_WriteResult):
         super(BulkWriteResult, self).__init__(acknowledged)
 
     @property
-    def bulk_api_result(self) -> Mapping[str, Any]:
+    def bulk_api_result(self) -> Dict[str, Any]:
         """The raw bulk API result."""
         return self.__bulk_api_result
 

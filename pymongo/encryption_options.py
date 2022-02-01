@@ -15,7 +15,7 @@
 """Support for automatic client-side field level encryption."""
 
 import copy
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence
+from typing import TYPE_CHECKING, Any, List, Mapping, Optional
 
 try:
     import pymongocrypt
@@ -42,7 +42,7 @@ class AutoEncryptionOpts(object):
         mongocryptd_uri: str = 'mongodb://localhost:27020',
         mongocryptd_bypass_spawn: bool = False,
         mongocryptd_spawn_path: str = 'mongocryptd',
-        mongocryptd_spawn_args: Optional[Sequence[str]] = None,
+        mongocryptd_spawn_args: Optional[List[str]] = None,
         kms_tls_options: Optional[Mapping[str, Any]] = None
     ) -> None:
         """Options to configure automatic client-side field level encryption.
@@ -161,7 +161,7 @@ class AutoEncryptionOpts(object):
         self._mongocryptd_spawn_path = mongocryptd_spawn_path
         if mongocryptd_spawn_args is None:
             mongocryptd_spawn_args = ['--idleShutdownTimeoutSecs=60']
-        self._mongocryptd_spawn_args = list(mongocryptd_spawn_args)
+        self._mongocryptd_spawn_args = mongocryptd_spawn_args
         if not isinstance(self._mongocryptd_spawn_args, list):
             raise TypeError('mongocryptd_spawn_args must be a list')
         if not any('idleShutdownTimeoutSecs' in s

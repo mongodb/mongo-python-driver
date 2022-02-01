@@ -16,7 +16,7 @@ import warnings
 from typing import Callable
 
 try:
-    import snappy  # type: ignore
+    import snappy
     _HAVE_SNAPPY = True
 except ImportError:
     # python-snappy isn't available.

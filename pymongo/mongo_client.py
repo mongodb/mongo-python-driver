@@ -628,8 +628,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             host = self.HOST
         if isinstance(host, str):
             host = [host]
-        else:
-            host = list(host)
         if port is None:
             port = self.PORT
         if not isinstance(port, int):
@@ -1550,7 +1548,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def start_session(self,
         causal_consistency: Optional[bool] = None,
         default_transaction_options: Optional[client_session.TransactionOptions] = None,
-        snapshot: Optional[bool] = None,
+        snapshot: Optional[bool] = False,
     ) -> client_session.ClientSession[_DocumentType]:
         """Start a logical session.
 
@@ -1642,7 +1640,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def server_info(self,
       session: Optional[client_session.ClientSession] = None
-    ) -> Mapping[str, Any]:
+    ) -> Dict[str, Any]:
         """Get information about the MongoDB server we're connected to.
 
         :Parameters:
@@ -1659,7 +1657,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def list_databases(self,
         session: Optional[client_session.ClientSession] = None,
         **kwargs: Any
-    ) -> CommandCursor[_DocumentType]:
+    ) -> CommandCursor[Dict[str, Any]]:
         """Get a cursor over the databases of the connected server.
 
         :Parameters:
@@ -1824,7 +1822,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
           Primary()
           >>> from pymongo import ReadPreference
           >>> db2 = client.get_database(
-          ...    'test', read_preference=ReadPreference.SECONDARY)
+          ...   'test', read_preference=ReadPreference.SECONDARY)
           >>> db2.read_preference
           Secondary(tag_sets=None)
 

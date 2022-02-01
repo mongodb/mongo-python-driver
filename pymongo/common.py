@@ -453,19 +453,19 @@ def validate_document_class(option: str, value: Any) -> Union[Type[MutableMappin
     return value
 
 
-def validate_type_registry(option: Any, value: Any) -> TypeRegistry:
+def validate_type_registry(option: Any, value: Any) -> Optional[TypeRegistry]:
     """Validate the type_registry option."""
     if value is not None and not isinstance(value, TypeRegistry):
         raise TypeError("%s must be an instance of %s" % (
             option, TypeRegistry))
-    return cast(TypeRegistry, value)
+    return value
 
 
 def validate_list(option: str, value: Any) -> List:
     """Validates that 'value' is a list or tuple."""
-    if not isinstance(value, (list, tuple)):
+    if not isinstance(value, list):
         raise TypeError("%s must be a list" % (option,))
-    return list(value)
+    return value
 
 
 def validate_list_or_none(option: Any, value: Any) -> Optional[List]:

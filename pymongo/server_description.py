@@ -75,8 +75,9 @@ class ServerDescription(object):
         self._last_update_time = time.monotonic()
         self._error = error
         self._topology_version = hello.topology_version
-        if error and hasattr(error, 'details'):
-            if isinstance(cast(Any, error).details, dict):
+        if error:
+            details = getattr(error, 'details', None)
+            if isinstance(details, dict):
                 self._topology_version = cast(Any, error).details.get('topologyVersion')
 
         self._last_write_date: Optional[float]

@@ -158,7 +158,7 @@ class ChangeStream(Generic[_DocumentType]):
     def _aggregation_pipeline(self):
         """Return the full aggregation pipeline for this ChangeStream."""
         options = self._change_stream_options()
-        full_pipeline = [{'$changeStream': options}]
+        full_pipeline: list = [{'$changeStream': options}]
         full_pipeline.extend(self._pipeline)
         return full_pipeline
 
@@ -215,7 +215,7 @@ class ChangeStream(Generic[_DocumentType]):
         """Close this ChangeStream."""
         self._cursor.close()
 
-    def __iter__(self) -> "Iterator[ChangeStream[_DocumentType]]":
+    def __iter__(self) -> "ChangeStream[_DocumentType]":
         return self
 
     @property

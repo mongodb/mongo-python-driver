@@ -33,12 +33,12 @@ from pymongo.saslprep import saslprep
 HAVE_KERBEROS = True
 _USE_PRINCIPAL = False
 try:
-    import winkerberos as kerberos  # type: ignore[import]
+    import winkerberos as kerberos
     if tuple(map(int, kerberos.__version__.split('.')[:2])) >= (0, 5):
         _USE_PRINCIPAL = True
 except ImportError:
     try:
-        import kerberos  # type: ignore[import]
+        import kerberos
     except ImportError:
         HAVE_KERBEROS = False
 

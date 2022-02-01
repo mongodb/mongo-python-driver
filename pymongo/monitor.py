@@ -50,8 +50,7 @@ class MonitorBase(object):
             monitor = self_ref()
             if monitor is None:
                 return False  # Stop the executor.
-            if hasattr(monitor, '_run'):
-                monitor._run()  # type: ignore
+            monitor._run()  # type:ignore[attr-defined]
             return True
 
         executor = periodic_executor.PeriodicExecutor(
@@ -215,9 +214,8 @@ class Monitor(MonitorBase):
                 return self._check_once()
             except (OperationFailure, NotPrimaryError) as exc:
                 # Update max cluster time even when hello fails.
-                if hasattr(exc.details, 'get'):
-                    self._topology.receive_cluster_time(
-                        cast(Mapping[str, Any], exc.details).get('$clusterTime'))
+                details = cast(Mapping[str, Any], exc.details)
+                self._topology.receive_cluster_time(details.get('$clusterTime'))
                 raise
         except ReferenceError:
             raise
