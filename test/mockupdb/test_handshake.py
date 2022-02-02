@@ -31,7 +31,6 @@ def test_hello_with_option(self, protocol, **kwargs):
     primary = MockupDB()
     # Set up a custom handler to save the first request from the driver.
     self.handshake_req = None
-
     def respond(r):
         # Only save the very first request from the driver.
         if self.handshake_req == None:
@@ -40,7 +39,6 @@ def test_hello_with_option(self, protocol, **kwargs):
             "loadBalanced") else {}
         return r.reply(OpMsgReply(minWireVersion=0, maxWireVersion=13,
                                   **kwargs, **load_balanced_kwargs))
-
     primary.autoresponds(respond)
     primary.run()
     self.addCleanup(primary.stop)
@@ -48,9 +46,9 @@ def test_hello_with_option(self, protocol, **kwargs):
     # We need a special dict because MongoClient uses "server_api" and all
     # of the commands use "apiVersion".
     k_map = {("apiVersion", "1"): ("server_api", ServerApi(
-                                                 ServerApiVersion.V1))}
-    client = MongoClient("mongodb://" + primary.address_string,
-                         appname='my app',  # For _check_handshake_data()
+                                         ServerApiVersion.V1))}
+    client = MongoClient("mongodb://"+primary.address_string,
+                         appname='my app', # For _check_handshake_data()
                          **dict([k_map.get((k, v), (k, v)) for k, v
                                  in kwargs.items()]))
 
@@ -99,7 +97,7 @@ class TestHandshake(unittest.TestCase):
                              replicaSet='rs',
                              appname='my app',
                              heartbeatFrequencyMS=500)  # Speed up the test.
-
+    
         self.addCleanup(client.close)
 
         # New monitoring sockets send data during handshake.
@@ -135,7 +133,7 @@ class TestHandshake(unittest.TestCase):
         heartbeat = primary.receives('ismaster')
         _check_handshake_data(heartbeat)
         hb_port = deepcopy(heartbeat.client_port)
-        heartbeat.reply(**primary_response)
+        heartbeat.reply(primary_response)
 
         # Start a command, so the client opens an application socket.
         future = go(client.db.command, "whatever")
