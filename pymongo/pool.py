@@ -691,7 +691,7 @@ class SocketInfo(object):
         # Ensure command name remains in first place.
         if not isinstance(spec, ORDERED_TYPES):
             spec = SON(spec)
-            
+
         if not (write_concern is None or write_concern.acknowledged or
                 collation is None):
             raise ConfigurationError(
