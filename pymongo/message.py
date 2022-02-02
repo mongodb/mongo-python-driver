@@ -32,6 +32,7 @@ from bson import (CodecOptions,
                   _decode_selective,
                   _dict_to_bson,
                   _make_c_string)
+from bson import codec_options
 from bson.int64 import Int64
 from bson.raw_bson import (_inflate_bson, DEFAULT_RAW_BSON_OPTIONS,
                            RawBSONDocument)
@@ -866,7 +867,7 @@ class _EncryptedBulkWriteContext(_BulkWriteContext):
         batched_cmd, to_send = self._batch_command(cmd, docs)
         result = self.sock_info.command(
             self.db_name, batched_cmd,
-            codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
+            codec_options=self.codec,
             session=self.session, client=client)
         return result, to_send
 
