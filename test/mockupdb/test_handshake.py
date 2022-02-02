@@ -47,9 +47,10 @@ def test_hello_with_option(self, protocol, **kwargs):
 
     # We need a special dict because MongoClient uses "server_api" and all
     # of the commands use "apiVersion".
-    k_map = {("apiVersion", "1"): ("server_api", ServerApi(ServerApiVersion.V1))}
+    k_map = {("apiVersion", "1"): ("server_api", ServerApi(
+        ServerApiVersion.V1))}
     client = MongoClient("mongodb://" + primary.address_string,
-                         appname='my app',# For _check_handshake_data()
+                         appname='my app',  # For _check_handshake_data()
                          **dict([k_map.get((k, v), (k, v)) for k, v
                                  in kwargs.items()]))
 
