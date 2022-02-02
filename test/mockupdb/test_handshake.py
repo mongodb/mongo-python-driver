@@ -51,7 +51,7 @@ def test_hello_with_option(self, protocol, **kwargs):
                          appname='my app', # For _check_handshake_data()
                          **dict([k_map.get((k, v), (k, v)) for k, v
                                  in kwargs.items()]))
-    
+
     self.addCleanup(client.close)
 
     # We have an autoresponder luckily, so no need for `go()`.
@@ -85,13 +85,16 @@ class TestHandshake(unittest.TestCase):
             self.addCleanup(server.stop)
 
         hosts = [server.address_string for server in (primary, secondary)]
-        primary_response = {"setName": 'rs', "hosts": hosts,
-                            "minWireVersion": 2, "maxWireVersion": 13}
-        error_response = OpMsgReply(
+        primary_response = OpReply('ismaster', True,
+                                   setName='rs', hosts=hosts,
+                                   minWireVersion=2, maxWireVersion=6)
+        error_response = OpReply(
             0, errmsg='Cache Reader No keys found for HMAC ...', code=211)
 
-        secondary_response = {"setName": 'rs', "hosts": hosts,
-                              "minWireVersion": 2, "maxWireVersion": 13}
+        secondary_response = OpReply('ismaster', False,
+                                     setName='rs', hosts=hosts,
+                                     secondary=True,
+                                     minWireVersion=2, maxWireVersion=6)
 
         client = MongoClient(primary.uri,
                              replicaSet='rs',
@@ -101,62 +104,57 @@ class TestHandshake(unittest.TestCase):
         self.addCleanup(client.close)
 
         # New monitoring sockets send data during handshake.
-        heartbeat = primary.receives(Command('ismaster'))
-        _check_handshake_data(heartbeat)
-        heartbeat.ok(**primary_response)
-
-        heartbeat = secondary.receives(Command('ismaster'))
-        _check_handshake_data(heartbeat)
-        heartbeat.ok(**secondary_response)
-
-        # Subsequent heartbeats have no client data.
-        primary.receives(OpMsg('hello', 1, client=absent)).ok(error_response)
-        secondary.receives(OpMsg('hello', 1, client=absent)).ok(
-            error_response)
-
-        # The heartbeat retry (on a new connection) does have client data.
-        heartbeat = primary.receives(Command('ismaster'))
-        _check_handshake_data(heartbeat)
-        heartbeat.reply(primary_response)
-
-        heartbeat = secondary.receives(Command('ismaster'))
-        _check_handshake_data(heartbeat)
-        heartbeat.reply(secondary_response)
-
-        # Still no client data.
-        primary.receives(OpMsg('hello', 1, client=absent)).reply(**primary_response)
-        secondary.receives(OpMsg('hello', 1, client=absent)).reply(**secondary_response)
-
-        primary.receives(OpMsg('hello', 1, client=absent)).hangup()
-        secondary.receives(OpMsg('hello')).hangup()
-        # After a disconnect, next ismaster has client data again.
         heartbeat = primary.receives('ismaster')
         _check_handshake_data(heartbeat)
-        hb_port = deepcopy(heartbeat.client_port)
-        heartbeat.reply(primary_response)
+        heartbeat.ok(primary_response)
+
+        heartbeat = secondary.receives('ismaster')
+        _check_handshake_data(heartbeat)
+        heartbeat.ok(secondary_response)
+
+        # Subsequent heartbeats have no client data.
+        primary.receives('ismaster', 1, client=absent).ok(error_response)
+        secondary.receives('ismaster', 1, client=absent).ok(error_response)
+
+        # The heartbeat retry (on a new connection) does have client data.
+        heartbeat = primary.receives('ismaster')
+        _check_handshake_data(heartbeat)
+        heartbeat.ok(primary_response)
+
+        heartbeat = secondary.receives('ismaster')
+        _check_handshake_data(heartbeat)
+        heartbeat.ok(secondary_response)
+
+        # Still no client data.
+        primary.receives('ismaster', 1, client=absent).ok(primary_response)
+        secondary.receives('ismaster', 1, client=absent).ok(secondary_response)
+
+        # After a disconnect, next ismaster has client data again.
+        primary.receives('ismaster', 1, client=absent).hangup()
+        heartbeat = primary.receives('ismaster')
+        _check_handshake_data(heartbeat)
+        heartbeat.ok(primary_response)
+
+        secondary.autoresponds('ismaster', secondary_response)
 
         # Start a command, so the client opens an application socket.
-        future = go(client.db.command, "whatever")
-        handshook = None
+        future = go(client.db.command, 'whatever')
+
         for request in primary:
             if request.matches(Command('ismaster')):
-                if handshook is None:
-                    handshook = True
+                if request.client_port == heartbeat.client_port:
+                    # This is the monitor again, keep going.
+                    request.ok(primary_response)
                 else:
-                    handshook = False
-                # Handshaking a new application socket.
-                _check_handshake_data(request)
-                request.reply(**primary_response)
-            elif request.matches(OpMsg("whatever")):
-                # Command succeeds.
-                request.reply(OpMsgReply(**primary_response))
-                # If handshook is false it means it tried to handshake
-                # multiple times. If it's None it means it never tried.
-                assert future() and handshook
-                return
+                    # Handshaking a new application socket.
+                    _check_handshake_data(request)
+                    request.ok(primary_response)
             else:
-                request.reply(isWritablePrimary=True,
-                                         **primary_response)
+                # Command succeeds.
+                request.assert_matches(OpMsg('whatever'))
+                request.ok()
+                assert future()
+                return
 
     def test_client_handshake_saslSupportedMechs(self):
         server = MockupDB()
@@ -240,7 +238,7 @@ class TestHandshake(unittest.TestCase):
                                             "saslSupportedMechs": [
                                                 "SCRAM-SHA-1"]}))
             else:
-                return request.reply(OpMsgReply(**primary_response))
+                return request.reply(**primary_response)
 
         server.autoresponds(responder)
         self.addCleanup(server.stop)
@@ -248,13 +246,12 @@ class TestHandshake(unittest.TestCase):
         client = MongoClient(server.uri,
                              username='username',
                              password='password',
-                             appname='my app',
                              )
         self.addCleanup(client.close)
         self.assertRaises(OperationFailure, client.db.collection.find_one,
                           {"a": 1})
-        assert self.found_auth_msg, """Could not find authentication command 
-                                       with correct protocol"""
+        self.assertTrue(self.found_auth_msg, "Could not find authentication "
+                                             "command with correct protocol")
 
 
 if __name__ == '__main__':
