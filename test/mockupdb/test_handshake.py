@@ -21,7 +21,6 @@ from pymongo.server_api import ServerApi, ServerApiVersion
 from bson.objectid import ObjectId
 
 import unittest
-from copy import deepcopy
 
 
 def test_hello_with_option(self, protocol, **kwargs):
@@ -39,6 +38,7 @@ def test_hello_with_option(self, protocol, **kwargs):
             "loadBalanced") else {}
         return r.reply(OpMsgReply(minWireVersion=0, maxWireVersion=13,
                                   **kwargs, **load_balanced_kwargs))
+    
     primary.autoresponds(respond)
     primary.run()
     self.addCleanup(primary.stop)
