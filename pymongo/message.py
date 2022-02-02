@@ -32,7 +32,6 @@ from bson import (CodecOptions,
                   _decode_selective,
                   _dict_to_bson,
                   _make_c_string)
-from bson import codec_options
 from bson.int64 import Int64
 from bson.raw_bson import (_inflate_bson, DEFAULT_RAW_BSON_OPTIONS,
                            RawBSONDocument)
