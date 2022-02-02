@@ -781,7 +781,7 @@ class SocketInfo(object):
             return helpers._check_gle_response(reply.command_response(),
                                                self.max_wire_version)
 
-    def write_command(self, request_id, msg):
+    def write_command(self, request_id, msg, codec_options):
         """Send "insert" etc. command, returning response as a dict.
 
         Can raise ConnectionFailure or OperationFailure.
@@ -792,7 +792,7 @@ class SocketInfo(object):
         """
         self.send_message(msg, 0)
         reply = self.receive_message(request_id)
-        result = reply.command_response()
+        result = reply.command_response(codec_options)
 
         # Raises NotPrimaryError or OperationFailure.
         helpers._check_command_response(result, self.max_wire_version)
