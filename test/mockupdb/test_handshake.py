@@ -45,13 +45,13 @@ def test_hello_with_option(self, protocol, **kwargs):
 
     # We need a special dict because MongoClient uses "server_api" and all
     # of the commands use "apiVersion".
-    k_map = {("apiVersion", "1"): ("server_api", ServerApi(
-                                         ServerApiVersion.V1))}
+    k_map = {("apiVersion", "1"):("server_api", ServerApi(
+                                        ServerApiVersion.V1))}
     client = MongoClient("mongodb://"+primary.address_string,
                          appname='my app', # For _check_handshake_data()
                          **dict([k_map.get((k, v), (k, v)) for k, v
                                  in kwargs.items()]))
-
+    
     self.addCleanup(client.close)
 
     # We have an autoresponder luckily, so no need for `go()`.
@@ -97,7 +97,7 @@ class TestHandshake(unittest.TestCase):
                              replicaSet='rs',
                              appname='my app',
                              heartbeatFrequencyMS=500)  # Speed up the test.
-    
+
         self.addCleanup(client.close)
 
         # New monitoring sockets send data during handshake.
