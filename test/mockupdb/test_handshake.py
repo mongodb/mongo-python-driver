@@ -90,7 +90,7 @@ class TestHandshake(unittest.TestCase):
         primary_response = {'hello': 1,
                             'ok': 1,
                             "setName": 'rs', "hosts": hosts,
-                            "secondary": True,
+                            "secondary": False,
                             "minWireVersion": 2, "maxWireVersion": 13}
         error_response = OpMsgReply(
             0, errmsg='Cache Reader No keys found for HMAC ...', code=211)
@@ -137,47 +137,36 @@ class TestHandshake(unittest.TestCase):
         secondary.receives(OpMsg('hello', 1, client=absent)).reply(
             OpMsgReply(**secondary_response))
 
+        primary.receives(OpMsg('hello', 1, client=absent)).hangup()
+        secondary.receives(OpMsg('hello')).hangup()
         # After a disconnect, next ismaster has client data again.
-        primary.receives('hello', 1, client=absent).hangup()
         heartbeat = primary.receives('ismaster')
         _check_handshake_data(heartbeat)
         hb_port = deepcopy(heartbeat.client_port)
         heartbeat.reply(OpMsgReply(**primary_response))
-        primary.receives(OpMsg('hello')).hangup()
-        secondary.receives(OpMsg('hello')).hangup()
-        secondary.autoresponds('ismaster', OpMsgReply(**secondary_response))
-        secondary.autoresponds('hello', OpMsgReply(**secondary_response))
-        secondary.autoresponds('whatever', OpMsgReply(**secondary_response))
+
         # Start a command, so the client opens an application socket.
         future = go(client.db.command, "whatever")
-        message_counter = 0
+        handshook = None
         for request in primary:
-            if request.matches(OpMsg('hello')):
-                if request.client_port == hb_port:
-                    # This is the monitor again, keep going.
-                    request.reply(OpMsgReply(**primary_response))
+            if request.matches(Command('ismaster')):
+                if handshook is None:
+                    handshook = True
                 else:
-                    # Subsequent hellos do not have client data
-                    message_counter += 1
-                    with self.assertRaises(AssertionError):
-                        _check_handshake_data(request)
-                    request.reply(OpMsgReply(isWritablePrimary=True,
-                                             **primary_response))
-            elif request.matches(Command('ismaster')):
-                message_counter += 1
+                    handshook = False
                 # Handshaking a new application socket.
                 _check_handshake_data(request)
                 request.reply(OpMsgReply(**primary_response))
             elif request.matches(OpMsg("whatever")):
-                message_counter +=1
                 # Command succeeds.
-                request.assert_matches(OpMsg('whatever'))
                 request.reply(OpMsgReply(**primary_response))
-                assert future()
+                # If handshook is false it means it tried to handshake
+                # multiple times. If it's None it means it never tried.
+                assert future() and handshook
                 return
             else:
-                request.reply(OpMsgReply(**primary_response))
-        assert message_counter == 3
+                request.reply(OpMsgReply(isWritablePrimary=True,
+                                         **primary_response))
 
     def test_client_handshake_saslSupportedMechs(self):
         server = MockupDB()
