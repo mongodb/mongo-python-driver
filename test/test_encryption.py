@@ -29,6 +29,7 @@ sys.path[0:0] = [""]
 
 from bson import encode, json_util
 from bson.binary import (Binary,
+                         UuidRepresentation,
                          JAVA_LEGACY,
                          STANDARD,
                          UUID_SUBTYPE)
@@ -50,13 +51,14 @@ from pymongo.errors import (BulkWriteError,
                             ServerSelectionTimeoutError,
                             WriteError)
 from pymongo.mongo_client import MongoClient
-from pymongo.operations import InsertOne
+from pymongo.operations import InsertOne, ReplaceOne, UpdateOne
 from pymongo.write_concern import WriteConcern
 
 from test import (unittest, CA_PEM, CLIENT_PEM,
                   client_context,
                   IntegrationTest,
                   PyMongoTestCase)
+from test.test_bulk import BulkTestBase
 from test.utils import (TestCreator,
                         camel_to_snake_args,
                         OvertCommandListener,
@@ -311,6 +313,35 @@ class TestClientSimple(EncryptionIntegrationTest):
         with self.assertRaisesRegex(InvalidOperation,
                                     'Cannot use MongoClient after close'):
             client.admin.command('ping')
+
+
+class TestEncryptedBulkWrite(BulkTestBase, EncryptionIntegrationTest):
+
+    def test_upsert_uuid_standard_encrypte(self):
+        opts = AutoEncryptionOpts(KMS_PROVIDERS, 'keyvault.datakeys')
+        client = rs_or_single_client(auto_encryption_opts=opts)
+        self.addCleanup(client.close)
+
+        options = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
+        encrypted_coll = client.pymongo_test.test
+        coll = encrypted_coll.with_options(codec_options=options)
+        uuids = [uuid.uuid4() for _ in range(3)]
+        result = coll.bulk_write([
+            UpdateOne({'_id': uuids[0]}, {'$set': {'a': 0}}, upsert=True),
+            ReplaceOne({'a': 1}, {'_id': uuids[1]}, upsert=True),
+            # This is just here to make the counts right in all cases.
+            ReplaceOne({'_id': uuids[2]}, {'_id': uuids[2]}, upsert=True),
+        ])
+        self.assertEqualResponse(
+            {'nMatched': 0,
+             'nModified': 0,
+             'nUpserted': 3,
+             'nInserted': 0,
+             'nRemoved': 0,
+             'upserted': [{'index': 0, '_id': uuids[0]},
+                          {'index': 1, '_id': uuids[1]},
+                          {'index': 2, '_id': uuids[2]}]},
+            result.bulk_api_result)
 
 
 class TestClientMaxWireVersion(IntegrationTest):
