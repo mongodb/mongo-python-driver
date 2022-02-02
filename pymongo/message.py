@@ -32,6 +32,7 @@ from bson import (CodecOptions,
                   _decode_selective,
                   _dict_to_bson,
                   _make_c_string)
+from bson import codec_options
 from bson.int64 import Int64
 from bson.raw_bson import (_inflate_bson, DEFAULT_RAW_BSON_OPTIONS,
                            RawBSONDocument)
@@ -817,7 +818,7 @@ class _BulkWriteContext(object):
             self._start(cmd, request_id, docs)
             start = datetime.datetime.now()
         try:
-            reply = self.sock_info.write_command(request_id, msg)
+            reply = self.sock_info.write_command(request_id, msg, self.codec)
             if self.publish:
                 duration = (datetime.datetime.now() - start) + duration
                 self._succeed(request_id, reply, duration)
@@ -886,7 +887,7 @@ class _EncryptedBulkWriteContext(_BulkWriteContext):
         batched_cmd, to_send = self._batch_command(cmd, docs)
         result = self.sock_info.command(
             self.db_name, batched_cmd,
-            codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
+            codec_options=self.codec,
             session=self.session, client=client)
         return result, to_send
 
@@ -1231,9 +1232,9 @@ class _OpReply(object):
         return bson._decode_all_selective(
             self.documents, codec_options, user_fields)
 
-    def command_response(self):
+    def command_response(self, codec_options):
         """Unpack a command response."""
-        docs = self.unpack_response()
+        docs = self.unpack_response(codec_options=codec_options)
         assert self.number_returned == 1
         return docs[0]
 
@@ -1299,9 +1300,9 @@ class _OpMsg(object):
         return bson._decode_all_selective(
             self.payload_document, codec_options, user_fields)
 
-    def command_response(self):
+    def command_response(self, codec_options):
         """Unpack a command response."""
-        return self.unpack_response()[0]
+        return self.unpack_response(codec_options=codec_options)[0]
 
     def raw_command_response(self):
         """Return the bytes of the command response."""
