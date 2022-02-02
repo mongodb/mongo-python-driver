@@ -48,7 +48,7 @@ def test_hello_with_option(self, protocol, **kwargs):
     # We need a special dict because MongoClient uses "server_api" and all
     # of the commands use "apiVersion".
     k_map = {("apiVersion", "1"): ("server_api", ServerApi(
-        ServerApiVersion.V1))}
+                                                 ServerApiVersion.V1))}
     client = MongoClient("mongodb://" + primary.address_string,
                          appname='my app',  # For _check_handshake_data()
                          **dict([k_map.get((k, v), (k, v)) for k, v
@@ -87,18 +87,12 @@ class TestHandshake(unittest.TestCase):
             self.addCleanup(server.stop)
 
         hosts = [server.address_string for server in (primary, secondary)]
-        primary_response = {'hello': 1,
-                            'ok': 1,
-                            "setName": 'rs', "hosts": hosts,
-                            "secondary": False,
+        primary_response = {"setName": 'rs', "hosts": hosts,
                             "minWireVersion": 2, "maxWireVersion": 13}
         error_response = OpMsgReply(
             0, errmsg='Cache Reader No keys found for HMAC ...', code=211)
 
-        secondary_response = {'hello': 1,
-                              'ok': 1,
-                              "setName": 'rs', "hosts": hosts,
-                              "secondary": True,
+        secondary_response = {"setName": 'rs', "hosts": hosts,
                               "minWireVersion": 2, "maxWireVersion": 13}
 
         client = MongoClient(primary.uri,
@@ -111,11 +105,11 @@ class TestHandshake(unittest.TestCase):
         # New monitoring sockets send data during handshake.
         heartbeat = primary.receives(Command('ismaster'))
         _check_handshake_data(heartbeat)
-        heartbeat.ok(OpMsgReply(**primary_response))
+        heartbeat.ok(**primary_response)
 
         heartbeat = secondary.receives(Command('ismaster'))
         _check_handshake_data(heartbeat)
-        heartbeat.ok(OpMsgReply(**secondary_response))
+        heartbeat.ok(**secondary_response)
 
         # Subsequent heartbeats have no client data.
         primary.receives(OpMsg('hello', 1, client=absent)).ok(error_response)
@@ -125,17 +119,15 @@ class TestHandshake(unittest.TestCase):
         # The heartbeat retry (on a new connection) does have client data.
         heartbeat = primary.receives(Command('ismaster'))
         _check_handshake_data(heartbeat)
-        heartbeat.reply(OpMsgReply(**primary_response))
+        heartbeat.reply(primary_response)
 
         heartbeat = secondary.receives(Command('ismaster'))
         _check_handshake_data(heartbeat)
-        heartbeat.reply(OpMsgReply(**secondary_response))
+        heartbeat.reply(secondary_response)
 
         # Still no client data.
-        primary.receives(OpMsg('hello', 1, client=absent)).reply(
-            OpMsgReply(**primary_response))
-        secondary.receives(OpMsg('hello', 1, client=absent)).reply(
-            OpMsgReply(**secondary_response))
+        primary.receives(OpMsg('hello', 1, client=absent)).reply(**primary_response)
+        secondary.receives(OpMsg('hello', 1, client=absent)).reply(**secondary_response)
 
         primary.receives(OpMsg('hello', 1, client=absent)).hangup()
         secondary.receives(OpMsg('hello')).hangup()
@@ -143,7 +135,7 @@ class TestHandshake(unittest.TestCase):
         heartbeat = primary.receives('ismaster')
         _check_handshake_data(heartbeat)
         hb_port = deepcopy(heartbeat.client_port)
-        heartbeat.reply(OpMsgReply(**primary_response))
+        heartbeat.reply(**primary_response)
 
         # Start a command, so the client opens an application socket.
         future = go(client.db.command, "whatever")
@@ -156,7 +148,7 @@ class TestHandshake(unittest.TestCase):
                     handshook = False
                 # Handshaking a new application socket.
                 _check_handshake_data(request)
-                request.reply(OpMsgReply(**primary_response))
+                request.reply(**primary_response)
             elif request.matches(OpMsg("whatever")):
                 # Command succeeds.
                 request.reply(OpMsgReply(**primary_response))
@@ -165,8 +157,8 @@ class TestHandshake(unittest.TestCase):
                 assert future() and handshook
                 return
             else:
-                request.reply(OpMsgReply(isWritablePrimary=True,
-                                         **primary_response))
+                request.reply(isWritablePrimary=True,
+                                         **primary_response)
 
     def test_client_handshake_saslSupportedMechs(self):
         server = MockupDB()
