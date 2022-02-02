@@ -1822,7 +1822,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
           Primary()
           >>> from pymongo import ReadPreference
           >>> db2 = client.get_database(
-          ...   'test', read_preference=ReadPreference.SECONDARY)
+          ...    'test', read_preference=ReadPreference.SECONDARY)
           >>> db2.read_preference
           Secondary(tag_sets=None)
 
@@ -1887,8 +1887,6 @@ def _retryable_error_doc(exc):
     if isinstance(exc, BulkWriteError):
         # Check the last writeConcernError to determine if this
         # BulkWriteError is retryable.
-        if not exc.details:
-          return None
         wces = exc.details['writeConcernErrors']
         wce = wces[-1] if wces else None
         return wce

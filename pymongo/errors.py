@@ -245,12 +245,15 @@ class BulkWriteError(OperationFailure):
 
     .. versionadded:: 2.7
     """
+    details: Mapping[str, Any]
+
     def __init__(self, results: Mapping[str, Any]) -> None:
         super(BulkWriteError, self).__init__(
             "batch op errors occurred", 65, results)
 
     def __reduce__(self) -> Tuple[Any, Any]:
         return self.__class__, (self.details,)
+
 
 
 class InvalidOperation(PyMongoError):

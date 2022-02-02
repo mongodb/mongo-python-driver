@@ -78,7 +78,7 @@ class ServerDescription(object):
         if error:
             details = getattr(error, 'details', None)
             if isinstance(details, dict):
-                self._topology_version = cast(Any, error).details.get('topologyVersion')
+                self._topology_version = details.get('topologyVersion')
 
         self._last_write_date: Optional[float]
         if hello.last_write_date:
