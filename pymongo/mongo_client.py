@@ -1822,7 +1822,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
           Primary()
           >>> from pymongo import ReadPreference
           >>> db2 = client.get_database(
-          ...    'test', read_preference=ReadPreference.SECONDARY)
+          ...     'test', read_preference=ReadPreference.SECONDARY)
           >>> db2.read_preference
           Secondary(tag_sets=None)
 

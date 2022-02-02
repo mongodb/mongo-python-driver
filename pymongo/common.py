@@ -477,7 +477,7 @@ def validate_list_or_none(option: Any, value: Any) -> Optional[List]:
 
 def validate_list_or_mapping(option: Any, value: Any) -> None:
     """Validates that 'value' is a list or a document."""
-    if not isinstance(value, (abc.Mapping, list, tuple)):
+    if not isinstance(value, (abc.Mapping, list)):
         raise TypeError("%s must either be a list or an instance of dict, "
                         "bson.son.SON, or any other type that inherits from "
                         "collections.Mapping" % (option,))
