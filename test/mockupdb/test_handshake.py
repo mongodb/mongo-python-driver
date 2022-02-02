@@ -50,7 +50,7 @@ def test_hello_with_option(self, protocol, **kwargs):
                          appname='my app', # For _check_handshake_data()
                          **dict([k_map.get((k, v), (k, v)) for k, v
                                  in kwargs.items()]))
-    
+
     self.addCleanup(client.close)
 
     # We have an autoresponder luckily, so no need for `go()`.
@@ -227,6 +227,7 @@ class TestHandshake(unittest.TestCase):
             if request.matches(OpMsg, saslStart=1):
                 self.found_auth_msg = True
                 # Immediately closes the connection with
+                # OperationFailure: Server returned an invalid nonce.
                 request.reply(OpMsgReply(**primary_response,
                                          **{'payload':
                                                 b'r=wPleNM8S5p8gMaffMDF7Py4ru9bnmmoqb0'
