@@ -38,7 +38,6 @@ def test_hello_with_option(self, protocol, **kwargs):
             "loadBalanced") else {}
         return r.reply(OpMsgReply(minWireVersion=0, maxWireVersion=13,
                                   **kwargs, **load_balanced_kwargs))
-    
     primary.autoresponds(respond)
     primary.run()
     self.addCleanup(primary.stop)
@@ -51,7 +50,7 @@ def test_hello_with_option(self, protocol, **kwargs):
                          appname='my app', # For _check_handshake_data()
                          **dict([k_map.get((k, v), (k, v)) for k, v
                                  in kwargs.items()]))
-
+    
     self.addCleanup(client.close)
 
     # We have an autoresponder luckily, so no need for `go()`.
