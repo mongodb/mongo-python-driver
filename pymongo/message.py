@@ -1009,7 +1009,7 @@ class _BulkWriteContext(object):
             start = datetime.datetime.now()
         try:
             result = self.sock_info.legacy_write(
-                request_id, msg, max_doc_size, acknowledged)
+                request_id, msg, max_doc_size, acknowledged, self.codec)
             if self.publish:
                 duration = (datetime.datetime.now() - start) + duration
                 if result is not None:
