@@ -16,7 +16,7 @@ from mockupdb import (MockupDB, OpReply, OpMsg, OpMsgReply, OpQuery, absent,
                       Command, go)
 
 from pymongo import MongoClient, version as pymongo_version
-from pymongo.errors import OperationFailure, AutoReconnect
+from pymongo.errors import OperationFailure
 from pymongo.server_api import ServerApi, ServerApiVersion
 from bson.objectid import ObjectId
 
@@ -47,10 +47,9 @@ def test_hello_with_option(self, protocol, **kwargs):
 
     # We need a special dict because MongoClient uses "server_api" and all
     # of the commands use "apiVersion".
-    k_map = {("apiVersion", "1"): ("server_api", ServerApi(
-        ServerApiVersion.V1))}
+    k_map = {("apiVersion", "1"): ("server_api", ServerApi(ServerApiVersion.V1))}
     client = MongoClient("mongodb://" + primary.address_string,
-                         appname='my app',  # For _check_handshake_data()
+                         appname='my app',# For _check_handshake_data()
                          **dict([k_map.get((k, v), (k, v)) for k, v
                                  in kwargs.items()]))
 
