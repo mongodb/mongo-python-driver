@@ -28,4 +28,4 @@ _Address = Tuple[str, Optional[int]]
 _CollationIn = Union[Mapping[str, Any], "Collation"]
 _DocumentIn = Union[MutableMapping[str, Any], "RawBSONDocument"]
 _Pipeline = List[Mapping[str, Any]]
-_DocumentType = TypeVar('_DocumentType', Mapping[str, Any], MutableMapping[str, Any], Dict[str, Any], "SON")
+_DocumentType = TypeVar('_DocumentType', Mapping[str, Any], MutableMapping[str, Any], Dict[str, Any] )

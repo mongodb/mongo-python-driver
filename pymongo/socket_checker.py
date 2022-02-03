@@ -16,9 +16,8 @@
 
 import errno
 import select
-import socket
 import sys
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 # PYTHON-2320: Jython does not fully support poll on SSL sockets,
 # https://bugs.jython.org/issue2900
