@@ -18,7 +18,7 @@ import functools
 import threading
 
 from collections import abc
-from typing import List, cast
+from typing import List
 
 from bson import decode, encode
 from bson.binary import Binary
@@ -207,7 +207,7 @@ class SpecRunner(IntegrationTest):
                 # SPEC-869: Only BulkWriteResult has upserted_count.
                 if (prop == "upserted_count"
                         and not isinstance(result, BulkWriteResult)):
-                    if cast(UpdateResult, result).upserted_id is not None:
+                    if result.upserted_id is not None:  # type: ignore[attr-defined]
                         upserted_count = 1
                     else:
                         upserted_count = 0
@@ -224,14 +224,14 @@ class SpecRunner(IntegrationTest):
                         if isinstance(ids, dict):
                             ids = [ids[str(i)] for i in range(len(ids))]
 
-                        self.assertEqual(ids, cast(InsertManyResult, result).inserted_ids, prop)
+                        self.assertEqual(ids, result.inserted_ids, prop)  # type: ignore[attr-defined]
                 elif prop == "upserted_ids":
                     # Convert indexes from strings to integers.
                     ids = expected_result[res]
                     expected_ids = {}
                     for str_index in ids:
                         expected_ids[int(str_index)] = ids[str_index]
-                    self.assertEqual(expected_ids, cast(BulkWriteResult, result).upserted_ids, prop)
+                    self.assertEqual(expected_ids, result.upserted_ids, prop)  # type: ignore[attr-defined]
                 else:
                     self.assertEqual(
                         getattr(result, prop), expected_result[res], prop)

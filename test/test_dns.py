@@ -18,7 +18,6 @@ import glob
 import json
 import os
 import sys
-from pymongo import client_options
 
 sys.path[0:0] = [""]
 

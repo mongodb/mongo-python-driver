@@ -27,7 +27,7 @@ import time
 import types
 
 from collections import abc
-from typing import Any, cast
+from typing import Any
 
 from bson import json_util, Code, Decimal128, DBRef, SON, Int64, MaxKey, MinKey
 from bson.binary import Binary
@@ -524,11 +524,11 @@ class MatchEvaluatorUtil(object):
                 nested = expectation[key_to_compare]
                 if isinstance(nested, abc.Mapping) and len(nested) == 1:
                     opname, spec = next(iter(nested.items()))
-                    if cast(str, opname).startswith('$$'):
+                    if opname.startswith('$$'):  # type: ignore[attr-defined]
                         is_special_op = True
         elif len(expectation) == 1:
             opname, spec = next(iter(expectation.items()))
-            if cast(str, opname).startswith('$$'):
+            if opname.startswith('$$'):  # type: ignore[attr-defined]
                 is_special_op = True
                 key_to_compare = None
 

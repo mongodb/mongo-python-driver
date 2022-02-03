@@ -17,7 +17,7 @@
 """Tests for the Code wrapper."""
 
 import sys
-from typing import Any
+
 sys.path[0:0] = [""]
 
 from bson.code import Code
