@@ -589,7 +589,7 @@ class TestDatabase(IntegrationTest):
             db.command('count', 'test')
             self.assertRaises(ExecutionTimeout, db.command,
                               'count', 'test', maxTimeMS=1)
-            pipeline: list = [{'$project': {'name': 1, 'count': 1}}]
+            pipeline = [{'$project': {'name': 1, 'count': 1}}]
             # Database command helper.
             db.command('aggregate', 'test', pipeline=pipeline, cursor={})
             self.assertRaises(ExecutionTimeout, db.command,
@@ -667,7 +667,7 @@ class TestDatabaseAggregation(IntegrationTest):
         self.addCleanup(output_coll.drop)
 
         admin = self.admin.with_options(write_concern=WriteConcern(w=0))
-        pipeline: list = self.pipeline[:]
+        pipeline = self.pipeline[:]
         pipeline.append(write_stage)
         with admin.aggregate(pipeline) as cursor:
             with self.assertRaises(StopIteration):

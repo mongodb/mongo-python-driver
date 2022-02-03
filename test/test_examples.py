@@ -693,7 +693,7 @@ class TestSampleShellCommands(IntegrationTest):
             # End Changestream Example 3
 
             # Start Changestream Example 4
-            pipeline: list = [
+            pipeline = [
                 {'$match': {'fullDocument.username': 'alice'}},
                 {'$addFields': {'newField': 'this is an added field!'}}
             ]
