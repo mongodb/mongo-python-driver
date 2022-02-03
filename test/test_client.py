@@ -28,7 +28,7 @@ import _thread as thread
 import threading
 import warnings
 
-from typing import no_type_check
+from typing import no_type_check, Type
 
 sys.path[0:0] = [""]
 
@@ -344,7 +344,7 @@ class ClientUnitTest(unittest.TestCase):
                 return int(value)
 
         # Ensure codec options are passed in correctly
-        document_class = SON
+        document_class: Type[SON] = SON
         type_registry = TypeRegistry([MyFloatAsIntEncoder()])
         tz_aware = True
         uuid_representation_label = 'javaLegacy'
