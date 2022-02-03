@@ -29,6 +29,7 @@ import warnings
 
 from collections import abc, defaultdict
 from functools import partial
+from typing import Any, cast
 
 from bson import json_util
 from bson.objectid import ObjectId
@@ -869,7 +870,12 @@ def frequent_thread_switches():
             sys.setswitchinterval(1e-6)
         else:
             interval = sys.getcheckinterval()  # type: ignore
-            sys.setcheckinterval(1)  # type: ignore
+            # Cast to any to support deprecated function.
+            # This function exists in Python 3.7, but
+            # not in newer versions of Python.
+            # We can't use "type: ignore" because it results
+            # in an error when the function is available.
+            cast(Any, sys).setcheckinterval(1)
 
     try:
         yield
