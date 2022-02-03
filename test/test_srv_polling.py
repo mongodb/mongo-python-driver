@@ -194,7 +194,7 @@ class TestSrvPolling(unittest.TestCase):
 
     def test_dns_failures(self):
         from dns import exception
-        for exc in (exception.FormError, exception.TooBig, exception.Timeout):
+        for exc in (exception.FormError, exception.TooBig, exception.Timeout):  # type: ignore[attr-defined]
             def response_callback(*args):
                 raise exc("DNS Failure!")
             self.run_scenario(response_callback, False)
