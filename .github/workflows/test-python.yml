@@ -46,4 +46,4 @@ jobs:
           pip install -e ".[zstd, srv]"
       - name: Run mypy
         run: |
-          mypy --install-types --non-interactive bson gridfs tools
+          mypy --install-types --non-interactive bson gridfs tools test
