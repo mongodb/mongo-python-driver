@@ -156,14 +156,14 @@ class TestSON(unittest.TestCase):
         # test success case
         test_son = SON([("1", 100), ("2", 200), ("3", 300)])
         for ele in test_son:
-            self.assertEqual(ele * 100, test_son[ele])
+            self.assertEqual(int(ele) * 100, test_son[ele])
 
     def test_contains_has(self):
         """
         has_key and __contains__
         """
         test_son = SON([("1", 100), ("2", 200), ("3", 300)])
-        self.assertIn(1, test_son)
+        self.assertIn("1", test_son)
         self.assertTrue("2" in test_son, "in failed")
         self.assertFalse("22" in test_son, "in succeeded when it shouldn't")
         self.assertTrue(test_son.has_key("2"), "has_key failed")
@@ -175,7 +175,7 @@ class TestSON(unittest.TestCase):
         """
         test_son: SON = SON([("1", 100), ("2", 200), ("3", 300)])
         test_son.clear()
-        self.assertNotIn(1, test_son)
+        self.assertNotIn("1", test_son)
         self.assertEqual(0, len(test_son))
         self.assertEqual(0, len(test_son.keys()))
         self.assertEqual({}, test_son.to_dict())
