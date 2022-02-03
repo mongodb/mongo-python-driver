@@ -35,7 +35,7 @@ from pymongo.errors import (BulkWriteError,
                             PyMongoError)
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
-from pymongo.results import _WriteResult, BulkWriteResult, InsertManyResult, UpdateResult
+from pymongo.results import _WriteResult, BulkWriteResult
 from pymongo.write_concern import WriteConcern
 
 from test import (client_context,
