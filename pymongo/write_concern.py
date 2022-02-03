@@ -14,6 +14,8 @@
 
 """Tools for working with write concerns."""
 
+from typing import Any, Dict, Optional, Union
+
 from pymongo.errors import ConfigurationError
 
 
@@ -45,8 +47,8 @@ class WriteConcern(object):
 
     __slots__ = ("__document", "__acknowledged", "__server_default")
 
-    def __init__(self, w=None, wtimeout=None, j=None, fsync=None):
-        self.__document = {}
+    def __init__(self, w: Optional[Union[int, str]] = None, wtimeout: Optional[int] = None, j: Optional[bool] = None, fsync: Optional[bool] = None) -> None:
+        self.__document: Dict[str, Any] = {}
         self.__acknowledged = True
 
         if wtimeout is not None:
@@ -84,12 +86,12 @@ class WriteConcern(object):
         self.__server_default = not self.__document
 
     @property
-    def is_server_default(self):
+    def is_server_default(self) -> bool:
         """Does this WriteConcern match the server default."""
         return self.__server_default
 
     @property
-    def document(self):
+    def document(self) -> Dict[str, Any]:
         """The document representation of this write concern.
 
         .. note::
@@ -99,7 +101,7 @@ class WriteConcern(object):
         return self.__document.copy()
 
     @property
-    def acknowledged(self):
+    def acknowledged(self) -> bool:
         """If ``True`` write operations will wait for acknowledgement before
         returning.
         """
@@ -109,12 +111,12 @@ class WriteConcern(object):
         return ("WriteConcern(%s)" % (
             ", ".join("%s=%s" % kvt for kvt in self.__document.items()),))
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, WriteConcern):
             return self.__document == other.document
         return NotImplemented
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         if isinstance(other, WriteConcern):
             return self.__document != other.document
         return NotImplemented

@@ -25,7 +25,7 @@ import warnings
 try:
     import simplejson as json
 except ImportError:
-    import json  # type: ignore
+    import json  # type: ignore[no-redef]
 
 sys.path[0:0] = [""]
 

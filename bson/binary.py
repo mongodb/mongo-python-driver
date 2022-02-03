@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Tuple, Type
+from typing import Any, Tuple, Type, Union, TYPE_CHECKING
 from uuid import UUID
 
 """Tools for representing BSON binary data.
@@ -55,6 +55,11 @@ This is the standard BSON binary subtype for UUIDs.
 by :mod:`bson` using this subtype when using
 :data:`UuidRepresentation.STANDARD`.
 """
+
+
+if TYPE_CHECKING:
+    from array import array as _array
+    from mmap import mmap as _mmap
 
 
 class UuidRepresentation:
@@ -211,7 +216,7 @@ class Binary(bytes):
     _type_marker = 5
     __subtype: int
 
-    def __new__(cls: Type["Binary"], data: bytes, subtype: int = BINARY_SUBTYPE) -> "Binary":
+    def __new__(cls: Type["Binary"], data: Union[memoryview, bytes, "_mmap", "_array"], subtype: int = BINARY_SUBTYPE) -> "Binary":
         if not isinstance(subtype, int):
             raise TypeError("subtype must be an instance of int")
         if subtype >= 256 or subtype < 0:

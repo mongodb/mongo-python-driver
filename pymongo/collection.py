@@ -14,42 +14,43 @@
 
 """Collection level utilities for Mongo."""
 
-import datetime
-import warnings
-
 from collections import abc
+from typing import (TYPE_CHECKING, Any, Generic, Iterable, List, Mapping,
+                    MutableMapping, Optional, Sequence, Tuple, Union)
 
 from bson.code import Code
+from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
-from bson.codec_options import CodecOptions
 from bson.son import SON
-from pymongo import (common,
-                     helpers,
-                     message)
+from bson.timestamp import Timestamp
+from pymongo import common, helpers, message
 from pymongo.aggregation import (_CollectionAggregationCommand,
                                  _CollectionRawAggregationCommand)
 from pymongo.bulk import _Bulk
-from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
-from pymongo.collation import validate_collation_or_none
 from pymongo.change_stream import CollectionChangeStream
+from pymongo.collation import validate_collation_or_none
+from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
 from pymongo.cursor import Cursor, RawBatchCursor
-from pymongo.errors import (ConfigurationError,
-                            InvalidName,
-                            InvalidOperation,
+from pymongo.errors import (ConfigurationError, InvalidName, InvalidOperation,
                             OperationFailure)
 from pymongo.helpers import _check_write_command_response
 from pymongo.message import _UNICODE_REPLACE_CODEC_OPTIONS
-from pymongo.operations import IndexModel
-from pymongo.read_preferences import ReadPreference
-from pymongo.results import (BulkWriteResult,
-                             DeleteResult,
-                             InsertOneResult,
-                             InsertManyResult,
-                             UpdateResult)
+from pymongo.operations import (DeleteMany, DeleteOne, IndexModel, InsertOne,
+                                ReplaceOne, UpdateMany, UpdateOne)
+from pymongo.read_preferences import ReadPreference, _ServerMode
+from pymongo.results import (BulkWriteResult, DeleteResult, InsertManyResult,
+                             InsertOneResult, UpdateResult)
+from pymongo.typings import _CollationIn, _DocumentIn, _DocumentType, _Pipeline
 from pymongo.write_concern import WriteConcern
 
 _FIND_AND_MODIFY_DOC_FIELDS = {'value': 1}
+
+
+_WriteOp = Union[InsertOne, DeleteOne, DeleteMany, ReplaceOne, UpdateOne, UpdateMany]
+# Hint supports index name, "myIndex", or list of index pairs: [('x', 1), ('y', -1)]
+_IndexList = Sequence[Tuple[str, Union[int, str, Mapping[str, Any]]]]
+_IndexKeyHint = Union[str, _IndexList]
 
 
 class ReturnDocument(object):
@@ -65,13 +66,28 @@ class ReturnDocument(object):
     """Return the updated/replaced or inserted document."""
 
 
-class Collection(common.BaseObject):
+if TYPE_CHECKING:
+    from pymongo.client_session import ClientSession
+    from pymongo.database import Database
+    from pymongo.read_concern import ReadConcern
+
+
+class Collection(common.BaseObject, Generic[_DocumentType]):
     """A Mongo collection.
     """
 
-    def __init__(self, database, name, create=False, codec_options=None,
-                 read_preference=None, write_concern=None, read_concern=None,
-                 session=None, **kwargs):
+    def __init__(
+        self,
+        database: "Database[_DocumentType]",
+        name: str,
+        create: Optional[bool] = False,
+        codec_options: Optional[CodecOptions] = None,
+        read_preference: Optional[_ServerMode] = None,
+        write_concern: Optional[WriteConcern] = None,
+        read_concern: Optional["ReadConcern"] = None,
+        session: Optional["ClientSession"] = None,
+        **kwargs: Any,
+    ) -> None:
         """Get / create a Mongo collection.
 
         Raises :class:`TypeError` if `name` is not an instance of
@@ -169,7 +185,7 @@ class Collection(common.BaseObject):
                               "null character")
         collation = validate_collation_or_none(kwargs.pop('collation', None))
 
-        self.__database = database
+        self.__database: Database[_DocumentType] = database
         self.__name = name
         self.__full_name = "%s.%s" % (self.__database.name, self.__name)
         if create or kwargs or collation:
@@ -252,7 +268,7 @@ class Collection(common.BaseObject):
                 write_concern=self._write_concern_for(session),
                 collation=collation, session=session)
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> "Collection[_DocumentType]":
         """Get a sub-collection of this collection by name.
 
         Raises InvalidName if an invalid collection name is used.
@@ -268,7 +284,7 @@ class Collection(common.BaseObject):
                     name, full_name, full_name))
         return self.__getitem__(name)
 
-    def __getitem__(self, name):
+    def __getitem__(self, name: str) -> "Collection[_DocumentType]":
         return Collection(self.__database,
                           "%s.%s" % (self.__name, name),
                           False,
@@ -280,25 +296,25 @@ class Collection(common.BaseObject):
     def __repr__(self):
         return "Collection(%r, %r)" % (self.__database, self.__name)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, Collection):
             return (self.__database == other.database and
                     self.__name == other.name)
         return NotImplemented
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.__database, self.__name))
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         raise NotImplementedError("Collection objects do not implement truth "
                                   "value testing or bool(). Please compare "
                                   "with None instead: collection is not None")
 
     @property
-    def full_name(self):
+    def full_name(self) -> str:
         """The full name of this :class:`Collection`.
 
         The full name is of the form `database_name.collection_name`.
@@ -306,19 +322,24 @@ class Collection(common.BaseObject):
         return self.__full_name
 
     @property
-    def name(self):
+    def name(self) -> str:
         """The name of this :class:`Collection`."""
         return self.__name
 
     @property
-    def database(self):
+    def database(self) -> "Database[_DocumentType]":
         """The :class:`~pymongo.database.Database` that this
         :class:`Collection` is a part of.
         """
         return self.__database
 
-    def with_options(self, codec_options=None, read_preference=None,
-                     write_concern=None, read_concern=None):
+    def with_options(
+        self,
+        codec_options: Optional[CodecOptions] = None,
+        read_preference: Optional[_ServerMode] = None,
+        write_concern: Optional[WriteConcern] = None,
+        read_concern: Optional["ReadConcern"] = None,
+    ) -> "Collection[_DocumentType]":
         """Get a clone of this collection changing the specified settings.
 
           >>> coll1.read_preference
@@ -356,8 +377,13 @@ class Collection(common.BaseObject):
                           write_concern or self.write_concern,
                           read_concern or self.read_concern)
 
-    def bulk_write(self, requests, ordered=True,
-                   bypass_document_validation=False, session=None):
+    def bulk_write(
+        self,
+        requests: Sequence[_WriteOp],
+        ordered: bool = True,
+        bypass_document_validation: bool = False,
+        session: Optional["ClientSession"] = None
+    ) -> BulkWriteResult:
         """Send a batch of write operations to the server.
 
         Requests are passed as a list of write operation instances (
@@ -470,8 +496,10 @@ class Collection(common.BaseObject):
         if not isinstance(doc, RawBSONDocument):
             return doc.get('_id')
 
-    def insert_one(self, document, bypass_document_validation=False,
-                   session=None):
+    def insert_one(self, document: _DocumentIn,
+        bypass_document_validation: bool = False,
+        session: Optional["ClientSession"] = None
+    ) -> InsertOneResult:
         """Insert a single document.
 
           >>> db.test.count_documents({'x': 1})
@@ -520,8 +548,12 @@ class Collection(common.BaseObject):
                 bypass_doc_val=bypass_document_validation, session=session),
             write_concern.acknowledged)
 
-    def insert_many(self, documents, ordered=True,
-                    bypass_document_validation=False, session=None):
+    def insert_many(self,
+        documents: Iterable[_DocumentIn],
+        ordered: bool = True,
+        bypass_document_validation: bool = False,
+        session: Optional["ClientSession"] = None
+    ) -> InsertManyResult:
         """Insert an iterable of documents.
 
           >>> db.test.count_documents({})
@@ -565,7 +597,7 @@ class Collection(common.BaseObject):
                 or isinstance(documents, abc.Mapping)
                 or not documents):
             raise TypeError("documents must be a non-empty list")
-        inserted_ids = []
+        inserted_ids: List[ObjectId] = []
         def gen():
             """A generator that validates documents and handles _ids."""
             for document in documents:
@@ -671,9 +703,16 @@ class Collection(common.BaseObject):
             (write_concern or self.write_concern).acknowledged and not multi,
             _update, session)
 
-    def replace_one(self, filter, replacement, upsert=False,
-                    bypass_document_validation=False, collation=None,
-                    hint=None, session=None, let=None):
+    def replace_one(self,
+        filter: Mapping[str, Any],
+        replacement: Mapping[str, Any],
+        upsert: bool = False,
+        bypass_document_validation: bool = False,
+        collation: Optional[_CollationIn] = None,
+        hint: Optional[_IndexKeyHint] = None,
+        session: Optional["ClientSession"] = None,
+        let: Optional[Mapping[str, Any]] = None
+    ) -> UpdateResult:
         """Replace a single document matching the filter.
 
           >>> for doc in db.test.find({}):
@@ -755,10 +794,17 @@ class Collection(common.BaseObject):
                 collation=collation, hint=hint, session=session, let=let),
             write_concern.acknowledged)
 
-    def update_one(self, filter, update, upsert=False,
-                   bypass_document_validation=False,
-                   collation=None, array_filters=None, hint=None,
-                   session=None, let=None):
+    def update_one(self,
+        filter: Mapping[str, Any],
+        update: Union[Mapping[str, Any], _Pipeline],
+        upsert: bool = False,
+        bypass_document_validation: bool = False,
+        collation: Optional[_CollationIn] = None,
+        array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
+        hint: Optional[_IndexKeyHint] = None,
+        session: Optional["ClientSession"] = None,
+        let: Optional[Mapping[str, Any]] = None
+    ) -> UpdateResult:
         """Update a single document matching the filter.
 
           >>> for doc in db.test.find():
@@ -800,8 +846,8 @@ class Collection(common.BaseObject):
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
           - `let` (optional): Map of parameter names and values. Values must be
-            constant or closed expressions that do not reference document 
-            fields. Parameters can then be accessed as variables in an 
+            constant or closed expressions that do not reference document
+            fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
 
         :Returns:
@@ -836,9 +882,17 @@ class Collection(common.BaseObject):
                 hint=hint, session=session, let=let),
             write_concern.acknowledged)
 
-    def update_many(self, filter, update, upsert=False, array_filters=None,
-                    bypass_document_validation=False, collation=None,
-                    hint=None, session=None, let=None):
+    def update_many(self,
+        filter: Mapping[str, Any],
+        update: Union[Mapping[str, Any], _Pipeline],
+        upsert: bool = False,
+        array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
+        bypass_document_validation: Optional[bool] = None,
+        collation: Optional[_CollationIn] = None,
+        hint: Optional[_IndexKeyHint] = None,
+        session: Optional["ClientSession"] = None,
+        let: Optional[Mapping[str, Any]] = None
+    ) -> UpdateResult:
         """Update one or more documents that match the filter.
 
           >>> for doc in db.test.find():
@@ -880,8 +934,8 @@ class Collection(common.BaseObject):
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
           - `let` (optional): Map of parameter names and values. Values must be
-            constant or closed expressions that do not reference document 
-            fields. Parameters can then be accessed as variables in an 
+            constant or closed expressions that do not reference document
+            fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
 
         :Returns:
@@ -916,7 +970,7 @@ class Collection(common.BaseObject):
                 hint=hint, session=session, let=let),
             write_concern.acknowledged)
 
-    def drop(self, session=None):
+    def drop(self, session: Optional["ClientSession"] = None) -> None:
         """Alias for :meth:`~pymongo.database.Database.drop_collection`.
 
         :Parameters:
@@ -1005,8 +1059,13 @@ class Collection(common.BaseObject):
             (write_concern or self.write_concern).acknowledged and not multi,
             _delete, session)
 
-    def delete_one(self, filter, collation=None, hint=None, session=None,
-                   let=None):
+    def delete_one(self,
+        filter: Mapping[str, Any],
+        collation: Optional[_CollationIn] = None,
+        hint: Optional[_IndexKeyHint] = None,
+        session: Optional["ClientSession"] = None,
+        let: Optional[Mapping[str, Any]] = None
+    ) -> DeleteResult:
         """Delete a single document matching the filter.
 
           >>> db.test.count_documents({'x': 1})
@@ -1030,8 +1089,8 @@ class Collection(common.BaseObject):
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
           - `let` (optional): Map of parameter names and values. Values must be
-            constant or closed expressions that do not reference document 
-            fields. Parameters can then be accessed as variables in an 
+            constant or closed expressions that do not reference document
+            fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
 
         :Returns:
@@ -1055,8 +1114,13 @@ class Collection(common.BaseObject):
                 collation=collation, hint=hint, session=session, let=let),
             write_concern.acknowledged)
 
-    def delete_many(self, filter, collation=None, hint=None, session=None,
-                    let=None):
+    def delete_many(self,
+        filter: Mapping[str, Any],
+        collation: Optional[_CollationIn] = None,
+        hint: Optional[_IndexKeyHint] = None,
+        session: Optional["ClientSession"] = None,
+        let: Optional[Mapping[str, Any]] = None
+    ) -> DeleteResult:
         """Delete one or more documents matching the filter.
 
           >>> db.test.count_documents({'x': 1})
@@ -1080,8 +1144,8 @@ class Collection(common.BaseObject):
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
           - `let` (optional): Map of parameter names and values. Values must be
-            constant or closed expressions that do not reference document 
-            fields. Parameters can then be accessed as variables in an 
+            constant or closed expressions that do not reference document
+            fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
 
         :Returns:
@@ -1105,7 +1169,7 @@ class Collection(common.BaseObject):
                 collation=collation, hint=hint, session=session, let=let),
             write_concern.acknowledged)
 
-    def find_one(self, filter=None, *args, **kwargs):
+    def find_one(self, filter: Optional[Any] = None, *args: Any, **kwargs: Any) -> Optional[_DocumentType]:
         """Get a single document from the database.
 
         All arguments to :meth:`find` are also valid arguments for
@@ -1139,7 +1203,7 @@ class Collection(common.BaseObject):
             return result
         return None
 
-    def find(self, *args, **kwargs):
+    def find(self, *args: Any, **kwargs: Any) -> Cursor[_DocumentType]:
         """Query the database.
 
         The `filter` argument is a prototype document that all results
@@ -1328,7 +1392,7 @@ class Collection(common.BaseObject):
         """
         return Cursor(self, *args, **kwargs)
 
-    def find_raw_batches(self, *args, **kwargs):
+    def find_raw_batches(self, *args: Any, **kwargs: Any) -> RawBatchCursor[_DocumentType]:
         """Query the database and retrieve batches of raw BSON.
 
         Similar to the :meth:`find` method but returns a
@@ -1396,7 +1460,7 @@ class Collection(common.BaseObject):
         batch = result['cursor']['firstBatch']
         return batch[0] if batch else None
 
-    def estimated_document_count(self, **kwargs):
+    def estimated_document_count(self, **kwargs: Any) -> int:
         """Get an estimate of the number of documents in this collection using
         collection metadata.
 
@@ -1445,7 +1509,7 @@ class Collection(common.BaseObject):
         return self.__database.client._retryable_read(
             _cmd, self.read_preference, None)
 
-    def count_documents(self, filter, session=None, **kwargs):
+    def count_documents(self, filter: Mapping[str, Any], session: Optional["ClientSession"] = None, **kwargs: Any) -> int:
         """Count the number of documents in this collection.
 
         .. note:: For a fast count of the total documents in a collection see
@@ -1523,7 +1587,7 @@ class Collection(common.BaseObject):
         return self.__database.client._retryable_read(
             _cmd, self._read_preference_for(session), session)
 
-    def create_indexes(self, indexes, session=None, **kwargs):
+    def create_indexes(self, indexes: Sequence[IndexModel], session: Optional["ClientSession"] = None, **kwargs: Any) -> List[str]:
         """Create one or more indexes on this collection.
 
           >>> from pymongo import IndexModel, ASCENDING, DESCENDING
@@ -1598,7 +1662,7 @@ class Collection(common.BaseObject):
                 session=session)
         return names
 
-    def create_index(self, keys, session=None, **kwargs):
+    def create_index(self, keys: _IndexKeyHint, session: Optional["ClientSession"] = None, **kwargs: Any) -> str:
         """Creates an index on this collection.
 
         Takes either a single key or a list of (key, direction) pairs.
@@ -1701,7 +1765,7 @@ class Collection(common.BaseObject):
         index = IndexModel(keys, **kwargs)
         return self.__create_indexes([index], session, **cmd_options)[0]
 
-    def drop_indexes(self, session=None, **kwargs):
+    def drop_indexes(self, session: Optional["ClientSession"] = None, **kwargs: Any) -> None:
         """Drops all indexes on this collection.
 
         Can be used on non-existant collections or collections with no indexes.
@@ -1727,7 +1791,7 @@ class Collection(common.BaseObject):
         """
         self.drop_index("*", session=session, **kwargs)
 
-    def drop_index(self, index_or_name, session=None, **kwargs):
+    def drop_index(self, index_or_name: _IndexKeyHint, session: Optional["ClientSession"] = None, **kwargs: Any) -> None:
         """Drops the specified index on this collection.
 
         Can be used on non-existant collections or collections with no
@@ -1780,7 +1844,7 @@ class Collection(common.BaseObject):
                           write_concern=self._write_concern_for(session),
                           session=session)
 
-    def list_indexes(self, session=None):
+    def list_indexes(self, session: Optional["ClientSession"] = None) -> CommandCursor[MutableMapping[str, Any]]:
         """Get a cursor over the index documents for this collection.
 
           >>> for index in db.test.list_indexes():
@@ -1829,7 +1893,7 @@ class Collection(common.BaseObject):
         return self.__database.client._retryable_read(
             _cmd, read_pref, session)
 
-    def index_information(self, session=None):
+    def index_information(self, session: Optional["ClientSession"] = None) -> MutableMapping[str, Any]:
         """Get information on this collection's indexes.
 
         Returns a dictionary where the keys are index names (as
@@ -1863,7 +1927,7 @@ class Collection(common.BaseObject):
             info[index.pop("name")] = index
         return info
 
-    def options(self, session=None):
+    def options(self, session: Optional["ClientSession"] = None) -> MutableMapping[str, Any]:
         """Get the options set on this collection.
 
         Returns a dictionary of options and their values - see
@@ -1896,6 +1960,7 @@ class Collection(common.BaseObject):
             return {}
 
         options = result.get("options", {})
+        assert options is not None
         if "create" in options:
             del options["create"]
 
@@ -1911,7 +1976,7 @@ class Collection(common.BaseObject):
             cmd.get_cursor, cmd.get_read_preference(session), session,
             retryable=not cmd._performs_write)
 
-    def aggregate(self, pipeline, session=None, let=None, **kwargs):
+    def aggregate(self, pipeline: _Pipeline, session: Optional["ClientSession"] = None, let: Optional[Mapping[str, Any]] = None, **kwargs: Any) -> CommandCursor[_DocumentType]:
         """Perform an aggregation using the aggregation framework on this
         collection.
 
@@ -1993,7 +2058,9 @@ class Collection(common.BaseObject):
                                    let=let,
                                    **kwargs)
 
-    def aggregate_raw_batches(self, pipeline, session=None, **kwargs):
+    def aggregate_raw_batches(
+        self, pipeline: _Pipeline, session: Optional["ClientSession"] = None, **kwargs: Any
+    ) -> RawBatchCursor[_DocumentType]:
         """Perform an aggregation and retrieve batches of raw BSON.
 
         Similar to the :meth:`aggregate` method but returns a
@@ -2030,9 +2097,17 @@ class Collection(common.BaseObject):
                                    explicit_session=session is not None,
                                    **kwargs)
 
-    def watch(self, pipeline=None, full_document=None, resume_after=None,
-              max_await_time_ms=None, batch_size=None, collation=None,
-              start_at_operation_time=None, session=None, start_after=None):
+    def watch(self,
+        pipeline: Optional[_Pipeline] = None,
+        full_document: Optional[str] = None,
+        resume_after: Optional[Mapping[str, Any]] = None,
+        max_await_time_ms: Optional[int] = None,
+        batch_size: Optional[int] = None,
+        collation: Optional[_CollationIn] = None,
+        start_at_operation_time: Optional[Timestamp] = None,
+        session: Optional["ClientSession"] = None,
+        start_after: Optional[Mapping[str, Any]] = None,
+    ) -> CollectionChangeStream[_DocumentType]:
         """Watch changes on this collection.
 
         Performs an aggregation with an implicit initial ``$changeStream``
@@ -2132,7 +2207,7 @@ class Collection(common.BaseObject):
             batch_size, collation, start_at_operation_time, session,
             start_after)
 
-    def rename(self, new_name, session=None, **kwargs):
+    def rename(self, new_name: str, session: Optional["ClientSession"] = None, **kwargs: Any) -> MutableMapping[str, Any]:
         """Rename this collection.
 
         If operating in auth mode, client must be authorized as an
@@ -2183,7 +2258,9 @@ class Collection(common.BaseObject):
                     parse_write_concern_error=True,
                     session=s, client=self.__database.client)
 
-    def distinct(self, key, filter=None, session=None, **kwargs):
+    def distinct(
+        self, key: str, filter: Optional[Mapping[str, Any]] = None, session: Optional["ClientSession"] = None, **kwargs: Any
+    ) -> List:
         """Get a list of distinct values for `key` among all documents
         in this collection.
 
@@ -2283,7 +2360,7 @@ class Collection(common.BaseObject):
                     raise ConfigurationError(
                         'arrayFilters is unsupported for unacknowledged '
                         'writes.')
-                cmd["arrayFilters"] = array_filters
+                cmd["arrayFilters"] = list(array_filters)
             if hint is not None:
                 if sock_info.max_wire_version < 8:
                     raise ConfigurationError(
@@ -2307,9 +2384,15 @@ class Collection(common.BaseObject):
         return self.__database.client._retryable_write(
             write_concern.acknowledged, _find_and_modify, session)
 
-    def find_one_and_delete(self, filter,
-                            projection=None, sort=None, hint=None,
-                            session=None, let=None, **kwargs):
+    def find_one_and_delete(self,
+        filter: Mapping[str, Any],
+        projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
+        sort: Optional[_IndexList] = None,
+        hint: Optional[_IndexKeyHint] = None,
+        session: Optional["ClientSession"] = None,
+        let: Optional[Mapping[str, Any]] = None,
+        **kwargs: Any,
+    ) -> _DocumentType:
         """Finds a single document and deletes it, returning the document.
 
           >>> db.test.count_documents({'x': 1})
@@ -2357,8 +2440,8 @@ class Collection(common.BaseObject):
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
           - `let` (optional): Map of parameter names and values. Values must be
-            constant or closed expressions that do not reference document 
-            fields. Parameters can then be accessed as variables in an 
+            constant or closed expressions that do not reference document
+            fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
 
         .. versionchanged:: 4.1
@@ -2384,10 +2467,18 @@ class Collection(common.BaseObject):
         return self.__find_and_modify(filter, projection, sort, let=let,
                                       hint=hint, session=session, **kwargs)
 
-    def find_one_and_replace(self, filter, replacement,
-                             projection=None, sort=None, upsert=False,
-                             return_document=ReturnDocument.BEFORE,
-                             hint=None, session=None, let=None, **kwargs):
+    def find_one_and_replace(self,
+        filter: Mapping[str, Any],
+        replacement: Mapping[str, Any],
+        projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
+        sort: Optional[_IndexList] = None,
+        upsert: bool = False,
+        return_document: bool = ReturnDocument.BEFORE,
+        hint: Optional[_IndexKeyHint] = None,
+        session: Optional["ClientSession"] = None,
+        let: Optional[Mapping[str, Any]] = None,
+        **kwargs: Any,
+    ) -> _DocumentType:
         """Finds a single document and replaces it, returning either the
         original or the replaced document.
 
@@ -2438,8 +2529,8 @@ class Collection(common.BaseObject):
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
           - `let` (optional): Map of parameter names and values. Values must be
-            constant or closed expressions that do not reference document 
-            fields. Parameters can then be accessed as variables in an 
+            constant or closed expressions that do not reference document
+            fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
@@ -2470,11 +2561,19 @@ class Collection(common.BaseObject):
                                       sort, upsert, return_document, let=let,
                                       hint=hint, session=session, **kwargs)
 
-    def find_one_and_update(self, filter, update,
-                            projection=None, sort=None, upsert=False,
-                            return_document=ReturnDocument.BEFORE,
-                            array_filters=None, hint=None, session=None,
-                            let=None, **kwargs):
+    def find_one_and_update(self,
+        filter: Mapping[str, Any],
+        update: Union[Mapping[str, Any], _Pipeline],
+        projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
+        sort: Optional[_IndexList] = None,
+        upsert: bool = False,
+        return_document: bool = ReturnDocument.BEFORE,
+        array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
+        hint: Optional[_IndexKeyHint] = None,
+        session: Optional["ClientSession"] = None,
+        let: Optional[Mapping[str, Any]] = None,
+        **kwargs: Any,
+    ) -> _DocumentType:
         """Finds a single document and updates it, returning either the
         original or the updated document.
 
@@ -2564,8 +2663,8 @@ class Collection(common.BaseObject):
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
           - `let` (optional): Map of parameter names and values. Values must be
-            constant or closed expressions that do not reference document 
-            fields. Parameters can then be accessed as variables in an 
+            constant or closed expressions that do not reference document
+            fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
@@ -2600,15 +2699,15 @@ class Collection(common.BaseObject):
                                       array_filters, hint=hint, let=let,
                                       session=session, **kwargs)
 
-    def __iter__(self):
+    def __iter__(self) -> "Collection[_DocumentType]":
         return self
 
-    def __next__(self):
+    def __next__(self) -> None:
         raise TypeError("'Collection' object is not iterable")
 
     next = __next__
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args: Any, **kwargs: Any) -> None:
         """This is only here so that some API misusages are easier to debug.
         """
         if "." not in self.__name:

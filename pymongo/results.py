@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Result class definitions."""
+from typing import Any, Dict, List, Mapping, Optional, Sequence, cast
 
 from pymongo.errors import InvalidOperation
 
@@ -22,7 +23,7 @@ class _WriteResult(object):
 
     __slots__ = ("__acknowledged",)
 
-    def __init__(self, acknowledged):
+    def __init__(self, acknowledged: bool) -> None:
         self.__acknowledged = acknowledged
 
     def _raise_if_unacknowledged(self, property_name):
@@ -34,7 +35,7 @@ class _WriteResult(object):
                                    "error." % (property_name,))
 
     @property
-    def acknowledged(self):
+    def acknowledged(self) -> bool:
         """Is this the result of an acknowledged write operation?
 
         The :attr:`acknowledged` attribute will be ``False`` when using
@@ -59,12 +60,12 @@ class InsertOneResult(_WriteResult):
 
     __slots__ = ("__inserted_id", "__acknowledged")
 
-    def __init__(self, inserted_id, acknowledged):
+    def __init__(self, inserted_id: Any, acknowledged: bool) -> None:
         self.__inserted_id = inserted_id
         super(InsertOneResult, self).__init__(acknowledged)
 
     @property
-    def inserted_id(self):
+    def inserted_id(self) -> Any:
         """The inserted document's _id."""
         return self.__inserted_id
 
@@ -75,12 +76,12 @@ class InsertManyResult(_WriteResult):
 
     __slots__ = ("__inserted_ids", "__acknowledged")
 
-    def __init__(self, inserted_ids, acknowledged):
+    def __init__(self, inserted_ids: List[Any], acknowledged: bool) -> None:
         self.__inserted_ids = inserted_ids
         super(InsertManyResult, self).__init__(acknowledged)
 
     @property
-    def inserted_ids(self):
+    def inserted_ids(self) -> List:
         """A list of _ids of the inserted documents, in the order provided.
 
         .. note:: If ``False`` is passed for the `ordered` parameter to
@@ -99,17 +100,17 @@ class UpdateResult(_WriteResult):
 
     __slots__ = ("__raw_result", "__acknowledged")
 
-    def __init__(self, raw_result, acknowledged):
+    def __init__(self, raw_result: Dict[str, Any], acknowledged: bool) -> None:
         self.__raw_result = raw_result
         super(UpdateResult, self).__init__(acknowledged)
 
     @property
-    def raw_result(self):
+    def raw_result(self) -> Dict[str, Any]:
         """The raw result document returned by the server."""
         return self.__raw_result
 
     @property
-    def matched_count(self):
+    def matched_count(self) -> int:
         """The number of documents matched for this update."""
         self._raise_if_unacknowledged("matched_count")
         if self.upserted_id is not None:
@@ -117,13 +118,13 @@ class UpdateResult(_WriteResult):
         return self.__raw_result.get("n", 0)
 
     @property
-    def modified_count(self):
+    def modified_count(self) -> int:
         """The number of documents modified. """
         self._raise_if_unacknowledged("modified_count")
-        return self.__raw_result.get("nModified")
+        return cast(int, self.__raw_result.get("nModified"))
 
     @property
-    def upserted_id(self):
+    def upserted_id(self) -> Any:
         """The _id of the inserted document if an upsert took place. Otherwise
         ``None``.
         """
@@ -137,17 +138,17 @@ class DeleteResult(_WriteResult):
 
     __slots__ = ("__raw_result", "__acknowledged")
 
-    def __init__(self, raw_result, acknowledged):
+    def __init__(self, raw_result: Dict[str, Any], acknowledged: bool) -> None:
         self.__raw_result = raw_result
         super(DeleteResult, self).__init__(acknowledged)
 
     @property
-    def raw_result(self):
+    def raw_result(self) -> Dict[str, Any]:
         """The raw result document returned by the server."""
         return self.__raw_result
 
     @property
-    def deleted_count(self):
+    def deleted_count(self) -> int:
         """The number of documents deleted."""
         self._raise_if_unacknowledged("deleted_count")
         return self.__raw_result.get("n", 0)
@@ -158,7 +159,7 @@ class BulkWriteResult(_WriteResult):
 
     __slots__ = ("__bulk_api_result", "__acknowledged")
 
-    def __init__(self, bulk_api_result, acknowledged):
+    def __init__(self, bulk_api_result: Dict[str, Any], acknowledged: bool) -> None:
         """Create a BulkWriteResult instance.
 
         :Parameters:
@@ -171,44 +172,45 @@ class BulkWriteResult(_WriteResult):
         super(BulkWriteResult, self).__init__(acknowledged)
 
     @property
-    def bulk_api_result(self):
+    def bulk_api_result(self) -> Dict[str, Any]:
         """The raw bulk API result."""
         return self.__bulk_api_result
 
     @property
-    def inserted_count(self):
+    def inserted_count(self) -> int:
         """The number of documents inserted."""
         self._raise_if_unacknowledged("inserted_count")
-        return self.__bulk_api_result.get("nInserted")
+        return cast(int, self.__bulk_api_result.get("nInserted"))
 
     @property
-    def matched_count(self):
+    def matched_count(self) -> int:
         """The number of documents matched for an update."""
         self._raise_if_unacknowledged("matched_count")
-        return self.__bulk_api_result.get("nMatched")
+        return cast(int, self.__bulk_api_result.get("nMatched"))
 
     @property
-    def modified_count(self):
+    def modified_count(self) -> int:
         """The number of documents modified."""
         self._raise_if_unacknowledged("modified_count")
-        return self.__bulk_api_result.get("nModified")
+        return cast(int, self.__bulk_api_result.get("nModified"))
 
     @property
-    def deleted_count(self):
+    def deleted_count(self) -> int:
         """The number of documents deleted."""
         self._raise_if_unacknowledged("deleted_count")
-        return self.__bulk_api_result.get("nRemoved")
+        return cast(int, self.__bulk_api_result.get("nRemoved"))
 
     @property
-    def upserted_count(self):
+    def upserted_count(self) -> int:
         """The number of documents upserted."""
         self._raise_if_unacknowledged("upserted_count")
-        return self.__bulk_api_result.get("nUpserted")
+        return cast(int, self.__bulk_api_result.get("nUpserted"))
 
     @property
-    def upserted_ids(self):
+    def upserted_ids(self) -> Optional[Dict[int, Any]]:
         """A map of operation index to the _id of the upserted document."""
         self._raise_if_unacknowledged("upserted_ids")
         if self.__bulk_api_result:
             return dict((upsert["index"], upsert["_id"])
                         for upsert in self.bulk_api_result["upserted"])
+        return None

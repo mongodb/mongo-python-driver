@@ -23,8 +23,8 @@ MongoDB.
 import datetime
 import random
 import struct
-
 from io import BytesIO as _BytesIO
+from typing import Any
 
 import bson
 from bson import (CodecOptions,
@@ -32,29 +32,23 @@ from bson import (CodecOptions,
                   _decode_selective,
                   _dict_to_bson,
                   _make_c_string)
-from bson import codec_options
 from bson.int64 import Int64
-from bson.raw_bson import (_inflate_bson, DEFAULT_RAW_BSON_OPTIONS,
-                           RawBSONDocument)
+from bson.raw_bson import (DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument,
+                           _inflate_bson)
 from bson.son import SON
 
 try:
-    from pymongo import _cmessage
+    from pymongo import _cmessage  # type: ignore[attr-defined]
     _use_c = True
 except ImportError:
     _use_c = False
-from pymongo.errors import (ConfigurationError,
-                            CursorNotFound,
-                            DocumentTooLarge,
-                            ExecutionTimeout,
-                            InvalidOperation,
-                            NotPrimaryError,
-                            OperationFailure,
-                            ProtocolError)
+from pymongo.errors import (ConfigurationError, CursorNotFound,
+                            DocumentTooLarge, ExecutionTimeout,
+                            InvalidOperation, NotPrimaryError,
+                            OperationFailure, ProtocolError)
 from pymongo.hello import HelloCompat
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
-
 
 MAX_INT32 = 2147483647
 MIN_INT32 = -2147483648
@@ -457,6 +451,7 @@ class _RawBatchGetMore(_GetMore):
 
 class _CursorAddress(tuple):
     """The server address (host, port) of a cursor, with namespace property."""
+    __namespace: Any
 
     def __new__(cls, address, namespace):
         self = tuple.__new__(cls, address)
@@ -762,6 +757,7 @@ class _BulkWriteContext(object):
         """A proxy for SocketInfo.unack_write that handles event publishing.
         """
         if self.publish:
+            assert self.start_time is not None
             duration = datetime.datetime.now() - self.start_time
             cmd = self._start(cmd, request_id, docs)
             start = datetime.datetime.now()
@@ -777,6 +773,7 @@ class _BulkWriteContext(object):
                 self._succeed(request_id, reply, duration)
         except Exception as exc:
             if self.publish:
+                assert self.start_time is not None
                 duration = (datetime.datetime.now() - start) + duration
                 if isinstance(exc, OperationFailure):
                     failure = _convert_write_result(
@@ -795,6 +792,7 @@ class _BulkWriteContext(object):
         """A proxy for SocketInfo.write_command that handles event publishing.
         """
         if self.publish:
+            assert self.start_time is not None
             duration = datetime.datetime.now() - self.start_time
             self._start(cmd, request_id, docs)
             start = datetime.datetime.now()
@@ -1171,7 +1169,8 @@ class _OpReply(object):
             if error_object["$err"].startswith(HelloCompat.LEGACY_ERROR):
                 raise NotPrimaryError(error_object["$err"], error_object)
             elif error_object.get("code") == 50:
-                raise ExecutionTimeout(error_object.get("$err"),
+                default_msg = "operation exceeded time limit"
+                raise ExecutionTimeout(error_object.get("$err", default_msg),
                                        error_object.get("code"),
                                        error_object)
             raise OperationFailure("database error: %s" %

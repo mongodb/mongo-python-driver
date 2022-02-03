@@ -180,17 +180,29 @@ will not add that listener to existing client instances.
   handler first.
 """
 
+import datetime
 from collections import abc, namedtuple
+from typing import TYPE_CHECKING, Any, Dict, Mapping, Optional
 
-from pymongo.hello import HelloCompat
+from bson.objectid import ObjectId
+from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers import _handle_exception
+from pymongo.typings import _Address
 
-_Listeners = namedtuple('Listeners',
+if TYPE_CHECKING:
+    from pymongo.server_description import ServerDescription
+    from pymongo.topology_description import TopologyDescription
+
+
+_Listeners = namedtuple('_Listeners',
                         ('command_listeners', 'server_listeners',
                          'server_heartbeat_listeners', 'topology_listeners',
                          'cmap_listeners'))
 
 _LISTENERS = _Listeners([], [], [], [], [])
+
+
+_DocumentOut = Mapping[str, Any]
 
 
 class _EventListener(object):
@@ -204,7 +216,7 @@ class CommandListener(_EventListener):
     and `CommandFailedEvent`.
     """
 
-    def started(self, event):
+    def started(self, event: "CommandStartedEvent") -> None:
         """Abstract method to handle a `CommandStartedEvent`.
 
         :Parameters:
@@ -212,7 +224,7 @@ class CommandListener(_EventListener):
         """
         raise NotImplementedError
 
-    def succeeded(self, event):
+    def succeeded(self, event: "CommandSucceededEvent") -> None:
         """Abstract method to handle a `CommandSucceededEvent`.
 
         :Parameters:
@@ -220,7 +232,7 @@ class CommandListener(_EventListener):
         """
         raise NotImplementedError
 
-    def failed(self, event):
+    def failed(self, event: "CommandFailedEvent") -> None:
         """Abstract method to handle a `CommandFailedEvent`.
 
         :Parameters:
@@ -245,7 +257,7 @@ class ConnectionPoolListener(_EventListener):
     .. versionadded:: 3.9
     """
 
-    def pool_created(self, event):
+    def pool_created(self, event: "PoolCreatedEvent") -> None:
         """Abstract method to handle a :class:`PoolCreatedEvent`.
 
         Emitted when a Connection Pool is created.
@@ -255,7 +267,7 @@ class ConnectionPoolListener(_EventListener):
         """
         raise NotImplementedError
 
-    def pool_ready(self, event):
+    def pool_ready(self, event: "PoolReadyEvent") -> None:
         """Abstract method to handle a :class:`PoolReadyEvent`.
 
         Emitted when a Connection Pool is marked ready.
@@ -267,7 +279,7 @@ class ConnectionPoolListener(_EventListener):
         """
         raise NotImplementedError
 
-    def pool_cleared(self, event):
+    def pool_cleared(self, event: "PoolClearedEvent") -> None:
         """Abstract method to handle a `PoolClearedEvent`.
 
         Emitted when a Connection Pool is cleared.
@@ -277,7 +289,7 @@ class ConnectionPoolListener(_EventListener):
         """
         raise NotImplementedError
 
-    def pool_closed(self, event):
+    def pool_closed(self, event: "PoolClosedEvent") -> None:
         """Abstract method to handle a `PoolClosedEvent`.
 
         Emitted when a Connection Pool is closed.
@@ -287,7 +299,7 @@ class ConnectionPoolListener(_EventListener):
         """
         raise NotImplementedError
 
-    def connection_created(self, event):
+    def connection_created(self, event: "ConnectionCreatedEvent") -> None:
         """Abstract method to handle a :class:`ConnectionCreatedEvent`.
 
         Emitted when a Connection Pool creates a Connection object.
@@ -297,7 +309,7 @@ class ConnectionPoolListener(_EventListener):
         """
         raise NotImplementedError
 
-    def connection_ready(self, event):
+    def connection_ready(self, event: "ConnectionReadyEvent") -> None:
         """Abstract method to handle a :class:`ConnectionReadyEvent`.
 
         Emitted when a Connection has finished its setup, and is now ready to
@@ -308,7 +320,7 @@ class ConnectionPoolListener(_EventListener):
         """
         raise NotImplementedError
 
-    def connection_closed(self, event):
+    def connection_closed(self, event: "ConnectionClosedEvent") -> None:
         """Abstract method to handle a :class:`ConnectionClosedEvent`.
 
         Emitted when a Connection Pool closes a Connection.
@@ -318,7 +330,7 @@ class ConnectionPoolListener(_EventListener):
         """
         raise NotImplementedError
 
-    def connection_check_out_started(self, event):
+    def connection_check_out_started(self, event: "ConnectionCheckOutStartedEvent") -> None:
         """Abstract method to handle a :class:`ConnectionCheckOutStartedEvent`.
 
         Emitted when the driver starts attempting to check out a connection.
@@ -328,7 +340,7 @@ class ConnectionPoolListener(_EventListener):
         """
         raise NotImplementedError
 
-    def connection_check_out_failed(self, event):
+    def connection_check_out_failed(self, event: "ConnectionCheckOutFailedEvent") -> None:
         """Abstract method to handle a :class:`ConnectionCheckOutFailedEvent`.
 
         Emitted when the driver's attempt to check out a connection fails.
@@ -338,7 +350,7 @@ class ConnectionPoolListener(_EventListener):
         """
         raise NotImplementedError
 
-    def connection_checked_out(self, event):
+    def connection_checked_out(self, event: "ConnectionCheckedOutEvent") -> None:
         """Abstract method to handle a :class:`ConnectionCheckedOutEvent`.
 
         Emitted when the driver successfully checks out a Connection.
@@ -348,7 +360,7 @@ class ConnectionPoolListener(_EventListener):
         """
         raise NotImplementedError
 
-    def connection_checked_in(self, event):
+    def connection_checked_in(self, event: "ConnectionCheckedInEvent") -> None:
         """Abstract method to handle a :class:`ConnectionCheckedInEvent`.
 
         Emitted when the driver checks in a Connection back to the Connection
@@ -369,7 +381,7 @@ class ServerHeartbeatListener(_EventListener):
     .. versionadded:: 3.3
     """
 
-    def started(self, event):
+    def started(self, event: "ServerHeartbeatStartedEvent") -> None:
         """Abstract method to handle a `ServerHeartbeatStartedEvent`.
 
         :Parameters:
@@ -377,7 +389,7 @@ class ServerHeartbeatListener(_EventListener):
         """
         raise NotImplementedError
 
-    def succeeded(self, event):
+    def succeeded(self, event: "ServerHeartbeatSucceededEvent") -> None:
         """Abstract method to handle a `ServerHeartbeatSucceededEvent`.
 
         :Parameters:
@@ -385,7 +397,7 @@ class ServerHeartbeatListener(_EventListener):
         """
         raise NotImplementedError
 
-    def failed(self, event):
+    def failed(self, event: "ServerHeartbeatFailedEvent") -> None:
         """Abstract method to handle a `ServerHeartbeatFailedEvent`.
 
         :Parameters:
@@ -402,7 +414,7 @@ class TopologyListener(_EventListener):
     .. versionadded:: 3.3
     """
 
-    def opened(self, event):
+    def opened(self, event: "TopologyOpenedEvent") -> None:
         """Abstract method to handle a `TopologyOpenedEvent`.
 
         :Parameters:
@@ -410,7 +422,7 @@ class TopologyListener(_EventListener):
         """
         raise NotImplementedError
 
-    def description_changed(self, event):
+    def description_changed(self, event: "TopologyDescriptionChangedEvent") -> None:
         """Abstract method to handle a `TopologyDescriptionChangedEvent`.
 
         :Parameters:
@@ -418,7 +430,7 @@ class TopologyListener(_EventListener):
         """
         raise NotImplementedError
 
-    def closed(self, event):
+    def closed(self, event: "TopologyClosedEvent") -> None:
         """Abstract method to handle a `TopologyClosedEvent`.
 
         :Parameters:
@@ -435,7 +447,7 @@ class ServerListener(_EventListener):
     .. versionadded:: 3.3
     """
 
-    def opened(self, event):
+    def opened(self, event: "ServerOpeningEvent") -> None:
         """Abstract method to handle a `ServerOpeningEvent`.
 
         :Parameters:
@@ -443,7 +455,7 @@ class ServerListener(_EventListener):
         """
         raise NotImplementedError
 
-    def description_changed(self, event):
+    def description_changed(self, event: "ServerDescriptionChangedEvent") -> None:
         """Abstract method to handle a `ServerDescriptionChangedEvent`.
 
         :Parameters:
@@ -451,7 +463,7 @@ class ServerListener(_EventListener):
         """
         raise NotImplementedError
 
-    def closed(self, event):
+    def closed(self, event: "ServerClosedEvent") -> None:
         """Abstract method to handle a `ServerClosedEvent`.
 
         :Parameters:
@@ -478,7 +490,7 @@ def _validate_event_listeners(option, listeners):
     return listeners
 
 
-def register(listener):
+def register(listener: _EventListener) -> None:
     """Register a global event listener.
 
     :Parameters:
@@ -525,8 +537,14 @@ class _CommandEvent(object):
     __slots__ = ("__cmd_name", "__rqst_id", "__conn_id", "__op_id",
                  "__service_id")
 
-    def __init__(self, command_name, request_id, connection_id, operation_id,
-                 service_id=None):
+    def __init__(
+        self,
+        command_name: str,
+        request_id: int,
+        connection_id: _Address,
+        operation_id: Optional[int],
+        service_id: Optional[ObjectId] = None,
+    ) -> None:
         self.__cmd_name = command_name
         self.__rqst_id = request_id
         self.__conn_id = connection_id
@@ -534,22 +552,22 @@ class _CommandEvent(object):
         self.__service_id = service_id
 
     @property
-    def command_name(self):
+    def command_name(self) -> str:
         """The command name."""
         return self.__cmd_name
 
     @property
-    def request_id(self):
+    def request_id(self) -> int:
         """The request id for this operation."""
         return self.__rqst_id
 
     @property
-    def connection_id(self):
+    def connection_id(self) -> _Address:
         """The address (host, port) of the server this command was sent to."""
         return self.__conn_id
 
     @property
-    def service_id(self):
+    def service_id(self) -> Optional[ObjectId]:
         """The service_id this command was sent to, or ``None``.
 
         .. versionadded:: 3.12
@@ -557,7 +575,7 @@ class _CommandEvent(object):
         return self.__service_id
 
     @property
-    def operation_id(self):
+    def operation_id(self) -> Optional[int]:
         """An id for this series of events or None."""
         return self.__op_id
 
@@ -576,28 +594,36 @@ class CommandStartedEvent(_CommandEvent):
     """
     __slots__ = ("__cmd", "__db")
 
-    def __init__(self, command, database_name, *args, service_id=None):
+    def __init__(
+        self,
+        command: _DocumentOut,
+        database_name: str,
+        request_id: int,
+        connection_id: _Address,
+        operation_id: Optional[int],
+        service_id: Optional[ObjectId] = None,
+    ) -> None:
         if not command:
             raise ValueError("%r is not a valid command" % (command,))
         # Command name must be first key.
         command_name = next(iter(command))
         super(CommandStartedEvent, self).__init__(
-            command_name, *args, service_id=service_id)
+            command_name, request_id, connection_id, operation_id, service_id=service_id)
         cmd_name, cmd_doc = command_name.lower(), command[command_name]
         if (cmd_name in _SENSITIVE_COMMANDS or
                 _is_speculative_authenticate(cmd_name, command)):
-            self.__cmd = {}
+            self.__cmd: Mapping[str, Any] = {}
         else:
             self.__cmd = command
         self.__db = database_name
 
     @property
-    def command(self):
+    def command(self) -> _DocumentOut:
         """The command document."""
         return self.__cmd
 
     @property
-    def database_name(self):
+    def database_name(self) -> str:
         """The name of the database this command was run against."""
         return self.__db
 
@@ -625,8 +651,16 @@ class CommandSucceededEvent(_CommandEvent):
     """
     __slots__ = ("__duration_micros", "__reply")
 
-    def __init__(self, duration, reply, command_name,
-                 request_id, connection_id, operation_id, service_id=None):
+    def __init__(
+        self,
+        duration: datetime.timedelta,
+        reply: _DocumentOut,
+        command_name: str,
+        request_id: int,
+        connection_id: _Address,
+        operation_id: Optional[int],
+        service_id: Optional[ObjectId] = None,
+    ) -> None:
         super(CommandSucceededEvent, self).__init__(
             command_name, request_id, connection_id, operation_id,
             service_id=service_id)
@@ -634,17 +668,17 @@ class CommandSucceededEvent(_CommandEvent):
         cmd_name = command_name.lower()
         if (cmd_name in _SENSITIVE_COMMANDS or
                 _is_speculative_authenticate(cmd_name, reply)):
-            self.__reply = {}
+            self.__reply: Mapping[str, Any] = {}
         else:
             self.__reply = reply
 
     @property
-    def duration_micros(self):
+    def duration_micros(self) -> int:
         """The duration of this operation in microseconds."""
         return self.__duration_micros
 
     @property
-    def reply(self):
+    def reply(self) -> _DocumentOut:
         """The server failure document for this operation."""
         return self.__reply
 
@@ -672,18 +706,27 @@ class CommandFailedEvent(_CommandEvent):
     """
     __slots__ = ("__duration_micros", "__failure")
 
-    def __init__(self, duration, failure, *args, service_id=None):
-        super(CommandFailedEvent, self).__init__(*args, service_id=service_id)
+    def __init__(
+        self,
+        duration: datetime.timedelta,
+        failure: _DocumentOut,
+        command_name: str,
+        request_id: int,
+        connection_id: _Address,
+        operation_id: Optional[int],
+        service_id: Optional[ObjectId] = None,
+    ) -> None:
+        super(CommandFailedEvent, self).__init__(command_name, request_id, connection_id, operation_id, service_id=service_id)
         self.__duration_micros = _to_micros(duration)
         self.__failure = failure
 
     @property
-    def duration_micros(self):
+    def duration_micros(self) -> int:
         """The duration of this operation in microseconds."""
         return self.__duration_micros
 
     @property
-    def failure(self):
+    def failure(self) -> _DocumentOut:
         """The server failure document for this operation."""
         return self.__failure
 
@@ -700,11 +743,11 @@ class _PoolEvent(object):
     """Base class for pool events."""
     __slots__ = ("__address",)
 
-    def __init__(self, address):
+    def __init__(self, address: _Address) -> None:
         self.__address = address
 
     @property
-    def address(self):
+    def address(self) -> _Address:
         """The address (host, port) pair of the server the pool is attempting
         to connect to.
         """
@@ -725,12 +768,12 @@ class PoolCreatedEvent(_PoolEvent):
     """
     __slots__ = ("__options",)
 
-    def __init__(self, address, options):
+    def __init__(self, address: _Address, options: Dict[str, Any]) -> None:
         super(PoolCreatedEvent, self).__init__(address)
         self.__options = options
 
     @property
-    def options(self):
+    def options(self) -> Dict[str, Any]:
         """Any non-default pool options that were set on this Connection Pool.
         """
         return self.__options
@@ -764,12 +807,12 @@ class PoolClearedEvent(_PoolEvent):
     """
     __slots__ = ("__service_id",)
 
-    def __init__(self, address, service_id=None):
+    def __init__(self, address: _Address, service_id: Optional[ObjectId] = None) -> None:
         super(PoolClearedEvent, self).__init__(address)
         self.__service_id = service_id
 
     @property
-    def service_id(self):
+    def service_id(self) -> Optional[ObjectId]:
         """Connections with this service_id are cleared.
 
         When service_id is ``None``, all connections in the pool are cleared.
@@ -839,19 +882,19 @@ class _ConnectionEvent(object):
     """Private base class for some connection events."""
     __slots__ = ("__address", "__connection_id")
 
-    def __init__(self, address, connection_id):
+    def __init__(self, address: _Address, connection_id: int) -> None:
         self.__address = address
         self.__connection_id = connection_id
 
     @property
-    def address(self):
+    def address(self) -> _Address:
         """The address (host, port) pair of the server this connection is
         attempting to connect to.
         """
         return self.__address
 
     @property
-    def connection_id(self):
+    def connection_id(self) -> int:
         """The ID of the Connection."""
         return self.__connection_id
 
@@ -958,19 +1001,19 @@ class ConnectionCheckOutFailedEvent(object):
     """
     __slots__ = ("__address", "__reason")
 
-    def __init__(self, address, reason):
+    def __init__(self, address: _Address, reason: str) -> None:
         self.__address = address
         self.__reason = reason
 
     @property
-    def address(self):
+    def address(self) -> _Address:
         """The address (host, port) pair of the server this connection is
         attempting to connect to.
         """
         return self.__address
 
     @property
-    def reason(self):
+    def reason(self) -> str:
         """A reason explaining why connection check out failed.
 
         The reason must be one of the strings from the
@@ -1014,17 +1057,17 @@ class _ServerEvent(object):
 
     __slots__ = ("__server_address", "__topology_id")
 
-    def __init__(self, server_address, topology_id):
+    def __init__(self, server_address: _Address, topology_id: ObjectId) -> None:
         self.__server_address = server_address
         self.__topology_id = topology_id
 
     @property
-    def server_address(self):
+    def server_address(self) -> _Address:
         """The address (host, port) pair of the server"""
         return self.__server_address
 
     @property
-    def topology_id(self):
+    def topology_id(self) -> ObjectId:
         """A unique identifier for the topology this server is a part of."""
         return self.__topology_id
 
@@ -1041,19 +1084,19 @@ class ServerDescriptionChangedEvent(_ServerEvent):
 
     __slots__ = ('__previous_description', '__new_description')
 
-    def __init__(self, previous_description, new_description, *args):
+    def __init__(self, previous_description: "ServerDescription", new_description: "ServerDescription", *args: Any) -> None:
         super(ServerDescriptionChangedEvent, self).__init__(*args)
         self.__previous_description = previous_description
         self.__new_description = new_description
 
     @property
-    def previous_description(self):
+    def previous_description(self) -> "ServerDescription":
         """The previous
         :class:`~pymongo.server_description.ServerDescription`."""
         return self.__previous_description
 
     @property
-    def new_description(self):
+    def new_description(self) -> "ServerDescription":
         """The new
         :class:`~pymongo.server_description.ServerDescription`."""
         return self.__new_description
@@ -1087,11 +1130,11 @@ class TopologyEvent(object):
 
     __slots__ = ('__topology_id')
 
-    def __init__(self, topology_id):
+    def __init__(self, topology_id: ObjectId) -> None:
         self.__topology_id = topology_id
 
     @property
-    def topology_id(self):
+    def topology_id(self) -> ObjectId:
         """A unique identifier for the topology this server is a part of."""
         return self.__topology_id
 
@@ -1108,19 +1151,19 @@ class TopologyDescriptionChangedEvent(TopologyEvent):
 
     __slots__ = ('__previous_description', '__new_description')
 
-    def __init__(self, previous_description,  new_description, *args):
+    def __init__(self, previous_description: "TopologyDescription", new_description: "TopologyDescription", *args: Any) -> None:
         super(TopologyDescriptionChangedEvent, self).__init__(*args)
         self.__previous_description = previous_description
         self.__new_description = new_description
 
     @property
-    def previous_description(self):
+    def previous_description(self) -> "TopologyDescription":
         """The previous
         :class:`~pymongo.topology_description.TopologyDescription`."""
         return self.__previous_description
 
     @property
-    def new_description(self):
+    def new_description(self) -> "TopologyDescription":
         """The new
         :class:`~pymongo.topology_description.TopologyDescription`."""
         return self.__new_description
@@ -1154,11 +1197,11 @@ class _ServerHeartbeatEvent(object):
 
     __slots__ = ('__connection_id')
 
-    def __init__(self, connection_id):
+    def __init__(self, connection_id: _Address) -> None:
         self.__connection_id = connection_id
 
     @property
-    def connection_id(self):
+    def connection_id(self) -> _Address:
         """The address (host, port) of the server this heartbeat was sent
         to."""
         return self.__connection_id
@@ -1184,24 +1227,24 @@ class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):
 
     __slots__ = ('__duration', '__reply', '__awaited')
 
-    def __init__(self, duration, reply, connection_id, awaited=False):
+    def __init__(self, duration: float, reply: Hello, connection_id: _Address, awaited: bool = False) -> None:
         super(ServerHeartbeatSucceededEvent, self).__init__(connection_id)
         self.__duration = duration
         self.__reply = reply
         self.__awaited = awaited
 
     @property
-    def duration(self):
+    def duration(self) -> float:
         """The duration of this heartbeat in microseconds."""
         return self.__duration
 
     @property
-    def reply(self):
+    def reply(self) -> Hello:
         """An instance of :class:`~pymongo.hello.Hello`."""
         return self.__reply
 
     @property
-    def awaited(self):
+    def awaited(self) -> bool:
         """Whether the heartbeat was awaited.
 
         If true, then :meth:`duration` reflects the sum of the round trip time
@@ -1225,24 +1268,24 @@ class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
 
     __slots__ = ('__duration', '__reply', '__awaited')
 
-    def __init__(self, duration, reply, connection_id, awaited=False):
+    def __init__(self, duration: float, reply: Exception, connection_id: _Address, awaited: bool = False) -> None:
         super(ServerHeartbeatFailedEvent, self).__init__(connection_id)
         self.__duration = duration
         self.__reply = reply
         self.__awaited = awaited
 
     @property
-    def duration(self):
+    def duration(self) -> float:
         """The duration of this heartbeat in microseconds."""
         return self.__duration
 
     @property
-    def reply(self):
+    def reply(self) -> Exception:
         """A subclass of :exc:`Exception`."""
         return self.__reply
 
     @property
-    def awaited(self):
+    def awaited(self) -> bool:
         """Whether the heartbeat was awaited.
 
         If true, then :meth:`duration` reflects the sum of the round trip time

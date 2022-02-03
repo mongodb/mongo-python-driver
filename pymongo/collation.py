@@ -16,6 +16,7 @@
 
 .. _collations: http://userguide.icu-project.org/collation/concepts
 """
+from typing import Any, Dict, Mapping, Optional, Union
 
 from pymongo import common
 
@@ -151,18 +152,18 @@ class Collation(object):
 
     __slots__ = ("__document",)
 
-    def __init__(self, locale,
-                 caseLevel=None,
-                 caseFirst=None,
-                 strength=None,
-                 numericOrdering=None,
-                 alternate=None,
-                 maxVariable=None,
-                 normalization=None,
-                 backwards=None,
-                 **kwargs):
+    def __init__(self, locale: str,
+                 caseLevel: Optional[bool] = None,
+                 caseFirst: Optional[str] = None,
+                 strength: Optional[int] = None,
+                 numericOrdering: Optional[bool] = None,
+                 alternate: Optional[str] = None,
+                 maxVariable: Optional[str] = None,
+                 normalization: Optional[bool] = None,
+                 backwards: Optional[bool] = None,
+                 **kwargs: Any) -> None:
         locale = common.validate_string('locale', locale)
-        self.__document = {'locale': locale}
+        self.__document: Dict[str, Any] = {'locale': locale}
         if caseLevel is not None:
             self.__document['caseLevel'] = common.validate_boolean(
                 'caseLevel', caseLevel)
@@ -190,7 +191,7 @@ class Collation(object):
         self.__document.update(kwargs)
 
     @property
-    def document(self):
+    def document(self) -> Dict[str, Any]:
         """The document representation of this collation.
 
         .. note::
@@ -204,16 +205,16 @@ class Collation(object):
         return 'Collation(%s)' % (
             ', '.join('%s=%r' % (key, document[key]) for key in document),)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, Collation):
             return self.document == other.document
         return NotImplemented
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other
 
 
-def validate_collation_or_none(value):
+def validate_collation_or_none(value: Optional[Union[Mapping[str, Any], Collation]]) -> Optional[Dict[str, Any]]:
     if value is None:
         return None
     if isinstance(value, Collation):

@@ -14,10 +14,19 @@
 
 """Type codes for MongoDB servers."""
 
-from collections import namedtuple
+from typing import NamedTuple
 
 
-SERVER_TYPE = namedtuple('ServerType',
-                         ['Unknown', 'Mongos', 'RSPrimary', 'RSSecondary',
-                          'RSArbiter', 'RSOther', 'RSGhost',
-                          'Standalone', 'LoadBalancer'])(*range(9))
+class _ServerType(NamedTuple):
+    Unknown: int
+    Mongos: int
+    RSPrimary: int
+    RSSecondary: int
+    RSArbiter: int
+    RSOther: int
+    RSGhost: int
+    Standalone: int
+    LoadBalancer: int
+
+
+SERVER_TYPE = _ServerType(*range(9))

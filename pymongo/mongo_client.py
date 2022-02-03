@@ -34,46 +34,41 @@ access:
 import contextlib
 import threading
 import weakref
-
 from collections import defaultdict
+from typing import (TYPE_CHECKING, Any, Dict, FrozenSet, Generic, List,
+                    Mapping, Optional, Sequence, Set, Tuple, Type, Union, cast)
 
-from bson.codec_options import DEFAULT_CODEC_OPTIONS
+import bson
+from bson.codec_options import (DEFAULT_CODEC_OPTIONS, CodecOptions,
+                                TypeRegistry)
 from bson.son import SON
-from pymongo import (common,
-                     database,
-                     helpers,
-                     message,
-                     periodic_executor,
-                     uri_parser,
-                     client_session)
-from pymongo.change_stream import ClusterChangeStream
+from bson.timestamp import Timestamp
+from pymongo import (client_session, common, database, helpers, message,
+                     periodic_executor, uri_parser)
+from pymongo.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.client_options import ClientOptions
 from pymongo.command_cursor import CommandCursor
-from pymongo.errors import (AutoReconnect,
-                            BulkWriteError,
-                            ConfigurationError,
-                            ConnectionFailure,
-                            InvalidOperation,
-                            NotPrimaryError,
-                            OperationFailure,
-                            PyMongoError,
+from pymongo.errors import (AutoReconnect, BulkWriteError, ConfigurationError,
+                            ConnectionFailure, InvalidOperation,
+                            NotPrimaryError, OperationFailure, PyMongoError,
                             ServerSelectionTimeoutError)
 from pymongo.pool import ConnectionClosedReason
-from pymongo.read_preferences import ReadPreference
+from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
-from pymongo.topology import (Topology,
-                              _ErrorContext)
-from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.settings import TopologySettings
-from pymongo.uri_parser import (_handle_option_deprecations,
-                                _handle_security_options,
-                                _normalize_options,
-                                _check_options)
-from pymongo.write_concern import DEFAULT_WRITE_CONCERN
+from pymongo.topology import Topology, _ErrorContext
+from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
+from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
+from pymongo.uri_parser import (_check_options, _handle_option_deprecations,
+                                _handle_security_options, _normalize_options)
+from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
+
+if TYPE_CHECKING:
+    from pymongo.read_concern import ReadConcern
 
 
-class MongoClient(common.BaseObject):
+class MongoClient(common.BaseObject, Generic[_DocumentType]):
     """
     A client-side representation of a MongoDB cluster.
 
@@ -89,15 +84,15 @@ class MongoClient(common.BaseObject):
     # No host/port; these are retrieved from TopologySettings.
     _constructor_args = ('document_class', 'tz_aware', 'connect')
 
-    def __init__(
-            self,
-            host=None,
-            port=None,
-            document_class=dict,
-            tz_aware=None,
-            connect=None,
-            type_registry=None,
-            **kwargs):
+    def __init__(self,
+        host: Optional[Union[str, Sequence[str]]] = None,
+        port: Optional[int] = None,
+        document_class: Type[_DocumentType] = dict,
+        tz_aware: Optional[bool] = None,
+        connect: Optional[bool] = None,
+        type_registry: Optional[TypeRegistry] = None,
+        **kwargs: Any,
+    ) -> None:
         """Client for a MongoDB instance, a replica set, or a set of mongoses.
 
         The client object is thread-safe and has connection-pooling built in.
@@ -621,7 +616,7 @@ class MongoClient(common.BaseObject):
 
                client.__my_database__
         """
-        self.__init_kwargs = {'host': host,
+        self.__init_kwargs: Dict[str, Any] = {'host': host,
                               'port': port,
                               'document_class': document_class,
                               'tz_aware': tz_aware,
@@ -722,7 +717,7 @@ class MongoClient(common.BaseObject):
 
         self.__default_database_name = dbase
         self.__lock = threading.Lock()
-        self.__kill_cursors_queue = []
+        self.__kill_cursors_queue: List = []
 
         self._event_listeners = options.pool_options._event_listeners
         super(MongoClient, self).__init__(options.codec_options,
@@ -765,7 +760,7 @@ class MongoClient(common.BaseObject):
 
         # We strongly reference the executor and it weakly references us via
         # this closure. When the client is freed, stop the executor soon.
-        self_ref = weakref.ref(self, executor.close)
+        self_ref: Any = weakref.ref(self, executor.close)
         self._kill_cursors_executor = executor
 
         if connect:
@@ -798,9 +793,17 @@ class MongoClient(common.BaseObject):
 
         return getattr(server.description, attr_name)
 
-    def watch(self, pipeline=None, full_document=None, resume_after=None,
-              max_await_time_ms=None, batch_size=None, collation=None,
-              start_at_operation_time=None, session=None, start_after=None):
+    def watch(self,
+        pipeline: Optional[_Pipeline] = None,
+        full_document: Optional[str] = None,
+        resume_after: Optional[Mapping[str, Any]] = None,
+        max_await_time_ms: Optional[int] = None,
+        batch_size: Optional[int] = None,
+        collation: Optional[_CollationIn] = None,
+        start_at_operation_time: Optional[Timestamp] = None,
+        session: Optional[client_session.ClientSession] = None,
+        start_after: Optional[Mapping[str, Any]] = None,
+    ) -> ChangeStream[_DocumentType]:
         """Watch changes on this cluster.
 
         Performs an aggregation with an implicit initial ``$changeStream``
@@ -891,7 +894,7 @@ class MongoClient(common.BaseObject):
             start_after)
 
     @property
-    def topology_description(self):
+    def topology_description(self) -> TopologyDescription:
         """The description of the connected MongoDB deployment.
 
         >>> client.topology_description
@@ -913,7 +916,7 @@ class MongoClient(common.BaseObject):
         return self._topology.description
 
     @property
-    def address(self):
+    def address(self) ->  Optional[Tuple[str, int]]:
         """(host, port) of the current standalone, primary, or mongos, or None.
 
         Accessing :attr:`address` raises :exc:`~.errors.InvalidOperation` if
@@ -940,7 +943,7 @@ class MongoClient(common.BaseObject):
         return self._server_property('address')
 
     @property
-    def primary(self):
+    def primary(self) -> Optional[Tuple[str, int]]:
         """The (host, port) of the current primary of the replica set.
 
         Returns ``None`` if this client is not connected to a replica set,
@@ -953,7 +956,7 @@ class MongoClient(common.BaseObject):
         return self._topology.get_primary()
 
     @property
-    def secondaries(self):
+    def secondaries(self) -> Set[Tuple[str, int]]:
         """The secondary members known to this client.
 
         A sequence of (host, port) pairs. Empty if this client is not
@@ -966,7 +969,7 @@ class MongoClient(common.BaseObject):
         return self._topology.get_secondaries()
 
     @property
-    def arbiters(self):
+    def arbiters(self) -> Set[Tuple[str, int]]:
         """Arbiters in the replica set.
 
         A sequence of (host, port) pairs. Empty if this client is not
@@ -976,7 +979,7 @@ class MongoClient(common.BaseObject):
         return self._topology.get_arbiters()
 
     @property
-    def is_primary(self):
+    def is_primary(self) -> bool:
         """If this client is connected to a server that can accept writes.
 
         True if the current server is a standalone, mongos, or the primary of
@@ -987,7 +990,7 @@ class MongoClient(common.BaseObject):
         return self._server_property('is_writable')
 
     @property
-    def is_mongos(self):
+    def is_mongos(self) -> bool:
         """If this client is connected to mongos. If the client is not
         connected, this will block until a connection is established or raise
         ServerSelectionTimeoutError if no server is available..
@@ -995,7 +998,7 @@ class MongoClient(common.BaseObject):
         return self._server_property('server_type') == SERVER_TYPE.Mongos
 
     @property
-    def nodes(self):
+    def nodes(self) -> FrozenSet[Tuple[str, Optional[int]]]:
         """Set of all currently connected servers.
 
         .. warning:: When connected to a replica set the value of :attr:`nodes`
@@ -1009,7 +1012,7 @@ class MongoClient(common.BaseObject):
         return frozenset(s.address for s in description.known_servers)
 
     @property
-    def options(self):
+    def options(self) -> ClientOptions:
         """The configuration options for this client.
 
         :Returns:
@@ -1040,7 +1043,7 @@ class MongoClient(common.BaseObject):
             # command.
             pass
 
-    def close(self):
+    def close(self) -> None:
         """Cleanup client resources and disconnect from MongoDB.
 
         End all server sessions created by this client by sending one or more
@@ -1214,7 +1217,7 @@ class MongoClient(common.BaseObject):
     def _retry_internal(self, retryable, func, session, bulk):
         """Internal retryable write helper."""
         max_wire_version = 0
-        last_error = None
+        last_error: Optional[Exception] = None
         retrying = False
 
         def is_retrying():
@@ -1239,6 +1242,7 @@ class MongoClient(common.BaseObject):
                         if is_retrying():
                             # A retry is not possible because this server does
                             # not support sessions raise the last error.
+                            assert last_error is not None
                             raise last_error
                         retryable = False
                     return func(session, sock_info, retryable)
@@ -1247,6 +1251,7 @@ class MongoClient(common.BaseObject):
                     # The application may think the write was never attempted
                     # if we raise ServerSelectionTimeoutError on the retry
                     # attempt. Raise the original exception instead.
+                    assert last_error is not None
                     raise last_error
                 # A ServerSelectionTimeoutError error indicates that there may
                 # be a persistent outage. Attempting to retry in this case will
@@ -1280,7 +1285,7 @@ class MongoClient(common.BaseObject):
         retryable = (retryable and
                      self.options.retry_reads
                      and not (session and session.in_transaction))
-        last_error = None
+        last_error: Optional[Exception] = None
         retrying = False
 
         while True:
@@ -1292,6 +1297,7 @@ class MongoClient(common.BaseObject):
                     if retrying and not retryable:
                         # A retry is not possible because this server does
                         # not support retryable reads, raise the last error.
+                        assert last_error is not None
                         raise last_error
                     return func(session, server, sock_info, read_pref)
             except ServerSelectionTimeoutError:
@@ -1299,6 +1305,7 @@ class MongoClient(common.BaseObject):
                     # The application may think the write was never attempted
                     # if we raise ServerSelectionTimeoutError on the retry
                     # attempt. Raise the original exception instead.
+                    assert last_error is not None
                     raise last_error
                 # A ServerSelectionTimeoutError error indicates that there may
                 # be a persistent outage. Attempting to retry in this case will
@@ -1322,15 +1329,15 @@ class MongoClient(common.BaseObject):
         with self._tmp_session(session) as s:
             return self._retry_with_session(retryable, func, s, None)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, self.__class__):
             return self._topology == other._topology
         return NotImplemented
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self._topology)
 
     def _repr_helper(self):
@@ -1366,7 +1373,7 @@ class MongoClient(common.BaseObject):
     def __repr__(self):
         return ("MongoClient(%s)" % (self._repr_helper(),))
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> database.Database[_DocumentType]:
         """Get a database by name.
 
         Raises :class:`~pymongo.errors.InvalidName` if an invalid
@@ -1381,7 +1388,7 @@ class MongoClient(common.BaseObject):
                 " database, use client[%r]." % (name, name, name))
         return self.__getitem__(name)
 
-    def __getitem__(self, name):
+    def __getitem__(self, name: str) -> database.Database[_DocumentType]:
         """Get a database by name.
 
         Raises :class:`~pymongo.errors.InvalidName` if an invalid
@@ -1539,9 +1546,10 @@ class MongoClient(common.BaseObject):
             self, server_session, opts, implicit)
 
     def start_session(self,
-                      causal_consistency=None,
-                      default_transaction_options=None,
-                      snapshot=False):
+        causal_consistency: Optional[bool] = None,
+        default_transaction_options: Optional[client_session.TransactionOptions] = None,
+        snapshot: Optional[bool] = False,
+    ) -> client_session.ClientSession[_DocumentType]:
         """Start a logical session.
 
         This method takes the same parameters as
@@ -1630,7 +1638,9 @@ class MongoClient(common.BaseObject):
         if session is not None:
             session._process_response(reply)
 
-    def server_info(self, session=None):
+    def server_info(self,
+      session: Optional[client_session.ClientSession] = None
+    ) -> Dict[str, Any]:
         """Get information about the MongoDB server we're connected to.
 
         :Parameters:
@@ -1644,7 +1654,10 @@ class MongoClient(common.BaseObject):
                                   read_preference=ReadPreference.PRIMARY,
                                   session=session)
 
-    def list_databases(self, session=None, **kwargs):
+    def list_databases(self,
+        session: Optional[client_session.ClientSession] = None,
+        **kwargs: Any
+    ) -> CommandCursor[Dict[str, Any]]:
         """Get a cursor over the databases of the connected server.
 
         :Parameters:
@@ -1673,7 +1686,9 @@ class MongoClient(common.BaseObject):
         }
         return CommandCursor(admin["$cmd"], cursor, None)
 
-    def list_database_names(self, session=None):
+    def list_database_names(self,
+        session: Optional[client_session.ClientSession] = None
+    ) -> List[str]:
         """Get a list of the names of all databases on the connected server.
 
         :Parameters:
@@ -1685,7 +1700,10 @@ class MongoClient(common.BaseObject):
         return [doc["name"]
                 for doc in self.list_databases(session, nameOnly=True)]
 
-    def drop_database(self, name_or_database, session=None):
+    def drop_database(self,
+        name_or_database: Union[str, database.Database],
+        session: Optional[client_session.ClientSession] = None
+    ) -> None:
         """Drop a database.
 
         Raises :class:`TypeError` if `name_or_database` is not an instance of
@@ -1727,8 +1745,13 @@ class MongoClient(common.BaseObject):
                 parse_write_concern_error=True,
                 session=session)
 
-    def get_default_database(self, default=None, codec_options=None,
-            read_preference=None, write_concern=None, read_concern=None):
+    def get_default_database(self,
+        default: Optional[str] = None,
+        codec_options: Optional[CodecOptions] = None,
+        read_preference: Optional[_ServerMode] = None,
+        write_concern: Optional[WriteConcern] = None,
+        read_concern: Optional["ReadConcern"] = None,
+    ) -> database.Database[_DocumentType]:
         """Get the database named in the MongoDB connection URI.
 
         >>> uri = 'mongodb://host/my_database'
@@ -1773,12 +1796,18 @@ class MongoClient(common.BaseObject):
             raise ConfigurationError(
                 'No default database name defined or provided.')
 
+        name = cast(str, self.__default_database_name or default)
         return database.Database(
-            self, self.__default_database_name or default, codec_options,
+            self, name, codec_options,
             read_preference, write_concern, read_concern)
 
-    def get_database(self, name=None, codec_options=None, read_preference=None,
-                     write_concern=None, read_concern=None):
+    def get_database(self,
+        name: Optional[str] = None,
+        codec_options: Optional[CodecOptions] = None,
+        read_preference: Optional[_ServerMode] = None,
+        write_concern: Optional[WriteConcern] = None,
+        read_concern: Optional["ReadConcern"] = None,
+    ) -> database.Database[_DocumentType]:
         """Get a :class:`~pymongo.database.Database` with the given name and
         options.
 
@@ -1838,16 +1867,16 @@ class MongoClient(common.BaseObject):
             read_preference=ReadPreference.PRIMARY,
             write_concern=DEFAULT_WRITE_CONCERN)
 
-    def __enter__(self):
+    def __enter__(self) -> "MongoClient[_DocumentType]":
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
-    def __iter__(self):
+    def __iter__(self) -> "MongoClient[_DocumentType]":
         return self
 
-    def __next__(self):
+    def __next__(self) -> None:
         raise TypeError("'MongoClient' object is not iterable")
 
     next = __next__
