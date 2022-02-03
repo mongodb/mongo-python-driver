@@ -20,6 +20,7 @@ import sys
 import time
 
 from io import BytesIO
+from typing import Set
 
 from pymongo.mongo_client import MongoClient
 
@@ -67,7 +68,7 @@ def session_ids(client):
 
 class TestSession(IntegrationTest):
     client2: MongoClient
-    sensitive_commands: set[str]
+    sensitive_commands: Set[str]
 
     @classmethod
     @client_context.require_sessions
