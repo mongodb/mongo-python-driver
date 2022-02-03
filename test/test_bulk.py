@@ -411,7 +411,7 @@ class TestBulk(BulkTestBase):
         options = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
         coll = self.coll.with_options(codec_options=options)
         ids = [
-            {'f': bytes(i), 'f2': uuid.uuid4()}
+            {'f': i, 'f2': uuid.uuid4()}
             for i in range(3)
         ]
 
