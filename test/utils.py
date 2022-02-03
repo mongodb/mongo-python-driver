@@ -29,7 +29,6 @@ import warnings
 
 from collections import abc, defaultdict
 from functools import partial
-from typing import Any, cast
 
 from bson import json_util
 from bson.objectid import ObjectId
@@ -865,26 +864,14 @@ def frequent_thread_switches():
     """Make concurrency bugs more likely to manifest."""
     interval = None
     if not sys.platform.startswith('java'):
-        if hasattr(sys, 'getswitchinterval'):
-            interval = sys.getswitchinterval()
-            sys.setswitchinterval(1e-6)
-        else:
-            interval = sys.getcheckinterval()  # type: ignore
-            # Cast to any to support deprecated function.
-            # This function exists in Python 3.7, but
-            # not in newer versions of Python.
-            # We can't use "type: ignore" because it results
-            # in an error when the function is available.
-            cast(Any, sys).setcheckinterval(1)
+        interval = sys.getswitchinterval()
+        sys.setswitchinterval(1e-6)
 
     try:
         yield
     finally:
         if not sys.platform.startswith('java'):
-            if hasattr(sys, 'setswitchinterval'):
-                sys.setswitchinterval(interval)  # type: ignore
-            else:
-                sys.setcheckinterval(interval)  # type: ignore
+            sys.setswitchinterval(interval)
 
 
 def lazy_client_trial(reset, target, test, get_client):
