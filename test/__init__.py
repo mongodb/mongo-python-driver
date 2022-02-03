@@ -946,7 +946,7 @@ class IntegrationTest(PyMongoTestCase):
     """Base class for TestCases that need a connection to MongoDB to pass."""
     client: MongoClient
     db: Database
-    credentials: dict[str, str]
+    credentials: Dict[str, str]
 
     @classmethod
     @client_context.require_connection
