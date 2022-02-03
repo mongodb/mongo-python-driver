@@ -225,7 +225,7 @@ class TestReadPreferences(TestReadPreferencesBase):
                           localthresholdms=-1)
 
     def test_zero_latency(self):
-        ping_times = set()
+        ping_times: set = set()
         # Generate unique ping times.
         while len(ping_times) < len(self.client.nodes):
             ping_times.add(random.random())
@@ -278,7 +278,7 @@ class TestReadPreferences(TestReadPreferencesBase):
         # far, and keep reading until we've used all the members or give up.
         # Chance of using only 2 of 3 members 10k times if there's no bug =
         # 3 * (2/3)**10000, very low.
-        used = set()
+        used: set = set()
         i = 0
         while data_members.difference(used) and i < 10000:
             address = self.read_from_which_host(c)
@@ -335,6 +335,8 @@ _PREF_MAP = [
 
 
 class TestCommandAndReadPreference(IntegrationTest):
+    c: ReadPrefTester
+    client_version: Version
 
     @classmethod
     @client_context.require_secondaries_count(1)
@@ -378,6 +380,7 @@ class TestCommandAndReadPreference(IntegrationTest):
                         # Success
                         break
 
+                assert self.c.primary is not None
                 unused = self.c.secondaries.union(
                     set([self.c.primary])
                 ).difference(used)
@@ -445,11 +448,11 @@ class TestMovingAverage(unittest.TestCase):
         avg = MovingAverage()
         self.assertIsNone(avg.get())
         avg.add_sample(10)
-        self.assertAlmostEqual(10, avg.get())
+        self.assertAlmostEqual(10, avg.get())  # type: ignore
         avg.add_sample(20)
-        self.assertAlmostEqual(12, avg.get())
+        self.assertAlmostEqual(12, avg.get())  # type: ignore
         avg.add_sample(30)
-        self.assertAlmostEqual(15.6, avg.get())
+        self.assertAlmostEqual(15.6, avg.get())  # type: ignore
 
 
 class TestMongosAndReadPreference(IntegrationTest):
@@ -526,7 +529,8 @@ class TestMongosAndReadPreference(IntegrationTest):
              'maxStalenessSeconds': 30})
 
         with self.assertRaises(TypeError):
-            Nearest(max_staleness=1.5)  # Float is prohibited.
+            # Float is prohibited.
+            Nearest(max_staleness=1.5)  # type: ignore
 
         with self.assertRaises(ValueError):
             Nearest(max_staleness=0)
@@ -543,7 +547,7 @@ class TestMongosAndReadPreference(IntegrationTest):
         }
         for mode, cls in cases.items():
             with self.assertRaises(TypeError):
-                cls(hedge=[])
+                cls(hedge=[])  # type: ignore
 
             pref = cls(hedge={})
             self.assertEqual(pref.document, {'mode': mode})
@@ -668,7 +672,9 @@ class TestMongosAndReadPreference(IntegrationTest):
 
     @client_context.require_mongos
     def test_mongos(self):
-        shard = client_context.client.config.shards.find_one()['host']
+        res = client_context.client.config.shards.find_one()
+        assert res is not None
+        shard = res['host']
         num_members = shard.count(',') + 1
         if num_members == 1:
             raise SkipTest("Need a replica set shard to test.")

@@ -40,6 +40,7 @@ except ImportError:
 
 from contextlib import contextmanager
 from functools import wraps
+from typing import Dict, no_type_check
 from unittest import SkipTest
 
 import pymongo
@@ -48,7 +49,9 @@ import pymongo.errors
 from bson.son import SON
 from pymongo import common, message
 from pymongo.common import partition_node
+from pymongo.database import Database
 from pymongo.hello import HelloCompat
+from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from pymongo.ssl_support import HAVE_SSL, _ssl
 from pymongo.uri_parser import parse_uri
@@ -86,7 +89,7 @@ CLIENT_PEM = os.environ.get('CLIENT_PEM',
                             os.path.join(CERT_PATH, 'client.pem'))
 CA_PEM = os.environ.get('CA_PEM', os.path.join(CERT_PATH, 'ca.pem'))
 
-TLS_OPTIONS = dict(tls=True)
+TLS_OPTIONS: Dict = dict(tls=True)
 if CLIENT_PEM:
     TLS_OPTIONS['tlsCertificateKeyFile'] = CLIENT_PEM
 if CA_PEM:
@@ -102,13 +105,13 @@ if TEST_LOADBALANCER:
     # Remove after PYTHON-2712
     from pymongo import pool
     pool._MOCK_SERVICE_ID = True
-    res = parse_uri(SINGLE_MONGOS_LB_URI)
+    res = parse_uri(SINGLE_MONGOS_LB_URI or "")
     host, port = res['nodelist'][0]
     db_user = res['username'] or db_user
     db_pwd = res['password'] or db_pwd
 elif TEST_SERVERLESS:
     TEST_LOADBALANCER = True
-    res = parse_uri(SINGLE_MONGOS_LB_URI)
+    res = parse_uri(SINGLE_MONGOS_LB_URI or "")
     host, port = res['nodelist'][0]
     db_user = res['username'] or db_user
     db_pwd = res['password'] or db_pwd
@@ -184,6 +187,7 @@ class client_knobs(object):
     def __enter__(self):
         self.enable()
 
+    @no_type_check
     def disable(self):
         common.HEARTBEAT_FREQUENCY = self.old_heartbeat_frequency
         common.MIN_HEARTBEAT_INTERVAL = self.old_min_heartbeat_interval
@@ -224,6 +228,8 @@ def _all_users(db):
 
 
 class ClientContext(object):
+    client: MongoClient
+
     MULTI_MONGOS_LB_URI = MULTI_MONGOS_LB_URI
 
     def __init__(self):
@@ -247,9 +253,9 @@ class ClientContext(object):
         self.tls = False
         self.tlsCertificateKeyFile = False
         self.server_is_resolvable = is_server_resolvable()
-        self.default_client_options = {}
+        self.default_client_options: Dict = {}
         self.sessions_enabled = False
-        self.client = None
+        self.client = None  # type: ignore
         self.conn_lock = threading.Lock()
         self.is_data_lake = False
         self.load_balancer = TEST_LOADBALANCER
@@ -340,6 +346,7 @@ class ClientContext(object):
                 try:
                     self.cmd_line = self.client.admin.command('getCmdLineOpts')
                 except pymongo.errors.OperationFailure as e:
+                    assert e.details is not None
                     msg = e.details.get('errmsg', '')
                     if e.code == 13 or 'unauthorized' in msg or 'login' in msg:
                         # Unauthorized.
@@ -418,6 +425,7 @@ class ClientContext(object):
             else:
                 self.server_parameters = self.client.admin.command(
                     'getParameter', '*')
+                assert self.cmd_line is not None
                 if 'enableTestCommands=1' in self.cmd_line['argv']:
                     self.test_commands_enabled = True
                 elif 'parsed' in self.cmd_line:
@@ -436,7 +444,8 @@ class ClientContext(object):
                 self.mongoses.append(address)
                 if not self.serverless:
                     # Check for another mongos on the next port.
-                    next_address = address[0], address[1] + 1
+                    assert address is not None
+                    next_address = address[0], address[1]  + 1
                     mongos_client = self._connect(
                         *next_address, **self.default_client_options)
                     if mongos_client:
@@ -479,7 +488,7 @@ class ClientContext(object):
     @property
     def storage_engine(self):
         try:
-            return self.server_status.get("storageEngine", {}).get("name")
+            return self.server_status.get("storageEngine", {}).get("name")  # type: ignore[union-attr]
         except AttributeError:
             # Raised if self.server_status is None.
             return None
@@ -496,6 +505,7 @@ class ClientContext(object):
         try:
             return db_user in _all_users(client.admin)
         except pymongo.errors.OperationFailure as e:
+            assert e.details is not None
             msg = e.details.get('errmsg', '')
             if e.code == 18 or 'auth fails' in msg:
                 # Auth failed.
@@ -505,6 +515,7 @@ class ClientContext(object):
 
     def _server_started_with_auth(self):
         # MongoDB >= 2.0
+        assert self.cmd_line is not None
         if 'parsed' in self.cmd_line:
             parsed = self.cmd_line['parsed']
             # MongoDB >= 2.6
@@ -525,6 +536,7 @@ class ClientContext(object):
         if not socket.has_ipv6:
             return False
 
+        assert self.cmd_line is not None
         if 'parsed' in self.cmd_line:
             if not self.cmd_line['parsed'].get('net', {}).get('ipv6'):
                 return False
@@ -642,7 +654,7 @@ class ClientContext(object):
         if self.has_secondaries:
             return True
         if self.is_mongos:
-            shard = self.client.config.shards.find_one()['host']
+            shard = self.client.config.shards.find_one()['host']  # type: ignore[index]
             num_members = shard.count(',') + 1
             return num_members > 1
         return False
@@ -932,6 +944,9 @@ class PyMongoTestCase(unittest.TestCase):
 
 class IntegrationTest(PyMongoTestCase):
     """Base class for TestCases that need a connection to MongoDB to pass."""
+    client: MongoClient
+    db: Database
+    credentials: dict[str, str]
 
     @classmethod
     @client_context.require_connection
@@ -1073,7 +1088,7 @@ class PymongoTestRunner(unittest.TextTestRunner):
 
 
 if HAVE_XML:
-    class PymongoXMLTestRunner(XMLTestRunner):
+    class PymongoXMLTestRunner(XMLTestRunner):  # type: ignore[misc]
         def run(self, test):
             setup()
             result = super(PymongoXMLTestRunner, self).run(test)

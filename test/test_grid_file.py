@@ -24,6 +24,8 @@ import zipfile
 
 from io import BytesIO
 
+from pymongo.database import Database
+
 sys.path[0:0] = [""]
 
 from bson.objectid import ObjectId
@@ -47,6 +49,7 @@ from test.utils import rs_or_single_client, EventListener
 class TestGridFileNoConnect(unittest.TestCase):
     """Test GridFile features on a client that does not connect.
     """
+    db: Database
 
     @classmethod
     def setUpClass(cls):
@@ -238,7 +241,7 @@ class TestGridFile(IntegrationTest):
         cursor_dict.pop('_Cursor__session')
         cursor_clone_dict = cursor_clone.__dict__.copy()
         cursor_clone_dict.pop('_Cursor__session')
-        self.assertDictEqual(cursor_dict, cursor_clone_dict)
+        self.assertEqual(cursor_dict, cursor_clone_dict)
 
         self.assertRaises(NotImplementedError, cursor.add_option, 0)
         self.assertRaises(NotImplementedError, cursor.remove_option, 0)

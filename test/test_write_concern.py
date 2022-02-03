@@ -66,7 +66,7 @@ class TestWriteConcern(unittest.TestCase):
         self.assertNotEqual(WriteConcern(wtimeout=42), _FakeWriteConcern(wtimeout=2000))
 
     def test_equality_incompatible_type(self):
-        _fake_type = collections.namedtuple('NotAWriteConcern', ['document'])
+        _fake_type = collections.namedtuple('NotAWriteConcern', ['document'])  # type: ignore
         self.assertNotEqual(WriteConcern(j=True), _fake_type({'j': True}))
 
 

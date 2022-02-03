@@ -59,7 +59,7 @@ class TestMonitor(IntegrationTest):
 
         # Each executor stores a weakref to itself in _EXECUTORS.
         executor_refs = [
-            (r, r()._name) for r in _EXECUTORS.copy() if r() in executors]
+            (r, r()._name) for r in _EXECUTORS.copy() if r() in executors]  # type: ignore
 
         del executors
         del client

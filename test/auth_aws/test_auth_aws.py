@@ -26,6 +26,7 @@ from pymongo.uri_parser import parse_uri
 
 
 class TestAuthAWS(unittest.TestCase):
+    uri: str
 
     @classmethod
     def setUpClass(cls):

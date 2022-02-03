@@ -18,6 +18,7 @@ import functools
 import threading
 
 from collections import abc
+from typing import List, cast
 
 from bson import decode, encode
 from bson.binary import Binary
@@ -34,13 +35,13 @@ from pymongo.errors import (BulkWriteError,
                             PyMongoError)
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
-from pymongo.results import _WriteResult, BulkWriteResult
+from pymongo.results import _WriteResult, BulkWriteResult, InsertManyResult, UpdateResult
 from pymongo.write_concern import WriteConcern
 
 from test import (client_context,
                   client_knobs,
                   IntegrationTest)
-from test.utils import (camel_to_snake,
+from test.utils import (EventListener, camel_to_snake,
                         camel_to_snake_args,
                         CompareType,
                         CMAPListener,
@@ -86,6 +87,9 @@ class SpecRunnerThread(threading.Thread):
 
 
 class SpecRunner(IntegrationTest):
+    mongos_clients: List
+    knobs: client_knobs
+    listener: EventListener
 
     @classmethod
     def setUpClass(cls):
@@ -105,7 +109,7 @@ class SpecRunner(IntegrationTest):
     def setUp(self):
         super(SpecRunner, self).setUp()
         self.targets = {}
-        self.listener = None
+        self.listener = None  # type: ignore
         self.pool_listener = None
         self.server_listener = None
         self.maxDiff = None
@@ -203,7 +207,7 @@ class SpecRunner(IntegrationTest):
                 # SPEC-869: Only BulkWriteResult has upserted_count.
                 if (prop == "upserted_count"
                         and not isinstance(result, BulkWriteResult)):
-                    if result.upserted_id is not None:
+                    if cast(UpdateResult, result).upserted_id is not None:
                         upserted_count = 1
                     else:
                         upserted_count = 0
@@ -219,14 +223,15 @@ class SpecRunner(IntegrationTest):
                         ids = expected_result[res]
                         if isinstance(ids, dict):
                             ids = [ids[str(i)] for i in range(len(ids))]
-                        self.assertEqual(ids, result.inserted_ids, prop)
+
+                        self.assertEqual(ids, cast(InsertManyResult, result).inserted_ids, prop)
                 elif prop == "upserted_ids":
                     # Convert indexes from strings to integers.
                     ids = expected_result[res]
                     expected_ids = {}
                     for str_index in ids:
                         expected_ids[int(str_index)] = ids[str_index]
-                    self.assertEqual(expected_ids, result.upserted_ids, prop)
+                    self.assertEqual(expected_ids, cast(BulkWriteResult, result).upserted_ids, prop)
                 else:
                     self.assertEqual(
                         getattr(result, prop), expected_result[res], prop)

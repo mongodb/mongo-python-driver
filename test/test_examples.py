@@ -693,7 +693,7 @@ class TestSampleShellCommands(IntegrationTest):
             # End Changestream Example 3
 
             # Start Changestream Example 4
-            pipeline = [
+            pipeline: list = [
                 {'$match': {'fullDocument.username': 'alice'}},
                 {'$addFields': {'newField': 'this is an added field!'}}
             ]
@@ -890,6 +890,7 @@ class TestTransactionExamples(IntegrationTest):
             update_employee_info(session)
 
         employee = employees.find_one({"employee": 3})
+        assert employee is not None
         self.assertIsNotNone(employee)
         self.assertEqual(employee['status'], 'Inactive')
 
@@ -916,6 +917,7 @@ class TestTransactionExamples(IntegrationTest):
             run_transaction_with_retry(update_employee_info, session)
 
         employee = employees.find_one({"employee": 3})
+        assert employee is not None
         self.assertIsNotNone(employee)
         self.assertEqual(employee['status'], 'Inactive')
 
@@ -954,12 +956,13 @@ class TestTransactionExamples(IntegrationTest):
             run_transaction_with_retry(_insert_employee_retry_commit, session)
 
         employee = employees.find_one({"employee": 4})
+        assert employee is not None
         self.assertIsNotNone(employee)
         self.assertEqual(employee['status'], 'Active')
 
         # Start Transactions Retry Example 3
 
-        def run_transaction_with_retry(txn_func, session):
+        def run_transaction_with_retry(txn_func, session):  # type: ignore[no-redef]
             while True:
                 try:
                     txn_func(session)  # performs transaction
@@ -973,7 +976,7 @@ class TestTransactionExamples(IntegrationTest):
                     else:
                         raise
 
-        def commit_with_retry(session):
+        def commit_with_retry(session):  # type: ignore[no-redef]
             while True:
                 try:
                     # Commit uses write concern set at transaction start.
@@ -992,7 +995,7 @@ class TestTransactionExamples(IntegrationTest):
 
         # Updates two collections in a transactions
 
-        def update_employee_info(session):
+        def update_employee_info(session):  # type: ignore[no-redef]
             employees_coll = session.client.hr.employees
             events_coll = session.client.reporting.events
 
@@ -1021,6 +1024,7 @@ class TestTransactionExamples(IntegrationTest):
         # End Transactions Retry Example 3
 
         employee = employees.find_one({"employee": 3})
+        assert employee is not None
         self.assertIsNotNone(employee)
         self.assertEqual(employee['status'], 'Inactive')
 
@@ -1091,6 +1095,8 @@ class TestCausalConsistencyExamples(IntegrationTest):
 
         # Start Causal Consistency Example 2
         with client.start_session(causal_consistency=True) as s2:
+            assert s1.cluster_time is not None
+            assert s1.operation_time is not None
             s2.advance_cluster_time(s1.cluster_time)
             s2.advance_operation_time(s1.operation_time)
 

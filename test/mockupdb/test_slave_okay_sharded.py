@@ -37,7 +37,7 @@ class TestSlaveOkaySharded(unittest.TestCase):
         self.mongos1, self.mongos2 = MockupDB(), MockupDB()
 
         # Collect queries to either server in one queue.
-        self.q = Queue()
+        self.q: Queue = Queue()
         for server in self.mongos1, self.mongos2:
             server.subscribe(self.q.put)
             server.run()

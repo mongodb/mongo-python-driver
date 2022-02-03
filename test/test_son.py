@@ -19,6 +19,8 @@ import pickle
 import re
 import sys
 
+from typing import Any
+
 sys.path[0:0] = [""]
 
 from bson.son import SON
@@ -27,7 +29,7 @@ from collections import OrderedDict
 
 class TestSON(unittest.TestCase):
     def test_ordered_dict(self):
-        a1 = SON()
+        a1: SON = SON()
         a1["hello"] = "world"
         a1["mike"] = "awesome"
         a1["hello_"] = "mike"
@@ -66,7 +68,7 @@ class TestSON(unittest.TestCase):
                                      ('hello', 'world'))))
 
         # Embedded SON.
-        d4 = SON([('blah', {'foo': SON()})])
+        d4: SON = SON([('blah', {'foo': SON()})])
         self.assertEqual(d4, {'blah': {'foo': {}}})
         self.assertEqual(d4, {'blah': {'foo': SON()}})
         self.assertNotEqual(d4, {'blah': {'foo': []}})
@@ -75,10 +77,10 @@ class TestSON(unittest.TestCase):
         self.assertEqual(SON, d4['blah']['foo'].__class__)
 
     def test_to_dict(self):
-        a1 = SON()
-        b2 = SON([("blah", SON())])
-        c3 = SON([("blah", [SON()])])
-        d4 = SON([("blah", {"foo": SON()})])
+        a1: SON = SON()
+        b2: SON = SON([("blah", SON())])
+        c3: SON = SON([("blah", [SON()])])
+        d4: SON = SON([("blah", {"foo": SON()})])
         self.assertEqual({}, a1.to_dict())
         self.assertEqual({"blah": {}}, b2.to_dict())
         self.assertEqual({"blah": [{}]}, c3.to_dict())
@@ -93,7 +95,7 @@ class TestSON(unittest.TestCase):
 
     def test_pickle(self):
 
-        simple_son = SON([])
+        simple_son: SON = SON([])
         complex_son = SON([('son', simple_son),
                            ('list', [simple_son, simple_son])])
 
@@ -114,7 +116,7 @@ class TestSON(unittest.TestCase):
         self.assertEqual(son_2_1_1, SON([]))
 
     def test_copying(self):
-        simple_son = SON([])
+        simple_son: SON = SON([])
         complex_son = SON([('son', simple_son),
                            ('list', [simple_son, simple_son])])
         regex_son = SON([("x", re.compile("^hello.*"))])
@@ -152,7 +154,7 @@ class TestSON(unittest.TestCase):
         Test __iter__
         """
         # test success case
-        test_son = SON([(1, 100), (2, 200), (3, 300)])
+        test_son = SON([("1", 100), ("2", 200), ("3", 300)])
         for ele in test_son:
             self.assertEqual(ele * 100, test_son[ele])
 
@@ -160,18 +162,18 @@ class TestSON(unittest.TestCase):
         """
         has_key and __contains__
         """
-        test_son = SON([(1, 100), (2, 200), (3, 300)])
+        test_son = SON([("1", 100), ("2", 200), ("3", 300)])
         self.assertIn(1, test_son)
-        self.assertTrue(2 in test_son, "in failed")
-        self.assertFalse(22 in test_son, "in succeeded when it shouldn't")
-        self.assertTrue(test_son.has_key(2), "has_key failed")
-        self.assertFalse(test_son.has_key(22), "has_key succeeded when it shouldn't")
+        self.assertTrue("2" in test_son, "in failed")
+        self.assertFalse("22" in test_son, "in succeeded when it shouldn't")
+        self.assertTrue(test_son.has_key("2"), "has_key failed")
+        self.assertFalse(test_son.has_key("22"), "has_key succeeded when it shouldn't")
 
     def test_clears(self):
         """
         Test clear()
         """
-        test_son = SON([(1, 100), (2, 200), (3, 300)])
+        test_son: SON = SON([("1", 100), ("2", 200), ("3", 300)])
         test_son.clear()
         self.assertNotIn(1, test_son)
         self.assertEqual(0, len(test_son))
@@ -182,16 +184,16 @@ class TestSON(unittest.TestCase):
         """
         Test len
         """
-        test_son = SON()
+        test_son: SON = SON()
         self.assertEqual(0, len(test_son))
-        test_son = SON([(1, 100), (2, 200), (3, 300)])
+        test_son = SON([("1", 100), ("2", 200), ("3", 300)])
         self.assertEqual(3, len(test_son))
         test_son.popitem()
         self.assertEqual(2, len(test_son))
 
     def test_keys(self):
         # Test to make sure that set operations do not throw an error
-        d = SON().keys()
+        d: Any = SON().keys()
         for i in [OrderedDict, dict]:
             try:
                 d - i().keys()

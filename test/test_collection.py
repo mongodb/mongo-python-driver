@@ -20,8 +20,11 @@ import contextlib
 import re
 import sys
 
-from codecs import utf_8_decode
+from codecs import utf_8_decode  # type: ignore
 from collections import defaultdict
+from typing import no_type_check
+
+from pymongo.database import Database
 
 sys.path[0:0] = [""]
 
@@ -66,6 +69,7 @@ from test.utils import (get_pool, is_mongos,
 class TestCollectionNoConnect(unittest.TestCase):
     """Test Collection features on a client that does not connect.
     """
+    db: Database
 
     @classmethod
     def setUpClass(cls):
@@ -116,11 +120,12 @@ class TestCollectionNoConnect(unittest.TestCase):
 
 
 class TestCollection(IntegrationTest):
+    w: int
 
     @classmethod
     def setUpClass(cls):
         super(TestCollection, cls).setUpClass()
-        cls.w = client_context.w
+        cls.w = client_context.w  # type: ignore
 
     @classmethod
     def tearDownClass(cls):
@@ -726,7 +731,7 @@ class TestCollection(IntegrationTest):
         db = self.db
         db.test.drop()
 
-        docs = [{} for _ in range(5)]
+        docs: list = [{} for _ in range(5)]
         result = db.test.insert_many(docs)
         self.assertTrue(isinstance(result, InsertManyResult))
         self.assertTrue(isinstance(result.inserted_ids, list))
@@ -759,7 +764,7 @@ class TestCollection(IntegrationTest):
 
         db = db.client.get_database(db.name,
                                     write_concern=WriteConcern(w=0))
-        docs = [{} for _ in range(5)]
+        docs: list = [{} for _ in range(5)]
         result = db.test.insert_many(docs)
         self.assertTrue(isinstance(result, InsertManyResult))
         self.assertFalse(result.acknowledged)
@@ -792,11 +797,11 @@ class TestCollection(IntegrationTest):
 
         with self.assertRaisesRegex(
                 TypeError, "documents must be a non-empty list"):
-            db.test.insert_many(1)
+            db.test.insert_many(1)  # type: ignore[arg-type]
 
         with self.assertRaisesRegex(
                 TypeError, "documents must be a non-empty list"):
-            db.test.insert_many(RawBSONDocument(encode({'_id': 2})))
+            db.test.insert_many(RawBSONDocument(encode({'_id': 2})))  # type: ignore[arg-type]
 
     def test_delete_one(self):
         self.db.test.drop()
@@ -1064,7 +1069,7 @@ class TestCollection(IntegrationTest):
         db_w0 = self.db.client.get_database(
             self.db.name, write_concern=WriteConcern(w=0))
 
-        ops = [InsertOne({"a": -10}),
+        ops: list = [InsertOne({"a": -10}),
                InsertOne({"a": -11}),
                InsertOne({"a": -12}),
                UpdateOne({"a": {"$lte": -10}}, {"$inc": {"a": 1}}),
@@ -1087,7 +1092,7 @@ class TestCollection(IntegrationTest):
     def test_find_by_default_dct(self):
         db = self.db
         db.test.insert_one({'foo': 'bar'})
-        dct = defaultdict(dict, [('foo', 'bar')])
+        dct = defaultdict(dict, [('foo', 'bar')])  # type: ignore[arg-type]
         self.assertIsNotNone(db.test.find_one(dct))
         self.assertEqual(dct, defaultdict(dict, [('foo', 'bar')]))
 
@@ -1117,6 +1122,7 @@ class TestCollection(IntegrationTest):
         doc = next(db.test.find({}, ["mike"]))
         self.assertFalse("extra thing" in doc)
 
+    @no_type_check
     def test_fields_specifier_as_dict(self):
         db = self.db
         db.test.delete_many({})
@@ -1333,7 +1339,7 @@ class TestCollection(IntegrationTest):
         self.assertTrue(result.acknowledged)
         self.assertEqual(1, db.test.count_documents({"y": 1}))
         self.assertEqual(0, db.test.count_documents({"x": 1}))
-        self.assertEqual(db.test.find_one(id1)["y"], 1)
+        self.assertEqual(db.test.find_one(id1)["y"], 1)  # type: ignore
 
         replacement = RawBSONDocument(encode({"_id": id1, "z": 1}))
         result = db.test.replace_one({"y": 1}, replacement, True)
@@ -1344,7 +1350,7 @@ class TestCollection(IntegrationTest):
         self.assertTrue(result.acknowledged)
         self.assertEqual(1, db.test.count_documents({"z": 1}))
         self.assertEqual(0, db.test.count_documents({"y": 1}))
-        self.assertEqual(db.test.find_one(id1)["z"], 1)
+        self.assertEqual(db.test.find_one(id1)["z"], 1)  # type: ignore
 
         result = db.test.replace_one({"x": 2}, {"y": 2}, True)
         self.assertTrue(isinstance(result, UpdateResult))
@@ -1377,7 +1383,7 @@ class TestCollection(IntegrationTest):
         self.assertTrue(result.modified_count in (None, 1))
         self.assertIsNone(result.upserted_id)
         self.assertTrue(result.acknowledged)
-        self.assertEqual(db.test.find_one(id1)["x"], 6)
+        self.assertEqual(db.test.find_one(id1)["x"], 6)  # type: ignore
 
         id2 = db.test.insert_one({"x": 1}).inserted_id
         result = db.test.update_one({"x": 6}, {"$inc": {"x": 1}})
@@ -1386,8 +1392,8 @@ class TestCollection(IntegrationTest):
         self.assertTrue(result.modified_count in (None, 1))
         self.assertIsNone(result.upserted_id)
         self.assertTrue(result.acknowledged)
-        self.assertEqual(db.test.find_one(id1)["x"], 7)
-        self.assertEqual(db.test.find_one(id2)["x"], 1)
+        self.assertEqual(db.test.find_one(id1)["x"], 7)  # type: ignore
+        self.assertEqual(db.test.find_one(id2)["x"], 1)  # type: ignore
 
         result = db.test.update_one({"x": 2}, {"$set": {"y": 1}}, True)
         self.assertTrue(isinstance(result, UpdateResult))
@@ -1587,12 +1593,12 @@ class TestCollection(IntegrationTest):
 
         # Test that batchSize is handled properly.
         cursor = db.test.aggregate([], batchSize=5)
-        self.assertEqual(5, len(cursor._CommandCursor__data))
+        self.assertEqual(5, len(cursor._CommandCursor__data))  # type: ignore
         # Force a getMore
-        cursor._CommandCursor__data.clear()
+        cursor._CommandCursor__data.clear()  # type: ignore
         next(cursor)
         # batchSize - 1
-        self.assertEqual(4, len(cursor._CommandCursor__data))
+        self.assertEqual(4, len(cursor._CommandCursor__data))  # type: ignore
         # Exhaust the cursor. There shouldn't be any errors.
         for doc in cursor:
             pass
@@ -1679,6 +1685,7 @@ class TestCollection(IntegrationTest):
         with self.write_concern_collection() as coll:
             coll.rename('foo')
 
+    @no_type_check
     def test_find_one(self):
         db = self.db
         db.drop_collection("test")
@@ -1727,8 +1734,8 @@ class TestCollection(IntegrationTest):
 
         db.test.insert_many([{"x": i} for i in range(1, 4)])
 
-        self.assertEqual(1, db.test.find_one()["x"])
-        self.assertEqual(2, db.test.find_one(skip=1, limit=2)["x"])
+        self.assertEqual(1, db.test.find_one()["x"]) # type: ignore[index]
+        self.assertEqual(2, db.test.find_one(skip=1, limit=2)["x"])  # type: ignore[index]
 
     def test_find_with_sort(self):
         db = self.db
@@ -1736,9 +1743,9 @@ class TestCollection(IntegrationTest):
 
         db.test.insert_many([{"x": 2}, {"x": 1}, {"x": 3}])
 
-        self.assertEqual(2, db.test.find_one()["x"])
-        self.assertEqual(1, db.test.find_one(sort=[("x", 1)])["x"])
-        self.assertEqual(3, db.test.find_one(sort=[("x", -1)])["x"])
+        self.assertEqual(2, db.test.find_one()["x"])  # type: ignore[index]
+        self.assertEqual(1, db.test.find_one(sort=[("x", 1)])["x"])  # type: ignore[index]
+        self.assertEqual(3, db.test.find_one(sort=[("x", -1)])["x"])  # type: ignore[index]
 
         def to_list(things):
             return [thing["x"] for thing in things]
@@ -1973,17 +1980,17 @@ class TestCollection(IntegrationTest):
 
         bad = BadGetAttr([('foo', 'bar')])
         c.insert_one({'bad': bad})
-        self.assertEqual('bar', c.find_one()['bad']['foo'])
+        self.assertEqual('bar', c.find_one()['bad']['foo'])  # type: ignore
 
     def test_array_filters_validation(self):
         # array_filters must be a list.
         c = self.db.test
         with self.assertRaises(TypeError):
-            c.update_one({}, {'$set': {'a': 1}}, array_filters={})
+            c.update_one({}, {'$set': {'a': 1}}, array_filters={})  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            c.update_many({}, {'$set': {'a': 1}}, array_filters={})
+            c.update_many({}, {'$set': {'a': 1}}, array_filters={}  )  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            c.find_one_and_update({}, {'$set': {'a': 1}}, array_filters={})
+            c.find_one_and_update({}, {'$set': {'a': 1}}, array_filters={})  # type: ignore[arg-type]
 
     def test_array_filters_unacknowledged(self):
         c_w0 = self.db.test.with_options(write_concern=WriteConcern(w=0))
@@ -2158,7 +2165,7 @@ class TestCollection(IntegrationTest):
         c.drop()
         c.insert_one({'r': re.compile('.*')})
 
-        self.assertTrue(isinstance(c.find_one()['r'], Regex))
+        self.assertTrue(isinstance(c.find_one()['r'], Regex))  # type: ignore
         for doc in c.find():
             self.assertTrue(isinstance(doc['r'], Regex))
 
@@ -2189,9 +2196,9 @@ class TestCollection(IntegrationTest):
             for helper, args in helpers:
                 with self.assertRaisesRegex(TypeError,
                                             "let must be an instance of dict"):
-                    helper(*args, let=let)
+                    helper(*args, let=let)  # type: ignore
         for helper, args in helpers:
-            helper(*args, let={})
+            helper(*args, let={})  # type: ignore
 
 
 if __name__ == "__main__":

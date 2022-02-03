@@ -43,7 +43,7 @@ class SocketChecker(object):
         else:
             self._poller = None
 
-    def select(self, sock: Any, read: bool = False, write: bool = False, timeout: int = 0) -> bool:
+    def select(self, sock: Any, read: bool = False, write: bool = False, timeout: Union[float, int] = 0) -> bool:
         """Select for reads or writes with a timeout in seconds (or None).
 
         Returns True if the socket is readable/writable, False on timeout.

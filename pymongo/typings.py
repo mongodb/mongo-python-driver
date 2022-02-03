@@ -16,8 +16,10 @@
 from typing import (TYPE_CHECKING, Any, Dict, List, Mapping, MutableMapping, Optional,
                     Tuple, Type, TypeVar, Union)
 
+
 if TYPE_CHECKING:
     from bson.raw_bson import RawBSONDocument
+    from bson.son import SON
     from pymongo.collation import Collation
 
 
@@ -26,4 +28,4 @@ _Address = Tuple[str, Optional[int]]
 _CollationIn = Union[Mapping[str, Any], "Collation"]
 _DocumentIn = Union[MutableMapping[str, Any], "RawBSONDocument"]
 _Pipeline = List[Mapping[str, Any]]
-_DocumentType = TypeVar('_DocumentType', Mapping[str, Any], MutableMapping[str, Any], Dict[str, Any])
+_DocumentType = TypeVar('_DocumentType', Mapping[str, Any], MutableMapping[str, Any], Dict[str, Any], "SON")

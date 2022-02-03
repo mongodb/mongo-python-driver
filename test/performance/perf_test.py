@@ -25,7 +25,7 @@ import warnings
 try:
     import simplejson as json
 except ImportError:
-    import json  # type: ignore[no-redef]
+    import json  # type: ignore
 
 sys.path[0:0] = [""]
 
@@ -67,6 +67,10 @@ class Timer(object):
 
 
 class PerformanceTest(object):
+    dataset: Any
+    data_size: Any
+    do_task: Any
+    fail: Any
 
     @classmethod
     def setUpClass(cls):
@@ -386,6 +390,7 @@ def mp_map(map_func, files):
 
 
 def insert_json_file(filename):
+    assert proc_client is not None
     with open(filename, 'r') as data:
         coll = proc_client.perftest.corpus
         coll.insert_many([json.loads(line) for line in data])
@@ -398,11 +403,13 @@ def insert_json_file_with_file_id(filename):
             doc = json.loads(line)
             doc['file'] = filename
             documents.append(doc)
+    assert proc_client is not None
     coll = proc_client.perftest.corpus
     coll.insert_many(documents)
 
 
 def read_json_file(filename):
+    assert proc_client is not None
     coll = proc_client.perftest.corpus
     temp = tempfile.TemporaryFile(mode='w')
     try:
@@ -414,6 +421,7 @@ def read_json_file(filename):
 
 
 def insert_gridfs_file(filename):
+    assert proc_client is not None
     bucket = GridFSBucket(proc_client.perftest)
 
     with open(filename, 'rb') as gfile:
@@ -421,6 +429,7 @@ def insert_gridfs_file(filename):
 
 
 def read_gridfs_file(filename):
+    assert proc_client is not None
     bucket = GridFSBucket(proc_client.perftest)
 
     temp = tempfile.TemporaryFile()

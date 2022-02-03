@@ -21,6 +21,8 @@ import time
 
 from io import BytesIO
 
+from pymongo.mongo_client import MongoClient
+
 sys.path[0:0] = [""]
 
 from bson import DBRef
@@ -64,6 +66,8 @@ def session_ids(client):
 
 
 class TestSession(IntegrationTest):
+    client2: MongoClient
+    sensitive_commands: set[str]
 
     @classmethod
     @client_context.require_sessions
@@ -231,7 +235,7 @@ class TestSession(IntegrationTest):
 
     def test_client(self):
         client = self.client
-        ops = [
+        ops: list = [
             (client.server_info, [], {}),
             (client.list_database_names, [], {}),
             (client.drop_database, ['pymongo_test'], {}),
@@ -242,7 +246,7 @@ class TestSession(IntegrationTest):
     def test_database(self):
         client = self.client
         db = client.pymongo_test
-        ops = [
+        ops: list = [
             (db.command, ['ping'], {}),
             (db.create_collection, ['collection'], {}),
             (db.list_collection_names, [], {}),
@@ -313,12 +317,12 @@ class TestSession(IntegrationTest):
         next(cursor)
         # Session is "owned" by cursor.
         self.assertIsNone(cursor.session)
-        self.assertIsNotNone(cursor._Cursor__session)
+        self.assertIsNotNone(cursor._Cursor__session)  # type: ignore[attr-defined]
         clone = cursor.clone()
         next(clone)
         self.assertIsNone(clone.session)
-        self.assertIsNotNone(clone._Cursor__session)
-        self.assertFalse(cursor._Cursor__session is clone._Cursor__session)
+        self.assertIsNotNone(clone._Cursor__session)  # type: ignore[attr-defined]
+        self.assertFalse(cursor._Cursor__session is clone._Cursor__session)  # type: ignore[attr-defined]
         cursor.close()
         clone.close()
 
@@ -479,12 +483,12 @@ class TestSession(IntegrationTest):
         cursor = bucket.find(batch_size=1)
         files = [cursor.next()]
 
-        s = cursor._Cursor__session
+        s = cursor._Cursor__session  # type: ignore[attr-defined]
         self.assertFalse(s.has_ended)
         cursor.__del__()
 
         self.assertTrue(s.has_ended)
-        self.assertIsNone(cursor._Cursor__session)
+        self.assertIsNone(cursor._Cursor__session)  # type: ignore[attr-defined]
 
         # Files are still valid, they use their own sessions.
         for f in files:
@@ -493,6 +497,7 @@ class TestSession(IntegrationTest):
         # Explicit session.
         with client.start_session() as s:
             cursor = bucket.find(session=s)
+            assert cursor.session is not None
             s = cursor.session
             files = list(cursor)
             cursor.__del__()
@@ -680,7 +685,7 @@ class TestSession(IntegrationTest):
         self.addCleanup(client.close)
         db = client.pymongo_test
         coll = db.test_unacked_writes
-        ops = [
+        ops: list = [
             (client.drop_database, [db.name], {}),
             (db.create_collection, ['collection'], {}),
             (db.drop_collection, ['collection'], {}),
@@ -722,6 +727,8 @@ class TestSession(IntegrationTest):
             self.assertRaises(TypeError, lambda: copy.copy(s))
 
 class TestCausalConsistency(unittest.TestCase):
+    listener: SessionTestListener
+    client: MongoClient
 
     @classmethod
     def setUpClass(cls):
@@ -778,6 +785,8 @@ class TestCausalConsistency(unittest.TestCase):
                 self.assertRaises(ValueError, sess2.advance_cluster_time, {})
                 self.assertRaises(TypeError, sess2.advance_operation_time, 1)
                 # No error
+                assert sess.cluster_time is not None
+                assert sess.operation_time is not None
                 sess2.advance_cluster_time(sess.cluster_time)
                 sess2.advance_operation_time(sess.operation_time)
                 self.assertEqual(sess.cluster_time, sess2.cluster_time)

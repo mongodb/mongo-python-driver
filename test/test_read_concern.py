@@ -23,6 +23,7 @@ from test.utils import single_client, rs_or_single_client, OvertCommandListener
 
 
 class TestReadConcern(IntegrationTest):
+    listener: OvertCommandListener
 
     @classmethod
     @client_context.require_connection
