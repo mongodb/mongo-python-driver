@@ -411,7 +411,7 @@ class TestBulk(BulkTestBase):
         options = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
         coll = self.coll.with_options(codec_options=options)
         ids = [
-            {'f': Binary(bytes(i)), 'f2': uuid.uuid4()}
+            {'f': bytes(i), 'f2': uuid.uuid4()}
             for i in range(3)
         ]
 
@@ -421,10 +421,6 @@ class TestBulk(BulkTestBase):
             # This is just here to make the counts right in all cases.
             ReplaceOne({'_id': ids[2]}, {'_id': ids[2]}, upsert=True),
         ])
-
-        # The `Binary` values are returned as `bytes` objects.
-        for _id in ids:
-            _id['f'] = bytes(_id['f'])
 
         self.assertEqualResponse(
             {'nMatched': 0,
