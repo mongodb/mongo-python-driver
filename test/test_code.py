@@ -17,7 +17,7 @@
 """Tests for the Code wrapper."""
 
 import sys
-from typing import Any, cast
+from typing import Any
 sys.path[0:0] = [""]
 
 from bson.code import Code
@@ -36,7 +36,7 @@ class TestCode(unittest.TestCase):
         c = Code("blah")
 
         def set_c():
-            cast(Any, c).scope = 5
+            c.scope = 5  # type: ignore
         self.assertRaises(AttributeError, set_c)
 
     def test_code(self):
@@ -60,7 +60,7 @@ class TestCode(unittest.TestCase):
     def test_repr(self):
         c = Code("hello world", {})
         self.assertEqual(repr(c), "Code('hello world', {})")
-        cast(Any, c).scope["foo"] = "bar"
+        c.scope["foo"] = "bar"  # type: ignore[index]
         self.assertEqual(repr(c), "Code('hello world', {'foo': 'bar'})")
         c = Code("hello world", {"blah": 3})
         self.assertEqual(repr(c), "Code('hello world', {'blah': 3})")
