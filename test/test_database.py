@@ -17,7 +17,7 @@
 import datetime
 import re
 import sys
-from typing import Any
+from typing import Any, List, Mapping
 
 sys.path[0:0] = [""]
 
@@ -637,7 +637,7 @@ class TestDatabase(IntegrationTest):
 
 class TestDatabaseAggregation(IntegrationTest):
     def setUp(self):
-        self.pipeline: list = [{"$listLocalSessions": {}},
+        self.pipeline: List[Mapping[str, Any]] = [{"$listLocalSessions": {}},
                          {"$limit": 1},
                          {"$addFields": {"dummy": "dummy field"}},
                          {"$project": {"_id": 0, "dummy": 1}}]
