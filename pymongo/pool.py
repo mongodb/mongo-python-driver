@@ -27,7 +27,7 @@ from pymongo.ssl_support import (
     HAS_SNI as _HAVE_SNI,
     IPADDR_SAFE as _IPADDR_SAFE)
 
-from bson import DEFAULT_CODEC_OPTIONS
+from bson import DEFAULT_CODEC_OPTIONS, codec_options
 from bson.py3compat import imap, itervalues, _unicode
 from bson.son import SON
 from pymongo import auth, helpers, thread_util, __version__
@@ -761,7 +761,7 @@ class SocketInfo(object):
             raise NotPrimaryError("not primary", {
                 "ok": 0, "errmsg": "not primary", "code": 10107})
 
-    def legacy_write(self, request_id, msg, max_doc_size, with_last_error):
+    def legacy_write(self, request_id, msg, max_doc_size, with_last_error, codec_options):
         """Send OP_INSERT, etc., optionally returning response as a dict.
 
         Can raise ConnectionFailure or OperationFailure.
@@ -778,10 +778,11 @@ class SocketInfo(object):
         self.send_message(msg, max_doc_size)
         if with_last_error:
             reply = self.receive_message(request_id)
-            return helpers._check_gle_response(reply.command_response(),
+            response = reply.command_response(codec_options)
+            return helpers._check_gle_response(response,
                                                self.max_wire_version)
 
-    def write_command(self, request_id, msg):
+    def write_command(self, request_id, msg, codec_options):
         """Send "insert" etc. command, returning response as a dict.
 
         Can raise ConnectionFailure or OperationFailure.
@@ -792,7 +793,7 @@ class SocketInfo(object):
         """
         self.send_message(msg, 0)
         reply = self.receive_message(request_id)
-        result = reply.command_response()
+        result = reply.command_response(codec_options)
 
         # Raises NotPrimaryError or OperationFailure.
         helpers._check_command_response(result, self.max_wire_version)

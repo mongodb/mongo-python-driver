@@ -531,7 +531,7 @@ class Collection(common.BaseObject):
                 sock_info.service_id)
             start = datetime.datetime.now()
         try:
-            result = sock_info.legacy_write(rqst_id, msg, max_size, False)
+            result = sock_info.legacy_write(rqst_id, msg, max_size, False, self.codec_options)
         except Exception as exc:
             if publish:
                 dur = (datetime.datetime.now() - start) + duration
