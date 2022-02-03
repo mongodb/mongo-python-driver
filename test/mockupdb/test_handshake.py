@@ -50,7 +50,7 @@ def test_hello_with_option(self, protocol, **kwargs):
                          appname='my app', # For _check_handshake_data()
                          **dict([k_map.get((k, v), (k, v)) for k, v
                                  in kwargs.items()]))
-    
+
     self.addCleanup(client.close)
 
     # We have an autoresponder luckily, so no need for `go()`.
@@ -216,6 +216,43 @@ class TestHandshake(unittest.TestCase):
         test_hello_with_option(self, Command)
         with self.assertRaisesRegex(AssertionError, "does not match"):
             test_hello_with_option(self, OpMsg)
+
+    def test_handshake_max_wire(self):
+        server = MockupDB()
+        primary_response = {"hello": 1, "ok": 1,
+                            "minWireVersion": 0, "maxWireVersion": 6}
+        self.found_auth_msg = False
+
+        def responder(request):
+            if request.matches(OpMsg, saslStart=1):
+                self.found_auth_msg = True
+                # Immediately closes the connection with
+                # OperationFailure: Server returned an invalid nonce.
+                request.reply(OpMsgReply(**primary_response,
+                                         **{'payload':
+                                                b'r=wPleNM8S5p8gMaffMDF7Py4ru9bnmmoqb0'
+                                                b'1WNPsil6o=pAvr6B1garhlwc6MKNQ93ZfFky'
+                                                b'tXdF9r,'
+                                                b's=4dcxugMJq2P4hQaDbGXZR8uR3ei'
+                                                b'PHrSmh4uhkg==,i=15000',
+                                            "saslSupportedMechs": [
+                                                "SCRAM-SHA-1"]}))
+            else:
+                return request.reply(**primary_response)
+
+        server.autoresponds(responder)
+        self.addCleanup(server.stop)
+        server.run()
+        client = MongoClient(server.uri,
+                             username='username',
+                             password='password',
+                             )
+        self.addCleanup(client.close)
+        self.assertRaises(OperationFailure, client.db.collection.find_one,
+                          {"a": 1})
+        self.assertTrue(self.found_auth_msg, "Could not find authentication "
+                                             "command with correct protocol")
+
 
 if __name__ == '__main__':
     unittest.main()
