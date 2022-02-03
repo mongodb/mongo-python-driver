@@ -15,11 +15,14 @@
 """Test the bulk API."""
 
 import sys
+import uuid
 
 from pymongo.mongo_client import MongoClient
 
 sys.path[0:0] = [""]
 
+from bson.binary import Binary, UuidRepresentation
+from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from pymongo.collection import Collection
 from pymongo.common import partition_node
@@ -380,6 +383,78 @@ class TestBulk(BulkTestBase):
              'upserted': [{'index': 0, '_id': 0},
                           {'index': 1, '_id': 1},
                           {'index': 2, '_id': 2}]},
+            result.bulk_api_result)
+
+    def test_upsert_uuid_standard(self):
+        options = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
+        coll = self.coll.with_options(codec_options=options)
+        uuids = [uuid.uuid4() for _ in range(3)]
+        result = coll.bulk_write([
+            UpdateOne({'_id': uuids[0]}, {'$set': {'a': 0}}, upsert=True),
+            ReplaceOne({'a': 1}, {'_id': uuids[1]}, upsert=True),
+            # This is just here to make the counts right in all cases.
+            ReplaceOne({'_id': uuids[2]}, {'_id': uuids[2]}, upsert=True),
+        ])
+        self.assertEqualResponse(
+            {'nMatched': 0,
+             'nModified': 0,
+             'nUpserted': 3,
+             'nInserted': 0,
+             'nRemoved': 0,
+             'upserted': [{'index': 0, '_id': uuids[0]},
+                          {'index': 1, '_id': uuids[1]},
+                          {'index': 2, '_id': uuids[2]}]},
+            result.bulk_api_result)
+
+    def test_upsert_uuid_unspecified(self):
+        options = CodecOptions(uuid_representation=UuidRepresentation.UNSPECIFIED)
+        coll = self.coll.with_options(codec_options=options)
+        uuids = [Binary.from_uuid(uuid.uuid4()) for _ in range(3)]
+        result = coll.bulk_write([
+            UpdateOne({'_id': uuids[0]}, {'$set': {'a': 0}}, upsert=True),
+            ReplaceOne({'a': 1}, {'_id': uuids[1]}, upsert=True),
+            # This is just here to make the counts right in all cases.
+            ReplaceOne({'_id': uuids[2]}, {'_id': uuids[2]}, upsert=True),
+        ])
+        self.assertEqualResponse(
+            {'nMatched': 0,
+             'nModified': 0,
+             'nUpserted': 3,
+             'nInserted': 0,
+             'nRemoved': 0,
+             'upserted': [{'index': 0, '_id': uuids[0]},
+                          {'index': 1, '_id': uuids[1]},
+                          {'index': 2, '_id': uuids[2]}]},
+            result.bulk_api_result)
+
+    def test_upsert_uuid_standard_subdocuments(self):
+        options = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
+        coll = self.coll.with_options(codec_options=options)
+        ids: list = [
+            {'f': Binary(bytes(i)), 'f2': uuid.uuid4()}
+            for i in range(3)
+        ]
+
+        result = coll.bulk_write([
+            UpdateOne({'_id': ids[0]}, {'$set': {'a': 0}}, upsert=True),
+            ReplaceOne({'a': 1}, {'_id': ids[1]}, upsert=True),
+            # This is just here to make the counts right in all cases.
+            ReplaceOne({'_id': ids[2]}, {'_id': ids[2]}, upsert=True),
+        ])
+
+        # The `Binary` values are returned as `bytes` objects.
+        for _id in ids:
+            _id['f'] = bytes(_id['f'])  #
+
+        self.assertEqualResponse(
+            {'nMatched': 0,
+             'nModified': 0,
+             'nUpserted': 3,
+             'nInserted': 0,
+             'nRemoved': 0,
+             'upserted': [{'index': 0, '_id': ids[0]},
+                          {'index': 1, '_id': ids[1]},
+                          {'index': 2, '_id': ids[2]}]},
             result.bulk_api_result)
 
     def test_single_ordered_batch(self):
