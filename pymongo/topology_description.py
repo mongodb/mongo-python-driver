@@ -531,23 +531,29 @@ def _update_rs_from_primary(
         sds.pop(server_description.address)
         return (_check_has_primary(sds), replica_set_name, max_set_version, max_election_id)
 
-    max_election_tuple = max_set_version, max_election_id
-    if None not in server_description.election_tuple:
-        if (
-            None not in max_election_tuple
-            and max_election_tuple > server_description.election_tuple
-        ):
+    max_election_tuple = max_election_id, max_set_version
+    new_election_tuple = tuple(reversed(server_description.election_tuple))
+    new_election_id = server_description.election_id
+    new_set_version = server_description.set_version
+    if None not in new_election_tuple and (
+        None not in max_election_tuple
+        and (
+            max_election_id > new_election_id
+            or (max_election_id == new_election_id and max_set_version > new_set_version)
+        )
+    ):
+        # Stale primary, set to type Unknown.
+        sds[server_description.address] = server_description.to_unknown()
+        return _check_has_primary(sds), replica_set_name, max_set_version, max_election_id
 
-            # Stale primary, set to type Unknown.
-            sds[server_description.address] = server_description.to_unknown()
-            return (_check_has_primary(sds), replica_set_name, max_set_version, max_election_id)
-
+    if new_election_id is not None and (
+        max_election_id is None or new_election_id > max_election_id
+    ):
         max_election_id = server_description.election_id
 
-    if server_description.set_version is not None and (
-        max_set_version is None or server_description.set_version > max_set_version
+    if new_set_version is not None and (
+        max_set_version is None or new_set_version > max_set_version
     ):
-
         max_set_version = server_description.set_version
 
     # We've heard from the primary. Is it the same primary as before?
