@@ -28,7 +28,7 @@ from typing import (Any, Dict, Iterable, Iterator, List, Mapping,
 # This is essentially the same as re._pattern_type
 RE_TYPE: Type[Pattern[Any]] = type(re.compile(""))
 
-_Key = TypeVar("_Key", bound=str)
+_Key = TypeVar("_Key")
 _Value = TypeVar("_Value")
 _T = TypeVar("_T")
 

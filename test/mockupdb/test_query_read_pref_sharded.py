@@ -50,7 +50,7 @@ class TestQueryAndReadModeSharded(unittest.TestCase):
             for pref in read_prefs:
                 collection = client.db.get_collection('test',
                                                       read_preference=pref)
-                cursor = collection.find(query.copy())  # type: ignore[attr-defined]
+                cursor = collection.find(query.copy())
                 with going(next, cursor):
                     request = server.receives()
                     # Command is not nested in $query.

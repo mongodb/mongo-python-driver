@@ -886,7 +886,7 @@ class TestExternalKeyVault(EncryptionIntegrationTest):
                 client_encrypted.db.coll.insert_one({"encrypted": "test"})
             # AuthenticationFailed error.
             self.assertIsInstance(ctx.exception.cause, OperationFailure)
-            self.assertEqual(ctx.exception.cause.code, 18)  # type: ignore[attr-defined]
+            self.assertEqual(ctx.exception.cause.code, 18)
         else:
             client_encrypted.db.coll.insert_one({"encrypted": "test"})
 
@@ -899,7 +899,7 @@ class TestExternalKeyVault(EncryptionIntegrationTest):
                     key_id=LOCAL_KEY_ID)
             # AuthenticationFailed error.
             self.assertIsInstance(ctx.exception.cause, OperationFailure)
-            self.assertEqual(ctx.exception.cause.code, 18)  # type: ignore[attr-defined]
+            self.assertEqual(ctx.exception.cause.code, 18)
         else:
             client_encryption.encrypt(
                 "test", Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
@@ -1416,15 +1416,15 @@ class AzureGCPEncryptionTestMixin(object):
             '.'.join([self.KEYVAULT_DB, self.KEYVAULT_COLL]),
             client_context.client,
             OPTS)
-        self.addCleanup(client_encryption.close)  # type: ignore[attr-defined]
+        self.addCleanup(client_encryption.close)
 
         ciphertext = client_encryption.encrypt(
             'string0',
             algorithm=Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
             key_id=Binary.from_uuid(self.DEK['_id'], STANDARD))  # type: ignore[index]
 
-        self.assertEqual(bytes(ciphertext), base64.b64decode(expectation))  # type: ignore[attr-defined]
-        self.assertEqual(client_encryption.decrypt(ciphertext), 'string0')  # type: ignore[attr-defined]
+        self.assertEqual(bytes(ciphertext), base64.b64decode(expectation))
+        self.assertEqual(client_encryption.decrypt(ciphertext), 'string0')
 
     def _test_automatic(self, expectation_extjson, payload):
         encrypted_db = "db"
@@ -1434,13 +1434,13 @@ class AzureGCPEncryptionTestMixin(object):
         encryption_opts = AutoEncryptionOpts(
             self.KMS_PROVIDER_MAP,  # type: ignore[arg-type]
             keyvault_namespace,
-            schema_map=self.SCHEMA_MAP)  # type: ignore[attr-defined]
+            schema_map=self.SCHEMA_MAP)
 
         insert_listener = AllowListEventListener('insert')
         client = rs_or_single_client(
             auto_encryption_opts=encryption_opts,
             event_listeners=[insert_listener])
-        self.addCleanup(client.close)  # type: ignore[attr-defined]
+        self.addCleanup(client.close)
 
         coll = client.get_database(encrypted_db).get_collection(
             encrypted_coll, codec_options=OPTS,
@@ -1455,11 +1455,11 @@ class AzureGCPEncryptionTestMixin(object):
         inserted_doc = event.command['documents'][0]
 
         for key, value in expected_document.items():
-            self.assertEqual(value, inserted_doc[key])  # type: ignore[attr-defined]
+            self.assertEqual(value, inserted_doc[key])
 
         output_doc = coll.find_one({})
         for key, value in payload.items():
-            self.assertEqual(output_doc[key], value)  # type: ignore[attr-defined]
+            self.assertEqual(output_doc[key], value)
 
 
 class TestAzureEncryption(AzureGCPEncryptionTestMixin,
@@ -1468,9 +1468,9 @@ class TestAzureEncryption(AzureGCPEncryptionTestMixin,
     @unittest.skipUnless(any(AZURE_CREDS.values()),
                          'Azure environment credentials are not set')
     def setUpClass(cls):
-        cls.KMS_PROVIDER_MAP = {'azure': AZURE_CREDS}  # type: ignore[assignment]
+        cls.KMS_PROVIDER_MAP = {'azure': AZURE_CREDS}
         cls.DEK = json_data(BASE, 'custom', 'azure-dek.json')
-        cls.SCHEMA_MAP = json_data(BASE, 'custom', 'azure-gcp-schema.json')  # type: ignore[attr-defined]
+        cls.SCHEMA_MAP = json_data(BASE, 'custom', 'azure-gcp-schema.json')
         super(TestAzureEncryption, cls).setUpClass()
 
     def test_explicit(self):
@@ -1494,9 +1494,9 @@ class TestGCPEncryption(AzureGCPEncryptionTestMixin,
     @unittest.skipUnless(any(GCP_CREDS.values()),
                          'GCP environment credentials are not set')
     def setUpClass(cls):
-        cls.KMS_PROVIDER_MAP = {'gcp': GCP_CREDS}   # type: ignore[assignment]
+        cls.KMS_PROVIDER_MAP = {'gcp': GCP_CREDS}
         cls.DEK = json_data(BASE, 'custom', 'gcp-dek.json')
-        cls.SCHEMA_MAP = json_data(BASE, 'custom', 'azure-gcp-schema.json')  # type: ignore[attr-defined]
+        cls.SCHEMA_MAP = json_data(BASE, 'custom', 'azure-gcp-schema.json')
         super(TestGCPEncryption, cls).setUpClass()
 
     def test_explicit(self):

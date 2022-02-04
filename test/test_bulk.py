@@ -444,7 +444,7 @@ class TestBulk(BulkTestBase):
 
         # The `Binary` values are returned as `bytes` objects.
         for _id in ids:
-            _id['f'] = bytes(_id['f'])  #
+            _id['f'] = bytes(_id['f'])
 
         self.assertEqualResponse(
             {'nMatched': 0,
@@ -844,7 +844,7 @@ class TestBulkWriteConcern(BulkTestBase):
     def setUpClass(cls):
         super(TestBulkWriteConcern, cls).setUpClass()
         cls.w = client_context.w
-        cls.secondary = None  # type: ignore[assignment]
+        cls.secondary = None
         if cls.w is not None and cls.w > 1:
             for member in client_context.hello['hosts']:
                 if member != client_context.hello['primary']:

@@ -189,7 +189,7 @@ def simplify(case):  # TODO this is a hack
             simplified[key] = value
             return (success, success and simplified or case)
     if isinstance(case, list):
-        simplified = list(case)  # type: ignore[assignment]
+        simplified = list(case)
         if random.choice([True, False]):
             # delete
             if not len(simplified):

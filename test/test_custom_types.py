@@ -90,7 +90,7 @@ class UndecipherableInt64Type(object):
 
 
 class UndecipherableIntDecoder(TypeDecoder):
-    bson_type = Int64  # type: ignore[assignment]
+    bson_type = Int64
     def transform_bson(self, value):
         return UndecipherableInt64Type(value)
 
@@ -110,7 +110,7 @@ UNINT_CODECOPTS = CodecOptions(type_registry=TypeRegistry(
 
 
 class UppercaseTextDecoder(TypeDecoder):
-    bson_type = str  # type: ignore[assignment]
+    bson_type = str
     def transform_bson(self, value):
         return value.upper()
 
@@ -202,7 +202,7 @@ class TestCustomPythonBSONTypeToBSONMonolithicCodec(CustomBSONTypeTests,
                                                     unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.codecopts = DECIMAL_CODECOPTS  # type: ignore[attr-defined]
+        cls.codecopts = DECIMAL_CODECOPTS
 
 
 class TestCustomPythonBSONTypeToBSONMultiplexedCodec(CustomBSONTypeTests,
@@ -211,7 +211,7 @@ class TestCustomPythonBSONTypeToBSONMultiplexedCodec(CustomBSONTypeTests,
     def setUpClass(cls):
         codec_options = CodecOptions(
             type_registry=TypeRegistry((DecimalEncoder(), DecimalDecoder())))
-        cls.codecopts = codec_options  # type: ignore[attr-defined]
+        cls.codecopts = codec_options
 
 
 class TestBSONFallbackEncoder(unittest.TestCase):
@@ -471,20 +471,20 @@ class TestTypeRegistry(unittest.TestCase):
         codec_instances_copy = list(codec_instances)
         codec_instances.pop(0)
         self.assertListEqual(
-            type_registry._TypeRegistry__type_codecs, codec_instances_copy)  # type: ignore[attr-defined]
+            type_registry._TypeRegistry__type_codecs, codec_instances_copy)
 
     def test_simple_separate_codecs(self):
         class MyIntEncoder(TypeEncoder):
-            python_type = self.types[0]  # type: ignore[assignment]
+            python_type = self.types[0]
 
             def transform_python(self, value):
                 return value.x
 
         class MyIntDecoder(TypeDecoder):
-            bson_type = int  # type: ignore[assignment]
+            bson_type = int
 
             def transform_bson(self, value):
-                return self.types[0](value)  # type: ignore[attr-defined]
+                return self.types[0](value)
 
         codec_instances: list = [MyIntDecoder(), MyIntEncoder()]
         type_registry = TypeRegistry(codec_instances)

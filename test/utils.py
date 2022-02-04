@@ -862,16 +862,13 @@ def run_threads(collection, target):
 @contextlib.contextmanager
 def frequent_thread_switches():
     """Make concurrency bugs more likely to manifest."""
-    interval = None
-    if not sys.platform.startswith('java'):
-        interval = sys.getswitchinterval()
-        sys.setswitchinterval(1e-6)
+    interval = sys.getswitchinterval()
+    sys.setswitchinterval(1e-6)
 
     try:
         yield
     finally:
-        if not sys.platform.startswith('java'):
-            sys.setswitchinterval(interval)
+        sys.setswitchinterval(interval)
 
 
 def lazy_client_trial(reset, target, test, get_client):

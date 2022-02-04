@@ -488,7 +488,7 @@ class ClientContext(object):
     @property
     def storage_engine(self):
         try:
-            return self.server_status.get("storageEngine", {}).get("name")  # type: ignore[union-attr]
+            return self.server_status.get("storageEngine", {}).get("name")
         except AttributeError:
             # Raised if self.server_status is None.
             return None

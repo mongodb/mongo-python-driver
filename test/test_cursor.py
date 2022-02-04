@@ -22,8 +22,6 @@ import sys
 import time
 import threading
 
-from typing import no_type_check
-
 sys.path[0:0] = [""]
 
 from bson import decode_all
@@ -61,7 +59,6 @@ class TestCursor(IntegrationTest):
         cursor2 = copy.deepcopy(cursor)
         self.assertEqual(cursor._Cursor__spec, cursor2._Cursor__spec)  # type: ignore
 
-    @no_type_check
     def test_add_remove_option(self):
         cursor = self.db.test.find()
         self.assertEqual(0, cursor._Cursor__query_flags)
@@ -128,7 +125,6 @@ class TestCursor(IntegrationTest):
         cursor.remove_option(128)
         self.assertEqual(0, cursor._Cursor__query_flags)
 
-    @no_type_check
     def test_add_remove_option_exhaust(self):
         # Exhaust - which mongos doesn't support
         if client_context.is_mongos:
@@ -203,7 +199,6 @@ class TestCursor(IntegrationTest):
                                      "maxTimeAlwaysTimeOut",
                                      mode="off")
 
-    @no_type_check
     def test_max_await_time_ms(self):
         db = self.db
         db.pymongo_test.drop()
@@ -533,7 +528,6 @@ class TestCursor(IntegrationTest):
         with self.assertRaises(InvalidOperation):
             list(coll.find().max([("j", 3)]))
 
-    @no_type_check
     def test_batch_size(self):
         db = self.db
         db.test.drop()
@@ -587,7 +581,6 @@ class TestCursor(IntegrationTest):
         next(cur)
         self.assertEqual(0, len(cur._Cursor__data))
 
-    @no_type_check
     def test_limit_and_batch_size(self):
         db = self.db
         db.test.drop()
@@ -836,7 +829,6 @@ class TestCursor(IntegrationTest):
 
     # oplog_reply, and snapshot are all deprecated.
     @ignore_deprecations
-    @no_type_check
     def test_clone(self):
         self.db.test.insert_many([{"x": i} for i in range(1, 4)])
 
@@ -1010,7 +1002,6 @@ class TestCursor(IntegrationTest):
 
         self.assertRaises(IndexError, lambda: self.db.test.find()[10:8])
 
-    @no_type_check
     def test_getitem_numeric_index(self):
         self.db.drop_collection("test")
         self.db.test.insert_many([{"i": i} for i in range(100)])

@@ -60,7 +60,7 @@ def test_hello_with_option(self, protocol, **kwargs):
     # because it runs in another Python thread so there are some funky things
     # with error handling within that thread, and we want to be able to use
     # self.assertRaises().
-    self.handshake_req.assert_matches(protocol(hello, **kwargs))  # type: ignore[attr-defined]
+    self.handshake_req.assert_matches(protocol(hello, **kwargs))
     _check_handshake_data(self.handshake_req)
 
 

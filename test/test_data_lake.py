@@ -94,8 +94,8 @@ class TestDataLakeProse(IntegrationTest):
 
 class DataLakeTestSpec(TestCrudV2):
     # Default test database and collection names.
-    TEST_DB = 'test'  # type: ignore
-    TEST_COLLECTION = 'driverdata'  # type: ignore
+    TEST_DB = 'test'
+    TEST_COLLECTION = 'driverdata'
 
     @classmethod
     @client_context.require_data_lake

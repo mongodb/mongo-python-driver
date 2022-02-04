@@ -524,11 +524,11 @@ class MatchEvaluatorUtil(object):
                 nested = expectation[key_to_compare]
                 if isinstance(nested, abc.Mapping) and len(nested) == 1:
                     opname, spec = next(iter(nested.items()))
-                    if opname.startswith('$$'):  # type: ignore[attr-defined]
+                    if opname.startswith('$$'):
                         is_special_op = True
         elif len(expectation) == 1:
             opname, spec = next(iter(expectation.items()))
-            if opname.startswith('$$'):  # type: ignore[attr-defined]
+            if opname.startswith('$$'):
                 is_special_op = True
                 key_to_compare = None
 

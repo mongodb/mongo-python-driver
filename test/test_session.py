@@ -318,12 +318,12 @@ class TestSession(IntegrationTest):
         next(cursor)
         # Session is "owned" by cursor.
         self.assertIsNone(cursor.session)
-        self.assertIsNotNone(cursor._Cursor__session)  # type: ignore[attr-defined]
+        self.assertIsNotNone(cursor._Cursor__session)
         clone = cursor.clone()
         next(clone)
         self.assertIsNone(clone.session)
-        self.assertIsNotNone(clone._Cursor__session)  # type: ignore[attr-defined]
-        self.assertFalse(cursor._Cursor__session is clone._Cursor__session)  # type: ignore[attr-defined]
+        self.assertIsNotNone(clone._Cursor__session)
+        self.assertFalse(cursor._Cursor__session is clone._Cursor__session)
         cursor.close()
         clone.close()
 
@@ -484,12 +484,12 @@ class TestSession(IntegrationTest):
         cursor = bucket.find(batch_size=1)
         files = [cursor.next()]
 
-        s = cursor._Cursor__session  # type: ignore[attr-defined]
+        s = cursor._Cursor__session
         self.assertFalse(s.has_ended)
         cursor.__del__()
 
         self.assertTrue(s.has_ended)
-        self.assertIsNone(cursor._Cursor__session)  # type: ignore[attr-defined]
+        self.assertIsNone(cursor._Cursor__session)
 
         # Files are still valid, they use their own sessions.
         for f in files:
