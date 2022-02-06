@@ -25,7 +25,8 @@ from bson.son import SON
 from pymongo.client_session import _validate_session_write_concern
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import (validate_is_document_type, validate_is_mapping,
-                            validate_ok_for_replace, validate_ok_for_update)
+                            validate_ok_for_replace, validate_ok_for_update,
+                            validate_is_mapping_or_string)
 from pymongo.errors import (BulkWriteError, ConfigurationError,
                             InvalidOperation, OperationFailure)
 from pymongo.helpers import _RETRYABLE_ERROR_CODES, _get_wce_doc
@@ -128,7 +129,8 @@ def _raise_bulk_write_error(full_result):
 class _Bulk(object):
     """The private guts of the bulk write API.
     """
-    def __init__(self, collection, ordered, bypass_document_validation):
+    def __init__(self, collection, ordered, bypass_document_validation,
+                 comment=None):
         """Initialize a _Bulk instance.
         """
         self.collection = collection.with_options(
@@ -149,6 +151,7 @@ class _Bulk(object):
         # Extra state so that we know where to pick up on a retry attempt.
         self.current_run = None
         self.next_run = None
+        self.comment = comment
 
     @property
     def bulk_ctx_class(self):
@@ -283,6 +286,9 @@ class _Bulk(object):
 
                 cmd = SON([(cmd_name, self.collection.name),
                            ('ordered', self.ordered)])
+                if self.comment:
+                    validate_is_mapping_or_string("comment", self.comment)
+                    cmd["comment"] = self.comment
                 if not write_concern.is_server_default:
                     cmd['writeConcern'] = write_concern.document
                 if self.bypass_doc_val:
@@ -302,7 +308,7 @@ class _Bulk(object):
                 # Run as many ops as possible in one command.
                 if write_concern.acknowledged:
                     result, to_send = bwc.execute(cmd, ops, client)
-
+                    
                     # Retryable writeConcernErrors halt the execution of this run.
                     wce = result.get('writeConcernError', {})
                     if wce.get('code', 0) in _RETRYABLE_ERROR_CODES:

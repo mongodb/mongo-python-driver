@@ -382,7 +382,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         requests: Sequence[_WriteOp],
         ordered: bool = True,
         bypass_document_validation: bool = False,
-        session: Optional["ClientSession"] = None
+        session: Optional["ClientSession"] = None,
+        comment: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
     ) -> BulkWriteResult:
         """Send a batch of write operations to the server.
 
@@ -432,6 +433,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             ``False``.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
         :Returns:
           An instance of :class:`~pymongo.results.BulkWriteResult`.
@@ -451,7 +454,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """
         common.validate_list("requests", requests)
 
-        blk = _Bulk(self, ordered, bypass_document_validation)
+        blk = _Bulk(self, ordered, bypass_document_validation, comment=comment)
         for request in requests:
             try:
                 request._add_to_bulk(blk)
@@ -465,13 +468,17 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         return BulkWriteResult({}, False)
 
     def _insert_one(
-            self, doc, ordered, write_concern, op_id, bypass_doc_val, session):
+            self, doc, ordered, write_concern, op_id, bypass_doc_val,
+            session, comment=None):
         """Internal helper for inserting a single document."""
         write_concern = write_concern or self.write_concern
         acknowledged = write_concern.acknowledged
         command = SON([('insert', self.name),
                        ('ordered', ordered),
                        ('documents', [doc])])
+        if comment:
+            common.validate_is_mapping_or_string("comment", comment)
+            command["comment"] = comment
         if not write_concern.is_server_default:
             command['writeConcern'] = write_concern.document
 
@@ -498,7 +505,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def insert_one(self, document: _DocumentIn,
         bypass_document_validation: bool = False,
-        session: Optional["ClientSession"] = None
+        session: Optional["ClientSession"] = None,
+        comment: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
     ) -> InsertOneResult:
         """Insert a single document.
 
@@ -545,14 +553,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             self._insert_one(
                 document, ordered=True,
                 write_concern=write_concern, op_id=None,
-                bypass_doc_val=bypass_document_validation, session=session),
+                bypass_doc_val=bypass_document_validation, session=session,
+                comment=comment),
             write_concern.acknowledged)
 
     def insert_many(self,
         documents: Iterable[_DocumentIn],
         ordered: bool = True,
         bypass_document_validation: bool = False,
-        session: Optional["ClientSession"] = None
+        session: Optional["ClientSession"] = None,
+        comment: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
     ) -> InsertManyResult:
         """Insert an iterable of documents.
 
@@ -609,7 +619,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 yield (message._INSERT, document)
 
         write_concern = self._write_concern_for(session)
-        blk = _Bulk(self, ordered, bypass_document_validation)
+        blk = _Bulk(self, ordered, bypass_document_validation,
+                    comment=comment)
         blk.ops = [doc for doc in gen()]
         blk.execute(write_concern, session=session)
         return InsertManyResult(inserted_ids, write_concern.acknowledged)
@@ -617,7 +628,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def _update(self, sock_info, criteria, document, upsert=False,
                 multi=False, write_concern=None, op_id=None, ordered=True,
                 bypass_doc_val=False, collation=None, array_filters=None,
-                hint=None, session=None, retryable_write=False, let=None):
+                hint=None, session=None, retryable_write=False, let=None,
+                comment=None):
         """Internal update / replace helper."""
         common.validate_boolean("upsert", upsert)
         collation = validate_collation_or_none(collation)
@@ -646,7 +658,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             if not isinstance(hint, str):
                 hint = helpers._index_document(hint)
             update_doc['hint'] = hint
-
         command = SON([('update', self.name),
                        ('ordered', ordered),
                        ('updates', [update_doc])])
@@ -656,6 +667,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if not write_concern.is_server_default:
             command['writeConcern'] = write_concern.document
 
+        if comment:
+            common.validate_is_mapping_or_string("comment", comment)
+            command["comment"] = comment
         # Update command.
         if bypass_doc_val:
             command['bypassDocumentValidation'] = True
@@ -689,7 +703,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             self, criteria, document, upsert=False, multi=False,
             write_concern=None, op_id=None, ordered=True,
             bypass_doc_val=False, collation=None, array_filters=None,
-            hint=None, session=None, let=None):
+            hint=None, session=None, let=None, comment=None):
         """Internal update / replace helper."""
         def _update(session, sock_info, retryable_write):
             return self._update(
@@ -697,7 +711,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 write_concern=write_concern, op_id=op_id, ordered=ordered,
                 bypass_doc_val=bypass_doc_val, collation=collation,
                 array_filters=array_filters, hint=hint, session=session,
-                retryable_write=retryable_write, let=let)
+                retryable_write=retryable_write, let=let, comment=comment)
 
         return self.__database.client._retryable_write(
             (write_concern or self.write_concern).acknowledged and not multi,
@@ -711,7 +725,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         collation: Optional[_CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
-        let: Optional[Mapping[str, Any]] = None
+        let: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
     ) -> UpdateResult:
         """Replace a single document matching the filter.
 
@@ -791,7 +806,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 filter, replacement, upsert,
                 write_concern=write_concern,
                 bypass_doc_val=bypass_document_validation,
-                collation=collation, hint=hint, session=session, let=let),
+                collation=collation, hint=hint, session=session, let=let,
+                comment=comment),
             write_concern.acknowledged)
 
     def update_one(self,
@@ -803,7 +819,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
-        let: Optional[Mapping[str, Any]] = None
+        let: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
     ) -> UpdateResult:
         """Update a single document matching the filter.
 
@@ -849,12 +866,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
 
         .. versionchanged:: 4.1
            Added ``let`` parameter.
+           Added ``comment`` parameter.
         .. versionchanged:: 3.11
            Added ``hint`` parameter.
         .. versionchanged:: 3.9
@@ -879,7 +899,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 write_concern=write_concern,
                 bypass_doc_val=bypass_document_validation,
                 collation=collation, array_filters=array_filters,
-                hint=hint, session=session, let=let),
+                hint=hint, session=session, let=let, comment=comment),
             write_concern.acknowledged)
 
     def update_many(self,
@@ -891,7 +911,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         collation: Optional[_CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
-        let: Optional[Mapping[str, Any]] = None
+        let: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
     ) -> UpdateResult:
         """Update one or more documents that match the filter.
 
@@ -967,7 +988,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 write_concern=write_concern,
                 bypass_doc_val=bypass_document_validation,
                 collation=collation, array_filters=array_filters,
-                hint=hint, session=session, let=let),
+                hint=hint, session=session, let=let, comment=comment),
             write_concern.acknowledged)
 
     def drop(self, session: Optional["ClientSession"] = None) -> None:
@@ -1000,7 +1021,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             self, sock_info, criteria, multi,
             write_concern=None, op_id=None, ordered=True,
             collation=None, hint=None, session=None, retryable_write=False,
-            let=None):
+            let=None, comment=None):
         """Internal delete helper."""
         common.validate_is_mapping("filter", criteria)
         write_concern = write_concern or self.write_concern
@@ -1031,6 +1052,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             common.validate_is_document_type("let", let)
             command["let"] = let
 
+        if comment:
+            common.validate_is_mapping_or_string("comment", comment)
+            command["comment"] = comment
+
         # Delete command.
         result = sock_info.command(
             self.__database.name,
@@ -1046,14 +1071,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def _delete_retryable(
             self, criteria, multi,
             write_concern=None, op_id=None, ordered=True,
-            collation=None, hint=None, session=None, let=None):
+            collation=None, hint=None, session=None, let=None, comment=None):
         """Internal delete helper."""
         def _delete(session, sock_info, retryable_write):
             return self._delete(
                 sock_info, criteria, multi,
                 write_concern=write_concern, op_id=op_id, ordered=ordered,
                 collation=collation, hint=hint, session=session,
-                retryable_write=retryable_write, let=let)
+                retryable_write=retryable_write, let=let, comment=comment)
 
         return self.__database.client._retryable_write(
             (write_concern or self.write_concern).acknowledged and not multi,
@@ -1064,7 +1089,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         collation: Optional[_CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
-        let: Optional[Mapping[str, Any]] = None
+        let: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
     ) -> DeleteResult:
         """Delete a single document matching the filter.
 
@@ -1092,12 +1118,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
-
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
         :Returns:
           - An instance of :class:`~pymongo.results.DeleteResult`.
 
         .. versionchanged:: 4.1
            Added ``let`` parameter.
+           Added ``comment`` parameter.
         .. versionchanged:: 3.11
            Added ``hint`` parameter.
         .. versionchanged:: 3.6
@@ -1111,7 +1139,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             self._delete_retryable(
                 filter, False,
                 write_concern=write_concern,
-                collation=collation, hint=hint, session=session, let=let),
+                collation=collation, hint=hint, session=session, let=let,
+                comment=comment),
             write_concern.acknowledged)
 
     def delete_many(self,
@@ -1119,7 +1148,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         collation: Optional[_CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
-        let: Optional[Mapping[str, Any]] = None
+        let: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
     ) -> DeleteResult:
         """Delete one or more documents matching the filter.
 
@@ -1166,7 +1196,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             self._delete_retryable(
                 filter, True,
                 write_concern=write_concern,
-                collation=collation, hint=hint, session=session, let=let),
+                collation=collation, hint=hint, session=session, let=let,
+                comment=comment),
             write_concern.acknowledged)
 
     def find_one(self, filter: Optional[Any] = None, *args: Any, **kwargs: Any) -> Optional[_DocumentType]:
@@ -1193,6 +1224,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             are the same as the arguments to :meth:`find`.
 
               >>> collection.find_one(max_time_ms=100)
+
         """
         if (filter is not None and not
                 isinstance(filter, abc.Mapping)):
