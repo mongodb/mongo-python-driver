@@ -1734,8 +1734,8 @@ class TestCollection(IntegrationTest):
 
         db.test.insert_many([{"x": i} for i in range(1, 4)])
 
-        self.assertEqual(1, db.test.find_one()["x"]) # type: ignore[index]
-        self.assertEqual(2, db.test.find_one(skip=1, limit=2)["x"])  # type: ignore[index]
+        self.assertEqual(1, db.test.find_one()["x"])
+        self.assertEqual(2, db.test.find_one(skip=1, limit=2)["x"])
 
     def test_find_with_sort(self):
         db = self.db
@@ -1743,9 +1743,9 @@ class TestCollection(IntegrationTest):
 
         db.test.insert_many([{"x": 2}, {"x": 1}, {"x": 3}])
 
-        self.assertEqual(2, db.test.find_one()["x"])  # type: ignore[index]
-        self.assertEqual(1, db.test.find_one(sort=[("x", 1)])["x"])  # type: ignore[index]
-        self.assertEqual(3, db.test.find_one(sort=[("x", -1)])["x"])  # type: ignore[index]
+        self.assertEqual(2, db.test.find_one()["x"])
+        self.assertEqual(1, db.test.find_one(sort=[("x", 1)])["x"])
+        self.assertEqual(3, db.test.find_one(sort=[("x", -1)])["x"])
 
         def to_list(things):
             return [thing["x"] for thing in things]

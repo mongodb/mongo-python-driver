@@ -654,7 +654,7 @@ class ClientContext(object):
         if self.has_secondaries:
             return True
         if self.is_mongos:
-            shard = self.client.config.shards.find_one()['host']  # type: ignore[index]
+            shard = self.client.config.shards.find_one()['host']
             num_members = shard.count(',') + 1
             return num_members > 1
         return False

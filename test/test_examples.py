@@ -962,7 +962,7 @@ class TestTransactionExamples(IntegrationTest):
 
         # Start Transactions Retry Example 3
 
-        def run_transaction_with_retry(txn_func, session):  # type: ignore[no-redef]
+        def run_transaction_with_retry(txn_func, session):
             while True:
                 try:
                     txn_func(session)  # performs transaction
@@ -976,7 +976,7 @@ class TestTransactionExamples(IntegrationTest):
                     else:
                         raise
 
-        def commit_with_retry(session):  # type: ignore[no-redef]
+        def commit_with_retry(session):
             while True:
                 try:
                     # Commit uses write concern set at transaction start.
@@ -995,7 +995,7 @@ class TestTransactionExamples(IntegrationTest):
 
         # Updates two collections in a transactions
 
-        def update_employee_info(session):  # type: ignore[no-redef]
+        def update_employee_info(session):
             employees_coll = session.client.hr.employees
             events_coll = session.client.reporting.events
 
@@ -1093,10 +1093,12 @@ class TestCausalConsistencyExamples(IntegrationTest):
                  'start': current_date}, session=s1)
         # End Causal Consistency Example 1
 
+        assert s1.cluster_time is not None
+        assert s1.operation_time is not None
+
         # Start Causal Consistency Example 2
         with client.start_session(causal_consistency=True) as s2:
-            assert s1.cluster_time is not None
-            assert s1.operation_time is not None
+
             s2.advance_cluster_time(s1.cluster_time)
             s2.advance_operation_time(s1.operation_time)
 

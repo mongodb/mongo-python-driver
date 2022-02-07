@@ -60,7 +60,7 @@ class TestCode(unittest.TestCase):
     def test_repr(self):
         c = Code("hello world", {})
         self.assertEqual(repr(c), "Code('hello world', {})")
-        c.scope["foo"] = "bar"  # type: ignore[index]
+        c.scope["foo"] = "bar"
         self.assertEqual(repr(c), "Code('hello world', {'foo': 'bar'})")
         c = Code("hello world", {"blah": 3})
         self.assertEqual(repr(c), "Code('hello world', {'blah': 3})")

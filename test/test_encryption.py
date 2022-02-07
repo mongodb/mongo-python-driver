@@ -1421,7 +1421,7 @@ class AzureGCPEncryptionTestMixin(object):
         ciphertext = client_encryption.encrypt(
             'string0',
             algorithm=Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
-            key_id=Binary.from_uuid(self.DEK['_id'], STANDARD))  # type: ignore[index]
+            key_id=Binary.from_uuid(self.DEK['_id'], STANDARD))
 
         self.assertEqual(bytes(ciphertext), base64.b64decode(expectation))
         self.assertEqual(client_encryption.decrypt(ciphertext), 'string0')
