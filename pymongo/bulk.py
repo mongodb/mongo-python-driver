@@ -308,7 +308,7 @@ class _Bulk(object):
                 # Run as many ops as possible in one command.
                 if write_concern.acknowledged:
                     result, to_send = bwc.execute(cmd, ops, client)
-                    
+
                     # Retryable writeConcernErrors halt the execution of this run.
                     wce = result.get('writeConcernError', {})
                     if wce.get('code', 0) in _RETRYABLE_ERROR_CODES:
