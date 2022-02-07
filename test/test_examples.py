@@ -1098,7 +1098,6 @@ class TestCausalConsistencyExamples(IntegrationTest):
 
         # Start Causal Consistency Example 2
         with client.start_session(causal_consistency=True) as s2:
-
             s2.advance_cluster_time(s1.cluster_time)
             s2.advance_operation_time(s1.operation_time)
 
