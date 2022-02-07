@@ -84,6 +84,7 @@ class ChangeStream(Generic[_DocumentType]):
         start_at_operation_time: Optional[Timestamp],
         session: Optional["ClientSession"],
         start_after: Optional[Mapping[str, Any]],
+        comment: Optional[Union[Mapping[str, Any], str]],
     ) -> None:
         if pipeline is None:
             pipeline = []
@@ -114,7 +115,7 @@ class ChangeStream(Generic[_DocumentType]):
         self._collation = collation
         self._start_at_operation_time = start_at_operation_time
         self._session = session
-
+        self._comment = comment
         # Initialize cursor.
         self._cursor = self._create_cursor()
 
@@ -191,8 +192,7 @@ class ChangeStream(Generic[_DocumentType]):
         cmd = self._aggregation_command_class(
             self._target, CommandCursor, self._aggregation_pipeline(),
             self._command_options(), explicit_session,
-            result_processor=self._process_result)
-
+            result_processor=self._process_result, comment=self._comment)
         return self._client._retryable_read(
             cmd.get_cursor, self._target._read_preference_for(session),
             session)

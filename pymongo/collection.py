@@ -2139,6 +2139,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         start_at_operation_time: Optional[Timestamp] = None,
         session: Optional["ClientSession"] = None,
         start_after: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
     ) -> CollectionChangeStream[_DocumentType]:
         """Watch changes on this collection.
 
@@ -2237,7 +2238,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         return CollectionChangeStream(
             self, pipeline, full_document, resume_after, max_await_time_ms,
             batch_size, collation, start_at_operation_time, session,
-            start_after)
+            start_after, comment=comment)
 
     def rename(self, new_name: str, session: Optional["ClientSession"] = None, **kwargs: Any) -> MutableMapping[str, Any]:
         """Rename this collection.
