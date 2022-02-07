@@ -1515,7 +1515,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         batch = result['cursor']['firstBatch']
         return batch[0] if batch else None
 
-    def estimated_document_count(self, comment: Optional[Any], **kwargs: Any) -> int:
+    def estimated_document_count(self, comment: Optional[Any] = None,
+                                 **kwargs: Any) -> int:
         """Get an estimate of the number of documents in this collection using
         collection metadata.
 
