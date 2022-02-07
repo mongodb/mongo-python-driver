@@ -777,7 +777,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
     def drop_collection(self,
         name_or_collection: Union[str, Collection],
-        session: Optional["ClientSession"] = None
+        session: Optional["ClientSession"] = None,
+        comment: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
     ) -> Dict[str, Any]:
         """Drop a collection.
 
@@ -805,9 +806,14 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if not isinstance(name, str):
             raise TypeError("name_or_collection must be an instance of str")
 
+        command = SON([("drop", name)])
+        if comment:
+            common.validate_is_mapping_or_string("comment", comment)
+            command["comment"] = comment
+
         with self.__client._socket_for_writes(session) as sock_info:
             return self._command(
-                sock_info, 'drop', value=name,
+                sock_info, command,
                 allowable_errors=['ns not found', 26],
                 write_concern=self._write_concern_for(session),
                 parse_write_concern_error=True,

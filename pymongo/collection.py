@@ -1009,7 +1009,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 hint=hint, session=session, let=let, comment=comment),
             write_concern.acknowledged)
 
-    def drop(self, session: Optional["ClientSession"] = None) -> None:
+    def drop(self, session: Optional["ClientSession"] = None,
+             comment: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
+             ) -> None:
         """Alias for :meth:`~pymongo.database.Database.drop_collection`.
 
         :Parameters:
@@ -1033,7 +1035,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             self.read_preference,
             self.write_concern,
             self.read_concern)
-        dbo.drop_collection(self.__name, session=session)
+        dbo.drop_collection(self.__name, session=session, comment=comment)
 
     def _delete(
             self, sock_info, criteria, multi,
@@ -1898,7 +1900,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                           write_concern=self._write_concern_for(session),
                           session=session)
 
-    def list_indexes(self, session: Optional["ClientSession"] = None) -> CommandCursor[MutableMapping[str, Any]]:
+    def list_indexes(self, session: Optional["ClientSession"] = None,
+                     comment: Optional[
+                         Union[Mapping[str, Any], Iterable[str]]] = None,
+                     ) -> CommandCursor[MutableMapping[str, Any]]:
         """Get a cursor over the index documents for this collection.
 
           >>> for index in db.test.list_indexes():
@@ -1926,6 +1931,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         def _cmd(session, server, sock_info, read_preference):
             cmd = SON([("listIndexes", self.__name), ("cursor", {})])
+            if comment:
+                common.validate_is_mapping_or_string("comment", comment)
+                cmd["comment"] = comment
+
             with self.__database.client._tmp_session(session, False) as s:
                 try:
                     cursor = self._command(sock_info, cmd,
@@ -1947,7 +1956,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         return self.__database.client._retryable_read(
             _cmd, read_pref, session)
 
-    def index_information(self, session: Optional["ClientSession"] = None) -> MutableMapping[str, Any]:
+    def index_information(self, session: Optional["ClientSession"] = None,
+                          comment: Optional[
+                              Union[Mapping[str, Any], Iterable[str]]] = None,
+                          ) -> MutableMapping[str, Any]:
         """Get information on this collection's indexes.
 
         Returns a dictionary where the keys are index names (as
@@ -1973,7 +1985,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        cursor = self.list_indexes(session=session)
+        cursor = self.list_indexes(session=session, comment=comment)
         info = {}
         for index in cursor:
             index["key"] = list(index["key"].items())
@@ -1981,7 +1993,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             info[index.pop("name")] = index
         return info
 
-    def options(self, session: Optional["ClientSession"] = None) -> MutableMapping[str, Any]:
+    def options(self, session: Optional["ClientSession"] = None,
+                comment: Optional[
+                    Union[Mapping[str, Any], Iterable[str]]] = None,
+                ) -> MutableMapping[str, Any]:
         """Get the options set on this collection.
 
         Returns a dictionary of options and their values - see
@@ -2003,7 +2018,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             self.write_concern,
             self.read_concern)
         cursor = dbo.list_collections(
-            session=session, filter={"name": self.__name})
+            session=session, filter={"name": self.__name}, comment=comment)
 
         result = None
         for doc in cursor:
