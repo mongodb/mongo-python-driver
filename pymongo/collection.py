@@ -1221,7 +1221,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 comment=comment),
             write_concern.acknowledged)
 
-    def find_one(self, filter: Optional[Any] = None, *args: Any, **kwargs: Any) -> Optional[_DocumentType]:
+    def find_one(self, filter: Optional[Any] = None, *args: Any, **kwargs: Any
+    ) -> Optional[_DocumentType]:
         """Get a single document from the database.
 
         All arguments to :meth:`find` are also valid arguments for
@@ -1250,13 +1251,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if (filter is not None and not
                 isinstance(filter, abc.Mapping)):
             filter = {"_id": filter}
-
         cursor = self.find(filter, *args, **kwargs)
         for result in cursor.limit(-1):
             return result
         return None
 
-    def find(self, *args: Any, **kwargs: Any) -> Cursor[_DocumentType]:
+    def find(self, *args: Any, **kwargs: Any) \
+            -> Cursor[_DocumentType]:
         """Query the database.
 
         The `filter` argument is a prototype document that all results
@@ -1445,7 +1446,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """
         return Cursor(self, *args, **kwargs)
 
-    def find_raw_batches(self, *args: Any, **kwargs: Any) -> RawBatchCursor[_DocumentType]:
+    def find_raw_batches(self,
+                         *args: Any,
+                         **kwargs: Any) -> RawBatchCursor[_DocumentType]:
         """Query the database and retrieve batches of raw BSON.
 
         Similar to the :meth:`find` method but returns a
@@ -1475,7 +1478,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if self.__database.client._encrypter:
             raise InvalidOperation(
                 "find_raw_batches does not support auto encryption")
-
         return RawBatchCursor(self, *args, **kwargs)
 
     def _count_cmd(self, session, sock_info, read_preference, cmd, collation):
@@ -1513,7 +1515,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         batch = result['cursor']['firstBatch']
         return batch[0] if batch else None
 
-    def estimated_document_count(self, **kwargs: Any) -> int:
+    def estimated_document_count(self, comment: Optional[Any], **kwargs: Any) -> int:
         """Get an estimate of the number of documents in this collection using
         collection metadata.
 
@@ -1534,7 +1536,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if 'session' in kwargs:
             raise ConfigurationError(
                 'estimated_document_count does not support sessions')
-
+        if comment:
+            kwargs["comment"] = comment
         def _cmd(session, server, sock_info, read_preference):
             if sock_info.max_wire_version >= 12:
                 # MongoDB 4.9+
@@ -1562,7 +1565,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         return self.__database.client._retryable_read(
             _cmd, self.read_preference, None)
 
-    def count_documents(self, filter: Mapping[str, Any], session: Optional["ClientSession"] = None, **kwargs: Any) -> int:
+    def count_documents(self, filter: Mapping[str, Any], session: Optional[
+        "ClientSession"] = None, comment: Optional[Any] = None, **kwargs: 
+    Any) -> int:
         """Count the number of documents in this collection.
 
         .. note:: For a fast count of the total documents in a collection see
@@ -1621,6 +1626,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             pipeline.append({'$skip': kwargs.pop('skip')})
         if 'limit' in kwargs:
             pipeline.append({'$limit': kwargs.pop('limit')})
+        if comment:
+            kwargs["comment"] = comment
         pipeline.append({'$group': {'_id': 1, 'n': {'$sum': 1}}})
         cmd = SON([('aggregate', self.__name),
                    ('pipeline', pipeline),
@@ -1640,7 +1647,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         return self.__database.client._retryable_read(
             _cmd, self._read_preference_for(session), session)
 
-    def create_indexes(self, indexes: Sequence[IndexModel], session: Optional["ClientSession"] = None, **kwargs: Any) -> List[str]:
+    def create_indexes(self, indexes: Sequence[IndexModel], session:
+    Optional["ClientSession"] = None, comment: Optional[Any] = None, 
+                       **kwargs: Any) -> List[str]:
         """Create one or more indexes on this collection.
 
           >>> from pymongo import IndexModel, ASCENDING, DESCENDING
@@ -1715,7 +1724,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 session=session)
         return names
 
-    def create_index(self, keys: _IndexKeyHint, session: Optional["ClientSession"] = None, **kwargs: Any) -> str:
+    def create_index(self, keys: _IndexKeyHint, session: Optional[
+        "ClientSession"] = None, comment: Optional[Any] = None, **kwargs: Any)\
+            -> str:
         """Creates an index on this collection.
 
         Takes either a single key or a list of (key, direction) pairs.
@@ -1818,7 +1829,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         index = IndexModel(keys, **kwargs)
         return self.__create_indexes([index], session, **cmd_options)[0]
 
-    def drop_indexes(self, session: Optional["ClientSession"] = None, **kwargs: Any) -> None:
+    def drop_indexes(self, session: Optional["ClientSession"] = None,
+                     comment: Optional[Any] = None, **kwargs: Any) -> None:
         """Drops all indexes on this collection.
 
         Can be used on non-existant collections or collections with no indexes.
@@ -1844,7 +1856,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """
         self.drop_index("*", session=session, **kwargs)
 
-    def drop_index(self, index_or_name: _IndexKeyHint, session: Optional["ClientSession"] = None, **kwargs: Any) -> None:
+    def drop_index(self, index_or_name: _IndexKeyHint, session: Optional[
+        "ClientSession"] = None, comment: Optional[Any] = None,  
+                   **kwargs: Any) -> None:
         """Drops the specified index on this collection.
 
         Can be used on non-existant collections or collections with no
@@ -2042,8 +2056,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def aggregate(self, pipeline: _Pipeline, session: Optional[
         "ClientSession"] = None, let: Optional[Mapping[str, Any]] = None,
-                  comment: Optional[Any] = None, **kwargs:
-    Any) -> CommandCursor[_DocumentType]:
+                  comment: Optional[Any] = None, **kwargs: Any
+    ) -> CommandCursor[_DocumentType]:
         """Perform an aggregation using the aggregation framework on this
         collection.
 
@@ -2128,7 +2142,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                                    **kwargs)
 
     def aggregate_raw_batches(
-        self, pipeline: _Pipeline, session: Optional["ClientSession"] = None, **kwargs: Any
+        self, pipeline: _Pipeline, session: Optional["ClientSession"] =
+            None, comment: Optional[Any] = None, **kwargs: Any
     ) -> RawBatchCursor[_DocumentType]:
         """Perform an aggregation and retrieve batches of raw BSON.
 
@@ -2157,7 +2172,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if self.__database.client._encrypter:
             raise InvalidOperation(
                 "aggregate_raw_batches does not support auto encryption")
-
+        if comment:
+            kwargs["comment"] = comment
         with self.__database.client._tmp_session(session, close=False) as s:
             return self._aggregate(_CollectionRawAggregationCommand,
                                    pipeline,
@@ -2283,7 +2299,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             batch_size, collation, start_at_operation_time, session,
             start_after, comment=comment)
 
-    def rename(self, new_name: str, session: Optional["ClientSession"] = None, **kwargs: Any) -> MutableMapping[str, Any]:
+    def rename(self, new_name: str, session: Optional["ClientSession"] =
+    None, comment: Optional[Any] = None, **kwargs: Any) -> MutableMapping[
+        str, Any]:
         """Rename this collection.
 
         If operating in auth mode, client must be authorized as an
@@ -2324,6 +2342,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         new_name = "%s.%s" % (self.__database.name, new_name)
         cmd = SON([("renameCollection", self.__full_name), ("to", new_name)])
         cmd.update(kwargs)
+        if comment:
+            cmd["comment"] = comment
         write_concern = self._write_concern_for_cmd(cmd, session)
 
         with self._socket_for_writes(session) as sock_info:
@@ -2335,7 +2355,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                     session=s, client=self.__database.client)
 
     def distinct(
-        self, key: str, filter: Optional[Mapping[str, Any]] = None, session: Optional["ClientSession"] = None, **kwargs: Any
+        self, key: str, filter: Optional[Mapping[str, Any]] = None, session:
+            Optional["ClientSession"] = None, comment: Optional[Any] = None,
+            **kwargs: Any
     ) -> List:
         """Get a list of distinct values for `key` among all documents
         in this collection.
@@ -2380,6 +2402,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             kwargs["query"] = filter
         collation = validate_collation_or_none(kwargs.pop('collation', None))
         cmd.update(kwargs)
+        if comment:
+            cmd["comment"] = comment
         def _cmd(session, server, sock_info, read_preference):
             return self._command(
                 sock_info, cmd, read_preference=read_preference,
@@ -2467,6 +2491,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
         let: Optional[Mapping[str, Any]] = None,
+        comment: Any = None,
         **kwargs: Any,
     ) -> _DocumentType:
         """Finds a single document and deletes it, returning the document.
@@ -2540,6 +2565,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 3.0
         """
         kwargs['remove'] = True
+        if comment:
+            kwargs["comment"] = comment
         return self.__find_and_modify(filter, projection, sort, let=let,
                                       hint=hint, session=session, **kwargs)
 
@@ -2553,6 +2580,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
         let: Optional[Mapping[str, Any]] = None,
+        comment: Any = None,
         **kwargs: Any,
     ) -> _DocumentType:
         """Finds a single document and replaces it, returning either the
@@ -2633,6 +2661,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """
         common.validate_ok_for_replace(replacement)
         kwargs['update'] = replacement
+        if comment:
+            kwargs["comment"] = comment
         return self.__find_and_modify(filter, projection,
                                       sort, upsert, return_document, let=let,
                                       hint=hint, session=session, **kwargs)
@@ -2648,6 +2678,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
         let: Optional[Mapping[str, Any]] = None,
+        comment: Any = None,
         **kwargs: Any,
     ) -> _DocumentType:
         """Finds a single document and updates it, returning either the
@@ -2770,6 +2801,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         common.validate_ok_for_update(update)
         common.validate_list_or_none('array_filters', array_filters)
         kwargs['update'] = update
+        if comment:
+            kwargs["comment"] = comment
         return self.__find_and_modify(filter, projection,
                                       sort, upsert, return_document,
                                       array_filters, hint=hint, let=let,

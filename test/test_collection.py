@@ -22,6 +22,7 @@ import sys
 
 from codecs import utf_8_decode
 from collections import defaultdict
+import inspect
 
 sys.path[0:0] = [""]
 
@@ -378,6 +379,7 @@ class TestCollection(IntegrationTest):
         self.assertEqual(len(indexes), 0)
         
     @client_context.require_auth
+    @client_context.require_version_min(4, 7, -1)
     def test_helpers_comment(self):
         listener = EventListener()
         db = single_client(event_listeners=[listener])[self.db.name]
@@ -389,22 +391,30 @@ class TestCollection(IntegrationTest):
             ("aggregate_raw_batches", [[{"$set": {"x": 1}}]]),
             ("rename", ["temp_temp_temp"]), ("distinct", ["_id"]),
             ("find_one_and_delete", [{}]), ("find_one_and_replace", [{}, {}]),
-            ("find_one_and_update", [{}, {'$set': {'a': 1}}])
+            ("find_one_and_update", [{}, {'$set': {'a': 1}}]),
+            ("estimated_document_count", []), ("count_documents", [{}]),
         ]
+
         for h, args in helpers:
             c = "testing comment with "+h
             with self.subTest(h + "-comment"):
                 for cc in [c, {"key": c}]:
                     results.clear()
+                    kwargs = {"comment": cc}
                     if h == "rename":
                         db.get_collection("temp_temp_temp").drop()
                         destruct_coll = db.get_collection("test_temp")
                         destruct_coll.insert_one({})
                         maybe_cursor = getattr(destruct_coll, h)(*args,
-                                                                 comment=cc)
+                                                                 **kwargs)
                         destruct_coll.drop()
                     else:
-                        maybe_cursor = getattr(coll, h)(*args, comment=cc)
+                        maybe_cursor = getattr(coll, h)(*args, **kwargs)
+                    self.assertIn("comment", inspect.signature(
+                        getattr(coll, h)
+                    ).parameters)
+                    if isinstance(maybe_cursor, CommandCursor):
+                        maybe_cursor.close()
                     tested = False
                     for i in results['started']:
                         if cc == i.command.get("comment", ""):
@@ -414,8 +424,7 @@ class TestCollection(IntegrationTest):
                                      "Using the keyword argument \"comment\" did "
                                      "not work for func: %s with comment "
                                      "type: %s" % (h, type(cc)))
-                    if isinstance(maybe_cursor, CursorType):
-                        maybe_cursor.close()
+
 
         results.clear()
 
