@@ -84,7 +84,7 @@ class ChangeStream(Generic[_DocumentType]):
         start_at_operation_time: Optional[Timestamp],
         session: Optional["ClientSession"],
         start_after: Optional[Mapping[str, Any]],
-        comment: Optional[Union[Mapping[str, Any], str]],
+        comment: Optional[Union[Mapping[str, Any], str]] = None,
     ) -> None:
         if pipeline is None:
             pipeline = []
