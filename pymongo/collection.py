@@ -383,7 +383,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         ordered: bool = True,
         bypass_document_validation: bool = False,
         session: Optional["ClientSession"] = None,
-        comment: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
+        comment: Optional[Any] = None,
     ) -> BulkWriteResult:
         """Send a batch of write operations to the server.
 
@@ -480,7 +480,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                        ('ordered', ordered),
                        ('documents', [doc])])
         if comment:
-            common.validate_is_mapping_or_string("comment", comment)
             command["comment"] = comment
         if not write_concern.is_server_default:
             command['writeConcern'] = write_concern.document
@@ -509,7 +508,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def insert_one(self, document: _DocumentIn,
         bypass_document_validation: bool = False,
         session: Optional["ClientSession"] = None,
-        comment: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
+        comment: Optional[Any] = None,
     ) -> InsertOneResult:
         """Insert a single document.
 
@@ -570,7 +569,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         ordered: bool = True,
         bypass_document_validation: bool = False,
         session: Optional["ClientSession"] = None,
-        comment: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
+        comment: Optional[Any] = None,
     ) -> InsertManyResult:
         """Insert an iterable of documents.
 
@@ -681,7 +680,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             command['writeConcern'] = write_concern.document
 
         if comment:
-            common.validate_is_mapping_or_string("comment", comment)
             command["comment"] = comment
         # Update command.
         if bypass_doc_val:
@@ -739,7 +737,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
         let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
+        comment: Optional[Any] = None,
     ) -> UpdateResult:
         """Replace a single document matching the filter.
 
@@ -835,7 +833,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
         let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
+        comment: Optional[Any] = None,
     ) -> UpdateResult:
         """Update a single document matching the filter.
 
@@ -927,7 +925,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
         let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
+        comment: Optional[Any] = None,
     ) -> UpdateResult:
         """Update one or more documents that match the filter.
 
@@ -1010,7 +1008,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             write_concern.acknowledged)
 
     def drop(self, session: Optional["ClientSession"] = None,
-             comment: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
+             comment: Optional[Any] = None,
              ) -> None:
         """Alias for :meth:`~pymongo.database.Database.drop_collection`.
 
@@ -1073,7 +1071,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             command["let"] = let
 
         if comment:
-            common.validate_is_mapping_or_string("comment", comment)
             command["comment"] = comment
 
         # Delete command.
@@ -1110,7 +1107,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
         let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
+        comment: Optional[Any] = None,
     ) -> DeleteResult:
         """Delete a single document matching the filter.
 
@@ -1170,7 +1167,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
         let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
+        comment: Optional[Any] = None,
     ) -> DeleteResult:
         """Delete one or more documents matching the filter.
 
@@ -1901,8 +1898,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                           session=session)
 
     def list_indexes(self, session: Optional["ClientSession"] = None,
-                     comment: Optional[
-                         Union[Mapping[str, Any], Iterable[str]]] = None,
+                     comment: Optional[Any] = None,
                      ) -> CommandCursor[MutableMapping[str, Any]]:
         """Get a cursor over the index documents for this collection.
 
@@ -1932,7 +1928,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         def _cmd(session, server, sock_info, read_preference):
             cmd = SON([("listIndexes", self.__name), ("cursor", {})])
             if comment:
-                common.validate_is_mapping_or_string("comment", comment)
                 cmd["comment"] = comment
 
             with self.__database.client._tmp_session(session, False) as s:
@@ -1957,8 +1952,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             _cmd, read_pref, session)
 
     def index_information(self, session: Optional["ClientSession"] = None,
-                          comment: Optional[
-                              Union[Mapping[str, Any], Iterable[str]]] = None,
+                          comment: Optional[Any] = None,
                           ) -> MutableMapping[str, Any]:
         """Get information on this collection's indexes.
 
@@ -1994,8 +1988,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         return info
 
     def options(self, session: Optional["ClientSession"] = None,
-                comment: Optional[
-                    Union[Mapping[str, Any], Iterable[str]]] = None,
+                comment: Optional[Any] = None,
                 ) -> MutableMapping[str, Any]:
         """Get the options set on this collection.
 
@@ -2036,16 +2029,21 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         return options
 
     def _aggregate(self, aggregation_command, pipeline, cursor_class, session,
-                   explicit_session, let=None, **kwargs):
+                   explicit_session, let=None, comment = None, **kwargs):
+        if comment:
+            kwargs["comment"] = comment
         cmd = aggregation_command(
             self, cursor_class, pipeline, kwargs, explicit_session, let,
             user_fields={'cursor': {'firstBatch': 1}})
-
+        
         return self.__database.client._retryable_read(
             cmd.get_cursor, cmd.get_read_preference(session), session,
             retryable=not cmd._performs_write)
 
-    def aggregate(self, pipeline: _Pipeline, session: Optional["ClientSession"] = None, let: Optional[Mapping[str, Any]] = None, **kwargs: Any) -> CommandCursor[_DocumentType]:
+    def aggregate(self, pipeline: _Pipeline, session: Optional[
+        "ClientSession"] = None, let: Optional[Mapping[str, Any]] = None,
+                  comment: Optional[Any] = None, **kwargs:
+    Any) -> CommandCursor[_DocumentType]:
         """Perform an aggregation using the aggregation framework on this
         collection.
 
@@ -2118,6 +2116,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. _aggregate command:
             https://docs.mongodb.com/manual/reference/command/aggregate
         """
+
         with self.__database.client._tmp_session(session, close=False) as s:
             return self._aggregate(_CollectionAggregationCommand,
                                    pipeline,
@@ -2125,6 +2124,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                                    session=s,
                                    explicit_session=session is not None,
                                    let=let,
+                                   comment=comment,
                                    **kwargs)
 
     def aggregate_raw_batches(
@@ -2176,7 +2176,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         start_at_operation_time: Optional[Timestamp] = None,
         session: Optional["ClientSession"] = None,
         start_after: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
+        comment: Optional[Any] = None,
     ) -> CollectionChangeStream[_DocumentType]:
         """Watch changes on this collection.
 

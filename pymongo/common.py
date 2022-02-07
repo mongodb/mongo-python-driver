@@ -490,13 +490,6 @@ def validate_is_mapping(option: str, value: Any) -> None:
                         "any other type that inherits from "
                         "collections.Mapping" % (option,))
 
-def validate_is_mapping_or_string(option: str, value: Any) -> None:
-    """Validate the type of method arguments that expect a document."""
-    if not isinstance(value, (abc.Mapping, str)):
-        raise TypeError("%s must be an instance of abc.Mapping or a string" % (
-            option,))
-
-
 
 def validate_is_document_type(option: str, value: Any) -> None:
     """Validate the type of method arguments that expect a MongoDB document."""

@@ -25,8 +25,7 @@ from bson.son import SON
 from pymongo.client_session import _validate_session_write_concern
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import (validate_is_document_type, validate_is_mapping,
-                            validate_ok_for_replace, validate_ok_for_update,
-                            validate_is_mapping_or_string)
+                            validate_ok_for_replace, validate_ok_for_update)
 from pymongo.errors import (BulkWriteError, ConfigurationError,
                             InvalidOperation, OperationFailure)
 from pymongo.helpers import _RETRYABLE_ERROR_CODES, _get_wce_doc
@@ -287,7 +286,6 @@ class _Bulk(object):
                 cmd = SON([(cmd_name, self.collection.name),
                            ('ordered', self.ordered)])
                 if self.comment:
-                    validate_is_mapping_or_string("comment", self.comment)
                     cmd["comment"] = self.comment
                 if not write_concern.is_server_default:
                     cmd['writeConcern'] = write_concern.document

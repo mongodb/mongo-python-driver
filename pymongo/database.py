@@ -808,7 +808,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         command = SON([("drop", name)])
         if comment:
-            common.validate_is_mapping_or_string("comment", comment)
             command["comment"] = comment
 
         with self.__client._socket_for_writes(session) as sock_info:

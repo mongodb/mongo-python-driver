@@ -48,7 +48,6 @@ class _AggregationCommand(object):
             common.validate_is_mapping("let", let)
             options["let"] = let
         if comment:
-            common.validate_is_mapping_or_string("comment", comment)
             options["comment"] = comment
         self._options = options
 
