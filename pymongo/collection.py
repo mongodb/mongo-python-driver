@@ -444,6 +444,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**
 
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
+
         .. versionchanged:: 3.6
            Added ``session`` parameter.
 
@@ -527,6 +530,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             ``False``.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
         :Returns:
           - An instance of :class:`~pymongo.results.InsertOneResult`.
@@ -535,6 +540,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -586,6 +594,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             ``False``.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
         :Returns:
           An instance of :class:`~pymongo.results.InsertManyResult`.
@@ -594,6 +604,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -779,12 +792,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
-
+          - `comment` (optional): A user-provided comment to attach to this
+            command.f
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
 
         .. versionchanged:: 4.1
            Added ``let`` parameter.
+           Added ``comment`` parameter.
         .. versionchanged:: 3.11
            Added ``hint`` parameter.
         .. versionchanged:: 3.6
@@ -958,12 +973,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
 
         .. versionchanged:: 4.1
            Added ``let`` parameter.
+           Added ``comment`` parameter.
         .. versionchanged:: 3.11
            Added ``hint`` parameter.
         .. versionchanged:: 3.9
@@ -1120,6 +1138,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             aggregate expression context (e.g. "$$var").
           - `comment` (optional): A user-provided comment to attach to this
             command.
+
         :Returns:
           - An instance of :class:`~pymongo.results.DeleteResult`.
 
@@ -1177,12 +1196,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
         :Returns:
           - An instance of :class:`~pymongo.results.DeleteResult`.
 
         .. versionchanged:: 4.1
            Added ``let`` parameter.
+           Added ``comment`` parameter.
         .. versionchanged:: 3.11
            Added ``hint`` parameter.
         .. versionchanged:: 3.6
@@ -2218,10 +2240,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `start_after` (optional): The same as `resume_after` except that
             `start_after` can resume notifications after an invalidate event.
             This option and `resume_after` are mutually exclusive.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
         :Returns:
           A :class:`~pymongo.change_stream.CollectionChangeStream` cursor.
 
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
+           
         .. versionchanged:: 3.9
            Added the ``start_after`` parameter.
 
