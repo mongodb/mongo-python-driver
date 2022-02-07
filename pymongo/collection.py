@@ -793,7 +793,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
           - `comment` (optional): A user-provided comment to attach to this
-            command.f
+            command.
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
 
