@@ -14,7 +14,7 @@
 
 """Database level operations."""
 from typing import (TYPE_CHECKING, Any, Dict, Generic, List, Mapping, MutableMapping, Optional,
-                    Sequence, Union)
+                    Sequence, Union, Iterable)
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
