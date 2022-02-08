@@ -220,6 +220,8 @@ def create_tests():
         dirname = os.path.split(dirpath)[-1]
 
         for filename in filenames:
+            if os.path.splitext(filename)[1] != ".json":
+                continue
             with open(os.path.join(dirpath, filename)) as scenario_stream:
                 scenario_def = json_util.loads(scenario_stream.read())
 
