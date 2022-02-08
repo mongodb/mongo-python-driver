@@ -680,6 +680,8 @@ class TestCollection(IntegrationTest):
         db.drop_collection("test")
         db.create_collection("test", capped=True, size=4096)
         result = db.test.options()
+        # mongos 2.2.x adds an $auth field when auth is enabled.
+        result.pop('$auth', None)
         self.assertEqual(result, {"capped": True, 'size': 4096})
         db.drop_collection("test")
 
@@ -849,7 +851,7 @@ class TestCollection(IntegrationTest):
             lambda: 0 == db.test.count_documents({}), 'delete 2 documents')
 
     def test_command_document_too_large(self):
-        large = '*' * (client_context.max_bson_size + _COMMAND_OVERHEAD)
+        large = '*' * (self.client.max_bson_size + _COMMAND_OVERHEAD)
         coll = self.db.test
         self.assertRaises(
             DocumentTooLarge, coll.insert_one, {'data': large})
@@ -860,7 +862,7 @@ class TestCollection(IntegrationTest):
             DocumentTooLarge, coll.delete_one, {'data': large})
 
     def test_write_large_document(self):
-        max_size = client_context.max_bson_size
+        max_size = self.db.client.max_bson_size
         half_size = int(max_size / 2)
         max_str = "x" * max_size
         half_str = "x" * half_size
@@ -1130,6 +1132,7 @@ class TestCollection(IntegrationTest):
         self.assertTrue("x" not in db.test.find_one(projection={"x": 0}))
         self.assertTrue("mike" in db.test.find_one(projection={"x": 0}))
 
+    @client_context.require_version_max(4, 9, -1)  # PYTHON-2721
     def test_find_w_regex(self):
         db = self.db
         db.test.delete_many({})
@@ -1876,7 +1879,7 @@ class TestCollection(IntegrationTest):
     def test_numerous_inserts(self):
         # Ensure we don't exceed server's maxWriteBatchSize size limit.
         self.db.test.drop()
-        n_docs = client_context.max_write_batch_size + 100
+        n_docs = self.client.max_write_batch_size + 100
         self.db.test.insert_many([{} for _ in range(n_docs)])
         self.assertEqual(n_docs, self.db.test.count_documents({}))
         self.db.test.drop()
@@ -1885,7 +1888,7 @@ class TestCollection(IntegrationTest):
         # Tests legacy insert.
         db = self.client.test_insert_large_batch
         self.addCleanup(self.client.drop_database, 'test_insert_large_batch')
-        max_bson_size = client_context.max_bson_size
+        max_bson_size = self.client.max_bson_size
         # Write commands are limited to 16MB + 16k per batch
         big_string = 'x' * int(max_bson_size / 2)
 
@@ -2175,23 +2178,6 @@ class TestCollection(IntegrationTest):
     def test_bool(self):
         with self.assertRaises(NotImplementedError):
             bool(Collection(self.db, 'test'))
-
-    @client_context.require_version_min(5, 0, 0)
-    def test_helpers_with_let(self):
-        c = self.db.test
-        helpers = [(c.delete_many, ({}, {})), (c.delete_one, ({}, {})),
-                   (c.find, ({})), (c.update_many, ({}, {'$inc': {'x': 3}})),
-                   (c.update_one, ({}, {'$inc': {'x': 3}})),
-                   (c.find_one_and_delete, ({}, {})),
-                   (c.find_one_and_replace, ({}, {})),
-                   (c.aggregate, ([], {}))]
-        for let in [10, "str"]:
-            for helper, args in helpers:
-                with self.assertRaisesRegex(TypeError,
-                                            "let must be an instance of dict"):
-                    helper(*args, let=let)
-        for helper, args in helpers:
-            helper(*args, let={})
 
 
 if __name__ == "__main__":
