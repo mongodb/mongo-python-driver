@@ -216,8 +216,8 @@ class ServerEventListener(_ServerEventListener, monitoring.ServerListener):
     """Listens to Server events."""
 
 
-class ServerAndTopologyEventListener(
-    ServerEventListener, monitoring.TopologyListener  # type: ignore
+class ServerAndTopologyEventListener(  # type: ignore[misc]
+    ServerEventListener, monitoring.TopologyListener
 ):
     """Listens to Server and Topology events."""
 

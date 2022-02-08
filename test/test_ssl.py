@@ -185,9 +185,9 @@ class TestSSL(IntegrationTest):
                     tlsCertificateKeyFilePassword="qwerty",
                     tlsCAFile=CA_PEM,
                     serverSelectionTimeoutMS=5000,
-                    **self.credentials
+                    **self.credentials  # type: ignore[arg-type]
                 )
-            )  # type: ignore
+            )
 
             uri_fmt = (
                 "mongodb://localhost/?ssl=true"
@@ -195,8 +195,8 @@ class TestSSL(IntegrationTest):
                 "&tlsCAFile=%s&serverSelectionTimeoutMS=5000"
             )
             connected(
-                MongoClient(uri_fmt % (CLIENT_ENCRYPTED_PEM, CA_PEM), **self.credentials)
-            )  # type: ignore
+                MongoClient(uri_fmt % (CLIENT_ENCRYPTED_PEM, CA_PEM), **self.credentials)  # type: ignore[arg-type]
+            )
 
     @client_context.require_tlsCertificateKeyFile
     @client_context.require_no_auth
@@ -320,9 +320,9 @@ class TestSSL(IntegrationTest):
                     tlsAllowInvalidCertificates=False,
                     tlsCAFile=CA_PEM,
                     serverSelectionTimeoutMS=500,
-                    **self.credentials
+                    **self.credentials  # type: ignore[arg-type]
                 )
-            )  # type: ignore
+            )
 
         connected(
             MongoClient(
@@ -333,9 +333,9 @@ class TestSSL(IntegrationTest):
                 tlsCAFile=CA_PEM,
                 tlsAllowInvalidHostnames=True,
                 serverSelectionTimeoutMS=500,
-                **self.credentials
+                **self.credentials  # type: ignore[arg-type]
             )
-        )  # type: ignore
+        )
 
         if "setName" in response:
             with self.assertRaises(ConnectionFailure):
@@ -348,9 +348,9 @@ class TestSSL(IntegrationTest):
                         tlsAllowInvalidCertificates=False,
                         tlsCAFile=CA_PEM,
                         serverSelectionTimeoutMS=500,
-                        **self.credentials
+                        **self.credentials  # type: ignore[arg-type]
                     )
-                )  # type: ignore
+                )
 
             connected(
                 MongoClient(
@@ -362,9 +362,9 @@ class TestSSL(IntegrationTest):
                     tlsCAFile=CA_PEM,
                     tlsAllowInvalidHostnames=True,
                     serverSelectionTimeoutMS=500,
-                    **self.credentials
+                    **self.credentials  # type: ignore[arg-type]
                 )
-            )  # type: ignore
+            )
 
     @client_context.require_tlsCertificateKeyFile
     @ignore_deprecations
@@ -386,9 +386,9 @@ class TestSSL(IntegrationTest):
                     ssl=True,
                     tlsCAFile=CA_PEM,
                     serverSelectionTimeoutMS=100,
-                    **self.credentials
+                    **self.credentials  # type: ignore[arg-type]
                 )
-            )  # type: ignore
+            )
 
             with self.assertRaises(ConnectionFailure):
                 connected(
@@ -398,9 +398,9 @@ class TestSSL(IntegrationTest):
                         tlsCAFile=CA_PEM,
                         tlsCRLFile=CRL_PEM,
                         serverSelectionTimeoutMS=100,
-                        **self.credentials
+                        **self.credentials  # type: ignore[arg-type]
                     )
-                )  # type: ignore
+                )
 
             uri_fmt = "mongodb://localhost/?ssl=true&" "tlsCAFile=%s&serverSelectionTimeoutMS=100"
             connected(MongoClient(uri_fmt % (CA_PEM,), **self.credentials))  # type: ignore
@@ -411,8 +411,8 @@ class TestSSL(IntegrationTest):
             )
             with self.assertRaises(ConnectionFailure):
                 connected(
-                    MongoClient(uri_fmt % (CRL_PEM, CA_PEM), **self.credentials)
-                )  # type: ignore
+                    MongoClient(uri_fmt % (CRL_PEM, CA_PEM), **self.credentials)  # type: ignore[arg-type]
+                )
 
     @client_context.require_tlsCertificateKeyFile
     @client_context.require_server_resolvable
@@ -428,8 +428,8 @@ class TestSSL(IntegrationTest):
         with self.assertRaises(ConnectionFailure):
             # Server cert is verified but hostname matching fails
             connected(
-                MongoClient("server", ssl=True, serverSelectionTimeoutMS=100, **self.credentials)
-            )  # type: ignore
+                MongoClient("server", ssl=True, serverSelectionTimeoutMS=100, **self.credentials)  # type: ignore[arg-type]
+            )
 
         # Server cert is verified. Disable hostname matching.
         connected(
@@ -438,21 +438,21 @@ class TestSSL(IntegrationTest):
                 ssl=True,
                 tlsAllowInvalidHostnames=True,
                 serverSelectionTimeoutMS=100,
-                **self.credentials
+                **self.credentials    # type: ignore[arg-type]
             )
-        )  # type: ignore
+        )
 
         # Server cert and hostname are verified.
         connected(
-            MongoClient("localhost", ssl=True, serverSelectionTimeoutMS=100, **self.credentials)
-        )  # type: ignore
+            MongoClient("localhost", ssl=True, serverSelectionTimeoutMS=100, **self.credentials)  # type: ignore[arg-type]
+        )
 
         # Server cert and hostname are verified.
         connected(
             MongoClient(
-                "mongodb://localhost/?ssl=true&serverSelectionTimeoutMS=100", **self.credentials
+                "mongodb://localhost/?ssl=true&serverSelectionTimeoutMS=100", **self.credentials    # type: ignore[arg-type]
             )
-        )  # type: ignore
+        )
 
     def test_system_certs_config_error(self):
         ctx = get_ssl_context(None, None, None, None, True, True, False)

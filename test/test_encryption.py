@@ -448,8 +448,8 @@ class TestExplicitSimple(EncryptionIntegrationTest):
     def test_codec_options(self):
         with self.assertRaisesRegex(TypeError, "codec_options must be"):
             ClientEncryption(
-                KMS_PROVIDERS, "keyvault.datakeys", client_context.client, None
-            )  # type: ignore[arg-type]
+                KMS_PROVIDERS, "keyvault.datakeys", client_context.client, None  # type: ignore[arg-type]
+            )
 
         opts = CodecOptions(uuid_representation=JAVA_LEGACY)
         client_encryption_legacy = ClientEncryption(
@@ -1023,8 +1023,8 @@ class TestCorpus(EncryptionIntegrationTest):
 
                 try:
                     encrypted_val = client_encryption.encrypt(
-                        value["value"], algo, **kwargs
-                    )  # type: ignore[arg-type]
+                        value["value"], algo, **kwargs   # type: ignore[arg-type]
+                    )
                     if not value["allowed"]:
                         self.fail("encrypt should have failed: %r: %r" % (key, value))
                     corpus_copied[key]["value"] = encrypted_val

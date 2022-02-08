@@ -1216,16 +1216,16 @@ class TestEventClasses(unittest.TestCase):
         self.assertEqual(repr(event), "<ServerHeartbeatStartedEvent ('localhost', 27017)>")
         delta = 0.1
         event = monitoring.ServerHeartbeatSucceededEvent(
-            delta, {"ok": 1}, connection_id
-        )  # type: ignore[arg-type]
+            delta, {"ok": 1}, connection_id  # type: ignore[arg-type]
+        )
         self.assertEqual(
             repr(event),
             "<ServerHeartbeatSucceededEvent ('localhost', 27017) "
             "duration: 0.1, awaited: False, reply: {'ok': 1}>",
         )
         event = monitoring.ServerHeartbeatFailedEvent(
-            delta, "ERROR", connection_id
-        )  # type: ignore[arg-type]
+            delta, "ERROR", connection_id  # type: ignore[arg-type]
+        )
         self.assertEqual(
             repr(event),
             "<ServerHeartbeatFailedEvent ('localhost', 27017) "
@@ -1241,8 +1241,8 @@ class TestEventClasses(unittest.TestCase):
             "<ServerOpeningEvent ('localhost', 27017) " "topology_id: 000000000000000000000001>",
         )
         event = monitoring.ServerDescriptionChangedEvent(
-            "PREV", "NEW", server_address, topology_id
-        )  # type: ignore[arg-type]
+            "PREV", "NEW", server_address, topology_id  # type: ignore[arg-type]
+        )
         self.assertEqual(
             repr(event),
             "<ServerDescriptionChangedEvent ('localhost', 27017) " "changed from: PREV, to: NEW>",
@@ -1258,8 +1258,8 @@ class TestEventClasses(unittest.TestCase):
         event = monitoring.TopologyOpenedEvent(topology_id)
         self.assertEqual(repr(event), "<TopologyOpenedEvent topology_id: 000000000000000000000001>")
         event = monitoring.TopologyDescriptionChangedEvent(
-            "PREV", "NEW", topology_id
-        )  # type: ignore[arg-type]
+            "PREV", "NEW", topology_id  # type: ignore[arg-type]
+        )
         self.assertEqual(
             repr(event),
             "<TopologyDescriptionChangedEvent "
