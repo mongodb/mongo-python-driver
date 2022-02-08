@@ -393,6 +393,9 @@ class TestCollection(IntegrationTest):
             ("find_one_and_delete", [{}]), ("find_one_and_replace", [{}, {}]),
             ("find_one_and_update", [{}, {'$set': {'a': 1}}]),
             ("estimated_document_count", []), ("count_documents", [{}]),
+            ("create_indexes", [[IndexModel("a")]]),
+            ("create_index", ["a"]), ("drop_index", [[('a', 1)]]),
+            ("drop_indexes", []),
         ]
 
         for h, args in helpers:
@@ -408,6 +411,9 @@ class TestCollection(IntegrationTest):
                         maybe_cursor = getattr(destruct_coll, h)(*args,
                                                                  **kwargs)
                         destruct_coll.drop()
+                    elif h == "drop_index":
+                        coll.create_index('a')
+                        maybe_cursor = getattr(coll, h)(*args, **kwargs)
                     else:
                         maybe_cursor = getattr(coll, h)(*args, **kwargs)
                     self.assertIn("comment", inspect.signature(

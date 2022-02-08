@@ -1683,6 +1683,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. _createIndexes: https://docs.mongodb.com/manual/reference/command/createIndexes/
         """
         common.validate_list('indexes', indexes)
+        if comment:
+            kwargs["comment"] = comment
         return self.__create_indexes(indexes, session, **kwargs)
 
     def __create_indexes(self, indexes, session, **kwargs):
@@ -1827,6 +1829,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd_options = {}
         if "maxTimeMS" in kwargs:
             cmd_options["maxTimeMS"] = kwargs.pop("maxTimeMS")
+        if comment:
+            cmd_options["comment"] = comment
         index = IndexModel(keys, **kwargs)
         return self.__create_indexes([index], session, **cmd_options)[0]
 
@@ -1855,6 +1859,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
            when connected to MongoDB >= 3.4.
 
         """
+        if comment:
+            kwargs["comment"] = comment
         self.drop_index("*", session=session, **kwargs)
 
     def drop_index(self, index_or_name: _IndexKeyHint, session: Optional[
@@ -1904,6 +1910,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         cmd = SON([("dropIndexes", self.__name), ("index", name)])
         cmd.update(kwargs)
+        if comment:
+            cmd["comment"] = comment
         with self._socket_for_writes(session) as sock_info:
             self._command(sock_info,
                           cmd,
