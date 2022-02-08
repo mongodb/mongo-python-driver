@@ -384,41 +384,43 @@ class TestCollection(IntegrationTest):
         listener = EventListener()
         db = single_client(event_listeners=[listener])[self.db.name]
         coll = db.get_collection("test")
-        results = listener.results
-        helpers = [
-            ("list_indexes", []), ("drop", []), ("index_information", []),
-            ("options", []), ("aggregate", [[{"$set": {"x": 1}}]]),
-            ("aggregate_raw_batches", [[{"$set": {"x": 1}}]]),
-            ("rename", ["temp_temp_temp"]), ("distinct", ["_id"]),
-            ("find_one_and_delete", [{}]), ("find_one_and_replace", [{}, {}]),
-            ("find_one_and_update", [{}, {'$set': {'a': 1}}]),
-            ("estimated_document_count", []), ("count_documents", [{}]),
-            ("create_indexes", [[IndexModel("a")]]),
-            ("create_index", ["a"]), ("drop_index", [[('a', 1)]]),
-            ("drop_indexes", []),
-        ]
 
+        helpers = [
+            (coll.list_indexes, []), (coll.drop, []),
+            (coll.index_information, []),
+            (coll.options, []),
+            (coll.aggregate, [[{"$set": {"x": 1}}]]),
+            (coll.aggregate_raw_batches, [[{"$set": {"x": 1}}]]),
+            (coll.rename, ["temp_temp_temp"]), (coll.distinct, ["_id"]),
+            (coll.find_one_and_delete, [{}]),
+            (coll.find_one_and_replace, [{}, {}]),
+            (coll.find_one_and_update, [{}, {'$set': {'a': 1}}]),
+            (coll.estimated_document_count, []), (coll.count_documents, [{}]),
+            (coll.create_indexes, [[IndexModel("a")]]),
+            (coll.create_index, ["a"]), (coll.drop_index, [[('a', 1)]]),
+            (coll.drop_indexes, []),
+        ]
+        results = listener.results
         for h, args in helpers:
-            c = "testing comment with "+h
-            with self.subTest(h + "-comment"):
-                for cc in [c, {"key": c}]:
+            c = "testing comment with "+h.__name__
+            with self.subTest("collection-" + h.__name__ + "-comment"):
+                for cc in [c, {"key": c}, ["any", 1]]:
                     results.clear()
                     kwargs = {"comment": cc}
-                    if h == "rename":
+                    if h == coll.rename:
                         db.get_collection("temp_temp_temp").drop()
                         destruct_coll = db.get_collection("test_temp")
                         destruct_coll.insert_one({})
-                        maybe_cursor = getattr(destruct_coll, h)(*args,
-                                                                 **kwargs)
+                        maybe_cursor = destruct_coll.rename(*args, **kwargs)
                         destruct_coll.drop()
-                    elif h == "drop_index":
-                        coll.create_index('a')
-                        maybe_cursor = getattr(coll, h)(*args, **kwargs)
                     else:
-                        maybe_cursor = getattr(coll, h)(*args, **kwargs)
+                        coll.create_index('a')
+                        maybe_cursor = h(*args, **kwargs)
                     self.assertIn("comment", inspect.signature(
-                        getattr(coll, h)
-                    ).parameters)
+                        h).parameters, msg="Could not find 'comment' in the "
+                                           "signature of function %s with "
+                                           "signature %s"% (h.__name__,
+                                                            h.__annotations__))
                     if isinstance(maybe_cursor, CommandCursor):
                         maybe_cursor.close()
                     tested = False
@@ -429,9 +431,7 @@ class TestCollection(IntegrationTest):
                     self.assertTrue(tested, msg=
                                      "Using the keyword argument \"comment\" did "
                                      "not work for func: %s with comment "
-                                     "type: %s" % (h, type(cc)))
-
-
+                                     "type: %s" % (h.__name__, type(cc)))
         results.clear()
 
 

@@ -444,7 +444,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         start_at_operation_time: Optional[Timestamp] = None,
         session: Optional["ClientSession"] = None,
         start_after: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
+        comment: Optional[Any] = None,
     ) -> DatabaseChangeStream[_DocumentType]:
         """Watch changes on this database.
 
@@ -566,6 +566,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         codec_options: Optional[CodecOptions] = DEFAULT_CODEC_OPTIONS,
         session: Optional["ClientSession"] = None,
+        comment: Any = None,
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """Issue a MongoDB command.
@@ -650,6 +651,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `commands <https://dochub.mongodb.org/core/commands>`_.
         """
+        if comment:
+            kwargs["comment"] = comment
+        
         if read_preference is None:
             read_preference = ((session and session._txn_read_preference())
                                or ReadPreference.PRIMARY)
@@ -701,6 +705,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     def list_collections(self,
       session: Optional["ClientSession"] = None,
       filter: Optional[Mapping[str, Any]] = None,
+      comment: Optional[Any] = None,
       **kwargs: Any
     ) -> CommandCursor[Dict[str, Any]]:
         """Get a cursor over the collections of this database.
@@ -725,7 +730,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             kwargs['filter'] = filter
         read_pref = ((session and session._txn_read_preference())
                      or ReadPreference.PRIMARY)
-
+        if comment:
+            kwargs["comment"] = comment
         def _cmd(session, server, sock_info, read_preference):
             return self._list_collections(
                 sock_info, session, read_preference=read_preference,
@@ -737,6 +743,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     def list_collection_names(self,
         session: Optional["ClientSession"] = None,
         filter: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
         **kwargs: Any
     ) -> List[str]:
         """Get a list of all the collection names in this database.
@@ -762,8 +769,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.6
         """
+        if comment:
+            kwargs["comment"] = comment
         if filter is None:
             kwargs["nameOnly"] = True
+
         else:
             # The enumerate collections spec states that "drivers MUST NOT set
             # nameOnly if a filter specifies any keys other than name."
@@ -824,6 +834,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         full: bool = False,
         session: Optional["ClientSession"] = None,
         background: Optional[bool] = None,
+        comment: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """Validate a collection.
 
@@ -865,6 +876,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         cmd = SON([("validate", name),
                    ("scandata", scandata),
                    ("full", full)])
+        if comment:
+            cmd["comment"] = comment
+
         if background is not None:
             cmd["background"] = background
 
@@ -912,6 +926,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
     def dereference(self, dbref: DBRef,
         session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
         **kwargs: Any
     ) -> Optional[_DocumentType]:
         """Dereference a :class:`~bson.dbref.DBRef`, getting the
@@ -941,4 +956,4 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                              "another database (%r not %r)" % (dbref.database,
                                                                self.__name))
         return self[dbref.collection].find_one(
-            {"_id": dbref.id}, session=session, **kwargs)
+            {"_id": dbref.id}, session=session, comment=comment, **kwargs)

@@ -17,6 +17,7 @@
 import datetime
 import re
 import sys
+import inspect
 
 sys.path[0:0] = [""]
 
@@ -50,7 +51,8 @@ from test.utils import (ignore_deprecations,
                         wait_until,
                         DeprecationFilter,
                         IMPOSSIBLE_WRITE_CONCERN,
-                        OvertCommandListener)
+                        OvertCommandListener,
+                        EventListener)
 from test.test_custom_types import DECIMAL_CODECOPTS
 
 
@@ -630,6 +632,43 @@ class TestDatabase(IntegrationTest):
             self.assertEqual(
                 getattr(db2, opt), newopts.get(opt, getattr(db1, opt)))
 
+    @client_context.require_auth
+    @client_context.require_version_min(4, 7, -1)
+    @client_context.require_replica_set
+    def test_helpers_comment(self):
+        listener = EventListener()
+        db = rs_or_single_client(event_listeners=[listener]).db
+        helpers = [
+            (db.watch, []), (db.command, ["hello"]), (db.list_collections, []),
+            (db.list_collection_names, []), (db.drop_collection, ["hello"]),
+            (db.validate_collection, ["test"]),
+            (db.dereference, [DBRef('collection', 1)])
+        ]
+        results = listener.results
+        for h, args in helpers:
+            c = "testing comment with " + h.__name__
+            with self.subTest("database-" + h.__name__ + "-comment"):
+                for cc in [c, {"key": c}]:
+                    results.clear()
+                    kwargs = {"comment": cc}
+                    if h == db.validate_collection:
+                        coll = db.get_collection("test")
+                        coll.insert_one({})
+                    h(*args, **kwargs)
+                    self.assertIn("comment", inspect.signature(h).parameters, msg="Could not find 'comment' in the "
+                                           "signature of function %s with "
+                                           "signature %s"% (h.__name__,
+                                                            h.__annotations__))
+                    tested = False
+                    for i in results['started']:
+                        if cc == i.command.get("comment", ""):
+                            tested = True
+
+                    self.assertTrue(tested, msg=
+                    "Using the keyword argument 'comment' did "
+                    "not work for func: %s with comment "
+                    "type: %s" % (h.__name__, type(cc)))
+        results.clear()
 
 class TestDatabaseAggregation(IntegrationTest):
     def setUp(self):
@@ -674,6 +713,7 @@ class TestDatabaseAggregation(IntegrationTest):
     def test_bool(self):
         with self.assertRaises(NotImplementedError):
             bool(Database(self.client, "test"))
+
 
 
 if __name__ == "__main__":
