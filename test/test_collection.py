@@ -431,7 +431,9 @@ class TestCollection(IntegrationTest):
                         h).parameters, msg="Could not find 'comment' in the "
                                            "signature of function %s"
                                            %(h.__name__))
-
+                    self.assertEqual(inspect.signature(h).parameters[
+                                         "comment"].annotation, Union[Any,
+                                                                     None])
                     if isinstance(maybe_cursor, CommandCursor):
                         maybe_cursor.close()
                     tested = False

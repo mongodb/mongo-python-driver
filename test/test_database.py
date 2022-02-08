@@ -18,7 +18,7 @@ import datetime
 import re
 import sys
 import inspect
-from typing import Any, List, Mapping
+from typing import Any, List, Mapping, Union
 
 sys.path[0:0] = [""]
 
@@ -639,7 +639,7 @@ class TestDatabase(IntegrationTest):
     @client_context.require_auth
     @client_context.require_version_min(4, 7, -1)
     @client_context.require_replica_set
-    def test_helpers_comment(self):
+    def test_helpers_with_comment(self):
         listener = EventListener()
         db = rs_or_single_client(event_listeners=[listener]).db
         helpers = [
@@ -663,6 +663,9 @@ class TestDatabase(IntegrationTest):
                     self.assertIn("comment", inspect.signature(h).parameters, msg="Could not find 'comment' in the "
                                            "signature of function %s"
                                            % (h.__name__))
+                    self.assertEqual(inspect.signature(h).parameters[
+                                         "comment"].annotation, Union[Any,
+                                                                      None])
                     tested = False
                     for i in results['started']:
                         if cc == i.command.get("comment", ""):

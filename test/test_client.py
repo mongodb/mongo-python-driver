@@ -27,8 +27,9 @@ import time
 import _thread as thread
 import threading
 import warnings
+import inspect
 
-from typing import no_type_check, Type
+from typing import no_type_check, Type, Union, Any
 
 sys.path[0:0] = [""]
 
@@ -96,7 +97,8 @@ from test.utils import (assertRaisesExactly,
                         rs_or_single_client,
                         rs_or_single_client_noauth,
                         single_client,
-                        wait_until)
+                        wait_until,
+                        EventListener)
 
 
 class ClientUnitTest(unittest.TestCase):
@@ -1686,7 +1688,71 @@ class TestClient(IntegrationTest):
             srvmaxhosts=2)
         self.assertEqual(
             len(client.topology_description.server_descriptions()), 2)
+    
+    @client_context.require_auth
+    @client_context.require_version_min(4, 7, -1)
+    def test_helpers_with_comment(self):
+        listener = EventListener()
+        cli = single_client(event_listeners=[listener])
+        helpers = [
+            (cli.watch, []), (cli.list_databases, []),
+            (cli.list_database_names, []),
+            (cli.drop_database, ["test"]),
+        ]
+        already_supported = [
+            cli.list_databases, 
+        ]
+        results = listener.results
+        for h, args in helpers:
+            c = "testing comment with "+h.__name__
+            with self.subTest("client-" + h.__name__ + "-comment"):
+                for cc in [c, {"key": c}, ["any", 1]]:
+                    results.clear()
+                    kwargs = {"comment": cc}
+                    maybe_cursor = h(*args, **kwargs)
+                    self.assertIn("comment", inspect.signature(
+                        h).parameters, msg="Could not find 'comment' in the "
+                                           "signature of function %s"
+                                           %(h.__name__))
+                    self.assertEqual(inspect.signature(h).parameters[
+                                         "comment"].annotation, Union[Any,
+                                                                     None])
+                    if isinstance(maybe_cursor, CommandCursor):
+                        maybe_cursor.close()
+                    tested = False
+                    for i in results['started']:
+                        if cc == i.command.get("comment", ""):
+                            tested = True
 
+                    self.assertTrue(tested, msg=
+                                     "Using the keyword argument \"comment\" did "
+                                     "not work for func: %s with comment "
+                                     "type: %s" % (h.__name__, type(cc)))
+
+                    self.assertIn("`comment` (optional):",
+                                  h.__doc__,
+                                  msg="Could not find 'comment' in the "
+                                      "docstring of function %s"
+                                      % (h.__name__))
+                    if h not in already_supported:
+                        self.assertIn("Added ``comment`` parameter",
+                                      h.__doc__,
+                                      msg="Could not find 'comment' "
+                                          "versionchanged in "
+                                          "the "
+                                          "docstring of function %s"
+                                          % (h.__name__))
+                    else:
+                        self.assertNotIn("Added ``comment`` parameter",
+                                      h.__doc__,
+                                      msg="Found 'comment' "
+                                          "versionchanged in "
+                                          "the "
+                                          "docstring of function that "
+                                          "should not have it %s"
+                                          % (h.__name__))
+
+        results.clear()
 
 class TestExhaustCursor(IntegrationTest):
     """Test that clients properly handle errors from exhaust cursors."""
