@@ -1123,6 +1123,8 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             key_vault_namespace='keyvault.datakeys',
             key_vault_client=client_context.client,
             codec_options=OPTS)
+        self._invalid_host_error = None
+
     def tearDown(self):
         self.client_encryption.close()
         self.client_encryption_invalid.close()
@@ -1254,6 +1256,20 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             self.client_encryption.create_data_key(
                 'gcp', master_key=master_key)
 
+
+    def dns_error(self, host, port):
+        # The full error should be something like:
+        # "[Errno 8] nodename nor servname provided, or not known"
+        with self.assertRaises(Exception) as ctx:
+            socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
+        return re.escape(str(ctx.exception))
+
+    @property
+    def invalid_host_error(self):
+        if self._invalid_host_error is None:
+            self._invalid_host_error = self.dns_error(
+                'doesnotexist.invalid', 443)
+        return self._invalid_host_error
 
 class AzureGCPEncryptionTestMixin(object):
     DEK = None
