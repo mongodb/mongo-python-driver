@@ -645,9 +645,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
            Explicitly adding API versioning options in the command and
            declaring an API version on the client is not supported.
 
-        .. versionchanged:: 4.1
-           Added ``comment`` parameter.
-
         .. versionchanged:: 3.6
            Added ``session`` parameter.
 
@@ -737,8 +734,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         :Returns:
           An instance of :class:`~pymongo.command_cursor.CommandCursor`.
-        .. versionchanged:: 4.1
-           Added ``comment`` parameter.
+
         .. versionadded:: 3.6
         """
         if filter is not None:
@@ -781,8 +777,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
           - `comment` (optional): A user-provided comment to attach to this
             command.
 
-        .. versionchanged:: 4.1
-           Added ``comment`` parameter.
         .. versionchanged:: 3.8
            Added the ``filter`` and ``**kwargs`` parameters.
 

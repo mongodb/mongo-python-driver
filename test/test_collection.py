@@ -405,6 +405,12 @@ class TestCollection(IntegrationTest):
             (coll.create_index, ["a"]), (coll.drop_index, [[('a', 1)]]),
             (coll.drop_indexes, []),
         ]
+        already_supported = [
+            coll.estimated_document_count, coll.count_documents,
+            coll.create_indexes, coll.drop_indexes, coll.options,
+            coll.find_one_and_replace, coll.drop_index, coll.rename, 
+            coll.distinct, coll.find_one_and_delete, coll.find_one_and_update,
+        ]
         results = listener.results
         for h, args in helpers:
             c = "testing comment with "+h.__name__
@@ -443,13 +449,24 @@ class TestCollection(IntegrationTest):
                                       msg="Could not find 'comment' in the "
                                           "docstring of function %s"
                                           % (h.__name__))
-                        self.assertIn("Added ``comment`` parameter",
-                                      h.__doc__,
-                                      msg="Could not find 'comment' "
-                                          "versionchanged in "
-                                          "the "
-                                          "docstring of function %s"
-                                          % (h.__name__))
+                        if h not in already_supported:
+                            self.assertIn("Added ``comment`` parameter",
+                                          h.__doc__,
+                                          msg="Could not find 'comment' "
+                                              "versionchanged in "
+                                              "the "
+                                              "docstring of function %s"
+                                              % (h.__name__))
+                        else:
+                            self.assertNotIn("Added ``comment`` parameter",
+                                          h.__doc__,
+                                          msg="Found 'comment' "
+                                              "versionchanged in "
+                                              "the "
+                                              "docstring of function that "
+                                              "should not have it %s"
+                                              % (h.__name__))
+
         results.clear()
 
 

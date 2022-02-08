@@ -1539,9 +1539,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `comment` (optional): A user-provided comment to attach to this
             command.
 
-        .. versionchanged:: 4.1
-           Added ``comment`` parameter.
-
         .. versionadded:: 3.7
         """
         if 'session' in kwargs:
@@ -1626,9 +1623,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `**kwargs` (optional): See list of options above.
           - `comment` (optional): A user-provided comment to attach to this
             command.
-
-        .. versionchanged:: 4.1
-           Added ``comment`` parameter.
            
         .. versionadded:: 3.7
 
@@ -1689,9 +1683,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
            
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation.
-           
-        .. versionchanged:: 4.1
-           Added ``comment`` parameter.
            
         .. versionchanged:: 3.6
            Added ``session`` parameter. Added support for arbitrary keyword
@@ -1879,9 +1870,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation.
-
-        .. versionchanged:: 4.1
-           Added ``comment`` parameter.
            
         .. versionchanged:: 3.6
            Added ``session`` parameter. Added support for arbitrary keyword
@@ -1929,8 +1917,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation.
 
-        .. versionchanged:: 4.1
-           Added ``comment`` parameter.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter. Added support for arbitrary keyword
@@ -2076,8 +2062,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `comment` (optional): A user-provided comment to attach to this
             command.
 
-        .. versionchanged:: 4.1
-           Added ``comment`` parameter.
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
@@ -2390,9 +2374,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation.
 
-        .. versionchanged:: 4.1
-           Added ``comment`` parameter.
-
         .. versionchanged:: 3.6
            Added ``session`` parameter.
 
@@ -2458,9 +2439,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `**kwargs` (optional): See list of options above.
           - `comment` (optional): A user-provided comment to attach to this
             command.
-
-        .. versionchanged:: 4.1
-           Added ``comment`` parameter.
            
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -2625,8 +2603,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             command.
 
         .. versionchanged:: 4.1
-           Added ``comment`` parameter.
-        .. versionchanged:: 4.1
            Added ``let`` parameter.
         .. versionchanged:: 3.11
            Added ``hint`` parameter.
@@ -2723,8 +2699,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `comment` (optional): A user-provided comment to attach to this
             command.
 
-        .. versionchanged:: 4.1
-           Added ``comment`` parameter.
            Added ``let`` parameter.
         .. versionchanged:: 3.11
            Added the ``hint`` option.
@@ -2863,10 +2837,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `comment` (optional): A user-provided comment to attach to this
             command.
 
-
-        .. versionchanged:: 4.1
-           Added ``let`` parameter.
-           Added ``comment`` parameter.
         .. versionchanged:: 3.11
            Added the ``hint`` option.
         .. versionchanged:: 3.9

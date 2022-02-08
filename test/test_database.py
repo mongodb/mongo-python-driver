@@ -648,6 +648,7 @@ class TestDatabase(IntegrationTest):
             (db.validate_collection, ["test"]),
             (db.dereference, [DBRef('collection', 1)])
         ]
+        already_supported = [db.command, db.list_collections, db.list_collection_names]
         results = listener.results
         for h, args in helpers:
             c = "testing comment with " + h.__name__
@@ -677,13 +678,24 @@ class TestDatabase(IntegrationTest):
                                   msg="Could not find 'comment' in the "
                                       "docstring of function %s"
                                       % (h.__name__))
-                    self.assertIn("Added ``comment`` parameter",
-                                  h.__doc__,
-                                  msg="Could not find 'comment' "
-                                      "versionchanged in "
-                                      "the "
-                                      "docstring of function %s"
-                                      % (h.__name__))
+                    if h not in already_supported:
+                        self.assertIn("Added ``comment`` parameter",
+                                      h.__doc__,
+                                      msg="Could not find 'comment' "
+                                          "versionchanged in "
+                                          "the "
+                                          "docstring of function %s"
+                                          % (h.__name__))
+                    else:
+                        self.assertNotIn("Added ``comment`` parameter",
+                                         h.__doc__,
+                                         msg="Found 'comment' "
+                                             "versionchanged in "
+                                             "the "
+                                             "docstring of function that "
+                                             "should not have it %s"
+                                             % (h.__name__))
+
         results.clear()
 
 class TestDatabaseAggregation(IntegrationTest):
