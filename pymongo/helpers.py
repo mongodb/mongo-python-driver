@@ -28,29 +28,38 @@ from pymongo.errors import (CursorNotFound, DuplicateKeyError,
 from pymongo.hello import HelloCompat
 
 # From the SDAM spec, the "node is shutting down" codes.
-_SHUTDOWN_CODES = frozenset([
-    11600,  # InterruptedAtShutdown
-    91,     # ShutdownInProgress
-])
+_SHUTDOWN_CODES = frozenset(
+    [
+        11600,  # InterruptedAtShutdown
+        91,  # ShutdownInProgress
+    ]
+)
 # From the SDAM spec, the "not primary" error codes are combined with the
 # "node is recovering" error codes (of which the "node is shutting down"
 # errors are a subset).
-_NOT_PRIMARY_CODES = frozenset([
-    10058,  # LegacyNotPrimary <=3.2 "not primary" error code
-    10107,  # NotWritablePrimary
-    13435,  # NotPrimaryNoSecondaryOk
-    11602,  # InterruptedDueToReplStateChange
-    13436,  # NotPrimaryOrSecondary
-    189,    # PrimarySteppedDown
-]) | _SHUTDOWN_CODES
+_NOT_PRIMARY_CODES = (
+    frozenset(
+        [
+            10058,  # LegacyNotPrimary <=3.2 "not primary" error code
+            10107,  # NotWritablePrimary
+            13435,  # NotPrimaryNoSecondaryOk
+            11602,  # InterruptedDueToReplStateChange
+            13436,  # NotPrimaryOrSecondary
+            189,  # PrimarySteppedDown
+        ]
+    )
+    | _SHUTDOWN_CODES
+)
 # From the retryable writes spec.
-_RETRYABLE_ERROR_CODES = _NOT_PRIMARY_CODES | frozenset([
-    7,     # HostNotFound
-    6,     # HostUnreachable
-    89,    # NetworkTimeout
-    9001,  # SocketException
-    262,   # ExceededTimeLimit
-])
+_RETRYABLE_ERROR_CODES = _NOT_PRIMARY_CODES | frozenset(
+    [
+        7,  # HostNotFound
+        6,  # HostUnreachable
+        89,  # NetworkTimeout
+        9001,  # SocketException
+        262,  # ExceededTimeLimit
+    ]
+)
 
 
 def _gen_index_name(keys):
@@ -71,8 +80,9 @@ def _index_list(key_or_list, direction=None):
         if isinstance(key_or_list, abc.ItemsView):
             return list(key_or_list)
         elif not isinstance(key_or_list, (list, tuple)):
-            raise TypeError("if no direction is specified, "
-                            "key_or_list must be an instance of list")
+            raise TypeError(
+                "if no direction is specified, " "key_or_list must be an instance of list"
+            )
         return key_or_list
 
 
@@ -82,44 +92,44 @@ def _index_document(index_list):
     Takes a list of (key, direction) pairs.
     """
     if isinstance(index_list, abc.Mapping):
-        raise TypeError("passing a dict to sort/create_index/hint is not "
-                        "allowed - use a list of tuples instead. did you "
-                        "mean %r?" % list(index_list.items()))
+        raise TypeError(
+            "passing a dict to sort/create_index/hint is not "
+            "allowed - use a list of tuples instead. did you "
+            "mean %r?" % list(index_list.items())
+        )
     elif not isinstance(index_list, (list, tuple)):
-        raise TypeError("must use a list of (key, direction) pairs, "
-                        "not: " + repr(index_list))
+        raise TypeError("must use a list of (key, direction) pairs, " "not: " + repr(index_list))
     if not len(index_list):
         raise ValueError("key_or_list must not be the empty list")
 
     index: SON[str, Any] = SON()
     for (key, value) in index_list:
         if not isinstance(key, str):
-            raise TypeError(
-                "first item in each key pair must be an instance of str")
+            raise TypeError("first item in each key pair must be an instance of str")
         if not isinstance(value, (str, int, abc.Mapping)):
-            raise TypeError("second item in each key pair must be 1, -1, "
-                            "'2d', or another valid MongoDB index specifier.")
+            raise TypeError(
+                "second item in each key pair must be 1, -1, "
+                "'2d', or another valid MongoDB index specifier."
+            )
         index[key] = value
     return index
 
 
-def _check_command_response(response, max_wire_version,
-                            allowable_errors=None,
-                            parse_write_concern_error=False):
-    """Check the response to a command for errors.
-    """
+def _check_command_response(
+    response, max_wire_version, allowable_errors=None, parse_write_concern_error=False
+):
+    """Check the response to a command for errors."""
     if "ok" not in response:
         # Server didn't recognize our message as a command.
-        raise OperationFailure(response.get("$err"),
-                               response.get("code"),
-                               response,
-                               max_wire_version)
+        raise OperationFailure(
+            response.get("$err"), response.get("code"), response, max_wire_version
+        )
 
-    if parse_write_concern_error and 'writeConcernError' in response:
+    if parse_write_concern_error and "writeConcernError" in response:
         _error = response["writeConcernError"]
         _labels = response.get("errorLabels")
         if _labels:
-            _error.update({'errorLabels': _labels})
+            _error.update({"errorLabels": _labels})
         _raise_write_concern_error(_error)
 
     if response["ok"]:
@@ -176,12 +186,10 @@ def _raise_last_write_error(write_errors):
 
 
 def _raise_write_concern_error(error):
-    if "errInfo" in error and error["errInfo"].get('wtimeout'):
+    if "errInfo" in error and error["errInfo"].get("wtimeout"):
         # Make sure we raise WTimeoutError
-        raise WTimeoutError(
-            error.get("errmsg"), error.get("code"), error)
-    raise WriteConcernError(
-        error.get("errmsg"), error.get("code"), error)
+        raise WTimeoutError(error.get("errmsg"), error.get("code"), error)
+    raise WriteConcernError(error.get("errmsg"), error.get("code"), error)
 
 
 def _get_wce_doc(result):
@@ -197,8 +205,7 @@ def _get_wce_doc(result):
 
 
 def _check_write_command_response(result):
-    """Backward compatibility helper for write command error handling.
-    """
+    """Backward compatibility helper for write command error handling."""
     # Prefer write errors over write concern errors
     write_errors = result.get("writeErrors")
     if write_errors:
@@ -223,12 +230,12 @@ def _fields_list_to_dict(fields, option_name):
 
     if isinstance(fields, (abc.Sequence, abc.Set)):
         if not all(isinstance(field, str) for field in fields):
-            raise TypeError("%s must be a list of key names, each an "
-                            "instance of str" % (option_name,))
+            raise TypeError(
+                "%s must be a list of key names, each an " "instance of str" % (option_name,)
+            )
         return dict.fromkeys(fields, 1)
 
-    raise TypeError("%s must be a mapping or "
-                    "list of key names" % (option_name,))
+    raise TypeError("%s must be a mapping or " "list of key names" % (option_name,))
 
 
 def _handle_exception():
@@ -240,8 +247,7 @@ def _handle_exception():
     if sys.stderr:
         einfo = sys.exc_info()
         try:
-            traceback.print_exception(einfo[0], einfo[1], einfo[2],
-                                      None, sys.stderr)
+            traceback.print_exception(einfo[0], einfo[1], einfo[2], None, sys.stderr)
         except IOError:
             pass
         finally:

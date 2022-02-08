@@ -33,18 +33,29 @@ from pymongo.socket_checker import _errno_from_exception
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
 
 
-def command(sock_info, dbname, spec, is_mongos,
-            read_preference, codec_options, session, client, check=True,
-            allowable_errors=None, address=None,
-            listeners=None, max_bson_size=None,
-            read_concern=None,
-            parse_write_concern_error=False,
-            collation=None,
-            compression_ctx=None,
-            use_op_msg=False,
-            unacknowledged=False,
-            user_fields=None,
-            exhaust_allowed=False):
+def command(
+    sock_info,
+    dbname,
+    spec,
+    is_mongos,
+    read_preference,
+    codec_options,
+    session,
+    client,
+    check=True,
+    allowable_errors=None,
+    address=None,
+    listeners=None,
+    max_bson_size=None,
+    read_concern=None,
+    parse_write_concern_error=False,
+    collation=None,
+    compression_ctx=None,
+    use_op_msg=False,
+    unacknowledged=False,
+    user_fields=None,
+    exhaust_allowed=False,
+):
     """Execute a command over the socket, or raise socket.error.
 
     :Parameters:
@@ -74,7 +85,7 @@ def command(sock_info, dbname, spec, is_mongos,
       - `exhaust_allowed`: True if we should enable OP_MSG exhaustAllowed.
     """
     name = next(iter(spec))
-    ns = dbname + '.$cmd'
+    ns = dbname + ".$cmd"
     speculative_hello = False
 
     # Publish the original command document, perhaps with lsid and $clusterTime.
@@ -83,11 +94,11 @@ def command(sock_info, dbname, spec, is_mongos,
         spec = message._maybe_add_read_preference(spec, read_preference)
     if read_concern and not (session and session.in_transaction):
         if read_concern.level:
-            spec['readConcern'] = read_concern.document
+            spec["readConcern"] = read_concern.document
         if session:
             session._update_read_concern(spec, sock_info)
     if collation is not None:
-        spec['collation'] = collation
+        spec["collation"] = collation
 
     publish = listeners is not None and listeners.enabled_for_commands
     if publish:
@@ -97,34 +108,32 @@ def command(sock_info, dbname, spec, is_mongos,
     if compression_ctx and name.lower() in _NO_COMPRESSION:
         compression_ctx = None
 
-    if (client and client._encrypter and
-            not client._encrypter._bypass_auto_encryption):
+    if client and client._encrypter and not client._encrypter._bypass_auto_encryption:
         spec = orig = client._encrypter.encrypt(dbname, spec, codec_options)
 
     if use_op_msg:
         flags = _OpMsg.MORE_TO_COME if unacknowledged else 0
         flags |= _OpMsg.EXHAUST_ALLOWED if exhaust_allowed else 0
         request_id, msg, size, max_doc_size = message._op_msg(
-            flags, spec, dbname, read_preference,
-            codec_options, ctx=compression_ctx)
+            flags, spec, dbname, read_preference, codec_options, ctx=compression_ctx
+        )
         # If this is an unacknowledged write then make sure the encoded doc(s)
         # are small enough, otherwise rely on the server to return an error.
-        if (unacknowledged and max_bson_size is not None and
-                max_doc_size > max_bson_size):
+        if unacknowledged and max_bson_size is not None and max_doc_size > max_bson_size:
             message._raise_document_too_large(name, size, max_bson_size)
     else:
         request_id, msg, size = message._query(
-            0, ns, 0, -1, spec, None, codec_options, compression_ctx)
+            0, ns, 0, -1, spec, None, codec_options, compression_ctx
+        )
 
-    if (max_bson_size is not None
-            and size > max_bson_size + message._COMMAND_OVERHEAD):
-        message._raise_document_too_large(
-            name, size, max_bson_size + message._COMMAND_OVERHEAD)
+    if max_bson_size is not None and size > max_bson_size + message._COMMAND_OVERHEAD:
+        message._raise_document_too_large(name, size, max_bson_size + message._COMMAND_OVERHEAD)
 
     if publish:
         encoding_duration = datetime.datetime.now() - start
-        listeners.publish_command_start(orig, dbname, request_id, address,
-                                        service_id=sock_info.service_id)
+        listeners.publish_command_start(
+            orig, dbname, request_id, address, service_id=sock_info.service_id
+        )
         start = datetime.datetime.now()
 
     try:
@@ -137,15 +146,19 @@ def command(sock_info, dbname, spec, is_mongos,
             reply = receive_message(sock_info, request_id)
             sock_info.more_to_come = reply.more_to_come
             unpacked_docs = reply.unpack_response(
-                codec_options=codec_options, user_fields=user_fields)
+                codec_options=codec_options, user_fields=user_fields
+            )
 
             response_doc = unpacked_docs[0]
             if client:
                 client._process_response(response_doc, session)
             if check:
                 helpers._check_command_response(
-                    response_doc, sock_info.max_wire_version, allowable_errors,
-                    parse_write_concern_error=parse_write_concern_error)
+                    response_doc,
+                    sock_info.max_wire_version,
+                    allowable_errors,
+                    parse_write_concern_error=parse_write_concern_error,
+                )
     except Exception as exc:
         if publish:
             duration = (datetime.datetime.now() - start) + encoding_duration
@@ -154,24 +167,30 @@ def command(sock_info, dbname, spec, is_mongos,
             else:
                 failure = message._convert_exception(exc)
             listeners.publish_command_failure(
-                duration, failure, name, request_id, address,
-                service_id=sock_info.service_id)
+                duration, failure, name, request_id, address, service_id=sock_info.service_id
+            )
         raise
     if publish:
         duration = (datetime.datetime.now() - start) + encoding_duration
         listeners.publish_command_success(
-            duration, response_doc, name, request_id, address,
+            duration,
+            response_doc,
+            name,
+            request_id,
+            address,
             service_id=sock_info.service_id,
-            speculative_hello=speculative_hello)
+            speculative_hello=speculative_hello,
+        )
 
     if client and client._encrypter and reply:
         decrypted = client._encrypter.decrypt(reply.raw_command_response())
-        response_doc = _decode_all_selective(decrypted, codec_options,
-                                             user_fields)[0]
+        response_doc = _decode_all_selective(decrypted, codec_options, user_fields)[0]
 
     return response_doc
 
+
 _UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack
+
 
 def receive_message(sock_info, request_id, max_message_size=MAX_MESSAGE_SIZE):
     """Receive a raw BSON message or raise socket.error."""
@@ -182,32 +201,33 @@ def receive_message(sock_info, request_id, max_message_size=MAX_MESSAGE_SIZE):
         deadline = None
     # Ignore the response's request id.
     length, _, response_to, op_code = _UNPACK_HEADER(
-        _receive_data_on_socket(sock_info, 16, deadline))
+        _receive_data_on_socket(sock_info, 16, deadline)
+    )
     # No request_id for exhaust cursor "getMore".
     if request_id is not None:
         if request_id != response_to:
-            raise ProtocolError("Got response id %r but expected "
-                                "%r" % (response_to, request_id))
+            raise ProtocolError("Got response id %r but expected " "%r" % (response_to, request_id))
     if length <= 16:
-        raise ProtocolError("Message length (%r) not longer than standard "
-                            "message header size (16)" % (length,))
+        raise ProtocolError(
+            "Message length (%r) not longer than standard " "message header size (16)" % (length,)
+        )
     if length > max_message_size:
-        raise ProtocolError("Message length (%r) is larger than server max "
-                            "message size (%r)" % (length, max_message_size))
+        raise ProtocolError(
+            "Message length (%r) is larger than server max "
+            "message size (%r)" % (length, max_message_size)
+        )
     if op_code == 2012:
         op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(
-            _receive_data_on_socket(sock_info, 9, deadline))
-        data = decompress(
-            _receive_data_on_socket(sock_info, length - 25, deadline),
-            compressor_id)
+            _receive_data_on_socket(sock_info, 9, deadline)
+        )
+        data = decompress(_receive_data_on_socket(sock_info, length - 25, deadline), compressor_id)
     else:
         data = _receive_data_on_socket(sock_info, length - 16, deadline)
 
     try:
         unpack_reply = _UNPACK_REPLY[op_code]
     except KeyError:
-        raise ProtocolError("Got opcode %r but expected "
-                            "%r" % (op_code, _UNPACK_REPLY.keys()))
+        raise ProtocolError("Got opcode %r but expected " "%r" % (op_code, _UNPACK_REPLY.keys()))
     return unpack_reply(data)
 
 
@@ -222,7 +242,7 @@ def wait_for_read(sock_info, deadline):
         sock = sock_info.sock
         while True:
             # SSLSocket can have buffered data which won't be caught by select.
-            if hasattr(sock, 'pending') and sock.pending() > 0:
+            if hasattr(sock, "pending") and sock.pending() > 0:
                 readable = True
             else:
                 # Wait up to 500ms for the socket to become readable and then
@@ -231,14 +251,14 @@ def wait_for_read(sock_info, deadline):
                     timeout = max(min(deadline - time.monotonic(), _POLL_TIMEOUT), 0.001)
                 else:
                     timeout = _POLL_TIMEOUT
-                readable = sock_info.socket_checker.select(
-                    sock, read=True, timeout=timeout)
+                readable = sock_info.socket_checker.select(sock, read=True, timeout=timeout)
             if context.cancelled:
-                raise _OperationCancelled('hello cancelled')
+                raise _OperationCancelled("hello cancelled")
             if readable:
                 return
             if deadline and time.monotonic() > deadline:
                 raise socket.timeout("timed out")
+
 
 def _receive_data_on_socket(sock_info, length, deadline):
     buf = bytearray(length)

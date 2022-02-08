@@ -14,15 +14,14 @@
 
 from collections import namedtuple
 
-from mockupdb import OpMsgReply, OpMsg, OpReply
+from mockupdb import OpMsg, OpMsgReply, OpReply
+
 from pymongo import ReadPreference
 
-__all__ = ['operations', 'upgrades']
+__all__ = ["operations", "upgrades"]
 
 
-Operation = namedtuple(
-    'Operation',
-    ['name', 'function', 'reply', 'op_type', 'not_master'])
+Operation = namedtuple("Operation", ["name", "function", "reply", "op_type", "not_master"])
 """Client operations on MongoDB.
 
 Each has a human-readable name, a function that actually executes a test, and
@@ -51,64 +50,71 @@ secondaries in a replica set, or select a mongos for secondary reads in a
 sharded cluster (PYTHON-868).
 """
 
-not_master_reply = OpMsgReply(ok=0, errmsg='not master')
+not_master_reply = OpMsgReply(ok=0, errmsg="not master")
 
 operations = [
     Operation(
-        'find_one',
+        "find_one",
         lambda client: client.db.collection.find_one(),
-        reply={'cursor': {'id': 0, 'firstBatch': []}},
-        op_type='may-use-secondary',
-        not_master=not_master_reply),
+        reply={"cursor": {"id": 0, "firstBatch": []}},
+        op_type="may-use-secondary",
+        not_master=not_master_reply,
+    ),
     Operation(
-        'count',
+        "count",
         lambda client: client.db.collection.count_documents({}),
-        reply={'n': 1},
-        op_type='may-use-secondary',
-        not_master=not_master_reply),
+        reply={"n": 1},
+        op_type="may-use-secondary",
+        not_master=not_master_reply,
+    ),
     Operation(
-        'aggregate',
+        "aggregate",
         lambda client: client.db.collection.aggregate([]),
-        reply={'cursor': {'id': 0, 'firstBatch': []}},
-        op_type='may-use-secondary',
-        not_master=not_master_reply),
+        reply={"cursor": {"id": 0, "firstBatch": []}},
+        op_type="may-use-secondary",
+        not_master=not_master_reply,
+    ),
     Operation(
-        'options',
+        "options",
         lambda client: client.db.collection.options(),
-        reply={'cursor': {'id': 0, 'firstBatch': []}},
-        op_type='must-use-primary',
-        not_master=not_master_reply),
+        reply={"cursor": {"id": 0, "firstBatch": []}},
+        op_type="must-use-primary",
+        not_master=not_master_reply,
+    ),
     Operation(
-        'command',
-        lambda client: client.db.command('foo'),
-        reply={'ok': 1},
-        op_type='must-use-primary',  # Ignores client's read preference.
-        not_master=not_master_reply),
+        "command",
+        lambda client: client.db.command("foo"),
+        reply={"ok": 1},
+        op_type="must-use-primary",  # Ignores client's read preference.
+        not_master=not_master_reply,
+    ),
     Operation(
-        'secondary command',
-        lambda client:
-            client.db.command('foo', read_preference=ReadPreference.SECONDARY),
-        reply={'ok': 1},
-        op_type='always-use-secondary',
-        not_master=OpReply(ok=0, errmsg='node is recovering')),
+        "secondary command",
+        lambda client: client.db.command("foo", read_preference=ReadPreference.SECONDARY),
+        reply={"ok": 1},
+        op_type="always-use-secondary",
+        not_master=OpReply(ok=0, errmsg="node is recovering"),
+    ),
     Operation(
-        'listIndexes',
+        "listIndexes",
         lambda client: client.db.collection.index_information(),
-        reply={'cursor': {'id': 0, 'firstBatch': []}},
-        op_type='must-use-primary',
-        not_master=not_master_reply),
+        reply={"cursor": {"id": 0, "firstBatch": []}},
+        op_type="must-use-primary",
+        not_master=not_master_reply,
+    ),
 ]
 
 
 _ops_by_name = dict([(op.name, op) for op in operations])
 
-Upgrade = namedtuple('Upgrade',
-                     ['name', 'function', 'old', 'new', 'wire_version'])
+Upgrade = namedtuple("Upgrade", ["name", "function", "old", "new", "wire_version"])
 
 upgrades = [
-    Upgrade('estimated_document_count',
-            lambda client: client.db.collection.estimated_document_count(),
-            old=OpMsg('count', 'collection', namespace='db'),
-            new=OpMsg('aggregate', 'collection', namespace='db'),
-            wire_version=12),
+    Upgrade(
+        "estimated_document_count",
+        lambda client: client.db.collection.estimated_document_count(),
+        old=OpMsg("count", "collection", namespace="db"),
+        new=OpMsg("aggregate", "collection", namespace="db"),
+        wire_version=12,
+    ),
 ]

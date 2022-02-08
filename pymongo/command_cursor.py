@@ -33,9 +33,11 @@ if TYPE_CHECKING:
 
 class CommandCursor(Generic[_DocumentType]):
     """A cursor / iterator over command cursors."""
+
     _getmore_class = _GetMore
 
-    def __init__(self,
+    def __init__(
+        self,
         collection: "Collection[_DocumentType]",
         cursor_info: Mapping[str, Any],
         address: Optional[Tuple[str, Optional[int]]],
@@ -47,15 +49,15 @@ class CommandCursor(Generic[_DocumentType]):
         """Create a new command cursor."""
         self.__sock_mgr: Any = None
         self.__collection: Collection[_DocumentType] = collection
-        self.__id = cursor_info['id']
-        self.__data = deque(cursor_info['firstBatch'])
-        self.__postbatchresumetoken = cursor_info.get('postBatchResumeToken')
+        self.__id = cursor_info["id"]
+        self.__data = deque(cursor_info["firstBatch"])
+        self.__postbatchresumetoken = cursor_info.get("postBatchResumeToken")
         self.__address = address
         self.__batch_size = batch_size
         self.__max_await_time_ms = max_await_time_ms
         self.__session = session
         self.__explicit_session = explicit_session
-        self.__killed = (self.__id == 0)
+        self.__killed = self.__id == 0
         if self.__killed:
             self.__end_session(True)
 
@@ -66,22 +68,19 @@ class CommandCursor(Generic[_DocumentType]):
 
         self.batch_size(batch_size)
 
-        if (not isinstance(max_await_time_ms, int)
-                and max_await_time_ms is not None):
+        if not isinstance(max_await_time_ms, int) and max_await_time_ms is not None:
             raise TypeError("max_await_time_ms must be an integer or None")
 
     def __del__(self) -> None:
         self.__die()
 
     def __die(self, synchronous=False):
-        """Closes this cursor.
-        """
+        """Closes this cursor."""
         already_killed = self.__killed
         self.__killed = True
         if self.__id and not already_killed:
             cursor_id = self.__id
-            address = _CursorAddress(
-                self.__address, self.__ns)
+            address = _CursorAddress(self.__address, self.__ns)
         else:
             # Skip killCursors.
             cursor_id = 0
@@ -92,7 +91,8 @@ class CommandCursor(Generic[_DocumentType]):
             address,
             self.__sock_mgr,
             self.__session,
-            self.__explicit_session)
+            self.__explicit_session,
+        )
         if not self.__explicit_session:
             self.__session = None
         self.__sock_mgr = None
@@ -103,8 +103,7 @@ class CommandCursor(Generic[_DocumentType]):
             self.__session = None
 
     def close(self) -> None:
-        """Explicitly close / kill this cursor.
-        """
+        """Explicitly close / kill this cursor."""
         self.__die(True)
 
     def batch_size(self, batch_size: int) -> "CommandCursor[_DocumentType]":
@@ -157,12 +156,12 @@ class CommandCursor(Generic[_DocumentType]):
                 self.__sock_mgr = sock_mgr
 
     def __send_message(self, operation):
-        """Send a getmore message and handle the response.
-        """
+        """Send a getmore message and handle the response."""
         client = self.__collection.database.client
         try:
             response = client._run_operation(
-                operation, self._unpack_response, address=self.__address)
+                operation, self._unpack_response, address=self.__address
+            )
         except OperationFailure as exc:
             if exc.code in _CURSOR_CLOSED_ERRORS:
                 # Don't send killCursors because the cursor is already closed.
@@ -182,13 +181,12 @@ class CommandCursor(Generic[_DocumentType]):
 
         if isinstance(response, PinnedResponse):
             if not self.__sock_mgr:
-                self.__sock_mgr = _SocketManager(response.socket_info,
-                                                 response.more_to_come)
+                self.__sock_mgr = _SocketManager(response.socket_info, response.more_to_come)
         if response.from_command:
-            cursor = response.docs[0]['cursor']
-            documents = cursor['nextBatch']
-            self.__postbatchresumetoken = cursor.get('postBatchResumeToken')
-            self.__id = cursor['id']
+            cursor = response.docs[0]["cursor"]
+            documents = cursor["nextBatch"]
+            self.__postbatchresumetoken = cursor.get("postBatchResumeToken")
+            self.__id = cursor["id"]
         else:
             documents = response.docs
             self.__id = response.data.cursor_id
@@ -197,10 +195,10 @@ class CommandCursor(Generic[_DocumentType]):
             self.close()
         self.__data = deque(documents)
 
-    def _unpack_response(self, response, cursor_id, codec_options,
-                         user_fields=None, legacy_response=False):
-        return response.unpack_response(cursor_id, codec_options, user_fields,
-                                        legacy_response)
+    def _unpack_response(
+        self, response, cursor_id, codec_options, user_fields=None, legacy_response=False
+    ):
+        return response.unpack_response(cursor_id, codec_options, user_fields, legacy_response)
 
     def _refresh(self):
         """Refreshes the cursor with more data from the server.
@@ -213,19 +211,23 @@ class CommandCursor(Generic[_DocumentType]):
             return len(self.__data)
 
         if self.__id:  # Get More
-            dbname, collname = self.__ns.split('.', 1)
+            dbname, collname = self.__ns.split(".", 1)
             read_pref = self.__collection._read_preference_for(self.session)
             self.__send_message(
-                self._getmore_class(dbname,
-                                    collname,
-                                    self.__batch_size,
-                                    self.__id,
-                                    self.__collection.codec_options,
-                                    read_pref,
-                                    self.__session,
-                                    self.__collection.database.client,
-                                    self.__max_await_time_ms,
-                                    self.__sock_mgr, False))
+                self._getmore_class(
+                    dbname,
+                    collname,
+                    self.__batch_size,
+                    self.__id,
+                    self.__collection.codec_options,
+                    read_pref,
+                    self.__session,
+                    self.__collection.database.client,
+                    self.__max_await_time_ms,
+                    self.__sock_mgr,
+                    False,
+                )
+            )
         else:  # Cursor id is zero nothing else to return
             self.__die(True)
 
@@ -305,7 +307,8 @@ class CommandCursor(Generic[_DocumentType]):
 class RawBatchCommandCursor(CommandCursor, Generic[_DocumentType]):
     _getmore_class = _RawBatchGetMore
 
-    def __init__(self,
+    def __init__(
+        self,
         collection: "Collection[_DocumentType]",
         cursor_info: Mapping[str, Any],
         address: Optional[Tuple[str, Optional[int]]],
@@ -322,15 +325,21 @@ class RawBatchCommandCursor(CommandCursor, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
         """
-        assert not cursor_info.get('firstBatch')
+        assert not cursor_info.get("firstBatch")
         super(RawBatchCommandCursor, self).__init__(
-            collection, cursor_info, address, batch_size,
-            max_await_time_ms, session, explicit_session)
+            collection,
+            cursor_info,
+            address,
+            batch_size,
+            max_await_time_ms,
+            session,
+            explicit_session,
+        )
 
-    def _unpack_response(self, response, cursor_id, codec_options,
-                         user_fields=None, legacy_response=False):
-        raw_response = response.raw_response(
-            cursor_id, user_fields=user_fields)
+    def _unpack_response(
+        self, response, cursor_id, codec_options, user_fields=None, legacy_response=False
+    ):
+        raw_response = response.raw_response(cursor_id, user_fields=user_fields)
         if not legacy_response:
             # OP_MSG returns firstBatch/nextBatch documents as a BSON array
             # Re-assemble the array of documents into a document stream

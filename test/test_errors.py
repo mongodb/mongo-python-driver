@@ -18,12 +18,10 @@ import traceback
 
 sys.path[0:0] = [""]
 
-from pymongo.errors import (BulkWriteError,
-                            EncryptionError,
-                            NotPrimaryError,
+from test import PyMongoTestCase, unittest
+
+from pymongo.errors import (BulkWriteError, EncryptionError, NotPrimaryError,
                             OperationFailure)
-from test import (PyMongoTestCase,
-                  unittest)
 
 
 class TestErrors(PyMongoTestCase):
@@ -36,8 +34,7 @@ class TestErrors(PyMongoTestCase):
             self.assertIn("full error", traceback.format_exc())
 
     def test_operation_failure(self):
-        exc = OperationFailure("operation failure test", 10,
-                               {"errmsg": "error"})
+        exc = OperationFailure("operation failure test", 10, {"errmsg": "error"})
         self.assertIn("full error", str(exc))
         try:
             raise exc
@@ -45,26 +42,26 @@ class TestErrors(PyMongoTestCase):
             self.assertIn("full error", traceback.format_exc())
 
     def _test_unicode_strs(self, exc):
-        if sys.implementation.name == 'pypy' and sys.implementation.version < (7, 3, 7):
+        if sys.implementation.name == "pypy" and sys.implementation.version < (7, 3, 7):
             # PyPy used to display unicode in repr differently.
-            self.assertEqual("unicode \U0001f40d, full error: {"
-                             "'errmsg': 'unicode \\U0001f40d'}", str(exc))
+            self.assertEqual(
+                "unicode \U0001f40d, full error: {" "'errmsg': 'unicode \\U0001f40d'}", str(exc)
+            )
         else:
-            self.assertEqual("unicode \U0001f40d, full error: {"
-                             "'errmsg': 'unicode \U0001f40d'}", str(exc))
+            self.assertEqual(
+                "unicode \U0001f40d, full error: {" "'errmsg': 'unicode \U0001f40d'}", str(exc)
+            )
         try:
             raise exc
         except Exception:
             self.assertIn("full error", traceback.format_exc())
 
     def test_unicode_strs_operation_failure(self):
-        exc = OperationFailure('unicode \U0001f40d', 10,
-                               {"errmsg": 'unicode \U0001f40d'})
+        exc = OperationFailure("unicode \U0001f40d", 10, {"errmsg": "unicode \U0001f40d"})
         self._test_unicode_strs(exc)
 
     def test_unicode_strs_not_primary_error(self):
-        exc = NotPrimaryError('unicode \U0001f40d',
-                              {"errmsg": 'unicode \U0001f40d'})
+        exc = NotPrimaryError("unicode \U0001f40d", {"errmsg": "unicode \U0001f40d"})
         self._test_unicode_strs(exc)
 
     def assertPyMongoErrorEqual(self, exc1, exc2):
@@ -84,7 +81,7 @@ class TestErrors(PyMongoTestCase):
         self.assertPyMongoErrorEqual(exc, pickle.loads(pickle.dumps(exc)))
 
     def test_pickle_OperationFailure(self):
-        exc = OperationFailure('error', code=5, details={}, max_wire_version=7)
+        exc = OperationFailure("error", code=5, details={}, max_wire_version=7)
         self.assertOperationFailureEqual(exc, pickle.loads(pickle.dumps(exc)))
 
     def test_pickle_BulkWriteError(self):
@@ -93,8 +90,7 @@ class TestErrors(PyMongoTestCase):
         self.assertIn("batch op errors occurred", str(exc))
 
     def test_pickle_EncryptionError(self):
-        cause = OperationFailure('error', code=5, details={},
-                                 max_wire_version=7)
+        cause = OperationFailure("error", code=5, details={}, max_wire_version=7)
         exc = EncryptionError(cause)
         exc2 = pickle.loads(pickle.dumps(exc))
         self.assertPyMongoErrorEqual(exc, exc2)

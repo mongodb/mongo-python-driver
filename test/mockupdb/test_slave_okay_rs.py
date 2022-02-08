@@ -17,11 +17,12 @@
 Just make sure SlaveOkay is *not* set on primary reads.
 """
 
-from mockupdb import MockupDB, going
-from pymongo import MongoClient
-
 import unittest
+
+from mockupdb import MockupDB, going
 from operations import operations
+
+from pymongo import MongoClient
 
 
 class TestSlaveOkayRS(unittest.TestCase):
@@ -31,24 +32,27 @@ class TestSlaveOkayRS(unittest.TestCase):
             server.run()
             self.addCleanup(server.stop)
 
-        hosts = [server.address_string
-                 for server in (self.primary, self.secondary)]
+        hosts = [server.address_string for server in (self.primary, self.secondary)]
         self.primary.autoresponds(
-            'ismaster',
-            ismaster=True, setName='rs', hosts=hosts,
-            minWireVersion=2, maxWireVersion=6)
+            "ismaster", ismaster=True, setName="rs", hosts=hosts, minWireVersion=2, maxWireVersion=6
+        )
         self.secondary.autoresponds(
-            'ismaster',
-            ismaster=False, secondary=True, setName='rs', hosts=hosts,
-            minWireVersion=2, maxWireVersion=6)
+            "ismaster",
+            ismaster=False,
+            secondary=True,
+            setName="rs",
+            hosts=hosts,
+            minWireVersion=2,
+            maxWireVersion=6,
+        )
 
 
 def create_slave_ok_rs_test(operation):
     def test(self):
         self.setup_server()
-        assert not operation.op_type == 'always-use-secondary'
+        assert not operation.op_type == "always-use-secondary"
 
-        client = MongoClient(self.primary.uri, replicaSet='rs')
+        client = MongoClient(self.primary.uri, replicaSet="rs")
         self.addCleanup(client.close)
         with going(operation.function, client):
             request = self.primary.receive()
@@ -63,11 +67,11 @@ def generate_slave_ok_rs_tests():
     for operation in operations:
         # Don't test secondary operations with MockupDB, the server enforces the
         # SlaveOkay bit so integration tests prove we set it.
-        if operation.op_type == 'always-use-secondary':
+        if operation.op_type == "always-use-secondary":
             continue
         test = create_slave_ok_rs_test(operation)
 
-        test_name = 'test_%s' % operation.name.replace(' ', '_')
+        test_name = "test_%s" % operation.name.replace(" ", "_")
         test.__name__ = test_name
         setattr(TestSlaveOkayRS, test_name, test)
 
@@ -75,5 +79,5 @@ def generate_slave_ok_rs_tests():
 generate_slave_ok_rs_tests()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

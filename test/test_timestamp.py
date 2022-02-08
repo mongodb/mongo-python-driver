@@ -14,15 +14,17 @@
 
 """Tests for the Timestamp class."""
 
-import datetime
-import sys
 import copy
+import datetime
 import pickle
+import sys
+
 sys.path[0:0] = [""]
+
+from test import unittest
 
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
-from test import unittest
 
 
 class TestTimestamp(unittest.TestCase):
@@ -77,6 +79,7 @@ class TestTimestamp(unittest.TestCase):
     def test_repr(self):
         t = Timestamp(0, 0)
         self.assertEqual(repr(t), "Timestamp(0, 0)")
+
 
 if __name__ == "__main__":
     unittest.main()

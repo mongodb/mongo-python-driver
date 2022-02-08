@@ -61,21 +61,20 @@ from requests.exceptions import RequestException as _RequestException
 _LOGGER = _logging.getLogger(__name__)
 
 _CERT_REGEX = _re.compile(
-    b'-----BEGIN CERTIFICATE[^\r\n]+.+?-----END CERTIFICATE[^\r\n]+',
-    _re.DOTALL)
+    b"-----BEGIN CERTIFICATE[^\r\n]+.+?-----END CERTIFICATE[^\r\n]+", _re.DOTALL
+)
 
 
 def _load_trusted_ca_certs(cafile):
     """Parse the tlsCAFile into a list of certificates."""
-    with open(cafile, 'rb') as f:
+    with open(cafile, "rb") as f:
         data = f.read()
 
     # Load all the certs in the file.
     trusted_ca_certs = []
     backend = _default_backend()
     for cert_data in _re.findall(_CERT_REGEX, data):
-        trusted_ca_certs.append(
-            _load_pem_x509_certificate(cert_data, backend))
+        trusted_ca_certs.append(_load_pem_x509_certificate(cert_data, backend))
     return trusted_ca_certs
 
 
@@ -127,14 +126,11 @@ def _public_key_hash(cert):
     # (excluding the tag and length fields)"
     # https://stackoverflow.com/a/46309453/600498
     if isinstance(public_key, _RSAPublicKey):
-        pbytes = public_key.public_bytes(
-            _Encoding.DER, _PublicFormat.PKCS1)
+        pbytes = public_key.public_bytes(_Encoding.DER, _PublicFormat.PKCS1)
     elif isinstance(public_key, _EllipticCurvePublicKey):
-        pbytes = public_key.public_bytes(
-            _Encoding.X962, _PublicFormat.UncompressedPoint)
+        pbytes = public_key.public_bytes(_Encoding.X962, _PublicFormat.UncompressedPoint)
     else:
-        pbytes = public_key.public_bytes(
-            _Encoding.DER, _PublicFormat.SubjectPublicKeyInfo)
+        pbytes = public_key.public_bytes(_Encoding.DER, _PublicFormat.SubjectPublicKeyInfo)
     digest = _Hash(_SHA1(), backend=_default_backend())
     digest.update(pbytes)
     return digest.finalize()
@@ -142,16 +138,18 @@ def _public_key_hash(cert):
 
 def _get_certs_by_key_hash(certificates, issuer, responder_key_hash):
     return [
-        cert for cert in certificates
-        if _public_key_hash(cert) == responder_key_hash and
-        cert.issuer == issuer.subject]
+        cert
+        for cert in certificates
+        if _public_key_hash(cert) == responder_key_hash and cert.issuer == issuer.subject
+    ]
 
 
 def _get_certs_by_name(certificates, issuer, responder_name):
     return [
-        cert for cert in certificates
-        if cert.subject == responder_name and
-        cert.issuer == issuer.subject]
+        cert
+        for cert in certificates
+        if cert.subject == responder_name and cert.issuer == issuer.subject
+    ]
 
 
 def _verify_response_signature(issuer, response):
@@ -189,10 +187,11 @@ def _verify_response_signature(issuer, response):
             _LOGGER.debug("Delegate not authorized for OCSP signing")
             return 0
         if not _verify_signature(
-                issuer.public_key(),
-                responder_cert.signature,
-                responder_cert.signature_hash_algorithm,
-                responder_cert.tbs_certificate_bytes):
+            issuer.public_key(),
+            responder_cert.signature,
+            responder_cert.signature_hash_algorithm,
+            responder_cert.tbs_certificate_bytes,
+        ):
             _LOGGER.debug("Delegate signature verification failed")
             return 0
     # RFC6960, Section 3.2, Number 2
@@ -200,7 +199,8 @@ def _verify_response_signature(issuer, response):
         responder_cert.public_key(),
         response.signature,
         response.signature_hash_algorithm,
-        response.tbs_response_bytes)
+        response.tbs_response_bytes,
+    )
     if not ret:
         _LOGGER.debug("Response signature verification failed")
     return ret
@@ -244,8 +244,9 @@ def _get_ocsp_response(cert, issuer, uri, ocsp_response_cache):
             response = _post(
                 uri,
                 data=ocsp_request.public_bytes(_Encoding.DER),
-                headers={'Content-Type': 'application/ocsp-request'},
-                timeout=5)
+                headers={"Content-Type": "application/ocsp-request"},
+                timeout=5,
+            )
         except _RequestException as exc:
             _LOGGER.debug("HTTP request failed: %s", exc)
             return None
@@ -253,8 +254,7 @@ def _get_ocsp_response(cert, issuer, uri, ocsp_response_cache):
             _LOGGER.debug("HTTP request returned %d", response.status_code)
             return None
         ocsp_response = _load_der_ocsp_response(response.content)
-        _LOGGER.debug(
-            "OCSP response status: %r", ocsp_response.response_status)
+        _LOGGER.debug("OCSP response status: %r", ocsp_response.response_status)
         if ocsp_response.response_status != _OCSPResponseStatus.SUCCESSFUL:
             return None
         # RFC6960, Section 3.2, Number 1. Only relevant if we need to
@@ -298,7 +298,7 @@ def _ocsp_callback(conn, ocsp_bytes, user_data):
     ocsp_response_cache = user_data.ocsp_response_cache
 
     # No stapled OCSP response
-    if ocsp_bytes == b'':
+    if ocsp_bytes == b"":
         _LOGGER.debug("Peer did not staple an OCSP response")
         if must_staple:
             _LOGGER.debug("Must-staple cert with no stapled response, hard fail.")
@@ -313,9 +313,11 @@ def _ocsp_callback(conn, ocsp_bytes, user_data):
             _LOGGER.debug("No authority access information, soft fail")
             # No stapled OCSP response, no responder URI, soft fail.
             return 1
-        uris = [desc.access_location.value
-                for desc in ext.value
-                if desc.access_method == _AuthorityInformationAccessOID.OCSP]
+        uris = [
+            desc.access_location.value
+            for desc in ext.value
+            if desc.access_method == _AuthorityInformationAccessOID.OCSP
+        ]
         if not uris:
             _LOGGER.debug("No OCSP URI, soft fail")
             # No responder URI, soft fail.
@@ -328,8 +330,7 @@ def _ocsp_callback(conn, ocsp_bytes, user_data):
         # successful, valid responses with a certificate status of REVOKED.
         for uri in uris:
             _LOGGER.debug("Trying %s", uri)
-            response = _get_ocsp_response(
-                cert, issuer, uri, ocsp_response_cache)
+            response = _get_ocsp_response(cert, issuer, uri, ocsp_response_cache)
             if response is None:
                 # The endpoint didn't respond in time, or the response was
                 # unsuccessful or didn't match the request, or the response
@@ -349,8 +350,7 @@ def _ocsp_callback(conn, ocsp_bytes, user_data):
         _LOGGER.debug("No issuer cert?")
         return 0
     response = _load_der_ocsp_response(ocsp_bytes)
-    _LOGGER.debug(
-        "OCSP response status: %r", response.response_status)
+    _LOGGER.debug("OCSP response status: %r", response.response_status)
     # This happens in _request_ocsp when there is no stapled response so
     # we know if we can compare serial numbers for the request and response.
     if response.response_status != _OCSPResponseStatus.SUCCESSFUL:

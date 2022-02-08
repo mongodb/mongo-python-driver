@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
-
 from test.unified_format import UnifiedSpecTestMixinV1
 
 
@@ -26,23 +25,18 @@ class TestCreateEntities(unittest.TestCase):
                 {
                     "client": {
                         "id": "client0",
-                              "storeEventsAsEntities": [
-                                  {
-                                      "id": "events1",
-                                      "events": [
-                                          "PoolCreatedEvent",
-                                      ]
-                                  }
-                              ]
+                        "storeEventsAsEntities": [
+                            {
+                                "id": "events1",
+                                "events": [
+                                    "PoolCreatedEvent",
+                                ],
+                            }
+                        ],
                     }
                 },
             ],
-            "tests": [
-                {
-                    "description": "foo",
-                    "operations": []
-                }
-            ]
+            "tests": [{"description": "foo", "operations": []}],
         }
         self.scenario_runner.TEST_SPEC = spec
         self.scenario_runner.setUp()
@@ -63,27 +57,18 @@ class TestCreateEntities(unittest.TestCase):
                 {
                     "client": {
                         "id": "client0",
-                        "uriOptions": {
-                            "retryReads": True
-                        },
+                        "uriOptions": {"retryReads": True},
                     }
                 },
-                {
-                    "database": {
-                        "id": "database0",
-                        "client": "client0",
-                        "databaseName": "dat"
-                    }
-                },
+                {"database": {"id": "database0", "client": "client0", "databaseName": "dat"}},
                 {
                     "collection": {
                         "id": "collection0",
                         "database": "database0",
-                        "collectionName": "dat"
+                        "collectionName": "dat",
                     }
-                }
+                },
             ],
-
             "tests": [
                 {
                     "description": "test loops",
@@ -99,33 +84,21 @@ class TestCreateEntities(unittest.TestCase):
                                 "numIterations": 5,
                                 "operations": [
                                     {
-                                      "name": "insertOne",
-                                      "object": "collection0",
-                                      "arguments": {
-                                          "document": {
-                                              "_id": 1,
-                                              "x": 44
-                                          }
-                                      }
-
+                                        "name": "insertOne",
+                                        "object": "collection0",
+                                        "arguments": {"document": {"_id": 1, "x": 44}},
                                     },
                                     {
                                         "name": "insertOne",
                                         "object": "collection0",
-                                        "arguments": {
-                                            "document": {
-                                                "_id": 1,
-                                                "x": 44
-                                            }
-                                        }
-
-                                    }
-                                ]
-                            }
+                                        "arguments": {"document": {"_id": 1, "x": 44}},
+                                    },
+                                ],
+                            },
                         }
-                    ]
+                    ],
                 }
-            ]
+            ],
         }
 
         self.scenario_runner.TEST_SPEC = spec

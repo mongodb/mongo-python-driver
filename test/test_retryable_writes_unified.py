@@ -23,8 +23,7 @@ from test import unittest
 from test.unified_format import generate_test_classes
 
 # Location of JSON test specifications.
-TEST_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), 'retryable_writes', 'unified')
+TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "retryable_writes", "unified")
 
 # Generate unified tests.
 globals().update(generate_test_classes(TEST_PATH, module=__name__))

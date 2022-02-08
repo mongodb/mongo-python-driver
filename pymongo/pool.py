@@ -60,12 +60,15 @@ def is_ip_address(address):
     except (ValueError, UnicodeError):
         return False
 
+
 try:
     from fcntl import F_GETFD, F_SETFD, FD_CLOEXEC, fcntl
+
     def _set_non_inheritable_non_atomic(fd):
         """Set the close-on-exec flag on the given file descriptor."""
         flags = fcntl(fd, F_GETFD)
         fcntl(fd, F_SETFD, flags | FD_CLOEXEC)
+
 except ImportError:
     # Windows, various platforms we don't claim to support
     # (Jython, IronPython, ...), systems that don't provide
@@ -74,11 +77,12 @@ except ImportError:
         """Dummy function for platforms that don't provide fcntl."""
         pass
 
+
 _MAX_TCP_KEEPIDLE = 120
 _MAX_TCP_KEEPINTVL = 10
 _MAX_TCP_KEEPCNT = 9
 
-if sys.platform == 'win32':
+if sys.platform == "win32":
     try:
         import _winreg as winreg
     except ImportError:
@@ -96,8 +100,8 @@ if sys.platform == 'win32':
 
     try:
         with winreg.OpenKey(
-                winreg.HKEY_LOCAL_MACHINE,
-                r"SYSTEM\CurrentControlSet\Services\Tcpip\Parameters") as key:
+            winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Services\Tcpip\Parameters"
+        ) as key:
             _WINDOWS_TCP_IDLE_MS = _query(key, "KeepAliveTime", 7200000)
             _WINDOWS_TCP_INTERVAL_MS = _query(key, "KeepAliveInterval", 1000)
     except OSError:
@@ -108,13 +112,12 @@ if sys.platform == 'win32':
 
     def _set_keepalive_times(sock):
         idle_ms = min(_WINDOWS_TCP_IDLE_MS, _MAX_TCP_KEEPIDLE * 1000)
-        interval_ms = min(_WINDOWS_TCP_INTERVAL_MS,
-                          _MAX_TCP_KEEPINTVL * 1000)
-        if (idle_ms < _WINDOWS_TCP_IDLE_MS or
-                interval_ms < _WINDOWS_TCP_INTERVAL_MS):
-            sock.ioctl(socket.SIO_KEEPALIVE_VALS,
-                       (1, idle_ms, interval_ms))
+        interval_ms = min(_WINDOWS_TCP_INTERVAL_MS, _MAX_TCP_KEEPINTVL * 1000)
+        if idle_ms < _WINDOWS_TCP_IDLE_MS or interval_ms < _WINDOWS_TCP_INTERVAL_MS:
+            sock.ioctl(socket.SIO_KEEPALIVE_VALS, (1, idle_ms, interval_ms))
+
 else:
+
     def _set_tcp_option(sock, tcp_option, max_value):
         if hasattr(socket, tcp_option):
             sockopt = getattr(socket, tcp_option)
@@ -129,88 +132,106 @@ else:
                 pass
 
     def _set_keepalive_times(sock):
-        _set_tcp_option(sock, 'TCP_KEEPIDLE', _MAX_TCP_KEEPIDLE)
-        _set_tcp_option(sock, 'TCP_KEEPINTVL', _MAX_TCP_KEEPINTVL)
-        _set_tcp_option(sock, 'TCP_KEEPCNT', _MAX_TCP_KEEPCNT)
+        _set_tcp_option(sock, "TCP_KEEPIDLE", _MAX_TCP_KEEPIDLE)
+        _set_tcp_option(sock, "TCP_KEEPINTVL", _MAX_TCP_KEEPINTVL)
+        _set_tcp_option(sock, "TCP_KEEPCNT", _MAX_TCP_KEEPCNT)
 
-_METADATA: SON[str, Any] = SON([
-    ('driver', SON([('name', 'PyMongo'), ('version', __version__)])),
-])
 
-if sys.platform.startswith('linux'):
+_METADATA: SON[str, Any] = SON(
+    [
+        ("driver", SON([("name", "PyMongo"), ("version", __version__)])),
+    ]
+)
+
+if sys.platform.startswith("linux"):
     # platform.linux_distribution was deprecated in Python 3.5
     # and removed in Python 3.8. Starting in Python 3.5 it
     # raises DeprecationWarning
     # DeprecationWarning: dist() and linux_distribution() functions are deprecated in Python 3.5
     _name = platform.system()
-    _METADATA['os'] = SON([
-        ('type', _name),
-        ('name', _name),
-        ('architecture', platform.machine()),
-        # Kernel version (e.g. 4.4.0-17-generic).
-        ('version', platform.release())
-    ])
-elif sys.platform == 'darwin':
-    _METADATA['os'] = SON([
-        ('type', platform.system()),
-        ('name', platform.system()),
-        ('architecture', platform.machine()),
-        # (mac|i|tv)OS(X) version (e.g. 10.11.6) instead of darwin
-        # kernel version.
-        ('version', platform.mac_ver()[0])
-    ])
-elif sys.platform == 'win32':
-    _METADATA['os'] = SON([
-        ('type', platform.system()),
-        # "Windows XP", "Windows 7", "Windows 10", etc.
-        ('name', ' '.join((platform.system(), platform.release()))),
-        ('architecture', platform.machine()),
-        # Windows patch level (e.g. 5.1.2600-SP3)
-        ('version', '-'.join(platform.win32_ver()[1:3]))
-    ])
-elif sys.platform.startswith('java'):
+    _METADATA["os"] = SON(
+        [
+            ("type", _name),
+            ("name", _name),
+            ("architecture", platform.machine()),
+            # Kernel version (e.g. 4.4.0-17-generic).
+            ("version", platform.release()),
+        ]
+    )
+elif sys.platform == "darwin":
+    _METADATA["os"] = SON(
+        [
+            ("type", platform.system()),
+            ("name", platform.system()),
+            ("architecture", platform.machine()),
+            # (mac|i|tv)OS(X) version (e.g. 10.11.6) instead of darwin
+            # kernel version.
+            ("version", platform.mac_ver()[0]),
+        ]
+    )
+elif sys.platform == "win32":
+    _METADATA["os"] = SON(
+        [
+            ("type", platform.system()),
+            # "Windows XP", "Windows 7", "Windows 10", etc.
+            ("name", " ".join((platform.system(), platform.release()))),
+            ("architecture", platform.machine()),
+            # Windows patch level (e.g. 5.1.2600-SP3)
+            ("version", "-".join(platform.win32_ver()[1:3])),
+        ]
+    )
+elif sys.platform.startswith("java"):
     _name, _ver, _arch = platform.java_ver()[-1]
-    _METADATA['os'] = SON([
-        # Linux, Windows 7, Mac OS X, etc.
-        ('type', _name),
-        ('name', _name),
-        # x86, x86_64, AMD64, etc.
-        ('architecture', _arch),
-        # Linux kernel version, OSX version, etc.
-        ('version', _ver)
-    ])
+    _METADATA["os"] = SON(
+        [
+            # Linux, Windows 7, Mac OS X, etc.
+            ("type", _name),
+            ("name", _name),
+            # x86, x86_64, AMD64, etc.
+            ("architecture", _arch),
+            # Linux kernel version, OSX version, etc.
+            ("version", _ver),
+        ]
+    )
 else:
     # Get potential alias (e.g. SunOS 5.11 becomes Solaris 2.11)
-    _aliased = platform.system_alias(
-        platform.system(), platform.release(), platform.version())
-    _METADATA['os'] = SON([
-        ('type', platform.system()),
-        ('name', ' '.join([part for part in _aliased[:2] if part])),
-        ('architecture', platform.machine()),
-        ('version', _aliased[2])
-    ])
+    _aliased = platform.system_alias(platform.system(), platform.release(), platform.version())
+    _METADATA["os"] = SON(
+        [
+            ("type", platform.system()),
+            ("name", " ".join([part for part in _aliased[:2] if part])),
+            ("architecture", platform.machine()),
+            ("version", _aliased[2]),
+        ]
+    )
 
-if platform.python_implementation().startswith('PyPy'):
-    _METADATA['platform'] = ' '.join(
-        (platform.python_implementation(),
-         '.'.join(map(str, sys.pypy_version_info)),  # type: ignore
-         '(Python %s)' % '.'.join(map(str, sys.version_info))))
-elif sys.platform.startswith('java'):
-    _METADATA['platform'] = ' '.join(
-        (platform.python_implementation(),
-         '.'.join(map(str, sys.version_info)),
-         '(%s)' % ' '.join((platform.system(), platform.release()))))
+if platform.python_implementation().startswith("PyPy"):
+    _METADATA["platform"] = " ".join(
+        (
+            platform.python_implementation(),
+            ".".join(map(str, sys.pypy_version_info)),  # type: ignore
+            "(Python %s)" % ".".join(map(str, sys.version_info)),
+        )
+    )
+elif sys.platform.startswith("java"):
+    _METADATA["platform"] = " ".join(
+        (
+            platform.python_implementation(),
+            ".".join(map(str, sys.version_info)),
+            "(%s)" % " ".join((platform.system(), platform.release())),
+        )
+    )
 else:
-    _METADATA['platform'] = ' '.join(
-        (platform.python_implementation(),
-         '.'.join(map(str, sys.version_info))))
+    _METADATA["platform"] = " ".join(
+        (platform.python_implementation(), ".".join(map(str, sys.version_info)))
+    )
 
 
 # If the first getaddrinfo call of this interpreter's life is on a thread,
 # while the main thread holds the import lock, getaddrinfo deadlocks trying
 # to import the IDNA codec. Import it here, where presumably we're on the
 # main thread, to avoid the deadlock. See PYTHON-607.
-'foo'.encode('idna')
+"foo".encode("idna")
 
 # Remove after PYTHON-2712
 _MOCK_SERVICE_ID = False
@@ -221,14 +242,14 @@ def _raise_connection_failure(address, error, msg_prefix=None):
     host, port = address
     # If connecting to a Unix socket, port will be None.
     if port is not None:
-        msg = '%s:%d: %s' % (host, port, error)
+        msg = "%s:%d: %s" % (host, port, error)
     else:
-        msg = '%s: %s' % (host, error)
+        msg = "%s: %s" % (host, error)
     if msg_prefix:
         msg = msg_prefix + msg
     if isinstance(error, socket.timeout):
         raise NetworkTimeout(msg) from error
-    elif isinstance(error, _SSLError) and 'timed out' in str(error):
+    elif isinstance(error, _SSLError) and "timed out" in str(error):
         # Eventlet does not distinguish TLS network timeouts from other
         # SSLErrors (https://github.com/eventlet/eventlet/issues/692).
         # Luckily, we can work around this limitation because the phrase
@@ -256,26 +277,47 @@ class PoolOptions(object):
 
     """
 
-    __slots__ = ('__max_pool_size', '__min_pool_size',
-                 '__max_idle_time_seconds',
-                 '__connect_timeout', '__socket_timeout',
-                 '__wait_queue_timeout',
-                 '__ssl_context', '__tls_allow_invalid_hostnames',
-                 '__event_listeners', '__appname', '__driver', '__metadata',
-                 '__compression_settings', '__max_connecting',
-                 '__pause_enabled', '__server_api', '__load_balanced',
-                 '__credentials')
+    __slots__ = (
+        "__max_pool_size",
+        "__min_pool_size",
+        "__max_idle_time_seconds",
+        "__connect_timeout",
+        "__socket_timeout",
+        "__wait_queue_timeout",
+        "__ssl_context",
+        "__tls_allow_invalid_hostnames",
+        "__event_listeners",
+        "__appname",
+        "__driver",
+        "__metadata",
+        "__compression_settings",
+        "__max_connecting",
+        "__pause_enabled",
+        "__server_api",
+        "__load_balanced",
+        "__credentials",
+    )
 
-    def __init__(self, max_pool_size=MAX_POOL_SIZE,
-                 min_pool_size=MIN_POOL_SIZE,
-                 max_idle_time_seconds=MAX_IDLE_TIME_SEC, connect_timeout=None,
-                 socket_timeout=None, wait_queue_timeout=WAIT_QUEUE_TIMEOUT,
-                 ssl_context=None,
-                 tls_allow_invalid_hostnames=False,
-                 event_listeners=None, appname=None, driver=None,
-                 compression_settings=None, max_connecting=MAX_CONNECTING,
-                 pause_enabled=True, server_api=None, load_balanced=None,
-                 credentials=None):
+    def __init__(
+        self,
+        max_pool_size=MAX_POOL_SIZE,
+        min_pool_size=MIN_POOL_SIZE,
+        max_idle_time_seconds=MAX_IDLE_TIME_SEC,
+        connect_timeout=None,
+        socket_timeout=None,
+        wait_queue_timeout=WAIT_QUEUE_TIMEOUT,
+        ssl_context=None,
+        tls_allow_invalid_hostnames=False,
+        event_listeners=None,
+        appname=None,
+        driver=None,
+        compression_settings=None,
+        max_connecting=MAX_CONNECTING,
+        pause_enabled=True,
+        server_api=None,
+        load_balanced=None,
+        credentials=None,
+    ):
         self.__max_pool_size = max_pool_size
         self.__min_pool_size = min_pool_size
         self.__max_idle_time_seconds = max_idle_time_seconds
@@ -295,7 +337,7 @@ class PoolOptions(object):
         self.__credentials = credentials
         self.__metadata = copy.deepcopy(_METADATA)
         if appname:
-            self.__metadata['application'] = {'name': appname}
+            self.__metadata["application"] = {"name": appname}
 
         # Combine the "driver" MongoClient option with PyMongo's info, like:
         # {
@@ -307,14 +349,17 @@ class PoolOptions(object):
         # }
         if driver:
             if driver.name:
-                self.__metadata['driver']['name'] = "%s|%s" % (
-                    _METADATA['driver']['name'], driver.name)
+                self.__metadata["driver"]["name"] = "%s|%s" % (
+                    _METADATA["driver"]["name"],
+                    driver.name,
+                )
             if driver.version:
-                self.__metadata['driver']['version'] = "%s|%s" % (
-                    _METADATA['driver']['version'], driver.version)
+                self.__metadata["driver"]["version"] = "%s|%s" % (
+                    _METADATA["driver"]["version"],
+                    driver.version,
+                )
             if driver.platform:
-                self.__metadata['platform'] = "%s|%s" % (
-                    _METADATA['platform'], driver.platform)
+                self.__metadata["platform"] = "%s|%s" % (_METADATA["platform"], driver.platform)
 
     @property
     def _credentials(self):
@@ -329,15 +374,15 @@ class PoolOptions(object):
         """
         opts = {}
         if self.__max_pool_size != MAX_POOL_SIZE:
-            opts['maxPoolSize'] = self.__max_pool_size
+            opts["maxPoolSize"] = self.__max_pool_size
         if self.__min_pool_size != MIN_POOL_SIZE:
-            opts['minPoolSize'] = self.__min_pool_size
+            opts["minPoolSize"] = self.__min_pool_size
         if self.__max_idle_time_seconds != MAX_IDLE_TIME_SEC:
-            opts['maxIdleTimeMS'] = self.__max_idle_time_seconds * 1000
+            opts["maxIdleTimeMS"] = self.__max_idle_time_seconds * 1000
         if self.__wait_queue_timeout != WAIT_QUEUE_TIMEOUT:
-            opts['waitQueueTimeoutMS'] = self.__wait_queue_timeout * 1000
+            opts["waitQueueTimeoutMS"] = self.__wait_queue_timeout * 1000
         if self.__max_connecting != MAX_CONNECTING:
-            opts['maxConnecting'] = self.__max_connecting
+            opts["maxConnecting"] = self.__max_connecting
         return opts
 
     @property
@@ -383,14 +428,12 @@ class PoolOptions(object):
 
     @property
     def connect_timeout(self):
-        """How long a connection can take to be opened before timing out.
-        """
+        """How long a connection can take to be opened before timing out."""
         return self.__connect_timeout
 
     @property
     def socket_timeout(self):
-        """How long a send or receive on a socket can take before timing out.
-        """
+        """How long a send or receive on a socket can take before timing out."""
         return self.__socket_timeout
 
     @property
@@ -402,32 +445,27 @@ class PoolOptions(object):
 
     @property
     def _ssl_context(self):
-        """An SSLContext instance or None.
-        """
+        """An SSLContext instance or None."""
         return self.__ssl_context
 
     @property
     def tls_allow_invalid_hostnames(self):
-        """If True skip ssl.match_hostname.
-        """
+        """If True skip ssl.match_hostname."""
         return self.__tls_allow_invalid_hostnames
 
     @property
     def _event_listeners(self):
-        """An instance of pymongo.monitoring._EventListeners.
-        """
+        """An instance of pymongo.monitoring._EventListeners."""
         return self.__event_listeners
 
     @property
     def appname(self):
-        """The application name, for sending with hello in server handshake.
-        """
+        """The application name, for sending with hello in server handshake."""
         return self.__appname
 
     @property
     def driver(self):
-        """Driver name and version, for sending with hello in handshake.
-        """
+        """Driver name and version, for sending with hello in handshake."""
         return self.__driver
 
     @property
@@ -436,20 +474,17 @@ class PoolOptions(object):
 
     @property
     def metadata(self):
-        """A dict of metadata about the application, driver, os, and platform.
-        """
+        """A dict of metadata about the application, driver, os, and platform."""
         return self.__metadata.copy()
 
     @property
     def server_api(self):
-        """A pymongo.server_api.ServerApi or None.
-        """
+        """A pymongo.server_api.ServerApi or None."""
         return self.__server_api
 
     @property
     def load_balanced(self):
-        """True if this Pool is configured in load balanced mode.
-        """
+        """True if this Pool is configured in load balanced mode."""
         return self.__load_balanced
 
 
@@ -476,6 +511,7 @@ class SocketInfo(object):
       - `address`: the server's (host, port)
       - `id`: the id of this socket in it's pool
     """
+
     def __init__(self, sock, pool, address, id):
         self.pool_ref = weakref.ref(pool)
         self.sock = sock
@@ -544,7 +580,7 @@ class SocketInfo(object):
             self.op_msg_enabled = True
             return SON([(HelloCompat.CMD, 1)])
         else:
-            return SON([(HelloCompat.LEGACY_CMD, 1), ('helloOk', True)])
+            return SON([(HelloCompat.LEGACY_CMD, 1), ("helloOk", True)])
 
     def hello(self):
         return self._hello(None, None, None)
@@ -555,58 +591,58 @@ class SocketInfo(object):
         awaitable = False
         if performing_handshake:
             self.performed_handshake = True
-            cmd['client'] = self.opts.metadata
+            cmd["client"] = self.opts.metadata
             if self.compression_settings:
-                cmd['compression'] = self.compression_settings.compressors
+                cmd["compression"] = self.compression_settings.compressors
             if self.opts.load_balanced:
-                cmd['loadBalanced'] = True
+                cmd["loadBalanced"] = True
         elif topology_version is not None:
-            cmd['topologyVersion'] = topology_version
-            cmd['maxAwaitTimeMS'] = int(heartbeat_frequency*1000)
+            cmd["topologyVersion"] = topology_version
+            cmd["maxAwaitTimeMS"] = int(heartbeat_frequency * 1000)
             awaitable = True
             # If connect_timeout is None there is no timeout.
             if self.opts.connect_timeout:
-                self.sock.settimeout(
-                    self.opts.connect_timeout + heartbeat_frequency)
+                self.sock.settimeout(self.opts.connect_timeout + heartbeat_frequency)
 
         if not performing_handshake and cluster_time is not None:
-            cmd['$clusterTime'] = cluster_time
+            cmd["$clusterTime"] = cluster_time
 
         creds = self.opts._credentials
         if creds:
-            if creds.mechanism == 'DEFAULT' and creds.username:
-                cmd['saslSupportedMechs'] = creds.source + '.' + creds.username
+            if creds.mechanism == "DEFAULT" and creds.username:
+                cmd["saslSupportedMechs"] = creds.source + "." + creds.username
             auth_ctx = auth._AuthContext.from_credentials(creds)
             if auth_ctx:
-                cmd['speculativeAuthenticate'] = auth_ctx.speculate_command()
+                cmd["speculativeAuthenticate"] = auth_ctx.speculate_command()
         else:
             auth_ctx = None
 
-        doc = self.command('admin', cmd, publish_events=False,
-                           exhaust_allowed=awaitable)
+        doc = self.command("admin", cmd, publish_events=False, exhaust_allowed=awaitable)
         # PYTHON-2712 will remove this topologyVersion fallback logic.
         if self.opts.load_balanced and _MOCK_SERVICE_ID:
-            process_id = doc.get('topologyVersion', {}).get('processId')
-            doc.setdefault('serviceId', process_id)
+            process_id = doc.get("topologyVersion", {}).get("processId")
+            doc.setdefault("serviceId", process_id)
         if not self.opts.load_balanced:
-            doc.pop('serviceId', None)
+            doc.pop("serviceId", None)
         hello = Hello(doc, awaitable=awaitable)
         self.is_writable = hello.is_writable
         self.max_wire_version = hello.max_wire_version
         self.max_bson_size = hello.max_bson_size
         self.max_message_size = hello.max_message_size
         self.max_write_batch_size = hello.max_write_batch_size
-        self.supports_sessions = (
-            hello.logical_session_timeout_minutes is not None)
+        self.supports_sessions = hello.logical_session_timeout_minutes is not None
         self.hello_ok = hello.hello_ok
         self.is_repl = hello.server_type in (
-            SERVER_TYPE.RSPrimary, SERVER_TYPE.RSSecondary,
-            SERVER_TYPE.RSArbiter, SERVER_TYPE.RSOther, SERVER_TYPE.RSGhost)
+            SERVER_TYPE.RSPrimary,
+            SERVER_TYPE.RSSecondary,
+            SERVER_TYPE.RSArbiter,
+            SERVER_TYPE.RSOther,
+            SERVER_TYPE.RSGhost,
+        )
         self.is_standalone = hello.server_type == SERVER_TYPE.Standalone
         self.is_mongos = hello.server_type == SERVER_TYPE.Mongos
         if performing_handshake and self.compression_settings:
-            ctx = self.compression_settings.get_compression_context(
-                hello.compressors)
+            ctx = self.compression_settings.get_compression_context(hello.compressors)
             self.compression_context = ctx
 
         self.op_msg_enabled = True
@@ -619,8 +655,9 @@ class SocketInfo(object):
         if self.opts.load_balanced:
             if not hello.service_id:
                 raise ConfigurationError(
-                    'Driver attempted to initialize in load balancing mode,'
-                    ' but the server does not support this mode')
+                    "Driver attempted to initialize in load balancing mode,"
+                    " but the server does not support this mode"
+                )
             self.service_id = hello.service_id
             self.generation = self.pool_gen.get(self.service_id)
         return hello
@@ -633,23 +670,28 @@ class SocketInfo(object):
         helpers._check_command_response(response_doc, self.max_wire_version)
         # Remove after PYTHON-2712.
         if not self.opts.load_balanced:
-            response_doc.pop('serviceId', None)
+            response_doc.pop("serviceId", None)
         return response_doc
 
-    def command(self, dbname, spec,
-                read_preference=ReadPreference.PRIMARY,
-                codec_options=DEFAULT_CODEC_OPTIONS, check=True,
-                allowable_errors=None,
-                read_concern=None,
-                write_concern=None,
-                parse_write_concern_error=False,
-                collation=None,
-                session=None,
-                client=None,
-                retryable_write=False,
-                publish_events=True,
-                user_fields=None,
-                exhaust_allowed=False):
+    def command(
+        self,
+        dbname,
+        spec,
+        read_preference=ReadPreference.PRIMARY,
+        codec_options=DEFAULT_CODEC_OPTIONS,
+        check=True,
+        allowable_errors=None,
+        read_concern=None,
+        write_concern=None,
+        parse_write_concern_error=False,
+        collation=None,
+        session=None,
+        client=None,
+        retryable_write=False,
+        publish_events=True,
+        user_fields=None,
+        exhaust_allowed=False,
+    ):
         """Execute a command or raise an error.
 
         :Parameters:
@@ -679,36 +721,43 @@ class SocketInfo(object):
         if not isinstance(spec, ORDERED_TYPES):  # type:ignore[arg-type]
             spec = SON(spec)
 
-        if not (write_concern is None or write_concern.acknowledged or
-                collation is None):
-            raise ConfigurationError(
-                'Collation is unsupported for unacknowledged writes.')
-        if (write_concern and
-                not write_concern.is_server_default):
-            spec['writeConcern'] = write_concern.document
+        if not (write_concern is None or write_concern.acknowledged or collation is None):
+            raise ConfigurationError("Collation is unsupported for unacknowledged writes.")
+        if write_concern and not write_concern.is_server_default:
+            spec["writeConcern"] = write_concern.document
 
         self.add_server_api(spec)
         if session:
-            session._apply_to(spec, retryable_write, read_preference,
-                              self)
+            session._apply_to(spec, retryable_write, read_preference, self)
         self.send_cluster_time(spec, session, client)
         listeners = self.listeners if publish_events else None
         unacknowledged = write_concern and not write_concern.acknowledged
         if self.op_msg_enabled:
             self._raise_if_not_writable(unacknowledged)
         try:
-            return command(self, dbname, spec,
-                           self.is_mongos, read_preference, codec_options,
-                           session, client, check, allowable_errors,
-                           self.address, listeners,
-                           self.max_bson_size, read_concern,
-                           parse_write_concern_error=parse_write_concern_error,
-                           collation=collation,
-                           compression_ctx=self.compression_context,
-                           use_op_msg=self.op_msg_enabled,
-                           unacknowledged=unacknowledged,
-                           user_fields=user_fields,
-                           exhaust_allowed=exhaust_allowed)
+            return command(
+                self,
+                dbname,
+                spec,
+                self.is_mongos,
+                read_preference,
+                codec_options,
+                session,
+                client,
+                check,
+                allowable_errors,
+                self.address,
+                listeners,
+                self.max_bson_size,
+                read_concern,
+                parse_write_concern_error=parse_write_concern_error,
+                collation=collation,
+                compression_ctx=self.compression_context,
+                use_op_msg=self.op_msg_enabled,
+                unacknowledged=unacknowledged,
+                user_fields=user_fields,
+                exhaust_allowed=exhaust_allowed,
+            )
         except (OperationFailure, NotPrimaryError):
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.
@@ -720,12 +769,11 @@ class SocketInfo(object):
 
         If a network exception is raised, the socket is closed.
         """
-        if (self.max_bson_size is not None
-                and max_doc_size > self.max_bson_size):
+        if self.max_bson_size is not None and max_doc_size > self.max_bson_size:
             raise DocumentTooLarge(
                 "BSON document too large (%d bytes) - the connected server "
-                "supports BSON document sizes up to %d bytes." %
-                (max_doc_size, self.max_bson_size))
+                "supports BSON document sizes up to %d bytes." % (max_doc_size, self.max_bson_size)
+            )
 
         try:
             self.sock.sendall(message)
@@ -748,8 +796,7 @@ class SocketInfo(object):
         """
         if unacknowledged and not self.is_writable:
             # Write won't succeed, bail as if we'd received a not primary error.
-            raise NotPrimaryError("not primary", {
-                "ok": 0, "errmsg": "not primary", "code": 10107})
+            raise NotPrimaryError("not primary", {"ok": 0, "errmsg": "not primary", "code": 10107})
 
     def unack_write(self, msg, max_doc_size):
         """Send unack OP_MSG.
@@ -803,8 +850,8 @@ class SocketInfo(object):
         if session:
             if session._client is not client:
                 raise InvalidOperation(
-                    'Can only use session with the MongoClient that'
-                    ' started it')
+                    "Can only use session with the MongoClient that" " started it"
+                )
 
     def close_socket(self, reason):
         """Close this connection with a reason."""
@@ -812,8 +859,7 @@ class SocketInfo(object):
             return
         self._close_socket()
         if reason and self.enabled_for_cmap:
-            self.listeners.publish_connection_closed(
-                self.address, self.id, reason)
+            self.listeners.publish_connection_closed(self.address, self.id, reason)
 
     def _close_socket(self):
         """Close this connection."""
@@ -893,7 +939,7 @@ class SocketInfo(object):
         return "SocketInfo(%s)%s at %s" % (
             repr(self.sock),
             self.closed and " CLOSED" or "",
-            id(self)
+            id(self),
         )
 
 
@@ -907,10 +953,9 @@ def _create_connection(address, options):
     host, port = address
 
     # Check if dealing with a unix domain socket
-    if host.endswith('.sock'):
+    if host.endswith(".sock"):
         if not hasattr(socket, "AF_UNIX"):
-            raise ConnectionFailure("UNIX-sockets are not supported "
-                                    "on this system")
+            raise ConnectionFailure("UNIX-sockets are not supported " "on this system")
         sock = socket.socket(socket.AF_UNIX)
         # SOCK_CLOEXEC not supported for Unix sockets.
         _set_non_inheritable_non_atomic(sock.fileno())
@@ -925,7 +970,7 @@ def _create_connection(address, options):
     # is 'localhost' (::1 is fine). Avoids slow connect issues
     # like PYTHON-356.
     family = socket.AF_INET
-    if socket.has_ipv6 and host != 'localhost':
+    if socket.has_ipv6 and host != "localhost":
         family = socket.AF_UNSPEC
 
     err = None
@@ -935,8 +980,7 @@ def _create_connection(address, options):
         # number of platforms (newer Linux and *BSD). Starting with CPython 3.4
         # all file descriptors are created non-inheritable. See PEP 446.
         try:
-            sock = socket.socket(
-                af, socktype | getattr(socket, 'SOCK_CLOEXEC', 0), proto)
+            sock = socket.socket(af, socktype | getattr(socket, "SOCK_CLOEXEC", 0), proto)
         except socket.error:
             # Can SOCK_CLOEXEC be defined even if the kernel doesn't support
             # it?
@@ -961,7 +1005,7 @@ def _create_connection(address, options):
         # host with an OS/kernel or Python interpreter that doesn't
         # support IPv6. The test case is Jython2.5.1 which doesn't
         # support IPv6 at all.
-        raise socket.error('getaddrinfo failed')
+        raise socket.error("getaddrinfo failed")
 
 
 def _configured_socket(address, options):
@@ -999,9 +1043,11 @@ def _configured_socket(address, options):
             # failures alike. Permanent handshake failures, like protocol
             # mismatch, will be turned into ServerSelectionTimeoutErrors later.
             _raise_connection_failure(address, exc, "SSL handshake failed: ")
-        if (ssl_context.verify_mode and not
-                getattr(ssl_context, "check_hostname", False) and
-                not options.tls_allow_invalid_hostnames):
+        if (
+            ssl_context.verify_mode
+            and not getattr(ssl_context, "check_hostname", False)
+            and not options.tls_allow_invalid_hostnames
+        ):
             try:
                 ssl.match_hostname(sock.getpeercert(), hostname=host)
             except _CertificateError:
@@ -1016,6 +1062,7 @@ class _PoolClosedError(PyMongoError):
     """Internal error raised when a thread tries to get a connection from a
     closed pool.
     """
+
     pass
 
 
@@ -1094,9 +1141,10 @@ class Pool:
         self.handshake = handshake
         # Don't publish events in Monitor pools.
         self.enabled_for_cmap = (
-                self.handshake and
-                self.opts._event_listeners is not None and
-                self.opts._event_listeners.enabled_for_cmap)
+            self.handshake
+            and self.opts._event_listeners is not None
+            and self.opts._event_listeners.enabled_for_cmap
+        )
 
         # The first portion of the wait queue.
         # Enforces: maxPoolSize
@@ -1105,7 +1153,7 @@ class Pool:
         self.requests = 0
         self.max_pool_size = self.opts.max_pool_size
         if not self.max_pool_size:
-            self.max_pool_size = float('inf')
+            self.max_pool_size = float("inf")
         # The second portion of the wait queue.
         # Enforces: maxConnecting
         # Also used for: clearing the wait queue
@@ -1114,7 +1162,8 @@ class Pool:
         self._pending = 0
         if self.enabled_for_cmap:
             self.opts._event_listeners.publish_pool_created(
-                self.address, self.opts.non_default_options)
+                self.address, self.opts.non_default_options
+            )
         # Similar to active_sockets but includes threads in the wait queue.
         self.operation_count = 0
         # Retain references to pinned connections to prevent the CPython GC
@@ -1141,8 +1190,7 @@ class Pool:
         with self.size_cond:
             if self.closed:
                 return
-            if (self.opts.pause_enabled and pause and
-                    not self.opts.load_balanced):
+            if self.opts.pause_enabled and pause and not self.opts.load_balanced:
                 old_state, self.state = self.state, PoolState.PAUSED
             self.gen.inc(service_id)
             newpid = os.getpid()
@@ -1180,8 +1228,7 @@ class Pool:
                 listeners.publish_pool_closed(self.address)
         else:
             if old_state != PoolState.PAUSED and self.enabled_for_cmap:
-                listeners.publish_pool_cleared(self.address,
-                                               service_id=service_id)
+                listeners.publish_pool_cleared(self.address, service_id=service_id)
             for sock_info in sockets:
                 sock_info.close_socket(ConnectionClosedReason.STALE)
 
@@ -1219,16 +1266,17 @@ class Pool:
 
         if self.opts.max_idle_time_seconds is not None:
             with self.lock:
-                while (self.sockets and
-                       self.sockets[-1].idle_time_seconds() > self.opts.max_idle_time_seconds):
+                while (
+                    self.sockets
+                    and self.sockets[-1].idle_time_seconds() > self.opts.max_idle_time_seconds
+                ):
                     sock_info = self.sockets.pop()
                     sock_info.close_socket(ConnectionClosedReason.IDLE)
 
         while True:
             with self.size_cond:
                 # There are enough sockets in the pool.
-                if (len(self.sockets) + self.active_sockets >=
-                        self.opts.min_pool_size):
+                if len(self.sockets) + self.active_sockets >= self.opts.min_pool_size:
                     return
                 if self.requests >= self.opts.min_pool_size:
                     return
@@ -1282,7 +1330,8 @@ class Pool:
         except BaseException as error:
             if self.enabled_for_cmap:
                 listeners.publish_connection_closed(
-                    self.address, conn_id, ConnectionClosedReason.ERROR)
+                    self.address, conn_id, ConnectionClosedReason.ERROR
+                )
 
             if isinstance(error, (IOError, OSError, _SSLError)):
                 _raise_connection_failure(self.address, error)
@@ -1326,8 +1375,7 @@ class Pool:
 
         sock_info = self._get_socket()
         if self.enabled_for_cmap:
-            listeners.publish_connection_checked_out(
-                self.address, sock_info.id)
+            listeners.publish_connection_checked_out(self.address, sock_info.id)
         try:
             yield sock_info
         except:
@@ -1359,9 +1407,9 @@ class Pool:
         if self.state != PoolState.READY:
             if self.enabled_for_cmap and emit_event:
                 self.opts._event_listeners.publish_connection_check_out_failed(
-                    self.address, ConnectionCheckOutFailedReason.CONN_ERROR)
-            _raise_connection_failure(
-                self.address, AutoReconnect('connection pool paused'))
+                    self.address, ConnectionCheckOutFailedReason.CONN_ERROR
+                )
+            _raise_connection_failure(self.address, AutoReconnect("connection pool paused"))
 
     def _get_socket(self):
         """Get or create a SocketInfo. Can raise ConnectionFailure."""
@@ -1374,10 +1422,11 @@ class Pool:
         if self.closed:
             if self.enabled_for_cmap:
                 self.opts._event_listeners.publish_connection_check_out_failed(
-                    self.address, ConnectionCheckOutFailedReason.POOL_CLOSED)
+                    self.address, ConnectionCheckOutFailedReason.POOL_CLOSED
+                )
             raise _PoolClosedError(
-                'Attempted to check out a connection from closed connection '
-                'pool')
+                "Attempted to check out a connection from closed connection " "pool"
+            )
 
         with self.lock:
             self.operation_count += 1
@@ -1414,13 +1463,11 @@ class Pool:
                 # to be checked back into the pool.
                 with self._max_connecting_cond:
                     self._raise_if_not_ready(emit_event=False)
-                    while not (self.sockets or
-                               self._pending < self._max_connecting):
+                    while not (self.sockets or self._pending < self._max_connecting):
                         if not _cond_wait(self._max_connecting_cond, deadline):
                             # Timed out, notify the next thread to ensure a
                             # timeout doesn't consume the condition.
-                            if (self.sockets or
-                                    self._pending < self._max_connecting):
+                            if self.sockets or self._pending < self._max_connecting:
                                 self._max_connecting_cond.notify()
                             emitted_event = True
                             self._raise_wait_queue_timeout()
@@ -1453,7 +1500,8 @@ class Pool:
 
             if self.enabled_for_cmap and not emitted_event:
                 self.opts._event_listeners.publish_connection_check_out_failed(
-                    self.address, ConnectionCheckOutFailedReason.CONN_ERROR)
+                    self.address, ConnectionCheckOutFailedReason.CONN_ERROR
+                )
             raise
 
         sock_info.active = True
@@ -1483,14 +1531,13 @@ class Pool:
                 # CMAP requires the closed event be emitted after the check in.
                 if self.enabled_for_cmap:
                     listeners.publish_connection_closed(
-                        self.address, sock_info.id,
-                        ConnectionClosedReason.ERROR)
+                        self.address, sock_info.id, ConnectionClosedReason.ERROR
+                    )
             else:
                 with self.lock:
                     # Hold the lock to ensure this section does not race with
                     # Pool.reset().
-                    if self.stale_generation(sock_info.generation,
-                                             sock_info.service_id):
+                    if self.stale_generation(sock_info.generation, sock_info.service_id):
                         sock_info.close_socket(ConnectionClosedReason.STALE)
                     else:
                         sock_info.update_last_checkin_time()
@@ -1525,14 +1572,16 @@ class Pool:
         """
         idle_time_seconds = sock_info.idle_time_seconds()
         # If socket is idle, open a new one.
-        if (self.opts.max_idle_time_seconds is not None and
-                idle_time_seconds > self.opts.max_idle_time_seconds):
+        if (
+            self.opts.max_idle_time_seconds is not None
+            and idle_time_seconds > self.opts.max_idle_time_seconds
+        ):
             sock_info.close_socket(ConnectionClosedReason.IDLE)
             return True
 
-        if (self._check_interval_seconds is not None and (
-                0 == self._check_interval_seconds or
-                idle_time_seconds > self._check_interval_seconds)):
+        if self._check_interval_seconds is not None and (
+            0 == self._check_interval_seconds or idle_time_seconds > self._check_interval_seconds
+        ):
             if sock_info.socket_closed():
                 sock_info.close_socket(ConnectionClosedReason.ERROR)
                 return True
@@ -1547,20 +1596,28 @@ class Pool:
         listeners = self.opts._event_listeners
         if self.enabled_for_cmap:
             listeners.publish_connection_check_out_failed(
-                self.address, ConnectionCheckOutFailedReason.TIMEOUT)
+                self.address, ConnectionCheckOutFailedReason.TIMEOUT
+            )
         if self.opts.load_balanced:
             other_ops = self.active_sockets - self.ncursors - self.ntxns
             raise ConnectionFailure(
-                'Timeout waiting for connection from the connection pool. '
-                'maxPoolSize: %s, connections in use by cursors: %s, '
-                'connections in use by transactions: %s, connections in use '
-                'by other operations: %s, wait_queue_timeout: %s' % (
-                    self.opts.max_pool_size, self.ncursors, self.ntxns,
-                    other_ops, self.opts.wait_queue_timeout))
+                "Timeout waiting for connection from the connection pool. "
+                "maxPoolSize: %s, connections in use by cursors: %s, "
+                "connections in use by transactions: %s, connections in use "
+                "by other operations: %s, wait_queue_timeout: %s"
+                % (
+                    self.opts.max_pool_size,
+                    self.ncursors,
+                    self.ntxns,
+                    other_ops,
+                    self.opts.wait_queue_timeout,
+                )
+            )
         raise ConnectionFailure(
-            'Timed out while checking out a connection from connection pool. '
-            'maxPoolSize: %s, wait_queue_timeout: %s' % (
-                self.opts.max_pool_size, self.opts.wait_queue_timeout))
+            "Timed out while checking out a connection from connection pool. "
+            "maxPoolSize: %s, wait_queue_timeout: %s"
+            % (self.opts.max_pool_size, self.opts.wait_queue_timeout)
+        )
 
     def __del__(self):
         # Avoid ResourceWarnings in Python 3

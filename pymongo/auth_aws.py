@@ -18,11 +18,14 @@ try:
     import pymongo_auth_aws
     from pymongo_auth_aws import (AwsCredential, AwsSaslContext,
                                   PyMongoAuthAwsError)
+
     _HAVE_MONGODB_AWS = True
 except ImportError:
+
     class AwsSaslContext(object):  # type: ignore
         def __init__(self, credentials):
             pass
+
     _HAVE_MONGODB_AWS = False
 
 import bson
@@ -47,38 +50,46 @@ class _AwsSaslContext(AwsSaslContext):  # type: ignore
 
 
 def _authenticate_aws(credentials, sock_info):
-    """Authenticate using MONGODB-AWS.
-    """
+    """Authenticate using MONGODB-AWS."""
     if not _HAVE_MONGODB_AWS:
         raise ConfigurationError(
             "MONGODB-AWS authentication requires pymongo-auth-aws: "
-            "install with: python -m pip install 'pymongo[aws]'")
+            "install with: python -m pip install 'pymongo[aws]'"
+        )
 
     if sock_info.max_wire_version < 9:
-        raise ConfigurationError(
-            "MONGODB-AWS authentication requires MongoDB version 4.4 or later")
+        raise ConfigurationError("MONGODB-AWS authentication requires MongoDB version 4.4 or later")
 
     try:
-        ctx = _AwsSaslContext(AwsCredential(
-            credentials.username, credentials.password,
-            credentials.mechanism_properties.aws_session_token))
+        ctx = _AwsSaslContext(
+            AwsCredential(
+                credentials.username,
+                credentials.password,
+                credentials.mechanism_properties.aws_session_token,
+            )
+        )
         client_payload = ctx.step(None)
-        client_first = SON([('saslStart', 1),
-                            ('mechanism', 'MONGODB-AWS'),
-                            ('payload', client_payload)])
-        server_first = sock_info.command('$external', client_first)
+        client_first = SON(
+            [("saslStart", 1), ("mechanism", "MONGODB-AWS"), ("payload", client_payload)]
+        )
+        server_first = sock_info.command("$external", client_first)
         res = server_first
         # Limit how many times we loop to catch protocol / library issues
         for _ in range(10):
-            client_payload = ctx.step(res['payload'])
-            cmd = SON([('saslContinue', 1),
-                       ('conversationId', server_first['conversationId']),
-                       ('payload', client_payload)])
-            res = sock_info.command('$external', cmd)
-            if res['done']:
+            client_payload = ctx.step(res["payload"])
+            cmd = SON(
+                [
+                    ("saslContinue", 1),
+                    ("conversationId", server_first["conversationId"]),
+                    ("payload", client_payload),
+                ]
+            )
+            res = sock_info.command("$external", cmd)
+            if res["done"]:
                 # SASL complete.
                 break
     except PyMongoAuthAwsError as exc:
         # Convert to OperationFailure and include pymongo-auth-aws version.
-        raise OperationFailure('%s (pymongo-auth-aws version %s)' % (
-            exc, pymongo_auth_aws.__version__))
+        raise OperationFailure(
+            "%s (pymongo-auth-aws version %s)" % (exc, pymongo_auth_aws.__version__)
+        )

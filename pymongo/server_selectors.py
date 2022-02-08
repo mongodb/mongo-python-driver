@@ -29,32 +29,28 @@ class Selection(object):
                 primary = sd
                 break
 
-        return Selection(topology_description,
-                         topology_description.known_servers,
-                         topology_description.common_wire_version,
-                         primary)
+        return Selection(
+            topology_description,
+            topology_description.known_servers,
+            topology_description.common_wire_version,
+            primary,
+        )
 
-    def __init__(self,
-                 topology_description,
-                 server_descriptions,
-                 common_wire_version,
-                 primary):
+    def __init__(self, topology_description, server_descriptions, common_wire_version, primary):
         self.topology_description = topology_description
         self.server_descriptions = server_descriptions
         self.primary = primary
         self.common_wire_version = common_wire_version
 
     def with_server_descriptions(self, server_descriptions):
-        return Selection(self.topology_description,
-                         server_descriptions,
-                         self.common_wire_version,
-                         self.primary)
+        return Selection(
+            self.topology_description, server_descriptions, self.common_wire_version, self.primary
+        )
 
     def secondary_with_max_last_write_date(self):
         secondaries = secondary_server_selector(self)
         if secondaries.server_descriptions:
-            return max(secondaries.server_descriptions,
-                       key=lambda sd: sd.last_write_date)
+            return max(secondaries.server_descriptions, key=lambda sd: sd.last_write_date)
 
     @property
     def primary_selection(self):
@@ -82,30 +78,31 @@ def any_server_selector(selection):
 
 def readable_server_selector(selection):
     return selection.with_server_descriptions(
-        [s for s in selection.server_descriptions if s.is_readable])
+        [s for s in selection.server_descriptions if s.is_readable]
+    )
 
 
 def writable_server_selector(selection):
     return selection.with_server_descriptions(
-        [s for s in selection.server_descriptions if s.is_writable])
+        [s for s in selection.server_descriptions if s.is_writable]
+    )
 
 
 def secondary_server_selector(selection):
     return selection.with_server_descriptions(
-        [s for s in selection.server_descriptions
-         if s.server_type == SERVER_TYPE.RSSecondary])
+        [s for s in selection.server_descriptions if s.server_type == SERVER_TYPE.RSSecondary]
+    )
 
 
 def arbiter_server_selector(selection):
     return selection.with_server_descriptions(
-        [s for s in selection.server_descriptions
-         if s.server_type == SERVER_TYPE.RSArbiter])
+        [s for s in selection.server_descriptions if s.server_type == SERVER_TYPE.RSArbiter]
+    )
 
 
 def writable_preferred_server_selector(selection):
     """Like PrimaryPreferred but doesn't use tags or latency."""
-    return (writable_server_selector(selection) or
-            secondary_server_selector(selection))
+    return writable_server_selector(selection) or secondary_server_selector(selection)
 
 
 def apply_single_tag_set(tag_set, selection):
@@ -116,6 +113,7 @@ def apply_single_tag_set(tag_set, selection):
 
     The empty tag set {} matches any server.
     """
+
     def tags_match(server_tags):
         for key, value in tag_set.items():
             if key not in server_tags or server_tags[key] != value:
@@ -124,7 +122,8 @@ def apply_single_tag_set(tag_set, selection):
         return True
 
     return selection.with_server_descriptions(
-        [s for s in selection.server_descriptions if tags_match(s.tags)])
+        [s for s in selection.server_descriptions if tags_match(s.tags)]
+    )
 
 
 def apply_tag_sets(tag_sets, selection):

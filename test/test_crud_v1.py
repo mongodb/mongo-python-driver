@@ -19,26 +19,21 @@ import sys
 
 sys.path[0:0] = [""]
 
-from pymongo import operations, WriteConcern
+from test import IntegrationTest, client_context, unittest
+from test.utils import (TestCreator, camel_to_snake, camel_to_snake_args,
+                        camel_to_upper_camel, drop_collections)
+
+from pymongo import WriteConcern, operations
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 from pymongo.errors import PyMongoError
+from pymongo.operations import (DeleteMany, DeleteOne, InsertOne, ReplaceOne,
+                                UpdateMany, UpdateOne)
 from pymongo.read_concern import ReadConcern
-from pymongo.results import _WriteResult, BulkWriteResult
-from pymongo.operations import (InsertOne,
-                                DeleteOne,
-                                DeleteMany,
-                                ReplaceOne,
-                                UpdateOne,
-                                UpdateMany)
-
-from test import client_context, unittest, IntegrationTest
-from test.utils import (camel_to_snake, camel_to_upper_camel,
-                        camel_to_snake_args, drop_collections, TestCreator)
+from pymongo.results import BulkWriteResult, _WriteResult
 
 # Location of JSON test specifications.
-_TEST_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), 'crud', 'v1')
+_TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "crud", "v1")
 
 
 class TestAllScenarios(IntegrationTest):
@@ -51,8 +46,7 @@ def check_result(self, expected_result, result):
             prop = camel_to_snake(res)
             msg = "%s : %r != %r" % (prop, expected_result, result)
             # SPEC-869: Only BulkWriteResult has upserted_count.
-            if (prop == "upserted_count"
-                    and not isinstance(result, BulkWriteResult)):
+            if prop == "upserted_count" and not isinstance(result, BulkWriteResult):
                 if result.upserted_id is not None:  # type: ignore
                     upserted_count = 1
                 else:
@@ -61,8 +55,7 @@ def check_result(self, expected_result, result):
             elif prop == "inserted_ids":
                 # BulkWriteResult does not have inserted_ids.
                 if isinstance(result, BulkWriteResult):
-                    self.assertEqual(len(expected_result[res]),
-                                     result.inserted_count)
+                    self.assertEqual(len(expected_result[res]), result.inserted_count)
                 else:
                     # InsertManyResult may be compared to [id1] from the
                     # crud spec or {"0": id1} from the retryable write spec.
@@ -78,8 +71,7 @@ def check_result(self, expected_result, result):
                     expected_ids[int(str_index)] = ids[str_index]
                 self.assertEqual(expected_ids, result.upserted_ids, msg)  # type: ignore
             else:
-                self.assertEqual(
-                    getattr(result, prop), expected_result[res], msg)
+                self.assertEqual(getattr(result, prop), expected_result[res], msg)
 
     else:
         self.assertEqual(result, expected_result)
@@ -87,16 +79,16 @@ def check_result(self, expected_result, result):
 
 def run_operation(collection, test):
     # Convert command from CamelCase to pymongo.collection method.
-    operation = camel_to_snake(test['operation']['name'])
+    operation = camel_to_snake(test["operation"]["name"])
     cmd = getattr(collection, operation)
 
     # Convert arguments to snake_case and handle special cases.
-    arguments = test['operation']['arguments']
+    arguments = test["operation"]["arguments"]
     options = arguments.pop("options", {})
     for option_name in options:
         arguments[camel_to_snake(option_name)] = options[option_name]
-    if operation == 'count':
-        raise unittest.SkipTest('PyMongo does not support count')
+    if operation == "count":
+        raise unittest.SkipTest("PyMongo does not support count")
     if operation == "bulk_write":
         # Parse each request into a bulk write model.
         requests = []
@@ -137,15 +129,15 @@ def create_test(scenario_def, test, name):
     def run_scenario(self):
         # Cleanup state and load data (if provided).
         drop_collections(self.db)
-        data = scenario_def.get('data')
+        data = scenario_def.get("data")
         if data:
-            self.db.test.with_options(
-                write_concern=WriteConcern(w="majority")).insert_many(
-                scenario_def['data'])
+            self.db.test.with_options(write_concern=WriteConcern(w="majority")).insert_many(
+                scenario_def["data"]
+            )
 
         # Run operations and check results or errors.
-        expected_result = test.get('outcome', {}).get('result')
-        expected_error = test.get('outcome', {}).get('error')
+        expected_result = test.get("outcome", {}).get("result")
+        expected_error = test.get("outcome", {}).get("error")
         if expected_error is True:
             with self.assertRaises(PyMongoError):
                 run_operation(self.db.test, test)
@@ -155,16 +147,15 @@ def create_test(scenario_def, test, name):
                 check_result(self, expected_result, result)
 
         # Assert final state is expected.
-        expected_c = test['outcome'].get('collection')
+        expected_c = test["outcome"].get("collection")
         if expected_c is not None:
-            expected_name = expected_c.get('name')
+            expected_name = expected_c.get("name")
             if expected_name is not None:
                 db_coll = self.db[expected_name]
             else:
                 db_coll = self.db.test
-            db_coll = db_coll.with_options(
-                read_concern=ReadConcern(level="local"))
-            self.assertEqual(list(db_coll.find()), expected_c['data'])
+            db_coll = db_coll.with_options(read_concern=ReadConcern(level="local"))
+            self.assertEqual(list(db_coll.find()), expected_c["data"])
 
     return run_scenario
 
@@ -175,53 +166,68 @@ test_creator.create_tests()
 
 class TestWriteOpsComparison(unittest.TestCase):
     def test_InsertOneEquals(self):
-        self.assertEqual(InsertOne({'foo': 42}), InsertOne({'foo': 42}))
+        self.assertEqual(InsertOne({"foo": 42}), InsertOne({"foo": 42}))
 
     def test_InsertOneNotEquals(self):
-        self.assertNotEqual(InsertOne({'foo': 42}), InsertOne({'foo': 23}))
+        self.assertNotEqual(InsertOne({"foo": 42}), InsertOne({"foo": 23}))
 
     def test_DeleteOneEquals(self):
-        self.assertEqual(DeleteOne({'foo': 42}), DeleteOne({'foo': 42}))
+        self.assertEqual(DeleteOne({"foo": 42}), DeleteOne({"foo": 42}))
 
     def test_DeleteOneNotEquals(self):
-        self.assertNotEqual(DeleteOne({'foo': 42}), DeleteOne({'foo': 23}))
+        self.assertNotEqual(DeleteOne({"foo": 42}), DeleteOne({"foo": 23}))
 
     def test_DeleteManyEquals(self):
-        self.assertEqual(DeleteMany({'foo': 42}), DeleteMany({'foo': 42}))
+        self.assertEqual(DeleteMany({"foo": 42}), DeleteMany({"foo": 42}))
 
     def test_DeleteManyNotEquals(self):
-        self.assertNotEqual(DeleteMany({'foo': 42}), DeleteMany({'foo': 23}))
+        self.assertNotEqual(DeleteMany({"foo": 42}), DeleteMany({"foo": 23}))
 
     def test_DeleteOneNotEqualsDeleteMany(self):
-        self.assertNotEqual(DeleteOne({'foo': 42}), DeleteMany({'foo': 42}))
+        self.assertNotEqual(DeleteOne({"foo": 42}), DeleteMany({"foo": 42}))
 
     def test_ReplaceOneEquals(self):
-        self.assertEqual(ReplaceOne({'foo': 42}, {'bar': 42}, upsert=False),
-                         ReplaceOne({'foo': 42}, {'bar': 42}, upsert=False))
+        self.assertEqual(
+            ReplaceOne({"foo": 42}, {"bar": 42}, upsert=False),
+            ReplaceOne({"foo": 42}, {"bar": 42}, upsert=False),
+        )
 
     def test_ReplaceOneNotEquals(self):
-        self.assertNotEqual(ReplaceOne({'foo': 42}, {'bar': 42}, upsert=False),
-                            ReplaceOne({'foo': 42}, {'bar': 42}, upsert=True))
+        self.assertNotEqual(
+            ReplaceOne({"foo": 42}, {"bar": 42}, upsert=False),
+            ReplaceOne({"foo": 42}, {"bar": 42}, upsert=True),
+        )
 
     def test_UpdateOneEquals(self):
-        self.assertEqual(UpdateOne({'foo': 42}, {'$set': {'bar': 42}}),
-                         UpdateOne({'foo': 42}, {'$set': {'bar': 42}}))
+        self.assertEqual(
+            UpdateOne({"foo": 42}, {"$set": {"bar": 42}}),
+            UpdateOne({"foo": 42}, {"$set": {"bar": 42}}),
+        )
 
     def test_UpdateOneNotEquals(self):
-        self.assertNotEqual(UpdateOne({'foo': 42}, {'$set': {'bar': 42}}),
-                            UpdateOne({'foo': 42}, {'$set': {'bar': 23}}))
+        self.assertNotEqual(
+            UpdateOne({"foo": 42}, {"$set": {"bar": 42}}),
+            UpdateOne({"foo": 42}, {"$set": {"bar": 23}}),
+        )
 
     def test_UpdateManyEquals(self):
-        self.assertEqual(UpdateMany({'foo': 42}, {'$set': {'bar': 42}}),
-                         UpdateMany({'foo': 42}, {'$set': {'bar': 42}}))
+        self.assertEqual(
+            UpdateMany({"foo": 42}, {"$set": {"bar": 42}}),
+            UpdateMany({"foo": 42}, {"$set": {"bar": 42}}),
+        )
 
     def test_UpdateManyNotEquals(self):
-        self.assertNotEqual(UpdateMany({'foo': 42}, {'$set': {'bar': 42}}),
-                            UpdateMany({'foo': 42}, {'$set': {'bar': 23}}))
+        self.assertNotEqual(
+            UpdateMany({"foo": 42}, {"$set": {"bar": 42}}),
+            UpdateMany({"foo": 42}, {"$set": {"bar": 23}}),
+        )
 
     def test_UpdateOneNotEqualsUpdateMany(self):
-        self.assertNotEqual(UpdateOne({'foo': 42}, {'$set': {'bar': 42}}),
-                            UpdateMany({'foo': 42}, {'$set': {'bar': 42}}))
+        self.assertNotEqual(
+            UpdateOne({"foo": 42}, {"$set": {"bar": 42}}),
+            UpdateMany({"foo": 42}, {"$set": {"bar": 42}}),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

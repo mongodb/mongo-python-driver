@@ -21,8 +21,8 @@ dictionary."""
 import copy
 import re
 from collections.abc import Mapping as _Mapping
-from typing import (Any, Dict, Iterable, Iterator, List, Mapping,
-                    Optional, Pattern, Tuple, Type, TypeVar, Union)
+from typing import (Any, Dict, Iterable, Iterator, List, Mapping, Optional,
+                    Pattern, Tuple, Type, TypeVar, Union)
 
 # This sort of sucks, but seems to be as good as it gets...
 # This is essentially the same as re._pattern_type
@@ -40,9 +40,14 @@ class SON(Dict[_Key, _Value]):
     few extra niceties for dealing with SON. SON provides an API
     similar to collections.OrderedDict.
     """
+
     __keys: List[Any]
 
-    def __init__(self, data: Optional[Union[Mapping[_Key, _Value], Iterable[Tuple[_Key, _Value]]]] = None, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        data: Optional[Union[Mapping[_Key, _Value], Iterable[Tuple[_Key, _Value]]]] = None,
+        **kwargs: Any
+    ) -> None:
         self.__keys = []
         dict.__init__(self)
         self.update(data)
@@ -107,8 +112,7 @@ class SON(Dict[_Key, _Value]):
 
     def pop(self, key: _Key, *args: Union[_Value, _T]) -> Union[_Value, _T]:
         if len(args) > 1:
-            raise TypeError("pop expected at most 2 arguments, got "\
-                                + repr(1 + len(args)))
+            raise TypeError("pop expected at most 2 arguments, got " + repr(1 + len(args)))
         try:
             value = self[key]
         except KeyError:
@@ -122,7 +126,7 @@ class SON(Dict[_Key, _Value]):
         try:
             k, v = next(iter(self.items()))
         except StopIteration:
-            raise KeyError('container is empty')
+            raise KeyError("container is empty")
         del self[k]
         return (k, v)
 
@@ -130,10 +134,10 @@ class SON(Dict[_Key, _Value]):
         # Make progressively weaker assumptions about "other"
         if other is None:
             pass
-        elif hasattr(other, 'items'):
+        elif hasattr(other, "items"):
             for k, v in other.items():
                 self[k] = v
-        elif hasattr(other, 'keys'):
+        elif hasattr(other, "keys"):
             for k in other.keys():
                 self[k] = other[k]
         else:
@@ -153,8 +157,7 @@ class SON(Dict[_Key, _Value]):
         regular dictionary is order-insensitive.
         """
         if isinstance(other, SON):
-            return len(self) == len(other) and list(self.items()) == \
-                   list(other.items())
+            return len(self) == len(other) and list(self.items()) == list(other.items())
         return self.to_dict() == other
 
     def __ne__(self, other: Any) -> bool:
@@ -174,9 +177,7 @@ class SON(Dict[_Key, _Value]):
             if isinstance(value, list):
                 return [transform_value(v) for v in value]
             elif isinstance(value, _Mapping):
-                return dict([
-                    (k, transform_value(v))
-                    for k, v in value.items()])
+                return dict([(k, transform_value(v)) for k, v in value.items()])
             else:
                 return value
 

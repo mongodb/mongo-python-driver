@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Tuple, Type, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Tuple, Type, Union
 from uuid import UUID
 
 """Tools for representing BSON binary data.
@@ -163,13 +163,15 @@ ALL_UUID_REPRESENTATIONS = (
     UuidRepresentation.STANDARD,
     UuidRepresentation.PYTHON_LEGACY,
     UuidRepresentation.JAVA_LEGACY,
-    UuidRepresentation.CSHARP_LEGACY)
+    UuidRepresentation.CSHARP_LEGACY,
+)
 UUID_REPRESENTATION_NAMES = {
-    UuidRepresentation.UNSPECIFIED: 'UuidRepresentation.UNSPECIFIED',
-    UuidRepresentation.STANDARD: 'UuidRepresentation.STANDARD',
-    UuidRepresentation.PYTHON_LEGACY: 'UuidRepresentation.PYTHON_LEGACY',
-    UuidRepresentation.JAVA_LEGACY: 'UuidRepresentation.JAVA_LEGACY',
-    UuidRepresentation.CSHARP_LEGACY: 'UuidRepresentation.CSHARP_LEGACY'}
+    UuidRepresentation.UNSPECIFIED: "UuidRepresentation.UNSPECIFIED",
+    UuidRepresentation.STANDARD: "UuidRepresentation.STANDARD",
+    UuidRepresentation.PYTHON_LEGACY: "UuidRepresentation.PYTHON_LEGACY",
+    UuidRepresentation.JAVA_LEGACY: "UuidRepresentation.JAVA_LEGACY",
+    UuidRepresentation.CSHARP_LEGACY: "UuidRepresentation.CSHARP_LEGACY",
+}
 
 MD5_SUBTYPE = 5
 """BSON binary subtype for an MD5 hash.
@@ -216,7 +218,11 @@ class Binary(bytes):
     _type_marker = 5
     __subtype: int
 
-    def __new__(cls: Type["Binary"], data: Union[memoryview, bytes, "_mmap", "_array"], subtype: int = BINARY_SUBTYPE) -> "Binary":
+    def __new__(
+        cls: Type["Binary"],
+        data: Union[memoryview, bytes, "_mmap", "_array"],
+        subtype: int = BINARY_SUBTYPE,
+    ) -> "Binary":
         if not isinstance(subtype, int):
             raise TypeError("subtype must be an instance of int")
         if subtype >= 256 or subtype < 0:
@@ -227,7 +233,9 @@ class Binary(bytes):
         return self
 
     @classmethod
-    def from_uuid(cls: Type["Binary"], uuid: UUID, uuid_representation: int = UuidRepresentation.STANDARD) -> "Binary":
+    def from_uuid(
+        cls: Type["Binary"], uuid: UUID, uuid_representation: int = UuidRepresentation.STANDARD
+    ) -> "Binary":
         """Create a BSON Binary object from a Python UUID.
 
         Creates a :class:`~bson.binary.Binary` object from a
@@ -251,8 +259,9 @@ class Binary(bytes):
             raise TypeError("uuid must be an instance of uuid.UUID")
 
         if uuid_representation not in ALL_UUID_REPRESENTATIONS:
-            raise ValueError("uuid_representation must be a value "
-                             "from bson.binary.UuidRepresentation")
+            raise ValueError(
+                "uuid_representation must be a value " "from bson.binary.UuidRepresentation"
+            )
 
         if uuid_representation == UuidRepresentation.UNSPECIFIED:
             raise ValueError(
@@ -261,7 +270,8 @@ class Binary(bytes):
                 "converted to bson.Binary instances using "
                 "bson.Binary.from_uuid() or a different UuidRepresentation "
                 "can be configured. See the documentation for "
-                "UuidRepresentation for more information.")
+                "UuidRepresentation for more information."
+            )
 
         subtype = OLD_UUID_SUBTYPE
         if uuid_representation == UuidRepresentation.PYTHON_LEGACY:
@@ -296,12 +306,12 @@ class Binary(bytes):
         .. versionadded:: 3.11
         """
         if self.subtype not in ALL_UUID_SUBTYPES:
-            raise ValueError("cannot decode subtype %s as a uuid" % (
-                self.subtype,))
+            raise ValueError("cannot decode subtype %s as a uuid" % (self.subtype,))
 
         if uuid_representation not in ALL_UUID_REPRESENTATIONS:
-            raise ValueError("uuid_representation must be a value from "
-                             "bson.binary.UuidRepresentation")
+            raise ValueError(
+                "uuid_representation must be a value from " "bson.binary.UuidRepresentation"
+            )
 
         if uuid_representation == UuidRepresentation.UNSPECIFIED:
             raise ValueError("uuid_representation cannot be UNSPECIFIED")
@@ -319,26 +329,26 @@ class Binary(bytes):
             if self.subtype == UUID_SUBTYPE:
                 return UUID(bytes=self)
 
-        raise ValueError("cannot decode subtype %s to %s" % (
-                self.subtype, UUID_REPRESENTATION_NAMES[uuid_representation]))
+        raise ValueError(
+            "cannot decode subtype %s to %s"
+            % (self.subtype, UUID_REPRESENTATION_NAMES[uuid_representation])
+        )
 
     @property
     def subtype(self) -> int:
-        """Subtype of this binary data.
-        """
+        """Subtype of this binary data."""
         return self.__subtype
 
     def __getnewargs__(self) -> Tuple[bytes, int]:  # type: ignore[override]
         # Work around http://bugs.python.org/issue7382
         data = super(Binary, self).__getnewargs__()[0]
         if not isinstance(data, bytes):
-            data = data.encode('latin-1')
+            data = data.encode("latin-1")
         return data, self.__subtype
 
-    def __eq__(self, other : Any) -> bool:
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, Binary):
-            return ((self.__subtype, bytes(self)) ==
-                    (other.subtype, bytes(other)))
+            return (self.__subtype, bytes(self)) == (other.subtype, bytes(other))
         # We don't return NotImplemented here because if we did then
         # Binary("foo") == "foo" would return True, since Binary is a
         # subclass of str...

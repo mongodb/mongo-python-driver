@@ -21,6 +21,12 @@ import threading
 
 sys.path[0:0] = [""]
 
+from test import (IntegrationTest, PyMongoTestCase, client_context,
+                  client_knobs, unittest)
+from test.utils import (CMAPListener, OvertCommandListener, TestCreator,
+                        rs_or_single_client)
+from test.utils_spec_runner import SpecRunner
+
 from pymongo.mongo_client import MongoClient
 from pymongo.monitoring import (ConnectionCheckedOutEvent,
                                 ConnectionCheckOutFailedEvent,
@@ -28,21 +34,8 @@ from pymongo.monitoring import (ConnectionCheckedOutEvent,
                                 PoolClearedEvent)
 from pymongo.write_concern import WriteConcern
 
-from test import (client_context,
-                  client_knobs,
-                  IntegrationTest,
-                  PyMongoTestCase,
-                  unittest)
-from test.utils import (CMAPListener,
-                        OvertCommandListener,
-                        rs_or_single_client,
-                        TestCreator)
-from test.utils_spec_runner import SpecRunner
-
-
 # Location of JSON test specifications.
-_TEST_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), 'retryable_reads')
+_TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "retryable_reads")
 
 
 class TestClientOptions(PyMongoTestCase):
@@ -57,9 +50,9 @@ class TestClientOptions(PyMongoTestCase):
         self.assertEqual(client.options.retry_reads, False)
 
     def test_uri(self):
-        client = MongoClient('mongodb://h/?retryReads=true', connect=False)
+        client = MongoClient("mongodb://h/?retryReads=true", connect=False)
         self.assertEqual(client.options.retry_reads, True)
-        client = MongoClient('mongodb://h/?retryReads=false', connect=False)
+        client = MongoClient("mongodb://h/?retryReads=false", connect=False)
         self.assertEqual(client.options.retry_reads, False)
 
 
@@ -76,51 +69,49 @@ class TestSpec(SpecRunner):
 
     def maybe_skip_scenario(self, test):
         super(TestSpec, self).maybe_skip_scenario(test)
-        skip_names = [
-            'listCollectionObjects', 'listIndexNames', 'listDatabaseObjects']
+        skip_names = ["listCollectionObjects", "listIndexNames", "listDatabaseObjects"]
         for name in skip_names:
-            if name.lower() in test['description'].lower():
-                self.skipTest('PyMongo does not support %s' % (name,))
+            if name.lower() in test["description"].lower():
+                self.skipTest("PyMongo does not support %s" % (name,))
 
         # Serverless does not support $out and collation.
         if client_context.serverless:
-            for operation in test['operations']:
-                if operation['name'] == 'aggregate':
-                    for stage in operation['arguments']['pipeline']:
+            for operation in test["operations"]:
+                if operation["name"] == "aggregate":
+                    for stage in operation["arguments"]["pipeline"]:
                         if "$out" in stage:
-                            self.skipTest(
-                                "MongoDB Serverless does not support $out")
-                if "collation" in operation['arguments']:
-                    self.skipTest(
-                        "MongoDB Serverless does not support collations")
+                            self.skipTest("MongoDB Serverless does not support $out")
+                if "collation" in operation["arguments"]:
+                    self.skipTest("MongoDB Serverless does not support collations")
 
         # Skip changeStream related tests on MMAPv1 and serverless.
-        test_name = self.id().rsplit('.')[-1]
-        if 'changestream' in test_name.lower():
-            if client_context.storage_engine == 'mmapv1':
+        test_name = self.id().rsplit(".")[-1]
+        if "changestream" in test_name.lower():
+            if client_context.storage_engine == "mmapv1":
                 self.skipTest("MMAPv1 does not support change streams.")
             if client_context.serverless:
                 self.skipTest("Serverless does not support change streams.")
 
     def get_scenario_coll_name(self, scenario_def):
         """Override a test's collection name to support GridFS tests."""
-        if 'bucket_name' in scenario_def:
-            return scenario_def['bucket_name']
+        if "bucket_name" in scenario_def:
+            return scenario_def["bucket_name"]
         return super(TestSpec, self).get_scenario_coll_name(scenario_def)
 
     def setup_scenario(self, scenario_def):
         """Override a test's setup to support GridFS tests."""
-        if 'bucket_name' in scenario_def:
+        if "bucket_name" in scenario_def:
             db_name = self.get_scenario_db_name(scenario_def)
             db = client_context.client.get_database(
-                db_name, write_concern=WriteConcern(w='majority'))
+                db_name, write_concern=WriteConcern(w="majority")
+            )
             # Create a bucket for the retryable reads GridFS tests.
             client_context.client.drop_database(db_name)
-            if scenario_def['data']:
-                data = scenario_def['data']
+            if scenario_def["data"]:
+                data = scenario_def["data"]
                 # Load data.
-                db['fs.chunks'].insert_many(data['fs.chunks'])
-                db['fs.files'].insert_many(data['fs.files'])
+                db["fs.chunks"].insert_many(data["fs.chunks"])
+                db["fs.files"].insert_many(data["fs.files"])
         else:
             super(TestSpec, self).setup_scenario(scenario_def)
 
@@ -155,25 +146,23 @@ class TestPoolPausedError(IntegrationTest):
     RUN_ON_SERVERLESS = False
 
     @client_context.require_failCommand_blockConnection
-    @client_knobs(heartbeat_frequency=.05, min_heartbeat_interval=.05)
+    @client_knobs(heartbeat_frequency=0.05, min_heartbeat_interval=0.05)
     def test_pool_paused_error_is_retryable(self):
         cmap_listener = CMAPListener()
         cmd_listener = OvertCommandListener()
-        client = rs_or_single_client(
-            maxPoolSize=1,
-            event_listeners=[cmap_listener, cmd_listener])
+        client = rs_or_single_client(maxPoolSize=1, event_listeners=[cmap_listener, cmd_listener])
         self.addCleanup(client.close)
         for _ in range(10):
             cmap_listener.reset()
             cmd_listener.reset()
             threads = [FindThread(client.pymongo_test.test) for _ in range(2)]
             fail_command = {
-                'mode': {'times': 1},
-                'data': {
-                    'failCommands': ['find'],
-                    'blockConnection': True,
-                    'blockTimeMS': 1000,
-                    'errorCode': 91,
+                "mode": {"times": 1},
+                "data": {
+                    "failCommands": ["find"],
+                    "blockConnection": True,
+                    "blockTimeMS": 1000,
+                    "errorCode": 91,
                 },
             }
             with self.fail_point(fail_command):
@@ -192,29 +181,25 @@ class TestPoolPausedError(IntegrationTest):
                 break
 
         # Via CMAP monitoring, assert that the first check out succeeds.
-        cmap_events = cmap_listener.events_by_type((
-            ConnectionCheckedOutEvent,
-            ConnectionCheckOutFailedEvent,
-            PoolClearedEvent))
+        cmap_events = cmap_listener.events_by_type(
+            (ConnectionCheckedOutEvent, ConnectionCheckOutFailedEvent, PoolClearedEvent)
+        )
         msg = pprint.pformat(cmap_listener.events)
         self.assertIsInstance(cmap_events[0], ConnectionCheckedOutEvent, msg)
         self.assertIsInstance(cmap_events[1], PoolClearedEvent, msg)
-        self.assertIsInstance(
-            cmap_events[2], ConnectionCheckOutFailedEvent, msg)
-        self.assertEqual(cmap_events[2].reason,
-                         ConnectionCheckOutFailedReason.CONN_ERROR,
-                         msg)
+        self.assertIsInstance(cmap_events[2], ConnectionCheckOutFailedEvent, msg)
+        self.assertEqual(cmap_events[2].reason, ConnectionCheckOutFailedReason.CONN_ERROR, msg)
         self.assertIsInstance(cmap_events[3], ConnectionCheckedOutEvent, msg)
 
         # Connection check out failures are not reflected in command
         # monitoring because we only publish command events _after_ checking
         # out a connection.
-        started = cmd_listener.results['started']
+        started = cmd_listener.results["started"]
         msg = pprint.pformat(cmd_listener.results)
         self.assertEqual(3, len(started), msg)
-        succeeded = cmd_listener.results['succeeded']
+        succeeded = cmd_listener.results["succeeded"]
         self.assertEqual(2, len(succeeded), msg)
-        failed = cmd_listener.results['failed']
+        failed = cmd_listener.results["failed"]
         self.assertEqual(1, len(failed), msg)
 
 

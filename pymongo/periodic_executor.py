@@ -22,7 +22,7 @@ from typing import Any, Optional
 
 class PeriodicExecutor(object):
     def __init__(self, interval, min_interval, target, name=None):
-        """"Run a target function periodically on a background thread.
+        """ "Run a target function periodically on a background thread.
 
         If the target's return value is false, the executor stops.
 
@@ -50,8 +50,7 @@ class PeriodicExecutor(object):
         self._lock = threading.Lock()
 
     def __repr__(self):
-        return '<%s(name=%s) object at 0x%x>' % (
-            self.__class__.__name__, self._name, id(self))
+        return "<%s(name=%s) object at 0x%x>" % (self.__class__.__name__, self._name, id(self))
 
     def open(self) -> None:
         """Start. Multiple calls have no effect.

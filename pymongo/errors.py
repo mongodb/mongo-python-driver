@@ -25,16 +25,15 @@ except ImportError:
     try:
         from ssl import CertificateError as _CertificateError
     except ImportError:
+
         class _CertificateError(ValueError):  # type: ignore
             pass
 
 
 class PyMongoError(Exception):
     """Base class for all PyMongo exceptions."""
-    def __init__(self,
-        message: str = '',
-        error_labels: Optional[Iterable[str]] = None
-    ) -> None:
+
+    def __init__(self, message: str = "", error_labels: Optional[Iterable[str]] = None) -> None:
         super(PyMongoError, self).__init__(message)
         self._message = message
         self._error_labels = set(error_labels or [])
@@ -75,17 +74,17 @@ class AutoReconnect(ConnectionFailure):
 
     Subclass of :exc:`~pymongo.errors.ConnectionFailure`.
     """
+
     errors: Union[Mapping[str, Any], Sequence]
     details: Union[Mapping[str, Any], Sequence]
 
-    def __init__(self,
-        message: str = '',
-        errors: Optional[Union[Mapping[str, Any], Sequence]] = None
+    def __init__(
+        self, message: str = "", errors: Optional[Union[Mapping[str, Any], Sequence]] = None
     ) -> None:
         error_labels = None
         if errors is not None:
             if isinstance(errors, dict):
-                error_labels = errors.get('errorLabels')
+                error_labels = errors.get("errorLabels")
         super(AutoReconnect, self).__init__(message, error_labels)
         self.errors = self.details = errors or []
 
@@ -121,12 +120,13 @@ class NotPrimaryError(AutoReconnect):
 
     .. versionadded:: 3.12
     """
-    def __init__(self,
-        message: str = '',
-        errors: Optional[Union[Mapping[str, Any], List]] = None
+
+    def __init__(
+        self, message: str = "", errors: Optional[Union[Mapping[str, Any], List]] = None
     ) -> None:
         super(NotPrimaryError, self).__init__(
-            _format_detailed_error(message, errors), errors=errors)
+            _format_detailed_error(message, errors), errors=errors
+        )
 
 
 class ServerSelectionTimeoutError(AutoReconnect):
@@ -143,8 +143,7 @@ class ServerSelectionTimeoutError(AutoReconnect):
 
 
 class ConfigurationError(PyMongoError):
-    """Raised when something is incorrectly configured.
-    """
+    """Raised when something is incorrectly configured."""
 
 
 class OperationFailure(PyMongoError):
@@ -154,7 +153,8 @@ class OperationFailure(PyMongoError):
        The :attr:`details` attribute.
     """
 
-    def __init__(self,
+    def __init__(
+        self,
         error: str,
         code: Optional[int] = None,
         details: Optional[Mapping[str, Any]] = None,
@@ -162,9 +162,10 @@ class OperationFailure(PyMongoError):
     ) -> None:
         error_labels = None
         if details is not None:
-            error_labels = details.get('errorLabels')
+            error_labels = details.get("errorLabels")
         super(OperationFailure, self).__init__(
-            _format_detailed_error(error, details), error_labels=error_labels)
+            _format_detailed_error(error, details), error_labels=error_labels
+        )
         self.__code = code
         self.__details = details
         self.__max_wire_version = max_wire_version
@@ -175,8 +176,7 @@ class OperationFailure(PyMongoError):
 
     @property
     def code(self) -> Optional[int]:
-        """The error code returned by the server, if any.
-        """
+        """The error code returned by the server, if any."""
         return self.__code
 
     @property
@@ -190,7 +190,6 @@ class OperationFailure(PyMongoError):
         on multiple shards.
         """
         return self.__details
-
 
 
 class CursorNotFound(OperationFailure):
@@ -245,15 +244,14 @@ class BulkWriteError(OperationFailure):
 
     .. versionadded:: 2.7
     """
+
     details: Mapping[str, Any]
 
     def __init__(self, results: Mapping[str, Any]) -> None:
-        super(BulkWriteError, self).__init__(
-            "batch op errors occurred", 65, results)
+        super(BulkWriteError, self).__init__("batch op errors occurred", 65, results)
 
     def __reduce__(self) -> Tuple[Any, Any]:
         return self.__class__, (self.details,)
-
 
 
 class InvalidOperation(PyMongoError):
@@ -273,8 +271,8 @@ class InvalidURI(ConfigurationError):
 
 
 class DocumentTooLarge(InvalidDocument):
-    """Raised when an encoded document is too large for the connected server.
-    """
+    """Raised when an encoded document is too large for the connected server."""
+
     pass
 
 
@@ -298,6 +296,6 @@ class EncryptionError(PyMongoError):
 
 
 class _OperationCancelled(AutoReconnect):
-    """Internal error raised when a socket operation is cancelled.
-    """
+    """Internal error raised when a socket operation is cancelled."""
+
     pass

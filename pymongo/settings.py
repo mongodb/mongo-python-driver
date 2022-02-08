@@ -27,32 +27,35 @@ from pymongo.topology_description import TOPOLOGY_TYPE
 
 
 class TopologySettings(object):
-    def __init__(self,
-                 seeds=None,
-                 replica_set_name=None,
-                 pool_class=None,
-                 pool_options=None,
-                 monitor_class=None,
-                 condition_class=None,
-                 local_threshold_ms=LOCAL_THRESHOLD_MS,
-                 server_selection_timeout=SERVER_SELECTION_TIMEOUT,
-                 heartbeat_frequency=common.HEARTBEAT_FREQUENCY,
-                 server_selector=None,
-                 fqdn=None,
-                 direct_connection=False,
-                 load_balanced=None,
-                 srv_service_name=common.SRV_SERVICE_NAME,
-                 srv_max_hosts=0):
+    def __init__(
+        self,
+        seeds=None,
+        replica_set_name=None,
+        pool_class=None,
+        pool_options=None,
+        monitor_class=None,
+        condition_class=None,
+        local_threshold_ms=LOCAL_THRESHOLD_MS,
+        server_selection_timeout=SERVER_SELECTION_TIMEOUT,
+        heartbeat_frequency=common.HEARTBEAT_FREQUENCY,
+        server_selector=None,
+        fqdn=None,
+        direct_connection=False,
+        load_balanced=None,
+        srv_service_name=common.SRV_SERVICE_NAME,
+        srv_max_hosts=0,
+    ):
         """Represent MongoClient's configuration.
 
         Take a list of (host, port) pairs and optional replica set name.
         """
         if heartbeat_frequency < common.MIN_HEARTBEAT_INTERVAL:
             raise ConfigurationError(
-                "heartbeatFrequencyMS cannot be less than %d" % (
-                    common.MIN_HEARTBEAT_INTERVAL * 1000,))
+                "heartbeatFrequencyMS cannot be less than %d"
+                % (common.MIN_HEARTBEAT_INTERVAL * 1000,)
+            )
 
-        self._seeds = seeds or [('localhost', 27017)]
+        self._seeds = seeds or [("localhost", 27017)]
         self._replica_set_name = replica_set_name
         self._pool_class = pool_class or pool.Pool
         self._pool_options = pool_options or PoolOptions()
@@ -71,7 +74,7 @@ class TopologySettings(object):
         self._topology_id = ObjectId()
         # Store the allocation traceback to catch unclosed clients in the
         # test suite.
-        self._stack = ''.join(traceback.format_stack())
+        self._stack = "".join(traceback.format_stack())
 
     @property
     def seeds(self):
@@ -153,6 +156,4 @@ class TopologySettings(object):
 
     def get_server_descriptions(self):
         """Initial dict of (address, ServerDescription) for all seeds."""
-        return dict([
-            (address, ServerDescription(address))
-            for address in self.seeds])
+        return dict([(address, ServerDescription(address)) for address in self.seeds])

@@ -34,7 +34,8 @@ HAVE_KERBEROS = True
 _USE_PRINCIPAL = False
 try:
     import winkerberos as kerberos
-    if tuple(map(int, kerberos.__version__.split('.')[:2])) >= (0, 5):
+
+    if tuple(map(int, kerberos.__version__.split(".")[:2])) >= (0, 5):
         _USE_PRINCIPAL = True
 except ImportError:
     try:
@@ -44,21 +45,24 @@ except ImportError:
 
 
 MECHANISMS = frozenset(
-    ['GSSAPI',
-     'MONGODB-CR',
-     'MONGODB-X509',
-     'MONGODB-AWS',
-     'PLAIN',
-     'SCRAM-SHA-1',
-     'SCRAM-SHA-256',
-     'DEFAULT'])
+    [
+        "GSSAPI",
+        "MONGODB-CR",
+        "MONGODB-X509",
+        "MONGODB-AWS",
+        "PLAIN",
+        "SCRAM-SHA-1",
+        "SCRAM-SHA-256",
+        "DEFAULT",
+    ]
+)
 """The authentication mechanisms supported by PyMongo."""
 
 
 class _Cache(object):
     __slots__ = ("data",)
 
-    _hash_val = hash('_Cache')
+    _hash_val = hash("_Cache")
 
     def __init__(self):
         self.data = None
@@ -78,80 +82,69 @@ class _Cache(object):
         return self._hash_val
 
 
-
 MongoCredential = namedtuple(
-    'MongoCredential',
-    ['mechanism',
-     'source',
-     'username',
-     'password',
-     'mechanism_properties',
-     'cache'])
+    "MongoCredential",
+    ["mechanism", "source", "username", "password", "mechanism_properties", "cache"],
+)
 """A hashable namedtuple of values used for authentication."""
 
 
-GSSAPIProperties = namedtuple('GSSAPIProperties',
-                              ['service_name',
-                               'canonicalize_host_name',
-                               'service_realm'])
+GSSAPIProperties = namedtuple(
+    "GSSAPIProperties", ["service_name", "canonicalize_host_name", "service_realm"]
+)
 """Mechanism properties for GSSAPI authentication."""
 
 
-_AWSProperties = namedtuple('_AWSProperties', ['aws_session_token'])
+_AWSProperties = namedtuple("_AWSProperties", ["aws_session_token"])
 """Mechanism properties for MONGODB-AWS authentication."""
 
 
 def _build_credentials_tuple(mech, source, user, passwd, extra, database):
-    """Build and return a mechanism specific credentials tuple.
-    """
-    if mech not in ('MONGODB-X509', 'MONGODB-AWS') and user is None:
+    """Build and return a mechanism specific credentials tuple."""
+    if mech not in ("MONGODB-X509", "MONGODB-AWS") and user is None:
         raise ConfigurationError("%s requires a username." % (mech,))
-    if mech == 'GSSAPI':
-        if source is not None and source != '$external':
-            raise ValueError(
-                "authentication source must be $external or None for GSSAPI")
-        properties = extra.get('authmechanismproperties', {})
-        service_name = properties.get('SERVICE_NAME', 'mongodb')
-        canonicalize = properties.get('CANONICALIZE_HOST_NAME', False)
-        service_realm = properties.get('SERVICE_REALM')
-        props = GSSAPIProperties(service_name=service_name,
-                                 canonicalize_host_name=canonicalize,
-                                 service_realm=service_realm)
+    if mech == "GSSAPI":
+        if source is not None and source != "$external":
+            raise ValueError("authentication source must be $external or None for GSSAPI")
+        properties = extra.get("authmechanismproperties", {})
+        service_name = properties.get("SERVICE_NAME", "mongodb")
+        canonicalize = properties.get("CANONICALIZE_HOST_NAME", False)
+        service_realm = properties.get("SERVICE_REALM")
+        props = GSSAPIProperties(
+            service_name=service_name,
+            canonicalize_host_name=canonicalize,
+            service_realm=service_realm,
+        )
         # Source is always $external.
-        return MongoCredential(mech, '$external', user, passwd, props, None)
-    elif mech == 'MONGODB-X509':
+        return MongoCredential(mech, "$external", user, passwd, props, None)
+    elif mech == "MONGODB-X509":
         if passwd is not None:
-            raise ConfigurationError(
-                "Passwords are not supported by MONGODB-X509")
-        if source is not None and source != '$external':
-            raise ValueError(
-                "authentication source must be "
-                "$external or None for MONGODB-X509")
+            raise ConfigurationError("Passwords are not supported by MONGODB-X509")
+        if source is not None and source != "$external":
+            raise ValueError("authentication source must be " "$external or None for MONGODB-X509")
         # Source is always $external, user can be None.
-        return MongoCredential(mech, '$external', user, None, None, None)
-    elif mech == 'MONGODB-AWS':
+        return MongoCredential(mech, "$external", user, None, None, None)
+    elif mech == "MONGODB-AWS":
         if user is not None and passwd is None:
+            raise ConfigurationError("username without a password is not supported by MONGODB-AWS")
+        if source is not None and source != "$external":
             raise ConfigurationError(
-                "username without a password is not supported by MONGODB-AWS")
-        if source is not None and source != '$external':
-            raise ConfigurationError(
-                "authentication source must be "
-                "$external or None for MONGODB-AWS")
+                "authentication source must be " "$external or None for MONGODB-AWS"
+            )
 
-        properties = extra.get('authmechanismproperties', {})
-        aws_session_token = properties.get('AWS_SESSION_TOKEN')
+        properties = extra.get("authmechanismproperties", {})
+        aws_session_token = properties.get("AWS_SESSION_TOKEN")
         aws_props = _AWSProperties(aws_session_token=aws_session_token)
         # user can be None for temporary link-local EC2 credentials.
-        return MongoCredential(mech, '$external', user, passwd, aws_props, None)
-    elif mech == 'PLAIN':
-        source_database = source or database or '$external'
+        return MongoCredential(mech, "$external", user, passwd, aws_props, None)
+    elif mech == "PLAIN":
+        source_database = source or database or "$external"
         return MongoCredential(mech, source_database, user, passwd, None, None)
     else:
-        source_database = source or database or 'admin'
+        source_database = source or database or "admin"
         if passwd is None:
             raise ConfigurationError("A password is required.")
-        return MongoCredential(
-            mech, source_database, user, passwd, None, _Cache())
+        return MongoCredential(mech, source_database, user, passwd, None, _Cache())
 
 
 def _xor(fir, sec):
@@ -170,18 +163,22 @@ def _authenticate_scram_start(credentials, mechanism):
     nonce = standard_b64encode(os.urandom(32))
     first_bare = b"n=" + user + b",r=" + nonce
 
-    cmd = SON([('saslStart', 1),
-               ('mechanism', mechanism),
-               ('payload', Binary(b"n,," + first_bare)),
-               ('autoAuthorize', 1),
-               ('options', {'skipEmptyExchange': True})])
+    cmd = SON(
+        [
+            ("saslStart", 1),
+            ("mechanism", mechanism),
+            ("payload", Binary(b"n,," + first_bare)),
+            ("autoAuthorize", 1),
+            ("options", {"skipEmptyExchange": True}),
+        ]
+    )
     return nonce, first_bare, cmd
 
 
 def _authenticate_scram(credentials, sock_info, mechanism):
     """Authenticate using SCRAM."""
     username = credentials.username
-    if mechanism == 'SCRAM-SHA-256':
+    if mechanism == "SCRAM-SHA-256":
         digest = "sha256"
         digestmod = hashlib.sha256
         data = saslprep(credentials.password).encode("utf-8")
@@ -200,17 +197,16 @@ def _authenticate_scram(credentials, sock_info, mechanism):
         nonce, first_bare = ctx.scram_data
         res = ctx.speculative_authenticate
     else:
-        nonce, first_bare, cmd = _authenticate_scram_start(
-            credentials, mechanism)
+        nonce, first_bare, cmd = _authenticate_scram_start(credentials, mechanism)
         res = sock_info.command(source, cmd)
 
-    server_first = res['payload']
+    server_first = res["payload"]
     parsed = _parse_scram_response(server_first)
-    iterations = int(parsed[b'i'])
+    iterations = int(parsed[b"i"])
     if iterations < 4096:
         raise OperationFailure("Server returned an invalid iteration count.")
-    salt = parsed[b's']
-    rnonce = parsed[b'r']
+    salt = parsed[b"s"]
+    rnonce = parsed[b"r"]
     if not rnonce.startswith(nonce):
         raise OperationFailure("Server returned an invalid nonce.")
 
@@ -223,8 +219,7 @@ def _authenticate_scram(credentials, sock_info, mechanism):
     # Salt and / or iterations could change for a number of different
     # reasons. Either changing invalidates the cache.
     if not client_key or salt != csalt or iterations != citerations:
-        salted_pass = hashlib.pbkdf2_hmac(
-            digest, data, standard_b64decode(salt), iterations)
+        salted_pass = hashlib.pbkdf2_hmac(digest, data, standard_b64decode(salt), iterations)
         client_key = _hmac(salted_pass, b"Client Key", digestmod).digest()
         server_key = _hmac(salted_pass, b"Server Key", digestmod).digest()
         cache.data = (client_key, server_key, salt, iterations)
@@ -234,32 +229,38 @@ def _authenticate_scram(credentials, sock_info, mechanism):
     client_proof = b"p=" + standard_b64encode(_xor(client_key, client_sig))
     client_final = b",".join((without_proof, client_proof))
 
-    server_sig = standard_b64encode(
-        _hmac(server_key, auth_msg, digestmod).digest())
+    server_sig = standard_b64encode(_hmac(server_key, auth_msg, digestmod).digest())
 
-    cmd = SON([('saslContinue', 1),
-               ('conversationId', res['conversationId']),
-               ('payload', Binary(client_final))])
+    cmd = SON(
+        [
+            ("saslContinue", 1),
+            ("conversationId", res["conversationId"]),
+            ("payload", Binary(client_final)),
+        ]
+    )
     res = sock_info.command(source, cmd)
 
-    parsed = _parse_scram_response(res['payload'])
-    if not hmac.compare_digest(parsed[b'v'], server_sig):
+    parsed = _parse_scram_response(res["payload"])
+    if not hmac.compare_digest(parsed[b"v"], server_sig):
         raise OperationFailure("Server returned an invalid signature.")
 
     # A third empty challenge may be required if the server does not support
     # skipEmptyExchange: SERVER-44857.
-    if not res['done']:
-        cmd = SON([('saslContinue', 1),
-                   ('conversationId', res['conversationId']),
-                   ('payload', Binary(b''))])
+    if not res["done"]:
+        cmd = SON(
+            [
+                ("saslContinue", 1),
+                ("conversationId", res["conversationId"]),
+                ("payload", Binary(b"")),
+            ]
+        )
         res = sock_info.command(source, cmd)
-        if not res['done']:
-            raise OperationFailure('SASL conversation failed to complete.')
+        if not res["done"]:
+            raise OperationFailure("SASL conversation failed to complete.")
 
 
 def _password_digest(username, password):
-    """Get a password digest to use for authentication.
-    """
+    """Get a password digest to use for authentication."""
     if not isinstance(password, str):
         raise TypeError("password must be an instance of str")
     if len(password) == 0:
@@ -269,17 +270,16 @@ def _password_digest(username, password):
 
     md5hash = hashlib.md5()
     data = "%s:mongo:%s" % (username, password)
-    md5hash.update(data.encode('utf-8'))
+    md5hash.update(data.encode("utf-8"))
     return md5hash.hexdigest()
 
 
 def _auth_key(nonce, username, password):
-    """Get an auth key to use for authentication.
-    """
+    """Get an auth key to use for authentication."""
     digest = _password_digest(username, password)
     md5hash = hashlib.md5()
     data = "%s%s%s" % (nonce, username, digest)
-    md5hash.update(data.encode('utf-8'))
+    md5hash.update(data.encode("utf-8"))
     return md5hash.hexdigest()
 
 
@@ -287,7 +287,8 @@ def _canonicalize_hostname(hostname):
     """Canonicalize hostname following MIT-krb5 behavior."""
     # https://github.com/krb5/krb5/blob/d406afa363554097ac48646a29249c04f498c88e/src/util/k5test.py#L505-L520
     af, socktype, proto, canonname, sockaddr = socket.getaddrinfo(
-        hostname, None, 0, 0, socket.IPPROTO_TCP, socket.AI_CANONNAME)[0]
+        hostname, None, 0, 0, socket.IPPROTO_TCP, socket.AI_CANONNAME
+    )[0]
 
     try:
         name = socket.getnameinfo(sockaddr, socket.NI_NAMEREQD)
@@ -298,11 +299,11 @@ def _canonicalize_hostname(hostname):
 
 
 def _authenticate_gssapi(credentials, sock_info):
-    """Authenticate using GSSAPI.
-    """
+    """Authenticate using GSSAPI."""
     if not HAVE_KERBEROS:
-        raise ConfigurationError('The "kerberos" module must be '
-                                 'installed to use GSSAPI authentication.')
+        raise ConfigurationError(
+            'The "kerberos" module must be ' "installed to use GSSAPI authentication."
+        )
 
     try:
         username = credentials.username
@@ -313,9 +314,9 @@ def _authenticate_gssapi(credentials, sock_info):
         host = sock_info.address[0]
         if props.canonicalize_host_name:
             host = _canonicalize_hostname(host)
-        service = props.service_name + '@' + host
+        service = props.service_name + "@" + host
         if props.service_realm is not None:
-            service = service + '@' + props.service_realm
+            service = service + "@" + props.service_realm
 
         if password is not None:
             if _USE_PRINCIPAL:
@@ -324,81 +325,88 @@ def _authenticate_gssapi(credentials, sock_info):
                 # by WinKerberos) doesn't support +.
                 principal = ":".join((quote(username), quote(password)))
                 result, ctx = kerberos.authGSSClientInit(
-                    service, principal, gssflags=kerberos.GSS_C_MUTUAL_FLAG)
+                    service, principal, gssflags=kerberos.GSS_C_MUTUAL_FLAG
+                )
             else:
-                if '@' in username:
-                    user, domain = username.split('@', 1)
+                if "@" in username:
+                    user, domain = username.split("@", 1)
                 else:
                     user, domain = username, None
                 result, ctx = kerberos.authGSSClientInit(
-                    service, gssflags=kerberos.GSS_C_MUTUAL_FLAG,
-                    user=user, domain=domain, password=password)
+                    service,
+                    gssflags=kerberos.GSS_C_MUTUAL_FLAG,
+                    user=user,
+                    domain=domain,
+                    password=password,
+                )
         else:
-            result, ctx = kerberos.authGSSClientInit(
-                service, gssflags=kerberos.GSS_C_MUTUAL_FLAG)
+            result, ctx = kerberos.authGSSClientInit(service, gssflags=kerberos.GSS_C_MUTUAL_FLAG)
 
         if result != kerberos.AUTH_GSS_COMPLETE:
-            raise OperationFailure('Kerberos context failed to initialize.')
+            raise OperationFailure("Kerberos context failed to initialize.")
 
         try:
             # pykerberos uses a weird mix of exceptions and return values
             # to indicate errors.
             # 0 == continue, 1 == complete, -1 == error
             # Only authGSSClientStep can return 0.
-            if kerberos.authGSSClientStep(ctx, '') != 0:
-                raise OperationFailure('Unknown kerberos '
-                                       'failure in step function.')
+            if kerberos.authGSSClientStep(ctx, "") != 0:
+                raise OperationFailure("Unknown kerberos " "failure in step function.")
 
             # Start a SASL conversation with mongod/s
             # Note: pykerberos deals with base64 encoded byte strings.
             # Since mongo accepts base64 strings as the payload we don't
             # have to use bson.binary.Binary.
             payload = kerberos.authGSSClientResponse(ctx)
-            cmd = SON([('saslStart', 1),
-                       ('mechanism', 'GSSAPI'),
-                       ('payload', payload),
-                       ('autoAuthorize', 1)])
-            response = sock_info.command('$external', cmd)
+            cmd = SON(
+                [
+                    ("saslStart", 1),
+                    ("mechanism", "GSSAPI"),
+                    ("payload", payload),
+                    ("autoAuthorize", 1),
+                ]
+            )
+            response = sock_info.command("$external", cmd)
 
             # Limit how many times we loop to catch protocol / library issues
             for _ in range(10):
-                result = kerberos.authGSSClientStep(ctx,
-                                                    str(response['payload']))
+                result = kerberos.authGSSClientStep(ctx, str(response["payload"]))
                 if result == -1:
-                    raise OperationFailure('Unknown kerberos '
-                                           'failure in step function.')
+                    raise OperationFailure("Unknown kerberos " "failure in step function.")
 
-                payload = kerberos.authGSSClientResponse(ctx) or ''
+                payload = kerberos.authGSSClientResponse(ctx) or ""
 
-                cmd = SON([('saslContinue', 1),
-                           ('conversationId', response['conversationId']),
-                           ('payload', payload)])
-                response = sock_info.command('$external', cmd)
+                cmd = SON(
+                    [
+                        ("saslContinue", 1),
+                        ("conversationId", response["conversationId"]),
+                        ("payload", payload),
+                    ]
+                )
+                response = sock_info.command("$external", cmd)
 
                 if result == kerberos.AUTH_GSS_COMPLETE:
                     break
             else:
-                raise OperationFailure('Kerberos '
-                                       'authentication failed to complete.')
+                raise OperationFailure("Kerberos " "authentication failed to complete.")
 
             # Once the security context is established actually authenticate.
             # See RFC 4752, Section 3.1, last two paragraphs.
-            if kerberos.authGSSClientUnwrap(ctx,
-                                            str(response['payload'])) != 1:
-                raise OperationFailure('Unknown kerberos '
-                                       'failure during GSS_Unwrap step.')
+            if kerberos.authGSSClientUnwrap(ctx, str(response["payload"])) != 1:
+                raise OperationFailure("Unknown kerberos " "failure during GSS_Unwrap step.")
 
-            if kerberos.authGSSClientWrap(ctx,
-                                          kerberos.authGSSClientResponse(ctx),
-                                          username) != 1:
-                raise OperationFailure('Unknown kerberos '
-                                       'failure during GSS_Wrap step.')
+            if kerberos.authGSSClientWrap(ctx, kerberos.authGSSClientResponse(ctx), username) != 1:
+                raise OperationFailure("Unknown kerberos " "failure during GSS_Wrap step.")
 
             payload = kerberos.authGSSClientResponse(ctx)
-            cmd = SON([('saslContinue', 1),
-                       ('conversationId', response['conversationId']),
-                       ('payload', payload)])
-            sock_info.command('$external', cmd)
+            cmd = SON(
+                [
+                    ("saslContinue", 1),
+                    ("conversationId", response["conversationId"]),
+                    ("payload", payload),
+                ]
+            )
+            sock_info.command("$external", cmd)
 
         finally:
             kerberos.authGSSClientClean(ctx)
@@ -408,47 +416,45 @@ def _authenticate_gssapi(credentials, sock_info):
 
 
 def _authenticate_plain(credentials, sock_info):
-    """Authenticate using SASL PLAIN (RFC 4616)
-    """
+    """Authenticate using SASL PLAIN (RFC 4616)"""
     source = credentials.source
     username = credentials.username
     password = credentials.password
-    payload = ('\x00%s\x00%s' % (username, password)).encode('utf-8')
-    cmd = SON([('saslStart', 1),
-               ('mechanism', 'PLAIN'),
-               ('payload', Binary(payload)),
-               ('autoAuthorize', 1)])
+    payload = ("\x00%s\x00%s" % (username, password)).encode("utf-8")
+    cmd = SON(
+        [
+            ("saslStart", 1),
+            ("mechanism", "PLAIN"),
+            ("payload", Binary(payload)),
+            ("autoAuthorize", 1),
+        ]
+    )
     sock_info.command(source, cmd)
 
 
 def _authenticate_x509(credentials, sock_info):
-    """Authenticate using MONGODB-X509.
-    """
+    """Authenticate using MONGODB-X509."""
     ctx = sock_info.auth_ctx
     if ctx and ctx.speculate_succeeded():
         # MONGODB-X509 is done after the speculative auth step.
         return
 
     cmd = _X509Context(credentials).speculate_command()
-    sock_info.command('$external', cmd)
+    sock_info.command("$external", cmd)
 
 
 def _authenticate_mongo_cr(credentials, sock_info):
-    """Authenticate using MONGODB-CR.
-    """
+    """Authenticate using MONGODB-CR."""
     source = credentials.source
     username = credentials.username
     password = credentials.password
     # Get a nonce
-    response = sock_info.command(source, {'getnonce': 1})
-    nonce = response['nonce']
+    response = sock_info.command(source, {"getnonce": 1})
+    nonce = response["nonce"]
     key = _auth_key(nonce, username, password)
 
     # Actually authenticate
-    query = SON([('authenticate', 1),
-                 ('user', username),
-                 ('nonce', nonce),
-                 ('key', key)])
+    query = SON([("authenticate", 1), ("user", username), ("nonce", nonce), ("key", key)])
     sock_info.command(source, query)
 
 
@@ -459,29 +465,27 @@ def _authenticate_default(credentials, sock_info):
         else:
             source = credentials.source
             cmd = sock_info.hello_cmd()
-            cmd['saslSupportedMechs'] = source + '.' + credentials.username
-            mechs = sock_info.command(
-                source, cmd, publish_events=False).get(
-                'saslSupportedMechs', [])
-        if 'SCRAM-SHA-256' in mechs:
-            return _authenticate_scram(credentials, sock_info, 'SCRAM-SHA-256')
+            cmd["saslSupportedMechs"] = source + "." + credentials.username
+            mechs = sock_info.command(source, cmd, publish_events=False).get(
+                "saslSupportedMechs", []
+            )
+        if "SCRAM-SHA-256" in mechs:
+            return _authenticate_scram(credentials, sock_info, "SCRAM-SHA-256")
         else:
-            return _authenticate_scram(credentials, sock_info, 'SCRAM-SHA-1')
+            return _authenticate_scram(credentials, sock_info, "SCRAM-SHA-1")
     else:
-        return _authenticate_scram(credentials, sock_info, 'SCRAM-SHA-1')
+        return _authenticate_scram(credentials, sock_info, "SCRAM-SHA-1")
 
 
 _AUTH_MAP: Mapping[str, Callable] = {
-    'GSSAPI': _authenticate_gssapi,
-    'MONGODB-CR': _authenticate_mongo_cr,
-    'MONGODB-X509': _authenticate_x509,
-    'MONGODB-AWS': _authenticate_aws,
-    'PLAIN': _authenticate_plain,
-    'SCRAM-SHA-1': functools.partial(
-        _authenticate_scram, mechanism='SCRAM-SHA-1'),
-    'SCRAM-SHA-256': functools.partial(
-        _authenticate_scram, mechanism='SCRAM-SHA-256'),
-    'DEFAULT': _authenticate_default,
+    "GSSAPI": _authenticate_gssapi,
+    "MONGODB-CR": _authenticate_mongo_cr,
+    "MONGODB-X509": _authenticate_x509,
+    "MONGODB-AWS": _authenticate_aws,
+    "PLAIN": _authenticate_plain,
+    "SCRAM-SHA-1": functools.partial(_authenticate_scram, mechanism="SCRAM-SHA-1"),
+    "SCRAM-SHA-256": functools.partial(_authenticate_scram, mechanism="SCRAM-SHA-256"),
+    "DEFAULT": _authenticate_default,
 }
 
 
@@ -514,10 +518,9 @@ class _ScramContext(_AuthContext):
         self.mechanism = mechanism
 
     def speculate_command(self):
-        nonce, first_bare, cmd = _authenticate_scram_start(
-            self.credentials, self.mechanism)
+        nonce, first_bare, cmd = _authenticate_scram_start(self.credentials, self.mechanism)
         # The 'db' field is included only on the speculative command.
-        cmd['db'] = self.credentials.source
+        cmd["db"] = self.credentials.source
         # Save for later use.
         self.scram_data = (nonce, first_bare)
         return cmd
@@ -525,19 +528,17 @@ class _ScramContext(_AuthContext):
 
 class _X509Context(_AuthContext):
     def speculate_command(self):
-        cmd = SON([('authenticate', 1),
-                   ('mechanism', 'MONGODB-X509')])
+        cmd = SON([("authenticate", 1), ("mechanism", "MONGODB-X509")])
         if self.credentials.username is not None:
-            cmd['user'] = self.credentials.username
+            cmd["user"] = self.credentials.username
         return cmd
 
 
 _SPECULATIVE_AUTH_MAP: Mapping[str, Callable] = {
-    'MONGODB-X509': _X509Context,
-    'SCRAM-SHA-1': functools.partial(_ScramContext, mechanism='SCRAM-SHA-1'),
-    'SCRAM-SHA-256': functools.partial(_ScramContext,
-                                       mechanism='SCRAM-SHA-256'),
-    'DEFAULT': functools.partial(_ScramContext, mechanism='SCRAM-SHA-256'),
+    "MONGODB-X509": _X509Context,
+    "SCRAM-SHA-1": functools.partial(_ScramContext, mechanism="SCRAM-SHA-1"),
+    "SCRAM-SHA-256": functools.partial(_ScramContext, mechanism="SCRAM-SHA-256"),
+    "DEFAULT": functools.partial(_ScramContext, mechanism="SCRAM-SHA-256"),
 }
 
 
@@ -546,4 +547,3 @@ def authenticate(credentials, sock_info):
     mechanism = credentials.mechanism
     auth_func = _AUTH_MAP[mechanism]
     auth_func(credentials, sock_info)
-

@@ -21,43 +21,34 @@ from typing import Any, List, Mapping
 
 sys.path[0:0] = [""]
 
+from test import IntegrationTest, SkipTest, client_context, unittest
+from test.test_custom_types import DECIMAL_CODECOPTS
+from test.utils import (IMPOSSIBLE_WRITE_CONCERN, DeprecationFilter,
+                        OvertCommandListener, ignore_deprecations,
+                        rs_or_single_client, server_started_with_auth,
+                        wait_until)
+
 from bson.codec_options import CodecOptions
-from bson.int64 import Int64
-from bson.regex import Regex
 from bson.dbref import DBRef
+from bson.int64 import Int64
 from bson.objectid import ObjectId
+from bson.regex import Regex
 from bson.son import SON
-from pymongo import (auth,
-                     helpers)
+from pymongo import auth, helpers
 from pymongo.collection import Collection
 from pymongo.database import Database
-from pymongo.errors import (CollectionInvalid,
-                            ConfigurationError,
-                            ExecutionTimeout,
-                            InvalidName,
-                            OperationFailure,
+from pymongo.errors import (CollectionInvalid, ConfigurationError,
+                            ExecutionTimeout, InvalidName, OperationFailure,
                             WriteConcernError)
 from pymongo.mongo_client import MongoClient
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
-from test import (client_context,
-                  SkipTest,
-                  unittest,
-                  IntegrationTest)
-from test.utils import (ignore_deprecations,
-                        rs_or_single_client,
-                        server_started_with_auth,
-                        wait_until,
-                        DeprecationFilter,
-                        IMPOSSIBLE_WRITE_CONCERN,
-                        OvertCommandListener)
-from test.test_custom_types import DECIMAL_CODECOPTS
 
 
 class TestDatabaseNoConnect(unittest.TestCase):
-    """Test Database features on a client that does not connect.
-    """
+    """Test Database features on a client that does not connect."""
+
     client: MongoClient
 
     @classmethod
@@ -69,18 +60,17 @@ class TestDatabaseNoConnect(unittest.TestCase):
         self.assertRaises(InvalidName, Database, self.client, "my db")
         self.assertRaises(InvalidName, Database, self.client, 'my"db')
         self.assertRaises(InvalidName, Database, self.client, "my\x00db")
-        self.assertRaises(InvalidName, Database,
-                          self.client, "my\u0000db")
+        self.assertRaises(InvalidName, Database, self.client, "my\u0000db")
         self.assertEqual("name", Database(self.client, "name").name)
 
     def test_get_collection(self):
         codec_options = CodecOptions(tz_aware=True)
         write_concern = WriteConcern(w=2, j=True)
-        read_concern = ReadConcern('majority')
+        read_concern = ReadConcern("majority")
         coll = self.client.pymongo_test.get_collection(
-            'foo', codec_options, ReadPreference.SECONDARY, write_concern,
-            read_concern)
-        self.assertEqual('foo', coll.name)
+            "foo", codec_options, ReadPreference.SECONDARY, write_concern, read_concern
+        )
+        self.assertEqual("foo", coll.name)
         self.assertEqual(codec_options, coll.codec_options)
         self.assertEqual(ReadPreference.SECONDARY, coll.read_preference)
         self.assertEqual(write_concern, coll.write_concern)
@@ -88,7 +78,7 @@ class TestDatabaseNoConnect(unittest.TestCase):
 
     def test_getattr(self):
         db = self.client.pymongo_test
-        self.assertTrue(isinstance(db['_does_not_exist'], Collection))
+        self.assertTrue(isinstance(db["_does_not_exist"], Collection))
 
         with self.assertRaises(AttributeError) as context:
             db._does_not_exist
@@ -96,24 +86,19 @@ class TestDatabaseNoConnect(unittest.TestCase):
         # Message should be: "AttributeError: Database has no attribute
         # '_does_not_exist'. To access the _does_not_exist collection,
         # use database['_does_not_exist']".
-        self.assertIn("has no attribute '_does_not_exist'",
-                      str(context.exception))
+        self.assertIn("has no attribute '_does_not_exist'", str(context.exception))
 
     def test_iteration(self):
         self.assertRaises(TypeError, next, self.client.pymongo_test)
 
 
 class TestDatabase(IntegrationTest):
-
     def test_equality(self):
-        self.assertNotEqual(Database(self.client, "test"),
-                            Database(self.client, "mike"))
-        self.assertEqual(Database(self.client, "test"),
-                         Database(self.client, "test"))
+        self.assertNotEqual(Database(self.client, "test"), Database(self.client, "mike"))
+        self.assertEqual(Database(self.client, "test"), Database(self.client, "test"))
 
         # Explicitly test inequality
-        self.assertFalse(Database(self.client, "test") !=
-                         Database(self.client, "test"))
+        self.assertFalse(Database(self.client, "test") != Database(self.client, "test"))
 
     def test_hashable(self):
         self.assertIn(self.client.test, {Database(self.client, "test")})
@@ -126,9 +111,10 @@ class TestDatabase(IntegrationTest):
         self.assertEqual(db.test.mike, db["test.mike"])
 
     def test_repr(self):
-        self.assertEqual(repr(Database(self.client, "pymongo_test")),
-                         "Database(%r, %s)" % (self.client,
-                                               repr("pymongo_test")))
+        self.assertEqual(
+            repr(Database(self.client, "pymongo_test")),
+            "Database(%r, %s)" % (self.client, repr("pymongo_test")),
+        )
 
     def test_create_collection(self):
         db = Database(self.client, "pymongo_test")
@@ -165,7 +151,8 @@ class TestDatabase(IntegrationTest):
 
         db.systemcoll.test.insert_one({})
         no_system_collections = db.list_collection_names(
-                filter={"name": {"$regex": r"^(?!system\.)"}})
+            filter={"name": {"$regex": r"^(?!system\.)"}}
+        )
         for coll in no_system_collections:
             self.assertTrue(not coll.startswith("system."))
         self.assertIn("systemcoll.test", no_system_collections)
@@ -192,8 +179,7 @@ class TestDatabase(IntegrationTest):
         self.addCleanup(client.drop_database, db.name)
 
         # Should not send nameOnly.
-        for filter in ({'options.capped': True},
-                       {'options.capped': True, 'name': 'capped'}):
+        for filter in ({"options.capped": True}, {"options.capped": True, "name": "capped"}):
             results.clear()
             names = db.list_collection_names(filter=filter)
             self.assertEqual(names, ["capped"])
@@ -201,7 +187,7 @@ class TestDatabase(IntegrationTest):
 
         # Should send nameOnly (except on 2.6).
         filter: Any
-        for filter in (None, {}, {'name': {'$in': ['capped', 'non_capped']}}):
+        for filter in (None, {}, {"name": {"$in": ["capped", "non_capped"]}}):
             results.clear()
             names = db.list_collection_names(filter=filter)
             self.assertIn("capped", names)
@@ -239,8 +225,10 @@ class TestDatabase(IntegrationTest):
         coll_cnt: dict = {}
 
         # Checking if is there any collection which don't exists.
-        if (len(set(colls) - set(["test","test.mike"])) == 0 or
-            len(set(colls) - set(["test","test.mike","system.indexes"])) == 0):
+        if (
+            len(set(colls) - set(["test", "test.mike"])) == 0
+            or len(set(colls) - set(["test", "test.mike", "system.indexes"])) == 0
+        ):
             self.assertTrue(True)
         else:
             self.assertTrue(False)
@@ -254,7 +242,7 @@ class TestDatabase(IntegrationTest):
         db.drop_collection("test")
 
         db.create_collection("test", capped=True, size=4096)
-        results = db.list_collections(filter={'options.capped': True})
+        results = db.list_collections(filter={"options.capped": True})
         colls = [result["name"] for result in results]
 
         # Checking only capped collections are present
@@ -277,8 +265,10 @@ class TestDatabase(IntegrationTest):
         coll_cnt = {}
 
         # Checking if is there any collection which don't exists.
-        if (len(set(colls) - set(["test"])) == 0 or
-            len(set(colls) - set(["test","system.indexes"])) == 0):
+        if (
+            len(set(colls) - set(["test"])) == 0
+            or len(set(colls) - set(["test", "system.indexes"])) == 0
+        ):
             self.assertTrue(True)
         else:
             self.assertTrue(False)
@@ -287,13 +277,13 @@ class TestDatabase(IntegrationTest):
 
     def test_list_collection_names_single_socket(self):
         client = rs_or_single_client(maxPoolSize=1)
-        client.drop_database('test_collection_names_single_socket')
+        client.drop_database("test_collection_names_single_socket")
         db = client.test_collection_names_single_socket
         for i in range(200):
             db.create_collection(str(i))
 
         db.list_collection_names()  # Must not hang.
-        client.drop_database('test_collection_names_single_socket')
+        client.drop_database("test_collection_names_single_socket")
 
     def test_drop_collection(self):
         db = Database(self.client, "pymongo_test")
@@ -325,10 +315,9 @@ class TestDatabase(IntegrationTest):
         db.drop_collection(db.test.doesnotexist)
 
         if client_context.is_rs:
-            db_wc = Database(self.client, 'pymongo_test',
-                             write_concern=IMPOSSIBLE_WRITE_CONCERN)
+            db_wc = Database(self.client, "pymongo_test", write_concern=IMPOSSIBLE_WRITE_CONCERN)
             with self.assertRaises(WriteConcernError):
-                db_wc.drop_collection('test')
+                db_wc.drop_collection("test")
 
     def test_validate_collection(self):
         db = self.client.pymongo_test
@@ -338,10 +327,8 @@ class TestDatabase(IntegrationTest):
 
         db.test.insert_one({"dummy": "object"})
 
-        self.assertRaises(OperationFailure, db.validate_collection,
-                          "test.doesnotexist")
-        self.assertRaises(OperationFailure, db.validate_collection,
-                          db.test.doesnotexist)
+        self.assertRaises(OperationFailure, db.validate_collection, "test.doesnotexist")
+        self.assertRaises(OperationFailure, db.validate_collection, db.test.doesnotexist)
 
         self.assertTrue(db.validate_collection("test"))
         self.assertTrue(db.validate_collection(db.test))
@@ -357,10 +344,9 @@ class TestDatabase(IntegrationTest):
         coll = db.test
         self.assertTrue(db.validate_collection(coll, background=False))
         # The inMemory storage engine does not support background=True.
-        if client_context.storage_engine != 'inMemory':
+        if client_context.storage_engine != "inMemory":
             self.assertTrue(db.validate_collection(coll, background=True))
-            self.assertTrue(
-                db.validate_collection(coll, scandata=True, background=True))
+            self.assertTrue(db.validate_collection(coll, scandata=True, background=True))
             # The server does not support background=True with full=True.
             # Assert that we actually send the background option by checking
             # that this combination fails.
@@ -381,24 +367,25 @@ class TestDatabase(IntegrationTest):
     def test_command_with_regex(self):
         db = self.client.pymongo_test
         db.test.drop()
-        db.test.insert_one({'r': re.compile('.*')})
-        db.test.insert_one({'r': Regex('.*')})
+        db.test.insert_one({"r": re.compile(".*")})
+        db.test.insert_one({"r": Regex(".*")})
 
-        result = db.command('aggregate', 'test', pipeline=[], cursor={})
-        for doc in result['cursor']['firstBatch']:
-            self.assertTrue(isinstance(doc['r'], Regex))
+        result = db.command("aggregate", "test", pipeline=[], cursor={})
+        for doc in result["cursor"]["firstBatch"]:
+            self.assertTrue(isinstance(doc["r"], Regex))
 
     def test_password_digest(self):
         self.assertRaises(TypeError, auth._password_digest, 5)
         self.assertRaises(TypeError, auth._password_digest, True)
         self.assertRaises(TypeError, auth._password_digest, None)
 
-        self.assertTrue(isinstance(auth._password_digest("mike", "password"),
-                                   str))
-        self.assertEqual(auth._password_digest("mike", "password"),
-                         "cd7e45b3b2767dc2fa9b6b548457ed00")
-        self.assertEqual(auth._password_digest("Gustave", "Dor\xe9"),
-                         "81e0e2364499209f466e75926a162d73")
+        self.assertTrue(isinstance(auth._password_digest("mike", "password"), str))
+        self.assertEqual(
+            auth._password_digest("mike", "password"), "cd7e45b3b2767dc2fa9b6b548457ed00"
+        )
+        self.assertEqual(
+            auth._password_digest("Gustave", "Dor\xe9"), "81e0e2364499209f466e75926a162d73"
+        )
 
     def test_id_ordering(self):
         # PyMongo attempts to have _id show up first
@@ -409,11 +396,11 @@ class TestDatabase(IntegrationTest):
         # with hash randomization enabled (e.g. tox).
         db = self.client.pymongo_test
         db.test.drop()
-        db.test.insert_one(SON([("hello", "world"),
-                                ("_id", 5)]))
+        db.test.insert_one(SON([("hello", "world"), ("_id", 5)]))
 
         db = self.client.get_database(
-            "pymongo_test", codec_options=CodecOptions(document_class=SON))
+            "pymongo_test", codec_options=CodecOptions(document_class=SON)
+        )
         cursor = db.test.find()
         for x in cursor:
             for (k, v) in x.items():
@@ -432,10 +419,8 @@ class TestDatabase(IntegrationTest):
         obj = {"x": True}
         key = db.test.insert_one(obj).inserted_id
         self.assertEqual(obj, db.dereference(DBRef("test", key)))
-        self.assertEqual(obj,
-                         db.dereference(DBRef("test", key, "pymongo_test")))
-        self.assertRaises(ValueError,
-                          db.dereference, DBRef("test", key, "foo"))
+        self.assertEqual(obj, db.dereference(DBRef("test", key, "pymongo_test")))
+        self.assertRaises(ValueError, db.dereference, DBRef("test", key, "foo"))
 
         self.assertEqual(None, db.dereference(DBRef("test", 4)))
         obj = {"_id": 4}
@@ -448,10 +433,11 @@ class TestDatabase(IntegrationTest):
 
         db.test.insert_one({"_id": 4, "foo": "bar"})
         db = self.client.get_database(
-            "pymongo_test", codec_options=CodecOptions(document_class=SON))
-        self.assertEqual(SON([("foo", "bar")]),
-                         db.dereference(DBRef("test", 4),
-                                        projection={"_id": False}))
+            "pymongo_test", codec_options=CodecOptions(document_class=SON)
+        )
+        self.assertEqual(
+            SON([("foo", "bar")]), db.dereference(DBRef("test", 4), projection={"_id": False})
+        )
 
     # TODO some of these tests belong in the collection level testing.
     def test_insert_find_one(self):
@@ -486,12 +472,12 @@ class TestDatabase(IntegrationTest):
         db = self.client.pymongo_test
         db.test.drop()
         db.test.insert_one({"x": 9223372036854775807})
-        retrieved = db.test.find_one()['x']  # type: ignore
+        retrieved = db.test.find_one()["x"]  # type: ignore
         self.assertEqual(Int64(9223372036854775807), retrieved)
         self.assertIsInstance(retrieved, Int64)
         db.test.delete_many({})
         db.test.insert_one({"x": Int64(1)})
-        retrieved = db.test.find_one()['x']  # type: ignore
+        retrieved = db.test.find_one()["x"]  # type: ignore
         self.assertEqual(Int64(1), retrieved)
         self.assertIsInstance(retrieved, Int64)
 
@@ -533,11 +519,10 @@ class TestDatabase(IntegrationTest):
         # Sometimes (SERVER-10891) the server's response to a badly-formatted
         # command document will have no 'ok' field. We should raise
         # OperationFailure instead of KeyError.
-        self.assertRaises(OperationFailure,
-                          helpers._check_command_response, {}, None)
+        self.assertRaises(OperationFailure, helpers._check_command_response, {}, None)
 
         try:
-            helpers._check_command_response({'$err': 'foo'}, None)
+            helpers._check_command_response({"$err": "foo"}, None)
         except OperationFailure as e:
             self.assertEqual(e.args[0], "foo, full error: {'$err': 'foo'}")
         else:
@@ -545,64 +530,59 @@ class TestDatabase(IntegrationTest):
 
     def test_mongos_response(self):
         error_document = {
-            'ok': 0,
-            'errmsg': 'outer',
-            'raw': {'shard0/host0,host1': {'ok': 0, 'errmsg': 'inner'}}}
+            "ok": 0,
+            "errmsg": "outer",
+            "raw": {"shard0/host0,host1": {"ok": 0, "errmsg": "inner"}},
+        }
 
         with self.assertRaises(OperationFailure) as context:
             helpers._check_command_response(error_document, None)
 
-        self.assertIn('inner', str(context.exception))
+        self.assertIn("inner", str(context.exception))
 
         # If a shard has no primary and you run a command like dbstats, which
         # cannot be run on a secondary, mongos's response includes empty "raw"
         # errors. See SERVER-15428.
-        error_document = {
-            'ok': 0,
-            'errmsg': 'outer',
-            'raw': {'shard0/host0,host1': {}}}
+        error_document = {"ok": 0, "errmsg": "outer", "raw": {"shard0/host0,host1": {}}}
 
         with self.assertRaises(OperationFailure) as context:
             helpers._check_command_response(error_document, None)
 
-        self.assertIn('outer', str(context.exception))
+        self.assertIn("outer", str(context.exception))
 
         # Raw error has ok: 0 but no errmsg. Not a known case, but test it.
-        error_document = {
-            'ok': 0,
-            'errmsg': 'outer',
-            'raw': {'shard0/host0,host1': {'ok': 0}}}
+        error_document = {"ok": 0, "errmsg": "outer", "raw": {"shard0/host0,host1": {"ok": 0}}}
 
         with self.assertRaises(OperationFailure) as context:
             helpers._check_command_response(error_document, None)
 
-        self.assertIn('outer', str(context.exception))
+        self.assertIn("outer", str(context.exception))
 
     @client_context.require_test_commands
     @client_context.require_no_mongos
     def test_command_max_time_ms(self):
-        self.client.admin.command("configureFailPoint",
-                                  "maxTimeAlwaysTimeOut",
-                                  mode="alwaysOn")
+        self.client.admin.command("configureFailPoint", "maxTimeAlwaysTimeOut", mode="alwaysOn")
         try:
             db = self.client.pymongo_test
-            db.command('count', 'test')
-            self.assertRaises(ExecutionTimeout, db.command,
-                              'count', 'test', maxTimeMS=1)
-            pipeline = [{'$project': {'name': 1, 'count': 1}}]
+            db.command("count", "test")
+            self.assertRaises(ExecutionTimeout, db.command, "count", "test", maxTimeMS=1)
+            pipeline = [{"$project": {"name": 1, "count": 1}}]
             # Database command helper.
-            db.command('aggregate', 'test', pipeline=pipeline, cursor={})
-            self.assertRaises(ExecutionTimeout, db.command,
-                              'aggregate', 'test',
-                              pipeline=pipeline, cursor={}, maxTimeMS=1)
+            db.command("aggregate", "test", pipeline=pipeline, cursor={})
+            self.assertRaises(
+                ExecutionTimeout,
+                db.command,
+                "aggregate",
+                "test",
+                pipeline=pipeline,
+                cursor={},
+                maxTimeMS=1,
+            )
             # Collection helper.
             db.test.aggregate(pipeline=pipeline)
-            self.assertRaises(ExecutionTimeout,
-                              db.test.aggregate, pipeline, maxTimeMS=1)
+            self.assertRaises(ExecutionTimeout, db.test.aggregate, pipeline, maxTimeMS=1)
         finally:
-            self.client.admin.command("configureFailPoint",
-                                      "maxTimeAlwaysTimeOut",
-                                      mode="off")
+            self.client.admin.command("configureFailPoint", "maxTimeAlwaysTimeOut", mode="off")
 
     def test_with_options(self):
         codec_options = DECIMAL_CODECOPTS
@@ -611,13 +591,22 @@ class TestDatabase(IntegrationTest):
         read_concern = ReadConcern(level="majority")
 
         # List of all options to compare.
-        allopts = ['name', 'client', 'codec_options',
-                   'read_preference', 'write_concern', 'read_concern']
+        allopts = [
+            "name",
+            "client",
+            "codec_options",
+            "read_preference",
+            "write_concern",
+            "read_concern",
+        ]
 
         db1 = self.client.get_database(
-            'with_options_test', codec_options=codec_options,
-            read_preference=read_preference, write_concern=write_concern,
-            read_concern=read_concern)
+            "with_options_test",
+            codec_options=codec_options,
+            read_preference=read_preference,
+            write_concern=write_concern,
+            read_concern=read_concern,
+        )
 
         # Case 1: swap no options
         db2 = db1.with_options()
@@ -625,22 +614,25 @@ class TestDatabase(IntegrationTest):
             self.assertEqual(getattr(db1, opt), getattr(db2, opt))
 
         # Case 2: swap all options
-        newopts = {'codec_options': CodecOptions(),
-                   'read_preference': ReadPreference.PRIMARY,
-                   'write_concern': WriteConcern(w=1),
-                   'read_concern': ReadConcern(level="local")}
+        newopts = {
+            "codec_options": CodecOptions(),
+            "read_preference": ReadPreference.PRIMARY,
+            "write_concern": WriteConcern(w=1),
+            "read_concern": ReadConcern(level="local"),
+        }
         db2 = db1.with_options(**newopts)  # type: ignore[arg-type]
         for opt in newopts:
-            self.assertEqual(
-                getattr(db2, opt), newopts.get(opt, getattr(db1, opt)))
+            self.assertEqual(getattr(db2, opt), newopts.get(opt, getattr(db1, opt)))
 
 
 class TestDatabaseAggregation(IntegrationTest):
     def setUp(self):
-        self.pipeline: List[Mapping[str, Any]] = [{"$listLocalSessions": {}},
-                         {"$limit": 1},
-                         {"$addFields": {"dummy": "dummy field"}},
-                         {"$project": {"_id": 0, "dummy": 1}}]
+        self.pipeline: List[Mapping[str, Any]] = [
+            {"$listLocalSessions": {}},
+            {"$limit": 1},
+            {"$addFields": {"dummy": "dummy field"}},
+            {"$project": {"_id": 0, "dummy": 1}},
+        ]
         self.result = {"dummy": "dummy field"}
         self.admin = self.client.admin
 
@@ -660,8 +652,7 @@ class TestDatabaseAggregation(IntegrationTest):
             # SERVER-43287 disallows writing with $out to the admin db, use
             # $merge instead.
             db_name = "pymongo_test"
-            write_stage = {
-                "$merge": {"into": {"db": db_name, "coll": coll_name}}}
+            write_stage = {"$merge": {"into": {"db": db_name, "coll": coll_name}}}
         output_coll = self.client[db_name][coll_name]
         output_coll.drop()
         self.addCleanup(output_coll.drop)

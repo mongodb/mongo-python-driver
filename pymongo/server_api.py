@@ -97,6 +97,7 @@ class ServerApiVersion:
 
 class ServerApi(object):
     """MongoDB Versioned API."""
+
     def __init__(self, version, strict=None, deprecation_errors=None):
         """Options to configure MongoDB Versioned API.
 
@@ -116,12 +117,13 @@ class ServerApi(object):
         if strict is not None and not isinstance(strict, bool):
             raise TypeError(
                 "Wrong type for ServerApi strict, value must be an instance "
-                "of bool, not %s" % (type(strict),))
-        if (deprecation_errors is not None and
-                not isinstance(deprecation_errors, bool)):
+                "of bool, not %s" % (type(strict),)
+            )
+        if deprecation_errors is not None and not isinstance(deprecation_errors, bool):
             raise TypeError(
                 "Wrong type for ServerApi deprecation_errors, value must be "
-                "an instance of bool, not %s" % (type(deprecation_errors),))
+                "an instance of bool, not %s" % (type(deprecation_errors),)
+            )
         self._version = version
         self._strict = strict
         self._deprecation_errors = deprecation_errors
@@ -161,8 +163,8 @@ def _add_to_command(cmd, server_api):
     """
     if not server_api:
         return
-    cmd['apiVersion'] = server_api.version
+    cmd["apiVersion"] = server_api.version
     if server_api.strict is not None:
-        cmd['apiStrict'] = server_api.strict
+        cmd["apiStrict"] = server_api.strict
     if server_api.deprecation_errors is not None:
-        cmd['apiDeprecationErrors'] = server_api.deprecation_errors
+        cmd["apiDeprecationErrors"] = server_api.deprecation_errors

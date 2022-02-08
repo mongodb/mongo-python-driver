@@ -20,8 +20,9 @@ import sys
 
 sys.path[0:0] = [""]
 
-from bson.code import Code
 from test import unittest
+
+from bson.code import Code
 
 
 class TestCode(unittest.TestCase):
@@ -37,6 +38,7 @@ class TestCode(unittest.TestCase):
 
         def set_c():
             c.scope = 5  # type: ignore
+
         self.assertRaises(AttributeError, set_c)
 
     def test_code(self):
@@ -47,15 +49,15 @@ class TestCode(unittest.TestCase):
         self.assertTrue(isinstance(a_code, Code))
         self.assertFalse(isinstance(a_string, Code))
         self.assertIsNone(a_code.scope)
-        with_scope = Code('hello world', {'my_var': 5})
-        self.assertEqual({'my_var': 5}, with_scope.scope)
-        empty_scope = Code('hello world', {})
+        with_scope = Code("hello world", {"my_var": 5})
+        self.assertEqual({"my_var": 5}, with_scope.scope)
+        empty_scope = Code("hello world", {})
         self.assertEqual({}, empty_scope.scope)
-        another_scope = Code(with_scope, {'new_var': 42})
+        another_scope = Code(with_scope, {"new_var": 42})
         self.assertEqual(str(with_scope), str(another_scope))
-        self.assertEqual({'new_var': 42, 'my_var': 5}, another_scope.scope)
+        self.assertEqual({"new_var": 42, "my_var": 5}, another_scope.scope)
         # No error.
-        Code('héllø world¡')
+        Code("héllø world¡")
 
     def test_repr(self):
         c = Code("hello world", {})
@@ -98,8 +100,7 @@ class TestCode(unittest.TestCase):
     def test_scope_kwargs(self):
         self.assertEqual({"a": 1}, Code("", a=1).scope)
         self.assertEqual({"a": 1}, Code("", {"a": 2}, a=1).scope)
-        self.assertEqual({"a": 1, "b": 2, "c": 3},
-                         Code("", {"b": 2}, a=1, c=3).scope)
+        self.assertEqual({"a": 1, "b": 2, "c": 3}, Code("", {"b": 2}, a=1, c=3).scope)
 
 
 if __name__ == "__main__":

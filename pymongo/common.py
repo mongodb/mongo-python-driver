@@ -40,7 +40,7 @@ from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 ORDERED_TYPES: Sequence[Type] = (SON, OrderedDict)
 
 # Defaults until we connect to a server and get updated limits.
-MAX_BSON_SIZE = 16 * (1024 ** 2)
+MAX_BSON_SIZE = 16 * (1024**2)
 MAX_MESSAGE_SIZE: int = 2 * MAX_BSON_SIZE
 MIN_WIRE_VERSION = 0
 MAX_WIRE_VERSION = 0
@@ -121,10 +121,10 @@ def partition_node(node: str) -> Tuple[str, int]:
     """Split a host:port string into (host, int(port)) pair."""
     host = node
     port = 27017
-    idx = node.rfind(':')
+    idx = node.rfind(":")
     if idx != -1:
-        host, port = node[:idx], int(node[idx + 1:])
-    if host.startswith('['):
+        host, port = node[:idx], int(node[idx + 1 :])
+    if host.startswith("["):
         host = host[1:-1]
     return host, port
 
@@ -147,11 +147,11 @@ def raise_config_error(key: str, dummy: Any) -> None:
 
 # Mapping of URI uuid representation options to valid subtypes.
 _UUID_REPRESENTATIONS = {
-    'unspecified': UuidRepresentation.UNSPECIFIED,
-    'standard': UuidRepresentation.STANDARD,
-    'pythonLegacy': UuidRepresentation.PYTHON_LEGACY,
-    'javaLegacy': UuidRepresentation.JAVA_LEGACY,
-    'csharpLegacy': UuidRepresentation.CSHARP_LEGACY
+    "unspecified": UuidRepresentation.UNSPECIFIED,
+    "standard": UuidRepresentation.STANDARD,
+    "pythonLegacy": UuidRepresentation.PYTHON_LEGACY,
+    "javaLegacy": UuidRepresentation.JAVA_LEGACY,
+    "csharpLegacy": UuidRepresentation.CSHARP_LEGACY,
 }
 
 
@@ -165,95 +165,81 @@ def validate_boolean(option: str, value: Any) -> bool:
 def validate_boolean_or_string(option: str, value: Any) -> bool:
     """Validates that value is True, False, 'true', or 'false'."""
     if isinstance(value, str):
-        if value not in ('true', 'false'):
-            raise ValueError("The value of %s must be "
-                             "'true' or 'false'" % (option,))
-        return value == 'true'
+        if value not in ("true", "false"):
+            raise ValueError("The value of %s must be " "'true' or 'false'" % (option,))
+        return value == "true"
     return validate_boolean(option, value)
 
 
 def validate_integer(option: str, value: Any) -> int:
-    """Validates that 'value' is an integer (or basestring representation).
-    """
+    """Validates that 'value' is an integer (or basestring representation)."""
     if isinstance(value, int):
         return value
     elif isinstance(value, str):
         try:
             return int(value)
         except ValueError:
-            raise ValueError("The value of %s must be "
-                             "an integer" % (option,))
+            raise ValueError("The value of %s must be " "an integer" % (option,))
     raise TypeError("Wrong type for %s, value must be an integer" % (option,))
 
 
 def validate_positive_integer(option: str, value: Any) -> int:
-    """Validate that 'value' is a positive integer, which does not include 0.
-    """
+    """Validate that 'value' is a positive integer, which does not include 0."""
     val = validate_integer(option, value)
     if val <= 0:
-        raise ValueError("The value of %s must be "
-                         "a positive integer" % (option,))
+        raise ValueError("The value of %s must be " "a positive integer" % (option,))
     return val
 
 
 def validate_non_negative_integer(option: str, value: Any) -> int:
-    """Validate that 'value' is a positive integer or 0.
-    """
+    """Validate that 'value' is a positive integer or 0."""
     val = validate_integer(option, value)
     if val < 0:
-        raise ValueError("The value of %s must be "
-                         "a non negative integer" % (option,))
+        raise ValueError("The value of %s must be " "a non negative integer" % (option,))
     return val
 
 
 def validate_readable(option: str, value: Any) -> Optional[str]:
-    """Validates that 'value' is file-like and readable.
-    """
+    """Validates that 'value' is file-like and readable."""
     if value is None:
         return value
     # First make sure its a string py3.3 open(True, 'r') succeeds
     # Used in ssl cert checking due to poor ssl module error reporting
     value = validate_string(option, value)
-    open(value, 'r').close()
+    open(value, "r").close()
     return value
 
 
 def validate_positive_integer_or_none(option: str, value: Any) -> Optional[int]:
-    """Validate that 'value' is a positive integer or None.
-    """
+    """Validate that 'value' is a positive integer or None."""
     if value is None:
         return value
     return validate_positive_integer(option, value)
 
 
 def validate_non_negative_integer_or_none(option: str, value: Any) -> Optional[int]:
-    """Validate that 'value' is a positive integer or 0 or None.
-    """
+    """Validate that 'value' is a positive integer or 0 or None."""
     if value is None:
         return value
     return validate_non_negative_integer(option, value)
 
 
 def validate_string(option: str, value: Any) -> str:
-    """Validates that 'value' is an instance of `str`.
-    """
+    """Validates that 'value' is an instance of `str`."""
     if isinstance(value, str):
         return value
-    raise TypeError("Wrong type for %s, value must be an instance of "
-                    "str" % (option,))
+    raise TypeError("Wrong type for %s, value must be an instance of " "str" % (option,))
 
 
 def validate_string_or_none(option: str, value: Any) -> Optional[str]:
-    """Validates that 'value' is an instance of `basestring` or `None`.
-    """
+    """Validates that 'value' is an instance of `basestring` or `None`."""
     if value is None:
         return value
     return validate_string(option, value)
 
 
 def validate_int_or_basestring(option: str, value: Any) -> Union[int, str]:
-    """Validates that 'value' is an integer or string.
-    """
+    """Validates that 'value' is an integer or string."""
     if isinstance(value, int):
         return value
     elif isinstance(value, str):
@@ -261,13 +247,11 @@ def validate_int_or_basestring(option: str, value: Any) -> Union[int, str]:
             return int(value)
         except ValueError:
             return value
-    raise TypeError("Wrong type for %s, value must be an "
-                    "integer or a string" % (option,))
+    raise TypeError("Wrong type for %s, value must be an " "integer or a string" % (option,))
 
 
 def validate_non_negative_int_or_basestring(option: Any, value: Any) -> Union[int, str]:
-    """Validates that 'value' is an integer or string.
-    """
+    """Validates that 'value' is an integer or string."""
     if isinstance(value, int):
         return value
     elif isinstance(value, str):
@@ -276,13 +260,14 @@ def validate_non_negative_int_or_basestring(option: Any, value: Any) -> Union[in
         except ValueError:
             return value
         return validate_non_negative_integer(option, val)
-    raise TypeError("Wrong type for %s, value must be an "
-                    "non negative integer or a string" % (option,))
+    raise TypeError(
+        "Wrong type for %s, value must be an " "non negative integer or a string" % (option,)
+    )
 
 
 def validate_positive_float(option: str, value: Any) -> float:
     """Validates that 'value' is a float, or can be converted to one, and is
-       positive.
+    positive.
     """
     errmsg = "%s must be an integer or float" % (option,)
     try:
@@ -295,8 +280,7 @@ def validate_positive_float(option: str, value: Any) -> float:
     # float('inf') doesn't work in 2.4 or 2.5 on Windows, so just cap floats at
     # one billion - this is a reasonable approximation for infinity
     if not 0 < value < 1e9:
-        raise ValueError("%s must be greater than 0 and "
-                         "less than one billion" % (option,))
+        raise ValueError("%s must be greater than 0 and " "less than one billion" % (option,))
     return value
 
 
@@ -325,7 +309,7 @@ def validate_timeout_or_zero(option: str, value: Any) -> float:
     config error.
     """
     if value is None:
-        raise ConfigurationError("%s cannot be None" % (option, ))
+        raise ConfigurationError("%s cannot be None" % (option,))
     if value == 0 or value == "0":
         return 0
     return validate_positive_float(option, value) / 1000.0
@@ -350,8 +334,7 @@ def validate_max_staleness(option: str, value: Any) -> int:
 
 
 def validate_read_preference(dummy: Any, value: Any) -> _ServerMode:
-    """Validate a read preference.
-    """
+    """Validate a read preference."""
     if not isinstance(value, _ServerMode):
         raise TypeError("%r is not a read preference." % (value,))
     return value
@@ -370,33 +353,32 @@ def validate_read_preference_mode(dummy: Any, value: Any) -> _ServerMode:
 
 
 def validate_auth_mechanism(option: str, value: Any) -> str:
-    """Validate the authMechanism URI option.
-    """
+    """Validate the authMechanism URI option."""
     if value not in MECHANISMS:
         raise ValueError("%s must be in %s" % (option, tuple(MECHANISMS)))
     return value
 
 
 def validate_uuid_representation(dummy: Any, value: Any) -> int:
-    """Validate the uuid representation option selected in the URI.
-    """
+    """Validate the uuid representation option selected in the URI."""
     try:
         return _UUID_REPRESENTATIONS[value]
     except KeyError:
-        raise ValueError("%s is an invalid UUID representation. "
-                         "Must be one of "
-                         "%s" % (value, tuple(_UUID_REPRESENTATIONS)))
+        raise ValueError(
+            "%s is an invalid UUID representation. "
+            "Must be one of "
+            "%s" % (value, tuple(_UUID_REPRESENTATIONS))
+        )
 
 
 def validate_read_preference_tags(name: str, value: Any) -> List[Dict[str, str]]:
-    """Parse readPreferenceTags if passed as a client kwarg.
-    """
+    """Parse readPreferenceTags if passed as a client kwarg."""
     if not isinstance(value, list):
         value = [value]
 
     tag_sets: List = []
     for tag_set in value:
-        if tag_set == '':
+        if tag_set == "":
             tag_sets.append({})
             continue
         try:
@@ -406,37 +388,41 @@ def validate_read_preference_tags(name: str, value: Any) -> List[Dict[str, str]]
                 tags[unquote_plus(key)] = unquote_plus(val)
             tag_sets.append(tags)
         except Exception:
-            raise ValueError("%r not a valid "
-                             "value for %s" % (tag_set, name))
+            raise ValueError("%r not a valid " "value for %s" % (tag_set, name))
     return tag_sets
 
 
-_MECHANISM_PROPS = frozenset(['SERVICE_NAME',
-                              'CANONICALIZE_HOST_NAME',
-                              'SERVICE_REALM',
-                              'AWS_SESSION_TOKEN'])
+_MECHANISM_PROPS = frozenset(
+    ["SERVICE_NAME", "CANONICALIZE_HOST_NAME", "SERVICE_REALM", "AWS_SESSION_TOKEN"]
+)
 
 
 def validate_auth_mechanism_properties(option: str, value: Any) -> Dict[str, Union[bool, str]]:
     """Validate authMechanismProperties."""
     value = validate_string(option, value)
     props: Dict[str, Any] = {}
-    for opt in value.split(','):
+    for opt in value.split(","):
         try:
-            key, val = opt.split(':')
+            key, val = opt.split(":")
         except ValueError:
             # Try not to leak the token.
-            if 'AWS_SESSION_TOKEN' in opt:
-                opt = ('AWS_SESSION_TOKEN:<redacted token>, did you forget '
-                       'to percent-escape the token with quote_plus?')
-            raise ValueError("auth mechanism properties must be "
-                             "key:value pairs like SERVICE_NAME:"
-                             "mongodb, not %s." % (opt,))
+            if "AWS_SESSION_TOKEN" in opt:
+                opt = (
+                    "AWS_SESSION_TOKEN:<redacted token>, did you forget "
+                    "to percent-escape the token with quote_plus?"
+                )
+            raise ValueError(
+                "auth mechanism properties must be "
+                "key:value pairs like SERVICE_NAME:"
+                "mongodb, not %s." % (opt,)
+            )
         if key not in _MECHANISM_PROPS:
-            raise ValueError("%s is not a supported auth "
-                             "mechanism property. Must be one of "
-                             "%s." % (key, tuple(_MECHANISM_PROPS)))
-        if key == 'CANONICALIZE_HOST_NAME':
+            raise ValueError(
+                "%s is not a supported auth "
+                "mechanism property. Must be one of "
+                "%s." % (key, tuple(_MECHANISM_PROPS))
+            )
+        if key == "CANONICALIZE_HOST_NAME":
             props[key] = validate_boolean_or_string(key, val)
         else:
             props[key] = unquote_plus(val)
@@ -444,20 +430,23 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> Dict[str, Uni
     return props
 
 
-def validate_document_class(option: str, value: Any) -> Union[Type[MutableMapping], Type[RawBSONDocument]]:
+def validate_document_class(
+    option: str, value: Any
+) -> Union[Type[MutableMapping], Type[RawBSONDocument]]:
     """Validate the document_class option."""
     if not issubclass(value, (abc.MutableMapping, RawBSONDocument)):
-        raise TypeError("%s must be dict, bson.son.SON, "
-                        "bson.raw_bson.RawBSONDocument, or a "
-                        "sublass of collections.MutableMapping" % (option,))
+        raise TypeError(
+            "%s must be dict, bson.son.SON, "
+            "bson.raw_bson.RawBSONDocument, or a "
+            "sublass of collections.MutableMapping" % (option,)
+        )
     return value
 
 
 def validate_type_registry(option: Any, value: Any) -> Optional[TypeRegistry]:
     """Validate the type_registry option."""
     if value is not None and not isinstance(value, TypeRegistry):
-        raise TypeError("%s must be an instance of %s" % (
-            option, TypeRegistry))
+        raise TypeError("%s must be an instance of %s" % (option, TypeRegistry))
     return value
 
 
@@ -478,26 +467,32 @@ def validate_list_or_none(option: Any, value: Any) -> Optional[List]:
 def validate_list_or_mapping(option: Any, value: Any) -> None:
     """Validates that 'value' is a list or a document."""
     if not isinstance(value, (abc.Mapping, list)):
-        raise TypeError("%s must either be a list or an instance of dict, "
-                        "bson.son.SON, or any other type that inherits from "
-                        "collections.Mapping" % (option,))
+        raise TypeError(
+            "%s must either be a list or an instance of dict, "
+            "bson.son.SON, or any other type that inherits from "
+            "collections.Mapping" % (option,)
+        )
 
 
 def validate_is_mapping(option: str, value: Any) -> None:
     """Validate the type of method arguments that expect a document."""
     if not isinstance(value, abc.Mapping):
-        raise TypeError("%s must be an instance of dict, bson.son.SON, or "
-                        "any other type that inherits from "
-                        "collections.Mapping" % (option,))
+        raise TypeError(
+            "%s must be an instance of dict, bson.son.SON, or "
+            "any other type that inherits from "
+            "collections.Mapping" % (option,)
+        )
 
 
 def validate_is_document_type(option: str, value: Any) -> None:
     """Validate the type of method arguments that expect a MongoDB document."""
     if not isinstance(value, (abc.MutableMapping, RawBSONDocument)):
-        raise TypeError("%s must be an instance of dict, bson.son.SON, "
-                        "bson.raw_bson.RawBSONDocument, or "
-                        "a type that inherits from "
-                        "collections.MutableMapping" % (option,))
+        raise TypeError(
+            "%s must be an instance of dict, bson.son.SON, "
+            "bson.raw_bson.RawBSONDocument, or "
+            "a type that inherits from "
+            "collections.MutableMapping" % (option,)
+        )
 
 
 def validate_appname_or_none(option: str, value: Any) -> Optional[str]:
@@ -506,7 +501,7 @@ def validate_appname_or_none(option: str, value: Any) -> Optional[str]:
         return value
     validate_string(option, value)
     # We need length in bytes, so encode utf8 first.
-    if len(value.encode('utf-8')) > 128:
+    if len(value.encode("utf-8")) > 128:
         raise ValueError("%s must be <= 128 bytes" % (option,))
     return value
 
@@ -544,8 +539,8 @@ def validate_ok_for_replace(replacement: Mapping[str, Any]) -> None:
     # Replacement can be {}
     if replacement and not isinstance(replacement, RawBSONDocument):
         first = next(iter(replacement))
-        if first.startswith('$'):
-            raise ValueError('replacement can not include $ operators')
+        if first.startswith("$"):
+            raise ValueError("replacement can not include $ operators")
 
 
 def validate_ok_for_update(update: Any) -> None:
@@ -553,30 +548,30 @@ def validate_ok_for_update(update: Any) -> None:
     validate_list_or_mapping("update", update)
     # Update cannot be {}.
     if not update:
-        raise ValueError('update cannot be empty')
+        raise ValueError("update cannot be empty")
 
     is_document = not isinstance(update, list)
     first = next(iter(update))
-    if is_document and not first.startswith('$'):
-        raise ValueError('update only works with $ operators')
+    if is_document and not first.startswith("$"):
+        raise ValueError("update only works with $ operators")
 
 
-_UNICODE_DECODE_ERROR_HANDLERS = frozenset(['strict', 'replace', 'ignore'])
+_UNICODE_DECODE_ERROR_HANDLERS = frozenset(["strict", "replace", "ignore"])
 
 
 def validate_unicode_decode_error_handler(dummy: Any, value: str) -> str:
-    """Validate the Unicode decode error handler option of CodecOptions.
-    """
+    """Validate the Unicode decode error handler option of CodecOptions."""
     if value not in _UNICODE_DECODE_ERROR_HANDLERS:
-        raise ValueError("%s is an invalid Unicode decode error handler. "
-                         "Must be one of "
-                         "%s" % (value, tuple(_UNICODE_DECODE_ERROR_HANDLERS)))
+        raise ValueError(
+            "%s is an invalid Unicode decode error handler. "
+            "Must be one of "
+            "%s" % (value, tuple(_UNICODE_DECODE_ERROR_HANDLERS))
+        )
     return value
 
 
 def validate_tzinfo(dummy: Any, value: Any) -> Optional[datetime.tzinfo]:
-    """Validate the tzinfo option
-    """
+    """Validate the tzinfo option"""
     if value is not None and not isinstance(value, datetime.tzinfo):
         raise TypeError("%s must be an instance of datetime.tzinfo" % value)
     return value
@@ -587,9 +582,9 @@ def validate_auto_encryption_opts_or_none(option: Any, value: Any) -> Optional[A
     if value is None:
         return value
     from pymongo.encryption_options import AutoEncryptionOpts
+
     if not isinstance(value, AutoEncryptionOpts):
-        raise TypeError("%s must be an instance of AutoEncryptionOpts" % (
-            option,))
+        raise TypeError("%s must be an instance of AutoEncryptionOpts" % (option,))
 
     return value
 
@@ -597,7 +592,7 @@ def validate_auto_encryption_opts_or_none(option: Any, value: Any) -> Optional[A
 # Dictionary where keys are the names of public URI options, and values
 # are lists of aliases for that option.
 URI_OPTIONS_ALIAS_MAP: Dict[str, List[str]] = {
-    'tls': ['ssl'],
+    "tls": ["ssl"],
 }
 
 # Dictionary where keys are the names of URI options, and values
@@ -605,73 +600,73 @@ URI_OPTIONS_ALIAS_MAP: Dict[str, List[str]] = {
 # alias uses a different validator than its public counterpart, it should be
 # included here as a key, value pair.
 URI_OPTIONS_VALIDATOR_MAP: Dict[str, Callable[[Any, Any], Any]] = {
-    'appname': validate_appname_or_none,
-    'authmechanism': validate_auth_mechanism,
-    'authmechanismproperties': validate_auth_mechanism_properties,
-    'authsource': validate_string,
-    'compressors': validate_compressors,
-    'connecttimeoutms': validate_timeout_or_none_or_zero,
-    'directconnection': validate_boolean_or_string,
-    'heartbeatfrequencyms': validate_timeout_or_none,
-    'journal': validate_boolean_or_string,
-    'localthresholdms': validate_positive_float_or_zero,
-    'maxidletimems': validate_timeout_or_none,
-    'maxconnecting': validate_positive_integer,
-    'maxpoolsize': validate_non_negative_integer_or_none,
-    'maxstalenessseconds': validate_max_staleness,
-    'readconcernlevel': validate_string_or_none,
-    'readpreference': validate_read_preference_mode,
-    'readpreferencetags': validate_read_preference_tags,
-    'replicaset': validate_string_or_none,
-    'retryreads': validate_boolean_or_string,
-    'retrywrites': validate_boolean_or_string,
-    'loadbalanced': validate_boolean_or_string,
-    'serverselectiontimeoutms': validate_timeout_or_zero,
-    'sockettimeoutms': validate_timeout_or_none_or_zero,
-    'tls': validate_boolean_or_string,
-    'tlsallowinvalidcertificates': validate_boolean_or_string,
-    'tlsallowinvalidhostnames': validate_boolean_or_string,
-    'tlscafile': validate_readable,
-    'tlscertificatekeyfile': validate_readable,
-    'tlscertificatekeyfilepassword': validate_string_or_none,
-    'tlsdisableocspendpointcheck': validate_boolean_or_string,
-    'tlsinsecure': validate_boolean_or_string,
-    'w': validate_non_negative_int_or_basestring,
-    'wtimeoutms': validate_non_negative_integer,
-    'zlibcompressionlevel': validate_zlib_compression_level,
-    'srvservicename': validate_string,
-    'srvmaxhosts': validate_non_negative_integer
+    "appname": validate_appname_or_none,
+    "authmechanism": validate_auth_mechanism,
+    "authmechanismproperties": validate_auth_mechanism_properties,
+    "authsource": validate_string,
+    "compressors": validate_compressors,
+    "connecttimeoutms": validate_timeout_or_none_or_zero,
+    "directconnection": validate_boolean_or_string,
+    "heartbeatfrequencyms": validate_timeout_or_none,
+    "journal": validate_boolean_or_string,
+    "localthresholdms": validate_positive_float_or_zero,
+    "maxidletimems": validate_timeout_or_none,
+    "maxconnecting": validate_positive_integer,
+    "maxpoolsize": validate_non_negative_integer_or_none,
+    "maxstalenessseconds": validate_max_staleness,
+    "readconcernlevel": validate_string_or_none,
+    "readpreference": validate_read_preference_mode,
+    "readpreferencetags": validate_read_preference_tags,
+    "replicaset": validate_string_or_none,
+    "retryreads": validate_boolean_or_string,
+    "retrywrites": validate_boolean_or_string,
+    "loadbalanced": validate_boolean_or_string,
+    "serverselectiontimeoutms": validate_timeout_or_zero,
+    "sockettimeoutms": validate_timeout_or_none_or_zero,
+    "tls": validate_boolean_or_string,
+    "tlsallowinvalidcertificates": validate_boolean_or_string,
+    "tlsallowinvalidhostnames": validate_boolean_or_string,
+    "tlscafile": validate_readable,
+    "tlscertificatekeyfile": validate_readable,
+    "tlscertificatekeyfilepassword": validate_string_or_none,
+    "tlsdisableocspendpointcheck": validate_boolean_or_string,
+    "tlsinsecure": validate_boolean_or_string,
+    "w": validate_non_negative_int_or_basestring,
+    "wtimeoutms": validate_non_negative_integer,
+    "zlibcompressionlevel": validate_zlib_compression_level,
+    "srvservicename": validate_string,
+    "srvmaxhosts": validate_non_negative_integer,
 }
 
 # Dictionary where keys are the names of URI options specific to pymongo,
 # and values are functions that validate user-input values for those options.
 NONSPEC_OPTIONS_VALIDATOR_MAP: Dict[str, Callable[[Any, Any], Any]] = {
-    'connect': validate_boolean_or_string,
-    'driver': validate_driver_or_none,
-    'server_api': validate_server_api_or_none,
-    'fsync': validate_boolean_or_string,
-    'minpoolsize': validate_non_negative_integer,
-    'tlscrlfile': validate_readable,
-    'tz_aware': validate_boolean_or_string,
-    'unicode_decode_error_handler': validate_unicode_decode_error_handler,
-    'uuidrepresentation': validate_uuid_representation,
-    'waitqueuemultiple': validate_non_negative_integer_or_none,
-    'waitqueuetimeoutms': validate_timeout_or_none,
+    "connect": validate_boolean_or_string,
+    "driver": validate_driver_or_none,
+    "server_api": validate_server_api_or_none,
+    "fsync": validate_boolean_or_string,
+    "minpoolsize": validate_non_negative_integer,
+    "tlscrlfile": validate_readable,
+    "tz_aware": validate_boolean_or_string,
+    "unicode_decode_error_handler": validate_unicode_decode_error_handler,
+    "uuidrepresentation": validate_uuid_representation,
+    "waitqueuemultiple": validate_non_negative_integer_or_none,
+    "waitqueuetimeoutms": validate_timeout_or_none,
 }
 
 # Dictionary where keys are the names of keyword-only options for the
 # MongoClient constructor, and values are functions that validate user-input
 # values for those options.
 KW_VALIDATORS: Dict[str, Callable[[Any, Any], Any]] = {
-    'document_class': validate_document_class,
-    'type_registry': validate_type_registry,
-    'read_preference': validate_read_preference,
-    'event_listeners': _validate_event_listeners,
-    'tzinfo': validate_tzinfo,
-    'username': validate_string_or_none,
-    'password': validate_string_or_none,
-    'server_selector': validate_is_callable_or_none,
-    'auto_encryption_opts': validate_auto_encryption_opts_or_none,
+    "document_class": validate_document_class,
+    "type_registry": validate_type_registry,
+    "read_preference": validate_read_preference,
+    "event_listeners": _validate_event_listeners,
+    "tzinfo": validate_tzinfo,
+    "username": validate_string_or_none,
+    "password": validate_string_or_none,
+    "server_selector": validate_is_callable_or_none,
+    "auto_encryption_opts": validate_auto_encryption_opts_or_none,
 }
 
 # Dictionary where keys are any URI option name, and values are the
@@ -679,7 +674,7 @@ KW_VALIDATORS: Dict[str, Callable[[Any, Any], Any]] = {
 # variant need not be included here. Options whose public and internal
 # names are the same need not be included here.
 INTERNAL_URI_OPTION_NAME_MAP: Dict[str, str] = {
-    'ssl': 'tls',
+    "ssl": "tls",
 }
 
 # Map from deprecated URI option names to a tuple indicating the method of
@@ -701,8 +696,7 @@ URI_OPTIONS_VALIDATOR_MAP.update(NONSPEC_OPTIONS_VALIDATOR_MAP)
 for optname, aliases in URI_OPTIONS_ALIAS_MAP.items():
     for alias in aliases:
         if alias not in URI_OPTIONS_VALIDATOR_MAP:
-            URI_OPTIONS_VALIDATOR_MAP[alias] = (
-                URI_OPTIONS_VALIDATOR_MAP[optname])
+            URI_OPTIONS_VALIDATOR_MAP[alias] = URI_OPTIONS_VALIDATOR_MAP[optname]
 
 # Map containing all URI option and keyword argument validators.
 VALIDATORS: Dict[str, Callable[[Any, Any], Any]] = URI_OPTIONS_VALIDATOR_MAP.copy()
@@ -710,39 +704,38 @@ VALIDATORS.update(KW_VALIDATORS)
 
 # List of timeout-related options.
 TIMEOUT_OPTIONS: List[str] = [
-    'connecttimeoutms',
-    'heartbeatfrequencyms',
-    'maxidletimems',
-    'maxstalenessseconds',
-    'serverselectiontimeoutms',
-    'sockettimeoutms',
-    'waitqueuetimeoutms',
+    "connecttimeoutms",
+    "heartbeatfrequencyms",
+    "maxidletimems",
+    "maxstalenessseconds",
+    "serverselectiontimeoutms",
+    "sockettimeoutms",
+    "waitqueuetimeoutms",
 ]
 
 
-_AUTH_OPTIONS = frozenset(['authmechanismproperties'])
+_AUTH_OPTIONS = frozenset(["authmechanismproperties"])
 
 
 def validate_auth_option(option: str, value: Any) -> Tuple[str, Any]:
-    """Validate optional authentication parameters.
-    """
+    """Validate optional authentication parameters."""
     lower, value = validate(option, value)
     if lower not in _AUTH_OPTIONS:
-        raise ConfigurationError('Unknown '
-                                 'authentication option: %s' % (option,))
+        raise ConfigurationError("Unknown " "authentication option: %s" % (option,))
     return option, value
 
 
 def validate(option: str, value: Any) -> Tuple[str, Any]:
-    """Generic validation function.
-    """
+    """Generic validation function."""
     lower = option.lower()
     validator = VALIDATORS.get(lower, raise_config_error)
     value = validator(option, value)
     return option, value
 
 
-def get_validated_options(options: Mapping[str, Any], warn: bool = True) -> MutableMapping[str, Any]:
+def get_validated_options(
+    options: Mapping[str, Any], warn: bool = True
+) -> MutableMapping[str, Any]:
     """Validate each entry in options and raise a warning if it is not valid.
     Returns a copy of options with invalid entries removed.
 
@@ -765,8 +758,7 @@ def get_validated_options(options: Mapping[str, Any], warn: bool = True) -> Muta
     for opt, value in options.items():
         normed_key = get_normed_key(opt)
         try:
-            validator = URI_OPTIONS_VALIDATOR_MAP.get(
-                normed_key, raise_config_error)
+            validator = URI_OPTIONS_VALIDATOR_MAP.get(normed_key, raise_config_error)
             value = validator(opt, value)
         except (ValueError, TypeError, ConfigurationError) as exc:
             if warn:
@@ -779,14 +771,7 @@ def get_validated_options(options: Mapping[str, Any], warn: bool = True) -> Muta
 
 
 # List of write-concern-related options.
-WRITE_CONCERN_OPTIONS = frozenset([
-    'w',
-    'wtimeout',
-    'wtimeoutms',
-    'fsync',
-    'j',
-    'journal'
-])
+WRITE_CONCERN_OPTIONS = frozenset(["w", "wtimeout", "wtimeoutms", "fsync", "j", "journal"])
 
 
 class BaseObject(object):
@@ -796,28 +781,38 @@ class BaseObject(object):
     SHOULD NOT BE USED BY DEVELOPERS EXTERNAL TO MONGODB.
     """
 
-    def __init__(self, codec_options: CodecOptions, read_preference: _ServerMode, write_concern: WriteConcern,
-                 read_concern: ReadConcern) -> None:
+    def __init__(
+        self,
+        codec_options: CodecOptions,
+        read_preference: _ServerMode,
+        write_concern: WriteConcern,
+        read_concern: ReadConcern,
+    ) -> None:
 
         if not isinstance(codec_options, CodecOptions):
-            raise TypeError("codec_options must be an instance of "
-                            "bson.codec_options.CodecOptions")
+            raise TypeError(
+                "codec_options must be an instance of " "bson.codec_options.CodecOptions"
+            )
         self.__codec_options = codec_options
 
         if not isinstance(read_preference, _ServerMode):
-            raise TypeError("%r is not valid for read_preference. See "
-                            "pymongo.read_preferences for valid "
-                            "options." % (read_preference,))
+            raise TypeError(
+                "%r is not valid for read_preference. See "
+                "pymongo.read_preferences for valid "
+                "options." % (read_preference,)
+            )
         self.__read_preference = read_preference
 
         if not isinstance(write_concern, WriteConcern):
-            raise TypeError("write_concern must be an instance of "
-                            "pymongo.write_concern.WriteConcern")
+            raise TypeError(
+                "write_concern must be an instance of " "pymongo.write_concern.WriteConcern"
+            )
         self.__write_concern = write_concern
 
         if not isinstance(read_concern, ReadConcern):
-            raise TypeError("read_concern must be an instance of "
-                            "pymongo.read_concern.ReadConcern")
+            raise TypeError(
+                "read_concern must be an instance of " "pymongo.read_concern.ReadConcern"
+            )
         self.__read_concern = read_concern
 
     @property
@@ -838,8 +833,7 @@ class BaseObject(object):
         return self.__write_concern
 
     def _write_concern_for(self, session):
-        """Read only access to the write concern of this instance or session.
-        """
+        """Read only access to the write concern of this instance or session."""
         # Override this operation's write concern with the transaction's.
         if session and session.in_transaction:
             return DEFAULT_WRITE_CONCERN
@@ -855,8 +849,7 @@ class BaseObject(object):
         return self.__read_preference
 
     def _read_preference_for(self, session):
-        """Read only access to the read preference of this instance or session.
-        """
+        """Read only access to the read preference of this instance or session."""
         # Override this operation's read preference with the transaction's.
         if session:
             return session._txn_read_preference() or self.__read_preference
