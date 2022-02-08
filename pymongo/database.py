@@ -516,9 +516,14 @@ class Database(common.BaseObject, Generic[_DocumentType]):
           - `start_after` (optional): The same as `resume_after` except that
             `start_after` can resume notifications after an invalidate event.
             This option and `resume_after` are mutually exclusive.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
         :Returns:
           A :class:`~pymongo.change_stream.DatabaseChangeStream` cursor.
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionchanged:: 3.9
            Added the ``start_after`` parameter.
@@ -623,6 +628,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): additional keyword arguments will
             be added to the command document before it is sent
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+
 
         .. note:: :meth:`command` does **not** obey this Database's
            :attr:`read_preference` or :attr:`codec_options`. You must use the
@@ -636,6 +644,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
            automactically add API versioning options to the given command.
            Explicitly adding API versioning options in the command and
            declaring an API version on the client is not supported.
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -720,10 +731,14 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             <https://docs.mongodb.com/manual/reference/command/listCollections/>`_
             can be passed as keyword arguments to this method. The supported
             options differ by server version.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+
 
         :Returns:
           An instance of :class:`~pymongo.command_cursor.CommandCursor`.
-
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
         .. versionadded:: 3.6
         """
         if filter is not None:
@@ -763,7 +778,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             <https://docs.mongodb.com/manual/reference/command/listCollections/>`_
             can be passed as keyword arguments to this method. The supported
             options differ by server version.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
         .. versionchanged:: 3.8
            Added the ``filter`` and ``**kwargs`` parameters.
 
@@ -797,9 +816,15 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             collection object itself
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+
 
         .. note:: The :attr:`~pymongo.database.Database.write_concern` of
            this database is automatically applied to this operation.
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -856,6 +881,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.client_session.ClientSession`.
           - `background` (optional): A boolean flag that determines whether
             the command runs in the background. Requires MongoDB 4.4+.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionchanged:: 3.11
            Added ``background`` parameter.
@@ -945,7 +975,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
           - `**kwargs` (optional): any additional keyword arguments
             are the same as the arguments to
             :meth:`~pymongo.collection.Collection.find`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """

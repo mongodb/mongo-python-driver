@@ -425,6 +425,7 @@ class TestCollection(IntegrationTest):
                         h).parameters, msg="Could not find 'comment' in the "
                                            "signature of function %s"
                                            %(h.__name__))
+
                     if isinstance(maybe_cursor, CommandCursor):
                         maybe_cursor.close()
                     tested = False
@@ -436,6 +437,19 @@ class TestCollection(IntegrationTest):
                                      "Using the keyword argument \"comment\" did "
                                      "not work for func: %s with comment "
                                      "type: %s" % (h.__name__, type(cc)))
+                    if h not in [coll.aggregate_raw_batches]:
+                        self.assertIn("`comment` (optional):",
+                                      h.__doc__,
+                                      msg="Could not find 'comment' in the "
+                                          "docstring of function %s"
+                                          % (h.__name__))
+                        self.assertIn("Added ``comment`` parameter",
+                                      h.__doc__,
+                                      msg="Could not find 'comment' "
+                                          "versionchanged in "
+                                          "the "
+                                          "docstring of function %s"
+                                          % (h.__name__))
         results.clear()
 
 

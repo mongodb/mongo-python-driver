@@ -1015,11 +1015,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         :Parameters:
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
         The following two calls are equivalent:
 
           >>> db.foo.drop()
           >>> db.drop_collection("foo")
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionchanged:: 3.7
            :meth:`drop` now respects this :class:`Collection`'s :attr:`write_concern`.
@@ -1531,6 +1536,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         :Parameters:
           - `**kwargs` (optional): See list of options above.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionadded:: 3.7
         """
@@ -1590,7 +1600,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `hint` (string or list of tuples): The index to use. Specify either
             the index name as a string or the index specification as a list of
             tuples (e.g. [('a', pymongo.ASCENDING), ('b', pymongo.ASCENDING)]).
-
+        
         The :meth:`count_documents` method obeys the :attr:`read_preference` of
         this :class:`Collection`.
 
@@ -1614,7 +1624,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): See list of options above.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
+           
         .. versionadded:: 3.7
 
         .. _$expr: https://docs.mongodb.com/manual/reference/operator/query/expr/
@@ -1667,10 +1682,17 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): optional arguments to the createIndexes
             command (like maxTimeMS) can be passed as keyword arguments.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
+
+           
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation.
-
+           
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
+           
         .. versionchanged:: 3.6
            Added ``session`` parameter. Added support for arbitrary keyword
            arguments.
@@ -1806,7 +1828,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `**kwargs` (optional): any additional index creation
             options (see the above list) should be passed as keyword
             arguments
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
         .. versionchanged:: 3.11
            Added the ``hidden`` option.
         .. versionchanged:: 3.6
@@ -1846,10 +1872,17 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): optional arguments to the createIndexes
             command (like maxTimeMS) can be passed as keyword arguments.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+
+
 
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation.
 
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
+           
         .. versionchanged:: 3.6
            Added ``session`` parameter. Added support for arbitrary keyword
            arguments.
@@ -1888,9 +1921,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): optional arguments to the createIndexes
             command (like maxTimeMS) can be passed as keyword arguments.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+
+
 
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation.
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter. Added support for arbitrary keyword
@@ -1933,10 +1973,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         :Parameters:
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
         :Returns:
           An instance of :class:`~pymongo.command_cursor.CommandCursor`.
 
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
+           
         .. versionchanged:: 3.6
            Added ``session`` parameter.
 
@@ -1998,6 +2043,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         :Parameters:
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -2023,7 +2073,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         :Parameters:
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
@@ -2107,12 +2161,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. ``"$$var"``). This option is
             only supported on MongoDB >= 5.0.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+
 
         :Returns:
           A :class:`~pymongo.command_cursor.CommandCursor` over the result
           set.
 
         .. versionchanged:: 4.1
+           Added ``comment`` parameter.
            Added ``let`` parameter.
            Support $merge and $out executing on secondaries according to the
            collection's :attr:`read_preference`.
@@ -2326,9 +2384,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `**kwargs` (optional): additional arguments to the rename command
             may be passed as keyword arguments to this helper method
             (i.e. ``dropTarget=True``)
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation.
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -2393,7 +2456,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): See list of options above.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
+           
         .. versionchanged:: 3.6
            Added ``session`` parameter.
 
@@ -2553,7 +2621,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
         .. versionchanged:: 4.1
            Added ``let`` parameter.
         .. versionchanged:: 3.11
@@ -2648,8 +2720,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
         .. versionchanged:: 4.1
+           Added ``comment`` parameter.
            Added ``let`` parameter.
         .. versionchanged:: 3.11
            Added the ``hint`` option.
@@ -2785,9 +2860,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+
 
         .. versionchanged:: 4.1
            Added ``let`` parameter.
+           Added ``comment`` parameter.
         .. versionchanged:: 3.11
            Added the ``hint`` option.
         .. versionchanged:: 3.9

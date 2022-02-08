@@ -671,6 +671,19 @@ class TestDatabase(IntegrationTest):
                     "Using the keyword argument 'comment' did "
                     "not work for func: %s with comment "
                     "type: %s" % (h.__name__, type(cc)))
+
+                    self.assertIn("`comment` (optional):",
+                                  h.__doc__,
+                                  msg="Could not find 'comment' in the "
+                                      "docstring of function %s"
+                                      % (h.__name__))
+                    self.assertIn("Added ``comment`` parameter",
+                                  h.__doc__,
+                                  msg="Could not find 'comment' "
+                                      "versionchanged in "
+                                      "the "
+                                      "docstring of function %s"
+                                      % (h.__name__))
         results.clear()
 
 class TestDatabaseAggregation(IntegrationTest):
