@@ -116,7 +116,7 @@ class TestProse(IntegrationTest):
         self.assertEqual(len(events), N_FINDS * N_THREADS)
         nodes = client.nodes
         self.assertEqual(len(nodes), 2)
-        freqs = {address: 0 for address in nodes}
+        freqs = {address: 0.0 for address in nodes}
         for event in events:
             freqs[event.connection_id] += 1
         for address in freqs:

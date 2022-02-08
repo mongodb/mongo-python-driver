@@ -30,7 +30,7 @@ class TestMixedVersionSharded(unittest.TestCase):
         self.mongos_old, self.mongos_new = MockupDB(), MockupDB()
 
         # Collect queries to either server in one queue.
-        self.q = Queue()
+        self.q: Queue = Queue()
         for server in self.mongos_old, self.mongos_new:
             server.subscribe(self.q.put)
             server.autoresponds('getlasterror')
@@ -59,7 +59,7 @@ def create_mixed_version_sharded_test(upgrade):
     def test(self):
         self.setup_server(upgrade)
         start = time.time()
-        servers_used = set()
+        servers_used: set = set()
         while len(servers_used) < 2:
             go(upgrade.function, self.client)
             request = self.q.get(timeout=1)

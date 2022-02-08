@@ -57,7 +57,7 @@ class TestCursor(IntegrationTest):
             re.compile("^key.*"): {"a": [re.compile("^hm.*")]}})
 
         cursor2 = copy.deepcopy(cursor)
-        self.assertEqual(cursor._Cursor__spec, cursor2._Cursor__spec)
+        self.assertEqual(cursor._Cursor__spec, cursor2._Cursor__spec)  # type: ignore
 
     def test_add_remove_option(self):
         cursor = self.db.test.find()
@@ -149,9 +149,9 @@ class TestCursor(IntegrationTest):
         self.assertRaises(TypeError, coll.find().allow_disk_use, 'baz')
 
         cursor = coll.find().allow_disk_use(True)
-        self.assertEqual(True, cursor._Cursor__allow_disk_use)
+        self.assertEqual(True, cursor._Cursor__allow_disk_use)  # type: ignore
         cursor = coll.find().allow_disk_use(False)
-        self.assertEqual(False, cursor._Cursor__allow_disk_use)
+        self.assertEqual(False, cursor._Cursor__allow_disk_use)  # type: ignore
 
     def test_max_time_ms(self):
         db = self.db
@@ -165,15 +165,15 @@ class TestCursor(IntegrationTest):
         coll.find().max_time_ms(1)
 
         cursor = coll.find().max_time_ms(999)
-        self.assertEqual(999, cursor._Cursor__max_time_ms)
+        self.assertEqual(999, cursor._Cursor__max_time_ms)  # type: ignore
         cursor = coll.find().max_time_ms(10).max_time_ms(1000)
-        self.assertEqual(1000, cursor._Cursor__max_time_ms)
+        self.assertEqual(1000, cursor._Cursor__max_time_ms)  # type: ignore
 
         cursor = coll.find().max_time_ms(999)
         c2 = cursor.clone()
-        self.assertEqual(999, c2._Cursor__max_time_ms)
-        self.assertTrue("$maxTimeMS" in cursor._Cursor__query_spec())
-        self.assertTrue("$maxTimeMS" in c2._Cursor__query_spec())
+        self.assertEqual(999, c2._Cursor__max_time_ms)  # type: ignore
+        self.assertTrue("$maxTimeMS" in cursor._Cursor__query_spec())  # type: ignore
+        self.assertTrue("$maxTimeMS" in c2._Cursor__query_spec())  # type: ignore
 
         self.assertTrue(coll.find_one(max_time_ms=1000))
 
@@ -889,7 +889,7 @@ class TestCursor(IntegrationTest):
 
         # Every attribute should be the same.
         cursor2 = cursor.clone()
-        self.assertDictEqual(cursor.__dict__, cursor2.__dict__)
+        self.assertEqual(cursor.__dict__, cursor2.__dict__)
 
         # Shallow copies can so can mutate
         cursor2 = copy.copy(cursor)
@@ -1025,7 +1025,7 @@ class TestCursor(IntegrationTest):
         self.assertEqual(self.db.test, self.db.test.find().collection)
 
         def set_coll():
-            self.db.test.find().collection = "hello"
+            self.db.test.find().collection = "hello"  # type: ignore
 
         self.assertRaises(AttributeError, set_coll)
 

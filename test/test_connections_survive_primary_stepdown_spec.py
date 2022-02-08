@@ -20,6 +20,7 @@ sys.path[0:0] = [""]
 
 from bson import SON
 from pymongo import monitoring
+from pymongo.collection import Collection
 from pymongo.errors import NotPrimaryError
 from pymongo.write_concern import WriteConcern
 
@@ -33,6 +34,9 @@ from test.utils import (CMAPListener,
 
 
 class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
+    listener: CMAPListener
+    coll: Collection
+
     @classmethod
     @client_context.require_replica_set
     def setUpClass(cls):
@@ -111,7 +115,7 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
         # Insert record and verify failure.
         with self.assertRaises(NotPrimaryError) as exc:
             self.coll.insert_one({"test": 1})
-        self.assertEqual(exc.exception.details['code'], error_code)
+        self.assertEqual(exc.exception.details['code'], error_code)  # type: ignore
         # Retry before CMAPListener assertion if retry_before=True.
         if retry:
             self.coll.insert_one({"test": 1})

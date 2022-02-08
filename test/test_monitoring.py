@@ -16,6 +16,7 @@ import copy
 import datetime
 import sys
 import time
+from typing import Any
 import warnings
 
 sys.path[0:0] = [""]
@@ -43,6 +44,7 @@ from test.utils import (EventListener,
 
 
 class TestCommandMonitoring(IntegrationTest):
+    listener: EventListener
 
     @classmethod
     @client_context.require_connection
@@ -754,7 +756,7 @@ class TestCommandMonitoring(IntegrationTest):
 
         # delete_one
         self.listener.results.clear()
-        res = coll.delete_one({'x': 3})
+        res2 = coll.delete_one({'x': 3})
         results = self.listener.results
         started = results['started'][0]
         succeeded = results['succeeded'][0]
@@ -1091,6 +1093,8 @@ class TestCommandMonitoring(IntegrationTest):
 
 
 class TestGlobalListener(IntegrationTest):
+    listener: EventListener
+    saved_listeners: Any
 
     @classmethod
     @client_context.require_connection
@@ -1167,13 +1171,13 @@ class TestEventClasses(unittest.TestCase):
             "<ServerHeartbeatStartedEvent ('localhost', 27017)>")
         delta = 0.1
         event = monitoring.ServerHeartbeatSucceededEvent(
-            delta, {'ok': 1}, connection_id)
+            delta, {'ok': 1}, connection_id)  # type: ignore[arg-type]
         self.assertEqual(
             repr(event),
             "<ServerHeartbeatSucceededEvent ('localhost', 27017) "
             "duration: 0.1, awaited: False, reply: {'ok': 1}>")
         event = monitoring.ServerHeartbeatFailedEvent(
-            delta, 'ERROR', connection_id)
+            delta, 'ERROR', connection_id)  # type: ignore[arg-type]
         self.assertEqual(
             repr(event),
             "<ServerHeartbeatFailedEvent ('localhost', 27017) "
@@ -1188,7 +1192,7 @@ class TestEventClasses(unittest.TestCase):
             "<ServerOpeningEvent ('localhost', 27017) "
             "topology_id: 000000000000000000000001>")
         event = monitoring.ServerDescriptionChangedEvent(
-            'PREV', 'NEW', server_address, topology_id)
+            'PREV', 'NEW', server_address, topology_id)  # type: ignore[arg-type]
         self.assertEqual(
             repr(event),
             "<ServerDescriptionChangedEvent ('localhost', 27017) "
@@ -1206,7 +1210,7 @@ class TestEventClasses(unittest.TestCase):
             repr(event),
             "<TopologyOpenedEvent topology_id: 000000000000000000000001>")
         event = monitoring.TopologyDescriptionChangedEvent(
-            'PREV', 'NEW', topology_id)
+            'PREV', 'NEW', topology_id)  # type: ignore[arg-type]
         self.assertEqual(
             repr(event),
             "<TopologyDescriptionChangedEvent "

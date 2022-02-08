@@ -25,6 +25,10 @@ import textwrap
 import traceback
 import uuid
 
+from typing import Any
+
+from pymongo.collection import Collection
+
 sys.path[0:0] = [""]
 
 from bson import encode, json_util
@@ -126,6 +130,7 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
         with self.assertRaisesRegex(
                 TypeError, r'kms_tls_options\["kmip"\] must be a dict'):
             AutoEncryptionOpts({}, 'k.d', kms_tls_options={'kmip': 1})
+        tls_opts: Any
         for tls_opts in [
                 {'kmip': {'tls': True, 'tlsInsecure': True}},
                 {'kmip': {'tls': True, 'tlsAllowInvalidCertificates': True}},
@@ -138,6 +143,7 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
             AutoEncryptionOpts({}, 'k.d', kms_tls_options={
                 'kmip': {'tlsCAFile': 'does-not-exist'}})
         # Success cases:
+        tls_opts: Any
         for tls_opts in [None, {}]:
             opts = AutoEncryptionOpts({}, 'k.d', kms_tls_options=tls_opts)
             self.assertEqual(opts._kms_ssl_contexts, {})
@@ -432,14 +438,14 @@ class TestExplicitSimple(EncryptionIntegrationTest):
 
         msg = 'value to decrypt must be a bson.binary.Binary with subtype 6'
         with self.assertRaisesRegex(TypeError, msg):
-            client_encryption.decrypt('str')
+            client_encryption.decrypt('str')  # type: ignore[arg-type]
         with self.assertRaisesRegex(TypeError, msg):
             client_encryption.decrypt(Binary(b'123'))
 
         msg = 'key_id must be a bson.binary.Binary with subtype 4'
         algo = Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic
         with self.assertRaisesRegex(TypeError, msg):
-            client_encryption.encrypt('str', algo, key_id=uuid.uuid4())
+            client_encryption.encrypt('str', algo, key_id=uuid.uuid4())  # type: ignore[arg-type]
         with self.assertRaisesRegex(TypeError, msg):
             client_encryption.encrypt('str', algo, key_id=Binary(b'123'))
 
@@ -459,7 +465,7 @@ class TestExplicitSimple(EncryptionIntegrationTest):
     def test_codec_options(self):
         with self.assertRaisesRegex(TypeError, 'codec_options must be'):
             ClientEncryption(
-                KMS_PROVIDERS, 'keyvault.datakeys', client_context.client, None)
+                KMS_PROVIDERS, 'keyvault.datakeys', client_context.client, None)  # type: ignore[arg-type]
 
         opts = CodecOptions(uuid_representation=JAVA_LEGACY)
         client_encryption_legacy = ClientEncryption(
@@ -708,6 +714,10 @@ def create_key_vault(vault, *data_keys):
 
 
 class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
+    client_encrypted: MongoClient
+    client_encryption: ClientEncryption
+    listener: OvertCommandListener
+    vault: Any
 
     KMS_PROVIDERS = ALL_KMS_PROVIDERS
 
@@ -776,7 +786,7 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
 
     def run_test(self, provider_name):
         # Create data key.
-        master_key = self.MASTER_KEYS[provider_name]
+        master_key: Any = self.MASTER_KEYS[provider_name]
         datakey_id = self.client_encryption.create_data_key(
             provider_name, master_key=master_key,
             key_alt_names=['%s_altname' % (provider_name,)])
@@ -798,7 +808,7 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
             {'_id': provider_name, 'value': encrypted})
         doc_decrypted = self.client_encrypted.db.coll.find_one(
             {'_id': provider_name})
-        self.assertEqual(doc_decrypted['value'], 'hello %s' % (provider_name,))
+        self.assertEqual(doc_decrypted['value'], 'hello %s' % (provider_name,))  # type: ignore
 
         # Encrypt by key_alt_name.
         encrypted_altname = self.client_encryption.encrypt(
@@ -985,7 +995,7 @@ class TestCorpus(EncryptionIntegrationTest):
         self.addCleanup(client_encryption.close)
 
         corpus = self.fix_up_curpus(json_data('corpus', 'corpus.json'))
-        corpus_copied = SON()
+        corpus_copied: SON = SON()
         for key, value in corpus.items():
             corpus_copied[key] = copy.deepcopy(value)
             if key in ('_id', 'altname_aws', 'altname_azure', 'altname_gcp',
@@ -1021,7 +1031,7 @@ class TestCorpus(EncryptionIntegrationTest):
 
                 try:
                     encrypted_val = client_encryption.encrypt(
-                        value['value'], algo, **kwargs)
+                        value['value'], algo, **kwargs)  # type: ignore[arg-type]
                     if not value['allowed']:
                         self.fail('encrypt should have failed: %r: %r' % (
                             key, value))
@@ -1082,6 +1092,10 @@ _16_MiB = 16777216
 
 class TestBsonSizeBatches(EncryptionIntegrationTest):
     """Prose tests for BSON size limits and batch splitting."""
+    coll: Collection
+    coll_encrypted: Collection
+    client_encrypted: MongoClient
+    listener: OvertCommandListener
 
     @classmethod
     def setUpClass(cls):
@@ -1205,8 +1219,8 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             kms_tls_options=KMS_TLS_OPTS)
 
         kms_providers_invalid = copy.deepcopy(kms_providers)
-        kms_providers_invalid['azure']['identityPlatformEndpoint'] = 'example.com:443'
-        kms_providers_invalid['gcp']['endpoint'] = 'example.com:443'
+        kms_providers_invalid['azure']['identityPlatformEndpoint'] = 'doesnotexist.invalid:443'
+        kms_providers_invalid['gcp']['endpoint'] = 'doesnotexist.invalid:443'
         kms_providers_invalid['kmip']['endpoint'] = 'doesnotexist.local:5698'
         self.client_encryption_invalid = ClientEncryption(
             kms_providers=kms_providers_invalid,
@@ -1214,7 +1228,8 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             key_vault_client=client_context.client,
             codec_options=OPTS,
             kms_tls_options=KMS_TLS_OPTS)
-        self._kmip_host_error = ''
+        self._kmip_host_error = None
+        self._invalid_host_error = None
 
     def tearDown(self):
         self.client_encryption.close()
@@ -1295,9 +1310,9 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             "region": "us-east-1",
             "key": ("arn:aws:kms:us-east-1:579766882180:key/"
                     "89fcc2c4-08b0-4bd9-9f25-e30687b580d0"),
-            "endpoint": "example.com"
+            "endpoint": "doesnotexist.invalid"
         }
-        with self.assertRaisesRegex(EncryptionError, 'parse error'):
+        with self.assertRaisesRegex(EncryptionError, self.invalid_host_error):
             self.client_encryption.create_data_key(
                 'aws', master_key=master_key)
 
@@ -1309,8 +1324,8 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
         self.run_test_expected_success('azure', master_key)
 
         # The full error should be something like:
-        # "Invalid JSON in KMS response. HTTP status=404. Error: Got parse error at '<', position 0: 'SPECIAL_EXPECTED'"
-        with self.assertRaisesRegex(EncryptionError, 'parse error'):
+        # "[Errno 8] nodename nor servname provided, or not known"
+        with self.assertRaisesRegex(EncryptionError, self.invalid_host_error):
             self.client_encryption_invalid.create_data_key(
                 'azure', master_key=master_key)
 
@@ -1326,8 +1341,8 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
         self.run_test_expected_success('gcp', master_key)
 
         # The full error should be something like:
-        # "Invalid JSON in KMS response. HTTP status=404. Error: Got parse error at '<', position 0: 'SPECIAL_EXPECTED'"
-        with self.assertRaisesRegex(EncryptionError, 'parse error'):
+        # "[Errno 8] nodename nor servname provided, or not known"
+        with self.assertRaisesRegex(EncryptionError, self.invalid_host_error):
             self.client_encryption_invalid.create_data_key(
                 'gcp', master_key=master_key)
 
@@ -1339,7 +1354,7 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             "location": "global",
             "keyRing": "key-ring-csfle",
             "keyName": "key-name-csfle",
-            "endpoint": "example.com:443"}
+            "endpoint": "doesnotexist.invalid:443"}
 
         # The full error should be something like:
         # "Invalid KMS response, no access_token returned. HTTP status=200"
@@ -1347,22 +1362,30 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             self.client_encryption.create_data_key(
                 'gcp', master_key=master_key)
 
-    def kmip_host_error(self):
-        if self._kmip_host_error:
-            return self._kmip_host_error
+    def dns_error(self, host, port):
         # The full error should be something like:
         # "[Errno 8] nodename nor servname provided, or not known"
-        try:
-            socket.getaddrinfo('doesnotexist.local', 5698, socket.AF_INET,
-                               socket.SOCK_STREAM)
-        except Exception as exc:
-            self._kmip_host_error = re.escape(str(exc))
-            return self._kmip_host_error
+        with self.assertRaises(Exception) as ctx:
+            socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
+        return re.escape(str(ctx.exception))
+
+    @property
+    def invalid_host_error(self):
+        if self._invalid_host_error is None:
+            self._invalid_host_error = self.dns_error(
+                'doesnotexist.invalid', 443)
+        return self._invalid_host_error
+
+    @property
+    def kmip_host_error(self):
+        if self._kmip_host_error is None:
+            self._kmip_host_error = self.dns_error('doesnotexist.local', 5698)
+        return self._kmip_host_error
 
     def test_10_kmip_invalid_endpoint(self):
         key = {'keyId': '1'}
         self.run_test_expected_success('kmip', key)
-        with self.assertRaisesRegex(EncryptionError, self.kmip_host_error()):
+        with self.assertRaisesRegex(EncryptionError, self.kmip_host_error):
             self.client_encryption_invalid.create_data_key('kmip', key)
 
     def test_11_kmip_master_key_endpoint(self):
@@ -1379,7 +1402,7 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
 
     def test_12_kmip_master_key_invalid_endpoint(self):
         key = {'keyId': '1', 'endpoint': 'doesnotexist.local:5698'}
-        with self.assertRaisesRegex(EncryptionError, self.kmip_host_error()):
+        with self.assertRaisesRegex(EncryptionError, self.kmip_host_error):
             self.client_encryption.create_data_key('kmip', key)
 
 
@@ -1388,6 +1411,7 @@ class AzureGCPEncryptionTestMixin(object):
     KMS_PROVIDER_MAP = None
     KEYVAULT_DB = 'keyvault'
     KEYVAULT_COLL = 'datakeys'
+    client: MongoClient
 
     def setUp(self):
         keyvault = self.client.get_database(
@@ -1397,7 +1421,7 @@ class AzureGCPEncryptionTestMixin(object):
 
     def _test_explicit(self, expectation):
         client_encryption = ClientEncryption(
-            self.KMS_PROVIDER_MAP,
+            self.KMS_PROVIDER_MAP,  # type: ignore[arg-type]
             '.'.join([self.KEYVAULT_DB, self.KEYVAULT_COLL]),
             client_context.client,
             OPTS)
@@ -1417,7 +1441,7 @@ class AzureGCPEncryptionTestMixin(object):
         keyvault_namespace = '.'.join([self.KEYVAULT_DB, self.KEYVAULT_COLL])
 
         encryption_opts = AutoEncryptionOpts(
-            self.KMS_PROVIDER_MAP,
+            self.KMS_PROVIDER_MAP,  # type: ignore[arg-type]
             keyvault_namespace,
             schema_map=self.SCHEMA_MAP)
 
@@ -1809,7 +1833,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
     def setUp(self):
         super(TestKmsTLSOptions, self).setUp()
         # 1, create client with only tlsCAFile.
-        providers = copy.deepcopy(ALL_KMS_PROVIDERS)
+        providers: dict = copy.deepcopy(ALL_KMS_PROVIDERS)
         providers['azure']['identityPlatformEndpoint'] = '127.0.0.1:8002'
         providers['gcp']['endpoint'] = '127.0.0.1:8002'
         kms_tls_opts_ca_only = {
@@ -1831,7 +1855,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
             kms_tls_options=kms_tls_opts)
         self.addCleanup(self.client_encryption_with_tls.close)
         # 3, update endpoints to expired host.
-        providers = copy.deepcopy(providers)
+        providers: dict = copy.deepcopy(providers)
         providers['azure']['identityPlatformEndpoint'] = '127.0.0.1:8000'
         providers['gcp']['endpoint'] = '127.0.0.1:8000'
         providers['kmip']['endpoint'] = '127.0.0.1:8000'
@@ -1840,7 +1864,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
             kms_tls_options=kms_tls_opts_ca_only)
         self.addCleanup(self.client_encryption_expired.close)
         # 3, update endpoints to invalid host.
-        providers = copy.deepcopy(providers)
+        providers: dict = copy.deepcopy(providers)
         providers['azure']['identityPlatformEndpoint'] = '127.0.0.1:8001'
         providers['gcp']['endpoint'] = '127.0.0.1:8001'
         providers['kmip']['endpoint'] = '127.0.0.1:8001'

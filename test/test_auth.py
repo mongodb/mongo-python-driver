@@ -76,6 +76,8 @@ class AutoAuthenticateThread(threading.Thread):
 
 
 class TestGSSAPI(unittest.TestCase):
+    mech_properties: str
+    service_realm_required: bool
 
     @classmethod
     def setUpClass(cls):
@@ -116,6 +118,7 @@ class TestGSSAPI(unittest.TestCase):
 
     @ignore_deprecations
     def test_gssapi_simple(self):
+        assert GSSAPI_PRINCIPAL is not None
         if GSSAPI_PASS is not None:
             uri = ('mongodb://%s:%s@%s:%d/?authMechanism='
                    'GSSAPI' % (quote_plus(GSSAPI_PRINCIPAL),
@@ -264,6 +267,8 @@ class TestSASLPlain(unittest.TestCase):
                              authMechanism='PLAIN')
         client.ldap.test.find_one()
 
+        assert SASL_USER is not None
+        assert SASL_PASS is not None
         uri = ('mongodb://%s:%s@%s:%d/?authMechanism=PLAIN;'
                'authSource=%s' % (quote_plus(SASL_USER),
                                   quote_plus(SASL_PASS),
@@ -540,7 +545,6 @@ class TestSCRAM(IntegrationTest):
         self.assertIsInstance(iterations, int)
 
     def test_scram_threaded(self):
-
         coll = client_context.client.db.test
         coll.drop()
         coll.insert_one({'_id': 1})

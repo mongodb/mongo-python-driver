@@ -226,7 +226,7 @@ class ServerEventListener(_ServerEventListener,
     """Listens to Server events."""
 
 
-class ServerAndTopologyEventListener(ServerEventListener,
+class ServerAndTopologyEventListener(ServerEventListener,  # type: ignore
                                      monitoring.TopologyListener):
     """Listens to Server and Topology events."""
 
@@ -519,7 +519,7 @@ def _mongo_client(host, port, authenticate=True, directConnection=None,
     """Create a new client over SSL/TLS if necessary."""
     host = host or client_context.host
     port = port or client_context.port
-    client_options = client_context.default_client_options.copy()
+    client_options: dict = client_context.default_client_options.copy()
     if client_context.replica_set_name and not directConnection:
         client_options['replicaSet'] = client_context.replica_set_name
     if directConnection is not None:
@@ -678,7 +678,7 @@ def server_started_with_auth(client):
     try:
         command_line = get_command_line(client)
     except OperationFailure as e:
-        msg = e.details.get('errmsg', '')
+        msg = e.details.get('errmsg', '')  # type: ignore
         if e.code == 13 or 'unauthorized' in msg or 'login' in msg:
             # Unauthorized.
             return True
@@ -818,8 +818,8 @@ class DeprecationFilter(object):
 
     def stop(self):
         """Stop filtering deprecations."""
-        self.warn_context.__exit__()
-        self.warn_context = None
+        self.warn_context.__exit__()  # type: ignore
+        self.warn_context = None  # type: ignore
 
 
 def get_pool(client):
@@ -862,23 +862,13 @@ def run_threads(collection, target):
 @contextlib.contextmanager
 def frequent_thread_switches():
     """Make concurrency bugs more likely to manifest."""
-    interval = None
-    if not sys.platform.startswith('java'):
-        if hasattr(sys, 'getswitchinterval'):
-            interval = sys.getswitchinterval()
-            sys.setswitchinterval(1e-6)
-        else:
-            interval = sys.getcheckinterval()
-            sys.setcheckinterval(1)
+    interval = sys.getswitchinterval()
+    sys.setswitchinterval(1e-6)
 
     try:
         yield
     finally:
-        if not sys.platform.startswith('java'):
-            if hasattr(sys, 'setswitchinterval'):
-                sys.setswitchinterval(interval)
-            else:
-                sys.setcheckinterval(interval)
+        sys.setswitchinterval(interval)
 
 
 def lazy_client_trial(reset, target, test, get_client):
@@ -994,6 +984,7 @@ def assertion_context(msg):
     except AssertionError as exc:
         msg = '%s (%s)' % (exc, msg)
         exc_type, exc_val, exc_tb = sys.exc_info()
+        assert exc_type is not None
         raise exc_type(exc_val).with_traceback(exc_tb)
 
 

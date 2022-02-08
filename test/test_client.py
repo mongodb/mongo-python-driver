@@ -28,6 +28,8 @@ import _thread as thread
 import threading
 import warnings
 
+from typing import no_type_check, Type
+
 sys.path[0:0] = [""]
 
 from bson import encode
@@ -99,6 +101,7 @@ from test.utils import (assertRaisesExactly,
 
 class ClientUnitTest(unittest.TestCase):
     """MongoClient tests that don't require a server."""
+    client: MongoClient
 
     @classmethod
     @client_context.require_connection
@@ -341,7 +344,7 @@ class ClientUnitTest(unittest.TestCase):
                 return int(value)
 
         # Ensure codec options are passed in correctly
-        document_class = SON
+        document_class: Type[SON] = SON
         type_registry = TypeRegistry([MyFloatAsIntEncoder()])
         tz_aware = True
         uuid_representation_label = 'javaLegacy'
@@ -614,7 +617,7 @@ class TestClient(IntegrationTest):
         port are not overloaded.
         """
         host, port = client_context.host, client_context.port
-        kwargs = client_context.default_client_options.copy()
+        kwargs: dict = client_context.default_client_options.copy()
         if client_context.auth_enabled:
             kwargs['username'] = db_user
             kwargs['password'] = db_pwd
@@ -1111,6 +1114,7 @@ class TestClient(IntegrationTest):
                                                   socket.SO_KEEPALIVE)
             self.assertTrue(keepalive)
 
+    @no_type_check
     def test_tz_aware(self):
         self.assertRaises(ValueError, MongoClient, tz_aware='foo')
 
@@ -1140,7 +1144,7 @@ class TestClient(IntegrationTest):
 
         uri = "mongodb://%s[::1]:%d" % (auth_str, client_context.port)
         if client_context.is_rs:
-            uri += '/?replicaSet=' + client_context.replica_set_name
+            uri += '/?replicaSet=' + (client_context.replica_set_name or "")
 
         client = rs_or_single_client_noauth(uri)
         client.pymongo_test.test.insert_one({"dummy": "object"})
@@ -1379,7 +1383,7 @@ class TestClient(IntegrationTest):
             heartbeat_times.append(time.time())
 
         try:
-            ServerHeartbeatStartedEvent.__init__ = init
+            ServerHeartbeatStartedEvent.__init__ = init  # type: ignore
             listener = HeartbeatStartedListener()
             uri = "mongodb://%s:%d/?heartbeatFrequencyMS=500" % (
                 client_context.host, client_context.port)
@@ -1394,7 +1398,7 @@ class TestClient(IntegrationTest):
 
             client.close()
         finally:
-            ServerHeartbeatStartedEvent.__init__ = old_init
+            ServerHeartbeatStartedEvent.__init__ = old_init  # type: ignore
 
     def test_small_heartbeat_frequency_ms(self):
         uri = "mongodb://example/?heartbeatFrequencyMS=499"
@@ -1847,7 +1851,7 @@ class TestClientLazyConnect(IntegrationTest):
         lazy_client_trial(reset, delete_one, test, self._get_client)
 
     def test_find_one(self):
-        results = []
+        results: list = []
 
         def reset(collection):
             collection.drop()

@@ -18,6 +18,7 @@ import functools
 import threading
 
 from collections import abc
+from typing import List
 
 from bson import decode, encode
 from bson.binary import Binary
@@ -40,7 +41,7 @@ from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   client_knobs,
                   IntegrationTest)
-from test.utils import (camel_to_snake,
+from test.utils import (EventListener, camel_to_snake,
                         camel_to_snake_args,
                         CompareType,
                         CMAPListener,
@@ -86,6 +87,9 @@ class SpecRunnerThread(threading.Thread):
 
 
 class SpecRunner(IntegrationTest):
+    mongos_clients: List
+    knobs: client_knobs
+    listener: EventListener
 
     @classmethod
     def setUpClass(cls):
@@ -105,7 +109,7 @@ class SpecRunner(IntegrationTest):
     def setUp(self):
         super(SpecRunner, self).setUp()
         self.targets = {}
-        self.listener = None
+        self.listener = None  # type: ignore
         self.pool_listener = None
         self.server_listener = None
         self.maxDiff = None
@@ -219,6 +223,7 @@ class SpecRunner(IntegrationTest):
                         ids = expected_result[res]
                         if isinstance(ids, dict):
                             ids = [ids[str(i)] for i in range(len(ids))]
+
                         self.assertEqual(ids, result.inserted_ids, prop)
                 elif prop == "upserted_ids":
                     # Convert indexes from strings to integers.

@@ -17,6 +17,7 @@
 """Tests for the Code wrapper."""
 
 import sys
+
 sys.path[0:0] = [""]
 
 from bson.code import Code
@@ -35,7 +36,7 @@ class TestCode(unittest.TestCase):
         c = Code("blah")
 
         def set_c():
-            c.scope = 5
+            c.scope = 5  # type: ignore
         self.assertRaises(AttributeError, set_c)
 
     def test_code(self):

@@ -21,6 +21,9 @@ import unittest
 
 
 class TestCursorNamespace(unittest.TestCase):
+    server: MockupDB
+    client: MongoClient
+
     @classmethod
     def setUpClass(cls):
         cls.server = MockupDB(auto_ismaster={'maxWireVersion': 6})
@@ -69,6 +72,9 @@ class TestCursorNamespace(unittest.TestCase):
 
 
 class TestKillCursorsNamespace(unittest.TestCase):
+    server: MockupDB
+    client: MongoClient
+
     @classmethod
     def setUpClass(cls):
         cls.server = MockupDB(auto_ismaster={'maxWireVersion': 6})

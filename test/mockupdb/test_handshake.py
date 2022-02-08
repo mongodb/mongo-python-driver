@@ -48,7 +48,7 @@ def test_hello_with_option(self, protocol, **kwargs):
                                         ServerApiVersion.V1))}
     client = MongoClient("mongodb://"+primary.address_string,
                          appname='my app', # For _check_handshake_data()
-                         **dict([k_map.get((k, v), (k, v)) for k, v
+                         **dict([k_map.get((k, v), (k, v)) for k, v  # type: ignore[arg-type]
                                  in kwargs.items()]))
 
     self.addCleanup(client.close)
@@ -58,7 +58,7 @@ def test_hello_with_option(self, protocol, **kwargs):
 
     # We do this checking here rather than in the autoresponder `respond()`
     # because it runs in another Python thread so there are some funky things
-    # with error handling within that thread, and we want to be able to use 
+    # with error handling within that thread, and we want to be able to use
     # self.assertRaises().
     self.handshake_req.assert_matches(protocol(hello, **kwargs))
     _check_handshake_data(self.handshake_req)

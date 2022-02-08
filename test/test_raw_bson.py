@@ -82,6 +82,7 @@ class TestRawBSONDocument(IntegrationTest):
             codec_options=CodecOptions(document_class=RawBSONDocument))
         db.test_raw.insert_one(self.document)
         result = db.test_raw.find_one(self.document['_id'])
+        assert result is not None
         self.assertIsInstance(result, RawBSONDocument)
         self.assertEqual(dict(self.document.items()), dict(result.items()))
 
@@ -146,6 +147,7 @@ class TestRawBSONDocument(IntegrationTest):
         db = self.client.pymongo_test
         db.test_raw.insert_one(doc)
         result = db.test_raw.find_one()
+        assert result is not None
         self.assertEqual(decode(self.document.raw), result['embedded'])
 
         # Make sure that CodecOptions are preserved.
@@ -169,6 +171,7 @@ class TestRawBSONDocument(IntegrationTest):
         db.test_raw.insert_one(rbd)
         result = db.get_collection('test_raw', codec_options=CodecOptions(
             uuid_representation=JAVA_LEGACY)).find_one()
+        assert result is not None
         self.assertEqual(rbd['embedded'][0]['_id'],
                          result['embedded'][0]['_id'])
 

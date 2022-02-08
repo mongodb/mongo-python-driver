@@ -87,7 +87,7 @@ class TestStreamingProtocol(IntegrationTest):
         # 1-15 millisecond resolution. We need to delay the initial hello
         # to ensure that RTT is never zero.
         name = 'streamingRttTest'
-        delay_hello = {
+        delay_hello: dict = {
             'configureFailPoint': 'failCommand',
             'mode': {'times': 1000},
             'data': {

@@ -890,6 +890,7 @@ class TestTransactionExamples(IntegrationTest):
             update_employee_info(session)
 
         employee = employees.find_one({"employee": 3})
+        assert employee is not None
         self.assertIsNotNone(employee)
         self.assertEqual(employee['status'], 'Inactive')
 
@@ -916,6 +917,7 @@ class TestTransactionExamples(IntegrationTest):
             run_transaction_with_retry(update_employee_info, session)
 
         employee = employees.find_one({"employee": 3})
+        assert employee is not None
         self.assertIsNotNone(employee)
         self.assertEqual(employee['status'], 'Inactive')
 
@@ -954,6 +956,7 @@ class TestTransactionExamples(IntegrationTest):
             run_transaction_with_retry(_insert_employee_retry_commit, session)
 
         employee = employees.find_one({"employee": 4})
+        assert employee is not None
         self.assertIsNotNone(employee)
         self.assertEqual(employee['status'], 'Active')
 
@@ -1021,6 +1024,7 @@ class TestTransactionExamples(IntegrationTest):
         # End Transactions Retry Example 3
 
         employee = employees.find_one({"employee": 3})
+        assert employee is not None
         self.assertIsNotNone(employee)
         self.assertEqual(employee['status'], 'Inactive')
 
@@ -1088,6 +1092,9 @@ class TestCausalConsistencyExamples(IntegrationTest):
                 {'sku': "nuts-111", 'name': "Pecans",
                  'start': current_date}, session=s1)
         # End Causal Consistency Example 1
+
+        assert s1.cluster_time is not None
+        assert s1.operation_time is not None
 
         # Start Causal Consistency Example 2
         with client.start_session(causal_consistency=True) as s2:
