@@ -213,11 +213,11 @@ class TestCMAP(IntegrationTest):
 
     def run_scenario(self, scenario_def, test):
         """Run a CMAP spec test."""
-        self.logs = []
+        self.logs: list = []
         self.assertEqual(scenario_def['version'], 1)
         self.assertIn(scenario_def['style'], ['unit', 'integration'])
         self.listener = CMAPListener()
-        self._ops = []
+        self._ops: list = []
 
         # Configure the fail point before creating the client.
         if 'failPoint' in test:
@@ -259,9 +259,9 @@ class TestCMAP(IntegrationTest):
         self.pool = list(client._topology._servers.values())[0].pool
 
         # Map of target names to Thread objects.
-        self.targets = dict()
+        self.targets: dict = dict()
         # Map of label names to Connection objects
-        self.labels = dict()
+        self.labels: dict = dict()
 
         def cleanup():
             for t in self.targets.values():

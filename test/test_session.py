@@ -20,6 +20,9 @@ import sys
 import time
 
 from io import BytesIO
+from typing import Set
+
+from pymongo.mongo_client import MongoClient
 
 sys.path[0:0] = [""]
 
@@ -64,6 +67,8 @@ def session_ids(client):
 
 
 class TestSession(IntegrationTest):
+    client2: MongoClient
+    sensitive_commands: Set[str]
 
     @classmethod
     @client_context.require_sessions
@@ -231,7 +236,7 @@ class TestSession(IntegrationTest):
 
     def test_client(self):
         client = self.client
-        ops = [
+        ops: list = [
             (client.server_info, [], {}),
             (client.list_database_names, [], {}),
             (client.drop_database, ['pymongo_test'], {}),
@@ -242,7 +247,7 @@ class TestSession(IntegrationTest):
     def test_database(self):
         client = self.client
         db = client.pymongo_test
-        ops = [
+        ops: list = [
             (db.command, ['ping'], {}),
             (db.create_collection, ['collection'], {}),
             (db.list_collection_names, [], {}),
@@ -493,6 +498,7 @@ class TestSession(IntegrationTest):
         # Explicit session.
         with client.start_session() as s:
             cursor = bucket.find(session=s)
+            assert cursor.session is not None
             s = cursor.session
             files = list(cursor)
             cursor.__del__()
@@ -680,7 +686,7 @@ class TestSession(IntegrationTest):
         self.addCleanup(client.close)
         db = client.pymongo_test
         coll = db.test_unacked_writes
-        ops = [
+        ops: list = [
             (client.drop_database, [db.name], {}),
             (db.create_collection, ['collection'], {}),
             (db.drop_collection, ['collection'], {}),
@@ -722,6 +728,8 @@ class TestSession(IntegrationTest):
             self.assertRaises(TypeError, lambda: copy.copy(s))
 
 class TestCausalConsistency(unittest.TestCase):
+    listener: SessionTestListener
+    client: MongoClient
 
     @classmethod
     def setUpClass(cls):
@@ -778,6 +786,8 @@ class TestCausalConsistency(unittest.TestCase):
                 self.assertRaises(ValueError, sess2.advance_cluster_time, {})
                 self.assertRaises(TypeError, sess2.advance_operation_time, 1)
                 # No error
+                assert sess.cluster_time is not None
+                assert sess.operation_time is not None
                 sess2.advance_cluster_time(sess.cluster_time)
                 sess2.advance_operation_time(sess.operation_time)
                 self.assertEqual(sess.cluster_time, sess2.cluster_time)

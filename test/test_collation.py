@@ -17,6 +17,8 @@
 import functools
 import warnings
 
+from typing import Any
+
 from pymongo.collation import (
     Collation,
     CollationCaseFirst, CollationStrength, CollationAlternate,
@@ -78,6 +80,10 @@ class TestCollationObject(unittest.TestCase):
 
 
 class TestCollation(IntegrationTest):
+    listener: EventListener
+    warn_context: Any
+    collation: Collation
+
     @classmethod
     @client_context.require_connection
     def setUpClass(cls):

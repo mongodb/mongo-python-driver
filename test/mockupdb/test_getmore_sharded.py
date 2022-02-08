@@ -27,7 +27,7 @@ class TestGetmoreSharded(unittest.TestCase):
         servers = [MockupDB(), MockupDB()]
 
         # Collect queries to either server in one queue.
-        q = Queue()
+        q: Queue = Queue()
         for server in servers:
             server.subscribe(q.put)
             server.autoresponds('ismaster', ismaster=True, msg='isdbgrid',

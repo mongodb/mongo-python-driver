@@ -16,13 +16,15 @@
 
 import sys
 import uuid
-from bson.binary import UuidRepresentation
-from bson.codec_options import CodecOptions
+
+from pymongo.mongo_client import MongoClient
 
 sys.path[0:0] = [""]
 
-from bson import Binary
+from bson.binary import Binary, UuidRepresentation
+from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
+from pymongo.collection import Collection
 from pymongo.common import partition_node
 from pymongo.errors import (BulkWriteError,
                             ConfigurationError,
@@ -40,6 +42,8 @@ from test.utils import (remove_all_users,
 
 
 class BulkTestBase(IntegrationTest):
+    coll: Collection
+    coll_w0: Collection
 
     @classmethod
     def setUpClass(cls):
@@ -280,6 +284,7 @@ class TestBulk(BulkTestBase):
                                                   upsert=True)])
         self.assertEqualResponse(expected, result.bulk_api_result)
         self.assertEqual(1, result.upserted_count)
+        assert result.upserted_ids is not None
         self.assertEqual(1, len(result.upserted_ids))
         self.assertTrue(isinstance(result.upserted_ids.get(0), ObjectId))
 
@@ -341,11 +346,11 @@ class TestBulk(BulkTestBase):
         # The requests argument must be a list.
         generator = (InsertOne({}) for _ in range(10))
         with self.assertRaises(TypeError):
-            self.coll.bulk_write(generator)
+            self.coll.bulk_write(generator)  # type: ignore[arg-type]
 
         # Document is not wrapped in a bulk write operation.
         with self.assertRaises(TypeError):
-            self.coll.bulk_write([{}])
+            self.coll.bulk_write([{}])  # type: ignore[list-item]
 
     def test_upsert_large(self):
         big = 'a' * (client_context.max_bson_size - 37)
@@ -425,7 +430,7 @@ class TestBulk(BulkTestBase):
     def test_upsert_uuid_standard_subdocuments(self):
         options = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
         coll = self.coll.with_options(codec_options=options)
-        ids = [
+        ids: list = [
             {'f': Binary(bytes(i)), 'f2': uuid.uuid4()}
             for i in range(3)
         ]
@@ -472,7 +477,7 @@ class TestBulk(BulkTestBase):
     def test_single_error_ordered_batch(self):
         self.coll.create_index('a', unique=True)
         self.addCleanup(self.coll.drop_index, [('a', 1)])
-        requests = [
+        requests: list = [
             InsertOne({'b': 1, 'a': 1}),
             UpdateOne({'b': 2}, {'$set': {'a': 1}}, upsert=True),
             InsertOne({'b': 3, 'a': 2}),
@@ -506,7 +511,7 @@ class TestBulk(BulkTestBase):
     def test_multiple_error_ordered_batch(self):
         self.coll.create_index('a', unique=True)
         self.addCleanup(self.coll.drop_index, [('a', 1)])
-        requests = [
+        requests: list = [
             InsertOne({'b': 1, 'a': 1}),
             UpdateOne({'b': 2}, {'$set': {'a': 1}}, upsert=True),
             UpdateOne({'b': 3}, {'$set': {'a': 2}}, upsert=True),
@@ -542,7 +547,7 @@ class TestBulk(BulkTestBase):
             result)
 
     def test_single_unordered_batch(self):
-        requests = [
+        requests: list = [
             InsertOne({'a': 1}),
             UpdateOne({'a': 1}, {'$set': {'b': 1}}),
             UpdateOne({'a': 2}, {'$set': {'b': 2}}, upsert=True),
@@ -564,7 +569,7 @@ class TestBulk(BulkTestBase):
     def test_single_error_unordered_batch(self):
         self.coll.create_index('a', unique=True)
         self.addCleanup(self.coll.drop_index, [('a', 1)])
-        requests = [
+        requests: list = [
             InsertOne({'b': 1, 'a': 1}),
             UpdateOne({'b': 2}, {'$set': {'a': 1}}, upsert=True),
             InsertOne({'b': 3, 'a': 2}),
@@ -599,7 +604,7 @@ class TestBulk(BulkTestBase):
     def test_multiple_error_unordered_batch(self):
         self.coll.create_index('a', unique=True)
         self.addCleanup(self.coll.drop_index, [('a', 1)])
-        requests = [
+        requests: list = [
             InsertOne({'b': 1, 'a': 1}),
             UpdateOne({'b': 2}, {'$set': {'a': 3}}, upsert=True),
             UpdateOne({'b': 3}, {'$set': {'a': 4}}, upsert=True),
@@ -662,7 +667,7 @@ class TestBulk(BulkTestBase):
         self.coll.delete_many({})
 
         big = 'x' * (1024 * 1024 * 4)
-        result = self.coll.bulk_write([
+        write_result = self.coll.bulk_write([
             InsertOne({'a': 1, 'big': big}),
             InsertOne({'a': 2, 'big': big}),
             InsertOne({'a': 3, 'big': big}),
@@ -671,7 +676,7 @@ class TestBulk(BulkTestBase):
             InsertOne({'a': 6, 'big': big}),
         ])
 
-        self.assertEqual(6, result.inserted_count)
+        self.assertEqual(6, write_result.inserted_count)
         self.assertEqual(6, self.coll.count_documents({}))
 
     def test_large_inserts_unordered(self):
@@ -685,12 +690,12 @@ class TestBulk(BulkTestBase):
         try:
             self.coll.bulk_write(requests, ordered=False)
         except BulkWriteError as exc:
-            result = exc.details
+            details = exc.details
             self.assertEqual(exc.code, 65)
         else:
             self.fail("Error not raised")
 
-        self.assertEqual(2, result['nInserted'])
+        self.assertEqual(2, details['nInserted'])
 
         self.coll.delete_many({})
 
@@ -741,7 +746,7 @@ class TestBulkUnacknowledged(BulkTestBase):
         self.coll.delete_many({})
 
     def test_no_results_ordered_success(self):
-        requests = [
+        requests: list = [
             InsertOne({'a': 1}),
             UpdateOne({'a': 3}, {'$set': {'b': 1}}, upsert=True),
             InsertOne({'a': 2}),
@@ -755,7 +760,7 @@ class TestBulkUnacknowledged(BulkTestBase):
                    'removed {"_id": 1}')
 
     def test_no_results_ordered_failure(self):
-        requests = [
+        requests: list = [
             InsertOne({'_id': 1}),
             UpdateOne({'_id': 3}, {'$set': {'b': 1}}, upsert=True),
             InsertOne({'_id': 2}),
@@ -771,7 +776,7 @@ class TestBulkUnacknowledged(BulkTestBase):
         self.assertEqual({'_id': 1}, self.coll.find_one({'_id': 1}))
 
     def test_no_results_unordered_success(self):
-        requests = [
+        requests: list = [
             InsertOne({'a': 1}),
             UpdateOne({'a': 3}, {'$set': {'b': 1}}, upsert=True),
             InsertOne({'a': 2}),
@@ -785,7 +790,7 @@ class TestBulkUnacknowledged(BulkTestBase):
                    'removed {"_id": 1}')
 
     def test_no_results_unordered_failure(self):
-        requests = [
+        requests: list = [
             InsertOne({'_id': 1}),
             UpdateOne({'_id': 3}, {'$set': {'b': 1}}, upsert=True),
             InsertOne({'_id': 2}),
@@ -832,13 +837,15 @@ class TestBulkAuthorization(BulkAuthorizationTestBase):
 
 
 class TestBulkWriteConcern(BulkTestBase):
+    w: Optional[int]
+    secondary: MongoClient
 
     @classmethod
     def setUpClass(cls):
         super(TestBulkWriteConcern, cls).setUpClass()
         cls.w = client_context.w
         cls.secondary = None
-        if cls.w > 1:
+        if cls.w is not None and cls.w > 1:
             for member in client_context.hello['hosts']:
                 if member != client_context.hello['primary']:
                     cls.secondary = single_client(*partition_node(member))
@@ -886,7 +893,7 @@ class TestBulkWriteConcern(BulkTestBase):
         try:
             self.cause_wtimeout(requests, ordered=True)
         except BulkWriteError as exc:
-            result = exc.details
+            details = exc.details
             self.assertEqual(exc.code, 65)
         else:
             self.fail("Error not raised")
@@ -899,13 +906,13 @@ class TestBulkWriteConcern(BulkTestBase):
              'nRemoved': 0,
              'upserted': [],
              'writeErrors': []},
-            result)
+            details)
 
         # When talking to legacy servers there will be a
         # write concern error for each operation.
-        self.assertTrue(len(result['writeConcernErrors']) > 0)
+        self.assertTrue(len(details['writeConcernErrors']) > 0)
 
-        failed = result['writeConcernErrors'][0]
+        failed = details['writeConcernErrors'][0]
         self.assertEqual(64, failed['code'])
         self.assertTrue(isinstance(failed['errmsg'], str))
 
@@ -924,7 +931,7 @@ class TestBulkWriteConcern(BulkTestBase):
         try:
             self.cause_wtimeout(requests, ordered=True)
         except BulkWriteError as exc:
-            result = exc.details
+            details = exc.details
             self.assertEqual(exc.code, 65)
         else:
             self.fail("Error not raised")
@@ -941,10 +948,10 @@ class TestBulkWriteConcern(BulkTestBase):
                   'code': 11000,
                   'errmsg': '...',
                   'op': {'_id': '...', 'a': 1}}]},
-            result)
+            details)
 
-        self.assertTrue(len(result['writeConcernErrors']) > 1)
-        failed = result['writeErrors'][0]
+        self.assertTrue(len(details['writeConcernErrors']) > 1)
+        failed = details['writeErrors'][0]
         self.assertTrue("duplicate" in failed['errmsg'])
 
     @client_context.require_replica_set
@@ -966,17 +973,17 @@ class TestBulkWriteConcern(BulkTestBase):
         try:
             self.cause_wtimeout(requests, ordered=False)
         except BulkWriteError as exc:
-            result = exc.details
+            details = exc.details
             self.assertEqual(exc.code, 65)
         else:
             self.fail("Error not raised")
 
-        self.assertEqual(2, result['nInserted'])
-        self.assertEqual(1, result['nUpserted'])
-        self.assertEqual(0, len(result['writeErrors']))
+        self.assertEqual(2, details['nInserted'])
+        self.assertEqual(1, details['nUpserted'])
+        self.assertEqual(0, len(details['writeErrors']))
         # When talking to legacy servers there will be a
         # write concern error for each operation.
-        self.assertTrue(len(result['writeConcernErrors']) > 1)
+        self.assertTrue(len(details['writeConcernErrors']) > 1)
 
         self.coll.delete_many({})
         self.coll.create_index('a', unique=True)
@@ -984,7 +991,7 @@ class TestBulkWriteConcern(BulkTestBase):
 
         # Fail due to write concern support as well
         # as duplicate key error on unordered batch.
-        requests = [
+        requests: list = [
             InsertOne({'a': 1}),
             UpdateOne({'a': 3}, {'$set': {'a': 3, 'b': 1}}, upsert=True),
             InsertOne({'a': 1}),
@@ -993,29 +1000,29 @@ class TestBulkWriteConcern(BulkTestBase):
         try:
             self.cause_wtimeout(requests, ordered=False)
         except BulkWriteError as exc:
-            result = exc.details
+            details = exc.details
             self.assertEqual(exc.code, 65)
         else:
             self.fail("Error not raised")
 
-        self.assertEqual(2, result['nInserted'])
-        self.assertEqual(1, result['nUpserted'])
-        self.assertEqual(1, len(result['writeErrors']))
+        self.assertEqual(2, details['nInserted'])
+        self.assertEqual(1, details['nUpserted'])
+        self.assertEqual(1, len(details['writeErrors']))
         # When talking to legacy servers there will be a
         # write concern error for each operation.
-        self.assertTrue(len(result['writeConcernErrors']) > 1)
+        self.assertTrue(len(details['writeConcernErrors']) > 1)
 
-        failed = result['writeErrors'][0]
+        failed = details['writeErrors'][0]
         self.assertEqual(2, failed['index'])
         self.assertEqual(11000, failed['code'])
         self.assertTrue(isinstance(failed['errmsg'], str))
         self.assertEqual(1, failed['op']['a'])
 
-        failed = result['writeConcernErrors'][0]
+        failed = details['writeConcernErrors'][0]
         self.assertEqual(64, failed['code'])
         self.assertTrue(isinstance(failed['errmsg'], str))
 
-        upserts = result['upserted']
+        upserts = details['upserted']
         self.assertEqual(1, len(upserts))
         self.assertEqual(1, upserts[0]['index'])
         self.assertTrue(upserts[0].get('_id'))

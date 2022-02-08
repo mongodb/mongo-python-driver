@@ -21,6 +21,7 @@ import tempfile
 from collections import OrderedDict
 from decimal import Decimal
 from random import random
+from typing import Any, Tuple, Type, no_type_check
 
 sys.path[0:0] = [""]
 
@@ -127,6 +128,7 @@ def type_obfuscating_decoder_factory(rt_type):
 
 
 class CustomBSONTypeTests(object):
+    @no_type_check
     def roundtrip(self, doc):
         bsonbytes = encode(doc, codec_options=self.codecopts)
         rt_document = decode(bsonbytes, codec_options=self.codecopts)
@@ -139,6 +141,7 @@ class CustomBSONTypeTests(object):
         self.roundtrip({'average': [[Decimal('56.47')]]})
         self.roundtrip({'average': [{'b': Decimal('56.47')}]})
 
+    @no_type_check
     def test_decode_all(self):
         documents = []
         for dec in range(3):
@@ -151,12 +154,14 @@ class CustomBSONTypeTests(object):
         self.assertEqual(
             decode_all(bsonstream, self.codecopts), documents)
 
+    @no_type_check
     def test__bson_to_dict(self):
         document = {'average': Decimal('56.47')}
         rawbytes = encode(document, codec_options=self.codecopts)
         decoded_document = _bson_to_dict(rawbytes, self.codecopts)
         self.assertEqual(document, decoded_document)
 
+    @no_type_check
     def test__dict_to_bson(self):
         document = {'average': Decimal('56.47')}
         rawbytes = encode(document, codec_options=self.codecopts)
@@ -172,12 +177,14 @@ class CustomBSONTypeTests(object):
             bsonstream += encode(doc)
         return edocs, bsonstream
 
+    @no_type_check
     def test_decode_iter(self):
         expected, bson_data = self._generate_multidocument_bson_stream()
         for expected_doc, decoded_doc in zip(
                 expected, decode_iter(bson_data, self.codecopts)):
             self.assertEqual(expected_doc, decoded_doc)
 
+    @no_type_check
     def test_decode_file_iter(self):
         expected, bson_data = self._generate_multidocument_bson_stream()
         fileobj = tempfile.TemporaryFile()
@@ -293,6 +300,15 @@ class TestBSONTypeEnDeCodecs(unittest.TestCase):
 
 
 class TestBSONCustomTypeEncoderAndFallbackEncoderTandem(unittest.TestCase):
+
+    TypeA: Any
+    TypeB: Any
+    fallback_encoder_A2B: Any
+    fallback_encoder_A2BSON: Any
+    B2BSON: Type[TypeEncoder]
+    B2A: Type[TypeEncoder]
+    A2B: Type[TypeEncoder]
+
     @classmethod
     def setUpClass(cls):
         class TypeA(object):
@@ -378,6 +394,10 @@ class TestBSONCustomTypeEncoderAndFallbackEncoderTandem(unittest.TestCase):
 
 
 class TestTypeRegistry(unittest.TestCase):
+    types: Tuple[object, object]
+    codecs: Tuple[Type[TypeCodec], Type[TypeCodec]]
+    fallback_encoder: Any
+
     @classmethod
     def setUpClass(cls):
         class MyIntType(object):
@@ -466,32 +486,32 @@ class TestTypeRegistry(unittest.TestCase):
             def transform_bson(self, value):
                 return self.types[0](value)
 
-        codec_instances = [MyIntDecoder(), MyIntEncoder()]
+        codec_instances: list = [MyIntDecoder(), MyIntEncoder()]
         type_registry = TypeRegistry(codec_instances)
 
         self.assertEqual(
             type_registry._encoder_map,
-            {MyIntEncoder.python_type: codec_instances[1].transform_python})
+            {MyIntEncoder.python_type: codec_instances[1].transform_python})  # type: ignore
         self.assertEqual(
             type_registry._decoder_map,
-            {MyIntDecoder.bson_type: codec_instances[0].transform_bson})
+            {MyIntDecoder.bson_type: codec_instances[0].transform_bson})  # type: ignore
 
     def test_initialize_fail(self):
         err_msg = ("Expected an instance of TypeEncoder, TypeDecoder, "
                    "or TypeCodec, got .* instead")
         with self.assertRaisesRegex(TypeError, err_msg):
-            TypeRegistry(self.codecs)
+            TypeRegistry(self.codecs)  # type: ignore[arg-type]
 
         with self.assertRaisesRegex(TypeError, err_msg):
             TypeRegistry([type('AnyType', (object,), {})()])
 
         err_msg = "fallback_encoder %r is not a callable" % (True,)
         with self.assertRaisesRegex(TypeError, err_msg):
-            TypeRegistry([], True)
+            TypeRegistry([], True)   # type: ignore[arg-type]
 
         err_msg = "fallback_encoder %r is not a callable" % ('hello',)
         with self.assertRaisesRegex(TypeError, err_msg):
-            TypeRegistry(fallback_encoder='hello')
+            TypeRegistry(fallback_encoder='hello')  # type: ignore[arg-type]
 
     def test_type_registry_repr(self):
         codec_instances = [codec() for codec in self.codecs]
@@ -525,7 +545,7 @@ class TestTypeRegistry(unittest.TestCase):
                 if pytype in [bool, type(None), RE_TYPE,]:
                     continue
 
-                class MyType(pytype):
+                class MyType(pytype):  # type: ignore
                     pass
                 attrs.update({'python_type': MyType,
                               'transform_python': lambda x: x})
@@ -598,7 +618,7 @@ class TestCollectionWCustomType(IntegrationTest):
         test = db.get_collection(
             'test', codec_options=UNINT_DECODER_CODECOPTS)
 
-        pipeline = [
+        pipeline: list = [
             {'$match': {'status': 'complete'}},
             {'$group': {'_id': "$status", 'total_qty': {"$sum": "$qty"}}},]
         result = test.aggregate(pipeline)
@@ -680,15 +700,18 @@ class TestGridFileCustomType(IntegrationTest):
 
 
 class ChangeStreamsWCustomTypesTestMixin(object):
+    @no_type_check
     def change_stream(self, *args, **kwargs):
         return self.watched_target.watch(*args, **kwargs)
 
+    @no_type_check
     def insert_and_check(self, change_stream, insert_doc,
                          expected_doc):
         self.input_target.insert_one(insert_doc)
         change = next(change_stream)
         self.assertEqual(change['fullDocument'], expected_doc)
 
+    @no_type_check
     def kill_change_stream_cursor(self, change_stream):
         # Cause a cursor not found error on the next getMore.
         cursor = change_stream._cursor
@@ -696,6 +719,7 @@ class ChangeStreamsWCustomTypesTestMixin(object):
         client = self.input_target.database.client
         client._close_cursor_now(cursor.cursor_id, address)
 
+    @no_type_check
     def test_simple(self):
         codecopts = CodecOptions(type_registry=TypeRegistry([
             UndecipherableIntEncoder(), UppercaseTextDecoder()]))
@@ -718,6 +742,7 @@ class ChangeStreamsWCustomTypesTestMixin(object):
         self.kill_change_stream_cursor(change_stream)
         self.insert_and_check(change_stream, input_docs[2], expected_docs[2])
 
+    @no_type_check
     def test_custom_type_in_pipeline(self):
         codecopts = CodecOptions(type_registry=TypeRegistry([
             UndecipherableIntEncoder(), UppercaseTextDecoder()]))
@@ -741,6 +766,7 @@ class ChangeStreamsWCustomTypesTestMixin(object):
         self.kill_change_stream_cursor(change_stream)
         self.insert_and_check(change_stream, input_docs[2], expected_docs[1])
 
+    @no_type_check
     def test_break_resume_token(self):
         # Get one document from a change stream to determine resumeToken type.
         self.create_targets()
@@ -766,6 +792,7 @@ class ChangeStreamsWCustomTypesTestMixin(object):
         self.kill_change_stream_cursor(change_stream)
         self.insert_and_check(change_stream, docs[2], docs[2])
 
+    @no_type_check
     def test_document_class(self):
         def run_test(doc_cls):
             codecopts = CodecOptions(type_registry=TypeRegistry([

@@ -90,19 +90,19 @@ class TestTransactions(TransactionsBase):
                            read_preference=ReadPreference.PRIMARY,
                            max_commit_time_ms=10000)
         with self.assertRaisesRegex(TypeError, "read_concern must be "):
-            TransactionOptions(read_concern={})
+            TransactionOptions(read_concern={})  # type: ignore
         with self.assertRaisesRegex(TypeError, "write_concern must be "):
-            TransactionOptions(write_concern={})
+            TransactionOptions(write_concern={})  # type: ignore
         with self.assertRaisesRegex(
                 ConfigurationError,
                 "transactions do not support unacknowledged write concern"):
             TransactionOptions(write_concern=WriteConcern(w=0))
         with self.assertRaisesRegex(
                 TypeError, "is not valid for read_preference"):
-            TransactionOptions(read_preference={})
+            TransactionOptions(read_preference={})  # type: ignore
         with self.assertRaisesRegex(
                 TypeError, "max_commit_time_ms must be an integer or None"):
-            TransactionOptions(max_commit_time_ms="10000")
+            TransactionOptions(max_commit_time_ms="10000")  # type: ignore
 
     @client_context.require_transactions
     def test_transaction_write_concern_override(self):
@@ -131,7 +131,7 @@ class TestTransactions(TransactionsBase):
                 coll.find_one_and_replace({}, {}, session=s)
                 coll.find_one_and_update({}, {"$set": {"a": 1}}, session=s)
 
-        unsupported_txn_writes = [
+        unsupported_txn_writes: list = [
             (client.drop_database, [db.name], {}),
             (db.drop_collection, ['collection'], {}),
             (coll.drop, [], {}),
@@ -284,7 +284,7 @@ class TestTransactions(TransactionsBase):
                         InvalidOperation,
                         'GridFS does not support multi-document transactions',
                 ):
-                    op(*args, session=s)
+                    op(*args, session=s)  # type: ignore
 
     # Require 4.2+ for large (16MB+) transactions.
     @client_context.require_version_min(4, 2)
@@ -360,11 +360,11 @@ class TestTransactionsConvenientAPI(TransactionsBase):
 
         self.db.test.insert_one({})
 
-        def callback(session):
+        def callback2(session):
             self.db.test.insert_one({}, session=session)
             return 'Foo'
         with self.client.start_session() as s:
-            self.assertEqual(s.with_transaction(callback), 'Foo')
+            self.assertEqual(s.with_transaction(callback2), 'Foo')
 
     @client_context.require_transactions
     def test_callback_not_retried_after_timeout(self):
@@ -375,7 +375,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
 
         def callback(session):
             coll.insert_one({}, session=session)
-            err = {
+            err: dict = {
                 'ok': 0,
                 'errmsg': 'Transaction 7819 has been aborted.',
                 'code': 251,

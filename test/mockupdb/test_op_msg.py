@@ -233,6 +233,8 @@ operations_312 = [
 
 
 class TestOpMsg(unittest.TestCase):
+    server: MockupDB
+    client: MongoClient
 
     @classmethod
     def setUpClass(cls):

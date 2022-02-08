@@ -24,6 +24,7 @@ sys.path[0:0] = [""]
 from pymongo import MongoClient
 from bson.json_util import object_hook
 from pymongo import monitoring
+from pymongo.collection import Collection
 from pymongo.common import clean_node
 from pymongo.errors import (ConnectionFailure,
                             NotPrimaryError)
@@ -253,6 +254,10 @@ create_tests()
 
 
 class TestSdamMonitoring(IntegrationTest):
+    knobs: client_knobs
+    listener: ServerAndTopologyEventListener
+    test_client: MongoClient
+    coll: Collection
 
     @classmethod
     @client_context.require_failCommand_fail_point

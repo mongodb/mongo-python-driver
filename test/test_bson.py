@@ -186,7 +186,7 @@ class TestBSON(unittest.TestCase):
             decoder=lambda *args: BSON(args[0]).decode(*args[1:]))
 
     def test_encoding_defaultdict(self):
-        dct = collections.defaultdict(dict, [('foo', 'bar')])
+        dct = collections.defaultdict(dict, [('foo', 'bar')])  # type: ignore[arg-type]
         encode(dct)
         self.assertEqual(dct, collections.defaultdict(dict, [('foo', 'bar')]))
 
@@ -302,7 +302,7 @@ class TestBSON(unittest.TestCase):
 
     def test_decode_all_buffer_protocol(self):
         docs = [{'foo': 'bar'}, {}]
-        bs = b"".join(map(encode, docs))
+        bs = b"".join(map(encode, docs))  # type: ignore[arg-type]
         self.assertEqual(docs, decode_all(bytearray(bs)))
         self.assertEqual(docs, decode_all(memoryview(bs)))
         self.assertEqual(docs, decode_all(memoryview(b'1' + bs + b'1')[1:-1]))
@@ -530,7 +530,9 @@ class TestBSON(unittest.TestCase):
     def test_aware_datetime(self):
         aware = datetime.datetime(1993, 4, 4, 2,
                                   tzinfo=FixedOffset(555, "SomeZone"))
-        as_utc = (aware - aware.utcoffset()).replace(tzinfo=utc)
+        offset = aware.utcoffset()
+        assert offset is not None
+        as_utc = (aware - offset).replace(tzinfo=utc)
         self.assertEqual(datetime.datetime(1993, 4, 3, 16, 45, tzinfo=utc),
                          as_utc)
         after = decode(encode({"date": aware}), CodecOptions(tz_aware=True))[
@@ -591,7 +593,9 @@ class TestBSON(unittest.TestCase):
     def test_naive_decode(self):
         aware = datetime.datetime(1993, 4, 4, 2,
                                   tzinfo=FixedOffset(555, "SomeZone"))
-        naive_utc = (aware - aware.utcoffset()).replace(tzinfo=None)
+        offset = aware.utcoffset()
+        assert offset is not None
+        naive_utc = (aware - offset).replace(tzinfo=None)
         self.assertEqual(datetime.datetime(1993, 4, 3, 16, 45), naive_utc)
         after = decode(encode({"date": aware}))["date"]
         self.assertEqual(None, after.tzinfo)
@@ -603,9 +607,9 @@ class TestBSON(unittest.TestCase):
 
     @unittest.skip('Disabled due to http://bugs.python.org/issue25222')
     def test_bad_encode(self):
-        evil_list = {'a': []}
+        evil_list: dict = {'a': []}
         evil_list['a'].append(evil_list)
-        evil_dict = {}
+        evil_dict: dict = {}
         evil_dict['a'] = evil_dict
         for evil_data in [evil_dict, evil_list]:
             self.assertRaises(Exception, encode, evil_data)
@@ -1039,8 +1043,8 @@ class TestCodecOptions(unittest.TestCase):
 
     def test_regex_pickling(self):
         reg = Regex(".?")
-        pickled_with_3 = (b'\x80\x04\x959\x00\x00\x00\x00\x00\x00\x00\x8c\n' 
-                          b'bson.regex\x94\x8c\x05Regex\x94\x93\x94)\x81\x94}' 
+        pickled_with_3 = (b'\x80\x04\x959\x00\x00\x00\x00\x00\x00\x00\x8c\n'
+                          b'bson.regex\x94\x8c\x05Regex\x94\x93\x94)\x81\x94}'
                           b'\x94(\x8c\x07pattern\x94\x8c\x02.?\x94\x8c\x05flag'
                           b's\x94K\x00ub.')
         self.round_trip_pickle(reg, pickled_with_3)
@@ -1083,8 +1087,8 @@ class TestCodecOptions(unittest.TestCase):
 
     def test_maxkey_pickling(self):
         maxk = MaxKey()
-        pickled_with_3 = (b'\x80\x04\x95\x1e\x00\x00\x00\x00\x00\x00\x00\x8c' 
-                          b'\x0cbson.max_key\x94\x8c\x06MaxKey\x94\x93\x94)' 
+        pickled_with_3 = (b'\x80\x04\x95\x1e\x00\x00\x00\x00\x00\x00\x00\x8c'
+                          b'\x0cbson.max_key\x94\x8c\x06MaxKey\x94\x93\x94)'
                           b'\x81\x94.')
 
         self.round_trip_pickle(maxk, pickled_with_3)

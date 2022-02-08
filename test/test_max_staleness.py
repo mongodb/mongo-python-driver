@@ -35,7 +35,7 @@ _TEST_PATH = os.path.join(
     'max_staleness')
 
 
-class TestAllScenarios(create_selection_tests(_TEST_PATH)):
+class TestAllScenarios(create_selection_tests(_TEST_PATH)):  # type: ignore
     pass
 
 

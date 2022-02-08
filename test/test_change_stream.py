@@ -24,6 +24,7 @@ import time
 import uuid
 
 from itertools import product
+from typing import no_type_check
 
 sys.path[0:0] = ['']
 
@@ -121,6 +122,7 @@ class TestChangeStreamBase(IntegrationTest):
 
 
 class APITestsMixin(object):
+    @no_type_check
     def test_watch(self):
         with self.change_stream(
                 [{'$project': {'foo': 0}}], full_document='updateLookup',
@@ -145,6 +147,7 @@ class APITestsMixin(object):
         with self.change_stream(resume_after=resume_token):
             pass
 
+    @no_type_check
     def test_try_next(self):
         # ChangeStreams only read majority committed data so use w:majority.
         coll = self.watched_collection().with_options(
@@ -161,6 +164,7 @@ class APITestsMixin(object):
             wait_until(lambda: stream.try_next() is not None,
                        "get change from try_next")
 
+    @no_type_check
     def test_try_next_runs_one_getmore(self):
         listener = EventListener()
         client = rs_or_single_client(event_listeners=[listener])
@@ -216,6 +220,7 @@ class APITestsMixin(object):
                              set(["getMore"]))
             self.assertIsNone(stream.try_next())
 
+    @no_type_check
     def test_batch_size_is_honored(self):
         listener = EventListener()
         client = rs_or_single_client(event_listeners=[listener])
@@ -245,6 +250,7 @@ class APITestsMixin(object):
             self.assertEqual(expected[key], cmd[key])
 
     # $changeStream.startAtOperationTime was added in 4.0.0.
+    @no_type_check
     @client_context.require_version_min(4, 0, 0)
     def test_start_at_operation_time(self):
         optime = self.get_start_at_operation_time()
@@ -258,6 +264,7 @@ class APITestsMixin(object):
             for i in range(ndocs):
                 cs.next()
 
+    @no_type_check
     def _test_full_pipeline(self, expected_cs_stage):
         client, listener = self.client_with_listener("aggregate")
         results = listener.results
@@ -273,12 +280,14 @@ class APITestsMixin(object):
             {'$project': {'foo': 0}}],
             command.command['pipeline'])
 
+    @no_type_check
     def test_full_pipeline(self):
         """$changeStream must be the first stage in a change stream pipeline
         sent to the server.
         """
         self._test_full_pipeline({})
 
+    @no_type_check
     def test_iteration(self):
         with self.change_stream(batch_size=2) as change_stream:
             num_inserted = 10
@@ -292,6 +301,7 @@ class APITestsMixin(object):
                     break
             self._test_invalidate_stops_iteration(change_stream)
 
+    @no_type_check
     def _test_next_blocks(self, change_stream):
         inserted_doc = {'_id': ObjectId()}
         changes = []
@@ -311,18 +321,21 @@ class APITestsMixin(object):
         self.assertEqual(changes[0]['operationType'], 'insert')
         self.assertEqual(changes[0]['fullDocument'], inserted_doc)
 
+    @no_type_check
     def test_next_blocks(self):
         """Test that next blocks until a change is readable"""
         # Use a short await time to speed up the test.
         with self.change_stream(max_await_time_ms=250) as change_stream:
             self._test_next_blocks(change_stream)
 
+    @no_type_check
     def test_aggregate_cursor_blocks(self):
         """Test that an aggregate cursor blocks until a change is readable."""
         with self.watched_collection().aggregate(
                 [{'$changeStream': {}}], maxAwaitTimeMS=250) as change_stream:
             self._test_next_blocks(change_stream)
 
+    @no_type_check
     def test_concurrent_close(self):
         """Ensure a ChangeStream can be closed from another thread."""
         # Use a short await time to speed up the test.
@@ -338,6 +351,7 @@ class APITestsMixin(object):
             t.join(3)
             self.assertFalse(t.is_alive())
 
+    @no_type_check
     def test_unknown_full_document(self):
         """Must rely on the server to raise an error on unknown fullDocument.
         """
@@ -347,6 +361,7 @@ class APITestsMixin(object):
         except OperationFailure:
             pass
 
+    @no_type_check
     def test_change_operations(self):
         """Test each operation type."""
         expected_ns = {'db': self.watched_collection().database.name,
@@ -393,6 +408,7 @@ class APITestsMixin(object):
             # Invalidate.
             self._test_get_invalidate_event(change_stream)
 
+    @no_type_check
     @client_context.require_version_min(4, 1, 1)
     def test_start_after(self):
         resume_token = self.get_resume_token(invalidate=True)
@@ -408,6 +424,7 @@ class APITestsMixin(object):
             self.assertEqual(change['operationType'], 'insert')
             self.assertEqual(change['fullDocument'], {'_id': 2})
 
+    @no_type_check
     @client_context.require_version_min(4, 1, 1)
     def test_start_after_resume_process_with_changes(self):
         resume_token = self.get_resume_token(invalidate=True)
@@ -427,6 +444,7 @@ class APITestsMixin(object):
             self.assertEqual(change['operationType'], 'insert')
             self.assertEqual(change['fullDocument'], {'_id': 3})
 
+    @no_type_check
     @client_context.require_no_mongos  # Remove after SERVER-41196
     @client_context.require_version_min(4, 1, 1)
     def test_start_after_resume_process_without_changes(self):
@@ -444,12 +462,14 @@ class APITestsMixin(object):
 
 
 class ProseSpecTestsMixin(object):
+    @no_type_check
     def _client_with_listener(self, *commands):
         listener = AllowListEventListener(*commands)
         client = rs_or_single_client(event_listeners=[listener])
         self.addCleanup(client.close)
         return client, listener
 
+    @no_type_check
     def _populate_and_exhaust_change_stream(self, change_stream, batch_size=3):
         self.watched_collection().insert_many(
             [{"data": k} for k in range(batch_size)])
@@ -485,6 +505,7 @@ class ProseSpecTestsMixin(object):
         response = listener.results['succeeded'][-1].reply
         return response['cursor']['postBatchResumeToken']
 
+    @no_type_check
     def _test_raises_error_on_missing_id(self, expected_exception):
         """ChangeStream will raise an exception if the server response is
         missing the resume token.
@@ -497,6 +518,7 @@ class ProseSpecTestsMixin(object):
             with self.assertRaises(StopIteration):
                 next(change_stream)
 
+    @no_type_check
     def _test_update_resume_token(self, expected_rt_getter):
         """ChangeStream must continuously track the last seen resumeToken."""
         client, listener = self._client_with_listener("aggregate", "getMore")
@@ -536,6 +558,7 @@ class ProseSpecTestsMixin(object):
         self._test_raises_error_on_missing_id(InvalidOperation)
 
     # Prose test no. 3
+    @no_type_check
     def test_resume_on_error(self):
         with self.change_stream() as change_stream:
             self.insert_one_and_check(change_stream, {'_id': 1})
@@ -544,6 +567,7 @@ class ProseSpecTestsMixin(object):
             self.insert_one_and_check(change_stream, {'_id': 2})
 
     # Prose test no. 4
+    @no_type_check
     @client_context.require_failCommand_fail_point
     def test_no_resume_attempt_if_aggregate_command_fails(self):
         # Set non-retryable error on aggregate command.
@@ -568,6 +592,7 @@ class ProseSpecTestsMixin(object):
     #   each operation which ensure compliance with this prose test.
 
     # Prose test no. 7
+    @no_type_check
     def test_initial_empty_batch(self):
         with self.change_stream() as change_stream:
             # The first batch should be empty.
@@ -579,6 +604,7 @@ class ProseSpecTestsMixin(object):
             self.assertEqual(cursor_id, change_stream._cursor.cursor_id)
 
     # Prose test no. 8
+    @no_type_check
     def test_kill_cursors(self):
         def raise_error():
             raise ServerSelectionTimeoutError('mock error')
@@ -591,6 +617,7 @@ class ProseSpecTestsMixin(object):
             self.insert_one_and_check(change_stream, {'_id': 2})
 
     # Prose test no. 9
+    @no_type_check
     @client_context.require_version_min(4, 0, 0)
     @client_context.require_version_max(4, 0, 7)
     def test_start_at_operation_time_caching(self):
@@ -619,6 +646,7 @@ class ProseSpecTestsMixin(object):
     # This test is identical to prose test no. 3.
 
     # Prose test no. 11
+    @no_type_check
     @client_context.require_version_min(4, 0, 7)
     def test_resumetoken_empty_batch(self):
         client, listener = self._client_with_listener("getMore")
@@ -631,6 +659,7 @@ class ProseSpecTestsMixin(object):
                          response["cursor"]["postBatchResumeToken"])
 
     # Prose test no. 11
+    @no_type_check
     @client_context.require_version_min(4, 0, 7)
     def test_resumetoken_exhausted_batch(self):
         client, listener = self._client_with_listener("getMore")
@@ -643,6 +672,7 @@ class ProseSpecTestsMixin(object):
                          response["cursor"]["postBatchResumeToken"])
 
     # Prose test no. 12
+    @no_type_check
     @client_context.require_version_max(4, 0, 7)
     def test_resumetoken_empty_batch_legacy(self):
         resume_point = self.get_resume_token()
@@ -659,6 +689,7 @@ class ProseSpecTestsMixin(object):
             self.assertEqual(resume_token, resume_point)
 
     # Prose test no. 12
+    @no_type_check
     @client_context.require_version_max(4, 0, 7)
     def test_resumetoken_exhausted_batch_legacy(self):
         # Resume token is _id of last change.
@@ -673,6 +704,7 @@ class ProseSpecTestsMixin(object):
             self.assertEqual(change_stream.resume_token, change["_id"])
 
     # Prose test no. 13
+    @no_type_check
     def test_resumetoken_partially_iterated_batch(self):
         # When batch has been iterated up to but not including the last element.
         # Resume token should be _id of previous change document.
@@ -686,6 +718,7 @@ class ProseSpecTestsMixin(object):
 
         self.assertEqual(resume_token, change["_id"])
 
+    @no_type_check
     def _test_resumetoken_uniterated_nonempty_batch(self, resume_option):
         # When the batch is not empty and hasn't been iterated at all.
         # Resume token should be same as the resume option used.
@@ -704,17 +737,20 @@ class ProseSpecTestsMixin(object):
         self.assertEqual(resume_token, resume_point)
 
     # Prose test no. 14
+    @no_type_check
     @client_context.require_no_mongos
     def test_resumetoken_uniterated_nonempty_batch_resumeafter(self):
         self._test_resumetoken_uniterated_nonempty_batch("resume_after")
 
     # Prose test no. 14
+    @no_type_check
     @client_context.require_no_mongos
     @client_context.require_version_min(4, 1, 1)
     def test_resumetoken_uniterated_nonempty_batch_startafter(self):
         self._test_resumetoken_uniterated_nonempty_batch("start_after")
 
     # Prose test no. 17
+    @no_type_check
     @client_context.require_version_min(4, 1, 1)
     def test_startafter_resume_uses_startafter_after_empty_getMore(self):
         # Resume should use startAfter after no changes have been returned.
@@ -735,6 +771,7 @@ class ProseSpecTestsMixin(object):
             response.command["pipeline"][0]["$changeStream"].get("startAfter"))
 
     # Prose test no. 18
+    @no_type_check
     @client_context.require_version_min(4, 1, 1)
     def test_startafter_resume_uses_resumeafter_after_nonempty_getMore(self):
         # Resume should use resumeAfter after some changes have been returned.
@@ -757,6 +794,8 @@ class ProseSpecTestsMixin(object):
 
 
 class TestClusterChangeStream(TestChangeStreamBase, APITestsMixin):
+    dbs: list
+
     @classmethod
     @client_context.require_version_min(4, 0, 0, -1)
     @client_context.require_no_mmap
@@ -1045,6 +1084,7 @@ class TestCollectionChangeStream(TestChangeStreamBase, APITestsMixin,
 
 class TestAllLegacyScenarios(IntegrationTest):
     RUN_ON_LOAD_BALANCER = True
+    listener: AllowListEventListener
 
     @classmethod
     @client_context.require_connection

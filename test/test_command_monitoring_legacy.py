@@ -43,6 +43,8 @@ def camel_to_snake(camel):
 
 
 class TestAllScenarios(unittest.TestCase):
+    listener: EventListener
+    client: MongoClient
 
     @classmethod
     @client_context.require_connection

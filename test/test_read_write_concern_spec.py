@@ -149,12 +149,14 @@ class TestReadWriteConcernSpec(IntegrationTest):
                 f()
             if expected == BulkWriteError:
                 bulk_result = cm.exception.details
+                assert bulk_result is not None
                 wc_errors = bulk_result['writeConcernErrors']
                 self.assertTrue(wc_errors)
 
     @client_context.require_replica_set
     def test_raise_write_concern_error(self):
         self.addCleanup(client_context.client.drop_database, 'pymongo_test')
+        assert client_context.w is not None
         self.assertWriteOpsRaise(
             WriteConcern(w=client_context.w+1, wtimeout=1), WriteConcernError)
 
@@ -219,6 +221,7 @@ class TestReadWriteConcernSpec(IntegrationTest):
             db.test.insert_one({'x': 1})
         self.assertEqual(ctx.exception.code, 121)
         self.assertIsNotNone(ctx.exception.details)
+        assert ctx.exception.details is not None
         self.assertIsNotNone(ctx.exception.details.get('errInfo'))
         for event in listener.results['succeeded']:
             if event.command_name == 'insert':
@@ -290,19 +293,19 @@ def create_document_test(test_case):
                     WriteConcern,
                     **normalized)
             else:
-                concern = WriteConcern(**normalized)
+                write_concern = WriteConcern(**normalized)
                 self.assertEqual(
-                    concern.document, test_case['writeConcernDocument'])
+                    write_concern.document, test_case['writeConcernDocument'])
                 self.assertEqual(
-                    concern.acknowledged, test_case['isAcknowledged'])
+                    write_concern.acknowledged, test_case['isAcknowledged'])
                 self.assertEqual(
-                    concern.is_server_default, test_case['isServerDefault'])
+                    write_concern.is_server_default, test_case['isServerDefault'])
         if 'readConcern' in test_case:
             # Any string for 'level' is equaly valid
-            concern = ReadConcern(**test_case['readConcern'])
-            self.assertEqual(concern.document, test_case['readConcernDocument'])
+            read_concern = ReadConcern(**test_case['readConcern'])
+            self.assertEqual(read_concern.document, test_case['readConcernDocument'])
             self.assertEqual(
-                not bool(concern.level), test_case['isServerDefault'])
+                not bool(read_concern.level), test_case['isServerDefault'])
 
     return run_test
 

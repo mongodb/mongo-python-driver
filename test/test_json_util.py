@@ -20,6 +20,8 @@ import re
 import sys
 import uuid
 
+from typing import Any, List, MutableMapping
+
 sys.path[0:0] = [""]
 
 from bson import json_util, EPOCH_AWARE, EPOCH_NAIVE, SON
@@ -466,7 +468,7 @@ class TestJsonUtilRoundtrip(IntegrationTest):
         db = self.db
 
         db.drop_collection("test")
-        docs = [
+        docs: List[MutableMapping[str, Any]] = [
             {'foo': [1, 2]},
             {'bar': {'hello': 'world'}},
             {'code': Code("function x() { return 1; }")},

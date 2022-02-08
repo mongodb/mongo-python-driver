@@ -186,7 +186,7 @@ class TestURI(unittest.TestCase):
         self.assertRaises(ValueError,
                           parse_uri, "mongodb://::1", 27017)
 
-        orig = {
+        orig: dict = {
             'nodelist': [("localhost", 27017)],
             'username': None,
             'password': None,
@@ -196,7 +196,7 @@ class TestURI(unittest.TestCase):
             'fqdn': None
         }
 
-        res = copy.deepcopy(orig)
+        res: dict = copy.deepcopy(orig)
         self.assertEqual(res, parse_uri("mongodb://localhost"))
 
         res.update({'username': 'fred', 'password': 'foobar'})
