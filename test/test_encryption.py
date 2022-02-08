@@ -1023,7 +1023,7 @@ class TestCorpus(EncryptionIntegrationTest):
 
                 try:
                     encrypted_val = client_encryption.encrypt(
-                        value["value"], algo, **kwargs   # type: ignore[arg-type]
+                        value["value"], algo, **kwargs  # type: ignore[arg-type]
                     )
                     if not value["allowed"]:
                         self.fail("encrypt should have failed: %r: %r" % (key, value))

@@ -56,9 +56,7 @@ class TestMonitor(IntegrationTest):
         self.assertEqual(len(executors), 4)
 
         # Each executor stores a weakref to itself in _EXECUTORS.
-        executor_refs = [
-            (r, r()._name) for r in _EXECUTORS.copy() if r() in executors
-        ]
+        executor_refs = [(r, r()._name) for r in _EXECUTORS.copy() if r() in executors]
 
         del executors
         del client

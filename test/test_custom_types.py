@@ -524,7 +524,7 @@ class TestTypeRegistry(unittest.TestCase):
 
         self.assertEqual(
             type_registry._encoder_map,
-            {MyIntEncoder.python_type: codec_instances[1].transform_python},    # type: ignore[has-type]
+            {MyIntEncoder.python_type: codec_instances[1].transform_python},  # type: ignore[has-type]
         )
         self.assertEqual(
             type_registry._decoder_map, {MyIntDecoder.bson_type: codec_instances[0].transform_bson}  # type: ignore[has-type]

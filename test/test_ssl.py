@@ -438,7 +438,7 @@ class TestSSL(IntegrationTest):
                 ssl=True,
                 tlsAllowInvalidHostnames=True,
                 serverSelectionTimeoutMS=100,
-                **self.credentials    # type: ignore[arg-type]
+                **self.credentials  # type: ignore[arg-type]
             )
         )
 
@@ -450,7 +450,7 @@ class TestSSL(IntegrationTest):
         # Server cert and hostname are verified.
         connected(
             MongoClient(
-                "mongodb://localhost/?ssl=true&serverSelectionTimeoutMS=100", **self.credentials    # type: ignore[arg-type]
+                "mongodb://localhost/?ssl=true&serverSelectionTimeoutMS=100", **self.credentials  # type: ignore[arg-type]
             )
         )
 
