@@ -566,7 +566,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         codec_options: Optional[CodecOptions] = DEFAULT_CODEC_OPTIONS,
         session: Optional["ClientSession"] = None,
-        comment: Any = None,
+        comment: Optional[Any] = None,
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """Issue a MongoDB command.
@@ -788,7 +788,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     def drop_collection(self,
         name_or_collection: Union[str, Collection],
         session: Optional["ClientSession"] = None,
-        comment: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
+        comment: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """Drop a collection.
 

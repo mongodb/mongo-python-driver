@@ -159,7 +159,7 @@ class Cursor(Generic[_DocumentType]):
         return_key: Optional[bool] = None,
         show_record_id: Optional[bool] = None,
         snapshot: Optional[bool] = None,
-        comment: Any = None,
+        comment: Optional[Any] = None,
         session: Optional["ClientSession"] = None,
         allow_disk_use: Optional[bool] = None,
         let: Optional[bool] = None

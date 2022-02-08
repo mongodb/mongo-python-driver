@@ -2500,7 +2500,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
         let: Optional[Mapping[str, Any]] = None,
-        comment: Any = None,
+        comment: Optional[Any] = None,
         **kwargs: Any,
     ) -> _DocumentType:
         """Finds a single document and deletes it, returning the document.
@@ -2589,7 +2589,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
         let: Optional[Mapping[str, Any]] = None,
-        comment: Any = None,
+        comment: Optional[Any] = None,
         **kwargs: Any,
     ) -> _DocumentType:
         """Finds a single document and replaces it, returning either the
@@ -2687,7 +2687,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
         let: Optional[Mapping[str, Any]] = None,
-        comment: Any = None,
+        comment: Optional[Any] = None,
         **kwargs: Any,
     ) -> _DocumentType:
         """Finds a single document and updates it, returning either the
