@@ -660,9 +660,8 @@ class TestDatabase(IntegrationTest):
                         coll.insert_one({})
                     h(*args, **kwargs)
                     self.assertIn("comment", inspect.signature(h).parameters, msg="Could not find 'comment' in the "
-                                           "signature of function %s with "
-                                           "signature %s"% (h.__name__,
-                                                            h.__annotations__))
+                                           "signature of function %s"
+                                           % (h.__name__))
                     tested = False
                     for i in results['started']:
                         if cc == i.command.get("comment", ""):
@@ -718,7 +717,6 @@ class TestDatabaseAggregation(IntegrationTest):
     def test_bool(self):
         with self.assertRaises(NotImplementedError):
             bool(Database(self.client, "test"))
-
 
 
 if __name__ == "__main__":

@@ -385,7 +385,7 @@ class TestCollection(IntegrationTest):
         
     @client_context.require_auth
     @client_context.require_version_min(4, 7, -1)
-    def test_helpers_comment(self):
+    def test_helpers_with_comment(self):
         listener = EventListener()
         db = single_client(event_listeners=[listener])[self.db.name]
         coll = db.get_collection("test")
@@ -423,9 +423,8 @@ class TestCollection(IntegrationTest):
                         maybe_cursor = h(*args, **kwargs)
                     self.assertIn("comment", inspect.signature(
                         h).parameters, msg="Could not find 'comment' in the "
-                                           "signature of function %s with "
-                                           "signature %s"% (h.__name__,
-                                                            h.__annotations__))
+                                           "signature of function %s"
+                                           %(h.__name__))
                     if isinstance(maybe_cursor, CommandCursor):
                         maybe_cursor.close()
                     tested = False
