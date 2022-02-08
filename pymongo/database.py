@@ -896,7 +896,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if not isinstance(name, str):
             raise TypeError("name_or_collection must be an instance of str or "
                             "Collection")
-
         cmd = SON([("validate", name),
                    ("scandata", scandata),
                    ("full", full)])
