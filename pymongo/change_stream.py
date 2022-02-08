@@ -15,19 +15,25 @@
 """Watch changes on a collection, a database, or the entire cluster."""
 
 import copy
-from typing import (TYPE_CHECKING, Any, Dict, Generic, Iterator, Mapping,
-                    Optional, Union)
+from typing import TYPE_CHECKING, Any, Dict, Generic, Iterator, Mapping, Optional, Union
 
 from bson import _bson_to_dict
 from bson.raw_bson import RawBSONDocument
 from bson.timestamp import Timestamp
 from pymongo import common
-from pymongo.aggregation import (_CollectionAggregationCommand,
-                                 _DatabaseAggregationCommand)
+from pymongo.aggregation import (
+    _CollectionAggregationCommand,
+    _DatabaseAggregationCommand,
+)
 from pymongo.collation import validate_collation_or_none
 from pymongo.command_cursor import CommandCursor
-from pymongo.errors import (ConnectionFailure, CursorNotFound,
-                            InvalidOperation, OperationFailure, PyMongoError)
+from pymongo.errors import (
+    ConnectionFailure,
+    CursorNotFound,
+    InvalidOperation,
+    OperationFailure,
+    PyMongoError,
+)
 from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
 
 # The change streams spec considers the following server errors from the

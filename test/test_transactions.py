@@ -21,16 +21,25 @@ from io import BytesIO
 sys.path[0:0] = [""]
 
 from test import client_context, unittest
-from test.utils import (OvertCommandListener, TestCreator, rs_client,
-                        single_client, wait_until)
+from test.utils import (
+    OvertCommandListener,
+    TestCreator,
+    rs_client,
+    single_client,
+    wait_until,
+)
 from test.utils_spec_runner import SpecRunner
 
 from gridfs import GridFS, GridFSBucket
 from pymongo import WriteConcern, client_session
 from pymongo.client_session import TransactionOptions
-from pymongo.errors import (CollectionInvalid, ConfigurationError,
-                            ConnectionFailure, InvalidOperation,
-                            OperationFailure)
+from pymongo.errors import (
+    CollectionInvalid,
+    ConfigurationError,
+    ConnectionFailure,
+    InvalidOperation,
+    OperationFailure,
+)
 from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference

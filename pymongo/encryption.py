@@ -35,13 +35,16 @@ from bson import _dict_to_bson, decode, encode
 from bson.binary import STANDARD, UUID_SUBTYPE, Binary
 from bson.codec_options import CodecOptions
 from bson.errors import BSONError
-from bson.raw_bson import (DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument,
-                           _inflate_bson)
+from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from bson.son import SON
 from pymongo.daemon import _spawn_daemon
 from pymongo.encryption_options import AutoEncryptionOpts
-from pymongo.errors import (ConfigurationError, EncryptionError,
-                            InvalidOperation, ServerSelectionTimeoutError)
+from pymongo.errors import (
+    ConfigurationError,
+    EncryptionError,
+    InvalidOperation,
+    ServerSelectionTimeoutError,
+)
 from pymongo.mongo_client import MongoClient
 from pymongo.pool import PoolOptions, _configured_socket
 from pymongo.read_concern import ReadConcern

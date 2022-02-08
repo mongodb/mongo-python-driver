@@ -22,13 +22,23 @@ import warnings
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
-from test.utils import (EventListener, TestCreator, disable_replication,
-                        enable_replication, rs_or_single_client)
+from test.utils import (
+    EventListener,
+    TestCreator,
+    disable_replication,
+    enable_replication,
+    rs_or_single_client,
+)
 from test.utils_spec_runner import SpecRunner
 
 from pymongo import DESCENDING
-from pymongo.errors import (BulkWriteError, ConfigurationError,
-                            WriteConcernError, WriteError, WTimeoutError)
+from pymongo.errors import (
+    BulkWriteError,
+    ConfigurationError,
+    WriteConcernError,
+    WriteError,
+    WTimeoutError,
+)
 from pymongo.mongo_client import MongoClient
 from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern

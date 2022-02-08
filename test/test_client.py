@@ -31,15 +31,37 @@ from typing import Type, no_type_check
 
 sys.path[0:0] = [""]
 
-from test import (HAVE_IPADDRESS, IntegrationTest, MockClientTest, SkipTest,
-                  client_context, client_knobs, db_pwd, db_user, unittest)
+from test import (
+    HAVE_IPADDRESS,
+    IntegrationTest,
+    MockClientTest,
+    SkipTest,
+    client_context,
+    client_knobs,
+    db_pwd,
+    db_user,
+    unittest,
+)
 from test.pymongo_mocks import MockClient
-from test.utils import (NTHREADS, CMAPListener, FunctionCallRecorder,
-                        assertRaisesExactly, connected, delay, get_pool,
-                        gevent_monkey_patched, is_greenthread_patched,
-                        lazy_client_trial, one, remove_all_users, rs_client,
-                        rs_or_single_client, rs_or_single_client_noauth,
-                        single_client, wait_until)
+from test.utils import (
+    NTHREADS,
+    CMAPListener,
+    FunctionCallRecorder,
+    assertRaisesExactly,
+    connected,
+    delay,
+    get_pool,
+    gevent_monkey_patched,
+    is_greenthread_patched,
+    lazy_client_trial,
+    one,
+    remove_all_users,
+    rs_client,
+    rs_or_single_client,
+    rs_or_single_client_noauth,
+    single_client,
+    wait_until,
+)
 
 import pymongo
 from bson import encode
@@ -54,25 +76,33 @@ from pymongo.compression_support import _HAVE_SNAPPY, _HAVE_ZSTD
 from pymongo.cursor import Cursor, CursorType
 from pymongo.database import Database
 from pymongo.driver_info import DriverInfo
-from pymongo.errors import (AutoReconnect, ConfigurationError,
-                            ConnectionFailure, InvalidName, InvalidOperation,
-                            InvalidURI, NetworkTimeout, OperationFailure,
-                            ServerSelectionTimeoutError, WriteConcernError)
+from pymongo.errors import (
+    AutoReconnect,
+    ConfigurationError,
+    ConnectionFailure,
+    InvalidName,
+    InvalidOperation,
+    InvalidURI,
+    NetworkTimeout,
+    OperationFailure,
+    ServerSelectionTimeoutError,
+    WriteConcernError,
+)
 from pymongo.hello import HelloCompat
 from pymongo.mongo_client import MongoClient
-from pymongo.monitoring import (ServerHeartbeatListener,
-                                ServerHeartbeatStartedEvent)
+from pymongo.monitoring import ServerHeartbeatListener, ServerHeartbeatStartedEvent
 from pymongo.pool import _METADATA, PoolOptions, SocketInfo
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
-from pymongo.server_selectors import (readable_server_selector,
-                                      writable_server_selector)
+from pymongo.server_selectors import readable_server_selector, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.settings import TOPOLOGY_TYPE
 from pymongo.srv_resolver import _HAVE_DNSPYTHON
 from pymongo.topology import _ErrorContext
 from pymongo.topology_description import (
-    TopologyDescription, _updated_topology_description_srv_polling)
+    TopologyDescription,
+    _updated_topology_description_srv_polling,
+)
 from pymongo.write_concern import WriteConcern
 
 

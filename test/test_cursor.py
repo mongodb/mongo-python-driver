@@ -25,9 +25,13 @@ import time
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
-from test.utils import (AllowListEventListener, EventListener,
-                        OvertCommandListener, ignore_deprecations,
-                        rs_or_single_client)
+from test.utils import (
+    AllowListEventListener,
+    EventListener,
+    OvertCommandListener,
+    ignore_deprecations,
+    rs_or_single_client,
+)
 
 from bson import decode_all
 from bson.code import Code
@@ -35,8 +39,12 @@ from bson.son import SON
 from pymongo import ASCENDING, DESCENDING
 from pymongo.collation import Collation
 from pymongo.cursor import Cursor, CursorType
-from pymongo.errors import (ConfigurationError, ExecutionTimeout,
-                            InvalidOperation, OperationFailure)
+from pymongo.errors import (
+    ConfigurationError,
+    ExecutionTimeout,
+    InvalidOperation,
+    OperationFailure,
+)
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern

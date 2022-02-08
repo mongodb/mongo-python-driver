@@ -21,8 +21,7 @@ import weakref
 from typing import Any, Mapping, cast
 
 from pymongo import common, periodic_executor
-from pymongo.errors import (NotPrimaryError, OperationFailure,
-                            _OperationCancelled)
+from pymongo.errors import NotPrimaryError, OperationFailure, _OperationCancelled
 from pymongo.hello import Hello
 from pymongo.periodic_executor import _shutdown_executors
 from pymongo.read_preferences import MovingAverage

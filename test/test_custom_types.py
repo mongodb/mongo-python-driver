@@ -28,11 +28,25 @@ from test import client_context, unittest
 from test.test_client import IntegrationTest
 from test.utils import rs_client
 
-from bson import (_BUILT_IN_TYPES, RE_TYPE, Decimal128, _bson_to_dict,
-                  _dict_to_bson, decode, decode_all, decode_file_iter,
-                  decode_iter, encode)
-from bson.codec_options import (CodecOptions, TypeCodec, TypeDecoder,
-                                TypeEncoder, TypeRegistry)
+from bson import (
+    _BUILT_IN_TYPES,
+    RE_TYPE,
+    Decimal128,
+    _bson_to_dict,
+    _dict_to_bson,
+    decode,
+    decode_all,
+    decode_file_iter,
+    decode_iter,
+    encode,
+)
+from bson.codec_options import (
+    CodecOptions,
+    TypeCodec,
+    TypeDecoder,
+    TypeEncoder,
+    TypeRegistry,
+)
 from bson.errors import InvalidDocument
 from bson.int64 import Int64
 from bson.raw_bson import RawBSONDocument

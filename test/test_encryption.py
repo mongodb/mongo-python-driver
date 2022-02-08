@@ -30,17 +30,28 @@ from pymongo.collection import Collection
 
 sys.path[0:0] = [""]
 
-from test import (CA_PEM, CLIENT_PEM, IntegrationTest, PyMongoTestCase,
-                  client_context, unittest)
+from test import (
+    CA_PEM,
+    CLIENT_PEM,
+    IntegrationTest,
+    PyMongoTestCase,
+    client_context,
+    unittest,
+)
 from test.test_bulk import BulkTestBase
-from test.utils import (AllowListEventListener, OvertCommandListener,
-                        TestCreator, TopologyEventListener,
-                        camel_to_snake_args, rs_or_single_client, wait_until)
+from test.utils import (
+    AllowListEventListener,
+    OvertCommandListener,
+    TestCreator,
+    TopologyEventListener,
+    camel_to_snake_args,
+    rs_or_single_client,
+    wait_until,
+)
 from test.utils_spec_runner import SpecRunner
 
 from bson import encode, json_util
-from bson.binary import (JAVA_LEGACY, STANDARD, UUID_SUBTYPE, Binary,
-                         UuidRepresentation)
+from bson.binary import JAVA_LEGACY, STANDARD, UUID_SUBTYPE, Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.errors import BSONError
 from bson.json_util import JSONOptions
@@ -49,10 +60,15 @@ from pymongo import encryption
 from pymongo.cursor import CursorType
 from pymongo.encryption import Algorithm, ClientEncryption
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts
-from pymongo.errors import (BulkWriteError, ConfigurationError,
-                            EncryptionError, InvalidOperation,
-                            OperationFailure, ServerSelectionTimeoutError,
-                            WriteError)
+from pymongo.errors import (
+    BulkWriteError,
+    ConfigurationError,
+    EncryptionError,
+    InvalidOperation,
+    OperationFailure,
+    ServerSelectionTimeoutError,
+    WriteError,
+)
 from pymongo.mongo_client import MongoClient
 from pymongo.operations import InsertOne, ReplaceOne, UpdateOne
 from pymongo.write_concern import WriteConcern

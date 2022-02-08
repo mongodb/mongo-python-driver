@@ -27,11 +27,18 @@ from pymongo.topology import Topology
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
-from test.utils import (EventListener, FunctionCallRecorder,
-                        rs_or_single_client, wait_until)
-from test.utils_selection_tests import (create_selection_tests, get_addresses,
-                                        get_topology_settings_dict,
-                                        make_server_description)
+from test.utils import (
+    EventListener,
+    FunctionCallRecorder,
+    rs_or_single_client,
+    wait_until,
+)
+from test.utils_selection_tests import (
+    create_selection_tests,
+    get_addresses,
+    get_topology_settings_dict,
+    make_server_description,
+)
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(

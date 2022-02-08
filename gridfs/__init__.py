@@ -25,9 +25,14 @@ from typing import Any, List, Mapping, Optional, cast
 
 from bson.objectid import ObjectId
 from gridfs.errors import NoFile
-from gridfs.grid_file import (DEFAULT_CHUNK_SIZE, GridIn, GridOut,
-                              GridOutCursor, _clear_entity_type_registry,
-                              _disallow_transactions)
+from gridfs.grid_file import (
+    DEFAULT_CHUNK_SIZE,
+    GridIn,
+    GridOut,
+    GridOutCursor,
+    _clear_entity_type_registry,
+    _disallow_transactions,
+)
 from pymongo import ASCENDING, DESCENDING
 from pymongo.client_session import ClientSession
 from pymongo.collation import Collation

@@ -21,8 +21,12 @@ import sys
 sys.path[0:0] = [""]
 
 from test import client_context, unittest
-from test.utils import (EventListener, parse_read_preference,
-                        rs_or_single_client, wait_until)
+from test.utils import (
+    EventListener,
+    parse_read_preference,
+    rs_or_single_client,
+    wait_until,
+)
 
 import pymongo
 from bson import json_util

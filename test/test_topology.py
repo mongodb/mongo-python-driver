@@ -30,8 +30,7 @@ from pymongo.monitor import Monitor
 from pymongo.pool import PoolOptions
 from pymongo.read_preferences import ReadPreference, Secondary
 from pymongo.server_description import ServerDescription
-from pymongo.server_selectors import (any_server_selector,
-                                      writable_server_selector)
+from pymongo.server_selectors import any_server_selector, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.settings import TopologySettings
 from pymongo.topology import Topology, _ErrorContext

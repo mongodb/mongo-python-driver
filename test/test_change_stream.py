@@ -29,17 +29,23 @@ sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
 from test.unified_format import generate_test_classes
-from test.utils import (AllowListEventListener, EventListener,
-                        rs_or_single_client, wait_until)
+from test.utils import (
+    AllowListEventListener,
+    EventListener,
+    rs_or_single_client,
+    wait_until,
+)
 
 from bson import SON, ObjectId, Timestamp, encode, json_util
-from bson.binary import (ALL_UUID_REPRESENTATIONS, PYTHON_LEGACY, STANDARD,
-                         Binary)
+from bson.binary import ALL_UUID_REPRESENTATIONS, PYTHON_LEGACY, STANDARD, Binary
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument
 from pymongo import MongoClient
 from pymongo.command_cursor import CommandCursor
-from pymongo.errors import (InvalidOperation, OperationFailure,
-                            ServerSelectionTimeoutError)
+from pymongo.errors import (
+    InvalidOperation,
+    OperationFailure,
+    ServerSelectionTimeoutError,
+)
 from pymongo.message import _CursorAddress
 from pymongo.read_concern import ReadConcern
 from pymongo.write_concern import WriteConcern

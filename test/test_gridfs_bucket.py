@@ -22,8 +22,7 @@ import threading
 import time
 from io import BytesIO
 from test import IntegrationTest, client_context, unittest
-from test.utils import (joinall, one, rs_client, rs_or_single_client,
-                        single_client)
+from test.utils import joinall, one, rs_client, rs_or_single_client, single_client
 
 import gridfs
 from bson.binary import Binary
@@ -31,8 +30,11 @@ from bson.int64 import Int64
 from bson.objectid import ObjectId
 from bson.son import SON
 from gridfs.errors import CorruptGridFile, NoFile
-from pymongo.errors import (ConfigurationError, NotPrimaryError,
-                            ServerSelectionTimeoutError)
+from pymongo.errors import (
+    ConfigurationError,
+    NotPrimaryError,
+    ServerSelectionTimeoutError,
+)
 from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import ReadPreference
 

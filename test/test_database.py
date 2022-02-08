@@ -23,10 +23,15 @@ sys.path[0:0] = [""]
 
 from test import IntegrationTest, SkipTest, client_context, unittest
 from test.test_custom_types import DECIMAL_CODECOPTS
-from test.utils import (IMPOSSIBLE_WRITE_CONCERN, DeprecationFilter,
-                        OvertCommandListener, ignore_deprecations,
-                        rs_or_single_client, server_started_with_auth,
-                        wait_until)
+from test.utils import (
+    IMPOSSIBLE_WRITE_CONCERN,
+    DeprecationFilter,
+    OvertCommandListener,
+    ignore_deprecations,
+    rs_or_single_client,
+    server_started_with_auth,
+    wait_until,
+)
 
 from bson.codec_options import CodecOptions
 from bson.dbref import DBRef
@@ -37,9 +42,14 @@ from bson.son import SON
 from pymongo import auth, helpers
 from pymongo.collection import Collection
 from pymongo.database import Database
-from pymongo.errors import (CollectionInvalid, ConfigurationError,
-                            ExecutionTimeout, InvalidName, OperationFailure,
-                            WriteConcernError)
+from pymongo.errors import (
+    CollectionInvalid,
+    ConfigurationError,
+    ExecutionTimeout,
+    InvalidName,
+    OperationFailure,
+    WriteConcernError,
+)
 from pymongo.mongo_client import MongoClient
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference

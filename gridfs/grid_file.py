@@ -28,9 +28,13 @@ from pymongo import ASCENDING
 from pymongo.client_session import ClientSession
 from pymongo.collection import Collection
 from pymongo.cursor import Cursor
-from pymongo.errors import (ConfigurationError, CursorNotFound,
-                            DuplicateKeyError, InvalidOperation,
-                            OperationFailure)
+from pymongo.errors import (
+    ConfigurationError,
+    CursorNotFound,
+    DuplicateKeyError,
+    InvalidOperation,
+    OperationFailure,
+)
 from pymongo.read_preferences import ReadPreference
 
 _SEEK_SET = os.SEEK_SET

@@ -21,8 +21,12 @@ sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
 from test.crud_v2_format import TestCrudV2
-from test.utils import (OvertCommandListener, TestCreator, rs_client_noauth,
-                        rs_or_single_client)
+from test.utils import (
+    OvertCommandListener,
+    TestCreator,
+    rs_client_noauth,
+    rs_or_single_client,
+)
 
 from pymongo.auth import MECHANISMS
 

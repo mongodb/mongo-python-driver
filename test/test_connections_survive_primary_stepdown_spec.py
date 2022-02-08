@@ -19,8 +19,12 @@ import sys
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
-from test.utils import (CMAPListener, ensure_all_connected, repl_set_step_down,
-                        rs_or_single_client)
+from test.utils import (
+    CMAPListener,
+    ensure_all_connected,
+    repl_set_step_down,
+    rs_or_single_client,
+)
 
 from bson import SON
 from pymongo import monitoring

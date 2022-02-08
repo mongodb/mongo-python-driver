@@ -27,10 +27,18 @@ import time
 import types
 from collections import abc
 from test import IntegrationTest, client_context, unittest
-from test.utils import (CMAPListener, camel_to_snake, camel_to_snake_args,
-                        get_pool, parse_collection_options, parse_spec_options,
-                        prepare_spec_arguments, rs_or_single_client,
-                        single_client, snake_to_camel)
+from test.utils import (
+    CMAPListener,
+    camel_to_snake,
+    camel_to_snake_args,
+    get_pool,
+    parse_collection_options,
+    parse_spec_options,
+    prepare_spec_arguments,
+    rs_or_single_client,
+    single_client,
+    snake_to_camel,
+)
 from test.version import Version
 from typing import Any
 
@@ -44,20 +52,32 @@ from pymongo.change_stream import ChangeStream
 from pymongo.client_session import ClientSession, TransactionOptions, _TxnState
 from pymongo.collection import Collection
 from pymongo.database import Database
-from pymongo.errors import (BulkWriteError, ConfigurationError,
-                            ConnectionFailure, InvalidOperation,
-                            NotPrimaryError, PyMongoError)
-from pymongo.monitoring import (_SENSITIVE_COMMANDS, CommandFailedEvent,
-                                CommandListener, CommandStartedEvent,
-                                CommandSucceededEvent,
-                                ConnectionCheckedInEvent,
-                                ConnectionCheckedOutEvent,
-                                ConnectionCheckOutFailedEvent,
-                                ConnectionCheckOutStartedEvent,
-                                ConnectionClosedEvent, ConnectionCreatedEvent,
-                                ConnectionReadyEvent, PoolClearedEvent,
-                                PoolClosedEvent, PoolCreatedEvent,
-                                PoolReadyEvent)
+from pymongo.errors import (
+    BulkWriteError,
+    ConfigurationError,
+    ConnectionFailure,
+    InvalidOperation,
+    NotPrimaryError,
+    PyMongoError,
+)
+from pymongo.monitoring import (
+    _SENSITIVE_COMMANDS,
+    CommandFailedEvent,
+    CommandListener,
+    CommandStartedEvent,
+    CommandSucceededEvent,
+    ConnectionCheckedInEvent,
+    ConnectionCheckedOutEvent,
+    ConnectionCheckOutFailedEvent,
+    ConnectionCheckOutStartedEvent,
+    ConnectionClosedEvent,
+    ConnectionCreatedEvent,
+    ConnectionReadyEvent,
+    PoolClearedEvent,
+    PoolClosedEvent,
+    PoolCreatedEvent,
+    PoolReadyEvent,
+)
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import BulkWriteResult

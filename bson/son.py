@@ -21,8 +21,20 @@ dictionary."""
 import copy
 import re
 from collections.abc import Mapping as _Mapping
-from typing import (Any, Dict, Iterable, Iterator, List, Mapping, Optional,
-                    Pattern, Tuple, Type, TypeVar, Union)
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Mapping,
+    Optional,
+    Pattern,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 # This sort of sucks, but seems to be as good as it gets...
 # This is essentially the same as re._pattern_type

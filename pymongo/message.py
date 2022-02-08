@@ -27,11 +27,9 @@ from io import BytesIO as _BytesIO
 from typing import Any
 
 import bson
-from bson import (CodecOptions, _decode_selective, _dict_to_bson,
-                  _make_c_string, encode)
+from bson import CodecOptions, _decode_selective, _dict_to_bson, _make_c_string, encode
 from bson.int64 import Int64
-from bson.raw_bson import (DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument,
-                           _inflate_bson)
+from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from bson.son import SON
 
 try:
@@ -40,10 +38,16 @@ try:
     _use_c = True
 except ImportError:
     _use_c = False
-from pymongo.errors import (ConfigurationError, CursorNotFound,
-                            DocumentTooLarge, ExecutionTimeout,
-                            InvalidOperation, NotPrimaryError,
-                            OperationFailure, ProtocolError)
+from pymongo.errors import (
+    ConfigurationError,
+    CursorNotFound,
+    DocumentTooLarge,
+    ExecutionTimeout,
+    InvalidOperation,
+    NotPrimaryError,
+    OperationFailure,
+    ProtocolError,
+)
 from pymongo.hello import HelloCompat
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern

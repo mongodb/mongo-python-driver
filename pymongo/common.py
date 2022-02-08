@@ -18,8 +18,20 @@
 import datetime
 import warnings
 from collections import OrderedDict, abc
-from typing import (Any, Callable, Dict, List, Mapping, MutableMapping,
-                    Optional, Sequence, Tuple, Type, Union, cast)
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 from urllib.parse import unquote_plus
 
 from bson import SON
@@ -27,8 +39,10 @@ from bson.binary import UuidRepresentation
 from bson.codec_options import CodecOptions, TypeRegistry
 from bson.raw_bson import RawBSONDocument
 from pymongo.auth import MECHANISMS
-from pymongo.compression_support import (validate_compressors,
-                                         validate_zlib_compression_level)
+from pymongo.compression_support import (
+    validate_compressors,
+    validate_zlib_compression_level,
+)
 from pymongo.driver_info import DriverInfo
 from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _validate_event_listeners

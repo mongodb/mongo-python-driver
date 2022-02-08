@@ -22,10 +22,16 @@ from urllib.parse import quote_plus
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, SkipTest, Version, client_context, unittest
-from test.utils import (AllowListEventListener, delay, get_pool,
-                        ignore_deprecations, rs_or_single_client,
-                        rs_or_single_client_noauth, single_client,
-                        single_client_noauth)
+from test.utils import (
+    AllowListEventListener,
+    delay,
+    get_pool,
+    ignore_deprecations,
+    rs_or_single_client,
+    rs_or_single_client_noauth,
+    single_client,
+    single_client_noauth,
+)
 
 from pymongo import MongoClient, monitoring
 from pymongo.auth import HAVE_KERBEROS, _build_credentials_tuple

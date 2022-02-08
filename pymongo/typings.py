@@ -13,8 +13,20 @@
 # limitations under the License.
 
 """Type aliases used by PyMongo"""
-from typing import (TYPE_CHECKING, Any, Dict, List, Mapping, MutableMapping,
-                    Optional, Sequence, Tuple, Type, TypeVar, Union)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 if TYPE_CHECKING:
     from bson.raw_bson import RawBSONDocument

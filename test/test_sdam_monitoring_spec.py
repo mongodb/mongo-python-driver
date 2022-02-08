@@ -22,8 +22,12 @@ import time
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, client_knobs, unittest
-from test.utils import (ServerAndTopologyEventListener, rs_or_single_client,
-                        server_name_to_type, wait_until)
+from test.utils import (
+    ServerAndTopologyEventListener,
+    rs_or_single_client,
+    server_name_to_type,
+    wait_until,
+)
 
 from bson.json_util import object_hook
 from pymongo import MongoClient, monitoring

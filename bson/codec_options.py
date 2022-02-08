@@ -18,11 +18,26 @@ import abc
 import datetime
 from collections import namedtuple
 from collections.abc import MutableMapping as _MutableMapping
-from typing import (TYPE_CHECKING, Any, Callable, Dict, Generic, Iterable,
-                    MutableMapping, Optional, Type, TypeVar, Union, cast)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Generic,
+    Iterable,
+    MutableMapping,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+)
 
-from bson.binary import (ALL_UUID_REPRESENTATIONS, UUID_REPRESENTATION_NAMES,
-                         UuidRepresentation)
+from bson.binary import (
+    ALL_UUID_REPRESENTATIONS,
+    UUID_REPRESENTATION_NAMES,
+    UuidRepresentation,
+)
 
 # Import RawBSONDocument for type-checking only to avoid circular dependency.
 if TYPE_CHECKING:

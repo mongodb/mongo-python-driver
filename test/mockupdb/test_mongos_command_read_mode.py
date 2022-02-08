@@ -20,8 +20,11 @@ from operations import operations
 
 from bson import SON
 from pymongo import MongoClient, ReadPreference
-from pymongo.read_preferences import (_MONGOS_MODES, make_read_preference,
-                                      read_pref_mode_from_name)
+from pymongo.read_preferences import (
+    _MONGOS_MODES,
+    make_read_preference,
+    read_pref_mode_from_name,
+)
 
 
 class TestMongosCommandReadMode(unittest.TestCase):

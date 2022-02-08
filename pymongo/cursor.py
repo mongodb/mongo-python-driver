@@ -17,21 +17,41 @@ import copy
 import threading
 import warnings
 from collections import deque
-from typing import (TYPE_CHECKING, Any, Dict, Generic, Iterable, List, Mapping,
-                    MutableMapping, Optional, Sequence, Tuple, Union, cast,
-                    overload)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Generic,
+    Iterable,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+    cast,
+    overload,
+)
 
 from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.son import SON
 from pymongo import helpers
 from pymongo.collation import validate_collation_or_none
-from pymongo.common import (validate_boolean, validate_is_document_type,
-                            validate_is_mapping)
-from pymongo.errors import (ConnectionFailure, InvalidOperation,
-                            OperationFailure)
-from pymongo.message import (_CursorAddress, _GetMore, _Query,
-                             _RawBatchGetMore, _RawBatchQuery)
+from pymongo.common import (
+    validate_boolean,
+    validate_is_document_type,
+    validate_is_mapping,
+)
+from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
+from pymongo.message import (
+    _CursorAddress,
+    _GetMore,
+    _Query,
+    _RawBatchGetMore,
+    _RawBatchQuery,
+)
 from pymongo.response import PinnedResponse
 from pymongo.typings import _CollationIn, _DocumentType
 

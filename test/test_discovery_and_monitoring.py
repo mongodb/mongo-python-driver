@@ -23,19 +23,31 @@ sys.path[0:0] = [""]
 
 from test import IntegrationTest, unittest
 from test.pymongo_mocks import DummyMonitor
-from test.utils import (CMAPListener, HeartbeatEventListener, TestCreator,
-                        assertion_context, client_context, get_pool,
-                        rs_or_single_client, server_name_to_type,
-                        single_client, wait_until)
+from test.utils import (
+    CMAPListener,
+    HeartbeatEventListener,
+    TestCreator,
+    assertion_context,
+    client_context,
+    get_pool,
+    rs_or_single_client,
+    server_name_to_type,
+    single_client,
+    wait_until,
+)
 from test.utils_spec_runner import SpecRunner, SpecRunnerThread
 
 from bson import Timestamp, json_util
 from pymongo import common, monitoring
-from pymongo.errors import (AutoReconnect, ConfigurationError, NetworkTimeout,
-                            NotPrimaryError, OperationFailure)
+from pymongo.errors import (
+    AutoReconnect,
+    ConfigurationError,
+    NetworkTimeout,
+    NotPrimaryError,
+    OperationFailure,
+)
 from pymongo.hello import Hello, HelloCompat
-from pymongo.helpers import (_check_command_response,
-                             _check_write_command_response)
+from pymongo.helpers import _check_command_response, _check_write_command_response
 from pymongo.server_description import SERVER_TYPE, ServerDescription
 from pymongo.settings import TopologySettings
 from pymongo.topology import Topology, _ErrorContext

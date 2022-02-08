@@ -23,8 +23,7 @@ import time as _time
 from errno import EINTR as _EINTR
 from ipaddress import ip_address as _ip_address
 
-from cryptography.x509 import \
-    load_der_x509_certificate as _load_der_x509_certificate
+from cryptography.x509 import load_der_x509_certificate as _load_der_x509_certificate
 from OpenSSL import SSL as _SSL
 from OpenSSL import crypto as _crypto
 from service_identity import CertificateError as _SICertificateError

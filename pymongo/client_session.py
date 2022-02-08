@@ -135,17 +135,30 @@ import collections
 import time
 import uuid
 from collections.abc import Mapping as _Mapping
-from typing import (TYPE_CHECKING, Any, Callable, ContextManager, Generic,
-                    Mapping, Optional, TypeVar)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ContextManager,
+    Generic,
+    Mapping,
+    Optional,
+    TypeVar,
+)
 
 from bson.binary import Binary
 from bson.int64 import Int64
 from bson.son import SON
 from bson.timestamp import Timestamp
 from pymongo.cursor import _SocketManager
-from pymongo.errors import (ConfigurationError, ConnectionFailure,
-                            InvalidOperation, OperationFailure, PyMongoError,
-                            WTimeoutError)
+from pymongo.errors import (
+    ConfigurationError,
+    ConnectionFailure,
+    InvalidOperation,
+    OperationFailure,
+    PyMongoError,
+    WTimeoutError,
+)
 from pymongo.helpers import _RETRYABLE_ERROR_CODES
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode

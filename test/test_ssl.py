@@ -21,15 +21,18 @@ from typing import Any
 
 sys.path[0:0] = [""]
 
-from test import (HAVE_IPADDRESS, IntegrationTest, SkipTest, client_context,
-                  unittest)
-from test.utils import (EventListener, cat_files, connected,
-                        ignore_deprecations, remove_all_users)
+from test import HAVE_IPADDRESS, IntegrationTest, SkipTest, client_context, unittest
+from test.utils import (
+    EventListener,
+    cat_files,
+    connected,
+    ignore_deprecations,
+    remove_all_users,
+)
 from urllib.parse import quote_plus
 
 from pymongo import MongoClient, ssl_support
-from pymongo.errors import (ConfigurationError, ConnectionFailure,
-                            OperationFailure)
+from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 from pymongo.hello import HelloCompat
 from pymongo.ssl_support import HAVE_SSL, _ssl, get_ssl_context
 from pymongo.write_concern import WriteConcern
@@ -40,6 +43,7 @@ try:
     import OpenSSL
     import requests
     import service_identity
+
     # Ensure service_identity>=18.1 is installed
     from service_identity.pyopenssl import verify_ip_address
 

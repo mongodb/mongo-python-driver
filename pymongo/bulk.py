@@ -24,13 +24,27 @@ from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo.client_session import _validate_session_write_concern
 from pymongo.collation import validate_collation_or_none
-from pymongo.common import (validate_is_document_type, validate_is_mapping,
-                            validate_ok_for_replace, validate_ok_for_update)
-from pymongo.errors import (BulkWriteError, ConfigurationError,
-                            InvalidOperation, OperationFailure)
+from pymongo.common import (
+    validate_is_document_type,
+    validate_is_mapping,
+    validate_ok_for_replace,
+    validate_ok_for_update,
+)
+from pymongo.errors import (
+    BulkWriteError,
+    ConfigurationError,
+    InvalidOperation,
+    OperationFailure,
+)
 from pymongo.helpers import _RETRYABLE_ERROR_CODES, _get_wce_doc
-from pymongo.message import (_DELETE, _INSERT, _UPDATE, _BulkWriteContext,
-                             _EncryptedBulkWriteContext, _randint)
+from pymongo.message import (
+    _DELETE,
+    _INSERT,
+    _UPDATE,
+    _BulkWriteContext,
+    _EncryptedBulkWriteContext,
+    _randint,
+)
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 

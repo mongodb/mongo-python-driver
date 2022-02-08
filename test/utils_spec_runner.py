@@ -18,10 +18,18 @@ import functools
 import threading
 from collections import abc
 from test import IntegrationTest, client_context, client_knobs
-from test.utils import (CMAPListener, CompareType, EventListener,
-                        OvertCommandListener, ServerAndTopologyEventListener,
-                        camel_to_snake, camel_to_snake_args,
-                        parse_spec_options, prepare_spec_arguments, rs_client)
+from test.utils import (
+    CMAPListener,
+    CompareType,
+    EventListener,
+    OvertCommandListener,
+    ServerAndTopologyEventListener,
+    camel_to_snake,
+    camel_to_snake_args,
+    parse_spec_options,
+    prepare_spec_arguments,
+    rs_client,
+)
 from typing import List
 
 from bson import decode, encode

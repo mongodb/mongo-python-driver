@@ -14,8 +14,7 @@
 
 import unittest
 
-from mockupdb import (Command, MockupDB, OpMsg, OpMsgReply, OpQuery, OpReply,
-                      absent, go)
+from mockupdb import Command, MockupDB, OpMsg, OpMsgReply, OpQuery, OpReply, absent, go
 
 from bson.objectid import ObjectId
 from pymongo import MongoClient

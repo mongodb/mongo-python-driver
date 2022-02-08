@@ -20,12 +20,22 @@ from test import IntegrationTest, client_context, unittest
 from test.utils import EventListener, rs_or_single_client
 from typing import Any
 
-from pymongo.collation import (Collation, CollationAlternate,
-                               CollationCaseFirst, CollationMaxVariable,
-                               CollationStrength)
+from pymongo.collation import (
+    Collation,
+    CollationAlternate,
+    CollationCaseFirst,
+    CollationMaxVariable,
+    CollationStrength,
+)
 from pymongo.errors import ConfigurationError
-from pymongo.operations import (DeleteMany, DeleteOne, IndexModel, ReplaceOne,
-                                UpdateMany, UpdateOne)
+from pymongo.operations import (
+    DeleteMany,
+    DeleteOne,
+    IndexModel,
+    ReplaceOne,
+    UpdateMany,
+    UpdateOne,
+)
 from pymongo.write_concern import WriteConcern
 
 

@@ -19,8 +19,10 @@ from typing import Any, Dict, Mapping, Optional, Sequence
 
 from pymongo import max_staleness_selectors
 from pymongo.errors import ConfigurationError
-from pymongo.server_selectors import (member_with_tags_server_selector,
-                                      secondary_with_tags_server_selector)
+from pymongo.server_selectors import (
+    member_with_tags_server_selector,
+    secondary_with_tags_server_selector,
+)
 
 _PRIMARY = 0
 _PRIMARY_PREFERRED = 1

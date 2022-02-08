@@ -21,10 +21,16 @@ from typing import Any
 
 from bson.son import SON
 from pymongo import ASCENDING
-from pymongo.errors import (CursorNotFound, DuplicateKeyError,
-                            ExecutionTimeout, NotPrimaryError,
-                            OperationFailure, WriteConcernError, WriteError,
-                            WTimeoutError)
+from pymongo.errors import (
+    CursorNotFound,
+    DuplicateKeyError,
+    ExecutionTimeout,
+    NotPrimaryError,
+    OperationFailure,
+    WriteConcernError,
+    WriteError,
+    WTimeoutError,
+)
 from pymongo.hello import HelloCompat
 
 # From the SDAM spec, the "node is shutting down" codes.

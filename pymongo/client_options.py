@@ -23,8 +23,7 @@ from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _EventListeners
 from pymongo.pool import PoolOptions
 from pymongo.read_concern import ReadConcern
-from pymongo.read_preferences import (make_read_preference,
-                                      read_pref_mode_from_name)
+from pymongo.read_preferences import make_read_preference, read_pref_mode_from_name
 from pymongo.server_selectors import any_server_selector
 from pymongo.ssl_support import get_ssl_context
 from pymongo.write_concern import WriteConcern

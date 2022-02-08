@@ -35,23 +35,50 @@ import contextlib
 import threading
 import weakref
 from collections import defaultdict
-from typing import (TYPE_CHECKING, Any, Dict, FrozenSet, Generic, List,
-                    Mapping, Optional, Sequence, Set, Tuple, Type, Union, cast)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    FrozenSet,
+    Generic,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 import bson
-from bson.codec_options import (DEFAULT_CODEC_OPTIONS, CodecOptions,
-                                TypeRegistry)
+from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.son import SON
 from bson.timestamp import Timestamp
-from pymongo import (client_session, common, database, helpers, message,
-                     periodic_executor, uri_parser)
+from pymongo import (
+    client_session,
+    common,
+    database,
+    helpers,
+    message,
+    periodic_executor,
+    uri_parser,
+)
 from pymongo.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.client_options import ClientOptions
 from pymongo.command_cursor import CommandCursor
-from pymongo.errors import (AutoReconnect, BulkWriteError, ConfigurationError,
-                            ConnectionFailure, InvalidOperation,
-                            NotPrimaryError, OperationFailure, PyMongoError,
-                            ServerSelectionTimeoutError)
+from pymongo.errors import (
+    AutoReconnect,
+    BulkWriteError,
+    ConfigurationError,
+    ConnectionFailure,
+    InvalidOperation,
+    NotPrimaryError,
+    OperationFailure,
+    PyMongoError,
+    ServerSelectionTimeoutError,
+)
 from pymongo.pool import ConnectionClosedReason
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_selectors import writable_server_selector
@@ -60,8 +87,12 @@ from pymongo.settings import TopologySettings
 from pymongo.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
 from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
-from pymongo.uri_parser import (_check_options, _handle_option_deprecations,
-                                _handle_security_options, _normalize_options)
+from pymongo.uri_parser import (
+    _check_options,
+    _handle_option_deprecations,
+    _handle_security_options,
+    _normalize_options,
+)
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
 if TYPE_CHECKING:

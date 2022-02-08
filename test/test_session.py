@@ -26,16 +26,14 @@ from pymongo.mongo_client import MongoClient
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, SkipTest, client_context, unittest
-from test.utils import (EventListener, TestCreator, rs_or_single_client,
-                        wait_until)
+from test.utils import EventListener, TestCreator, rs_or_single_client, wait_until
 from test.utils_spec_runner import SpecRunner
 
 from bson import DBRef
 from gridfs import GridFS, GridFSBucket
 from pymongo import ASCENDING, IndexModel, InsertOne, monitoring
 from pymongo.common import _MAX_END_SESSIONS
-from pymongo.errors import (ConfigurationError, InvalidOperation,
-                            OperationFailure)
+from pymongo.errors import ConfigurationError, InvalidOperation, OperationFailure
 from pymongo.read_concern import ReadConcern
 
 

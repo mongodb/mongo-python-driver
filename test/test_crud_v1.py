@@ -20,15 +20,26 @@ import sys
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
-from test.utils import (TestCreator, camel_to_snake, camel_to_snake_args,
-                        camel_to_upper_camel, drop_collections)
+from test.utils import (
+    TestCreator,
+    camel_to_snake,
+    camel_to_snake_args,
+    camel_to_upper_camel,
+    drop_collections,
+)
 
 from pymongo import WriteConcern, operations
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 from pymongo.errors import PyMongoError
-from pymongo.operations import (DeleteMany, DeleteOne, InsertOne, ReplaceOne,
-                                UpdateMany, UpdateOne)
+from pymongo.operations import (
+    DeleteMany,
+    DeleteOne,
+    InsertOne,
+    ReplaceOne,
+    UpdateMany,
+    UpdateOne,
+)
 from pymongo.read_concern import ReadConcern
 from pymongo.results import BulkWriteResult, _WriteResult
 

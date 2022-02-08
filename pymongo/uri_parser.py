@@ -17,14 +17,27 @@
 import re
 import sys
 import warnings
-from typing import (Any, Dict, List, Mapping, MutableMapping, Optional, Tuple,
-                    Union, cast)
+from typing import (
+    Any,
+    Dict,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Tuple,
+    Union,
+    cast,
+)
 from urllib.parse import unquote_plus
 
 from pymongo.client_options import _parse_ssl_options
-from pymongo.common import (INTERNAL_URI_OPTION_NAME_MAP, SRV_SERVICE_NAME,
-                            URI_OPTIONS_DEPRECATION_MAP,
-                            _CaseInsensitiveDictionary, get_validated_options)
+from pymongo.common import (
+    INTERNAL_URI_OPTION_NAME_MAP,
+    SRV_SERVICE_NAME,
+    URI_OPTIONS_DEPRECATION_MAP,
+    _CaseInsensitiveDictionary,
+    get_validated_options,
+)
 from pymongo.errors import ConfigurationError, InvalidURI
 from pymongo.srv_resolver import _HAVE_DNSPYTHON, _SrvResolver
 

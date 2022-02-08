@@ -21,10 +21,14 @@ from typing import Any
 
 sys.path[0:0] = [""]
 
-from test import (IntegrationTest, client_context, client_knobs, sanitize_cmd,
-                  unittest)
-from test.utils import (EventListener, get_pool, rs_or_single_client,
-                        single_client, wait_until)
+from test import IntegrationTest, client_context, client_knobs, sanitize_cmd, unittest
+from test.utils import (
+    EventListener,
+    get_pool,
+    rs_or_single_client,
+    single_client,
+    wait_until,
+)
 
 from bson.int64 import Int64
 from bson.objectid import ObjectId

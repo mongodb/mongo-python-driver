@@ -33,8 +33,14 @@ from test.utils import EventListener, rs_or_single_client
 from bson.objectid import ObjectId
 from gridfs import GridFS
 from gridfs.errors import NoFile
-from gridfs.grid_file import (_SEEK_CUR, _SEEK_END, DEFAULT_CHUNK_SIZE, GridIn,
-                              GridOut, GridOutCursor)
+from gridfs.grid_file import (
+    _SEEK_CUR,
+    _SEEK_END,
+    DEFAULT_CHUNK_SIZE,
+    GridIn,
+    GridOut,
+    GridOutCursor,
+)
 from pymongo import MongoClient
 from pymongo.errors import ConfigurationError, ServerSelectionTimeoutError
 from pymongo.message import _CursorAddress

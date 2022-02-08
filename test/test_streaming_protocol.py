@@ -20,8 +20,13 @@ import time
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
-from test.utils import (HeartbeatEventListener, ServerEventListener,
-                        rs_or_single_client, single_client, wait_until)
+from test.utils import (
+    HeartbeatEventListener,
+    ServerEventListener,
+    rs_or_single_client,
+    single_client,
+    wait_until,
+)
 
 from pymongo import monitoring
 from pymongo.hello import HelloCompat

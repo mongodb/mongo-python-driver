@@ -64,16 +64,39 @@ import uuid
 from codecs import utf_8_decode as _utf_8_decode  # type: ignore[attr-defined]
 from codecs import utf_8_encode as _utf_8_encode  # type: ignore[attr-defined]
 from collections import abc as _abc
-from typing import (IO, TYPE_CHECKING, Any, BinaryIO, Callable, Dict,
-                    Generator, Iterator, List, Mapping, MutableMapping,
-                    NoReturn, Sequence, Tuple, Type, TypeVar, Union, cast)
+from typing import (
+    IO,
+    TYPE_CHECKING,
+    Any,
+    BinaryIO,
+    Callable,
+    Dict,
+    Generator,
+    Iterator,
+    List,
+    Mapping,
+    MutableMapping,
+    NoReturn,
+    Sequence,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+)
 
-from bson.binary import (ALL_UUID_SUBTYPES, CSHARP_LEGACY, JAVA_LEGACY,
-                         OLD_UUID_SUBTYPE, STANDARD, UUID_SUBTYPE, Binary,
-                         UuidRepresentation)
+from bson.binary import (
+    ALL_UUID_SUBTYPES,
+    CSHARP_LEGACY,
+    JAVA_LEGACY,
+    OLD_UUID_SUBTYPE,
+    STANDARD,
+    UUID_SUBTYPE,
+    Binary,
+    UuidRepresentation,
+)
 from bson.code import Code
-from bson.codec_options import (DEFAULT_CODEC_OPTIONS, CodecOptions,
-                                _raw_document_class)
+from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, _raw_document_class
 from bson.dbref import DBRef
 from bson.decimal128 import Decimal128
 from bson.errors import InvalidBSON, InvalidDocument, InvalidStringData

@@ -35,8 +35,17 @@ from test import qcheck, unittest
 from test.utils import ExceptionCatchingThread
 
 import bson
-from bson import (BSON, EPOCH_AWARE, Regex, decode, decode_all,
-                  decode_file_iter, decode_iter, encode, is_valid)
+from bson import (
+    BSON,
+    EPOCH_AWARE,
+    Regex,
+    decode,
+    decode_all,
+    decode_file_iter,
+    decode_iter,
+    encode,
+    is_valid,
+)
 from bson.binary import Binary, UuidRepresentation
 from bson.code import Code
 from bson.codec_options import CodecOptions

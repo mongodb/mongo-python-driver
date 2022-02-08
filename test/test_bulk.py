@@ -22,16 +22,24 @@ from pymongo.mongo_client import MongoClient
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
-from test.utils import (remove_all_users, rs_or_single_client_noauth,
-                        single_client, wait_until)
+from test.utils import (
+    remove_all_users,
+    rs_or_single_client_noauth,
+    single_client,
+    wait_until,
+)
 
 from bson.binary import Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from pymongo.collection import Collection
 from pymongo.common import partition_node
-from pymongo.errors import (BulkWriteError, ConfigurationError,
-                            InvalidOperation, OperationFailure)
+from pymongo.errors import (
+    BulkWriteError,
+    ConfigurationError,
+    InvalidOperation,
+    OperationFailure,
+)
 from pymongo.operations import *
 from pymongo.write_concern import WriteConcern
 

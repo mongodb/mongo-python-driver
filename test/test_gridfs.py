@@ -26,16 +26,18 @@ from io import BytesIO
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
-from test.utils import (joinall, one, rs_client, rs_or_single_client,
-                        single_client)
+from test.utils import joinall, one, rs_client, rs_or_single_client, single_client
 
 import gridfs
 from bson.binary import Binary
 from gridfs.errors import CorruptGridFile, FileExists, NoFile
 from gridfs.grid_file import GridOutCursor
 from pymongo.database import Database
-from pymongo.errors import (ConfigurationError, NotPrimaryError,
-                            ServerSelectionTimeoutError)
+from pymongo.errors import (
+    ConfigurationError,
+    NotPrimaryError,
+    ServerSelectionTimeoutError,
+)
 from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import ReadPreference
 

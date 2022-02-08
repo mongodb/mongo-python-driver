@@ -21,17 +21,28 @@ import threading
 
 sys.path[0:0] = [""]
 
-from test import (IntegrationTest, PyMongoTestCase, client_context,
-                  client_knobs, unittest)
-from test.utils import (CMAPListener, OvertCommandListener, TestCreator,
-                        rs_or_single_client)
+from test import (
+    IntegrationTest,
+    PyMongoTestCase,
+    client_context,
+    client_knobs,
+    unittest,
+)
+from test.utils import (
+    CMAPListener,
+    OvertCommandListener,
+    TestCreator,
+    rs_or_single_client,
+)
 from test.utils_spec_runner import SpecRunner
 
 from pymongo.mongo_client import MongoClient
-from pymongo.monitoring import (ConnectionCheckedOutEvent,
-                                ConnectionCheckOutFailedEvent,
-                                ConnectionCheckOutFailedReason,
-                                PoolClearedEvent)
+from pymongo.monitoring import (
+    ConnectionCheckedOutEvent,
+    ConnectionCheckOutFailedEvent,
+    ConnectionCheckOutFailedReason,
+    PoolClearedEvent,
+)
 from pymongo.write_concern import WriteConcern
 
 # Location of JSON test specifications.

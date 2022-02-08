@@ -22,10 +22,14 @@ import threading
 
 sys.path[0:0] = [""]
 
-from test import (IntegrationTest, SkipTest, client_context, client_knobs,
-                  unittest)
-from test.utils import (CMAPListener, DeprecationFilter, OvertCommandListener,
-                        TestCreator, rs_or_single_client)
+from test import IntegrationTest, SkipTest, client_context, client_knobs, unittest
+from test.utils import (
+    CMAPListener,
+    DeprecationFilter,
+    OvertCommandListener,
+    TestCreator,
+    rs_or_single_client,
+)
 from test.utils_spec_runner import SpecRunner
 from test.version import Version
 
@@ -33,15 +37,27 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.int64 import Int64
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
-from pymongo.errors import (ConnectionFailure, OperationFailure,
-                            ServerSelectionTimeoutError, WriteConcernError)
+from pymongo.errors import (
+    ConnectionFailure,
+    OperationFailure,
+    ServerSelectionTimeoutError,
+    WriteConcernError,
+)
 from pymongo.mongo_client import MongoClient
-from pymongo.monitoring import (ConnectionCheckedOutEvent,
-                                ConnectionCheckOutFailedEvent,
-                                ConnectionCheckOutFailedReason,
-                                PoolClearedEvent)
-from pymongo.operations import (DeleteMany, DeleteOne, InsertOne, ReplaceOne,
-                                UpdateMany, UpdateOne)
+from pymongo.monitoring import (
+    ConnectionCheckedOutEvent,
+    ConnectionCheckOutFailedEvent,
+    ConnectionCheckOutFailedReason,
+    PoolClearedEvent,
+)
+from pymongo.operations import (
+    DeleteMany,
+    DeleteOne,
+    InsertOne,
+    ReplaceOne,
+    UpdateMany,
+    UpdateOne,
+)
 from pymongo.write_concern import WriteConcern
 
 # Location of JSON test specifications.

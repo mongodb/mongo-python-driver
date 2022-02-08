@@ -29,9 +29,15 @@ sys.path[0:0] = [""]
 
 from test import client_context, unittest
 from test.test_client import IntegrationTest
-from test.utils import (IMPOSSIBLE_WRITE_CONCERN, EventListener, get_pool,
-                        is_mongos, rs_or_single_client, single_client,
-                        wait_until)
+from test.utils import (
+    IMPOSSIBLE_WRITE_CONCERN,
+    EventListener,
+    get_pool,
+    is_mongos,
+    rs_or_single_client,
+    single_client,
+    wait_until,
+)
 
 from bson import encode
 from bson.codec_options import CodecOptions
@@ -44,17 +50,28 @@ from pymongo.bulk import BulkWriteError
 from pymongo.collection import Collection, ReturnDocument
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import CursorType
-from pymongo.errors import (ConfigurationError, DocumentTooLarge,
-                            DuplicateKeyError, ExecutionTimeout,
-                            InvalidDocument, InvalidName, InvalidOperation,
-                            OperationFailure, WriteConcernError)
+from pymongo.errors import (
+    ConfigurationError,
+    DocumentTooLarge,
+    DuplicateKeyError,
+    ExecutionTimeout,
+    InvalidDocument,
+    InvalidName,
+    InvalidOperation,
+    OperationFailure,
+    WriteConcernError,
+)
 from pymongo.message import _COMMAND_OVERHEAD, _gen_find_command
 from pymongo.mongo_client import MongoClient
 from pymongo.operations import *
 from pymongo.read_concern import DEFAULT_READ_CONCERN
 from pymongo.read_preferences import ReadPreference
-from pymongo.results import (DeleteResult, InsertManyResult, InsertOneResult,
-                             UpdateResult)
+from pymongo.results import (
+    DeleteResult,
+    InsertManyResult,
+    InsertOneResult,
+    UpdateResult,
+)
 from pymongo.write_concern import WriteConcern
 
 

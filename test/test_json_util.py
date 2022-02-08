@@ -26,13 +26,23 @@ sys.path[0:0] = [""]
 from test import IntegrationTest, unittest
 
 from bson import EPOCH_AWARE, EPOCH_NAIVE, SON, json_util
-from bson.binary import (ALL_UUID_REPRESENTATIONS, MD5_SUBTYPE, STANDARD,
-                         USER_DEFINED_SUBTYPE, Binary, UuidRepresentation)
+from bson.binary import (
+    ALL_UUID_REPRESENTATIONS,
+    MD5_SUBTYPE,
+    STANDARD,
+    USER_DEFINED_SUBTYPE,
+    Binary,
+    UuidRepresentation,
+)
 from bson.code import Code
 from bson.dbref import DBRef
 from bson.int64 import Int64
-from bson.json_util import (LEGACY_JSON_OPTIONS, DatetimeRepresentation,
-                            JSONMode, JSONOptions)
+from bson.json_util import (
+    LEGACY_JSON_OPTIONS,
+    DatetimeRepresentation,
+    JSONMode,
+    JSONOptions,
+)
 from bson.max_key import MaxKey
 from bson.min_key import MinKey
 from bson.objectid import ObjectId

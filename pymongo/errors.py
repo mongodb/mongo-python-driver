@@ -13,8 +13,7 @@
 # limitations under the License.
 
 """Exceptions raised by PyMongo."""
-from typing import (Any, Iterable, List, Mapping, Optional, Sequence, Tuple,
-                    Union)
+from typing import Any, Iterable, List, Mapping, Optional, Sequence, Tuple, Union
 
 from bson.errors import *
 

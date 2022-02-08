@@ -41,8 +41,7 @@ from pymongo.monitoring import _SENSITIVE_COMMANDS
 from pymongo.pool import _CancellationContext, _PoolGeneration
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
-from pymongo.server_selectors import (any_server_selector,
-                                      writable_server_selector)
+from pymongo.server_selectors import any_server_selector, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.uri_parser import parse_uri
 from pymongo.write_concern import WriteConcern

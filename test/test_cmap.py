@@ -23,24 +23,39 @@ sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_knobs, unittest
 from test.pymongo_mocks import DummyMonitor
-from test.utils import (CMAPListener, OvertCommandListener, TestCreator,
-                        camel_to_snake, client_context, get_pool, get_pools,
-                        rs_or_single_client, single_client,
-                        single_client_noauth, wait_until)
+from test.utils import (
+    CMAPListener,
+    OvertCommandListener,
+    TestCreator,
+    camel_to_snake,
+    client_context,
+    get_pool,
+    get_pools,
+    rs_or_single_client,
+    single_client,
+    single_client_noauth,
+    wait_until,
+)
 from test.utils_spec_runner import SpecRunnerThread
 
 from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo.errors import ConnectionFailure, OperationFailure, PyMongoError
-from pymongo.monitoring import (ConnectionCheckedInEvent,
-                                ConnectionCheckedOutEvent,
-                                ConnectionCheckOutFailedEvent,
-                                ConnectionCheckOutFailedReason,
-                                ConnectionCheckOutStartedEvent,
-                                ConnectionClosedEvent, ConnectionClosedReason,
-                                ConnectionCreatedEvent, ConnectionReadyEvent,
-                                PoolClearedEvent, PoolClosedEvent,
-                                PoolCreatedEvent, PoolReadyEvent)
+from pymongo.monitoring import (
+    ConnectionCheckedInEvent,
+    ConnectionCheckedOutEvent,
+    ConnectionCheckOutFailedEvent,
+    ConnectionCheckOutFailedReason,
+    ConnectionCheckOutStartedEvent,
+    ConnectionClosedEvent,
+    ConnectionClosedReason,
+    ConnectionCreatedEvent,
+    ConnectionReadyEvent,
+    PoolClearedEvent,
+    PoolClosedEvent,
+    PoolCreatedEvent,
+    PoolReadyEvent,
+)
 from pymongo.pool import PoolState, _PoolClosedError
 from pymongo.read_preferences import ReadPreference
 from pymongo.topology_description import updated_topology_description

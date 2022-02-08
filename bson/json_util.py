@@ -92,13 +92,11 @@ import json
 import math
 import re
 import uuid
-from typing import (Any, Dict, Mapping, Optional, Sequence, Tuple, Type, Union,
-                    cast)
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Type, Union, cast
 
 import bson
 from bson import EPOCH_AWARE
-from bson.binary import (ALL_UUID_SUBTYPES, UUID_SUBTYPE, Binary,
-                         UuidRepresentation)
+from bson.binary import ALL_UUID_SUBTYPES, UUID_SUBTYPE, Binary, UuidRepresentation
 from bson.code import Code
 from bson.codec_options import CodecOptions
 from bson.dbref import DBRef

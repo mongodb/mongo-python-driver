@@ -24,8 +24,12 @@ from bson import _decode_all_selective
 from pymongo import helpers, message
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.compression_support import _NO_COMPRESSION, decompress
-from pymongo.errors import (NotPrimaryError, OperationFailure, ProtocolError,
-                            _OperationCancelled)
+from pymongo.errors import (
+    NotPrimaryError,
+    OperationFailure,
+    ProtocolError,
+    _OperationCancelled,
+)
 from pymongo.message import _UNPACK_REPLY, _OpMsg
 from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.socket_checker import _errno_from_exception

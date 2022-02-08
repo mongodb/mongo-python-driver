@@ -20,8 +20,13 @@ from mockupdb import MockupDB, OpMsg, going
 
 from bson import SON
 from pymongo import MongoClient
-from pymongo.read_preferences import (Nearest, Primary, PrimaryPreferred,
-                                      Secondary, SecondaryPreferred)
+from pymongo.read_preferences import (
+    Nearest,
+    Primary,
+    PrimaryPreferred,
+    Secondary,
+    SecondaryPreferred,
+)
 
 
 class TestQueryAndReadModeSharded(unittest.TestCase):

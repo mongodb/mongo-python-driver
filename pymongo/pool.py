@@ -30,17 +30,32 @@ from bson import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
 from pymongo import __version__, auth, helpers
 from pymongo.client_session import _validate_session_write_concern
-from pymongo.common import (MAX_BSON_SIZE, MAX_CONNECTING, MAX_IDLE_TIME_SEC,
-                            MAX_MESSAGE_SIZE, MAX_POOL_SIZE, MAX_WIRE_VERSION,
-                            MAX_WRITE_BATCH_SIZE, MIN_POOL_SIZE, ORDERED_TYPES,
-                            WAIT_QUEUE_TIMEOUT)
-from pymongo.errors import (AutoReconnect, ConfigurationError,
-                            ConnectionFailure, DocumentTooLarge,
-                            InvalidOperation, NetworkTimeout, NotPrimaryError,
-                            OperationFailure, PyMongoError, _CertificateError)
+from pymongo.common import (
+    MAX_BSON_SIZE,
+    MAX_CONNECTING,
+    MAX_IDLE_TIME_SEC,
+    MAX_MESSAGE_SIZE,
+    MAX_POOL_SIZE,
+    MAX_WIRE_VERSION,
+    MAX_WRITE_BATCH_SIZE,
+    MIN_POOL_SIZE,
+    ORDERED_TYPES,
+    WAIT_QUEUE_TIMEOUT,
+)
+from pymongo.errors import (
+    AutoReconnect,
+    ConfigurationError,
+    ConnectionFailure,
+    DocumentTooLarge,
+    InvalidOperation,
+    NetworkTimeout,
+    NotPrimaryError,
+    OperationFailure,
+    PyMongoError,
+    _CertificateError,
+)
 from pymongo.hello import Hello, HelloCompat
-from pymongo.monitoring import (ConnectionCheckOutFailedReason,
-                                ConnectionClosedReason)
+from pymongo.monitoring import ConnectionCheckOutFailedReason, ConnectionClosedReason
 from pymongo.network import command, receive_message
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
