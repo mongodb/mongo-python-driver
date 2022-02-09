@@ -9,10 +9,12 @@ repos:
   - id: check-yaml
   - id: debug-statements
   - id: end-of-file-fixer
-    exclude: WHEEL, \.json$
+    exclude: WHEEL
+    exclude_types: [json]
   - id: forbid-new-submodules
   - id: trailing-whitespace
-    exclude: .patch, \.json$
+    exclude: .patch
+    exclude_types: [json]
 
 - repo: https://github.com/psf/black
   rev: 22.1.0
