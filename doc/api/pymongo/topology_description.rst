@@ -7,4 +7,3 @@
 
    .. autoclass:: pymongo.topology_description.TopologyDescription()
       :members:
-

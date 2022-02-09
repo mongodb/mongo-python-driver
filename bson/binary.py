@@ -69,7 +69,7 @@ class UuidRepresentation:
     code. When decoding a BSON binary field with a UUID subtype, a
     :class:`~bson.binary.Binary` instance will be returned instead of a
     :class:`uuid.UUID` instance.
-    
+
     See :ref:`unspecified-representation-details` for details.
 
     .. versionadded:: 3.11
@@ -81,7 +81,7 @@ class UuidRepresentation:
     :class:`uuid.UUID` instances will automatically be encoded to
     and decoded from BSON binary, using RFC-4122 byte order with
     binary subtype :data:`UUID_SUBTYPE`.
-    
+
     See :ref:`standard-representation-details` for details.
 
     .. versionadded:: 3.11
@@ -93,7 +93,7 @@ class UuidRepresentation:
     :class:`uuid.UUID` instances will automatically be encoded to
     and decoded from BSON binary, using RFC-4122 byte order with
     binary subtype :data:`OLD_UUID_SUBTYPE`.
-    
+
     See :ref:`python-legacy-representation-details` for details.
 
     .. versionadded:: 3.11
@@ -105,7 +105,7 @@ class UuidRepresentation:
     :class:`uuid.UUID` instances will automatically be encoded to
     and decoded from BSON binary subtype :data:`OLD_UUID_SUBTYPE`,
     using the Java driver's legacy byte order.
-    
+
     See :ref:`java-legacy-representation-details` for details.
 
     .. versionadded:: 3.11
@@ -117,7 +117,7 @@ class UuidRepresentation:
     :class:`uuid.UUID` instances will automatically be encoded to
     and decoded from BSON binary subtype :data:`OLD_UUID_SUBTYPE`,
     using the C# driver's legacy byte order.
-    
+
     See :ref:`csharp-legacy-representation-details` for details.
 
     .. versionadded:: 3.11
