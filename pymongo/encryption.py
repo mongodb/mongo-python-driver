@@ -26,35 +26,32 @@ try:
     from pymongocrypt.explicit_encrypter import ExplicitEncrypter
     from pymongocrypt.mongocrypt import MongoCryptOptions
     from pymongocrypt.state_machine import MongoCryptCallback
+
     _HAVE_PYMONGOCRYPT = True
 except ImportError:
     _HAVE_PYMONGOCRYPT = False
     MongoCryptCallback = object
 
 from bson import _dict_to_bson, decode, encode
+from bson.binary import STANDARD, UUID_SUBTYPE, Binary
 from bson.codec_options import CodecOptions
-from bson.binary import (Binary,
-                         STANDARD,
-                         UUID_SUBTYPE)
 from bson.errors import BSONError
-from bson.raw_bson import (DEFAULT_RAW_BSON_OPTIONS,
-                           RawBSONDocument,
-                           _inflate_bson)
+from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from bson.son import SON
-
-from pymongo.errors import (ConfigurationError,
-                            EncryptionError,
-                            InvalidOperation,
-                            ServerSelectionTimeoutError)
+from pymongo.daemon import _spawn_daemon
 from pymongo.encryption_options import AutoEncryptionOpts
+from pymongo.errors import (
+    ConfigurationError,
+    EncryptionError,
+    InvalidOperation,
+    ServerSelectionTimeoutError,
+)
 from pymongo.mongo_client import MongoClient
-from pymongo.pool import _configured_socket, PoolOptions
+from pymongo.pool import PoolOptions, _configured_socket
 from pymongo.read_concern import ReadConcern
 from pymongo.ssl_support import get_ssl_context
 from pymongo.uri_parser import parse_host
 from pymongo.write_concern import WriteConcern
-from pymongo.daemon import _spawn_daemon
-
 
 _HTTPS_PORT = 443
 _KMS_CONNECT_TIMEOUT = 10  # TODO: CDRIVER-3262 will define this value.
@@ -63,8 +60,7 @@ _MONGOCRYPTD_TIMEOUT_MS = 10000
 _DATA_KEY_OPTS = CodecOptions(document_class=SON, uuid_representation=STANDARD)
 # Use RawBSONDocument codec options to avoid needlessly decoding
 # documents from the key vault.
-_KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument,
-                               uuid_representation=STANDARD)
+_KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument, uuid_representation=STANDARD)
 
 
 @contextlib.contextmanager
@@ -90,8 +86,9 @@ class _EncryptionIO(MongoCryptCallback):
             self.client_ref = None
         self.key_vault_coll = key_vault_coll.with_options(
             codec_options=_KEY_VAULT_OPTS,
-            read_concern=ReadConcern(level='majority'),
-            write_concern=WriteConcern(w='majority'))
+            read_concern=ReadConcern(level="majority"),
+            write_concern=WriteConcern(w="majority"),
+        )
         self.mongocryptd_client = mongocryptd_client
         self.opts = opts
         self._spawned = False
@@ -113,16 +110,19 @@ class _EncryptionIO(MongoCryptCallback):
             # Enable strict certificate verification, OCSP, match hostname, and
             # SNI using the system default CA certificates.
             ctx = get_ssl_context(
-                None,   # certfile
-                None,   # passphrase
-                None,   # ca_certs
-                None,   # crlfile
+                None,  # certfile
+                None,  # passphrase
+                None,  # ca_certs
+                None,  # crlfile
                 False,  # allow_invalid_certificates
                 False,  # allow_invalid_hostnames
-                False)  # disable_ocsp_endpoint_check
-        opts = PoolOptions(connect_timeout=_KMS_CONNECT_TIMEOUT,
-                           socket_timeout=_KMS_CONNECT_TIMEOUT,
-                           ssl_context=ctx)
+                False,
+            )  # disable_ocsp_endpoint_check
+        opts = PoolOptions(
+            connect_timeout=_KMS_CONNECT_TIMEOUT,
+            socket_timeout=_KMS_CONNECT_TIMEOUT,
+            ssl_context=ctx,
+        )
         host, port = parse_host(endpoint, _HTTPS_PORT)
         conn = _configured_socket((host, port), opts)
         try:
@@ -130,7 +130,7 @@ class _EncryptionIO(MongoCryptCallback):
             while kms_context.bytes_needed > 0:
                 data = conn.recv(kms_context.bytes_needed)
                 if not data:
-                    raise OSError('KMS connection closed')
+                    raise OSError("KMS connection closed")
                 kms_context.feed(data)
         finally:
             conn.close()
@@ -148,8 +148,7 @@ class _EncryptionIO(MongoCryptCallback):
         :Returns:
           The first document from the listCollections command response as BSON.
         """
-        with self.client_ref()[database].list_collections(
-                filter=RawBSONDocument(filter)) as cursor:
+        with self.client_ref()[database].list_collections(filter=RawBSONDocument(filter)) as cursor:
             for doc in cursor:
                 return _dict_to_bson(doc, False, _DATA_KEY_OPTS)
 
@@ -160,7 +159,7 @@ class _EncryptionIO(MongoCryptCallback):
         successfully.
         """
         self._spawned = True
-        args = [self.opts._mongocryptd_spawn_path or 'mongocryptd']
+        args = [self.opts._mongocryptd_spawn_path or "mongocryptd"]
         args.extend(self.opts._mongocryptd_spawn_args)
         _spawn_daemon(args)
 
@@ -181,15 +180,15 @@ class _EncryptionIO(MongoCryptCallback):
         inflated_cmd = _inflate_bson(cmd, DEFAULT_RAW_BSON_OPTIONS)
         try:
             res = self.mongocryptd_client[database].command(
-                inflated_cmd,
-                codec_options=DEFAULT_RAW_BSON_OPTIONS)
+                inflated_cmd, codec_options=DEFAULT_RAW_BSON_OPTIONS
+            )
         except ServerSelectionTimeoutError:
             if self.opts._mongocryptd_bypass_spawn:
                 raise
             self.spawn()
             res = self.mongocryptd_client[database].command(
-                inflated_cmd,
-                codec_options=DEFAULT_RAW_BSON_OPTIONS)
+                inflated_cmd, codec_options=DEFAULT_RAW_BSON_OPTIONS
+            )
         return res.raw
 
     def fetch_keys(self, filter):
@@ -215,9 +214,9 @@ class _EncryptionIO(MongoCryptCallback):
           The _id of the inserted data key document.
         """
         raw_doc = RawBSONDocument(data_key, _KEY_VAULT_OPTS)
-        data_key_id = raw_doc.get('_id')
+        data_key_id = raw_doc.get("_id")
         if not isinstance(data_key_id, uuid.UUID):
-            raise TypeError('data_key _id must be a UUID')
+            raise TypeError("data_key _id must be a UUID")
 
         self.key_vault_coll.insert_one(raw_doc)
         return Binary(data_key_id.bytes, subtype=UUID_SUBTYPE)
@@ -252,6 +251,7 @@ class _Encrypter(object):
 
     This class is used to support automatic encryption and decryption of
     MongoDB commands."""
+
     def __init__(self, client, opts):
         """Create a _Encrypter for a client.
 
@@ -273,8 +273,7 @@ class _Encrypter(object):
             # Else - limited pool size, use an internal client.
             if encrypter._internal_client is not None:
                 return encrypter._internal_client
-            internal_client = mongo_client._duplicate(
-                minPoolSize=0, auto_encryption_opts=None)
+            internal_client = mongo_client._duplicate(minPoolSize=0, auto_encryption_opts=None)
             encrypter._internal_client = internal_client
             return internal_client
 
@@ -288,17 +287,17 @@ class _Encrypter(object):
         else:
             metadata_client = _get_internal_client(self, client)
 
-        db, coll = opts._key_vault_namespace.split('.', 1)
+        db, coll = opts._key_vault_namespace.split(".", 1)
         key_vault_coll = key_vault_client[db][coll]
 
         mongocryptd_client = MongoClient(
-            opts._mongocryptd_uri, connect=False,
-            serverSelectionTimeoutMS=_MONGOCRYPTD_TIMEOUT_MS)
+            opts._mongocryptd_uri, connect=False, serverSelectionTimeoutMS=_MONGOCRYPTD_TIMEOUT_MS
+        )
 
-        io_callbacks = _EncryptionIO(
-            metadata_client, key_vault_coll, mongocryptd_client, opts)
-        self._auto_encrypter = AutoEncrypter(io_callbacks, MongoCryptOptions(
-            opts._kms_providers, schema_map))
+        io_callbacks = _EncryptionIO(metadata_client, key_vault_coll, mongocryptd_client, opts)
+        self._auto_encrypter = AutoEncrypter(
+            io_callbacks, MongoCryptOptions(opts._kms_providers, schema_map)
+        )
         self._closed = False
 
     def encrypt(self, database, cmd, check_keys, codec_options):
@@ -316,15 +315,14 @@ class _Encrypter(object):
         self._check_closed()
         # Workaround for $clusterTime which is incompatible with
         # check_keys.
-        cluster_time = check_keys and cmd.pop('$clusterTime', None)
+        cluster_time = check_keys and cmd.pop("$clusterTime", None)
         encoded_cmd = _dict_to_bson(cmd, check_keys, codec_options)
         with _wrap_encryption_errors():
             encrypted_cmd = self._auto_encrypter.encrypt(database, encoded_cmd)
             # TODO: PYTHON-1922 avoid decoding the encrypted_cmd.
-            encrypt_cmd = _inflate_bson(
-                encrypted_cmd, DEFAULT_RAW_BSON_OPTIONS)
+            encrypt_cmd = _inflate_bson(encrypted_cmd, DEFAULT_RAW_BSON_OPTIONS)
             if cluster_time:
-                encrypt_cmd['$clusterTime'] = cluster_time
+                encrypt_cmd["$clusterTime"] = cluster_time
             return encrypt_cmd
 
     def decrypt(self, response):
@@ -355,17 +353,22 @@ class _Encrypter(object):
 
 class Algorithm(object):
     """An enum that defines the supported encryption algorithms."""
-    AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic = (
-        "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic")
-    AEAD_AES_256_CBC_HMAC_SHA_512_Random = (
-        "AEAD_AES_256_CBC_HMAC_SHA_512-Random")
+
+    AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic = "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic"
+    AEAD_AES_256_CBC_HMAC_SHA_512_Random = "AEAD_AES_256_CBC_HMAC_SHA_512-Random"
 
 
 class ClientEncryption(object):
     """Explicit client-side field level encryption."""
 
-    def __init__(self, kms_providers, key_vault_namespace, key_vault_client,
-                 codec_options, kms_tls_options=None):
+    def __init__(
+        self,
+        kms_providers,
+        key_vault_namespace,
+        key_vault_client,
+        codec_options,
+        kms_tls_options=None,
+    ):
         """Explicit client-side field level encryption.
 
         The ClientEncryption class encapsulates explicit operations on a key
@@ -439,28 +442,31 @@ class ClientEncryption(object):
             raise ConfigurationError(
                 "client-side field level encryption requires the pymongocrypt "
                 "library: install a compatible version with: "
-                "python -m pip install 'pymongo[encryption]'")
+                "python -m pip install 'pymongo[encryption]'"
+            )
 
         if not isinstance(codec_options, CodecOptions):
-            raise TypeError("codec_options must be an instance of "
-                            "bson.codec_options.CodecOptions")
+            raise TypeError(
+                "codec_options must be an instance of " "bson.codec_options.CodecOptions"
+            )
 
         self._kms_providers = kms_providers
         self._key_vault_namespace = key_vault_namespace
         self._key_vault_client = key_vault_client
         self._codec_options = codec_options
 
-        db, coll = key_vault_namespace.split('.', 1)
+        db, coll = key_vault_namespace.split(".", 1)
         key_vault_coll = key_vault_client[db][coll]
 
-        opts = AutoEncryptionOpts(kms_providers, key_vault_namespace,
-                                  kms_tls_options=kms_tls_options)
+        opts = AutoEncryptionOpts(
+            kms_providers, key_vault_namespace, kms_tls_options=kms_tls_options
+        )
         self._io_callbacks = _EncryptionIO(None, key_vault_coll, None, opts)
         self._encryption = ExplicitEncrypter(
-            self._io_callbacks, MongoCryptOptions(kms_providers, None))
+            self._io_callbacks, MongoCryptOptions(kms_providers, None)
+        )
 
-    def create_data_key(self, kms_provider, master_key=None,
-                        key_alt_names=None):
+    def create_data_key(self, kms_provider, master_key=None, key_alt_names=None):
         """Create and insert a new data key into the key vault collection.
 
         :Parameters:
@@ -529,8 +535,8 @@ class ClientEncryption(object):
         self._check_closed()
         with _wrap_encryption_errors():
             return self._encryption.create_data_key(
-                kms_provider, master_key=master_key,
-                key_alt_names=key_alt_names)
+                kms_provider, master_key=master_key, key_alt_names=key_alt_names
+            )
 
     def encrypt(self, value, algorithm, key_id=None, key_alt_name=None):
         """Encrypt a BSON value with a given key and algorithm.
@@ -551,17 +557,17 @@ class ClientEncryption(object):
           The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
         """
         self._check_closed()
-        if (key_id is not None and not (
-                isinstance(key_id, Binary) and
-                key_id.subtype == UUID_SUBTYPE)):
-            raise TypeError(
-                'key_id must be a bson.binary.Binary with subtype 4')
+        if key_id is not None and not (
+            isinstance(key_id, Binary) and key_id.subtype == UUID_SUBTYPE
+        ):
+            raise TypeError("key_id must be a bson.binary.Binary with subtype 4")
 
-        doc = encode({'v': value}, codec_options=self._codec_options)
+        doc = encode({"v": value}, codec_options=self._codec_options)
         with _wrap_encryption_errors():
             encrypted_doc = self._encryption.encrypt(
-                doc, algorithm, key_id=key_id, key_alt_name=key_alt_name)
-            return decode(encrypted_doc)['v']
+                doc, algorithm, key_id=key_id, key_alt_name=key_alt_name
+            )
+            return decode(encrypted_doc)["v"]
 
     def decrypt(self, value):
         """Decrypt an encrypted value.
@@ -575,14 +581,12 @@ class ClientEncryption(object):
         """
         self._check_closed()
         if not (isinstance(value, Binary) and value.subtype == 6):
-            raise TypeError(
-                'value to decrypt must be a bson.binary.Binary with subtype 6')
+            raise TypeError("value to decrypt must be a bson.binary.Binary with subtype 6")
 
         with _wrap_encryption_errors():
-            doc = encode({'v': value})
+            doc = encode({"v": value})
             decrypted_doc = self._encryption.decrypt(doc)
-            return decode(decrypted_doc,
-                          codec_options=self._codec_options)['v']
+            return decode(decrypted_doc, codec_options=self._codec_options)["v"]
 
     def __enter__(self):
         return self

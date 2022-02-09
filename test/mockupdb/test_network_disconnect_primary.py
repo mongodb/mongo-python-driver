@@ -17,12 +17,13 @@ try:
 except ImportError:
     from Queue import Queue
 
-from mockupdb import MockupDB, wait_until, OpReply, going, Future
+import unittest
+
+from mockupdb import Future, MockupDB, OpReply, going, wait_until
+
+from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 from pymongo.topology_description import TOPOLOGY_TYPE
-from pymongo import MongoClient
-
-import unittest
 
 
 class TestNetworkDisconnectPrimary(unittest.TestCase):
@@ -36,52 +37,53 @@ class TestNetworkDisconnectPrimary(unittest.TestCase):
             self.addCleanup(server.stop)
 
         hosts = [server.address_string for server in servers]
-        primary_response = OpReply(ismaster=True, setName='rs', hosts=hosts,
-                                   minWireVersion=2, maxWireVersion=6)
-        primary.autoresponds('ismaster', primary_response)
+        primary_response = OpReply(
+            ismaster=True, setName="rs", hosts=hosts, minWireVersion=2, maxWireVersion=6
+        )
+        primary.autoresponds("ismaster", primary_response)
         secondary.autoresponds(
-            'ismaster',
-            ismaster=False, secondary=True, setName='rs', hosts=hosts,
-            minWireVersion=2, maxWireVersion=6)
+            "ismaster",
+            ismaster=False,
+            secondary=True,
+            setName="rs",
+            hosts=hosts,
+            minWireVersion=2,
+            maxWireVersion=6,
+        )
 
-        client = MongoClient(primary.uri, replicaSet='rs')
+        client = MongoClient(primary.uri, replicaSet="rs")
         self.addCleanup(client.close)
-        wait_until(lambda: client.primary == primary.address,
-                   'discover primary')
+        wait_until(lambda: client.primary == primary.address, "discover primary")
 
         topology = client._topology
-        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetWithPrimary,
-                         topology.description.topology_type)
+        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetWithPrimary, topology.description.topology_type)
 
         # Open a socket in the application pool (calls ismaster).
-        with going(client.db.command, 'buildinfo'):
-            primary.receives('buildinfo').ok()
+        with going(client.db.command, "buildinfo"):
+            primary.receives("buildinfo").ok()
 
         # The primary hangs replying to ismaster.
         ismaster_future = Future()
-        primary.autoresponds('ismaster',
-                             lambda r: r.ok(ismaster_future.result()))
+        primary.autoresponds("ismaster", lambda r: r.ok(ismaster_future.result()))
 
         # Network error on application operation.
         with self.assertRaises(ConnectionFailure):
-            with going(client.db.command, 'buildinfo'):
-                primary.receives('buildinfo').hangup()
+            with going(client.db.command, "buildinfo"):
+                primary.receives("buildinfo").hangup()
 
         # Topology type is updated.
-        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetNoPrimary,
-                         topology.description.topology_type)
+        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetNoPrimary, topology.description.topology_type)
 
         # Let ismasters through again.
         ismaster_future.set_result(primary_response)
 
         # Demand a primary.
-        with going(client.db.command, 'buildinfo'):
-            wait_until(lambda: client.primary == primary.address,
-                       'rediscover primary')
-            primary.receives('buildinfo').ok()
+        with going(client.db.command, "buildinfo"):
+            wait_until(lambda: client.primary == primary.address, "rediscover primary")
+            primary.receives("buildinfo").ok()
 
-        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetWithPrimary,
-                         topology.description.topology_type)
+        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetWithPrimary, topology.description.topology_type)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

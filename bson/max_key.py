@@ -18,6 +18,7 @@
 
 class MaxKey(object):
     """MongoDB internal MaxKey type."""
+
     __slots__ = ()
 
     _type_marker = 127

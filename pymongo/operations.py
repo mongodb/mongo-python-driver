@@ -15,8 +15,8 @@
 """Operation class definitions."""
 
 from pymongo import helpers
-from pymongo.common import validate_boolean, validate_is_mapping, validate_list
 from pymongo.collation import validate_collation_or_none
+from pymongo.common import validate_boolean, validate_is_mapping, validate_list
 from pymongo.helpers import _gen_index_name, _index_document, _index_list
 
 
@@ -90,16 +90,14 @@ class DeleteOne(object):
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
-        bulkobj.add_delete(self._filter, 1, collation=self._collation,
-                           hint=self._hint)
+        bulkobj.add_delete(self._filter, 1, collation=self._collation, hint=self._hint)
 
     def __repr__(self):
         return "DeleteOne(%r, %r)" % (self._filter, self._collation)
 
     def __eq__(self, other):
         if type(other) == type(self):
-            return ((other._filter, other._collation) ==
-                    (self._filter, self._collation))
+            return (other._filter, other._collation) == (self._filter, self._collation)
         return NotImplemented
 
     def __ne__(self, other):
@@ -144,16 +142,14 @@ class DeleteMany(object):
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
-        bulkobj.add_delete(self._filter, 0, collation=self._collation,
-                           hint=self._hint)
+        bulkobj.add_delete(self._filter, 0, collation=self._collation, hint=self._hint)
 
     def __repr__(self):
         return "DeleteMany(%r, %r)" % (self._filter, self._collation)
 
     def __eq__(self, other):
         if type(other) == type(self):
-            return ((other._filter, other._collation) ==
-                    (self._filter, self._collation))
+            return (other._filter, other._collation) == (self._filter, self._collation)
         return NotImplemented
 
     def __ne__(self, other):
@@ -165,8 +161,7 @@ class ReplaceOne(object):
 
     __slots__ = ("_filter", "_doc", "_upsert", "_collation", "_hint")
 
-    def __init__(self, filter, replacement, upsert=False, collation=None,
-                 hint=None):
+    def __init__(self, filter, replacement, upsert=False, collation=None, hint=None):
         """Create a ReplaceOne instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -207,15 +202,19 @@ class ReplaceOne(object):
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
-        bulkobj.add_replace(self._filter, self._doc, self._upsert,
-                            collation=self._collation, hint=self._hint)
+        bulkobj.add_replace(
+            self._filter, self._doc, self._upsert, collation=self._collation, hint=self._hint
+        )
 
     def __eq__(self, other):
         if type(other) == type(self):
-            return (
-                (other._filter, other._doc, other._upsert, other._collation,
-                 other._hint) == (self._filter, self._doc, self._upsert,
-                                  self._collation, other._hint))
+            return (other._filter, other._doc, other._upsert, other._collation, other._hint) == (
+                self._filter,
+                self._doc,
+                self._upsert,
+                self._collation,
+                other._hint,
+            )
         return NotImplemented
 
     def __ne__(self, other):
@@ -223,15 +222,19 @@ class ReplaceOne(object):
 
     def __repr__(self):
         return "%s(%r, %r, %r, %r, %r)" % (
-            self.__class__.__name__, self._filter, self._doc, self._upsert,
-            self._collation, self._hint)
+            self.__class__.__name__,
+            self._filter,
+            self._doc,
+            self._upsert,
+            self._collation,
+            self._hint,
+        )
 
 
 class _UpdateOp(object):
     """Private base class for update operations."""
 
-    __slots__ = ("_filter", "_doc", "_upsert", "_collation", "_array_filters",
-                 "_hint")
+    __slots__ = ("_filter", "_doc", "_upsert", "_collation", "_array_filters", "_hint")
 
     def __init__(self, filter, doc, upsert, collation, array_filters, hint):
         if filter is not None:
@@ -244,7 +247,6 @@ class _UpdateOp(object):
             if not isinstance(hint, str):
                 hint = helpers._index_document(hint)
 
-
         self._filter = filter
         self._doc = doc
         self._upsert = upsert
@@ -255,10 +257,20 @@ class _UpdateOp(object):
     def __eq__(self, other):
         if type(other) == type(self):
             return (
-                (other._filter, other._doc, other._upsert, other._collation,
-                 other._array_filters, other._hint) ==
-                (self._filter, self._doc, self._upsert, self._collation,
-                 self._array_filters, self._hint))
+                other._filter,
+                other._doc,
+                other._upsert,
+                other._collation,
+                other._array_filters,
+                other._hint,
+            ) == (
+                self._filter,
+                self._doc,
+                self._upsert,
+                self._collation,
+                self._array_filters,
+                self._hint,
+            )
         return NotImplemented
 
     def __ne__(self, other):
@@ -266,8 +278,14 @@ class _UpdateOp(object):
 
     def __repr__(self):
         return "%s(%r, %r, %r, %r, %r, %r)" % (
-            self.__class__.__name__, self._filter, self._doc, self._upsert,
-            self._collation, self._array_filters, self._hint)
+            self.__class__.__name__,
+            self._filter,
+            self._doc,
+            self._upsert,
+            self._collation,
+            self._array_filters,
+            self._hint,
+        )
 
 
 class UpdateOne(_UpdateOp):
@@ -275,8 +293,7 @@ class UpdateOne(_UpdateOp):
 
     __slots__ = ()
 
-    def __init__(self, filter, update, upsert=False, collation=None,
-                 array_filters=None, hint=None):
+    def __init__(self, filter, update, upsert=False, collation=None, array_filters=None, hint=None):
         """Represents an update_one operation.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -307,15 +324,19 @@ class UpdateOne(_UpdateOp):
         .. versionchanged:: 3.5
            Added the `collation` option.
         """
-        super(UpdateOne, self).__init__(filter, update, upsert, collation,
-                                        array_filters, hint)
+        super(UpdateOne, self).__init__(filter, update, upsert, collation, array_filters, hint)
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
-        bulkobj.add_update(self._filter, self._doc, False, self._upsert,
-                           collation=self._collation,
-                           array_filters=self._array_filters,
-                           hint=self._hint)
+        bulkobj.add_update(
+            self._filter,
+            self._doc,
+            False,
+            self._upsert,
+            collation=self._collation,
+            array_filters=self._array_filters,
+            hint=self._hint,
+        )
 
 
 class UpdateMany(_UpdateOp):
@@ -323,8 +344,7 @@ class UpdateMany(_UpdateOp):
 
     __slots__ = ()
 
-    def __init__(self, filter, update, upsert=False, collation=None,
-                 array_filters=None, hint=None):
+    def __init__(self, filter, update, upsert=False, collation=None, array_filters=None, hint=None):
         """Create an UpdateMany instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -355,15 +375,19 @@ class UpdateMany(_UpdateOp):
         .. versionchanged:: 3.5
            Added the `collation` option.
         """
-        super(UpdateMany, self).__init__(filter, update, upsert, collation,
-                                         array_filters, hint)
+        super(UpdateMany, self).__init__(filter, update, upsert, collation, array_filters, hint)
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
-        bulkobj.add_update(self._filter, self._doc, True, self._upsert,
-                           collation=self._collation,
-                           array_filters=self._array_filters,
-                           hint=self._hint)
+        bulkobj.add_update(
+            self._filter,
+            self._doc,
+            True,
+            self._upsert,
+            collation=self._collation,
+            array_filters=self._array_filters,
+            hint=self._hint,
+        )
 
 
 class IndexModel(object):
@@ -436,10 +460,10 @@ class IndexModel(object):
         if "name" not in kwargs:
             kwargs["name"] = _gen_index_name(keys)
         kwargs["key"] = _index_document(keys)
-        collation = validate_collation_or_none(kwargs.pop('collation', None))
+        collation = validate_collation_or_none(kwargs.pop("collation", None))
         self.__document = kwargs
         if collation is not None:
-            self.__document['collation'] = collation
+            self.__document["collation"] = collation
 
     @property
     def document(self):

@@ -22,7 +22,6 @@ from pymongo.write_concern import WriteConcern
 
 
 class TestWriteConcern(unittest.TestCase):
-
     def test_invalid(self):
         # Can't use fsync and j options together
         self.assertRaises(ConfigurationError, WriteConcern, j=True, fsync=True)
@@ -41,9 +40,7 @@ class TestWriteConcern(unittest.TestCase):
         self.assertTrue(concern != None)  # noqa
 
     def test_equality_compatible_type(self):
-
         class _FakeWriteConcern(object):
-
             def __init__(self, **document):
                 self.document = document
 
@@ -66,9 +63,9 @@ class TestWriteConcern(unittest.TestCase):
         self.assertNotEqual(WriteConcern(wtimeout=42), _FakeWriteConcern(wtimeout=2000))
 
     def test_equality_incompatible_type(self):
-        _fake_type = collections.namedtuple('NotAWriteConcern', ['document'])
-        self.assertNotEqual(WriteConcern(j=True), _fake_type({'j': True}))
+        _fake_type = collections.namedtuple("NotAWriteConcern", ["document"])
+        self.assertNotEqual(WriteConcern(j=True), _fake_type({"j": True}))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

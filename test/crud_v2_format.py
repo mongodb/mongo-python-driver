@@ -33,22 +33,22 @@ class TestCrudV2(SpecRunner):
 
     def get_scenario_db_name(self, scenario_def):
         """Crud spec says database_name is optional."""
-        return scenario_def.get('database_name', self.TEST_DB)
+        return scenario_def.get("database_name", self.TEST_DB)
 
     def get_scenario_coll_name(self, scenario_def):
         """Crud spec says collection_name is optional."""
-        return scenario_def.get('collection_name', self.TEST_COLLECTION)
+        return scenario_def.get("collection_name", self.TEST_COLLECTION)
 
     def get_object_name(self, op):
         """Crud spec says object is optional and defaults to 'collection'."""
-        return op.get('object', 'collection')
+        return op.get("object", "collection")
 
     def get_outcome_coll_name(self, outcome, collection):
         """Crud spec says outcome has an optional 'collection.name'."""
-        return outcome['collection'].get('name', collection.name)
+        return outcome["collection"].get("name", collection.name)
 
     def setup_scenario(self, scenario_def):
         """Allow specs to override a test's setup."""
         # PYTHON-1935 Only create the collection if there is data to insert.
-        if scenario_def['data']:
+        if scenario_def["data"]:
             super(TestCrudV2, self).setup_scenario(scenario_def)

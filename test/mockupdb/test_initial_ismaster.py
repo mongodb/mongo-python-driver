@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import time
+import unittest
 
 from mockupdb import MockupDB, wait_until
-from pymongo import MongoClient
 
-import unittest
+from pymongo import MongoClient
 
 
 class TestInitialIsMaster(unittest.TestCase):
@@ -32,15 +32,13 @@ class TestInitialIsMaster(unittest.TestCase):
 
         # A single ismaster is enough for the client to be connected.
         self.assertFalse(client.nodes)
-        server.receives('ismaster').ok(ismaster=True,
-                                       minWireVersion=2, maxWireVersion=6)
-        wait_until(lambda: client.nodes,
-                   'update nodes', timeout=1)
+        server.receives("ismaster").ok(ismaster=True, minWireVersion=2, maxWireVersion=6)
+        wait_until(lambda: client.nodes, "update nodes", timeout=1)
 
         # At least 10 seconds before next heartbeat.
-        server.receives('ismaster').ok(ismaster=True,
-                                       minWireVersion=2, maxWireVersion=6)
+        server.receives("ismaster").ok(ismaster=True, minWireVersion=2, maxWireVersion=6)
         self.assertGreaterEqual(time.time() - start, 10)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

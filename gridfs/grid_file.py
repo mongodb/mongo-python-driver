@@ -18,21 +18,22 @@ import io
 import math
 import os
 
-from bson.int64 import Int64
-from bson.son import SON
 from bson.binary import Binary
+from bson.int64 import Int64
 from bson.objectid import ObjectId
+from bson.son import SON
+from gridfs.errors import CorruptGridFile, FileExists, NoFile
 from pymongo import ASCENDING
 from pymongo.collection import Collection
 from pymongo.cursor import Cursor
-from pymongo.errors import (ConfigurationError,
-                            CursorNotFound,
-                            DuplicateKeyError,
-                            InvalidOperation,
-                            OperationFailure)
+from pymongo.errors import (
+    ConfigurationError,
+    CursorNotFound,
+    DuplicateKeyError,
+    InvalidOperation,
+    OperationFailure,
+)
 from pymongo.read_preferences import ReadPreference
-
-from gridfs.errors import CorruptGridFile, FileExists, NoFile
 
 try:
     _SEEK_SET = os.SEEK_SET
@@ -55,30 +56,31 @@ _C_INDEX = SON([("files_id", ASCENDING), ("n", ASCENDING)])
 _F_INDEX = SON([("filename", ASCENDING), ("uploadDate", ASCENDING)])
 
 
-def _grid_in_property(field_name, docstring, read_only=False,
-                      closed_only=False):
+def _grid_in_property(field_name, docstring, read_only=False, closed_only=False):
     """Create a GridIn property."""
+
     def getter(self):
         if closed_only and not self._closed:
-            raise AttributeError("can only get %r on a closed file" %
-                                 field_name)
+            raise AttributeError("can only get %r on a closed file" % field_name)
         # Protect against PHP-237
-        if field_name == 'length':
+        if field_name == "length":
             return self._file.get(field_name, 0)
         return self._file.get(field_name, None)
 
     def setter(self, value):
         if self._closed:
-            self._coll.files.update_one({"_id": self._file["_id"]},
-                                        {"$set": {field_name: value}})
+            self._coll.files.update_one({"_id": self._file["_id"]}, {"$set": {field_name: value}})
         self._file[field_name] = value
 
     if read_only:
         docstring += "\n\nThis attribute is read-only."
     elif closed_only:
-        docstring = "%s\n\n%s" % (docstring, "This attribute is read-only and "
-                                  "can only be read after :meth:`close` "
-                                  "has been called.")
+        docstring = "%s\n\n%s" % (
+            docstring,
+            "This attribute is read-only and "
+            "can only be read after :meth:`close` "
+            "has been called.",
+        )
 
     if not read_only and not closed_only:
         return property(getter, setter, doc=docstring)
@@ -87,11 +89,12 @@ def _grid_in_property(field_name, docstring, read_only=False,
 
 def _grid_out_property(field_name, docstring):
     """Create a GridOut property."""
+
     def getter(self):
         self._ensure_file()
 
         # Protect against PHP-237
-        if field_name == 'length':
+        if field_name == "length":
             return self._file.get(field_name, 0)
         return self._file.get(field_name, None)
 
@@ -107,13 +110,12 @@ def _clear_entity_type_registry(entity, **kwargs):
 
 def _disallow_transactions(session):
     if session and session.in_transaction:
-        raise InvalidOperation(
-            'GridFS does not support multi-document transactions')
+        raise InvalidOperation("GridFS does not support multi-document transactions")
 
 
 class GridIn(object):
-    """Class to write data to GridFS.
-    """
+    """Class to write data to GridFS."""
+
     def __init__(self, root_collection, session=None, **kwargs):
         """Write a file to GridFS
 
@@ -167,12 +169,10 @@ class GridIn(object):
            :attr:`~pymongo.collection.Collection.write_concern`
         """
         if not isinstance(root_collection, Collection):
-            raise TypeError("root_collection must be an "
-                            "instance of Collection")
+            raise TypeError("root_collection must be an " "instance of Collection")
 
         if not root_collection.write_concern.acknowledged:
-            raise ConfigurationError('root_collection must use '
-                                     'acknowledged write_concern')
+            raise ConfigurationError("root_collection must use " "acknowledged write_concern")
         _disallow_transactions(session)
 
         # Handle alternative naming
@@ -181,8 +181,7 @@ class GridIn(object):
         if "chunk_size" in kwargs:
             kwargs["chunkSize"] = kwargs.pop("chunk_size")
 
-        coll = _clear_entity_type_registry(
-            root_collection, read_preference=ReadPreference.PRIMARY)
+        coll = _clear_entity_type_registry(root_collection, read_preference=ReadPreference.PRIMARY)
 
         # Defaults
         kwargs["_id"] = kwargs.get("_id", ObjectId())
@@ -201,13 +200,14 @@ class GridIn(object):
         doc = collection.find_one(projection={"_id": 1}, session=self._session)
         if doc is None:
             try:
-                index_keys = [index_spec['key'] for index_spec in
-                              collection.list_indexes(session=self._session)]
+                index_keys = [
+                    index_spec["key"]
+                    for index_spec in collection.list_indexes(session=self._session)
+                ]
             except OperationFailure:
                 index_keys = []
             if index_key not in index_keys:
-                collection.create_index(
-                    index_key.items(), unique=unique, session=self._session)
+                collection.create_index(index_key.items(), unique=unique, session=self._session)
 
     def __ensure_indexes(self):
         if not object.__getattribute__(self, "_ensured_index"):
@@ -217,35 +217,28 @@ class GridIn(object):
             object.__setattr__(self, "_ensured_index", True)
 
     def abort(self):
-        """Remove all chunks/files that may have been uploaded and close.
-        """
-        self._coll.chunks.delete_many(
-            {"files_id": self._file['_id']}, session=self._session)
-        self._coll.files.delete_one(
-            {"_id": self._file['_id']}, session=self._session)
+        """Remove all chunks/files that may have been uploaded and close."""
+        self._coll.chunks.delete_many({"files_id": self._file["_id"]}, session=self._session)
+        self._coll.files.delete_one({"_id": self._file["_id"]}, session=self._session)
         object.__setattr__(self, "_closed", True)
 
     @property
     def closed(self):
-        """Is this file closed?
-        """
+        """Is this file closed?"""
         return self._closed
 
-    _id = _grid_in_property("_id", "The ``'_id'`` value for this file.",
-                            read_only=True)
+    _id = _grid_in_property("_id", "The ``'_id'`` value for this file.", read_only=True)
     filename = _grid_in_property("filename", "Name of this file.")
     name = _grid_in_property("filename", "Alias for `filename`.")
     content_type = _grid_in_property("contentType", "Mime-type for this file.")
-    length = _grid_in_property("length", "Length (in bytes) of this file.",
-                               closed_only=True)
-    chunk_size = _grid_in_property("chunkSize", "Chunk size for this file.",
-                                   read_only=True)
-    upload_date = _grid_in_property("uploadDate",
-                                    "Date that this file was uploaded.",
-                                    closed_only=True)
-    md5 = _grid_in_property("md5", "MD5 of the contents of this file "
-                            "if an md5 sum was created.",
-                            closed_only=True)
+    length = _grid_in_property("length", "Length (in bytes) of this file.", closed_only=True)
+    chunk_size = _grid_in_property("chunkSize", "Chunk size for this file.", read_only=True)
+    upload_date = _grid_in_property(
+        "uploadDate", "Date that this file was uploaded.", closed_only=True
+    )
+    md5 = _grid_in_property(
+        "md5", "MD5 of the contents of this file " "if an md5 sum was created.", closed_only=True
+    )
 
     def __getattr__(self, name):
         if name in self._file:
@@ -263,46 +256,39 @@ class GridIn(object):
             # them now.
             self._file[name] = value
             if self._closed:
-                self._coll.files.update_one({"_id": self._file["_id"]},
-                                            {"$set": {name: value}})
+                self._coll.files.update_one({"_id": self._file["_id"]}, {"$set": {name: value}})
 
     def __flush_data(self, data):
-        """Flush `data` to a chunk.
-        """
+        """Flush `data` to a chunk."""
         self.__ensure_indexes()
         if not data:
             return
-        assert(len(data) <= self.chunk_size)
+        assert len(data) <= self.chunk_size
 
-        chunk = {"files_id": self._file["_id"],
-                 "n": self._chunk_number,
-                 "data": Binary(data)}
+        chunk = {"files_id": self._file["_id"], "n": self._chunk_number, "data": Binary(data)}
 
         try:
             self._chunks.insert_one(chunk, session=self._session)
         except DuplicateKeyError:
-            self._raise_file_exists(self._file['_id'])
+            self._raise_file_exists(self._file["_id"])
         self._chunk_number += 1
         self._position += len(data)
 
     def __flush_buffer(self):
-        """Flush the buffer contents out to a chunk.
-        """
+        """Flush the buffer contents out to a chunk."""
         self.__flush_data(self._buffer.getvalue())
         self._buffer.close()
         self._buffer = io.BytesIO()
 
     def __flush(self):
-        """Flush the file to the database.
-        """
+        """Flush the file to the database."""
         try:
             self.__flush_buffer()
             # The GridFS spec says length SHOULD be an Int64.
             self._file["length"] = Int64(self._position)
             self._file["uploadDate"] = datetime.datetime.utcnow()
 
-            return self._coll.files.insert_one(
-                self._file, session=self._session)
+            return self._coll.files.insert_one(self._file, session=self._session)
         except DuplicateKeyError:
             self._raise_file_exists(self._id)
 
@@ -321,7 +307,7 @@ class GridIn(object):
             object.__setattr__(self, "_closed", True)
 
     def read(self, size=-1):
-        raise io.UnsupportedOperation('read')
+        raise io.UnsupportedOperation("read")
 
     def readable(self):
         return False
@@ -364,8 +350,7 @@ class GridIn(object):
                 try:
                     data = data.encode(self.encoding)
                 except AttributeError:
-                    raise TypeError("must specify an encoding for file in "
-                                    "order to write str")
+                    raise TypeError("must specify an encoding for file in " "order to write str")
             read = io.BytesIO(data).read
 
         if self._buffer.tell() > 0:
@@ -399,8 +384,7 @@ class GridIn(object):
         return True
 
     def __enter__(self):
-        """Support for the context manager protocol.
-        """
+        """Support for the context manager protocol."""
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -415,10 +399,9 @@ class GridIn(object):
 
 
 class GridOut(io.IOBase):
-    """Class to read data out of GridFS.
-    """
-    def __init__(self, root_collection, file_id=None, file_document=None,
-                 session=None):
+    """Class to read data out of GridFS."""
+
+    def __init__(self, root_collection, file_id=None, file_document=None, session=None):
         """Read a file from GridFS
 
         Application developers should generally not need to
@@ -452,8 +435,7 @@ class GridOut(io.IOBase):
            from the server. Metadata is fetched when first needed.
         """
         if not isinstance(root_collection, Collection):
-            raise TypeError("root_collection must be an "
-                            "instance of Collection")
+            raise TypeError("root_collection must be an " "instance of Collection")
         _disallow_transactions(session)
 
         root_collection = _clear_entity_type_registry(root_collection)
@@ -475,21 +457,21 @@ class GridOut(io.IOBase):
     content_type = _grid_out_property("contentType", "Mime-type for this file.")
     length = _grid_out_property("length", "Length (in bytes) of this file.")
     chunk_size = _grid_out_property("chunkSize", "Chunk size for this file.")
-    upload_date = _grid_out_property("uploadDate",
-                                     "Date that this file was first uploaded.")
+    upload_date = _grid_out_property("uploadDate", "Date that this file was first uploaded.")
     aliases = _grid_out_property("aliases", "List of aliases for this file.")
     metadata = _grid_out_property("metadata", "Metadata attached to this file.")
-    md5 = _grid_out_property("md5", "MD5 of the contents of this file "
-                             "if an md5 sum was created.")
+    md5 = _grid_out_property(
+        "md5", "MD5 of the contents of this file " "if an md5 sum was created."
+    )
 
     def _ensure_file(self):
         if not self._file:
             _disallow_transactions(self._session)
-            self._file = self.__files.find_one({"_id": self.__file_id},
-                                               session=self._session)
+            self._file = self.__files.find_one({"_id": self.__file_id}, session=self._session)
             if not self._file:
-                raise NoFile("no file in gridfs collection %r with _id %r" %
-                             (self.__files, self.__file_id))
+                raise NoFile(
+                    "no file in gridfs collection %r with _id %r" % (self.__files, self.__file_id)
+                )
 
     def __getattr__(self, name):
         self._ensure_file()
@@ -514,10 +496,11 @@ class GridOut(io.IOBase):
             chunk_number = int((received + self.__position) / chunk_size)
             if self.__chunk_iter is None:
                 self.__chunk_iter = _GridOutChunkIterator(
-                    self, self.__chunks, self._session, chunk_number)
+                    self, self.__chunks, self._session, chunk_number
+                )
 
             chunk = self.__chunk_iter.next()
-            chunk_data = chunk["data"][self.__position % chunk_size:]
+            chunk_data = chunk["data"][self.__position % chunk_size :]
 
             if not chunk_data:
                 raise CorruptGridFile("truncated chunk")
@@ -607,8 +590,7 @@ class GridOut(io.IOBase):
         return data.read(size)
 
     def tell(self):
-        """Return the current position of this file.
-        """
+        """Return the current position of this file."""
         return self.__position
 
     def seek(self, pos, whence=_SEEK_SET):
@@ -677,10 +659,10 @@ class GridOut(io.IOBase):
         super().close()
 
     def write(self, value):
-        raise io.UnsupportedOperation('write')
+        raise io.UnsupportedOperation("write")
 
     def writelines(self, lines):
-        raise io.UnsupportedOperation('writelines')
+        raise io.UnsupportedOperation("writelines")
 
     def writable(self):
         return False
@@ -699,7 +681,7 @@ class GridOut(io.IOBase):
         return False
 
     def fileno(self):
-        raise io.UnsupportedOperation('fileno')
+        raise io.UnsupportedOperation("fileno")
 
     def flush(self):
         # GridOut is read-only, so flush does nothing.
@@ -711,7 +693,7 @@ class GridOut(io.IOBase):
     def truncate(self, size=None):
         # See https://docs.python.org/3/library/io.html#io.IOBase.writable
         # for why truncate has to raise.
-        raise io.UnsupportedOperation('truncate')
+        raise io.UnsupportedOperation("truncate")
 
     # Override IOBase.__del__ otherwise it will lead to __getattr__ on
     # __IOBase_closed which calls _ensure_file and potentially performs I/O.
@@ -726,6 +708,7 @@ class _GridOutChunkIterator(object):
     Raises CorruptGridFile when encountering any truncated, missing, or extra
     chunk in a file.
     """
+
     def __init__(self, grid_out, chunks, session, next_chunk):
         self._id = grid_out._id
         self._chunk_size = int(grid_out.chunk_size)
@@ -749,8 +732,7 @@ class _GridOutChunkIterator(object):
         if self._next_chunk > 0:
             filter["n"] = {"$gte": self._next_chunk}
         _disallow_transactions(self._session)
-        self._cursor = self._chunks.find(filter, sort=[("n", 1)],
-                                         session=self._session)
+        self._cursor = self._chunks.find(filter, sort=[("n", 1)], session=self._session)
 
     def _next_with_retry(self):
         """Return the next chunk and retry once on CursorNotFound.
@@ -781,7 +763,8 @@ class _GridOutChunkIterator(object):
             self.close()
             raise CorruptGridFile(
                 "Missing chunk: expected chunk #%d but found "
-                "chunk with n=%d" % (self._next_chunk, chunk["n"]))
+                "chunk with n=%d" % (self._next_chunk, chunk["n"])
+            )
 
         if chunk["n"] >= self._num_chunks:
             # According to spec, ignore extra chunks if they are empty.
@@ -789,15 +772,16 @@ class _GridOutChunkIterator(object):
                 self.close()
                 raise CorruptGridFile(
                     "Extra chunk found: expected %d chunks but found "
-                    "chunk with n=%d" % (self._num_chunks, chunk["n"]))
+                    "chunk with n=%d" % (self._num_chunks, chunk["n"])
+                )
 
         expected_length = self.expected_chunk_length(chunk["n"])
         if len(chunk["data"]) != expected_length:
             self.close()
             raise CorruptGridFile(
                 "truncated chunk #%d: expected chunk length to be %d but "
-                "found chunk with length %d" % (
-                    chunk["n"], expected_length, len(chunk["data"])))
+                "found chunk with length %d" % (chunk["n"], expected_length, len(chunk["data"]))
+            )
 
         self._next_chunk += 1
         return chunk
@@ -828,9 +812,18 @@ class GridOutCursor(Cursor):
     """A cursor / iterator for returning GridOut objects as the result
     of an arbitrary query against the GridFS files collection.
     """
-    def __init__(self, collection, filter=None, skip=0, limit=0,
-                 no_cursor_timeout=False, sort=None, batch_size=0,
-                 session=None):
+
+    def __init__(
+        self,
+        collection,
+        filter=None,
+        skip=0,
+        limit=0,
+        no_cursor_timeout=False,
+        sort=None,
+        batch_size=0,
+        session=None,
+    ):
         """Create a new cursor, similar to the normal
         :class:`~pymongo.cursor.Cursor`.
 
@@ -848,18 +841,22 @@ class GridOutCursor(Cursor):
         self.__root_collection = collection
 
         super(GridOutCursor, self).__init__(
-            collection.files, filter, skip=skip, limit=limit,
-            no_cursor_timeout=no_cursor_timeout, sort=sort,
-            batch_size=batch_size, session=session)
+            collection.files,
+            filter,
+            skip=skip,
+            limit=limit,
+            no_cursor_timeout=no_cursor_timeout,
+            sort=sort,
+            batch_size=batch_size,
+            session=session,
+        )
 
     def next(self):
-        """Get next GridOut object from cursor.
-        """
+        """Get next GridOut object from cursor."""
         _disallow_transactions(self.session)
         # Work around "super is not iterable" issue in Python 3.x
         next_file = super(GridOutCursor, self).next()
-        return GridOut(self.__root_collection, file_document=next_file,
-                       session=self.session)
+        return GridOut(self.__root_collection, file_document=next_file, session=self.session)
 
     __next__ = next
 
@@ -870,6 +867,5 @@ class GridOutCursor(Cursor):
         raise NotImplementedError("Method does not exist for GridOutCursor")
 
     def _clone_base(self, session):
-        """Creates an empty GridOutCursor for information to be copied into.
-        """
+        """Creates an empty GridOutCursor for information to be copied into."""
         return GridOutCursor(self.__root_collection, session=session)

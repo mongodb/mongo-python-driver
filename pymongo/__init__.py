@@ -53,35 +53,40 @@ TEXT = "text"
 .. _text index: http://docs.mongodb.org/manual/core/index-text/
 """
 
-version_tuple = (4, 0, 2, '.dev0')
+version_tuple = (4, 0, 2, ".dev0")
+
 
 def get_version_string():
     if isinstance(version_tuple[-1], str):
-        return '.'.join(map(str, version_tuple[:-1])) + version_tuple[-1]
-    return '.'.join(map(str, version_tuple))
+        return ".".join(map(str, version_tuple[:-1])) + version_tuple[-1]
+    return ".".join(map(str, version_tuple))
+
 
 __version__ = version = get_version_string()
 """Current version of PyMongo."""
 
 from pymongo.collection import ReturnDocument
-from pymongo.common import (MIN_SUPPORTED_WIRE_VERSION,
-                            MAX_SUPPORTED_WIRE_VERSION)
+from pymongo.common import MAX_SUPPORTED_WIRE_VERSION, MIN_SUPPORTED_WIRE_VERSION
 from pymongo.cursor import CursorType
 from pymongo.mongo_client import MongoClient
-from pymongo.operations import (IndexModel,
-                                InsertOne,
-                                DeleteOne,
-                                DeleteMany,
-                                UpdateOne,
-                                UpdateMany,
-                                ReplaceOne)
+from pymongo.operations import (
+    DeleteMany,
+    DeleteOne,
+    IndexModel,
+    InsertOne,
+    ReplaceOne,
+    UpdateMany,
+    UpdateOne,
+)
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
+
 
 def has_c():
     """Is the C extension installed?"""
     try:
         from pymongo import _cmessage
+
         return True
     except ImportError:
         return False

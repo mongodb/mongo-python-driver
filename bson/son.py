@@ -20,7 +20,6 @@ dictionary."""
 
 import copy
 import re
-
 from collections.abc import Mapping as _Mapping
 
 # This sort of sucks, but seems to be as good as it gets...
@@ -101,8 +100,7 @@ class SON(dict):
 
     def pop(self, key, *args):
         if len(args) > 1:
-            raise TypeError("pop expected at most 2 arguments, got "\
-                                + repr(1 + len(args)))
+            raise TypeError("pop expected at most 2 arguments, got " + repr(1 + len(args)))
         try:
             value = self[key]
         except KeyError:
@@ -116,7 +114,7 @@ class SON(dict):
         try:
             k, v = next(iter(self.items()))
         except StopIteration:
-            raise KeyError('container is empty')
+            raise KeyError("container is empty")
         del self[k]
         return (k, v)
 
@@ -124,10 +122,10 @@ class SON(dict):
         # Make progressively weaker assumptions about "other"
         if other is None:
             pass
-        elif hasattr(other, 'items'):
+        elif hasattr(other, "items"):
             for k, v in other.items():
                 self[k] = v
-        elif hasattr(other, 'keys'):
+        elif hasattr(other, "keys"):
             for k in other.keys():
                 self[k] = other[k]
         else:
@@ -147,8 +145,7 @@ class SON(dict):
         regular dictionary is order-insensitive.
         """
         if isinstance(other, SON):
-            return len(self) == len(other) and list(self.items()) == \
-                   list(other.items())
+            return len(self) == len(other) and list(self.items()) == list(other.items())
         return self.to_dict() == other
 
     def __ne__(self, other):
@@ -168,9 +165,7 @@ class SON(dict):
             if isinstance(value, list):
                 return [transform_value(v) for v in value]
             elif isinstance(value, _Mapping):
-                return dict([
-                    (k, transform_value(v))
-                    for k, v in value.items()])
+                return dict([(k, transform_value(v)) for k, v in value.items()])
             else:
                 return value
 

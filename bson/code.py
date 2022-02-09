@@ -77,8 +77,7 @@ class Code(str):
 
     @property
     def scope(self):
-        """Scope dictionary for this instance or ``None``.
-        """
+        """Scope dictionary for this instance or ``None``."""
         return self.__scope
 
     def __repr__(self):

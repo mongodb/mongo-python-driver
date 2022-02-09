@@ -16,12 +16,13 @@
 
 from copy import deepcopy
 
-from bson.son import SON
 from bson._helpers import _getstate_slots, _setstate_slots
+from bson.son import SON
+
 
 class DBRef(object):
-    """A reference to a document stored in MongoDB.
-    """
+    """A reference to a document stored in MongoDB."""
+
     __slots__ = "__collection", "__id", "__database", "__kwargs"
     __getstate__ = _getstate_slots
     __setstate__ = _setstate_slots
@@ -59,14 +60,12 @@ class DBRef(object):
 
     @property
     def collection(self):
-        """Get the name of this DBRef's collection.
-        """
+        """Get the name of this DBRef's collection."""
         return self.__collection
 
     @property
     def id(self):
-        """Get this DBRef's _id.
-        """
+        """Get this DBRef's _id."""
         return self.__id
 
     @property
@@ -88,27 +87,22 @@ class DBRef(object):
 
         Generally not needed by application developers
         """
-        doc = SON([("$ref", self.collection),
-                   ("$id", self.id)])
+        doc = SON([("$ref", self.collection), ("$id", self.id)])
         if self.database is not None:
             doc["$db"] = self.database
         doc.update(self.__kwargs)
         return doc
 
     def __repr__(self):
-        extra = "".join([", %s=%r" % (k, v)
-                         for k, v in self.__kwargs.items()])
+        extra = "".join([", %s=%r" % (k, v) for k, v in self.__kwargs.items()])
         if self.database is None:
             return "DBRef(%r, %r%s)" % (self.collection, self.id, extra)
-        return "DBRef(%r, %r, %r%s)" % (self.collection, self.id,
-                                        self.database, extra)
+        return "DBRef(%r, %r, %r%s)" % (self.collection, self.id, self.database, extra)
 
     def __eq__(self, other):
         if isinstance(other, DBRef):
-            us = (self.__database, self.__collection,
-                  self.__id, self.__kwargs)
-            them = (other.__database, other.__collection,
-                    other.__id, other.__kwargs)
+            us = (self.__database, self.__collection, self.__id, self.__kwargs)
+            them = (other.__database, other.__collection, other.__id, other.__kwargs)
             return us == them
         return NotImplemented
 
@@ -117,12 +111,15 @@ class DBRef(object):
 
     def __hash__(self):
         """Get a hash value for this :class:`DBRef`."""
-        return hash((self.__collection, self.__id, self.__database,
-                     tuple(sorted(self.__kwargs.items()))))
+        return hash(
+            (self.__collection, self.__id, self.__database, tuple(sorted(self.__kwargs.items())))
+        )
 
     def __deepcopy__(self, memo):
         """Support function for `copy.deepcopy()`."""
-        return DBRef(deepcopy(self.__collection, memo),
-                     deepcopy(self.__id, memo),
-                     deepcopy(self.__database, memo),
-                     deepcopy(self.__kwargs, memo))
+        return DBRef(
+            deepcopy(self.__collection, memo),
+            deepcopy(self.__id, memo),
+            deepcopy(self.__database, memo),
+            deepcopy(self.__kwargs, memo),
+        )

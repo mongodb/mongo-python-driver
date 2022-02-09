@@ -20,15 +20,14 @@
 """
 
 import itertools
+import unittest
 
 from mockupdb import MockupDB, going
-from pymongo import MongoClient
-from pymongo.read_preferences import (make_read_preference,
-                                      read_pref_mode_from_name)
-from pymongo.topology_description import TOPOLOGY_TYPE
-
-import unittest
 from operations import operations
+
+from pymongo import MongoClient
+from pymongo.read_preferences import make_read_preference, read_pref_mode_from_name
+from pymongo.topology_description import TOPOLOGY_TYPE
 
 
 def topology_type_name(client):
@@ -46,20 +45,19 @@ class TestSlaveOkaySingle(unittest.TestCase):
 def create_slave_ok_single_test(mode, server_type, ismaster, operation):
     def test(self):
         ismaster_with_version = ismaster.copy()
-        ismaster_with_version['minWireVersion'] = 2
-        ismaster_with_version['maxWireVersion'] = 6
-        self.server.autoresponds('ismaster', **ismaster_with_version)
-        if operation.op_type == 'always-use-secondary':
+        ismaster_with_version["minWireVersion"] = 2
+        ismaster_with_version["maxWireVersion"] = 6
+        self.server.autoresponds("ismaster", **ismaster_with_version)
+        if operation.op_type == "always-use-secondary":
             slave_ok = True
-        elif operation.op_type == 'may-use-secondary':
-            slave_ok = mode != 'primary' or server_type != 'mongos'
-        elif operation.op_type == 'must-use-primary':
-            slave_ok = server_type != 'mongos'
+        elif operation.op_type == "may-use-secondary":
+            slave_ok = mode != "primary" or server_type != "mongos"
+        elif operation.op_type == "must-use-primary":
+            slave_ok = server_type != "mongos"
         else:
-            assert False, 'unrecognized op_type %r' % operation.op_type
+            assert False, "unrecognized op_type %r" % operation.op_type
 
-        pref = make_read_preference(read_pref_mode_from_name(mode),
-                                    tag_sets=None)
+        pref = make_read_preference(read_pref_mode_from_name(mode), tag_sets=None)
 
         client = MongoClient(self.server.uri, read_preference=pref)
         self.addCleanup(client.close)
@@ -67,27 +65,30 @@ def create_slave_ok_single_test(mode, server_type, ismaster, operation):
             request = self.server.receive()
             request.reply(operation.reply)
 
-        self.assertIn(topology_type_name(client), ['Sharded', 'Single'])
+        self.assertIn(topology_type_name(client), ["Sharded", "Single"])
 
     return test
 
 
 def generate_slave_ok_single_tests():
-    modes = 'primary', 'secondary', 'nearest'
+    modes = "primary", "secondary", "nearest"
     server_types = [
-        ('standalone', {'ismaster': True}),
-        ('slave', {'ismaster': False}),
-        ('mongos', {'ismaster': True, 'msg': 'isdbgrid'})]
+        ("standalone", {"ismaster": True}),
+        ("slave", {"ismaster": False}),
+        ("mongos", {"ismaster": True, "msg": "isdbgrid"}),
+    ]
 
     matrix = itertools.product(modes, server_types, operations)
 
     for entry in matrix:
         mode, (server_type, ismaster), operation = entry
-        test = create_slave_ok_single_test(mode, server_type, ismaster,
-                                           operation)
+        test = create_slave_ok_single_test(mode, server_type, ismaster, operation)
 
-        test_name = 'test_%s_%s_with_mode_%s' % (
-            operation.name.replace(' ', '_'), server_type, mode)
+        test_name = "test_%s_%s_with_mode_%s" % (
+            operation.name.replace(" ", "_"),
+            server_type,
+            mode,
+        )
 
         test.__name__ = test_name
         setattr(TestSlaveOkaySingle, test_name, test)
@@ -96,5 +97,5 @@ def generate_slave_ok_single_tests():
 generate_slave_ok_single_tests()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

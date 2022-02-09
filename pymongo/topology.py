@@ -22,34 +22,39 @@ import time
 import warnings
 import weakref
 
-from pymongo import (common,
-                     helpers,
-                     periodic_executor)
+from pymongo import common, helpers, periodic_executor
 from pymongo.client_session import _ServerSessionPool
-from pymongo.errors import (ConnectionFailure,
-                            ConfigurationError,
-                            NetworkTimeout,
-                            NotPrimaryError,
-                            OperationFailure,
-                            PyMongoError,
-                            ServerSelectionTimeoutError,
-                            WriteError,
-                            InvalidOperation)
+from pymongo.errors import (
+    ConfigurationError,
+    ConnectionFailure,
+    InvalidOperation,
+    NetworkTimeout,
+    NotPrimaryError,
+    OperationFailure,
+    PyMongoError,
+    ServerSelectionTimeoutError,
+    WriteError,
+)
 from pymongo.hello import Hello
 from pymongo.monitor import SrvMonitor
 from pymongo.pool import PoolOptions
 from pymongo.server import Server
 from pymongo.server_description import ServerDescription
-from pymongo.server_selectors import (any_server_selector,
-                                      arbiter_server_selector,
-                                      secondary_server_selector,
-                                      readable_server_selector,
-                                      writable_server_selector,
-                                      Selection)
-from pymongo.topology_description import (updated_topology_description,
-                                          _updated_topology_description_srv_polling,
-                                          TopologyDescription,
-                                          SRV_POLLING_TOPOLOGIES, TOPOLOGY_TYPE)
+from pymongo.server_selectors import (
+    Selection,
+    any_server_selector,
+    arbiter_server_selector,
+    readable_server_selector,
+    secondary_server_selector,
+    writable_server_selector,
+)
+from pymongo.topology_description import (
+    SRV_POLLING_TOPOLOGIES,
+    TOPOLOGY_TYPE,
+    TopologyDescription,
+    _updated_topology_description_srv_polling,
+    updated_topology_description,
+)
 
 
 def process_events_queue(queue_ref):
@@ -71,6 +76,7 @@ def process_events_queue(queue_ref):
 
 class Topology(object):
     """Monitor a topology of one or more servers."""
+
     def __init__(self, topology_settings):
         self._topology_id = topology_settings._topology_id
         self._listeners = topology_settings._pool_options._event_listeners
@@ -86,8 +92,7 @@ class Topology(object):
             self._events = queue.Queue(maxsize=100)
 
         if self._publish_tp:
-            self._events.put((self._listeners.publish_topology_opened,
-                             (self._topology_id,)))
+            self._events.put((self._listeners.publish_topology_opened, (self._topology_id,)))
         self._settings = topology_settings
         topology_description = TopologyDescription(
             topology_settings.get_topology_type(),
@@ -95,20 +100,24 @@ class Topology(object):
             topology_settings.replica_set_name,
             None,
             None,
-            topology_settings)
+            topology_settings,
+        )
 
         self._description = topology_description
         if self._publish_tp:
-            initial_td = TopologyDescription(TOPOLOGY_TYPE.Unknown, {}, None,
-                                             None, None, self._settings)
-            self._events.put((
-                self._listeners.publish_topology_description_changed,
-                (initial_td, self._description, self._topology_id)))
+            initial_td = TopologyDescription(
+                TOPOLOGY_TYPE.Unknown, {}, None, None, None, self._settings
+            )
+            self._events.put(
+                (
+                    self._listeners.publish_topology_description_changed,
+                    (initial_td, self._description, self._topology_id),
+                )
+            )
 
         for seed in topology_settings.seeds:
             if self._publish_server:
-                self._events.put((self._listeners.publish_server_opened,
-                                 (seed, self._topology_id)))
+                self._events.put((self._listeners.publish_server_opened, (seed, self._topology_id)))
 
         # Store the seed list to help diagnose errors in _error_message().
         self._seed_addresses = list(topology_description.server_descriptions())
@@ -122,6 +131,7 @@ class Topology(object):
         self._session_pool = _ServerSessionPool()
 
         if self._publish_server or self._publish_tp:
+
             def target():
                 return process_events_queue(weak)
 
@@ -129,7 +139,8 @@ class Topology(object):
                 interval=common.EVENTS_QUEUE_FREQUENCY,
                 min_interval=common.MIN_HEARTBEAT_INTERVAL,
                 target=target,
-                name="pymongo_events_thread")
+                name="pymongo_events_thread",
+            )
 
             # We strongly reference the executor and it weakly references
             # the queue via this closure. When the topology is freed, stop
@@ -139,8 +150,7 @@ class Topology(object):
             executor.open()
 
         self._srv_monitor = None
-        if (self._settings.fqdn is not None and
-                not self._settings.load_balanced):
+        if self._settings.fqdn is not None and not self._settings.load_balanced:
             self._srv_monitor = SrvMonitor(self, self._settings)
 
     def open(self):
@@ -163,7 +173,8 @@ class Topology(object):
                     "MongoClient opened before fork. Create MongoClient only "
                     "after forking. See PyMongo's documentation for details: "
                     "https://pymongo.readthedocs.io/en/stable/faq.html#"
-                    "is-pymongo-fork-safe")
+                    "is-pymongo-fork-safe"
+                )
                 with self._lock:
                     # Reset the session pool to avoid duplicate sessions in
                     # the child process.
@@ -172,10 +183,7 @@ class Topology(object):
         with self._lock:
             self._ensure_opened()
 
-    def select_servers(self,
-                       selector,
-                       server_selection_timeout=None,
-                       address=None):
+    def select_servers(self, selector, server_selection_timeout=None, address=None):
         """Return a list of Servers matching selector, or time out.
 
         :Parameters:
@@ -197,25 +205,25 @@ class Topology(object):
             server_timeout = server_selection_timeout
 
         with self._lock:
-            server_descriptions = self._select_servers_loop(
-                selector, server_timeout, address)
+            server_descriptions = self._select_servers_loop(selector, server_timeout, address)
 
-            return [self.get_server_by_address(sd.address)
-                    for sd in server_descriptions]
+            return [self.get_server_by_address(sd.address) for sd in server_descriptions]
 
     def _select_servers_loop(self, selector, timeout, address):
         """select_servers() guts. Hold the lock when calling this."""
         now = time.monotonic()
         end_time = now + timeout
         server_descriptions = self._description.apply_selector(
-            selector, address, custom_selector=self._settings.server_selector)
+            selector, address, custom_selector=self._settings.server_selector
+        )
 
         while not server_descriptions:
             # No suitable servers.
             if timeout == 0 or now > end_time:
                 raise ServerSelectionTimeoutError(
-                    "%s, Timeout: %ss, Topology Description: %r" %
-                    (self._error_message(selector), timeout, self.description))
+                    "%s, Timeout: %ss, Topology Description: %r"
+                    % (self._error_message(selector), timeout, self.description)
+                )
 
             self._ensure_opened()
             self._request_check_all()
@@ -228,19 +236,15 @@ class Topology(object):
             self._description.check_compatible()
             now = time.monotonic()
             server_descriptions = self._description.apply_selector(
-                selector, address,
-                custom_selector=self._settings.server_selector)
+                selector, address, custom_selector=self._settings.server_selector
+            )
 
         self._description.check_compatible()
         return server_descriptions
 
-    def select_server(self,
-                      selector,
-                      server_selection_timeout=None,
-                      address=None):
+    def select_server(self, selector, server_selection_timeout=None, address=None):
         """Like select_servers, but choose a random server if several match."""
-        servers = self.select_servers(
-            selector, server_selection_timeout, address)
+        servers = self.select_servers(selector, server_selection_timeout, address)
         if len(servers) == 1:
             return servers[0]
         server1, server2 = random.sample(servers, 2)
@@ -249,8 +253,7 @@ class Topology(object):
         else:
             return server2
 
-    def select_server_by_address(self, address,
-                                 server_selection_timeout=None):
+    def select_server_by_address(self, address, server_selection_timeout=None):
         """Return a Server for "address", reconnecting if necessary.
 
         If the server's type is not known, request an immediate check of all
@@ -268,9 +271,7 @@ class Topology(object):
         Raises exc:`ServerSelectionTimeoutError` after
         `server_selection_timeout` if no matching servers are found.
         """
-        return self.select_server(any_server_selector,
-                                  server_selection_timeout,
-                                  address)
+        return self.select_server(any_server_selector, server_selection_timeout, address)
 
     def _process_change(self, server_description, reset_pool=False):
         """Process a new ServerDescription on an opened topology.
@@ -283,39 +284,43 @@ class Topology(object):
             # This is a stale hello response. Ignore it.
             return
 
-        new_td = updated_topology_description(
-            self._description, server_description)
+        new_td = updated_topology_description(self._description, server_description)
         # CMAP: Ensure the pool is "ready" when the server is selectable.
-        if (server_description.is_readable
-                or (server_description.is_server_type_known and
-                    new_td.topology_type == TOPOLOGY_TYPE.Single)):
+        if server_description.is_readable or (
+            server_description.is_server_type_known and new_td.topology_type == TOPOLOGY_TYPE.Single
+        ):
             server = self._servers.get(server_description.address)
             if server:
                 server.pool.ready()
 
-        suppress_event = ((self._publish_server or self._publish_tp)
-                          and sd_old == server_description)
+        suppress_event = (self._publish_server or self._publish_tp) and sd_old == server_description
         if self._publish_server and not suppress_event:
-            self._events.put((
-                self._listeners.publish_server_description_changed,
-                (sd_old, server_description,
-                 server_description.address, self._topology_id)))
+            self._events.put(
+                (
+                    self._listeners.publish_server_description_changed,
+                    (sd_old, server_description, server_description.address, self._topology_id),
+                )
+            )
 
         self._description = new_td
         self._update_servers()
         self._receive_cluster_time_no_lock(server_description.cluster_time)
 
         if self._publish_tp and not suppress_event:
-            self._events.put((
-                self._listeners.publish_topology_description_changed,
-                (td_old, self._description, self._topology_id)))
+            self._events.put(
+                (
+                    self._listeners.publish_topology_description_changed,
+                    (td_old, self._description, self._topology_id),
+                )
+            )
 
         # Shutdown SRV polling for unsupported cluster types.
         # This is only applicable if the old topology was Unknown, and the
         # new one is something other than Unknown or Sharded.
-        if self._srv_monitor and (td_old.topology_type == TOPOLOGY_TYPE.Unknown
-                                  and self._description.topology_type not in
-                                  SRV_POLLING_TOPOLOGIES):
+        if self._srv_monitor and (
+            td_old.topology_type == TOPOLOGY_TYPE.Unknown
+            and self._description.topology_type not in SRV_POLLING_TOPOLOGIES
+        ):
             self._srv_monitor.close()
 
         # Clear the pool from a failed heartbeat.
@@ -339,8 +344,7 @@ class Topology(object):
             # once. Check if it's still in the description or if some state-
             # change removed it. E.g., we got a host list from the primary
             # that didn't include this server.
-            if (self._opened and
-                    self._description.has_server(server_description.address)):
+            if self._opened and self._description.has_server(server_description.address):
                 self._process_change(server_description, reset_pool)
 
     def _process_srv_update(self, seedlist):
@@ -348,15 +352,17 @@ class Topology(object):
         Hold the lock when calling this.
         """
         td_old = self._description
-        self._description = _updated_topology_description_srv_polling(
-            self._description, seedlist)
+        self._description = _updated_topology_description_srv_polling(self._description, seedlist)
 
         self._update_servers()
 
         if self._publish_tp:
-            self._events.put((
-                self._listeners.publish_topology_description_changed,
-                (td_old, self._description, self._topology_id)))
+            self._events.put(
+                (
+                    self._listeners.publish_topology_description_changed,
+                    (td_old, self._description, self._topology_id),
+                )
+            )
 
     def on_srv_update(self, seedlist):
         """Process a new list of nodes obtained from scanning SRV records."""
@@ -393,8 +399,10 @@ class Topology(object):
         # Implemented here in Topology instead of MongoClient, so it can lock.
         with self._lock:
             topology_type = self._description.topology_type
-            if topology_type not in (TOPOLOGY_TYPE.ReplicaSetWithPrimary,
-                                     TOPOLOGY_TYPE.ReplicaSetNoPrimary):
+            if topology_type not in (
+                TOPOLOGY_TYPE.ReplicaSetWithPrimary,
+                TOPOLOGY_TYPE.ReplicaSetNoPrimary,
+            ):
                 return set()
 
             return set([sd.address for sd in selector(self._new_selection())])
@@ -420,9 +428,10 @@ class Topology(object):
         # value of the clusterTime embedded field."
         if cluster_time:
             # ">" uses bson.timestamp.Timestamp's comparison operator.
-            if (not self._max_cluster_time
-                or cluster_time['clusterTime'] >
-                    self._max_cluster_time['clusterTime']):
+            if (
+                not self._max_cluster_time
+                or cluster_time["clusterTime"] > self._max_cluster_time["clusterTime"]
+            ):
                 self._max_cluster_time = cluster_time
 
     def receive_cluster_time(self, cluster_time):
@@ -451,8 +460,7 @@ class Topology(object):
             # Only update pools for data-bearing servers.
             for sd in self.data_bearing_servers():
                 server = self._servers[sd.address]
-                servers.append((server,
-                                server.pool.gen.get_overall()))
+                servers.append((server, server.pool.gen.get_overall()))
 
         for server, generation in servers:
             try:
@@ -465,7 +473,7 @@ class Topology(object):
     def close(self):
         """Clear pools and terminate monitors. Topology does not reopen on
         demand. Any further operations will raise
-        :exc:`~.errors.InvalidOperation`. """
+        :exc:`~.errors.InvalidOperation`."""
         with self._lock:
             for server in self._servers.values():
                 server.close()
@@ -485,8 +493,7 @@ class Topology(object):
 
         # Publish only after releasing the lock.
         if self._publish_tp:
-            self._events.put((self._listeners.publish_topology_closed,
-                              (self._topology_id,)))
+            self._events.put((self._listeners.publish_topology_closed, (self._topology_id,)))
         if self._publish_server or self._publish_tp:
             self.__events_executor.close()
 
@@ -507,19 +514,16 @@ class Topology(object):
             if self._description.topology_type == TOPOLOGY_TYPE.Single:
                 if not self._description.has_known_servers:
                     self._select_servers_loop(
-                        any_server_selector,
-                        self._settings.server_selection_timeout,
-                        None)
+                        any_server_selector, self._settings.server_selection_timeout, None
+                    )
             elif not self._description.readable_servers:
                 self._select_servers_loop(
-                    readable_server_selector,
-                    self._settings.server_selection_timeout,
-                    None)
+                    readable_server_selector, self._settings.server_selection_timeout, None
+                )
 
             session_timeout = self._description.logical_session_timeout_minutes
             if session_timeout is None:
-                raise ConfigurationError(
-                    "Sessions are not supported by this MongoDB deployment")
+                raise ConfigurationError("Sessions are not supported by this MongoDB deployment")
         return session_timeout
 
     def get_server_session(self):
@@ -530,15 +534,15 @@ class Topology(object):
                 session_timeout = self._check_session_support()
             else:
                 # Sessions never time out in load balanced mode.
-                session_timeout = float('inf')
+                session_timeout = float("inf")
             return self._session_pool.get_server_session(session_timeout)
 
     def return_server_session(self, server_session, lock):
         if lock:
             with self._lock:
                 self._session_pool.return_server_session(
-                    server_session,
-                    self._description.logical_session_timeout_minutes)
+                    server_session, self._description.logical_session_timeout_minutes
+                )
         else:
             # Called from a __del__ method, can't use a lock.
             self._session_pool.return_server_session_no_lock(server_session)
@@ -567,16 +571,17 @@ class Topology(object):
                 self.__events_executor.open()
 
             # Start the SRV polling thread.
-            if self._srv_monitor and (self.description.topology_type in
-                                      SRV_POLLING_TOPOLOGIES):
+            if self._srv_monitor and (self.description.topology_type in SRV_POLLING_TOPOLOGIES):
                 self._srv_monitor.open()
 
             if self._settings.load_balanced:
                 # Emit initial SDAM events for load balancer mode.
-                self._process_change(ServerDescription(
-                    self._seed_addresses[0],
-                    Hello({'ok': 1, 'serviceId': self._topology_id,
-                              'maxWireVersion': 13})))
+                self._process_change(
+                    ServerDescription(
+                        self._seed_addresses[0],
+                        Hello({"ok": 1, "serviceId": self._topology_id, "maxWireVersion": 13}),
+                    )
+                )
 
         # Ensure that the monitors are open.
         for server in self._servers.values():
@@ -588,8 +593,7 @@ class Topology(object):
             # Another thread removed this server from the topology.
             return True
 
-        if server._pool.stale_generation(
-                err_ctx.sock_generation, err_ctx.service_id):
+        if server._pool.stale_generation(err_ctx.sock_generation, err_ctx.service_id):
             # This is an outdated error from a previous pool version.
             return True
 
@@ -597,9 +601,9 @@ class Topology(object):
         cur_tv = server.description.topology_version
         error = err_ctx.error
         error_tv = None
-        if error and hasattr(error, 'details'):
+        if error and hasattr(error, "details"):
             if isinstance(error.details, dict):
-                error_tv = error.details.get('topologyVersion')
+                error_tv = error.details.get("topologyVersion")
 
         return _is_stale_error_topology_version(cur_tv, error_tv)
 
@@ -611,8 +615,7 @@ class Topology(object):
         error = err_ctx.error
         exc_type = type(error)
         service_id = err_ctx.service_id
-        if (issubclass(exc_type, NetworkTimeout) and
-                err_ctx.completed_handshake):
+        if issubclass(exc_type, NetworkTimeout) and err_ctx.completed_handshake:
             # The socket has been closed. Don't reset the server.
             # Server Discovery And Monitoring Spec: "When an application
             # operation fails because of any network error besides a socket
@@ -630,12 +633,12 @@ class Topology(object):
             # as Unknown and request an immediate check of the server.
             # Otherwise, we clear the connection pool, mark the server as
             # Unknown and request an immediate check of the server.
-            if hasattr(error, 'code'):
+            if hasattr(error, "code"):
                 err_code = error.code
             else:
                 # Default error code if one does not exist.
                 default = 10107 if isinstance(error, NotPrimaryError) else None
-                err_code = error.details.get('code', default)
+                err_code = error.details.get("code", default)
             if err_code in helpers._NOT_PRIMARY_CODES:
                 is_shutting_down = err_code in helpers._SHUTDOWN_CODES
                 # Mark server Unknown, clear the pool, and request check.
@@ -688,7 +691,8 @@ class Topology(object):
                     server_description=sd,
                     topology=self,
                     pool=self._create_pool_for_monitor(address),
-                    topology_settings=self._settings)
+                    topology_settings=self._settings,
+                )
 
                 weak = None
                 if self._publish_server:
@@ -699,7 +703,8 @@ class Topology(object):
                     monitor=monitor,
                     topology_id=self._topology_id,
                     listeners=self._listeners,
-                    events=weak)
+                    events=weak,
+                )
 
                 self._servers[address] = server
                 server.open()
@@ -710,8 +715,7 @@ class Topology(object):
                 self._servers[address].description = sd
                 # Update is_writable value of the pool, if it changed.
                 if was_writable != sd.is_writable:
-                    self._servers[address].pool.update_is_writable(
-                        sd.is_writable)
+                    self._servers[address].pool.update_is_writable(sd.is_writable)
 
         for address, server in list(self._servers.items()):
             if not self._description.has_server(address):
@@ -739,8 +743,7 @@ class Topology(object):
             server_api=options.server_api,
         )
 
-        return self._settings.pool_class(address, monitor_pool_options,
-                                         handshake=False)
+        return self._settings.pool_class(address, monitor_pool_options, handshake=False)
 
     def _error_message(self, selector):
         """Format an error message if server selection fails.
@@ -749,22 +752,23 @@ class Topology(object):
         """
         is_replica_set = self._description.topology_type in (
             TOPOLOGY_TYPE.ReplicaSetWithPrimary,
-            TOPOLOGY_TYPE.ReplicaSetNoPrimary)
+            TOPOLOGY_TYPE.ReplicaSetNoPrimary,
+        )
 
         if is_replica_set:
-            server_plural = 'replica set members'
+            server_plural = "replica set members"
         elif self._description.topology_type == TOPOLOGY_TYPE.Sharded:
-            server_plural = 'mongoses'
+            server_plural = "mongoses"
         else:
-            server_plural = 'servers'
+            server_plural = "servers"
 
         if self._description.known_servers:
             # We've connected, but no servers match the selector.
             if selector is writable_server_selector:
                 if is_replica_set:
-                    return 'No primary available for writes'
+                    return "No primary available for writes"
                 else:
-                    return 'No %s available for writes' % server_plural
+                    return "No %s available for writes" % server_plural
             else:
                 return 'No %s match selector "%s"' % (server_plural, selector)
         else:
@@ -774,9 +778,11 @@ class Topology(object):
                 if is_replica_set:
                     # We removed all servers because of the wrong setName?
                     return 'No %s available for replica set name "%s"' % (
-                        server_plural, self._settings.replica_set_name)
+                        server_plural,
+                        self._settings.replica_set_name,
+                    )
                 else:
-                    return 'No %s available' % server_plural
+                    return "No %s available" % server_plural
 
             # 1 or more servers, all Unknown. Are they unknown for one reason?
             error = servers[0].error
@@ -784,32 +790,29 @@ class Topology(object):
             if same:
                 if error is None:
                     # We're still discovering.
-                    return 'No %s found yet' % server_plural
+                    return "No %s found yet" % server_plural
 
-                if (is_replica_set and not
-                        set(addresses).intersection(self._seed_addresses)):
+                if is_replica_set and not set(addresses).intersection(self._seed_addresses):
                     # We replaced our seeds with new hosts but can't reach any.
                     return (
-                        'Could not reach any servers in %s. Replica set is'
-                        ' configured with internal hostnames or IPs?' %
-                        addresses)
+                        "Could not reach any servers in %s. Replica set is"
+                        " configured with internal hostnames or IPs?" % addresses
+                    )
 
                 return str(error)
             else:
-                return ','.join(str(server.error) for server in servers
-                                if server.error)
+                return ",".join(str(server.error) for server in servers if server.error)
 
     def __repr__(self):
-        msg = ''
+        msg = ""
         if not self._opened:
-            msg = 'CLOSED '
-        return '<%s %s%r>' % (self.__class__.__name__, msg, self._description)
+            msg = "CLOSED "
+        return "<%s %s%r>" % (self.__class__.__name__, msg, self._description)
 
     def eq_props(self):
         """The properties to use for MongoClient/Topology equality checks."""
         ts = self._settings
-        return (tuple(sorted(ts.seeds)), ts.replica_set_name, ts.fqdn,
-                ts.srv_service_name)
+        return (tuple(sorted(ts.seeds)), ts.replica_set_name, ts.fqdn, ts.srv_service_name)
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -822,8 +825,8 @@ class Topology(object):
 
 class _ErrorContext(object):
     """An error with context for SDAM error handling."""
-    def __init__(self, error, max_wire_version, sock_generation,
-                 completed_handshake, service_id):
+
+    def __init__(self, error, max_wire_version, sock_generation, completed_handshake, service_id):
         self.error = error
         self.max_wire_version = max_wire_version
         self.sock_generation = sock_generation
@@ -835,9 +838,9 @@ def _is_stale_error_topology_version(current_tv, error_tv):
     """Return True if the error's topologyVersion is <= current."""
     if current_tv is None or error_tv is None:
         return False
-    if current_tv['processId'] != error_tv['processId']:
+    if current_tv["processId"] != error_tv["processId"]:
         return False
-    return current_tv['counter'] >= error_tv['counter']
+    return current_tv["counter"] >= error_tv["counter"]
 
 
 def _is_stale_server_description(current_sd, new_sd):
@@ -845,6 +848,6 @@ def _is_stale_server_description(current_sd, new_sd):
     current_tv, new_tv = current_sd.topology_version, new_sd.topology_version
     if current_tv is None or new_tv is None:
         return False
-    if current_tv['processId'] != new_tv['processId']:
+    if current_tv["processId"] != new_tv["processId"]:
         return False
-    return current_tv['counter'] > new_tv['counter']
+    return current_tv["counter"] > new_tv["counter"]

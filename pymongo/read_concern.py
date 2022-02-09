@@ -33,8 +33,7 @@ class ReadConcern(object):
         if level is None or isinstance(level, str):
             self.__level = level
         else:
-            raise TypeError(
-                'level must be a string or None.')
+            raise TypeError("level must be a string or None.")
 
     @property
     def level(self):
@@ -45,7 +44,7 @@ class ReadConcern(object):
     def ok_for_legacy(self):
         """Return ``True`` if this read concern is compatible with
         old wire protocol versions."""
-        return self.level is None or self.level == 'local'
+        return self.level is None or self.level == "local"
 
     @property
     def document(self):
@@ -57,7 +56,7 @@ class ReadConcern(object):
         """
         doc = {}
         if self.__level:
-            doc['level'] = self.level
+            doc["level"] = self.level
         return doc
 
     def __eq__(self, other):
@@ -67,8 +66,8 @@ class ReadConcern(object):
 
     def __repr__(self):
         if self.level:
-            return 'ReadConcern(%s)' % self.level
-        return 'ReadConcern()'
+            return "ReadConcern(%s)" % self.level
+        return "ReadConcern()"
 
 
 DEFAULT_READ_CONCERN = ReadConcern()

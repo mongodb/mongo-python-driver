@@ -22,23 +22,24 @@ The :mod:`gridfs` package is an implementation of GridFS on top of
 
 from collections import abc
 
-from pymongo import (ASCENDING,
-                     DESCENDING)
+from gridfs.errors import NoFile
+from gridfs.grid_file import (
+    DEFAULT_CHUNK_SIZE,
+    GridIn,
+    GridOut,
+    GridOutCursor,
+    _clear_entity_type_registry,
+    _disallow_transactions,
+)
+from pymongo import ASCENDING, DESCENDING
 from pymongo.common import UNAUTHORIZED_CODES, validate_string
 from pymongo.database import Database
 from pymongo.errors import ConfigurationError, OperationFailure
 
-from gridfs.errors import NoFile
-from gridfs.grid_file import (GridIn,
-                              GridOut,
-                              GridOutCursor,
-                              DEFAULT_CHUNK_SIZE,
-                              _clear_entity_type_registry,
-                              _disallow_transactions)
 
 class GridFS(object):
-    """An instance of GridFS on top of a single Database.
-    """
+    """An instance of GridFS on top of a single Database."""
+
     def __init__(self, database, collection="fs"):
         """Create a new instance of :class:`GridFS`.
 
@@ -75,8 +76,7 @@ class GridFS(object):
         database = _clear_entity_type_registry(database)
 
         if not database.write_concern.acknowledged:
-            raise ConfigurationError('database must use '
-                                     'acknowledged write_concern')
+            raise ConfigurationError("database must use " "acknowledged write_concern")
 
         self.__collection = database[collection]
         self.__files = self.__collection.files
@@ -204,8 +204,7 @@ class GridFS(object):
             cursor.limit(-1).skip(version).sort("uploadDate", ASCENDING)
         try:
             doc = next(cursor)
-            return GridOut(
-                self.__collection, file_document=doc, session=session)
+            return GridOut(self.__collection, file_document=doc, session=session)
         except StopIteration:
             raise NoFile("no version %d for filename %r" % (version, filename))
 
@@ -275,8 +274,8 @@ class GridFS(object):
         # With an index, distinct includes documents with no filename
         # as None.
         return [
-            name for name in self.__files.distinct("filename", session=session)
-            if name is not None]
+            name for name in self.__files.distinct("filename", session=session) if name is not None
+        ]
 
     def find_one(self, filter=None, session=None, *args, **kwargs):
         """Get a single file from gridfs.
@@ -422,9 +421,14 @@ class GridFS(object):
 class GridFSBucket(object):
     """An instance of GridFS on top of a single Database."""
 
-    def __init__(self, db, bucket_name="fs",
-                 chunk_size_bytes=DEFAULT_CHUNK_SIZE, write_concern=None,
-                 read_preference=None):
+    def __init__(
+        self,
+        db,
+        bucket_name="fs",
+        chunk_size_bytes=DEFAULT_CHUNK_SIZE,
+        write_concern=None,
+        read_preference=None,
+    ):
         """Create a new instance of :class:`GridFSBucket`.
 
         Raises :exc:`TypeError` if `database` is not an instance of
@@ -466,22 +470,21 @@ class GridFSBucket(object):
 
         wtc = write_concern if write_concern is not None else db.write_concern
         if not wtc.acknowledged:
-            raise ConfigurationError('write concern must be acknowledged')
+            raise ConfigurationError("write concern must be acknowledged")
 
         self._bucket_name = bucket_name
         self._collection = db[bucket_name]
         self._chunks = self._collection.chunks.with_options(
-            write_concern=write_concern,
-            read_preference=read_preference)
+            write_concern=write_concern, read_preference=read_preference
+        )
 
         self._files = self._collection.files.with_options(
-            write_concern=write_concern,
-            read_preference=read_preference)
+            write_concern=write_concern, read_preference=read_preference
+        )
 
         self._chunk_size_bytes = chunk_size_bytes
 
-    def open_upload_stream(self, filename, chunk_size_bytes=None,
-                           metadata=None, session=None):
+    def open_upload_stream(self, filename, chunk_size_bytes=None, metadata=None, session=None):
         """Opens a Stream that the application can write the contents of the
         file to.
 
@@ -519,17 +522,20 @@ class GridFSBucket(object):
         """
         validate_string("filename", filename)
 
-        opts = {"filename": filename,
-                "chunk_size": (chunk_size_bytes if chunk_size_bytes
-                               is not None else self._chunk_size_bytes)}
+        opts = {
+            "filename": filename,
+            "chunk_size": (
+                chunk_size_bytes if chunk_size_bytes is not None else self._chunk_size_bytes
+            ),
+        }
         if metadata is not None:
             opts["metadata"] = metadata
 
         return GridIn(self._collection, session=session, **opts)
 
     def open_upload_stream_with_id(
-            self, file_id, filename, chunk_size_bytes=None, metadata=None,
-            session=None):
+        self, file_id, filename, chunk_size_bytes=None, metadata=None, session=None
+    ):
         """Opens a Stream that the application can write the contents of the
         file to.
 
@@ -571,17 +577,21 @@ class GridFSBucket(object):
         """
         validate_string("filename", filename)
 
-        opts = {"_id": file_id,
-                "filename": filename,
-                "chunk_size": (chunk_size_bytes if chunk_size_bytes
-                               is not None else self._chunk_size_bytes)}
+        opts = {
+            "_id": file_id,
+            "filename": filename,
+            "chunk_size": (
+                chunk_size_bytes if chunk_size_bytes is not None else self._chunk_size_bytes
+            ),
+        }
         if metadata is not None:
             opts["metadata"] = metadata
 
         return GridIn(self._collection, session=session, **opts)
 
-    def upload_from_stream(self, filename, source, chunk_size_bytes=None,
-                           metadata=None, session=None):
+    def upload_from_stream(
+        self, filename, source, chunk_size_bytes=None, metadata=None, session=None
+    ):
         """Uploads a user file to a GridFS bucket.
 
         Reads the contents of the user file from `source` and uploads
@@ -617,15 +627,14 @@ class GridFSBucket(object):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        with self.open_upload_stream(
-                filename, chunk_size_bytes, metadata, session=session) as gin:
+        with self.open_upload_stream(filename, chunk_size_bytes, metadata, session=session) as gin:
             gin.write(source)
 
         return gin._id
 
-    def upload_from_stream_with_id(self, file_id, filename, source,
-                                   chunk_size_bytes=None, metadata=None,
-                                   session=None):
+    def upload_from_stream_with_id(
+        self, file_id, filename, source, chunk_size_bytes=None, metadata=None, session=None
+    ):
         """Uploads a user file to a GridFS bucket with a custom file id.
 
         Reads the contents of the user file from `source` and uploads
@@ -663,8 +672,8 @@ class GridFSBucket(object):
            Added ``session`` parameter.
         """
         with self.open_upload_stream_with_id(
-                file_id, filename, chunk_size_bytes, metadata,
-                session=session) as gin:
+            file_id, filename, chunk_size_bytes, metadata, session=session
+        ) as gin:
             gin.write(source)
 
     def open_download_stream(self, file_id, session=None):
@@ -755,8 +764,7 @@ class GridFSBucket(object):
         res = self._files.delete_one({"_id": file_id}, session=session)
         self._chunks.delete_many({"files_id": file_id}, session=session)
         if not res.deleted_count:
-            raise NoFile(
-                "no file could be deleted because none matched %s" % file_id)
+            raise NoFile("no file could be deleted because none matched %s" % file_id)
 
     def find(self, *args, **kwargs):
         """Find and return the files collection documents that match ``filter``
@@ -855,14 +863,11 @@ class GridFSBucket(object):
             cursor.limit(-1).skip(revision).sort("uploadDate", ASCENDING)
         try:
             grid_file = next(cursor)
-            return GridOut(
-                self._collection, file_document=grid_file, session=session)
+            return GridOut(self._collection, file_document=grid_file, session=session)
         except StopIteration:
-            raise NoFile(
-                "no version %d for filename %r" % (revision, filename))
+            raise NoFile("no version %d for filename %r" % (revision, filename))
 
-    def download_to_stream_by_name(self, filename, destination, revision=-1,
-                                   session=None):
+    def download_to_stream_by_name(self, filename, destination, revision=-1, session=None):
         """Write the contents of `filename` (with optional `revision`) to
         `destination`.
 
@@ -900,8 +905,7 @@ class GridFSBucket(object):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        with self.open_download_stream_by_name(
-                filename, revision, session=session) as gout:
+        with self.open_download_stream_by_name(filename, revision, session=session) as gout:
             for chunk in gout:
                 destination.write(chunk)
 
@@ -928,9 +932,11 @@ class GridFSBucket(object):
            Added ``session`` parameter.
         """
         _disallow_transactions(session)
-        result = self._files.update_one({"_id": file_id},
-                                        {"$set": {"filename": new_filename}},
-                                        session=session)
+        result = self._files.update_one(
+            {"_id": file_id}, {"$set": {"filename": new_filename}}, session=session
+        )
         if not result.matched_count:
-            raise NoFile("no files could be renamed %r because none "
-                         "matched file_id %i" % (new_filename, file_id))
+            raise NoFile(
+                "no files could be renamed %r because none "
+                "matched file_id %i" % (new_filename, file_id)
+            )

@@ -30,28 +30,27 @@ where "SMax" is the secondary with the greatest lastWriteDate.
 from pymongo.errors import ConfigurationError
 from pymongo.server_type import SERVER_TYPE
 
-
 # Constant defined in Max Staleness Spec: An idle primary writes a no-op every
 # 10 seconds to refresh secondaries' lastWriteDate values.
 IDLE_WRITE_PERIOD = 10
 SMALLEST_MAX_STALENESS = 90
 
 
-def _validate_max_staleness(max_staleness,
-                            heartbeat_frequency):
+def _validate_max_staleness(max_staleness, heartbeat_frequency):
     # We checked for max staleness -1 before this, it must be positive here.
     if max_staleness < heartbeat_frequency + IDLE_WRITE_PERIOD:
         raise ConfigurationError(
             "maxStalenessSeconds must be at least heartbeatFrequencyMS +"
             " %d seconds. maxStalenessSeconds is set to %d,"
-            " heartbeatFrequencyMS is set to %d." % (
-                IDLE_WRITE_PERIOD, max_staleness, heartbeat_frequency * 1000))
+            " heartbeatFrequencyMS is set to %d."
+            % (IDLE_WRITE_PERIOD, max_staleness, heartbeat_frequency * 1000)
+        )
 
     if max_staleness < SMALLEST_MAX_STALENESS:
         raise ConfigurationError(
             "maxStalenessSeconds must be at least %d. "
-            "maxStalenessSeconds is set to %d." % (
-                SMALLEST_MAX_STALENESS, max_staleness))
+            "maxStalenessSeconds is set to %d." % (SMALLEST_MAX_STALENESS, max_staleness)
+        )
 
 
 def _with_primary(max_staleness, selection):
@@ -63,9 +62,10 @@ def _with_primary(max_staleness, selection):
         if s.server_type == SERVER_TYPE.RSSecondary:
             # See max-staleness.rst for explanation of this formula.
             staleness = (
-                (s.last_update_time - s.last_write_date) -
-                (primary.last_update_time - primary.last_write_date) +
-                selection.heartbeat_frequency)
+                (s.last_update_time - s.last_write_date)
+                - (primary.last_update_time - primary.last_write_date)
+                + selection.heartbeat_frequency
+            )
 
             if staleness <= max_staleness:
                 sds.append(s)
@@ -88,9 +88,7 @@ def _no_primary(max_staleness, selection):
     for s in selection.server_descriptions:
         if s.server_type == SERVER_TYPE.RSSecondary:
             # See max-staleness.rst for explanation of this formula.
-            staleness = (smax.last_write_date -
-                         s.last_write_date +
-                         selection.heartbeat_frequency)
+            staleness = smax.last_write_date - s.last_write_date + selection.heartbeat_frequency
 
             if staleness <= max_staleness:
                 sds.append(s)
