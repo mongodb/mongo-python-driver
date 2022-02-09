@@ -3,14 +3,13 @@ repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v3.4.0
   hooks:
-  - id: check-builtin-literals
   - id: check-added-large-files
   - id: check-case-conflict
   - id: check-toml
   - id: check-yaml
   - id: debug-statements
   - id: end-of-file-fixer
-    exclude: WHEEL
+    exclude: WHEEL, *.json
   - id: forbid-new-submodules
   - id: trailing-whitespace
     exclude: .patch, *.json
@@ -19,6 +18,7 @@ repos:
   rev: 22.1.0
   hooks:
   - id: black
+    files: \.py$
     args: [--line-length=100]
 
 - repo: https://github.com/PyCQA/isort
