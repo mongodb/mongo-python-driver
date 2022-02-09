@@ -138,13 +138,14 @@ def _raise_bulk_write_error(full_result):
 class _Bulk(object):
     """The private guts of the bulk write API."""
 
-    def __init__(self, collection, ordered, bypass_document_validation):
+    def __init__(self, collection, ordered, bypass_document_validation, comment=None):
         """Initialize a _Bulk instance."""
         self.collection = collection.with_options(
             codec_options=collection.codec_options._replace(
                 unicode_decode_error_handler="replace", document_class=dict
             )
         )
+        self.comment = comment
         self.ordered = ordered
         self.ops = []
         self.executed = False
@@ -308,6 +309,8 @@ class _Bulk(object):
                     write_concern = final_write_concern or write_concern
 
                 cmd = SON([(cmd_name, self.collection.name), ("ordered", self.ordered)])
+                if self.comment:
+                    cmd["comment"] = self.comment
                 if not write_concern.is_server_default:
                     cmd["writeConcern"] = write_concern.document
                 if self.bypass_doc_val:

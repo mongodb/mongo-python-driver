@@ -39,6 +39,7 @@ class _AggregationCommand(object):
         let=None,
         user_fields=None,
         result_processor=None,
+        comment=None,
     ):
         if "explain" in options:
             raise ConfigurationError(
@@ -57,6 +58,8 @@ class _AggregationCommand(object):
         if let:
             common.validate_is_mapping("let", let)
             options["let"] = let
+        if comment is not None:
+            options["comment"] = comment
         self._options = options
 
         # This is the batchSize that will be used for setting the initial

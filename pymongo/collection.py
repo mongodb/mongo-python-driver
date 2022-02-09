@@ -423,6 +423,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         ordered: bool = True,
         bypass_document_validation: bool = False,
         session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
     ) -> BulkWriteResult:
         """Send a batch of write operations to the server.
 
@@ -472,6 +473,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             ``False``.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
         :Returns:
           An instance of :class:`~pymongo.results.BulkWriteResult`.
@@ -480,6 +483,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -491,7 +497,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """
         common.validate_list("requests", requests)
 
-        blk = _Bulk(self, ordered, bypass_document_validation)
+        blk = _Bulk(self, ordered, bypass_document_validation, comment=comment)
         for request in requests:
             try:
                 request._add_to_bulk(blk)
@@ -504,11 +510,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             return BulkWriteResult(bulk_api_result, True)
         return BulkWriteResult({}, False)
 
-    def _insert_one(self, doc, ordered, write_concern, op_id, bypass_doc_val, session):
+    def _insert_one(
+        self, doc, ordered, write_concern, op_id, bypass_doc_val, session, comment=None
+    ):
         """Internal helper for inserting a single document."""
         write_concern = write_concern or self.write_concern
         acknowledged = write_concern.acknowledged
         command = SON([("insert", self.name), ("ordered", ordered), ("documents", [doc])])
+        if comment is not None:
+            command["comment"] = comment
         if not write_concern.is_server_default:
             command["writeConcern"] = write_concern.document
 
@@ -538,6 +548,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         document: _DocumentIn,
         bypass_document_validation: bool = False,
         session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
     ) -> InsertOneResult:
         """Insert a single document.
 
@@ -558,6 +569,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             ``False``.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
         :Returns:
           - An instance of :class:`~pymongo.results.InsertOneResult`.
@@ -566,6 +579,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -588,6 +604,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 op_id=None,
                 bypass_doc_val=bypass_document_validation,
                 session=session,
+                comment=comment,
             ),
             write_concern.acknowledged,
         )
@@ -598,6 +615,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         ordered: bool = True,
         bypass_document_validation: bool = False,
         session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
     ) -> InsertManyResult:
         """Insert an iterable of documents.
 
@@ -621,6 +639,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             ``False``.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
         :Returns:
           An instance of :class:`~pymongo.results.InsertManyResult`.
@@ -629,6 +649,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -657,7 +680,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 yield (message._INSERT, document)
 
         write_concern = self._write_concern_for(session)
-        blk = _Bulk(self, ordered, bypass_document_validation)
+        blk = _Bulk(self, ordered, bypass_document_validation, comment=comment)
         blk.ops = [doc for doc in gen()]
         blk.execute(write_concern, session=session)
         return InsertManyResult(inserted_ids, write_concern.acknowledged)
@@ -679,6 +702,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         session=None,
         retryable_write=False,
         let=None,
+        comment=None,
     ):
         """Internal update / replace helper."""
         common.validate_boolean("upsert", upsert)
@@ -704,7 +728,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             if not isinstance(hint, str):
                 hint = helpers._index_document(hint)
             update_doc["hint"] = hint
-
         command = SON([("update", self.name), ("ordered", ordered), ("updates", [update_doc])])
         if let:
             common.validate_is_mapping("let", let)
@@ -712,6 +735,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if not write_concern.is_server_default:
             command["writeConcern"] = write_concern.document
 
+        if comment is not None:
+            command["comment"] = comment
         # Update command.
         if bypass_doc_val:
             command["bypassDocumentValidation"] = True
@@ -757,6 +782,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         hint=None,
         session=None,
         let=None,
+        comment=None,
     ):
         """Internal update / replace helper."""
 
@@ -777,6 +803,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
                 retryable_write=retryable_write,
                 let=let,
+                comment=comment,
             )
 
         return self.__database.client._retryable_write(
@@ -793,6 +820,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
         let: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
     ) -> UpdateResult:
         """Replace a single document matching the filter.
 
@@ -845,12 +873,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
-
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
 
         .. versionchanged:: 4.1
            Added ``let`` parameter.
+           Added ``comment`` parameter.
         .. versionchanged:: 3.11
            Added ``hint`` parameter.
         .. versionchanged:: 3.6
@@ -878,6 +908,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 hint=hint,
                 session=session,
                 let=let,
+                comment=comment,
             ),
             write_concern.acknowledged,
         )
@@ -893,6 +924,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
         let: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
     ) -> UpdateResult:
         """Update a single document matching the filter.
 
@@ -938,12 +970,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
 
         .. versionchanged:: 4.1
            Added ``let`` parameter.
+           Added ``comment`` parameter.
         .. versionchanged:: 3.11
            Added ``hint`` parameter.
         .. versionchanged:: 3.9
@@ -974,6 +1009,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 hint=hint,
                 session=session,
                 let=let,
+                comment=comment,
             ),
             write_concern.acknowledged,
         )
@@ -989,6 +1025,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
         let: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
     ) -> UpdateResult:
         """Update one or more documents that match the filter.
 
@@ -1034,12 +1071,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
 
         .. versionchanged:: 4.1
            Added ``let`` parameter.
+           Added ``comment`` parameter.
         .. versionchanged:: 3.11
            Added ``hint`` parameter.
         .. versionchanged:: 3.9
@@ -1071,21 +1111,31 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 hint=hint,
                 session=session,
                 let=let,
+                comment=comment,
             ),
             write_concern.acknowledged,
         )
 
-    def drop(self, session: Optional["ClientSession"] = None) -> None:
+    def drop(
+        self,
+        session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
+    ) -> None:
         """Alias for :meth:`~pymongo.database.Database.drop_collection`.
 
         :Parameters:
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
         The following two calls are equivalent:
 
           >>> db.foo.drop()
           >>> db.drop_collection("foo")
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionchanged:: 3.7
            :meth:`drop` now respects this :class:`Collection`'s :attr:`write_concern`.
@@ -1100,7 +1150,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             self.write_concern,
             self.read_concern,
         )
-        dbo.drop_collection(self.__name, session=session)
+        dbo.drop_collection(self.__name, session=session, comment=comment)
 
     def _delete(
         self,
@@ -1115,6 +1165,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         session=None,
         retryable_write=False,
         let=None,
+        comment=None,
     ):
         """Internal delete helper."""
         common.validate_is_mapping("filter", criteria)
@@ -1143,6 +1194,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             common.validate_is_document_type("let", let)
             command["let"] = let
 
+        if comment is not None:
+            command["comment"] = comment
+
         # Delete command.
         result = sock_info.command(
             self.__database.name,
@@ -1167,6 +1221,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         hint=None,
         session=None,
         let=None,
+        comment=None,
     ):
         """Internal delete helper."""
 
@@ -1183,6 +1238,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
                 retryable_write=retryable_write,
                 let=let,
+                comment=comment,
             )
 
         return self.__database.client._retryable_write(
@@ -1196,6 +1252,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
         let: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
     ) -> DeleteResult:
         """Delete a single document matching the filter.
 
@@ -1223,12 +1280,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
         :Returns:
           - An instance of :class:`~pymongo.results.DeleteResult`.
 
         .. versionchanged:: 4.1
            Added ``let`` parameter.
+           Added ``comment`` parameter.
         .. versionchanged:: 3.11
            Added ``hint`` parameter.
         .. versionchanged:: 3.6
@@ -1247,6 +1307,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 hint=hint,
                 session=session,
                 let=let,
+                comment=comment,
             ),
             write_concern.acknowledged,
         )
@@ -1258,6 +1319,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
         let: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
     ) -> DeleteResult:
         """Delete one or more documents matching the filter.
 
@@ -1285,12 +1347,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
         :Returns:
           - An instance of :class:`~pymongo.results.DeleteResult`.
 
         .. versionchanged:: 4.1
            Added ``let`` parameter.
+           Added ``comment`` parameter.
         .. versionchanged:: 3.11
            Added ``hint`` parameter.
         .. versionchanged:: 3.6
@@ -1309,6 +1374,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 hint=hint,
                 session=session,
                 let=let,
+                comment=comment,
             ),
             write_concern.acknowledged,
         )
@@ -1339,10 +1405,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             are the same as the arguments to :meth:`find`.
 
               >>> collection.find_one(max_time_ms=100)
+
         """
         if filter is not None and not isinstance(filter, abc.Mapping):
             filter = {"_id": filter}
-
         cursor = self.find(filter, *args, **kwargs)
         for result in cursor.limit(-1):
             return result
@@ -1566,7 +1632,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         # OP_MSG is required to support encryption.
         if self.__database.client._encrypter:
             raise InvalidOperation("find_raw_batches does not support auto encryption")
-
         return RawBatchCursor(self, *args, **kwargs)
 
     def _count_cmd(self, session, sock_info, read_preference, cmd, collation):
@@ -1605,7 +1670,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         batch = result["cursor"]["firstBatch"]
         return batch[0] if batch else None
 
-    def estimated_document_count(self, **kwargs: Any) -> int:
+    def estimated_document_count(self, comment: Optional[Any] = None, **kwargs: Any) -> int:
         """Get an estimate of the number of documents in this collection using
         collection metadata.
 
@@ -1619,12 +1684,17 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             operation to run, in milliseconds.
 
         :Parameters:
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
           - `**kwargs` (optional): See list of options above.
+
 
         .. versionadded:: 3.7
         """
         if "session" in kwargs:
             raise ConfigurationError("estimated_document_count does not support sessions")
+        if comment is not None:
+            kwargs["comment"] = comment
 
         def _cmd(session, server, sock_info, read_preference):
             if sock_info.max_wire_version >= 12:
@@ -1650,7 +1720,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         return self.__database.client._retryable_read(_cmd, self.read_preference, None)
 
     def count_documents(
-        self, filter: Mapping[str, Any], session: Optional["ClientSession"] = None, **kwargs: Any
+        self,
+        filter: Mapping[str, Any],
+        session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
     ) -> int:
         """Count the number of documents in this collection.
 
@@ -1696,7 +1770,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             documents.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
           - `**kwargs` (optional): See list of options above.
+
 
         .. versionadded:: 3.7
 
@@ -1710,6 +1787,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             pipeline.append({"$skip": kwargs.pop("skip")})
         if "limit" in kwargs:
             pipeline.append({"$limit": kwargs.pop("limit")})
+        if comment is not None:
+            kwargs["comment"] = comment
         pipeline.append({"$group": {"_id": 1, "n": {"$sum": 1}}})
         cmd = SON([("aggregate", self.__name), ("pipeline", pipeline), ("cursor", {})])
         if "hint" in kwargs and not isinstance(kwargs["hint"], str):
@@ -1731,6 +1810,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self,
         indexes: Sequence[IndexModel],
         session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
         **kwargs: Any,
     ) -> List[str]:
         """Create one or more indexes on this collection.
@@ -1747,8 +1827,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             instances.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
           - `**kwargs` (optional): optional arguments to the createIndexes
             command (like maxTimeMS) can be passed as keyword arguments.
+
+
+
 
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation.
@@ -1765,6 +1850,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. _createIndexes: https://docs.mongodb.com/manual/reference/command/createIndexes/
         """
         common.validate_list("indexes", indexes)
+        if comment is not None:
+            kwargs["comment"] = comment
         return self.__create_indexes(indexes, session, **kwargs)
 
     def __create_indexes(self, indexes, session, **kwargs):
@@ -1811,7 +1898,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         return names
 
     def create_index(
-        self, keys: _IndexKeyHint, session: Optional["ClientSession"] = None, **kwargs: Any
+        self,
+        keys: _IndexKeyHint,
+        session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
     ) -> str:
         """Creates an index on this collection.
 
@@ -1886,10 +1977,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             pairs specifying the index to create
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+            arguments
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
           - `**kwargs` (optional): any additional index creation
             options (see the above list) should be passed as keyword
-            arguments
 
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
         .. versionchanged:: 3.11
            Added the ``hidden`` option.
         .. versionchanged:: 3.6
@@ -1912,10 +2007,17 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd_options = {}
         if "maxTimeMS" in kwargs:
             cmd_options["maxTimeMS"] = kwargs.pop("maxTimeMS")
+        if comment is not None:
+            cmd_options["comment"] = comment
         index = IndexModel(keys, **kwargs)
         return self.__create_indexes([index], session, **cmd_options)[0]
 
-    def drop_indexes(self, session: Optional["ClientSession"] = None, **kwargs: Any) -> None:
+    def drop_indexes(
+        self,
+        session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> None:
         """Drops all indexes on this collection.
 
         Can be used on non-existant collections or collections with no indexes.
@@ -1924,8 +2026,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         :Parameters:
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+            arguments
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
           - `**kwargs` (optional): optional arguments to the createIndexes
             command (like maxTimeMS) can be passed as keyword arguments.
+
+
 
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation.
@@ -1939,10 +2046,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
            when connected to MongoDB >= 3.4.
 
         """
+        if comment is not None:
+            kwargs["comment"] = comment
         self.drop_index("*", session=session, **kwargs)
 
     def drop_index(
-        self, index_or_name: _IndexKeyHint, session: Optional["ClientSession"] = None, **kwargs: Any
+        self,
+        index_or_name: _IndexKeyHint,
+        session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
     ) -> None:
         """Drops the specified index on this collection.
 
@@ -1964,11 +2077,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `index_or_name`: index (or name of index) to drop
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
           - `**kwargs` (optional): optional arguments to the createIndexes
             command (like maxTimeMS) can be passed as keyword arguments.
 
+
+
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation.
+
 
         .. versionchanged:: 3.6
            Added ``session`` parameter. Added support for arbitrary keyword
@@ -1988,6 +2106,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         cmd = SON([("dropIndexes", self.__name), ("index", name)])
         cmd.update(kwargs)
+        if comment is not None:
+            cmd["comment"] = comment
         with self._socket_for_writes(session) as sock_info:
             self._command(
                 sock_info,
@@ -1999,7 +2119,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             )
 
     def list_indexes(
-        self, session: Optional["ClientSession"] = None
+        self,
+        session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
     ) -> CommandCursor[MutableMapping[str, Any]]:
         """Get a cursor over the index documents for this collection.
 
@@ -2011,9 +2133,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         :Parameters:
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
         :Returns:
           An instance of :class:`~pymongo.command_cursor.CommandCursor`.
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -2028,6 +2155,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         def _cmd(session, server, sock_info, read_preference):
             cmd = SON([("listIndexes", self.__name), ("cursor", {})])
+            if comment is not None:
+                cmd["comment"] = comment
+
             with self.__database.client._tmp_session(session, False) as s:
                 try:
                     cursor = self._command(
@@ -2048,7 +2178,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         return self.__database.client._retryable_read(_cmd, read_pref, session)
 
     def index_information(
-        self, session: Optional["ClientSession"] = None
+        self,
+        session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
     ) -> MutableMapping[str, Any]:
         """Get information on this collection's indexes.
 
@@ -2071,11 +2203,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         :Parameters:
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        cursor = self.list_indexes(session=session)
+        cursor = self.list_indexes(session=session, comment=comment)
         info = {}
         for index in cursor:
             index["key"] = list(index["key"].items())
@@ -2083,7 +2220,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             info[index.pop("name")] = index
         return info
 
-    def options(self, session: Optional["ClientSession"] = None) -> MutableMapping[str, Any]:
+    def options(
+        self,
+        session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
+    ) -> MutableMapping[str, Any]:
         """Get the options set on this collection.
 
         Returns a dictionary of options and their values - see
@@ -2094,6 +2235,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         :Parameters:
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -2105,7 +2248,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             self.write_concern,
             self.read_concern,
         )
-        cursor = dbo.list_collections(session=session, filter={"name": self.__name})
+        cursor = dbo.list_collections(
+            session=session, filter={"name": self.__name}, comment=comment
+        )
 
         result = None
         for doc in cursor:
@@ -2130,8 +2275,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         session,
         explicit_session,
         let=None,
+        comment=None,
         **kwargs,
     ):
+        if comment is not None:
+            kwargs["comment"] = comment
         cmd = aggregation_command(
             self,
             cursor_class,
@@ -2154,6 +2302,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         pipeline: _Pipeline,
         session: Optional["ClientSession"] = None,
         let: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
         **kwargs: Any,
     ) -> CommandCursor[_DocumentType]:
         """Perform an aggregation using the aggregation framework on this
@@ -2196,12 +2345,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. ``"$$var"``). This option is
             only supported on MongoDB >= 5.0.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+
 
         :Returns:
           A :class:`~pymongo.command_cursor.CommandCursor` over the result
           set.
 
         .. versionchanged:: 4.1
+           Added ``comment`` parameter.
            Added ``let`` parameter.
            Support $merge and $out executing on secondaries according to the
            collection's :attr:`read_preference`.
@@ -2228,6 +2381,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. _aggregate command:
             https://docs.mongodb.com/manual/reference/command/aggregate
         """
+
         with self.__database.client._tmp_session(session, close=False) as s:
             return self._aggregate(
                 _CollectionAggregationCommand,
@@ -2236,11 +2390,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 session=s,
                 explicit_session=session is not None,
                 let=let,
+                comment=comment,
                 **kwargs,
             )
 
     def aggregate_raw_batches(
-        self, pipeline: _Pipeline, session: Optional["ClientSession"] = None, **kwargs: Any
+        self,
+        pipeline: _Pipeline,
+        session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
     ) -> RawBatchCursor[_DocumentType]:
         """Perform an aggregation and retrieve batches of raw BSON.
 
@@ -2268,7 +2427,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         # OP_MSG is required to support encryption.
         if self.__database.client._encrypter:
             raise InvalidOperation("aggregate_raw_batches does not support auto encryption")
-
+        if comment is not None:
+            kwargs["comment"] = comment
         with self.__database.client._tmp_session(session, close=False) as s:
             return self._aggregate(
                 _CollectionRawAggregationCommand,
@@ -2290,6 +2450,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         start_at_operation_time: Optional[Timestamp] = None,
         session: Optional["ClientSession"] = None,
         start_after: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
     ) -> CollectionChangeStream[_DocumentType]:
         """Watch changes on this collection.
 
@@ -2368,9 +2529,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `start_after` (optional): The same as `resume_after` except that
             `start_after` can resume notifications after an invalidate event.
             This option and `resume_after` are mutually exclusive.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
         :Returns:
           A :class:`~pymongo.change_stream.CollectionChangeStream` cursor.
+
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionchanged:: 3.9
            Added the ``start_after`` parameter.
@@ -2396,10 +2563,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             start_at_operation_time,
             session,
             start_after,
+            comment=comment,
         )
 
     def rename(
-        self, new_name: str, session: Optional["ClientSession"] = None, **kwargs: Any
+        self,
+        new_name: str,
+        session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
     ) -> MutableMapping[str, Any]:
         """Rename this collection.
 
@@ -2413,6 +2585,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `new_name`: new name for this collection
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
           - `**kwargs` (optional): additional arguments to the rename command
             may be passed as keyword arguments to this helper method
             (i.e. ``dropTarget=True``)
@@ -2441,6 +2615,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         new_name = "%s.%s" % (self.__database.name, new_name)
         cmd = SON([("renameCollection", self.__full_name), ("to", new_name)])
         cmd.update(kwargs)
+        if comment is not None:
+            cmd["comment"] = comment
         write_concern = self._write_concern_for_cmd(cmd, session)
 
         with self._socket_for_writes(session) as sock_info:
@@ -2459,6 +2635,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         key: str,
         filter: Optional[Mapping[str, Any]] = None,
         session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
         **kwargs: Any,
     ) -> List:
         """Get a list of distinct values for `key` among all documents
@@ -2485,6 +2662,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             from which to retrieve the distinct values.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
           - `**kwargs` (optional): See list of options above.
 
         .. versionchanged:: 3.6
@@ -2503,6 +2682,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             kwargs["query"] = filter
         collation = validate_collation_or_none(kwargs.pop("collation", None))
         cmd.update(kwargs)
+        if comment is not None:
+            cmd["comment"] = comment
 
         def _cmd(session, server, sock_info, read_preference):
             return self._command(
@@ -2611,6 +2792,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
         let: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
         **kwargs: Any,
     ) -> _DocumentType:
         """Finds a single document and deletes it, returning the document.
@@ -2656,13 +2838,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             on MongoDB 4.4 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
-          - `**kwargs` (optional): additional command arguments can be passed
-            as keyword arguments (for example maxTimeMS can be used with
-            recent server versions).
           - `let` (optional): Map of parameter names and values. Values must be
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+          - `**kwargs` (optional): additional command arguments can be passed
+            as keyword arguments (for example maxTimeMS can be used with
+            recent server versions).
 
         .. versionchanged:: 4.1
            Added ``let`` parameter.
@@ -2684,6 +2868,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 3.0
         """
         kwargs["remove"] = True
+        if comment is not None:
+            kwargs["comment"] = comment
         return self.__find_and_modify(
             filter, projection, sort, let=let, hint=hint, session=session, **kwargs
         )
@@ -2699,6 +2885,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
         let: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
         **kwargs: Any,
     ) -> _DocumentType:
         """Finds a single document and replaces it, returning either the
@@ -2754,11 +2941,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
 
-        .. versionchanged:: 4.1
+
            Added ``let`` parameter.
         .. versionchanged:: 3.11
            Added the ``hint`` option.
@@ -2779,6 +2968,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """
         common.validate_ok_for_replace(replacement)
         kwargs["update"] = replacement
+        if comment is not None:
+            kwargs["comment"] = comment
         return self.__find_and_modify(
             filter,
             projection,
@@ -2803,6 +2994,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         hint: Optional[_IndexKeyHint] = None,
         session: Optional["ClientSession"] = None,
         let: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
         **kwargs: Any,
     ) -> _DocumentType:
         """Finds a single document and updates it, returning either the
@@ -2897,12 +3089,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
 
-        .. versionchanged:: 4.1
-           Added ``let`` parameter.
         .. versionchanged:: 3.11
            Added the ``hint`` option.
         .. versionchanged:: 3.9
@@ -2925,6 +3117,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         common.validate_ok_for_update(update)
         common.validate_list_or_none("array_filters", array_filters)
         kwargs["update"] = update
+        if comment is not None:
+            kwargs["comment"] = comment
         return self.__find_and_modify(
             filter,
             projection,

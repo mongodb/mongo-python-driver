@@ -846,6 +846,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         start_at_operation_time: Optional[Timestamp] = None,
         session: Optional[client_session.ClientSession] = None,
         start_after: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
     ) -> ChangeStream[_DocumentType]:
         """Watch changes on this cluster.
 
@@ -917,9 +918,14 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
           - `start_after` (optional): The same as `resume_after` except that
             `start_after` can resume notifications after an invalidate event.
             This option and `resume_after` are mutually exclusive.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
         :Returns:
           A :class:`~pymongo.change_stream.ClusterChangeStream` cursor.
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionchanged:: 3.9
            Added the ``start_after`` parameter.
@@ -942,6 +948,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             start_at_operation_time,
             session,
             start_after,
+            comment=comment,
         )
 
     @property
@@ -1709,18 +1716,24 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         )
 
     def list_databases(
-        self, session: Optional[client_session.ClientSession] = None, **kwargs: Any
+        self,
+        session: Optional[client_session.ClientSession] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
     ) -> CommandCursor[Dict[str, Any]]:
         """Get a cursor over the databases of the connected server.
 
         :Parameters:
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
           - `**kwargs` (optional): Optional parameters of the
             `listDatabases command
             <https://docs.mongodb.com/manual/reference/command/listDatabases/>`_
             can be passed as keyword arguments to this method. The supported
             options differ by server version.
+
 
         :Returns:
           An instance of :class:`~pymongo.command_cursor.CommandCursor`.
@@ -1729,6 +1742,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         cmd = SON([("listDatabases", 1)])
         cmd.update(kwargs)
+        if comment is not None:
+            cmd["comment"] = comment
         admin = self._database_default_options("admin")
         res = admin._retryable_read_command(cmd, session=session)
         # listDatabases doesn't return a cursor (yet). Fake one.
@@ -1740,22 +1755,30 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return CommandCursor(admin["$cmd"], cursor, None)
 
     def list_database_names(
-        self, session: Optional[client_session.ClientSession] = None
+        self,
+        session: Optional[client_session.ClientSession] = None,
+        comment: Optional[Any] = None,
     ) -> List[str]:
         """Get a list of the names of all databases on the connected server.
 
         :Parameters:
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionadded:: 3.6
         """
-        return [doc["name"] for doc in self.list_databases(session, nameOnly=True)]
+        return [doc["name"] for doc in self.list_databases(session, nameOnly=True, comment=comment)]
 
     def drop_database(
         self,
         name_or_database: Union[str, database.Database],
         session: Optional[client_session.ClientSession] = None,
+        comment: Optional[Any] = None,
     ) -> None:
         """Drop a database.
 
@@ -1769,6 +1792,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             database to drop
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -1791,7 +1819,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         with self._socket_for_writes(session) as sock_info:
             self[name]._command(
                 sock_info,
-                "dropDatabase",
+                {"dropDatabase": 1, "comment": comment},
                 read_preference=ReadPreference.PRIMARY,
                 write_concern=self._write_concern_for(session),
                 parse_write_concern_error=True,
@@ -1837,6 +1865,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
             default) the :attr:`read_concern` of this :class:`MongoClient` is
             used.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionchanged:: 3.8
            Undeprecated. Added the ``default``, ``codec_options``,

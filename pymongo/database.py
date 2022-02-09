@@ -471,6 +471,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         start_at_operation_time: Optional[Timestamp] = None,
         session: Optional["ClientSession"] = None,
         start_after: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
     ) -> DatabaseChangeStream[_DocumentType]:
         """Watch changes on this database.
 
@@ -542,9 +543,14 @@ class Database(common.BaseObject, Generic[_DocumentType]):
           - `start_after` (optional): The same as `resume_after` except that
             `start_after` can resume notifications after an invalidate event.
             This option and `resume_after` are mutually exclusive.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
         :Returns:
           A :class:`~pymongo.change_stream.DatabaseChangeStream` cursor.
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionchanged:: 3.9
            Added the ``start_after`` parameter.
@@ -567,6 +573,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             start_at_operation_time,
             session,
             start_after,
+            comment=comment,
         )
 
     def _command(
@@ -611,6 +618,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         codec_options: Optional[CodecOptions] = DEFAULT_CODEC_OPTIONS,
         session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """Issue a MongoDB command.
@@ -665,8 +673,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             instance.
           - `session` (optional): A
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
           - `**kwargs` (optional): additional keyword arguments will
             be added to the command document before it is sent
+
 
         .. note:: :meth:`command` does **not** obey this Database's
            :attr:`read_preference` or :attr:`codec_options`. You must use the
@@ -695,6 +706,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `commands <https://dochub.mongodb.org/core/commands>`_.
         """
+        if comment is not None:
+            kwargs["comment"] = comment
+
         if read_preference is None:
             read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
         with self.__client._socket_for_reads(read_preference, session) as (
@@ -767,6 +781,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         self,
         session: Optional["ClientSession"] = None,
         filter: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
         **kwargs: Any,
     ) -> CommandCursor[Dict[str, Any]]:
         """Get a cursor over the collections of this database.
@@ -776,11 +791,14 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.client_session.ClientSession`.
           - `filter` (optional):  A query document to filter the list of
             collections returned from the listCollections command.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
           - `**kwargs` (optional): Optional parameters of the
             `listCollections command
             <https://docs.mongodb.com/manual/reference/command/listCollections/>`_
             can be passed as keyword arguments to this method. The supported
             options differ by server version.
+
 
         :Returns:
           An instance of :class:`~pymongo.command_cursor.CommandCursor`.
@@ -790,6 +808,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if filter is not None:
             kwargs["filter"] = filter
         read_pref = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
+        if comment is not None:
+            kwargs["comment"] = comment
 
         def _cmd(session, server, sock_info, read_preference):
             return self._list_collections(
@@ -802,6 +822,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         self,
         session: Optional["ClientSession"] = None,
         filter: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
         **kwargs: Any,
     ) -> List[str]:
         """Get a list of all the collection names in this database.
@@ -816,19 +837,25 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.client_session.ClientSession`.
           - `filter` (optional):  A query document to filter the list of
             collections returned from the listCollections command.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
           - `**kwargs` (optional): Optional parameters of the
             `listCollections command
             <https://docs.mongodb.com/manual/reference/command/listCollections/>`_
             can be passed as keyword arguments to this method. The supported
             options differ by server version.
 
+
         .. versionchanged:: 3.8
            Added the ``filter`` and ``**kwargs`` parameters.
 
         .. versionadded:: 3.6
         """
+        if comment is not None:
+            kwargs["comment"] = comment
         if filter is None:
             kwargs["nameOnly"] = True
+
         else:
             # The enumerate collections spec states that "drivers MUST NOT set
             # nameOnly if a filter specifies any keys other than name."
@@ -840,7 +867,10 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         return [result["name"] for result in self.list_collections(session=session, **kwargs)]
 
     def drop_collection(
-        self, name_or_collection: Union[str, Collection], session: Optional["ClientSession"] = None
+        self,
+        name_or_collection: Union[str, Collection],
+        session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """Drop a collection.
 
@@ -849,9 +879,15 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             collection object itself
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+
 
         .. note:: The :attr:`~pymongo.database.Database.write_concern` of
            this database is automatically applied to this operation.
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -868,11 +904,14 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if not isinstance(name, str):
             raise TypeError("name_or_collection must be an instance of str")
 
+        command = SON([("drop", name)])
+        if comment is not None:
+            command["comment"] = comment
+
         with self.__client._socket_for_writes(session) as sock_info:
             return self._command(
                 sock_info,
-                "drop",
-                value=name,
+                command,
                 allowable_errors=["ns not found", 26],
                 write_concern=self._write_concern_for(session),
                 parse_write_concern_error=True,
@@ -886,6 +925,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         full: bool = False,
         session: Optional["ClientSession"] = None,
         background: Optional[bool] = None,
+        comment: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """Validate a collection.
 
@@ -907,6 +947,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.client_session.ClientSession`.
           - `background` (optional): A boolean flag that determines whether
             the command runs in the background. Requires MongoDB 4.4+.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionchanged:: 3.11
            Added ``background`` parameter.
@@ -922,8 +967,10 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         if not isinstance(name, str):
             raise TypeError("name_or_collection must be an instance of str or " "Collection")
-
         cmd = SON([("validate", name), ("scandata", scandata), ("full", full)])
+        if comment is not None:
+            cmd["comment"] = comment
+
         if background is not None:
             cmd["background"] = background
 
@@ -970,7 +1017,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         )
 
     def dereference(
-        self, dbref: DBRef, session: Optional["ClientSession"] = None, **kwargs: Any
+        self,
+        dbref: DBRef,
+        session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
     ) -> Optional[_DocumentType]:
         """Dereference a :class:`~bson.dbref.DBRef`, getting the
         document it points to.
@@ -985,10 +1036,15 @@ class Database(common.BaseObject, Generic[_DocumentType]):
           - `dbref`: the reference
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
           - `**kwargs` (optional): any additional keyword arguments
             are the same as the arguments to
             :meth:`~pymongo.collection.Collection.find`.
 
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
@@ -999,4 +1055,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 "trying to dereference a DBRef that points to "
                 "another database (%r not %r)" % (dbref.database, self.__name)
             )
-        return self[dbref.collection].find_one({"_id": dbref.id}, session=session, **kwargs)
+        return self[dbref.collection].find_one(
+            {"_id": dbref.id}, session=session, comment=comment, **kwargs
+        )
