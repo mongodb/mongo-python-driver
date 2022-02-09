@@ -38,4 +38,3 @@ jobs:
       - name: Run tests
         run: |
           python setup.py test
-
