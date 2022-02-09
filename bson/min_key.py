@@ -19,6 +19,7 @@ from typing import Any
 
 class MinKey(object):
     """MongoDB internal MinKey type."""
+
     __slots__ = ()
 
     _type_marker = 255

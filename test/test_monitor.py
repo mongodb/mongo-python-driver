@@ -20,13 +20,15 @@ from functools import partial
 
 sys.path[0:0] = [""]
 
-from pymongo.periodic_executor import _EXECUTORS
+from test import IntegrationTest, unittest
+from test.utils import (
+    ServerAndTopologyEventListener,
+    connected,
+    single_client,
+    wait_until,
+)
 
-from test import unittest, IntegrationTest
-from test.utils import (connected,
-                        ServerAndTopologyEventListener,
-                        single_client,
-                        wait_until)
+from pymongo.periodic_executor import _EXECUTORS
 
 
 def unregistered(ref):
@@ -58,16 +60,13 @@ class TestMonitor(IntegrationTest):
         self.assertEqual(len(executors), 4)
 
         # Each executor stores a weakref to itself in _EXECUTORS.
-        executor_refs = [
-            (r, r()._name) for r in _EXECUTORS.copy() if r() in executors]  # type: ignore
+        executor_refs = [(r, r()._name) for r in _EXECUTORS.copy() if r() in executors]
 
         del executors
         del client
 
         for ref, name in executor_refs:
-            wait_until(partial(unregistered, ref),
-                       'unregister executor: %s' % (name,),
-                       timeout=5)
+            wait_until(partial(unregistered, ref), "unregister executor: %s" % (name,), timeout=5)
 
     def test_cleanup_executors_on_client_close(self):
         client = create_client()
@@ -77,9 +76,9 @@ class TestMonitor(IntegrationTest):
         client.close()
 
         for executor in executors:
-            wait_until(lambda: executor._stopped,
-                       'closed executor: %s' % (executor._name,),
-                       timeout=5)
+            wait_until(
+                lambda: executor._stopped, "closed executor: %s" % (executor._name,), timeout=5
+            )
 
 
 if __name__ == "__main__":

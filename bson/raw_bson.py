@@ -69,7 +69,7 @@ class RawBSONDocument(Mapping[str, Any]):
     RawBSONDocument decode its bytes.
     """
 
-    __slots__ = ('__raw', '__inflated_doc', '__codec_options')
+    __slots__ = ("__raw", "__inflated_doc", "__codec_options")
     _type_marker = _RAW_BSON_DOCUMENT_MARKER
 
     def __init__(self, bson_bytes: bytes, codec_options: Optional[CodecOptions] = None) -> None:
@@ -115,7 +115,8 @@ class RawBSONDocument(Mapping[str, Any]):
         elif codec_options.document_class is not RawBSONDocument:
             raise TypeError(
                 "RawBSONDocument cannot use CodecOptions with document "
-                "class %s" % (codec_options.document_class, ))
+                "class %s" % (codec_options.document_class,)
+            )
         self.__codec_options = codec_options
         # Validate the bson object size.
         _get_object_size(bson_bytes, 0, len(bson_bytes))
@@ -135,8 +136,7 @@ class RawBSONDocument(Mapping[str, Any]):
             # We already validated the object's size when this document was
             # created, so no need to do that again.
             # Use SON to preserve ordering of elements.
-            self.__inflated_doc = _inflate_bson(
-                self.__raw, self.__codec_options)
+            self.__inflated_doc = _inflate_bson(self.__raw, self.__codec_options)
         return self.__inflated_doc
 
     def __getitem__(self, item: str) -> Any:
@@ -154,8 +154,7 @@ class RawBSONDocument(Mapping[str, Any]):
         return NotImplemented
 
     def __repr__(self):
-        return ("RawBSONDocument(%r, codec_options=%r)"
-                % (self.raw, self.__codec_options))
+        return "RawBSONDocument(%r, codec_options=%r)" % (self.raw, self.__codec_options)
 
 
 def _inflate_bson(bson_bytes: bytes, codec_options: CodecOptions) -> Mapping[Any, Any]:
@@ -168,8 +167,7 @@ def _inflate_bson(bson_bytes: bytes, codec_options: CodecOptions) -> Mapping[Any
         must be :class:`RawBSONDocument`.
     """
     # Use SON to preserve ordering of elements.
-    return _raw_to_dict(
-        bson_bytes, 4, len(bson_bytes)-1, codec_options, SON())
+    return _raw_to_dict(bson_bytes, 4, len(bson_bytes) - 1, codec_options, SON())
 
 
 DEFAULT_RAW_BSON_OPTIONS: CodecOptions = DEFAULT.with_options(document_class=RawBSONDocument)

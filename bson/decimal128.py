@@ -31,8 +31,8 @@ _EXPONENT_MIN = -6143
 _MAX_DIGITS = 34
 
 _INF = 0x7800000000000000
-_NAN = 0x7c00000000000000
-_SNAN = 0x7e00000000000000
+_NAN = 0x7C00000000000000
+_SNAN = 0x7E00000000000000
 _SIGN = 0x8000000000000000
 
 _NINF = (_INF + _SIGN, 0)
@@ -43,16 +43,14 @@ _NSNAN = (_SNAN + _SIGN, 0)
 _PSNAN = (_SNAN, 0)
 
 _CTX_OPTIONS = {
-    'prec': _MAX_DIGITS,
-    'rounding': decimal.ROUND_HALF_EVEN,
-    'Emin': _EXPONENT_MIN,
-    'Emax': _EXPONENT_MAX,
-    'capitals': 1,
-    'flags': [],
-    'traps': [decimal.InvalidOperation,
-              decimal.Overflow,
-              decimal.Inexact],
-    'clamp': 1
+    "prec": _MAX_DIGITS,
+    "rounding": decimal.ROUND_HALF_EVEN,
+    "Emin": _EXPONENT_MIN,
+    "Emax": _EXPONENT_MAX,
+    "capitals": 1,
+    "flags": [],
+    "traps": [decimal.InvalidOperation, decimal.Overflow, decimal.Inexact],
+    "clamp": 1,
 }
 
 _DEC128_CTX = decimal.Context(**_CTX_OPTIONS.copy())  # type: ignore
@@ -64,7 +62,7 @@ def create_decimal128_context() -> decimal.Context:
     for working with IEEE-754 128-bit decimal floating point values.
     """
     opts = _CTX_OPTIONS.copy()
-    opts['traps'] = []
+    opts["traps"] = []
     return decimal.Context(**opts)  # type: ignore
 
 
@@ -105,9 +103,9 @@ def _decimal_to_128(value: _VALUE_OPTIONS) -> Tuple[int, int]:
     biased_exponent = exponent + _EXPONENT_BIAS
 
     if high >> 49 == 1:
-        high = high & 0x7fffffffffff
+        high = high & 0x7FFFFFFFFFFF
         high |= _EXPONENT_MASK
-        high |= (biased_exponent & 0x3fff) << 47
+        high |= (biased_exponent & 0x3FFF) << 47
     else:
         high |= biased_exponent << 49
 
@@ -211,7 +209,8 @@ class Decimal128(object):
         >>> Decimal('NaN') == Decimal('NaN')
         False
     """
-    __slots__ = ('__high', '__low')
+
+    __slots__ = ("__high", "__low")
 
     _type_marker = 19
 
@@ -220,9 +219,11 @@ class Decimal128(object):
             self.__high, self.__low = _decimal_to_128(value)
         elif isinstance(value, (list, tuple)):
             if len(value) != 2:
-                raise ValueError('Invalid size for creation of Decimal128 '
-                                 'from list or tuple. Must have exactly 2 '
-                                 'elements.')
+                raise ValueError(
+                    "Invalid size for creation of Decimal128 "
+                    "from list or tuple. Must have exactly 2 "
+                    "elements."
+                )
             self.__high, self.__low = value  # type: ignore
         else:
             raise TypeError("Cannot convert %r to Decimal128" % (value,))
@@ -236,25 +237,25 @@ class Decimal128(object):
         sign = 1 if (high & _SIGN) else 0
 
         if (high & _SNAN) == _SNAN:
-            return decimal.Decimal((sign, (), 'N'))  # type: ignore
+            return decimal.Decimal((sign, (), "N"))  # type: ignore
         elif (high & _NAN) == _NAN:
-            return decimal.Decimal((sign, (), 'n'))  # type: ignore
+            return decimal.Decimal((sign, (), "n"))  # type: ignore
         elif (high & _INF) == _INF:
-            return decimal.Decimal((sign, (), 'F'))  # type: ignore
+            return decimal.Decimal((sign, (), "F"))  # type: ignore
 
         if (high & _EXPONENT_MASK) == _EXPONENT_MASK:
-            exponent = ((high & 0x1fffe00000000000) >> 47) - _EXPONENT_BIAS
+            exponent = ((high & 0x1FFFE00000000000) >> 47) - _EXPONENT_BIAS
             return decimal.Decimal((sign, (0,), exponent))
         else:
-            exponent = ((high & 0x7fff800000000000) >> 49) - _EXPONENT_BIAS
+            exponent = ((high & 0x7FFF800000000000) >> 49) - _EXPONENT_BIAS
 
         arr = bytearray(15)
-        mask = 0x00000000000000ff
+        mask = 0x00000000000000FF
         for i in range(14, 6, -1):
             arr[i] = (low & mask) >> ((14 - i) << 3)
             mask = mask << 8
 
-        mask = 0x00000000000000ff
+        mask = 0x00000000000000FF
         for i in range(6, 0, -1):
             arr[i] = (high & mask) >> ((6 - i) << 3)
             mask = mask << 8
@@ -263,8 +264,7 @@ class Decimal128(object):
         arr[0] = (high & mask) >> 48
 
         # cdecimal only accepts a tuple for digits.
-        digits = tuple(
-            int(digit) for digit in str(int.from_bytes(arr, 'big')))
+        digits = tuple(int(digit) for digit in str(int.from_bytes(arr, "big")))
 
         with decimal.localcontext(_DEC128_CTX) as ctx:
             return ctx.create_decimal((sign, digits, exponent))

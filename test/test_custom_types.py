@@ -17,7 +17,6 @@
 import datetime
 import sys
 import tempfile
-
 from collections import OrderedDict
 from decimal import Decimal
 from random import random
@@ -25,31 +24,36 @@ from typing import Any, Tuple, Type, no_type_check
 
 sys.path[0:0] = [""]
 
-from bson import (Decimal128,
-                  decode,
-                  decode_all,
-                  decode_file_iter,
-                  decode_iter,
-                  encode,
-                  RE_TYPE,
-                  _BUILT_IN_TYPES,
-                  _dict_to_bson,
-                  _bson_to_dict)
-from bson.codec_options import (CodecOptions, TypeCodec, TypeDecoder,
-                                TypeEncoder, TypeRegistry)
-from bson.errors import InvalidDocument
-from bson.int64 import Int64
-from bson.raw_bson import RawBSONDocument
-
-from gridfs import GridIn, GridOut
-
-from pymongo.collection import ReturnDocument
-from pymongo.errors import DuplicateKeyError
-from pymongo.message import _CursorAddress
-
 from test import client_context, unittest
 from test.test_client import IntegrationTest
 from test.utils import rs_client
+
+from bson import (
+    _BUILT_IN_TYPES,
+    RE_TYPE,
+    Decimal128,
+    _bson_to_dict,
+    _dict_to_bson,
+    decode,
+    decode_all,
+    decode_file_iter,
+    decode_iter,
+    encode,
+)
+from bson.codec_options import (
+    CodecOptions,
+    TypeCodec,
+    TypeDecoder,
+    TypeEncoder,
+    TypeRegistry,
+)
+from bson.errors import InvalidDocument
+from bson.int64 import Int64
+from bson.raw_bson import RawBSONDocument
+from gridfs import GridIn, GridOut
+from pymongo.collection import ReturnDocument
+from pymongo.errors import DuplicateKeyError
+from pymongo.message import _CursorAddress
 
 
 class DecimalEncoder(TypeEncoder):
@@ -74,8 +78,7 @@ class DecimalCodec(DecimalDecoder, DecimalEncoder):
     pass
 
 
-DECIMAL_CODECOPTS = CodecOptions(
-    type_registry=TypeRegistry([DecimalCodec()]))
+DECIMAL_CODECOPTS = CodecOptions(type_registry=TypeRegistry([DecimalCodec()]))
 
 
 class UndecipherableInt64Type(object):
@@ -91,39 +94,55 @@ class UndecipherableInt64Type(object):
 
 class UndecipherableIntDecoder(TypeDecoder):
     bson_type = Int64
+
     def transform_bson(self, value):
         return UndecipherableInt64Type(value)
 
 
 class UndecipherableIntEncoder(TypeEncoder):
     python_type = UndecipherableInt64Type
+
     def transform_python(self, value):
         return Int64(value.value)
 
 
 UNINT_DECODER_CODECOPTS = CodecOptions(
-    type_registry=TypeRegistry([UndecipherableIntDecoder(), ]))
+    type_registry=TypeRegistry(
+        [
+            UndecipherableIntDecoder(),
+        ]
+    )
+)
 
 
-UNINT_CODECOPTS = CodecOptions(type_registry=TypeRegistry(
-    [UndecipherableIntDecoder(), UndecipherableIntEncoder()]))
+UNINT_CODECOPTS = CodecOptions(
+    type_registry=TypeRegistry([UndecipherableIntDecoder(), UndecipherableIntEncoder()])
+)
 
 
 class UppercaseTextDecoder(TypeDecoder):
     bson_type = str
+
     def transform_bson(self, value):
         return value.upper()
 
 
-UPPERSTR_DECODER_CODECOPTS = CodecOptions(type_registry=TypeRegistry(
-    [UppercaseTextDecoder(),]))
+UPPERSTR_DECODER_CODECOPTS = CodecOptions(
+    type_registry=TypeRegistry(
+        [
+            UppercaseTextDecoder(),
+        ]
+    )
+)
 
 
 def type_obfuscating_decoder_factory(rt_type):
     class ResumeTokenToNanDecoder(TypeDecoder):
         bson_type = rt_type
+
         def transform_bson(self, value):
             return "NaN"
+
     return ResumeTokenToNanDecoder
 
 
@@ -135,43 +154,42 @@ class CustomBSONTypeTests(object):
         self.assertEqual(doc, rt_document)
 
     def test_encode_decode_roundtrip(self):
-        self.roundtrip({'average': Decimal('56.47')})
-        self.roundtrip({'average': {'b': Decimal('56.47')}})
-        self.roundtrip({'average': [Decimal('56.47')]})
-        self.roundtrip({'average': [[Decimal('56.47')]]})
-        self.roundtrip({'average': [{'b': Decimal('56.47')}]})
+        self.roundtrip({"average": Decimal("56.47")})
+        self.roundtrip({"average": {"b": Decimal("56.47")}})
+        self.roundtrip({"average": [Decimal("56.47")]})
+        self.roundtrip({"average": [[Decimal("56.47")]]})
+        self.roundtrip({"average": [{"b": Decimal("56.47")}]})
 
     @no_type_check
     def test_decode_all(self):
         documents = []
         for dec in range(3):
-            documents.append({'average': Decimal('56.4%s' % (dec,))})
+            documents.append({"average": Decimal("56.4%s" % (dec,))})
 
         bsonstream = bytes()
         for doc in documents:
             bsonstream += encode(doc, codec_options=self.codecopts)
 
-        self.assertEqual(
-            decode_all(bsonstream, self.codecopts), documents)
+        self.assertEqual(decode_all(bsonstream, self.codecopts), documents)
 
     @no_type_check
     def test__bson_to_dict(self):
-        document = {'average': Decimal('56.47')}
+        document = {"average": Decimal("56.47")}
         rawbytes = encode(document, codec_options=self.codecopts)
         decoded_document = _bson_to_dict(rawbytes, self.codecopts)
         self.assertEqual(document, decoded_document)
 
     @no_type_check
     def test__dict_to_bson(self):
-        document = {'average': Decimal('56.47')}
+        document = {"average": Decimal("56.47")}
         rawbytes = encode(document, codec_options=self.codecopts)
         encoded_document = _dict_to_bson(document, False, self.codecopts)
         self.assertEqual(encoded_document, rawbytes)
 
     def _generate_multidocument_bson_stream(self):
         inp_num = [str(random() * 100)[:4] for _ in range(10)]
-        docs = [{'n': Decimal128(dec)} for dec in inp_num]
-        edocs = [{'n': Decimal(dec)} for dec in inp_num]
+        docs = [{"n": Decimal128(dec)} for dec in inp_num]
+        edocs = [{"n": Decimal(dec)} for dec in inp_num]
         bsonstream = b""
         for doc in docs:
             bsonstream += encode(doc)
@@ -180,8 +198,7 @@ class CustomBSONTypeTests(object):
     @no_type_check
     def test_decode_iter(self):
         expected, bson_data = self._generate_multidocument_bson_stream()
-        for expected_doc, decoded_doc in zip(
-                expected, decode_iter(bson_data, self.codecopts)):
+        for expected_doc, decoded_doc in zip(expected, decode_iter(bson_data, self.codecopts)):
             self.assertEqual(expected_doc, decoded_doc)
 
     @no_type_check
@@ -191,26 +208,24 @@ class CustomBSONTypeTests(object):
         fileobj.write(bson_data)
         fileobj.seek(0)
 
-        for expected_doc, decoded_doc in zip(
-                expected, decode_file_iter(fileobj, self.codecopts)):
+        for expected_doc, decoded_doc in zip(expected, decode_file_iter(fileobj, self.codecopts)):
             self.assertEqual(expected_doc, decoded_doc)
 
         fileobj.close()
 
 
-class TestCustomPythonBSONTypeToBSONMonolithicCodec(CustomBSONTypeTests,
-                                                    unittest.TestCase):
+class TestCustomPythonBSONTypeToBSONMonolithicCodec(CustomBSONTypeTests, unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.codecopts = DECIMAL_CODECOPTS
 
 
-class TestCustomPythonBSONTypeToBSONMultiplexedCodec(CustomBSONTypeTests,
-                                                     unittest.TestCase):
+class TestCustomPythonBSONTypeToBSONMultiplexedCodec(CustomBSONTypeTests, unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         codec_options = CodecOptions(
-            type_registry=TypeRegistry((DecimalEncoder(), DecimalDecoder())))
+            type_registry=TypeRegistry((DecimalEncoder(), DecimalDecoder()))
+        )
         cls.codecopts = codec_options
 
 
@@ -221,29 +236,29 @@ class TestBSONFallbackEncoder(unittest.TestCase):
 
     def test_simple(self):
         codecopts = self._get_codec_options(lambda x: Decimal128(x))
-        document = {'average': Decimal('56.47')}
+        document = {"average": Decimal("56.47")}
         bsonbytes = encode(document, codec_options=codecopts)
 
-        exp_document = {'average': Decimal128('56.47')}
+        exp_document = {"average": Decimal128("56.47")}
         exp_bsonbytes = encode(exp_document)
         self.assertEqual(bsonbytes, exp_bsonbytes)
 
     def test_erroring_fallback_encoder(self):
-        codecopts = self._get_codec_options(lambda _: 1/0)
+        codecopts = self._get_codec_options(lambda _: 1 / 0)
 
         # fallback converter should not be invoked when encoding known types.
         encode(
-            {'a': 1, 'b': Decimal128('1.01'), 'c': {'arr': ['abc', 3.678]}},
-            codec_options=codecopts)
+            {"a": 1, "b": Decimal128("1.01"), "c": {"arr": ["abc", 3.678]}}, codec_options=codecopts
+        )
 
         # expect an error when encoding a custom type.
-        document = {'average': Decimal('56.47')}
+        document = {"average": Decimal("56.47")}
         with self.assertRaises(ZeroDivisionError):
             encode(document, codec_options=codecopts)
 
     def test_noop_fallback_encoder(self):
         codecopts = self._get_codec_options(lambda x: x)
-        document = {'average': Decimal('56.47')}
+        document = {"average": Decimal("56.47")}
         with self.assertRaises(InvalidDocument):
             encode(document, codec_options=codecopts)
 
@@ -253,8 +268,9 @@ class TestBSONFallbackEncoder(unittest.TestCase):
                 return Decimal128(value)
             except:
                 raise TypeError("cannot encode type %s" % (type(value)))
+
         codecopts = self._get_codec_options(fallback_encoder)
-        document = {'average': Decimal}
+        document = {"average": Decimal}
         with self.assertRaises(TypeError):
             encode(document, codec_options=codecopts)
 
@@ -262,8 +278,9 @@ class TestBSONFallbackEncoder(unittest.TestCase):
 class TestBSONTypeEnDeCodecs(unittest.TestCase):
     def test_instantiation(self):
         msg = "Can't instantiate abstract class"
+
         def run_test(base, attrs, fail):
-            codec = type('testcodec', (base,), attrs)
+            codec = type("testcodec", (base,), attrs)
             if fail:
                 with self.assertRaisesRegex(TypeError, msg):
                     codec()
@@ -273,24 +290,46 @@ class TestBSONTypeEnDeCodecs(unittest.TestCase):
         class MyType(object):
             pass
 
-        run_test(TypeEncoder, {'python_type': MyType,}, fail=True)
-        run_test(TypeEncoder, {'transform_python': lambda s, x: x}, fail=True)
-        run_test(TypeEncoder, {'transform_python': lambda s, x: x,
-                               'python_type': MyType}, fail=False)
+        run_test(
+            TypeEncoder,
+            {
+                "python_type": MyType,
+            },
+            fail=True,
+        )
+        run_test(TypeEncoder, {"transform_python": lambda s, x: x}, fail=True)
+        run_test(
+            TypeEncoder, {"transform_python": lambda s, x: x, "python_type": MyType}, fail=False
+        )
 
-        run_test(TypeDecoder, {'bson_type': Decimal128, }, fail=True)
-        run_test(TypeDecoder, {'transform_bson': lambda s, x: x}, fail=True)
-        run_test(TypeDecoder, {'transform_bson': lambda s, x: x,
-                               'bson_type': Decimal128}, fail=False)
+        run_test(
+            TypeDecoder,
+            {
+                "bson_type": Decimal128,
+            },
+            fail=True,
+        )
+        run_test(TypeDecoder, {"transform_bson": lambda s, x: x}, fail=True)
+        run_test(
+            TypeDecoder, {"transform_bson": lambda s, x: x, "bson_type": Decimal128}, fail=False
+        )
 
-        run_test(TypeCodec, {'bson_type': Decimal128,
-                             'python_type': MyType}, fail=True)
-        run_test(TypeCodec, {'transform_bson': lambda s, x: x,
-                             'transform_python': lambda s, x: x}, fail=True)
-        run_test(TypeCodec, {'python_type': MyType,
-                             'transform_python': lambda s, x: x,
-                             'transform_bson': lambda s, x: x,
-                             'bson_type': Decimal128}, fail=False)
+        run_test(TypeCodec, {"bson_type": Decimal128, "python_type": MyType}, fail=True)
+        run_test(
+            TypeCodec,
+            {"transform_bson": lambda s, x: x, "transform_python": lambda s, x: x},
+            fail=True,
+        )
+        run_test(
+            TypeCodec,
+            {
+                "python_type": MyType,
+                "transform_python": lambda s, x: x,
+                "transform_bson": lambda s, x: x,
+                "bson_type": Decimal128,
+            },
+            fail=False,
+        )
 
     def test_type_checks(self):
         self.assertTrue(issubclass(TypeCodec, TypeEncoder))
@@ -332,6 +371,7 @@ class TestBSONCustomTypeEncoderAndFallbackEncoderTandem(unittest.TestCase):
         # transforms B into something encodable
         class B2BSON(TypeEncoder):
             python_type = TypeB
+
             def transform_python(self, value):
                 return value.value
 
@@ -340,6 +380,7 @@ class TestBSONCustomTypeEncoderAndFallbackEncoderTandem(unittest.TestCase):
         # BSON-encodable.
         class A2B(TypeEncoder):
             python_type = TypeA
+
             def transform_python(self, value):
                 return TypeB(value.value)
 
@@ -348,6 +389,7 @@ class TestBSONCustomTypeEncoderAndFallbackEncoderTandem(unittest.TestCase):
         # BSON-encodable.
         class B2A(TypeEncoder):
             python_type = TypeB
+
             def transform_python(self, value):
                 return TypeA(value.value)
 
@@ -360,37 +402,37 @@ class TestBSONCustomTypeEncoderAndFallbackEncoderTandem(unittest.TestCase):
         cls.A2B = A2B
 
     def test_encode_fallback_then_custom(self):
-        codecopts = CodecOptions(type_registry=TypeRegistry(
-            [self.B2BSON()], fallback_encoder=self.fallback_encoder_A2B))
-        testdoc = {'x': self.TypeA(123)}
-        expected_bytes = encode({'x': 123})
+        codecopts = CodecOptions(
+            type_registry=TypeRegistry([self.B2BSON()], fallback_encoder=self.fallback_encoder_A2B)
+        )
+        testdoc = {"x": self.TypeA(123)}
+        expected_bytes = encode({"x": 123})
 
-        self.assertEqual(encode(testdoc, codec_options=codecopts),
-                         expected_bytes)
+        self.assertEqual(encode(testdoc, codec_options=codecopts), expected_bytes)
 
     def test_encode_custom_then_fallback(self):
-        codecopts = CodecOptions(type_registry=TypeRegistry(
-            [self.B2A()], fallback_encoder=self.fallback_encoder_A2BSON))
-        testdoc = {'x': self.TypeB(123)}
-        expected_bytes = encode({'x': 123})
+        codecopts = CodecOptions(
+            type_registry=TypeRegistry([self.B2A()], fallback_encoder=self.fallback_encoder_A2BSON)
+        )
+        testdoc = {"x": self.TypeB(123)}
+        expected_bytes = encode({"x": 123})
 
-        self.assertEqual(encode(testdoc, codec_options=codecopts),
-                         expected_bytes)
+        self.assertEqual(encode(testdoc, codec_options=codecopts), expected_bytes)
 
     def test_chaining_encoders_fails(self):
-        codecopts = CodecOptions(type_registry=TypeRegistry(
-            [self.A2B(), self.B2BSON()]))
+        codecopts = CodecOptions(type_registry=TypeRegistry([self.A2B(), self.B2BSON()]))
 
         with self.assertRaises(InvalidDocument):
-            encode({'x': self.TypeA(123)}, codec_options=codecopts)
+            encode({"x": self.TypeA(123)}, codec_options=codecopts)
 
     def test_infinite_loop_exceeds_max_recursion_depth(self):
-        codecopts = CodecOptions(type_registry=TypeRegistry(
-            [self.B2A()], fallback_encoder=self.fallback_encoder_A2B))
+        codecopts = CodecOptions(
+            type_registry=TypeRegistry([self.B2A()], fallback_encoder=self.fallback_encoder_A2B)
+        )
 
         # Raises max recursion depth exceeded error
         with self.assertRaises(RuntimeError):
-            encode({'x': self.TypeA(100)}, codec_options=codecopts)
+            encode({"x": self.TypeA(100)}, codec_options=codecopts)
 
 
 class TestTypeRegistry(unittest.TestCase):
@@ -449,29 +491,34 @@ class TestTypeRegistry(unittest.TestCase):
 
     def test_simple(self):
         codec_instances = [codec() for codec in self.codecs]
+
         def assert_proper_initialization(type_registry, codec_instances):
-            self.assertEqual(type_registry._encoder_map, {
-                self.types[0]: codec_instances[0].transform_python,
-                self.types[1]: codec_instances[1].transform_python})
-            self.assertEqual(type_registry._decoder_map, {
-                int: codec_instances[0].transform_bson,
-                str: codec_instances[1].transform_bson})
             self.assertEqual(
-                type_registry._fallback_encoder, self.fallback_encoder)
+                type_registry._encoder_map,
+                {
+                    self.types[0]: codec_instances[0].transform_python,
+                    self.types[1]: codec_instances[1].transform_python,
+                },
+            )
+            self.assertEqual(
+                type_registry._decoder_map,
+                {int: codec_instances[0].transform_bson, str: codec_instances[1].transform_bson},
+            )
+            self.assertEqual(type_registry._fallback_encoder, self.fallback_encoder)
 
         type_registry = TypeRegistry(codec_instances, self.fallback_encoder)
         assert_proper_initialization(type_registry, codec_instances)
 
         type_registry = TypeRegistry(
-            fallback_encoder=self.fallback_encoder, type_codecs=codec_instances)
+            fallback_encoder=self.fallback_encoder, type_codecs=codec_instances
+        )
         assert_proper_initialization(type_registry, codec_instances)
 
         # Ensure codec list held by the type registry doesn't change if we
         # mutate the initial list.
         codec_instances_copy = list(codec_instances)
         codec_instances.pop(0)
-        self.assertListEqual(
-            type_registry._TypeRegistry__type_codecs, codec_instances_copy)
+        self.assertListEqual(type_registry._TypeRegistry__type_codecs, codec_instances_copy)
 
     def test_simple_separate_codecs(self):
         class MyIntEncoder(TypeEncoder):
@@ -491,72 +538,83 @@ class TestTypeRegistry(unittest.TestCase):
 
         self.assertEqual(
             type_registry._encoder_map,
-            {MyIntEncoder.python_type: codec_instances[1].transform_python})  # type: ignore
+            {MyIntEncoder.python_type: codec_instances[1].transform_python},  # type: ignore[has-type]
+        )
         self.assertEqual(
-            type_registry._decoder_map,
-            {MyIntDecoder.bson_type: codec_instances[0].transform_bson})  # type: ignore
+            type_registry._decoder_map, {MyIntDecoder.bson_type: codec_instances[0].transform_bson}  # type: ignore[has-type]
+        )
 
     def test_initialize_fail(self):
-        err_msg = ("Expected an instance of TypeEncoder, TypeDecoder, "
-                   "or TypeCodec, got .* instead")
+        err_msg = (
+            "Expected an instance of TypeEncoder, TypeDecoder, " "or TypeCodec, got .* instead"
+        )
         with self.assertRaisesRegex(TypeError, err_msg):
             TypeRegistry(self.codecs)  # type: ignore[arg-type]
 
         with self.assertRaisesRegex(TypeError, err_msg):
-            TypeRegistry([type('AnyType', (object,), {})()])
+            TypeRegistry([type("AnyType", (object,), {})()])
 
         err_msg = "fallback_encoder %r is not a callable" % (True,)
         with self.assertRaisesRegex(TypeError, err_msg):
-            TypeRegistry([], True)   # type: ignore[arg-type]
+            TypeRegistry([], True)  # type: ignore[arg-type]
 
-        err_msg = "fallback_encoder %r is not a callable" % ('hello',)
+        err_msg = "fallback_encoder %r is not a callable" % ("hello",)
         with self.assertRaisesRegex(TypeError, err_msg):
-            TypeRegistry(fallback_encoder='hello')  # type: ignore[arg-type]
+            TypeRegistry(fallback_encoder="hello")  # type: ignore[arg-type]
 
     def test_type_registry_repr(self):
         codec_instances = [codec() for codec in self.codecs]
         type_registry = TypeRegistry(codec_instances)
-        r = ("TypeRegistry(type_codecs=%r, fallback_encoder=%r)" % (
-            codec_instances, None))
+        r = "TypeRegistry(type_codecs=%r, fallback_encoder=%r)" % (codec_instances, None)
         self.assertEqual(r, repr(type_registry))
 
     def test_type_registry_eq(self):
         codec_instances = [codec() for codec in self.codecs]
-        self.assertEqual(
-            TypeRegistry(codec_instances), TypeRegistry(codec_instances))
+        self.assertEqual(TypeRegistry(codec_instances), TypeRegistry(codec_instances))
 
         codec_instances_2 = [codec() for codec in self.codecs]
-        self.assertNotEqual(
-            TypeRegistry(codec_instances), TypeRegistry(codec_instances_2))
+        self.assertNotEqual(TypeRegistry(codec_instances), TypeRegistry(codec_instances_2))
 
     def test_builtin_types_override_fails(self):
         def run_test(base, attrs):
-            msg = (r"TypeEncoders cannot change how built-in types "
-                   r"are encoded \(encoder .* transforms type .*\)")
+            msg = (
+                r"TypeEncoders cannot change how built-in types "
+                r"are encoded \(encoder .* transforms type .*\)"
+            )
             for pytype in _BUILT_IN_TYPES:
-                attrs.update({'python_type': pytype,
-                              'transform_python': lambda x: x})
-                codec = type('testcodec', (base, ), attrs)
+                attrs.update({"python_type": pytype, "transform_python": lambda x: x})
+                codec = type("testcodec", (base,), attrs)
                 codec_instance = codec()
                 with self.assertRaisesRegex(TypeError, msg):
-                    TypeRegistry([codec_instance,])
+                    TypeRegistry(
+                        [
+                            codec_instance,
+                        ]
+                    )
 
                 # Test only some subtypes as not all can be subclassed.
-                if pytype in [bool, type(None), RE_TYPE,]:
+                if pytype in [
+                    bool,
+                    type(None),
+                    RE_TYPE,
+                ]:
                     continue
 
                 class MyType(pytype):  # type: ignore
                     pass
-                attrs.update({'python_type': MyType,
-                              'transform_python': lambda x: x})
-                codec = type('testcodec', (base, ), attrs)
+
+                attrs.update({"python_type": MyType, "transform_python": lambda x: x})
+                codec = type("testcodec", (base,), attrs)
                 codec_instance = codec()
                 with self.assertRaisesRegex(TypeError, msg):
-                    TypeRegistry([codec_instance,])
+                    TypeRegistry(
+                        [
+                            codec_instance,
+                        ]
+                    )
 
         run_test(TypeEncoder, {})
-        run_test(TypeCodec, {'bson_type': Decimal128,
-                             'transform_bson': lambda x: x})
+        run_test(TypeCodec, {"bson_type": Decimal128, "transform_bson": lambda x: x})
 
 
 class TestCollectionWCustomType(IntegrationTest):
@@ -568,115 +626,127 @@ class TestCollectionWCustomType(IntegrationTest):
 
     def test_command_errors_w_custom_type_decoder(self):
         db = self.db
-        test_doc = {'_id': 1, 'data': 'a'}
-        test = db.get_collection('test',
-                                 codec_options=UNINT_DECODER_CODECOPTS)
+        test_doc = {"_id": 1, "data": "a"}
+        test = db.get_collection("test", codec_options=UNINT_DECODER_CODECOPTS)
 
         result = test.insert_one(test_doc)
-        self.assertEqual(result.inserted_id, test_doc['_id'])
+        self.assertEqual(result.inserted_id, test_doc["_id"])
         with self.assertRaises(DuplicateKeyError):
             test.insert_one(test_doc)
 
     def test_find_w_custom_type_decoder(self):
         db = self.db
-        input_docs = [
-            {'x': Int64(k)} for k in [1, 2, 3]]
+        input_docs = [{"x": Int64(k)} for k in [1, 2, 3]]
         for doc in input_docs:
             db.test.insert_one(doc)
 
-        test = db.get_collection(
-            'test', codec_options=UNINT_DECODER_CODECOPTS)
+        test = db.get_collection("test", codec_options=UNINT_DECODER_CODECOPTS)
         for doc in test.find({}, batch_size=1):
-            self.assertIsInstance(doc['x'], UndecipherableInt64Type)
+            self.assertIsInstance(doc["x"], UndecipherableInt64Type)
 
     def test_find_w_custom_type_decoder_and_document_class(self):
         def run_test(doc_cls):
             db = self.db
-            input_docs = [
-                {'x': Int64(k)} for k in [1, 2, 3]]
+            input_docs = [{"x": Int64(k)} for k in [1, 2, 3]]
             for doc in input_docs:
                 db.test.insert_one(doc)
 
-            test = db.get_collection('test', codec_options=CodecOptions(
-                type_registry=TypeRegistry([UndecipherableIntDecoder()]),
-                document_class=doc_cls))
+            test = db.get_collection(
+                "test",
+                codec_options=CodecOptions(
+                    type_registry=TypeRegistry([UndecipherableIntDecoder()]), document_class=doc_cls
+                ),
+            )
             for doc in test.find({}, batch_size=1):
                 self.assertIsInstance(doc, doc_cls)
-                self.assertIsInstance(doc['x'], UndecipherableInt64Type)
+                self.assertIsInstance(doc["x"], UndecipherableInt64Type)
 
         for doc_cls in [RawBSONDocument, OrderedDict]:
             run_test(doc_cls)
 
     def test_aggregate_w_custom_type_decoder(self):
         db = self.db
-        db.test.insert_many([
-            {'status': 'in progress', 'qty': Int64(1)},
-            {'status': 'complete', 'qty': Int64(10)},
-            {'status': 'in progress', 'qty': Int64(1)},
-            {'status': 'complete', 'qty': Int64(10)},
-            {'status': 'in progress', 'qty': Int64(1)},])
-        test = db.get_collection(
-            'test', codec_options=UNINT_DECODER_CODECOPTS)
+        db.test.insert_many(
+            [
+                {"status": "in progress", "qty": Int64(1)},
+                {"status": "complete", "qty": Int64(10)},
+                {"status": "in progress", "qty": Int64(1)},
+                {"status": "complete", "qty": Int64(10)},
+                {"status": "in progress", "qty": Int64(1)},
+            ]
+        )
+        test = db.get_collection("test", codec_options=UNINT_DECODER_CODECOPTS)
 
         pipeline: list = [
-            {'$match': {'status': 'complete'}},
-            {'$group': {'_id': "$status", 'total_qty': {"$sum": "$qty"}}},]
+            {"$match": {"status": "complete"}},
+            {"$group": {"_id": "$status", "total_qty": {"$sum": "$qty"}}},
+        ]
         result = test.aggregate(pipeline)
 
         res = list(result)[0]
-        self.assertEqual(res['_id'], 'complete')
-        self.assertIsInstance(res['total_qty'], UndecipherableInt64Type)
-        self.assertEqual(res['total_qty'].value, 20)
+        self.assertEqual(res["_id"], "complete")
+        self.assertIsInstance(res["total_qty"], UndecipherableInt64Type)
+        self.assertEqual(res["total_qty"].value, 20)
 
     def test_distinct_w_custom_type(self):
         self.db.drop_collection("test")
 
-        test = self.db.get_collection('test', codec_options=UNINT_CODECOPTS)
+        test = self.db.get_collection("test", codec_options=UNINT_CODECOPTS)
         values = [
             UndecipherableInt64Type(1),
             UndecipherableInt64Type(2),
             UndecipherableInt64Type(3),
-            {"b": UndecipherableInt64Type(3)}]
+            {"b": UndecipherableInt64Type(3)},
+        ]
         test.insert_many({"a": val} for val in values)
 
         self.assertEqual(values, test.distinct("a"))
 
     def test_find_one_and__w_custom_type_decoder(self):
         db = self.db
-        c = db.get_collection('test', codec_options=UNINT_DECODER_CODECOPTS)
-        c.insert_one({'_id': 1, 'x': Int64(1)})
+        c = db.get_collection("test", codec_options=UNINT_DECODER_CODECOPTS)
+        c.insert_one({"_id": 1, "x": Int64(1)})
 
-        doc = c.find_one_and_update({'_id': 1}, {'$inc': {'x': 1}},
-                                    return_document=ReturnDocument.AFTER)
-        self.assertEqual(doc['_id'], 1)
-        self.assertIsInstance(doc['x'], UndecipherableInt64Type)
-        self.assertEqual(doc['x'].value, 2)
+        doc = c.find_one_and_update(
+            {"_id": 1}, {"$inc": {"x": 1}}, return_document=ReturnDocument.AFTER
+        )
+        self.assertEqual(doc["_id"], 1)
+        self.assertIsInstance(doc["x"], UndecipherableInt64Type)
+        self.assertEqual(doc["x"].value, 2)
 
-        doc = c.find_one_and_replace({'_id': 1}, {'x': Int64(3), 'y': True},
-                                     return_document=ReturnDocument.AFTER)
-        self.assertEqual(doc['_id'], 1)
-        self.assertIsInstance(doc['x'], UndecipherableInt64Type)
-        self.assertEqual(doc['x'].value, 3)
-        self.assertEqual(doc['y'], True)
+        doc = c.find_one_and_replace(
+            {"_id": 1}, {"x": Int64(3), "y": True}, return_document=ReturnDocument.AFTER
+        )
+        self.assertEqual(doc["_id"], 1)
+        self.assertIsInstance(doc["x"], UndecipherableInt64Type)
+        self.assertEqual(doc["x"].value, 3)
+        self.assertEqual(doc["y"], True)
 
-        doc = c.find_one_and_delete({'y': True})
-        self.assertEqual(doc['_id'], 1)
-        self.assertIsInstance(doc['x'], UndecipherableInt64Type)
-        self.assertEqual(doc['x'].value, 3)
+        doc = c.find_one_and_delete({"y": True})
+        self.assertEqual(doc["_id"], 1)
+        self.assertIsInstance(doc["x"], UndecipherableInt64Type)
+        self.assertEqual(doc["x"].value, 3)
         self.assertIsNone(c.find_one())
 
 
 class TestGridFileCustomType(IntegrationTest):
     def setUp(self):
-        self.db.drop_collection('fs.files')
-        self.db.drop_collection('fs.chunks')
+        self.db.drop_collection("fs.files")
+        self.db.drop_collection("fs.chunks")
 
     def test_grid_out_custom_opts(self):
         db = self.db.with_options(codec_options=UPPERSTR_DECODER_CODECOPTS)
-        one = GridIn(db.fs, _id=5, filename="my_file",
-                     contentType="text/html", chunkSize=1000, aliases=["foo"],
-                     metadata={"foo": 'red', "bar": 'blue'}, bar=3,
-                     baz="hello")
+        one = GridIn(
+            db.fs,
+            _id=5,
+            filename="my_file",
+            contentType="text/html",
+            chunkSize=1000,
+            aliases=["foo"],
+            metadata={"foo": "red", "bar": "blue"},
+            bar=3,
+            baz="hello",
+        )
         one.write(b"hello world")
         one.close()
 
@@ -690,12 +760,21 @@ class TestGridFileCustomType(IntegrationTest):
         self.assertEqual(1000, two.chunk_size)
         self.assertTrue(isinstance(two.upload_date, datetime.datetime))
         self.assertEqual(["foo"], two.aliases)
-        self.assertEqual({"foo": 'red', "bar": 'blue'}, two.metadata)
+        self.assertEqual({"foo": "red", "bar": "blue"}, two.metadata)
         self.assertEqual(3, two.bar)
         self.assertEqual(None, two.md5)
 
-        for attr in ["_id", "name", "content_type", "length", "chunk_size",
-                     "upload_date", "aliases", "metadata", "md5"]:
+        for attr in [
+            "_id",
+            "name",
+            "content_type",
+            "length",
+            "chunk_size",
+            "upload_date",
+            "aliases",
+            "metadata",
+            "md5",
+        ]:
             self.assertRaises(AttributeError, setattr, two, attr, 5)
 
 
@@ -705,11 +784,10 @@ class ChangeStreamsWCustomTypesTestMixin(object):
         return self.watched_target.watch(*args, **kwargs)
 
     @no_type_check
-    def insert_and_check(self, change_stream, insert_doc,
-                         expected_doc):
+    def insert_and_check(self, change_stream, insert_doc, expected_doc):
         self.input_target.insert_one(insert_doc)
         change = next(change_stream)
-        self.assertEqual(change['fullDocument'], expected_doc)
+        self.assertEqual(change["fullDocument"], expected_doc)
 
     @no_type_check
     def kill_change_stream_cursor(self, change_stream):
@@ -721,18 +799,21 @@ class ChangeStreamsWCustomTypesTestMixin(object):
 
     @no_type_check
     def test_simple(self):
-        codecopts = CodecOptions(type_registry=TypeRegistry([
-            UndecipherableIntEncoder(), UppercaseTextDecoder()]))
+        codecopts = CodecOptions(
+            type_registry=TypeRegistry([UndecipherableIntEncoder(), UppercaseTextDecoder()])
+        )
         self.create_targets(codec_options=codecopts)
 
         input_docs = [
-            {'_id': UndecipherableInt64Type(1), 'data': 'hello'},
-            {'_id': 2, 'data': 'world'},
-            {'_id': UndecipherableInt64Type(3), 'data': '!'},]
+            {"_id": UndecipherableInt64Type(1), "data": "hello"},
+            {"_id": 2, "data": "world"},
+            {"_id": UndecipherableInt64Type(3), "data": "!"},
+        ]
         expected_docs = [
-            {'_id': 1, 'data': 'HELLO'},
-            {'_id': 2, 'data': 'WORLD'},
-            {'_id': 3, 'data': '!'},]
+            {"_id": 1, "data": "HELLO"},
+            {"_id": 2, "data": "WORLD"},
+            {"_id": 3, "data": "!"},
+        ]
 
         change_stream = self.change_stream()
 
@@ -744,22 +825,22 @@ class ChangeStreamsWCustomTypesTestMixin(object):
 
     @no_type_check
     def test_custom_type_in_pipeline(self):
-        codecopts = CodecOptions(type_registry=TypeRegistry([
-            UndecipherableIntEncoder(), UppercaseTextDecoder()]))
+        codecopts = CodecOptions(
+            type_registry=TypeRegistry([UndecipherableIntEncoder(), UppercaseTextDecoder()])
+        )
         self.create_targets(codec_options=codecopts)
 
         input_docs = [
-            {'_id': UndecipherableInt64Type(1), 'data': 'hello'},
-            {'_id': 2, 'data': 'world'},
-            {'_id': UndecipherableInt64Type(3), 'data': '!'}]
-        expected_docs = [
-            {'_id': 2, 'data': 'WORLD'},
-            {'_id': 3, 'data': '!'}]
+            {"_id": UndecipherableInt64Type(1), "data": "hello"},
+            {"_id": 2, "data": "world"},
+            {"_id": UndecipherableInt64Type(3), "data": "!"},
+        ]
+        expected_docs = [{"_id": 2, "data": "WORLD"}, {"_id": 3, "data": "!"}]
 
         # UndecipherableInt64Type should be encoded with the TypeRegistry.
         change_stream = self.change_stream(
-            [{'$match': {'documentKey._id': {
-                '$gte': UndecipherableInt64Type(2)}}}])
+            [{"$match": {"documentKey._id": {"$gte": UndecipherableInt64Type(2)}}}]
+        )
 
         self.input_target.insert_one(input_docs[0])
         self.insert_and_check(change_stream, input_docs[1], expected_docs[0])
@@ -773,17 +854,17 @@ class ChangeStreamsWCustomTypesTestMixin(object):
         change_stream = self.change_stream()
         self.input_target.insert_one({"data": "test"})
         change = next(change_stream)
-        resume_token_decoder = type_obfuscating_decoder_factory(
-            type(change['_id']['_data']))
+        resume_token_decoder = type_obfuscating_decoder_factory(type(change["_id"]["_data"]))
 
         # Custom-decoding the resumeToken type breaks resume tokens.
-        codecopts = CodecOptions(type_registry=TypeRegistry([
-            resume_token_decoder(), UndecipherableIntEncoder()]))
+        codecopts = CodecOptions(
+            type_registry=TypeRegistry([resume_token_decoder(), UndecipherableIntEncoder()])
+        )
 
         # Re-create targets, change stream and proceed.
         self.create_targets(codec_options=codecopts)
 
-        docs = [{'_id': 1}, {'_id': 2}, {'_id': 3}]
+        docs = [{"_id": 1}, {"_id": 2}, {"_id": 3}]
 
         change_stream = self.change_stream()
         self.insert_and_check(change_stream, docs[0], docs[0])
@@ -795,27 +876,27 @@ class ChangeStreamsWCustomTypesTestMixin(object):
     @no_type_check
     def test_document_class(self):
         def run_test(doc_cls):
-            codecopts = CodecOptions(type_registry=TypeRegistry([
-                UppercaseTextDecoder(), UndecipherableIntEncoder()]),
-                document_class=doc_cls)
+            codecopts = CodecOptions(
+                type_registry=TypeRegistry([UppercaseTextDecoder(), UndecipherableIntEncoder()]),
+                document_class=doc_cls,
+            )
 
             self.create_targets(codec_options=codecopts)
             change_stream = self.change_stream()
 
-            doc = {'a': UndecipherableInt64Type(101), 'b': 'xyz'}
+            doc = {"a": UndecipherableInt64Type(101), "b": "xyz"}
             self.input_target.insert_one(doc)
             change = next(change_stream)
 
             self.assertIsInstance(change, doc_cls)
-            self.assertEqual(change['fullDocument']['a'], 101)
-            self.assertEqual(change['fullDocument']['b'], 'XYZ')
+            self.assertEqual(change["fullDocument"]["a"], 101)
+            self.assertEqual(change["fullDocument"]["b"], "XYZ")
 
         for doc_cls in [OrderedDict, RawBSONDocument]:
             run_test(doc_cls)
 
 
-class TestCollectionChangeStreamsWCustomTypes(
-    IntegrationTest, ChangeStreamsWCustomTypesTestMixin):
+class TestCollectionChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCustomTypesTestMixin):
     @classmethod
     @client_context.require_no_mmap
     @client_context.require_no_standalone
@@ -827,16 +908,14 @@ class TestCollectionChangeStreamsWCustomTypes(
         self.input_target.drop()
 
     def create_targets(self, *args, **kwargs):
-        self.watched_target = self.db.get_collection(
-            'test', *args, **kwargs)
+        self.watched_target = self.db.get_collection("test", *args, **kwargs)
         self.input_target = self.watched_target
         # Ensure the collection exists and is empty.
         self.input_target.insert_one({})
         self.input_target.delete_many({})
 
 
-class TestDatabaseChangeStreamsWCustomTypes(
-    IntegrationTest, ChangeStreamsWCustomTypesTestMixin):
+class TestDatabaseChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCustomTypesTestMixin):
     @classmethod
     @client_context.require_version_min(4, 0, 0)
     @client_context.require_no_mmap
@@ -850,15 +929,13 @@ class TestDatabaseChangeStreamsWCustomTypes(
         self.client.drop_database(self.watched_target)
 
     def create_targets(self, *args, **kwargs):
-        self.watched_target = self.client.get_database(
-            self.db.name, *args, **kwargs)
+        self.watched_target = self.client.get_database(self.db.name, *args, **kwargs)
         self.input_target = self.watched_target.test
         # Insert a record to ensure db, coll are created.
-        self.input_target.insert_one({'data': 'dummy'})
+        self.input_target.insert_one({"data": "dummy"})
 
 
-class TestClusterChangeStreamsWCustomTypes(
-    IntegrationTest, ChangeStreamsWCustomTypesTestMixin):
+class TestClusterChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCustomTypesTestMixin):
     @classmethod
     @client_context.require_version_min(4, 0, 0)
     @client_context.require_no_mmap
@@ -872,15 +949,15 @@ class TestClusterChangeStreamsWCustomTypes(
         self.client.drop_database(self.db)
 
     def create_targets(self, *args, **kwargs):
-        codec_options = kwargs.pop('codec_options', None)
+        codec_options = kwargs.pop("codec_options", None)
         if codec_options:
-            kwargs['type_registry'] = codec_options.type_registry
-            kwargs['document_class'] = codec_options.document_class
+            kwargs["type_registry"] = codec_options.type_registry
+            kwargs["document_class"] = codec_options.document_class
         self.watched_target = rs_client(*args, **kwargs)
         self.addCleanup(self.watched_target.close)
         self.input_target = self.watched_target[self.db.name].test
         # Insert a record to ensure db, coll are created.
-        self.input_target.insert_one({'data': 'dummy'})
+        self.input_target.insert_one({"data": "dummy"})
 
 
 if __name__ == "__main__":

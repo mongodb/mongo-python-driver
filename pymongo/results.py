@@ -29,10 +29,12 @@ class _WriteResult(object):
     def _raise_if_unacknowledged(self, property_name):
         """Raise an exception on property access if unacknowledged."""
         if not self.__acknowledged:
-            raise InvalidOperation("A value for %s is not available when "
-                                   "the write is unacknowledged. Check the "
-                                   "acknowledged attribute to avoid this "
-                                   "error." % (property_name,))
+            raise InvalidOperation(
+                "A value for %s is not available when "
+                "the write is unacknowledged. Check the "
+                "acknowledged attribute to avoid this "
+                "error." % (property_name,)
+            )
 
     @property
     def acknowledged(self) -> bool:
@@ -55,8 +57,7 @@ class _WriteResult(object):
 
 
 class InsertOneResult(_WriteResult):
-    """The return type for :meth:`~pymongo.collection.Collection.insert_one`.
-    """
+    """The return type for :meth:`~pymongo.collection.Collection.insert_one`."""
 
     __slots__ = ("__inserted_id", "__acknowledged")
 
@@ -71,8 +72,7 @@ class InsertOneResult(_WriteResult):
 
 
 class InsertManyResult(_WriteResult):
-    """The return type for :meth:`~pymongo.collection.Collection.insert_many`.
-    """
+    """The return type for :meth:`~pymongo.collection.Collection.insert_many`."""
 
     __slots__ = ("__inserted_ids", "__acknowledged")
 
@@ -119,7 +119,7 @@ class UpdateResult(_WriteResult):
 
     @property
     def modified_count(self) -> int:
-        """The number of documents modified. """
+        """The number of documents modified."""
         self._raise_if_unacknowledged("modified_count")
         return cast(int, self.__raw_result.get("nModified"))
 
@@ -211,6 +211,7 @@ class BulkWriteResult(_WriteResult):
         """A map of operation index to the _id of the upserted document."""
         self._raise_if_unacknowledged("upserted_ids")
         if self.__bulk_api_result:
-            return dict((upsert["index"], upsert["_id"])
-                        for upsert in self.bulk_api_result["upserted"])
+            return dict(
+                (upsert["index"], upsert["_id"]) for upsert in self.bulk_api_result["upserted"]
+            )
         return None

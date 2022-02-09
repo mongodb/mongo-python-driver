@@ -2448,12 +2448,12 @@ buildvariants:
 - matrix_name: "tests-mod-wsgi"
   matrix_spec:
     platform: ubuntu-18.04
-    python-version: ["3.6", "3.7", "3.8", "3.9"]
+    python-version: ["3.6", "3.7", "3.8", "3.9", "3.10"]
     mod-wsgi-version: "*"
   exclude_spec:
    # mod-wsgi 3.5 won't build against CPython 3.8+
    - platform: ubuntu-18.04
-     python-version: ["3.8", "3.9"]
+     python-version: ["3.8", "3.9", "3.10"]
      mod-wsgi-version: "3"
   display_name: "${mod-wsgi-version} ${python-version} ${platform}"
   tasks:

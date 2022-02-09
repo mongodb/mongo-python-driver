@@ -18,19 +18,19 @@ import sys
 
 sys.path[0:0] = [""]
 
+from test import IntegrationTest, client_context, unittest
+from test.utils import (
+    CMAPListener,
+    ensure_all_connected,
+    repl_set_step_down,
+    rs_or_single_client,
+)
+
 from bson import SON
 from pymongo import monitoring
 from pymongo.collection import Collection
 from pymongo.errors import NotPrimaryError
 from pymongo.write_concern import WriteConcern
-
-from test import (client_context,
-                  unittest,
-                  IntegrationTest)
-from test.utils import (CMAPListener,
-                        ensure_all_connected,
-                        repl_set_step_down,
-                        rs_or_single_client)
 
 
 class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
@@ -42,9 +42,9 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
     def setUpClass(cls):
         super(TestConnectionsSurvivePrimaryStepDown, cls).setUpClass()
         cls.listener = CMAPListener()
-        cls.client = rs_or_single_client(event_listeners=[cls.listener],
-                                         retryWrites=False,
-                                         heartbeatFrequencyMS=500)
+        cls.client = rs_or_single_client(
+            event_listeners=[cls.listener], retryWrites=False, heartbeatFrequencyMS=500
+        )
 
         # Ensure connections to all servers in replica set. This is to test
         # that the is_writable flag is properly updated for sockets that
@@ -52,10 +52,8 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
         ensure_all_connected(cls.client)
         cls.listener.reset()
 
-        cls.db = cls.client.get_database(
-            "step-down", write_concern=WriteConcern("majority"))
-        cls.coll = cls.db.get_collection(
-            "step-down", write_concern=WriteConcern("majority"))
+        cls.db = cls.client.get_database("step-down", write_concern=WriteConcern("majority"))
+        cls.coll = cls.db.get_collection("step-down", write_concern=WriteConcern("majority"))
 
     @classmethod
     def tearDownClass(cls):
@@ -73,17 +71,15 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
         self.client.admin.command(cmd)
 
     def verify_pool_cleared(self):
-        self.assertEqual(
-            self.listener.event_count(monitoring.PoolClearedEvent), 1)
+        self.assertEqual(self.listener.event_count(monitoring.PoolClearedEvent), 1)
 
     def verify_pool_not_cleared(self):
-        self.assertEqual(
-            self.listener.event_count(monitoring.PoolClearedEvent), 0)
+        self.assertEqual(self.listener.event_count(monitoring.PoolClearedEvent), 0)
 
     @client_context.require_version_min(4, 2, -1)
     def test_get_more_iteration(self):
         # Insert 5 documents with WC majority.
-        self.coll.insert_many([{'data': k} for k in range(5)])
+        self.coll.insert_many([{"data": k} for k in range(5)])
         # Start a find operation and retrieve first batch of results.
         batch_size = 2
         cursor = self.coll.find(batch_size=batch_size)
@@ -108,14 +104,14 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
 
     def run_scenario(self, error_code, retry, pool_status_checker):
         # Set fail point.
-        self.set_fail_point({"mode": {"times": 1},
-                             "data": {"failCommands": ["insert"],
-                                      "errorCode": error_code}})
+        self.set_fail_point(
+            {"mode": {"times": 1}, "data": {"failCommands": ["insert"], "errorCode": error_code}}
+        )
         self.addCleanup(self.set_fail_point, {"mode": "off"})
         # Insert record and verify failure.
         with self.assertRaises(NotPrimaryError) as exc:
             self.coll.insert_one({"test": 1})
-        self.assertEqual(exc.exception.details['code'], error_code)  # type: ignore
+        self.assertEqual(exc.exception.details["code"], error_code)  # type: ignore
         # Retry before CMAPListener assertion if retry_before=True.
         if retry:
             self.coll.insert_one({"test": 1})

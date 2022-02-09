@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
 import itertools
+import time
+import unittest
 
 from mockupdb import MockupDB, going, wait_until
-from pymongo.server_type import SERVER_TYPE
-from pymongo.errors import ConnectionFailure
-from pymongo import MongoClient
-
-import unittest
 from operations import operations
+
+from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure
+from pymongo.server_type import SERVER_TYPE
 
 
 class TestResetAndRequestCheck(unittest.TestCase):
@@ -38,18 +38,18 @@ class TestResetAndRequestCheck(unittest.TestCase):
             self.ismaster_time = time.time()
             return request.ok(ismaster=True, minWireVersion=2, maxWireVersion=6)
 
-        self.server.autoresponds('ismaster', responder)
+        self.server.autoresponds("ismaster", responder)
         self.server.run()
         self.addCleanup(self.server.stop)
 
-        kwargs = {'socketTimeoutMS': 100}
+        kwargs = {"socketTimeoutMS": 100}
         # Disable retryable reads when pymongo supports it.
-        kwargs['retryReads'] = False
+        kwargs["retryReads"] = False
         self.client = MongoClient(self.server.uri, **kwargs)  # type: ignore
-        wait_until(lambda: self.client.nodes, 'connect to standalone')
+        wait_until(lambda: self.client.nodes, "connect to standalone")
 
     def tearDown(self):
-        if hasattr(self, 'client') and self.client:
+        if hasattr(self, "client") and self.client:
             self.client.close()
 
     def _test_disconnect(self, operation):
@@ -73,11 +73,11 @@ class TestResetAndRequestCheck(unittest.TestCase):
         after = time.time()
 
         # Demand a reconnect.
-        with going(self.client.db.command, 'buildinfo'):
-            self.server.receives('buildinfo').ok()
+        with going(self.client.db.command, "buildinfo"):
+            self.server.receives("buildinfo").ok()
 
         last = self.ismaster_time
-        self.assertGreaterEqual(last, after, 'called ismaster before needed')
+        self.assertGreaterEqual(last, after, "called ismaster before needed")
 
     def _test_timeout(self, operation):
         # Application operation times out. Test that client does *not* reset
@@ -99,7 +99,7 @@ class TestResetAndRequestCheck(unittest.TestCase):
         self.assertEqual(SERVER_TYPE.Standalone, server.description.server_type)
 
         after = self.ismaster_time
-        self.assertEqual(after, before, 'unneeded ismaster call')
+        self.assertEqual(after, before, "unneeded ismaster call")
 
     def _test_not_master(self, operation):
         # Application operation gets a "not master" error.
@@ -121,7 +121,7 @@ class TestResetAndRequestCheck(unittest.TestCase):
         self.assertEqual(SERVER_TYPE.Standalone, server.description.server_type)
 
         after = self.ismaster_time
-        self.assertGreater(after, before, 'ismaster not called')
+        self.assertGreater(after, before, "ismaster not called")
 
 
 def create_reset_test(operation, test_method):
@@ -133,9 +133,9 @@ def create_reset_test(operation, test_method):
 
 def generate_reset_tests():
     test_methods = [
-        (TestResetAndRequestCheck._test_disconnect, 'test_disconnect'),
-        (TestResetAndRequestCheck._test_timeout, 'test_timeout'),
-        (TestResetAndRequestCheck._test_not_master, 'test_not_master'),
+        (TestResetAndRequestCheck._test_disconnect, "test_disconnect"),
+        (TestResetAndRequestCheck._test_timeout, "test_timeout"),
+        (TestResetAndRequestCheck._test_not_master, "test_not_master"),
     ]
 
     matrix = itertools.product(operations, test_methods)
@@ -143,12 +143,12 @@ def generate_reset_tests():
     for entry in matrix:
         operation, (test_method, name) = entry
         test = create_reset_test(operation, test_method)
-        test_name = '%s_%s' % (name, operation.name.replace(' ', '_'))
+        test_name = "%s_%s" % (name, operation.name.replace(" ", "_"))
         test.__name__ = test_name
         setattr(TestResetAndRequestCheck, test_name, test)
 
 
 generate_reset_tests()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

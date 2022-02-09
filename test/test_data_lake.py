@@ -19,33 +19,37 @@ import sys
 
 sys.path[0:0] = [""]
 
-from pymongo.auth import MECHANISMS
-from test import client_context, unittest, IntegrationTest
+from test import IntegrationTest, client_context, unittest
 from test.crud_v2_format import TestCrudV2
 from test.utils import (
-    rs_client_noauth, rs_or_single_client, OvertCommandListener, TestCreator)
+    OvertCommandListener,
+    TestCreator,
+    rs_client_noauth,
+    rs_or_single_client,
+)
 
+from pymongo.auth import MECHANISMS
 
 # Location of JSON test specifications.
-_TEST_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), "data_lake")
+_TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data_lake")
 
 
 class TestDataLakeMustConnect(IntegrationTest):
     def test_connected_to_data_lake(self):
-        data_lake = os.environ.get('DATA_LAKE')
+        data_lake = os.environ.get("DATA_LAKE")
         if not data_lake:
-            self.skipTest('DATA_LAKE is not set')
+            self.skipTest("DATA_LAKE is not set")
 
-        self.assertTrue(client_context.is_data_lake,
-                        'client context.is_data_lake must be True when '
-                        'DATA_LAKE is set')
+        self.assertTrue(
+            client_context.is_data_lake,
+            "client context.is_data_lake must be True when " "DATA_LAKE is set",
+        )
 
 
 class TestDataLakeProse(IntegrationTest):
     # Default test database and collection names.
-    TEST_DB = 'test'
-    TEST_COLLECTION = 'driverdata'
+    TEST_DB = "test"
+    TEST_COLLECTION = "driverdata"
 
     @classmethod
     @client_context.require_data_lake
@@ -56,8 +60,7 @@ class TestDataLakeProse(IntegrationTest):
     def test_1(self):
         listener = OvertCommandListener()
         client = rs_or_single_client(event_listeners=[listener])
-        cursor = client[self.TEST_DB][self.TEST_COLLECTION].find(
-            {}, batch_size=2)
+        cursor = client[self.TEST_DB][self.TEST_COLLECTION].find({}, batch_size=2)
         next(cursor)
 
         # find command assertions
@@ -69,13 +72,12 @@ class TestDataLakeProse(IntegrationTest):
         # killCursors command assertions
         cursor.close()
         started = listener.results["started"][-1]
-        self.assertEqual(started.command_name, 'killCursors')
+        self.assertEqual(started.command_name, "killCursors")
         succeeded = listener.results["succeeded"][-1]
-        self.assertEqual(succeeded.command_name, 'killCursors')
+        self.assertEqual(succeeded.command_name, "killCursors")
 
         self.assertIn(cursor_id, started.command["cursors"])
-        target_ns = ".".join([started.command['$db'],
-                              started.command['killCursors']])
+        target_ns = ".".join([started.command["$db"], started.command["killCursors"]])
         self.assertEqual(cursor_ns, target_ns)
 
         self.assertIn(cursor_id, succeeded.reply["cursorsKilled"])
@@ -83,19 +85,19 @@ class TestDataLakeProse(IntegrationTest):
     # Test no auth
     def test_2(self):
         client = rs_client_noauth()
-        client.admin.command('ping')
+        client.admin.command("ping")
 
     # Test with auth
     def test_3(self):
-        for mechanism in ['SCRAM-SHA-1', 'SCRAM-SHA-256']:
+        for mechanism in ["SCRAM-SHA-1", "SCRAM-SHA-256"]:
             client = rs_or_single_client(authMechanism=mechanism)
             client[self.TEST_DB][self.TEST_COLLECTION].find_one()
 
 
 class DataLakeTestSpec(TestCrudV2):
     # Default test database and collection names.
-    TEST_DB = 'test'
-    TEST_COLLECTION = 'driverdata'
+    TEST_DB = "test"
+    TEST_COLLECTION = "driverdata"
 
     @classmethod
     @client_context.require_data_lake

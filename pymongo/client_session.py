@@ -135,17 +135,30 @@ import collections
 import time
 import uuid
 from collections.abc import Mapping as _Mapping
-from typing import (TYPE_CHECKING, Any, Callable, ContextManager, Generic,
-                    Mapping, Optional, TypeVar)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ContextManager,
+    Generic,
+    Mapping,
+    Optional,
+    TypeVar,
+)
 
 from bson.binary import Binary
 from bson.int64 import Int64
 from bson.son import SON
 from bson.timestamp import Timestamp
 from pymongo.cursor import _SocketManager
-from pymongo.errors import (ConfigurationError, ConnectionFailure,
-                            InvalidOperation, OperationFailure, PyMongoError,
-                            WTimeoutError)
+from pymongo.errors import (
+    ConfigurationError,
+    ConnectionFailure,
+    InvalidOperation,
+    OperationFailure,
+    PyMongoError,
+    WTimeoutError,
+)
 from pymongo.helpers import _RETRYABLE_ERROR_CODES
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
@@ -170,6 +183,7 @@ class SessionOptions(object):
     .. versionchanged:: 3.12
        Added the ``snapshot`` parameter.
     """
+
     def __init__(
         self,
         causal_consistency: Optional[bool] = None,
@@ -178,8 +192,7 @@ class SessionOptions(object):
     ) -> None:
         if snapshot:
             if causal_consistency:
-                raise ConfigurationError('snapshot reads do not support '
-                                         'causal_consistency=True')
+                raise ConfigurationError("snapshot reads do not support " "causal_consistency=True")
             causal_consistency = False
         elif causal_consistency is None:
             causal_consistency = True
@@ -188,8 +201,9 @@ class SessionOptions(object):
             if not isinstance(default_transaction_options, TransactionOptions):
                 raise TypeError(
                     "default_transaction_options must be an instance of "
-                    "pymongo.client_session.TransactionOptions, not: %r" %
-                    (default_transaction_options,))
+                    "pymongo.client_session.TransactionOptions, not: %r"
+                    % (default_transaction_options,)
+                )
         self._default_transaction_options = default_transaction_options
         self._snapshot = snapshot
 
@@ -243,12 +257,13 @@ class TransactionOptions(object):
 
     .. versionadded:: 3.7
     """
+
     def __init__(
         self,
         read_concern: Optional[ReadConcern] = None,
         write_concern: Optional[WriteConcern] = None,
         read_preference: Optional[_ServerMode] = None,
-        max_commit_time_ms: Optional[int] = None
+        max_commit_time_ms: Optional[int] = None,
     ) -> None:
         self._read_concern = read_concern
         self._write_concern = write_concern
@@ -256,27 +271,31 @@ class TransactionOptions(object):
         self._max_commit_time_ms = max_commit_time_ms
         if read_concern is not None:
             if not isinstance(read_concern, ReadConcern):
-                raise TypeError("read_concern must be an instance of "
-                                "pymongo.read_concern.ReadConcern, not: %r" %
-                                (read_concern,))
+                raise TypeError(
+                    "read_concern must be an instance of "
+                    "pymongo.read_concern.ReadConcern, not: %r" % (read_concern,)
+                )
         if write_concern is not None:
             if not isinstance(write_concern, WriteConcern):
-                raise TypeError("write_concern must be an instance of "
-                                "pymongo.write_concern.WriteConcern, not: %r" %
-                                (write_concern,))
+                raise TypeError(
+                    "write_concern must be an instance of "
+                    "pymongo.write_concern.WriteConcern, not: %r" % (write_concern,)
+                )
             if not write_concern.acknowledged:
                 raise ConfigurationError(
                     "transactions do not support unacknowledged write concern"
-                    ": %r" % (write_concern,))
+                    ": %r" % (write_concern,)
+                )
         if read_preference is not None:
             if not isinstance(read_preference, _ServerMode):
-                raise TypeError("%r is not valid for read_preference. See "
-                                "pymongo.read_preferences for valid "
-                                "options." % (read_preference,))
+                raise TypeError(
+                    "%r is not valid for read_preference. See "
+                    "pymongo.read_preferences for valid "
+                    "options." % (read_preference,)
+                )
         if max_commit_time_ms is not None:
             if not isinstance(max_commit_time_ms, int):
-                raise TypeError(
-                    "max_commit_time_ms must be an integer or None")
+                raise TypeError("max_commit_time_ms must be an integer or None")
 
     @property
     def read_concern(self) -> Optional[ReadConcern]:
@@ -290,8 +309,7 @@ class TransactionOptions(object):
 
     @property
     def read_preference(self) -> Optional[_ServerMode]:
-        """This transaction's :class:`~pymongo.read_preferences.ReadPreference`.
-        """
+        """This transaction's :class:`~pymongo.read_preferences.ReadPreference`."""
         return self._read_preference
 
     @property
@@ -319,14 +337,15 @@ def _validate_session_write_concern(session, write_concern):
                 return None
             else:
                 raise ConfigurationError(
-                    'Explicit sessions are incompatible with '
-                    'unacknowledged write concern: %r' % (
-                        write_concern,))
+                    "Explicit sessions are incompatible with "
+                    "unacknowledged write concern: %r" % (write_concern,)
+                )
     return session
 
 
 class _TransactionContext(object):
     """Internal transaction context manager for start_transaction."""
+
     def __init__(self, session):
         self.__session = session
 
@@ -352,6 +371,7 @@ class _TxnState(object):
 
 class _Transaction(object):
     """Internal class to hold transaction information in a ClientSession."""
+
     def __init__(self, opts, client):
         self.opts = opts
         self.state = _TxnState.NONE
@@ -415,10 +435,12 @@ def _max_time_expired_error(exc):
 
 # From the transactions spec, all the retryable writes errors plus
 # WriteConcernFailed.
-_UNKNOWN_COMMIT_ERROR_CODES = _RETRYABLE_ERROR_CODES | frozenset([
-    64,    # WriteConcernFailed
-    50,    # MaxTimeMSExpired
-])
+_UNKNOWN_COMMIT_ERROR_CODES = _RETRYABLE_ERROR_CODES | frozenset(
+    [
+        64,  # WriteConcernFailed
+        50,  # MaxTimeMSExpired
+    ]
+)
 
 # From the Convenient API for Transactions spec, with_transaction must
 # halt retries after 120 seconds.
@@ -450,8 +472,13 @@ class ClientSession(Generic[_DocumentType]):
     :class:`ClientSession`, call
     :meth:`~pymongo.mongo_client.MongoClient.start_session`.
     """
+
     def __init__(
-        self, client: "MongoClient[_DocumentType]", server_session: Any, options: SessionOptions, implicit: bool
+        self,
+        client: "MongoClient[_DocumentType]",
+        server_session: Any,
+        options: SessionOptions,
+        implicit: bool,
     ) -> None:
         # A MongoClient, a _ServerSession, a SessionOptions, and a set.
         self._client: MongoClient[_DocumentType] = client
@@ -630,17 +657,17 @@ class ClientSession(Generic[_DocumentType]):
         """
         start_time = time.monotonic()
         while True:
-            self.start_transaction(
-                read_concern, write_concern, read_preference,
-                max_commit_time_ms)
+            self.start_transaction(read_concern, write_concern, read_preference, max_commit_time_ms)
             try:
                 ret = callback(self)
             except Exception as exc:
                 if self.in_transaction:
                     self.abort_transaction()
-                if (isinstance(exc, PyMongoError) and
-                        exc.has_error_label("TransientTransactionError") and
-                        _within_time_limit(start_time)):
+                if (
+                    isinstance(exc, PyMongoError)
+                    and exc.has_error_label("TransientTransactionError")
+                    and _within_time_limit(start_time)
+                ):
                     # Retry the entire transaction.
                     continue
                 raise
@@ -653,14 +680,17 @@ class ClientSession(Generic[_DocumentType]):
                 try:
                     self.commit_transaction()
                 except PyMongoError as exc:
-                    if (exc.has_error_label("UnknownTransactionCommitResult")
-                            and _within_time_limit(start_time)
-                            and not _max_time_expired_error(exc)):
+                    if (
+                        exc.has_error_label("UnknownTransactionCommitResult")
+                        and _within_time_limit(start_time)
+                        and not _max_time_expired_error(exc)
+                    ):
                         # Retry the commit.
                         continue
 
-                    if (exc.has_error_label("TransientTransactionError") and
-                            _within_time_limit(start_time)):
+                    if exc.has_error_label("TransientTransactionError") and _within_time_limit(
+                        start_time
+                    ):
                         # Retry the entire transaction.
                         break
                     raise
@@ -687,23 +717,22 @@ class ClientSession(Generic[_DocumentType]):
         self._check_ended()
 
         if self.options.snapshot:
-            raise InvalidOperation("Transactions are not supported in "
-                                   "snapshot sessions")
+            raise InvalidOperation("Transactions are not supported in " "snapshot sessions")
 
         if self.in_transaction:
             raise InvalidOperation("Transaction already in progress")
 
         read_concern = self._inherit_option("read_concern", read_concern)
         write_concern = self._inherit_option("write_concern", write_concern)
-        read_preference = self._inherit_option(
-            "read_preference", read_preference)
+        read_preference = self._inherit_option("read_preference", read_preference)
         if max_commit_time_ms is None:
             opts = self.options.default_transaction_options
             if opts:
                 max_commit_time_ms = opts.max_commit_time_ms
 
         self._transaction.opts = TransactionOptions(
-            read_concern, write_concern, read_preference, max_commit_time_ms)
+            read_concern, write_concern, read_preference, max_commit_time_ms
+        )
         self._transaction.reset()
         self._transaction.state = _TxnState.STARTING
         self._start_retryable_write()
@@ -723,8 +752,7 @@ class ClientSession(Generic[_DocumentType]):
             self._transaction.state = _TxnState.COMMITTED_EMPTY
             return
         elif state is _TxnState.ABORTED:
-            raise InvalidOperation(
-                "Cannot call commitTransaction after calling abortTransaction")
+            raise InvalidOperation("Cannot call commitTransaction after calling abortTransaction")
         elif state is _TxnState.COMMITTED:
             # We're explicitly retrying the commit, move the state back to
             # "in progress" so that in_transaction returns true.
@@ -770,8 +798,7 @@ class ClientSession(Generic[_DocumentType]):
         elif state is _TxnState.ABORTED:
             raise InvalidOperation("Cannot call abortTransaction twice")
         elif state in (_TxnState.COMMITTED, _TxnState.COMMITTED_EMPTY):
-            raise InvalidOperation(
-                "Cannot call abortTransaction after calling commitTransaction")
+            raise InvalidOperation("Cannot call abortTransaction after calling commitTransaction")
 
         try:
             self._finish_transaction_with_retry("abortTransaction")
@@ -788,8 +815,10 @@ class ClientSession(Generic[_DocumentType]):
         :Parameters:
           - `command_name`: Either "commitTransaction" or "abortTransaction".
         """
+
         def func(session, sock_info, retryable):
             return self._finish_transaction(sock_info, command_name)
+
         return self._client._retry_internal(True, func, self, None)
 
     def _finish_transaction(self, sock_info, command_name):
@@ -799,7 +828,7 @@ class ClientSession(Generic[_DocumentType]):
         cmd = SON([(command_name, 1)])
         if command_name == "commitTransaction":
             if opts.max_commit_time_ms:
-                cmd['maxTimeMS'] = opts.max_commit_time_ms
+                cmd["maxTimeMS"] = opts.max_commit_time_ms
 
             # Transaction spec says that after the initial commit attempt,
             # subsequent commitTransaction commands should be upgraded to use
@@ -811,14 +840,11 @@ class ClientSession(Generic[_DocumentType]):
                 wc = WriteConcern(**wc_doc)
 
         if self._transaction.recovery_token:
-            cmd['recoveryToken'] = self._transaction.recovery_token
+            cmd["recoveryToken"] = self._transaction.recovery_token
 
         return self._client.admin._command(
-            sock_info,
-            cmd,
-            session=self,
-            write_concern=wc,
-            parse_write_concern_error=True)
+            sock_info, cmd, session=self, write_concern=wc, parse_write_concern_error=True
+        )
 
     def _advance_cluster_time(self, cluster_time):
         """Internal cluster time helper."""
@@ -837,8 +863,7 @@ class ClientSession(Generic[_DocumentType]):
             another `ClientSession` instance.
         """
         if not isinstance(cluster_time, _Mapping):
-            raise TypeError(
-                "cluster_time must be a subclass of collections.Mapping")
+            raise TypeError("cluster_time must be a subclass of collections.Mapping")
         if not isinstance(cluster_time.get("clusterTime"), Timestamp):
             raise ValueError("Invalid cluster_time")
         self._advance_cluster_time(cluster_time)
@@ -860,22 +885,21 @@ class ClientSession(Generic[_DocumentType]):
             another `ClientSession` instance.
         """
         if not isinstance(operation_time, Timestamp):
-            raise TypeError("operation_time must be an instance "
-                            "of bson.timestamp.Timestamp")
+            raise TypeError("operation_time must be an instance " "of bson.timestamp.Timestamp")
         self._advance_operation_time(operation_time)
 
     def _process_response(self, reply):
         """Process a response to a command that was run with this session."""
-        self._advance_cluster_time(reply.get('$clusterTime'))
-        self._advance_operation_time(reply.get('operationTime'))
+        self._advance_cluster_time(reply.get("$clusterTime"))
+        self._advance_operation_time(reply.get("operationTime"))
         if self._options.snapshot and self._snapshot_time is None:
-            if 'cursor' in reply:
-                ct = reply['cursor'].get('atClusterTime')
+            if "cursor" in reply:
+                ct = reply["cursor"].get("atClusterTime")
             else:
-                ct = reply.get('atClusterTime')
+                ct = reply.get("atClusterTime")
             self._snapshot_time = ct
         if self.in_transaction and self._transaction.sharded:
-            recovery_token = reply.get('recoveryToken')
+            recovery_token = reply.get("recoveryToken")
             if recovery_token:
                 self._transaction.recovery_token = recovery_token
 
@@ -894,8 +918,7 @@ class ClientSession(Generic[_DocumentType]):
 
     @property
     def _starting_transaction(self):
-        """True if this session is starting a multi-statement transaction.
-        """
+        """True if this session is starting a multi-statement transaction."""
         return self._transaction.starting()
 
     @property
@@ -931,58 +954,56 @@ class ClientSession(Generic[_DocumentType]):
             self._update_read_concern(command, sock_info)
 
         self._server_session.last_use = time.monotonic()
-        command['lsid'] = self._server_session.session_id
+        command["lsid"] = self._server_session.session_id
 
         if is_retryable:
-            command['txnNumber'] = self._server_session.transaction_id
+            command["txnNumber"] = self._server_session.transaction_id
             return
 
         if self.in_transaction:
             if read_preference != ReadPreference.PRIMARY:
                 raise InvalidOperation(
-                    'read preference in a transaction must be primary, not: '
-                    '%r' % (read_preference,))
+                    "read preference in a transaction must be primary, not: "
+                    "%r" % (read_preference,)
+                )
 
             if self._transaction.state == _TxnState.STARTING:
                 # First command begins a new transaction.
                 self._transaction.state = _TxnState.IN_PROGRESS
-                command['startTransaction'] = True
+                command["startTransaction"] = True
 
                 if self._transaction.opts.read_concern:
                     rc = self._transaction.opts.read_concern.document
                     if rc:
-                        command['readConcern'] = rc
+                        command["readConcern"] = rc
                 self._update_read_concern(command, sock_info)
 
-            command['txnNumber'] = self._server_session.transaction_id
-            command['autocommit'] = False
+            command["txnNumber"] = self._server_session.transaction_id
+            command["autocommit"] = False
 
     def _start_retryable_write(self):
         self._check_ended()
         self._server_session.inc_transaction_id()
 
     def _update_read_concern(self, cmd, sock_info):
-        if (self.options.causal_consistency
-                and self.operation_time is not None):
-            cmd.setdefault('readConcern', {})[
-                'afterClusterTime'] = self.operation_time
+        if self.options.causal_consistency and self.operation_time is not None:
+            cmd.setdefault("readConcern", {})["afterClusterTime"] = self.operation_time
         if self.options.snapshot:
             if sock_info.max_wire_version < 13:
-                raise ConfigurationError(
-                    'Snapshot reads require MongoDB 5.0 or later')
-            rc = cmd.setdefault('readConcern', {})
-            rc['level'] = 'snapshot'
+                raise ConfigurationError("Snapshot reads require MongoDB 5.0 or later")
+            rc = cmd.setdefault("readConcern", {})
+            rc["level"] = "snapshot"
             if self._snapshot_time is not None:
-                rc['atClusterTime'] = self._snapshot_time
+                rc["atClusterTime"] = self._snapshot_time
 
     def __copy__(self):
-        raise TypeError('A ClientSession cannot be copied, create a new session instead')
+        raise TypeError("A ClientSession cannot be copied, create a new session instead")
 
 
 class _ServerSession(object):
     def __init__(self, generation):
         # Ensure id is type 4, regardless of CodecOptions.uuid_representation.
-        self.session_id = {'id': Binary(uuid.uuid4().bytes, 4)}
+        self.session_id = {"id": Binary(uuid.uuid4().bytes, 4)}
         self.last_use = time.monotonic()
         self._transaction_id = 0
         self.dirty = False
@@ -1016,6 +1037,7 @@ class _ServerSessionPool(collections.deque):
 
     This class is not thread-safe, access it while holding the Topology lock.
     """
+
     def __init__(self, *args, **kwargs):
         super(_ServerSessionPool, self).__init__(*args, **kwargs)
         self.generation = 0
@@ -1056,8 +1078,7 @@ class _ServerSessionPool(collections.deque):
     def return_server_session_no_lock(self, server_session):
         # Discard sessions from an old pool to avoid duplicate sessions in the
         # child process after a fork.
-        if (server_session.generation == self.generation and
-                not server_session.dirty):
+        if server_session.generation == self.generation and not server_session.dirty:
             self.appendleft(server_session)
 
     def _clear_stale(self, session_timeout_minutes):
