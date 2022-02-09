@@ -18,7 +18,6 @@ from typing import (
     Any,
     Dict,
     Generic,
-    Iterable,
     List,
     Mapping,
     MutableMapping,
