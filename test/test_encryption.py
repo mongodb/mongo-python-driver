@@ -17,6 +17,7 @@
 import base64
 import copy
 import os
+import re
 import traceback
 import socket
 import sys
