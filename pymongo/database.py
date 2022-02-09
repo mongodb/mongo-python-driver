@@ -659,7 +659,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `commands <https://dochub.mongodb.org/core/commands>`_.
         """
-        if comment:
+        if comment is not None:
             kwargs["comment"] = comment
         
         if read_preference is None:
@@ -741,7 +741,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             kwargs['filter'] = filter
         read_pref = ((session and session._txn_read_preference())
                      or ReadPreference.PRIMARY)
-        if comment:
+        if comment is not None:
             kwargs["comment"] = comment
         def _cmd(session, server, sock_info, read_preference):
             return self._list_collections(
@@ -782,7 +782,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.6
         """
-        if comment:
+        if comment is not None:
             kwargs["comment"] = comment
         if filter is None:
             kwargs["nameOnly"] = True
@@ -836,7 +836,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             raise TypeError("name_or_collection must be an instance of str")
 
         command = SON([("drop", name)])
-        if comment:
+        if comment is not None:
             command["comment"] = comment
 
         with self.__client._socket_for_writes(session) as sock_info:
@@ -899,7 +899,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         cmd = SON([("validate", name),
                    ("scandata", scandata),
                    ("full", full)])
-        if comment:
+        if comment is not None:
             cmd["comment"] = comment
 
         if background is not None:

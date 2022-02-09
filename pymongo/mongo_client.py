@@ -1686,7 +1686,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         cmd = SON([("listDatabases", 1)])
         cmd.update(kwargs)
-        if comment:
+        if comment is not None:
             cmd["comment"] = comment
         admin = self._database_default_options("admin")
         res = admin._retryable_read_command(cmd, session=session)

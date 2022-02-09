@@ -47,7 +47,7 @@ class _AggregationCommand(object):
         if let:
             common.validate_is_mapping("let", let)
             options["let"] = let
-        if comment:
+        if comment is not None:
             options["comment"] = comment
         self._options = options
 

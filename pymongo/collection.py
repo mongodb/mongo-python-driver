@@ -479,7 +479,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         command = SON([('insert', self.name),
                        ('ordered', ordered),
                        ('documents', [doc])])
-        if comment:
+        if comment is not None:
             command["comment"] = comment
         if not write_concern.is_server_default:
             command['writeConcern'] = write_concern.document
@@ -679,7 +679,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if not write_concern.is_server_default:
             command['writeConcern'] = write_concern.document
 
-        if comment:
+        if comment is not None:
             command["comment"] = comment
         # Update command.
         if bypass_doc_val:
@@ -1075,7 +1075,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             common.validate_is_document_type("let", let)
             command["let"] = let
 
-        if comment:
+        if comment is not None:
             command["comment"] = comment
 
         # Delete command.
@@ -1226,8 +1226,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 comment=comment),
             write_concern.acknowledged)
 
-    def find_one(self, filter: Optional[Any] = None, *args: Any, **kwargs: Any
-    ) -> Optional[_DocumentType]:
+    def find_one(self, filter: Optional[Any] = None, *args: Any, **kwargs: Any) -> Optional[_DocumentType]:
         """Get a single document from the database.
 
         All arguments to :meth:`find` are also valid arguments for
@@ -1261,8 +1260,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             return result
         return None
 
-    def find(self, *args: Any, **kwargs: Any) \
-            -> Cursor[_DocumentType]:
+    def find(self, *args: Any, **kwargs: Any) -> Cursor[_DocumentType]:
         """Query the database.
 
         The `filter` argument is a prototype document that all results
@@ -1535,16 +1533,17 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             operation to run, in milliseconds.
 
         :Parameters:
-          - `**kwargs` (optional): See list of options above.
           - `comment` (optional): A user-provided comment to attach to this
             command.
+          - `**kwargs` (optional): See list of options above.
+
 
         .. versionadded:: 3.7
         """
         if 'session' in kwargs:
             raise ConfigurationError(
                 'estimated_document_count does not support sessions')
-        if comment:
+        if comment is not None:
             kwargs["comment"] = comment
         def _cmd(session, server, sock_info, read_preference):
             if sock_info.max_wire_version >= 12:
@@ -1636,7 +1635,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             pipeline.append({'$skip': kwargs.pop('skip')})
         if 'limit' in kwargs:
             pipeline.append({'$limit': kwargs.pop('limit')})
-        if comment:
+        if comment is not None:
             kwargs["comment"] = comment
         pipeline.append({'$group': {'_id': 1, 'n': {'$sum': 1}}})
         cmd = SON([('aggregate', self.__name),
@@ -1696,7 +1695,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. _createIndexes: https://docs.mongodb.com/manual/reference/command/createIndexes/
         """
         common.validate_list('indexes', indexes)
-        if comment:
+        if comment is not None:
             kwargs["comment"] = comment
         return self.__create_indexes(indexes, session, **kwargs)
 
@@ -1846,7 +1845,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd_options = {}
         if "maxTimeMS" in kwargs:
             cmd_options["maxTimeMS"] = kwargs.pop("maxTimeMS")
-        if comment:
+        if comment is not None:
             cmd_options["comment"] = comment
         index = IndexModel(keys, **kwargs)
         return self.__create_indexes([index], session, **cmd_options)[0]
@@ -1880,7 +1879,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
            when connected to MongoDB >= 3.4.
 
         """
-        if comment:
+        if comment is not None:
             kwargs["comment"] = comment
         self.drop_index("*", session=session, **kwargs)
 
@@ -1936,7 +1935,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         cmd = SON([("dropIndexes", self.__name), ("index", name)])
         cmd.update(kwargs)
-        if comment:
+        if comment is not None:
             cmd["comment"] = comment
         with self._socket_for_writes(session) as sock_info:
             self._command(sock_info,
@@ -1981,7 +1980,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         def _cmd(session, server, sock_info, read_preference):
             cmd = SON([("listIndexes", self.__name), ("cursor", {})])
-            if comment:
+            if comment is not None:
                 cmd["comment"] = comment
 
             with self.__database.client._tmp_session(session, False) as s:
@@ -2091,7 +2090,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def _aggregate(self, aggregation_command, pipeline, cursor_class, session,
                    explicit_session, let=None, comment = None, **kwargs):
-        if comment:
+        if comment is not None:
             kwargs["comment"] = comment
         cmd = aggregation_command(
             self, cursor_class, pipeline, kwargs, explicit_session, let,
@@ -2223,7 +2222,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if self.__database.client._encrypter:
             raise InvalidOperation(
                 "aggregate_raw_batches does not support auto encryption")
-        if comment:
+        if comment is not None:
             kwargs["comment"] = comment
         with self.__database.client._tmp_session(session, close=False) as s:
             return self._aggregate(_CollectionRawAggregationCommand,
@@ -2395,7 +2394,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         new_name = "%s.%s" % (self.__database.name, new_name)
         cmd = SON([("renameCollection", self.__full_name), ("to", new_name)])
         cmd.update(kwargs)
-        if comment:
+        if comment is not None:
             cmd["comment"] = comment
         write_concern = self._write_concern_for_cmd(cmd, session)
 
@@ -2457,7 +2456,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             kwargs["query"] = filter
         collation = validate_collation_or_none(kwargs.pop('collation', None))
         cmd.update(kwargs)
-        if comment:
+        if comment is not None:
             cmd["comment"] = comment
         def _cmd(session, server, sock_info, read_preference):
             return self._command(
@@ -2622,7 +2621,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 3.0
         """
         kwargs['remove'] = True
-        if comment:
+        if comment is not None:
             kwargs["comment"] = comment
         return self.__find_and_modify(filter, projection, sort, let=let,
                                       hint=hint, session=session, **kwargs)
@@ -2719,7 +2718,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """
         common.validate_ok_for_replace(replacement)
         kwargs['update'] = replacement
-        if comment:
+        if comment is not None:
             kwargs["comment"] = comment
         return self.__find_and_modify(filter, projection,
                                       sort, upsert, return_document, let=let,
@@ -2859,7 +2858,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         common.validate_ok_for_update(update)
         common.validate_list_or_none('array_filters', array_filters)
         kwargs['update'] = update
-        if comment:
+        if comment is not None:
             kwargs["comment"] = comment
         return self.__find_and_modify(filter, projection,
                                       sort, upsert, return_document,

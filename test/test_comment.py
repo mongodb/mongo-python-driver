@@ -80,40 +80,27 @@ class TestComment(IntegrationTest):
                     if isinstance(maybe_cursor, CommandCursor):
                         maybe_cursor.close()
                     tested = False
+                    # For some reason collection.list_indexes creates two commands and the first
+                    # one doesn't contain 'comment'.
                     for i in results["started"]:
                         if cc == i.command.get("comment", ""):
+                            self.assertEqual(cc, i.command["comment"])
                             tested = True
-                    self.assertTrue(
-                        tested,
-                        msg='Using the keyword argument "comment" did '
-                        "not work for func: %s with comment "
-                        "type: %s" % (h.__name__, type(cc)),
-                    )
+                    self.assertTrue(tested)
                     if h not in [coll.aggregate_raw_batches]:
                         self.assertIn(
                             "`comment` (optional):",
                             h.__doc__,
-                            msg="Could not find 'comment' in the "
-                            "docstring of function %s" % (h.__name__),
                         )
                         if h not in already_supported:
                             self.assertIn(
                                 "Added ``comment`` parameter",
                                 h.__doc__,
-                                msg="Could not find 'comment' "
-                                "versionchanged in "
-                                "the "
-                                "docstring of function %s" % (h.__name__),
                             )
                         else:
                             self.assertNotIn(
                                 "Added ``comment`` parameter",
                                 h.__doc__,
-                                msg="Found 'comment' "
-                                "versionchanged in "
-                                "the "
-                                "docstring of function that "
-                                "should not have it %s" % (h.__name__),
                             )
 
         results.clear()
@@ -151,7 +138,6 @@ class TestComment(IntegrationTest):
         ]
         self._test_ops(helpers, already_supported, listener)
 
-    @client_context.require_auth
     @client_context.require_version_min(4, 7, -1)
     def test_collection_helpers(self):
         listener = EventListener()
