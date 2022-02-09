@@ -145,6 +145,7 @@ class _Bulk(object):
                 unicode_decode_error_handler="replace", document_class=dict
             )
         )
+        self.comment = comment
         self.ordered = ordered
         self.ops = []
         self.executed = False
@@ -159,7 +160,6 @@ class _Bulk(object):
         # Extra state so that we know where to pick up on a retry attempt.
         self.current_run = None
         self.next_run = None
-        self.comment = comment
 
     @property
     def bulk_ctx_class(self):
