@@ -14,25 +14,25 @@
 
 """Test the keyword argument 'comment' in various helpers."""
 
-import sys
 import inspect
-from typing import Any, Union
+import sys
 from collections import defaultdict
+from typing import Any, Union
 
 sys.path[0:0] = [""]
 
-from pymongo.mongo_client import MongoClient
-from pymongo.database import Database
+from test import IntegrationTest, SkipTest, client_context, unittest
+from test.utils import EventListener, rs_or_single_client
+
+from bson.dbref import DBRef
 from pymongo.collection import Collection
+from pymongo.command_cursor import CommandCursor
+from pymongo.database import Database
+from pymongo.mongo_client import MongoClient
+from pymongo.operations import IndexModel
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
-from pymongo.command_cursor import CommandCursor
-from pymongo.operations import IndexModel
-from bson.dbref import DBRef
-
-from test import client_context, SkipTest, unittest, IntegrationTest
-from test.utils import rs_or_single_client, EventListener
 
 
 class Empty(object):
