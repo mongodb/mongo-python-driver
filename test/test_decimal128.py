@@ -20,47 +20,44 @@ import json
 import os.path
 import pickle
 import sys
-
 from binascii import unhexlify
 from decimal import Decimal, DecimalException
 
 sys.path[0:0] = [""]
 
+from test import client_context, unittest
+
 from bson import BSON
 from bson.decimal128 import Decimal128, create_decimal128_context
 from bson.json_util import dumps, loads
 from bson.py3compat import b
-from test import client_context, unittest
+
 
 class TestDecimal128(unittest.TestCase):
-
     def test_round_trip(self):
         if not client_context.version.at_least(3, 3, 6):
-            raise unittest.SkipTest(
-                'Round trip test requires MongoDB >= 3.3.6')
+            raise unittest.SkipTest("Round trip test requires MongoDB >= 3.3.6")
 
         coll = client_context.client.pymongo_test.test
         coll.drop()
 
-        dec128 = Decimal128.from_bid(
-            b'\x00@cR\xbf\xc6\x01\x00\x00\x00\x00\x00\x00\x00\x1c0')
-        coll.insert_one({'dec128': dec128})
-        doc = coll.find_one({'dec128': dec128})
+        dec128 = Decimal128.from_bid(b"\x00@cR\xbf\xc6\x01\x00\x00\x00\x00\x00\x00\x00\x1c0")
+        coll.insert_one({"dec128": dec128})
+        doc = coll.find_one({"dec128": dec128})
         self.assertIsNotNone(doc)
-        self.assertEqual(doc['dec128'], dec128)
+        self.assertEqual(doc["dec128"], dec128)
 
     def test_pickle(self):
-        dec128 = Decimal128.from_bid(
-            b'\x00@cR\xbf\xc6\x01\x00\x00\x00\x00\x00\x00\x00\x1c0')
+        dec128 = Decimal128.from_bid(b"\x00@cR\xbf\xc6\x01\x00\x00\x00\x00\x00\x00\x00\x1c0")
         for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
             pkl = pickle.dumps(dec128, protocol=protocol)
             self.assertEqual(dec128, pickle.loads(pkl))
 
     def test_special(self):
-        dnan = Decimal('NaN')
-        dnnan = Decimal('-NaN')
-        dsnan = Decimal('sNaN')
-        dnsnan = Decimal('-sNaN')
+        dnan = Decimal("NaN")
+        dnnan = Decimal("-NaN")
+        dsnan = Decimal("sNaN")
+        dnsnan = Decimal("-sNaN")
         dnan128 = Decimal128(dnan)
         dnnan128 = Decimal128(dnnan)
         dsnan128 = Decimal128(dsnan)
@@ -80,5 +77,5 @@ class TestDecimal128(unittest.TestCase):
         self.assertEqual("0E-6176", str(ctx.copy().create_decimal("1E-6177")))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

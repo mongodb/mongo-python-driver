@@ -18,48 +18,49 @@ import datetime
 import warnings
 
 from bson.code import Code
-from bson.objectid import ObjectId
-from bson.py3compat import (_unicode,
-                            abc,
-                            integer_types,
-                            string_type)
-from bson.raw_bson import RawBSONDocument
 from bson.codec_options import CodecOptions
+from bson.objectid import ObjectId
+from bson.py3compat import _unicode, abc, integer_types, string_type
+from bson.raw_bson import RawBSONDocument
 from bson.son import SON
-from pymongo import (common,
-                     helpers,
-                     message)
-from pymongo.aggregation import (_CollectionAggregationCommand,
-                                 _CollectionRawAggregationCommand)
+from pymongo import common, helpers, message
+from pymongo.aggregation import (
+    _CollectionAggregationCommand,
+    _CollectionRawAggregationCommand,
+)
 from pymongo.bulk import BulkOperationBuilder, _Bulk
+from pymongo.change_stream import CollectionChangeStream
+from pymongo.collation import validate_collation_or_none
 from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
 from pymongo.common import ORDERED_TYPES
-from pymongo.collation import validate_collation_or_none
-from pymongo.change_stream import CollectionChangeStream
 from pymongo.cursor import Cursor, RawBatchCursor
-from pymongo.errors import (BulkWriteError,
-                            ConfigurationError,
-                            InvalidName,
-                            InvalidOperation,
-                            OperationFailure)
-from pymongo.helpers import (_check_write_command_response,
-                             _raise_last_error)
+from pymongo.errors import (
+    BulkWriteError,
+    ConfigurationError,
+    InvalidName,
+    InvalidOperation,
+    OperationFailure,
+)
+from pymongo.helpers import _check_write_command_response, _raise_last_error
 from pymongo.message import _UNICODE_REPLACE_CODEC_OPTIONS
 from pymongo.operations import IndexModel
 from pymongo.read_preferences import ReadPreference
-from pymongo.results import (BulkWriteResult,
-                             DeleteResult,
-                             InsertOneResult,
-                             InsertManyResult,
-                             UpdateResult)
+from pymongo.results import (
+    BulkWriteResult,
+    DeleteResult,
+    InsertManyResult,
+    InsertOneResult,
+    UpdateResult,
+)
 from pymongo.write_concern import WriteConcern
 
-_UJOIN = u"%s.%s"
-_FIND_AND_MODIFY_DOC_FIELDS = {'value': 1}
+_UJOIN = "%s.%s"
+_FIND_AND_MODIFY_DOC_FIELDS = {"value": 1}
 _HAYSTACK_MSG = (
     "geoHaystack indexes are deprecated as of MongoDB 4.4."
     " Instead, create a 2d index and use $geoNear or $geoWithin."
-    " See https://dochub.mongodb.org/core/4.4-deprecate-geoHaystack")
+    " See https://dochub.mongodb.org/core/4.4-deprecate-geoHaystack"
+)
 
 
 class ReturnDocument(object):
@@ -67,6 +68,7 @@ class ReturnDocument(object):
     :meth:`~pymongo.collection.Collection.find_one_and_replace` and
     :meth:`~pymongo.collection.Collection.find_one_and_update`.
     """
+
     BEFORE = False
     """Return the original document before it was updated/replaced, or
     ``None`` if no document matches the query.
@@ -76,12 +78,20 @@ class ReturnDocument(object):
 
 
 class Collection(common.BaseObject):
-    """A Mongo collection.
-    """
+    """A Mongo collection."""
 
-    def __init__(self, database, name, create=False, codec_options=None,
-                 read_preference=None, write_concern=None, read_concern=None,
-                 session=None, **kwargs):
+    def __init__(
+        self,
+        database,
+        name,
+        create=False,
+        codec_options=None,
+        read_preference=None,
+        write_concern=None,
+        read_concern=None,
+        session=None,
+        **kwargs
+    ):
         """Get / create a Mongo collection.
 
         Raises :class:`TypeError` if `name` is not an instance of
@@ -160,25 +170,21 @@ class Collection(common.BaseObject):
             codec_options or database.codec_options,
             read_preference or database.read_preference,
             write_concern or database.write_concern,
-            read_concern or database.read_concern)
+            read_concern or database.read_concern,
+        )
 
         if not isinstance(name, string_type):
-            raise TypeError("name must be an instance "
-                            "of %s" % (string_type.__name__,))
+            raise TypeError("name must be an instance " "of %s" % (string_type.__name__,))
 
         if not name or ".." in name:
             raise InvalidName("collection names cannot be empty")
-        if "$" in name and not (name.startswith("oplog.$main") or
-                                name.startswith("$cmd")):
-            raise InvalidName("collection names must not "
-                              "contain '$': %r" % name)
+        if "$" in name and not (name.startswith("oplog.$main") or name.startswith("$cmd")):
+            raise InvalidName("collection names must not " "contain '$': %r" % name)
         if name[0] == "." or name[-1] == ".":
-            raise InvalidName("collection names must not start "
-                              "or end with '.': %r" % name)
+            raise InvalidName("collection names must not start " "or end with '.': %r" % name)
         if "\x00" in name:
-            raise InvalidName("collection names must not contain the "
-                              "null character")
-        collation = validate_collation_or_none(kwargs.pop('collation', None))
+            raise InvalidName("collection names must not contain the " "null character")
+        collation = validate_collation_or_none(kwargs.pop("collation", None))
 
         self.__database = database
         self.__name = _unicode(name)
@@ -187,25 +193,31 @@ class Collection(common.BaseObject):
             self.__create(kwargs, collation, session)
 
         self.__write_response_codec_options = self.codec_options._replace(
-            unicode_decode_error_handler='replace',
-            document_class=dict)
+            unicode_decode_error_handler="replace", document_class=dict
+        )
 
     def _socket_for_reads(self, session):
-        return self.__database.client._socket_for_reads(
-            self._read_preference_for(session), session)
+        return self.__database.client._socket_for_reads(self._read_preference_for(session), session)
 
     def _socket_for_writes(self, session):
         return self.__database.client._socket_for_writes(session)
 
-    def _command(self, sock_info, command, secondary_ok=False,
-                 read_preference=None,
-                 codec_options=None, check=True, allowable_errors=None,
-                 read_concern=None,
-                 write_concern=None,
-                 collation=None,
-                 session=None,
-                 retryable_write=False,
-                 user_fields=None):
+    def _command(
+        self,
+        sock_info,
+        command,
+        secondary_ok=False,
+        read_preference=None,
+        codec_options=None,
+        check=True,
+        allowable_errors=None,
+        read_concern=None,
+        write_concern=None,
+        collation=None,
+        session=None,
+        retryable_write=False,
+        user_fields=None,
+    ):
         """Internal command helper.
 
         :Parameters:
@@ -250,11 +262,11 @@ class Collection(common.BaseObject):
                 session=s,
                 client=self.__database.client,
                 retryable_write=retryable_write,
-                user_fields=user_fields)
+                user_fields=user_fields,
+            )
 
     def __create(self, options, collation, session):
-        """Sends a create command with the given options.
-        """
+        """Sends a create command with the given options."""
         cmd = SON([("create", self.__name)])
         if options:
             if "size" in options:
@@ -262,9 +274,13 @@ class Collection(common.BaseObject):
             cmd.update(options)
         with self._socket_for_writes(session) as sock_info:
             self._command(
-                sock_info, cmd, read_preference=ReadPreference.PRIMARY,
+                sock_info,
+                cmd,
+                read_preference=ReadPreference.PRIMARY,
                 write_concern=self._write_concern_for(session),
-                collation=collation, session=session)
+                collation=collation,
+                session=session,
+            )
 
     def __getattr__(self, name):
         """Get a sub-collection of this collection by name.
@@ -274,30 +290,31 @@ class Collection(common.BaseObject):
         :Parameters:
           - `name`: the name of the collection to get
         """
-        if name.startswith('_'):
+        if name.startswith("_"):
             full_name = _UJOIN % (self.__name, name)
             raise AttributeError(
                 "Collection has no attribute %r. To access the %s"
-                " collection, use database['%s']." % (
-                    name, full_name, full_name))
+                " collection, use database['%s']." % (name, full_name, full_name)
+            )
         return self.__getitem__(name)
 
     def __getitem__(self, name):
-        return Collection(self.__database,
-                          _UJOIN % (self.__name, name),
-                          False,
-                          self.codec_options,
-                          self.read_preference,
-                          self.write_concern,
-                          self.read_concern)
+        return Collection(
+            self.__database,
+            _UJOIN % (self.__name, name),
+            False,
+            self.codec_options,
+            self.read_preference,
+            self.write_concern,
+            self.read_concern,
+        )
 
     def __repr__(self):
         return "Collection(%r, %r)" % (self.__database, self.__name)
 
     def __eq__(self, other):
         if isinstance(other, Collection):
-            return (self.__database == other.database and
-                    self.__name == other.name)
+            return self.__database == other.database and self.__name == other.name
         return NotImplemented
 
     def __ne__(self, other):
@@ -326,8 +343,9 @@ class Collection(common.BaseObject):
         """
         return self.__database
 
-    def with_options(self, codec_options=None, read_preference=None,
-                     write_concern=None, read_concern=None):
+    def with_options(
+        self, codec_options=None, read_preference=None, write_concern=None, read_concern=None
+    ):
         """Get a clone of this collection changing the specified settings.
 
           >>> coll1.read_preference
@@ -357,13 +375,15 @@ class Collection(common.BaseObject):
             default) the :attr:`read_concern` of this :class:`Collection`
             is used.
         """
-        return Collection(self.__database,
-                          self.__name,
-                          False,
-                          codec_options or self.codec_options,
-                          read_preference or self.read_preference,
-                          write_concern or self.write_concern,
-                          read_concern or self.read_concern)
+        return Collection(
+            self.__database,
+            self.__name,
+            False,
+            codec_options or self.codec_options,
+            read_preference or self.read_preference,
+            write_concern or self.write_concern,
+            read_concern or self.read_concern,
+        )
 
     def initialize_unordered_bulk_op(self, bypass_document_validation=False):
         """**DEPRECATED** - Initialize an unordered batch of write operations.
@@ -392,8 +412,9 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 2.7
         """
-        warnings.warn("initialize_unordered_bulk_op is deprecated",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "initialize_unordered_bulk_op is deprecated", DeprecationWarning, stacklevel=2
+        )
         return BulkOperationBuilder(self, False, bypass_document_validation)
 
     def initialize_ordered_bulk_op(self, bypass_document_validation=False):
@@ -424,12 +445,10 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 2.7
         """
-        warnings.warn("initialize_ordered_bulk_op is deprecated",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn("initialize_ordered_bulk_op is deprecated", DeprecationWarning, stacklevel=2)
         return BulkOperationBuilder(self, True, bypass_document_validation)
 
-    def bulk_write(self, requests, ordered=True,
-                   bypass_document_validation=False, session=None):
+    def bulk_write(self, requests, ordered=True, bypass_document_validation=False, session=None):
         """Send a batch of write operations to the server.
 
         Requests are passed as a list of write operation instances (
@@ -510,13 +529,13 @@ class Collection(common.BaseObject):
             return BulkWriteResult(bulk_api_result, True)
         return BulkWriteResult({}, False)
 
-    def _legacy_write(self, sock_info, name, cmd, op_id,
-                      bypass_doc_val, func, *args):
+    def _legacy_write(self, sock_info, name, cmd, op_id, bypass_doc_val, func, *args):
         """Internal legacy unacknowledged write helper."""
         # Cannot have both unacknowledged write and bypass document validation.
         if bypass_doc_val and sock_info.max_wire_version >= 4:
-            raise OperationFailure("Cannot set bypass_document_validation with"
-                                   " unacknowledged write concern")
+            raise OperationFailure(
+                "Cannot set bypass_document_validation with" " unacknowledged write concern"
+            )
         listeners = self.database.client._event_listeners
         publish = listeners.enabled_for_commands
 
@@ -527,8 +546,8 @@ class Collection(common.BaseObject):
         if publish:
             duration = datetime.datetime.now() - start
             listeners.publish_command_start(
-                cmd, self.__database.name, rqst_id, sock_info.address, op_id,
-                sock_info.service_id)
+                cmd, self.__database.name, rqst_id, sock_info.address, op_id, sock_info.service_id
+            )
             start = datetime.datetime.now()
         try:
             result = sock_info.legacy_write(rqst_id, msg, max_size, False, self.codec_options)
@@ -539,60 +558,71 @@ class Collection(common.BaseObject):
                     details = exc.details
                     # Succeed if GLE was successful and this is a write error.
                     if details.get("ok") and "n" in details:
-                        reply = message._convert_write_result(
-                            name, cmd, details)
+                        reply = message._convert_write_result(name, cmd, details)
                         listeners.publish_command_success(
-                            dur, reply, name, rqst_id, sock_info.address,
-                            op_id, sock_info.service_id)
+                            dur,
+                            reply,
+                            name,
+                            rqst_id,
+                            sock_info.address,
+                            op_id,
+                            sock_info.service_id,
+                        )
                         raise
                 else:
                     details = message._convert_exception(exc)
                 listeners.publish_command_failure(
-                    dur, details, name, rqst_id, sock_info.address, op_id,
-                    sock_info.service_id)
+                    dur, details, name, rqst_id, sock_info.address, op_id, sock_info.service_id
+                )
             raise
         if publish:
             if result is not None:
                 reply = message._convert_write_result(name, cmd, result)
             else:
                 # Comply with APM spec.
-                reply = {'ok': 1}
+                reply = {"ok": 1}
             duration = (datetime.datetime.now() - start) + duration
             listeners.publish_command_success(
-                duration, reply, name, rqst_id, sock_info.address, op_id,
-                sock_info.service_id)
+                duration, reply, name, rqst_id, sock_info.address, op_id, sock_info.service_id
+            )
         return result
 
     def _insert_one(
-            self, doc, ordered,
-            check_keys, manipulate, write_concern, op_id, bypass_doc_val,
-            session):
+        self, doc, ordered, check_keys, manipulate, write_concern, op_id, bypass_doc_val, session
+    ):
         """Internal helper for inserting a single document."""
         if manipulate:
             doc = self.__database._apply_incoming_manipulators(doc, self)
-            if not isinstance(doc, RawBSONDocument) and '_id' not in doc:
-                doc['_id'] = ObjectId()
-            doc = self.__database._apply_incoming_copying_manipulators(doc,
-                                                                       self)
+            if not isinstance(doc, RawBSONDocument) and "_id" not in doc:
+                doc["_id"] = ObjectId()
+            doc = self.__database._apply_incoming_copying_manipulators(doc, self)
         write_concern = write_concern or self.write_concern
         acknowledged = write_concern.acknowledged
-        command = SON([('insert', self.name),
-                       ('ordered', ordered),
-                       ('documents', [doc])])
+        command = SON([("insert", self.name), ("ordered", ordered), ("documents", [doc])])
         if not write_concern.is_server_default:
-            command['writeConcern'] = write_concern.document
+            command["writeConcern"] = write_concern.document
 
         def _insert_command(session, sock_info, retryable_write):
             if not sock_info.op_msg_enabled and not acknowledged:
                 # Legacy OP_INSERT.
                 return self._legacy_write(
-                    sock_info, 'insert', command, op_id,
-                    bypass_doc_val, message.insert, self.__full_name,
-                    [doc], check_keys, False, write_concern.document, False,
-                    self.__write_response_codec_options)
+                    sock_info,
+                    "insert",
+                    command,
+                    op_id,
+                    bypass_doc_val,
+                    message.insert,
+                    self.__full_name,
+                    [doc],
+                    check_keys,
+                    False,
+                    write_concern.document,
+                    False,
+                    self.__write_response_codec_options,
+                )
 
             if bypass_doc_val and sock_info.max_wire_version >= 4:
-                command['bypassDocumentValidation'] = True
+                command["bypassDocumentValidation"] = True
 
             result = sock_info.command(
                 self.__database.name,
@@ -602,28 +632,37 @@ class Collection(common.BaseObject):
                 check_keys=check_keys,
                 session=session,
                 client=self.__database.client,
-                retryable_write=retryable_write)
+                retryable_write=retryable_write,
+            )
 
             _check_write_command_response(result)
 
-        self.__database.client._retryable_write(
-            acknowledged, _insert_command, session)
+        self.__database.client._retryable_write(acknowledged, _insert_command, session)
 
         if not isinstance(doc, RawBSONDocument):
-            return doc.get('_id')
+            return doc.get("_id")
 
-    def _insert(self, docs, ordered=True, check_keys=False,
-                manipulate=False, write_concern=None, op_id=None,
-                bypass_doc_val=False, session=None):
+    def _insert(
+        self,
+        docs,
+        ordered=True,
+        check_keys=False,
+        manipulate=False,
+        write_concern=None,
+        op_id=None,
+        bypass_doc_val=False,
+        session=None,
+    ):
         """Internal insert helper."""
         if isinstance(docs, abc.Mapping):
             return self._insert_one(
-                docs, ordered, check_keys, manipulate, write_concern, op_id,
-                bypass_doc_val, session)
+                docs, ordered, check_keys, manipulate, write_concern, op_id, bypass_doc_val, session
+            )
 
         ids = []
 
         if manipulate:
+
             def gen():
                 """Generator that applies SON manipulators to each document
                 and adds _id if necessary.
@@ -634,19 +673,21 @@ class Collection(common.BaseObject):
                     # operations is required for backwards compatibility,
                     # see PYTHON-709.
                     doc = _db._apply_incoming_manipulators(doc, self)
-                    if not (isinstance(doc, RawBSONDocument) or '_id' in doc):
-                        doc['_id'] = ObjectId()
+                    if not (isinstance(doc, RawBSONDocument) or "_id" in doc):
+                        doc["_id"] = ObjectId()
 
                     doc = _db._apply_incoming_copying_manipulators(doc, self)
-                    ids.append(doc['_id'])
+                    ids.append(doc["_id"])
                     yield doc
+
         else:
+
             def gen():
                 """Generator that only tracks existing _ids."""
                 for doc in docs:
                     # Don't inflate RawBSONDocument by touching fields.
                     if not isinstance(doc, RawBSONDocument):
-                        ids.append(doc.get('_id'))
+                        ids.append(doc.get("_id"))
                     yield doc
 
         write_concern = write_concern or self._write_concern_for(session)
@@ -658,8 +699,7 @@ class Collection(common.BaseObject):
             _raise_last_error(bwe.details)
         return ids
 
-    def insert_one(self, document, bypass_document_validation=False,
-                   session=None):
+    def insert_one(self, document, bypass_document_validation=False, session=None):
         """Insert a single document.
 
           >>> db.test.count_documents({'x': 1})
@@ -702,14 +742,16 @@ class Collection(common.BaseObject):
 
         write_concern = self._write_concern_for(session)
         return InsertOneResult(
-            self._insert(document,
-                         write_concern=write_concern,
-                         bypass_doc_val=bypass_document_validation,
-                         session=session),
-            write_concern.acknowledged)
+            self._insert(
+                document,
+                write_concern=write_concern,
+                bypass_doc_val=bypass_document_validation,
+                session=session,
+            ),
+            write_concern.acknowledged,
+        )
 
-    def insert_many(self, documents, ordered=True,
-                    bypass_document_validation=False, session=None):
+    def insert_many(self, documents, ordered=True, bypass_document_validation=False, session=None):
         """Insert an iterable of documents.
 
           >>> db.test.count_documents({})
@@ -749,11 +791,14 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 3.0
         """
-        if (not isinstance(documents, abc.Iterable)
-                or isinstance(documents, abc.Mapping)
-                or not documents):
+        if (
+            not isinstance(documents, abc.Iterable)
+            or isinstance(documents, abc.Mapping)
+            or not documents
+        ):
             raise TypeError("documents must be a non-empty list")
         inserted_ids = []
+
         def gen():
             """A generator that validates documents and handles _ids."""
             for document in documents:
@@ -770,11 +815,25 @@ class Collection(common.BaseObject):
         blk.execute(write_concern, session=session)
         return InsertManyResult(inserted_ids, write_concern.acknowledged)
 
-    def _update(self, sock_info, criteria, document, upsert=False,
-                check_keys=False, multi=False, manipulate=False,
-                write_concern=None, op_id=None, ordered=True,
-                bypass_doc_val=False, collation=None, array_filters=None,
-                hint=None, session=None, retryable_write=False):
+    def _update(
+        self,
+        sock_info,
+        criteria,
+        document,
+        upsert=False,
+        check_keys=False,
+        multi=False,
+        manipulate=False,
+        write_concern=None,
+        op_id=None,
+        ordered=True,
+        bypass_doc_val=False,
+        collation=None,
+        array_filters=None,
+        hint=None,
+        session=None,
+        retryable_write=False,
+    ):
         """Internal update / replace helper."""
         common.validate_boolean("upsert", upsert)
         if manipulate:
@@ -782,56 +841,57 @@ class Collection(common.BaseObject):
         collation = validate_collation_or_none(collation)
         write_concern = write_concern or self.write_concern
         acknowledged = write_concern.acknowledged
-        update_doc = SON([('q', criteria),
-                          ('u', document),
-                          ('multi', multi),
-                          ('upsert', upsert)])
+        update_doc = SON([("q", criteria), ("u", document), ("multi", multi), ("upsert", upsert)])
         if collation is not None:
             if sock_info.max_wire_version < 5:
-                raise ConfigurationError(
-                    'Must be connected to MongoDB 3.4+ to use collations.')
+                raise ConfigurationError("Must be connected to MongoDB 3.4+ to use collations.")
             elif not acknowledged:
-                raise ConfigurationError(
-                    'Collation is unsupported for unacknowledged writes.')
+                raise ConfigurationError("Collation is unsupported for unacknowledged writes.")
             else:
-                update_doc['collation'] = collation
+                update_doc["collation"] = collation
         if array_filters is not None:
             if sock_info.max_wire_version < 6:
-                raise ConfigurationError(
-                    'Must be connected to MongoDB 3.6+ to use array_filters.')
+                raise ConfigurationError("Must be connected to MongoDB 3.6+ to use array_filters.")
             elif not acknowledged:
-                raise ConfigurationError(
-                    'arrayFilters is unsupported for unacknowledged writes.')
+                raise ConfigurationError("arrayFilters is unsupported for unacknowledged writes.")
             else:
-                update_doc['arrayFilters'] = array_filters
+                update_doc["arrayFilters"] = array_filters
         if hint is not None:
             if sock_info.max_wire_version < 5:
-                raise ConfigurationError(
-                    'Must be connected to MongoDB 3.4+ to use hint.')
+                raise ConfigurationError("Must be connected to MongoDB 3.4+ to use hint.")
             elif not acknowledged:
-                raise ConfigurationError(
-                    'hint is unsupported for unacknowledged writes.')
+                raise ConfigurationError("hint is unsupported for unacknowledged writes.")
             if not isinstance(hint, string_type):
                 hint = helpers._index_document(hint)
-            update_doc['hint'] = hint
+            update_doc["hint"] = hint
 
-        command = SON([('update', self.name),
-                       ('ordered', ordered),
-                       ('updates', [update_doc])])
+        command = SON([("update", self.name), ("ordered", ordered), ("updates", [update_doc])])
         if not write_concern.is_server_default:
-            command['writeConcern'] = write_concern.document
+            command["writeConcern"] = write_concern.document
 
         if not sock_info.op_msg_enabled and not acknowledged:
             # Legacy OP_UPDATE.
             return self._legacy_write(
-                sock_info, 'update', command, op_id,
-                bypass_doc_val, message.update, self.__full_name, upsert,
-                multi, criteria, document, False, write_concern.document,
-                check_keys, self.__write_response_codec_options)
+                sock_info,
+                "update",
+                command,
+                op_id,
+                bypass_doc_val,
+                message.update,
+                self.__full_name,
+                upsert,
+                multi,
+                criteria,
+                document,
+                False,
+                write_concern.document,
+                check_keys,
+                self.__write_response_codec_options,
+            )
 
         # Update command.
         if bypass_doc_val and sock_info.max_wire_version >= 4:
-            command['bypassDocumentValidation'] = True
+            command["bypassDocumentValidation"] = True
 
         # The command result has to be published for APM unmodified
         # so we make a shallow copy here before adding updatedExisting.
@@ -842,45 +902,76 @@ class Collection(common.BaseObject):
             codec_options=self.__write_response_codec_options,
             session=session,
             client=self.__database.client,
-            retryable_write=retryable_write).copy()
+            retryable_write=retryable_write,
+        ).copy()
         _check_write_command_response(result)
         # Add the updatedExisting field for compatibility.
-        if result.get('n') and 'upserted' not in result:
-            result['updatedExisting'] = True
+        if result.get("n") and "upserted" not in result:
+            result["updatedExisting"] = True
         else:
-            result['updatedExisting'] = False
+            result["updatedExisting"] = False
             # MongoDB >= 2.6.0 returns the upsert _id in an array
             # element. Break it out for backward compatibility.
-            if 'upserted' in result:
-                result['upserted'] = result['upserted'][0]['_id']
+            if "upserted" in result:
+                result["upserted"] = result["upserted"][0]["_id"]
 
         if not acknowledged:
             return None
         return result
 
     def _update_retryable(
-            self, criteria, document, upsert=False,
-            check_keys=False, multi=False, manipulate=False,
-            write_concern=None, op_id=None, ordered=True,
-            bypass_doc_val=False, collation=None, array_filters=None,
-            hint=None, session=None):
+        self,
+        criteria,
+        document,
+        upsert=False,
+        check_keys=False,
+        multi=False,
+        manipulate=False,
+        write_concern=None,
+        op_id=None,
+        ordered=True,
+        bypass_doc_val=False,
+        collation=None,
+        array_filters=None,
+        hint=None,
+        session=None,
+    ):
         """Internal update / replace helper."""
+
         def _update(session, sock_info, retryable_write):
             return self._update(
-                sock_info, criteria, document, upsert=upsert,
-                check_keys=check_keys, multi=multi, manipulate=manipulate,
-                write_concern=write_concern, op_id=op_id, ordered=ordered,
-                bypass_doc_val=bypass_doc_val, collation=collation,
-                array_filters=array_filters, hint=hint, session=session,
-                retryable_write=retryable_write)
+                sock_info,
+                criteria,
+                document,
+                upsert=upsert,
+                check_keys=check_keys,
+                multi=multi,
+                manipulate=manipulate,
+                write_concern=write_concern,
+                op_id=op_id,
+                ordered=ordered,
+                bypass_doc_val=bypass_doc_val,
+                collation=collation,
+                array_filters=array_filters,
+                hint=hint,
+                session=session,
+                retryable_write=retryable_write,
+            )
 
         return self.__database.client._retryable_write(
-            (write_concern or self.write_concern).acknowledged and not multi,
-            _update, session)
+            (write_concern or self.write_concern).acknowledged and not multi, _update, session
+        )
 
-    def replace_one(self, filter, replacement, upsert=False,
-                    bypass_document_validation=False, collation=None,
-                    hint=None, session=None):
+    def replace_one(
+        self,
+        filter,
+        replacement,
+        upsert=False,
+        bypass_document_validation=False,
+        collation=None,
+        hint=None,
+        session=None,
+    ):
         """Replace a single document matching the filter.
 
           >>> for doc in db.test.find({}):
@@ -950,16 +1041,29 @@ class Collection(common.BaseObject):
         write_concern = self._write_concern_for(session)
         return UpdateResult(
             self._update_retryable(
-                filter, replacement, upsert,
+                filter,
+                replacement,
+                upsert,
                 write_concern=write_concern,
                 bypass_doc_val=bypass_document_validation,
-                collation=collation, hint=hint, session=session),
-            write_concern.acknowledged)
+                collation=collation,
+                hint=hint,
+                session=session,
+            ),
+            write_concern.acknowledged,
+        )
 
-    def update_one(self, filter, update, upsert=False,
-                   bypass_document_validation=False,
-                   collation=None, array_filters=None, hint=None,
-                   session=None):
+    def update_one(
+        self,
+        filter,
+        update,
+        upsert=False,
+        bypass_document_validation=False,
+        collation=None,
+        array_filters=None,
+        hint=None,
+        session=None,
+    ):
         """Update a single document matching the filter.
 
           >>> for doc in db.test.find():
@@ -1021,21 +1125,36 @@ class Collection(common.BaseObject):
         """
         common.validate_is_mapping("filter", filter)
         common.validate_ok_for_update(update)
-        common.validate_list_or_none('array_filters', array_filters)
+        common.validate_list_or_none("array_filters", array_filters)
 
         write_concern = self._write_concern_for(session)
         return UpdateResult(
             self._update_retryable(
-                filter, update, upsert, check_keys=False,
+                filter,
+                update,
+                upsert,
+                check_keys=False,
                 write_concern=write_concern,
                 bypass_doc_val=bypass_document_validation,
-                collation=collation, array_filters=array_filters,
-                hint=hint, session=session),
-            write_concern.acknowledged)
+                collation=collation,
+                array_filters=array_filters,
+                hint=hint,
+                session=session,
+            ),
+            write_concern.acknowledged,
+        )
 
-    def update_many(self, filter, update, upsert=False, array_filters=None,
-                    bypass_document_validation=False, collation=None,
-                    hint=None, session=None):
+    def update_many(
+        self,
+        filter,
+        update,
+        upsert=False,
+        array_filters=None,
+        bypass_document_validation=False,
+        collation=None,
+        hint=None,
+        session=None,
+    ):
         """Update one or more documents that match the filter.
 
           >>> for doc in db.test.find():
@@ -1097,17 +1216,25 @@ class Collection(common.BaseObject):
         """
         common.validate_is_mapping("filter", filter)
         common.validate_ok_for_update(update)
-        common.validate_list_or_none('array_filters', array_filters)
+        common.validate_list_or_none("array_filters", array_filters)
 
         write_concern = self._write_concern_for(session)
         return UpdateResult(
             self._update_retryable(
-                filter, update, upsert, check_keys=False, multi=True,
+                filter,
+                update,
+                upsert,
+                check_keys=False,
+                multi=True,
                 write_concern=write_concern,
                 bypass_doc_val=bypass_document_validation,
-                collation=collation, array_filters=array_filters,
-                hint=hint, session=session),
-            write_concern.acknowledged)
+                collation=collation,
+                array_filters=array_filters,
+                hint=hint,
+                session=session,
+            ),
+            write_concern.acknowledged,
+        )
 
     def drop(self, session=None):
         """Alias for :meth:`~pymongo.database.Database.drop_collection`.
@@ -1132,53 +1259,64 @@ class Collection(common.BaseObject):
             self.codec_options,
             self.read_preference,
             self.write_concern,
-            self.read_concern)
+            self.read_concern,
+        )
         dbo.drop_collection(self.__name, session=session)
 
     def _delete(
-            self, sock_info, criteria, multi,
-            write_concern=None, op_id=None, ordered=True,
-            collation=None, hint=None, session=None, retryable_write=False):
+        self,
+        sock_info,
+        criteria,
+        multi,
+        write_concern=None,
+        op_id=None,
+        ordered=True,
+        collation=None,
+        hint=None,
+        session=None,
+        retryable_write=False,
+    ):
         """Internal delete helper."""
         common.validate_is_mapping("filter", criteria)
         write_concern = write_concern or self.write_concern
         acknowledged = write_concern.acknowledged
-        delete_doc = SON([('q', criteria),
-                          ('limit', int(not multi))])
+        delete_doc = SON([("q", criteria), ("limit", int(not multi))])
         collation = validate_collation_or_none(collation)
         if collation is not None:
             if sock_info.max_wire_version < 5:
-                raise ConfigurationError(
-                    'Must be connected to MongoDB 3.4+ to use collations.')
+                raise ConfigurationError("Must be connected to MongoDB 3.4+ to use collations.")
             elif not acknowledged:
-                raise ConfigurationError(
-                    'Collation is unsupported for unacknowledged writes.')
+                raise ConfigurationError("Collation is unsupported for unacknowledged writes.")
             else:
-                delete_doc['collation'] = collation
+                delete_doc["collation"] = collation
         if hint is not None:
             if sock_info.max_wire_version < 5:
-                raise ConfigurationError(
-                    'Must be connected to MongoDB 3.4+ to use hint.')
+                raise ConfigurationError("Must be connected to MongoDB 3.4+ to use hint.")
             elif not acknowledged:
-                raise ConfigurationError(
-                    'hint is unsupported for unacknowledged writes.')
+                raise ConfigurationError("hint is unsupported for unacknowledged writes.")
             if not isinstance(hint, string_type):
                 hint = helpers._index_document(hint)
-            delete_doc['hint'] = hint
-        command = SON([('delete', self.name),
-                       ('ordered', ordered),
-                       ('deletes', [delete_doc])])
+            delete_doc["hint"] = hint
+        command = SON([("delete", self.name), ("ordered", ordered), ("deletes", [delete_doc])])
         if not write_concern.is_server_default:
-            command['writeConcern'] = write_concern.document
+            command["writeConcern"] = write_concern.document
 
         if not sock_info.op_msg_enabled and not acknowledged:
             # Legacy OP_DELETE.
             return self._legacy_write(
-                sock_info, 'delete', command, op_id,
-                False, message.delete, self.__full_name, criteria,
-                False, write_concern.document,
+                sock_info,
+                "delete",
+                command,
+                op_id,
+                False,
+                message.delete,
+                self.__full_name,
+                criteria,
+                False,
+                write_concern.document,
                 self.__write_response_codec_options,
-                int(not multi))
+                int(not multi),
+            )
         # Delete command.
         result = sock_info.command(
             self.__database.name,
@@ -1187,25 +1325,41 @@ class Collection(common.BaseObject):
             codec_options=self.__write_response_codec_options,
             session=session,
             client=self.__database.client,
-            retryable_write=retryable_write)
+            retryable_write=retryable_write,
+        )
         _check_write_command_response(result)
         return result
 
     def _delete_retryable(
-            self, criteria, multi,
-            write_concern=None, op_id=None, ordered=True,
-            collation=None, hint=None, session=None):
+        self,
+        criteria,
+        multi,
+        write_concern=None,
+        op_id=None,
+        ordered=True,
+        collation=None,
+        hint=None,
+        session=None,
+    ):
         """Internal delete helper."""
+
         def _delete(session, sock_info, retryable_write):
             return self._delete(
-                sock_info, criteria, multi,
-                write_concern=write_concern, op_id=op_id, ordered=ordered,
-                collation=collation, hint=hint, session=session,
-                retryable_write=retryable_write)
+                sock_info,
+                criteria,
+                multi,
+                write_concern=write_concern,
+                op_id=op_id,
+                ordered=ordered,
+                collation=collation,
+                hint=hint,
+                session=session,
+                retryable_write=retryable_write,
+            )
 
         return self.__database.client._retryable_write(
-            (write_concern or self.write_concern).acknowledged and not multi,
-            _delete, session)
+            (write_concern or self.write_concern).acknowledged and not multi, _delete, session
+        )
 
     def delete_one(self, filter, collation=None, hint=None, session=None):
         """Delete a single document matching the filter.
@@ -1246,10 +1400,15 @@ class Collection(common.BaseObject):
         write_concern = self._write_concern_for(session)
         return DeleteResult(
             self._delete_retryable(
-                filter, False,
+                filter,
+                False,
                 write_concern=write_concern,
-                collation=collation, hint=hint, session=session),
-            write_concern.acknowledged)
+                collation=collation,
+                hint=hint,
+                session=session,
+            ),
+            write_concern.acknowledged,
+        )
 
     def delete_many(self, filter, collation=None, hint=None, session=None):
         """Delete one or more documents matching the filter.
@@ -1290,10 +1449,15 @@ class Collection(common.BaseObject):
         write_concern = self._write_concern_for(session)
         return DeleteResult(
             self._delete_retryable(
-                filter, True,
+                filter,
+                True,
                 write_concern=write_concern,
-                collation=collation, hint=hint, session=session),
-            write_concern.acknowledged)
+                collation=collation,
+                hint=hint,
+                session=session,
+            ),
+            write_concern.acknowledged,
+        )
 
     def find_one(self, filter=None, *args, **kwargs):
         """Get a single document from the database.
@@ -1320,8 +1484,7 @@ class Collection(common.BaseObject):
 
               >>> collection.find_one(max_time_ms=100)
         """
-        if (filter is not None and not
-                isinstance(filter, abc.Mapping)):
+        if filter is not None and not isinstance(filter, abc.Mapping):
             filter = {"_id": filter}
 
         cursor = self.find(filter, *args, **kwargs)
@@ -1560,8 +1723,7 @@ class Collection(common.BaseObject):
         """
         # OP_MSG is required to support encryption.
         if self.__database.client._encrypter:
-            raise InvalidOperation(
-                "find_raw_batches does not support auto encryption")
+            raise InvalidOperation("find_raw_batches does not support auto encryption")
 
         return RawBatchCursor(self, *args, **kwargs)
 
@@ -1623,11 +1785,13 @@ class Collection(common.BaseObject):
            Removed support for arbitrary keyword arguments, since
            the parallelCollectionScan command has no optional arguments.
         """
-        warnings.warn("parallel_scan is deprecated. MongoDB 4.2 will remove "
-                      "the parallelCollectionScan command.",
-                      DeprecationWarning, stacklevel=2)
-        cmd = SON([('parallelCollectionScan', self.__name),
-                   ('numCursors', num_cursors)])
+        warnings.warn(
+            "parallel_scan is deprecated. MongoDB 4.2 will remove "
+            "the parallelCollectionScan command.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        cmd = SON([("parallelCollectionScan", self.__name), ("numCursors", num_cursors)])
         cmd.update(kwargs)
 
         with self._socket_for_reads(session) as (sock_info, secondary_ok):
@@ -1642,13 +1806,20 @@ class Collection(common.BaseObject):
                 read_concern=self.read_concern,
                 parse_write_concern_error=True,
                 session=session,
-                client=self.__database.client)
+                client=self.__database.client,
+            )
 
         cursors = []
-        for cursor in result['cursors']:
-            cursors.append(CommandCursor(
-                self, cursor['cursor'], sock_info.address,
-                session=session, explicit_session=session is not None))
+        for cursor in result["cursors"]:
+            cursors.append(
+                CommandCursor(
+                    self,
+                    cursor["cursor"],
+                    sock_info.address,
+                    session=session,
+                    explicit_session=session is not None,
+                )
+            )
 
         return cursors
 
@@ -1664,7 +1835,8 @@ class Collection(common.BaseObject):
             codec_options=self.__write_response_codec_options,
             read_concern=self.read_concern,
             collation=collation,
-            session=session)
+            session=session,
+        )
         if res.get("errmsg", "") == "ns missing":
             return 0
         return int(res["n"])
@@ -1674,14 +1846,13 @@ class Collection(common.BaseObject):
         # XXX: "ns missing" checks can be removed when we drop support for
         # MongoDB 3.0, see SERVER-17051.
         def _cmd(session, server, sock_info, secondary_ok):
-            return self._count_cmd(
-                session, sock_info, secondary_ok, cmd, collation)
+            return self._count_cmd(session, sock_info, secondary_ok, cmd, collation)
 
         return self.__database.client._retryable_read(
-            _cmd, self._read_preference_for(session), session)
+            _cmd, self._read_preference_for(session), session
+        )
 
-    def _aggregate_one_result(
-            self, sock_info, secondary_ok, cmd, collation, session):
+    def _aggregate_one_result(self, sock_info, secondary_ok, cmd, collation, session):
         """Internal helper to run an aggregate that returns a single result."""
         result = self._command(
             sock_info,
@@ -1691,11 +1862,12 @@ class Collection(common.BaseObject):
             codec_options=self.__write_response_codec_options,
             read_concern=self.read_concern,
             collation=collation,
-            session=session)
+            session=session,
+        )
         # cursor will not be present for NamespaceNotFound errors.
-        if 'cursor' not in result:
+        if "cursor" not in result:
             return None
-        batch = result['cursor']['firstBatch']
+        batch = result["cursor"]["firstBatch"]
         return batch[0] if batch else None
 
     def estimated_document_count(self, **kwargs):
@@ -1716,34 +1888,31 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 3.7
         """
-        if 'session' in kwargs:
-            raise ConfigurationError(
-                'estimated_document_count does not support sessions')
+        if "session" in kwargs:
+            raise ConfigurationError("estimated_document_count does not support sessions")
 
         def _cmd(session, server, sock_info, secondary_ok):
             if sock_info.max_wire_version >= 12:
                 # MongoDB 4.9+
                 pipeline = [
-                    {'$collStats': {'count': {}}},
-                    {'$group': {'_id': 1, 'n': {'$sum': '$count'}}},
+                    {"$collStats": {"count": {}}},
+                    {"$group": {"_id": 1, "n": {"$sum": "$count"}}},
                 ]
-                cmd = SON([('aggregate', self.__name),
-                           ('pipeline', pipeline),
-                           ('cursor', {})])
+                cmd = SON([("aggregate", self.__name), ("pipeline", pipeline), ("cursor", {})])
                 cmd.update(kwargs)
                 result = self._aggregate_one_result(
-                    sock_info, secondary_ok, cmd, collation=None, session=session)
+                    sock_info, secondary_ok, cmd, collation=None, session=session
+                )
                 if not result:
                     return 0
-                return int(result['n'])
+                return int(result["n"])
             else:
                 # MongoDB < 4.9
-                cmd = SON([('count', self.__name)])
+                cmd = SON([("count", self.__name)])
                 cmd.update(kwargs)
                 return self._count_cmd(None, sock_info, secondary_ok, cmd, None)
 
-        return self.__database.client._retryable_read(
-            _cmd, self.read_preference, None)
+        return self.__database.client._retryable_read(_cmd, self.read_preference, None)
 
     def count_documents(self, filter, session=None, **kwargs):
         """Count the number of documents in this collection.
@@ -1803,29 +1972,27 @@ class Collection(common.BaseObject):
         .. _$center: https://docs.mongodb.com/manual/reference/operator/query/center/#op._S_center
         .. _$centerSphere: https://docs.mongodb.com/manual/reference/operator/query/centerSphere/#op._S_centerSphere
         """
-        pipeline = [{'$match': filter}]
-        if 'skip' in kwargs:
-            pipeline.append({'$skip': kwargs.pop('skip')})
-        if 'limit' in kwargs:
-            pipeline.append({'$limit': kwargs.pop('limit')})
-        pipeline.append({'$group': {'_id': 1, 'n': {'$sum': 1}}})
-        cmd = SON([('aggregate', self.__name),
-                   ('pipeline', pipeline),
-                   ('cursor', {})])
+        pipeline = [{"$match": filter}]
+        if "skip" in kwargs:
+            pipeline.append({"$skip": kwargs.pop("skip")})
+        if "limit" in kwargs:
+            pipeline.append({"$limit": kwargs.pop("limit")})
+        pipeline.append({"$group": {"_id": 1, "n": {"$sum": 1}}})
+        cmd = SON([("aggregate", self.__name), ("pipeline", pipeline), ("cursor", {})])
         if "hint" in kwargs and not isinstance(kwargs["hint"], string_type):
             kwargs["hint"] = helpers._index_document(kwargs["hint"])
-        collation = validate_collation_or_none(kwargs.pop('collation', None))
+        collation = validate_collation_or_none(kwargs.pop("collation", None))
         cmd.update(kwargs)
 
         def _cmd(session, server, sock_info, secondary_ok):
-            result = self._aggregate_one_result(
-                sock_info, secondary_ok, cmd, collation, session)
+            result = self._aggregate_one_result(sock_info, secondary_ok, cmd, collation, session)
             if not result:
                 return 0
-            return result['n']
+            return result["n"]
 
         return self.__database.client._retryable_read(
-            _cmd, self._read_preference_for(session), session)
+            _cmd, self._read_preference_for(session), session
+        )
 
     def count(self, filter=None, session=None, **kwargs):
         """**DEPRECATED** - Get the number of documents in this collection.
@@ -1889,12 +2056,15 @@ class Collection(common.BaseObject):
         .. _$center: https://docs.mongodb.com/manual/reference/operator/query/center/#op._S_center
         .. _$centerSphere: https://docs.mongodb.com/manual/reference/operator/query/centerSphere/#op._S_centerSphere
         """
-        warnings.warn("count is deprecated. Use estimated_document_count or "
-                      "count_documents instead. Please note that $where must "
-                      "be replaced by $expr, $near must be replaced by "
-                      "$geoWithin with $center, and $nearSphere must be "
-                      "replaced by $geoWithin with $centerSphere",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "count is deprecated. Use estimated_document_count or "
+            "count_documents instead. Please note that $where must "
+            "be replaced by $expr, $near must be replaced by "
+            "$geoWithin with $center, and $nearSphere must be "
+            "replaced by $geoWithin with $centerSphere",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         cmd = SON([("count", self.__name)])
         if filter is not None:
             if "query" in kwargs:
@@ -1902,7 +2072,7 @@ class Collection(common.BaseObject):
             kwargs["query"] = filter
         if "hint" in kwargs and not isinstance(kwargs["hint"], string_type):
             kwargs["hint"] = helpers._index_document(kwargs["hint"])
-        collation = validate_collation_or_none(kwargs.pop('collation', None))
+        collation = validate_collation_or_none(kwargs.pop("collation", None))
         cmd.update(kwargs)
         return self._count(cmd, collation, session)
 
@@ -1943,7 +2113,7 @@ class Collection(common.BaseObject):
 
         .. _createIndexes: https://docs.mongodb.com/manual/reference/command/createIndexes/
         """
-        common.validate_list('indexes', indexes)
+        common.validate_list("indexes", indexes)
         return self.__create_indexes(indexes, session, **kwargs)
 
     def __create_indexes(self, indexes, session, **kwargs):
@@ -1966,33 +2136,35 @@ class Collection(common.BaseObject):
                 for index in indexes:
                     if not isinstance(index, IndexModel):
                         raise TypeError(
-                            "%r is not an instance of "
-                            "pymongo.operations.IndexModel" % (index,))
+                            "%r is not an instance of " "pymongo.operations.IndexModel" % (index,)
+                        )
                     document = index.document
                     if "collation" in document and not supports_collations:
                         raise ConfigurationError(
-                            "Must be connected to MongoDB "
-                            "3.4+ to use collations.")
-                    if 'bucketSize' in document:
+                            "Must be connected to MongoDB " "3.4+ to use collations."
+                        )
+                    if "bucketSize" in document:
                         # The bucketSize option is required by geoHaystack.
-                        warnings.warn(
-                            _HAYSTACK_MSG, DeprecationWarning, stacklevel=4)
+                        warnings.warn(_HAYSTACK_MSG, DeprecationWarning, stacklevel=4)
                     names.append(document["name"])
                     yield document
 
-            cmd = SON([('createIndexes', self.name),
-                       ('indexes', list(gen_indexes()))])
+            cmd = SON([("createIndexes", self.name), ("indexes", list(gen_indexes()))])
             cmd.update(kwargs)
-            if 'commitQuorum' in kwargs and not supports_quorum:
+            if "commitQuorum" in kwargs and not supports_quorum:
                 raise ConfigurationError(
                     "Must be connected to MongoDB 4.4+ to use the "
-                    "commitQuorum option for createIndexes")
+                    "commitQuorum option for createIndexes"
+                )
 
             self._command(
-                sock_info, cmd, read_preference=ReadPreference.PRIMARY,
+                sock_info,
+                cmd,
+                read_preference=ReadPreference.PRIMARY,
                 codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
                 write_concern=self._write_concern_for(session),
-                session=session)
+                session=session,
+            )
         return names
 
     def create_index(self, keys, session=None, **kwargs):
@@ -2106,11 +2278,13 @@ class Collection(common.BaseObject):
         .. versionchanged:: 3.0
             **DEPRECATED**
         """
-        warnings.warn("ensure_index is deprecated. Use create_index instead.",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "ensure_index is deprecated. Use create_index instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         # The types supported by datetime.timedelta.
-        if not (isinstance(cache_for, integer_types) or
-                isinstance(cache_for, float)):
+        if not (isinstance(cache_for, integer_types) or isinstance(cache_for, float)):
             raise TypeError("cache_for must be an integer or float.")
 
         if "drop_dups" in kwargs:
@@ -2128,11 +2302,9 @@ class Collection(common.BaseObject):
         # to create the same index concurrently could send the index
         # to the server two or more times. This has no practical impact
         # other than wasted round trips.
-        if not self.__database.client._cached(self.__database.name,
-                                              self.__name, name):
+        if not self.__database.client._cached(self.__database.name, self.__name, name):
             self.__create_indexes([index], session=None)
-            self.__database.client._cache_index(self.__database.name,
-                                                self.__name, name, cache_for)
+            self.__database.client._cache_index(self.__database.name, self.__name, name, cache_for)
             return name
         return None
 
@@ -2208,17 +2380,18 @@ class Collection(common.BaseObject):
         if not isinstance(name, string_type):
             raise TypeError("index_or_name must be an index name or list")
 
-        self.__database.client._purge_index(
-            self.__database.name, self.__name, name)
+        self.__database.client._purge_index(self.__database.name, self.__name, name)
         cmd = SON([("dropIndexes", self.__name), ("index", name)])
         cmd.update(kwargs)
         with self._socket_for_writes(session) as sock_info:
-            self._command(sock_info,
-                          cmd,
-                          read_preference=ReadPreference.PRIMARY,
-                          allowable_errors=["ns not found", 26],
-                          write_concern=self._write_concern_for(session),
-                          session=session)
+            self._command(
+                sock_info,
+                cmd,
+                read_preference=ReadPreference.PRIMARY,
+                allowable_errors=["ns not found", 26],
+                write_concern=self._write_concern_for(session),
+                session=session,
+            )
 
     def reindex(self, session=None, **kwargs):
         """Rebuilds all indexes on this collection.
@@ -2258,16 +2431,19 @@ class Collection(common.BaseObject):
            Apply this collection's write concern automatically to this operation
            when connected to MongoDB >= 3.4.
         """
-        warnings.warn("The reindex method is deprecated and will be removed in "
-                      "PyMongo 4.0. Use the Database.command method to run the "
-                      "reIndex command instead.",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "The reindex method is deprecated and will be removed in "
+            "PyMongo 4.0. Use the Database.command method to run the "
+            "reIndex command instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         cmd = SON([("reIndex", self.__name)])
         cmd.update(kwargs)
         with self._socket_for_writes(session) as sock_info:
             return self._command(
-                sock_info, cmd, read_preference=ReadPreference.PRIMARY,
-                session=session)
+                sock_info, cmd, read_preference=ReadPreference.PRIMARY, session=session
+            )
 
     def list_indexes(self, session=None):
         """Get a cursor over the index documents for this collection.
@@ -2290,35 +2466,41 @@ class Collection(common.BaseObject):
         .. versionadded:: 3.0
         """
         codec_options = CodecOptions(SON)
-        coll = self.with_options(codec_options=codec_options,
-                                 read_preference=ReadPreference.PRIMARY)
-        read_pref = ((session and session._txn_read_preference())
-                     or ReadPreference.PRIMARY)
+        coll = self.with_options(
+            codec_options=codec_options, read_preference=ReadPreference.PRIMARY
+        )
+        read_pref = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
 
         def _cmd(session, server, sock_info, secondary_ok):
             cmd = SON([("listIndexes", self.__name), ("cursor", {})])
             if sock_info.max_wire_version > 2:
                 with self.__database.client._tmp_session(session, False) as s:
                     try:
-                        cursor = self._command(sock_info, cmd, secondary_ok,
-                                               read_pref,
-                                               codec_options,
-                                               session=s)["cursor"]
+                        cursor = self._command(
+                            sock_info, cmd, secondary_ok, read_pref, codec_options, session=s
+                        )["cursor"]
                     except OperationFailure as exc:
                         # Ignore NamespaceNotFound errors to match the behavior
                         # of reading from *.system.indexes.
                         if exc.code != 26:
                             raise
-                        cursor = {'id': 0, 'firstBatch': []}
+                        cursor = {"id": 0, "firstBatch": []}
                 cmd_cursor = CommandCursor(
-                    coll, cursor, sock_info.address, session=s,
-                    explicit_session=session is not None)
+                    coll, cursor, sock_info.address, session=s, explicit_session=session is not None
+                )
             else:
                 res = message._first_batch(
-                    sock_info, self.__database.name, "system.indexes",
-                    {"ns": self.__full_name}, 0, secondary_ok, codec_options,
-                    read_pref, cmd,
-                    self.database.client._event_listeners)
+                    sock_info,
+                    self.__database.name,
+                    "system.indexes",
+                    {"ns": self.__full_name},
+                    0,
+                    secondary_ok,
+                    codec_options,
+                    read_pref,
+                    cmd,
+                    self.database.client._event_listeners,
+                )
                 cursor = res["cursor"]
                 # Note that a collection can only have 64 indexes, so there
                 # will never be a getMore call.
@@ -2326,8 +2508,7 @@ class Collection(common.BaseObject):
             cmd_cursor._maybe_pin_connection(sock_info)
             return cmd_cursor
 
-        return self.__database.client._retryable_read(
-            _cmd, read_pref, session)
+        return self.__database.client._retryable_read(_cmd, read_pref, session)
 
     def index_information(self, session=None):
         """Get information on this collection's indexes.
@@ -2383,9 +2564,9 @@ class Collection(common.BaseObject):
             self.codec_options,
             self.read_preference,
             self.write_concern,
-            self.read_concern)
-        cursor = dbo.list_collections(
-            session=session, filter={"name": self.__name})
+            self.read_concern,
+        )
+        cursor = dbo.list_collections(session=session, filter={"name": self.__name})
 
         result = None
         for doc in cursor:
@@ -2401,24 +2582,34 @@ class Collection(common.BaseObject):
 
         return options
 
-    def _aggregate(self, aggregation_command, pipeline, cursor_class, session,
-                   explicit_session, **kwargs):
+    def _aggregate(
+        self, aggregation_command, pipeline, cursor_class, session, explicit_session, **kwargs
+    ):
         # Remove things that are not command options.
         use_cursor = True
         if "useCursor" in kwargs:
             warnings.warn(
-                "The useCursor option is deprecated "
-                "and will be removed in PyMongo 4.0",
-                DeprecationWarning, stacklevel=2)
-            use_cursor = common.validate_boolean(
-                "useCursor", kwargs.pop("useCursor", True))
+                "The useCursor option is deprecated " "and will be removed in PyMongo 4.0",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            use_cursor = common.validate_boolean("useCursor", kwargs.pop("useCursor", True))
 
         cmd = aggregation_command(
-            self, cursor_class, pipeline, kwargs, explicit_session,
-            user_fields={'cursor': {'firstBatch': 1}}, use_cursor=use_cursor)
+            self,
+            cursor_class,
+            pipeline,
+            kwargs,
+            explicit_session,
+            user_fields={"cursor": {"firstBatch": 1}},
+            use_cursor=use_cursor,
+        )
         return self.__database.client._retryable_read(
-            cmd.get_cursor, cmd.get_read_preference(session), session,
-            retryable=not cmd._performs_write)
+            cmd.get_cursor,
+            cmd.get_read_preference(session),
+            session,
+            retryable=not cmd._performs_write,
+        )
 
     def aggregate(self, pipeline, session=None, **kwargs):
         """Perform an aggregation using the aggregation framework on this
@@ -2499,12 +2690,14 @@ class Collection(common.BaseObject):
             https://docs.mongodb.com/manual/reference/command/aggregate
         """
         with self.__database.client._tmp_session(session, close=False) as s:
-            return self._aggregate(_CollectionAggregationCommand,
-                                   pipeline,
-                                   CommandCursor,
-                                   session=s,
-                                   explicit_session=session is not None,
-                                   **kwargs)
+            return self._aggregate(
+                _CollectionAggregationCommand,
+                pipeline,
+                CommandCursor,
+                session=s,
+                explicit_session=session is not None,
+                **kwargs
+            )
 
     def aggregate_raw_batches(self, pipeline, session=None, **kwargs):
         """Perform an aggregation and retrieve batches of raw BSON.
@@ -2532,20 +2725,30 @@ class Collection(common.BaseObject):
         """
         # OP_MSG is required to support encryption.
         if self.__database.client._encrypter:
-            raise InvalidOperation(
-                "aggregate_raw_batches does not support auto encryption")
+            raise InvalidOperation("aggregate_raw_batches does not support auto encryption")
 
         with self.__database.client._tmp_session(session, close=False) as s:
-            return self._aggregate(_CollectionRawAggregationCommand,
-                                   pipeline,
-                                   RawBatchCommandCursor,
-                                   session=s,
-                                   explicit_session=session is not None,
-                                   **kwargs)
+            return self._aggregate(
+                _CollectionRawAggregationCommand,
+                pipeline,
+                RawBatchCommandCursor,
+                session=s,
+                explicit_session=session is not None,
+                **kwargs
+            )
 
-    def watch(self, pipeline=None, full_document=None, resume_after=None,
-              max_await_time_ms=None, batch_size=None, collation=None,
-              start_at_operation_time=None, session=None, start_after=None):
+    def watch(
+        self,
+        pipeline=None,
+        full_document=None,
+        resume_after=None,
+        max_await_time_ms=None,
+        batch_size=None,
+        collation=None,
+        start_at_operation_time=None,
+        session=None,
+        start_after=None,
+    ):
         """Watch changes on this collection.
 
         Performs an aggregation with an implicit initial ``$changeStream``
@@ -2643,9 +2846,17 @@ class Collection(common.BaseObject):
             https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.rst
         """
         return CollectionChangeStream(
-            self, pipeline, full_document, resume_after, max_await_time_ms,
-            batch_size, collation, start_at_operation_time, session,
-            start_after)
+            self,
+            pipeline,
+            full_document,
+            resume_after,
+            max_await_time_ms,
+            batch_size,
+            collation,
+            start_at_operation_time,
+            session,
+            start_after,
+        )
 
     def group(self, key, condition, initial, reduce, finalize=None, **kwargs):
         """Perform a query similar to an SQL *group by* operation.
@@ -2662,10 +2873,13 @@ class Collection(common.BaseObject):
         .. versionchanged:: 2.2
            Removed deprecated argument: command
         """
-        warnings.warn("The group method is deprecated and will be removed in "
-                      "PyMongo 4.0. Use the aggregate method with the $group "
-                      "stage or the map_reduce method instead.",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "The group method is deprecated and will be removed in "
+            "PyMongo 4.0. Use the aggregate method with the $group "
+            "stage or the map_reduce method instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         group = {}
         if isinstance(key, string_type):
             group["$keyf"] = Code(key)
@@ -2679,13 +2893,13 @@ class Collection(common.BaseObject):
             group["finalize"] = Code(finalize)
 
         cmd = SON([("group", group)])
-        collation = validate_collation_or_none(kwargs.pop('collation', None))
+        collation = validate_collation_or_none(kwargs.pop("collation", None))
         cmd.update(kwargs)
 
         with self._socket_for_reads(session=None) as (sock_info, secondary_ok):
-            return self._command(sock_info, cmd, secondary_ok,
-                                 collation=collation,
-                                 user_fields={'retval': 1})["retval"]
+            return self._command(
+                sock_info, cmd, secondary_ok, collation=collation, user_fields={"retval": 1}
+            )["retval"]
 
     def rename(self, new_name, session=None, **kwargs):
         """Rename this collection.
@@ -2717,8 +2931,7 @@ class Collection(common.BaseObject):
 
         """
         if not isinstance(new_name, string_type):
-            raise TypeError("new_name must be an "
-                            "instance of %s" % (string_type.__name__,))
+            raise TypeError("new_name must be an " "instance of %s" % (string_type.__name__,))
 
         if not new_name or ".." in new_name:
             raise InvalidName("collection names cannot be empty")
@@ -2735,10 +2948,13 @@ class Collection(common.BaseObject):
         with self._socket_for_writes(session) as sock_info:
             with self.__database.client._tmp_session(session) as s:
                 return sock_info.command(
-                    'admin', cmd,
+                    "admin",
+                    cmd,
                     write_concern=write_concern,
                     parse_write_concern_error=True,
-                    session=s, client=self.__database.client)
+                    session=s,
+                    client=self.__database.client,
+                )
 
     def distinct(self, key, filter=None, session=None, **kwargs):
         """Get a list of distinct values for `key` among all documents
@@ -2776,66 +2992,71 @@ class Collection(common.BaseObject):
 
         """
         if not isinstance(key, string_type):
-            raise TypeError("key must be an "
-                            "instance of %s" % (string_type.__name__,))
-        cmd = SON([("distinct", self.__name),
-                   ("key", key)])
+            raise TypeError("key must be an " "instance of %s" % (string_type.__name__,))
+        cmd = SON([("distinct", self.__name), ("key", key)])
         if filter is not None:
             if "query" in kwargs:
                 raise ConfigurationError("can't pass both filter and query")
             kwargs["query"] = filter
-        collation = validate_collation_or_none(kwargs.pop('collation', None))
+        collation = validate_collation_or_none(kwargs.pop("collation", None))
         cmd.update(kwargs)
+
         def _cmd(session, server, sock_info, secondary_ok):
             return self._command(
-                sock_info, cmd, secondary_ok, read_concern=self.read_concern,
-                collation=collation, session=session,
-                user_fields={"values": 1})["values"]
+                sock_info,
+                cmd,
+                secondary_ok,
+                read_concern=self.read_concern,
+                collation=collation,
+                session=session,
+                user_fields={"values": 1},
+            )["values"]
 
         return self.__database.client._retryable_read(
-            _cmd, self._read_preference_for(session), session)
+            _cmd, self._read_preference_for(session), session
+        )
 
     def _map_reduce(self, map, reduce, out, session, read_pref, **kwargs):
         """Internal mapReduce helper."""
-        cmd = SON([("mapReduce", self.__name),
-                   ("map", map),
-                   ("reduce", reduce),
-                   ("out", out)])
-        collation = validate_collation_or_none(kwargs.pop('collation', None))
+        cmd = SON([("mapReduce", self.__name), ("map", map), ("reduce", reduce), ("out", out)])
+        collation = validate_collation_or_none(kwargs.pop("collation", None))
         cmd.update(kwargs)
 
-        inline = 'inline' in out
+        inline = "inline" in out
 
         if inline:
-            user_fields = {'results': 1}
+            user_fields = {"results": 1}
         else:
             user_fields = None
 
-        read_pref = ((session and session._txn_read_preference())
-                     or read_pref)
+        read_pref = (session and session._txn_read_preference()) or read_pref
 
         with self.__database.client._socket_for_reads(read_pref, session) as (
-                sock_info, secondary_ok):
-            if (sock_info.max_wire_version >= 4 and
-                    ('readConcern' not in cmd) and
-                    inline):
+            sock_info,
+            secondary_ok,
+        ):
+            if sock_info.max_wire_version >= 4 and ("readConcern" not in cmd) and inline:
                 read_concern = self.read_concern
             else:
                 read_concern = None
-            if 'writeConcern' not in cmd and not inline:
+            if "writeConcern" not in cmd and not inline:
                 write_concern = self._write_concern_for(session)
             else:
                 write_concern = None
 
             return self._command(
-                sock_info, cmd, secondary_ok, read_pref,
+                sock_info,
+                cmd,
+                secondary_ok,
+                read_pref,
                 read_concern=read_concern,
                 write_concern=write_concern,
-                collation=collation, session=session,
-                user_fields=user_fields)
+                collation=collation,
+                session=session,
+                user_fields=user_fields,
+            )
 
-    def map_reduce(self, map, reduce, out, full_response=False, session=None,
-                   **kwargs):
+    def map_reduce(self, map, reduce, out, full_response=False, session=None, **kwargs):
         """Perform a map/reduce operation on this collection.
 
         If `full_response` is ``False`` (default) returns a
@@ -2890,23 +3111,22 @@ class Collection(common.BaseObject):
 
         """
         if not isinstance(out, (string_type, abc.Mapping)):
-            raise TypeError("'out' must be an instance of "
-                            "%s or a mapping" % (string_type.__name__,))
+            raise TypeError(
+                "'out' must be an instance of " "%s or a mapping" % (string_type.__name__,)
+            )
 
-        response = self._map_reduce(map, reduce, out, session,
-                                    ReadPreference.PRIMARY, **kwargs)
+        response = self._map_reduce(map, reduce, out, session, ReadPreference.PRIMARY, **kwargs)
 
-        if full_response or not response.get('result'):
+        if full_response or not response.get("result"):
             return response
-        elif isinstance(response['result'], dict):
-            dbase = response['result']['db']
-            coll = response['result']['collection']
+        elif isinstance(response["result"], dict):
+            dbase = response["result"]["db"]
+            coll = response["result"]["collection"]
             return self.__database.client[dbase][coll]
         else:
             return self.__database[response["result"]]
 
-    def inline_map_reduce(self, map, reduce, full_response=False, session=None,
-                          **kwargs):
+    def inline_map_reduce(self, map, reduce, full_response=False, session=None, **kwargs):
         """Perform an inline map/reduce operation on this collection.
 
         Perform the map/reduce operation on the server in RAM. A result
@@ -2938,8 +3158,7 @@ class Collection(common.BaseObject):
         .. versionchanged:: 3.4
            Added the `collation` option.
         """
-        res = self._map_reduce(map, reduce, {"inline": 1}, session,
-                               self.read_preference, **kwargs)
+        res = self._map_reduce(map, reduce, {"inline": 1}, session, self.read_preference, **kwargs)
 
         if full_response:
             return res
@@ -2947,30 +3166,36 @@ class Collection(common.BaseObject):
             return res.get("results")
 
     def _write_concern_for_cmd(self, cmd, session):
-        raw_wc = cmd.get('writeConcern')
+        raw_wc = cmd.get("writeConcern")
         if raw_wc is not None:
             return WriteConcern(**raw_wc)
         else:
             return self._write_concern_for(session)
 
-    def __find_and_modify(self, filter, projection, sort, upsert=None,
-                          return_document=ReturnDocument.BEFORE,
-                          array_filters=None, hint=None, session=None,
-                          **kwargs):
+    def __find_and_modify(
+        self,
+        filter,
+        projection,
+        sort,
+        upsert=None,
+        return_document=ReturnDocument.BEFORE,
+        array_filters=None,
+        hint=None,
+        session=None,
+        **kwargs
+    ):
         """Internal findAndModify helper."""
 
         common.validate_is_mapping("filter", filter)
         if not isinstance(return_document, bool):
-            raise ValueError("return_document must be "
-                             "ReturnDocument.BEFORE or ReturnDocument.AFTER")
-        collation = validate_collation_or_none(kwargs.pop('collation', None))
-        cmd = SON([("findAndModify", self.__name),
-                   ("query", filter),
-                   ("new", return_document)])
+            raise ValueError(
+                "return_document must be " "ReturnDocument.BEFORE or ReturnDocument.AFTER"
+            )
+        collation = validate_collation_or_none(kwargs.pop("collation", None))
+        cmd = SON([("findAndModify", self.__name), ("query", filter), ("new", return_document)])
         cmd.update(kwargs)
         if projection is not None:
-            cmd["fields"] = helpers._fields_list_to_dict(projection,
-                                                         "projection")
+            cmd["fields"] = helpers._fields_list_to_dict(projection, "projection")
         if sort is not None:
             cmd["sort"] = helpers._index_document(sort)
         if upsert is not None:
@@ -2986,40 +3211,42 @@ class Collection(common.BaseObject):
             if array_filters is not None:
                 if sock_info.max_wire_version < 6:
                     raise ConfigurationError(
-                        'Must be connected to MongoDB 3.6+ to use '
-                        'arrayFilters.')
+                        "Must be connected to MongoDB 3.6+ to use " "arrayFilters."
+                    )
                 if not write_concern.acknowledged:
                     raise ConfigurationError(
-                        'arrayFilters is unsupported for unacknowledged '
-                        'writes.')
+                        "arrayFilters is unsupported for unacknowledged " "writes."
+                    )
                 cmd["arrayFilters"] = array_filters
             if hint is not None:
                 if sock_info.max_wire_version < 8:
-                    raise ConfigurationError(
-                        'Must be connected to MongoDB 4.2+ to use hint.')
+                    raise ConfigurationError("Must be connected to MongoDB 4.2+ to use hint.")
                 if not write_concern.acknowledged:
-                    raise ConfigurationError(
-                        'hint is unsupported for unacknowledged writes.')
-                cmd['hint'] = hint
-            if (sock_info.max_wire_version >= 4 and
-                    not write_concern.is_server_default):
-                cmd['writeConcern'] = write_concern.document
-            out = self._command(sock_info, cmd,
-                                read_preference=ReadPreference.PRIMARY,
-                                write_concern=write_concern,
-                                collation=collation, session=session,
-                                retryable_write=retryable_write,
-                                user_fields=_FIND_AND_MODIFY_DOC_FIELDS)
+                    raise ConfigurationError("hint is unsupported for unacknowledged writes.")
+                cmd["hint"] = hint
+            if sock_info.max_wire_version >= 4 and not write_concern.is_server_default:
+                cmd["writeConcern"] = write_concern.document
+            out = self._command(
+                sock_info,
+                cmd,
+                read_preference=ReadPreference.PRIMARY,
+                write_concern=write_concern,
+                collation=collation,
+                session=session,
+                retryable_write=retryable_write,
+                user_fields=_FIND_AND_MODIFY_DOC_FIELDS,
+            )
             _check_write_command_response(out)
 
             return out.get("value")
 
         return self.__database.client._retryable_write(
-            write_concern.acknowledged, _find_and_modify, session)
+            write_concern.acknowledged, _find_and_modify, session
+        )
 
-    def find_one_and_delete(self, filter,
-                            projection=None, sort=None, hint=None,
-                            session=None, **kwargs):
+    def find_one_and_delete(
+        self, filter, projection=None, sort=None, hint=None, session=None, **kwargs
+    ):
         """Finds a single document and deletes it, returning the document.
 
           >>> db.test.count_documents({'x': 1})
@@ -3084,14 +3311,23 @@ class Collection(common.BaseObject):
            Added the `collation` option.
         .. versionadded:: 3.0
         """
-        kwargs['remove'] = True
-        return self.__find_and_modify(filter, projection, sort,
-                                      hint=hint, session=session, **kwargs)
+        kwargs["remove"] = True
+        return self.__find_and_modify(
+            filter, projection, sort, hint=hint, session=session, **kwargs
+        )
 
-    def find_one_and_replace(self, filter, replacement,
-                             projection=None, sort=None, upsert=False,
-                             return_document=ReturnDocument.BEFORE,
-                             hint=None, session=None, **kwargs):
+    def find_one_and_replace(
+        self,
+        filter,
+        replacement,
+        projection=None,
+        sort=None,
+        upsert=False,
+        return_document=ReturnDocument.BEFORE,
+        hint=None,
+        session=None,
+        **kwargs
+    ):
         """Finds a single document and replaces it, returning either the
         original or the replaced document.
 
@@ -3163,16 +3399,24 @@ class Collection(common.BaseObject):
         .. versionadded:: 3.0
         """
         common.validate_ok_for_replace(replacement)
-        kwargs['update'] = replacement
-        return self.__find_and_modify(filter, projection,
-                                      sort, upsert, return_document,
-                                      hint=hint, session=session, **kwargs)
+        kwargs["update"] = replacement
+        return self.__find_and_modify(
+            filter, projection, sort, upsert, return_document, hint=hint, session=session, **kwargs
+        )
 
-    def find_one_and_update(self, filter, update,
-                            projection=None, sort=None, upsert=False,
-                            return_document=ReturnDocument.BEFORE,
-                            array_filters=None, hint=None, session=None,
-                            **kwargs):
+    def find_one_and_update(
+        self,
+        filter,
+        update,
+        projection=None,
+        sort=None,
+        upsert=False,
+        return_document=ReturnDocument.BEFORE,
+        array_filters=None,
+        hint=None,
+        session=None,
+        **kwargs
+    ):
         """Finds a single document and updates it, returning either the
         original or the updated document.
 
@@ -3286,12 +3530,19 @@ class Collection(common.BaseObject):
         .. versionadded:: 3.0
         """
         common.validate_ok_for_update(update)
-        common.validate_list_or_none('array_filters', array_filters)
-        kwargs['update'] = update
-        return self.__find_and_modify(filter, projection,
-                                      sort, upsert, return_document,
-                                      array_filters, hint=hint,
-                                      session=session, **kwargs)
+        common.validate_list_or_none("array_filters", array_filters)
+        kwargs["update"] = update
+        return self.__find_and_modify(
+            filter,
+            projection,
+            sort,
+            upsert,
+            return_document,
+            array_filters,
+            hint=hint,
+            session=session,
+            **kwargs
+        )
 
     def save(self, to_save, manipulate=True, check_keys=True, **kwargs):
         """Save a document in this collection.
@@ -3302,27 +3553,36 @@ class Collection(common.BaseObject):
            Removed the `safe` parameter. Pass ``w=0`` for unacknowledged write
            operations.
         """
-        warnings.warn("save is deprecated. Use insert_one or replace_one "
-                      "instead", DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "save is deprecated. Use insert_one or replace_one " "instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         common.validate_is_document_type("to_save", to_save)
 
         write_concern = None
-        collation = validate_collation_or_none(kwargs.pop('collation', None))
+        collation = validate_collation_or_none(kwargs.pop("collation", None))
         if kwargs:
             write_concern = WriteConcern(**kwargs)
 
         if not (isinstance(to_save, RawBSONDocument) or "_id" in to_save):
-            return self._insert(
-                to_save, True, check_keys, manipulate, write_concern)
+            return self._insert(to_save, True, check_keys, manipulate, write_concern)
         else:
             self._update_retryable(
-                {"_id": to_save["_id"]}, to_save, True,
-                check_keys, False, manipulate, write_concern,
-                collation=collation)
+                {"_id": to_save["_id"]},
+                to_save,
+                True,
+                check_keys,
+                False,
+                manipulate,
+                write_concern,
+                collation=collation,
+            )
             return to_save.get("_id")
 
-    def insert(self, doc_or_docs, manipulate=True,
-               check_keys=True, continue_on_error=False, **kwargs):
+    def insert(
+        self, doc_or_docs, manipulate=True, check_keys=True, continue_on_error=False, **kwargs
+    ):
         """Insert a document(s) into this collection.
 
         **DEPRECATED** - Use :meth:`insert_one` or :meth:`insert_many` instead.
@@ -3331,16 +3591,21 @@ class Collection(common.BaseObject):
            Removed the `safe` parameter. Pass ``w=0`` for unacknowledged write
            operations.
         """
-        warnings.warn("insert is deprecated. Use insert_one or insert_many "
-                      "instead.", DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "insert is deprecated. Use insert_one or insert_many " "instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         write_concern = None
         if kwargs:
             write_concern = WriteConcern(**kwargs)
-        return self._insert(doc_or_docs, not continue_on_error,
-                            check_keys, manipulate, write_concern)
+        return self._insert(
+            doc_or_docs, not continue_on_error, check_keys, manipulate, write_concern
+        )
 
-    def update(self, spec, document, upsert=False, manipulate=False,
-               multi=False, check_keys=True, **kwargs):
+    def update(
+        self, spec, document, upsert=False, manipulate=False, multi=False, check_keys=True, **kwargs
+    ):
         """Update a document(s) in this collection.
 
         **DEPRECATED** - Use :meth:`replace_one`, :meth:`update_one`, or
@@ -3350,8 +3615,11 @@ class Collection(common.BaseObject):
            Removed the `safe` parameter. Pass ``w=0`` for unacknowledged write
            operations.
         """
-        warnings.warn("update is deprecated. Use replace_one, update_one or "
-                      "update_many instead.", DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "update is deprecated. Use replace_one, update_one or " "update_many instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         common.validate_is_mapping("spec", spec)
         common.validate_is_mapping("document", document)
         if document:
@@ -3361,16 +3629,23 @@ class Collection(common.BaseObject):
             # starting with and without a '$' is invalid and the server will
             # raise an appropriate exception.
             first = next(iter(document))
-            if first.startswith('$'):
+            if first.startswith("$"):
                 check_keys = False
 
         write_concern = None
-        collation = validate_collation_or_none(kwargs.pop('collation', None))
+        collation = validate_collation_or_none(kwargs.pop("collation", None))
         if kwargs:
             write_concern = WriteConcern(**kwargs)
         return self._update_retryable(
-            spec, document, upsert, check_keys, multi, manipulate,
-            write_concern, collation=collation)
+            spec,
+            document,
+            upsert,
+            check_keys,
+            multi,
+            manipulate,
+            write_concern,
+            collation=collation,
+        )
 
     def remove(self, spec_or_id=None, multi=True, **kwargs):
         """Remove a document(s) from this collection.
@@ -3381,66 +3656,82 @@ class Collection(common.BaseObject):
            Removed the `safe` parameter. Pass ``w=0`` for unacknowledged write
            operations.
         """
-        warnings.warn("remove is deprecated. Use delete_one or delete_many "
-                      "instead.", DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "remove is deprecated. Use delete_one or delete_many " "instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if spec_or_id is None:
             spec_or_id = {}
         if not isinstance(spec_or_id, abc.Mapping):
             spec_or_id = {"_id": spec_or_id}
         write_concern = None
-        collation = validate_collation_or_none(kwargs.pop('collation', None))
+        collation = validate_collation_or_none(kwargs.pop("collation", None))
         if kwargs:
             write_concern = WriteConcern(**kwargs)
-        return self._delete_retryable(
-            spec_or_id, multi, write_concern, collation=collation)
+        return self._delete_retryable(spec_or_id, multi, write_concern, collation=collation)
 
-    def find_and_modify(self, query={}, update=None,
-                        upsert=False, sort=None, full_response=False,
-                        manipulate=False, **kwargs):
+    def find_and_modify(
+        self,
+        query={},
+        update=None,
+        upsert=False,
+        sort=None,
+        full_response=False,
+        manipulate=False,
+        **kwargs
+    ):
         """Update and return an object.
 
         **DEPRECATED** - Use :meth:`find_one_and_delete`,
         :meth:`find_one_and_replace`, or :meth:`find_one_and_update` instead.
         """
-        warnings.warn("find_and_modify is deprecated, use find_one_and_delete"
-                      ", find_one_and_replace, or find_one_and_update instead",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "find_and_modify is deprecated, use find_one_and_delete"
+            ", find_one_and_replace, or find_one_and_update instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
-        if not update and not kwargs.get('remove', None):
+        if not update and not kwargs.get("remove", None):
             raise ValueError("Must either update or remove")
 
-        if update and kwargs.get('remove', None):
+        if update and kwargs.get("remove", None):
             raise ValueError("Can't do both update and remove")
 
         # No need to include empty args
         if query:
-            kwargs['query'] = query
+            kwargs["query"] = query
         if update:
-            kwargs['update'] = update
+            kwargs["update"] = update
         if upsert:
-            kwargs['upsert'] = upsert
+            kwargs["upsert"] = upsert
         if sort:
             # Accept a list of tuples to match Cursor's sort parameter.
             if isinstance(sort, list):
-                kwargs['sort'] = helpers._index_document(sort)
+                kwargs["sort"] = helpers._index_document(sort)
             # Accept OrderedDict, SON, and dict with len == 1 so we
             # don't break existing code already using find_and_modify.
-            elif (isinstance(sort, ORDERED_TYPES) or
-                  isinstance(sort, dict) and len(sort) == 1):
-                warnings.warn("Passing mapping types for `sort` is deprecated,"
-                              " use a list of (key, direction) pairs instead",
-                              DeprecationWarning, stacklevel=2)
-                kwargs['sort'] = sort
+            elif isinstance(sort, ORDERED_TYPES) or isinstance(sort, dict) and len(sort) == 1:
+                warnings.warn(
+                    "Passing mapping types for `sort` is deprecated,"
+                    " use a list of (key, direction) pairs instead",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                kwargs["sort"] = sort
             else:
-                raise TypeError("sort must be a list of (key, direction) "
-                                "pairs, a dict of len 1, or an instance of "
-                                "SON or OrderedDict")
+                raise TypeError(
+                    "sort must be a list of (key, direction) "
+                    "pairs, a dict of len 1, or an instance of "
+                    "SON or OrderedDict"
+                )
 
         fields = kwargs.pop("fields", None)
         if fields is not None:
             kwargs["fields"] = helpers._fields_list_to_dict(fields, "fields")
 
-        collation = validate_collation_or_none(kwargs.pop('collation', None))
+        collation = validate_collation_or_none(kwargs.pop("collation", None))
 
         cmd = SON([("findAndModify", self.__name)])
         cmd.update(kwargs)
@@ -3448,25 +3739,29 @@ class Collection(common.BaseObject):
         write_concern = self._write_concern_for_cmd(cmd, None)
 
         def _find_and_modify(session, sock_info, retryable_write):
-            if (sock_info.max_wire_version >= 4 and
-                    not write_concern.is_server_default):
-                cmd['writeConcern'] = write_concern.document
+            if sock_info.max_wire_version >= 4 and not write_concern.is_server_default:
+                cmd["writeConcern"] = write_concern.document
             result = self._command(
-                sock_info, cmd, read_preference=ReadPreference.PRIMARY,
+                sock_info,
+                cmd,
+                read_preference=ReadPreference.PRIMARY,
                 collation=collation,
-                session=session, retryable_write=retryable_write,
-                user_fields=_FIND_AND_MODIFY_DOC_FIELDS)
+                session=session,
+                retryable_write=retryable_write,
+                user_fields=_FIND_AND_MODIFY_DOC_FIELDS,
+            )
 
             _check_write_command_response(result)
             return result
 
         out = self.__database.client._retryable_write(
-            write_concern.acknowledged, _find_and_modify, None)
+            write_concern.acknowledged, _find_and_modify, None
+        )
 
         if full_response:
             return out
         else:
-            document = out.get('value')
+            document = out.get("value")
             if manipulate:
                 document = self.__database._fix_outgoing(document, self)
             return document
@@ -3480,15 +3775,16 @@ class Collection(common.BaseObject):
     next = __next__
 
     def __call__(self, *args, **kwargs):
-        """This is only here so that some API misusages are easier to debug.
-        """
+        """This is only here so that some API misusages are easier to debug."""
         if "." not in self.__name:
-            raise TypeError("'Collection' object is not callable. If you "
-                            "meant to call the '%s' method on a 'Database' "
-                            "object it is failing because no such method "
-                            "exists." %
-                            self.__name)
-        raise TypeError("'Collection' object is not callable. If you meant to "
-                        "call the '%s' method on a 'Collection' object it is "
-                        "failing because no such method exists." %
-                        self.__name.split(".")[-1])
+            raise TypeError(
+                "'Collection' object is not callable. If you "
+                "meant to call the '%s' method on a 'Database' "
+                "object it is failing because no such method "
+                "exists." % self.__name
+            )
+        raise TypeError(
+            "'Collection' object is not callable. If you meant to "
+            "call the '%s' method on a 'Collection' object it is "
+            "failing because no such method exists." % self.__name.split(".")[-1]
+        )

@@ -20,14 +20,16 @@ from bson.py3compat import _unicode
 
 try:
     from ipaddress import ip_address
+
     def is_ip_address(address):
         try:
             ip_address(_unicode(address))
             return True
         except (ValueError, UnicodeError):
             return False
+
 except ImportError:
-    if hasattr(socket, 'inet_pton') and socket.has_ipv6:
+    if hasattr(socket, "inet_pton") and socket.has_ipv6:
         # Most *nix, Windows newer than XP
         def is_ip_address(address):
             try:
@@ -42,6 +44,7 @@ except ImportError:
                     return True
                 except socket.error:
                     return False
+
     else:
         # No inet_pton
         def is_ip_address(address):
@@ -49,8 +52,7 @@ except ImportError:
                 socket.inet_aton(address)
                 return True
             except socket.error:
-                if ':' in address:
+                if ":" in address:
                     # ':' is not a valid character for a hostname.
                     return True
                 return False
-

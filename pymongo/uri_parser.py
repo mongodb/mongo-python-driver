@@ -15,10 +15,10 @@
 
 """Tools to parse and validate a MongoDB URI."""
 import re
-import warnings
 import sys
+import warnings
 
-from bson.py3compat import string_type, PY3
+from bson.py3compat import PY3, string_type
 
 if PY3:
     from urllib.parse import unquote_plus
@@ -26,15 +26,17 @@ else:
     from urllib import unquote_plus
 
 from pymongo.common import (
-    get_validated_options, INTERNAL_URI_OPTION_NAME_MAP,
-    URI_OPTIONS_DEPRECATION_MAP, _CaseInsensitiveDictionary)
+    INTERNAL_URI_OPTION_NAME_MAP,
+    URI_OPTIONS_DEPRECATION_MAP,
+    _CaseInsensitiveDictionary,
+    get_validated_options,
+)
 from pymongo.errors import ConfigurationError, InvalidURI
 from pymongo.srv_resolver import _HAVE_DNSPYTHON, _SrvResolver
 
-
-SCHEME = 'mongodb://'
+SCHEME = "mongodb://"
 SCHEME_LEN = len(SCHEME)
-SRV_SCHEME = 'mongodb+srv://'
+SRV_SCHEME = "mongodb+srv://"
 SRV_SCHEME_LEN = len(SRV_SCHEME)
 DEFAULT_PORT = 27017
 
@@ -53,13 +55,14 @@ def parse_userinfo(userinfo):
     .. versionchanged:: 2.2
        Now uses `urllib.unquote_plus` so `+` characters must be escaped.
     """
-    if '@' in userinfo or userinfo.count(':') > 1:
+    if "@" in userinfo or userinfo.count(":") > 1:
         if PY3:
             quote_fn = "urllib.parse.quote_plus"
         else:
             quote_fn = "urllib.quote_plus"
-        raise InvalidURI("Username and password must be escaped according to "
-                         "RFC 3986, use %s()." % quote_fn)
+        raise InvalidURI(
+            "Username and password must be escaped according to " "RFC 3986, use %s()." % quote_fn
+        )
     user, _, passwd = userinfo.partition(":")
     # No password is expected with GSSAPI authentication.
     if not user:
@@ -79,14 +82,14 @@ def parse_ipv6_literal_host(entity, default_port):
         - `default_port`: The port number to use when one wasn't
                           specified in entity.
     """
-    if entity.find(']') == -1:
-        raise ValueError("an IPv6 address literal must be "
-                         "enclosed in '[' and ']' according "
-                         "to RFC 2732.")
-    i = entity.find(']:')
+    if entity.find("]") == -1:
+        raise ValueError(
+            "an IPv6 address literal must be " "enclosed in '[' and ']' according " "to RFC 2732."
+        )
+    i = entity.find("]:")
     if i == -1:
         return entity[1:-1], default_port
-    return entity[1: i], entity[i + 2:]
+    return entity[1:i], entity[i + 2 :]
 
 
 def parse_host(entity, default_port=DEFAULT_PORT):
@@ -103,21 +106,22 @@ def parse_host(entity, default_port=DEFAULT_PORT):
     """
     host = entity
     port = default_port
-    if entity[0] == '[':
+    if entity[0] == "[":
         host, port = parse_ipv6_literal_host(entity, default_port)
     elif entity.endswith(".sock"):
         return entity, default_port
-    elif entity.find(':') != -1:
-        if entity.count(':') > 1:
-            raise ValueError("Reserved characters such as ':' must be "
-                             "escaped according RFC 2396. An IPv6 "
-                             "address literal must be enclosed in '[' "
-                             "and ']' according to RFC 2732.")
-        host, port = host.split(':', 1)
+    elif entity.find(":") != -1:
+        if entity.count(":") > 1:
+            raise ValueError(
+                "Reserved characters such as ':' must be "
+                "escaped according RFC 2396. An IPv6 "
+                "address literal must be enclosed in '[' "
+                "and ']' according to RFC 2732."
+            )
+        host, port = host.split(":", 1)
     if isinstance(port, string_type):
         if not port.isdigit() or int(port) > 65535 or int(port) <= 0:
-            raise ValueError("Port must be an integer between 0 and 65535: %s"
-                             % (port,))
+            raise ValueError("Port must be an integer between 0 and 65535: %s" % (port,))
         port = int(port)
 
     # Normalize hostname to lowercase, since DNS is case-insensitive:
@@ -131,12 +135,13 @@ def parse_host(entity, default_port=DEFAULT_PORT):
 _IMPLICIT_TLSINSECURE_OPTS = {
     "tlsallowinvalidcertificates",
     "tlsallowinvalidhostnames",
-    "tlsdisableocspendpointcheck",}
+    "tlsdisableocspendpointcheck",
+}
 
 # Options that cannot be specified when tlsInsecure is also specified.
-_TLSINSECURE_EXCLUDE_OPTS = (
-        {k for k in _IMPLICIT_TLSINSECURE_OPTS} |
-        {INTERNAL_URI_OPTION_NAME_MAP[k] for k in _IMPLICIT_TLSINSECURE_OPTS})
+_TLSINSECURE_EXCLUDE_OPTS = {k for k in _IMPLICIT_TLSINSECURE_OPTS} | {
+    INTERNAL_URI_OPTION_NAME_MAP[k] for k in _IMPLICIT_TLSINSECURE_OPTS
+}
 
 
 def _parse_options(opts, delim):
@@ -146,12 +151,12 @@ def _parse_options(opts, delim):
     options = _CaseInsensitiveDictionary()
     for uriopt in opts.split(delim):
         key, value = uriopt.split("=")
-        if key.lower() == 'readpreferencetags':
+        if key.lower() == "readpreferencetags":
             options.setdefault(key, []).append(value)
         else:
             if key in options:
                 warnings.warn("Duplicate URI option '%s'." % (key,))
-            if key.lower() == 'authmechanismproperties':
+            if key.lower() == "authmechanismproperties":
                 val = value
             else:
                 val = unquote_plus(value)
@@ -168,54 +173,51 @@ def _handle_security_options(options):
         - `options`: Instance of _CaseInsensitiveDictionary containing
           MongoDB URI options.
     """
-    tlsinsecure = options.get('tlsinsecure')
+    tlsinsecure = options.get("tlsinsecure")
     if tlsinsecure is not None:
         for opt in _TLSINSECURE_EXCLUDE_OPTS:
             if opt in options:
-                err_msg = ("URI options %s and %s cannot be specified "
-                           "simultaneously.")
-                raise InvalidURI(err_msg % (
-                    options.cased_key('tlsinsecure'), options.cased_key(opt)))
+                err_msg = "URI options %s and %s cannot be specified " "simultaneously."
+                raise InvalidURI(
+                    err_msg % (options.cased_key("tlsinsecure"), options.cased_key(opt))
+                )
 
     # Convenience function to retrieve option values based on public or private names.
     def _getopt(opt):
-        return (options.get(opt) or
-                options.get(INTERNAL_URI_OPTION_NAME_MAP[opt]))
+        return options.get(opt) or options.get(INTERNAL_URI_OPTION_NAME_MAP[opt])
 
     # Handle co-occurence of OCSP & tlsAllowInvalidCertificates options.
-    tlsallowinvalidcerts = _getopt('tlsallowinvalidcertificates')
+    tlsallowinvalidcerts = _getopt("tlsallowinvalidcertificates")
     if tlsallowinvalidcerts is not None:
-        if 'tlsdisableocspendpointcheck' in options:
-            err_msg = ("URI options %s and %s cannot be specified "
-                       "simultaneously.")
-            raise InvalidURI(err_msg % (
-                'tlsallowinvalidcertificates', options.cased_key(
-                    'tlsdisableocspendpointcheck')))
+        if "tlsdisableocspendpointcheck" in options:
+            err_msg = "URI options %s and %s cannot be specified " "simultaneously."
+            raise InvalidURI(
+                err_msg
+                % ("tlsallowinvalidcertificates", options.cased_key("tlsdisableocspendpointcheck"))
+            )
         if tlsallowinvalidcerts is True:
-            options['tlsdisableocspendpointcheck'] = True
+            options["tlsdisableocspendpointcheck"] = True
 
     # Handle co-occurence of CRL and OCSP-related options.
-    tlscrlfile = _getopt('tlscrlfile')
+    tlscrlfile = _getopt("tlscrlfile")
     if tlscrlfile is not None:
-        for opt in ('tlsinsecure', 'tlsallowinvalidcertificates',
-                    'tlsdisableocspendpointcheck'):
+        for opt in ("tlsinsecure", "tlsallowinvalidcertificates", "tlsdisableocspendpointcheck"):
             if options.get(opt) is True:
-                err_msg = ("URI option %s=True cannot be specified when "
-                           "CRL checking is enabled.")
+                err_msg = "URI option %s=True cannot be specified when " "CRL checking is enabled."
                 raise InvalidURI(err_msg % (opt,))
 
-    if 'ssl' in options and 'tls' in options:
+    if "ssl" in options and "tls" in options:
+
         def truth_value(val):
-            if val in ('true', 'false'):
-                return val == 'true'
+            if val in ("true", "false"):
+                return val == "true"
             if isinstance(val, bool):
                 return val
             return val
-        if truth_value(options.get('ssl')) != truth_value(options.get('tls')):
-            err_msg = ("Can not specify conflicting values for URI options %s "
-                      "and %s.")
-            raise InvalidURI(err_msg % (
-                options.cased_key('ssl'), options.cased_key('tls')))
+
+        if truth_value(options.get("ssl")) != truth_value(options.get("tls")):
+            err_msg = "Can not specify conflicting values for URI options %s " "and %s."
+            raise InvalidURI(err_msg % (options.cased_key("ssl"), options.cased_key("tls")))
 
     return options
 
@@ -232,26 +234,30 @@ def _handle_option_deprecations(options):
     for optname in list(options):
         if optname in URI_OPTIONS_DEPRECATION_MAP:
             mode, message = URI_OPTIONS_DEPRECATION_MAP[optname]
-            if mode == 'renamed':
+            if mode == "renamed":
                 newoptname = message
                 if newoptname in options:
-                    warn_msg = ("Deprecated option '%s' ignored in favor of "
-                                "'%s'.")
+                    warn_msg = "Deprecated option '%s' ignored in favor of " "'%s'."
                     warnings.warn(
-                        warn_msg % (options.cased_key(optname),
-                                    options.cased_key(newoptname)),
-                        DeprecationWarning, stacklevel=2)
+                        warn_msg % (options.cased_key(optname), options.cased_key(newoptname)),
+                        DeprecationWarning,
+                        stacklevel=2,
+                    )
                     options.pop(optname)
                     continue
                 warn_msg = "Option '%s' is deprecated, use '%s' instead."
                 warnings.warn(
                     warn_msg % (options.cased_key(optname), newoptname),
-                    DeprecationWarning, stacklevel=2)
-            elif mode == 'removed':
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+            elif mode == "removed":
                 warn_msg = "Option '%s' is deprecated. %s."
                 warnings.warn(
                     warn_msg % (options.cased_key(optname), message),
-                    DeprecationWarning, stacklevel=2)
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
 
     return options
 
@@ -264,7 +270,7 @@ def _normalize_options(options):
         - `options`: Instance of _CaseInsensitiveDictionary containing
           MongoDB URI options.
     """
-    tlsinsecure = options.get('tlsinsecure')
+    tlsinsecure = options.get("tlsinsecure")
     if tlsinsecure is not None:
         for opt in _IMPLICIT_TLSINSECURE_OPTS:
             intname = INTERNAL_URI_OPTION_NAME_MAP[opt]
@@ -330,9 +336,8 @@ def split_options(opts, validate=True, warn=False, normalize=True):
 
     if validate:
         options = validate_options(options, warn)
-        if options.get('authsource') == '':
-            raise InvalidURI(
-                "the authSource database cannot be an empty string")
+        if options.get("authsource") == "":
+            raise InvalidURI("the authSource database cannot be an empty string")
 
     if normalize:
         options = _normalize_options(options)
@@ -354,13 +359,12 @@ def split_hosts(hosts, default_port=DEFAULT_PORT):
           for a host.
     """
     nodes = []
-    for entity in hosts.split(','):
+    for entity in hosts.split(","):
         if not entity:
-            raise ConfigurationError("Empty host "
-                                     "(or extra comma in host list).")
+            raise ConfigurationError("Empty host " "(or extra comma in host list).")
         port = default_port
         # Unix socket entities don't have ports
-        if entity.endswith('.sock'):
+        if entity.endswith(".sock"):
             port = None
         nodes.append(parse_host(entity, port))
     return nodes
@@ -368,33 +372,30 @@ def split_hosts(hosts, default_port=DEFAULT_PORT):
 
 # Prohibited characters in database name. DB names also can't have ".", but for
 # backward-compat we allow "db.collection" in URI.
-_BAD_DB_CHARS = re.compile('[' + re.escape(r'/ "$') + ']')
+_BAD_DB_CHARS = re.compile("[" + re.escape(r'/ "$') + "]")
 
 _ALLOWED_TXT_OPTS = frozenset(
-    ['authsource', 'authSource', 'replicaset', 'replicaSet', 'loadbalanced',
-     'loadBalanced'])
+    ["authsource", "authSource", "replicaset", "replicaSet", "loadbalanced", "loadBalanced"]
+)
 
 
 def _check_options(nodes, options):
     # Ensure directConnection was not True if there are multiple seeds.
-    if len(nodes) > 1 and options.get('directconnection'):
-        raise ConfigurationError(
-            'Cannot specify multiple hosts with directConnection=true')
+    if len(nodes) > 1 and options.get("directconnection"):
+        raise ConfigurationError("Cannot specify multiple hosts with directConnection=true")
 
-    if options.get('loadbalanced'):
+    if options.get("loadbalanced"):
         if len(nodes) > 1:
-            raise ConfigurationError(
-                'Cannot specify multiple hosts with loadBalanced=true')
-        if options.get('directconnection'):
-            raise ConfigurationError(
-                'Cannot specify directConnection=true with loadBalanced=true')
-        if options.get('replicaset'):
-            raise ConfigurationError(
-                'Cannot specify replicaSet with loadBalanced=true')
+            raise ConfigurationError("Cannot specify multiple hosts with loadBalanced=true")
+        if options.get("directconnection"):
+            raise ConfigurationError("Cannot specify directConnection=true with loadBalanced=true")
+        if options.get("replicaset"):
+            raise ConfigurationError("Cannot specify replicaSet with loadBalanced=true")
 
 
-def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
-              normalize=True, connect_timeout=None):
+def parse_uri(
+    uri, default_port=DEFAULT_PORT, validate=True, warn=False, normalize=True, connect_timeout=None
+):
     """Parse and validate a MongoDB URI.
 
     Returns a dict of the form::
@@ -448,14 +449,16 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
             python_path = sys.executable or "python"
             raise ConfigurationError(
                 'The "dnspython" module must be '
-                'installed to use mongodb+srv:// URIs. '
-                'To fix this error install pymongo with the srv extra:\n '
-                '%s -m pip install "pymongo[srv]"' % (python_path))
+                "installed to use mongodb+srv:// URIs. "
+                "To fix this error install pymongo with the srv extra:\n "
+                '%s -m pip install "pymongo[srv]"' % (python_path)
+            )
         is_srv = True
         scheme_free = uri[SRV_SCHEME_LEN:]
     else:
-        raise InvalidURI("Invalid URI scheme: URI must "
-                         "begin with '%s' or '%s'" % (SCHEME, SRV_SCHEME))
+        raise InvalidURI(
+            "Invalid URI scheme: URI must " "begin with '%s' or '%s'" % (SCHEME, SRV_SCHEME)
+        )
 
     if not scheme_free:
         raise InvalidURI("Must provide at least one hostname or IP.")
@@ -466,21 +469,20 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
     collection = None
     options = _CaseInsensitiveDictionary()
 
-    host_part, _, path_part = scheme_free.partition('/')
+    host_part, _, path_part = scheme_free.partition("/")
     if not host_part:
         host_part = path_part
         path_part = ""
 
-    if not path_part and '?' in host_part:
-        raise InvalidURI("A '/' is required between "
-                         "the host list and any options.")
+    if not path_part and "?" in host_part:
+        raise InvalidURI("A '/' is required between " "the host list and any options.")
 
     if path_part:
-        dbase, _, opts = path_part.partition('?')
+        dbase, _, opts = path_part.partition("?")
         if dbase:
             dbase = unquote_plus(dbase)
-            if '.' in dbase:
-                dbase, collection = dbase.split('.', 1)
+            if "." in dbase:
+                dbase, collection = dbase.split(".", 1)
             if _BAD_DB_CHARS.search(dbase):
                 raise InvalidURI('Bad database name "%s"' % dbase)
         else:
@@ -489,33 +491,31 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
         if opts:
             options.update(split_options(opts, validate, warn, normalize))
 
-    if '@' in host_part:
-        userinfo, _, hosts = host_part.rpartition('@')
+    if "@" in host_part:
+        userinfo, _, hosts = host_part.rpartition("@")
         user, passwd = parse_userinfo(userinfo)
     else:
         hosts = host_part
 
-    if '/' in hosts:
-        raise InvalidURI("Any '/' in a unix domain socket must be"
-                         " percent-encoded: %s" % host_part)
+    if "/" in hosts:
+        raise InvalidURI(
+            "Any '/' in a unix domain socket must be" " percent-encoded: %s" % host_part
+        )
 
     hosts = unquote_plus(hosts)
     fqdn = None
 
     if is_srv:
-        if options.get('directConnection'):
+        if options.get("directConnection"):
             raise ConfigurationError(
-                "Cannot specify directConnection=true with "
-                "%s URIs" % (SRV_SCHEME,))
+                "Cannot specify directConnection=true with " "%s URIs" % (SRV_SCHEME,)
+            )
         nodes = split_hosts(hosts, default_port=None)
         if len(nodes) != 1:
-            raise InvalidURI(
-                "%s URIs must include one, "
-                "and only one, hostname" % (SRV_SCHEME,))
+            raise InvalidURI("%s URIs must include one, " "and only one, hostname" % (SRV_SCHEME,))
         fqdn, port = nodes[0]
         if port is not None:
-            raise InvalidURI(
-                "%s URIs must not include a port number" % (SRV_SCHEME,))
+            raise InvalidURI("%s URIs must not include a port number" % (SRV_SCHEME,))
 
         # Use the connection timeout. connectTimeoutMS passed as a keyword
         # argument overrides the same option passed in the connection string.
@@ -524,36 +524,36 @@ def parse_uri(uri, default_port=DEFAULT_PORT, validate=True, warn=False,
         nodes = dns_resolver.get_hosts()
         dns_options = dns_resolver.get_options()
         if dns_options:
-            parsed_dns_options = split_options(
-                dns_options, validate, warn, normalize)
+            parsed_dns_options = split_options(dns_options, validate, warn, normalize)
             if set(parsed_dns_options) - _ALLOWED_TXT_OPTS:
                 raise ConfigurationError(
-                    "Only authSource, replicaSet, and loadBalanced are "
-                    "supported from DNS")
+                    "Only authSource, replicaSet, and loadBalanced are " "supported from DNS"
+                )
             for opt, val in parsed_dns_options.items():
                 if opt not in options:
                     options[opt] = val
         if "ssl" not in options:
-            options["ssl"] = True if validate else 'true'
+            options["ssl"] = True if validate else "true"
     else:
         nodes = split_hosts(hosts, default_port=default_port)
 
     _check_options(nodes, options)
 
     return {
-        'nodelist': nodes,
-        'username': user,
-        'password': passwd,
-        'database': dbase,
-        'collection': collection,
-        'options': options,
-        'fqdn': fqdn
+        "nodelist": nodes,
+        "username": user,
+        "password": passwd,
+        "database": dbase,
+        "collection": collection,
+        "options": options,
+        "fqdn": fqdn,
     }
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import pprint
     import sys
+
     try:
         pprint.pprint(parse_uri(sys.argv[1]))
     except InvalidURI as exc:

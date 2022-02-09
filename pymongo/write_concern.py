@@ -68,8 +68,7 @@ class WriteConcern(object):
             if not isinstance(fsync, bool):
                 raise TypeError("fsync must be True or False")
             if j and fsync:
-                raise ConfigurationError("Can't set both j "
-                                         "and fsync at the same time")
+                raise ConfigurationError("Can't set both j " "and fsync at the same time")
             self.__document["fsync"] = fsync
 
         if w == 0 and j is True:
@@ -109,8 +108,7 @@ class WriteConcern(object):
         return self.__acknowledged
 
     def __repr__(self):
-        return ("WriteConcern(%s)" % (
-            ", ".join("%s=%s" % kvt for kvt in self.__document.items()),))
+        return "WriteConcern(%s)" % (", ".join("%s=%s" % kvt for kvt in self.__document.items()),)
 
     def __eq__(self, other):
         if isinstance(other, WriteConcern):

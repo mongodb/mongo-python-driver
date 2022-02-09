@@ -23,7 +23,6 @@ import re
 
 from bson.py3compat import abc, iteritems
 
-
 # This sort of sucks, but seems to be as good as it gets...
 # This is essentially the same as re._pattern_type
 RE_TYPE = type(re.compile(""))
@@ -113,8 +112,7 @@ class SON(dict):
 
     def pop(self, key, *args):
         if len(args) > 1:
-            raise TypeError("pop expected at most 2 arguments, got "\
-                                + repr(1 + len(args)))
+            raise TypeError("pop expected at most 2 arguments, got " + repr(1 + len(args)))
         try:
             value = self[key]
         except KeyError:
@@ -128,7 +126,7 @@ class SON(dict):
         try:
             k, v = next(self.iteritems())
         except StopIteration:
-            raise KeyError('container is empty')
+            raise KeyError("container is empty")
         del self[k]
         return (k, v)
 
@@ -136,10 +134,10 @@ class SON(dict):
         # Make progressively weaker assumptions about "other"
         if other is None:
             pass
-        elif hasattr(other, 'iteritems'):  # iteritems saves memory and lookups
+        elif hasattr(other, "iteritems"):  # iteritems saves memory and lookups
             for k, v in other.iteritems():
                 self[k] = v
-        elif hasattr(other, 'keys'):
+        elif hasattr(other, "keys"):
             for k in other.keys():
                 self[k] = other[k]
         else:
@@ -179,9 +177,7 @@ class SON(dict):
             if isinstance(value, list):
                 return [transform_value(v) for v in value]
             elif isinstance(value, abc.Mapping):
-                return dict([
-                    (k, transform_value(v))
-                    for k, v in iteritems(value)])
+                return dict([(k, transform_value(v)) for k, v in iteritems(value)])
             else:
                 return value
 

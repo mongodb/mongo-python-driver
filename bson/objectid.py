@@ -23,13 +23,11 @@ import os
 import struct
 import threading
 import time
-
 from random import SystemRandom
 
 from bson.errors import InvalidId
 from bson.py3compat import PY3, bytes_from_hex, string_type, text_type
 from bson.tz_util import utc
-
 
 _MAX_COUNTER_VALUE = 0xFFFFFF
 
@@ -37,7 +35,8 @@ _MAX_COUNTER_VALUE = 0xFFFFFF
 def _raise_invalid_id(oid):
     raise InvalidId(
         "%r is not a valid ObjectId, it must be a 12-byte input"
-        " or a 24-character hex string" % oid)
+        " or a 24-character hex string" % oid
+    )
 
 
 def _random_bytes():
@@ -46,8 +45,7 @@ def _random_bytes():
 
 
 class ObjectId(object):
-    """A MongoDB ObjectId.
-    """
+    """A MongoDB ObjectId."""
 
     _pid = os.getpid()
 
@@ -56,7 +54,7 @@ class ObjectId(object):
 
     __random = _random_bytes()
 
-    __slots__ = ('__id',)
+    __slots__ = ("__id",)
 
     _type_marker = 7
 
@@ -140,8 +138,7 @@ class ObjectId(object):
         if generation_time.utcoffset() is not None:
             generation_time = generation_time - generation_time.utcoffset()
         timestamp = calendar.timegm(generation_time.timetuple())
-        oid = struct.pack(
-            ">I", int(timestamp)) + b"\x00\x00\x00\x00\x00\x00\x00\x00"
+        oid = struct.pack(">I", int(timestamp)) + b"\x00\x00\x00\x00\x00\x00\x00\x00"
         return cls(oid)
 
     @classmethod
@@ -164,8 +161,7 @@ class ObjectId(object):
 
     @classmethod
     def _random(cls):
-        """Generate a 5-byte random number once per process.
-        """
+        """Generate a 5-byte random number once per process."""
         pid = os.getpid()
         if pid != cls._pid:
             cls._pid = pid
@@ -173,8 +169,7 @@ class ObjectId(object):
         return cls.__random
 
     def __generate(self):
-        """Generate a new value for this ObjectId.
-        """
+        """Generate a new value for this ObjectId."""
 
         # 4 bytes current time
         oid = struct.pack(">I", int(time.time()))
@@ -212,13 +207,14 @@ class ObjectId(object):
             else:
                 _raise_invalid_id(oid)
         else:
-            raise TypeError("id must be an instance of (bytes, %s, ObjectId), "
-                            "not %s" % (text_type.__name__, type(oid)))
+            raise TypeError(
+                "id must be an instance of (bytes, %s, ObjectId), "
+                "not %s" % (text_type.__name__, type(oid))
+            )
 
     @property
     def binary(self):
-        """12-byte binary representation of this ObjectId.
-        """
+        """12-byte binary representation of this ObjectId."""
         return self.__id
 
     @property
@@ -240,8 +236,7 @@ class ObjectId(object):
         return self.__id
 
     def __setstate__(self, value):
-        """explicit state set from pickling
-        """
+        """explicit state set from pickling"""
         # Provide backwards compatability with OIDs
         # pickled with pymongo-1.9 or older.
         if isinstance(value, dict):
@@ -252,7 +247,7 @@ class ObjectId(object):
         # In python 3.x this has to be converted to `bytes`
         # by encoding latin-1.
         if PY3 and isinstance(oid, text_type):
-            self.__id = oid.encode('latin-1')
+            self.__id = oid.encode("latin-1")
         else:
             self.__id = oid
 

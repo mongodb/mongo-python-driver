@@ -25,8 +25,7 @@ UPPERBOUND = 4294967296
 
 
 class Timestamp(object):
-    """MongoDB internal timestamps used in the opLog.
-    """
+    """MongoDB internal timestamps used in the opLog."""
 
     _type_marker = 17
 
@@ -66,19 +65,17 @@ class Timestamp(object):
 
     @property
     def time(self):
-        """Get the time portion of this :class:`Timestamp`.
-        """
+        """Get the time portion of this :class:`Timestamp`."""
         return self.__time
 
     @property
     def inc(self):
-        """Get the inc portion of this :class:`Timestamp`.
-        """
+        """Get the inc portion of this :class:`Timestamp`."""
         return self.__inc
 
     def __eq__(self, other):
         if isinstance(other, Timestamp):
-            return (self.__time == other.time and self.__inc == other.inc)
+            return self.__time == other.time and self.__inc == other.inc
         else:
             return NotImplemented
 

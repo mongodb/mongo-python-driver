@@ -19,17 +19,17 @@ import time
 
 sys.path[0:0] = [""]
 
+from test import IntegrationTest, client_context, unittest
+from test.utils import (
+    HeartbeatEventListener,
+    ServerEventListener,
+    rs_or_single_client,
+    single_client,
+    wait_until,
+)
+
 from pymongo import monitoring
 from pymongo.hello_compat import HelloCompat
-
-from test import (client_context,
-                  IntegrationTest,
-                  unittest)
-from test.utils import (HeartbeatEventListener,
-                        rs_or_single_client,
-                        single_client,
-                        ServerEventListener,
-                        wait_until)
 
 
 class TestStreamingProtocol(IntegrationTest):
@@ -38,33 +38,40 @@ class TestStreamingProtocol(IntegrationTest):
         listener = ServerEventListener()
         hb_listener = HeartbeatEventListener()
         client = rs_or_single_client(
-            event_listeners=[listener, hb_listener], heartbeatFrequencyMS=500,
-            appName='failingHelloTest')
+            event_listeners=[listener, hb_listener],
+            heartbeatFrequencyMS=500,
+            appName="failingHelloTest",
+        )
         self.addCleanup(client.close)
         # Force a connection.
-        client.admin.command('ping')
+        client.admin.command("ping")
         address = client.address
         listener.reset()
 
         fail_hello = {
-            'configureFailPoint': 'failCommand',
-            'mode': {'times': 4},
-            'data': {
-                'failCommands': [HelloCompat.LEGACY_CMD, 'hello'],
-                'closeConnection': False,
-                'errorCode': 10107,
-                'appName': 'failingHelloTest',
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 4},
+            "data": {
+                "failCommands": [HelloCompat.LEGACY_CMD, "hello"],
+                "closeConnection": False,
+                "errorCode": 10107,
+                "appName": "failingHelloTest",
             },
         }
         with self.fail_point(fail_hello):
+
             def _marked_unknown(event):
-                return (event.server_address == address
-                        and not event.new_description.is_server_type_known)
+                return (
+                    event.server_address == address
+                    and not event.new_description.is_server_type_known
+                )
 
             def _discovered_node(event):
-                return (event.server_address == address
-                        and not event.previous_description.is_server_type_known
-                        and event.new_description.is_server_type_known)
+                return (
+                    event.server_address == address
+                    and not event.previous_description.is_server_type_known
+                    and event.new_description.is_server_type_known
+                )
 
             def marked_unknown():
                 return len(listener.matching(_marked_unknown)) >= 1
@@ -73,11 +80,11 @@ class TestStreamingProtocol(IntegrationTest):
                 return len(listener.matching(_discovered_node)) >= 1
 
             # Topology events are published asynchronously
-            wait_until(marked_unknown, 'mark node unknown')
-            wait_until(rediscovered, 'rediscover node')
+            wait_until(marked_unknown, "mark node unknown")
+            wait_until(rediscovered, "rediscover node")
 
         # Server should be selectable.
-        client.admin.command('ping')
+        client.admin.command("ping")
 
     @client_context.require_failCommand_appName
     def test_streaming_rtt(self):
@@ -86,45 +93,46 @@ class TestStreamingProtocol(IntegrationTest):
         # On Windows, RTT can actually be 0.0 because time.time() only has
         # 1-15 millisecond resolution. We need to delay the initial hello
         # to ensure that RTT is never zero.
-        name = 'streamingRttTest'
+        name = "streamingRttTest"
         delay_hello = {
-            'configureFailPoint': 'failCommand',
-            'mode': {'times': 1000},
-            'data': {
-                'failCommands': [HelloCompat.LEGACY_CMD, 'hello'],
-                'blockConnection': True,
-                'blockTimeMS': 20,
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1000},
+            "data": {
+                "failCommands": [HelloCompat.LEGACY_CMD, "hello"],
+                "blockConnection": True,
+                "blockTimeMS": 20,
                 # This can be uncommented after SERVER-49220 is fixed.
                 # 'appName': name,
             },
         }
         with self.fail_point(delay_hello):
             client = rs_or_single_client(
-                event_listeners=[listener, hb_listener],
-                heartbeatFrequencyMS=500,
-                appName=name)
+                event_listeners=[listener, hb_listener], heartbeatFrequencyMS=500, appName=name
+            )
             self.addCleanup(client.close)
             # Force a connection.
-            client.admin.command('ping')
+            client.admin.command("ping")
             address = client.address
 
-        delay_hello['data']['blockTimeMS'] = 500
-        delay_hello['data']['appName'] = name
+        delay_hello["data"]["blockTimeMS"] = 500
+        delay_hello["data"]["appName"] = name
         with self.fail_point(delay_hello):
+
             def rtt_exceeds_250_ms():
                 # XXX: Add a public TopologyDescription getter to MongoClient?
                 topology = client._topology
                 sd = topology.description.server_descriptions()[address]
                 return sd.round_trip_time > 0.250
 
-            wait_until(rtt_exceeds_250_ms, 'exceed 250ms RTT')
+            wait_until(rtt_exceeds_250_ms, "exceed 250ms RTT")
 
         # Server should be selectable.
-        client.admin.command('ping')
+        client.admin.command("ping")
 
         def changed_event(event):
-            return (event.server_address == address and isinstance(
-                        event, monitoring.ServerDescriptionChangedEvent))
+            return event.server_address == address and isinstance(
+                event, monitoring.ServerDescriptionChangedEvent
+            )
 
         # There should only be one event published, for the initial discovery.
         events = listener.matching(changed_event)
@@ -137,21 +145,21 @@ class TestStreamingProtocol(IntegrationTest):
         # This test implements:
         # https://github.com/mongodb/specifications/blob/6c5b2ac/source/server-discovery-and-monitoring/server-discovery-and-monitoring-tests.rst#monitors-sleep-at-least-minheartbeatfreqencyms-between-checks
         fail_hello = {
-            'mode': {'times': 5},
-            'data': {
-                'failCommands': [HelloCompat.LEGACY_CMD, 'hello'],
-                'errorCode': 1234,
-                'appName': 'SDAMMinHeartbeatFrequencyTest',
+            "mode": {"times": 5},
+            "data": {
+                "failCommands": [HelloCompat.LEGACY_CMD, "hello"],
+                "errorCode": 1234,
+                "appName": "SDAMMinHeartbeatFrequencyTest",
             },
         }
         with self.fail_point(fail_hello):
             start = time.time()
             client = single_client(
-                appName='SDAMMinHeartbeatFrequencyTest',
-                serverSelectionTimeoutMS=5000)
+                appName="SDAMMinHeartbeatFrequencyTest", serverSelectionTimeoutMS=5000
+            )
             self.addCleanup(client.close)
             # Force a connection.
-            client.admin.command('ping')
+            client.admin.command("ping")
             duration = time.time() - start
             # Explanation of the expected events:
             # 0ms: run configureFailPoint
@@ -172,11 +180,13 @@ class TestStreamingProtocol(IntegrationTest):
     def test_heartbeat_awaited_flag(self):
         hb_listener = HeartbeatEventListener()
         client = single_client(
-            event_listeners=[hb_listener], heartbeatFrequencyMS=500,
-            appName='heartbeatEventAwaitedFlag')
+            event_listeners=[hb_listener],
+            heartbeatFrequencyMS=500,
+            appName="heartbeatEventAwaitedFlag",
+        )
         self.addCleanup(client.close)
         # Force a connection.
-        client.admin.command('ping')
+        client.admin.command("ping")
 
         def hb_succeeded(event):
             return isinstance(event, monitoring.ServerHeartbeatSucceededEvent)
@@ -185,18 +195,17 @@ class TestStreamingProtocol(IntegrationTest):
             return isinstance(event, monitoring.ServerHeartbeatFailedEvent)
 
         fail_heartbeat = {
-            'mode': {'times': 2},
-            'data': {
-                'failCommands': [HelloCompat.LEGACY_CMD, 'hello'],
-                'closeConnection': True,
-                'appName': 'heartbeatEventAwaitedFlag',
+            "mode": {"times": 2},
+            "data": {
+                "failCommands": [HelloCompat.LEGACY_CMD, "hello"],
+                "closeConnection": True,
+                "appName": "heartbeatEventAwaitedFlag",
             },
         }
         with self.fail_point(fail_heartbeat):
-            wait_until(lambda: hb_listener.matching(hb_failed),
-                       "published failed event")
+            wait_until(lambda: hb_listener.matching(hb_failed), "published failed event")
         # Reconnect.
-        client.admin.command('ping')
+        client.admin.command("ping")
 
         hb_succeeded_events = hb_listener.matching(hb_succeeded)
         hb_failed_events = hb_listener.matching(hb_failed)
@@ -205,10 +214,12 @@ class TestStreamingProtocol(IntegrationTest):
         # Depending on thread scheduling, the failed heartbeat could occur on
         # the second or third check.
         events = [type(e) for e in hb_listener.events[:4]]
-        if events == [monitoring.ServerHeartbeatStartedEvent,
-                      monitoring.ServerHeartbeatSucceededEvent,
-                      monitoring.ServerHeartbeatStartedEvent,
-                      monitoring.ServerHeartbeatFailedEvent]:
+        if events == [
+            monitoring.ServerHeartbeatStartedEvent,
+            monitoring.ServerHeartbeatSucceededEvent,
+            monitoring.ServerHeartbeatStartedEvent,
+            monitoring.ServerHeartbeatFailedEvent,
+        ]:
             self.assertFalse(hb_succeeded_events[1].awaited)
         else:
             self.assertTrue(hb_succeeded_events[1].awaited)

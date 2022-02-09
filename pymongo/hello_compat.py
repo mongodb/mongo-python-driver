@@ -14,10 +14,10 @@
 
 """Compatibility enum of working with hello and legay hello."""
 
-class HelloCompat:
-    CMD = 'hello'
-    LEGACY_CMD = 'ismaster'
-    PRIMARY = 'isWritablePrimary'
-    LEGACY_PRIMARY = 'ismaster'
-    LEGACY_ERROR = 'not master'
 
+class HelloCompat:
+    CMD = "hello"
+    LEGACY_CMD = "ismaster"
+    PRIMARY = "isWritablePrimary"
+    LEGACY_PRIMARY = "ismaster"
+    LEGACY_ERROR = "not master"

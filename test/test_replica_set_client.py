@@ -15,45 +15,51 @@
 """Test the mongo_replica_set_client module."""
 
 import sys
-import warnings
 import time
+import warnings
 
 sys.path[0:0] = [""]
+
+from test import (
+    HAVE_IPADDRESS,
+    IntegrationTest,
+    MockClientTest,
+    SkipTest,
+    client_context,
+    client_knobs,
+    db_pwd,
+    db_user,
+    unittest,
+)
+from test.pymongo_mocks import MockClient
+from test.utils import (
+    connected,
+    delay,
+    ignore_deprecations,
+    one,
+    rs_client,
+    single_client,
+    wait_until,
+)
 
 from bson.codec_options import CodecOptions
 from bson.son import SON
 from pymongo.common import MAX_SUPPORTED_WIRE_VERSION, partition_node
-from pymongo.errors import (AutoReconnect,
-                            ConfigurationError,
-                            ConnectionFailure,
-                            NetworkTimeout,
-                            NotPrimaryError,
-                            OperationFailure)
+from pymongo.errors import (
+    AutoReconnect,
+    ConfigurationError,
+    ConnectionFailure,
+    NetworkTimeout,
+    NotPrimaryError,
+    OperationFailure,
+)
 from pymongo.mongo_client import MongoClient
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
-from pymongo.read_preferences import ReadPreference, Secondary, Nearest
+from pymongo.read_preferences import Nearest, ReadPreference, Secondary
 from pymongo.write_concern import WriteConcern
-from test import (client_context,
-                  client_knobs,
-                  IntegrationTest,
-                  unittest,
-                  SkipTest,
-                  db_pwd,
-                  db_user,
-                  MockClientTest,
-                  HAVE_IPADDRESS)
-from test.pymongo_mocks import MockClient
-from test.utils import (connected,
-                        delay,
-                        ignore_deprecations,
-                        one,
-                        rs_client,
-                        single_client,
-                        wait_until)
 
 
 class TestReplicaSetClientBase(IntegrationTest):
-
     @classmethod
     @client_context.require_replica_set
     def setUpClass(cls):
@@ -62,22 +68,18 @@ class TestReplicaSetClientBase(IntegrationTest):
         cls.w = client_context.w
 
         hello = client_context.hello
-        cls.hosts = set(partition_node(h.lower()) for h in hello['hosts'])
-        cls.arbiters = set(partition_node(h)
-                           for h in hello.get("arbiters", []))
+        cls.hosts = set(partition_node(h.lower()) for h in hello["hosts"])
+        cls.arbiters = set(partition_node(h) for h in hello.get("arbiters", []))
 
-        repl_set_status = client_context.client.admin.command(
-            'replSetGetStatus')
-        primary_info = [
-            m for m in repl_set_status['members']
-            if m['stateStr'] == 'PRIMARY'
-        ][0]
+        repl_set_status = client_context.client.admin.command("replSetGetStatus")
+        primary_info = [m for m in repl_set_status["members"] if m["stateStr"] == "PRIMARY"][0]
 
-        cls.primary = partition_node(primary_info['name'].lower())
+        cls.primary = partition_node(primary_info["name"].lower())
         cls.secondaries = set(
-            partition_node(m['name'].lower())
-            for m in repl_set_status['members']
-            if m['stateStr'] == 'SECONDARY')
+            partition_node(m["name"].lower())
+            for m in repl_set_status["members"]
+            if m["stateStr"] == "SECONDARY"
+        )
 
 
 class TestReplicaSetClient(TestReplicaSetClientBase):
@@ -89,9 +91,8 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
 
     def test_connect(self):
         client = MongoClient(
-            client_context.pair,
-            replicaSet='fdlksjfdslkjfd',
-            serverSelectionTimeoutMS=100)
+            client_context.pair, replicaSet="fdlksjfdslkjfd", serverSelectionTimeoutMS=100
+        )
 
         with self.assertRaises(ConnectionFailure):
             client.test.test.find_one()
@@ -99,21 +100,19 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
     def test_repr(self):
         with ignore_deprecations():
             client = MongoReplicaSetClient(
-                client_context.host,
-                client_context.port,
-                replicaSet=self.name)
+                client_context.host, client_context.port, replicaSet=self.name
+            )
 
         self.assertIn("MongoReplicaSetClient(host=[", repr(client))
         self.assertIn(client_context.pair, repr(client))
 
     def test_properties(self):
         c = client_context.client
-        c.admin.command('ping')
+        c.admin.command("ping")
 
         wait_until(lambda: c.primary == self.primary, "discover primary")
         wait_until(lambda: c.arbiters == self.arbiters, "discover arbiters")
-        wait_until(lambda: c.secondaries == self.secondaries,
-                   "discover secondaries")
+        wait_until(lambda: c.secondaries == self.secondaries, "discover secondaries")
 
         self.assertEqual(c.primary, self.primary)
         self.assertEqual(c.secondaries, self.secondaries)
@@ -128,10 +127,9 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
             self.assertEqual(obj.write_concern, WriteConcern())
 
         cursor = c.pymongo_test.test.find()
-        self.assertEqual(
-            ReadPreference.PRIMARY, cursor._read_preference())
+        self.assertEqual(ReadPreference.PRIMARY, cursor._read_preference())
 
-        tag_sets = [{'dc': 'la', 'rack': '2'}, {'foo': 'bar'}]
+        tag_sets = [{"dc": "la", "rack": "2"}, {"foo": "bar"}]
         secondary = Secondary(tag_sets=tag_sets)
         c = rs_client(
             maxPoolSize=25,
@@ -139,7 +137,8 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
             tz_aware=True,
             read_preference=secondary,
             localThresholdMS=77,
-            j=True)
+            j=True,
+        )
 
         self.assertEqual(c.max_pool_size, 25)
 
@@ -149,12 +148,10 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
             self.assertEqual(obj.write_concern, WriteConcern(j=True))
 
         cursor = c.pymongo_test.test.find()
-        self.assertEqual(
-            secondary, cursor._read_preference())
+        self.assertEqual(secondary, cursor._read_preference())
 
-        nearest = Nearest(tag_sets=[{'dc': 'ny'}, {}])
-        cursor = c.pymongo_test.get_collection(
-            "test", read_preference=nearest).find()
+        nearest = Nearest(tag_sets=[{"dc": "ny"}, {}])
+        cursor = c.pymongo_test.get_collection("test", read_preference=nearest).find()
 
         self.assertEqual(nearest, cursor._read_preference())
         self.assertEqual(c.max_bson_size, 16777216)
@@ -171,22 +168,15 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
             collection.insert_one({})
 
             # Query the primary.
-            self.assertRaises(
-                NetworkTimeout,
-                collection.find_one,
-                {'$where': delay(1.5)})
+            self.assertRaises(NetworkTimeout, collection.find_one, {"$where": delay(1.5)})
 
             self.assertTrue(c.primary)
             collection.find_one()  # No error.
 
-            coll = collection.with_options(
-                read_preference=ReadPreference.SECONDARY)
+            coll = collection.with_options(read_preference=ReadPreference.SECONDARY)
 
             # Query the secondary.
-            self.assertRaises(
-                NetworkTimeout,
-                coll.find_one,
-                {'$where': delay(1.5)})
+            self.assertRaises(NetworkTimeout, coll.find_one, {"$where": delay(1.5)})
 
             self.assertTrue(c.secondaries)
 
@@ -218,8 +208,8 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
 
         uri = "mongodb://%slocalhost:%d,[::1]:%d" % (auth_str, port, port)
         client = rs_client(uri)
-        client.pymongo_test.test.insert_one({"dummy": u"object"})
-        client.pymongo_test_bernie.test.insert_one({"dummy": u"object"})
+        client.pymongo_test.test.insert_one({"dummy": "object"})
+        client.pymongo_test_bernie.test.insert_one({"dummy": "object"})
 
         dbs = client.list_database_names()
         self.assertTrue("pymongo_test" in dbs)
@@ -241,14 +231,13 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
             self.assertNotEqual(0, cursor.cursor_id)
 
             if read_pref == ReadPreference.PRIMARY:
-                msg = "Expected cursor's address to be %s, got %s" % (
-                    c.primary, cursor.address)
+                msg = "Expected cursor's address to be %s, got %s" % (c.primary, cursor.address)
 
                 self.assertEqual(cursor.address, c.primary, msg)
             else:
                 self.assertNotEqual(
-                    cursor.address, c.primary,
-                    "Expected cursor's address not to be primary")
+                    cursor.address, c.primary, "Expected cursor's address not to be primary"
+                )
 
             cursor_id = cursor.cursor_id
 
@@ -257,7 +246,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
             cursor2 = cursor.clone()
             cursor2._Cursor__id = cursor_id
 
-            if sys.platform.startswith('java') or 'PyPy' in sys.version:
+            if sys.platform.startswith("java") or "PyPy" in sys.version:
                 # Explicitly kill cursor.
                 cursor.close()
             else:
@@ -282,35 +271,34 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
         with self.assertRaises(NotPrimaryError):
             direct_client.pymongo_test.collection.insert_one({})
 
-        db = direct_client.get_database(
-            "pymongo_test", write_concern=WriteConcern(w=0))
+        db = direct_client.get_database("pymongo_test", write_concern=WriteConcern(w=0))
         with self.assertRaises(NotPrimaryError):
             db.collection.insert_one({})
 
 
 class TestReplicaSetWireVersion(MockClientTest):
-
     @client_context.require_connection
     @client_context.require_no_auth
     def test_wire_version(self):
         c = MockClient(
             standalones=[],
-            members=['a:1', 'b:2', 'c:3'],
+            members=["a:1", "b:2", "c:3"],
             mongoses=[],
-            host='a:1',
-            replicaSet='rs',
-            connect=False)
+            host="a:1",
+            replicaSet="rs",
+            connect=False,
+        )
         self.addCleanup(c.close)
 
-        c.set_wire_version_range('a:1', 3, 7)
-        c.set_wire_version_range('b:2', 2, 3)
-        c.set_wire_version_range('c:3', 3, 4)
-        c.db.command('ping')  # Connect.
+        c.set_wire_version_range("a:1", 3, 7)
+        c.set_wire_version_range("b:2", 2, 3)
+        c.set_wire_version_range("c:3", 3, 4)
+        c.db.command("ping")  # Connect.
 
         # A secondary doesn't overlap with us.
-        c.set_wire_version_range('b:2',
-                                 MAX_SUPPORTED_WIRE_VERSION + 1,
-                                 MAX_SUPPORTED_WIRE_VERSION + 2)
+        c.set_wire_version_range(
+            "b:2", MAX_SUPPORTED_WIRE_VERSION + 1, MAX_SUPPORTED_WIRE_VERSION + 2
+        )
 
         def raises_configuration_error():
             try:
@@ -319,57 +307,58 @@ class TestReplicaSetWireVersion(MockClientTest):
             except ConfigurationError:
                 return True
 
-        wait_until(raises_configuration_error,
-                   'notice we are incompatible with server')
+        wait_until(raises_configuration_error, "notice we are incompatible with server")
 
         self.assertRaises(ConfigurationError, c.db.collection.insert_one, {})
 
 
 class TestReplicaSetClientInternalIPs(MockClientTest):
-
     @client_context.require_connection
     def test_connect_with_internal_ips(self):
         # Client is passed an IP it can reach, 'a:1', but the RS config
         # only contains unreachable IPs like 'internal-ip'. PYTHON-608.
         client = MockClient(
             standalones=[],
-            members=['a:1'],
+            members=["a:1"],
             mongoses=[],
-            hello_hosts=['internal-ip:27017'],
-            host='a:1',
-            replicaSet='rs',
-            serverSelectionTimeoutMS=100)
+            hello_hosts=["internal-ip:27017"],
+            host="a:1",
+            replicaSet="rs",
+            serverSelectionTimeoutMS=100,
+        )
         self.addCleanup(client.close)
         with self.assertRaises(AutoReconnect) as context:
             connected(client)
 
-        self.assertIn("Could not reach any servers in [('internal-ip', 27017)]."
+        self.assertIn(
+            "Could not reach any servers in [('internal-ip', 27017)]."
             " Replica set is configured with internal hostnames or IPs?",
-            str(context.exception))
+            str(context.exception),
+        )
+
 
 class TestReplicaSetClientMaxWriteBatchSize(MockClientTest):
-
     @client_context.require_connection
     def test_max_write_batch_size(self):
         c = MockClient(
             standalones=[],
-            members=['a:1', 'b:2'],
+            members=["a:1", "b:2"],
             mongoses=[],
-            host='a:1',
-            replicaSet='rs',
-            connect=False)
+            host="a:1",
+            replicaSet="rs",
+            connect=False,
+        )
         self.addCleanup(c.close)
 
-        c.set_max_write_batch_size('a:1', 1)
-        c.set_max_write_batch_size('b:2', 2)
+        c.set_max_write_batch_size("a:1", 1)
+        c.set_max_write_batch_size("b:2", 2)
 
         # Uses primary's max batch size.
         self.assertEqual(c.max_write_batch_size, 1)
 
         # b becomes primary.
-        c.mock_primary = 'b:2'
-        wait_until(lambda: c.max_write_batch_size == 2,
-                   'update max_write_batch_size')
+        c.mock_primary = "b:2"
+        wait_until(lambda: c.max_write_batch_size == 2, "update max_write_batch_size")
 
 
 if __name__ == "__main__":

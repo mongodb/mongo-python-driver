@@ -72,41 +72,37 @@ import re
 import struct
 import sys
 import uuid
+from codecs import utf_8_decode as _utf_8_decode
+from codecs import utf_8_encode as _utf_8_encode
 
-from codecs import (utf_8_decode as _utf_8_decode,
-                    utf_8_encode as _utf_8_encode)
-
-from bson.binary import (Binary, UuidRepresentation, ALL_UUID_SUBTYPES,
-                         OLD_UUID_SUBTYPE,
-                         JAVA_LEGACY, CSHARP_LEGACY,
-                         UUIDLegacy, UUID_SUBTYPE)
+from bson.binary import (
+    ALL_UUID_SUBTYPES,
+    CSHARP_LEGACY,
+    JAVA_LEGACY,
+    OLD_UUID_SUBTYPE,
+    UUID_SUBTYPE,
+    Binary,
+    UUIDLegacy,
+    UuidRepresentation,
+)
 from bson.code import Code
-from bson.codec_options import (
-    CodecOptions, DEFAULT_CODEC_OPTIONS, _raw_document_class)
+from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, _raw_document_class
 from bson.dbref import DBRef
 from bson.decimal128 import Decimal128
-from bson.errors import (InvalidBSON,
-                         InvalidDocument,
-                         InvalidStringData)
+from bson.errors import InvalidBSON, InvalidDocument, InvalidStringData
 from bson.int64 import Int64
 from bson.max_key import MaxKey
 from bson.min_key import MinKey
 from bson.objectid import ObjectId
-from bson.py3compat import (abc,
-                            b,
-                            PY3,
-                            iteritems,
-                            text_type,
-                            string_type,
-                            reraise)
+from bson.py3compat import PY3, abc, b, iteritems, reraise, string_type, text_type
 from bson.regex import Regex
-from bson.son import SON, RE_TYPE
+from bson.son import RE_TYPE, SON
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
 
-
 try:
     from bson import _cbson
+
     _USE_C = True
 except ImportError:
     _USE_C = False
@@ -116,27 +112,27 @@ EPOCH_AWARE = datetime.datetime.fromtimestamp(0, utc)
 EPOCH_NAIVE = datetime.datetime.utcfromtimestamp(0)
 
 
-BSONNUM = b"\x01" # Floating point
-BSONSTR = b"\x02" # UTF-8 string
-BSONOBJ = b"\x03" # Embedded document
-BSONARR = b"\x04" # Array
-BSONBIN = b"\x05" # Binary
-BSONUND = b"\x06" # Undefined
-BSONOID = b"\x07" # ObjectId
-BSONBOO = b"\x08" # Boolean
-BSONDAT = b"\x09" # UTC Datetime
-BSONNUL = b"\x0A" # Null
-BSONRGX = b"\x0B" # Regex
-BSONREF = b"\x0C" # DBRef
-BSONCOD = b"\x0D" # Javascript code
-BSONSYM = b"\x0E" # Symbol
-BSONCWS = b"\x0F" # Javascript code with scope
-BSONINT = b"\x10" # 32bit int
-BSONTIM = b"\x11" # Timestamp
-BSONLON = b"\x12" # 64bit int
-BSONDEC = b"\x13" # Decimal128
-BSONMIN = b"\xFF" # Min key
-BSONMAX = b"\x7F" # Max key
+BSONNUM = b"\x01"  # Floating point
+BSONSTR = b"\x02"  # UTF-8 string
+BSONOBJ = b"\x03"  # Embedded document
+BSONARR = b"\x04"  # Array
+BSONBIN = b"\x05"  # Binary
+BSONUND = b"\x06"  # Undefined
+BSONOID = b"\x07"  # ObjectId
+BSONBOO = b"\x08"  # Boolean
+BSONDAT = b"\x09"  # UTC Datetime
+BSONNUL = b"\x0A"  # Null
+BSONRGX = b"\x0B"  # Regex
+BSONREF = b"\x0C"  # DBRef
+BSONCOD = b"\x0D"  # Javascript code
+BSONSYM = b"\x0E"  # Symbol
+BSONCWS = b"\x0F"  # Javascript code with scope
+BSONINT = b"\x10"  # 32bit int
+BSONTIM = b"\x11"  # Timestamp
+BSONLON = b"\x12"  # 64bit int
+BSONDEC = b"\x13"  # Decimal128
+BSONMIN = b"\xFF"  # Min key
+BSONMAX = b"\x7F"  # Max key
 
 
 _UNPACK_FLOAT_FROM = struct.Struct("<d").unpack_from
@@ -152,21 +148,25 @@ if PY3:
     # Only used to generate the _ELEMENT_GETTER dict
     def _maybe_ord(element_type):
         return ord(element_type)
+
     # Only used in _raise_unkown_type below
     def _elt_to_hex(element_type):
         return chr(element_type).encode()
+
     _supported_buffer_types = (bytes, bytearray)
 else:
     _OBJEND = b"\x00"
+
     def _maybe_ord(element_type):
         return element_type
+
     def _elt_to_hex(element_type):
         return element_type
+
     _supported_buffer_types = (bytes,)
 
 
-
-if platform.python_implementation() == 'Jython':
+if platform.python_implementation() == "Jython":
     # This is why we can't have nice things.
     # https://bugs.jython.org/issue2788
     def get_data_and_view(data):
@@ -174,7 +174,9 @@ if platform.python_implementation() == 'Jython':
             return data, data
         data = memoryview(data).tobytes()
         return data, data
+
 else:
+
     def get_data_and_view(data):
         if isinstance(data, _supported_buffer_types):
             return data, memoryview(data)
@@ -184,9 +186,10 @@ else:
 
 def _raise_unknown_type(element_type, element_name):
     """Unknown type helper."""
-    raise InvalidBSON("Detected unknown BSON type %r for fieldname '%s'. Are "
-                      "you using the latest driver version?" % (
-                          _elt_to_hex(element_type), element_name))
+    raise InvalidBSON(
+        "Detected unknown BSON type %r for fieldname '%s'. Are "
+        "you using the latest driver version?" % (_elt_to_hex(element_type), element_name)
+    )
 
 
 def _get_int(data, view, position, dummy0, dummy1, dummy2):
@@ -197,8 +200,7 @@ def _get_int(data, view, position, dummy0, dummy1, dummy2):
 def _get_c_string(data, view, position, opts):
     """Decode a BSON 'C' string to python unicode string."""
     end = data.index(b"\x00", position)
-    return _utf_8_decode(view[position:end],
-                         opts.unicode_decode_error_handler, True)[0], end + 1
+    return _utf_8_decode(view[position:end], opts.unicode_decode_error_handler, True)[0], end + 1
 
 
 def _get_float(data, view, position, dummy0, dummy1, dummy2):
@@ -215,8 +217,7 @@ def _get_string(data, view, position, obj_end, opts, dummy):
     end = position + length - 1
     if data[end] != _OBJEND:
         raise InvalidBSON("invalid end of string")
-    return _utf_8_decode(view[position:end],
-                         opts.unicode_decode_error_handler, True)[0], end + 1
+    return _utf_8_decode(view[position:end], opts.unicode_decode_error_handler, True)[0], end + 1
 
 
 def _get_object_size(data, position, obj_end):
@@ -240,15 +241,13 @@ def _get_object(data, view, position, obj_end, opts, dummy):
     """Decode a BSON subdocument to opts.document_class or bson.dbref.DBRef."""
     obj_size, end = _get_object_size(data, position, obj_end)
     if _raw_document_class(opts.document_class):
-        return (opts.document_class(data[position:end + 1], opts),
-                position + obj_size)
+        return (opts.document_class(data[position : end + 1], opts), position + obj_size)
 
     obj = _elements_to_dict(data, view, position + 4, end, opts)
 
     position += obj_size
     if "$ref" in obj:
-        return (DBRef(obj.pop("$ref"), obj.pop("$id", None),
-                      obj.pop("$db", None), obj), position)
+        return (DBRef(obj.pop("$ref"), obj.pop("$id", None), obj.pop("$db", None), obj), position)
     return obj, position
 
 
@@ -272,10 +271,11 @@ def _get_array(data, view, position, obj_end, opts, element_name):
     while position < end:
         element_type = data[position]
         # Just skip the keys.
-        position = index(b'\x00', position) + 1
+        position = index(b"\x00", position) + 1
         try:
             value, position = getter[element_type](
-                data, view, position, obj_end, opts, element_name)
+                data, view, position, obj_end, opts, element_name
+            )
         except KeyError:
             _raise_unknown_type(element_type, element_name)
 
@@ -287,7 +287,7 @@ def _get_array(data, view, position, obj_end, opts, element_name):
         append(value)
 
     if position != end + 1:
-        raise InvalidBSON('bad array length')
+        raise InvalidBSON("bad array length")
     return result, position + 1
 
 
@@ -303,7 +303,7 @@ def _get_binary(data, view, position, obj_end, opts, dummy1):
         length = length2
     end = position + length
     if length < 0 or end > obj_end:
-        raise InvalidBSON('bad binary object length')
+        raise InvalidBSON("bad binary object length")
 
     # Convert UUID subtypes to native UUIDs.
     # TODO: PYTHON-2245 Decoding should follow UUID spec in PyMongo 4.0+
@@ -340,17 +340,16 @@ def _get_boolean(data, view, position, dummy0, dummy1, dummy2):
     """Decode a BSON true/false to python True/False."""
     end = position + 1
     boolean_byte = data[position:end]
-    if boolean_byte == b'\x00':
+    if boolean_byte == b"\x00":
         return False, end
-    elif boolean_byte == b'\x01':
+    elif boolean_byte == b"\x01":
         return True, end
-    raise InvalidBSON('invalid boolean value: %r' % boolean_byte)
+    raise InvalidBSON("invalid boolean value: %r" % boolean_byte)
 
 
 def _get_date(data, view, position, dummy0, opts, dummy1):
     """Decode a BSON datetime to python datetime.datetime."""
-    return _millis_to_datetime(
-        _UNPACK_LONG_FROM(data, position)[0], opts), position + 8
+    return _millis_to_datetime(_UNPACK_LONG_FROM(data, position)[0], opts), position + 8
 
 
 def _get_code(data, view, position, obj_end, opts, element_name):
@@ -362,11 +361,10 @@ def _get_code(data, view, position, obj_end, opts, element_name):
 def _get_code_w_scope(data, view, position, obj_end, opts, element_name):
     """Decode a BSON code_w_scope to bson.code.Code."""
     code_end = position + _UNPACK_INT_FROM(data, position)[0]
-    code, position = _get_string(
-        data, view, position + 4, code_end, opts, element_name)
+    code, position = _get_string(data, view, position + 4, code_end, opts, element_name)
     scope, position = _get_object(data, view, position, code_end, opts, element_name)
     if position != code_end:
-        raise InvalidBSON('scope outside of javascript code boundaries')
+        raise InvalidBSON("scope outside of javascript code boundaries")
     return Code(code, scope), position
 
 
@@ -380,8 +378,7 @@ def _get_regex(data, view, position, dummy0, opts, dummy1):
 
 def _get_ref(data, view, position, obj_end, opts, element_name):
     """Decode (deprecated) BSON DBPointer to bson.dbref.DBRef."""
-    collection, position = _get_string(
-        data, view, position, obj_end, opts, element_name)
+    collection, position = _get_string(data, view, position, obj_end, opts, element_name)
     oid, position = _get_oid(data, view, position, obj_end, opts, element_name)
     return DBRef(collection, oid), position
 
@@ -430,22 +427,26 @@ _ELEMENT_GETTER = {
     _maybe_ord(BSONLON): _get_int64,
     _maybe_ord(BSONDEC): _get_decimal128,
     _maybe_ord(BSONMIN): lambda u, v, w, x, y, z: (MinKey(), w),
-    _maybe_ord(BSONMAX): lambda u, v, w, x, y, z: (MaxKey(), w)}
+    _maybe_ord(BSONMAX): lambda u, v, w, x, y, z: (MaxKey(), w),
+}
 
 
 if _USE_C:
+
     def _element_to_dict(data, view, position, obj_end, opts):
         return _cbson._element_to_dict(data, position, obj_end, opts)
+
 else:
+
     def _element_to_dict(data, view, position, obj_end, opts):
         """Decode a single key, value pair."""
         element_type = data[position]
         position += 1
         element_name, position = _get_c_string(data, view, position, opts)
         try:
-            value, position = _ELEMENT_GETTER[element_type](data, view, position,
-                                                            obj_end, opts,
-                                                            element_name)
+            value, position = _ELEMENT_GETTER[element_type](
+                data, view, position, obj_end, opts, element_name
+            )
         except KeyError:
             _raise_unknown_type(element_type, element_name)
 
@@ -471,7 +472,7 @@ def _elements_to_dict(data, view, position, obj_end, opts, result=None):
         key, value, position = _element_to_dict(data, view, position, obj_end, opts)
         result[key] = value
     if position != obj_end:
-        raise InvalidBSON('bad object or element length')
+        raise InvalidBSON("bad object or element length")
     return result
 
 
@@ -489,6 +490,8 @@ def _bson_to_dict(data, opts):
         # Change exception type to InvalidBSON but preserve traceback.
         _, exc_value, exc_tb = sys.exc_info()
         reraise(InvalidBSON, exc_value, exc_tb)
+
+
 if _USE_C:
     _bson_to_dict = _cbson._bson_to_dict
 
@@ -520,18 +523,15 @@ def _make_c_string_check(string):
     """Make a 'C' string, checking for embedded NUL characters."""
     if isinstance(string, bytes):
         if b"\x00" in string:
-            raise InvalidDocument("BSON keys / regex patterns must not "
-                                  "contain a NUL character")
+            raise InvalidDocument("BSON keys / regex patterns must not " "contain a NUL character")
         try:
             _utf_8_decode(string, None, True)
             return string + b"\x00"
         except UnicodeError:
-            raise InvalidStringData("strings in documents must be valid "
-                                    "UTF-8: %r" % string)
+            raise InvalidStringData("strings in documents must be valid " "UTF-8: %r" % string)
     else:
         if "\x00" in string:
-            raise InvalidDocument("BSON keys / regex patterns must not "
-                                  "contain a NUL character")
+            raise InvalidDocument("BSON keys / regex patterns must not " "contain a NUL character")
         return _utf_8_encode(string)[0] + b"\x00"
 
 
@@ -542,20 +542,20 @@ def _make_c_string(string):
             _utf_8_decode(string, None, True)
             return string + b"\x00"
         except UnicodeError:
-            raise InvalidStringData("strings in documents must be valid "
-                                    "UTF-8: %r" % string)
+            raise InvalidStringData("strings in documents must be valid " "UTF-8: %r" % string)
     else:
         return _utf_8_encode(string)[0] + b"\x00"
 
 
 if PY3:
+
     def _make_name(string):
         """Make a 'C' string suitable for a BSON key."""
         # Keys can only be text in python 3.
         if "\x00" in string:
-            raise InvalidDocument("BSON keys / regex patterns must not "
-                                  "contain a NUL character")
+            raise InvalidDocument("BSON keys / regex patterns must not " "contain a NUL character")
         return _utf_8_encode(string)[0] + b"\x00"
+
 else:
     # Keys can be unicode or bytes in python 2.
     _make_name = _make_c_string_check
@@ -567,27 +567,28 @@ def _encode_float(name, value, dummy0, dummy1):
 
 
 if PY3:
+
     def _encode_bytes(name, value, dummy0, dummy1):
         """Encode a python bytes."""
         # Python3 special case. Store 'bytes' as BSON binary subtype 0.
         return b"\x05" + name + _PACK_INT(len(value)) + b"\x00" + value
+
 else:
+
     def _encode_bytes(name, value, dummy0, dummy1):
         """Encode a python str (python 2.x)."""
         try:
             _utf_8_decode(value, None, True)
         except UnicodeError:
-            raise InvalidStringData("strings in documents must be valid "
-                                    "UTF-8: %r" % (value,))
+            raise InvalidStringData("strings in documents must be valid " "UTF-8: %r" % (value,))
         return b"\x02" + name + _PACK_INT(len(value) + 1) + value + b"\x00"
 
 
 def _encode_mapping(name, value, check_keys, opts):
     """Encode a mapping type."""
     if _raw_document_class(value):
-        return b'\x03' + name + value.raw
-    data = b"".join([_element_to_bson(key, val, check_keys, opts)
-                     for key, val in iteritems(value)])
+        return b"\x03" + name + value.raw
+    data = b"".join([_element_to_bson(key, val, check_keys, opts) for key, val in iteritems(value)])
     return b"\x03" + name + _PACK_INT(len(data) + 5) + data + b"\x00"
 
 
@@ -596,27 +597,22 @@ def _encode_dbref(name, value, check_keys, opts):
     buf = bytearray(b"\x03" + name + b"\x00\x00\x00\x00")
     begin = len(buf) - 4
 
-    buf += _name_value_to_bson(b"$ref\x00",
-                               value.collection, check_keys, opts)
-    buf += _name_value_to_bson(b"$id\x00",
-                               value.id, check_keys, opts)
+    buf += _name_value_to_bson(b"$ref\x00", value.collection, check_keys, opts)
+    buf += _name_value_to_bson(b"$id\x00", value.id, check_keys, opts)
     if value.database is not None:
-        buf += _name_value_to_bson(
-            b"$db\x00", value.database, check_keys, opts)
+        buf += _name_value_to_bson(b"$db\x00", value.database, check_keys, opts)
     for key, val in iteritems(value._DBRef__kwargs):
         buf += _element_to_bson(key, val, check_keys, opts)
 
     buf += b"\x00"
-    buf[begin:begin + 4] = _PACK_INT(len(buf) - begin)
+    buf[begin : begin + 4] = _PACK_INT(len(buf) - begin)
     return bytes(buf)
 
 
 def _encode_list(name, value, check_keys, opts):
     """Encode a list/tuple."""
     lname = gen_list_name()
-    data = b"".join([_name_value_to_bson(next(lname), item,
-                                         check_keys, opts)
-                     for item in value])
+    data = b"".join([_name_value_to_bson(next(lname), item, check_keys, opts) for item in value])
     return b"\x04" + name + _PACK_INT(len(data) + 5) + data + b"\x00"
 
 
@@ -639,6 +635,7 @@ def _encode_uuid(name, value, dummy, opts):
     uuid_representation = opts.uuid_representation
     binval = Binary.from_uuid(value, uuid_representation=uuid_representation)
     return _encode_binary(name, binval, dummy, opts)
+
 
 def _encode_objectid(name, value, dummy0, dummy1):
     """Encode bson.objectid.ObjectId."""
@@ -793,9 +790,9 @@ if not PY3:
 _BUILT_IN_TYPES = tuple(t for t in _ENCODERS)
 
 
-def _name_value_to_bson(name, value, check_keys, opts,
-                        in_custom_call=False,
-                        in_fallback_call=False):
+def _name_value_to_bson(
+    name, value, check_keys, opts, in_custom_call=False, in_fallback_call=False
+):
     """Encode a single name, value pair."""
     # First see if the type is already cached. KeyError will only ever
     # happen once per subtype.
@@ -820,8 +817,8 @@ def _name_value_to_bson(name, value, check_keys, opts,
         custom_encoder = opts.type_registry._encoder_map.get(type(value))
         if custom_encoder is not None:
             return _name_value_to_bson(
-                name, custom_encoder(value), check_keys, opts,
-                in_custom_call=True)
+                name, custom_encoder(value), check_keys, opts, in_custom_call=True
+            )
 
     # Fourth, test each base type. This will only happen once for
     # a subtype of a supported base type. Unlike in the C-extensions, this
@@ -839,18 +836,16 @@ def _name_value_to_bson(name, value, check_keys, opts,
     fallback_encoder = opts.type_registry._fallback_encoder
     if not in_fallback_call and fallback_encoder is not None:
         return _name_value_to_bson(
-            name, fallback_encoder(value), check_keys, opts,
-            in_fallback_call=True)
+            name, fallback_encoder(value), check_keys, opts, in_fallback_call=True
+        )
 
-    raise InvalidDocument(
-        "cannot encode object: %r, of type: %r" % (value, type(value)))
+    raise InvalidDocument("cannot encode object: %r, of type: %r" % (value, type(value)))
 
 
 def _element_to_bson(key, value, check_keys, opts):
     """Encode a single key, value pair."""
     if not isinstance(key, string_type):
-        raise InvalidDocument("documents must have only string keys, "
-                              "key was %r" % (key,))
+        raise InvalidDocument("documents must have only string keys, " "key was %r" % (key,))
     if check_keys:
         if key.startswith("$"):
             raise InvalidDocument("key %r must not start with '$'" % (key,))
@@ -868,17 +863,17 @@ def _dict_to_bson(doc, check_keys, opts, top_level=True):
     try:
         elements = []
         if top_level and "_id" in doc:
-            elements.append(_name_value_to_bson(b"_id\x00", doc["_id"],
-                                                check_keys, opts))
+            elements.append(_name_value_to_bson(b"_id\x00", doc["_id"], check_keys, opts))
         for (key, value) in iteritems(doc):
             if not top_level or key != "_id":
-                elements.append(_element_to_bson(key, value,
-                                                 check_keys, opts))
+                elements.append(_element_to_bson(key, value, check_keys, opts))
     except AttributeError:
         raise TypeError("encoder expected a mapping type but got: %r" % (doc,))
 
     encoded = b"".join(elements)
     return _PACK_INT(len(encoded) + 5) + encoded + b"\x00"
+
+
 if _USE_C:
     _dict_to_bson = _cbson._dict_to_bson
 
@@ -889,26 +884,22 @@ def _millis_to_datetime(millis, opts):
     seconds = (millis - diff) // 1000
     micros = diff * 1000
     if opts.tz_aware:
-        dt = EPOCH_AWARE + datetime.timedelta(seconds=seconds,
-                                              microseconds=micros)
+        dt = EPOCH_AWARE + datetime.timedelta(seconds=seconds, microseconds=micros)
         if opts.tzinfo:
             dt = dt.astimezone(opts.tzinfo)
         return dt
     else:
-        return EPOCH_NAIVE + datetime.timedelta(seconds=seconds,
-                                                microseconds=micros)
+        return EPOCH_NAIVE + datetime.timedelta(seconds=seconds, microseconds=micros)
 
 
 def _datetime_to_millis(dtm):
     """Convert datetime to milliseconds since epoch UTC."""
     if dtm.utcoffset() is not None:
         dtm = dtm - dtm.utcoffset()
-    return int(calendar.timegm(dtm.timetuple()) * 1000 +
-               dtm.microsecond // 1000)
+    return int(calendar.timegm(dtm.timetuple()) * 1000 + dtm.microsecond // 1000)
 
 
-_CODEC_OPTIONS_TYPE_ERROR = TypeError(
-    "codec_options must be an instance of CodecOptions")
+_CODEC_OPTIONS_TYPE_ERROR = TypeError("codec_options must be an instance of CodecOptions")
 
 
 def encode(document, check_keys=False, codec_options=DEFAULT_CODEC_OPTIONS):
@@ -1021,14 +1012,10 @@ def decode_all(data, codec_options=DEFAULT_CODEC_OPTIONS):
                 raise InvalidBSON("bad eoo")
             if use_raw:
                 docs.append(
-                    codec_options.document_class(
-                        data[position:obj_end + 1], codec_options))
+                    codec_options.document_class(data[position : obj_end + 1], codec_options)
+                )
             else:
-                docs.append(_elements_to_dict(data,
-                                              view,
-                                              position + 4,
-                                              obj_end,
-                                              codec_options))
+                docs.append(_elements_to_dict(data, view, position + 4, obj_end, codec_options))
             position += obj_size
         return docs
     except InvalidBSON:
@@ -1063,9 +1050,9 @@ def _decode_selective(rawdoc, fields, codec_options):
 
 
 def _convert_raw_document_lists_to_streams(document):
-    cursor = document.get('cursor')
+    cursor = document.get("cursor")
     if cursor:
-        for key in ('firstBatch', 'nextBatch'):
+        for key in ("firstBatch", "nextBatch"):
             batch = cursor.get(key)
             if batch:
                 stream = b"".join(doc.raw for doc in batch)
@@ -1103,10 +1090,18 @@ def _decode_all_selective(data, codec_options, fields):
 
     # Decode documents for internal use.
     from bson.raw_bson import RawBSONDocument
+
     internal_codec_options = codec_options.with_options(
-        document_class=RawBSONDocument, type_registry=None)
+        document_class=RawBSONDocument, type_registry=None
+    )
     _doc = _bson_to_dict(data, internal_codec_options)
-    return [_decode_selective(_doc, fields, codec_options,)]
+    return [
+        _decode_selective(
+            _doc,
+            fields,
+            codec_options,
+        )
+    ]
 
 
 def decode_iter(data, codec_options=DEFAULT_CODEC_OPTIONS):
@@ -1136,7 +1131,7 @@ def decode_iter(data, codec_options=DEFAULT_CODEC_OPTIONS):
     end = len(data) - 1
     while position < end:
         obj_size = _UNPACK_INT_FROM(data, position)[0]
-        elements = data[position:position + obj_size]
+        elements = data[position : position + obj_size]
         position += obj_size
 
         yield _bson_to_dict(elements, codec_options)
@@ -1200,8 +1195,7 @@ class BSON(bytes):
     """
 
     @classmethod
-    def encode(cls, document, check_keys=False,
-               codec_options=DEFAULT_CODEC_OPTIONS):
+    def encode(cls, document, check_keys=False, codec_options=DEFAULT_CODEC_OPTIONS):
         """Encode a document to a new :class:`BSON` instance.
 
         A document can be any mapping type (like :class:`dict`).
@@ -1269,6 +1263,5 @@ class BSON(bytes):
 
 
 def has_c():
-    """Is the C extension installed?
-    """
+    """Is the C extension installed?"""
     return _USE_C

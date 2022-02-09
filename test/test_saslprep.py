@@ -17,27 +17,28 @@ import warnings
 
 sys.path[0:0] = [""]
 
-from pymongo.saslprep import saslprep
 from test import unittest
 
-class TestSASLprep(unittest.TestCase):
+from pymongo.saslprep import saslprep
 
+
+class TestSASLprep(unittest.TestCase):
     def test_saslprep(self):
         try:
             import stringprep
         except ImportError:
-            self.assertRaises(TypeError, saslprep, u"anything...")
+            self.assertRaises(TypeError, saslprep, "anything...")
             # Bytes strings are ignored.
             self.assertEqual(saslprep(b"user"), b"user")
         else:
             # Examples from RFC4013, Section 3.
-            self.assertEqual(saslprep(u"I\u00ADX"), u"IX")
-            self.assertEqual(saslprep(u"user"), u"user")
-            self.assertEqual(saslprep(u"USER"), u"USER")
-            self.assertEqual(saslprep(u"\u00AA"), u"a")
-            self.assertEqual(saslprep(u"\u2168"), u"IX")
-            self.assertRaises(ValueError, saslprep, u"\u0007")
-            self.assertRaises(ValueError, saslprep, u"\u0627\u0031")
+            self.assertEqual(saslprep("I\u00ADX"), "IX")
+            self.assertEqual(saslprep("user"), "user")
+            self.assertEqual(saslprep("USER"), "USER")
+            self.assertEqual(saslprep("\u00AA"), "a")
+            self.assertEqual(saslprep("\u2168"), "IX")
+            self.assertRaises(ValueError, saslprep, "\u0007")
+            self.assertRaises(ValueError, saslprep, "\u0627\u0031")
 
             # Bytes strings are ignored.
             self.assertEqual(saslprep(b"user"), b"user")

@@ -16,8 +16,8 @@
 
 from bson import EPOCH_NAIVE
 from pymongo.ismaster import IsMaster
-from pymongo.server_type import SERVER_TYPE
 from pymongo.monotonic import time as _time
+from pymongo.server_type import SERVER_TYPE
 
 
 class ServerDescription(object):
@@ -34,20 +34,32 @@ class ServerDescription(object):
     """
 
     __slots__ = (
-        '_address', '_server_type', '_all_hosts', '_tags', '_replica_set_name',
-        '_primary', '_max_bson_size', '_max_message_size',
-        '_max_write_batch_size', '_min_wire_version', '_max_wire_version',
-        '_round_trip_time', '_me', '_is_writable', '_is_readable',
-        '_ls_timeout_minutes', '_error', '_set_version', '_election_id',
-        '_cluster_time', '_last_write_date', '_last_update_time',
-        '_topology_version')
+        "_address",
+        "_server_type",
+        "_all_hosts",
+        "_tags",
+        "_replica_set_name",
+        "_primary",
+        "_max_bson_size",
+        "_max_message_size",
+        "_max_write_batch_size",
+        "_min_wire_version",
+        "_max_wire_version",
+        "_round_trip_time",
+        "_me",
+        "_is_writable",
+        "_is_readable",
+        "_ls_timeout_minutes",
+        "_error",
+        "_set_version",
+        "_election_id",
+        "_cluster_time",
+        "_last_write_date",
+        "_last_update_time",
+        "_topology_version",
+    )
 
-    def __init__(
-            self,
-            address,
-            ismaster=None,
-            round_trip_time=None,
-            error=None):
+    def __init__(self, address, ismaster=None, round_trip_time=None, error=None):
         self._address = address
         hello = ismaster or IsMaster({})
 
@@ -73,8 +85,8 @@ class ServerDescription(object):
         self._error = error
         self._topology_version = hello.topology_version
         if error:
-            if hasattr(error, 'details') and isinstance(error.details, dict):
-                self._topology_version = error.details.get('topologyVersion')
+            if hasattr(error, "details") and isinstance(error.details, dict):
+                self._topology_version = error.details.get("topologyVersion")
 
         if hello.last_write_date:
             # Convert from datetime to seconds.
@@ -205,10 +217,10 @@ class ServerDescription(object):
     @property
     def retryable_writes_supported(self):
         """Checks if this server supports retryable writes."""
-        return ((
-            self._ls_timeout_minutes is not None and
-            self._server_type in (SERVER_TYPE.Mongos, SERVER_TYPE.RSPrimary))
-                or self._server_type == SERVER_TYPE.LoadBalancer)
+        return (
+            self._ls_timeout_minutes is not None
+            and self._server_type in (SERVER_TYPE.Mongos, SERVER_TYPE.RSPrimary)
+        ) or self._server_type == SERVER_TYPE.LoadBalancer
 
     @property
     def retryable_reads_supported(self):
@@ -226,20 +238,21 @@ class ServerDescription(object):
 
     def __eq__(self, other):
         if isinstance(other, ServerDescription):
-            return ((self._address == other.address) and
-                    (self._server_type == other.server_type) and
-                    (self._min_wire_version == other.min_wire_version) and
-                    (self._max_wire_version == other.max_wire_version) and
-                    (self._me == other.me) and
-                    (self._all_hosts == other.all_hosts) and
-                    (self._tags == other.tags) and
-                    (self._replica_set_name == other.replica_set_name) and
-                    (self._set_version == other.set_version) and
-                    (self._election_id == other.election_id) and
-                    (self._primary == other.primary) and
-                    (self._ls_timeout_minutes ==
-                     other.logical_session_timeout_minutes) and
-                    (self._error == other.error))
+            return (
+                (self._address == other.address)
+                and (self._server_type == other.server_type)
+                and (self._min_wire_version == other.min_wire_version)
+                and (self._max_wire_version == other.max_wire_version)
+                and (self._me == other.me)
+                and (self._all_hosts == other.all_hosts)
+                and (self._tags == other.tags)
+                and (self._replica_set_name == other.replica_set_name)
+                and (self._set_version == other.set_version)
+                and (self._election_id == other.election_id)
+                and (self._primary == other.primary)
+                and (self._ls_timeout_minutes == other.logical_session_timeout_minutes)
+                and (self._error == other.error)
+            )
 
         return NotImplemented
 
@@ -247,12 +260,16 @@ class ServerDescription(object):
         return not self == other
 
     def __repr__(self):
-        errmsg = ''
+        errmsg = ""
         if self.error:
-            errmsg = ', error=%r' % (self.error,)
+            errmsg = ", error=%r" % (self.error,)
         return "<%s %s server_type: %s, rtt: %s%s>" % (
-            self.__class__.__name__, self.address, self.server_type_name,
-            self.round_trip_time, errmsg)
+            self.__class__.__name__,
+            self.address,
+            self.server_type_name,
+            self.round_trip_time,
+            errmsg,
+        )
 
     # For unittesting only. Use under no circumstances!
     _host_to_round_trip_time = {}

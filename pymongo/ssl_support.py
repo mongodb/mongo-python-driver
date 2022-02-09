@@ -34,6 +34,7 @@ except ImportError:
 HAVE_CERTIFI = False
 try:
     import certifi
+
     HAVE_CERTIFI = True
 except ImportError:
     pass
@@ -41,6 +42,7 @@ except ImportError:
 HAVE_WINCERTSTORE = False
 try:
     from wincertstore import CertFile
+
     HAVE_WINCERTSTORE = True
 except ImportError:
     pass
@@ -55,9 +57,11 @@ if HAVE_SSL:
     # import the ssl module even if we're only using it for this purpose.
     import ssl as _stdlibssl
     from ssl import CERT_NONE, CERT_OPTIONAL, CERT_REQUIRED
+
     HAS_SNI = _ssl.HAS_SNI
     IPADDR_SAFE = _ssl.IS_PYOPENSSL or sys.version_info[:2] >= (3, 7)
     SSLError = _ssl.SSLError
+
     def validate_cert_reqs(option, value):
         """Validate the cert reqs are valid. It must be None or one of the
         three values ``ssl.CERT_NONE``, ``ssl.CERT_OPTIONAL`` or
@@ -70,14 +74,17 @@ if HAVE_SSL:
 
         if value in (CERT_NONE, CERT_OPTIONAL, CERT_REQUIRED):
             return value
-        raise ValueError("The value of %s must be one of: "
-                         "`ssl.CERT_NONE`, `ssl.CERT_OPTIONAL` or "
-                         "`ssl.CERT_REQUIRED`" % (option,))
+        raise ValueError(
+            "The value of %s must be one of: "
+            "`ssl.CERT_NONE`, `ssl.CERT_OPTIONAL` or "
+            "`ssl.CERT_REQUIRED`" % (option,)
+        )
 
     def validate_allow_invalid_certs(option, value):
         """Validate the option to allow invalid certificates is valid."""
         # Avoid circular import.
         from pymongo.common import validate_boolean_or_string
+
         boolean_cert_reqs = validate_boolean_or_string(option, value)
         if boolean_cert_reqs:
             return CERT_NONE
@@ -96,14 +103,16 @@ if HAVE_SSL:
 
     def get_ssl_context(*args):
         """Create and return an SSLContext object."""
-        (certfile,
-         keyfile,
-         passphrase,
-         ca_certs,
-         cert_reqs,
-         crlfile,
-         match_hostname,
-         check_ocsp_endpoint) = args
+        (
+            certfile,
+            keyfile,
+            passphrase,
+            ca_certs,
+            cert_reqs,
+            crlfile,
+            match_hostname,
+            check_ocsp_endpoint,
+        ) = args
         verify_mode = CERT_REQUIRED if cert_reqs is None else cert_reqs
         ctx = _ssl.SSLContext(_ssl.PROTOCOL_SSLv23)
         # SSLContext.check_hostname was added in CPython 2.7.9 and 3.4.
@@ -127,16 +136,14 @@ if HAVE_SSL:
             try:
                 ctx.load_cert_chain(certfile, keyfile, passphrase)
             except _ssl.SSLError as exc:
-                raise ConfigurationError(
-                    "Private key doesn't match certificate: %s" % (exc,))
+                raise ConfigurationError("Private key doesn't match certificate: %s" % (exc,))
         if crlfile is not None:
             if _ssl.IS_PYOPENSSL:
-                raise ConfigurationError(
-                    "ssl_crlfile cannot be used with PyOpenSSL")
+                raise ConfigurationError("ssl_crlfile cannot be used with PyOpenSSL")
             if not hasattr(ctx, "verify_flags"):
                 raise ConfigurationError(
-                    "Support for ssl_crlfile requires "
-                    "python 2.7.9+ (pypy 2.5.1+) or  3.4+")
+                    "Support for ssl_crlfile requires " "python 2.7.9+ (pypy 2.5.1+) or  3.4+"
+                )
             # Match the server's behavior.
             ctx.verify_flags = getattr(_ssl, "VERIFY_CRL_CHECK_LEAF", 0)
             ctx.load_verify_locations(crlfile)
@@ -147,8 +154,7 @@ if HAVE_SSL:
             if hasattr(ctx, "load_default_certs"):
                 ctx.load_default_certs()
             # Python >= 3.2.0, useless on Windows.
-            elif (sys.platform != "win32" and
-                  hasattr(ctx, "set_default_verify_paths")):
+            elif sys.platform != "win32" and hasattr(ctx, "set_default_verify_paths"):
                 ctx.set_default_verify_paths()
             elif sys.platform == "win32" and HAVE_WINCERTSTORE:
                 with _WINCERTSLOCK:
@@ -161,19 +167,25 @@ if HAVE_SSL:
                 raise ConfigurationError(
                     "`ssl_cert_reqs` is not ssl.CERT_NONE and no system "
                     "CA certificates could be loaded. `ssl_ca_certs` is "
-                    "required.")
+                    "required."
+                )
         ctx.verify_mode = verify_mode
         return ctx
+
 else:
+
     class SSLError(Exception):
         pass
+
     HAS_SNI = False
     IPADDR_SAFE = False
+
     def validate_cert_reqs(option, dummy):
         """No ssl module, raise ConfigurationError."""
-        raise ConfigurationError("The value of %s is set but can't be "
-                                 "validated. The ssl module is not available"
-                                 % (option,))
+        raise ConfigurationError(
+            "The value of %s is set but can't be "
+            "validated. The ssl module is not available" % (option,)
+        )
 
     def validate_allow_invalid_certs(option, dummy):
         """No ssl module, raise ConfigurationError."""
