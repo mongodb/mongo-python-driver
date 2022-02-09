@@ -242,7 +242,7 @@ class Binary(bytes):
 
         if uuid_representation not in ALL_UUID_REPRESENTATIONS:
             raise ValueError(
-                "uuid_representation must be a value " "from bson.binary.UuidRepresentation"
+                "uuid_representation must be a value from bson.binary.UuidRepresentation"
             )
 
         if uuid_representation == UuidRepresentation.UNSPECIFIED:
@@ -292,7 +292,7 @@ class Binary(bytes):
 
         if uuid_representation not in ALL_UUID_REPRESENTATIONS:
             raise ValueError(
-                "uuid_representation must be a value from " "bson.binary.UuidRepresentation"
+                "uuid_representation must be a value from bson.binary.UuidRepresentation"
             )
 
         if uuid_representation == UuidRepresentation.UNSPECIFIED:
