@@ -1827,10 +1827,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             instances.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
-          - `**kwargs` (optional): optional arguments to the createIndexes
-            command (like maxTimeMS) can be passed as keyword arguments.
           - `comment` (optional): A user-provided comment to attach to this
             command.
+          - `**kwargs` (optional): optional arguments to the createIndexes
+            command (like maxTimeMS) can be passed as keyword arguments.
+
 
 
 
