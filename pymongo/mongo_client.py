@@ -1726,13 +1726,13 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :Parameters:
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
           - `**kwargs` (optional): Optional parameters of the
             `listDatabases command
             <https://docs.mongodb.com/manual/reference/command/listDatabases/>`_
             can be passed as keyword arguments to this method. The supported
             options differ by server version.
-          - `comment` (optional): A user-provided comment to attach to this
-            command.
 
 
         :Returns:

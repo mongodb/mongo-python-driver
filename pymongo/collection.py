@@ -1770,9 +1770,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             documents.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
-          - `**kwargs` (optional): See list of options above.
           - `comment` (optional): A user-provided comment to attach to this
             command.
+          - `**kwargs` (optional): See list of options above.
+
 
         .. versionadded:: 3.7
 
@@ -1975,11 +1976,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             pairs specifying the index to create
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
-          - `**kwargs` (optional): any additional index creation
-            options (see the above list) should be passed as keyword
             arguments
           - `comment` (optional): A user-provided comment to attach to this
             command.
+          - `**kwargs` (optional): any additional index creation
+            options (see the above list) should be passed as keyword
 
         .. versionchanged:: 4.1
            Added ``comment`` parameter.
@@ -2024,10 +2025,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         :Parameters:
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
-          - `**kwargs` (optional): optional arguments to the createIndexes
-            command (like maxTimeMS) can be passed as keyword arguments.
+            arguments
           - `comment` (optional): A user-provided comment to attach to this
             command.
+          - `**kwargs` (optional): optional arguments to the createIndexes
+            command (like maxTimeMS) can be passed as keyword arguments.
 
 
 
@@ -2074,10 +2076,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `index_or_name`: index (or name of index) to drop
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
-          - `**kwargs` (optional): optional arguments to the createIndexes
-            command (like maxTimeMS) can be passed as keyword arguments.
           - `comment` (optional): A user-provided comment to attach to this
             command.
+          - `**kwargs` (optional): optional arguments to the createIndexes
+            command (like maxTimeMS) can be passed as keyword arguments.
 
 
 
@@ -2582,11 +2584,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `new_name`: new name for this collection
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
           - `**kwargs` (optional): additional arguments to the rename command
             may be passed as keyword arguments to this helper method
             (i.e. ``dropTarget=True``)
-          - `comment` (optional): A user-provided comment to attach to this
-            command.
 
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation.
@@ -2659,9 +2661,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             from which to retrieve the distinct values.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
-          - `**kwargs` (optional): See list of options above.
           - `comment` (optional): A user-provided comment to attach to this
             command.
+          - `**kwargs` (optional): See list of options above.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -2835,15 +2837,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             on MongoDB 4.4 and above.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
-          - `**kwargs` (optional): additional command arguments can be passed
-            as keyword arguments (for example maxTimeMS can be used with
-            recent server versions).
           - `let` (optional): Map of parameter names and values. Values must be
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
           - `comment` (optional): A user-provided comment to attach to this
             command.
+          - `**kwargs` (optional): additional command arguments can be passed
+            as keyword arguments (for example maxTimeMS can be used with
+            recent server versions).
 
         .. versionchanged:: 4.1
            Added ``let`` parameter.
@@ -2938,11 +2940,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
-          - `comment` (optional): A user-provided comment to attach to this
-            command.
+
 
            Added ``let`` parameter.
         .. versionchanged:: 3.11
@@ -3085,11 +3088,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             constant or closed expressions that do not reference document
             fields. Parameters can then be accessed as variables in an
             aggregate expression context (e.g. "$$var").
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
-          - `comment` (optional): A user-provided comment to attach to this
-            command.
 
         .. versionchanged:: 3.11
            Added the ``hint`` option.

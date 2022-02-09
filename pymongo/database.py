@@ -674,10 +674,10 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             instance.
           - `session` (optional): A
             :class:`~pymongo.client_session.ClientSession`.
-          - `**kwargs` (optional): additional keyword arguments will
-            be added to the command document before it is sent
           - `comment` (optional): A user-provided comment to attach to this
             command.
+          - `**kwargs` (optional): additional keyword arguments will
+            be added to the command document before it is sent
 
 
         .. note:: :meth:`command` does **not** obey this Database's
@@ -792,13 +792,13 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.client_session.ClientSession`.
           - `filter` (optional):  A query document to filter the list of
             collections returned from the listCollections command.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
           - `**kwargs` (optional): Optional parameters of the
             `listCollections command
             <https://docs.mongodb.com/manual/reference/command/listCollections/>`_
             can be passed as keyword arguments to this method. The supported
             options differ by server version.
-          - `comment` (optional): A user-provided comment to attach to this
-            command.
 
 
         :Returns:
@@ -838,13 +838,14 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.client_session.ClientSession`.
           - `filter` (optional):  A query document to filter the list of
             collections returned from the listCollections command.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
           - `**kwargs` (optional): Optional parameters of the
             `listCollections command
             <https://docs.mongodb.com/manual/reference/command/listCollections/>`_
             can be passed as keyword arguments to this method. The supported
             options differ by server version.
-          - `comment` (optional): A user-provided comment to attach to this
-            command.
+
 
         .. versionchanged:: 3.8
            Added the ``filter`` and ``**kwargs`` parameters.
@@ -1036,11 +1037,12 @@ class Database(common.BaseObject, Generic[_DocumentType]):
           - `dbref`: the reference
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
           - `**kwargs` (optional): any additional keyword arguments
             are the same as the arguments to
             :meth:`~pymongo.collection.Collection.find`.
-          - `comment` (optional): A user-provided comment to attach to this
-            command.
+
 
         .. versionchanged:: 4.1
            Added ``comment`` parameter.
