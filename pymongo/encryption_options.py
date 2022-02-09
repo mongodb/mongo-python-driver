@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Any, List, Mapping, Optional
 
 try:
     import pymongocrypt
+
     _HAVE_PYMONGOCRYPT = True
 except ImportError:
     _HAVE_PYMONGOCRYPT = False
@@ -27,23 +28,24 @@ from pymongo.errors import ConfigurationError
 from pymongo.uri_parser import _parse_kms_tls_options
 
 if TYPE_CHECKING:
-  from pymongo.mongo_client import MongoClient
+    from pymongo.mongo_client import MongoClient
 
 
 class AutoEncryptionOpts(object):
     """Options to configure automatic client-side field level encryption."""
 
-    def __init__(self,
+    def __init__(
+        self,
         kms_providers: Mapping[str, Any],
         key_vault_namespace: str,
         key_vault_client: Optional["MongoClient"] = None,
         schema_map: Optional[Mapping[str, Any]] = None,
         bypass_auto_encryption: Optional[bool] = False,
-        mongocryptd_uri: str = 'mongodb://localhost:27020',
+        mongocryptd_uri: str = "mongodb://localhost:27020",
         mongocryptd_bypass_spawn: bool = False,
-        mongocryptd_spawn_path: str = 'mongocryptd',
+        mongocryptd_spawn_path: str = "mongocryptd",
         mongocryptd_spawn_args: Optional[List[str]] = None,
-        kms_tls_options: Optional[Mapping[str, Any]] = None
+        kms_tls_options: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Options to configure automatic client-side field level encryption.
 
@@ -149,7 +151,8 @@ class AutoEncryptionOpts(object):
             raise ConfigurationError(
                 "client side encryption requires the pymongocrypt library: "
                 "install a compatible version with: "
-                "python -m pip install 'pymongo[encryption]'")
+                "python -m pip install 'pymongo[encryption]'"
+            )
 
         self._kms_providers = kms_providers
         self._key_vault_namespace = key_vault_namespace
@@ -160,12 +163,11 @@ class AutoEncryptionOpts(object):
         self._mongocryptd_bypass_spawn = mongocryptd_bypass_spawn
         self._mongocryptd_spawn_path = mongocryptd_spawn_path
         if mongocryptd_spawn_args is None:
-            mongocryptd_spawn_args = ['--idleShutdownTimeoutSecs=60']
+            mongocryptd_spawn_args = ["--idleShutdownTimeoutSecs=60"]
         self._mongocryptd_spawn_args = mongocryptd_spawn_args
         if not isinstance(self._mongocryptd_spawn_args, list):
-            raise TypeError('mongocryptd_spawn_args must be a list')
-        if not any('idleShutdownTimeoutSecs' in s
-                   for s in self._mongocryptd_spawn_args):
-            self._mongocryptd_spawn_args.append('--idleShutdownTimeoutSecs=60')
+            raise TypeError("mongocryptd_spawn_args must be a list")
+        if not any("idleShutdownTimeoutSecs" in s for s in self._mongocryptd_spawn_args):
+            self._mongocryptd_spawn_args.append("--idleShutdownTimeoutSecs=60")
         # Maps KMS provider name to a SSLContext.
         self._kms_ssl_contexts = _parse_kms_tls_options(kms_tls_options)

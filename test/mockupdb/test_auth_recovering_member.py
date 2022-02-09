@@ -12,31 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 from mockupdb import MockupDB
+
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
-
-import unittest
 
 
 class TestAuthRecoveringMember(unittest.TestCase):
     def test_auth_recovering_member(self):
         # Test that we don't attempt auth against a recovering RS member.
         server = MockupDB()
-        server.autoresponds('ismaster', {
-            'minWireVersion': 2,
-            'maxWireVersion': 6,
-            'ismaster': False,
-            'secondary': False,
-            'setName': 'rs'})
+        server.autoresponds(
+            "ismaster",
+            {
+                "minWireVersion": 2,
+                "maxWireVersion": 6,
+                "ismaster": False,
+                "secondary": False,
+                "setName": "rs",
+            },
+        )
 
         server.run()
         self.addCleanup(server.stop)
 
-        client = MongoClient(server.uri,
-                             replicaSet='rs',
-                             serverSelectionTimeoutMS=100,
-                             socketTimeoutMS=100)
+        client = MongoClient(
+            server.uri, replicaSet="rs", serverSelectionTimeoutMS=100, socketTimeoutMS=100
+        )
 
         self.addCleanup(client.close)
 
@@ -46,5 +50,6 @@ class TestAuthRecoveringMember(unittest.TestCase):
         with self.assertRaises(ServerSelectionTimeoutError):
             client.db.command("ping")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

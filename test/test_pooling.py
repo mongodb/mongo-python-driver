@@ -21,28 +21,24 @@ import sys
 import threading
 import time
 
-from bson.son import SON
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
-
+from bson.son import SON
 from pymongo import MongoClient, message
-from pymongo.errors import (AutoReconnect,
-                            ConnectionFailure,
-                            DuplicateKeyError)
+from pymongo.errors import AutoReconnect, ConnectionFailure, DuplicateKeyError
 
 sys.path[0:0] = [""]
 
+from test import IntegrationTest, client_context, unittest
+from test.utils import delay, get_pool, joinall, rs_or_single_client
+
 from pymongo.pool import Pool, PoolOptions
 from pymongo.socket_checker import SocketChecker
-from test import client_context, IntegrationTest, unittest
-from test.utils import (get_pool,
-                        joinall,
-                        delay,
-                        rs_or_single_client)
 
 
 @client_context.require_connection
 def setUpModule():
     pass
+
 
 N = 10
 DB = "pymongo-pooling-tests"
@@ -62,6 +58,7 @@ def gc_collect_until_done(threads, timeout=60):
 
 class MongoThread(threading.Thread):
     """A thread that uses a MongoClient."""
+
     def __init__(self, client):
         super(MongoThread, self).__init__()
         self.daemon = True  # Don't hang whole test if thread hangs.
@@ -108,21 +105,22 @@ class SocketGetter(MongoThread):
     Checks out a socket and holds it forever. Used in
     test_no_wait_queue_timeout.
     """
+
     def __init__(self, client, pool):
         super(SocketGetter, self).__init__(client)
-        self.state = 'init'
+        self.state = "init"
         self.pool = pool
         self.sock = None
 
     def run_mongo_thread(self):
-        self.state = 'get_socket'
+        self.state = "get_socket"
 
         # Call 'pin_cursor' so we can hold the socket.
         with self.pool.get_socket() as sock:
             sock.pin_cursor()
             self.sock = sock
 
-        self.state = 'sock'
+        self.state = "sock"
 
     def __del__(self):
         if self.sock:
@@ -162,16 +160,12 @@ class _TestPoolingBase(IntegrationTest):
         self.c.close()
         super(_TestPoolingBase, self).tearDown()
 
-    def create_pool(
-            self,
-            pair=(client_context.host, client_context.port),
-            *args,
-            **kwargs):
+    def create_pool(self, pair=(client_context.host, client_context.port), *args, **kwargs):
         # Start the pool with the correct ssl options.
         pool_options = client_context.client._topology_settings.pool_options
-        kwargs['ssl_context'] = pool_options._ssl_context
-        kwargs['tls_allow_invalid_hostnames'] = pool_options.tls_allow_invalid_hostnames
-        kwargs['server_api'] = pool_options.server_api
+        kwargs["ssl_context"] = pool_options._ssl_context
+        kwargs["tls_allow_invalid_hostnames"] = pool_options.tls_allow_invalid_hostnames
+        kwargs["server_api"] = pool_options.server_api
         pool = Pool(pair, PoolOptions(*args, **kwargs))
         pool.ready()
         return pool
@@ -180,11 +174,9 @@ class _TestPoolingBase(IntegrationTest):
 class TestPooling(_TestPoolingBase):
     def test_max_pool_size_validation(self):
         host, port = client_context.host, client_context.port
-        self.assertRaises(
-            ValueError, MongoClient, host=host, port=port, maxPoolSize=-1)
+        self.assertRaises(ValueError, MongoClient, host=host, port=port, maxPoolSize=-1)
 
-        self.assertRaises(
-            ValueError, MongoClient, host=host, port=port, maxPoolSize='foo')
+        self.assertRaises(ValueError, MongoClient, host=host, port=port, maxPoolSize="foo")
 
         c = MongoClient(host=host, port=port, maxPoolSize=100, connect=False)
         self.assertEqual(c.options.pool_options.max_pool_size, 100)
@@ -264,27 +256,27 @@ class TestPooling(_TestPoolingBase):
         # Socket has nothing to read.
         self.assertFalse(socket_checker.select(s, read=True))
         self.assertFalse(socket_checker.select(s, read=True, timeout=0))
-        self.assertFalse(socket_checker.select(s, read=True, timeout=.05))
+        self.assertFalse(socket_checker.select(s, read=True, timeout=0.05))
         # Socket is writable.
         self.assertTrue(socket_checker.select(s, write=True, timeout=None))
         self.assertTrue(socket_checker.select(s, write=True))
         self.assertTrue(socket_checker.select(s, write=True, timeout=0))
-        self.assertTrue(socket_checker.select(s, write=True, timeout=.05))
+        self.assertTrue(socket_checker.select(s, write=True, timeout=0.05))
         # Make the socket readable
         _, msg, _ = message._query(
-            0, 'admin.$cmd', 0, -1, SON([('ping', 1)]), None,
-            DEFAULT_CODEC_OPTIONS)
+            0, "admin.$cmd", 0, -1, SON([("ping", 1)]), None, DEFAULT_CODEC_OPTIONS
+        )
         s.sendall(msg)
         # Block until the socket is readable.
         self.assertTrue(socket_checker.select(s, read=True, timeout=None))
         self.assertTrue(socket_checker.select(s, read=True))
         self.assertTrue(socket_checker.select(s, read=True, timeout=0))
-        self.assertTrue(socket_checker.select(s, read=True, timeout=.05))
+        self.assertTrue(socket_checker.select(s, read=True, timeout=0.05))
         # Socket is still writable.
         self.assertTrue(socket_checker.select(s, write=True, timeout=None))
         self.assertTrue(socket_checker.select(s, write=True))
         self.assertTrue(socket_checker.select(s, write=True, timeout=0))
-        self.assertTrue(socket_checker.select(s, write=True, timeout=.05))
+        self.assertTrue(socket_checker.select(s, write=True, timeout=0.05))
         s.close()
         self.assertTrue(socket_checker.socket_closed(s))
 
@@ -303,9 +295,7 @@ class TestPooling(_TestPoolingBase):
     def test_pool_check(self):
         # Test that Pool recovers from two connection failures in a row.
         # This exercises code at the end of Pool._check().
-        cx_pool = self.create_pool(max_pool_size=1,
-                                   connect_timeout=1,
-                                   wait_queue_timeout=1)
+        cx_pool = self.create_pool(max_pool_size=1, connect_timeout=1, wait_queue_timeout=1)
         cx_pool._check_interval_seconds = 0  # Always check.
         self.addCleanup(cx_pool.close)
 
@@ -315,7 +305,7 @@ class TestPooling(_TestPoolingBase):
             sock_info.sock.close()
 
         # Swap pool's address with a bad one.
-        address, cx_pool.address = cx_pool.address, ('foo.com', 1234)
+        address, cx_pool.address = cx_pool.address, ("foo.com", 1234)
         with self.assertRaises(AutoReconnect):
             with cx_pool.get_socket():
                 pass
@@ -327,8 +317,7 @@ class TestPooling(_TestPoolingBase):
 
     def test_wait_queue_timeout(self):
         wait_queue_timeout = 2  # Seconds
-        pool = self.create_pool(
-            max_pool_size=1, wait_queue_timeout=wait_queue_timeout)
+        pool = self.create_pool(max_pool_size=1, wait_queue_timeout=wait_queue_timeout)
         self.addCleanup(pool.close)
 
         with pool.get_socket() as sock_info:
@@ -340,8 +329,8 @@ class TestPooling(_TestPoolingBase):
         duration = time.time() - start
         self.assertTrue(
             abs(wait_queue_timeout - duration) < 1,
-            "Waited %.2f seconds for a socket, expected %f" % (
-                duration, wait_queue_timeout))
+            "Waited %.2f seconds for a socket, expected %f" % (duration, wait_queue_timeout),
+        )
 
     def test_no_wait_queue_timeout(self):
         # Verify get_socket() with no wait_queue_timeout blocks forever.
@@ -352,16 +341,16 @@ class TestPooling(_TestPoolingBase):
         with pool.get_socket() as s1:
             t = SocketGetter(self.c, pool)
             t.start()
-            while t.state != 'get_socket':
+            while t.state != "get_socket":
                 time.sleep(0.1)
 
             time.sleep(1)
-            self.assertEqual(t.state, 'get_socket')
+            self.assertEqual(t.state, "get_socket")
 
-        while t.state != 'sock':
+        while t.state != "sock":
             time.sleep(0.1)
 
-        self.assertEqual(t.state, 'sock')
+        self.assertEqual(t.state, "sock")
         self.assertEqual(t.sock, s1)
 
     def test_checkout_more_than_max_pool_size(self):
@@ -381,7 +370,7 @@ class TestPooling(_TestPoolingBase):
             threads.append(t)
         time.sleep(1)
         for t in threads:
-            self.assertEqual(t.state, 'get_socket')
+            self.assertEqual(t.state, "get_socket")
 
         for socket_info in socks:
             socket_info.close_socket(None)
@@ -394,7 +383,8 @@ class TestPooling(_TestPoolingBase):
 
         # Run 50 short running operations
         def find_one():
-            docs.append(client.test.test.find_one({'$where': delay(0.001)}))
+            docs.append(client.test.test.find_one({"$where": delay(0.001)}))
+
         threads = [threading.Thread(target=find_one) for _ in range(50)]
         for thread in threads:
             thread.start()
@@ -443,7 +433,7 @@ class TestPoolMaxSize(_TestPoolingBase):
 
         def f():
             for _ in range(5):
-                collection.find_one({'$where': delay(0.1)})
+                collection.find_one({"$where": delay(0.1)})
                 assert len(cx_pool.sockets) <= max_pool_size
 
             with lock:
@@ -476,7 +466,7 @@ class TestPoolMaxSize(_TestPoolingBase):
 
         def f():
             for _ in range(5):
-                collection.find_one({'$where': delay(0.1)})
+                collection.find_one({"$where": delay(0.1)})
 
             with lock:
                 self.n_passed += 1
@@ -489,25 +479,21 @@ class TestPoolMaxSize(_TestPoolingBase):
         joinall(threads)
         self.assertEqual(nthreads, self.n_passed)
         self.assertTrue(len(cx_pool.sockets) > 1)
-        self.assertEqual(cx_pool.max_pool_size, float('inf'))
-
+        self.assertEqual(cx_pool.max_pool_size, float("inf"))
 
     def test_max_pool_size_zero(self):
         c = rs_or_single_client(maxPoolSize=0)
         self.addCleanup(c.close)
         pool = get_pool(c)
-        self.assertEqual(pool.max_pool_size, float('inf'))
+        self.assertEqual(pool.max_pool_size, float("inf"))
 
     def test_max_pool_size_with_connection_failure(self):
         # The pool acquires its semaphore before attempting to connect; ensure
         # it releases the semaphore on connection failure.
         test_pool = Pool(
-            ('somedomainthatdoesntexist.org', 27017),
-            PoolOptions(
-                max_pool_size=1,
-                connect_timeout=1,
-                socket_timeout=1,
-                wait_queue_timeout=1))
+            ("somedomainthatdoesntexist.org", 27017),
+            PoolOptions(max_pool_size=1, connect_timeout=1, socket_timeout=1, wait_queue_timeout=1),
+        )
         test_pool.ready()
 
         # First call to get_socket fails; if pool doesn't release its semaphore
@@ -521,8 +507,7 @@ class TestPoolMaxSize(_TestPoolingBase):
             # Testing for AutoReconnect instead of ConnectionFailure, above,
             # is sufficient right *now* to catch a semaphore leak. But that
             # seems error-prone, so check the message too.
-            self.assertNotIn('waiting for socket from pool',
-                             str(context.exception))
+            self.assertNotIn("waiting for socket from pool", str(context.exception))
 
 
 if __name__ == "__main__":

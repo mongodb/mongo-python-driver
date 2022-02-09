@@ -25,9 +25,14 @@ from typing import Any, List, Mapping, Optional, cast
 
 from bson.objectid import ObjectId
 from gridfs.errors import NoFile
-from gridfs.grid_file import (DEFAULT_CHUNK_SIZE, GridIn, GridOut,
-                              GridOutCursor, _clear_entity_type_registry,
-                              _disallow_transactions)
+from gridfs.grid_file import (
+    DEFAULT_CHUNK_SIZE,
+    GridIn,
+    GridOut,
+    GridOutCursor,
+    _clear_entity_type_registry,
+    _disallow_transactions,
+)
 from pymongo import ASCENDING, DESCENDING
 from pymongo.client_session import ClientSession
 from pymongo.collation import Collation
@@ -40,8 +45,8 @@ from pymongo.write_concern import WriteConcern
 
 
 class GridFS(object):
-    """An instance of GridFS on top of a single Database.
-    """
+    """An instance of GridFS on top of a single Database."""
+
     def __init__(self, database: Database, collection: str = "fs"):
         """Create a new instance of :class:`GridFS`.
 
@@ -78,8 +83,7 @@ class GridFS(object):
         database = _clear_entity_type_registry(database)
 
         if not database.write_concern.acknowledged:
-            raise ConfigurationError('database must use '
-                                     'acknowledged write_concern')
+            raise ConfigurationError("database must use " "acknowledged write_concern")
 
         self.__collection = database[collection]
         self.__files = self.__collection.files
@@ -159,7 +163,13 @@ class GridFS(object):
         gout._ensure_file()
         return gout
 
-    def get_version(self, filename: Optional[str] = None, version: Optional[int] = -1, session: Optional[ClientSession] = None, **kwargs: Any) -> GridOut:
+    def get_version(
+        self,
+        filename: Optional[str] = None,
+        version: Optional[int] = -1,
+        session: Optional[ClientSession] = None,
+        **kwargs: Any
+    ) -> GridOut:
         """Get a file from GridFS by ``"filename"`` or metadata fields.
 
         Returns a version of the file in GridFS whose filename matches
@@ -201,7 +211,7 @@ class GridFS(object):
         _disallow_transactions(session)
         cursor = self.__files.find(query, session=session)
         if version is None:
-          version = -1
+            version = -1
         if version < 0:
             skip = abs(version) - 1
             cursor.limit(-1).skip(skip).sort("uploadDate", DESCENDING)
@@ -209,12 +219,13 @@ class GridFS(object):
             cursor.limit(-1).skip(version).sort("uploadDate", ASCENDING)
         try:
             doc = next(cursor)
-            return GridOut(
-                self.__collection, file_document=doc, session=session)
+            return GridOut(self.__collection, file_document=doc, session=session)
         except StopIteration:
             raise NoFile("no version %d for filename %r" % (version, filename))
 
-    def get_last_version(self, filename: Optional[str] = None, session: Optional[ClientSession] = None, **kwargs: Any) -> GridOut:
+    def get_last_version(
+        self, filename: Optional[str] = None, session: Optional[ClientSession] = None, **kwargs: Any
+    ) -> GridOut:
         """Get the most recent version of a file in GridFS by ``"filename"``
         or metadata fields.
 
@@ -280,10 +291,16 @@ class GridFS(object):
         # With an index, distinct includes documents with no filename
         # as None.
         return [
-            name for name in self.__files.distinct("filename", session=session)
-            if name is not None]
+            name for name in self.__files.distinct("filename", session=session) if name is not None
+        ]
 
-    def find_one(self, filter:  Optional[Any] = None, session: Optional[ClientSession] = None, *args: Any, **kwargs: Any) ->  Optional[GridOut]:
+    def find_one(
+        self,
+        filter: Optional[Any] = None,
+        session: Optional[ClientSession] = None,
+        *args: Any,
+        **kwargs: Any
+    ) -> Optional[GridOut]:
         """Get a single file from gridfs.
 
         All arguments to :meth:`find` are also valid arguments for
@@ -377,7 +394,12 @@ class GridFS(object):
         """
         return GridOutCursor(self.__collection, *args, **kwargs)
 
-    def exists(self, document_or_id: Optional[Any] = None, session: Optional[ClientSession] = None, **kwargs: Any) -> bool:
+    def exists(
+        self,
+        document_or_id: Optional[Any] = None,
+        session: Optional[ClientSession] = None,
+        **kwargs: Any
+    ) -> bool:
         """Check if a file exists in this instance of :class:`GridFS`.
 
         The file to check for can be specified by the value of its
@@ -427,10 +449,14 @@ class GridFS(object):
 class GridFSBucket(object):
     """An instance of GridFS on top of a single Database."""
 
-    def __init__(self, db: Database, bucket_name: str = "fs",
-                 chunk_size_bytes: int = DEFAULT_CHUNK_SIZE,
-                 write_concern: Optional[WriteConcern] = None,
-                 read_preference: Optional[_ServerMode] = None) -> None:
+    def __init__(
+        self,
+        db: Database,
+        bucket_name: str = "fs",
+        chunk_size_bytes: int = DEFAULT_CHUNK_SIZE,
+        write_concern: Optional[WriteConcern] = None,
+        read_preference: Optional[_ServerMode] = None,
+    ) -> None:
         """Create a new instance of :class:`GridFSBucket`.
 
         Raises :exc:`TypeError` if `database` is not an instance of
@@ -472,23 +498,27 @@ class GridFSBucket(object):
 
         wtc = write_concern if write_concern is not None else db.write_concern
         if not wtc.acknowledged:
-            raise ConfigurationError('write concern must be acknowledged')
+            raise ConfigurationError("write concern must be acknowledged")
 
         self._bucket_name = bucket_name
         self._collection = db[bucket_name]
         self._chunks: Collection = self._collection.chunks.with_options(
-            write_concern=write_concern,
-            read_preference=read_preference)
+            write_concern=write_concern, read_preference=read_preference
+        )
 
         self._files: Collection = self._collection.files.with_options(
-            write_concern=write_concern,
-            read_preference=read_preference)
+            write_concern=write_concern, read_preference=read_preference
+        )
 
         self._chunk_size_bytes = chunk_size_bytes
 
-    def open_upload_stream(self, filename: str, chunk_size_bytes: Optional[int] = None,
-                           metadata: Optional[Mapping[str, Any]] = None,
-                           session: Optional[ClientSession] = None) -> GridIn:
+    def open_upload_stream(
+        self,
+        filename: str,
+        chunk_size_bytes: Optional[int] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
+        session: Optional[ClientSession] = None,
+    ) -> GridIn:
         """Opens a Stream that the application can write the contents of the
         file to.
 
@@ -526,18 +556,25 @@ class GridFSBucket(object):
         """
         validate_string("filename", filename)
 
-        opts = {"filename": filename,
-                "chunk_size": (chunk_size_bytes if chunk_size_bytes
-                               is not None else self._chunk_size_bytes)}
+        opts = {
+            "filename": filename,
+            "chunk_size": (
+                chunk_size_bytes if chunk_size_bytes is not None else self._chunk_size_bytes
+            ),
+        }
         if metadata is not None:
             opts["metadata"] = metadata
 
         return GridIn(self._collection, session=session, **opts)
 
     def open_upload_stream_with_id(
-            self, file_id: Any, filename: str, chunk_size_bytes: Optional[int] = None,
-            metadata: Optional[Mapping[str, Any]] = None,
-            session: Optional[ClientSession] = None) -> GridIn:
+        self,
+        file_id: Any,
+        filename: str,
+        chunk_size_bytes: Optional[int] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
+        session: Optional[ClientSession] = None,
+    ) -> GridIn:
         """Opens a Stream that the application can write the contents of the
         file to.
 
@@ -579,19 +616,26 @@ class GridFSBucket(object):
         """
         validate_string("filename", filename)
 
-        opts = {"_id": file_id,
-                "filename": filename,
-                "chunk_size": (chunk_size_bytes if chunk_size_bytes
-                               is not None else self._chunk_size_bytes)}
+        opts = {
+            "_id": file_id,
+            "filename": filename,
+            "chunk_size": (
+                chunk_size_bytes if chunk_size_bytes is not None else self._chunk_size_bytes
+            ),
+        }
         if metadata is not None:
             opts["metadata"] = metadata
 
         return GridIn(self._collection, session=session, **opts)
 
-    def upload_from_stream(self, filename: str, source: Any,
-                           chunk_size_bytes: Optional[int] = None,
-                           metadata: Optional[Mapping[str, Any]] = None,
-                           session: Optional[ClientSession] = None) -> ObjectId:
+    def upload_from_stream(
+        self,
+        filename: str,
+        source: Any,
+        chunk_size_bytes: Optional[int] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
+        session: Optional[ClientSession] = None,
+    ) -> ObjectId:
         """Uploads a user file to a GridFS bucket.
 
         Reads the contents of the user file from `source` and uploads
@@ -627,16 +671,20 @@ class GridFSBucket(object):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        with self.open_upload_stream(
-                filename, chunk_size_bytes, metadata, session=session) as gin:
+        with self.open_upload_stream(filename, chunk_size_bytes, metadata, session=session) as gin:
             gin.write(source)
 
         return cast(ObjectId, gin._id)
 
-    def upload_from_stream_with_id(self, file_id: Any, filename: str, source: Any,
-                                   chunk_size_bytes: Optional[int] = None,
-                                   metadata: Optional[Mapping[str, Any]] = None,
-                                   session: Optional[ClientSession] = None) -> None:
+    def upload_from_stream_with_id(
+        self,
+        file_id: Any,
+        filename: str,
+        source: Any,
+        chunk_size_bytes: Optional[int] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
+        session: Optional[ClientSession] = None,
+    ) -> None:
         """Uploads a user file to a GridFS bucket with a custom file id.
 
         Reads the contents of the user file from `source` and uploads
@@ -674,11 +722,13 @@ class GridFSBucket(object):
            Added ``session`` parameter.
         """
         with self.open_upload_stream_with_id(
-                file_id, filename, chunk_size_bytes, metadata,
-                session=session) as gin:
+            file_id, filename, chunk_size_bytes, metadata, session=session
+        ) as gin:
             gin.write(source)
 
-    def open_download_stream(self, file_id: Any, session: Optional[ClientSession] = None) -> GridOut:
+    def open_download_stream(
+        self, file_id: Any, session: Optional[ClientSession] = None
+    ) -> GridOut:
         """Opens a Stream from which the application can read the contents of
         the stored file specified by file_id.
 
@@ -709,7 +759,9 @@ class GridFSBucket(object):
         gout._ensure_file()
         return gout
 
-    def download_to_stream(self, file_id: Any, destination: Any, session: Optional[ClientSession] = None) -> None:
+    def download_to_stream(
+        self, file_id: Any, destination: Any, session: Optional[ClientSession] = None
+    ) -> None:
         """Downloads the contents of the stored file specified by file_id and
         writes the contents to `destination`.
 
@@ -766,8 +818,7 @@ class GridFSBucket(object):
         res = self._files.delete_one({"_id": file_id}, session=session)
         self._chunks.delete_many({"files_id": file_id}, session=session)
         if not res.deleted_count:
-            raise NoFile(
-                "no file could be deleted because none matched %s" % file_id)
+            raise NoFile("no file could be deleted because none matched %s" % file_id)
 
     def find(self, *args: Any, **kwargs: Any) -> GridOutCursor:
         """Find and return the files collection documents that match ``filter``
@@ -817,7 +868,9 @@ class GridFSBucket(object):
         """
         return GridOutCursor(self._collection, *args, **kwargs)
 
-    def open_download_stream_by_name(self, filename: str, revision: int = -1, session: Optional[ClientSession] = None) -> GridOut:
+    def open_download_stream_by_name(
+        self, filename: str, revision: int = -1, session: Optional[ClientSession] = None
+    ) -> GridOut:
         """Opens a Stream from which the application can read the contents of
         `filename` and optional `revision`.
 
@@ -866,15 +919,17 @@ class GridFSBucket(object):
             cursor.limit(-1).skip(revision).sort("uploadDate", ASCENDING)
         try:
             grid_file = next(cursor)
-            return GridOut(
-                self._collection, file_document=grid_file, session=session)
+            return GridOut(self._collection, file_document=grid_file, session=session)
         except StopIteration:
-            raise NoFile(
-                "no version %d for filename %r" % (revision, filename))
+            raise NoFile("no version %d for filename %r" % (revision, filename))
 
-    def download_to_stream_by_name(self, filename: str, destination: Any,
-                                   revision: int = -1,
-                                   session: Optional[ClientSession] = None) -> None:
+    def download_to_stream_by_name(
+        self,
+        filename: str,
+        destination: Any,
+        revision: int = -1,
+        session: Optional[ClientSession] = None,
+    ) -> None:
         """Write the contents of `filename` (with optional `revision`) to
         `destination`.
 
@@ -912,12 +967,13 @@ class GridFSBucket(object):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        with self.open_download_stream_by_name(
-                filename, revision, session=session) as gout:
+        with self.open_download_stream_by_name(filename, revision, session=session) as gout:
             for chunk in gout:
                 destination.write(chunk)
 
-    def rename(self, file_id: Any, new_filename: str, session: Optional[ClientSession] = None) -> None:
+    def rename(
+        self, file_id: Any, new_filename: str, session: Optional[ClientSession] = None
+    ) -> None:
         """Renames the stored file with the specified file_id.
 
         For example::
@@ -940,9 +996,11 @@ class GridFSBucket(object):
            Added ``session`` parameter.
         """
         _disallow_transactions(session)
-        result = self._files.update_one({"_id": file_id},
-                                        {"$set": {"filename": new_filename}},
-                                        session=session)
+        result = self._files.update_one(
+            {"_id": file_id}, {"$set": {"filename": new_filename}}, session=session
+        )
         if not result.matched_count:
-            raise NoFile("no files could be renamed %r because none "
-                         "matched file_id %i" % (new_filename, file_id))
+            raise NoFile(
+                "no files could be renamed %r because none "
+                "matched file_id %i" % (new_filename, file_id)
+            )

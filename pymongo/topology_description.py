@@ -91,12 +91,12 @@ class TopologyDescription(object):
         readable_servers = self.readable_servers
         if not readable_servers:
             self._ls_timeout_minutes = None
-        elif any(s.logical_session_timeout_minutes is None
-                 for s in readable_servers):
+        elif any(s.logical_session_timeout_minutes is None for s in readable_servers):
             self._ls_timeout_minutes = None
         else:
-            self._ls_timeout_minutes = min(s.logical_session_timeout_minutes  # type: ignore
-                                           for s in readable_servers)
+            self._ls_timeout_minutes = min(  # type: ignore[type-var]
+                s.logical_session_timeout_minutes for s in readable_servers
+            )
 
     def _init_incompatible_err(self):
         """Internal compatibility check for non-load balanced topologies."""
@@ -109,28 +109,39 @@ class TopologyDescription(object):
             server_too_new = (
                 # Server too new.
                 s.min_wire_version is not None
-                and s.min_wire_version > common.MAX_SUPPORTED_WIRE_VERSION)
+                and s.min_wire_version > common.MAX_SUPPORTED_WIRE_VERSION
+            )
 
             server_too_old = (
                 # Server too old.
                 s.max_wire_version is not None
-                and s.max_wire_version < common.MIN_SUPPORTED_WIRE_VERSION)
+                and s.max_wire_version < common.MIN_SUPPORTED_WIRE_VERSION
+            )
 
             if server_too_new:
                 self._incompatible_err = (
                     "Server at %s:%d requires wire version %d, but this "  # type: ignore
                     "version of PyMongo only supports up to %d."
-                    % (s.address[0], s.address[1] or 0,
-                       s.min_wire_version, common.MAX_SUPPORTED_WIRE_VERSION))
+                    % (
+                        s.address[0],
+                        s.address[1] or 0,
+                        s.min_wire_version,
+                        common.MAX_SUPPORTED_WIRE_VERSION,
+                    )
+                )
 
             elif server_too_old:
                 self._incompatible_err = (
                     "Server at %s:%d reports wire version %d, but this "  # type: ignore
                     "version of PyMongo requires at least %d (MongoDB %s)."
-                    % (s.address[0], s.address[1] or 0,
-                       s.max_wire_version,
-                       common.MIN_SUPPORTED_WIRE_VERSION,
-                       common.MIN_SUPPORTED_SERVER_VERSION))
+                    % (
+                        s.address[0],
+                        s.address[1] or 0,
+                        s.max_wire_version,
+                        common.MIN_SUPPORTED_WIRE_VERSION,
+                        common.MIN_SUPPORTED_SERVER_VERSION,
+                    )
+                )
 
                 break
 
@@ -159,8 +170,7 @@ class TopologyDescription(object):
             topology_type = self._topology_type
 
         # The default ServerDescription's type is Unknown.
-        sds = dict((address, ServerDescription(address))
-                   for address in self._server_descriptions)
+        sds = dict((address, ServerDescription(address)) for address in self._server_descriptions)
 
         return TopologyDescription(
             topology_type,
@@ -168,7 +178,8 @@ class TopologyDescription(object):
             self._replica_set_name,
             self._max_set_version,
             self._max_election_id,
-            self._topology_settings)
+            self._topology_settings,
+        )
 
     def server_descriptions(self) -> Dict[_Address, ServerDescription]:
         """Dict of (address,
@@ -211,14 +222,12 @@ class TopologyDescription(object):
     @property
     def known_servers(self) -> List[ServerDescription]:
         """List of Servers of types besides Unknown."""
-        return [s for s in self._server_descriptions.values()
-                if s.is_server_type_known]
+        return [s for s in self._server_descriptions.values() if s.is_server_type_known]
 
     @property
     def has_known_servers(self) -> bool:
         """Whether there are any Servers of types besides Unknown."""
-        return any(s for s in self._server_descriptions.values()
-                   if s.is_server_type_known)
+        return any(s for s in self._server_descriptions.values() if s.is_server_type_known)
 
     @property
     def readable_servers(self) -> List[ServerDescription]:
@@ -246,17 +255,17 @@ class TopologyDescription(object):
         if not selection:
             return []
         # Round trip time in seconds.
-        fastest = min(
-            s.round_trip_time for s in selection.server_descriptions)
+        fastest = min(s.round_trip_time for s in selection.server_descriptions)
         threshold = self._topology_settings.local_threshold_ms / 1000.0
-        return [s for s in selection.server_descriptions
-                if (s.round_trip_time - fastest) <= threshold]
+        return [
+            s for s in selection.server_descriptions if (s.round_trip_time - fastest) <= threshold
+        ]
 
     def apply_selector(
         self,
         selector: Any,
         address: Optional[_Address] = None,
-        custom_selector: Optional[_ServerSelector] = None
+        custom_selector: Optional[_ServerSelector] = None,
     ) -> List[ServerDescription]:
         """List of servers matching the provided selector(s).
 
@@ -273,22 +282,20 @@ class TopologyDescription(object):
 
         .. versionadded:: 3.4
         """
-        if getattr(selector, 'min_wire_version', 0):
+        if getattr(selector, "min_wire_version", 0):
             common_wv = self.common_wire_version
             if common_wv and common_wv < selector.min_wire_version:
                 raise ConfigurationError(
                     "%s requires min wire version %d, but topology's min"
-                    " wire version is %d" % (selector,
-                                             selector.min_wire_version,
-                                             common_wv))
+                    " wire version is %d" % (selector, selector.min_wire_version, common_wv)
+                )
 
         if isinstance(selector, _AggWritePref):
             selector.selection_hook(self)
 
         if self.topology_type == TOPOLOGY_TYPE.Unknown:
             return []
-        elif self.topology_type in (TOPOLOGY_TYPE.Single,
-                                    TOPOLOGY_TYPE.LoadBalanced):
+        elif self.topology_type in (TOPOLOGY_TYPE.Single, TOPOLOGY_TYPE.LoadBalanced):
             # Ignore selectors for standalone and load balancer mode.
             return self.known_servers
         if address:
@@ -304,10 +311,11 @@ class TopologyDescription(object):
         # Apply custom selector followed by localThresholdMS.
         if custom_selector is not None and selection:
             selection = selection.with_server_descriptions(
-                custom_selector(selection.server_descriptions))
+                custom_selector(selection.server_descriptions)
+            )
         return self._apply_local_threshold(selection)
 
-    def has_readable_server(self, read_preference: _ServerMode =ReadPreference.PRIMARY) -> bool:
+    def has_readable_server(self, read_preference: _ServerMode = ReadPreference.PRIMARY) -> bool:
         """Does this topology have any readable servers available matching the
         given read preference?
 
@@ -336,11 +344,13 @@ class TopologyDescription(object):
 
     def __repr__(self):
         # Sort the servers by address.
-        servers = sorted(self._server_descriptions.values(),
-                         key=lambda sd: sd.address)
+        servers = sorted(self._server_descriptions.values(), key=lambda sd: sd.address)
         return "<%s id: %s, topology_type: %s, servers: %r>" % (
-            self.__class__.__name__, self._topology_settings._topology_id,
-            self.topology_type_name, servers)
+            self.__class__.__name__,
+            self._topology_settings._topology_id,
+            self.topology_type_name,
+            servers,
+        )
 
 
 # If topology type is Unknown and we receive a hello response, what should
@@ -386,12 +396,12 @@ def updated_topology_description(
 
     if topology_type == TOPOLOGY_TYPE.Single:
         # Set server type to Unknown if replica set name does not match.
-        if (set_name is not None and
-                set_name != server_description.replica_set_name):
+        if set_name is not None and set_name != server_description.replica_set_name:
             error = ConfigurationError(
                 "client is configured to connect to a replica set named "
-                "'%s' but this node belongs to a set named '%s'" % (
-                    set_name, server_description.replica_set_name))
+                "'%s' but this node belongs to a set named '%s'"
+                % (set_name, server_description.replica_set_name)
+            )
             sds[address] = server_description.to_unknown(error=error)
         # Single type never changes.
         return TopologyDescription(
@@ -400,7 +410,8 @@ def updated_topology_description(
             set_name,
             max_set_version,
             max_election_id,
-            topology_description._topology_settings)
+            topology_description._topology_settings,
+        )
 
     if topology_type == TOPOLOGY_TYPE.Unknown:
         if server_type in (SERVER_TYPE.Standalone, SERVER_TYPE.LoadBalancer):
@@ -421,21 +432,14 @@ def updated_topology_description(
             sds.pop(address)
 
         elif server_type == SERVER_TYPE.RSPrimary:
-            (topology_type,
-             set_name,
-             max_set_version,
-             max_election_id) = _update_rs_from_primary(sds,
-                                                        set_name,
-                                                        server_description,
-                                                        max_set_version,
-                                                        max_election_id)
+            (topology_type, set_name, max_set_version, max_election_id) = _update_rs_from_primary(
+                sds, set_name, server_description, max_set_version, max_election_id
+            )
 
-        elif server_type in (
-                SERVER_TYPE.RSSecondary,
-                SERVER_TYPE.RSArbiter,
-                SERVER_TYPE.RSOther):
+        elif server_type in (SERVER_TYPE.RSSecondary, SERVER_TYPE.RSArbiter, SERVER_TYPE.RSOther):
             topology_type, set_name = _update_rs_no_primary_from_member(
-                sds, set_name, server_description)
+                sds, set_name, server_description
+            )
 
     elif topology_type == TOPOLOGY_TYPE.ReplicaSetWithPrimary:
         if server_type in (SERVER_TYPE.Standalone, SERVER_TYPE.Mongos):
@@ -443,33 +447,26 @@ def updated_topology_description(
             topology_type = _check_has_primary(sds)
 
         elif server_type == SERVER_TYPE.RSPrimary:
-            (topology_type,
-             set_name,
-             max_set_version,
-             max_election_id) = _update_rs_from_primary(sds,
-                                                        set_name,
-                                                        server_description,
-                                                        max_set_version,
-                                                        max_election_id)
+            (topology_type, set_name, max_set_version, max_election_id) = _update_rs_from_primary(
+                sds, set_name, server_description, max_set_version, max_election_id
+            )
 
-        elif server_type in (
-                SERVER_TYPE.RSSecondary,
-                SERVER_TYPE.RSArbiter,
-                SERVER_TYPE.RSOther):
-            topology_type = _update_rs_with_primary_from_member(
-                sds, set_name, server_description)
+        elif server_type in (SERVER_TYPE.RSSecondary, SERVER_TYPE.RSArbiter, SERVER_TYPE.RSOther):
+            topology_type = _update_rs_with_primary_from_member(sds, set_name, server_description)
 
         else:
             # Server type is Unknown or RSGhost: did we just lose the primary?
             topology_type = _check_has_primary(sds)
 
     # Return updated copy.
-    return TopologyDescription(topology_type,
-                               sds,
-                               set_name,
-                               max_set_version,
-                               max_election_id,
-                               topology_description._topology_settings)
+    return TopologyDescription(
+        topology_type,
+        sds,
+        set_name,
+        max_set_version,
+        max_election_id,
+        topology_description._topology_settings,
+    )
 
 
 def _updated_topology_description_srv_polling(topology_description, seedlist):
@@ -486,7 +483,6 @@ def _updated_topology_description_srv_polling(topology_description, seedlist):
     # If seeds haven't changed, don't do anything.
     if set(sds.keys()) == set(seedlist):
         return topology_description
-
 
     # Remove SDs corresponding to servers no longer part of the SRV record.
     for address in list(sds.keys()):
@@ -510,15 +506,13 @@ def _updated_topology_description_srv_polling(topology_description, seedlist):
         topology_description.replica_set_name,
         topology_description.max_set_version,
         topology_description.max_election_id,
-        topology_description._topology_settings)
+        topology_description._topology_settings,
+    )
 
 
 def _update_rs_from_primary(
-        sds,
-        replica_set_name,
-        server_description,
-        max_set_version,
-        max_election_id):
+    sds, replica_set_name, server_description, max_set_version, max_election_id
+):
     """Update topology description from a primary's hello response.
 
     Pass in a dict of ServerDescriptions, current replica set name, the
@@ -535,35 +529,33 @@ def _update_rs_from_primary(
         # We found a primary but it doesn't have the replica_set_name
         # provided by the user.
         sds.pop(server_description.address)
-        return (_check_has_primary(sds),
-                replica_set_name,
-                max_set_version,
-                max_election_id)
+        return (_check_has_primary(sds), replica_set_name, max_set_version, max_election_id)
 
     max_election_tuple = max_set_version, max_election_id
     if None not in server_description.election_tuple:
-        if (None not in max_election_tuple and
-                max_election_tuple > server_description.election_tuple):
+        if (
+            None not in max_election_tuple
+            and max_election_tuple > server_description.election_tuple
+        ):
 
             # Stale primary, set to type Unknown.
             sds[server_description.address] = server_description.to_unknown()
-            return (_check_has_primary(sds),
-                    replica_set_name,
-                    max_set_version,
-                    max_election_id)
+            return (_check_has_primary(sds), replica_set_name, max_set_version, max_election_id)
 
         max_election_id = server_description.election_id
 
-    if (server_description.set_version is not None and
-        (max_set_version is None or
-            server_description.set_version > max_set_version)):
+    if server_description.set_version is not None and (
+        max_set_version is None or server_description.set_version > max_set_version
+    ):
 
         max_set_version = server_description.set_version
 
     # We've heard from the primary. Is it the same primary as before?
     for server in sds.values():
-        if (server.server_type is SERVER_TYPE.RSPrimary
-                and server.address != server_description.address):
+        if (
+            server.server_type is SERVER_TYPE.RSPrimary
+            and server.address != server_description.address
+        ):
 
             # Reset old primary's type to Unknown.
             sds[server.address] = server.to_unknown()
@@ -582,16 +574,10 @@ def _update_rs_from_primary(
 
     # If the host list differs from the seed list, we may not have a primary
     # after all.
-    return (_check_has_primary(sds),
-            replica_set_name,
-            max_set_version,
-            max_election_id)
+    return (_check_has_primary(sds), replica_set_name, max_set_version, max_election_id)
 
 
-def _update_rs_with_primary_from_member(
-        sds,
-        replica_set_name,
-        server_description):
+def _update_rs_with_primary_from_member(sds, replica_set_name, server_description):
     """RS with known primary. Process a response from a non-primary.
 
     Pass in a dict of ServerDescriptions, current replica set name, and the
@@ -603,18 +589,14 @@ def _update_rs_with_primary_from_member(
 
     if replica_set_name != server_description.replica_set_name:
         sds.pop(server_description.address)
-    elif (server_description.me and
-          server_description.address != server_description.me):
+    elif server_description.me and server_description.address != server_description.me:
         sds.pop(server_description.address)
 
     # Had this member been the primary?
     return _check_has_primary(sds)
 
 
-def _update_rs_no_primary_from_member(
-        sds,
-        replica_set_name,
-        server_description):
+def _update_rs_no_primary_from_member(sds, replica_set_name, server_description):
     """RS without known primary. Update from a non-primary's response.
 
     Pass in a dict of ServerDescriptions, current replica set name, and the
@@ -636,8 +618,7 @@ def _update_rs_no_primary_from_member(
         if address not in sds:
             sds[address] = ServerDescription(address)
 
-    if (server_description.me and
-            server_description.address != server_description.me):
+    if server_description.me and server_description.address != server_description.me:
         sds.pop(server_description.address)
 
     return topology_type, replica_set_name

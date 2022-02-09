@@ -42,6 +42,7 @@ def str_flags_to_int(str_flags: str) -> int:
 
 class Regex(object):
     """BSON regular expression data."""
+
     __slots__ = ("pattern", "flags")
 
     __getstate__ = _getstate_slots
@@ -75,9 +76,7 @@ class Regex(object):
         .. _PCRE: http://www.pcre.org/
         """
         if not isinstance(regex, RE_TYPE):
-            raise TypeError(
-                "regex must be a compiled regular expression, not %s"
-                % type(regex))
+            raise TypeError("regex must be a compiled regular expression, not %s" % type(regex))
 
         return Regex(regex.pattern, regex.flags)
 
@@ -101,8 +100,7 @@ class Regex(object):
         elif isinstance(flags, int):
             self.flags = flags
         else:
-            raise TypeError(
-                "flags must be a string or int, not %s" % type(flags))
+            raise TypeError("flags must be a string or int, not %s" % type(flags))
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Regex):

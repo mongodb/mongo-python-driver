@@ -36,13 +36,20 @@ if HAVE_SSL:
     # import the ssl module even if we're only using it for this purpose.
     import ssl as _stdlibssl
     from ssl import CERT_NONE, CERT_REQUIRED
+
     HAS_SNI = _ssl.HAS_SNI
     IPADDR_SAFE = _ssl.IS_PYOPENSSL or sys.version_info[:2] >= (3, 7)
     SSLError = _ssl.SSLError
 
-    def get_ssl_context(certfile, passphrase, ca_certs, crlfile,
-                        allow_invalid_certificates, allow_invalid_hostnames,
-                        disable_ocsp_endpoint_check):
+    def get_ssl_context(
+        certfile,
+        passphrase,
+        ca_certs,
+        crlfile,
+        allow_invalid_certificates,
+        allow_invalid_hostnames,
+        disable_ocsp_endpoint_check,
+    ):
         """Create and return an SSLContext object."""
         verify_mode = CERT_NONE if allow_invalid_certificates else CERT_REQUIRED
         ctx = _ssl.SSLContext(_ssl.PROTOCOL_SSLv23)
@@ -67,14 +74,12 @@ if HAVE_SSL:
             try:
                 ctx.load_cert_chain(certfile, None, passphrase)
             except _ssl.SSLError as exc:
-                raise ConfigurationError(
-                    "Private key doesn't match certificate: %s" % (exc,))
+                raise ConfigurationError("Private key doesn't match certificate: %s" % (exc,))
         if crlfile is not None:
             if _ssl.IS_PYOPENSSL:
-                raise ConfigurationError(
-                    "tlsCRLFile cannot be used with PyOpenSSL")
+                raise ConfigurationError("tlsCRLFile cannot be used with PyOpenSSL")
             # Match the server's behavior.
-            setattr(ctx, 'verify_flags', getattr(_ssl, "VERIFY_CRL_CHECK_LEAF", 0))
+            setattr(ctx, "verify_flags", getattr(_ssl, "VERIFY_CRL_CHECK_LEAF", 0))
             ctx.load_verify_locations(crlfile)
         if ca_certs is not None:
             ctx.load_verify_locations(ca_certs)
@@ -82,9 +87,12 @@ if HAVE_SSL:
             ctx.load_default_certs()
         ctx.verify_mode = verify_mode
         return ctx
+
 else:
+
     class SSLError(Exception):  # type: ignore
         pass
+
     HAS_SNI = False
     IPADDR_SAFE = False
 

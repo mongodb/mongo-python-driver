@@ -16,11 +16,12 @@ import sys
 
 sys.path[0:0] = [""]
 
-from pymongo.saslprep import saslprep
 from test import unittest
 
-class TestSASLprep(unittest.TestCase):
+from pymongo.saslprep import saslprep
 
+
+class TestSASLprep(unittest.TestCase):
     def test_saslprep(self):
         try:
             import stringprep
