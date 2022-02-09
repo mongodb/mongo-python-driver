@@ -24,7 +24,6 @@ import subprocess
 import sys
 import warnings
 
-
 # The maximum amount of time to wait for the intermediate subprocess.
 _WAIT_TIMEOUT = 10
 _THIS_FILE = os.path.realpath(__file__)
@@ -53,23 +52,29 @@ def _silence_resource_warning(popen):
         popen.returncode = 0
 
 
-if sys.platform == 'win32':
+if sys.platform == "win32":
     # On Windows we spawn the daemon process simply by using DETACHED_PROCESS.
-    _DETACHED_PROCESS = getattr(subprocess, 'DETACHED_PROCESS', 0x00000008)
+    _DETACHED_PROCESS = getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
 
     def _spawn_daemon(args):
         """Spawn a daemon process (Windows)."""
         try:
-            with open(os.devnull, 'r+b') as devnull:
+            with open(os.devnull, "r+b") as devnull:
                 popen = subprocess.Popen(
                     args,
                     creationflags=_DETACHED_PROCESS,
-                    stdin=devnull, stderr=devnull, stdout=devnull)
+                    stdin=devnull,
+                    stderr=devnull,
+                    stdout=devnull,
+                )
                 _silence_resource_warning(popen)
         except FileNotFoundError as exc:
-            warnings.warn(f'Failed to start {args[0]}: is it on your $PATH?\n'
-                          f'Original exception: {exc}', RuntimeWarning,
-                          stacklevel=2)
+            warnings.warn(
+                f"Failed to start {args[0]}: is it on your $PATH?\n" f"Original exception: {exc}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+
 else:
     # On Unix we spawn the daemon process with a double Popen.
     # 1) The first Popen runs this file as a Python script using the current
@@ -85,16 +90,16 @@ else:
     def _spawn(args):
         """Spawn the process and silence stdout/stderr."""
         try:
-            with open(os.devnull, 'r+b') as devnull:
+            with open(os.devnull, "r+b") as devnull:
                 return subprocess.Popen(
-                    args,
-                    close_fds=True,
-                    stdin=devnull, stderr=devnull, stdout=devnull)
+                    args, close_fds=True, stdin=devnull, stderr=devnull, stdout=devnull
+                )
         except FileNotFoundError as exc:
-            warnings.warn(f'Failed to start {args[0]}: is it on your $PATH?\n'
-                          f'Original exception: {exc}', RuntimeWarning,
-                          stacklevel=2)
-
+            warnings.warn(
+                f"Failed to start {args[0]}: is it on your $PATH?\n" f"Original exception: {exc}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
     def _spawn_daemon_double_popen(args):
         """Spawn a daemon process using a double subprocess.Popen."""
@@ -104,7 +109,6 @@ else:
         # Reap the intermediate child process to avoid creating zombie
         # processes.
         _popen_wait(temp_proc, _WAIT_TIMEOUT)
-
 
     def _spawn_daemon(args):
         """Spawn a daemon process (Unix)."""
@@ -123,10 +127,9 @@ else:
             #    until the main application exits.
             _spawn(args)
 
-
-    if __name__ == '__main__':
+    if __name__ == "__main__":
         # Attempt to start a new session to decouple from the parent.
-        if hasattr(os, 'setsid'):
+        if hasattr(os, "setsid"):
             try:
                 os.setsid()
             except OSError:

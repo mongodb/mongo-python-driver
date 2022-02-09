@@ -24,7 +24,7 @@ def _setstate_slots(self, state):
 
 def _mangle_name(name, prefix):
     if name.startswith("__"):
-        prefix = "_"+prefix
+        prefix = "_" + prefix
     else:
         prefix = ""
     return prefix + name
@@ -36,5 +36,5 @@ def _getstate_slots(self):
     for name in self.__slots__:
         mangled_name = _mangle_name(name, prefix)
         if hasattr(self, mangled_name):
-            ret[mangled_name] =  getattr(self, mangled_name)
+            ret[mangled_name] = getattr(self, mangled_name)
     return ret

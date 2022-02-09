@@ -185,10 +185,16 @@ from collections import abc, namedtuple
 from pymongo.hello import HelloCompat
 from pymongo.helpers import _handle_exception
 
-_Listeners = namedtuple('Listeners',
-                        ('command_listeners', 'server_listeners',
-                         'server_heartbeat_listeners', 'topology_listeners',
-                         'cmap_listeners'))
+_Listeners = namedtuple(
+    "Listeners",
+    (
+        "command_listeners",
+        "server_listeners",
+        "server_heartbeat_listeners",
+        "topology_listeners",
+        "cmap_listeners",
+    ),
+)
 
 _LISTENERS = _Listeners([], [], [], [], [])
 
@@ -471,10 +477,12 @@ def _validate_event_listeners(option, listeners):
         raise TypeError("%s must be a list or tuple" % (option,))
     for listener in listeners:
         if not isinstance(listener, _EventListener):
-            raise TypeError("Listeners for %s must be either a "
-                            "CommandListener, ServerHeartbeatListener, "
-                            "ServerListener, TopologyListener, or "
-                            "ConnectionPoolListener." % (option,))
+            raise TypeError(
+                "Listeners for %s must be either a "
+                "CommandListener, ServerHeartbeatListener, "
+                "ServerListener, TopologyListener, or "
+                "ConnectionPoolListener." % (option,)
+            )
     return listeners
 
 
@@ -487,10 +495,12 @@ def register(listener):
         :class:`TopologyListener`, or :class:`ConnectionPoolListener`.
     """
     if not isinstance(listener, _EventListener):
-        raise TypeError("Listeners for %s must be either a "
-                        "CommandListener, ServerHeartbeatListener, "
-                        "ServerListener, TopologyListener, or "
-                        "ConnectionPoolListener." % (listener,))
+        raise TypeError(
+            "Listeners for %s must be either a "
+            "CommandListener, ServerHeartbeatListener, "
+            "ServerListener, TopologyListener, or "
+            "ConnectionPoolListener." % (listener,)
+        )
     if isinstance(listener, CommandListener):
         _LISTENERS.command_listeners.append(listener)
     if isinstance(listener, ServerHeartbeatListener):
@@ -502,19 +512,32 @@ def register(listener):
     if isinstance(listener, ConnectionPoolListener):
         _LISTENERS.cmap_listeners.append(listener)
 
+
 # Note - to avoid bugs from forgetting which if these is all lowercase and
 # which are camelCase, and at the same time avoid having to add a test for
 # every command, use all lowercase here and test against command_name.lower().
 _SENSITIVE_COMMANDS = set(
-    ["authenticate", "saslstart", "saslcontinue", "getnonce", "createuser",
-     "updateuser", "copydbgetnonce", "copydbsaslstart", "copydb"])
+    [
+        "authenticate",
+        "saslstart",
+        "saslcontinue",
+        "getnonce",
+        "createuser",
+        "updateuser",
+        "copydbgetnonce",
+        "copydbsaslstart",
+        "copydb",
+    ]
+)
 
 
 # The "hello" command is also deemed sensitive when attempting speculative
 # authentication.
 def _is_speculative_authenticate(command_name, doc):
-    if (command_name.lower() in ('hello', HelloCompat.LEGACY_CMD) and
-            'speculativeAuthenticate' in doc):
+    if (
+        command_name.lower() in ("hello", HelloCompat.LEGACY_CMD)
+        and "speculativeAuthenticate" in doc
+    ):
         return True
     return False
 
@@ -522,11 +545,9 @@ def _is_speculative_authenticate(command_name, doc):
 class _CommandEvent(object):
     """Base class for command events."""
 
-    __slots__ = ("__cmd_name", "__rqst_id", "__conn_id", "__op_id",
-                 "__service_id")
+    __slots__ = ("__cmd_name", "__rqst_id", "__conn_id", "__op_id", "__service_id")
 
-    def __init__(self, command_name, request_id, connection_id, operation_id,
-                 service_id=None):
+    def __init__(self, command_name, request_id, connection_id, operation_id, service_id=None):
         self.__cmd_name = command_name
         self.__rqst_id = request_id
         self.__conn_id = connection_id
@@ -574,6 +595,7 @@ class CommandStartedEvent(_CommandEvent):
       - `operation_id`: An optional identifier for a series of related events.
       - `service_id`: The service_id this command was sent to, or ``None``.
     """
+
     __slots__ = ("__cmd", "__db")
 
     def __init__(self, command, database_name, *args, service_id=None):
@@ -581,11 +603,9 @@ class CommandStartedEvent(_CommandEvent):
             raise ValueError("%r is not a valid command" % (command,))
         # Command name must be first key.
         command_name = next(iter(command))
-        super(CommandStartedEvent, self).__init__(
-            command_name, *args, service_id=service_id)
+        super(CommandStartedEvent, self).__init__(command_name, *args, service_id=service_id)
         cmd_name, cmd_doc = command_name.lower(), command[command_name]
-        if (cmd_name in _SENSITIVE_COMMANDS or
-                _is_speculative_authenticate(cmd_name, command)):
+        if cmd_name in _SENSITIVE_COMMANDS or _is_speculative_authenticate(cmd_name, command):
             self.__cmd = {}
         else:
             self.__cmd = command
@@ -602,12 +622,14 @@ class CommandStartedEvent(_CommandEvent):
         return self.__db
 
     def __repr__(self):
-        return (
-            "<%s %s db: %r, command: %r, operation_id: %s, "
-            "service_id: %s>") % (
-                self.__class__.__name__, self.connection_id,
-                self.database_name, self.command_name, self.operation_id,
-                self.service_id)
+        return ("<%s %s db: %r, command: %r, operation_id: %s, " "service_id: %s>") % (
+            self.__class__.__name__,
+            self.connection_id,
+            self.database_name,
+            self.command_name,
+            self.operation_id,
+            self.service_id,
+        )
 
 
 class CommandSucceededEvent(_CommandEvent):
@@ -623,17 +645,25 @@ class CommandSucceededEvent(_CommandEvent):
       - `operation_id`: An optional identifier for a series of related events.
       - `service_id`: The service_id this command was sent to, or ``None``.
     """
+
     __slots__ = ("__duration_micros", "__reply")
 
-    def __init__(self, duration, reply, command_name,
-                 request_id, connection_id, operation_id, service_id=None):
+    def __init__(
+        self,
+        duration,
+        reply,
+        command_name,
+        request_id,
+        connection_id,
+        operation_id,
+        service_id=None,
+    ):
         super(CommandSucceededEvent, self).__init__(
-            command_name, request_id, connection_id, operation_id,
-            service_id=service_id)
+            command_name, request_id, connection_id, operation_id, service_id=service_id
+        )
         self.__duration_micros = _to_micros(duration)
         cmd_name = command_name.lower()
-        if (cmd_name in _SENSITIVE_COMMANDS or
-                _is_speculative_authenticate(cmd_name, reply)):
+        if cmd_name in _SENSITIVE_COMMANDS or _is_speculative_authenticate(cmd_name, reply):
             self.__reply = {}
         else:
             self.__reply = reply
@@ -649,12 +679,14 @@ class CommandSucceededEvent(_CommandEvent):
         return self.__reply
 
     def __repr__(self):
-        return (
-            "<%s %s command: %r, operation_id: %s, duration_micros: %s, "
-            "service_id: %s>") % (
-                self.__class__.__name__, self.connection_id,
-                self.command_name, self.operation_id, self.duration_micros,
-                self.service_id)
+        return ("<%s %s command: %r, operation_id: %s, duration_micros: %s, " "service_id: %s>") % (
+            self.__class__.__name__,
+            self.connection_id,
+            self.command_name,
+            self.operation_id,
+            self.duration_micros,
+            self.service_id,
+        )
 
 
 class CommandFailedEvent(_CommandEvent):
@@ -670,6 +702,7 @@ class CommandFailedEvent(_CommandEvent):
       - `operation_id`: An optional identifier for a series of related events.
       - `service_id`: The service_id this command was sent to, or ``None``.
     """
+
     __slots__ = ("__duration_micros", "__failure")
 
     def __init__(self, duration, failure, *args, service_id=None):
@@ -690,14 +723,21 @@ class CommandFailedEvent(_CommandEvent):
     def __repr__(self):
         return (
             "<%s %s command: %r, operation_id: %s, duration_micros: %s, "
-            "failure: %r, service_id: %s>") % (
-                self.__class__.__name__, self.connection_id, self.command_name,
-                self.operation_id, self.duration_micros, self.failure,
-                self.service_id)
+            "failure: %r, service_id: %s>"
+        ) % (
+            self.__class__.__name__,
+            self.connection_id,
+            self.command_name,
+            self.operation_id,
+            self.duration_micros,
+            self.failure,
+            self.service_id,
+        )
 
 
 class _PoolEvent(object):
     """Base class for pool events."""
+
     __slots__ = ("__address",)
 
     def __init__(self, address):
@@ -711,7 +751,7 @@ class _PoolEvent(object):
         return self.__address
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, self.__address)
+        return "%s(%r)" % (self.__class__.__name__, self.__address)
 
 
 class PoolCreatedEvent(_PoolEvent):
@@ -723,6 +763,7 @@ class PoolCreatedEvent(_PoolEvent):
 
     .. versionadded:: 3.9
     """
+
     __slots__ = ("__options",)
 
     def __init__(self, address, options):
@@ -731,13 +772,11 @@ class PoolCreatedEvent(_PoolEvent):
 
     @property
     def options(self):
-        """Any non-default pool options that were set on this Connection Pool.
-        """
+        """Any non-default pool options that were set on this Connection Pool."""
         return self.__options
 
     def __repr__(self):
-        return '%s(%r, %r)' % (
-            self.__class__.__name__, self.address, self.__options)
+        return "%s(%r, %r)" % (self.__class__.__name__, self.address, self.__options)
 
 
 class PoolReadyEvent(_PoolEvent):
@@ -749,6 +788,7 @@ class PoolReadyEvent(_PoolEvent):
 
     .. versionadded:: 4.0
     """
+
     __slots__ = ()
 
 
@@ -762,6 +802,7 @@ class PoolClearedEvent(_PoolEvent):
 
     .. versionadded:: 3.9
     """
+
     __slots__ = ("__service_id",)
 
     def __init__(self, address, service_id=None):
@@ -779,8 +820,7 @@ class PoolClearedEvent(_PoolEvent):
         return self.__service_id
 
     def __repr__(self):
-        return '%s(%r, %r)' % (
-            self.__class__.__name__, self.address, self.__service_id)
+        return "%s(%r, %r)" % (self.__class__.__name__, self.address, self.__service_id)
 
 
 class PoolClosedEvent(_PoolEvent):
@@ -792,6 +832,7 @@ class PoolClosedEvent(_PoolEvent):
 
     .. versionadded:: 3.9
     """
+
     __slots__ = ()
 
 
@@ -802,17 +843,17 @@ class ConnectionClosedReason(object):
     .. versionadded:: 3.9
     """
 
-    STALE = 'stale'
+    STALE = "stale"
     """The pool was cleared, making the connection no longer valid."""
 
-    IDLE = 'idle'
+    IDLE = "idle"
     """The connection became stale by being idle for too long (maxIdleTimeMS).
     """
 
-    ERROR = 'error'
+    ERROR = "error"
     """The connection experienced an error, making it no longer valid."""
 
-    POOL_CLOSED = 'poolClosed'
+    POOL_CLOSED = "poolClosed"
     """The pool was closed, making the connection no longer valid."""
 
 
@@ -823,13 +864,13 @@ class ConnectionCheckOutFailedReason(object):
     .. versionadded:: 3.9
     """
 
-    TIMEOUT = 'timeout'
+    TIMEOUT = "timeout"
     """The connection check out attempt exceeded the specified timeout."""
 
-    POOL_CLOSED = 'poolClosed'
+    POOL_CLOSED = "poolClosed"
     """The pool was previously closed, and cannot provide new connections."""
 
-    CONN_ERROR = 'connectionError'
+    CONN_ERROR = "connectionError"
     """The connection check out attempt experienced an error while setting up
     a new connection.
     """
@@ -837,6 +878,7 @@ class ConnectionCheckOutFailedReason(object):
 
 class _ConnectionEvent(object):
     """Private base class for some connection events."""
+
     __slots__ = ("__address", "__connection_id")
 
     def __init__(self, address, connection_id):
@@ -856,8 +898,7 @@ class _ConnectionEvent(object):
         return self.__connection_id
 
     def __repr__(self):
-        return '%s(%r, %r)' % (
-            self.__class__.__name__, self.__address, self.__connection_id)
+        return "%s(%r, %r)" % (self.__class__.__name__, self.__address, self.__connection_id)
 
 
 class ConnectionCreatedEvent(_ConnectionEvent):
@@ -873,6 +914,7 @@ class ConnectionCreatedEvent(_ConnectionEvent):
 
     .. versionadded:: 3.9
     """
+
     __slots__ = ()
 
 
@@ -886,6 +928,7 @@ class ConnectionReadyEvent(_ConnectionEvent):
 
     .. versionadded:: 3.9
     """
+
     __slots__ = ()
 
 
@@ -900,6 +943,7 @@ class ConnectionClosedEvent(_ConnectionEvent):
 
     .. versionadded:: 3.9
     """
+
     __slots__ = ("__reason",)
 
     def __init__(self, address, connection_id, reason):
@@ -916,9 +960,12 @@ class ConnectionClosedEvent(_ConnectionEvent):
         return self.__reason
 
     def __repr__(self):
-        return '%s(%r, %r, %r)' % (
-            self.__class__.__name__, self.address, self.connection_id,
-            self.__reason)
+        return "%s(%r, %r, %r)" % (
+            self.__class__.__name__,
+            self.address,
+            self.connection_id,
+            self.__reason,
+        )
 
 
 class ConnectionCheckOutStartedEvent(object):
@@ -930,6 +977,7 @@ class ConnectionCheckOutStartedEvent(object):
 
     .. versionadded:: 3.9
     """
+
     __slots__ = ("__address",)
 
     def __init__(self, address):
@@ -943,7 +991,7 @@ class ConnectionCheckOutStartedEvent(object):
         return self.__address
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, self.__address)
+        return "%s(%r)" % (self.__class__.__name__, self.__address)
 
 
 class ConnectionCheckOutFailedEvent(object):
@@ -956,6 +1004,7 @@ class ConnectionCheckOutFailedEvent(object):
 
     .. versionadded:: 3.9
     """
+
     __slots__ = ("__address", "__reason")
 
     def __init__(self, address, reason):
@@ -979,8 +1028,7 @@ class ConnectionCheckOutFailedEvent(object):
         return self.__reason
 
     def __repr__(self):
-        return '%s(%r, %r)' % (
-            self.__class__.__name__, self.__address, self.__reason)
+        return "%s(%r, %r)" % (self.__class__.__name__, self.__address, self.__reason)
 
 
 class ConnectionCheckedOutEvent(_ConnectionEvent):
@@ -993,6 +1041,7 @@ class ConnectionCheckedOutEvent(_ConnectionEvent):
 
     .. versionadded:: 3.9
     """
+
     __slots__ = ()
 
 
@@ -1006,6 +1055,7 @@ class ConnectionCheckedInEvent(_ConnectionEvent):
 
     .. versionadded:: 3.9
     """
+
     __slots__ = ()
 
 
@@ -1030,7 +1080,10 @@ class _ServerEvent(object):
 
     def __repr__(self):
         return "<%s %s topology_id: %s>" % (
-            self.__class__.__name__, self.server_address, self.topology_id)
+            self.__class__.__name__,
+            self.server_address,
+            self.topology_id,
+        )
 
 
 class ServerDescriptionChangedEvent(_ServerEvent):
@@ -1039,7 +1092,7 @@ class ServerDescriptionChangedEvent(_ServerEvent):
     .. versionadded:: 3.3
     """
 
-    __slots__ = ('__previous_description', '__new_description')
+    __slots__ = ("__previous_description", "__new_description")
 
     def __init__(self, previous_description, new_description, *args):
         super(ServerDescriptionChangedEvent, self).__init__(*args)
@@ -1060,8 +1113,11 @@ class ServerDescriptionChangedEvent(_ServerEvent):
 
     def __repr__(self):
         return "<%s %s changed from: %s, to: %s>" % (
-            self.__class__.__name__, self.server_address,
-            self.previous_description, self.new_description)
+            self.__class__.__name__,
+            self.server_address,
+            self.previous_description,
+            self.new_description,
+        )
 
 
 class ServerOpeningEvent(_ServerEvent):
@@ -1085,7 +1141,7 @@ class ServerClosedEvent(_ServerEvent):
 class TopologyEvent(object):
     """Base class for topology description events."""
 
-    __slots__ = ('__topology_id')
+    __slots__ = "__topology_id"
 
     def __init__(self, topology_id):
         self.__topology_id = topology_id
@@ -1096,8 +1152,7 @@ class TopologyEvent(object):
         return self.__topology_id
 
     def __repr__(self):
-        return "<%s topology_id: %s>" % (
-            self.__class__.__name__, self.topology_id)
+        return "<%s topology_id: %s>" % (self.__class__.__name__, self.topology_id)
 
 
 class TopologyDescriptionChangedEvent(TopologyEvent):
@@ -1106,9 +1161,9 @@ class TopologyDescriptionChangedEvent(TopologyEvent):
     .. versionadded:: 3.3
     """
 
-    __slots__ = ('__previous_description', '__new_description')
+    __slots__ = ("__previous_description", "__new_description")
 
-    def __init__(self, previous_description,  new_description, *args):
+    def __init__(self, previous_description, new_description, *args):
         super(TopologyDescriptionChangedEvent, self).__init__(*args)
         self.__previous_description = previous_description
         self.__new_description = new_description
@@ -1127,8 +1182,11 @@ class TopologyDescriptionChangedEvent(TopologyEvent):
 
     def __repr__(self):
         return "<%s topology_id: %s changed from: %s, to: %s>" % (
-            self.__class__.__name__, self.topology_id,
-            self.previous_description, self.new_description)
+            self.__class__.__name__,
+            self.topology_id,
+            self.previous_description,
+            self.new_description,
+        )
 
 
 class TopologyOpenedEvent(TopologyEvent):
@@ -1152,7 +1210,7 @@ class TopologyClosedEvent(TopologyEvent):
 class _ServerHeartbeatEvent(object):
     """Base class for server heartbeat events."""
 
-    __slots__ = ('__connection_id')
+    __slots__ = "__connection_id"
 
     def __init__(self, connection_id):
         self.__connection_id = connection_id
@@ -1182,7 +1240,7 @@ class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):
     .. versionadded:: 3.3
     """
 
-    __slots__ = ('__duration', '__reply', '__awaited')
+    __slots__ = ("__duration", "__reply", "__awaited")
 
     def __init__(self, duration, reply, connection_id, awaited=False):
         super(ServerHeartbeatSucceededEvent, self).__init__(connection_id)
@@ -1212,8 +1270,12 @@ class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):
 
     def __repr__(self):
         return "<%s %s duration: %s, awaited: %s, reply: %s>" % (
-            self.__class__.__name__, self.connection_id,
-            self.duration, self.awaited, self.reply)
+            self.__class__.__name__,
+            self.connection_id,
+            self.duration,
+            self.awaited,
+            self.reply,
+        )
 
 
 class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
@@ -1223,7 +1285,7 @@ class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
     .. versionadded:: 3.3
     """
 
-    __slots__ = ('__duration', '__reply', '__awaited')
+    __slots__ = ("__duration", "__reply", "__awaited")
 
     def __init__(self, duration, reply, connection_id, awaited=False):
         super(ServerHeartbeatFailedEvent, self).__init__(connection_id)
@@ -1253,8 +1315,12 @@ class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
 
     def __repr__(self):
         return "<%s %s duration: %s, awaited: %s, reply: %r>" % (
-            self.__class__.__name__, self.connection_id,
-            self.duration, self.awaited, self.reply)
+            self.__class__.__name__,
+            self.connection_id,
+            self.duration,
+            self.awaited,
+            self.reply,
+        )
 
 
 class _EventListeners(object):
@@ -1265,6 +1331,7 @@ class _EventListeners(object):
     :Parameters:
       - `listeners`: A list of event listeners.
     """
+
     def __init__(self, listeners):
         self.__command_listeners = _LISTENERS.command_listeners[:]
         self.__server_listeners = _LISTENERS.server_listeners[:]
@@ -1286,8 +1353,7 @@ class _EventListeners(object):
                     self.__cmap_listeners.append(lst)
         self.__enabled_for_commands = bool(self.__command_listeners)
         self.__enabled_for_server = bool(self.__server_listeners)
-        self.__enabled_for_server_heartbeat = bool(
-            self.__server_heartbeat_listeners)
+        self.__enabled_for_server_heartbeat = bool(self.__server_heartbeat_listeners)
         self.__enabled_for_topology = bool(self.__topology_listeners)
         self.__enabled_for_cmap = bool(self.__cmap_listeners)
 
@@ -1318,15 +1384,17 @@ class _EventListeners(object):
 
     def event_listeners(self):
         """List of registered event listeners."""
-        return (self.__command_listeners +
-                self.__server_heartbeat_listeners +
-                self.__server_listeners +
-                self.__topology_listeners +
-                self.__cmap_listeners)
+        return (
+            self.__command_listeners
+            + self.__server_heartbeat_listeners
+            + self.__server_listeners
+            + self.__topology_listeners
+            + self.__cmap_listeners
+        )
 
-    def publish_command_start(self, command, database_name,
-                              request_id, connection_id, op_id=None,
-                              service_id=None):
+    def publish_command_start(
+        self, command, database_name, request_id, connection_id, op_id=None, service_id=None
+    ):
         """Publish a CommandStartedEvent to all command listeners.
 
         :Parameters:
@@ -1342,18 +1410,25 @@ class _EventListeners(object):
         if op_id is None:
             op_id = request_id
         event = CommandStartedEvent(
-            command, database_name, request_id, connection_id, op_id,
-            service_id=service_id)
+            command, database_name, request_id, connection_id, op_id, service_id=service_id
+        )
         for subscriber in self.__command_listeners:
             try:
                 subscriber.started(event)
             except Exception:
                 _handle_exception()
 
-    def publish_command_success(self, duration, reply, command_name,
-                                request_id, connection_id, op_id=None,
-                                service_id=None,
-                                speculative_hello=False):
+    def publish_command_success(
+        self,
+        duration,
+        reply,
+        command_name,
+        request_id,
+        connection_id,
+        op_id=None,
+        service_id=None,
+        speculative_hello=False,
+    ):
         """Publish a CommandSucceededEvent to all command listeners.
 
         :Parameters:
@@ -1374,17 +1449,24 @@ class _EventListeners(object):
             # speculativeAuthenticate.
             reply = {}
         event = CommandSucceededEvent(
-            duration, reply, command_name, request_id, connection_id, op_id,
-            service_id)
+            duration, reply, command_name, request_id, connection_id, op_id, service_id
+        )
         for subscriber in self.__command_listeners:
             try:
                 subscriber.succeeded(event)
             except Exception:
                 _handle_exception()
 
-    def publish_command_failure(self, duration, failure, command_name,
-                                request_id, connection_id, op_id=None,
-                                service_id=None):
+    def publish_command_failure(
+        self,
+        duration,
+        failure,
+        command_name,
+        request_id,
+        connection_id,
+        op_id=None,
+        service_id=None,
+    ):
         """Publish a CommandFailedEvent to all command listeners.
 
         :Parameters:
@@ -1401,8 +1483,8 @@ class _EventListeners(object):
         if op_id is None:
             op_id = request_id
         event = CommandFailedEvent(
-            duration, failure, command_name, request_id, connection_id, op_id,
-            service_id=service_id)
+            duration, failure, command_name, request_id, connection_id, op_id, service_id=service_id
+        )
         for subscriber in self.__command_listeners:
             try:
                 subscriber.failed(event)
@@ -1423,8 +1505,7 @@ class _EventListeners(object):
             except Exception:
                 _handle_exception()
 
-    def publish_server_heartbeat_succeeded(self, connection_id, duration,
-                                           reply, awaited):
+    def publish_server_heartbeat_succeeded(self, connection_id, duration, reply, awaited):
         """Publish a ServerHeartbeatSucceededEvent to all server heartbeat
         listeners.
 
@@ -1434,17 +1515,15 @@ class _EventListeners(object):
             resolution for the platform.
          - `reply`: The command reply.
          - `awaited`: True if the response was awaited.
-         """
-        event = ServerHeartbeatSucceededEvent(duration, reply, connection_id,
-                                              awaited)
+        """
+        event = ServerHeartbeatSucceededEvent(duration, reply, connection_id, awaited)
         for subscriber in self.__server_heartbeat_listeners:
             try:
                 subscriber.succeeded(event)
             except Exception:
                 _handle_exception()
 
-    def publish_server_heartbeat_failed(self, connection_id, duration, reply,
-                                        awaited):
+    def publish_server_heartbeat_failed(self, connection_id, duration, reply, awaited):
         """Publish a ServerHeartbeatFailedEvent to all server heartbeat
         listeners.
 
@@ -1454,9 +1533,8 @@ class _EventListeners(object):
             resolution for the platform.
          - `reply`: The command reply.
          - `awaited`: True if the response was awaited.
-         """
-        event = ServerHeartbeatFailedEvent(duration, reply, connection_id,
-                                           awaited)
+        """
+        event = ServerHeartbeatFailedEvent(duration, reply, connection_id, awaited)
         for subscriber in self.__server_heartbeat_listeners:
             try:
                 subscriber.failed(event)
@@ -1493,9 +1571,9 @@ class _EventListeners(object):
             except Exception:
                 _handle_exception()
 
-    def publish_server_description_changed(self, previous_description,
-                                           new_description, server_address,
-                                           topology_id):
+    def publish_server_description_changed(
+        self, previous_description, new_description, server_address, topology_id
+    ):
         """Publish a ServerDescriptionChangedEvent to all server listeners.
 
         :Parameters:
@@ -1505,9 +1583,9 @@ class _EventListeners(object):
          - `topology_id`: A unique identifier for the topology this server
            is a part of.
         """
-        event = ServerDescriptionChangedEvent(previous_description,
-                                              new_description, server_address,
-                                              topology_id)
+        event = ServerDescriptionChangedEvent(
+            previous_description, new_description, server_address, topology_id
+        )
         for subscriber in self.__server_listeners:
             try:
                 subscriber.description_changed(event)
@@ -1542,8 +1620,9 @@ class _EventListeners(object):
             except Exception:
                 _handle_exception()
 
-    def publish_topology_description_changed(self, previous_description,
-                                             new_description, topology_id):
+    def publish_topology_description_changed(
+        self, previous_description, new_description, topology_id
+    ):
         """Publish a TopologyDescriptionChangedEvent to all topology listeners.
 
         :Parameters:
@@ -1552,8 +1631,7 @@ class _EventListeners(object):
          - `topology_id`: A unique identifier for the topology this server
            is a part of.
         """
-        event = TopologyDescriptionChangedEvent(previous_description,
-                                                new_description, topology_id)
+        event = TopologyDescriptionChangedEvent(previous_description, new_description, topology_id)
         for subscriber in self.__topology_listeners:
             try:
                 subscriber.description_changed(event)
@@ -1561,8 +1639,7 @@ class _EventListeners(object):
                 _handle_exception()
 
     def publish_pool_created(self, address, options):
-        """Publish a :class:`PoolCreatedEvent` to all pool listeners.
-        """
+        """Publish a :class:`PoolCreatedEvent` to all pool listeners."""
         event = PoolCreatedEvent(address, options)
         for subscriber in self.__cmap_listeners:
             try:
@@ -1571,8 +1648,7 @@ class _EventListeners(object):
                 _handle_exception()
 
     def publish_pool_ready(self, address):
-        """Publish a :class:`PoolReadyEvent` to all pool listeners.
-        """
+        """Publish a :class:`PoolReadyEvent` to all pool listeners."""
         event = PoolReadyEvent(address)
         for subscriber in self.__cmap_listeners:
             try:
@@ -1581,8 +1657,7 @@ class _EventListeners(object):
                 _handle_exception()
 
     def publish_pool_cleared(self, address, service_id):
-        """Publish a :class:`PoolClearedEvent` to all pool listeners.
-        """
+        """Publish a :class:`PoolClearedEvent` to all pool listeners."""
         event = PoolClearedEvent(address, service_id)
         for subscriber in self.__cmap_listeners:
             try:
@@ -1591,8 +1666,7 @@ class _EventListeners(object):
                 _handle_exception()
 
     def publish_pool_closed(self, address):
-        """Publish a :class:`PoolClosedEvent` to all pool listeners.
-        """
+        """Publish a :class:`PoolClosedEvent` to all pool listeners."""
         event = PoolClosedEvent(address)
         for subscriber in self.__cmap_listeners:
             try:
@@ -1612,8 +1686,7 @@ class _EventListeners(object):
                 _handle_exception()
 
     def publish_connection_ready(self, address, connection_id):
-        """Publish a :class:`ConnectionReadyEvent` to all connection listeners.
-        """
+        """Publish a :class:`ConnectionReadyEvent` to all connection listeners."""
         event = ConnectionReadyEvent(address, connection_id)
         for subscriber in self.__cmap_listeners:
             try:

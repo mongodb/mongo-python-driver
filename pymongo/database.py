@@ -22,29 +22,32 @@ from pymongo.aggregation import _DatabaseAggregationCommand
 from pymongo.change_stream import DatabaseChangeStream
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
-from pymongo.errors import (CollectionInvalid,
-                            InvalidName)
+from pymongo.errors import CollectionInvalid, InvalidName
 from pymongo.read_preferences import ReadPreference
 
 
 def _check_name(name):
-    """Check if a database name is valid.
-    """
+    """Check if a database name is valid."""
     if not name:
         raise InvalidName("database name cannot be the empty string")
 
-    for invalid_char in [' ', '.', '$', '/', '\\', '\x00', '"']:
+    for invalid_char in [" ", ".", "$", "/", "\\", "\x00", '"']:
         if invalid_char in name:
-            raise InvalidName("database names cannot contain the "
-                              "character %r" % invalid_char)
+            raise InvalidName("database names cannot contain the " "character %r" % invalid_char)
 
 
 class Database(common.BaseObject):
-    """A Mongo database.
-    """
+    """A Mongo database."""
 
-    def __init__(self, client, name, codec_options=None, read_preference=None,
-                 write_concern=None, read_concern=None):
+    def __init__(
+        self,
+        client,
+        name,
+        codec_options=None,
+        read_preference=None,
+        write_concern=None,
+        read_concern=None,
+    ):
         """Get a database by client and name.
 
         Raises :class:`TypeError` if `name` is not an instance of
@@ -95,12 +98,13 @@ class Database(common.BaseObject):
             codec_options or client.codec_options,
             read_preference or client.read_preference,
             write_concern or client.write_concern,
-            read_concern or client.read_concern)
+            read_concern or client.read_concern,
+        )
 
         if not isinstance(name, str):
             raise TypeError("name must be an instance of str")
 
-        if name != '$external':
+        if name != "$external":
             _check_name(name)
 
         self.__name = name
@@ -116,8 +120,9 @@ class Database(common.BaseObject):
         """The name of this :class:`Database`."""
         return self.__name
 
-    def with_options(self, codec_options=None, read_preference=None,
-                     write_concern=None, read_concern=None):
+    def with_options(
+        self, codec_options=None, read_preference=None, write_concern=None, read_concern=None
+    ):
         """Get a clone of this database changing the specified settings.
 
           >>> db1.read_preference
@@ -149,17 +154,18 @@ class Database(common.BaseObject):
 
         .. versionadded:: 3.8
         """
-        return Database(self.client,
-                        self.__name,
-                        codec_options or self.codec_options,
-                        read_preference or self.read_preference,
-                        write_concern or self.write_concern,
-                        read_concern or self.read_concern)
+        return Database(
+            self.client,
+            self.__name,
+            codec_options or self.codec_options,
+            read_preference or self.read_preference,
+            write_concern or self.write_concern,
+            read_concern or self.read_concern,
+        )
 
     def __eq__(self, other):
         if isinstance(other, Database):
-            return (self.__client == other.client and
-                    self.__name == other.name)
+            return self.__client == other.client and self.__name == other.name
         return NotImplemented
 
     def __ne__(self, other):
@@ -179,10 +185,11 @@ class Database(common.BaseObject):
         :Parameters:
           - `name`: the name of the collection to get
         """
-        if name.startswith('_'):
+        if name.startswith("_"):
             raise AttributeError(
                 "Database has no attribute %r. To access the %s"
-                " collection, use database[%r]." % (name, name, name))
+                " collection, use database[%r]." % (name, name, name)
+            )
         return self.__getitem__(name)
 
     def __getitem__(self, name):
@@ -195,8 +202,9 @@ class Database(common.BaseObject):
         """
         return Collection(self, name)
 
-    def get_collection(self, name, codec_options=None, read_preference=None,
-                       write_concern=None, read_concern=None):
+    def get_collection(
+        self, name, codec_options=None, read_preference=None, write_concern=None, read_concern=None
+    ):
         """Get a :class:`~pymongo.collection.Collection` with the given name
         and options.
 
@@ -235,12 +243,19 @@ class Database(common.BaseObject):
             used.
         """
         return Collection(
-            self, name, False, codec_options, read_preference,
-            write_concern, read_concern)
+            self, name, False, codec_options, read_preference, write_concern, read_concern
+        )
 
-    def create_collection(self, name, codec_options=None,
-                          read_preference=None, write_concern=None,
-                          read_concern=None, session=None, **kwargs):
+    def create_collection(
+        self,
+        name,
+        codec_options=None,
+        read_preference=None,
+        write_concern=None,
+        read_concern=None,
+        session=None,
+        **kwargs
+    ):
         """Create a new :class:`~pymongo.collection.Collection` in this
         database.
 
@@ -306,14 +321,22 @@ class Database(common.BaseObject):
         with self.__client._tmp_session(session) as s:
             # Skip this check in a transaction where listCollections is not
             # supported.
-            if ((not s or not s.in_transaction) and
-                    name in self.list_collection_names(
-                        filter={"name": name}, session=s)):
+            if (not s or not s.in_transaction) and name in self.list_collection_names(
+                filter={"name": name}, session=s
+            ):
                 raise CollectionInvalid("collection %s already exists" % name)
 
-            return Collection(self, name, True, codec_options,
-                              read_preference, write_concern,
-                              read_concern, session=s, **kwargs)
+            return Collection(
+                self,
+                name,
+                True,
+                codec_options,
+                read_preference,
+                write_concern,
+                read_concern,
+                session=s,
+                **kwargs
+            )
 
     def aggregate(self, pipeline, session=None, **kwargs):
         """Perform a database-level aggregation.
@@ -381,15 +404,29 @@ class Database(common.BaseObject):
         """
         with self.client._tmp_session(session, close=False) as s:
             cmd = _DatabaseAggregationCommand(
-                self, CommandCursor, pipeline, kwargs, session is not None,
-                user_fields={'cursor': {'firstBatch': 1}})
+                self,
+                CommandCursor,
+                pipeline,
+                kwargs,
+                session is not None,
+                user_fields={"cursor": {"firstBatch": 1}},
+            )
             return self.client._retryable_read(
-                cmd.get_cursor, cmd.get_read_preference(s), s,
-                retryable=not cmd._performs_write)
+                cmd.get_cursor, cmd.get_read_preference(s), s, retryable=not cmd._performs_write
+            )
 
-    def watch(self, pipeline=None, full_document=None, resume_after=None,
-              max_await_time_ms=None, batch_size=None, collation=None,
-              start_at_operation_time=None, session=None, start_after=None):
+    def watch(
+        self,
+        pipeline=None,
+        full_document=None,
+        resume_after=None,
+        max_await_time_ms=None,
+        batch_size=None,
+        collation=None,
+        start_at_operation_time=None,
+        session=None,
+        start_after=None,
+    ):
         """Watch changes on this database.
 
         Performs an aggregation with an implicit initial ``$changeStream``
@@ -475,15 +512,33 @@ class Database(common.BaseObject):
             https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.rst
         """
         return DatabaseChangeStream(
-            self, pipeline, full_document, resume_after, max_await_time_ms,
-            batch_size, collation, start_at_operation_time, session,
-            start_after)
+            self,
+            pipeline,
+            full_document,
+            resume_after,
+            max_await_time_ms,
+            batch_size,
+            collation,
+            start_at_operation_time,
+            session,
+            start_after,
+        )
 
-    def _command(self, sock_info, command, secondary_ok=False, value=1, check=True,
-                 allowable_errors=None, read_preference=ReadPreference.PRIMARY,
-                 codec_options=DEFAULT_CODEC_OPTIONS,
-                 write_concern=None,
-                 parse_write_concern_error=False, session=None, **kwargs):
+    def _command(
+        self,
+        sock_info,
+        command,
+        secondary_ok=False,
+        value=1,
+        check=True,
+        allowable_errors=None,
+        read_preference=ReadPreference.PRIMARY,
+        codec_options=DEFAULT_CODEC_OPTIONS,
+        write_concern=None,
+        parse_write_concern_error=False,
+        session=None,
+        **kwargs
+    ):
         """Internal command helper."""
         if isinstance(command, str):
             command = SON([(command, value)])
@@ -501,11 +556,20 @@ class Database(common.BaseObject):
                 write_concern=write_concern,
                 parse_write_concern_error=parse_write_concern_error,
                 session=s,
-                client=self.__client)
+                client=self.__client,
+            )
 
-    def command(self, command, value=1, check=True,
-                allowable_errors=None, read_preference=None,
-                codec_options=DEFAULT_CODEC_OPTIONS, session=None, **kwargs):
+    def command(
+        self,
+        command,
+        value=1,
+        check=True,
+        allowable_errors=None,
+        read_preference=None,
+        codec_options=DEFAULT_CODEC_OPTIONS,
+        session=None,
+        **kwargs
+    ):
         """Issue a MongoDB command.
 
         Send command `command` to the database and return the
@@ -589,51 +653,69 @@ class Database(common.BaseObject):
         .. seealso:: The MongoDB documentation on `commands <https://dochub.mongodb.org/core/commands>`_.
         """
         if read_preference is None:
-            read_preference = ((session and session._txn_read_preference())
-                               or ReadPreference.PRIMARY)
-        with self.__client._socket_for_reads(
-                read_preference, session) as (sock_info, secondary_ok):
-            return self._command(sock_info, command, secondary_ok, value,
-                                 check, allowable_errors, read_preference,
-                                 codec_options, session=session, **kwargs)
+            read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
+        with self.__client._socket_for_reads(read_preference, session) as (sock_info, secondary_ok):
+            return self._command(
+                sock_info,
+                command,
+                secondary_ok,
+                value,
+                check,
+                allowable_errors,
+                read_preference,
+                codec_options,
+                session=session,
+                **kwargs
+            )
 
-    def _retryable_read_command(self, command, value=1, check=True,
-                allowable_errors=None, read_preference=None,
-                codec_options=DEFAULT_CODEC_OPTIONS, session=None, **kwargs):
+    def _retryable_read_command(
+        self,
+        command,
+        value=1,
+        check=True,
+        allowable_errors=None,
+        read_preference=None,
+        codec_options=DEFAULT_CODEC_OPTIONS,
+        session=None,
+        **kwargs
+    ):
         """Same as command but used for retryable read commands."""
         if read_preference is None:
-            read_preference = ((session and session._txn_read_preference())
-                               or ReadPreference.PRIMARY)
+            read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
 
         def _cmd(session, server, sock_info, secondary_ok):
-            return self._command(sock_info, command, secondary_ok, value,
-                                 check, allowable_errors, read_preference,
-                                 codec_options, session=session, **kwargs)
+            return self._command(
+                sock_info,
+                command,
+                secondary_ok,
+                value,
+                check,
+                allowable_errors,
+                read_preference,
+                codec_options,
+                session=session,
+                **kwargs
+            )
 
-        return self.__client._retryable_read(
-            _cmd, read_preference, session)
+        return self.__client._retryable_read(_cmd, read_preference, session)
 
-    def _list_collections(self, sock_info, secondary_okay, session,
-                          read_preference, **kwargs):
+    def _list_collections(self, sock_info, secondary_okay, session, read_preference, **kwargs):
         """Internal listCollections helper."""
 
-        coll = self.get_collection(
-            "$cmd", read_preference=read_preference)
-        cmd = SON([("listCollections", 1),
-                   ("cursor", {})])
+        coll = self.get_collection("$cmd", read_preference=read_preference)
+        cmd = SON([("listCollections", 1), ("cursor", {})])
         cmd.update(kwargs)
-        with self.__client._tmp_session(
-                session, close=False) as tmp_session:
+        with self.__client._tmp_session(session, close=False) as tmp_session:
             cursor = self._command(
-                sock_info, cmd, secondary_okay,
-                read_preference=read_preference,
-                session=tmp_session)["cursor"]
+                sock_info, cmd, secondary_okay, read_preference=read_preference, session=tmp_session
+            )["cursor"]
             cmd_cursor = CommandCursor(
                 coll,
                 cursor,
                 sock_info.address,
                 session=tmp_session,
-                explicit_session=session is not None)
+                explicit_session=session is not None,
+            )
         cmd_cursor._maybe_pin_connection(sock_info)
         return cmd_cursor
 
@@ -657,17 +739,15 @@ class Database(common.BaseObject):
         .. versionadded:: 3.6
         """
         if filter is not None:
-            kwargs['filter'] = filter
-        read_pref = ((session and session._txn_read_preference())
-                     or ReadPreference.PRIMARY)
+            kwargs["filter"] = filter
+        read_pref = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
 
         def _cmd(session, server, sock_info, secondary_okay):
             return self._list_collections(
-                sock_info, secondary_okay, session, read_preference=read_pref,
-                **kwargs)
+                sock_info, secondary_okay, session, read_preference=read_pref, **kwargs
+            )
 
-        return self.__client._retryable_read(
-            _cmd, read_pref, session)
+        return self.__client._retryable_read(_cmd, read_pref, session)
 
     def list_collection_names(self, session=None, filter=None, **kwargs):
         """Get a list of all the collection names in this database.
@@ -703,8 +783,7 @@ class Database(common.BaseObject):
             if not filter or (len(filter) == 1 and "name" in filter):
                 kwargs["nameOnly"] = True
 
-        return [result["name"]
-                for result in self.list_collections(session=session, **kwargs)]
+        return [result["name"] for result in self.list_collections(session=session, **kwargs)]
 
     def drop_collection(self, name_or_collection, session=None):
         """Drop a collection.
@@ -736,15 +815,18 @@ class Database(common.BaseObject):
 
         with self.__client._socket_for_writes(session) as sock_info:
             return self._command(
-                sock_info, 'drop', value=name,
-                allowable_errors=['ns not found', 26],
+                sock_info,
+                "drop",
+                value=name,
+                allowable_errors=["ns not found", 26],
                 write_concern=self._write_concern_for(session),
                 parse_write_concern_error=True,
-                session=session)
+                session=session,
+            )
 
-    def validate_collection(self, name_or_collection,
-                            scandata=False, full=False, session=None,
-                            background=None):
+    def validate_collection(
+        self, name_or_collection, scandata=False, full=False, session=None, background=None
+    ):
         """Validate a collection.
 
         Returns a dict of validation info. Raises CollectionInvalid if
@@ -779,12 +861,9 @@ class Database(common.BaseObject):
             name = name.name
 
         if not isinstance(name, str):
-            raise TypeError("name_or_collection must be an instance of str or "
-                            "Collection")
+            raise TypeError("name_or_collection must be an instance of str or " "Collection")
 
-        cmd = SON([("validate", name),
-                   ("scandata", scandata),
-                   ("full", full)])
+        cmd = SON([("validate", name), ("scandata", scandata), ("full", full)])
         if background is not None:
             cmd["background"] = background
 
@@ -801,10 +880,8 @@ class Database(common.BaseObject):
             for _, res in result["raw"].items():
                 if "result" in res:
                     info = res["result"]
-                    if (info.find("exception") != -1 or
-                            info.find("corrupt") != -1):
-                        raise CollectionInvalid("%s invalid: "
-                                                "%s" % (name, info))
+                    if info.find("exception") != -1 or info.find("corrupt") != -1:
+                        raise CollectionInvalid("%s invalid: " "%s" % (name, info))
                 elif not res.get("valid", False):
                     valid = False
                     break
@@ -826,9 +903,11 @@ class Database(common.BaseObject):
     next = __next__
 
     def __bool__(self):
-        raise NotImplementedError("Database objects do not implement truth "
-                                  "value testing or bool(). Please compare "
-                                  "with None instead: database is not None")
+        raise NotImplementedError(
+            "Database objects do not implement truth "
+            "value testing or bool(). Please compare "
+            "with None instead: database is not None"
+        )
 
     def dereference(self, dbref, session=None, **kwargs):
         """Dereference a :class:`~bson.dbref.DBRef`, getting the
@@ -854,8 +933,8 @@ class Database(common.BaseObject):
         if not isinstance(dbref, DBRef):
             raise TypeError("cannot dereference a %s" % type(dbref))
         if dbref.database is not None and dbref.database != self.__name:
-            raise ValueError("trying to dereference a DBRef that points to "
-                             "another database (%r not %r)" % (dbref.database,
-                                                               self.__name))
-        return self[dbref.collection].find_one(
-            {"_id": dbref.id}, session=session, **kwargs)
+            raise ValueError(
+                "trying to dereference a DBRef that points to "
+                "another database (%r not %r)" % (dbref.database, self.__name)
+            )
+        return self[dbref.collection].find_one({"_id": dbref.id}, session=session, **kwargs)

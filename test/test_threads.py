@@ -15,12 +15,8 @@
 """Test that pymongo is thread safe."""
 
 import threading
-
-from test import (client_context,
-                  IntegrationTest,
-                  unittest)
-from test.utils import rs_or_single_client
-from test.utils import joinall
+from test import IntegrationTest, client_context, unittest
+from test.utils import joinall, rs_or_single_client
 
 
 @client_context.require_connection
@@ -29,7 +25,6 @@ def setUpModule():
 
 
 class AutoAuthenticateThreads(threading.Thread):
-
     def __init__(self, collection, num):
         threading.Thread.__init__(self)
         self.coll = collection
@@ -39,14 +34,13 @@ class AutoAuthenticateThreads(threading.Thread):
 
     def run(self):
         for i in range(self.num):
-            self.coll.insert_one({'num': i})
-            self.coll.find_one({'num': i})
+            self.coll.insert_one({"num": i})
+            self.coll.find_one({"num": i})
 
         self.success = True
 
 
 class SaveAndFind(threading.Thread):
-
     def __init__(self, collection):
         threading.Thread.__init__(self)
         self.collection = collection
@@ -63,7 +57,6 @@ class SaveAndFind(threading.Thread):
 
 
 class Insert(threading.Thread):
-
     def __init__(self, collection, n, expect_exception):
         threading.Thread.__init__(self)
         self.collection = collection
@@ -87,7 +80,6 @@ class Insert(threading.Thread):
 
 
 class Update(threading.Thread):
-
     def __init__(self, collection, n, expect_exception):
         threading.Thread.__init__(self)
         self.collection = collection
@@ -100,8 +92,7 @@ class Update(threading.Thread):
             error = True
 
             try:
-                self.collection.update_one({"test": "unique"},
-                                           {"$set": {"test": "update"}})
+                self.collection.update_one({"test": "unique"}, {"$set": {"test": "update"}})
                 error = False
             except:
                 if not self.expect_exception:

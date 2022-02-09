@@ -14,6 +14,7 @@
 
 """A BSON wrapper for long (int in python3)"""
 
+
 class Int64(int):
     """Representation of the BSON int64 type.
 
@@ -24,6 +25,7 @@ class Int64(int):
     :Parameters:
       - `value`: the numeric value to represent
     """
+
     __slots__ = ()
 
     _type_marker = 18

@@ -18,9 +18,10 @@ from collections import abc
 
 from pymongo import max_staleness_selectors
 from pymongo.errors import ConfigurationError
-from pymongo.server_selectors import (member_with_tags_server_selector,
-                                      secondary_with_tags_server_selector)
-
+from pymongo.server_selectors import (
+    member_with_tags_server_selector,
+    secondary_with_tags_server_selector,
+)
 
 _PRIMARY = 0
 _PRIMARY_PREFERRED = 1
@@ -30,41 +31,40 @@ _NEAREST = 4
 
 
 _MONGOS_MODES = (
-    'primary',
-    'primaryPreferred',
-    'secondary',
-    'secondaryPreferred',
-    'nearest',
+    "primary",
+    "primaryPreferred",
+    "secondary",
+    "secondaryPreferred",
+    "nearest",
 )
 
 
 def _validate_tag_sets(tag_sets):
-    """Validate tag sets for a MongoClient.
-    """
+    """Validate tag sets for a MongoClient."""
     if tag_sets is None:
         return tag_sets
 
     if not isinstance(tag_sets, list):
-        raise TypeError((
-            "Tag sets %r invalid, must be a list") % (tag_sets,))
+        raise TypeError(("Tag sets %r invalid, must be a list") % (tag_sets,))
     if len(tag_sets) == 0:
-        raise ValueError((
-            "Tag sets %r invalid, must be None or contain at least one set of"
-            " tags") % (tag_sets,))
+        raise ValueError(
+            ("Tag sets %r invalid, must be None or contain at least one set of" " tags")
+            % (tag_sets,)
+        )
 
     for tags in tag_sets:
         if not isinstance(tags, abc.Mapping):
             raise TypeError(
                 "Tag set %r invalid, must be an instance of dict, "
                 "bson.son.SON or other type that inherits from "
-                "collection.Mapping" % (tags,))
+                "collection.Mapping" % (tags,)
+            )
 
     return tag_sets
 
 
 def _invalid_max_staleness_msg(max_staleness):
-    return ("maxStalenessSeconds must be a positive integer, not %s" %
-            max_staleness)
+    return "maxStalenessSeconds must be a positive integer, not %s" % max_staleness
 
 
 # Some duplication with common.py to avoid import cycle.
@@ -94,11 +94,9 @@ def _validate_hedge(hedge):
 
 
 class _ServerMode(object):
-    """Base class for all read preferences.
-    """
+    """Base class for all read preferences."""
 
-    __slots__ = ("__mongos_mode", "__mode", "__tag_sets", "__max_staleness",
-                 "__hedge")
+    __slots__ = ("__mongos_mode", "__mode", "__tag_sets", "__max_staleness", "__hedge")
 
     def __init__(self, mode, tag_sets=None, max_staleness=-1, hedge=None):
         self.__mongos_mode = _MONGOS_MODES[mode]
@@ -109,33 +107,29 @@ class _ServerMode(object):
 
     @property
     def name(self):
-        """The name of this read preference.
-        """
+        """The name of this read preference."""
         return self.__class__.__name__
 
     @property
     def mongos_mode(self):
-        """The mongos mode of this read preference.
-        """
+        """The mongos mode of this read preference."""
         return self.__mongos_mode
 
     @property
     def document(self):
-        """Read preference as a document.
-        """
-        doc = {'mode': self.__mongos_mode}
+        """Read preference as a document."""
+        doc = {"mode": self.__mongos_mode}
         if self.__tag_sets not in (None, [{}]):
-            doc['tags'] = self.__tag_sets
+            doc["tags"] = self.__tag_sets
         if self.__max_staleness != -1:
-            doc['maxStalenessSeconds'] = self.__max_staleness
+            doc["maxStalenessSeconds"] = self.__max_staleness
         if self.__hedge not in (None, {}):
-            doc['hedge'] = self.__hedge
+            doc["hedge"] = self.__hedge
         return doc
 
     @property
     def mode(self):
-        """The mode of this read preference instance.
-        """
+        """The mode of this read preference instance."""
         return self.__mode
 
     @property
@@ -199,14 +193,20 @@ class _ServerMode(object):
 
     def __repr__(self):
         return "%s(tag_sets=%r, max_staleness=%r, hedge=%r)" % (
-            self.name, self.__tag_sets, self.__max_staleness, self.__hedge)
+            self.name,
+            self.__tag_sets,
+            self.__max_staleness,
+            self.__hedge,
+        )
 
     def __eq__(self, other):
         if isinstance(other, _ServerMode):
-            return (self.mode == other.mode and
-                    self.tag_sets == other.tag_sets and
-                    self.max_staleness == other.max_staleness and
-                    self.hedge == other.hedge)
+            return (
+                self.mode == other.mode
+                and self.tag_sets == other.tag_sets
+                and self.max_staleness == other.max_staleness
+                and self.hedge == other.hedge
+            )
         return NotImplemented
 
     def __ne__(self, other):
@@ -217,18 +217,20 @@ class _ServerMode(object):
 
         Needed explicitly because __slots__() defined.
         """
-        return {'mode': self.__mode,
-                'tag_sets': self.__tag_sets,
-                'max_staleness': self.__max_staleness,
-                'hedge': self.__hedge}
+        return {
+            "mode": self.__mode,
+            "tag_sets": self.__tag_sets,
+            "max_staleness": self.__max_staleness,
+            "hedge": self.__hedge,
+        }
 
     def __setstate__(self, value):
         """Restore from pickling."""
-        self.__mode = value['mode']
+        self.__mode = value["mode"]
         self.__mongos_mode = _MONGOS_MODES[self.__mode]
-        self.__tag_sets = _validate_tag_sets(value['tag_sets'])
-        self.__max_staleness = _validate_max_staleness(value['max_staleness'])
-        self.__hedge = _validate_hedge(value['hedge'])
+        self.__tag_sets = _validate_tag_sets(value["tag_sets"])
+        self.__max_staleness = _validate_max_staleness(value["max_staleness"])
+        self.__hedge = _validate_hedge(value["hedge"])
 
 
 class Primary(_ServerMode):
@@ -290,8 +292,7 @@ class PrimaryPreferred(_ServerMode):
     __slots__ = ()
 
     def __init__(self, tag_sets=None, max_staleness=-1, hedge=None):
-        super(PrimaryPreferred, self).__init__(
-            _PRIMARY_PREFERRED, tag_sets, max_staleness, hedge)
+        super(PrimaryPreferred, self).__init__(_PRIMARY_PREFERRED, tag_sets, max_staleness, hedge)
 
     def __call__(self, selection):
         """Apply this read preference to Selection."""
@@ -299,9 +300,8 @@ class PrimaryPreferred(_ServerMode):
             return selection.primary_selection
         else:
             return secondary_with_tags_server_selector(
-                self.tag_sets,
-                max_staleness_selectors.select(
-                    self.max_staleness, selection))
+                self.tag_sets, max_staleness_selectors.select(self.max_staleness, selection)
+            )
 
 
 class Secondary(_ServerMode):
@@ -330,15 +330,13 @@ class Secondary(_ServerMode):
     __slots__ = ()
 
     def __init__(self, tag_sets=None, max_staleness=-1, hedge=None):
-        super(Secondary, self).__init__(
-            _SECONDARY, tag_sets, max_staleness, hedge)
+        super(Secondary, self).__init__(_SECONDARY, tag_sets, max_staleness, hedge)
 
     def __call__(self, selection):
         """Apply this read preference to Selection."""
         return secondary_with_tags_server_selector(
-            self.tag_sets,
-            max_staleness_selectors.select(
-                self.max_staleness, selection))
+            self.tag_sets, max_staleness_selectors.select(self.max_staleness, selection)
+        )
 
 
 class SecondaryPreferred(_ServerMode):
@@ -372,14 +370,14 @@ class SecondaryPreferred(_ServerMode):
 
     def __init__(self, tag_sets=None, max_staleness=-1, hedge=None):
         super(SecondaryPreferred, self).__init__(
-            _SECONDARY_PREFERRED, tag_sets, max_staleness, hedge)
+            _SECONDARY_PREFERRED, tag_sets, max_staleness, hedge
+        )
 
     def __call__(self, selection):
         """Apply this read preference to Selection."""
         secondaries = secondary_with_tags_server_selector(
-            self.tag_sets,
-            max_staleness_selectors.select(
-                self.max_staleness, selection))
+            self.tag_sets, max_staleness_selectors.select(self.max_staleness, selection)
+        )
 
         if secondaries:
             return secondaries
@@ -413,39 +411,36 @@ class Nearest(_ServerMode):
     __slots__ = ()
 
     def __init__(self, tag_sets=None, max_staleness=-1, hedge=None):
-        super(Nearest, self).__init__(
-            _NEAREST, tag_sets, max_staleness, hedge)
+        super(Nearest, self).__init__(_NEAREST, tag_sets, max_staleness, hedge)
 
     def __call__(self, selection):
         """Apply this read preference to Selection."""
         return member_with_tags_server_selector(
-            self.tag_sets,
-            max_staleness_selectors.select(
-                self.max_staleness, selection))
+            self.tag_sets, max_staleness_selectors.select(self.max_staleness, selection)
+        )
 
 
-_ALL_READ_PREFERENCES = (Primary, PrimaryPreferred,
-                         Secondary, SecondaryPreferred, Nearest)
+_ALL_READ_PREFERENCES = (Primary, PrimaryPreferred, Secondary, SecondaryPreferred, Nearest)
 
 
 def make_read_preference(mode, tag_sets, max_staleness=-1):
     if mode == _PRIMARY:
         if tag_sets not in (None, [{}]):
-            raise ConfigurationError("Read preference primary "
-                                     "cannot be combined with tags")
+            raise ConfigurationError("Read preference primary " "cannot be combined with tags")
         if max_staleness != -1:
-            raise ConfigurationError("Read preference primary cannot be "
-                                     "combined with maxStalenessSeconds")
+            raise ConfigurationError(
+                "Read preference primary cannot be " "combined with maxStalenessSeconds"
+            )
         return Primary()
     return _ALL_READ_PREFERENCES[mode](tag_sets, max_staleness)
 
 
 _MODES = (
-    'PRIMARY',
-    'PRIMARY_PREFERRED',
-    'SECONDARY',
-    'SECONDARY_PREFERRED',
-    'NEAREST',
+    "PRIMARY",
+    "PRIMARY_PREFERRED",
+    "SECONDARY",
+    "SECONDARY_PREFERRED",
+    "NEAREST",
 )
 
 
@@ -499,6 +494,7 @@ class ReadPreference(object):
 
     - ``NEAREST``: Read from any shard member.
     """
+
     PRIMARY = Primary()
     PRIMARY_PREFERRED = PrimaryPreferred()
     SECONDARY = Secondary()
@@ -507,13 +503,13 @@ class ReadPreference(object):
 
 
 def read_pref_mode_from_name(name):
-    """Get the read preference mode from mongos/uri name.
-    """
+    """Get the read preference mode from mongos/uri name."""
     return _MONGOS_MODES.index(name)
 
 
 class MovingAverage(object):
     """Tracks an exponentially-weighted moving average."""
+
     def __init__(self):
         self.average = None
 

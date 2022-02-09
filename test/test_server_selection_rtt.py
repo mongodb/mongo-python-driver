@@ -21,11 +21,11 @@ import sys
 sys.path[0:0] = [""]
 
 from test import unittest
+
 from pymongo.read_preferences import MovingAverage
 
 # Location of JSON test specifications.
-_TEST_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), 'server_selection/rtt')
+_TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "server_selection/rtt")
 
 
 class TestAllScenarios(unittest.TestCase):
@@ -36,14 +36,13 @@ def create_test(scenario_def):
     def run_scenario(self):
         moving_average = MovingAverage()
 
-        if scenario_def['avg_rtt_ms'] != "NULL":
-            moving_average.add_sample(scenario_def['avg_rtt_ms'])
+        if scenario_def["avg_rtt_ms"] != "NULL":
+            moving_average.add_sample(scenario_def["avg_rtt_ms"])
 
-        if scenario_def['new_rtt_ms'] != "NULL":
-            moving_average.add_sample(scenario_def['new_rtt_ms'])
+        if scenario_def["new_rtt_ms"] != "NULL":
+            moving_average.add_sample(scenario_def["new_rtt_ms"])
 
-        self.assertAlmostEqual(moving_average.get(),
-                               scenario_def['new_avg_rtt'])
+        self.assertAlmostEqual(moving_average.get(), scenario_def["new_avg_rtt"])
 
     return run_scenario
 
@@ -58,8 +57,7 @@ def create_tests():
 
             # Construct test from scenario.
             new_test = create_test(scenario_def)
-            test_name = 'test_%s_%s' % (
-                dirname, os.path.splitext(filename)[0])
+            test_name = "test_%s_%s" % (dirname, os.path.splitext(filename)[0])
 
             new_test.__name__ = test_name
             setattr(TestAllScenarios, new_test.__name__, new_test)

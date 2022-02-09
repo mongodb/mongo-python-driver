@@ -21,32 +21,27 @@ import datetime
 import sys
 import threading
 import time
-
 from io import BytesIO
 
 sys.path[0:0] = [""]
 
-from bson.binary import Binary
-from pymongo.mongo_client import MongoClient
-from pymongo.errors import (ConfigurationError,
-                            NotPrimaryError,
-                            ServerSelectionTimeoutError)
-from pymongo.read_preferences import ReadPreference
+from test import IntegrationTest, client_context, unittest
+from test.utils import joinall, one, rs_client, rs_or_single_client, single_client
+
 import gridfs
+from bson.binary import Binary
 from gridfs.errors import CorruptGridFile, FileExists, NoFile
 from gridfs.grid_file import GridOutCursor
-from test import (client_context,
-                  unittest,
-                  IntegrationTest)
-from test.utils import (joinall,
-                        one,
-                        rs_client,
-                        rs_or_single_client,
-                        single_client)
+from pymongo.errors import (
+    ConfigurationError,
+    NotPrimaryError,
+    ServerSelectionTimeoutError,
+)
+from pymongo.mongo_client import MongoClient
+from pymongo.read_preferences import ReadPreference
 
 
 class JustWrite(threading.Thread):
-
     def __init__(self, fs, n):
         threading.Thread.__init__(self)
         self.fs = fs
@@ -61,7 +56,6 @@ class JustWrite(threading.Thread):
 
 
 class JustRead(threading.Thread):
-
     def __init__(self, fs, n, results):
         threading.Thread.__init__(self)
         self.fs = fs
@@ -78,7 +72,6 @@ class JustRead(threading.Thread):
 
 
 class TestGridfsNoConnect(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         cls.db = MongoClient(connect=False).pymongo_test
@@ -89,7 +82,6 @@ class TestGridfsNoConnect(unittest.TestCase):
 
 
 class TestGridfs(IntegrationTest):
-
     @classmethod
     def setUpClass(cls):
         super(TestGridfs, cls).setUpClass()
@@ -97,8 +89,9 @@ class TestGridfs(IntegrationTest):
         cls.alt = gridfs.GridFS(cls.db, "alt")
 
     def setUp(self):
-        self.cleanup_colls(self.db.fs.files, self.db.fs.chunks,
-                           self.db.alt.files, self.db.alt.chunks)
+        self.cleanup_colls(
+            self.db.fs.files, self.db.fs.chunks, self.db.alt.files, self.db.alt.chunks
+        )
 
     def test_basic(self):
         oid = self.fs.put(b"hello world")
@@ -142,8 +135,7 @@ class TestGridfs(IntegrationTest):
         self.fs.put(b"foo", filename="test")
         self.fs.put(b"", filename="hello world")
 
-        self.assertEqual(set(["mike", "test", "hello world"]),
-                         set(self.fs.list()))
+        self.assertEqual(set(["mike", "test", "hello world"]), set(self.fs.list()))
 
     def test_empty_file(self):
         oid = self.fs.put(b"")
@@ -159,9 +151,8 @@ class TestGridfs(IntegrationTest):
         self.assertNotIn("md5", raw)
 
     def test_corrupt_chunk(self):
-        files_id = self.fs.put(b'foobar')
-        self.db.fs.chunks.update_one({'files_id': files_id},
-                                     {'$set': {'data': Binary(b'foo', 0)}})
+        files_id = self.fs.put(b"foobar")
+        self.db.fs.chunks.update_one({"files_id": files_id}, {"$set": {"data": Binary(b"foo", 0)}})
         try:
             out = self.fs.get(files_id)
             self.assertRaises(CorruptGridFile, out.read)
@@ -179,12 +170,18 @@ class TestGridfs(IntegrationTest):
         files.drop()
         self.fs.put(b"junk")
 
-        self.assertTrue(any(
-            info.get('key') == [('files_id', 1), ('n', 1)]
-            for info in chunks.index_information().values()))
-        self.assertTrue(any(
-            info.get('key') == [('filename', 1), ('uploadDate', 1)]
-            for info in files.index_information().values()))
+        self.assertTrue(
+            any(
+                info.get("key") == [("files_id", 1), ("n", 1)]
+                for info in chunks.index_information().values()
+            )
+        )
+        self.assertTrue(
+            any(
+                info.get("key") == [("filename", 1), ("uploadDate", 1)]
+                for info in files.index_information().values()
+            )
+        )
 
     def test_alt_collection(self):
         oid = self.alt.put(b"hello world")
@@ -206,8 +203,7 @@ class TestGridfs(IntegrationTest):
         self.alt.put(b"foo", filename="test")
         self.alt.put(b"", filename="hello world")
 
-        self.assertEqual(set(["mike", "test", "hello world"]),
-                         set(self.alt.list()))
+        self.assertEqual(set(["mike", "test", "hello world"]), set(self.alt.list()))
 
     def test_threaded_reads(self):
         self.fs.put(b"hello", _id="test")
@@ -220,10 +216,7 @@ class TestGridfs(IntegrationTest):
 
         joinall(threads)
 
-        self.assertEqual(
-            100 * [b'hello'],
-            results
-        )
+        self.assertEqual(100 * [b"hello"], results)
 
     def test_threaded_writes(self):
         threads = []
@@ -237,10 +230,7 @@ class TestGridfs(IntegrationTest):
         self.assertEqual(f.read(), b"hello")
 
         # Should have created 100 versions of 'test' file
-        self.assertEqual(
-            100,
-            self.db.fs.files.count_documents({'filename': 'test'})
-        )
+        self.assertEqual(100, self.db.fs.files.count_documents({"filename": "test"}))
 
     def test_get_last_version(self):
         one = self.fs.put(b"foo", filename="test")
@@ -311,30 +301,25 @@ class TestGridfs(IntegrationTest):
         three = self.fs.put(b"baz", filename="test", author="author2")
 
         self.assertEqual(
-            b"foo",
-            self.fs.get_version(
-                filename="test", author="author1", version=-2).read())
+            b"foo", self.fs.get_version(filename="test", author="author1", version=-2).read()
+        )
         self.assertEqual(
-            b"bar", self.fs.get_version(
-                filename="test", author="author1", version=-1).read())
+            b"bar", self.fs.get_version(filename="test", author="author1", version=-1).read()
+        )
         self.assertEqual(
-            b"foo", self.fs.get_version(
-                filename="test", author="author1", version=0).read())
+            b"foo", self.fs.get_version(filename="test", author="author1", version=0).read()
+        )
         self.assertEqual(
-            b"bar", self.fs.get_version(
-                filename="test", author="author1", version=1).read())
+            b"bar", self.fs.get_version(filename="test", author="author1", version=1).read()
+        )
         self.assertEqual(
-            b"baz", self.fs.get_version(
-                filename="test", author="author2", version=0).read())
-        self.assertEqual(
-            b"baz", self.fs.get_version(filename="test", version=-1).read())
-        self.assertEqual(
-            b"baz", self.fs.get_version(filename="test", version=2).read())
+            b"baz", self.fs.get_version(filename="test", author="author2", version=0).read()
+        )
+        self.assertEqual(b"baz", self.fs.get_version(filename="test", version=-1).read())
+        self.assertEqual(b"baz", self.fs.get_version(filename="test", version=2).read())
 
-        self.assertRaises(
-            NoFile, self.fs.get_version, filename="test", author="author3")
-        self.assertRaises(
-            NoFile, self.fs.get_version, filename="test", author="author1", version=2)
+        self.assertRaises(NoFile, self.fs.get_version, filename="test", author="author3")
+        self.assertRaises(NoFile, self.fs.get_version, filename="test", author="author1", version=2)
 
         self.fs.delete(one)
         self.fs.delete(two)
@@ -354,7 +339,7 @@ class TestGridfs(IntegrationTest):
         one.close()
 
         two = self.fs.new_file(_id=123)
-        self.assertRaises(FileExists, two.write, b'x' * 262146)
+        self.assertRaises(FileExists, two.write, b"x" * 262146)
 
     def test_exists(self):
         oid = self.fs.put(b"hello")
@@ -408,8 +393,7 @@ class TestGridfs(IntegrationTest):
         self.assertTrue(iterate_file(f))
 
     def test_gridfs_lazy_connect(self):
-        client = MongoClient('badhost', connect=False,
-                             serverSelectionTimeoutMS=10)
+        client = MongoClient("badhost", connect=False, serverSelectionTimeoutMS=10)
         db = client.db
         gfs = gridfs.GridFS(db)
         self.assertRaises(ServerSelectionTimeoutError, gfs.list)
@@ -429,8 +413,7 @@ class TestGridfs(IntegrationTest):
         files = self.db.fs.files
         self.assertEqual(3, files.count_documents({"filename": "two"}))
         self.assertEqual(4, files.count_documents({}))
-        cursor = self.fs.find(
-            no_cursor_timeout=False).sort("uploadDate", -1).skip(1).limit(2)
+        cursor = self.fs.find(no_cursor_timeout=False).sort("uploadDate", -1).skip(1).limit(2)
         gout = next(cursor)
         self.assertEqual(b"test1", gout.read())
         cursor.rewind()
@@ -453,26 +436,24 @@ class TestGridfs(IntegrationTest):
     def test_gridfs_find_one(self):
         self.assertEqual(None, self.fs.find_one())
 
-        id1 = self.fs.put(b'test1', filename='file1')
-        self.assertEqual(b'test1', self.fs.find_one().read())
+        id1 = self.fs.put(b"test1", filename="file1")
+        self.assertEqual(b"test1", self.fs.find_one().read())
 
-        id2 = self.fs.put(b'test2', filename='file2', meta='data')
-        self.assertEqual(b'test1', self.fs.find_one(id1).read())
-        self.assertEqual(b'test2', self.fs.find_one(id2).read())
+        id2 = self.fs.put(b"test2", filename="file2", meta="data")
+        self.assertEqual(b"test1", self.fs.find_one(id1).read())
+        self.assertEqual(b"test2", self.fs.find_one(id2).read())
 
-        self.assertEqual(b'test1',
-                         self.fs.find_one({'filename': 'file1'}).read())
+        self.assertEqual(b"test1", self.fs.find_one({"filename": "file1"}).read())
 
-        self.assertEqual('data', self.fs.find_one(id2).meta)
+        self.assertEqual("data", self.fs.find_one(id2).meta)
 
     def test_grid_in_non_int_chunksize(self):
         # Lua, and perhaps other buggy GridFS clients, store size as a float.
-        data = b'data'
-        self.fs.put(data, filename='f')
-        self.db.fs.files.update_one({'filename': 'f'},
-                                    {'$set': {'chunkSize': 100.0}})
+        data = b"data"
+        self.fs.put(data, filename="f")
+        self.db.fs.files.update_one({"filename": "f"}, {"$set": {"chunkSize": 100.0}})
 
-        self.assertEqual(data, self.fs.get_version('f').read())
+        self.assertEqual(data, self.fs.get_version("f").read())
 
     def test_unacknowledged(self):
         # w=0 is prohibited.
@@ -494,7 +475,6 @@ class TestGridfs(IntegrationTest):
 
 
 class TestGridfsReplicaSet(IntegrationTest):
-
     @classmethod
     @client_context.require_secondaries_count(1)
     def setUpClass(cls):
@@ -502,51 +482,47 @@ class TestGridfsReplicaSet(IntegrationTest):
 
     @classmethod
     def tearDownClass(cls):
-        client_context.client.drop_database('gfsreplica')
+        client_context.client.drop_database("gfsreplica")
 
     def test_gridfs_replica_set(self):
-        rsc = rs_client(
-            w=client_context.w,
-            read_preference=ReadPreference.SECONDARY)
+        rsc = rs_client(w=client_context.w, read_preference=ReadPreference.SECONDARY)
 
-        fs = gridfs.GridFS(rsc.gfsreplica, 'gfsreplicatest')
+        fs = gridfs.GridFS(rsc.gfsreplica, "gfsreplicatest")
 
         gin = fs.new_file()
         self.assertEqual(gin._coll.read_preference, ReadPreference.PRIMARY)
 
-        oid = fs.put(b'foo')
+        oid = fs.put(b"foo")
         content = fs.get(oid).read()
-        self.assertEqual(b'foo', content)
+        self.assertEqual(b"foo", content)
 
     def test_gridfs_secondary(self):
         secondary_host, secondary_port = one(self.client.secondaries)
         secondary_connection = single_client(
-            secondary_host, secondary_port,
-            read_preference=ReadPreference.SECONDARY)
+            secondary_host, secondary_port, read_preference=ReadPreference.SECONDARY
+        )
 
         # Should detect it's connected to secondary and not attempt to
         # create index
-        fs = gridfs.GridFS(secondary_connection.gfsreplica, 'gfssecondarytest')
+        fs = gridfs.GridFS(secondary_connection.gfsreplica, "gfssecondarytest")
 
         # This won't detect secondary, raises error
-        self.assertRaises(NotPrimaryError, fs.put, b'foo')
+        self.assertRaises(NotPrimaryError, fs.put, b"foo")
 
     def test_gridfs_secondary_lazy(self):
         # Should detect it's connected to secondary and not attempt to
         # create index.
         secondary_host, secondary_port = one(self.client.secondaries)
         client = single_client(
-            secondary_host,
-            secondary_port,
-            read_preference=ReadPreference.SECONDARY,
-            connect=False)
+            secondary_host, secondary_port, read_preference=ReadPreference.SECONDARY, connect=False
+        )
 
         # Still no connection.
-        fs = gridfs.GridFS(client.gfsreplica, 'gfssecondarylazytest')
+        fs = gridfs.GridFS(client.gfsreplica, "gfssecondarylazytest")
 
         # Connects, doesn't create index.
         self.assertRaises(NoFile, fs.get_last_version)
-        self.assertRaises(NotPrimaryError, fs.put, 'data')
+        self.assertRaises(NotPrimaryError, fs.put, "data")
 
 
 if __name__ == "__main__":
