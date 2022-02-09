@@ -41,4 +41,3 @@ Connections to Atlas require TLS/SSL.
 .. _homebrew: https://brew.sh/
 .. _macports: https://www.macports.org/
 .. _requests: https://pypi.python.org/pypi/requests
-

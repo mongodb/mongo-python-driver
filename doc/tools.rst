@@ -47,14 +47,14 @@ Humongolus
    possible. The code is available for download
    `at GitHub <https://github.com/entone/Humongolus>`_. Tutorials and usage
    examples are also available at GitHub.
-   
+
 MincePy
-   `MincePy <https://mincepy.readthedocs.io/en/latest/>`_ is an 
-   object-document mapper (ODM) designed to make any Python object storable 
-   and queryable in a MongoDB database. It is designed with machine learning 
-   and big-data computational and experimental science applications in mind 
-   but is entirely general and can be useful to anyone looking to organise, 
-   share, or process large amounts data with as little change to their current 
+   `MincePy <https://mincepy.readthedocs.io/en/latest/>`_ is an
+   object-document mapper (ODM) designed to make any Python object storable
+   and queryable in a MongoDB database. It is designed with machine learning
+   and big-data computational and experimental science applications in mind
+   but is entirely general and can be useful to anyone looking to organise,
+   share, or process large amounts data with as little change to their current
    workflow as possible.
 
 Ming
@@ -80,7 +80,7 @@ MotorEngine
   It implements the same modeling APIs to be data-portable, meaning that a
   model defined in MongoEngine can be read in MotorEngine. The source is
   `available on GitHub <http://github.com/heynemann/motorengine>`_.
-  
+
 uMongo
   `uMongo <https://umongo.readthedocs.io/>`_ is a Python MongoDB ODM.
   Its inception comes from two needs: the lack of async ODM and the
