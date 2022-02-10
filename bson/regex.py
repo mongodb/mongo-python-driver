@@ -54,7 +54,7 @@ class Regex(Generic[_T]):
     _type_marker = 11
 
     @classmethod
-    def from_native(cls: Type["Regex"], regex: Pattern[_T]) -> "Regex[_T]":
+    def from_native(cls: Type["Regex"], regex: "Pattern[_T]") -> "Regex[_T]":
         """Convert a Python regular expression into a ``Regex`` instance.
 
         Note that in Python 3, a regular expression compiled from a
