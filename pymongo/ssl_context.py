@@ -38,6 +38,7 @@ SSLError = _ssl.SSLError
 try:
     # CPython 2.7.9+
     from ssl import SSLContext
+
     if hasattr(_ssl, "VERIFY_CRL_CHECK_LEAF"):
         from ssl import VERIFY_CRL_CHECK_LEAF
     # Python 3.7 uses OpenSSL's hostname matching implementation
@@ -63,8 +64,7 @@ except ImportError:
         interoperability.
         """
 
-        __slots__ = ('_cafile', '_certfile',
-                     '_keyfile', '_protocol', '_verify_mode')
+        __slots__ = ("_cafile", "_certfile", "_keyfile", "_protocol", "_verify_mode")
 
         def __init__(self, protocol):
             self._cafile = None
@@ -105,7 +105,8 @@ except ImportError:
                 raise ConfigurationError(
                     "Support for ssl_pem_passphrase requires "
                     "python 2.7.9+ (pypy 2.5.1+), python 3 or "
-                    "PyOpenSSL")
+                    "PyOpenSSL"
+                )
             self._certfile = certfile
             self._keyfile = keyfile
 
@@ -116,17 +117,25 @@ except ImportError:
             """
             self._cafile = cafile
 
-        def wrap_socket(self, sock, server_side=False,
-                        do_handshake_on_connect=True,
-                        suppress_ragged_eofs=True, dummy=None):
+        def wrap_socket(
+            self,
+            sock,
+            server_side=False,
+            do_handshake_on_connect=True,
+            suppress_ragged_eofs=True,
+            dummy=None,
+        ):
             """Wrap an existing Python socket sock and return an ssl.SSLSocket
             object.
             """
-            return _ssl.wrap_socket(sock, keyfile=self._keyfile,
-                                    certfile=self._certfile,
-                                    server_side=server_side,
-                                    cert_reqs=self._verify_mode,
-                                    ssl_version=self._protocol,
-                                    ca_certs=self._cafile,
-                                    do_handshake_on_connect=do_handshake_on_connect,
-                                    suppress_ragged_eofs=suppress_ragged_eofs)
+            return _ssl.wrap_socket(
+                sock,
+                keyfile=self._keyfile,
+                certfile=self._certfile,
+                server_side=server_side,
+                cert_reqs=self._verify_mode,
+                ssl_version=self._protocol,
+                ca_certs=self._cafile,
+                do_handshake_on_connect=do_handshake_on_connect,
+                suppress_ragged_eofs=suppress_ragged_eofs,
+            )

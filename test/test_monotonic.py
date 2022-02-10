@@ -18,22 +18,25 @@ import sys
 
 sys.path[0:0] = [""]
 
-from pymongo.monotonic import time as pymongo_time
-
 from test import unittest
+
+from pymongo.monotonic import time as pymongo_time
 
 
 class TestMonotonic(unittest.TestCase):
     def test_monotonic_time(self):
         try:
             from monotonic import monotonic
+
             self.assertIs(monotonic, pymongo_time)
         except ImportError:
             if sys.version_info[:2] >= (3, 3):
                 from time import monotonic
+
                 self.assertIs(monotonic, pymongo_time)
             else:
                 from time import time
+
                 self.assertIs(time, pymongo_time)
 
 

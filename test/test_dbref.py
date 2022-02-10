@@ -16,13 +16,14 @@
 
 import pickle
 import sys
+
 sys.path[0:0] = [""]
+
+from copy import deepcopy
+from test import unittest
 
 from bson.dbref import DBRef
 from bson.objectid import ObjectId
-from test import unittest
-
-from copy import deepcopy
 
 
 class TestDBRef(unittest.TestCase):
@@ -56,55 +57,46 @@ class TestDBRef(unittest.TestCase):
         self.assertRaises(AttributeError, bar)
 
     def test_repr(self):
-        self.assertEqual(repr(DBRef("coll",
-                                    ObjectId("1234567890abcdef12345678"))),
-                         "DBRef('coll', ObjectId('1234567890abcdef12345678'))")
-        self.assertEqual(repr(DBRef(u"coll",
-                              ObjectId("1234567890abcdef12345678"))),
-                         "DBRef(%s, ObjectId('1234567890abcdef12345678'))"
-                         % (repr(u'coll'),)
-                        )
-        self.assertEqual(repr(DBRef("coll", 5, foo="bar")),
-                         "DBRef('coll', 5, foo='bar')")
-        self.assertEqual(repr(DBRef("coll",
-                              ObjectId("1234567890abcdef12345678"), "foo")),
-                         "DBRef('coll', ObjectId('1234567890abcdef12345678'), "
-                         "'foo')")
+        self.assertEqual(
+            repr(DBRef("coll", ObjectId("1234567890abcdef12345678"))),
+            "DBRef('coll', ObjectId('1234567890abcdef12345678'))",
+        )
+        self.assertEqual(
+            repr(DBRef(u"coll", ObjectId("1234567890abcdef12345678"))),
+            "DBRef(%s, ObjectId('1234567890abcdef12345678'))" % (repr(u"coll"),),
+        )
+        self.assertEqual(repr(DBRef("coll", 5, foo="bar")), "DBRef('coll', 5, foo='bar')")
+        self.assertEqual(
+            repr(DBRef("coll", ObjectId("1234567890abcdef12345678"), "foo")),
+            "DBRef('coll', ObjectId('1234567890abcdef12345678'), " "'foo')",
+        )
 
     def test_equality(self):
         obj_id = ObjectId("1234567890abcdef12345678")
 
-        self.assertEqual(DBRef('foo', 5), DBRef('foo', 5))
+        self.assertEqual(DBRef("foo", 5), DBRef("foo", 5))
         self.assertEqual(DBRef("coll", obj_id), DBRef(u"coll", obj_id))
-        self.assertNotEqual(DBRef("coll", obj_id),
-                            DBRef(u"coll", obj_id, "foo"))
+        self.assertNotEqual(DBRef("coll", obj_id), DBRef(u"coll", obj_id, "foo"))
         self.assertNotEqual(DBRef("coll", obj_id), DBRef("col", obj_id))
-        self.assertNotEqual(DBRef("coll", obj_id),
-                            DBRef("coll", ObjectId(b"123456789011")))
+        self.assertNotEqual(DBRef("coll", obj_id), DBRef("coll", ObjectId(b"123456789011")))
         self.assertNotEqual(DBRef("coll", obj_id), 4)
-        self.assertEqual(DBRef("coll", obj_id, "foo"),
-                         DBRef(u"coll", obj_id, "foo"))
-        self.assertNotEqual(DBRef("coll", obj_id, "foo"),
-                            DBRef(u"coll", obj_id, "bar"))
+        self.assertEqual(DBRef("coll", obj_id, "foo"), DBRef(u"coll", obj_id, "foo"))
+        self.assertNotEqual(DBRef("coll", obj_id, "foo"), DBRef(u"coll", obj_id, "bar"))
 
         # Explicitly test inequality
-        self.assertFalse(DBRef('foo', 5) != DBRef('foo', 5))
+        self.assertFalse(DBRef("foo", 5) != DBRef("foo", 5))
         self.assertFalse(DBRef("coll", obj_id) != DBRef(u"coll", obj_id))
-        self.assertFalse(DBRef("coll", obj_id, "foo") !=
-                         DBRef(u"coll", obj_id, "foo"))
+        self.assertFalse(DBRef("coll", obj_id, "foo") != DBRef(u"coll", obj_id, "foo"))
 
     def test_kwargs(self):
-        self.assertEqual(DBRef("coll", 5, foo="bar"),
-                         DBRef("coll", 5, foo="bar"))
+        self.assertEqual(DBRef("coll", 5, foo="bar"), DBRef("coll", 5, foo="bar"))
         self.assertNotEqual(DBRef("coll", 5, foo="bar"), DBRef("coll", 5))
-        self.assertNotEqual(DBRef("coll", 5, foo="bar"),
-                            DBRef("coll", 5, foo="baz"))
+        self.assertNotEqual(DBRef("coll", 5, foo="bar"), DBRef("coll", 5, foo="baz"))
         self.assertEqual("bar", DBRef("coll", 5, foo="bar").foo)
-        self.assertRaises(AttributeError, getattr,
-                          DBRef("coll", 5, foo="bar"), "bar")
+        self.assertRaises(AttributeError, getattr, DBRef("coll", 5, foo="bar"), "bar")
 
     def test_deepcopy(self):
-        a = DBRef('coll', 'asdf', 'db', x=[1])
+        a = DBRef("coll", "asdf", "db", x=[1])
         b = deepcopy(a)
 
         self.assertEqual(a, b)
@@ -117,22 +109,23 @@ class TestDBRef(unittest.TestCase):
         self.assertEqual(b.x, [2])
 
     def test_pickling(self):
-        dbr = DBRef('coll', 5, foo='bar')
+        dbr = DBRef("coll", 5, foo="bar")
         for protocol in [0, 1, 2, -1]:
             pkl = pickle.dumps(dbr, protocol=protocol)
             dbr2 = pickle.loads(pkl)
             self.assertEqual(dbr, dbr2)
 
     def test_dbref_hash(self):
-        dbref_1a = DBRef('collection', 'id', 'database')
-        dbref_1b = DBRef('collection', 'id', 'database')
+        dbref_1a = DBRef("collection", "id", "database")
+        dbref_1b = DBRef("collection", "id", "database")
         self.assertEqual(hash(dbref_1a), hash(dbref_1b))
 
-        dbref_2a = DBRef('collection', 'id', 'database', custom='custom')
-        dbref_2b = DBRef('collection', 'id', 'database', custom='custom')
+        dbref_2a = DBRef("collection", "id", "database", custom="custom")
+        dbref_2b = DBRef("collection", "id", "database", custom="custom")
         self.assertEqual(hash(dbref_2a), hash(dbref_2b))
 
         self.assertNotEqual(hash(dbref_1a), hash(dbref_2a))
+
 
 if __name__ == "__main__":
     unittest.main()

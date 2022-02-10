@@ -29,6 +29,7 @@ installed on a client by calling
 
 import warnings
 import weakref
+
 from bson.py3compat import integer_types
 
 
@@ -41,10 +42,7 @@ class CursorManager(object):
         :Parameters:
           - `client`: a MongoClient
         """
-        warnings.warn(
-            "Cursor managers are deprecated.",
-            DeprecationWarning,
-            stacklevel=2)
+        warnings.warn("Cursor managers are deprecated.", DeprecationWarning, stacklevel=2)
         self.__client = weakref.ref(client)
 
     def close(self, cursor_id, address):

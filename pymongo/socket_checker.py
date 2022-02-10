@@ -20,12 +20,12 @@ import sys
 
 # PYTHON-2320: Jython does not fully support poll on SSL sockets,
 # https://bugs.jython.org/issue2900
-_HAVE_POLL = hasattr(select, "poll") and not sys.platform.startswith('java')
+_HAVE_POLL = hasattr(select, "poll") and not sys.platform.startswith("java")
 _SelectError = getattr(select, "error", OSError)
 
 
 def _errno_from_exception(exc):
-    if hasattr(exc, 'errno'):
+    if hasattr(exc, "errno"):
         return exc.errno
     if exc.args:
         return exc.args[0]
@@ -33,7 +33,6 @@ def _errno_from_exception(exc):
 
 
 class SocketChecker(object):
-
     def __init__(self):
         if _HAVE_POLL:
             self._poller = select.poll()
@@ -80,8 +79,7 @@ class SocketChecker(object):
                 raise
 
     def socket_closed(self, sock):
-        """Return True if we know socket has been closed, False otherwise.
-        """
+        """Return True if we know socket has been closed, False otherwise."""
         try:
             return self.select(sock, read=True)
         except (RuntimeError, KeyError):

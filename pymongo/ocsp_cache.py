@@ -21,9 +21,11 @@ from threading import Lock
 
 class _OCSPCache(object):
     """A cache for OCSP responses."""
-    CACHE_KEY_TYPE = namedtuple('OcspResponseCacheKey',
-                                ['hash_algorithm', 'issuer_name_hash',
-                                 'issuer_key_hash', 'serial_number'])
+
+    CACHE_KEY_TYPE = namedtuple(
+        "OcspResponseCacheKey",
+        ["hash_algorithm", "issuer_name_hash", "issuer_key_hash", "serial_number"],
+    )
 
     def __init__(self):
         self._data = {}
@@ -35,7 +37,8 @@ class _OCSPCache(object):
             hash_algorithm=ocsp_request.hash_algorithm.name.lower(),
             issuer_name_hash=ocsp_request.issuer_name_hash,
             issuer_key_hash=ocsp_request.issuer_key_hash,
-            serial_number=ocsp_request.serial_number)
+            serial_number=ocsp_request.serial_number,
+        )
 
     def __setitem__(self, key, value):
         """Add/update a cache entry.
@@ -56,15 +59,13 @@ class _OCSPCache(object):
                 return
 
             # Do nothing if the response is invalid.
-            if not (value.this_update <= _datetime.utcnow()
-                    < value.next_update):
+            if not (value.this_update <= _datetime.utcnow() < value.next_update):
                 return
 
             # Cache new response OR update cached response if new response
             # has longer validity.
             cached_value = self._data.get(cache_key, None)
-            if (cached_value is None or
-                    cached_value.next_update < value.next_update):
+            if cached_value is None or cached_value.next_update < value.next_update:
                 self._data[cache_key] = value
 
     def __getitem__(self, item):
@@ -79,8 +80,7 @@ class _OCSPCache(object):
             value = self._data[cache_key]
 
             # Return cached response if it is still valid.
-            if (value.this_update <= _datetime.utcnow() <
-                    value.next_update):
+            if value.this_update <= _datetime.utcnow() < value.next_update:
                 return value
 
             self._data.pop(cache_key, None)

@@ -19,9 +19,9 @@ import sys
 PY3 = sys.version_info[0] == 3
 
 if PY3:
+    import _thread as thread
     import codecs
     import collections.abc as abc
-    import _thread as thread
     from abc import ABC, abstractmethod
     from io import BytesIO as StringIO
 
@@ -63,16 +63,17 @@ if PY3:
     integer_types = int
 else:
     import collections as abc
-    import thread
     from abc import ABCMeta, abstractproperty
-
     from itertools import imap
+
+    import thread
+
     try:
         from cStringIO import StringIO
     except ImportError:
         from StringIO import StringIO
 
-    ABC = ABCMeta('ABC', (object,), {})
+    ABC = ABCMeta("ABC", (object,), {})
 
     MAXSIZE = sys.maxint
 
@@ -81,7 +82,7 @@ else:
         return s
 
     def bytes_from_hex(h):
-        return h.decode('hex')
+        return h.decode("hex")
 
     def iteritems(d):
         return d.iteritems()
@@ -96,9 +97,11 @@ else:
         _reraise(exc_instance, None, trace)
 
     # "raise x, y, z" raises SyntaxError in Python 3
-    exec("""def _reraise(exc, value, trace):
+    exec(
+        """def _reraise(exc, value, trace):
     raise exc, value, trace
-""")
+"""
+    )
 
     _unicode = unicode
 

@@ -16,8 +16,17 @@
 
 from collections import namedtuple
 
-
-SERVER_TYPE = namedtuple('ServerType',
-                         ['Unknown', 'Mongos', 'RSPrimary', 'RSSecondary',
-                          'RSArbiter', 'RSOther', 'RSGhost',
-                          'Standalone', 'LoadBalancer'])(*range(9))
+SERVER_TYPE = namedtuple(
+    "ServerType",
+    [
+        "Unknown",
+        "Mongos",
+        "RSPrimary",
+        "RSSecondary",
+        "RSArbiter",
+        "RSOther",
+        "RSGhost",
+        "Standalone",
+        "LoadBalancer",
+    ],
+)(*range(9))
