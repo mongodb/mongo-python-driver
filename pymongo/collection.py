@@ -2838,6 +2838,8 @@ class Collection(common.BaseObject):
                    **kwargs):
         """Perform a map/reduce operation on this collection.
 
+        **DEPRECATED** - Use :meth:`aggregate` instead.
+
         If `full_response` is ``False`` (default) returns a
         :class:`~pymongo.collection.Collection` instance containing
         the results of the operation. Otherwise, returns the full
@@ -2889,6 +2891,8 @@ class Collection(common.BaseObject):
         .. seealso:: The MongoDB documentation on `mapreduce <https://dochub.mongodb.org/core/mapreduce>`_.
 
         """
+        warnings.warn('map_reduce is deprecated, use aggregate instead',
+                      DeprecationWarning, stacklevel=2)
         if not isinstance(out, (string_type, abc.Mapping)):
             raise TypeError("'out' must be an instance of "
                             "%s or a mapping" % (string_type.__name__,))
@@ -2908,6 +2912,8 @@ class Collection(common.BaseObject):
     def inline_map_reduce(self, map, reduce, full_response=False, session=None,
                           **kwargs):
         """Perform an inline map/reduce operation on this collection.
+
+        **DEPRECATED** - Use :meth:`aggregate` instead.
 
         Perform the map/reduce operation on the server in RAM. A result
         collection is not created. The result set is returned as a list
@@ -2938,6 +2944,8 @@ class Collection(common.BaseObject):
         .. versionchanged:: 3.4
            Added the `collation` option.
         """
+        warnings.warn('inline_map_reduce is deprecated, use aggregate instead',
+                      DeprecationWarning, stacklevel=2)
         res = self._map_reduce(map, reduce, {"inline": 1}, session,
                                self.read_preference, **kwargs)
 
