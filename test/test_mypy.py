@@ -19,14 +19,13 @@ import os
 import unittest
 from typing import Any, Dict, Iterable, List
 
+from mypy import api
+
 from bson.son import SON
 from pymongo.collection import Collection
 from pymongo.errors import ServerSelectionTimeoutError
 from pymongo.mongo_client import MongoClient
 from pymongo.operations import InsertOne
-
-from mypy import api
-
 
 TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "mypy_fails")
 
