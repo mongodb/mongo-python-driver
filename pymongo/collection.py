@@ -2947,8 +2947,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
 
-        .. versionchanged:: 3.11
+        .. versionchanged:: 4.1
            Added ``let`` parameter.
+        .. versionchanged:: 3.11
            Added the ``hint`` option.
         .. versionchanged:: 3.6
            Added ``session`` parameter.
