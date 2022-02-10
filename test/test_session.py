@@ -212,11 +212,12 @@ class TestSession(IntegrationTest):
         )
 
         ops = [
-            (client.db.test.find_one, [{"_id": 1, "$a": 1}]),
+            (client.db.test.find_one, [{"_id": 1}]),
             (client.db.test.delete_one, [{}]),
             (client.db.test.update_one, [{}, {"$set": {"x": 2}}]),
         ]
         threads = []
+        self.listener.results.clear()
         for op, args in ops:
             threads.append(threading.Thread(target=op, args=args))
             threads[-1].start()
