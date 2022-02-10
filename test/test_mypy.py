@@ -20,7 +20,10 @@ import sys
 import unittest
 from typing import Any, Dict, Iterable, List
 
-from mypy import api
+try:
+    from mypy import api
+except ImportError:
+    api = None
 
 from bson.son import SON
 from pymongo.collection import Collection
@@ -39,13 +42,12 @@ def get_tests() -> Iterable[str]:
 
 class TestMypyFails(unittest.TestCase):
     def ensure_mypy_fails(self, filename: str) -> None:
+        if api is None:
+            raise unittest.SkipTest("Mypy is not installed")
         stdout, stderr, exit_status = api.run([filename])
         self.assertTrue(exit_status, msg=stdout)
 
     def test_mypy_failures(self) -> None:
-        if sys.version_info[:2] < (3, 7):
-            raise unittest.SkipTest("Python version >= 3.7 required.")
-
         for filename in get_tests():
             with self.subTest(filename=filename):
                 self.ensure_mypy_fails(filename)

@@ -37,6 +37,7 @@ jobs:
           mongodb-version: 4.4
       - name: Run tests
         run: |
+          pip install mypy
           python setup.py test
 
   mypytest:
