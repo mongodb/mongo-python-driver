@@ -17,6 +17,7 @@
 import copy
 import os
 import sys
+import threading
 import time
 from io import BytesIO
 from typing import Set
@@ -34,6 +35,15 @@ from gridfs import GridFS, GridFSBucket
 from pymongo import ASCENDING, IndexModel, InsertOne, monitoring
 from pymongo.common import _MAX_END_SESSIONS
 from pymongo.errors import ConfigurationError, InvalidOperation, OperationFailure
+from pymongo.operations import (
+    DeleteMany,
+    DeleteOne,
+    IndexModel,
+    InsertOne,
+    ReplaceOne,
+    UpdateMany,
+    UpdateOne,
+)
 from pymongo.read_concern import ReadConcern
 
 
@@ -145,7 +155,8 @@ class TestSession(IntegrationTest):
                 kw = copy.copy(kw)
                 kw["session"] = s
                 with self.assertRaisesRegex(
-                    InvalidOperation, "Can only use session with the MongoClient" " that started it"
+                    InvalidOperation,
+                    "Can only use session with the MongoClient" " that started it",
                 ):
                     f(*args, **kw)
 
@@ -192,6 +203,29 @@ class TestSession(IntegrationTest):
 
         s.end_session()
         s2.end_session()
+
+    def test_implicit_sessions_checkout(self):
+        # "To confirm that implicit sessions only allocate their server session after a
+        # successful connection checkout" test from Driver Sessions Spec.
+        client = rs_or_single_client(
+            event_listeners=[self.listener], maxPoolSize=1, retryWrites=True
+        )
+
+        ops = [
+            (client.db.test.find_one, [{"_id": 1, "$a": 1}]),
+            (client.db.test.delete_one, [{}]),
+            (client.db.test.update_one, [{}, {"$set": {"x": 2}}]),
+        ]
+        threads = []
+        for op, args in ops:
+            threads.append(threading.Thread(target=op, args=args))
+            threads[-1].start()
+        for thread in threads:
+            thread.join()
+        lsid_set = set()
+        for i in self.listener.results["started"]:
+            lsid_set.add(i.command["lsid"]["id"])
+        self.assertEqual(len(lsid_set), 1)
 
     def test_end_session(self):
         # We test elsewhere that using an ended session throws InvalidOperation.
@@ -362,14 +396,16 @@ class TestSession(IntegrationTest):
             f(session=None)
             event0 = listener.first_command_started()
             self.assertTrue(
-                "lsid" in event0.command, "%s sent no lsid with %s" % (name, event0.command_name)
+                "lsid" in event0.command,
+                "%s sent no lsid with %s" % (name, event0.command_name),
             )
 
             lsid = event0.command["lsid"]
 
             for event in listener.results["started"][1:]:
                 self.assertTrue(
-                    "lsid" in event.command, "%s sent no lsid with %s" % (name, event.command_name)
+                    "lsid" in event.command,
+                    "%s sent no lsid with %s" % (name, event.command_name),
                 )
 
                 self.assertEqual(
@@ -399,7 +435,11 @@ class TestSession(IntegrationTest):
             (fs.put, [b"data"], {}),
             (lambda session=None: fs.get(1, session=session).read(), [], {}),
             (lambda session=None: fs.get_version("f", session=session).read(), [], {}),
-            (lambda session=None: fs.get_last_version("f", session=session).read(), [], {}),
+            (
+                lambda session=None: fs.get_last_version("f", session=session).read(),
+                [],
+                {},
+            ),
             (fs.list, [], {}),
             (fs.find_one, [1], {}),
             (lambda session=None: list(fs.find(session=session)), [], {}),
@@ -580,17 +620,20 @@ class TestSession(IntegrationTest):
 
     def test_cursor_close(self):
         self._test_cursor_helper(
-            lambda coll, session: coll.find(session=session), lambda cursor: cursor.close()
+            lambda coll, session: coll.find(session=session),
+            lambda cursor: cursor.close(),
         )
 
     def test_command_cursor_close(self):
         self._test_cursor_helper(
-            lambda coll, session: coll.aggregate([], session=session), lambda cursor: cursor.close()
+            lambda coll, session: coll.aggregate([], session=session),
+            lambda cursor: cursor.close(),
         )
 
     def test_cursor_del(self):
         self._test_cursor_helper(
-            lambda coll, session: coll.find(session=session), lambda cursor: cursor.__del__()
+            lambda coll, session: coll.find(session=session),
+            lambda cursor: cursor.__del__(),
         )
 
     def test_command_cursor_del(self):
@@ -601,12 +644,14 @@ class TestSession(IntegrationTest):
 
     def test_cursor_exhaust(self):
         self._test_cursor_helper(
-            lambda coll, session: coll.find(session=session), lambda cursor: list(cursor)
+            lambda coll, session: coll.find(session=session),
+            lambda cursor: list(cursor),
         )
 
     def test_command_cursor_exhaust(self):
         self._test_cursor_helper(
-            lambda coll, session: coll.aggregate([], session=session), lambda cursor: list(cursor)
+            lambda coll, session: coll.aggregate([], session=session),
+            lambda cursor: list(cursor),
         )
 
     def test_cursor_limit_reached(self):
@@ -632,7 +677,8 @@ class TestSession(IntegrationTest):
                 kw = copy.copy(kw)
                 kw["session"] = s
                 with self.assertRaises(
-                    ConfigurationError, msg="%s did not raise ConfigurationError" % (f.__name__,)
+                    ConfigurationError,
+                    msg="%s did not raise ConfigurationError" % (f.__name__,),
                 ):
                     f(*args, **kw)
                 if f.__name__ == "create_collection":
@@ -668,7 +714,9 @@ class TestSession(IntegrationTest):
 
             for event in listener.results["started"]:
                 self.assertNotIn(
-                    "lsid", event.command, "%s sent lsid with %s" % (f.__name__, event.command_name)
+                    "lsid",
+                    event.command,
+                    "%s sent lsid with %s" % (f.__name__, event.command_name),
                 )
 
     def test_unacknowledged_writes(self):
