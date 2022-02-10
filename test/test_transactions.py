@@ -19,32 +19,35 @@ import sys
 
 sys.path[0:0] = [""]
 
-from bson.py3compat import StringIO
+from test import client_context, unittest
+from test.utils import (
+    OvertCommandListener,
+    TestCreator,
+    rs_client,
+    single_client,
+    wait_until,
+)
+from test.utils_spec_runner import SpecRunner
 
-from pymongo import client_session, WriteConcern
+from bson.py3compat import StringIO
+from gridfs import GridFS, GridFSBucket
+from pymongo import WriteConcern, client_session
 from pymongo.client_session import TransactionOptions
-from pymongo.errors import (CollectionInvalid,
-                            ConfigurationError,
-                            ConnectionFailure,
-                            InvalidOperation,
-                            OperationFailure)
+from pymongo.errors import (
+    CollectionInvalid,
+    ConfigurationError,
+    ConnectionFailure,
+    InvalidOperation,
+    OperationFailure,
+)
 from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 
-from gridfs import GridFS, GridFSBucket
-
-from test import unittest, client_context
-from test.utils import (rs_client, single_client,
-                        wait_until, OvertCommandListener,
-                        TestCreator)
-from test.utils_spec_runner import SpecRunner
-
 # Location of JSON test specifications.
-TEST_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), 'transactions', 'legacy')
+TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "transactions", "legacy")
 
-_TXN_TESTS_DEBUG = os.environ.get('TRANSACTION_TESTS_DEBUG')
+_TXN_TESTS_DEBUG = os.environ.get("TRANSACTION_TESTS_DEBUG")
 
 # Max number of operations to perform after a transaction to prove unpinning
 # occurs. Chosen so that there's a low false positive rate. With 2 mongoses,
@@ -59,7 +62,7 @@ class TransactionsBase(SpecRunner):
         super(TransactionsBase, cls).setUpClass()
         if client_context.supports_transactions():
             for address in client_context.mongoses:
-                cls.mongos_clients.append(single_client('%s:%s' % address))
+                cls.mongos_clients.append(single_client("%s:%s" % address))
 
     @classmethod
     def tearDownClass(cls):
@@ -69,14 +72,17 @@ class TransactionsBase(SpecRunner):
 
     def maybe_skip_scenario(self, test):
         super(TransactionsBase, self).maybe_skip_scenario(test)
-        if ('secondary' in self.id() and
-                not client_context.is_mongos and
-                not client_context.has_secondaries):
-            raise unittest.SkipTest('No secondaries')
+        if (
+            "secondary" in self.id()
+            and not client_context.is_mongos
+            and not client_context.has_secondaries
+        ):
+            raise unittest.SkipTest("No secondaries")
 
 
 class TestTransactions(TransactionsBase):
     RUN_ON_SERVERLESS = True
+
     @client_context.require_transactions
     def test_transaction_options_validation(self):
         default_options = TransactionOptions()
@@ -85,23 +91,23 @@ class TestTransactions(TransactionsBase):
         self.assertIsNone(default_options.read_preference)
         self.assertIsNone(default_options.max_commit_time_ms)
         # No error when valid options are provided.
-        TransactionOptions(read_concern=ReadConcern(),
-                           write_concern=WriteConcern(),
-                           read_preference=ReadPreference.PRIMARY,
-                           max_commit_time_ms=10000)
+        TransactionOptions(
+            read_concern=ReadConcern(),
+            write_concern=WriteConcern(),
+            read_preference=ReadPreference.PRIMARY,
+            max_commit_time_ms=10000,
+        )
         with self.assertRaisesRegex(TypeError, "read_concern must be "):
             TransactionOptions(read_concern={})
         with self.assertRaisesRegex(TypeError, "write_concern must be "):
             TransactionOptions(write_concern={})
         with self.assertRaisesRegex(
-                ConfigurationError,
-                "transactions do not support unacknowledged write concern"):
+            ConfigurationError, "transactions do not support unacknowledged write concern"
+        ):
             TransactionOptions(write_concern=WriteConcern(w=0))
-        with self.assertRaisesRegex(
-                TypeError, "is not valid for read_preference"):
+        with self.assertRaisesRegex(TypeError, "is not valid for read_preference"):
             TransactionOptions(read_preference={})
-        with self.assertRaisesRegex(
-                TypeError, "max_commit_time_ms must be an integer or None"):
+        with self.assertRaisesRegex(TypeError, "max_commit_time_ms must be an integer or None"):
             TransactionOptions(max_commit_time_ms="10000")
 
     @client_context.require_transactions
@@ -115,16 +121,11 @@ class TestTransactions(TransactionsBase):
         with client.start_session() as s:
             with s.start_transaction(write_concern=WriteConcern(w=1)):
                 self.assertTrue(coll.insert_one({}, session=s).acknowledged)
-                self.assertTrue(coll.insert_many(
-                    [{}, {}], session=s).acknowledged)
-                self.assertTrue(coll.bulk_write(
-                    [InsertOne({})], session=s).acknowledged)
-                self.assertTrue(coll.replace_one(
-                    {}, {}, session=s).acknowledged)
-                self.assertTrue(coll.update_one(
-                    {}, {"$set": {"a": 1}}, session=s).acknowledged)
-                self.assertTrue(coll.update_many(
-                    {}, {"$set": {"a": 1}}, session=s).acknowledged)
+                self.assertTrue(coll.insert_many([{}, {}], session=s).acknowledged)
+                self.assertTrue(coll.bulk_write([InsertOne({})], session=s).acknowledged)
+                self.assertTrue(coll.replace_one({}, {}, session=s).acknowledged)
+                self.assertTrue(coll.update_one({}, {"$set": {"a": 1}}, session=s).acknowledged)
+                self.assertTrue(coll.update_many({}, {"$set": {"a": 1}}, session=s).acknowledged)
                 self.assertTrue(coll.delete_one({}, session=s).acknowledged)
                 self.assertTrue(coll.delete_many({}, session=s).acknowledged)
                 coll.find_one_and_delete({}, session=s)
@@ -133,29 +134,30 @@ class TestTransactions(TransactionsBase):
 
         unsupported_txn_writes = [
             (client.drop_database, [db.name], {}),
-            (db.drop_collection, ['collection'], {}),
+            (db.drop_collection, ["collection"], {}),
             (coll.drop, [], {}),
-            (coll.map_reduce,
-             ['function() {}', 'function() {}', 'output'], {}),
-            (coll.rename, ['collection2'], {}),
+            (coll.map_reduce, ["function() {}", "function() {}", "output"], {}),
+            (coll.rename, ["collection2"], {}),
             # Drop collection2 between tests of "rename", above.
-            (coll.database.drop_collection, ['collection2'], {}),
-            (coll.create_indexes, [[IndexModel('a')]], {}),
-            (coll.create_index, ['a'], {}),
-            (coll.drop_index, ['a_1'], {}),
+            (coll.database.drop_collection, ["collection2"], {}),
+            (coll.create_indexes, [[IndexModel("a")]], {}),
+            (coll.create_index, ["a"], {}),
+            (coll.drop_index, ["a_1"], {}),
             (coll.drop_indexes, [], {}),
             (coll.aggregate, [[{"$out": "aggout"}]], {}),
         ]
         # Creating a collection in a transaction requires MongoDB 4.4+.
         if client_context.version < (4, 3, 4):
-            unsupported_txn_writes.extend([
-                (db.create_collection, ['collection'], {}),
-            ])
+            unsupported_txn_writes.extend(
+                [
+                    (db.create_collection, ["collection"], {}),
+                ]
+            )
 
         for op in unsupported_txn_writes:
             op, args, kwargs = op
             with client.start_session() as s:
-                kwargs['session'] = s
+                kwargs["session"] = s
                 s.start_transaction(write_concern=WriteConcern(w=1))
                 with self.assertRaises(OperationFailure):
                     op(*args, **kwargs)
@@ -166,8 +168,7 @@ class TestTransactions(TransactionsBase):
     def test_unpin_for_next_transaction(self):
         # Increase localThresholdMS and wait until both nodes are discovered
         # to avoid false positives.
-        client = rs_client(client_context.mongos_seeds(),
-                           localThresholdMS=1000)
+        client = rs_client(client_context.mongos_seeds(), localThresholdMS=1000)
         wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
         coll = client.test.test
         # Create the collection.
@@ -195,8 +196,7 @@ class TestTransactions(TransactionsBase):
     def test_unpin_for_non_transaction_operation(self):
         # Increase localThresholdMS and wait until both nodes are discovered
         # to avoid false positives.
-        client = rs_client(client_context.mongos_seeds(),
-                           localThresholdMS=1000)
+        client = rs_client(client_context.mongos_seeds(), localThresholdMS=1000)
         wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
         coll = client.test.test
         # Create the collection.
@@ -257,48 +257,72 @@ class TestTransactions(TransactionsBase):
             return gfs.find(*args, **kwargs).next()
 
         def gridfs_open_upload_stream(*args, **kwargs):
-            bucket.open_upload_stream(*args, **kwargs).write(b'1')
+            bucket.open_upload_stream(*args, **kwargs).write(b"1")
 
         gridfs_ops = [
-            (gfs.put, (b'123',)),
+            (gfs.put, (b"123",)),
             (gfs.get, (1,)),
-            (gfs.get_version, ('name',)),
-            (gfs.get_last_version, ('name',)),
-            (gfs.delete, (1, )),
+            (gfs.get_version, ("name",)),
+            (gfs.get_last_version, ("name",)),
+            (gfs.delete, (1,)),
             (gfs.list, ()),
             (gfs.find_one, ()),
             (gridfs_find, ()),
             (gfs.exists, ()),
-            (gridfs_open_upload_stream, ('name',)),
-            (bucket.upload_from_stream, ('name', b'data',)),
-            (bucket.download_to_stream, (1, StringIO(),)),
-            (bucket.download_to_stream_by_name, ('name', StringIO(),)),
+            (gridfs_open_upload_stream, ("name",)),
+            (
+                bucket.upload_from_stream,
+                (
+                    "name",
+                    b"data",
+                ),
+            ),
+            (
+                bucket.download_to_stream,
+                (
+                    1,
+                    StringIO(),
+                ),
+            ),
+            (
+                bucket.download_to_stream_by_name,
+                (
+                    "name",
+                    StringIO(),
+                ),
+            ),
             (bucket.delete, (1,)),
             (bucket.find, ()),
             (bucket.open_download_stream, (1,)),
-            (bucket.open_download_stream_by_name, ('name',)),
-            (bucket.rename, (1, 'new-name',)),
+            (bucket.open_download_stream_by_name, ("name",)),
+            (
+                bucket.rename,
+                (
+                    1,
+                    "new-name",
+                ),
+            ),
         ]
 
         with client.start_session() as s, s.start_transaction():
             for op, args in gridfs_ops:
                 with self.assertRaisesRegex(
-                        InvalidOperation,
-                        'GridFS does not support multi-document transactions',
+                    InvalidOperation,
+                    "GridFS does not support multi-document transactions",
                 ):
                     op(*args, session=s)
 
     # Require 4.2+ for large (16MB+) transactions.
     @client_context.require_version_min(4, 2)
     @client_context.require_transactions
-    @unittest.skipIf(sys.platform.startswith('java'),
-                     'Jython is too slow to pass this test')
-    @unittest.skipIf(sys.platform == 'win32',
-                     'Our Windows machines are too slow to pass this test')
+    @unittest.skipIf(sys.platform.startswith("java"), "Jython is too slow to pass this test")
+    @unittest.skipIf(sys.platform == "win32", "Our Windows machines are too slow to pass this test")
     def test_transaction_starts_with_batched_write(self):
-        if 'PyPy' in sys.version and client_context.tls:
-            self.skipTest('PYTHON-2937 PyPy is so slow sending large '
-                          'messages over TLS that this test fails')
+        if "PyPy" in sys.version and client_context.tls:
+            self.skipTest(
+                "PYTHON-2937 PyPy is so slow sending large "
+                "messages over TLS that this test fails"
+            )
         # Start a transaction with a batch of operations that needs to be
         # split.
         listener = OvertCommandListener()
@@ -308,27 +332,29 @@ class TestTransactions(TransactionsBase):
         listener.reset()
         self.addCleanup(client.close)
         self.addCleanup(coll.drop)
-        large_str = '\0'*(10*1024*1024)
-        ops = [InsertOne({'a': large_str}) for _ in range(10)]
+        large_str = "\0" * (10 * 1024 * 1024)
+        ops = [InsertOne({"a": large_str}) for _ in range(10)]
         with client.start_session() as session:
             with session.start_transaction():
                 coll.bulk_write(ops, session=session)
         # Assert commands were constructed properly.
-        self.assertEqual(['insert', 'insert', 'insert', 'commitTransaction'],
-                         listener.started_command_names())
-        first_cmd = listener.results['started'][0].command
-        self.assertTrue(first_cmd['startTransaction'])
-        lsid = first_cmd['lsid']
-        txn_number = first_cmd['txnNumber']
-        for event in listener.results['started'][1:]:
-            self.assertNotIn('startTransaction', event.command)
-            self.assertEqual(lsid, event.command['lsid'])
-            self.assertEqual(txn_number, event.command['txnNumber'])
+        self.assertEqual(
+            ["insert", "insert", "insert", "commitTransaction"], listener.started_command_names()
+        )
+        first_cmd = listener.results["started"][0].command
+        self.assertTrue(first_cmd["startTransaction"])
+        lsid = first_cmd["lsid"]
+        txn_number = first_cmd["txnNumber"]
+        for event in listener.results["started"][1:]:
+            self.assertNotIn("startTransaction", event.command)
+            self.assertEqual(lsid, event.command["lsid"])
+            self.assertEqual(txn_number, event.command["txnNumber"])
         self.assertEqual(10, coll.count_documents({}))
 
 
 class PatchSessionTimeout(object):
     """Patches the client_session's with_transaction timeout for testing."""
+
     def __init__(self, mock_timeout):
         self.real_timeout = client_session._WITH_TRANSACTION_RETRY_TIME_LIMIT
         self.mock_timeout = mock_timeout
@@ -342,15 +368,18 @@ class PatchSessionTimeout(object):
 
 
 class TestTransactionsConvenientAPI(TransactionsBase):
-    TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                             'transactions-convenient-api')
+    TEST_PATH = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "transactions-convenient-api"
+    )
 
     @client_context.require_transactions
     def test_callback_raises_custom_error(self):
-        class _MyException(Exception):pass
+        class _MyException(Exception):
+            pass
 
         def raise_error(_):
             raise _MyException()
+
         with self.client.start_session() as s:
             with self.assertRaises(_MyException):
                 s.with_transaction(raise_error)
@@ -358,17 +387,19 @@ class TestTransactionsConvenientAPI(TransactionsBase):
     @client_context.require_transactions
     def test_callback_returns_value(self):
         def callback(_):
-            return 'Foo'
+            return "Foo"
+
         with self.client.start_session() as s:
-            self.assertEqual(s.with_transaction(callback), 'Foo')
+            self.assertEqual(s.with_transaction(callback), "Foo")
 
         self.db.test.insert_one({})
 
         def callback(session):
             self.db.test.insert_one({}, session=session)
-            return 'Foo'
+            return "Foo"
+
         with self.client.start_session() as s:
-            self.assertEqual(s.with_transaction(callback), 'Foo')
+            self.assertEqual(s.with_transaction(callback), "Foo")
 
     @client_context.require_transactions
     def test_callback_not_retried_after_timeout(self):
@@ -380,13 +411,13 @@ class TestTransactionsConvenientAPI(TransactionsBase):
         def callback(session):
             coll.insert_one({}, session=session)
             err = {
-                'ok': 0,
-                'errmsg': 'Transaction 7819 has been aborted.',
-                'code': 251,
-                'codeName': 'NoSuchTransaction',
-                'errorLabels': ['TransientTransactionError'],
+                "ok": 0,
+                "errmsg": "Transaction 7819 has been aborted.",
+                "code": 251,
+                "codeName": "NoSuchTransaction",
+                "errorLabels": ["TransientTransactionError"],
             }
-            raise OperationFailure(err['errmsg'], err['code'], err)
+            raise OperationFailure(err["errmsg"], err["code"], err)
 
         # Create the collection.
         coll.insert_one({})
@@ -396,8 +427,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
                 with self.assertRaises(OperationFailure):
                     s.with_transaction(callback)
 
-        self.assertEqual(listener.started_command_names(),
-                         ['insert', 'abortTransaction'])
+        self.assertEqual(listener.started_command_names(), ["insert", "abortTransaction"])
 
     @client_context.require_test_commands
     @client_context.require_transactions
@@ -412,14 +442,17 @@ class TestTransactionsConvenientAPI(TransactionsBase):
 
         # Create the collection.
         coll.insert_one({})
-        self.set_fail_point({
-            'configureFailPoint': 'failCommand', 'mode': {'times': 1},
-            'data': {
-                'failCommands': ['commitTransaction'],
-                'errorCode': 251,  # NoSuchTransaction
-            }})
-        self.addCleanup(self.set_fail_point, {
-            'configureFailPoint': 'failCommand', 'mode': 'off'})
+        self.set_fail_point(
+            {
+                "configureFailPoint": "failCommand",
+                "mode": {"times": 1},
+                "data": {
+                    "failCommands": ["commitTransaction"],
+                    "errorCode": 251,  # NoSuchTransaction
+                },
+            }
+        )
+        self.addCleanup(self.set_fail_point, {"configureFailPoint": "failCommand", "mode": "off"})
         listener.results.clear()
 
         with client.start_session() as s:
@@ -427,8 +460,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
                 with self.assertRaises(OperationFailure):
                     s.with_transaction(callback)
 
-        self.assertEqual(listener.started_command_names(),
-                         ['insert', 'commitTransaction'])
+        self.assertEqual(listener.started_command_names(), ["insert", "commitTransaction"])
 
     @client_context.require_test_commands
     @client_context.require_transactions
@@ -443,13 +475,14 @@ class TestTransactionsConvenientAPI(TransactionsBase):
 
         # Create the collection.
         coll.insert_one({})
-        self.set_fail_point({
-            'configureFailPoint': 'failCommand', 'mode': {'times': 2},
-            'data': {
-                'failCommands': ['commitTransaction'],
-                'closeConnection': True}})
-        self.addCleanup(self.set_fail_point, {
-            'configureFailPoint': 'failCommand', 'mode': 'off'})
+        self.set_fail_point(
+            {
+                "configureFailPoint": "failCommand",
+                "mode": {"times": 2},
+                "data": {"failCommands": ["commitTransaction"], "closeConnection": True},
+            }
+        )
+        self.addCleanup(self.set_fail_point, {"configureFailPoint": "failCommand", "mode": "off"})
         listener.results.clear()
 
         with client.start_session() as s:
@@ -459,8 +492,9 @@ class TestTransactionsConvenientAPI(TransactionsBase):
 
         # One insert for the callback and two commits (includes the automatic
         # retry).
-        self.assertEqual(listener.started_command_names(),
-                         ['insert', 'commitTransaction', 'commitTransaction'])
+        self.assertEqual(
+            listener.started_command_names(), ["insert", "commitTransaction", "commitTransaction"]
+        )
 
     # Tested here because this supports Motor's convenient transactions API.
     @client_context.require_transactions
@@ -493,6 +527,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
         # Using a callback
         def callback(session):
             self.assertTrue(session.in_transaction)
+
         with client.start_session() as s:
             self.assertFalse(s.in_transaction)
             s.with_transaction(callback)
@@ -512,8 +547,9 @@ test_creator = TestCreator(create_test, TestTransactions, TEST_PATH)
 test_creator.create_tests()
 
 
-TestCreator(create_test, TestTransactionsConvenientAPI,
-            TestTransactionsConvenientAPI.TEST_PATH).create_tests()
+TestCreator(
+    create_test, TestTransactionsConvenientAPI, TestTransactionsConvenientAPI.TEST_PATH
+).create_tests()
 
 
 if __name__ == "__main__":

@@ -21,13 +21,13 @@ import sys
 
 sys.path[0:0] = [""]
 
-from bson.errors import InvalidId
-from bson.objectid import ObjectId, _MAX_COUNTER_VALUE
-from bson.py3compat import PY3, _unicode
-from bson.tz_util import (FixedOffset,
-                          utc)
 from test import SkipTest, unittest
 from test.utils import oid_generated_on_process
+
+from bson.errors import InvalidId
+from bson.objectid import _MAX_COUNTER_VALUE, ObjectId
+from bson.py3compat import PY3, _unicode
+from bson.tz_util import FixedOffset, utc
 
 
 def oid(x):
@@ -51,8 +51,9 @@ class TestObjectId(unittest.TestCase):
     def test_unicode(self):
         a = ObjectId()
         self.assertEqual(a, ObjectId(_unicode(a)))
-        self.assertEqual(ObjectId("123456789012123456789012"),
-                         ObjectId(u"123456789012123456789012"))
+        self.assertEqual(
+            ObjectId("123456789012123456789012"), ObjectId(u"123456789012123456789012")
+        )
         self.assertRaises(InvalidId, ObjectId, u"hello")
 
     def test_from_hex(self):
@@ -61,29 +62,28 @@ class TestObjectId(unittest.TestCase):
         self.assertRaises(InvalidId, ObjectId, u"123456789012123456789G12")
 
     def test_repr_str(self):
-        self.assertEqual(repr(ObjectId("1234567890abcdef12345678")),
-                         "ObjectId('1234567890abcdef12345678')")
-        self.assertEqual(str(ObjectId("1234567890abcdef12345678")),
-                         "1234567890abcdef12345678")
-        self.assertEqual(str(ObjectId(b"123456789012")),
-                         "313233343536373839303132")
-        self.assertEqual(ObjectId("1234567890abcdef12345678").binary,
-                         b'\x124Vx\x90\xab\xcd\xef\x124Vx')
-        self.assertEqual(str(ObjectId(b'\x124Vx\x90\xab\xcd\xef\x124Vx')),
-                         "1234567890abcdef12345678")
+        self.assertEqual(
+            repr(ObjectId("1234567890abcdef12345678")), "ObjectId('1234567890abcdef12345678')"
+        )
+        self.assertEqual(str(ObjectId("1234567890abcdef12345678")), "1234567890abcdef12345678")
+        self.assertEqual(str(ObjectId(b"123456789012")), "313233343536373839303132")
+        self.assertEqual(
+            ObjectId("1234567890abcdef12345678").binary, b"\x124Vx\x90\xab\xcd\xef\x124Vx"
+        )
+        self.assertEqual(
+            str(ObjectId(b"\x124Vx\x90\xab\xcd\xef\x124Vx")), "1234567890abcdef12345678"
+        )
 
     def test_equality(self):
         a = ObjectId()
         self.assertEqual(a, ObjectId(a))
-        self.assertEqual(ObjectId(b"123456789012"),
-                         ObjectId(b"123456789012"))
+        self.assertEqual(ObjectId(b"123456789012"), ObjectId(b"123456789012"))
         self.assertNotEqual(ObjectId(), ObjectId())
         self.assertNotEqual(ObjectId(b"123456789012"), b"123456789012")
 
         # Explicitly test inequality
         self.assertFalse(a != ObjectId(a))
-        self.assertFalse(ObjectId(b"123456789012") !=
-                         ObjectId(b"123456789012"))
+        self.assertFalse(ObjectId(b"123456789012") != ObjectId(b"123456789012"))
 
     def test_binary_str_equivalence(self):
         a = ObjectId()
@@ -99,7 +99,7 @@ class TestObjectId(unittest.TestCase):
         self.assertTrue(d2 - d1 < datetime.timedelta(seconds=2))
 
     def test_from_datetime(self):
-        if 'PyPy 1.8.0' in sys.version:
+        if "PyPy 1.8.0" in sys.version:
             # See https://bugs.pypy.org/issue1092
             raise SkipTest("datetime.timedelta is broken in pypy 1.8.0")
         d = datetime.datetime.utcnow()
@@ -108,8 +108,7 @@ class TestObjectId(unittest.TestCase):
         self.assertEqual(d, oid.generation_time.replace(tzinfo=None))
         self.assertEqual("0" * 16, str(oid)[8:])
 
-        aware = datetime.datetime(1993, 4, 4, 2,
-                                  tzinfo=FixedOffset(555, "SomeZone"))
+        aware = datetime.datetime(1993, 4, 4, 2, tzinfo=FixedOffset(555, "SomeZone"))
         as_utc = (aware - aware.utcoffset()).replace(tzinfo=utc)
         oid = ObjectId.from_datetime(aware)
         self.assertEqual(as_utc, oid.generation_time)
@@ -128,7 +127,8 @@ class TestObjectId(unittest.TestCase):
             b"(cbson.objectid\nObjectId\np1\nc__builtin__\n"
             b"object\np2\nNtp3\nRp4\n"
             b"(dp5\nS'_ObjectId__id'\np6\n"
-            b"S'M\\x9afV\\x13v\\xc0\\x0b\\x88\\x00\\x00\\x00'\np7\nsb.")
+            b"S'M\\x9afV\\x13v\\xc0\\x0b\\x88\\x00\\x00\\x00'\np7\nsb."
+        )
 
         # We also test against a hardcoded "New" pickle format so that we
         # make sure we're backward compatible with the current version in
@@ -137,12 +137,13 @@ class TestObjectId(unittest.TestCase):
             b"ccopy_reg\n_reconstructor\np0\n"
             b"(cbson.objectid\nObjectId\np1\nc__builtin__\n"
             b"object\np2\nNtp3\nRp4\n"
-            b"S'M\\x9afV\\x13v\\xc0\\x0b\\x88\\x00\\x00\\x00'\np5\nb.")
+            b"S'M\\x9afV\\x13v\\xc0\\x0b\\x88\\x00\\x00\\x00'\np5\nb."
+        )
 
         if PY3:
             # Have to load using 'latin-1' since these were pickled in python2.x.
-            oid_1_9 = pickle.loads(pickled_with_1_9, encoding='latin-1')
-            oid_1_10 = pickle.loads(pickled_with_1_10, encoding='latin-1')
+            oid_1_9 = pickle.loads(pickled_with_1_9, encoding="latin-1")
+            oid_1_10 = pickle.loads(pickled_with_1_10, encoding="latin-1")
         else:
             oid_1_9 = pickle.loads(pickled_with_1_9)
             oid_1_10 = pickle.loads(pickled_with_1_10)
@@ -190,14 +191,12 @@ class TestObjectId(unittest.TestCase):
         for tstamp, exp_datetime_args in TEST_DATA.items():
             oid = generate_objectid_with_timestamp(tstamp)
             # 32-bit platforms may overflow in datetime.fromtimestamp.
-            if tstamp > 0x7FFFFFFF and sys.maxsize < 2**32:
+            if tstamp > 0x7FFFFFFF and sys.maxsize < 2 ** 32:
                 try:
                     oid.generation_time
                 except (OverflowError, ValueError):
                     continue
-            self.assertEqual(
-                oid.generation_time,
-                datetime.datetime(*exp_datetime_args, tzinfo=utc))
+            self.assertEqual(oid.generation_time, datetime.datetime(*exp_datetime_args, tzinfo=utc))
 
     def test_random_regenerated_on_pid_change(self):
         # Test that change of pid triggers new random number generation.

@@ -19,19 +19,15 @@ import warnings
 
 sys.path[0:0] = [""]
 
+from test import IntegrationTest, SkipTest, client_context, client_knobs, unittest
+from test.utils import rs_or_single_client, wait_until
+
 from pymongo.cursor_manager import CursorManager
 from pymongo.errors import CursorNotFound
 from pymongo.message import _CursorAddress
-from test import (client_context,
-                  client_knobs,
-                  unittest,
-                  IntegrationTest,
-                  SkipTest)
-from test.utils import rs_or_single_client, wait_until
 
 
 class TestCursorManager(IntegrationTest):
-
     @classmethod
     def setUpClass(cls):
         super(TestCursorManager, cls).setUpClass()
@@ -43,7 +39,7 @@ class TestCursorManager(IntegrationTest):
         cls.collection.drop()
 
         # Ensure two batches.
-        cls.collection.insert_many([{'_id': i} for i in range(200)])
+        cls.collection.insert_many([{"_id": i} for i in range(200)])
 
     @classmethod
     def tearDownClass(cls):
@@ -77,8 +73,8 @@ class TestCursorManager(IntegrationTest):
             cursor = client.pymongo_test.test.find().batch_size(1)
             next(cursor)
             client.close_cursor(
-                cursor.cursor_id,
-                _CursorAddress(self.client.address, self.collection.full_name))
+                cursor.cursor_id, _CursorAddress(self.client.address, self.collection.full_name)
+            )
 
             def raises_cursor_not_found():
                 try:
@@ -87,7 +83,7 @@ class TestCursorManager(IntegrationTest):
                 except CursorNotFound:
                     return True
 
-            wait_until(raises_cursor_not_found, 'close cursor')
+            wait_until(raises_cursor_not_found, "close cursor")
             self.assertTrue(self.close_was_called)
 
 
