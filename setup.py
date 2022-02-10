@@ -343,5 +343,6 @@ setup(
     ],
     cmdclass={"build_ext": custom_build_ext, "doc": doc, "test": test},
     extras_require=extras_require,
+    tests_require=["mypy"],
     **extra_opts
 )
