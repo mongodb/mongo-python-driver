@@ -17,6 +17,7 @@
 import base64
 import copy
 import os
+import re
 import traceback
 import socket
 import sys
@@ -1146,13 +1147,15 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             codec_options=OPTS)
 
         kms_providers_invalid = copy.deepcopy(kms_providers)
-        kms_providers_invalid['azure']['identityPlatformEndpoint'] = 'example.com:443'
-        kms_providers_invalid['gcp']['endpoint'] = 'example.com:443'
+
+        kms_providers_invalid['azure']['identityPlatformEndpoint'] = 'doesnotexist.invalid:443'
+        kms_providers_invalid['gcp']['endpoint'] = 'doesnotexist.invalid:443'
         self.client_encryption_invalid = ClientEncryption(
             kms_providers=kms_providers_invalid,
             key_vault_namespace='keyvault.datakeys',
             key_vault_client=client_context.client,
             codec_options=OPTS)
+        self._invalid_host_error = None
 
     def tearDown(self):
         self.client_encryption.close()
@@ -1233,9 +1236,9 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             "region": "us-east-1",
             "key": ("arn:aws:kms:us-east-1:579766882180:key/"
                     "89fcc2c4-08b0-4bd9-9f25-e30687b580d0"),
-            "endpoint": "example.com"
+            "endpoint": "doesnotexist.invalid"
         }
-        with self.assertRaisesRegex(EncryptionError, 'parse error'):
+        with self.assertRaisesRegex(EncryptionError, self.invalid_host_error):
             self.client_encryption.create_data_key(
                 'aws', master_key=master_key)
 
@@ -1247,8 +1250,8 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
         self.run_test_expected_success('azure', master_key)
 
         # The full error should be something like:
-        # "Invalid JSON in KMS response. HTTP status=404. Error: Got parse error at '<', position 0: 'SPECIAL_EXPECTED'"
-        with self.assertRaisesRegex(EncryptionError, 'parse error'):
+        # "[Errno 8] nodename nor servname provided, or not known"
+        with self.assertRaisesRegex(EncryptionError, self.invalid_host_error):
             self.client_encryption_invalid.create_data_key(
                 'azure', master_key=master_key)
 
@@ -1264,8 +1267,8 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
         self.run_test_expected_success('gcp', master_key)
 
         # The full error should be something like:
-        # "Invalid JSON in KMS response. HTTP status=404. Error: Got parse error at '<', position 0: 'SPECIAL_EXPECTED'"
-        with self.assertRaisesRegex(EncryptionError, 'parse error'):
+        # "[Errno 8] nodename nor servname provided, or not known"
+        with self.assertRaisesRegex(EncryptionError, self.invalid_host_error):
             self.client_encryption_invalid.create_data_key(
                 'gcp', master_key=master_key)
 
@@ -1277,7 +1280,7 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             "location": "global",
             "keyRing": "key-ring-csfle",
             "keyName": "key-name-csfle",
-            "endpoint": "example.com:443"}
+            "endpoint": "doesnotexist.invalid:443"}
 
         # The full error should be something like:
         # "Invalid KMS response, no access_token returned. HTTP status=200"
@@ -1285,6 +1288,20 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             self.client_encryption.create_data_key(
                 'gcp', master_key=master_key)
 
+
+    def dns_error(self, host, port):
+        # The full error should be something like:
+        # "[Errno 8] nodename nor servname provided, or not known"
+        with self.assertRaises(Exception) as ctx:
+            socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
+        return re.escape(str(ctx.exception))
+
+    @property
+    def invalid_host_error(self):
+        if self._invalid_host_error is None:
+            self._invalid_host_error = self.dns_error(
+                'doesnotexist.invalid', 443)
+        return self._invalid_host_error
 
 class AzureGCPEncryptionTestMixin(object):
     DEK = None
@@ -1366,7 +1383,7 @@ class TestAzureEncryption(AzureGCPEncryptionTestMixin,
             'AQGVERPgAAAAAAAAAAAAAAAC5DbBSwPwfSlBrDtRuglvNvCXD1KzDuCKY2P+4bRFtHDjpTOE2XuytPAUaAbXf1orsPq59PVZmsbTZbt2CB8qaQ==')
 
     def test_automatic(self):
-        expected_document_extjson = textwrap.dedent(""" 
+        expected_document_extjson = textwrap.dedent("""
         {"secret_azure": {
             "$binary": {
                 "base64": "AQGVERPgAAAAAAAAAAAAAAAC5DbBSwPwfSlBrDtRuglvNvCXD1KzDuCKY2P+4bRFtHDjpTOE2XuytPAUaAbXf1orsPq59PVZmsbTZbt2CB8qaQ==",
@@ -1392,7 +1409,7 @@ class TestGCPEncryption(AzureGCPEncryptionTestMixin,
             'ARgj/gAAAAAAAAAAAAAAAAACwFd+Y5Ojw45GUXNvbcIpN9YkRdoHDHkR4kssdn0tIMKlDQOLFkWFY9X07IRlXsxPD8DcTiKnl6XINK28vhcGlg==')
 
     def test_automatic(self):
-        expected_document_extjson = textwrap.dedent(""" 
+        expected_document_extjson = textwrap.dedent("""
         {"secret_gcp": {
             "$binary": {
                 "base64": "ARgj/gAAAAAAAAAAAAAAAAACwFd+Y5Ojw45GUXNvbcIpN9YkRdoHDHkR4kssdn0tIMKlDQOLFkWFY9X07IRlXsxPD8DcTiKnl6XINK28vhcGlg==",
