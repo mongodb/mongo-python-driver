@@ -67,9 +67,9 @@ fi
 if [ -z "$PYTHON_BINARY" ]; then
     # Use Python 3 from the server toolchain to test on ARM, POWER or zSeries if a
     # system python3 doesn't exist or exists but is older than 3.6.
-    if is_python_36 $(command -v python3); then
+    if is_python_36 "$(command -v python3)"; then
         PYTHON=$(command -v python3)
-    elif is_python_36 $(command -v /opt/mongodbtoolchain/v2/bin/python3); then
+    elif is_python_36 "$(command -v /opt/mongodbtoolchain/v2/bin/python3)"; then
         PYTHON=$(command -v /opt/mongodbtoolchain/v2/bin/python3)
     else
         echo "Cannot test without python3.6+ installed!"
@@ -119,20 +119,22 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     # Use the nocrypto build to avoid dependency issues with older windows/python versions.
     BASE=$(pwd)/libmongocrypt/nocrypto
     if [ -f "${BASE}/lib/libmongocrypt.so" ]; then
-        export PYMONGOCRYPT_LIB=${BASE}/lib/libmongocrypt.so
+        PYMONGOCRYPT_LIB=${BASE}/lib/libmongocrypt.so
     elif [ -f "${BASE}/lib/libmongocrypt.dylib" ]; then
         export PYMONGOCRYPT_LIB=${BASE}/lib/libmongocrypt.dylib
     elif [ -f "${BASE}/bin/mongocrypt.dll" ]; then
         PYMONGOCRYPT_LIB=${BASE}/bin/mongocrypt.dll
         # libmongocrypt's windows dll is not marked executable.
         chmod +x $PYMONGOCRYPT_LIB
-        export PYMONGOCRYPT_LIB=$(cygpath -m $PYMONGOCRYPT_LIB)
+        PYMONGOCRYPT_LIB=$(cygpath -m $PYMONGOCRYPT_LIB)
+        export
     elif [ -f "${BASE}/lib64/libmongocrypt.so" ]; then
-        export PYMONGOCRYPT_LIB=${BASE}/lib64/libmongocrypt.so
+        PYMONGOCRYPT_LIB=${BASE}/lib64/libmongocrypt.so
     else
         echo "Cannot find libmongocrypt shared object file"
         exit 1
     fi
+    export PYMONGOCRYPT_LIB
 
     # TODO: Test with 'pip install pymongocrypt'
     git clone --branch master https://github.com/mongodb/libmongocrypt.git libmongocrypt_git
@@ -175,7 +177,7 @@ $PYTHON -c 'import sys; print(sys.version)'
 # Only cover CPython. PyPy reports suspiciously low coverage.
 PYTHON_IMPL=$($PYTHON -c "import platform; print(platform.python_implementation())")
 COVERAGE_ARGS=""
-if [ -n "$COVERAGE" -a $PYTHON_IMPL = "CPython" ]; then
+if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
     if $PYTHON -m coverage --version; then
         echo "INFO: coverage is installed, running tests with coverage..."
         COVERAGE_ARGS="-m coverage run --branch"
@@ -186,7 +188,7 @@ fi
 
 $PYTHON setup.py clean
 if [ -z "$GREEN_FRAMEWORK" ]; then
-    if [ -z "$C_EXTENSIONS" -a $PYTHON_IMPL = "CPython" ]; then
+    if [ -z "$C_EXTENSIONS" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
         # Fail if the C extensions fail to build.
 
         # This always sets 0 for exit status, even if the build fails, due

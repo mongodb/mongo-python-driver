@@ -23,7 +23,7 @@ export PYTHONHOME=/opt/python/$PYTHON_VERSION
 
 cd ..
 $APACHE -k start -f ${PROJECT_DIRECTORY}/test/mod_wsgi_test/${APACHE_CONFIG}
-trap "$APACHE -k stop -f ${PROJECT_DIRECTORY}/test/mod_wsgi_test/${APACHE_CONFIG}" EXIT HUP
+trap '$APACHE -k stop -f ${PROJECT_DIRECTORY}/test/mod_wsgi_test/${APACHE_CONFIG}' EXIT HUP
 
 set +e
 wget -t 1 -T 10 -O - "http://localhost:8080${PROJECT_DIRECTORY}"
