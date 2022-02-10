@@ -119,7 +119,7 @@ class Regex(Generic[_T]):
     def __repr__(self):
         return "Regex(%r, %r)" % (self.pattern, self.flags)
 
-    def try_compile(self) -> Pattern[_T]:
+    def try_compile(self) -> "Pattern[_T]":
         """Compile this :class:`Regex` as a Python regular expression.
 
         .. warning::
