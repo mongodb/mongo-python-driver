@@ -2165,6 +2165,7 @@ buildvariants:
     auth-ssl: "*"
   display_name: "${platform} ${auth-ssl}"
   tasks: &all-server-versions
+    - ".rapid"
     - ".latest"
     - ".5.0"
     - ".4.4"
