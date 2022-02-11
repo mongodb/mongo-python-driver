@@ -2439,7 +2439,7 @@ buildvariants:
 - matrix_name: "tests-pyopenssl"
   matrix_spec:
     platform: awslinux
-    python-version: ["2.7", 3.5", "3.6", "3.7", "3.8", "3.9"]
+    python-version: ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9"]
     auth: "*"
     ssl: "ssl"
     pyopenssl: "*"
