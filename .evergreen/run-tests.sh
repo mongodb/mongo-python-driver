@@ -121,13 +121,12 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     if [ -f "${BASE}/lib/libmongocrypt.so" ]; then
         PYMONGOCRYPT_LIB=${BASE}/lib/libmongocrypt.so
     elif [ -f "${BASE}/lib/libmongocrypt.dylib" ]; then
-        export PYMONGOCRYPT_LIB=${BASE}/lib/libmongocrypt.dylib
+        PYMONGOCRYPT_LIB=${BASE}/lib/libmongocrypt.dylib
     elif [ -f "${BASE}/bin/mongocrypt.dll" ]; then
         PYMONGOCRYPT_LIB=${BASE}/bin/mongocrypt.dll
         # libmongocrypt's windows dll is not marked executable.
         chmod +x $PYMONGOCRYPT_LIB
         PYMONGOCRYPT_LIB=$(cygpath -m $PYMONGOCRYPT_LIB)
-        export
     elif [ -f "${BASE}/lib64/libmongocrypt.so" ]; then
         PYMONGOCRYPT_LIB=${BASE}/lib64/libmongocrypt.so
     else
