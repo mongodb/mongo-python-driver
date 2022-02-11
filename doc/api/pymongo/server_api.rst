@@ -1,8 +1,8 @@
-:mod:`server_api` -- Support for MongoDB Versioned API
+:mod:`server_api` -- Support for MongoDB Stable API
 ======================================================
 
 .. automodule:: pymongo.server_api
-   :synopsis: Support for MongoDB Versioned API
+   :synopsis: Support for MongoDB Stable API
 
    .. autoclass:: pymongo.server_api.ServerApi
       :members:
