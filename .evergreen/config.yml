@@ -1258,6 +1258,33 @@ tasks:
             TOPOLOGY: "sharded_cluster"
         - func: "run tests"
 
+    - name: "test-rapid-standalone"
+      tags: ["rapid", "standalone"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "rapid"
+            TOPOLOGY: "server"
+        - func: "run tests"
+
+    - name: "test-rapid-replica_set"
+      tags: ["rapid", "replica_set"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "rapid"
+            TOPOLOGY: "replica_set"
+        - func: "run tests"
+
+    - name: "test-rapid-sharded_cluster"
+      tags: ["rapid", "sharded_cluster"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "rapid"
+            TOPOLOGY: "sharded_cluster"
+        - func: "run tests"
+
     - name: "test-serverless"
       tags: ["serverless"]
       commands:
