@@ -44,7 +44,7 @@ including those sent through the generic
 :meth:`~pymongo.database.Database.command` helper.
 
 .. note:: Declaring an API version on the
-   :class:`~pymongo.mongo_client.MongoClient` **and** specifying versioned
+   :class:`~pymongo.mongo_client.MongoClient` **and** specifying stable
    API options in :meth:`~pymongo.database.Database.command` command document
    is not supported and will lead to undefined behaviour.
 
