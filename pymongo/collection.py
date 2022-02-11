@@ -3059,6 +3059,8 @@ class Collection(common.BaseObject):
     def map_reduce(self, map, reduce, out, full_response=False, session=None, **kwargs):
         """Perform a map/reduce operation on this collection.
 
+        **DEPRECATED** - Use :meth:`aggregate` instead.
+
         If `full_response` is ``False`` (default) returns a
         :class:`~pymongo.collection.Collection` instance containing
         the results of the operation. Otherwise, returns the full
@@ -3100,6 +3102,15 @@ class Collection(common.BaseObject):
 
         .. seealso:: :doc:`/examples/aggregation`
 
+        .. versionchanged:: 3.13
+           Support for this function is deprecated in
+           MongoDB 4.0, and it is removed in PyMongo 4.0. Migrate to
+           :meth:`aggregate`. For more guidance on this migration see:
+
+           - https://docs.mongodb.com/manual/reference/map-reduce-to-aggregation-pipeline/
+           - https://docs.mongodb.com/manual/reference/aggregation-commands-comparison/
+
+           .. _mapReduce command: https://docs.mongodb.com/manual/reference/command/mapReduce/
         .. versionchanged:: 3.4
            Added the `collation` option.
         .. versionchanged:: 2.2
@@ -3110,6 +3121,11 @@ class Collection(common.BaseObject):
         .. seealso:: The MongoDB documentation on `mapreduce <https://dochub.mongodb.org/core/mapreduce>`_.
 
         """
+        warnings.warn(
+            'map_reduce is deprecated, use aggregate instead',
+            DeprecationWarning,
+            stacklevel=2
+        )
         if not isinstance(out, (string_type, abc.Mapping)):
             raise TypeError(
                 "'out' must be an instance of " "%s or a mapping" % (string_type.__name__,)
@@ -3128,6 +3144,8 @@ class Collection(common.BaseObject):
 
     def inline_map_reduce(self, map, reduce, full_response=False, session=None, **kwargs):
         """Perform an inline map/reduce operation on this collection.
+
+        **DEPRECATED** - Use :meth:`aggregate` instead.
 
         Perform the map/reduce operation on the server in RAM. A result
         collection is not created. The result set is returned as a list
@@ -3152,12 +3170,26 @@ class Collection(common.BaseObject):
             helper method, e.g.::
 
             >>> db.test.inline_map_reduce(map, reduce, limit=2)
+        .. versionchanged:: 3.13
+           Support for this function is deprecated in
+           MongoDB 4.0, and is removed in PyMongo 4.0. Migrate to
+           :meth:`aggregate`. For more guidance on this migration see:
 
+           - https://docs.mongodb.com/manual/reference/map-reduce-to-aggregation-pipeline/
+           - https://docs.mongodb.com/manual/reference/aggregation-commands-comparison/
+
+           .. _mapReduce command: https://docs.mongodb.com/manual/reference/command/mapReduce/
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         .. versionchanged:: 3.4
            Added the `collation` option.
         """
+        warnings.warn(
+            'inline_map_reduce is deprecated, use aggregate instead',
+            DeprecationWarning,
+            stacklevel=2
+        )
+
         res = self._map_reduce(map, reduce, {"inline": 1}, session, self.read_preference, **kwargs)
 
         if full_response:
