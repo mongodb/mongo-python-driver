@@ -1712,8 +1712,12 @@ tasks:
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
+            VERSION: "rapid"
             TOPOLOGY: "sharded_cluster"
+            LOAD_BALANCER: true
         - func: "run load-balancer"
+          vars:
+            LOAD_BALANCER: true
         - func: "run tests"
 
     - name: "test-fips-standalone"
