@@ -27,7 +27,7 @@ fi
 
 for image in "${images[@]}"; do
   docker pull $image
-  docker run --rm -v `pwd`:/src $image /src/.evergreen/build-manylinux-internal.sh
+  docker run --rm -v "`pwd`:/src" $image /src/.evergreen/build-manylinux-internal.sh
 done
 
 ls dist
