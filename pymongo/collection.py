@@ -2881,6 +2881,15 @@ class Collection(common.BaseObject):
 
         .. seealso:: :doc:`/examples/aggregation`
 
+        .. versionchanged:: 3.13
+           Support for this function is deprecated in
+           MongoDB 4.0, and it is removed in PyMongo 4.0. Migrate to
+           :meth:`aggregate`. For more guidance on this migration see:
+
+           - https://docs.mongodb.com/manual/reference/map-reduce-to-aggregation-pipeline/
+           - https://docs.mongodb.com/manual/reference/aggregation-commands-comparison/
+
+           .. _mapReduce command: https://docs.mongodb.com/manual/reference/command/mapReduce/
         .. versionchanged:: 3.4
            Added the `collation` option.
         .. versionchanged:: 2.2
@@ -2938,7 +2947,15 @@ class Collection(common.BaseObject):
             helper method, e.g.::
 
             >>> db.test.inline_map_reduce(map, reduce, limit=2)
+        .. versionchanged:: 3.13
+           Support for this function is deprecated in
+           MongoDB 4.0, and is removed in PyMongo 4.0. Migrate to
+           :meth:`aggregate`. For more guidance on this migration see:
 
+           - https://docs.mongodb.com/manual/reference/map-reduce-to-aggregation-pipeline/
+           - https://docs.mongodb.com/manual/reference/aggregation-commands-comparison/
+
+           .. _mapReduce command: https://docs.mongodb.com/manual/reference/command/mapReduce/
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         .. versionchanged:: 3.4
