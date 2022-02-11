@@ -1117,6 +1117,16 @@ class TestCodecOptions(unittest.TestCase):
         )
         self.round_trip_pickle(i64, pickled_with_3)
 
+    def test_bson_encode_decode(self) -> None:
+        doc = {"_id": ObjectId()}
+        encoded = bson.encode(doc)
+        decoded = bson.decode(encoded)
+        encoded = bson.encode(decoded)
+        decoded = bson.decode(encoded)
+        # Documents returned from decode are mutable.
+        decoded["new_field"] = 1
+        self.assertTrue(decoded["_id"].generation_time)
+
 
 if __name__ == "__main__":
     unittest.main()
