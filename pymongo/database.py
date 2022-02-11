@@ -686,7 +686,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         .. note:: :meth:`command` does **not** apply any custom TypeDecoders
            when decoding the command response.
 
-        .. note:: If this client has been configured to use MongoDB Versioned
+        .. note:: If this client has been configured to use MongoDB Stable
            API (see :ref:`versioned-api-ref`), then :meth:`command` will
            automactically add API versioning options to the given command.
            Explicitly adding API versioning options in the command and
