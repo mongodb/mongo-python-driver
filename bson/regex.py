@@ -17,8 +17,8 @@
 
 import re
 
-from bson.son import RE_TYPE
 from bson.py3compat import string_type, text_type
+from bson.son import RE_TYPE
 
 
 def str_flags_to_int(str_flags):
@@ -41,6 +41,7 @@ def str_flags_to_int(str_flags):
 
 class Regex(object):
     """BSON regular expression data."""
+
     _type_marker = 11
 
     @classmethod
@@ -69,9 +70,7 @@ class Regex(object):
         .. _PCRE: http://www.pcre.org/
         """
         if not isinstance(regex, RE_TYPE):
-            raise TypeError(
-                "regex must be a compiled regular expression, not %s"
-                % type(regex))
+            raise TypeError("regex must be a compiled regular expression, not %s" % type(regex))
 
         return Regex(regex.pattern, regex.flags)
 
@@ -95,8 +94,7 @@ class Regex(object):
         elif isinstance(flags, int):
             self.flags = flags
         else:
-            raise TypeError(
-                "flags must be a string or int, not %s" % type(flags))
+            raise TypeError("flags must be a string or int, not %s" % type(flags))
 
     def __eq__(self, other):
         if isinstance(other, Regex):

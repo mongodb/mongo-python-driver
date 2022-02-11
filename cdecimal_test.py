@@ -19,6 +19,7 @@ import sys
 
 try:
     import cdecimal
+
     _HAVE_CDECIMAL = True
 except ImportError:
     _HAVE_CDECIMAL = False
@@ -27,10 +28,10 @@ except ImportError:
 def run(args):
     """Run tests with cdecimal monkey-patched over stdlib decimal."""
     # Monkey-patch.
-    sys.modules['decimal'] = cdecimal
+    sys.modules["decimal"] = cdecimal
 
     # Run the tests.
-    sys.argv[:] = ['setup.py', 'test'] + list(args)
+    sys.argv[:] = ["setup.py", "test"] + list(args)
     import setup
 
 
@@ -38,11 +39,12 @@ def main():
     """Parse options and run tests."""
     usage = """python %s
 
-Test PyMongo with cdecimal monkey-patched over decimal.""" % (sys.argv[0],)
+Test PyMongo with cdecimal monkey-patched over decimal.""" % (
+        sys.argv[0],
+    )
 
     try:
-        opts, args = getopt.getopt(
-            sys.argv[1:], "h", ["help"])
+        opts, args = getopt.getopt(sys.argv[1:], "h", ["help"])
     except getopt.GetoptError as err:
         print(str(err))
         print(usage)
@@ -62,5 +64,5 @@ Test PyMongo with cdecimal monkey-patched over decimal.""" % (sys.argv[0],)
     run(args)  # Command line args to setup.py, like what test to run.
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

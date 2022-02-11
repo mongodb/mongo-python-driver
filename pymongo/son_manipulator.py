@@ -87,8 +87,7 @@ class ObjectIdInjector(SONManipulator):
     """
 
     def transform_incoming(self, son, collection):
-        """Add an _id field if it is missing.
-        """
+        """Add an _id field if it is missing."""
         if not "_id" in son:
             son["_id"] = ObjectId()
         return son
@@ -98,17 +97,14 @@ class ObjectIdInjector(SONManipulator):
 # but I'm keeping this here as a reference for those implementing new
 # SONManipulators.
 class ObjectIdShuffler(SONManipulator):
-    """A son manipulator that moves _id to the first position.
-    """
+    """A son manipulator that moves _id to the first position."""
 
     def will_copy(self):
-        """We need to copy to be sure that we are dealing with SON, not a dict.
-        """
+        """We need to copy to be sure that we are dealing with SON, not a dict."""
         return True
 
     def transform_incoming(self, son, collection):
-        """Move _id to the front if it's there.
-        """
+        """Move _id to the front if it's there."""
         if not "_id" in son:
             return son
         transformed = SON({"_id": son["_id"]})
@@ -117,12 +113,10 @@ class ObjectIdShuffler(SONManipulator):
 
 
 class NamespaceInjector(SONManipulator):
-    """A son manipulator that adds the _ns field.
-    """
+    """A son manipulator that adds the _ns field."""
 
     def transform_incoming(self, son, collection):
-        """Add the _ns field to the incoming object
-        """
+        """Add the _ns field to the incoming object"""
         son["_ns"] = collection.name
         return son
 
@@ -145,13 +139,11 @@ class AutoReference(SONManipulator):
         self.database = db
 
     def will_copy(self):
-        """We need to copy so the user's document doesn't get transformed refs.
-        """
+        """We need to copy so the user's document doesn't get transformed refs."""
         return True
 
     def transform_incoming(self, son, collection):
-        """Replace embedded documents with DBRefs.
-        """
+        """Replace embedded documents with DBRefs."""
 
         def transform_value(value):
             if isinstance(value, abc.MutableMapping):
@@ -171,8 +163,7 @@ class AutoReference(SONManipulator):
         return transform_dict(SON(son))
 
     def transform_outgoing(self, son, collection):
-        """Replace DBRefs with embedded documents.
-        """
+        """Replace DBRefs with embedded documents."""
 
         def transform_value(value):
             if isinstance(value, DBRef):

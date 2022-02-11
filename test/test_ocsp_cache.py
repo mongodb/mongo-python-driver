@@ -14,56 +14,53 @@
 
 """Test the pymongo ocsp_support module."""
 
+import random
+import sys
 from collections import namedtuple
 from datetime import datetime, timedelta
 from os import urandom
-import random
-import sys
 from time import sleep
 
 sys.path[0:0] = [""]
 
-from pymongo.ocsp_cache import _OCSPCache
 from test import unittest
+
+from pymongo.ocsp_cache import _OCSPCache
 
 
 class TestOcspCache(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.MockHashAlgorithm = namedtuple(
-            "MockHashAlgorithm", ['name'])
+        cls.MockHashAlgorithm = namedtuple("MockHashAlgorithm", ["name"])
         cls.MockOcspRequest = namedtuple(
-            "MockOcspRequest", ['hash_algorithm', 'issuer_name_hash',
-                                'issuer_key_hash', 'serial_number'])
-        cls.MockOcspResponse = namedtuple(
-            "MockOcspResponse", ["this_update", "next_update"])
+            "MockOcspRequest",
+            ["hash_algorithm", "issuer_name_hash", "issuer_key_hash", "serial_number"],
+        )
+        cls.MockOcspResponse = namedtuple("MockOcspResponse", ["this_update", "next_update"])
 
     def setUp(self):
         self.cache = _OCSPCache()
 
     def _create_mock_request(self):
-        hash_algorithm = self.MockHashAlgorithm(
-            random.choice(['sha1', 'md5', 'sha256']))
+        hash_algorithm = self.MockHashAlgorithm(random.choice(["sha1", "md5", "sha256"]))
         issuer_name_hash = urandom(8)
         issuer_key_hash = urandom(8)
-        serial_number = random.randint(0, 10**10)
+        serial_number = random.randint(0, 10 ** 10)
         return self.MockOcspRequest(
             hash_algorithm=hash_algorithm,
             issuer_name_hash=issuer_name_hash,
             issuer_key_hash=issuer_key_hash,
-            serial_number=serial_number)
+            serial_number=serial_number,
+        )
 
-    def _create_mock_response(self, this_update_delta_seconds,
-                              next_update_delta_seconds):
+    def _create_mock_response(self, this_update_delta_seconds, next_update_delta_seconds):
         now = datetime.utcnow()
         this_update = now + timedelta(seconds=this_update_delta_seconds)
         if next_update_delta_seconds is not None:
             next_update = now + timedelta(seconds=next_update_delta_seconds)
         else:
             next_update = None
-        return self.MockOcspResponse(
-            this_update=this_update,
-            next_update=next_update)
+        return self.MockOcspResponse(this_update=this_update, next_update=next_update)
 
     def _add_mock_cache_entry(self, mock_request, mock_response):
         key = self.cache._get_cache_key(mock_request)

@@ -16,6 +16,7 @@ import warnings
 
 try:
     import snappy
+
     _HAVE_SNAPPY = True
 except ImportError:
     # python-snappy isn't available.
@@ -23,6 +24,7 @@ except ImportError:
 
 try:
     import zlib
+
     _HAVE_ZLIB = True
 except ImportError:
     # Python built without zlib support.
@@ -30,6 +32,7 @@ except ImportError:
 
 try:
     from zstandard import ZstdCompressor, ZstdDecompressor
+
     _HAVE_ZSTD = True
 except ImportError:
     _HAVE_ZSTD = False
@@ -58,17 +61,20 @@ def validate_compressors(dummy, value):
             compressors.remove(compressor)
             warnings.warn(
                 "Wire protocol compression with snappy is not available. "
-                "You must install the python-snappy module for snappy support.")
+                "You must install the python-snappy module for snappy support."
+            )
         elif compressor == "zlib" and not _HAVE_ZLIB:
             compressors.remove(compressor)
             warnings.warn(
                 "Wire protocol compression with zlib is not available. "
-                "The zlib module is not available.")
+                "The zlib module is not available."
+            )
         elif compressor == "zstd" and not _HAVE_ZSTD:
             compressors.remove(compressor)
             warnings.warn(
                 "Wire protocol compression with zstandard is not available. "
-                "You must install the zstandard module for zstandard support.")
+                "You must install the zstandard module for zstandard support."
+            )
     return compressors
 
 
@@ -78,8 +84,7 @@ def validate_zlib_compression_level(option, value):
     except:
         raise TypeError("%s must be an integer, not %r." % (option, value))
     if level < -1 or level > 9:
-        raise ValueError(
-            "%s must be between -1 and 9, not %d." % (option, level))
+        raise ValueError("%s must be between -1 and 9, not %d." % (option, level))
     return level
 
 

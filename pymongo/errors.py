@@ -25,12 +25,15 @@ except ImportError:
     try:
         from ssl import CertificateError
     except ImportError:
+
         class CertificateError(ValueError):
             pass
 
+
 class PyMongoError(Exception):
     """Base class for all PyMongo exceptions."""
-    def __init__(self, message='', error_labels=None):
+
+    def __init__(self, message="", error_labels=None):
         super(PyMongoError, self).__init__(message)
         self._message = message
         self._error_labels = set(error_labels or [])
@@ -51,15 +54,16 @@ class PyMongoError(Exception):
         self._error_labels.discard(label)
 
     if sys.version_info[0] == 2:
+
         def __str__(self):
             if isinstance(self._message, unicode):
-                return self._message.encode('utf-8', errors='replace')
+                return self._message.encode("utf-8", errors="replace")
             return str(self._message)
 
         def __unicode__(self):
             if isinstance(self._message, unicode):
                 return self._message
-            return unicode(self._message, 'utf-8', errors='replace')
+            return unicode(self._message, "utf-8", errors="replace")
 
 
 class ProtocolError(PyMongoError):
@@ -82,10 +86,11 @@ class AutoReconnect(ConnectionFailure):
 
     Subclass of :exc:`~pymongo.errors.ConnectionFailure`.
     """
-    def __init__(self, message='', errors=None):
+
+    def __init__(self, message="", errors=None):
         error_labels = None
         if errors is not None and isinstance(errors, dict):
-            error_labels = errors.get('errorLabels')
+            error_labels = errors.get("errorLabels")
         super(AutoReconnect, self).__init__(message, error_labels)
         self.errors = self.details = errors or []
 
@@ -104,7 +109,7 @@ def _format_detailed_error(message, details):
     if details is not None:
         message = "%s, full error: %s" % (message, details)
         if sys.version_info[0] == 2 and isinstance(message, unicode):
-            message = message.encode('utf-8', errors='replace')
+            message = message.encode("utf-8", errors="replace")
     return message
 
 
@@ -118,9 +123,9 @@ class NotMasterError(AutoReconnect):
     .. versionchanged:: 3.12
       Deprecated. Use :exc:`~pymongo.errors.NotPrimaryError` instead.
     """
-    def __init__(self, message='', errors=None):
-        super(NotMasterError, self).__init__(
-            _format_detailed_error(message, errors), errors=errors)
+
+    def __init__(self, message="", errors=None):
+        super(NotMasterError, self).__init__(_format_detailed_error(message, errors), errors=errors)
 
 
 class NotPrimaryError(NotMasterError):
@@ -138,7 +143,8 @@ class NotPrimaryError(NotMasterError):
 
     .. versionadded:: 3.12
     """
-    def __init__(self, message='', errors=None):
+
+    def __init__(self, message="", errors=None):
         super(NotPrimaryError, self).__init__(message, errors=errors)
 
 
@@ -156,8 +162,7 @@ class ServerSelectionTimeoutError(AutoReconnect):
 
 
 class ConfigurationError(PyMongoError):
-    """Raised when something is incorrectly configured.
-    """
+    """Raised when something is incorrectly configured."""
 
 
 class OperationFailure(PyMongoError):
@@ -170,9 +175,10 @@ class OperationFailure(PyMongoError):
     def __init__(self, error, code=None, details=None, max_wire_version=None):
         error_labels = None
         if details is not None:
-            error_labels = details.get('errorLabels')
+            error_labels = details.get("errorLabels")
         super(OperationFailure, self).__init__(
-            _format_detailed_error(error, details), error_labels=error_labels)
+            _format_detailed_error(error, details), error_labels=error_labels
+        )
         self.__code = code
         self.__details = details
         self.__max_wire_version = max_wire_version
@@ -183,8 +189,7 @@ class OperationFailure(PyMongoError):
 
     @property
     def code(self):
-        """The error code returned by the server, if any.
-        """
+        """The error code returned by the server, if any."""
         return self.__code
 
     @property
@@ -198,7 +203,6 @@ class OperationFailure(PyMongoError):
         on multiple shards.
         """
         return self.__details
-
 
 
 class CursorNotFound(OperationFailure):
@@ -253,9 +257,9 @@ class BulkWriteError(OperationFailure):
 
     .. versionadded:: 2.7
     """
+
     def __init__(self, results):
-        super(BulkWriteError, self).__init__(
-            "batch op errors occurred", 65, results)
+        super(BulkWriteError, self).__init__("batch op errors occurred", 65, results)
 
     def __reduce__(self):
         return self.__class__, (self.details,)
@@ -283,12 +287,13 @@ class ExceededMaxWaiters(PyMongoError):
 
     .. versionadded:: 2.6
     """
+
     pass
 
 
 class DocumentTooLarge(InvalidDocument):
-    """Raised when an encoded document is too large for the connected server.
-    """
+    """Raised when an encoded document is too large for the connected server."""
+
     pass
 
 
@@ -312,6 +317,6 @@ class EncryptionError(PyMongoError):
 
 
 class _OperationCancelled(AutoReconnect):
-    """Internal error raised when a socket operation is cancelled.
-    """
+    """Internal error raised when a socket operation is cancelled."""
+
     pass

@@ -20,25 +20,26 @@ import warnings
 
 sys.path[0:0] = [""]
 
+from test import client_context, qcheck, unittest
+
 from bson.son import SON
 from pymongo import MongoClient
-from pymongo.son_manipulator import (NamespaceInjector,
-                                     ObjectIdInjector,
-                                     ObjectIdShuffler,
-                                     SONManipulator)
-from test import client_context, qcheck, unittest
+from pymongo.son_manipulator import (
+    NamespaceInjector,
+    ObjectIdInjector,
+    ObjectIdShuffler,
+    SONManipulator,
+)
 
 
 class TestSONManipulator(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         cls.warn_context = warnings.catch_warnings()
         cls.warn_context.__enter__()
         warnings.simplefilter("ignore", DeprecationWarning)
 
-        client = MongoClient(
-            client_context.host, client_context.port, connect=False)
+        client = MongoClient(client_context.host, client_context.port, connect=False)
         cls.db = client.pymongo_test
 
     @classmethod
@@ -52,13 +53,13 @@ class TestSONManipulator(unittest.TestCase):
 
         def incoming_is_identity(son):
             return son == manip.transform_incoming(son, collection)
-        qcheck.check_unittest(self, incoming_is_identity,
-                              qcheck.gen_mongo_dict(3))
+
+        qcheck.check_unittest(self, incoming_is_identity, qcheck.gen_mongo_dict(3))
 
         def outgoing_is_identity(son):
             return son == manip.transform_outgoing(son, collection)
-        qcheck.check_unittest(self, outgoing_is_identity,
-                              qcheck.gen_mongo_dict(3))
+
+        qcheck.check_unittest(self, outgoing_is_identity, qcheck.gen_mongo_dict(3))
 
     def test_id_injection(self):
         manip = ObjectIdInjector()
@@ -68,13 +69,13 @@ class TestSONManipulator(unittest.TestCase):
             son = manip.transform_incoming(son, collection)
             assert "_id" in son
             return True
-        qcheck.check_unittest(self, incoming_adds_id,
-                              qcheck.gen_mongo_dict(3))
+
+        qcheck.check_unittest(self, incoming_adds_id, qcheck.gen_mongo_dict(3))
 
         def outgoing_is_identity(son):
             return son == manip.transform_outgoing(son, collection)
-        qcheck.check_unittest(self, outgoing_is_identity,
-                              qcheck.gen_mongo_dict(3))
+
+        qcheck.check_unittest(self, outgoing_is_identity, qcheck.gen_mongo_dict(3))
 
     def test_id_shuffling(self):
         manip = ObjectIdShuffler()
@@ -96,13 +97,12 @@ class TestSONManipulator(unittest.TestCase):
         self.assertTrue(incoming_moves_id({}))
         self.assertTrue(incoming_moves_id({"_id": 12}))
         self.assertTrue(incoming_moves_id({"hello": "world", "_id": 12}))
-        self.assertTrue(incoming_moves_id(SON([("hello", "world"),
-                                               ("_id", 12)])))
+        self.assertTrue(incoming_moves_id(SON([("hello", "world"), ("_id", 12)])))
 
         def outgoing_is_identity(son):
             return son == manip.transform_outgoing(son, collection)
-        qcheck.check_unittest(self, outgoing_is_identity,
-                              qcheck.gen_mongo_dict(3))
+
+        qcheck.check_unittest(self, outgoing_is_identity, qcheck.gen_mongo_dict(3))
 
     def test_ns_injection(self):
         manip = NamespaceInjector()
@@ -112,13 +112,14 @@ class TestSONManipulator(unittest.TestCase):
             son = manip.transform_incoming(son, collection)
             assert "_ns" in son
             return son["_ns"] == collection.name
-        qcheck.check_unittest(self, incoming_adds_ns,
-                              qcheck.gen_mongo_dict(3))
+
+        qcheck.check_unittest(self, incoming_adds_ns, qcheck.gen_mongo_dict(3))
 
         def outgoing_is_identity(son):
             return son == manip.transform_outgoing(son, collection)
-        qcheck.check_unittest(self, outgoing_is_identity,
-                              qcheck.gen_mongo_dict(3))
+
+        qcheck.check_unittest(self, outgoing_is_identity, qcheck.gen_mongo_dict(3))
+
 
 if __name__ == "__main__":
     unittest.main()
