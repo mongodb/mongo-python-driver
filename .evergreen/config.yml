@@ -291,6 +291,7 @@ functions:
             DISABLE_TEST_COMMANDS=${DISABLE_TEST_COMMANDS} \
             ORCHESTRATION_FILE=${ORCHESTRATION_FILE} \
             REQUIRE_API_VERSION=${REQUIRE_API_VERSION} \
+            LOAD_BALANCER=${LOAD_BALANCER} \
             bash ${DRIVERS_TOOLS}/.evergreen/run-orchestration.sh
     # run-orchestration generates expansion file with the MONGODB_URI for the cluster
     - command: expansions.update
@@ -423,6 +424,7 @@ functions:
           fi
           if [ -n "${test_loadbalancer}" ]; then
             export TEST_LOADBALANCER=1
+            export LOAD_BALANCER=1
             export SINGLE_MONGOS_LB_URI="${SINGLE_MONGOS_LB_URI}"
             export MULTI_MONGOS_LB_URI="${MULTI_MONGOS_LB_URI}"
           fi
@@ -1770,8 +1772,12 @@ tasks:
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
+            VERSION: "latest"
             TOPOLOGY: "sharded_cluster"
+            LOAD_BALANCER: true
         - func: "run load-balancer"
+          vars:
+            LOAD_BALANCER: true
         - func: "run tests"
 # }}}
     - name: "coverage-report"
