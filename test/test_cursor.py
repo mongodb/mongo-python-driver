@@ -39,12 +39,7 @@ from bson.son import SON
 from pymongo import ASCENDING, DESCENDING
 from pymongo.collation import Collation
 from pymongo.cursor import Cursor, CursorType
-from pymongo.errors import (
-    ConfigurationError,
-    ExecutionTimeout,
-    InvalidOperation,
-    OperationFailure,
-)
+from pymongo.errors import ExecutionTimeout, InvalidOperation, OperationFailure
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
@@ -355,7 +350,7 @@ class TestCursor(IntegrationTest):
         )
 
         spec = [("num", DESCENDING)]
-        index = db.test.create_index(spec)
+        _ = db.test.create_index(spec)
 
         first = next(db.test.find())
         self.assertEqual(0, first.get("num"))
@@ -763,7 +758,7 @@ class TestCursor(IntegrationTest):
         self.assertEqual([8, 9], [a["x"] for a in cursor])
 
         a = db.test.find()
-        b = a.where("this.x > 3")
+        _ = a.where("this.x > 3")
         for _ in a:
             break
         self.assertRaises(InvalidOperation, a.where, "this.x < 3")

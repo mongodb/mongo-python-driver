@@ -59,11 +59,11 @@ class TestURI(unittest.TestCase):
         )
         self.assertEqual(
             [("/tmp/mongodb-27017.sock", None), ("example.com", 27017)],
-            split_hosts("/tmp/mongodb-27017.sock," "example.com:27017"),
+            split_hosts("/tmp/mongodb-27017.sock,example.com:27017"),
         )
         self.assertEqual(
             [("example.com", 27017), ("/tmp/mongodb-27017.sock", None)],
-            split_hosts("example.com:27017," "/tmp/mongodb-27017.sock"),
+            split_hosts("example.com:27017,/tmp/mongodb-27017.sock"),
         )
         self.assertRaises(ValueError, split_hosts, "::1", 27017)
         self.assertRaises(ValueError, split_hosts, "[::1:27017")
@@ -168,11 +168,11 @@ class TestURI(unittest.TestCase):
 
         res = copy.deepcopy(orig)
         res["nodelist"] = [("example1.com", 27017), ("example2.com", 27017)]
-        self.assertEqual(res, parse_uri("mongodb://example1.com:27017," "example2.com:27017"))
+        self.assertEqual(res, parse_uri("mongodb://example1.com:27017,example2.com:27017"))
 
         res = copy.deepcopy(orig)
         res["nodelist"] = [("localhost", 27017), ("localhost", 27018), ("localhost", 27019)]
-        self.assertEqual(res, parse_uri("mongodb://localhost," "localhost:27018,localhost:27019"))
+        self.assertEqual(res, parse_uri("mongodb://localhost,localhost:27018,localhost:27019"))
 
         res = copy.deepcopy(orig)
         res["database"] = "foo"
@@ -182,21 +182,17 @@ class TestURI(unittest.TestCase):
         self.assertEqual(res, parse_uri("mongodb://localhost/"))
 
         res.update({"database": "test", "collection": "yield_historical.in"})
-        self.assertEqual(res, parse_uri("mongodb://" "localhost/test.yield_historical.in"))
+        self.assertEqual(res, parse_uri("mongodb://localhost/test.yield_historical.in"))
 
         res.update({"username": "fred", "password": "foobar"})
-        self.assertEqual(
-            res, parse_uri("mongodb://fred:foobar@localhost/" "test.yield_historical.in")
-        )
+        self.assertEqual(res, parse_uri("mongodb://fred:foobar@localhost/test.yield_historical.in"))
 
         res = copy.deepcopy(orig)
         res["nodelist"] = [("example1.com", 27017), ("example2.com", 27017)]
         res.update({"database": "test", "collection": "yield_historical.in"})
         self.assertEqual(
             res,
-            parse_uri(
-                "mongodb://example1.com:27017,example2.com" ":27017/test.yield_historical.in"
-            ),
+            parse_uri("mongodb://example1.com:27017,example2.com:27017/test.yield_historical.in"),
         )
 
         # Test socket path without escaped characters.
@@ -205,14 +201,14 @@ class TestURI(unittest.TestCase):
         # Test with escaped characters.
         res = copy.deepcopy(orig)
         res["nodelist"] = [("example2.com", 27017), ("/tmp/mongodb-27017.sock", None)]
-        self.assertEqual(res, parse_uri("mongodb://example2.com," "%2Ftmp%2Fmongodb-27017.sock"))
+        self.assertEqual(res, parse_uri("mongodb://example2.com,%2Ftmp%2Fmongodb-27017.sock"))
 
         res = copy.deepcopy(orig)
         res["nodelist"] = [("shoe.sock.pants.co.uk", 27017), ("/tmp/mongodb-27017.sock", None)]
         res["database"] = "nethers_db"
         self.assertEqual(
             res,
-            parse_uri("mongodb://shoe.sock.pants.co.uk," "%2Ftmp%2Fmongodb-27017.sock/nethers_db"),
+            parse_uri("mongodb://shoe.sock.pants.co.uk,%2Ftmp%2Fmongodb-27017.sock/nethers_db"),
         )
 
         res = copy.deepcopy(orig)
@@ -242,15 +238,13 @@ class TestURI(unittest.TestCase):
         res = copy.deepcopy(orig)
         res["nodelist"] = [("example2.com", 27017)]
         res.update({"database": "test", "collection": "yield_historical.sock"})
-        self.assertEqual(
-            res, parse_uri("mongodb://example2.com:27017" "/test.yield_historical.sock")
-        )
+        self.assertEqual(res, parse_uri("mongodb://example2.com:27017/test.yield_historical.sock"))
 
         res = copy.deepcopy(orig)
         res["nodelist"] = [("/tmp/mongodb-27017.sock", None)]
         res.update({"database": "test", "collection": "mongodb-27017.sock"})
         self.assertEqual(
-            res, parse_uri("mongodb://%2Ftmp%2Fmongodb-27017.sock" "/test.mongodb-27017.sock")
+            res, parse_uri("mongodb://%2Ftmp%2Fmongodb-27017.sock/test.mongodb-27017.sock")
         )
 
         res = copy.deepcopy(orig)
@@ -275,9 +269,7 @@ class TestURI(unittest.TestCase):
         res = copy.deepcopy(orig)
         res.update({"username": "fred", "password": "foobar"})
         res.update({"database": "test", "collection": "yield_historical.in"})
-        self.assertEqual(
-            res, parse_uri("mongodb://fred:foobar@localhost/" "test.yield_historical.in")
-        )
+        self.assertEqual(res, parse_uri("mongodb://fred:foobar@localhost/test.yield_historical.in"))
 
         res = copy.deepcopy(orig)
         res["database"] = "test"
@@ -294,7 +286,7 @@ class TestURI(unittest.TestCase):
         res["username"] = "user"
         res["password"] = "password"
         self.assertEqual(
-            res, parse_uri("mongodb://user:password@localhost/" "?authMechanism=MONGODB-CR")
+            res, parse_uri("mongodb://user:password@localhost/?authMechanism=MONGODB-CR")
         )
 
         res = copy.deepcopy(orig)
@@ -305,7 +297,7 @@ class TestURI(unittest.TestCase):
         self.assertEqual(
             res,
             parse_uri(
-                "mongodb://user:password@localhost/foo" "?authSource=bar;authMechanism=MONGODB-CR"
+                "mongodb://user:password@localhost/foo?authSource=bar;authMechanism=MONGODB-CR"
             ),
         )
 
@@ -313,13 +305,13 @@ class TestURI(unittest.TestCase):
         res["options"] = {"authmechanism": "MONGODB-CR"}
         res["username"] = "user"
         res["password"] = ""
-        self.assertEqual(res, parse_uri("mongodb://user:@localhost/" "?authMechanism=MONGODB-CR"))
+        self.assertEqual(res, parse_uri("mongodb://user:@localhost/?authMechanism=MONGODB-CR"))
 
         res = copy.deepcopy(orig)
         res["username"] = "user@domain.com"
         res["password"] = "password"
         res["database"] = "foo"
-        self.assertEqual(res, parse_uri("mongodb://user%40domain.com:password" "@localhost/foo"))
+        self.assertEqual(res, parse_uri("mongodb://user%40domain.com:password@localhost/foo"))
 
         res = copy.deepcopy(orig)
         res["options"] = {"authmechanism": "GSSAPI"}
@@ -328,7 +320,7 @@ class TestURI(unittest.TestCase):
         res["database"] = "foo"
         self.assertEqual(
             res,
-            parse_uri("mongodb://user%40domain.com:password" "@localhost/foo?authMechanism=GSSAPI"),
+            parse_uri("mongodb://user%40domain.com:password@localhost/foo?authMechanism=GSSAPI"),
         )
 
         res = copy.deepcopy(orig)
@@ -337,7 +329,7 @@ class TestURI(unittest.TestCase):
         res["password"] = ""
         res["database"] = "foo"
         self.assertEqual(
-            res, parse_uri("mongodb://user%40domain.com" "@localhost/foo?authMechanism=GSSAPI")
+            res, parse_uri("mongodb://user%40domain.com@localhost/foo?authMechanism=GSSAPI")
         )
 
         res = copy.deepcopy(orig)
@@ -410,7 +402,7 @@ class TestURI(unittest.TestCase):
         self.assertRaises(
             ValueError,
             parse_uri,
-            "mongodb://user%40domain.com:password" "@localhost/foo?uuidrepresentation=notAnOption",
+            "mongodb://user%40domain.com:password@localhost/foo?uuidrepresentation=notAnOption",
         )
 
     def test_parse_ssl_paths(self):

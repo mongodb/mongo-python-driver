@@ -17,7 +17,7 @@ import datetime
 import io
 import math
 import os
-from typing import Any, Iterable, List, Mapping, Optional, cast
+from typing import Any, Iterable, List, Mapping, Optional
 
 from bson.binary import Binary
 from bson.int64 import Int64
@@ -172,10 +172,10 @@ class GridIn(object):
            :attr:`~pymongo.collection.Collection.write_concern`
         """
         if not isinstance(root_collection, Collection):
-            raise TypeError("root_collection must be an " "instance of Collection")
+            raise TypeError("root_collection must be an instance of Collection")
 
         if not root_collection.write_concern.acknowledged:
-            raise ConfigurationError("root_collection must use " "acknowledged write_concern")
+            raise ConfigurationError("root_collection must use acknowledged write_concern")
         _disallow_transactions(session)
 
         # Handle alternative naming
@@ -240,7 +240,7 @@ class GridIn(object):
         "uploadDate", "Date that this file was uploaded.", closed_only=True
     )
     md5: Optional[str] = _grid_in_property(
-        "md5", "MD5 of the contents of this file " "if an md5 sum was created.", closed_only=True
+        "md5", "MD5 of the contents of this file if an md5 sum was created.", closed_only=True
     )
 
     _buffer: io.BytesIO
@@ -356,7 +356,7 @@ class GridIn(object):
                 try:
                     data = data.encode(self.encoding)
                 except AttributeError:
-                    raise TypeError("must specify an encoding for file in " "order to write str")
+                    raise TypeError("must specify an encoding for file in order to write str")
             read = io.BytesIO(data).read
 
         if self._buffer.tell() > 0:
@@ -365,7 +365,7 @@ class GridIn(object):
             if space:
                 try:
                     to_write = read(space)
-                except:
+                except BaseException:
                     self.abort()
                     raise
                 self._buffer.write(to_write)
@@ -447,7 +447,7 @@ class GridOut(io.IOBase):
            from the server. Metadata is fetched when first needed.
         """
         if not isinstance(root_collection, Collection):
-            raise TypeError("root_collection must be an " "instance of Collection")
+            raise TypeError("root_collection must be an instance of Collection")
         _disallow_transactions(session)
 
         root_collection = _clear_entity_type_registry(root_collection)
@@ -477,7 +477,7 @@ class GridOut(io.IOBase):
         "metadata", "Metadata attached to this file."
     )
     md5: Optional[str] = _grid_out_property(
-        "md5", "MD5 of the contents of this file " "if an md5 sum was created."
+        "md5", "MD5 of the contents of this file if an md5 sum was created."
     )
 
     _file: Any
@@ -518,7 +518,7 @@ class GridOut(io.IOBase):
                     self, self.__chunks, self._session, chunk_number
                 )
 
-            chunk = self.__chunk_iter.next()
+            chunk = next(self.__chunk_iter)
             chunk_data = chunk["data"][self.__position % chunk_size :]
 
             if not chunk_data:
@@ -562,7 +562,7 @@ class GridOut(io.IOBase):
         # Detect extra chunks after reading the entire file.
         if size == remainder and self.__chunk_iter:
             try:
-                self.__chunk_iter.next()
+                next(self.__chunk_iter)
             except StopIteration:
                 pass
 
@@ -777,11 +777,11 @@ class _GridOutChunkIterator(object):
             self._create_cursor()
             assert self._cursor is not None
         try:
-            return self._cursor.next()
+            return next(self._cursor)
         except CursorNotFound:
             self._cursor.close()
             self._create_cursor()
-            return self._cursor.next()
+            return next(self._cursor)
 
     def next(self) -> Mapping[str, Any]:
         try:
@@ -834,7 +834,7 @@ class GridOutIterator(object):
         return self
 
     def next(self) -> bytes:
-        chunk = self.__chunk_iter.next()
+        chunk = next(self.__chunk_iter)
         return bytes(chunk["data"])
 
     __next__ = next
@@ -887,7 +887,7 @@ class GridOutCursor(Cursor):
         """Get next GridOut object from cursor."""
         _disallow_transactions(self.session)
         # Work around "super is not iterable" issue in Python 3.x
-        next_file = super(GridOutCursor, self).next()
+        next_file = next(super(GridOutCursor, self))
         return GridOut(self.__root_collection, file_document=next_file, session=self.session)
 
     __next__ = next

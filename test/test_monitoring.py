@@ -16,19 +16,12 @@ import copy
 import datetime
 import sys
 import time
-import warnings
 from typing import Any
 
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, client_knobs, sanitize_cmd, unittest
-from test.utils import (
-    EventListener,
-    get_pool,
-    rs_or_single_client,
-    single_client,
-    wait_until,
-)
+from test.utils import EventListener, rs_or_single_client, single_client, wait_until
 
 from bson.int64 import Int64
 from bson.objectid import ObjectId
@@ -781,7 +774,7 @@ class TestCommandMonitoring(IntegrationTest):
 
         # delete_one
         self.listener.results.clear()
-        res2 = coll.delete_one({"x": 3})
+        _ = coll.delete_one({"x": 3})
         results = self.listener.results
         started = results["started"][0]
         succeeded = results["succeeded"][0]
@@ -1242,19 +1235,19 @@ class TestEventClasses(unittest.TestCase):
         event = monitoring.ServerOpeningEvent(server_address, topology_id)
         self.assertEqual(
             repr(event),
-            "<ServerOpeningEvent ('localhost', 27017) " "topology_id: 000000000000000000000001>",
+            "<ServerOpeningEvent ('localhost', 27017) topology_id: 000000000000000000000001>",
         )
         event = monitoring.ServerDescriptionChangedEvent(
             "PREV", "NEW", server_address, topology_id  # type: ignore[arg-type]
         )
         self.assertEqual(
             repr(event),
-            "<ServerDescriptionChangedEvent ('localhost', 27017) " "changed from: PREV, to: NEW>",
+            "<ServerDescriptionChangedEvent ('localhost', 27017) changed from: PREV, to: NEW>",
         )
         event = monitoring.ServerClosedEvent(server_address, topology_id)
         self.assertEqual(
             repr(event),
-            "<ServerClosedEvent ('localhost', 27017) " "topology_id: 000000000000000000000001>",
+            "<ServerClosedEvent ('localhost', 27017) topology_id: 000000000000000000000001>",
         )
 
     def test_topology_event_repr(self):

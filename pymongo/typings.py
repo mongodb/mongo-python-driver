@@ -17,13 +17,11 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Dict,
-    List,
     Mapping,
     MutableMapping,
     Optional,
     Sequence,
     Tuple,
-    Type,
     TypeVar,
     Union,
 )

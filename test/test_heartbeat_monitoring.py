@@ -15,7 +15,6 @@
 """Test the monitoring of the server heartbeats."""
 
 import sys
-import threading
 
 sys.path[0:0] = [""]
 

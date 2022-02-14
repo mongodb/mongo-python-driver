@@ -51,8 +51,7 @@ blobs to disk, using raw BSON documents provides better speed and avoids the
 overhead of decoding or encoding BSON.
 """
 
-from collections.abc import Mapping as _Mapping
-from typing import Any, ItemsView, Iterator, Mapping, Optional, cast
+from typing import Any, ItemsView, Iterator, Mapping, Optional
 
 from bson import _get_object_size, _raw_to_dict
 from bson.codec_options import _RAW_BSON_DOCUMENT_MARKER

@@ -580,7 +580,7 @@ Bye"""
         self.assertEqual([b"hello world"], list(g))
 
     def test_read_unaligned_buffer_size(self):
-        in_data = b"This is a text that doesn't " b"quite fit in a single 16-byte chunk."
+        in_data = b"This is a text that doesn't quite fit in a single 16-byte chunk."
         f = GridIn(self.db.fs, chunkSize=16)
         f.write(in_data)
         f.close()

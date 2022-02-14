@@ -33,7 +33,7 @@ def test_hello_with_option(self, protocol, **kwargs):
 
     def respond(r):
         # Only save the very first request from the driver.
-        if self.handshake_req == None:
+        if self.handshake_req is None:
             self.handshake_req = r
         load_balanced_kwargs = {"serviceId": ObjectId()} if kwargs.get("loadBalanced") else {}
         return r.reply(
@@ -261,7 +261,7 @@ class TestHandshake(unittest.TestCase):
         self.addCleanup(client.close)
         self.assertRaises(OperationFailure, client.db.collection.find_one, {"a": 1})
         self.assertTrue(
-            self.found_auth_msg, "Could not find authentication " "command with correct protocol"
+            self.found_auth_msg, "Could not find authentication command with correct protocol"
         )
 
 

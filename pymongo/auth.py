@@ -121,7 +121,7 @@ def _build_credentials_tuple(mech, source, user, passwd, extra, database):
         if passwd is not None:
             raise ConfigurationError("Passwords are not supported by MONGODB-X509")
         if source is not None and source != "$external":
-            raise ValueError("authentication source must be " "$external or None for MONGODB-X509")
+            raise ValueError("authentication source must be $external or None for MONGODB-X509")
         # Source is always $external, user can be None.
         return MongoCredential(mech, "$external", user, None, None, None)
     elif mech == "MONGODB-AWS":
@@ -129,7 +129,7 @@ def _build_credentials_tuple(mech, source, user, passwd, extra, database):
             raise ConfigurationError("username without a password is not supported by MONGODB-AWS")
         if source is not None and source != "$external":
             raise ConfigurationError(
-                "authentication source must be " "$external or None for MONGODB-AWS"
+                "authentication source must be $external or None for MONGODB-AWS"
             )
 
         properties = extra.get("authmechanismproperties", {})
@@ -302,7 +302,7 @@ def _authenticate_gssapi(credentials, sock_info):
     """Authenticate using GSSAPI."""
     if not HAVE_KERBEROS:
         raise ConfigurationError(
-            'The "kerberos" module must be ' "installed to use GSSAPI authentication."
+            'The "kerberos" module must be installed to use GSSAPI authentication.'
         )
 
     try:
@@ -351,7 +351,7 @@ def _authenticate_gssapi(credentials, sock_info):
             # 0 == continue, 1 == complete, -1 == error
             # Only authGSSClientStep can return 0.
             if kerberos.authGSSClientStep(ctx, "") != 0:
-                raise OperationFailure("Unknown kerberos " "failure in step function.")
+                raise OperationFailure("Unknown kerberos failure in step function.")
 
             # Start a SASL conversation with mongod/s
             # Note: pykerberos deals with base64 encoded byte strings.
@@ -372,7 +372,7 @@ def _authenticate_gssapi(credentials, sock_info):
             for _ in range(10):
                 result = kerberos.authGSSClientStep(ctx, str(response["payload"]))
                 if result == -1:
-                    raise OperationFailure("Unknown kerberos " "failure in step function.")
+                    raise OperationFailure("Unknown kerberos failure in step function.")
 
                 payload = kerberos.authGSSClientResponse(ctx) or ""
 
@@ -388,15 +388,15 @@ def _authenticate_gssapi(credentials, sock_info):
                 if result == kerberos.AUTH_GSS_COMPLETE:
                     break
             else:
-                raise OperationFailure("Kerberos " "authentication failed to complete.")
+                raise OperationFailure("Kerberos authentication failed to complete.")
 
             # Once the security context is established actually authenticate.
             # See RFC 4752, Section 3.1, last two paragraphs.
             if kerberos.authGSSClientUnwrap(ctx, str(response["payload"])) != 1:
-                raise OperationFailure("Unknown kerberos " "failure during GSS_Unwrap step.")
+                raise OperationFailure("Unknown kerberos failure during GSS_Unwrap step.")
 
             if kerberos.authGSSClientWrap(ctx, kerberos.authGSSClientResponse(ctx), username) != 1:
-                raise OperationFailure("Unknown kerberos " "failure during GSS_Wrap step.")
+                raise OperationFailure("Unknown kerberos failure during GSS_Wrap step.")
 
             payload = kerberos.authGSSClientResponse(ctx)
             cmd = SON(

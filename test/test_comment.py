@@ -16,23 +16,16 @@
 
 import inspect
 import sys
-from collections import defaultdict
 from typing import Any, Union
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, SkipTest, client_context, unittest
+from test import IntegrationTest, client_context, unittest
 from test.utils import EventListener, rs_or_single_client
 
 from bson.dbref import DBRef
-from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
-from pymongo.database import Database
-from pymongo.mongo_client import MongoClient
 from pymongo.operations import IndexModel
-from pymongo.read_concern import ReadConcern
-from pymongo.read_preferences import ReadPreference
-from pymongo.write_concern import WriteConcern
 
 
 class Empty(object):
@@ -47,7 +40,9 @@ class Empty(object):
 
 
 class TestComment(IntegrationTest):
-    def _test_ops(self, helpers, already_supported, listener, db=Empty(), coll=Empty()):
+    def _test_ops(
+        self, helpers, already_supported, listener, db=Empty(), coll=Empty()  # noqa: B008
+    ):
         results = listener.results
         for h, args in helpers:
             c = "testing comment with " + h.__name__
@@ -56,7 +51,7 @@ class TestComment(IntegrationTest):
                     results.clear()
                     kwargs = {"comment": cc}
                     if h == coll.rename:
-                        tmp = db.get_collection("temp_temp_temp").drop()
+                        _ = db.get_collection("temp_temp_temp").drop()
                         destruct_coll = db.get_collection("test_temp")
                         destruct_coll.insert_one({})
                         maybe_cursor = destruct_coll.rename(*args, **kwargs)

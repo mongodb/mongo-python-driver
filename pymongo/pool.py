@@ -72,7 +72,7 @@ def is_ip_address(address):
     try:
         ipaddress.ip_address(address)
         return True
-    except (ValueError, UnicodeError):
+    except (ValueError, UnicodeError):  # noqa: B014
         return False
 
 
@@ -864,9 +864,7 @@ class SocketInfo(object):
         """
         if session:
             if session._client is not client:
-                raise InvalidOperation(
-                    "Can only use session with the MongoClient that" " started it"
-                )
+                raise InvalidOperation("Can only use session with the MongoClient that started it")
 
     def close_socket(self, reason):
         """Close this connection with a reason."""
@@ -970,7 +968,7 @@ def _create_connection(address, options):
     # Check if dealing with a unix domain socket
     if host.endswith(".sock"):
         if not hasattr(socket, "AF_UNIX"):
-            raise ConnectionFailure("UNIX-sockets are not supported " "on this system")
+            raise ConnectionFailure("UNIX-sockets are not supported on this system")
         sock = socket.socket(socket.AF_UNIX)
         # SOCK_CLOEXEC not supported for Unix sockets.
         _set_non_inheritable_non_atomic(sock.fileno())
@@ -1052,7 +1050,7 @@ def _configured_socket(address, options):
             # Raise _CertificateError directly like we do after match_hostname
             # below.
             raise
-        except (IOError, OSError, _SSLError) as exc:
+        except (IOError, OSError, _SSLError) as exc:  # noqa: B014
             sock.close()
             # We raise AutoReconnect for transient and permanent SSL handshake
             # failures alike. Permanent handshake failures, like protocol
@@ -1253,8 +1251,8 @@ class Pool:
         """
         self.is_writable = is_writable
         with self.lock:
-            for socket in self.sockets:
-                socket.update_is_writable(self.is_writable)
+            for _socket in self.sockets:
+                _socket.update_is_writable(self.is_writable)
 
     def reset(self, service_id=None):
         self._reset(close=False, service_id=service_id)
@@ -1393,7 +1391,7 @@ class Pool:
             listeners.publish_connection_checked_out(self.address, sock_info.id)
         try:
             yield sock_info
-        except:
+        except BaseException:
             # Exception in caller. Ensure the connection gets returned.
             # Note that when pinned is True, the session owns the
             # connection and it is responsible for checking the connection
@@ -1440,7 +1438,7 @@ class Pool:
                     self.address, ConnectionCheckOutFailedReason.POOL_CLOSED
                 )
             raise _PoolClosedError(
-                "Attempted to check out a connection from closed connection " "pool"
+                "Attempted to check out a connection from closed connection pool"
             )
 
         with self.lock:

@@ -15,7 +15,7 @@
 """Watch changes on a collection, a database, or the entire cluster."""
 
 import copy
-from typing import TYPE_CHECKING, Any, Dict, Generic, Iterator, Mapping, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Generic, Mapping, Optional, Union
 
 from bson import _bson_to_dict
 from bson.raw_bson import RawBSONDocument
@@ -363,7 +363,7 @@ class ChangeStream(Generic[_DocumentType]):
         except KeyError:
             self.close()
             raise InvalidOperation(
-                "Cannot provide resume functionality when the resume " "token is missing."
+                "Cannot provide resume functionality when the resume token is missing."
             )
 
         # If this is the last change document from the current batch, cache the

@@ -28,8 +28,6 @@ from test.utils import (
     rs_or_single_client,
 )
 
-from pymongo.auth import MECHANISMS
-
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data_lake")
 
@@ -42,7 +40,7 @@ class TestDataLakeMustConnect(IntegrationTest):
 
         self.assertTrue(
             client_context.is_data_lake,
-            "client context.is_data_lake must be True when " "DATA_LAKE is set",
+            "client context.is_data_lake must be True when DATA_LAKE is set",
         )
 
 

@@ -26,7 +26,6 @@ from pymongo.client_session import _validate_session_write_concern
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import (
     validate_is_document_type,
-    validate_is_mapping,
     validate_ok_for_replace,
     validate_ok_for_update,
 )
@@ -476,7 +475,7 @@ class _Bulk(object):
         # Cannot have both unacknowledged writes and bypass document validation.
         if self.bypass_doc_val:
             raise OperationFailure(
-                "Cannot set bypass_document_validation with" " unacknowledged write concern"
+                "Cannot set bypass_document_validation with unacknowledged write concern"
             )
 
         if self.ordered:
@@ -488,7 +487,7 @@ class _Bulk(object):
         if not self.ops:
             raise InvalidOperation("No operations to execute")
         if self.executed:
-            raise InvalidOperation("Bulk operations can " "only be executed once.")
+            raise InvalidOperation("Bulk operations can only be executed once.")
         self.executed = True
         write_concern = write_concern or self.collection.write_concern
         session = _validate_session_write_concern(session, write_concern)

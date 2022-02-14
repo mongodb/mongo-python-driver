@@ -15,19 +15,8 @@
 
 """Tools to parse and validate a MongoDB URI."""
 import re
-import sys
 import warnings
-from typing import (
-    Any,
-    Dict,
-    List,
-    Mapping,
-    MutableMapping,
-    Optional,
-    Tuple,
-    Union,
-    cast,
-)
+from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Tuple, Union
 from urllib.parse import unquote_plus
 
 from pymongo.client_options import _parse_ssl_options
@@ -106,7 +95,7 @@ def parse_ipv6_literal_host(
     """
     if entity.find("]") == -1:
         raise ValueError(
-            "an IPv6 address literal must be " "enclosed in '[' and ']' according " "to RFC 2732."
+            "an IPv6 address literal must be enclosed in '[' and ']' according to RFC 2732."
         )
     i = entity.find("]:")
     if i == -1:
@@ -197,7 +186,7 @@ def _handle_security_options(options):
     if tlsinsecure is not None:
         for opt in _IMPLICIT_TLSINSECURE_OPTS:
             if opt in options:
-                err_msg = "URI options %s and %s cannot be specified " "simultaneously."
+                err_msg = "URI options %s and %s cannot be specified simultaneously."
                 raise InvalidURI(
                     err_msg % (options.cased_key("tlsinsecure"), options.cased_key(opt))
                 )
@@ -206,7 +195,7 @@ def _handle_security_options(options):
     tlsallowinvalidcerts = options.get("tlsallowinvalidcertificates")
     if tlsallowinvalidcerts is not None:
         if "tlsdisableocspendpointcheck" in options:
-            err_msg = "URI options %s and %s cannot be specified " "simultaneously."
+            err_msg = "URI options %s and %s cannot be specified simultaneously."
             raise InvalidURI(
                 err_msg
                 % ("tlsallowinvalidcertificates", options.cased_key("tlsdisableocspendpointcheck"))
@@ -219,7 +208,7 @@ def _handle_security_options(options):
     if tlscrlfile is not None:
         for opt in ("tlsinsecure", "tlsallowinvalidcertificates", "tlsdisableocspendpointcheck"):
             if options.get(opt) is True:
-                err_msg = "URI option %s=True cannot be specified when " "CRL checking is enabled."
+                err_msg = "URI option %s=True cannot be specified when CRL checking is enabled."
                 raise InvalidURI(err_msg % (opt,))
 
     if "ssl" in options and "tls" in options:
@@ -232,7 +221,7 @@ def _handle_security_options(options):
             return val
 
         if truth_value(options.get("ssl")) != truth_value(options.get("tls")):
-            err_msg = "Can not specify conflicting values for URI options %s " "and %s."
+            err_msg = "Can not specify conflicting values for URI options %s and %s."
             raise InvalidURI(err_msg % (options.cased_key("ssl"), options.cased_key("tls")))
 
     return options
@@ -253,7 +242,7 @@ def _handle_option_deprecations(options):
             if mode == "renamed":
                 newoptname = message
                 if newoptname in options:
-                    warn_msg = "Deprecated option '%s' ignored in favor of " "'%s'."
+                    warn_msg = "Deprecated option '%s' ignored in favor of '%s'."
                     warnings.warn(
                         warn_msg % (options.cased_key(optname), options.cased_key(newoptname)),
                         DeprecationWarning,
@@ -381,7 +370,7 @@ def split_hosts(
     nodes = []
     for entity in hosts.split(","):
         if not entity:
-            raise ConfigurationError("Empty host " "(or extra comma in host list).")
+            raise ConfigurationError("Empty host (or extra comma in host list).")
         port = default_port
         # Unix socket entities don't have ports
         if entity.endswith(".sock"):
@@ -489,7 +478,7 @@ def parse_uri(
         scheme_free = uri[SRV_SCHEME_LEN:]
     else:
         raise InvalidURI(
-            "Invalid URI scheme: URI must " "begin with '%s' or '%s'" % (SCHEME, SRV_SCHEME)
+            "Invalid URI scheme: URI must begin with '%s' or '%s'" % (SCHEME, SRV_SCHEME)
         )
 
     if not scheme_free:
@@ -507,7 +496,7 @@ def parse_uri(
         path_part = ""
 
     if not path_part and "?" in host_part:
-        raise InvalidURI("A '/' is required between " "the host list and any options.")
+        raise InvalidURI("A '/' is required between the host list and any options.")
 
     if path_part:
         dbase, _, opts = path_part.partition("?")
@@ -531,9 +520,7 @@ def parse_uri(
         hosts = host_part
 
     if "/" in hosts:
-        raise InvalidURI(
-            "Any '/' in a unix domain socket must be" " percent-encoded: %s" % host_part
-        )
+        raise InvalidURI("Any '/' in a unix domain socket must be percent-encoded: %s" % host_part)
 
     hosts = unquote_plus(hosts)
     fqdn = None
@@ -541,11 +528,11 @@ def parse_uri(
     if is_srv:
         if options.get("directConnection"):
             raise ConfigurationError(
-                "Cannot specify directConnection=true with " "%s URIs" % (SRV_SCHEME,)
+                "Cannot specify directConnection=true with %s URIs" % (SRV_SCHEME,)
             )
         nodes = split_hosts(hosts, default_port=None)
         if len(nodes) != 1:
-            raise InvalidURI("%s URIs must include one, " "and only one, hostname" % (SRV_SCHEME,))
+            raise InvalidURI("%s URIs must include one, and only one, hostname" % (SRV_SCHEME,))
         fqdn, port = nodes[0]
         if port is not None:
             raise InvalidURI("%s URIs must not include a port number" % (SRV_SCHEME,))
@@ -560,7 +547,7 @@ def parse_uri(
             parsed_dns_options = split_options(dns_options, validate, warn, normalize)
             if set(parsed_dns_options) - _ALLOWED_TXT_OPTS:
                 raise ConfigurationError(
-                    "Only authSource, replicaSet, and loadBalanced are " "supported from DNS"
+                    "Only authSource, replicaSet, and loadBalanced are supported from DNS"
                 )
             for opt, val in parsed_dns_options.items():
                 if opt not in options:
@@ -573,11 +560,11 @@ def parse_uri(
             options["tls"] = True if validate else "true"
     elif not is_srv and options.get("srvServiceName") is not None:
         raise ConfigurationError(
-            "The srvServiceName option is only allowed " "with 'mongodb+srv://' URIs"
+            "The srvServiceName option is only allowed with 'mongodb+srv://' URIs"
         )
     elif not is_srv and srv_max_hosts:
         raise ConfigurationError(
-            "The srvMaxHosts option is only allowed " "with 'mongodb+srv://' URIs"
+            "The srvMaxHosts option is only allowed with 'mongodb+srv://' URIs"
         )
     else:
         nodes = split_hosts(hosts, default_port=default_port)

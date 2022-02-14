@@ -21,7 +21,7 @@ from typing import Any, Mapping, Optional, Sequence
 
 try:
     from pymongocrypt.auto_encrypter import AutoEncrypter
-    from pymongocrypt.errors import MongoCryptError
+    from pymongocrypt.errors import MongoCryptError  # noqa: F401
     from pymongocrypt.explicit_encrypter import ExplicitEncrypter
     from pymongocrypt.mongocrypt import MongoCryptOptions
     from pymongocrypt.state_machine import MongoCryptCallback
@@ -440,9 +440,7 @@ class ClientEncryption(object):
             )
 
         if not isinstance(codec_options, CodecOptions):
-            raise TypeError(
-                "codec_options must be an instance of " "bson.codec_options.CodecOptions"
-            )
+            raise TypeError("codec_options must be an instance of bson.codec_options.CodecOptions")
 
         self._kms_providers = kms_providers
         self._key_vault_namespace = key_vault_namespace

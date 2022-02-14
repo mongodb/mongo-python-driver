@@ -98,13 +98,13 @@ def compare_events(expected_dict, actual):
             )
 
         if not compare_server_descriptions(expected["newDescription"], actual.new_description):
-            return (False, "New ServerDescription incorrect in" " ServerDescriptionChangedEvent")
+            return (False, "New ServerDescription incorrect in ServerDescriptionChangedEvent")
         if not compare_server_descriptions(
             expected["previousDescription"], actual.previous_description
         ):
             return (
                 False,
-                "Previous ServerDescription incorrect in" " ServerDescriptionChangedEvent",
+                "Previous ServerDescription incorrect in ServerDescriptionChangedEvent",
             )
 
     elif expected_type == "server_closed_event":
@@ -125,19 +125,19 @@ def compare_events(expected_dict, actual):
         if not isinstance(actual, monitoring.TopologyDescriptionChangedEvent):
             return (
                 False,
-                "Expected TopologyDescriptionChangedEvent," " got %s" % (actual.__class__),
+                "Expected TopologyDescriptionChangedEvent, got %s" % (actual.__class__),
             )
         if not compare_topology_descriptions(expected["newDescription"], actual.new_description):
             return (
                 False,
-                "New TopologyDescription incorrect in " "TopologyDescriptionChangedEvent",
+                "New TopologyDescription incorrect in TopologyDescriptionChangedEvent",
             )
         if not compare_topology_descriptions(
             expected["previousDescription"], actual.previous_description
         ):
             return (
                 False,
-                "Previous TopologyDescription incorrect in" " TopologyDescriptionChangedEvent",
+                "Previous TopologyDescription incorrect in TopologyDescriptionChangedEvent",
             )
 
     elif expected_type == "topology_closed_event":

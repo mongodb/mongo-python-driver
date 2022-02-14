@@ -1,0 +1,26 @@
+[flake8]
+max-line-length = 100
+enable-extensions = G
+extend-ignore =
+    G200, G202,
+    # black adds spaces around ':'
+    E203,
+    # E501 line too long (let black handle line length)
+    E501
+per-file-ignores =
+    # E402 module level import not at top of file
+    # B011 Do not call assert False since python -O removes these calls
+    # F405 'Foo' may be undefined, or defined from star imports
+    # E741 ambiguous variable name
+    # B007 Loop control variable 'foo' not used within the loop body
+    # F403 'from foo import *' used; unable to detect undefined names
+    # B001 Do not use bare `except:`
+    # E722 do not use bare 'except'
+    # E731 do not assign a lambda expression, use a def
+    # B305 `.next()` is not a thing on Python 3
+    # F811 redefinition of unused 'foo' from line XXX
+    # F841 local variable 'foo' is assigned to but never used
+    test/*: E402, B011, F405, E741, B007, F403, B001, E722, E731, B305, F811, F841
+
+    # G004 Logging statement uses f-string
+    pymongo/event_loggers.py: G004

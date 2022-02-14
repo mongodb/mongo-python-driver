@@ -16,6 +16,25 @@
 
 from typing import Tuple, Union
 
+from pymongo.collection import ReturnDocument  # noqa: F401
+from pymongo.common import (  # noqa: F401
+    MAX_SUPPORTED_WIRE_VERSION,
+    MIN_SUPPORTED_WIRE_VERSION,
+)
+from pymongo.cursor import CursorType  # noqa: F401
+from pymongo.mongo_client import MongoClient  # noqa: F401
+from pymongo.operations import (  # noqa: F401
+    DeleteMany,
+    DeleteOne,
+    IndexModel,
+    InsertOne,
+    ReplaceOne,
+    UpdateMany,
+    UpdateOne,
+)
+from pymongo.read_preferences import ReadPreference  # noqa: F401
+from pymongo.write_concern import WriteConcern  # noqa: F401
+
 ASCENDING = 1
 """Ascending sort order."""
 DESCENDING = -1
@@ -69,27 +88,11 @@ version = __version__
 
 """Current version of PyMongo."""
 
-from pymongo.collection import ReturnDocument
-from pymongo.common import MAX_SUPPORTED_WIRE_VERSION, MIN_SUPPORTED_WIRE_VERSION
-from pymongo.cursor import CursorType
-from pymongo.mongo_client import MongoClient
-from pymongo.operations import (
-    DeleteMany,
-    DeleteOne,
-    IndexModel,
-    InsertOne,
-    ReplaceOne,
-    UpdateMany,
-    UpdateOne,
-)
-from pymongo.read_preferences import ReadPreference
-from pymongo.write_concern import WriteConcern
-
 
 def has_c() -> bool:
     """Is the C extension installed?"""
     try:
-        from pymongo import _cmessage  # type: ignore[attr-defined]
+        from pymongo import _cmessage  # noqa
 
         return True
     except ImportError:

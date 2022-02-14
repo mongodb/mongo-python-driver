@@ -19,14 +19,12 @@ import base64
 import copy
 import mmap
 import pickle
-import platform
 import sys
 import uuid
 
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
-from test.utils import ignore_deprecations
 
 import bson
 from bson import decode, encode

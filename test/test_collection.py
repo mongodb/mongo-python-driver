@@ -246,8 +246,7 @@ class TestCollection(IntegrationTest):
         db = self.db
         with self.assertRaisesRegex(
             ConfigurationError,
-            "Must be connected to MongoDB 4\.4\+ to use the commitQuorum "
-            "option for createIndexes",
+            "Must be connected to MongoDB 4.4+ to use the commitQuorum option for createIndexes",
         ):
             db.coll.create_indexes([IndexModel("a")], commitQuorum="majority")
 
@@ -1511,7 +1510,7 @@ class TestCollection(IntegrationTest):
         # batchSize - 1
         self.assertEqual(4, len(cursor._CommandCursor__data))  # type: ignore
         # Exhaust the cursor. There shouldn't be any errors.
-        for doc in cursor:
+        for _doc in cursor:
             pass
 
     def test_aggregation_cursor_alive(self):
@@ -1521,7 +1520,7 @@ class TestCollection(IntegrationTest):
         cursor = self.db.test.aggregate(pipeline=[], cursor={"batchSize": 2})
         n = 0
         while True:
-            cursor.next()
+            next(cursor)
             n += 1
             if 3 == n:
                 self.assertFalse(cursor.alive)
@@ -1898,7 +1897,8 @@ class TestCollection(IntegrationTest):
         with self.assertRaises(TypeError):
             c.update_many({}, {"$set": {"a": 1}}, array_filters={})  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            c.find_one_and_update({}, {"$set": {"a": 1}}, array_filters={})  # type: ignore[arg-type]
+            update = {"$set": {"a": 1}}
+            c.find_one_and_update({}, update, array_filters={})  # type: ignore[arg-type]
 
     def test_array_filters_unacknowledged(self):
         c_w0 = self.db.test.with_options(write_concern=WriteConcern(w=0))

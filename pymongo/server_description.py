@@ -15,7 +15,7 @@
 """Represent one server the driver is connected to."""
 
 import time
-from typing import Any, Dict, Mapping, Optional, Set, Tuple, cast
+from typing import Any, Dict, Mapping, Optional, Set, Tuple
 
 from bson import EPOCH_NAIVE
 from bson.objectid import ObjectId

@@ -26,7 +26,6 @@ import struct
 import sys
 import threading
 import time
-import warnings
 from typing import Type, no_type_check
 
 sys.path[0:0] = [""]
@@ -88,7 +87,6 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
     WriteConcernError,
 )
-from pymongo.hello import HelloCompat
 from pymongo.mongo_client import MongoClient
 from pymongo.monitoring import ServerHeartbeatListener, ServerHeartbeatStartedEvent
 from pymongo.pool import _METADATA, PoolOptions, SocketInfo
@@ -99,10 +97,7 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.settings import TOPOLOGY_TYPE
 from pymongo.srv_resolver import _HAVE_DNSPYTHON
 from pymongo.topology import _ErrorContext
-from pymongo.topology_description import (
-    TopologyDescription,
-    _updated_topology_description_srv_polling,
-)
+from pymongo.topology_description import TopologyDescription
 from pymongo.write_concern import WriteConcern
 
 
@@ -279,7 +274,7 @@ class ClientUnitTest(unittest.TestCase):
             MongoClient("mongodb://host/?readpreferencetags=dc:east")
 
         with self.assertRaises(ConfigurationError):
-            MongoClient("mongodb://host/?" "readpreference=primary&readpreferencetags=dc:east")
+            MongoClient("mongodb://host/?readpreference=primary&readpreferencetags=dc:east")
 
     def test_read_preference(self):
         c = rs_or_single_client(
@@ -394,7 +389,7 @@ class ClientUnitTest(unittest.TestCase):
 
     def test_uri_option_precedence(self):
         # Ensure kwarg options override connection string options.
-        uri = "mongodb://localhost/?ssl=true&replicaSet=name" "&readPreference=primary"
+        uri = "mongodb://localhost/?ssl=true&replicaSet=name&readPreference=primary"
         c = MongoClient(uri, ssl=False, replicaSet="newname", readPreference="secondaryPreferred")
         clopts = c._MongoClient__options
         opts = clopts._options
@@ -590,7 +585,7 @@ class TestClient(IntegrationTest):
             with server._pool.get_socket() as sock_info:
                 pass
             self.assertEqual(1, len(server._pool.sockets))
-            time.sleep(1)  #  Sleep so that the socket becomes stale.
+            time.sleep(1)  # Sleep so that the socket becomes stale.
 
             with server._pool.get_socket() as new_sock_info:
                 self.assertNotEqual(sock_info, new_sock_info)
@@ -712,7 +707,7 @@ class TestClient(IntegrationTest):
 
     def test_repr(self):
         # Used to test 'eval' below.
-        import bson
+        import bson  # noqa: F401
 
         client = MongoClient(
             "mongodb://localhost:27017,localhost:27018/?replicaSet=replset"
@@ -723,9 +718,7 @@ class TestClient(IntegrationTest):
 
         the_repr = repr(client)
         self.assertIn("MongoClient(host=", the_repr)
-        self.assertIn(
-            "document_class=bson.son.SON, " "tz_aware=False, " "connect=False, ", the_repr
-        )
+        self.assertIn("document_class=bson.son.SON, tz_aware=False, connect=False, ", the_repr)
         self.assertIn("connecttimeoutms=12345", the_repr)
         self.assertIn("replicaset='replset'", the_repr)
         self.assertIn("w=1", the_repr)
@@ -744,7 +737,7 @@ class TestClient(IntegrationTest):
         )
         the_repr = repr(client)
         self.assertIn("MongoClient(host=", the_repr)
-        self.assertIn("document_class=dict, " "tz_aware=False, " "connect=False, ", the_repr)
+        self.assertIn("document_class=dict, tz_aware=False, connect=False, ", the_repr)
         self.assertIn("connecttimeoutms=12345", the_repr)
         self.assertIn("replicaset='replset'", the_repr)
         self.assertIn("sockettimeoutms=None", the_repr)
@@ -1651,7 +1644,7 @@ class TestClient(IntegrationTest):
         )
         self.assertEqual(client._topology_settings.srv_service_name, "customname")
         client = MongoClient(
-            "mongodb+srv://user:password@test22.test.build.10gen.cc" "/?srvServiceName=customname",
+            "mongodb+srv://user:password@test22.test.build.10gen.cc/?srvServiceName=customname",
             connect=False,
         )
         self.assertEqual(client._topology_settings.srv_service_name, "customname")
@@ -1864,7 +1857,7 @@ class TestMongoClientFailover(MockClientTest):
         # Fail over.
         c.kill_host("a:1")
         c.mock_primary = "b:2"
-        wait_until(lambda: c.address == ("b", 2), "wait for server " "address to be " "updated")
+        wait_until(lambda: c.address == ("b", 2), "wait for server address to be updated")
         # a:1 not longer in nodes.
         self.assertLess(len(c.nodes), 3)
 

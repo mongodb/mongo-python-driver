@@ -49,8 +49,7 @@ def _validate_tag_sets(tag_sets):
         raise TypeError(("Tag sets %r invalid, must be a sequence") % (tag_sets,))
     if len(tag_sets) == 0:
         raise ValueError(
-            ("Tag sets %r invalid, must be None or contain at least one set of" " tags")
-            % (tag_sets,)
+            ("Tag sets %r invalid, must be None or contain at least one set of tags") % (tag_sets,)
         )
 
     for tags in tag_sets:
@@ -500,10 +499,10 @@ def make_read_preference(
 ) -> _ServerMode:
     if mode == _PRIMARY:
         if tag_sets not in (None, [{}]):
-            raise ConfigurationError("Read preference primary " "cannot be combined with tags")
+            raise ConfigurationError("Read preference primary cannot be combined with tags")
         if max_staleness != -1:
             raise ConfigurationError(
-                "Read preference primary cannot be " "combined with maxStalenessSeconds"
+                "Read preference primary cannot be combined with maxStalenessSeconds"
             )
         return Primary()
     return _ALL_READ_PREFERENCES[mode](tag_sets, max_staleness)  # type: ignore

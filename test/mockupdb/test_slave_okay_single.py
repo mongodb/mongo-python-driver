@@ -48,13 +48,11 @@ def create_slave_ok_single_test(mode, server_type, ismaster, operation):
         ismaster_with_version["minWireVersion"] = 2
         ismaster_with_version["maxWireVersion"] = 6
         self.server.autoresponds("ismaster", **ismaster_with_version)
-        if operation.op_type == "always-use-secondary":
-            slave_ok = True
-        elif operation.op_type == "may-use-secondary":
-            slave_ok = mode != "primary" or server_type != "mongos"
-        elif operation.op_type == "must-use-primary":
-            slave_ok = server_type != "mongos"
-        else:
+        if operation.op_type not in (
+            "always-use-secondary",
+            "may-use-secondary",
+            "must-use-primary",
+        ):
             assert False, "unrecognized op_type %r" % operation.op_type
 
         pref = make_read_preference(read_pref_mode_from_name(mode), tag_sets=None)

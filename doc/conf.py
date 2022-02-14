@@ -9,7 +9,7 @@ import sys
 
 sys.path[0:0] = [os.path.abspath("..")]
 
-import pymongo
+import pymongo  # noqa
 
 # -- General configuration -----------------------------------------------------
 

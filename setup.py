@@ -10,11 +10,10 @@ if sys.version_info[:2] < (3, 6):
 
 # Hack to silence atexit traceback in some Python versions
 try:
-    import multiprocessing
+    import multiprocessing  # noqa: F401
 except ImportError:
     pass
 
-from setuptools import __version__ as _setuptools_version
 from setuptools import setup
 
 if sys.version_info[:2] < (3, 10):
@@ -41,7 +40,7 @@ f = open("README.rst")
 try:
     try:
         readme_content = f.read()
-    except:
+    except BaseException:
         readme_content = ""
 finally:
     f.close()
@@ -152,7 +151,7 @@ class doc(Command):
 
             try:
                 os.makedirs(path)
-            except:
+            except BaseException:
                 pass
 
         sphinx_args = ["-E", "-b", mode, "doc", path]
@@ -169,7 +168,7 @@ class doc(Command):
             raise RuntimeError("documentation step '%s' failed" % (mode,))
 
         sys.stdout.write(
-            "\nDocumentation step '%s' performed, results here:\n" "   %s/\n" % (mode, path)
+            "\nDocumentation step '%s' performed, results here:\n   %s/\n" % (mode, path)
         )
 
 
@@ -232,7 +231,7 @@ https://pymongo.readthedocs.io/en/stable/installation.html#osx
                 self.warning_message
                 % (
                     "Extension modules",
-                    "There was an issue with " "your platform configuration" " - see above.",
+                    "There was an issue with your platform configuration - see above.",
                 )
             )
 
@@ -246,8 +245,8 @@ https://pymongo.readthedocs.io/en/stable/installation.html#osx
             warnings.warn(
                 self.warning_message
                 % (
-                    "The %s extension " "module" % (name,),
-                    "The output above " "this warning shows how " "the compilation " "failed.",
+                    "The %s extension module" % (name,),
+                    "The output above this warning shows how the compilation failed.",
                 )
             )
 

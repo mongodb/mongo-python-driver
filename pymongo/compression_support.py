@@ -82,7 +82,7 @@ def validate_compressors(dummy, value):
 def validate_zlib_compression_level(option, value):
     try:
         level = int(value)
-    except:
+    except BaseException:
         raise TypeError("%s must be an integer, not %r." % (option, value))
     if level < -1 or level > 9:
         raise ValueError("%s must be between -1 and 9, not %d." % (option, level))

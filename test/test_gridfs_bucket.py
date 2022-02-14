@@ -399,7 +399,7 @@ class TestGridfs(IntegrationTest):
     def test_download_to_stream_by_name(self):
         file1 = BytesIO(b"hello world")
         # Test with one chunk.
-        oid = self.fs.upload_from_stream("one_chunk", file1)
+        _ = self.fs.upload_from_stream("one_chunk", file1)
         self.assertEqual(1, self.db.fs.chunks.count_documents({}))
         file2 = BytesIO()
         self.fs.download_to_stream_by_name("one_chunk", file2)

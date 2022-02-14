@@ -633,7 +633,7 @@ class CommandStartedEvent(_CommandEvent):
         super(CommandStartedEvent, self).__init__(
             command_name, request_id, connection_id, operation_id, service_id=service_id
         )
-        cmd_name, cmd_doc = command_name.lower(), command[command_name]
+        cmd_name, _ = command_name.lower(), command[command_name]
         if cmd_name in _SENSITIVE_COMMANDS or _is_speculative_authenticate(cmd_name, command):
             self.__cmd: Mapping[str, Any] = {}
         else:
@@ -651,7 +651,7 @@ class CommandStartedEvent(_CommandEvent):
         return self.__db
 
     def __repr__(self):
-        return ("<%s %s db: %r, command: %r, operation_id: %s, " "service_id: %s>") % (
+        return ("<%s %s db: %r, command: %r, operation_id: %s, service_id: %s>") % (
             self.__class__.__name__,
             self.connection_id,
             self.database_name,
@@ -708,7 +708,7 @@ class CommandSucceededEvent(_CommandEvent):
         return self.__reply
 
     def __repr__(self):
-        return ("<%s %s command: %r, operation_id: %s, duration_micros: %s, " "service_id: %s>") % (
+        return ("<%s %s command: %r, operation_id: %s, duration_micros: %s, service_id: %s>") % (
             self.__class__.__name__,
             self.connection_id,
             self.command_name,

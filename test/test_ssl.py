@@ -40,12 +40,12 @@ from pymongo.write_concern import WriteConcern
 _HAVE_PYOPENSSL = False
 try:
     # All of these must be available to use PyOpenSSL
-    import OpenSSL
-    import requests
-    import service_identity
+    import OpenSSL  # noqa
+    import requests  # noqa
+    import service_identity  # noqa
 
     # Ensure service_identity>=18.1 is installed
-    from service_identity.pyopenssl import verify_ip_address
+    from service_identity.pyopenssl import verify_ip_address  # noqa
 
     from pymongo.ocsp_support import _load_trusted_ca_certs
 
@@ -79,9 +79,7 @@ _PY37PLUS = sys.version_info[:2] >= (3, 7)
 
 
 class TestClientSSL(unittest.TestCase):
-    @unittest.skipIf(
-        HAVE_SSL, "The ssl module is available, can't test what " "happens without it."
-    )
+    @unittest.skipIf(HAVE_SSL, "The ssl module is available, can't test what happens without it.")
     def test_no_ssl_module(self):
         # Explicit
         self.assertRaises(ConfigurationError, MongoClient, ssl=True)
@@ -406,7 +404,7 @@ class TestSSL(IntegrationTest):
                     )
                 )
 
-            uri_fmt = "mongodb://localhost/?ssl=true&" "tlsCAFile=%s&serverSelectionTimeoutMS=100"
+            uri_fmt = "mongodb://localhost/?ssl=true&tlsCAFile=%s&serverSelectionTimeoutMS=100"
             connected(MongoClient(uri_fmt % (CA_PEM,), **self.credentials))  # type: ignore
 
             uri_fmt = (
@@ -569,7 +567,7 @@ class TestSSL(IntegrationTest):
         else:
             self.assertEqual(names, ["authenticate", "find"])
 
-        uri = "mongodb://%s@%s:%d/?authMechanism=" "MONGODB-X509" % (
+        uri = "mongodb://%s@%s:%d/?authMechanism=MONGODB-X509" % (
             quote_plus(MONGODB_X509_USERNAME),
             host,
             port,
@@ -589,7 +587,7 @@ class TestSSL(IntegrationTest):
         # No error
         client.pymongo_test.test.find_one()
         # Auth should fail if username and certificate do not match
-        uri = "mongodb://%s@%s:%d/?authMechanism=" "MONGODB-X509" % (
+        uri = "mongodb://%s@%s:%d/?authMechanism=MONGODB-X509" % (
             quote_plus("not the username"),
             host,
             port,
@@ -617,7 +615,7 @@ class TestSSL(IntegrationTest):
             bad_client.pymongo_test.test.find_one()
 
         # Invalid certificate (using CA certificate as client certificate)
-        uri = "mongodb://%s@%s:%d/?authMechanism=" "MONGODB-X509" % (
+        uri = "mongodb://%s@%s:%d/?authMechanism=MONGODB-X509" % (
             quote_plus(MONGODB_X509_USERNAME),
             host,
             port,

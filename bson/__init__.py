@@ -85,7 +85,7 @@ from typing import (
     cast,
 )
 
-from bson.binary import (
+from bson.binary import (  # noqa: F401
     ALL_UUID_SUBTYPES,
     CSHARP_LEGACY,
     JAVA_LEGACY,
@@ -514,7 +514,7 @@ def _bson_to_dict(data: Any, opts: Any) -> Any:
 
 
 if _USE_C:
-    _bson_to_dict = _cbson._bson_to_dict
+    _bson_to_dict = _cbson._bson_to_dict  # noqa: F811
 
 
 _PACK_FLOAT = struct.Struct("<d").pack
@@ -544,15 +544,15 @@ def _make_c_string_check(string: Union[str, bytes]) -> bytes:
     """Make a 'C' string, checking for embedded NUL characters."""
     if isinstance(string, bytes):
         if b"\x00" in string:
-            raise InvalidDocument("BSON keys / regex patterns must not " "contain a NUL character")
+            raise InvalidDocument("BSON keys / regex patterns must not contain a NUL character")
         try:
             _utf_8_decode(string, None, True)
             return string + b"\x00"
         except UnicodeError:
-            raise InvalidStringData("strings in documents must be valid " "UTF-8: %r" % string)
+            raise InvalidStringData("strings in documents must be valid UTF-8: %r" % string)
     else:
         if "\x00" in string:
-            raise InvalidDocument("BSON keys / regex patterns must not " "contain a NUL character")
+            raise InvalidDocument("BSON keys / regex patterns must not contain a NUL character")
         return cast(bytes, _utf_8_encode(string)[0]) + b"\x00"
 
 
@@ -563,7 +563,7 @@ def _make_c_string(string: Union[str, bytes]) -> bytes:
             _utf_8_decode(string, None, True)
             return string + b"\x00"
         except UnicodeError:
-            raise InvalidStringData("strings in documents must be valid " "UTF-8: %r" % string)
+            raise InvalidStringData("strings in documents must be valid UTF-8: %r" % string)
     else:
         return cast(bytes, _utf_8_encode(string)[0]) + b"\x00"
 
@@ -572,7 +572,7 @@ def _make_name(string: str) -> bytes:
     """Make a 'C' string suitable for a BSON key."""
     # Keys can only be text in python 3.
     if "\x00" in string:
-        raise InvalidDocument("BSON keys / regex patterns must not " "contain a NUL character")
+        raise InvalidDocument("BSON keys / regex patterns must not contain a NUL character")
     return cast(bytes, _utf_8_encode(string)[0]) + b"\x00"
 
 
@@ -847,7 +847,7 @@ def _name_value_to_bson(
 def _element_to_bson(key: Any, value: Any, check_keys: bool, opts: Any) -> bytes:
     """Encode a single key, value pair."""
     if not isinstance(key, str):
-        raise InvalidDocument("documents must have only string keys, " "key was %r" % (key,))
+        raise InvalidDocument("documents must have only string keys, key was %r" % (key,))
     if check_keys:
         if key.startswith("$"):
             raise InvalidDocument("key %r must not start with '$'" % (key,))
@@ -877,7 +877,7 @@ def _dict_to_bson(doc: Any, check_keys: bool, opts: Any, top_level: bool = True)
 
 
 if _USE_C:
-    _dict_to_bson = _cbson._dict_to_bson
+    _dict_to_bson = _cbson._dict_to_bson  # noqa: F811
 
 
 def _millis_to_datetime(millis: int, opts: Any) -> datetime.datetime:
@@ -1033,7 +1033,7 @@ def decode_all(
 
 
 if _USE_C:
-    decode_all = _cbson.decode_all
+    decode_all = _cbson.decode_all  # noqa: F811
 
 
 def _decode_selective(rawdoc: Any, fields: Any, codec_options: Any) -> Mapping[Any, Any]:
