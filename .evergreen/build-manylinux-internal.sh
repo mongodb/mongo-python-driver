@@ -11,7 +11,7 @@ mv dist/* validdist || true
 
 # Compile wheels
 for PYTHON in /opt/python/*/bin/python; do
-    if [[ ! $PYTHON =~ (cp27|cp34|cp35|cp36|cp37|cp38|cp39|cp310) ]]; then
+    if [[ ! $PYTHON =~ (cp27|cp35|cp36|cp37|cp38|cp39|cp310) ]]; then
         continue
     fi
     # https://github.com/pypa/manylinux/issues/49

@@ -89,9 +89,9 @@ is incompatible with PyMongo.
 Dependencies
 ============
 
-PyMongo supports CPython 2.7, 3.4+, PyPy, and PyPy3.5+.
+PyMongo supports CPython 2.7, 3.5+, PyPy, and PyPy3.5+.
 
-**WARNING** Support for Python 2.7, 3.4 and 3.5 is deprecated. Those Python
+**WARNING** Support for Python 2.7 and 3.5 is deprecated. Those Python
 versions will not be supported by PyMongo 4.
 
 Optional dependencies:

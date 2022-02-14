@@ -9,10 +9,7 @@ docker version
 # pip versions.
 BUILD_WITH_TAG="$1"
 if [ -n "$BUILD_WITH_TAG" ]; then
-  # 2020-03-20-2fda31c Was the last release to include Python 3.4.
-  images=(quay.io/pypa/manylinux1_x86_64:2020-03-20-2fda31c \
-          quay.io/pypa/manylinux1_i686:2020-03-20-2fda31c \
-          quay.io/pypa/manylinux1_x86_64:2021-05-05-b64d921 \
+  images=(quay.io/pypa/manylinux1_x86_64:2021-05-05-b64d921 \
           quay.io/pypa/manylinux1_i686:2021-05-05-b64d921 \
           quay.io/pypa/manylinux2014_x86_64:2021-05-05-1ac6ef3 \
           quay.io/pypa/manylinux2014_i686:2021-05-05-1ac6ef3 \
@@ -39,7 +36,6 @@ ls dist
 # Check for any unexpected files.
 unexpected=$(find dist \! \( -iname dist -or \
                              -iname '*cp27*' -or \
-                             -iname '*cp34*' -or \
                              -iname '*cp35*' -or \
                              -iname '*cp36*' -or \
                              -iname '*cp37*' -or \
