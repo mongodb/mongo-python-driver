@@ -887,7 +887,7 @@ class GridOutCursor(Cursor):
         """Get next GridOut object from cursor."""
         _disallow_transactions(self.session)
         # Work around "super is not iterable" issue in Python 3.x
-        next_file = next(super(GridOutCursor, self))
+        next_file = super(GridOutCursor, self).next()  # noqa: B305
         return GridOut(self.__root_collection, file_document=next_file, session=self.session)
 
     __next__ = next

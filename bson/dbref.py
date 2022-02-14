@@ -35,7 +35,7 @@ class DBRef(object):
         collection: str,
         id: Any,
         database: Optional[str] = None,
-        _extra: Mapping[str, Any] = None,
+        _extra: Optional[Mapping[str, Any]] = None,
         **kwargs: Any
     ) -> None:
         """Initialize a new :class:`DBRef`.
