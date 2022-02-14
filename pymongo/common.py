@@ -130,6 +130,17 @@ _MAX_END_SESSIONS = 10000
 # Default value for srvServiceName
 SRV_SERVICE_NAME = "mongodb"
 
+class Empty(object):
+    def __setattr__(self, key, value):
+        self.__dict__[key] = value
+
+    def __getattr__(self, item):
+        try:
+            self.__dict__[item]
+        except KeyError:
+            return self
+    def __call__(self, *args, **kwargs):
+        return self
 
 def partition_node(node: str) -> Tuple[str, int]:
     """Split a host:port string into (host, int(port)) pair."""

@@ -48,7 +48,6 @@ from pymongo.write_concern import WriteConcern
 
 IMPOSSIBLE_WRITE_CONCERN = WriteConcern(w=50)
 
-
 class BaseListener(object):
     def __init__(self):
         self.events = []

@@ -165,7 +165,7 @@ from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_type import SERVER_TYPE
 from pymongo.typings import _DocumentType
 from pymongo.write_concern import WriteConcern
-
+from pymongo.common import Empty
 
 class SessionOptions(object):
     """Options for a new :class:`ClientSession`.
@@ -459,7 +459,6 @@ _T = TypeVar("_T")
 if TYPE_CHECKING:
     from pymongo.mongo_client import MongoClient
 
-
 class ClientSession(Generic[_DocumentType]):
     """A session for ordering sequential operations.
 
@@ -482,7 +481,7 @@ class ClientSession(Generic[_DocumentType]):
     ) -> None:
         # A MongoClient, a _ServerSession, a SessionOptions, and a set.
         self._client: MongoClient[_DocumentType] = client
-        self._server_session = None
+        self._server_session = server_session
         self._options = options
         self._cluster_time = None
         self._operation_time = None
@@ -511,10 +510,9 @@ class ClientSession(Generic[_DocumentType]):
                 self._server_session = None
 
     def _check_ended(self):
-        if self._implicit == True and self._server_session.uninitialized:
-            self._server_session = self._client._get_server_session()
         if self._server_session is None:
             raise InvalidOperation("Cannot use ended session")
+
 
             
     def __enter__(self) -> "ClientSession[_DocumentType]":
@@ -952,7 +950,8 @@ class ClientSession(Generic[_DocumentType]):
 
     def _apply_to(self, command, is_retryable, read_preference, sock_info):
         self._check_ended()
-
+        if isinstance(self._server_session, Empty):
+            self._server_session = self._client._get_server_session()
         if self.options.snapshot:
             self._update_read_concern(command, sock_info)
 
@@ -1004,13 +1003,13 @@ class ClientSession(Generic[_DocumentType]):
 
 
 class _ServerSession(object):
-    def __init__(self, generation):
+    def __init__(self, generation, uninitialized=False):
         # Ensure id is type 4, regardless of CodecOptions.uuid_representation.
-        self.session_id = {"id": Binary(uuid.uuid4().bytes, 4)}
         self.last_use = time.monotonic()
         self._transaction_id = 0
         self.dirty = False
         self.generation = generation
+        self.session_id = {"id": Binary(uuid.uuid4().bytes, 4)}
 
     def mark_dirty(self):
         """Mark this session as dirty.
@@ -1062,7 +1061,6 @@ class _ServerSessionPool(collections.deque):
         # clear stale sessions there. In case many sessions were returned via
         # __del__, check for stale sessions here too.
         self._clear_stale(session_timeout_minutes)
-
         # The most recently used sessions are on the left.
         while self:
             s = self.popleft()
@@ -1081,7 +1079,8 @@ class _ServerSessionPool(collections.deque):
     def return_server_session_no_lock(self, server_session):
         # Discard sessions from an old pool to avoid duplicate sessions in the
         # child process after a fork.
-        if server_session.generation == self.generation and not server_session.dirty:
+        if server_session.generation == self.generation \
+                and not server_session.dirty:
             self.appendleft(server_session)
 
     def _clear_stale(self, session_timeout_minutes):

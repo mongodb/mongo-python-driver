@@ -68,6 +68,7 @@ from pymongo import (
 from pymongo.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.client_options import ClientOptions
 from pymongo.command_cursor import CommandCursor
+from pymongo.common import Empty
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
@@ -97,8 +98,7 @@ from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
 if TYPE_CHECKING:
     from pymongo.read_concern import ReadConcern
-
-
+    
 class MongoClient(common.BaseObject, Generic[_DocumentType]):
     """
     A client-side representation of a MongoDB cluster.
@@ -1602,9 +1602,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def __start_session(self, implicit, **kwargs):
         # Raises ConfigurationError if sessions are not supported.
-        # server_session = self._get_server_session()
         opts = client_session.SessionOptions(**kwargs)
-        return client_session.ClientSession(self, None, opts, implicit)
+        return client_session.ClientSession(self, Empty(), opts, implicit)
 
     def start_session(
         self,

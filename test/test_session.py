@@ -224,10 +224,11 @@ class TestSession(IntegrationTest):
             threads[-1].start()
         for thread in threads:
             thread.join()
+        
         lsid_set = set()
         for i in listener.results["started"]:
-            print(i.command["lsid"]["id"])
-            lsid_set.add(i.command["lsid"]["id"])
+            if i.command.get("lsid"):
+                lsid_set.add(i.command.get("lsid")["id"])
         self.assertEqual(len(lsid_set), 1)
 
     def test_end_session(self):
