@@ -249,7 +249,6 @@ else:
 "foo".encode("idna")
 
 
-
 def _raise_connection_failure(address, error, msg_prefix=None):
     """Convert a socket.error to ConnectionFailure and raise it."""
     host, port = address
