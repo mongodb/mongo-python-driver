@@ -318,7 +318,7 @@ class TestSrvPolling(unittest.TestCase):
 
         with SrvPollingKnobs(ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME):
             client = MongoClient(
-                "mongodb+srv://test22.test.build.10gen.cc/?srvServiceName =customname"
+                "mongodb+srv://test22.test.build.10gen.cc/?srvServiceName=customname"
             )
             with SrvPollingKnobs(nodelist_callback=nodelist_callback):
                 self.assert_nodelist_change(response, client)
