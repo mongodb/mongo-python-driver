@@ -246,7 +246,7 @@ class TestCollection(IntegrationTest):
         db = self.db
         with self.assertRaisesRegex(
             ConfigurationError,
-            "Must be connected to MongoDB 4.4+ to use the commitQuorum option for createIndexes",
+            r"Must be connected to MongoDB 4\.4\+ to use the commitQuorum option for createIndexes",
         ):
             db.coll.create_indexes([IndexModel("a")], commitQuorum="majority")
 
