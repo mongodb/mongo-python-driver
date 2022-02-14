@@ -150,6 +150,7 @@ from bson.binary import Binary
 from bson.int64 import Int64
 from bson.son import SON
 from bson.timestamp import Timestamp
+from pymongo.common import Empty
 from pymongo.cursor import _SocketManager
 from pymongo.errors import (
     ConfigurationError,
@@ -165,7 +166,7 @@ from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_type import SERVER_TYPE
 from pymongo.typings import _DocumentType
 from pymongo.write_concern import WriteConcern
-from pymongo.common import Empty
+
 
 class SessionOptions(object):
     """Options for a new :class:`ClientSession`.
@@ -459,6 +460,7 @@ _T = TypeVar("_T")
 if TYPE_CHECKING:
     from pymongo.mongo_client import MongoClient
 
+
 class ClientSession(Generic[_DocumentType]):
     """A session for ordering sequential operations.
 
@@ -513,8 +515,6 @@ class ClientSession(Generic[_DocumentType]):
         if self._server_session is None:
             raise InvalidOperation("Cannot use ended session")
 
-
-            
     def __enter__(self) -> "ClientSession[_DocumentType]":
         return self
 
@@ -1003,7 +1003,7 @@ class ClientSession(Generic[_DocumentType]):
 
 
 class _ServerSession(object):
-    def __init__(self, generation, uninitialized=False):
+    def __init__(self, generation):
         # Ensure id is type 4, regardless of CodecOptions.uuid_representation.
         self.last_use = time.monotonic()
         self._transaction_id = 0
@@ -1054,7 +1054,7 @@ class _ServerSessionPool(collections.deque):
             ids.append(self.pop().session_id)
         return ids
 
-    def get_server_session(self, session_timeout_minutes):
+    def get_server_session(self, session_timeout_minutes, **kwargs):
         # Although the Driver Sessions Spec says we only clear stale sessions
         # in return_server_session, PyMongo can't take a lock when returning
         # sessions from a __del__ method (like in Cursor.__die), so it can't
@@ -1070,6 +1070,8 @@ class _ServerSessionPool(collections.deque):
         return _ServerSession(self.generation)
 
     def return_server_session(self, server_session, session_timeout_minutes):
+        if isinstance(server_session, Empty):
+            return
         if session_timeout_minutes is not None:
             self._clear_stale(session_timeout_minutes)
             if server_session.timed_out(session_timeout_minutes):
@@ -1079,8 +1081,10 @@ class _ServerSessionPool(collections.deque):
     def return_server_session_no_lock(self, server_session):
         # Discard sessions from an old pool to avoid duplicate sessions in the
         # child process after a fork.
-        if server_session.generation == self.generation \
-                and not server_session.dirty:
+        if isinstance(server_session, Empty):
+            self.append(server_session)
+            return
+        if server_session.generation == self.generation and not server_session.dirty:
             self.appendleft(server_session)
 
     def _clear_stale(self, session_timeout_minutes):

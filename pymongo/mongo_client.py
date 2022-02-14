@@ -98,7 +98,8 @@ from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
 if TYPE_CHECKING:
     from pymongo.read_concern import ReadConcern
-    
+
+
 class MongoClient(common.BaseObject, Generic[_DocumentType]):
     """
     A client-side representation of a MongoDB cluster.
@@ -1635,9 +1636,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             snapshot=snapshot,
         )
 
-    def _get_server_session(self):
+    def _get_server_session(self, **kwargs):
         """Internal: start or resume a _ServerSession."""
-        return self._topology.get_server_session()
+        return self._topology.get_server_session(**kwargs)
 
     def _return_server_session(self, server_session, lock):
         """Internal: return a _ServerSession to the pool."""

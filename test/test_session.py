@@ -208,9 +208,7 @@ class TestSession(IntegrationTest):
         # "To confirm that implicit sessions only allocate their server session after a
         # successful connection checkout" test from Driver Sessions Spec.
         listener = EventListener()
-        client = rs_or_single_client(
-            event_listeners=[listener], maxPoolSize=1, retryWrites=True
-        )
+        client = rs_or_single_client(event_listeners=[listener], maxPoolSize=1, retryWrites=True)
 
         ops = [
             (client.db.test.find_one, [{"_id": 1}]),
@@ -224,7 +222,7 @@ class TestSession(IntegrationTest):
             threads[-1].start()
         for thread in threads:
             thread.join()
-        
+
         lsid_set = set()
         for i in listener.results["started"]:
             if i.command.get("lsid"):
