@@ -1602,9 +1602,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def __start_session(self, implicit, **kwargs):
         # Raises ConfigurationError if sessions are not supported.
-        server_session = self._get_server_session()
+        # server_session = self._get_server_session()
         opts = client_session.SessionOptions(**kwargs)
-        return client_session.ClientSession(self, server_session, opts, implicit)
+        return client_session.ClientSession(self, None, opts, implicit)
 
     def start_session(
         self,

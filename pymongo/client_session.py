@@ -482,7 +482,7 @@ class ClientSession(Generic[_DocumentType]):
     ) -> None:
         # A MongoClient, a _ServerSession, a SessionOptions, and a set.
         self._client: MongoClient[_DocumentType] = client
-        self._server_session = server_session
+        self._server_session = None
         self._options = options
         self._cluster_time = None
         self._operation_time = None
@@ -511,9 +511,12 @@ class ClientSession(Generic[_DocumentType]):
                 self._server_session = None
 
     def _check_ended(self):
+        if self._implicit == True and self._server_session.uninitialized:
+            self._server_session = self._client._get_server_session()
         if self._server_session is None:
             raise InvalidOperation("Cannot use ended session")
 
+            
     def __enter__(self) -> "ClientSession[_DocumentType]":
         return self
 
