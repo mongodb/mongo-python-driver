@@ -33,14 +33,14 @@ except BaseException:
     pass
 
 try:
-    from pymongo import _cmessage  # noqa
+    from pymongo import _cmessage  # type: ignore[attr-defined]  # noqa: F401
 
     sys.exit("could still import _cmessage")
 except ImportError:
     pass
 
 try:
-    from bson import _cbson  # noqa
+    from bson import _cbson  # noqa: F401
 
     sys.exit("could still import _cbson")
 except ImportError:

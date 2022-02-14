@@ -826,14 +826,12 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.match_evaluator.match_result(expect_result, result)
             else:
                 self.fail(
-                    "expectResult can only be specified with %s " "exceptions" % (BulkWriteError,)
+                    "expectResult can only be specified with %s exceptions" % (BulkWriteError,)
                 )
 
     def __raise_if_unsupported(self, opname, target, *target_types):
         if not isinstance(target, target_types):
-            self.fail(
-                "Operation %s not supported for entity " "of type %s" % (opname, type(target))
-            )
+            self.fail("Operation %s not supported for entity of type %s" % (opname, type(target)))
 
     def __entityOperation_createChangeStream(self, target, *args, **kwargs):
         if client_context.storage_engine == "mmapv1":
@@ -891,7 +889,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def _collectionOperation_listIndexes(self, target, *args, **kwargs):
         if "batch_size" in kwargs:
-            self.skipTest("PyMongo does not support batch_size for " "list_indexes")
+            self.skipTest("PyMongo does not support batch_size for list_indexes")
         return target.list_indexes(*args, **kwargs)
 
     def _sessionOperation_withTransaction(self, target, *args, **kwargs):
@@ -1255,7 +1253,7 @@ def generate_test_classes(
     test_path,
     module=__name__,
     class_name_prefix="",
-    expected_failures=[],
+    expected_failures=[],  # noqa: B006
     bypass_test_generation_errors=False,
     **kwargs
 ):

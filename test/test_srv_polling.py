@@ -96,7 +96,7 @@ class TestSrvPolling(unittest.TestCase):
 
     def setUp(self):
         if not _HAVE_DNSPYTHON:
-            raise unittest.SkipTest("SRV polling tests require the dnspython " "module")
+            raise unittest.SkipTest("SRV polling tests require the dnspython module")
         # Patch timeouts to ensure short rescan SRV interval.
         self.client_knobs = client_knobs(
             heartbeat_frequency=WAIT_TIME,
@@ -318,7 +318,7 @@ class TestSrvPolling(unittest.TestCase):
 
         with SrvPollingKnobs(ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME):
             client = MongoClient(
-                "mongodb+srv://test22.test.build.10gen.cc/?srvServiceName" "=customname"
+                "mongodb+srv://test22.test.build.10gen.cc/?srvServiceName =customname"
             )
             with SrvPollingKnobs(nodelist_callback=nodelist_callback):
                 self.assert_nodelist_change(response, client)

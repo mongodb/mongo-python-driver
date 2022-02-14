@@ -331,7 +331,7 @@ class TestJsonUtil(unittest.TestCase):
             json_util.dumps(doc, json_options=LEGACY_JSON_OPTIONS),
         )
         self.assertEqual(
-            '{"uuid": ' '{"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "03"}}',
+            '{"uuid": {"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "03"}}',
             json_util.dumps(
                 doc,
                 json_options=STRICT_JSON_OPTIONS.with_options(
@@ -340,7 +340,7 @@ class TestJsonUtil(unittest.TestCase):
             ),
         )
         self.assertEqual(
-            '{"uuid": ' '{"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "04"}}',
+            '{"uuid": {"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "04"}}',
             json_util.dumps(
                 doc,
                 json_options=JSONOptions(
@@ -351,7 +351,7 @@ class TestJsonUtil(unittest.TestCase):
         self.assertEqual(
             doc,
             json_util.loads(
-                '{"uuid": ' '{"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "03"}}',
+                '{"uuid": {"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "03"}}',
                 json_options=uuid_legacy_opts,
             ),
         )
@@ -364,7 +364,7 @@ class TestJsonUtil(unittest.TestCase):
             self.assertEqual(
                 doc,
                 json_util.loads(
-                    '{"uuid": ' '{"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "04"}}',
+                    '{"uuid": {"$binary": "9HrBC1jMQ3KlZw4CssPUeQ==", "$type": "04"}}',
                     json_options=options,
                 ),
             )
@@ -420,32 +420,32 @@ class TestJsonUtil(unittest.TestCase):
         json_bin_dump = json_util.dumps(md5_type_dict, json_options=LEGACY_JSON_OPTIONS)
         # Check order.
         self.assertEqual(
-            '{"md5": {"$binary": "IG43GK8JL9HRL4DK53HMrA==",' + ' "$type": "05"}}', json_bin_dump
+            '{"md5": {"$binary": "IG43GK8JL9HRL4DK53HMrA==", "$type": "05"}}', json_bin_dump
         )
 
         self.assertEqual(
             md5_type_dict,
-            json_util.loads('{"md5": {"$type": 5, "$binary":' ' "IG43GK8JL9HRL4DK53HMrA=="}}'),
+            json_util.loads('{"md5": {"$type": 5, "$binary": "IG43GK8JL9HRL4DK53HMrA=="}}'),
         )
 
         json_bin_dump = json_util.dumps(custom_type_dict, json_options=LEGACY_JSON_OPTIONS)
         self.assertIn('"$type": "80"', json_bin_dump)
         self.assertEqual(
             custom_type_dict,
-            json_util.loads('{"custom": {"$type": 128, "$binary":' ' "aGVsbG8="}}'),
+            json_util.loads('{"custom": {"$type": 128, "$binary": "aGVsbG8="}}'),
         )
 
         # Handle mongoexport where subtype >= 128
         self.assertEqual(
             128,
-            json_util.loads('{"custom": {"$type": "ffffff80", "$binary":' ' "aGVsbG8="}}')[
+            json_util.loads('{"custom": {"$type": "ffffff80", "$binary": "aGVsbG8="}}')[
                 "custom"
             ].subtype,
         )
 
         self.assertEqual(
             255,
-            json_util.loads('{"custom": {"$type": "ffffffff", "$binary":' ' "aGVsbG8="}}')[
+            json_util.loads('{"custom": {"$type": "ffffffff", "$binary": "aGVsbG8="}}')[
                 "custom"
             ].subtype,
         )
