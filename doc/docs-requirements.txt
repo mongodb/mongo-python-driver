@@ -1,3 +1,4 @@
 Sphinx~=4.2
 sphinx_rtd_theme~=0.5
 readthedocs-sphinx-search~=0.1
+sphinxcontrib-shellcheck~=1.1

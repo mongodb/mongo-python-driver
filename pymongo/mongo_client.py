@@ -68,7 +68,6 @@ from pymongo import (
 from pymongo.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.client_options import ClientOptions
 from pymongo.command_cursor import CommandCursor
-from pymongo.common import Empty
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
@@ -1603,8 +1602,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def __start_session(self, implicit, **kwargs):
         # Raises ConfigurationError if sessions are not supported.
+        server_session = self._get_server_session()
         opts = client_session.SessionOptions(**kwargs)
-        return client_session.ClientSession(self, Empty(), opts, implicit)
+        return client_session.ClientSession(self, server_session, opts, implicit)
 
     def start_session(
         self,
@@ -1636,9 +1636,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             snapshot=snapshot,
         )
 
-    def _get_server_session(self, **kwargs):
+    def _get_server_session(self):
         """Internal: start or resume a _ServerSession."""
-        return self._topology.get_server_session(**kwargs)
+        return self._topology.get_server_session()
 
     def _return_server_session(self, server_session, lock):
         """Internal: return a _ServerSession to the pool."""
@@ -1664,7 +1664,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             # Don't call end_session.
             yield session
             return
-
         s = self._ensure_session(session)
         if s:
             try:

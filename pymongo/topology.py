@@ -534,7 +534,7 @@ class Topology(object):
                 raise ConfigurationError("Sessions are not supported by this MongoDB deployment")
         return session_timeout
 
-    def get_server_session(self, **kwargs):
+    def get_server_session(self):
         """Start or resume a server session, or raise ConfigurationError."""
         with self._lock:
             # Sessions are always supported in load balanced mode.
@@ -543,7 +543,7 @@ class Topology(object):
             else:
                 # Sessions never time out in load balanced mode.
                 session_timeout = float("inf")
-            return self._session_pool.get_server_session(session_timeout, **kwargs)
+            return self._session_pool.get_server_session(session_timeout)
 
     def return_server_session(self, server_session, lock):
         if lock:

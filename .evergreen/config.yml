@@ -292,6 +292,7 @@ functions:
             DISABLE_TEST_COMMANDS=${DISABLE_TEST_COMMANDS} \
             ORCHESTRATION_FILE=${ORCHESTRATION_FILE} \
             REQUIRE_API_VERSION=${REQUIRE_API_VERSION} \
+            LOAD_BALANCER=${LOAD_BALANCER} \
             bash ${DRIVERS_TOOLS}/.evergreen/run-orchestration.sh
     # run-orchestration generates expansion file with the MONGODB_URI for the cluster
     - command: expansions.update
@@ -457,6 +458,7 @@ functions:
           fi
           if [ -n "${test_loadbalancer}" ]; then
             export TEST_LOADBALANCER=1
+            export LOAD_BALANCER=1
             export SINGLE_MONGOS_LB_URI="${SINGLE_MONGOS_LB_URI}"
             export MULTI_MONGOS_LB_URI="${MULTI_MONGOS_LB_URI}"
           fi
@@ -1258,6 +1260,33 @@ tasks:
             TOPOLOGY: "sharded_cluster"
         - func: "run tests"
 
+    - name: "test-rapid-standalone"
+      tags: ["rapid", "standalone"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "rapid"
+            TOPOLOGY: "server"
+        - func: "run tests"
+
+    - name: "test-rapid-replica_set"
+      tags: ["rapid", "replica_set"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "rapid"
+            TOPOLOGY: "replica_set"
+        - func: "run tests"
+
+    - name: "test-rapid-sharded_cluster"
+      tags: ["rapid", "sharded_cluster"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "rapid"
+            TOPOLOGY: "sharded_cluster"
+        - func: "run tests"
+
     - name: "test-serverless"
       tags: ["serverless"]
       commands:
@@ -1685,8 +1714,12 @@ tasks:
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
+            VERSION: "latest"
             TOPOLOGY: "sharded_cluster"
+            LOAD_BALANCER: true
         - func: "run load-balancer"
+          vars:
+            LOAD_BALANCER: true
         - func: "run tests"
 
     - name: "test-fips-standalone"
@@ -1696,7 +1729,7 @@ tasks:
           vars:
             VERSION: "latest"
             TOPOLOGY: "server"
-            PYTHON_BINARY: "/opt/mongodbtoolchain/v3/bin/python3"
+            PYTHON_BINARY: "/opt/mongodbtoolchain/v2/bin/python3"
         - func: "run tests"
 # }}}
     - name: "coverage-report"
@@ -2138,6 +2171,7 @@ buildvariants:
     auth-ssl: "*"
   display_name: "${platform} ${auth-ssl}"
   tasks: &all-server-versions
+    - ".rapid"
     - ".latest"
     - ".5.0"
     - ".4.4"

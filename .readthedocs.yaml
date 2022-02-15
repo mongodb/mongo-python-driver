@@ -8,6 +8,7 @@ version: 2
 # Build documentation in the doc/ directory with Sphinx
 sphinx:
    configuration: doc/conf.py
+   fail_on_warning: true
 
 # Set the version of Python and requirements required to build the docs.
 python:

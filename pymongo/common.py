@@ -16,6 +16,7 @@
 """Functions and classes common to multiple pymongo modules."""
 
 import datetime
+import time
 import warnings
 from collections import OrderedDict, abc
 from typing import (
@@ -132,14 +133,29 @@ SRV_SERVICE_NAME = "mongodb"
 
 
 class Empty(object):
+    def __init__(self, generation):
+        self.generation = generation
+        self.last_use = time.monotonic()
+        
     def __getattr__(self, item):
-        if item in self.__dict__:
-            return self.__dict__[item]
-        return Empty()
-
+        try:
+            self.__dict__[item]
+        except KeyError:
+            return self
     def __call__(self, *args, **kwargs):
-        return False
+        return self
 
+    def __getitem__(self, item):
+        try:
+            self.__dict__[item]
+        except KeyError:
+            return Empty(self._client)
+    
+    def __lt__(self, other):
+        return True
+
+    def __gt__(self, other):
+        return False
 
 def partition_node(node: str) -> Tuple[str, int]:
     """Split a host:port string into (host, int(port)) pair."""
