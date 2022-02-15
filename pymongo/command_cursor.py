@@ -22,7 +22,7 @@ from pymongo.cursor import _CURSOR_CLOSED_ERRORS, _SocketManager
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 from pymongo.message import _CursorAddress, _GetMore, _RawBatchGetMore
 from pymongo.response import PinnedResponse
-from pymongo.typings import _DocumentType
+from pymongo.typings import _Address, _DocumentType
 
 if TYPE_CHECKING:
     from pymongo.client_session import ClientSession
@@ -38,7 +38,7 @@ class CommandCursor(Generic[_DocumentType]):
         self,
         collection: "Collection[_DocumentType]",
         cursor_info: Mapping[str, Any],
-        address: Optional[Tuple[str, Optional[int]]],
+        address: Optional[_Address],
         batch_size: int = 0,
         max_await_time_ms: Optional[int] = None,
         session: Optional["ClientSession"] = None,
@@ -254,7 +254,7 @@ class CommandCursor(Generic[_DocumentType]):
         return self.__id
 
     @property
-    def address(self) -> Optional[Tuple[str, Optional[int]]]:
+    def address(self) -> Optional[_Address]:
         """The (host, port) of the server used, or None.
 
         .. versionadded:: 3.0
@@ -309,7 +309,7 @@ class RawBatchCommandCursor(CommandCursor, Generic[_DocumentType]):
         self,
         collection: "Collection[_DocumentType]",
         cursor_info: Mapping[str, Any],
-        address: Optional[Tuple[str, Optional[int]]],
+        address: Optional[_Address],
         batch_size: int = 0,
         max_await_time_ms: Optional[int] = None,
         session: Optional["ClientSession"] = None,
