@@ -26,7 +26,7 @@ except ImportError:
     api = None
 
 from test import client_context
-from test.utils import rs_or_single_client_noauth
+from test.utils import rs_or_single_client
 
 from bson.son import SON
 from pymongo.collection import Collection
@@ -63,9 +63,7 @@ class TestPymongo(unittest.TestCase):
     @classmethod
     @client_context.require_connection
     def setUpClass(cls) -> None:
-        cls.client = rs_or_single_client_noauth(
-            serverSelectionTimeoutMS=250, directConnection=False
-        )
+        cls.client = rs_or_single_client(serverSelectionTimeoutMS=250, directConnection=False)
         cls.coll = cls.client.test.test
         try:
             cls.client.admin.command("ping")
@@ -76,6 +74,7 @@ class TestPymongo(unittest.TestCase):
     def tearDownClass(cls) -> None:
         cls.client.close()
 
+    @client_context.require_no_auth
     def test_insert_find(self) -> None:
         doc = {"my": "doc"}
         coll2 = self.client.test.test2
@@ -88,6 +87,7 @@ class TestPymongo(unittest.TestCase):
             result2 = coll2.insert_one(retreived)
             self.assertEqual(result2.inserted_id, result.inserted_id)
 
+    @client_context.require_no_auth
     def test_cursor_iterable(self) -> None:
         def to_list(iterable: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
             return list(iterable)
@@ -97,12 +97,14 @@ class TestPymongo(unittest.TestCase):
         docs = to_list(cursor)
         self.assertTrue(docs)
 
+    @client_context.require_no_auth
     def test_bulk_write(self) -> None:
         self.coll.insert_one({})
         requests = [InsertOne({})]
         result = self.coll.bulk_write(requests)
         self.assertTrue(result.acknowledged)
 
+    @client_context.require_no_auth
     def test_aggregate_pipeline(self) -> None:
         coll3 = self.client.test.test3
         coll3.insert_many(
