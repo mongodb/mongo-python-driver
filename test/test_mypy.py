@@ -25,13 +25,10 @@ try:
 except ImportError:
     api = None
 
-from test import client_context
-from test.utils import rs_or_single_client
+from test import IntegrationTest
 
 from bson.son import SON
 from pymongo.collection import Collection
-from pymongo.errors import ServerSelectionTimeoutError
-from pymongo.mongo_client import MongoClient
 from pymongo.operations import InsertOne
 
 TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "mypy_fails")
@@ -56,25 +53,7 @@ class TestMypyFails(unittest.TestCase):
                 self.ensure_mypy_fails(filename)
 
 
-class TestPymongo(unittest.TestCase):
-    client: MongoClient
-    coll: Collection
-
-    @classmethod
-    @client_context.require_connection
-    def setUpClass(cls) -> None:
-        cls.client = rs_or_single_client(serverSelectionTimeoutMS=250, directConnection=False)
-        cls.coll = cls.client.test.test
-        try:
-            cls.client.admin.command("ping")
-        except ServerSelectionTimeoutError as exc:
-            raise unittest.SkipTest(f"Could not connect to MongoDB: {exc}")
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        cls.client.close()
-
-    @client_context.require_no_auth
+class TestPymongo(IntegrationTest):
     def test_insert_find(self) -> None:
         doc = {"my": "doc"}
         coll2 = self.client.test.test2
@@ -87,7 +66,6 @@ class TestPymongo(unittest.TestCase):
             result2 = coll2.insert_one(retreived)
             self.assertEqual(result2.inserted_id, result.inserted_id)
 
-    @client_context.require_no_auth
     def test_cursor_iterable(self) -> None:
         def to_list(iterable: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
             return list(iterable)
@@ -97,14 +75,12 @@ class TestPymongo(unittest.TestCase):
         docs = to_list(cursor)
         self.assertTrue(docs)
 
-    @client_context.require_no_auth
     def test_bulk_write(self) -> None:
         self.coll.insert_one({})
         requests = [InsertOne({})]
         result = self.coll.bulk_write(requests)
         self.assertTrue(result.acknowledged)
 
-    @client_context.require_no_auth
     def test_aggregate_pipeline(self) -> None:
         coll3 = self.client.test.test3
         coll3.insert_many(
