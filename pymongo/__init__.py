@@ -101,6 +101,7 @@ See https://docs.mongodb.com/manual/tutorial/manage-the-database-profiler
 
 version_tuple = (3, 13, 0, ".dev0")
 
+
 def get_version_string():
     if isinstance(version_tuple[-1], str):
         return ".".join(map(str, version_tuple[:-1])) + version_tuple[-1]
