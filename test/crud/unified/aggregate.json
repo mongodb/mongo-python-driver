@@ -327,7 +327,7 @@
       ]
     },
     {
-      "description": "aggregate with comment sets comment on getMore",
+      "description": "aggregate with comment does not set comment on getMore",
       "runOnRequirements": [
         {
           "minServerVersion": "3.6.0"
@@ -411,7 +411,9 @@
                   },
                   "collection": "coll0",
                   "batchSize": 2,
-                  "comment": "comment"
+                  "comment": {
+                    "$$exists": false
+                  }
                 },
                 "commandName": "getMore",
                 "databaseName": "aggregate-tests"
@@ -428,7 +430,9 @@
                   },
                   "collection": "coll0",
                   "batchSize": 2,
-                  "comment": "comment"
+                  "comment": {
+                    "$$exists": false
+                  }
                 },
                 "commandName": "getMore",
                 "databaseName": "aggregate-tests"
