@@ -1802,9 +1802,9 @@ tasks:
             TOPOLOGY: "sharded_cluster"
             LOAD_BALANCER: true
         - func: "run load-balancer"
+        - func: "run tests"
           vars:
             LOAD_BALANCER: true
-        - func: "run tests"
 # }}}
     - name: "coverage-report"
       tags: ["coverage"]
