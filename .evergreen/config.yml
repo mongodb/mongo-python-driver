@@ -2028,6 +2028,10 @@ axes:
         display_name: "MongoDB 5.0"
         variables:
           VERSION: "5.0"
+      - id: "rapid"
+        display_name: "MongoDB rapid"
+        variables:
+          VERSION: "rapid"
 
   # Choice of Python runtime version
   - id: python-version
