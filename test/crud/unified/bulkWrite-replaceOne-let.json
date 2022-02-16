@@ -152,10 +152,10 @@
                   }
                 }
               }
-            ]
-          },
-          "let": {
-            "id": 1
+            ],
+            "let": {
+              "id": 1
+            }
           },
           "expectError": {
             "errorContains": "'replace.let' is an unknown field",
