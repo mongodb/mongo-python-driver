@@ -1626,19 +1626,21 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         the MongoClient that started it. :class:`ClientSession` instances are
         **not thread-safe or fork-safe**. They can only be used by one thread
         or process at a time. A single :class:`ClientSession` cannot be used
-        to run mufltiple operations concurrently.
+        to run multiple operations concurrently.
 
         :Returns:
           An instance of :class:`~pymongo.client_session.ClientSession`.
 
         .. versionadded:: 3.6
         """
-        return self.__start_session(
+        ret = self.__start_session(
             False,
             causal_consistency=causal_consistency,
             default_transaction_options=default_transaction_options,
             snapshot=snapshot,
         )
+        ret._start_serv_sesh()
+        return ret
 
     def _get_server_session(self):
         """Internal: start or resume a _ServerSession."""

@@ -949,7 +949,10 @@ class ClientSession(Generic[_DocumentType]):
     
     def _start_serv_sesh(self):
         while isinstance(self._server_session, Empty):
-            self._server_session = self._client._topology.get_server_session()
+            self._server_session, old = self._client._get_server_session(), self._server_session
+            self._server_session.generation = old.generation
+            self._server_session.last_use = old.last_use
+            self._server_session._transaction_id = old._transaction_id
 
     def _apply_to(self, command, is_retryable, read_preference, sock_info):
         self._check_ended()
@@ -963,7 +966,6 @@ class ClientSession(Generic[_DocumentType]):
         if is_retryable:
             command["txnNumber"] = self._server_session.transaction_id
             return
-
         if self.in_transaction:
             if read_preference != ReadPreference.PRIMARY:
                 raise InvalidOperation(
@@ -1053,10 +1055,14 @@ class _ServerSessionPool(collections.deque):
     def pop_all(self):
         ids = []
         while self:
-            ids.append(getattr(self.pop(), "session_id", "Uninitialized"))
+            try:
+                ids.append(self.pop().session_id)
+            except AttributeError:
+                # We found an uninitialized session, discard
+                continue
         return ids
 
-    def get_server_session(self, session_timeout_minutes, explicit=False):
+    def get_server_session(self, session_timeout_minutes):
         # Although the Driver Sessions Spec says we only clear stale sessions
         # in return_server_session, PyMongo can't take a lock when returning
         # sessions from a __del__ method (like in Cursor.__die), so it can't

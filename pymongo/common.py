@@ -143,7 +143,7 @@ class Empty(object):
     def timed_out(self, session_timeout_minutes):
         idle_seconds = time.monotonic() - self.last_use
         # Timed out if we have less than a minute to live.
-        return idle_seconds > (session_timeout_minutes - 1) * 60
+        return True
 
     def mark_dirty(self):
         self.dirty = True
