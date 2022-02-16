@@ -424,6 +424,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         bypass_document_validation: bool = False,
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
+        let: Optional[Mapping] = None,
     ) -> BulkWriteResult:
         """Send a batch of write operations to the server.
 
@@ -497,7 +498,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """
         common.validate_list("requests", requests)
 
-        blk = _Bulk(self, ordered, bypass_document_validation, comment=comment)
+        blk = _Bulk(self, ordered, bypass_document_validation, comment=comment, let=let)
         for request in requests:
             try:
                 request._add_to_bulk(blk)

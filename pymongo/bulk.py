@@ -138,13 +138,14 @@ def _raise_bulk_write_error(full_result):
 class _Bulk(object):
     """The private guts of the bulk write API."""
 
-    def __init__(self, collection, ordered, bypass_document_validation, comment=None):
+    def __init__(self, collection, ordered, bypass_document_validation, comment=None, let=None):
         """Initialize a _Bulk instance."""
         self.collection = collection.with_options(
             codec_options=collection.codec_options._replace(
                 unicode_decode_error_handler="replace", document_class=dict
             )
         )
+        self.let = let
         self.comment = comment
         self.ordered = ordered
         self.ops = []
@@ -315,6 +316,8 @@ class _Bulk(object):
                     cmd["writeConcern"] = write_concern.document
                 if self.bypass_doc_val:
                     cmd["bypassDocumentValidation"] = True
+                if self.let and cmd_name in ("update", "delete"):
+                    cmd["let"] = self.let
                 if session:
                     # Start a new retryable write unless one was already
                     # started for this command.

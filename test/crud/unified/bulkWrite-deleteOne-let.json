@@ -62,13 +62,13 @@
                         "$$id"
                       ]
                     }
-                  },
-                  "let": {
-                    "id": 1
                   }
                 }
               }
-            ]
+            ],
+            "let": {
+              "id": 1
+            }
           }
         }
       ],
@@ -137,13 +137,13 @@
                         "$$id"
                       ]
                     }
-                  },
-                  "let": {
-                    "id": 1
                   }
                 }
               }
-            ]
+            ],
+            "let": {
+              "id": 1
+            }
           },
           "expectError": {
             "errorContains": "'delete.let' is an unknown field",

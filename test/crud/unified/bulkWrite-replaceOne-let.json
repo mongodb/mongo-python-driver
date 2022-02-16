@@ -65,13 +65,13 @@
                   },
                   "replacement": {
                     "x": 3
-                  },
-                  "let": {
-                    "id": 1
                   }
                 }
               }
-            ]
+            ],
+            "let": {
+              "id": 1
+            }
           }
         }
       ],
@@ -113,11 +113,11 @@
           "databaseName": "crud-tests",
           "documents": [
             {
-              "_id": 2,
+              "_id": 1,
               "x": 3
             },
             {
-              "_id": 3
+              "_id": 2
             }
           ]
         }
@@ -149,13 +149,13 @@
                   },
                   "replacement": {
                     "_id": 3
-                  },
-                  "let": {
-                    "id": 1
                   }
                 }
               }
             ]
+          },
+          "let": {
+            "id": 1
           },
           "expectError": {
             "errorContains": "'replace.let' is an unknown field",

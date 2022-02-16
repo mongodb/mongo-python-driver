@@ -1,6 +1,9 @@
 {
   "description": "BulkWrite deleteMany-let",
   "schemaVersion": "1.0",
+  "filterMap": {
+    "limit": 0
+  },
   "createEntities": [
     {
       "client": {
@@ -62,13 +65,13 @@
                         "$$id"
                       ]
                     }
-                  },
-                  "let": {
-                    "id": 1
                   }
                 }
               }
-            ]
+            ],
+            "let": {
+              "id": 1
+            }
           }
         }
       ],
@@ -89,7 +92,8 @@
                             "$$id"
                           ]
                         }
-                      }
+                      },
+                      "limit": 0
                     }
                   ],
                   "let": {
@@ -136,13 +140,13 @@
                         "$$id"
                       ]
                     }
-                  },
-                  "let": {
-                    "id": 1
                   }
                 }
               }
-            ]
+            ],
+            "let": {
+              "id": 1
+            }
           },
           "expectError": {
             "errorContains": "'delete.let' is an unknown field",
@@ -167,7 +171,8 @@
                             "$$id"
                           ]
                         }
-                      }
+                      },
+                      "limit": 0
                     }
                   ],
                   "let": {
