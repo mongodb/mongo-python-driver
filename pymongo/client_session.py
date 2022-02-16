@@ -150,6 +150,7 @@ from bson.binary import Binary
 from bson.int64 import Int64
 from bson.son import SON
 from bson.timestamp import Timestamp
+from pymongo.common import Empty
 from pymongo.cursor import _SocketManager
 from pymongo.errors import (
     ConfigurationError,
@@ -165,7 +166,6 @@ from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_type import SERVER_TYPE
 from pymongo.typings import _DocumentType
 from pymongo.write_concern import WriteConcern
-from pymongo.common import Empty
 
 
 class SessionOptions(object):
@@ -946,7 +946,7 @@ class ClientSession(Generic[_DocumentType]):
         if self.in_transaction:
             return self._transaction.opts.read_preference
         return None
-    
+
     def _start_serv_sesh(self):
         while isinstance(self._server_session, Empty):
             self._server_session, old = self._client._get_server_session(), self._server_session

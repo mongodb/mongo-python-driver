@@ -68,6 +68,7 @@ from pymongo import (
 from pymongo.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.client_options import ClientOptions
 from pymongo.command_cursor import CommandCursor
+from pymongo.common import Empty
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
@@ -94,7 +95,6 @@ from pymongo.uri_parser import (
     _normalize_options,
 )
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
-from pymongo.common import Empty
 
 if TYPE_CHECKING:
     from pymongo.read_concern import ReadConcern
@@ -1654,7 +1654,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """If provided session is None, lend a temporary session."""
         if session:
             return session
-        
+
         try:
             # Don't make implicit sessions causally consistent. Applications
             # should always opt-in.

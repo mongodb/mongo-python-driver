@@ -149,7 +149,8 @@ class Empty(object):
         self.dirty = True
 
     def inc_transaction_id(self):
-        self._transaction_id +=1
+        self._transaction_id += 1
+
 
 def partition_node(node: str) -> Tuple[str, int]:
     """Split a host:port string into (host, int(port)) pair."""

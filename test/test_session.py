@@ -17,10 +17,10 @@
 import copy
 import os
 import sys
-import threading
 import time
 from io import BytesIO
 from typing import Set
+import threading
 
 from pymongo.mongo_client import MongoClient
 
@@ -35,6 +35,7 @@ from gridfs import GridFS, GridFSBucket
 from pymongo import ASCENDING, IndexModel, InsertOne, monitoring
 from pymongo.common import _MAX_END_SESSIONS
 from pymongo.errors import ConfigurationError, InvalidOperation, OperationFailure
+from pymongo.read_concern import ReadConcern
 from pymongo.operations import (
     DeleteMany,
     DeleteOne,
@@ -44,8 +45,6 @@ from pymongo.operations import (
     UpdateMany,
     UpdateOne,
 )
-from pymongo.read_concern import ReadConcern
-
 
 # Ignore auth commands like saslStart, so we can assert lsid is in all commands.
 class SessionTestListener(EventListener):
@@ -155,8 +154,7 @@ class TestSession(IntegrationTest):
                 kw = copy.copy(kw)
                 kw["session"] = s
                 with self.assertRaisesRegex(
-                    InvalidOperation,
-                    "Can only use session with the MongoClient" " that started it",
+                    InvalidOperation, "Can only use session with the MongoClient" " that started it"
                 ):
                     f(*args, **kw)
 
@@ -184,26 +182,6 @@ class TestSession(IntegrationTest):
                         "%s did not return implicit session to pool" % (f.__name__,),
                     )
 
-    def test_pool_lifo(self):
-        # "Pool is LIFO" test from Driver Sessions Spec.
-        a = self.client.start_session()
-        b = self.client.start_session()
-        a_id = a.session_id
-        b_id = b.session_id
-        a.end_session()
-        b.end_session()
-
-        s = self.client.start_session()
-        self.assertEqual(b_id, s.session_id)
-        self.assertNotEqual(a_id, s.session_id)
-
-        s2 = self.client.start_session()
-        self.assertEqual(a_id, s2.session_id)
-        self.assertNotEqual(b_id, s2.session_id)
-
-        s.end_session()
-        s2.end_session()
-
     def test_implicit_sessions_checkout(self):
         # "To confirm that implicit sessions only allocate their server session after a
         # successful connection checkout" test from Driver Sessions Spec.
@@ -229,6 +207,26 @@ class TestSession(IntegrationTest):
                 print(i.command.get("lsid")["id"])
                 lsid_set.add(i.command.get("lsid")["id"])
         self.assertEqual(len(lsid_set), 1)
+
+    def test_pool_lifo(self):
+        # "Pool is LIFO" test from Driver Sessions Spec.
+        a = self.client.start_session()
+        b = self.client.start_session()
+        a_id = a.session_id
+        b_id = b.session_id
+        a.end_session()
+        b.end_session()
+
+        s = self.client.start_session()
+        self.assertEqual(b_id, s.session_id)
+        self.assertNotEqual(a_id, s.session_id)
+
+        s2 = self.client.start_session()
+        self.assertEqual(a_id, s2.session_id)
+        self.assertNotEqual(b_id, s2.session_id)
+
+        s.end_session()
+        s2.end_session()
 
     def test_end_session(self):
         # We test elsewhere that using an ended session throws InvalidOperation.
@@ -399,16 +397,14 @@ class TestSession(IntegrationTest):
             f(session=None)
             event0 = listener.first_command_started()
             self.assertTrue(
-                "lsid" in event0.command,
-                "%s sent no lsid with %s" % (name, event0.command_name),
+                "lsid" in event0.command, "%s sent no lsid with %s" % (name, event0.command_name)
             )
 
             lsid = event0.command["lsid"]
 
             for event in listener.results["started"][1:]:
                 self.assertTrue(
-                    "lsid" in event.command,
-                    "%s sent no lsid with %s" % (name, event.command_name),
+                    "lsid" in event.command, "%s sent no lsid with %s" % (name, event.command_name)
                 )
 
                 self.assertEqual(
@@ -438,11 +434,7 @@ class TestSession(IntegrationTest):
             (fs.put, [b"data"], {}),
             (lambda session=None: fs.get(1, session=session).read(), [], {}),
             (lambda session=None: fs.get_version("f", session=session).read(), [], {}),
-            (
-                lambda session=None: fs.get_last_version("f", session=session).read(),
-                [],
-                {},
-            ),
+            (lambda session=None: fs.get_last_version("f", session=session).read(), [], {}),
             (fs.list, [], {}),
             (fs.find_one, [1], {}),
             (lambda session=None: list(fs.find(session=session)), [], {}),
@@ -623,20 +615,17 @@ class TestSession(IntegrationTest):
 
     def test_cursor_close(self):
         self._test_cursor_helper(
-            lambda coll, session: coll.find(session=session),
-            lambda cursor: cursor.close(),
+            lambda coll, session: coll.find(session=session), lambda cursor: cursor.close()
         )
 
     def test_command_cursor_close(self):
         self._test_cursor_helper(
-            lambda coll, session: coll.aggregate([], session=session),
-            lambda cursor: cursor.close(),
+            lambda coll, session: coll.aggregate([], session=session), lambda cursor: cursor.close()
         )
 
     def test_cursor_del(self):
         self._test_cursor_helper(
-            lambda coll, session: coll.find(session=session),
-            lambda cursor: cursor.__del__(),
+            lambda coll, session: coll.find(session=session), lambda cursor: cursor.__del__()
         )
 
     def test_command_cursor_del(self):
@@ -647,14 +636,12 @@ class TestSession(IntegrationTest):
 
     def test_cursor_exhaust(self):
         self._test_cursor_helper(
-            lambda coll, session: coll.find(session=session),
-            lambda cursor: list(cursor),
+            lambda coll, session: coll.find(session=session), lambda cursor: list(cursor)
         )
 
     def test_command_cursor_exhaust(self):
         self._test_cursor_helper(
-            lambda coll, session: coll.aggregate([], session=session),
-            lambda cursor: list(cursor),
+            lambda coll, session: coll.aggregate([], session=session), lambda cursor: list(cursor)
         )
 
     def test_cursor_limit_reached(self):
@@ -680,8 +667,7 @@ class TestSession(IntegrationTest):
                 kw = copy.copy(kw)
                 kw["session"] = s
                 with self.assertRaises(
-                    ConfigurationError,
-                    msg="%s did not raise ConfigurationError" % (f.__name__,),
+                    ConfigurationError, msg="%s did not raise ConfigurationError" % (f.__name__,)
                 ):
                     f(*args, **kw)
                 if f.__name__ == "create_collection":
@@ -717,9 +703,7 @@ class TestSession(IntegrationTest):
 
             for event in listener.results["started"]:
                 self.assertNotIn(
-                    "lsid",
-                    event.command,
-                    "%s sent lsid with %s" % (f.__name__, event.command_name),
+                    "lsid", event.command, "%s sent lsid with %s" % (f.__name__, event.command_name)
                 )
 
     def test_unacknowledged_writes(self):

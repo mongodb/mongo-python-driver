@@ -41,6 +41,7 @@ from pymongo.common import (
     MIN_POOL_SIZE,
     ORDERED_TYPES,
     WAIT_QUEUE_TIMEOUT,
+    Empty,
 )
 from pymongo.errors import (
     AutoReconnect,
@@ -64,7 +65,7 @@ from pymongo.socket_checker import SocketChecker
 from pymongo.ssl_support import HAS_SNI as _HAVE_SNI
 from pymongo.ssl_support import IPADDR_SAFE as _IPADDR_SAFE
 from pymongo.ssl_support import SSLError as _SSLError
-from pymongo.common import Empty
+
 
 # For SNI support. According to RFC6066, section 3, IPv4 and IPv6 literals are
 # not permitted for SNI hostname.
@@ -1443,7 +1444,7 @@ class Pool:
             deadline = time.monotonic() + self.opts.wait_queue_timeout
         else:
             deadline = None
-        
+
         with self.size_cond:
             self._raise_if_not_ready(emit_event=True)
             while not (self.requests < self.max_pool_size):
