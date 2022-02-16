@@ -25,6 +25,9 @@ try:
 except ImportError:
     api = None
 
+from test import client_context
+from test.utils import rs_or_single_client_noauth
+
 from bson.son import SON
 from pymongo.collection import Collection
 from pymongo.errors import ServerSelectionTimeoutError
@@ -58,8 +61,11 @@ class TestPymongo(unittest.TestCase):
     coll: Collection
 
     @classmethod
+    @client_context.require_connection
     def setUpClass(cls) -> None:
-        cls.client = MongoClient(serverSelectionTimeoutMS=250, directConnection=False)
+        cls.client = rs_or_single_client_noauth(
+            serverSelectionTimeoutMS=250, directConnection=False
+        )
         cls.coll = cls.client.test.test
         try:
             cls.client.admin.command("ping")
