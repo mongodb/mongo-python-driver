@@ -1772,7 +1772,6 @@ tasks:
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
-            VERSION: "latest"
             TOPOLOGY: "sharded_cluster"
             LOAD_BALANCER: true
         - func: "run load-balancer"
@@ -2977,7 +2976,7 @@ buildvariants:
 - matrix_name: "load-balancer"
   matrix_spec:
     platform: awslinux
-    mongodb-version: ["5.0", "latest"]
+    mongodb-version: ["rapid", "latest"]
     auth-ssl: "*"
     python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy", "pypy3.5", "pypy3.7"]
     loadbalancer: "*"
