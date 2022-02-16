@@ -158,7 +158,7 @@
             }
           },
           "expectError": {
-            "errorContains": "'replace.let' is an unknown field",
+            "errorContains": "'update.let' is an unknown field",
             "isClientError": false
           }
         }

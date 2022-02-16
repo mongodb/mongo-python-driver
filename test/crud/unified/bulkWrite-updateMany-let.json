@@ -203,7 +203,9 @@
                       "upsert": {
                         "$$unsetOrMatches": false
                       },
-                      "limit": 0
+                      "limit": {
+                        "$$unsetOrMatches": 0
+                      }
                     }
                   ],
                   "let": {
