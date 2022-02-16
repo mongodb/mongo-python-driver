@@ -86,7 +86,7 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.settings import TopologySettings
 from pymongo.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
-from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
+from pymongo.typings import _Address, _CollationIn, _DocumentType, _Pipeline
 from pymongo.uri_parser import (
     _check_options,
     _handle_option_deprecations,
@@ -1062,7 +1062,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return self._server_property("server_type") == SERVER_TYPE.Mongos
 
     @property
-    def nodes(self) -> FrozenSet[Tuple[str, Optional[int]]]:
+    def nodes(self) -> FrozenSet[_Address]:
         """Set of all currently connected servers.
 
         .. warning:: When connected to a replica set the value of :attr:`nodes`

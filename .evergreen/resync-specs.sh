@@ -79,6 +79,7 @@ do
       ;;
     cmap|CMAP)
       cpjson connection-monitoring-and-pooling/tests cmap
+      rm $PYMONGO/test/cmap/wait-queue-fairness.json  # PYTHON-1873
       ;;
     command*monitoring)
       cpjson command-monitoring/tests command_monitoring
@@ -127,6 +128,7 @@ do
     transactions|transactions-convenient-api)
       cpjson transactions/tests/ transactions
       cpjson transactions-convenient-api/tests/ transactions-convenient-api
+      rm $PYMONGO/test/transactions/legacy/errors-client.json  # PYTHON-1894
       ;;
     unified)
       cpjson unified-test-format/tests/ unified-test-format/
