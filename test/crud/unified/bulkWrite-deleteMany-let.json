@@ -1,9 +1,6 @@
 {
   "description": "BulkWrite deleteMany-let",
   "schemaVersion": "1.0",
-  "filterMap": {
-    "limit": 0
-  },
   "createEntities": [
     {
       "client": {
