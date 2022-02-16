@@ -61,7 +61,8 @@ cpjson () {
     <(find . -name '*.json' | grep -Ev "${BLOCKLIST}" | sort))" | \
     sed -e '/^[0-9]/d' | sed -e 's|< ./||g' )"
     printf "%s\n" $IGNORED_FILES
-    printf "%s\n" $IGNORED_FILES | xargs git checkout upstream/master
+    cd "$PYMONGO"/test/$2
+    printf "%s\n" $IGNORED_FILES | xargs git checkout master
 
 }
 

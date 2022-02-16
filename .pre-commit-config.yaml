@@ -1,7 +1,7 @@
 
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v3.4.0
+  rev: v4.1.0
   hooks:
   - id: check-added-large-files
   - id: check-case-conflict
@@ -24,7 +24,7 @@ repos:
     args: [--line-length=100]
 
 - repo: https://github.com/PyCQA/isort
-  rev: 5.7.0
+  rev: 5.10.1
   hooks:
   - id: isort
     files: \.py$
@@ -33,7 +33,7 @@ repos:
 # We use the Python version instead of the original version which seems to require Docker
 # https://github.com/koalaman/shellcheck-precommit
 - repo: https://github.com/shellcheck-py/shellcheck-py
-  rev: v0.8.0.1
+  rev: v0.8.0.4
   hooks:
     - id: shellcheck
       name: shellcheck
