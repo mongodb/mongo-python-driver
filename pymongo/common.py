@@ -136,26 +136,20 @@ class Empty(object):
     def __init__(self, generation):
         self.generation = generation
         self.last_use = time.monotonic()
-        
-    def __getattr__(self, item):
-        try:
-            self.__dict__[item]
-        except KeyError:
-            return self
-    def __call__(self, *args, **kwargs):
-        return self
+        self.lsid = None
+        self.dirty = False
+        self._transaction_id = 0
 
-    def __getitem__(self, item):
-        try:
-            self.__dict__[item]
-        except KeyError:
-            return Empty(self._client)
-    
-    def __lt__(self, other):
-        return True
+    def timed_out(self, session_timeout_minutes):
+        idle_seconds = time.monotonic() - self.last_use
+        # Timed out if we have less than a minute to live.
+        return idle_seconds > (session_timeout_minutes - 1) * 60
 
-    def __gt__(self, other):
-        return False
+    def mark_dirty(self):
+        self.dirty = True
+
+    def inc_transaction_id(self):
+        self._transaction_id +=1
 
 def partition_node(node: str) -> Tuple[str, int]:
     """Split a host:port string into (host, int(port)) pair."""

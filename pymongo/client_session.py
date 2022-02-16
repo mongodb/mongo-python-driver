@@ -716,7 +716,6 @@ class ClientSession(Generic[_DocumentType]):
         .. versionadded:: 3.7
         """
         self._check_ended()
-
         if self.options.snapshot:
             raise InvalidOperation("Transactions are not supported in " "snapshot sessions")
 
@@ -947,10 +946,14 @@ class ClientSession(Generic[_DocumentType]):
         if self.in_transaction:
             return self._transaction.opts.read_preference
         return None
+    
+    def _start_serv_sesh(self):
+        while isinstance(self._server_session, Empty):
+            self._server_session = self._client._topology.get_server_session()
 
     def _apply_to(self, command, is_retryable, read_preference, sock_info):
         self._check_ended()
-
+        self._start_serv_sesh()
         if self.options.snapshot:
             self._update_read_concern(command, sock_info)
 
@@ -1050,10 +1053,10 @@ class _ServerSessionPool(collections.deque):
     def pop_all(self):
         ids = []
         while self:
-            ids.append(self.pop().session_id)
+            ids.append(getattr(self.pop(), "session_id", "Uninitialized"))
         return ids
 
-    def get_server_session(self, session_timeout_minutes):
+    def get_server_session(self, session_timeout_minutes, explicit=False):
         # Although the Driver Sessions Spec says we only clear stale sessions
         # in return_server_session, PyMongo can't take a lock when returning
         # sessions from a __del__ method (like in Cursor.__die), so it can't
@@ -1064,12 +1067,10 @@ class _ServerSessionPool(collections.deque):
         # The most recently used sessions are on the left.
         while self:
             s = self.popleft()
-            if isinstance(s, Empty):
-                s = _ServerSession(self.generation)
             if not s.timed_out(session_timeout_minutes):
                 return s
 
-        return Empty(self.generation)
+        return _ServerSession(self.generation)
 
     def return_server_session(self, server_session, session_timeout_minutes):
         if session_timeout_minutes is not None:

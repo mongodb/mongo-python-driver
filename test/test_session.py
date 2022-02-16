@@ -226,6 +226,7 @@ class TestSession(IntegrationTest):
         lsid_set = set()
         for i in listener.results["started"]:
             if i.command.get("lsid"):
+                print(i.command.get("lsid")["id"])
                 lsid_set.add(i.command.get("lsid")["id"])
         self.assertEqual(len(lsid_set), 1)
 

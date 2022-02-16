@@ -94,6 +94,7 @@ from pymongo.uri_parser import (
     _normalize_options,
 )
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
+from pymongo.common import Empty
 
 if TYPE_CHECKING:
     from pymongo.read_concern import ReadConcern
@@ -1602,7 +1603,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def __start_session(self, implicit, **kwargs):
         # Raises ConfigurationError if sessions are not supported.
-        server_session = self._get_server_session()
+        if implicit:
+            server_session = Empty(self._topology._session_pool.generation)
+        else:
+            server_session = self._get_server_session()
         opts = client_session.SessionOptions(**kwargs)
         return client_session.ClientSession(self, server_session, opts, implicit)
 
@@ -1622,7 +1626,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         the MongoClient that started it. :class:`ClientSession` instances are
         **not thread-safe or fork-safe**. They can only be used by one thread
         or process at a time. A single :class:`ClientSession` cannot be used
-        to run multiple operations concurrently.
+        to run mufltiple operations concurrently.
 
         :Returns:
           An instance of :class:`~pymongo.client_session.ClientSession`.
@@ -1648,7 +1652,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """If provided session is None, lend a temporary session."""
         if session:
             return session
-
+        
         try:
             # Don't make implicit sessions causally consistent. Applications
             # should always opt-in.
@@ -1664,14 +1668,13 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             # Don't call end_session.
             yield session
             return
-        s = self._ensure_session(session)
+        s = self._ensure_session()
         if s:
             try:
                 yield s
             except Exception as exc:
                 if isinstance(exc, ConnectionFailure):
                     s._server_session.mark_dirty()
-
                 # Always call end_session on error.
                 s.end_session()
                 raise
