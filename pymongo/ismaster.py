@@ -20,6 +20,7 @@
 
 from pymongo.hello import *
 
+
 class IsMaster(Hello):
     """**DEPRECATED** A hello response from the server.
 
@@ -27,4 +28,5 @@ class IsMaster(Hello):
        Deprecated. Use :class:`~pymongo.hello.Hello` instead to parse
        server hello responses.
     """
+
     pass

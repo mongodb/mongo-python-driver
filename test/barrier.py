@@ -2,8 +2,7 @@
 # changes to support python 2.7.
 # https://github.com/python/cpython/blob/v3.8.2/Lib/threading.py#L562-L728
 
-from threading import (Condition,
-                       Lock)
+from threading import Condition, Lock
 
 from pymongo.monotonic import time as _time
 
@@ -63,7 +62,7 @@ class Barrier(object):
         self._action = action
         self._timeout = timeout
         self._parties = parties
-        self._state = 0 #0 filling, 1, draining, -1 resetting, -2 broken
+        self._state = 0  # 0 filling, 1, draining, -1 resetting, -2 broken
         self._count = 0
 
     def wait(self, timeout=None):
@@ -76,7 +75,7 @@ class Barrier(object):
         if timeout is None:
             timeout = self._timeout
         with self._cond:
-            self._enter() # Block while the barrier drains.
+            self._enter()  # Block while the barrier drains.
             index = self._count
             self._count += 1
             try:
@@ -98,7 +97,7 @@ class Barrier(object):
         while self._state in (-1, 1):
             # It is draining or resetting, wait until done
             self._cond.wait()
-        #see if the barrier is in a broken state
+        # see if the barrier is in a broken state
         if self._state < 0:
             raise BrokenBarrierError
         assert self._state == 0
@@ -113,15 +112,15 @@ class Barrier(object):
             self._state = 1
             self._cond.notify_all()
         except:
-            #an exception during the _action handler.  Break and reraise
+            # an exception during the _action handler.  Break and reraise
             self._break()
             raise
 
     # Wait in the barrier until we are released.  Raise an exception
     # if the barrier is reset or broken.
     def _wait(self, timeout):
-        if not wait_for(self._cond, lambda : self._state != 0, timeout):
-            #timed out.  Break the barrier
+        if not wait_for(self._cond, lambda: self._state != 0, timeout):
+            # timed out.  Break the barrier
             self._break()
             raise BrokenBarrierError
         if self._state < 0:
@@ -133,7 +132,7 @@ class Barrier(object):
     def _exit(self):
         if self._count == 0:
             if self._state in (-1, 1):
-                #resetting or draining
+                # resetting or draining
                 self._state = 0
                 self._cond.notify_all()
 
@@ -145,11 +144,11 @@ class Barrier(object):
         with self._cond:
             if self._count > 0:
                 if self._state == 0:
-                    #reset the barrier, waking up threads
+                    # reset the barrier, waking up threads
                     self._state = -1
                 elif self._state == -2:
-                    #was broken, set it to reset state
-                    #which clears when the last thread exits
+                    # was broken, set it to reset state
+                    # which clears when the last thread exits
                     self._state = -1
             else:
                 self._state = 0
@@ -187,6 +186,7 @@ class Barrier(object):
     def broken(self):
         """Return True if the barrier is in a broken state."""
         return self._state == -2
+
 
 # exception raised by the Barrier class
 class BrokenBarrierError(RuntimeError):

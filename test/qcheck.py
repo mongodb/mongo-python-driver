@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import random
-import traceback
 import datetime
+import random
 import re
 import sys
+import traceback
+
 sys.path[0:0] = [""]
 
 from bson.binary import Binary
@@ -75,9 +76,13 @@ def gen_printable_string(gen_length):
 
 
 if PY3:
+
     def gen_char(set=None):
         return lambda: bytes([random.randint(0, 255)])
+
+
 else:
+
     def gen_char(set=None):
         return lambda: chr(random.randint(0, 255))
 
@@ -91,9 +96,7 @@ def gen_unichar():
 
 
 def gen_unicode(gen_length):
-    return lambda: u"".join([x for x in
-                             gen_list(gen_unichar(), gen_length)() if
-                             x not in ".$"])
+    return lambda: u"".join([x for x in gen_list(gen_unichar(), gen_length)() if x not in ".$"])
 
 
 def gen_list(generator, gen_length):
@@ -101,22 +104,24 @@ def gen_list(generator, gen_length):
 
 
 def gen_datetime():
-    return lambda: datetime.datetime(random.randint(1970, 2037),
-                                     random.randint(1, 12),
-                                     random.randint(1, 28),
-                                     random.randint(0, 23),
-                                     random.randint(0, 59),
-                                     random.randint(0, 59),
-                                     random.randint(0, 999) * 1000)
+    return lambda: datetime.datetime(
+        random.randint(1970, 2037),
+        random.randint(1, 12),
+        random.randint(1, 28),
+        random.randint(0, 23),
+        random.randint(0, 59),
+        random.randint(0, 59),
+        random.randint(0, 999) * 1000,
+    )
 
 
 def gen_dict(gen_key, gen_value, gen_length):
-
     def a_dict(gen_key, gen_value, length):
         result = {}
         for _ in range(length):
             result[gen_key()] = gen_value()
         return result
+
     return lambda: a_dict(gen_key, gen_value, gen_length())
 
 
@@ -136,6 +141,7 @@ def gen_regexp(gen_length):
             flags = flags | re.VERBOSE
 
         return flags
+
     return lambda: re.compile(pattern(), gen_flags())
 
 
@@ -156,15 +162,17 @@ def gen_mongo_value(depth, ref):
         # decode BSON binary subtype 0 to bytes. Testing this with
         # bytes in python3 makes a lot more sense.
         bintype = bytes
-    choices = [gen_unicode(gen_range(0, 50)),
-               gen_printable_string(gen_range(0, 50)),
-               my_map(gen_string(gen_range(0, 1000)), bintype),
-               gen_int(),
-               gen_float(),
-               gen_boolean(),
-               gen_datetime(),
-               gen_objectid(),
-               lift(None)]
+    choices = [
+        gen_unicode(gen_range(0, 50)),
+        gen_printable_string(gen_range(0, 50)),
+        my_map(gen_string(gen_range(0, 1000)), bintype),
+        gen_int(),
+        gen_float(),
+        gen_boolean(),
+        gen_datetime(),
+        gen_objectid(),
+        lift(None),
+    ]
     if ref:
         choices.append(gen_dbref())
     if depth > 0:
@@ -178,9 +186,10 @@ def gen_mongo_list(depth, ref):
 
 
 def gen_mongo_dict(depth, ref=True):
-    return my_map(gen_dict(gen_unicode(gen_range(0, 20)),
-                        gen_mongo_value(depth - 1, ref),
-                        gen_range(0, 10)), SON)
+    return my_map(
+        gen_dict(gen_unicode(gen_range(0, 20)), gen_mongo_value(depth - 1, ref), gen_range(0, 10)),
+        SON,
+    )
 
 
 def simplify(case):  # TODO this is a hack
@@ -250,8 +259,10 @@ def check_unittest(test, predicate, generator):
     counter_examples = check(predicate, generator)
     if counter_examples:
         failures = len(counter_examples)
-        message = "\n".join(["    -> %s" % f for f in
-                             counter_examples[:examples]])
-        message = ("found %d counter examples, displaying first %d:\n%s" %
-                   (failures, min(failures, examples), message))
+        message = "\n".join(["    -> %s" % f for f in counter_examples[:examples]])
+        message = "found %d counter examples, displaying first %d:\n%s" % (
+            failures,
+            min(failures, examples),
+            message,
+        )
         test.fail(message)

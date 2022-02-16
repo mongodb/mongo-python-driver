@@ -14,16 +14,15 @@
 
 """Test the read_concern module."""
 
+from test import IntegrationTest, client_context
+from test.utils import OvertCommandListener, rs_or_single_client, single_client
+
 from bson.son import SON
 from pymongo.errors import ConfigurationError
 from pymongo.read_concern import ReadConcern
 
-from test import client_context, IntegrationTest
-from test.utils import single_client, rs_or_single_client, OvertCommandListener
-
 
 class TestReadConcern(IntegrationTest):
-
     @classmethod
     @client_context.require_connection
     def setUpClass(cls):
@@ -31,12 +30,12 @@ class TestReadConcern(IntegrationTest):
         cls.listener = OvertCommandListener()
         cls.client = single_client(event_listeners=[cls.listener])
         cls.db = cls.client.pymongo_test
-        client_context.client.pymongo_test.create_collection('coll')
+        client_context.client.pymongo_test.create_collection("coll")
 
     @classmethod
     def tearDownClass(cls):
         cls.client.close()
-        client_context.client.pymongo_test.drop_collection('coll')
+        client_context.client.pymongo_test.drop_collection("coll")
         super(TestReadConcern, cls).tearDownClass()
 
     def tearDown(self):
@@ -48,105 +47,107 @@ class TestReadConcern(IntegrationTest):
         self.assertIsNone(rc.level)
         self.assertTrue(rc.ok_for_legacy)
 
-        rc = ReadConcern('majority')
-        self.assertEqual('majority', rc.level)
+        rc = ReadConcern("majority")
+        self.assertEqual("majority", rc.level)
         self.assertFalse(rc.ok_for_legacy)
 
-        rc = ReadConcern('local')
-        self.assertEqual('local', rc.level)
+        rc = ReadConcern("local")
+        self.assertEqual("local", rc.level)
         self.assertTrue(rc.ok_for_legacy)
 
         self.assertRaises(TypeError, ReadConcern, 42)
 
     def test_read_concern_uri(self):
-        uri = 'mongodb://%s/?readConcernLevel=majority' % (
-            client_context.pair,)
+        uri = "mongodb://%s/?readConcernLevel=majority" % (client_context.pair,)
         client = rs_or_single_client(uri, connect=False)
-        self.assertEqual(ReadConcern('majority'), client.read_concern)
+        self.assertEqual(ReadConcern("majority"), client.read_concern)
 
     @client_context.require_version_max(3, 1)
     def test_invalid_read_concern(self):
-        coll = self.db.get_collection(
-            'coll', read_concern=ReadConcern('majority'))
+        coll = self.db.get_collection("coll", read_concern=ReadConcern("majority"))
         self.assertRaisesRegexp(
             ConfigurationError,
-            'read concern level of majority is not valid '
-            'with a max wire version of [0-3]',
-            coll.count)
+            "read concern level of majority is not valid " "with a max wire version of [0-3]",
+            coll.count,
+        )
 
     @client_context.require_version_min(3, 1, 9, -1)
     def test_find_command(self):
         # readConcern not sent in command if not specified.
         coll = self.db.coll
-        tuple(coll.find({'field': 'value'}))
-        self.assertNotIn('readConcern',
-                         self.listener.results['started'][0].command)
+        tuple(coll.find({"field": "value"}))
+        self.assertNotIn("readConcern", self.listener.results["started"][0].command)
 
         self.listener.results.clear()
 
         # Explicitly set readConcern to 'local'.
-        coll = self.db.get_collection('coll', read_concern=ReadConcern('local'))
-        tuple(coll.find({'field': 'value'}))
+        coll = self.db.get_collection("coll", read_concern=ReadConcern("local"))
+        tuple(coll.find({"field": "value"}))
         self.assertEqualCommand(
-            SON([('find', 'coll'),
-                 ('filter', {'field': 'value'}),
-                 ('readConcern', {'level': 'local'})]),
-            self.listener.results['started'][0].command)
+            SON(
+                [
+                    ("find", "coll"),
+                    ("filter", {"field": "value"}),
+                    ("readConcern", {"level": "local"}),
+                ]
+            ),
+            self.listener.results["started"][0].command,
+        )
 
     @client_context.require_version_min(3, 1, 9, -1)
     def test_command_cursor(self):
         # readConcern not sent in command if not specified.
         coll = self.db.coll
-        tuple(coll.aggregate([{'$match': {'field': 'value'}}]))
-        self.assertNotIn('readConcern',
-                         self.listener.results['started'][0].command)
+        tuple(coll.aggregate([{"$match": {"field": "value"}}]))
+        self.assertNotIn("readConcern", self.listener.results["started"][0].command)
 
         self.listener.results.clear()
 
         # Explicitly set readConcern to 'local'.
-        coll = self.db.get_collection('coll', read_concern=ReadConcern('local'))
-        tuple(coll.aggregate([{'$match': {'field': 'value'}}]))
+        coll = self.db.get_collection("coll", read_concern=ReadConcern("local"))
+        tuple(coll.aggregate([{"$match": {"field": "value"}}]))
         self.assertEqual(
-            {'level': 'local'},
-            self.listener.results['started'][0].command['readConcern'])
+            {"level": "local"}, self.listener.results["started"][0].command["readConcern"]
+        )
 
     def test_aggregate_out(self):
-        coll = self.db.get_collection('coll', read_concern=ReadConcern('local'))
-        tuple(coll.aggregate([{'$match': {'field': 'value'}},
-                              {'$out': 'output_collection'}]))
+        coll = self.db.get_collection("coll", read_concern=ReadConcern("local"))
+        tuple(coll.aggregate([{"$match": {"field": "value"}}, {"$out": "output_collection"}]))
 
         # Aggregate with $out supports readConcern MongoDB 4.2 onwards.
         if client_context.version >= (4, 1):
-            self.assertIn('readConcern',
-                          self.listener.results['started'][0].command)
+            self.assertIn("readConcern", self.listener.results["started"][0].command)
         else:
-            self.assertNotIn('readConcern',
-                          self.listener.results['started'][0].command)
+            self.assertNotIn("readConcern", self.listener.results["started"][0].command)
 
     def test_map_reduce_out(self):
-        coll = self.db.get_collection('coll', read_concern=ReadConcern('local'))
-        coll.map_reduce('function() { emit(this._id, this.value); }',
-                        'function(key, values) { return 42; }',
-                        out='output_collection')
-        self.assertNotIn('readConcern',
-                         self.listener.results['started'][0].command)
+        coll = self.db.get_collection("coll", read_concern=ReadConcern("local"))
+        coll.map_reduce(
+            "function() { emit(this._id, this.value); }",
+            "function(key, values) { return 42; }",
+            out="output_collection",
+        )
+        self.assertNotIn("readConcern", self.listener.results["started"][0].command)
 
         if client_context.version.at_least(3, 1, 9, -1):
             self.listener.results.clear()
             coll.map_reduce(
-                'function() { emit(this._id, this.value); }',
-                'function(key, values) { return 42; }',
-                out={'inline': 1})
+                "function() { emit(this._id, this.value); }",
+                "function(key, values) { return 42; }",
+                out={"inline": 1},
+            )
             self.assertEqual(
-                {'level': 'local'},
-                self.listener.results['started'][0].command['readConcern'])
+                {"level": "local"}, self.listener.results["started"][0].command["readConcern"]
+            )
 
     @client_context.require_version_min(3, 1, 9, -1)
     def test_inline_map_reduce(self):
-        coll = self.db.get_collection('coll', read_concern=ReadConcern('local'))
-        tuple(coll.inline_map_reduce(
-            'function() { emit(this._id, this.value); }',
-            'function(key, values) { return 42; }'))
+        coll = self.db.get_collection("coll", read_concern=ReadConcern("local"))
+        tuple(
+            coll.inline_map_reduce(
+                "function() { emit(this._id, this.value); }", "function(key, values) { return 42; }"
+            )
+        )
         self.assertEqual(
-            {'level': 'local'},
-            self.listener.results['started'][0].command['readConcern'])
+            {"level": "local"}, self.listener.results["started"][0].command["readConcern"]
+        )

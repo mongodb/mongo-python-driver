@@ -23,6 +23,19 @@ import warnings
 
 sys.path[0:0] = [""]
 
+from test import SkipTest, client_context, qcheck, unittest
+from test.test_bulk import BulkAuthorizationTestBase, BulkTestBase
+from test.test_client import IntegrationTest
+from test.utils import (
+    DeprecationFilter,
+    joinall,
+    oid_generated_on_process,
+    rs_or_single_client,
+    rs_or_single_client_noauth,
+    single_client,
+    wait_until,
+)
+
 from bson.binary import PYTHON_LEGACY, STANDARD
 from bson.code import Code
 from bson.codec_options import CodecOptions
@@ -30,40 +43,33 @@ from bson.objectid import ObjectId
 from bson.py3compat import string_type
 from bson.son import SON
 from pymongo import ASCENDING, DESCENDING, GEOHAYSTACK
-from pymongo.database import Database
 from pymongo.common import partition_node
-from pymongo.errors import (BulkWriteError,
-                            ConfigurationError,
-                            CursorNotFound,
-                            DocumentTooLarge,
-                            DuplicateKeyError,
-                            InvalidDocument,
-                            InvalidOperation,
-                            OperationFailure,
-                            WriteConcernError,
-                            WTimeoutError)
+from pymongo.database import Database
+from pymongo.errors import (
+    BulkWriteError,
+    ConfigurationError,
+    CursorNotFound,
+    DocumentTooLarge,
+    DuplicateKeyError,
+    InvalidDocument,
+    InvalidOperation,
+    OperationFailure,
+    WriteConcernError,
+    WTimeoutError,
+)
 from pymongo.hello_compat import HelloCompat
 from pymongo.message import _CursorAddress
 from pymongo.operations import IndexModel
-from pymongo.son_manipulator import (AutoReference,
-                                     NamespaceInjector,
-                                     ObjectIdShuffler,
-                                     SONManipulator)
+from pymongo.son_manipulator import (
+    AutoReference,
+    NamespaceInjector,
+    ObjectIdShuffler,
+    SONManipulator,
+)
 from pymongo.write_concern import WriteConcern
-from test import client_context, qcheck, unittest, SkipTest
-from test.test_client import IntegrationTest
-from test.test_bulk import BulkTestBase, BulkAuthorizationTestBase
-from test.utils import (DeprecationFilter,
-                        joinall,
-                        oid_generated_on_process,
-                        rs_or_single_client,
-                        rs_or_single_client_noauth,
-                        single_client,
-                        wait_until)
 
 
 class TestDeprecations(IntegrationTest):
-
     @classmethod
     def setUpClass(cls):
         super(TestDeprecations, cls).setUpClass()
@@ -74,36 +80,27 @@ class TestDeprecations(IntegrationTest):
         cls.deprecation_filter.stop()
 
     def test_save_deprecation(self):
-        self.assertRaises(
-            DeprecationWarning, lambda: self.db.test.save({}))
+        self.assertRaises(DeprecationWarning, lambda: self.db.test.save({}))
 
     def test_insert_deprecation(self):
-        self.assertRaises(
-            DeprecationWarning, lambda: self.db.test.insert({}))
+        self.assertRaises(DeprecationWarning, lambda: self.db.test.insert({}))
 
     def test_update_deprecation(self):
-        self.assertRaises(
-            DeprecationWarning, lambda: self.db.test.update({}, {}))
+        self.assertRaises(DeprecationWarning, lambda: self.db.test.update({}, {}))
 
     def test_remove_deprecation(self):
-        self.assertRaises(
-            DeprecationWarning, lambda: self.db.test.remove({}))
+        self.assertRaises(DeprecationWarning, lambda: self.db.test.remove({}))
 
     def test_find_and_modify_deprecation(self):
-        self.assertRaises(
-            DeprecationWarning,
-            lambda: self.db.test.find_and_modify({'i': 5}, {}))
+        self.assertRaises(DeprecationWarning, lambda: self.db.test.find_and_modify({"i": 5}, {}))
 
     def test_add_son_manipulator_deprecation(self):
         db = self.client.pymongo_test
-        self.assertRaises(DeprecationWarning,
-                          lambda: db.add_son_manipulator(AutoReference(db)))
+        self.assertRaises(DeprecationWarning, lambda: db.add_son_manipulator(AutoReference(db)))
 
     def test_ensure_index_deprecation(self):
         try:
-            self.assertRaises(
-                DeprecationWarning,
-                lambda: self.db.test.ensure_index('i'))
+            self.assertRaises(DeprecationWarning, lambda: self.db.test.ensure_index("i"))
         finally:
             self.db.test.drop()
 
@@ -113,15 +110,12 @@ class TestDeprecations(IntegrationTest):
     def test_geoHaystack_deprecation(self):
         self.addCleanup(self.db.test.drop)
         keys = [("pos", GEOHAYSTACK), ("type", ASCENDING)]
-        self.assertRaises(
-            DeprecationWarning, self.db.test.create_index, keys, bucketSize=1)
+        self.assertRaises(DeprecationWarning, self.db.test.create_index, keys, bucketSize=1)
         indexes = [IndexModel(keys, bucketSize=1)]
-        self.assertRaises(
-            DeprecationWarning, self.db.test.create_indexes, indexes)
+        self.assertRaises(DeprecationWarning, self.db.test.create_indexes, indexes)
 
 
 class TestLegacy(IntegrationTest):
-
     @classmethod
     def setUpClass(cls):
         super(TestLegacy, cls).setUpClass()
@@ -146,12 +140,10 @@ class TestLegacy(IntegrationTest):
 
         doc_class = dict
         # Work around http://bugs.jython.org/issue1728
-        if (sys.platform.startswith('java') and
-                sys.version_info[:3] >= (2, 5, 2)):
+        if sys.platform.startswith("java") and sys.version_info[:3] >= (2, 5, 2):
             doc_class = SON
 
-        db = self.client.get_database(
-            db.name, codec_options=CodecOptions(document_class=doc_class))
+        db = self.client.get_database(db.name, codec_options=CodecOptions(document_class=doc_class))
 
         def remove_insert_find_one(doc):
             db.test.remove({})
@@ -159,19 +151,18 @@ class TestLegacy(IntegrationTest):
             # SON equality is order sensitive.
             return db.test.find_one() == doc.to_dict()
 
-        qcheck.check_unittest(self, remove_insert_find_one,
-                              qcheck.gen_mongo_dict(3))
+        qcheck.check_unittest(self, remove_insert_find_one, qcheck.gen_mongo_dict(3))
 
     def test_generator_insert(self):
         # Only legacy insert currently supports insert from a generator.
         db = self.db
         db.test.remove({})
         self.assertEqual(db.test.find().count(), 0)
-        db.test.insert(({'a': i} for i in range(5)), manipulate=False)
+        db.test.insert(({"a": i} for i in range(5)), manipulate=False)
         self.assertEqual(5, db.test.count())
         db.test.remove({})
 
-        db.test.insert(({'a': i} for i in range(5)), manipulate=True)
+        db.test.insert(({"a": i} for i in range(5)), manipulate=True)
         self.assertEqual(5, db.test.count())
         db.test.remove({})
 
@@ -205,45 +196,42 @@ class TestLegacy(IntegrationTest):
         db = self.db
         db.drop_collection("test_insert_multiple_with_duplicate")
         collection = db.test_insert_multiple_with_duplicate
-        collection.create_index([('i', ASCENDING)], unique=True)
+        collection.create_index([("i", ASCENDING)], unique=True)
 
         # No error
-        collection.insert([{'i': i} for i in range(5, 10)], w=0)
-        wait_until(lambda: 5 == collection.count(), 'insert 5 documents')
+        collection.insert([{"i": i} for i in range(5, 10)], w=0)
+        wait_until(lambda: 5 == collection.count(), "insert 5 documents")
 
         db.drop_collection("test_insert_multiple_with_duplicate")
-        collection.create_index([('i', ASCENDING)], unique=True)
+        collection.create_index([("i", ASCENDING)], unique=True)
 
         # No error
-        collection.insert([{'i': 1}] * 2, w=0)
-        wait_until(lambda: 1 == collection.count(), 'insert 1 document')
+        collection.insert([{"i": 1}] * 2, w=0)
+        wait_until(lambda: 1 == collection.count(), "insert 1 document")
 
         self.assertRaises(
             DuplicateKeyError,
-            lambda: collection.insert([{'i': 2}] * 2),
+            lambda: collection.insert([{"i": 2}] * 2),
         )
 
         db.drop_collection("test_insert_multiple_with_duplicate")
-        db = self.client.get_database(
-            db.name, write_concern=WriteConcern(w=0))
+        db = self.client.get_database(db.name, write_concern=WriteConcern(w=0))
 
         collection = db.test_insert_multiple_with_duplicate
-        collection.create_index([('i', ASCENDING)], unique=True)
+        collection.create_index([("i", ASCENDING)], unique=True)
 
         # No error.
-        collection.insert([{'i': 1}] * 2)
-        wait_until(lambda: 1 == collection.count(), 'insert 1 document')
+        collection.insert([{"i": 1}] * 2)
+        wait_until(lambda: 1 == collection.count(), "insert 1 document")
 
         # Implied acknowledged.
         self.assertRaises(
             DuplicateKeyError,
-            lambda: collection.insert([{'i': 2}] * 2, fsync=True),
+            lambda: collection.insert([{"i": 2}] * 2, fsync=True),
         )
 
         # Explicit acknowledged.
-        self.assertRaises(
-            DuplicateKeyError,
-            lambda: collection.insert([{'i': 2}] * 2, w=1))
+        self.assertRaises(DuplicateKeyError, lambda: collection.insert([{"i": 2}] * 2, w=1))
 
         db.drop_collection("test_insert_multiple_with_duplicate")
 
@@ -252,35 +240,38 @@ class TestLegacy(IntegrationTest):
         # Tests legacy insert.
         collection = self.db.test_insert_prefers_write_errors
         self.db.drop_collection(collection.name)
-        collection.insert_one({'_id': 1})
-        large = 's' * 1024 * 1024 * 15
+        collection.insert_one({"_id": 1})
+        large = "s" * 1024 * 1024 * 15
         with self.assertRaises(DuplicateKeyError):
-            collection.insert(
-                [{'_id': 1, 's': large}, {'_id': 2, 's': large}])
+            collection.insert([{"_id": 1, "s": large}, {"_id": 2, "s": large}])
         self.assertEqual(1, collection.count())
 
         with self.assertRaises(DuplicateKeyError):
             collection.insert(
-                [{'_id': 1, 's': large}, {'_id': 2, 's': large}],
-                continue_on_error=True)
+                [{"_id": 1, "s": large}, {"_id": 2, "s": large}], continue_on_error=True
+            )
         self.assertEqual(2, collection.count())
-        collection.delete_one({'_id': 2})
+        collection.delete_one({"_id": 2})
 
         # A writeError followed by a writeConcernError should prefer to raise
         # the writeError.
         with self.assertRaises(DuplicateKeyError):
             collection.insert(
-                [{'_id': 1, 's': large}, {'_id': 2, 's': large}],
+                [{"_id": 1, "s": large}, {"_id": 2, "s": large}],
                 continue_on_error=True,
-                w=len(client_context.nodes) + 10, wtimeout=1)
+                w=len(client_context.nodes) + 10,
+                wtimeout=1,
+            )
         self.assertEqual(2, collection.count())
         collection.delete_many({})
 
         with self.assertRaises(WriteConcernError):
             collection.insert(
-                [{'_id': 1, 's': large}, {'_id': 2, 's': large}],
+                [{"_id": 1, "s": large}, {"_id": 2, "s": large}],
                 continue_on_error=True,
-                w=len(client_context.nodes) + 10, wtimeout=1)
+                w=len(client_context.nodes) + 10,
+                wtimeout=1,
+            )
         self.assertEqual(2, collection.count())
 
     def test_insert_iterables(self):
@@ -298,8 +289,7 @@ class TestLegacy(IntegrationTest):
 
         db.drop_collection("test")
         self.assertEqual(db.test.find().count(), 0)
-        db.test.insert(map(lambda x: {"hello": "world"},
-                           itertools.repeat(None, 10)))
+        db.test.insert(map(lambda x: {"hello": "world"}, itertools.repeat(None, 10)))
         self.assertEqual(db.test.find().count(), 10)
 
     def test_insert_manipulate_false(self):
@@ -309,13 +299,13 @@ class TestLegacy(IntegrationTest):
         collection = self.db.test_insert_manipulate_false
         collection.drop()
         oid = ObjectId()
-        doc = {'a': oid}
+        doc = {"a": oid}
 
         try:
             # The return value is None.
             self.assertTrue(collection.insert(doc, manipulate=False) is None)
             # insert() shouldn't set _id on the passed-in document object.
-            self.assertEqual({'a': oid}, doc)
+            self.assertEqual({"a": oid}, doc)
 
             # Bulk insert. The return value is a list of None.
             self.assertEqual([None], collection.insert([{}], manipulate=False))
@@ -354,7 +344,7 @@ class TestLegacy(IntegrationTest):
         collection.remove({}, w=client_context.w)
 
         oid = collection.insert({"_id": oid, "one": 1}, w=0)
-        wait_until(lambda: 1 == collection.count(), 'insert 1 document')
+        wait_until(lambda: 1 == collection.count(), "insert 1 document")
 
         docs[0].pop("_id")
         docs[2]["_id"] = oid
@@ -364,7 +354,7 @@ class TestLegacy(IntegrationTest):
 
         self.assertEqual(3, collection.count())
         collection.insert(docs, manipulate=False, continue_on_error=True, w=0)
-        wait_until(lambda: 6 == collection.count(), 'insert 3 documents')
+        wait_until(lambda: 6 == collection.count(), "insert 3 documents")
 
     def test_acknowledged_insert(self):
         # Tests legacy insert.
@@ -375,8 +365,7 @@ class TestLegacy(IntegrationTest):
         a = {"hello": "world"}
         collection.insert(a)
         collection.insert(a, w=0)
-        self.assertRaises(OperationFailure,
-                          collection.insert, a)
+        self.assertRaises(OperationFailure, collection.insert, a)
 
     def test_insert_adds_id(self):
         # Tests legacy insert.
@@ -392,24 +381,30 @@ class TestLegacy(IntegrationTest):
     def test_insert_large_batch(self):
         # Tests legacy insert.
         db = self.client.test_insert_large_batch
-        self.addCleanup(self.client.drop_database, 'test_insert_large_batch')
+        self.addCleanup(self.client.drop_database, "test_insert_large_batch")
         max_bson_size = self.client.max_bson_size
         # Write commands are limited to 16MB + 16k per batch
-        big_string = 'x' * int(max_bson_size / 2)
+        big_string = "x" * int(max_bson_size / 2)
 
         # Batch insert that requires 2 batches.
-        successful_insert = [{'x': big_string}, {'x': big_string},
-                             {'x': big_string}, {'x': big_string}]
+        successful_insert = [
+            {"x": big_string},
+            {"x": big_string},
+            {"x": big_string},
+            {"x": big_string},
+        ]
         db.collection_0.insert(successful_insert, w=1)
         self.assertEqual(4, db.collection_0.count())
 
         db.collection_0.drop()
 
         # Test that inserts fail after first error.
-        insert_second_fails = [{'_id': 'id0', 'x': big_string},
-                               {'_id': 'id0', 'x': big_string},
-                               {'_id': 'id1', 'x': big_string},
-                               {'_id': 'id2', 'x': big_string}]
+        insert_second_fails = [
+            {"_id": "id0", "x": big_string},
+            {"_id": "id0", "x": big_string},
+            {"_id": "id1", "x": big_string},
+            {"_id": "id2", "x": big_string},
+        ]
 
         with self.assertRaises(DuplicateKeyError):
             db.collection_1.insert(insert_second_fails)
@@ -420,23 +415,23 @@ class TestLegacy(IntegrationTest):
 
         # 2 batches, 2nd insert fails, don't continue on error.
         self.assertTrue(db.collection_2.insert(insert_second_fails, w=0))
-        wait_until(lambda: 1 == db.collection_2.count(),
-                   'insert 1 document', timeout=60)
+        wait_until(lambda: 1 == db.collection_2.count(), "insert 1 document", timeout=60)
 
         db.collection_2.drop()
 
         # 2 batches, ids of docs 0 and 1 are dupes, ids of docs 2 and 3 are
         # dupes. Acknowledged, continue on error.
-        insert_two_failures = [{'_id': 'id0', 'x': big_string},
-                               {'_id': 'id0', 'x': big_string},
-                               {'_id': 'id1', 'x': big_string},
-                               {'_id': 'id1', 'x': big_string}]
+        insert_two_failures = [
+            {"_id": "id0", "x": big_string},
+            {"_id": "id0", "x": big_string},
+            {"_id": "id1", "x": big_string},
+            {"_id": "id1", "x": big_string},
+        ]
 
         with self.assertRaises(OperationFailure) as context:
-            db.collection_3.insert(insert_two_failures,
-                                   continue_on_error=True, w=1)
+            db.collection_3.insert(insert_two_failures, continue_on_error=True, w=1)
 
-        self.assertIn('id1', str(context.exception))
+        self.assertIn("id1", str(context.exception))
 
         # Only the first and third documents should be inserted.
         self.assertEqual(2, db.collection_3.count())
@@ -447,8 +442,7 @@ class TestLegacy(IntegrationTest):
         db.collection_4.insert(insert_two_failures, continue_on_error=True, w=0)
 
         # Only the first and third documents are inserted.
-        wait_until(lambda: 2 == db.collection_4.count(),
-                   'insert 2 documents', timeout=60)
+        wait_until(lambda: 2 == db.collection_4.count(), "insert 2 documents", timeout=60)
 
         db.collection_4.drop()
 
@@ -470,48 +464,42 @@ class TestLegacy(IntegrationTest):
         # Tests legacy update.
         db = self.db
         db.drop_collection("test")
-        db.test.insert({'_id': 1})
-        db.test.update({'_id': 1}, {'a': 1}, manipulate=True)
-        self.assertEqual(
-            {'_id': 1, 'a': 1},
-            db.test.find_one())
+        db.test.insert({"_id": 1})
+        db.test.update({"_id": 1}, {"a": 1}, manipulate=True)
+        self.assertEqual({"_id": 1, "a": 1}, db.test.find_one())
 
         class AddField(SONManipulator):
             def transform_incoming(self, son, dummy):
-                son['field'] = 'value'
+                son["field"] = "value"
                 return son
 
         db.add_son_manipulator(AddField())
-        db.test.update({'_id': 1}, {'a': 2}, manipulate=False)
-        self.assertEqual(
-            {'_id': 1, 'a': 2},
-            db.test.find_one())
+        db.test.update({"_id": 1}, {"a": 2}, manipulate=False)
+        self.assertEqual({"_id": 1, "a": 2}, db.test.find_one())
 
-        db.test.update({'_id': 1}, {'a': 3}, manipulate=True)
-        self.assertEqual(
-            {'_id': 1, 'a': 3, 'field': 'value'},
-            db.test.find_one())
+        db.test.update({"_id": 1}, {"a": 3}, manipulate=True)
+        self.assertEqual({"_id": 1, "a": 3, "field": "value"}, db.test.find_one())
 
     def test_update_nmodified(self):
         # Tests legacy update.
         db = self.db
         db.drop_collection("test")
         hello = self.client.admin.command(HelloCompat.LEGACY_CMD)
-        used_write_commands = (hello.get("maxWireVersion", 0) > 1)
+        used_write_commands = hello.get("maxWireVersion", 0) > 1
 
-        db.test.insert({'_id': 1})
-        result = db.test.update({'_id': 1}, {'$set': {'x': 1}})
+        db.test.insert({"_id": 1})
+        result = db.test.update({"_id": 1}, {"$set": {"x": 1}})
         if used_write_commands:
-            self.assertEqual(1, result['nModified'])
+            self.assertEqual(1, result["nModified"])
         else:
-            self.assertFalse('nModified' in result)
+            self.assertFalse("nModified" in result)
 
         # x is already 1.
-        result = db.test.update({'_id': 1}, {'$set': {'x': 1}})
+        result = db.test.update({"_id": 1}, {"$set": {"x": 1}})
         if used_write_commands:
-            self.assertEqual(0, result['nModified'])
+            self.assertEqual(0, result["nModified"])
         else:
-            self.assertFalse('nModified' in result)
+            self.assertFalse("nModified" in result)
 
     def test_multi_update(self):
         # Tests legacy update.
@@ -528,8 +516,7 @@ class TestLegacy(IntegrationTest):
         for doc in db.test.find():
             self.assertEqual(5, doc["y"])
 
-        self.assertEqual(2, db.test.update({"x": 4}, {"$set": {"y": 6}},
-                                           multi=True)["n"])
+        self.assertEqual(2, db.test.update({"x": 4}, {"$set": {"y": 6}}, multi=True)["n"])
 
     def test_upsert(self):
         # Tests legacy update.
@@ -552,17 +539,13 @@ class TestLegacy(IntegrationTest):
         collection.insert({"x": 5})
         _id = collection.insert({"x": 4})
 
-        self.assertEqual(
-            None, collection.update({"_id": _id}, {"$inc": {"x": 1}}, w=0))
+        self.assertEqual(None, collection.update({"_id": _id}, {"$inc": {"x": 1}}, w=0))
 
-        self.assertRaises(DuplicateKeyError, collection.update,
-                          {"_id": _id}, {"$inc": {"x": 1}})
+        self.assertRaises(DuplicateKeyError, collection.update, {"_id": _id}, {"$inc": {"x": 1}})
 
-        self.assertEqual(1, collection.update({"_id": _id},
-                                              {"$inc": {"x": 2}})["n"])
+        self.assertEqual(1, collection.update({"_id": _id}, {"$inc": {"x": 2}})["n"])
 
-        self.assertEqual(0, collection.update({"_id": "foo"},
-                                              {"$inc": {"x": 2}})["n"])
+        self.assertEqual(0, collection.update({"_id": "foo"}, {"$inc": {"x": 2}})["n"])
         db.drop_collection("test_acknowledged_update")
 
     def test_update_backward_compat(self):
@@ -573,12 +556,12 @@ class TestLegacy(IntegrationTest):
         c = self.db.test
         c.drop()
         oid = ObjectId()
-        res = c.update({'_id': oid}, {'$set': {'a': 'a'}}, upsert=True)
-        self.assertFalse(res.get('updatedExisting'))
-        self.assertEqual(oid, res.get('upserted'))
+        res = c.update({"_id": oid}, {"$set": {"a": "a"}}, upsert=True)
+        self.assertFalse(res.get("updatedExisting"))
+        self.assertEqual(oid, res.get("upserted"))
 
-        res = c.update({'_id': oid}, {'$set': {'b': 'b'}})
-        self.assertTrue(res.get('updatedExisting'))
+        res = c.update({"_id": oid}, {"$set": {"b": "b"}})
+        self.assertTrue(res.get("updatedExisting"))
 
     def test_save(self):
         # Tests legacy save.
@@ -593,29 +576,25 @@ class TestLegacy(IntegrationTest):
         # Save a doc with explicit id
         collection.save({"_id": "explicit_id", "hello": "bar"})
         doc = collection.find_one({"_id": "explicit_id"})
-        self.assertEqual(doc['_id'], 'explicit_id')
-        self.assertEqual(doc['hello'], 'bar')
+        self.assertEqual(doc["_id"], "explicit_id")
+        self.assertEqual(doc["hello"], "bar")
 
         # Save docs with _id field already present (shouldn't create new docs)
         self.assertEqual(2, collection.count())
-        collection.save({'_id': _id, 'hello': 'world'})
+        collection.save({"_id": _id, "hello": "world"})
         self.assertEqual(2, collection.count())
-        collection.save({'_id': 'explicit_id', 'hello': 'baz'})
+        collection.save({"_id": "explicit_id", "hello": "baz"})
         self.assertEqual(2, collection.count())
-        self.assertEqual(
-            'baz',
-            collection.find_one({'_id': 'explicit_id'})['hello']
-        )
+        self.assertEqual("baz", collection.find_one({"_id": "explicit_id"})["hello"])
 
         # Acknowledged mode.
         collection.create_index("hello", unique=True)
         # No exception, even though we duplicate the first doc's "hello" value
-        collection.save({'_id': 'explicit_id', 'hello': 'world'}, w=0)
+        collection.save({"_id": "explicit_id", "hello": "world"}, w=0)
 
         self.assertRaises(
-            DuplicateKeyError,
-            collection.save,
-            {'_id': 'explicit_id', 'hello': 'world'})
+            DuplicateKeyError, collection.save, {"_id": "explicit_id", "hello": "world"}
+        )
         self.db.drop_collection("test")
 
     def test_save_with_invalid_key(self):
@@ -625,7 +604,7 @@ class TestLegacy(IntegrationTest):
         self.db.drop_collection("test")
         self.assertTrue(self.db.test.insert({"hello": "world"}))
         doc = self.db.test.find_one()
-        doc['a.b'] = 'c'
+        doc["a.b"] = "c"
         self.assertRaises(OperationFailure, self.db.test.save, doc)
 
     def test_acknowledged_save(self):
@@ -637,8 +616,7 @@ class TestLegacy(IntegrationTest):
 
         collection.save({"hello": "world"})
         collection.save({"hello": "world"}, w=0)
-        self.assertRaises(DuplicateKeyError, collection.save,
-                          {"hello": "world"})
+        self.assertRaises(DuplicateKeyError, collection.save, {"hello": "world"})
         db.drop_collection("test_acknowledged_save")
 
     def test_save_adds_id(self):
@@ -701,19 +679,18 @@ class TestLegacy(IntegrationTest):
         half_size = int(max_size / 2)
         self.assertEqual(max_size, 16777216)
 
-        self.assertRaises(OperationFailure, self.db.test.insert,
-                          {"foo": "x" * max_size})
-        self.assertRaises(OperationFailure, self.db.test.save,
-                          {"foo": "x" * max_size})
-        self.assertRaises(OperationFailure, self.db.test.insert,
-                          [{"x": 1}, {"foo": "x" * max_size}])
-        self.db.test.insert([{"foo": "x" * half_size},
-                             {"foo": "x" * half_size}])
+        self.assertRaises(OperationFailure, self.db.test.insert, {"foo": "x" * max_size})
+        self.assertRaises(OperationFailure, self.db.test.save, {"foo": "x" * max_size})
+        self.assertRaises(
+            OperationFailure, self.db.test.insert, [{"x": 1}, {"foo": "x" * max_size}]
+        )
+        self.db.test.insert([{"foo": "x" * half_size}, {"foo": "x" * half_size}])
 
         self.db.test.insert({"bar": "x"})
         # Use w=0 here to test legacy doc size checking in all server versions
-        self.assertRaises(DocumentTooLarge, self.db.test.update,
-                          {"bar": "x"}, {"bar": "x" * (max_size - 14)}, w=0)
+        self.assertRaises(
+            DocumentTooLarge, self.db.test.update, {"bar": "x"}, {"bar": "x" * (max_size - 14)}, w=0
+        )
         # This will pass with OP_UPDATE or the update command.
         self.db.test.update({"bar": "x"}, {"bar": "x" * (max_size - 32)})
 
@@ -739,8 +716,7 @@ class TestLegacy(IntegrationTest):
                     self.assertIsNotNone(exc.details)
                 except OperationFailure as exc:
                     self.assertIsNotNone(exc.details)
-                    self.assertEqual(100, exc.code,
-                                     "Unexpected error: %r" % exc)
+                    self.assertEqual(100, exc.code, "Unexpected error: %r" % exc)
                 else:
                     self.fail("%s should have failed" % f)
 
@@ -751,125 +727,112 @@ class TestLegacy(IntegrationTest):
             wtimeout_err(coll.remove, {"x": 1}, w=w, wtimeout=1)
 
         # can't use fsync and j options together
-        self.assertRaises(ConfigurationError, self.db.test.insert,
-                          {"_id": 1}, j=True, fsync=True)
+        self.assertRaises(ConfigurationError, self.db.test.insert, {"_id": 1}, j=True, fsync=True)
 
     def test_find_and_modify(self):
         c = self.db.test
         c.drop()
-        c.insert({'_id': 1, 'i': 1})
+        c.insert({"_id": 1, "i": 1})
 
         # Test that we raise DuplicateKeyError when appropriate.
-        c.ensure_index('i', unique=True)
-        self.assertRaises(DuplicateKeyError,
-                          c.find_and_modify, query={'i': 1, 'j': 1},
-                          update={'$set': {'k': 1}}, upsert=True)
+        c.ensure_index("i", unique=True)
+        self.assertRaises(
+            DuplicateKeyError,
+            c.find_and_modify,
+            query={"i": 1, "j": 1},
+            update={"$set": {"k": 1}},
+            upsert=True,
+        )
         c.drop_indexes()
 
         # Test correct findAndModify
-        self.assertEqual({'_id': 1, 'i': 1},
-                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}}))
-        self.assertEqual({'_id': 1, 'i': 3},
-                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                           new=True))
+        self.assertEqual({"_id": 1, "i": 1}, c.find_and_modify({"_id": 1}, {"$inc": {"i": 1}}))
+        self.assertEqual(
+            {"_id": 1, "i": 3}, c.find_and_modify({"_id": 1}, {"$inc": {"i": 1}}, new=True)
+        )
 
-        self.assertEqual({'_id': 1, 'i': 3},
-                         c.find_and_modify({'_id': 1}, remove=True))
+        self.assertEqual({"_id": 1, "i": 3}, c.find_and_modify({"_id": 1}, remove=True))
 
-        self.assertEqual(None, c.find_one({'_id': 1}))
+        self.assertEqual(None, c.find_one({"_id": 1}))
 
-        self.assertEqual(None,
-                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}}))
-        self.assertEqual(None, c.find_and_modify({'_id': 1},
-                                                 {'$inc': {'i': 1}},
-                                                 upsert=True))
-        self.assertEqual({'_id': 1, 'i': 2},
-                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                           upsert=True, new=True))
+        self.assertEqual(None, c.find_and_modify({"_id": 1}, {"$inc": {"i": 1}}))
+        self.assertEqual(None, c.find_and_modify({"_id": 1}, {"$inc": {"i": 1}}, upsert=True))
+        self.assertEqual(
+            {"_id": 1, "i": 2},
+            c.find_and_modify({"_id": 1}, {"$inc": {"i": 1}}, upsert=True, new=True),
+        )
 
-        self.assertEqual({'_id': 1, 'i': 2},
-                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                           fields=['i']))
-        self.assertEqual({'_id': 1, 'i': 4},
-                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                           new=True, fields={'i': 1}))
+        self.assertEqual(
+            {"_id": 1, "i": 2}, c.find_and_modify({"_id": 1}, {"$inc": {"i": 1}}, fields=["i"])
+        )
+        self.assertEqual(
+            {"_id": 1, "i": 4},
+            c.find_and_modify({"_id": 1}, {"$inc": {"i": 1}}, new=True, fields={"i": 1}),
+        )
 
         # Test with full_response=True.
-        result = c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                   new=True, upsert=True,
-                                   full_response=True,
-                                   fields={'i': 1})
-        self.assertEqual({'_id': 1, 'i': 5}, result["value"])
-        self.assertEqual(True,
-                         result["lastErrorObject"]["updatedExisting"])
+        result = c.find_and_modify(
+            {"_id": 1},
+            {"$inc": {"i": 1}},
+            new=True,
+            upsert=True,
+            full_response=True,
+            fields={"i": 1},
+        )
+        self.assertEqual({"_id": 1, "i": 5}, result["value"])
+        self.assertEqual(True, result["lastErrorObject"]["updatedExisting"])
 
-        result = c.find_and_modify({'_id': 2}, {'$inc': {'i': 1}},
-                                   new=True, upsert=True,
-                                   full_response=True,
-                                   fields={'i': 1})
-        self.assertEqual({'_id': 2, 'i': 1}, result["value"])
-        self.assertEqual(False,
-                         result["lastErrorObject"]["updatedExisting"])
+        result = c.find_and_modify(
+            {"_id": 2},
+            {"$inc": {"i": 1}},
+            new=True,
+            upsert=True,
+            full_response=True,
+            fields={"i": 1},
+        )
+        self.assertEqual({"_id": 2, "i": 1}, result["value"])
+        self.assertEqual(False, result["lastErrorObject"]["updatedExisting"])
 
         class ExtendedDict(dict):
             pass
 
-        result = c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                   new=True, fields={'i': 1})
+        result = c.find_and_modify({"_id": 1}, {"$inc": {"i": 1}}, new=True, fields={"i": 1})
         self.assertFalse(isinstance(result, ExtendedDict))
-        c = self.db.get_collection(
-            "test", codec_options=CodecOptions(document_class=ExtendedDict))
-        result = c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                   new=True, fields={'i': 1})
+        c = self.db.get_collection("test", codec_options=CodecOptions(document_class=ExtendedDict))
+        result = c.find_and_modify({"_id": 1}, {"$inc": {"i": 1}}, new=True, fields={"i": 1})
         self.assertTrue(isinstance(result, ExtendedDict))
 
     def test_find_and_modify_with_sort(self):
         c = self.db.test
         c.drop()
         for j in range(5):
-            c.insert({'j': j, 'i': 0})
+            c.insert({"j": j, "i": 0})
 
-        sort = {'j': DESCENDING}
-        self.assertEqual(4, c.find_and_modify({},
-                                              {'$inc': {'i': 1}},
-                                              sort=sort)['j'])
-        sort = {'j': ASCENDING}
-        self.assertEqual(0, c.find_and_modify({},
-                                              {'$inc': {'i': 1}},
-                                              sort=sort)['j'])
-        sort = [('j', DESCENDING)]
-        self.assertEqual(4, c.find_and_modify({},
-                                              {'$inc': {'i': 1}},
-                                              sort=sort)['j'])
-        sort = [('j', ASCENDING)]
-        self.assertEqual(0, c.find_and_modify({},
-                                              {'$inc': {'i': 1}},
-                                              sort=sort)['j'])
-        sort = SON([('j', DESCENDING)])
-        self.assertEqual(4, c.find_and_modify({},
-                                              {'$inc': {'i': 1}},
-                                              sort=sort)['j'])
-        sort = SON([('j', ASCENDING)])
-        self.assertEqual(0, c.find_and_modify({},
-                                              {'$inc': {'i': 1}},
-                                              sort=sort)['j'])
+        sort = {"j": DESCENDING}
+        self.assertEqual(4, c.find_and_modify({}, {"$inc": {"i": 1}}, sort=sort)["j"])
+        sort = {"j": ASCENDING}
+        self.assertEqual(0, c.find_and_modify({}, {"$inc": {"i": 1}}, sort=sort)["j"])
+        sort = [("j", DESCENDING)]
+        self.assertEqual(4, c.find_and_modify({}, {"$inc": {"i": 1}}, sort=sort)["j"])
+        sort = [("j", ASCENDING)]
+        self.assertEqual(0, c.find_and_modify({}, {"$inc": {"i": 1}}, sort=sort)["j"])
+        sort = SON([("j", DESCENDING)])
+        self.assertEqual(4, c.find_and_modify({}, {"$inc": {"i": 1}}, sort=sort)["j"])
+        sort = SON([("j", ASCENDING)])
+        self.assertEqual(0, c.find_and_modify({}, {"$inc": {"i": 1}}, sort=sort)["j"])
 
         try:
             from collections import OrderedDict
-            sort = OrderedDict([('j', DESCENDING)])
-            self.assertEqual(4, c.find_and_modify({},
-                                                  {'$inc': {'i': 1}},
-                                                  sort=sort)['j'])
-            sort = OrderedDict([('j', ASCENDING)])
-            self.assertEqual(0, c.find_and_modify({},
-                                                  {'$inc': {'i': 1}},
-                                                  sort=sort)['j'])
+
+            sort = OrderedDict([("j", DESCENDING)])
+            self.assertEqual(4, c.find_and_modify({}, {"$inc": {"i": 1}}, sort=sort)["j"])
+            sort = OrderedDict([("j", ASCENDING)])
+            self.assertEqual(0, c.find_and_modify({}, {"$inc": {"i": 1}}, sort=sort)["j"])
         except ImportError:
             pass
         # Test that a standard dict with two keys is rejected.
-        sort = {'j': DESCENDING, 'foo': DESCENDING}
-        self.assertRaises(TypeError, c.find_and_modify,
-                          {}, {'$inc': {'i': 1}}, sort=sort)
+        sort = {"j": DESCENDING, "foo": DESCENDING}
+        self.assertRaises(TypeError, c.find_and_modify, {}, {"$inc": {"i": 1}}, sort=sort)
 
     def test_find_and_modify_with_manipulator(self):
         class AddCollectionNameManipulator(SONManipulator):
@@ -878,13 +841,13 @@ class TestLegacy(IntegrationTest):
 
             def transform_incoming(self, son, dummy):
                 copy = SON(son)
-                if 'collection' in copy:
-                    del copy['collection']
+                if "collection" in copy:
+                    del copy["collection"]
                 return copy
 
             def transform_outgoing(self, son, collection):
                 copy = SON(son)
-                copy['collection'] = collection.name
+                copy["collection"] = collection.name
                 return copy
 
         db = self.client.pymongo_test
@@ -892,87 +855,97 @@ class TestLegacy(IntegrationTest):
 
         c = db.test
         c.drop()
-        c.insert({'_id': 1, 'i': 1})
+        c.insert({"_id": 1, "i": 1})
 
         # Test correct findAndModify
         # With manipulators
-        self.assertEqual({'_id': 1, 'i': 1, 'collection': 'test'},
-                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                           manipulate=True))
-        self.assertEqual({'_id': 1, 'i': 3, 'collection': 'test'},
-                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                           new=True, manipulate=True))
+        self.assertEqual(
+            {"_id": 1, "i": 1, "collection": "test"},
+            c.find_and_modify({"_id": 1}, {"$inc": {"i": 1}}, manipulate=True),
+        )
+        self.assertEqual(
+            {"_id": 1, "i": 3, "collection": "test"},
+            c.find_and_modify({"_id": 1}, {"$inc": {"i": 1}}, new=True, manipulate=True),
+        )
         # With out manipulators
-        self.assertEqual({'_id': 1, 'i': 3},
-                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}}))
-        self.assertEqual({'_id': 1, 'i': 5},
-                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                           new=True))
+        self.assertEqual({"_id": 1, "i": 3}, c.find_and_modify({"_id": 1}, {"$inc": {"i": 1}}))
+        self.assertEqual(
+            {"_id": 1, "i": 5}, c.find_and_modify({"_id": 1}, {"$inc": {"i": 1}}, new=True)
+        )
 
     @client_context.require_version_max(4, 1, 0, -1)
     def test_group(self):
         db = self.db
         db.drop_collection("test")
 
-        self.assertEqual([],
-                         db.test.group([], {}, {"count": 0},
-                                       "function (obj, prev) { prev.count++; }"
-                                      ))
+        self.assertEqual(
+            [], db.test.group([], {}, {"count": 0}, "function (obj, prev) { prev.count++; }")
+        )
 
         db.test.insert_many([{"a": 2}, {"b": 5}, {"a": 1}])
 
-        self.assertEqual([{"count": 3}],
-                         db.test.group([], {}, {"count": 0},
-                                       "function (obj, prev) { prev.count++; }"
-                                      ))
+        self.assertEqual(
+            [{"count": 3}],
+            db.test.group([], {}, {"count": 0}, "function (obj, prev) { prev.count++; }"),
+        )
 
-        self.assertEqual([{"count": 1}],
-                         db.test.group([], {"a": {"$gt": 1}}, {"count": 0},
-                                       "function (obj, prev) { prev.count++; }"
-                                      ))
+        self.assertEqual(
+            [{"count": 1}],
+            db.test.group(
+                [], {"a": {"$gt": 1}}, {"count": 0}, "function (obj, prev) { prev.count++; }"
+            ),
+        )
 
         db.test.insert_one({"a": 2, "b": 3})
 
-        self.assertEqual([{"a": 2, "count": 2},
-                          {"a": None, "count": 1},
-                          {"a": 1, "count": 1}],
-                         db.test.group(["a"], {}, {"count": 0},
-                                       "function (obj, prev) { prev.count++; }"
-                                      ))
+        self.assertEqual(
+            [{"a": 2, "count": 2}, {"a": None, "count": 1}, {"a": 1, "count": 1}],
+            db.test.group(["a"], {}, {"count": 0}, "function (obj, prev) { prev.count++; }"),
+        )
 
         # modifying finalize
-        self.assertEqual([{"a": 2, "count": 3},
-                          {"a": None, "count": 2},
-                          {"a": 1, "count": 2}],
-                         db.test.group(["a"], {}, {"count": 0},
-                                       "function (obj, prev) "
-                                       "{ prev.count++; }",
-                                       "function (obj) { obj.count++; }"))
+        self.assertEqual(
+            [{"a": 2, "count": 3}, {"a": None, "count": 2}, {"a": 1, "count": 2}],
+            db.test.group(
+                ["a"],
+                {},
+                {"count": 0},
+                "function (obj, prev) " "{ prev.count++; }",
+                "function (obj) { obj.count++; }",
+            ),
+        )
 
         # returning finalize
-        self.assertEqual([2, 1, 1],
-                         db.test.group(["a"], {}, {"count": 0},
-                                       "function (obj, prev) "
-                                       "{ prev.count++; }",
-                                       "function (obj) { return obj.count; }"))
+        self.assertEqual(
+            [2, 1, 1],
+            db.test.group(
+                ["a"],
+                {},
+                {"count": 0},
+                "function (obj, prev) " "{ prev.count++; }",
+                "function (obj) { return obj.count; }",
+            ),
+        )
 
         # keyf
-        self.assertEqual([2, 2],
-                         db.test.group("function (obj) { if (obj.a == 2) "
-                                       "{ return {a: true} }; "
-                                       "return {b: true}; }", {}, {"count": 0},
-                                       "function (obj, prev) "
-                                       "{ prev.count++; }",
-                                       "function (obj) { return obj.count; }"))
+        self.assertEqual(
+            [2, 2],
+            db.test.group(
+                "function (obj) { if (obj.a == 2) " "{ return {a: true} }; " "return {b: true}; }",
+                {},
+                {"count": 0},
+                "function (obj, prev) " "{ prev.count++; }",
+                "function (obj) { return obj.count; }",
+            ),
+        )
 
         # no key
-        self.assertEqual([{"count": 4}],
-                         db.test.group(None, {}, {"count": 0},
-                                       "function (obj, prev) { prev.count++; }"
-                                      ))
+        self.assertEqual(
+            [{"count": 4}],
+            db.test.group(None, {}, {"count": 0}, "function (obj, prev) { prev.count++; }"),
+        )
 
-        self.assertRaises(OperationFailure, db.test.group,
-                          [], {}, {}, "5 ++ 5")
+        self.assertRaises(OperationFailure, db.test.group, [], {}, {}, "5 ++ 5")
 
     @client_context.require_version_max(4, 1, 0, -1)
     def test_group_with_scope(self):
@@ -982,29 +955,46 @@ class TestLegacy(IntegrationTest):
 
         reduce_function = "function (obj, prev) { prev.count += inc_value; }"
 
-        self.assertEqual(2, db.test.group([], {}, {"count": 0},
-                                          Code(reduce_function,
-                                               {"inc_value": 1}))[0]['count'])
-        self.assertEqual(4, db.test.group([], {}, {"count": 0},
-                                          Code(reduce_function,
-                                               {"inc_value": 2}))[0]['count'])
+        self.assertEqual(
+            2,
+            db.test.group([], {}, {"count": 0}, Code(reduce_function, {"inc_value": 1}))[0][
+                "count"
+            ],
+        )
+        self.assertEqual(
+            4,
+            db.test.group([], {}, {"count": 0}, Code(reduce_function, {"inc_value": 2}))[0][
+                "count"
+            ],
+        )
 
-        self.assertEqual(1,
-                         db.test.group([], {}, {"count": 0},
-                                       Code(reduce_function,
-                                            {"inc_value": 0.5}))[0]['count'])
+        self.assertEqual(
+            1,
+            db.test.group([], {}, {"count": 0}, Code(reduce_function, {"inc_value": 0.5}))[0][
+                "count"
+            ],
+        )
 
-        self.assertEqual(2, db.test.group(
-            [], {}, {"count": 0},
-            Code(reduce_function, {"inc_value": 1}))[0]['count'])
+        self.assertEqual(
+            2,
+            db.test.group([], {}, {"count": 0}, Code(reduce_function, {"inc_value": 1}))[0][
+                "count"
+            ],
+        )
 
-        self.assertEqual(4, db.test.group(
-            [], {}, {"count": 0},
-            Code(reduce_function, {"inc_value": 2}))[0]['count'])
+        self.assertEqual(
+            4,
+            db.test.group([], {}, {"count": 0}, Code(reduce_function, {"inc_value": 2}))[0][
+                "count"
+            ],
+        )
 
-        self.assertEqual(1, db.test.group(
-            [], {}, {"count": 0},
-            Code(reduce_function, {"inc_value": 0.5}))[0]['count'])
+        self.assertEqual(
+            1,
+            db.test.group([], {}, {"count": 0}, Code(reduce_function, {"inc_value": 0.5}))[0][
+                "count"
+            ],
+        )
 
     @client_context.require_version_max(4, 1, 0, -1)
     def test_group_uuid_representation(self):
@@ -1016,24 +1006,17 @@ class TestLegacy(IntegrationTest):
         coll.insert_one({"_id": uuid.uuid4(), "a": 1})
 
         reduce = "function (obj, prev) { prev.count++; }"
-        coll = self.db.get_collection(
-            "uuid", CodecOptions(uuid_representation=STANDARD))
-        self.assertEqual([],
-                         coll.group([], {"_id": uu},
-                                    {"count": 0}, reduce))
-        coll = self.db.get_collection(
-            "uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
-        self.assertEqual([{"count": 1}],
-                         coll.group([], {"_id": uu},
-                                    {"count": 0}, reduce))
+        coll = self.db.get_collection("uuid", CodecOptions(uuid_representation=STANDARD))
+        self.assertEqual([], coll.group([], {"_id": uu}, {"count": 0}, reduce))
+        coll = self.db.get_collection("uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
+        self.assertEqual([{"count": 1}], coll.group([], {"_id": uu}, {"count": 0}, reduce))
 
     @client_context.require_version_max(5, 0, 99)
     def test_last_status(self):
         # Skip versions like "v5.0.0-alpha0-1768-gfda1dfa" which equals:
         # Version(5, 0, 1, -1)
-        if (client_context.version[:2] == (5, 0) and
-                client_context.version[-1] == -1):
-            self.skipTest('getLastError is not supported')
+        if client_context.version[:2] == (5, 0) and client_context.version[-1] == -1:
+            self.skipTest("getLastError is not supported")
         # Tests many legacy API elements.
         # We must call getlasterror on same socket as the last operation.
         db = rs_or_single_client(maxPoolSize=1).pymongo_test
@@ -1046,8 +1029,7 @@ class TestLegacy(IntegrationTest):
         # unacknowledged write.
         if not (client_context.version >= (3, 6) and client_context.is_mongos):
             self.assertTrue(db.last_status()["updatedExisting"])
-        wait_until(lambda: collection.find_one({"i": 2}),
-                   "found updated w=0 doc")
+        wait_until(lambda: collection.find_one({"i": 2}), "found updated w=0 doc")
 
         collection.update({"i": 1}, {"$set": {"i": 500}}, w=0)
         self.assertFalse(db.last_status()["updatedExisting"])
@@ -1114,16 +1096,16 @@ class TestLegacy(IntegrationTest):
 
         class ThingTransformer(SONManipulator):
             def transform_incoming(self, thing, dummy):
-                return {'value': thing.value}
+                return {"value": thing.value}
 
         db = self.client.foo
         db.add_son_manipulator(ThingTransformer())
-        t = Thing('value')
+        t = Thing("value")
 
         db.test.remove()
         db.test.insert([t])
         out = db.test.find_one()
-        self.assertEqual('value', out.get('value'))
+        self.assertEqual("value", out.get("value"))
 
     def test_son_manipulator_outgoing(self):
         class Thing(object):
@@ -1134,22 +1116,22 @@ class TestLegacy(IntegrationTest):
             def transform_outgoing(self, doc, collection):
                 # We don't want this applied to the command return
                 # value in pymongo.cursor.Cursor.
-                if 'value' in doc:
-                    return Thing(doc['value'])
+                if "value" in doc:
+                    return Thing(doc["value"])
                 return doc
 
         db = self.client.foo
         db.add_son_manipulator(ThingTransformer())
 
         db.test.delete_many({})
-        db.test.insert_one({'value': 'value'})
+        db.test.insert_one({"value": "value"})
         out = db.test.find_one()
         self.assertTrue(isinstance(out, Thing))
-        self.assertEqual('value', out.value)
+        self.assertEqual("value", out.value)
 
         out = next(db.test.aggregate([], cursor={}))
         self.assertTrue(isinstance(out, Thing))
-        self.assertEqual('value', out.value)
+        self.assertEqual("value", out.value)
 
     def test_son_manipulator_inheritance(self):
         # Tests legacy API elements.
@@ -1159,41 +1141,40 @@ class TestLegacy(IntegrationTest):
 
         class ThingTransformer(SONManipulator):
             def transform_incoming(self, thing, dummy):
-                return {'value': thing.value}
+                return {"value": thing.value}
 
             def transform_outgoing(self, son, dummy):
-                return Thing(son['value'])
+                return Thing(son["value"])
 
         class Child(ThingTransformer):
             pass
 
         db = self.client.foo
         db.add_son_manipulator(Child())
-        t = Thing('value')
+        t = Thing("value")
 
         db.test.remove()
         db.test.insert([t])
         out = db.test.find_one()
         self.assertTrue(isinstance(out, Thing))
-        self.assertEqual('value', out.value)
+        self.assertEqual("value", out.value)
 
     def test_disabling_manipulators(self):
-
         class IncByTwo(SONManipulator):
             def transform_outgoing(self, son, collection):
-                if 'foo' in son:
-                    son['foo'] += 2
+                if "foo" in son:
+                    son["foo"] += 2
                 return son
 
         db = self.client.pymongo_test
         db.add_son_manipulator(IncByTwo())
         c = db.test
         c.drop()
-        c.insert({'foo': 0})
-        self.assertEqual(2, c.find_one()['foo'])
-        self.assertEqual(0, c.find_one(manipulate=False)['foo'])
+        c.insert({"foo": 0})
+        self.assertEqual(2, c.find_one()["foo"])
+        self.assertEqual(0, c.find_one(manipulate=False)["foo"])
 
-        self.assertEqual(2, c.find_one(manipulate=True)['foo'])
+        self.assertEqual(2, c.find_one(manipulate=True)["foo"])
         c.drop()
 
     def test_manipulator_properties(self):
@@ -1206,61 +1187,50 @@ class TestLegacy(IntegrationTest):
         db.add_son_manipulator(NamespaceInjector())
         db.add_son_manipulator(ObjectIdShuffler())
         self.assertEqual(1, len(db.incoming_manipulators))
-        self.assertEqual(db.incoming_manipulators, ['NamespaceInjector'])
+        self.assertEqual(db.incoming_manipulators, ["NamespaceInjector"])
         self.assertEqual(2, len(db.incoming_copying_manipulators))
         for name in db.incoming_copying_manipulators:
-            self.assertTrue(name in ('ObjectIdShuffler', 'AutoReference'))
+            self.assertTrue(name in ("ObjectIdShuffler", "AutoReference"))
         self.assertEqual([], db.outgoing_manipulators)
-        self.assertEqual(['AutoReference'],
-                         db.outgoing_copying_manipulators)
+        self.assertEqual(["AutoReference"], db.outgoing_copying_manipulators)
 
     def test_ensure_index(self):
         db = self.db
 
         self.assertRaises(TypeError, db.test.ensure_index, {"hello": 1})
-        self.assertRaises(TypeError,
-                          db.test.ensure_index, {"hello": 1}, cache_for='foo')
+        self.assertRaises(TypeError, db.test.ensure_index, {"hello": 1}, cache_for="foo")
 
         db.test.drop_indexes()
 
-        self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye"))
+        self.assertEqual("goodbye_1", db.test.ensure_index("goodbye"))
         self.assertEqual(None, db.test.ensure_index("goodbye"))
 
         db.test.drop_indexes()
-        self.assertEqual("foo",
-                         db.test.ensure_index("goodbye", name="foo"))
+        self.assertEqual("foo", db.test.ensure_index("goodbye", name="foo"))
         self.assertEqual(None, db.test.ensure_index("goodbye", name="foo"))
 
         db.test.drop_indexes()
-        self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye"))
+        self.assertEqual("goodbye_1", db.test.ensure_index("goodbye"))
         self.assertEqual(None, db.test.ensure_index("goodbye"))
 
         db.test.drop_index("goodbye_1")
-        self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye"))
+        self.assertEqual("goodbye_1", db.test.ensure_index("goodbye"))
         self.assertEqual(None, db.test.ensure_index("goodbye"))
 
         db.drop_collection("test")
-        self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye"))
+        self.assertEqual("goodbye_1", db.test.ensure_index("goodbye"))
         self.assertEqual(None, db.test.ensure_index("goodbye"))
 
         db.test.drop_index("goodbye_1")
-        self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye"))
+        self.assertEqual("goodbye_1", db.test.ensure_index("goodbye"))
         self.assertEqual(None, db.test.ensure_index("goodbye"))
 
         db.test.drop_index("goodbye_1")
-        self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye", cache_for=1))
+        self.assertEqual("goodbye_1", db.test.ensure_index("goodbye", cache_for=1))
         time.sleep(1.2)
-        self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye"))
+        self.assertEqual("goodbye_1", db.test.ensure_index("goodbye"))
         # Make sure the expiration time is updated.
-        self.assertEqual(None,
-                         db.test.ensure_index("goodbye"))
+        self.assertEqual(None, db.test.ensure_index("goodbye"))
 
         # Clean up indexes for later tests
         db.test.drop_indexes()
@@ -1272,9 +1242,9 @@ class TestLegacy(IntegrationTest):
 
         class Indexer(threading.Thread):
             def run(self):
-                coll.ensure_index('foo0')
-                coll.ensure_index('foo1')
-                coll.ensure_index('foo2')
+                coll.ensure_index("foo0")
+                coll.ensure_index("foo1")
+                coll.ensure_index("foo2")
                 index_docs.append(coll.index_information())
 
         try:
@@ -1300,15 +1270,15 @@ class TestLegacy(IntegrationTest):
 
         class Indexer(threading.Thread):
             def run(self):
-                coll.ensure_index('foo')
+                coll.ensure_index("foo")
                 try:
-                    coll.drop_index('foo')
+                    coll.drop_index("foo")
                 except OperationFailure:
                     # The index may have already been dropped.
                     pass
-                coll.ensure_index('foo')
+                coll.ensure_index("foo")
                 coll.drop_indexes()
-                coll.create_index('foo')
+                coll.create_index("foo")
 
         try:
             threads = []
@@ -1322,7 +1292,7 @@ class TestLegacy(IntegrationTest):
 
             joinall(threads)
 
-            self.assertTrue('foo_1' in coll.index_information())
+            self.assertTrue("foo_1" in coll.index_information())
         finally:
             coll.drop()
 
@@ -1330,14 +1300,14 @@ class TestLegacy(IntegrationTest):
     def test_ensure_unique_index_threaded(self):
         coll = self.db.test_unique_threaded
         coll.drop()
-        coll.insert_many([{'foo': i} for i in range(10000)])
+        coll.insert_many([{"foo": i} for i in range(10000)])
 
         class Indexer(threading.Thread):
             def run(self):
                 try:
-                    coll.ensure_index('foo', unique=True)
-                    coll.insert_one({'foo': 'bar'})
-                    coll.insert_one({'foo': 'bar'})
+                    coll.ensure_index("foo", unique=True)
+                    coll.insert_one({"foo": "bar"})
+                    coll.insert_one({"foo": "bar"})
                 except OperationFailure:
                     pass
 
@@ -1359,12 +1329,12 @@ class TestLegacy(IntegrationTest):
         coll = self.client.pymongo_test.test
         coll.drop()
 
-        coll.insert_many([{'_id': i} for i in range(200)])
+        coll.insert_many([{"_id": i} for i in range(200)])
         cursor = coll.find().batch_size(1)
         next(cursor)
         self.client.kill_cursors(
-            [cursor.cursor_id],
-            _CursorAddress(self.client.address, coll.full_name))
+            [cursor.cursor_id], _CursorAddress(self.client.address, coll.full_name)
+        )
 
         # Prevent killcursors from reaching the server while a getmore is in
         # progress -- the server logs "Assertion: 16089:Cannot kill active
@@ -1378,26 +1348,26 @@ class TestLegacy(IntegrationTest):
             except CursorNotFound:
                 return True
 
-        wait_until(raises_cursor_not_found, 'close cursor')
+        wait_until(raises_cursor_not_found, "close cursor")
 
     @client_context.require_version_max(4, 9, 99)  # SERVER-57457
     def test_kill_cursors_with_tuple(self):
         # Some evergreen distros (Debian 7.1) still test against 3.6.5 where
         # OP_KILL_CURSORS does not work.
-        if (client_context.is_mongos and client_context.auth_enabled and
-                (3, 6, 0) <= client_context.version < (3, 6, 6)):
-            raise SkipTest("SERVER-33553 This server version does not support "
-                           "OP_KILL_CURSORS")
+        if (
+            client_context.is_mongos
+            and client_context.auth_enabled
+            and (3, 6, 0) <= client_context.version < (3, 6, 6)
+        ):
+            raise SkipTest("SERVER-33553 This server version does not support " "OP_KILL_CURSORS")
 
         coll = self.client.pymongo_test.test
         coll.drop()
 
-        coll.insert_many([{'_id': i} for i in range(200)])
+        coll.insert_many([{"_id": i} for i in range(200)])
         cursor = coll.find().batch_size(1)
         next(cursor)
-        self.client.kill_cursors(
-            [cursor.cursor_id],
-            self.client.address)
+        self.client.kill_cursors([cursor.cursor_id], self.client.address)
 
         # Prevent killcursors from reaching the server while a getmore is in
         # progress -- the server logs "Assertion: 16089:Cannot kill active
@@ -1411,11 +1381,10 @@ class TestLegacy(IntegrationTest):
             except CursorNotFound:
                 return True
 
-        wait_until(raises_cursor_not_found, 'close cursor')
+        wait_until(raises_cursor_not_found, "close cursor")
 
 
 class TestLegacyBulk(BulkTestBase):
-
     @classmethod
     def setUpClass(cls):
         super(TestLegacyBulk, cls).setUpClass()
@@ -1433,7 +1402,7 @@ class TestLegacyBulk(BulkTestBase):
         # find() requires a selector.
         bulk = self.coll.initialize_ordered_bulk_op()
         self.assertRaises(TypeError, bulk.find)
-        self.assertRaises(TypeError, bulk.find, 'foo')
+        self.assertRaises(TypeError, bulk.find, "foo")
         # No error.
         bulk.find({})
 
@@ -1442,31 +1411,25 @@ class TestLegacyBulk(BulkTestBase):
 
         # Test insert
         self.coll.insert_one({"z": 0})
-        self.db.command(SON([("collMod", "test"),
-                             ("validator", {"z": {"$gte": 0}})]))
-        bulk = self.coll.initialize_ordered_bulk_op(
-            bypass_document_validation=False)
-        bulk.insert({"z": -1}) # error
+        self.db.command(SON([("collMod", "test"), ("validator", {"z": {"$gte": 0}})]))
+        bulk = self.coll.initialize_ordered_bulk_op(bypass_document_validation=False)
+        bulk.insert({"z": -1})  # error
         self.assertRaises(BulkWriteError, bulk.execute)
         self.assertEqual(0, self.coll.count({"z": -1}))
 
-        bulk = self.coll.initialize_ordered_bulk_op(
-            bypass_document_validation=True)
+        bulk = self.coll.initialize_ordered_bulk_op(bypass_document_validation=True)
         bulk.insert({"z": -1})
         bulk.execute()
         self.assertEqual(1, self.coll.count({"z": -1}))
 
         self.coll.insert_one({"z": 0})
-        self.db.command(SON([("collMod", "test"),
-                             ("validator", {"z": {"$gte": 0}})]))
-        bulk = self.coll.initialize_unordered_bulk_op(
-            bypass_document_validation=False)
-        bulk.insert({"z": -1}) # error
+        self.db.command(SON([("collMod", "test"), ("validator", {"z": {"$gte": 0}})]))
+        bulk = self.coll.initialize_unordered_bulk_op(bypass_document_validation=False)
+        bulk.insert({"z": -1})  # error
         self.assertRaises(BulkWriteError, bulk.execute)
         self.assertEqual(1, self.coll.count({"z": -1}))
 
-        bulk = self.coll.initialize_unordered_bulk_op(
-            bypass_document_validation=True)
+        bulk = self.coll.initialize_unordered_bulk_op(bypass_document_validation=True)
         bulk.insert({"z": -1})
         bulk.execute()
         self.assertEqual(2, self.coll.count({"z": -1}))
@@ -1474,14 +1437,14 @@ class TestLegacyBulk(BulkTestBase):
 
     def test_insert(self):
         expected = {
-            'nMatched': 0,
-            'nModified': 0,
-            'nUpserted': 0,
-            'nInserted': 1,
-            'nRemoved': 0,
-            'upserted': [],
-            'writeErrors': [],
-            'writeConcernErrors': []
+            "nMatched": 0,
+            "nModified": 0,
+            "nUpserted": 0,
+            "nInserted": 1,
+            "nRemoved": 0,
+            "upserted": [],
+            "writeErrors": [],
+            "writeConcernErrors": [],
         }
 
         bulk = self.coll.initialize_ordered_bulk_op()
@@ -1500,7 +1463,7 @@ class TestLegacyBulk(BulkTestBase):
 
         self.assertEqual(1, self.coll.count())
         doc = self.coll.find_one()
-        self.assertTrue(oid_generated_on_process(doc['_id']))
+        self.assertTrue(oid_generated_on_process(doc["_id"]))
 
         bulk = self.coll.initialize_unordered_bulk_op()
         bulk.insert({})
@@ -1512,37 +1475,35 @@ class TestLegacyBulk(BulkTestBase):
     def test_update(self):
 
         expected = {
-            'nMatched': 2,
-            'nModified': 2,
-            'nUpserted': 0,
-            'nInserted': 0,
-            'nRemoved': 0,
-            'upserted': [],
-            'writeErrors': [],
-            'writeConcernErrors': []
+            "nMatched": 2,
+            "nModified": 2,
+            "nUpserted": 0,
+            "nInserted": 0,
+            "nRemoved": 0,
+            "upserted": [],
+            "writeErrors": [],
+            "writeConcernErrors": [],
         }
         self.coll.insert_many([{}, {}])
 
         bulk = self.coll.initialize_ordered_bulk_op()
 
         # update() requires find() first.
-        self.assertRaises(
-            AttributeError,
-            lambda: bulk.update({'$set': {'x': 1}}))
+        self.assertRaises(AttributeError, lambda: bulk.update({"$set": {"x": 1}}))
 
         self.assertRaises(TypeError, bulk.find({}).update, 1)
         self.assertRaises(ValueError, bulk.find({}).update, {})
 
         # All fields must be $-operators.
-        self.assertRaises(ValueError, bulk.find({}).update, {'foo': 'bar'})
-        bulk.find({}).update({'$set': {'foo': 'bar'}})
+        self.assertRaises(ValueError, bulk.find({}).update, {"foo": "bar"})
+        bulk.find({}).update({"$set": {"foo": "bar"}})
         result = bulk.execute()
         self.assertEqualResponse(expected, result)
-        self.assertEqual(self.coll.find({'foo': 'bar'}).count(), 2)
+        self.assertEqual(self.coll.find({"foo": "bar"}).count(), 2)
 
         # All fields must be $-operators -- validated server-side.
         bulk = self.coll.initialize_ordered_bulk_op()
-        updates = SON([('$set', {'x': 1}), ('y', 1)])
+        updates = SON([("$set", {"x": 1}), ("y", 1)])
         bulk.find({}).update(updates)
         self.assertRaises(BulkWriteError, bulk.execute)
 
@@ -1550,64 +1511,73 @@ class TestLegacyBulk(BulkTestBase):
         self.coll.insert_many([{}, {}])
 
         bulk = self.coll.initialize_unordered_bulk_op()
-        bulk.find({}).update({'$set': {'bim': 'baz'}})
+        bulk.find({}).update({"$set": {"bim": "baz"}})
         result = bulk.execute()
         self.assertEqualResponse(
-            {'nMatched': 2,
-             'nModified': 2,
-             'nUpserted': 0,
-             'nInserted': 0,
-             'nRemoved': 0,
-             'upserted': [],
-             'writeErrors': [],
-             'writeConcernErrors': []},
-            result)
+            {
+                "nMatched": 2,
+                "nModified": 2,
+                "nUpserted": 0,
+                "nInserted": 0,
+                "nRemoved": 0,
+                "upserted": [],
+                "writeErrors": [],
+                "writeConcernErrors": [],
+            },
+            result,
+        )
 
-        self.assertEqual(self.coll.find({'bim': 'baz'}).count(), 2)
+        self.assertEqual(self.coll.find({"bim": "baz"}).count(), 2)
 
-        self.coll.insert_one({'x': 1})
+        self.coll.insert_one({"x": 1})
         bulk = self.coll.initialize_unordered_bulk_op()
-        bulk.find({'x': 1}).update({'$set': {'x': 42}})
+        bulk.find({"x": 1}).update({"$set": {"x": 42}})
         result = bulk.execute()
         self.assertEqualResponse(
-            {'nMatched': 1,
-             'nModified': 1,
-             'nUpserted': 0,
-             'nInserted': 0,
-             'nRemoved': 0,
-             'upserted': [],
-             'writeErrors': [],
-             'writeConcernErrors': []},
-            result)
+            {
+                "nMatched": 1,
+                "nModified": 1,
+                "nUpserted": 0,
+                "nInserted": 0,
+                "nRemoved": 0,
+                "upserted": [],
+                "writeErrors": [],
+                "writeConcernErrors": [],
+            },
+            result,
+        )
 
-        self.assertEqual(1, self.coll.find({'x': 42}).count())
+        self.assertEqual(1, self.coll.find({"x": 42}).count())
 
         # Second time, x is already 42 so nModified is 0.
         bulk = self.coll.initialize_unordered_bulk_op()
-        bulk.find({'x': 42}).update({'$set': {'x': 42}})
+        bulk.find({"x": 42}).update({"$set": {"x": 42}})
         result = bulk.execute()
         self.assertEqualResponse(
-            {'nMatched': 1,
-             'nModified': 0,
-             'nUpserted': 0,
-             'nInserted': 0,
-             'nRemoved': 0,
-             'upserted': [],
-             'writeErrors': [],
-             'writeConcernErrors': []},
-            result)
+            {
+                "nMatched": 1,
+                "nModified": 0,
+                "nUpserted": 0,
+                "nInserted": 0,
+                "nRemoved": 0,
+                "upserted": [],
+                "writeErrors": [],
+                "writeConcernErrors": [],
+            },
+            result,
+        )
 
     def test_update_one(self):
 
         expected = {
-            'nMatched': 1,
-            'nModified': 1,
-            'nUpserted': 0,
-            'nInserted': 0,
-            'nRemoved': 0,
-            'upserted': [],
-            'writeErrors': [],
-            'writeConcernErrors': []
+            "nMatched": 1,
+            "nModified": 1,
+            "nUpserted": 0,
+            "nInserted": 0,
+            "nRemoved": 0,
+            "upserted": [],
+            "writeErrors": [],
+            "writeConcernErrors": [],
         }
 
         self.coll.insert_many([{}, {}])
@@ -1615,81 +1585,78 @@ class TestLegacyBulk(BulkTestBase):
         bulk = self.coll.initialize_ordered_bulk_op()
 
         # update_one() requires find() first.
-        self.assertRaises(
-            AttributeError,
-            lambda: bulk.update_one({'$set': {'x': 1}}))
+        self.assertRaises(AttributeError, lambda: bulk.update_one({"$set": {"x": 1}}))
 
         self.assertRaises(TypeError, bulk.find({}).update_one, 1)
         self.assertRaises(ValueError, bulk.find({}).update_one, {})
-        self.assertRaises(ValueError, bulk.find({}).update_one, {'foo': 'bar'})
-        bulk.find({}).update_one({'$set': {'foo': 'bar'}})
+        self.assertRaises(ValueError, bulk.find({}).update_one, {"foo": "bar"})
+        bulk.find({}).update_one({"$set": {"foo": "bar"}})
         result = bulk.execute()
         self.assertEqualResponse(expected, result)
 
-        self.assertEqual(self.coll.find({'foo': 'bar'}).count(), 1)
+        self.assertEqual(self.coll.find({"foo": "bar"}).count(), 1)
 
         self.coll.delete_many({})
         self.coll.insert_many([{}, {}])
 
         bulk = self.coll.initialize_unordered_bulk_op()
-        bulk.find({}).update_one({'$set': {'bim': 'baz'}})
+        bulk.find({}).update_one({"$set": {"bim": "baz"}})
         result = bulk.execute()
         self.assertEqualResponse(expected, result)
 
-        self.assertEqual(self.coll.find({'bim': 'baz'}).count(), 1)
+        self.assertEqual(self.coll.find({"bim": "baz"}).count(), 1)
 
         # All fields must be $-operators -- validated server-side.
         bulk = self.coll.initialize_ordered_bulk_op()
-        updates = SON([('$set', {'x': 1}), ('y', 1)])
+        updates = SON([("$set", {"x": 1}), ("y", 1)])
         bulk.find({}).update_one(updates)
         self.assertRaises(BulkWriteError, bulk.execute)
 
     def test_replace_one(self):
 
         expected = {
-            'nMatched': 1,
-            'nModified': 1,
-            'nUpserted': 0,
-            'nInserted': 0,
-            'nRemoved': 0,
-            'upserted': [],
-            'writeErrors': [],
-            'writeConcernErrors': []
+            "nMatched": 1,
+            "nModified": 1,
+            "nUpserted": 0,
+            "nInserted": 0,
+            "nRemoved": 0,
+            "upserted": [],
+            "writeErrors": [],
+            "writeConcernErrors": [],
         }
 
         self.coll.insert_many([{}, {}])
 
         bulk = self.coll.initialize_ordered_bulk_op()
         self.assertRaises(TypeError, bulk.find({}).replace_one, 1)
-        self.assertRaises(ValueError,
-                          bulk.find({}).replace_one, {'$set': {'foo': 'bar'}})
-        bulk.find({}).replace_one({'foo': 'bar'})
+        self.assertRaises(ValueError, bulk.find({}).replace_one, {"$set": {"foo": "bar"}})
+        bulk.find({}).replace_one({"foo": "bar"})
         result = bulk.execute()
         self.assertEqualResponse(expected, result)
 
-        self.assertEqual(self.coll.find({'foo': 'bar'}).count(), 1)
+        self.assertEqual(self.coll.find({"foo": "bar"}).count(), 1)
 
         self.coll.delete_many({})
         self.coll.insert_many([{}, {}])
 
         bulk = self.coll.initialize_unordered_bulk_op()
-        bulk.find({}).replace_one({'bim': 'baz'})
+        bulk.find({}).replace_one({"bim": "baz"})
         result = bulk.execute()
         self.assertEqualResponse(expected, result)
 
-        self.assertEqual(self.coll.find({'bim': 'baz'}).count(), 1)
+        self.assertEqual(self.coll.find({"bim": "baz"}).count(), 1)
 
     def test_remove(self):
         # Test removing all documents, ordered.
         expected = {
-            'nMatched': 0,
-            'nModified': 0,
-            'nUpserted': 0,
-            'nInserted': 0,
-            'nRemoved': 2,
-            'upserted': [],
-            'writeErrors': [],
-            'writeConcernErrors': []
+            "nMatched": 0,
+            "nModified": 0,
+            "nUpserted": 0,
+            "nInserted": 0,
+            "nRemoved": 2,
+            "upserted": [],
+            "writeErrors": [],
+            "writeConcernErrors": [],
         }
         self.coll.insert_many([{}, {}])
 
@@ -1704,22 +1671,25 @@ class TestLegacyBulk(BulkTestBase):
         self.assertEqual(self.coll.count(), 0)
 
         # Test removing some documents, ordered.
-        self.coll.insert_many([{}, {'x': 1}, {}, {'x': 1}])
+        self.coll.insert_many([{}, {"x": 1}, {}, {"x": 1}])
 
         bulk = self.coll.initialize_ordered_bulk_op()
 
-        bulk.find({'x': 1}).remove()
+        bulk.find({"x": 1}).remove()
         result = bulk.execute()
         self.assertEqualResponse(
-            {'nMatched': 0,
-             'nModified': 0,
-             'nUpserted': 0,
-             'nInserted': 0,
-             'nRemoved': 2,
-             'upserted': [],
-             'writeErrors': [],
-             'writeConcernErrors': []},
-            result)
+            {
+                "nMatched": 0,
+                "nModified": 0,
+                "nUpserted": 0,
+                "nInserted": 0,
+                "nRemoved": 2,
+                "upserted": [],
+                "writeErrors": [],
+                "writeConcernErrors": [],
+            },
+            result,
+        )
 
         self.assertEqual(self.coll.count(), 2)
         self.coll.delete_many({})
@@ -1731,34 +1701,40 @@ class TestLegacyBulk(BulkTestBase):
         bulk.find({}).remove()
         result = bulk.execute()
         self.assertEqualResponse(
-            {'nMatched': 0,
-             'nModified': 0,
-             'nUpserted': 0,
-             'nInserted': 0,
-             'nRemoved': 2,
-             'upserted': [],
-             'writeErrors': [],
-             'writeConcernErrors': []},
-            result)
+            {
+                "nMatched": 0,
+                "nModified": 0,
+                "nUpserted": 0,
+                "nInserted": 0,
+                "nRemoved": 2,
+                "upserted": [],
+                "writeErrors": [],
+                "writeConcernErrors": [],
+            },
+            result,
+        )
 
         # Test removing some documents, unordered.
         self.assertEqual(self.coll.count(), 0)
 
-        self.coll.insert_many([{}, {'x': 1}, {}, {'x': 1}])
+        self.coll.insert_many([{}, {"x": 1}, {}, {"x": 1}])
 
         bulk = self.coll.initialize_unordered_bulk_op()
-        bulk.find({'x': 1}).remove()
+        bulk.find({"x": 1}).remove()
         result = bulk.execute()
         self.assertEqualResponse(
-            {'nMatched': 0,
-             'nModified': 0,
-             'nUpserted': 0,
-             'nInserted': 0,
-             'nRemoved': 2,
-             'upserted': [],
-             'writeErrors': [],
-             'writeConcernErrors': []},
-            result)
+            {
+                "nMatched": 0,
+                "nModified": 0,
+                "nUpserted": 0,
+                "nInserted": 0,
+                "nRemoved": 2,
+                "upserted": [],
+                "writeErrors": [],
+                "writeConcernErrors": [],
+            },
+            result,
+        )
 
         self.assertEqual(self.coll.count(), 2)
         self.coll.delete_many({})
@@ -1774,14 +1750,14 @@ class TestLegacyBulk(BulkTestBase):
         # First ordered, then unordered.
         self.coll.insert_many([{}, {}])
         expected = {
-            'nMatched': 0,
-            'nModified': 0,
-            'nUpserted': 0,
-            'nInserted': 0,
-            'nRemoved': 1,
-            'upserted': [],
-            'writeErrors': [],
-            'writeConcernErrors': []
+            "nMatched": 0,
+            "nModified": 0,
+            "nUpserted": 0,
+            "nInserted": 0,
+            "nRemoved": 1,
+            "upserted": [],
+            "writeErrors": [],
+            "writeConcernErrors": [],
         }
 
         bulk.find({}).remove_one()
@@ -1801,137 +1777,152 @@ class TestLegacyBulk(BulkTestBase):
 
         # Test removing one document, with a selector.
         # First ordered, then unordered.
-        self.coll.insert_one({'x': 1})
+        self.coll.insert_one({"x": 1})
 
         bulk = self.coll.initialize_ordered_bulk_op()
-        bulk.find({'x': 1}).remove_one()
+        bulk.find({"x": 1}).remove_one()
         result = bulk.execute()
         self.assertEqualResponse(expected, result)
 
-        self.assertEqual([{}], list(self.coll.find({}, {'_id': False})))
-        self.coll.insert_one({'x': 1})
+        self.assertEqual([{}], list(self.coll.find({}, {"_id": False})))
+        self.coll.insert_one({"x": 1})
 
         bulk = self.coll.initialize_unordered_bulk_op()
-        bulk.find({'x': 1}).remove_one()
+        bulk.find({"x": 1}).remove_one()
         result = bulk.execute()
         self.assertEqualResponse(expected, result)
 
-        self.assertEqual([{}], list(self.coll.find({}, {'_id': False})))
+        self.assertEqual([{}], list(self.coll.find({}, {"_id": False})))
 
     def test_upsert(self):
         bulk = self.coll.initialize_ordered_bulk_op()
 
         # upsert() requires find() first.
-        self.assertRaises(
-            AttributeError,
-            lambda: bulk.upsert())
+        self.assertRaises(AttributeError, lambda: bulk.upsert())
 
         expected = {
-            'nMatched': 0,
-            'nModified': 0,
-            'nUpserted': 1,
-            'nInserted': 0,
-            'nRemoved': 0,
-            'upserted': [{'index': 0, '_id': '...'}]
+            "nMatched": 0,
+            "nModified": 0,
+            "nUpserted": 1,
+            "nInserted": 0,
+            "nRemoved": 0,
+            "upserted": [{"index": 0, "_id": "..."}],
         }
 
-        bulk.find({}).upsert().replace_one({'foo': 'bar'})
+        bulk.find({}).upsert().replace_one({"foo": "bar"})
         result = bulk.execute()
         self.assertEqualResponse(expected, result)
 
         bulk = self.coll.initialize_ordered_bulk_op()
-        bulk.find({}).upsert().update_one({'$set': {'bim': 'baz'}})
+        bulk.find({}).upsert().update_one({"$set": {"bim": "baz"}})
         result = bulk.execute()
         self.assertEqualResponse(
-            {'nMatched': 1,
-             'nModified': 1,
-             'nUpserted': 0,
-             'nInserted': 0,
-             'nRemoved': 0,
-             'upserted': [],
-             'writeErrors': [],
-             'writeConcernErrors': []},
-            result)
+            {
+                "nMatched": 1,
+                "nModified": 1,
+                "nUpserted": 0,
+                "nInserted": 0,
+                "nRemoved": 0,
+                "upserted": [],
+                "writeErrors": [],
+                "writeConcernErrors": [],
+            },
+            result,
+        )
 
-        self.assertEqual(self.coll.find({'bim': 'baz'}).count(), 1)
+        self.assertEqual(self.coll.find({"bim": "baz"}).count(), 1)
 
         bulk = self.coll.initialize_ordered_bulk_op()
-        bulk.find({}).upsert().update({'$set': {'bim': 'bop'}})
+        bulk.find({}).upsert().update({"$set": {"bim": "bop"}})
         # Non-upsert, no matches.
-        bulk.find({'x': 1}).update({'$set': {'x': 2}})
+        bulk.find({"x": 1}).update({"$set": {"x": 2}})
         result = bulk.execute()
         self.assertEqualResponse(
-            {'nMatched': 1,
-             'nModified': 1,
-             'nUpserted': 0,
-             'nInserted': 0,
-             'nRemoved': 0,
-             'upserted': [],
-             'writeErrors': [],
-             'writeConcernErrors': []},
-            result)
+            {
+                "nMatched": 1,
+                "nModified": 1,
+                "nUpserted": 0,
+                "nInserted": 0,
+                "nRemoved": 0,
+                "upserted": [],
+                "writeErrors": [],
+                "writeConcernErrors": [],
+            },
+            result,
+        )
 
-        self.assertEqual(self.coll.find({'bim': 'bop'}).count(), 1)
-        self.assertEqual(self.coll.find({'x': 2}).count(), 0)
+        self.assertEqual(self.coll.find({"bim": "bop"}).count(), 1)
+        self.assertEqual(self.coll.find({"x": 2}).count(), 0)
 
     def test_upsert_large(self):
-        big = 'a' * (client_context.client.max_bson_size - 37)
+        big = "a" * (client_context.client.max_bson_size - 37)
         bulk = self.coll.initialize_ordered_bulk_op()
-        bulk.find({'x': 1}).upsert().update({'$set': {'s': big}})
+        bulk.find({"x": 1}).upsert().update({"$set": {"s": big}})
         result = bulk.execute()
         self.assertEqualResponse(
-            {'nMatched': 0,
-             'nModified': 0,
-             'nUpserted': 1,
-             'nInserted': 0,
-             'nRemoved': 0,
-             'upserted': [{'index': 0, '_id': '...'}]},
-            result)
+            {
+                "nMatched": 0,
+                "nModified": 0,
+                "nUpserted": 1,
+                "nInserted": 0,
+                "nRemoved": 0,
+                "upserted": [{"index": 0, "_id": "..."}],
+            },
+            result,
+        )
 
-        self.assertEqual(1, self.coll.find({'x': 1}).count())
+        self.assertEqual(1, self.coll.find({"x": 1}).count())
 
     def test_client_generated_upsert_id(self):
         batch = self.coll.initialize_ordered_bulk_op()
-        batch.find({'_id': 0}).upsert().update_one({'$set': {'a': 0}})
-        batch.find({'a': 1}).upsert().replace_one({'_id': 1})
+        batch.find({"_id": 0}).upsert().update_one({"$set": {"a": 0}})
+        batch.find({"a": 1}).upsert().replace_one({"_id": 1})
         # This is just here to make the counts right in all cases.
-        batch.find({'_id': 2}).upsert().replace_one({'_id': 2})
+        batch.find({"_id": 2}).upsert().replace_one({"_id": 2})
         result = batch.execute()
         self.assertEqualResponse(
-            {'nMatched': 0,
-             'nModified': 0,
-             'nUpserted': 3,
-             'nInserted': 0,
-             'nRemoved': 0,
-             'upserted': [{'index': 0, '_id': 0},
-                          {'index': 1, '_id': 1},
-                          {'index': 2, '_id': 2}]},
-            result)
+            {
+                "nMatched": 0,
+                "nModified": 0,
+                "nUpserted": 3,
+                "nInserted": 0,
+                "nRemoved": 0,
+                "upserted": [
+                    {"index": 0, "_id": 0},
+                    {"index": 1, "_id": 1},
+                    {"index": 2, "_id": 2},
+                ],
+            },
+            result,
+        )
 
     def test_single_ordered_batch(self):
         batch = self.coll.initialize_ordered_bulk_op()
-        batch.insert({'a': 1})
-        batch.find({'a': 1}).update_one({'$set': {'b': 1}})
-        batch.find({'a': 2}).upsert().update_one({'$set': {'b': 2}})
-        batch.insert({'a': 3})
-        batch.find({'a': 3}).remove()
+        batch.insert({"a": 1})
+        batch.find({"a": 1}).update_one({"$set": {"b": 1}})
+        batch.find({"a": 2}).upsert().update_one({"$set": {"b": 2}})
+        batch.insert({"a": 3})
+        batch.find({"a": 3}).remove()
         result = batch.execute()
         self.assertEqualResponse(
-            {'nMatched': 1,
-             'nModified': 1,
-             'nUpserted': 1,
-             'nInserted': 2,
-             'nRemoved': 1,
-             'upserted': [{'index': 2, '_id': '...'}]},
-            result)
+            {
+                "nMatched": 1,
+                "nModified": 1,
+                "nUpserted": 1,
+                "nInserted": 2,
+                "nRemoved": 1,
+                "upserted": [{"index": 2, "_id": "..."}],
+            },
+            result,
+        )
 
     def test_single_error_ordered_batch(self):
-        self.coll.create_index('a', unique=True)
-        self.addCleanup(self.coll.drop_index, [('a', 1)])
+        self.coll.create_index("a", unique=True)
+        self.addCleanup(self.coll.drop_index, [("a", 1)])
         batch = self.coll.initialize_ordered_bulk_op()
-        batch.insert({'b': 1, 'a': 1})
-        batch.find({'b': 2}).upsert().update_one({'$set': {'a': 1}})
-        batch.insert({'b': 3, 'a': 2})
+        batch.insert({"b": 1, "a": 1})
+        batch.find({"b": 2}).upsert().update_one({"$set": {"a": 1}})
+        batch.insert({"b": 3, "a": 2})
 
         try:
             batch.execute()
@@ -1942,33 +1933,41 @@ class TestLegacyBulk(BulkTestBase):
             self.fail("Error not raised")
 
         self.assertEqualResponse(
-            {'nMatched': 0,
-             'nModified': 0,
-             'nUpserted': 0,
-             'nInserted': 1,
-             'nRemoved': 0,
-             'upserted': [],
-             'writeConcernErrors': [],
-             'writeErrors': [
-                 {'index': 1,
-                  'code': 11000,
-                  'errmsg': '...',
-                  'op': {'q': {'b': 2},
-                         'u': {'$set': {'a': 1}},
-                         'multi': False,
-                         'upsert': True}}]},
-            result)
+            {
+                "nMatched": 0,
+                "nModified": 0,
+                "nUpserted": 0,
+                "nInserted": 1,
+                "nRemoved": 0,
+                "upserted": [],
+                "writeConcernErrors": [],
+                "writeErrors": [
+                    {
+                        "index": 1,
+                        "code": 11000,
+                        "errmsg": "...",
+                        "op": {
+                            "q": {"b": 2},
+                            "u": {"$set": {"a": 1}},
+                            "multi": False,
+                            "upsert": True,
+                        },
+                    }
+                ],
+            },
+            result,
+        )
 
     def test_multiple_error_ordered_batch(self):
-        self.coll.create_index('a', unique=True)
-        self.addCleanup(self.coll.drop_index, [('a', 1)])
+        self.coll.create_index("a", unique=True)
+        self.addCleanup(self.coll.drop_index, [("a", 1)])
         batch = self.coll.initialize_ordered_bulk_op()
-        batch.insert({'b': 1, 'a': 1})
-        batch.find({'b': 2}).upsert().update_one({'$set': {'a': 1}})
-        batch.find({'b': 3}).upsert().update_one({'$set': {'a': 2}})
-        batch.find({'b': 2}).upsert().update_one({'$set': {'a': 1}})
-        batch.insert({'b': 4, 'a': 3})
-        batch.insert({'b': 5, 'a': 1})
+        batch.insert({"b": 1, "a": 1})
+        batch.find({"b": 2}).upsert().update_one({"$set": {"a": 1}})
+        batch.find({"b": 3}).upsert().update_one({"$set": {"a": 2}})
+        batch.find({"b": 2}).upsert().update_one({"$set": {"a": 1}})
+        batch.insert({"b": 4, "a": 3})
+        batch.insert({"b": 5, "a": 1})
 
         try:
             batch.execute()
@@ -1979,49 +1978,60 @@ class TestLegacyBulk(BulkTestBase):
             self.fail("Error not raised")
 
         self.assertEqualResponse(
-            {'nMatched': 0,
-             'nModified': 0,
-             'nUpserted': 0,
-             'nInserted': 1,
-             'nRemoved': 0,
-             'upserted': [],
-             'writeConcernErrors': [],
-             'writeErrors': [
-                 {'index': 1,
-                  'code': 11000,
-                  'errmsg': '...',
-                  'op': {'q': {'b': 2},
-                         'u': {'$set': {'a': 1}},
-                         'multi': False,
-                         'upsert': True}}]},
-            result)
+            {
+                "nMatched": 0,
+                "nModified": 0,
+                "nUpserted": 0,
+                "nInserted": 1,
+                "nRemoved": 0,
+                "upserted": [],
+                "writeConcernErrors": [],
+                "writeErrors": [
+                    {
+                        "index": 1,
+                        "code": 11000,
+                        "errmsg": "...",
+                        "op": {
+                            "q": {"b": 2},
+                            "u": {"$set": {"a": 1}},
+                            "multi": False,
+                            "upsert": True,
+                        },
+                    }
+                ],
+            },
+            result,
+        )
 
     def test_single_unordered_batch(self):
         batch = self.coll.initialize_unordered_bulk_op()
-        batch.insert({'a': 1})
-        batch.find({'a': 1}).update_one({'$set': {'b': 1}})
-        batch.find({'a': 2}).upsert().update_one({'$set': {'b': 2}})
-        batch.insert({'a': 3})
-        batch.find({'a': 3}).remove()
+        batch.insert({"a": 1})
+        batch.find({"a": 1}).update_one({"$set": {"b": 1}})
+        batch.find({"a": 2}).upsert().update_one({"$set": {"b": 2}})
+        batch.insert({"a": 3})
+        batch.find({"a": 3}).remove()
         result = batch.execute()
         self.assertEqualResponse(
-            {'nMatched': 1,
-             'nModified': 1,
-             'nUpserted': 1,
-             'nInserted': 2,
-             'nRemoved': 1,
-             'upserted': [{'index': 2, '_id': '...'}],
-             'writeErrors': [],
-             'writeConcernErrors': []},
-            result)
+            {
+                "nMatched": 1,
+                "nModified": 1,
+                "nUpserted": 1,
+                "nInserted": 2,
+                "nRemoved": 1,
+                "upserted": [{"index": 2, "_id": "..."}],
+                "writeErrors": [],
+                "writeConcernErrors": [],
+            },
+            result,
+        )
 
     def test_single_error_unordered_batch(self):
-        self.coll.create_index('a', unique=True)
-        self.addCleanup(self.coll.drop_index, [('a', 1)])
+        self.coll.create_index("a", unique=True)
+        self.addCleanup(self.coll.drop_index, [("a", 1)])
         batch = self.coll.initialize_unordered_bulk_op()
-        batch.insert({'b': 1, 'a': 1})
-        batch.find({'b': 2}).upsert().update_one({'$set': {'a': 1}})
-        batch.insert({'b': 3, 'a': 2})
+        batch.insert({"b": 1, "a": 1})
+        batch.find({"b": 2}).upsert().update_one({"$set": {"a": 1}})
+        batch.insert({"b": 3, "a": 2})
 
         try:
             batch.execute()
@@ -2032,33 +2042,41 @@ class TestLegacyBulk(BulkTestBase):
             self.fail("Error not raised")
 
         self.assertEqualResponse(
-            {'nMatched': 0,
-             'nModified': 0,
-             'nUpserted': 0,
-             'nInserted': 2,
-             'nRemoved': 0,
-             'upserted': [],
-             'writeConcernErrors': [],
-             'writeErrors': [
-                 {'index': 1,
-                  'code': 11000,
-                  'errmsg': '...',
-                  'op': {'q': {'b': 2},
-                         'u': {'$set': {'a': 1}},
-                         'multi': False,
-                         'upsert': True}}]},
-            result)
+            {
+                "nMatched": 0,
+                "nModified": 0,
+                "nUpserted": 0,
+                "nInserted": 2,
+                "nRemoved": 0,
+                "upserted": [],
+                "writeConcernErrors": [],
+                "writeErrors": [
+                    {
+                        "index": 1,
+                        "code": 11000,
+                        "errmsg": "...",
+                        "op": {
+                            "q": {"b": 2},
+                            "u": {"$set": {"a": 1}},
+                            "multi": False,
+                            "upsert": True,
+                        },
+                    }
+                ],
+            },
+            result,
+        )
 
     def test_multiple_error_unordered_batch(self):
-        self.coll.create_index('a', unique=True)
-        self.addCleanup(self.coll.drop_index, [('a', 1)])
+        self.coll.create_index("a", unique=True)
+        self.addCleanup(self.coll.drop_index, [("a", 1)])
         batch = self.coll.initialize_unordered_bulk_op()
-        batch.insert({'b': 1, 'a': 1})
-        batch.find({'b': 2}).upsert().update_one({'$set': {'a': 3}})
-        batch.find({'b': 3}).upsert().update_one({'$set': {'a': 4}})
-        batch.find({'b': 4}).upsert().update_one({'$set': {'a': 3}})
-        batch.insert({'b': 5, 'a': 2})
-        batch.insert({'b': 6, 'a': 1})
+        batch.insert({"b": 1, "a": 1})
+        batch.find({"b": 2}).upsert().update_one({"$set": {"a": 3}})
+        batch.find({"b": 3}).upsert().update_one({"$set": {"a": 4}})
+        batch.find({"b": 4}).upsert().update_one({"$set": {"a": 3}})
+        batch.insert({"b": 5, "a": 2})
+        batch.insert({"b": 6, "a": 1})
 
         try:
             batch.execute()
@@ -2070,36 +2088,44 @@ class TestLegacyBulk(BulkTestBase):
         # Assume the update at index 1 runs before the update at index 3,
         # although the spec does not require it. Same for inserts.
         self.assertEqualResponse(
-            {'nMatched': 0,
-             'nModified': 0,
-             'nUpserted': 2,
-             'nInserted': 2,
-             'nRemoved': 0,
-             'upserted': [
-                 {'index': 1, '_id': '...'},
-                 {'index': 2, '_id': '...'}],
-             'writeConcernErrors': [],
-             'writeErrors': [
-                 {'index': 3,
-                  'code': 11000,
-                  'errmsg': '...',
-                  'op': {'q': {'b': 4},
-                         'u': {'$set': {'a': 3}},
-                         'multi': False,
-                         'upsert': True}},
-                 {'index': 5,
-                  'code': 11000,
-                  'errmsg': '...',
-                  'op': {'_id': '...', 'b': 6, 'a': 1}}]},
-            result)
+            {
+                "nMatched": 0,
+                "nModified": 0,
+                "nUpserted": 2,
+                "nInserted": 2,
+                "nRemoved": 0,
+                "upserted": [{"index": 1, "_id": "..."}, {"index": 2, "_id": "..."}],
+                "writeConcernErrors": [],
+                "writeErrors": [
+                    {
+                        "index": 3,
+                        "code": 11000,
+                        "errmsg": "...",
+                        "op": {
+                            "q": {"b": 4},
+                            "u": {"$set": {"a": 3}},
+                            "multi": False,
+                            "upsert": True,
+                        },
+                    },
+                    {
+                        "index": 5,
+                        "code": 11000,
+                        "errmsg": "...",
+                        "op": {"_id": "...", "b": 6, "a": 1},
+                    },
+                ],
+            },
+            result,
+        )
 
     @client_context.require_version_max(4, 8)  # PYTHON-2436
     def test_large_inserts_ordered(self):
-        big = 'x' * self.coll.database.client.max_bson_size
+        big = "x" * self.coll.database.client.max_bson_size
         batch = self.coll.initialize_ordered_bulk_op()
-        batch.insert({'b': 1, 'a': 1})
-        batch.insert({'big': big})
-        batch.insert({'b': 2, 'a': 2})
+        batch.insert({"b": 1, "a": 1})
+        batch.insert({"big": big})
+        batch.insert({"b": 2, "a": 2})
 
         try:
             batch.execute()
@@ -2109,29 +2135,29 @@ class TestLegacyBulk(BulkTestBase):
         else:
             self.fail("Error not raised")
 
-        self.assertEqual(1, result['nInserted'])
+        self.assertEqual(1, result["nInserted"])
 
         self.coll.delete_many({})
 
-        big = 'x' * (1024 * 1024 * 4)
+        big = "x" * (1024 * 1024 * 4)
         batch = self.coll.initialize_ordered_bulk_op()
-        batch.insert({'a': 1, 'big': big})
-        batch.insert({'a': 2, 'big': big})
-        batch.insert({'a': 3, 'big': big})
-        batch.insert({'a': 4, 'big': big})
-        batch.insert({'a': 5, 'big': big})
-        batch.insert({'a': 6, 'big': big})
+        batch.insert({"a": 1, "big": big})
+        batch.insert({"a": 2, "big": big})
+        batch.insert({"a": 3, "big": big})
+        batch.insert({"a": 4, "big": big})
+        batch.insert({"a": 5, "big": big})
+        batch.insert({"a": 6, "big": big})
         result = batch.execute()
 
-        self.assertEqual(6, result['nInserted'])
+        self.assertEqual(6, result["nInserted"])
         self.assertEqual(6, self.coll.count())
 
     def test_large_inserts_unordered(self):
-        big = 'x' * self.coll.database.client.max_bson_size
+        big = "x" * self.coll.database.client.max_bson_size
         batch = self.coll.initialize_unordered_bulk_op()
-        batch.insert({'b': 1, 'a': 1})
-        batch.insert({'big': big})
-        batch.insert({'b': 2, 'a': 2})
+        batch.insert({"b": 1, "a": 1})
+        batch.insert({"big": big})
+        batch.insert({"b": 2, "a": 2})
 
         try:
             batch.execute()
@@ -2141,21 +2167,21 @@ class TestLegacyBulk(BulkTestBase):
         else:
             self.fail("Error not raised")
 
-        self.assertEqual(2, result['nInserted'])
+        self.assertEqual(2, result["nInserted"])
 
         self.coll.delete_many({})
 
-        big = 'x' * (1024 * 1024 * 4)
+        big = "x" * (1024 * 1024 * 4)
         batch = self.coll.initialize_ordered_bulk_op()
-        batch.insert({'a': 1, 'big': big})
-        batch.insert({'a': 2, 'big': big})
-        batch.insert({'a': 3, 'big': big})
-        batch.insert({'a': 4, 'big': big})
-        batch.insert({'a': 5, 'big': big})
-        batch.insert({'a': 6, 'big': big})
+        batch.insert({"a": 1, "big": big})
+        batch.insert({"a": 2, "big": big})
+        batch.insert({"a": 3, "big": big})
+        batch.insert({"a": 4, "big": big})
+        batch.insert({"a": 5, "big": big})
+        batch.insert({"a": 6, "big": big})
         result = batch.execute()
 
-        self.assertEqual(6, result['nInserted'])
+        self.assertEqual(6, result["nInserted"])
         self.assertEqual(6, self.coll.count())
 
     def test_numerous_inserts(self):
@@ -2166,7 +2192,7 @@ class TestLegacyBulk(BulkTestBase):
             batch.insert({})
 
         result = batch.execute()
-        self.assertEqual(n_docs, result['nInserted'])
+        self.assertEqual(n_docs, result["nInserted"])
         self.assertEqual(n_docs, self.coll.count())
 
         # Same with ordered bulk.
@@ -2176,7 +2202,7 @@ class TestLegacyBulk(BulkTestBase):
             batch.insert({})
 
         result = batch.execute()
-        self.assertEqual(n_docs, result['nInserted'])
+        self.assertEqual(n_docs, result["nInserted"])
         self.assertEqual(n_docs, self.coll.count())
 
     def test_multiple_execution(self):
@@ -2187,18 +2213,17 @@ class TestLegacyBulk(BulkTestBase):
 
     def test_generator_insert(self):
         def gen():
-            yield {'a': 1, 'b': 1}
-            yield {'a': 1, 'b': 2}
-            yield {'a': 2, 'b': 3}
-            yield {'a': 3, 'b': 5}
-            yield {'a': 5, 'b': 8}
+            yield {"a": 1, "b": 1}
+            yield {"a": 1, "b": 2}
+            yield {"a": 2, "b": 3}
+            yield {"a": 3, "b": 5}
+            yield {"a": 5, "b": 8}
 
         result = self.coll.insert_many(gen())
         self.assertEqual(5, len(result.inserted_ids))
 
 
 class TestLegacyBulkNoResults(BulkTestBase):
-
     @classmethod
     def setUpClass(cls):
         super(TestLegacyBulkNoResults, cls).setUpClass()
@@ -2213,68 +2238,60 @@ class TestLegacyBulkNoResults(BulkTestBase):
 
     def test_no_results_ordered_success(self):
         batch = self.coll.initialize_ordered_bulk_op()
-        batch.insert({'_id': 1})
-        batch.find({'_id': 3}).upsert().update_one({'$set': {'b': 1}})
-        batch.insert({'_id': 2})
-        batch.find({'_id': 1}).remove_one()
-        self.assertTrue(batch.execute({'w': 0}) is None)
-        wait_until(lambda: 2 == self.coll.count(),
-                   'insert 2 documents')
-        wait_until(lambda: self.coll.find_one({'_id': 1}) is None,
-                   'removed {"_id": 1}')
+        batch.insert({"_id": 1})
+        batch.find({"_id": 3}).upsert().update_one({"$set": {"b": 1}})
+        batch.insert({"_id": 2})
+        batch.find({"_id": 1}).remove_one()
+        self.assertTrue(batch.execute({"w": 0}) is None)
+        wait_until(lambda: 2 == self.coll.count(), "insert 2 documents")
+        wait_until(lambda: self.coll.find_one({"_id": 1}) is None, 'removed {"_id": 1}')
 
     def test_no_results_ordered_failure(self):
         batch = self.coll.initialize_ordered_bulk_op()
-        batch.insert({'_id': 1})
-        batch.find({'_id': 3}).upsert().update_one({'$set': {'b': 1}})
-        batch.insert({'_id': 2})
+        batch.insert({"_id": 1})
+        batch.find({"_id": 3}).upsert().update_one({"$set": {"b": 1}})
+        batch.insert({"_id": 2})
         # Fails with duplicate key error.
-        batch.insert({'_id': 1})
+        batch.insert({"_id": 1})
         # Should not be executed since the batch is ordered.
-        batch.find({'_id': 1}).remove_one()
-        self.assertTrue(batch.execute({'w': 0}) is None)
-        wait_until(lambda: 3 == self.coll.count(),
-                   'insert 3 documents')
-        self.assertEqual({'_id': 1}, self.coll.find_one({'_id': 1}))
+        batch.find({"_id": 1}).remove_one()
+        self.assertTrue(batch.execute({"w": 0}) is None)
+        wait_until(lambda: 3 == self.coll.count(), "insert 3 documents")
+        self.assertEqual({"_id": 1}, self.coll.find_one({"_id": 1}))
 
     def test_no_results_unordered_success(self):
         batch = self.coll.initialize_unordered_bulk_op()
-        batch.insert({'_id': 1})
-        batch.find({'_id': 3}).upsert().update_one({'$set': {'b': 1}})
-        batch.insert({'_id': 2})
-        batch.find({'_id': 1}).remove_one()
-        self.assertTrue(batch.execute({'w': 0}) is None)
-        wait_until(lambda: 2 == self.coll.count(),
-                   'insert 2 documents')
-        wait_until(lambda: self.coll.find_one({'_id': 1}) is None,
-                   'removed {"_id": 1}')
+        batch.insert({"_id": 1})
+        batch.find({"_id": 3}).upsert().update_one({"$set": {"b": 1}})
+        batch.insert({"_id": 2})
+        batch.find({"_id": 1}).remove_one()
+        self.assertTrue(batch.execute({"w": 0}) is None)
+        wait_until(lambda: 2 == self.coll.count(), "insert 2 documents")
+        wait_until(lambda: self.coll.find_one({"_id": 1}) is None, 'removed {"_id": 1}')
 
     def test_no_results_unordered_failure(self):
         batch = self.coll.initialize_unordered_bulk_op()
-        batch.insert({'_id': 1})
-        batch.find({'_id': 3}).upsert().update_one({'$set': {'b': 1}})
-        batch.insert({'_id': 2})
+        batch.insert({"_id": 1})
+        batch.find({"_id": 3}).upsert().update_one({"$set": {"b": 1}})
+        batch.insert({"_id": 2})
         # Fails with duplicate key error.
-        batch.insert({'_id': 1})
+        batch.insert({"_id": 1})
         # Should be executed since the batch is unordered.
-        batch.find({'_id': 1}).remove_one()
-        self.assertTrue(batch.execute({'w': 0}) is None)
-        wait_until(lambda: 2 == self.coll.count(),
-                   'insert 2 documents')
-        wait_until(lambda: self.coll.find_one({'_id': 1}) is None,
-                   'removed {"_id": 1}')
+        batch.find({"_id": 1}).remove_one()
+        self.assertTrue(batch.execute({"w": 0}) is None)
+        wait_until(lambda: 2 == self.coll.count(), "insert 2 documents")
+        wait_until(lambda: self.coll.find_one({"_id": 1}) is None, 'removed {"_id": 1}')
 
 
 class TestLegacyBulkWriteConcern(BulkTestBase):
-
     @classmethod
     def setUpClass(cls):
         super(TestLegacyBulkWriteConcern, cls).setUpClass()
         cls.w = client_context.w
         cls.secondary = None
         if cls.w > 1:
-            for member in client_context.hello['hosts']:
-                if member != client_context.hello['primary']:
+            for member in client_context.hello["hosts"]:
+                if member != client_context.hello["primary"]:
                     cls.secondary = single_client(*partition_node(member))
                     break
 
@@ -2296,25 +2313,19 @@ class TestLegacyBulkWriteConcern(BulkTestBase):
             if not client_context.test_commands_enabled:
                 raise SkipTest("Test commands must be enabled.")
 
-            self.secondary.admin.command('configureFailPoint',
-                                         'rsSyncApplyStop',
-                                         mode='alwaysOn')
+            self.secondary.admin.command("configureFailPoint", "rsSyncApplyStop", mode="alwaysOn")
 
             try:
-                return batch.execute({'w': self.w, 'wtimeout': 1})
+                return batch.execute({"w": self.w, "wtimeout": 1})
             finally:
-                self.secondary.admin.command('configureFailPoint',
-                                             'rsSyncApplyStop',
-                                             mode='off')
+                self.secondary.admin.command("configureFailPoint", "rsSyncApplyStop", mode="off")
         else:
-            return batch.execute({'w': self.w + 1, 'wtimeout': 1})
+            return batch.execute({"w": self.w + 1, "wtimeout": 1})
 
     def test_fsync_and_j(self):
         batch = self.coll.initialize_ordered_bulk_op()
-        batch.insert({'a': 1})
-        self.assertRaises(
-            ConfigurationError,
-            batch.execute, {'fsync': True, 'j': True})
+        batch.insert({"a": 1})
+        self.assertRaises(ConfigurationError, batch.execute, {"fsync": True, "j": True})
 
     @client_context.require_replica_set
     def test_write_concern_failure_ordered(self):
@@ -2324,8 +2335,8 @@ class TestLegacyBulkWriteConcern(BulkTestBase):
         self.assertTrue(batch.execute({"w": self.w}))
 
         batch = self.coll.initialize_ordered_bulk_op()
-        batch.insert({'a': 1})
-        batch.insert({'a': 2})
+        batch.insert({"a": 1})
+        batch.insert({"a": 2})
 
         # Replication wtimeout is a 'soft' error.
         # It shouldn't stop batch processing.
@@ -2338,34 +2349,37 @@ class TestLegacyBulkWriteConcern(BulkTestBase):
             self.fail("Error not raised")
 
         self.assertEqualResponse(
-            {'nMatched': 0,
-             'nModified': 0,
-             'nUpserted': 0,
-             'nInserted': 2,
-             'nRemoved': 0,
-             'upserted': [],
-             'writeErrors': []},
-            result)
+            {
+                "nMatched": 0,
+                "nModified": 0,
+                "nUpserted": 0,
+                "nInserted": 2,
+                "nRemoved": 0,
+                "upserted": [],
+                "writeErrors": [],
+            },
+            result,
+        )
 
         # When talking to legacy servers there will be a
         # write concern error for each operation.
-        self.assertTrue(len(result['writeConcernErrors']) > 0)
+        self.assertTrue(len(result["writeConcernErrors"]) > 0)
 
-        failed = result['writeConcernErrors'][0]
-        self.assertEqual(64, failed['code'])
-        self.assertTrue(isinstance(failed['errmsg'], string_type))
+        failed = result["writeConcernErrors"][0]
+        self.assertEqual(64, failed["code"])
+        self.assertTrue(isinstance(failed["errmsg"], string_type))
 
         self.coll.delete_many({})
-        self.coll.create_index('a', unique=True)
-        self.addCleanup(self.coll.drop_index, [('a', 1)])
+        self.coll.create_index("a", unique=True)
+        self.addCleanup(self.coll.drop_index, [("a", 1)])
 
         # Fail due to write concern support as well
         # as duplicate key error on ordered batch.
         batch = self.coll.initialize_ordered_bulk_op()
-        batch.insert({'a': 1})
-        batch.find({'a': 3}).upsert().replace_one({'b': 1})
-        batch.insert({'a': 1})
-        batch.insert({'a': 2})
+        batch.insert({"a": 1})
+        batch.find({"a": 3}).upsert().replace_one({"b": 1})
+        batch.insert({"a": 1})
+        batch.insert({"a": 2})
         try:
             self.cause_wtimeout(batch)
         except BulkWriteError as exc:
@@ -2375,22 +2389,23 @@ class TestLegacyBulkWriteConcern(BulkTestBase):
             self.fail("Error not raised")
 
         self.assertEqualResponse(
-            {'nMatched': 0,
-             'nModified': 0,
-             'nUpserted': 1,
-             'nInserted': 1,
-             'nRemoved': 0,
-             'upserted': [{'index': 1, '_id': '...'}],
-             'writeErrors': [
-                 {'index': 2,
-                  'code': 11000,
-                  'errmsg': '...',
-                  'op': {'_id': '...', 'a': 1}}]},
-            result)
+            {
+                "nMatched": 0,
+                "nModified": 0,
+                "nUpserted": 1,
+                "nInserted": 1,
+                "nRemoved": 0,
+                "upserted": [{"index": 1, "_id": "..."}],
+                "writeErrors": [
+                    {"index": 2, "code": 11000, "errmsg": "...", "op": {"_id": "...", "a": 1}}
+                ],
+            },
+            result,
+        )
 
-        self.assertTrue(len(result['writeConcernErrors']) > 1)
-        failed = result['writeErrors'][0]
-        self.assertTrue("duplicate" in failed['errmsg'])
+        self.assertTrue(len(result["writeConcernErrors"]) > 1)
+        failed = result["writeErrors"][0]
+        self.assertTrue("duplicate" in failed["errmsg"])
 
     @client_context.require_replica_set
     def test_write_concern_failure_unordered(self):
@@ -2400,9 +2415,9 @@ class TestLegacyBulkWriteConcern(BulkTestBase):
         self.assertTrue(batch.execute({"w": self.w}))
 
         batch = self.coll.initialize_unordered_bulk_op()
-        batch.insert({'a': 1})
-        batch.find({'a': 3}).upsert().update_one({'$set': {'a': 3, 'b': 1}})
-        batch.insert({'a': 2})
+        batch.insert({"a": 1})
+        batch.find({"a": 3}).upsert().update_one({"$set": {"a": 3, "b": 1}})
+        batch.insert({"a": 2})
 
         # Replication wtimeout is a 'soft' error.
         # It shouldn't stop batch processing.
@@ -2414,25 +2429,24 @@ class TestLegacyBulkWriteConcern(BulkTestBase):
         else:
             self.fail("Error not raised")
 
-        self.assertEqual(2, result['nInserted'])
-        self.assertEqual(1, result['nUpserted'])
-        self.assertEqual(0, len(result['writeErrors']))
+        self.assertEqual(2, result["nInserted"])
+        self.assertEqual(1, result["nUpserted"])
+        self.assertEqual(0, len(result["writeErrors"]))
         # When talking to legacy servers there will be a
         # write concern error for each operation.
-        self.assertTrue(len(result['writeConcernErrors']) > 1)
+        self.assertTrue(len(result["writeConcernErrors"]) > 1)
 
         self.coll.delete_many({})
-        self.coll.create_index('a', unique=True)
-        self.addCleanup(self.coll.drop_index, [('a', 1)])
+        self.coll.create_index("a", unique=True)
+        self.addCleanup(self.coll.drop_index, [("a", 1)])
 
         # Fail due to write concern support as well
         # as duplicate key error on unordered batch.
         batch = self.coll.initialize_unordered_bulk_op()
-        batch.insert({'a': 1})
-        batch.find({'a': 3}).upsert().update_one({'$set': {'a': 3,
-                                                           'b': 1}})
-        batch.insert({'a': 1})
-        batch.insert({'a': 2})
+        batch.insert({"a": 1})
+        batch.find({"a": 3}).upsert().update_one({"$set": {"a": 3, "b": 1}})
+        batch.insert({"a": 1})
+        batch.insert({"a": 2})
         try:
             self.cause_wtimeout(batch)
         except BulkWriteError as exc:
@@ -2441,31 +2455,30 @@ class TestLegacyBulkWriteConcern(BulkTestBase):
         else:
             self.fail("Error not raised")
 
-        self.assertEqual(2, result['nInserted'])
-        self.assertEqual(1, result['nUpserted'])
-        self.assertEqual(1, len(result['writeErrors']))
+        self.assertEqual(2, result["nInserted"])
+        self.assertEqual(1, result["nUpserted"])
+        self.assertEqual(1, len(result["writeErrors"]))
         # When talking to legacy servers there will be a
         # write concern error for each operation.
-        self.assertTrue(len(result['writeConcernErrors']) > 1)
+        self.assertTrue(len(result["writeConcernErrors"]) > 1)
 
-        failed = result['writeErrors'][0]
-        self.assertEqual(2, failed['index'])
-        self.assertEqual(11000, failed['code'])
-        self.assertTrue(isinstance(failed['errmsg'], string_type))
-        self.assertEqual(1, failed['op']['a'])
+        failed = result["writeErrors"][0]
+        self.assertEqual(2, failed["index"])
+        self.assertEqual(11000, failed["code"])
+        self.assertTrue(isinstance(failed["errmsg"], string_type))
+        self.assertEqual(1, failed["op"]["a"])
 
-        failed = result['writeConcernErrors'][0]
-        self.assertEqual(64, failed['code'])
-        self.assertTrue(isinstance(failed['errmsg'], string_type))
+        failed = result["writeConcernErrors"][0]
+        self.assertEqual(64, failed["code"])
+        self.assertTrue(isinstance(failed["errmsg"], string_type))
 
-        upserts = result['upserted']
+        upserts = result["upserted"]
         self.assertEqual(1, len(upserts))
-        self.assertEqual(1, upserts[0]['index'])
-        self.assertTrue(upserts[0].get('_id'))
+        self.assertEqual(1, upserts[0]["index"])
+        self.assertTrue(upserts[0].get("_id"))
 
 
 class TestLegacyBulkAuthorization(BulkAuthorizationTestBase):
-
     @classmethod
     def setUpClass(cls):
         super(TestLegacyBulkAuthorization, cls).setUpClass()
@@ -2481,9 +2494,9 @@ class TestLegacyBulkAuthorization(BulkAuthorizationTestBase):
         cli = rs_or_single_client_noauth()
         db = cli.pymongo_test
         coll = db.test
-        db.authenticate('readonly', 'pw')
+        db.authenticate("readonly", "pw")
         bulk = coll.initialize_ordered_bulk_op()
-        bulk.insert({'x': 1})
+        bulk.insert({"x": 1})
         self.assertRaises(OperationFailure, bulk.execute)
 
     def test_no_remove(self):
@@ -2492,14 +2505,15 @@ class TestLegacyBulkAuthorization(BulkAuthorizationTestBase):
         cli = rs_or_single_client_noauth()
         db = cli.pymongo_test
         coll = db.test
-        db.authenticate('noremove', 'pw')
+        db.authenticate("noremove", "pw")
         bulk = coll.initialize_ordered_bulk_op()
-        bulk.insert({'x': 1})
-        bulk.find({'x': 2}).upsert().replace_one({'x': 2})
+        bulk.insert({"x": 1})
+        bulk.find({"x": 2}).upsert().replace_one({"x": 2})
         bulk.find({}).remove()  # Prohibited.
-        bulk.insert({'x': 3})   # Never attempted.
+        bulk.insert({"x": 3})  # Never attempted.
         self.assertRaises(OperationFailure, bulk.execute)
-        self.assertEqual(set([1, 2]), set(self.coll.distinct('x')))
+        self.assertEqual(set([1, 2]), set(self.coll.distinct("x")))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -19,46 +19,51 @@ import warnings
 from bson.code import Code
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.dbref import DBRef
-from bson.py3compat import iteritems, string_type, _unicode
+from bson.py3compat import _unicode, iteritems, string_type
 from bson.son import SON
 from pymongo import auth, common
 from pymongo.aggregation import _DatabaseAggregationCommand
 from pymongo.change_stream import DatabaseChangeStream
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
-from pymongo.errors import (CollectionInvalid,
-                            ConfigurationError,
-                            InvalidName,
-                            OperationFailure)
+from pymongo.errors import (
+    CollectionInvalid,
+    ConfigurationError,
+    InvalidName,
+    OperationFailure,
+)
 from pymongo.hello_compat import HelloCompat
 from pymongo.message import _first_batch
 from pymongo.read_preferences import ReadPreference
 from pymongo.son_manipulator import SONManipulator
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN
 
-
 _INDEX_REGEX = {"name": {"$regex": r"^(?!.*\$)"}}
 _SYSTEM_FILTER = {"filter": {"name": {"$regex": r"^(?!system\.)"}}}
 
 
 def _check_name(name):
-    """Check if a database name is valid.
-    """
+    """Check if a database name is valid."""
     if not name:
         raise InvalidName("database name cannot be the empty string")
 
-    for invalid_char in [' ', '.', '$', '/', '\\', '\x00', '"']:
+    for invalid_char in [" ", ".", "$", "/", "\\", "\x00", '"']:
         if invalid_char in name:
-            raise InvalidName("database names cannot contain the "
-                              "character %r" % invalid_char)
+            raise InvalidName("database names cannot contain the " "character %r" % invalid_char)
 
 
 class Database(common.BaseObject):
-    """A Mongo database.
-    """
+    """A Mongo database."""
 
-    def __init__(self, client, name, codec_options=None, read_preference=None,
-                 write_concern=None, read_concern=None):
+    def __init__(
+        self,
+        client,
+        name,
+        codec_options=None,
+        read_preference=None,
+        write_concern=None,
+        read_concern=None,
+    ):
         """Get a database by client and name.
 
         Raises :class:`TypeError` if `name` is not an instance of
@@ -102,13 +107,13 @@ class Database(common.BaseObject):
             codec_options or client.codec_options,
             read_preference or client.read_preference,
             write_concern or client.write_concern,
-            read_concern or client.read_concern)
+            read_concern or client.read_concern,
+        )
 
         if not isinstance(name, string_type):
-            raise TypeError("name must be an instance "
-                            "of %s" % (string_type.__name__,))
+            raise TypeError("name must be an instance " "of %s" % (string_type.__name__,))
 
-        if name != '$external':
+        if name != "$external":
             _check_name(name)
 
         self.__name = _unicode(name)
@@ -127,13 +132,12 @@ class Database(common.BaseObject):
         .. versionchanged:: 3.0
           Deprecated add_son_manipulator.
         """
-        warnings.warn("add_son_manipulator is deprecated",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn("add_son_manipulator is deprecated", DeprecationWarning, stacklevel=2)
         base = SONManipulator()
+
         def method_overwritten(instance, method):
             """Test if this method has been overridden."""
-            return (getattr(
-                instance, method).__func__ != getattr(base, method).__func__)
+            return getattr(instance, method).__func__ != getattr(base, method).__func__
 
         if manipulator.will_copy():
             if method_overwritten(manipulator, "transform_incoming"):
@@ -173,11 +177,11 @@ class Database(common.BaseObject):
 
         .. versionadded:: 2.0
         """
-        warnings.warn("Database.incoming_manipulators() is deprecated",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "Database.incoming_manipulators() is deprecated", DeprecationWarning, stacklevel=2
+        )
 
-        return [manipulator.__class__.__name__
-                for manipulator in self.__incoming_manipulators]
+        return [manipulator.__class__.__name__ for manipulator in self.__incoming_manipulators]
 
     @property
     def incoming_copying_manipulators(self):
@@ -188,11 +192,15 @@ class Database(common.BaseObject):
 
         .. versionadded:: 2.0
         """
-        warnings.warn("Database.incoming_copying_manipulators() is deprecated",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "Database.incoming_copying_manipulators() is deprecated",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
-        return [manipulator.__class__.__name__
-                for manipulator in self.__incoming_copying_manipulators]
+        return [
+            manipulator.__class__.__name__ for manipulator in self.__incoming_copying_manipulators
+        ]
 
     @property
     def outgoing_manipulators(self):
@@ -203,11 +211,11 @@ class Database(common.BaseObject):
 
         .. versionadded:: 2.0
         """
-        warnings.warn("Database.outgoing_manipulators() is deprecated",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "Database.outgoing_manipulators() is deprecated", DeprecationWarning, stacklevel=2
+        )
 
-        return [manipulator.__class__.__name__
-                for manipulator in self.__outgoing_manipulators]
+        return [manipulator.__class__.__name__ for manipulator in self.__outgoing_manipulators]
 
     @property
     def outgoing_copying_manipulators(self):
@@ -218,14 +226,19 @@ class Database(common.BaseObject):
 
         .. versionadded:: 2.0
         """
-        warnings.warn("Database.outgoing_copying_manipulators() is deprecated",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "Database.outgoing_copying_manipulators() is deprecated",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
-        return [manipulator.__class__.__name__
-                for manipulator in self.__outgoing_copying_manipulators]
+        return [
+            manipulator.__class__.__name__ for manipulator in self.__outgoing_copying_manipulators
+        ]
 
-    def with_options(self, codec_options=None, read_preference=None,
-                     write_concern=None, read_concern=None):
+    def with_options(
+        self, codec_options=None, read_preference=None, write_concern=None, read_concern=None
+    ):
         """Get a clone of this database changing the specified settings.
 
           >>> db1.read_preference
@@ -257,17 +270,18 @@ class Database(common.BaseObject):
 
         .. versionadded:: 3.8
         """
-        return Database(self.client,
-                        self.__name,
-                        codec_options or self.codec_options,
-                        read_preference or self.read_preference,
-                        write_concern or self.write_concern,
-                        read_concern or self.read_concern)
+        return Database(
+            self.client,
+            self.__name,
+            codec_options or self.codec_options,
+            read_preference or self.read_preference,
+            write_concern or self.write_concern,
+            read_concern or self.read_concern,
+        )
 
     def __eq__(self, other):
         if isinstance(other, Database):
-            return (self.__client == other.client and
-                    self.__name == other.name)
+            return self.__client == other.client and self.__name == other.name
         return NotImplemented
 
     def __ne__(self, other):
@@ -287,10 +301,11 @@ class Database(common.BaseObject):
         :Parameters:
           - `name`: the name of the collection to get
         """
-        if name.startswith('_'):
+        if name.startswith("_"):
             raise AttributeError(
                 "Database has no attribute %r. To access the %s"
-                " collection, use database[%r]." % (name, name, name))
+                " collection, use database[%r]." % (name, name, name)
+            )
         return self.__getitem__(name)
 
     def __getitem__(self, name):
@@ -303,8 +318,9 @@ class Database(common.BaseObject):
         """
         return Collection(self, name)
 
-    def get_collection(self, name, codec_options=None, read_preference=None,
-                       write_concern=None, read_concern=None):
+    def get_collection(
+        self, name, codec_options=None, read_preference=None, write_concern=None, read_concern=None
+    ):
         """Get a :class:`~pymongo.collection.Collection` with the given name
         and options.
 
@@ -343,12 +359,19 @@ class Database(common.BaseObject):
             used.
         """
         return Collection(
-            self, name, False, codec_options, read_preference,
-            write_concern, read_concern)
+            self, name, False, codec_options, read_preference, write_concern, read_concern
+        )
 
-    def create_collection(self, name, codec_options=None,
-                          read_preference=None, write_concern=None,
-                          read_concern=None, session=None, **kwargs):
+    def create_collection(
+        self,
+        name,
+        codec_options=None,
+        read_preference=None,
+        write_concern=None,
+        read_concern=None,
+        session=None,
+        **kwargs
+    ):
         """Create a new :class:`~pymongo.collection.Collection` in this
         database.
 
@@ -417,14 +440,22 @@ class Database(common.BaseObject):
         with self.__client._tmp_session(session) as s:
             # Skip this check in a transaction where listCollections is not
             # supported.
-            if ((not s or not s.in_transaction) and
-                    name in self.list_collection_names(
-                        filter={"name": name}, session=s)):
+            if (not s or not s.in_transaction) and name in self.list_collection_names(
+                filter={"name": name}, session=s
+            ):
                 raise CollectionInvalid("collection %s already exists" % name)
 
-            return Collection(self, name, True, codec_options,
-                              read_preference, write_concern,
-                              read_concern, session=s, **kwargs)
+            return Collection(
+                self,
+                name,
+                True,
+                codec_options,
+                read_preference,
+                write_concern,
+                read_concern,
+                session=s,
+                **kwargs
+            )
 
     def _apply_incoming_manipulators(self, son, collection):
         """Apply incoming manipulators to `son`."""
@@ -528,15 +559,29 @@ class Database(common.BaseObject):
         """
         with self.client._tmp_session(session, close=False) as s:
             cmd = _DatabaseAggregationCommand(
-                self, CommandCursor, pipeline, kwargs, session is not None,
-                user_fields={'cursor': {'firstBatch': 1}})
+                self,
+                CommandCursor,
+                pipeline,
+                kwargs,
+                session is not None,
+                user_fields={"cursor": {"firstBatch": 1}},
+            )
             return self.client._retryable_read(
-                cmd.get_cursor, cmd.get_read_preference(s), s,
-                retryable=not cmd._performs_write)
+                cmd.get_cursor, cmd.get_read_preference(s), s, retryable=not cmd._performs_write
+            )
 
-    def watch(self, pipeline=None, full_document=None, resume_after=None,
-              max_await_time_ms=None, batch_size=None, collation=None,
-              start_at_operation_time=None, session=None, start_after=None):
+    def watch(
+        self,
+        pipeline=None,
+        full_document=None,
+        resume_after=None,
+        max_await_time_ms=None,
+        batch_size=None,
+        collation=None,
+        start_at_operation_time=None,
+        session=None,
+        start_after=None,
+    ):
         """Watch changes on this database.
 
         Performs an aggregation with an implicit initial ``$changeStream``
@@ -622,16 +667,33 @@ class Database(common.BaseObject):
             https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.rst
         """
         return DatabaseChangeStream(
-            self, pipeline, full_document, resume_after, max_await_time_ms,
-            batch_size, collation, start_at_operation_time, session,
-            start_after)
+            self,
+            pipeline,
+            full_document,
+            resume_after,
+            max_await_time_ms,
+            batch_size,
+            collation,
+            start_at_operation_time,
+            session,
+            start_after,
+        )
 
-    def _command(self, sock_info, command, secondary_ok=False, value=1,
-                 check=True, allowable_errors=None,
-                 read_preference=ReadPreference.PRIMARY,
-                 codec_options=DEFAULT_CODEC_OPTIONS,
-                 write_concern=None,
-                 parse_write_concern_error=False, session=None, **kwargs):
+    def _command(
+        self,
+        sock_info,
+        command,
+        secondary_ok=False,
+        value=1,
+        check=True,
+        allowable_errors=None,
+        read_preference=ReadPreference.PRIMARY,
+        codec_options=DEFAULT_CODEC_OPTIONS,
+        write_concern=None,
+        parse_write_concern_error=False,
+        session=None,
+        **kwargs
+    ):
         """Internal command helper."""
         if isinstance(command, string_type):
             command = SON([(command, value)])
@@ -649,11 +711,20 @@ class Database(common.BaseObject):
                 write_concern=write_concern,
                 parse_write_concern_error=parse_write_concern_error,
                 session=s,
-                client=self.__client)
+                client=self.__client,
+            )
 
-    def command(self, command, value=1, check=True,
-                allowable_errors=None, read_preference=None,
-                codec_options=DEFAULT_CODEC_OPTIONS, session=None, **kwargs):
+    def command(
+        self,
+        command,
+        value=1,
+        check=True,
+        allowable_errors=None,
+        read_preference=None,
+        codec_options=DEFAULT_CODEC_OPTIONS,
+        session=None,
+        **kwargs
+    ):
         """Issue a MongoDB command.
 
         Send command `command` to the database and return the
@@ -752,65 +823,90 @@ class Database(common.BaseObject):
         .. seealso:: The MongoDB documentation on `commands <https://dochub.mongodb.org/core/commands>`_.
         """
         if read_preference is None:
-            read_preference = ((session and session._txn_read_preference())
-                               or ReadPreference.PRIMARY)
-        with self.__client._socket_for_reads(
-                read_preference, session) as (sock_info, secondary_ok):
-            return self._command(sock_info, command, secondary_ok, value,
-                                 check, allowable_errors, read_preference,
-                                 codec_options, session=session, **kwargs)
+            read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
+        with self.__client._socket_for_reads(read_preference, session) as (sock_info, secondary_ok):
+            return self._command(
+                sock_info,
+                command,
+                secondary_ok,
+                value,
+                check,
+                allowable_errors,
+                read_preference,
+                codec_options,
+                session=session,
+                **kwargs
+            )
 
-    def _retryable_read_command(self, command, value=1, check=True,
-                allowable_errors=None, read_preference=None,
-                codec_options=DEFAULT_CODEC_OPTIONS, session=None, **kwargs):
+    def _retryable_read_command(
+        self,
+        command,
+        value=1,
+        check=True,
+        allowable_errors=None,
+        read_preference=None,
+        codec_options=DEFAULT_CODEC_OPTIONS,
+        session=None,
+        **kwargs
+    ):
         """Same as command but used for retryable read commands."""
         if read_preference is None:
-            read_preference = ((session and session._txn_read_preference())
-                               or ReadPreference.PRIMARY)
+            read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
 
         def _cmd(session, server, sock_info, secondary_ok):
-            return self._command(sock_info, command, secondary_ok, value,
-                                 check, allowable_errors, read_preference,
-                                 codec_options, session=session, **kwargs)
+            return self._command(
+                sock_info,
+                command,
+                secondary_ok,
+                value,
+                check,
+                allowable_errors,
+                read_preference,
+                codec_options,
+                session=session,
+                **kwargs
+            )
 
-        return self.__client._retryable_read(
-            _cmd, read_preference, session)
+        return self.__client._retryable_read(_cmd, read_preference, session)
 
-    def _list_collections(self, sock_info, secondary_okay, session,
-                          read_preference, **kwargs):
+    def _list_collections(self, sock_info, secondary_okay, session, read_preference, **kwargs):
         """Internal listCollections helper."""
 
-        coll = self.get_collection(
-            "$cmd", read_preference=read_preference)
+        coll = self.get_collection("$cmd", read_preference=read_preference)
         if sock_info.max_wire_version > 2:
-            cmd = SON([("listCollections", 1),
-                       ("cursor", {})])
+            cmd = SON([("listCollections", 1), ("cursor", {})])
             cmd.update(kwargs)
-            with self.__client._tmp_session(
-                    session, close=False) as tmp_session:
+            with self.__client._tmp_session(session, close=False) as tmp_session:
                 cursor = self._command(
-                    sock_info, cmd, secondary_okay,
+                    sock_info,
+                    cmd,
+                    secondary_okay,
                     read_preference=read_preference,
-                    session=tmp_session)["cursor"]
+                    session=tmp_session,
+                )["cursor"]
                 cmd_cursor = CommandCursor(
                     coll,
                     cursor,
                     sock_info.address,
                     session=tmp_session,
-                    explicit_session=session is not None)
+                    explicit_session=session is not None,
+                )
         else:
             match = _INDEX_REGEX
             if "filter" in kwargs:
                 match = {"$and": [_INDEX_REGEX, kwargs["filter"]]}
             dblen = len(self.name.encode("utf8") + b".")
             pipeline = [
-                {"$project": {"name": {"$substr": ["$name", dblen, -1]},
-                              "options": 1}},
-                {"$match": match}
+                {"$project": {"name": {"$substr": ["$name", dblen, -1]}, "options": 1}},
+                {"$match": match},
             ]
-            cmd = SON([("aggregate", "system.namespaces"),
-                       ("pipeline", pipeline),
-                       ("cursor", kwargs.get("cursor", {}))])
+            cmd = SON(
+                [
+                    ("aggregate", "system.namespaces"),
+                    ("pipeline", pipeline),
+                    ("cursor", kwargs.get("cursor", {})),
+                ]
+            )
             cursor = self._command(sock_info, cmd, secondary_okay)["cursor"]
             cmd_cursor = CommandCursor(coll, cursor, sock_info.address)
         cmd_cursor._maybe_pin_connection(sock_info)
@@ -836,17 +932,15 @@ class Database(common.BaseObject):
         .. versionadded:: 3.6
         """
         if filter is not None:
-            kwargs['filter'] = filter
-        read_pref = ((session and session._txn_read_preference())
-                     or ReadPreference.PRIMARY)
+            kwargs["filter"] = filter
+        read_pref = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
 
         def _cmd(session, server, sock_info, secondary_okay):
             return self._list_collections(
-                sock_info, secondary_okay, session, read_preference=read_pref,
-                **kwargs)
+                sock_info, secondary_okay, session, read_preference=read_pref, **kwargs
+            )
 
-        return self.__client._retryable_read(
-            _cmd, read_pref, session)
+        return self.__client._retryable_read(_cmd, read_pref, session)
 
     def list_collection_names(self, session=None, filter=None, **kwargs):
         """Get a list of all the collection names in this database.
@@ -882,11 +976,9 @@ class Database(common.BaseObject):
             if not filter or (len(filter) == 1 and "name" in filter):
                 kwargs["nameOnly"] = True
 
-        return [result["name"]
-                for result in self.list_collections(session=session, **kwargs)]
+        return [result["name"] for result in self.list_collections(session=session, **kwargs)]
 
-    def collection_names(self, include_system_collections=True,
-                         session=None):
+    def collection_names(self, include_system_collections=True, session=None):
         """**DEPRECATED**: Get a list of all the collection names in this
         database.
 
@@ -902,13 +994,16 @@ class Database(common.BaseObject):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        warnings.warn("collection_names is deprecated. Use "
-                      "list_collection_names instead.",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "collection_names is deprecated. Use " "list_collection_names instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         kws = {} if include_system_collections else _SYSTEM_FILTER
-        return [result["name"]
-                for result in self.list_collections(session=session,
-                                                    nameOnly=True, **kws)]
+        return [
+            result["name"]
+            for result in self.list_collections(session=session, nameOnly=True, **kws)
+        ]
 
     def drop_collection(self, name_or_collection, session=None):
         """Drop a collection.
@@ -936,22 +1031,26 @@ class Database(common.BaseObject):
             name = name.name
 
         if not isinstance(name, string_type):
-            raise TypeError("name_or_collection must be an "
-                            "instance of %s" % (string_type.__name__,))
+            raise TypeError(
+                "name_or_collection must be an " "instance of %s" % (string_type.__name__,)
+            )
 
         self.__client._purge_index(self.__name, name)
 
         with self.__client._socket_for_writes(session) as sock_info:
             return self._command(
-                sock_info, 'drop', value=_unicode(name),
-                allowable_errors=['ns not found', 26],
+                sock_info,
+                "drop",
+                value=_unicode(name),
+                allowable_errors=["ns not found", 26],
                 write_concern=self._write_concern_for(session),
                 parse_write_concern_error=True,
-                session=session)
+                session=session,
+            )
 
-    def validate_collection(self, name_or_collection,
-                            scandata=False, full=False, session=None,
-                            background=None):
+    def validate_collection(
+        self, name_or_collection, scandata=False, full=False, session=None, background=None
+    ):
         """Validate a collection.
 
         Returns a dict of validation info. Raises CollectionInvalid if
@@ -986,12 +1085,12 @@ class Database(common.BaseObject):
             name = name.name
 
         if not isinstance(name, string_type):
-            raise TypeError("name_or_collection must be an instance of "
-                            "%s or Collection" % (string_type.__name__,))
+            raise TypeError(
+                "name_or_collection must be an instance of "
+                "%s or Collection" % (string_type.__name__,)
+            )
 
-        cmd = SON([("validate", _unicode(name)),
-                   ("scandata", scandata),
-                   ("full", full)])
+        cmd = SON([("validate", _unicode(name)), ("scandata", scandata), ("full", full)])
         if background is not None:
             cmd["background"] = background
 
@@ -1008,10 +1107,8 @@ class Database(common.BaseObject):
             for _, res in iteritems(result["raw"]):
                 if "result" in res:
                     info = res["result"]
-                    if (info.find("exception") != -1 or
-                            info.find("corrupt") != -1):
-                        raise CollectionInvalid("%s invalid: "
-                                                "%s" % (name, info))
+                    if info.find("exception") != -1 or info.find("corrupt") != -1:
+                        raise CollectionInvalid("%s invalid: " "%s" % (name, info))
                 elif not res.get("valid", False):
                     valid = False
                     break
@@ -1030,14 +1127,22 @@ class Database(common.BaseObject):
         with self.__client._socket_for_writes(session) as sock_info:
             if sock_info.max_wire_version >= 4:
                 return self.__client.admin._command(
-                    sock_info, cmd, codec_options=self.codec_options,
-                    session=session)
+                    sock_info, cmd, codec_options=self.codec_options, session=session
+                )
             else:
                 spec = {"$all": True} if include_all else {}
-                return _first_batch(sock_info, "admin", "$cmd.sys.inprog",
-                                    spec, -1, True, self.codec_options,
-                                    ReadPreference.PRIMARY, cmd,
-                                    self.client._event_listeners)
+                return _first_batch(
+                    sock_info,
+                    "admin",
+                    "$cmd.sys.inprog",
+                    spec,
+                    -1,
+                    True,
+                    self.codec_options,
+                    ReadPreference.PRIMARY,
+                    cmd,
+                    self.client._event_listeners,
+                )
 
     def current_op(self, include_all=False, session=None):
         """**DEPRECATED**: Get information on operations currently running.
@@ -1075,9 +1180,11 @@ class Database(common.BaseObject):
         .. _$currentOp aggregation pipeline stage: https://docs.mongodb.com/manual/reference/operator/aggregation/currentOp/
         .. _currentOp command: https://docs.mongodb.com/manual/reference/command/currentOp/
         """
-        warnings.warn("current_op() is deprecated. See the documentation for "
-                      "more information",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "current_op() is deprecated. See the documentation for " "more information",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return self._current_op(include_all, session)
 
     def profiling_level(self, session=None):
@@ -1110,16 +1217,17 @@ class Database(common.BaseObject):
         .. seealso:: The MongoDB documentation on `profiling <https://dochub.mongodb.org/core/profiling>`_.
         .. _profile command: https://docs.mongodb.com/manual/reference/command/profile/
         """
-        warnings.warn("profiling_level() is deprecated. See the documentation "
-                      "for more information",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "profiling_level() is deprecated. See the documentation " "for more information",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         result = self.command("profile", -1, session=session)
 
         assert result["was"] >= 0 and result["was"] <= 2
         return result["was"]
 
-    def set_profiling_level(self, level, slow_ms=None, session=None,
-                            sample_rate=None, filter=None):
+    def set_profiling_level(self, level, slow_ms=None, session=None, sample_rate=None, filter=None):
         """**DEPRECATED**: Set the database's profiling level.
 
         Starting with PyMongo 3.12, this helper is obsolete. Instead, users
@@ -1167,9 +1275,11 @@ class Database(common.BaseObject):
         .. seealso:: The MongoDB documentation on `profiling <https://dochub.mongodb.org/core/profiling>`_.
         .. _profile command: https://docs.mongodb.com/manual/reference/command/profile/
         """
-        warnings.warn("set_profiling_level() is deprecated. See the "
-                      "documentation for more information",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "set_profiling_level() is deprecated. See the " "documentation for more information",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
         if not isinstance(level, int) or level < 0 or level > 2:
             raise ValueError("level must be one of (OFF, SLOW_ONLY, ALL)")
@@ -1178,16 +1288,15 @@ class Database(common.BaseObject):
             raise TypeError("slow_ms must be an integer")
 
         if sample_rate is not None and not isinstance(sample_rate, float):
-            raise TypeError(
-                "sample_rate must be a float, not %r" % (sample_rate,))
+            raise TypeError("sample_rate must be a float, not %r" % (sample_rate,))
 
         cmd = SON(profile=level)
         if slow_ms is not None:
-            cmd['slowms'] = slow_ms
+            cmd["slowms"] = slow_ms
         if sample_rate is not None:
-            cmd['sampleRate'] = sample_rate
+            cmd["sampleRate"] = sample_rate
         if filter is not None:
-            cmd['filter'] = filter
+            cmd["filter"] = filter
         self.command(cmd, session=session)
 
     def profiling_info(self, session=None):
@@ -1215,9 +1324,11 @@ class Database(common.BaseObject):
         .. seealso:: The MongoDB documentation on `profiling <https://dochub.mongodb.org/core/profiling>`_.
         .. _profiler output: https://docs.mongodb.com/manual/reference/database-profiler/
         """
-        warnings.warn("profiling_info() is deprecated. See the "
-                      "documentation for more information",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "profiling_info() is deprecated. See the " "documentation for more information",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
         return list(self["system.profile"].find(session=session))
 
@@ -1231,8 +1342,7 @@ class Database(common.BaseObject):
         .. versionchanged:: 2.8
            Deprecated.
         """
-        warnings.warn("Database.error() is deprecated",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn("Database.error() is deprecated", DeprecationWarning, stacklevel=2)
 
         error = self.command("getlasterror")
         error_msg = error.get("err", "")
@@ -1258,8 +1368,7 @@ class Database(common.BaseObject):
         .. versionchanged:: 2.8
            Deprecated.
         """
-        warnings.warn("last_status() is deprecated",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn("last_status() is deprecated", DeprecationWarning, stacklevel=2)
 
         return self.command("getlasterror")
 
@@ -1277,8 +1386,7 @@ class Database(common.BaseObject):
         .. versionchanged:: 2.8
            Deprecated.
         """
-        warnings.warn("previous_error() is deprecated",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn("previous_error() is deprecated", DeprecationWarning, stacklevel=2)
 
         error = self.command("getpreverror")
         if error.get("err", 0) is None:
@@ -1298,8 +1406,7 @@ class Database(common.BaseObject):
         .. versionchanged:: 2.8
            Deprecated.
         """
-        warnings.warn("reset_error_history() is deprecated",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn("reset_error_history() is deprecated", DeprecationWarning, stacklevel=2)
 
         self.command("reseterror")
 
@@ -1324,28 +1431,33 @@ class Database(common.BaseObject):
             else:
                 return "dbOwner"
 
-    def _create_or_update_user(
-            self, create, name, password, read_only, session=None, **kwargs):
-        """Use a command to create (if create=True) or modify a user.
-        """
+    def _create_or_update_user(self, create, name, password, read_only, session=None, **kwargs):
+        """Use a command to create (if create=True) or modify a user."""
         opts = {}
         if read_only or (create and "roles" not in kwargs):
-            warnings.warn("Creating a user with the read_only option "
-                          "or without roles is deprecated in MongoDB "
-                          ">= 2.6", DeprecationWarning)
+            warnings.warn(
+                "Creating a user with the read_only option "
+                "or without roles is deprecated in MongoDB "
+                ">= 2.6",
+                DeprecationWarning,
+            )
 
             opts["roles"] = [self._default_role(read_only)]
 
         if read_only:
-            warnings.warn("The read_only option is deprecated in MongoDB "
-                          ">= 2.6, use 'roles' instead", DeprecationWarning)
+            warnings.warn(
+                "The read_only option is deprecated in MongoDB " ">= 2.6, use 'roles' instead",
+                DeprecationWarning,
+            )
 
         if password is not None:
             if "digestPassword" in kwargs:
-                raise ConfigurationError("The digestPassword option is not "
-                                         "supported via add_user. Please use "
-                                         "db.command('createUser', ...) "
-                                         "instead for this option.")
+                raise ConfigurationError(
+                    "The digestPassword option is not "
+                    "supported via add_user. Please use "
+                    "db.command('createUser', ...) "
+                    "instead for this option."
+                )
             opts["pwd"] = password
 
         # Don't send {} as writeConcern.
@@ -1360,8 +1472,7 @@ class Database(common.BaseObject):
 
         self.command(command_name, name, session=session, **opts)
 
-    def add_user(self, name, password=None, read_only=None, session=None,
-                 **kwargs):
+    def add_user(self, name, password=None, read_only=None, session=None, **kwargs):
         """**DEPRECATED**: Create user `name` with password `password`.
 
         Add a new user with permissions for this :class:`Database`.
@@ -1421,36 +1532,38 @@ class Database(common.BaseObject):
         .. versionchanged:: 2.2
            Added support for read only users
         """
-        warnings.warn("add_user is deprecated and will be removed in PyMongo "
-                      "4.0. Use db.command with createUser or updateUser "
-                      "instead", DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "add_user is deprecated and will be removed in PyMongo "
+            "4.0. Use db.command with createUser or updateUser "
+            "instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if not isinstance(name, string_type):
-            raise TypeError("name must be an "
-                            "instance of %s" % (string_type.__name__,))
+            raise TypeError("name must be an " "instance of %s" % (string_type.__name__,))
         if password is not None:
             if not isinstance(password, string_type):
-                raise TypeError("password must be an "
-                                "instance of %s" % (string_type.__name__,))
+                raise TypeError("password must be an " "instance of %s" % (string_type.__name__,))
             if len(password) == 0:
                 raise ValueError("password can't be empty")
         if read_only is not None:
-            read_only = common.validate_boolean('read_only', read_only)
-            if 'roles' in kwargs:
-                raise ConfigurationError("Can not use "
-                                         "read_only and roles together")
+            read_only = common.validate_boolean("read_only", read_only)
+            if "roles" in kwargs:
+                raise ConfigurationError("Can not use " "read_only and roles together")
 
         try:
             uinfo = self.command("usersInfo", name, session=session)
             # Create the user if not found in uinfo, otherwise update one.
             self._create_or_update_user(
-                (not uinfo["users"]), name, password, read_only,
-                session=session, **kwargs)
+                (not uinfo["users"]), name, password, read_only, session=session, **kwargs
+            )
         except OperationFailure as exc:
             # Unauthorized. Attempt to create the user in case of
             # localhost exception.
             if exc.code == 13:
                 self._create_or_update_user(
-                    True, name, password, read_only, session=session, **kwargs)
+                    True, name, password, read_only, session=session, **kwargs
+                )
             else:
                 raise
 
@@ -1473,17 +1586,20 @@ class Database(common.BaseObject):
         .. versionchanged:: 3.6
            Added ``session`` parameter. Deprecated remove_user.
         """
-        warnings.warn("remove_user is deprecated and will be removed in "
-                      "PyMongo 4.0. Use db.command with dropUser "
-                      "instead", DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "remove_user is deprecated and will be removed in "
+            "PyMongo 4.0. Use db.command with dropUser "
+            "instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         cmd = SON([("dropUser", name)])
         # Don't send {} as writeConcern.
         if self.write_concern.acknowledged and self.write_concern.document:
             cmd["writeConcern"] = self.write_concern.document
         self.command(cmd, session=session)
 
-    def authenticate(self, name=None, password=None,
-                     source=None, mechanism='DEFAULT', **kwargs):
+    def authenticate(self, name=None, password=None, source=None, mechanism="DEFAULT", **kwargs):
         """**DEPRECATED**: Authenticate to use this database.
 
         .. warning:: Starting in MongoDB 3.6, calling :meth:`authenticate`
@@ -1552,15 +1668,12 @@ class Database(common.BaseObject):
         .. seealso:: The MongoDB documentation on `authenticate <https://dochub.mongodb.org/core/authenticate>`_.
         """
         if name is not None and not isinstance(name, string_type):
-            raise TypeError("name must be an "
-                            "instance of %s" % (string_type.__name__,))
+            raise TypeError("name must be an " "instance of %s" % (string_type.__name__,))
         if password is not None and not isinstance(password, string_type):
-            raise TypeError("password must be an "
-                            "instance of %s" % (string_type.__name__,))
+            raise TypeError("password must be an " "instance of %s" % (string_type.__name__,))
         if source is not None and not isinstance(source, string_type):
-            raise TypeError("source must be an "
-                            "instance of %s" % (string_type.__name__,))
-        common.validate_auth_mechanism('mechanism', mechanism)
+            raise TypeError("source must be an " "instance of %s" % (string_type.__name__,))
+        common.validate_auth_mechanism("mechanism", mechanism)
 
         validated_options = common._CaseInsensitiveDictionary()
         for option, value in iteritems(kwargs):
@@ -1568,17 +1681,10 @@ class Database(common.BaseObject):
             validated_options[normalized] = val
 
         credentials = auth._build_credentials_tuple(
-            mechanism,
-            source,
-            name,
-            password,
-            validated_options,
-            self.name)
+            mechanism, source, name, password, validated_options, self.name
+        )
 
-        self.client._cache_credentials(
-            self.name,
-            credentials,
-            connect=True)
+        self.client._cache_credentials(self.name, credentials, connect=True)
 
         return True
 
@@ -1589,8 +1695,7 @@ class Database(common.BaseObject):
           invalidates all existing cursors. It may also leave logical sessions
           open on the server for up to 30 minutes until they time out.
         """
-        warnings.warn("Database.logout() is deprecated",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn("Database.logout() is deprecated", DeprecationWarning, stacklevel=2)
 
         # Sockets will be deauthenticated as they are used.
         self.client._purge_credentials(self.name)
@@ -1619,11 +1724,11 @@ class Database(common.BaseObject):
         if not isinstance(dbref, DBRef):
             raise TypeError("cannot dereference a %s" % type(dbref))
         if dbref.database is not None and dbref.database != self.__name:
-            raise ValueError("trying to dereference a DBRef that points to "
-                             "another database (%r not %r)" % (dbref.database,
-                                                               self.__name))
-        return self[dbref.collection].find_one(
-            {"_id": dbref.id}, session=session, **kwargs)
+            raise ValueError(
+                "trying to dereference a DBRef that points to "
+                "another database (%r not %r)" % (dbref.database, self.__name)
+            )
+        return self[dbref.collection].find_one({"_id": dbref.id}, session=session, **kwargs)
 
     def eval(self, code, *args):
         """**DEPRECATED**: Evaluate a JavaScript expression in MongoDB.
@@ -1637,8 +1742,7 @@ class Database(common.BaseObject):
         .. warning:: the eval command is deprecated in MongoDB 3.0 and
           will be removed in a future server version.
         """
-        warnings.warn("Database.eval() is deprecated",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn("Database.eval() is deprecated", DeprecationWarning, stacklevel=2)
 
         if not isinstance(code, Code):
             code = Code(code)
@@ -1647,35 +1751,34 @@ class Database(common.BaseObject):
         return result.get("retval", None)
 
     def __call__(self, *args, **kwargs):
-        """This is only here so that some API misusages are easier to debug.
-        """
-        raise TypeError("'Database' object is not callable. If you meant to "
-                        "call the '%s' method on a '%s' object it is "
-                        "failing because no such method exists." % (
-                            self.__name, self.__client.__class__.__name__))
+        """This is only here so that some API misusages are easier to debug."""
+        raise TypeError(
+            "'Database' object is not callable. If you meant to "
+            "call the '%s' method on a '%s' object it is "
+            "failing because no such method exists."
+            % (self.__name, self.__client.__class__.__name__)
+        )
 
 
 class SystemJS(object):
-    """**DEPRECATED**: Helper class for dealing with stored JavaScript.
-    """
+    """**DEPRECATED**: Helper class for dealing with stored JavaScript."""
 
     def __init__(self, database):
         """**DEPRECATED**: Get a system js helper for the database `database`.
 
         SystemJS will be removed in PyMongo 4.0.
         """
-        warnings.warn("SystemJS is deprecated",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn("SystemJS is deprecated", DeprecationWarning, stacklevel=2)
 
         if not database.write_concern.acknowledged:
             database = database.client.get_database(
-                database.name, write_concern=DEFAULT_WRITE_CONCERN)
+                database.name, write_concern=DEFAULT_WRITE_CONCERN
+            )
         # can't just assign it since we've overridden __setattr__
         object.__setattr__(self, "_db", database)
 
     def __setattr__(self, name, code):
-        self._db.system.js.replace_one(
-            {"_id": name}, {"_id": name, "value": Code(code)}, True)
+        self._db.system.js.replace_one({"_id": name}, {"_id": name, "value": Code(code)}, True)
 
     def __setitem__(self, name, code):
         self.__setattr__(name, code)
@@ -1687,10 +1790,13 @@ class SystemJS(object):
         self.__delattr__(name)
 
     def __getattr__(self, name):
-        return lambda *args: self._db.eval(Code("function() { "
-                                                "return this[name].apply("
-                                                "this, arguments); }",
-                                                scope={'name': name}), *args)
+        return lambda *args: self._db.eval(
+            Code(
+                "function() { " "return this[name].apply(" "this, arguments); }",
+                scope={"name": name},
+            ),
+            *args
+        )
 
     def __getitem__(self, name):
         return self.__getattr__(name)

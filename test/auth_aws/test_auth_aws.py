@@ -24,30 +24,29 @@ from pymongo import MongoClient
 from pymongo.errors import OperationFailure
 from pymongo.uri_parser import parse_uri
 
-
-if not hasattr(unittest.TestCase, 'assertRaisesRegex'):
+if not hasattr(unittest.TestCase, "assertRaisesRegex"):
     unittest.TestCase.assertRaisesRegex = unittest.TestCase.assertRaisesRegexp
 
 
 class TestAuthAWS(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
-        cls.uri = os.environ['MONGODB_URI']
+        cls.uri = os.environ["MONGODB_URI"]
 
     def test_should_fail_without_credentials(self):
-        if '@' not in self.uri:
-            self.skipTest('MONGODB_URI already has no credentials')
+        if "@" not in self.uri:
+            self.skipTest("MONGODB_URI already has no credentials")
 
-        hosts = ['%s:%s' % addr for addr in parse_uri(self.uri)['nodelist']]
+        hosts = ["%s:%s" % addr for addr in parse_uri(self.uri)["nodelist"]]
         self.assertTrue(hosts)
         with MongoClient(hosts) as client:
             with self.assertRaises(OperationFailure):
                 client.aws.test.find_one()
 
     def test_should_fail_incorrect_credentials(self):
-        with MongoClient(self.uri, username='fake', password='fake',
-                         authMechanism='MONGODB-AWS') as client:
+        with MongoClient(
+            self.uri, username="fake", password="fake", authMechanism="MONGODB-AWS"
+        ) as client:
             with self.assertRaises(OperationFailure):
                 client.get_database().test.find_one()
 
@@ -56,5 +55,5 @@ class TestAuthAWS(unittest.TestCase):
             client.get_database().test.find_one()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

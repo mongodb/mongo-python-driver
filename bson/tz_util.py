@@ -14,8 +14,7 @@
 
 """Timezone related utilities for BSON."""
 
-from datetime import (timedelta,
-                      tzinfo)
+from datetime import timedelta, tzinfo
 
 ZERO = timedelta(0)
 

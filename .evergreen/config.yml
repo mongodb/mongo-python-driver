@@ -2012,10 +2012,6 @@ axes:
         display_name: "Python 2.7"
         variables:
            PYTHON_BINARY: "/opt/python/2.7/bin/python"
-      - id: "3.4"
-        display_name: "Python 3.4"
-        variables:
-           PYTHON_BINARY: "/opt/python/3.4/bin/python3"
       - id: "3.5"
         display_name: "Python 3.5"
         batchtime: 10080  # 7 days
@@ -2079,10 +2075,6 @@ axes:
         display_name: "Python 2.7"
         variables:
           PYTHON_BINARY: "C:/python/Python27/python.exe"
-      - id: "3.4"
-        display_name: "Python 3.4"
-        variables:
-          PYTHON_BINARY: "C:/python/Python34/python.exe"
       - id: "3.5"
         display_name: "Python 3.5"
         variables:
@@ -2115,10 +2107,6 @@ axes:
         display_name: "32-bit Python 2.7"
         variables:
           PYTHON_BINARY: "C:/python/32/Python27/python.exe"
-      - id: "3.4"
-        display_name: "32-bit Python 3.4"
-        variables:
-          PYTHON_BINARY: "C:/python/32/Python34/python.exe"
       - id: "3.5"
         display_name: "32-bit Python 3.5"
         variables:
@@ -2417,7 +2405,7 @@ buildvariants:
   matrix_spec:
     platform: awslinux
     # RHEL 6.2 does not support Python 3.7.x and later.
-    python-version: &amazon1-pythons ["2.7", "3.4", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy", "pypy3.5", "pypy3.6", "pypy3.7", "jython2.7"]
+    python-version: &amazon1-pythons ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy", "pypy3.5", "pypy3.6", "pypy3.7", "jython2.7"]
     auth: "*"
     ssl: "*"
     coverage: "*"
@@ -2456,14 +2444,14 @@ buildvariants:
 - matrix_name: "tests-pyopenssl"
   matrix_spec:
     platform: awslinux
-    python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "3.8", "3.9"]
+    python-version: ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9"]
     auth: "*"
     ssl: "ssl"
     pyopenssl: "*"
   # Only test "noauth" with Python 3.7.
   exclude_spec:
     platform: awslinux
-    python-version: ["2.7", "3.4", "3.5", "3.6", "3.8", "3.9"]
+    python-version: ["2.7", "3.5", "3.6", "3.8", "3.9"]
     auth: "noauth"
     ssl: "ssl"
     pyopenssl: "*"
@@ -2523,7 +2511,7 @@ buildvariants:
   matrix_spec:
     platform: awslinux
     # RHEL 6.2 does not support Python 3.7.x and later.
-    python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "3.8", "3.9"]
+    python-version: ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9"]
     auth-ssl: noauth-nossl
 # TODO: dependency error for 'coverage-report' task:
 # dependency tests-python-version-rhel62-test-encryption_.../test-2.6-standalone is not present in the project config
@@ -2561,7 +2549,7 @@ buildvariants:
 - matrix_name: "tests-python-version-compression"
   matrix_spec:
     platform: [awslinux]
-    python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy", "pypy3.5", "pypy3.6", "pypy3.7", "jython2.7"]
+    python-version: ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy", "pypy3.5", "pypy3.6", "pypy3.7", "jython2.7"]
     c-extensions: "*"
     compression: "*"
   exclude_spec:
@@ -2685,9 +2673,8 @@ buildvariants:
     python-version: *amazon1-pythons
     auth-ssl: "auth-ssl"
   exclude_spec:
-   # Python 3.4 doesn't support OpenSSL 1.1.0+ so won't build on Debian 9+.
    - platform: debian92
-     python-version: ["3.4", "jython2.7"]
+     python-version: ["jython2.7"]
      auth-ssl: "auth-ssl"
   display_name: "${python-version} OpenSSL 1.1.0 ${platform} ${auth-ssl}"
   tasks:
@@ -2796,7 +2783,7 @@ buildvariants:
 - matrix_name: "tests-mod-wsgi"
   matrix_spec:
     platform: awslinux
-    python-version: ["2.7", "3.4", "3.6", "3.7", "3.8", "3.9"]
+    python-version: ["2.7", "3.6", "3.7", "3.8", "3.9"]
     mod-wsgi-version: "*"
   exclude_spec:
    # mod-wsgi 3.5 won't build against CPython 3.8+
@@ -2819,7 +2806,7 @@ buildvariants:
 - matrix_name: "tests-doctests"
   matrix_spec:
     platform: awslinux
-    python-version: ["2.7", "3.4"]
+    python-version: ["2.7", "3.5"]
   display_name: "Doctests ${python-version} ${platform}"
   tasks:
      - name: "doctests"
@@ -2883,7 +2870,7 @@ buildvariants:
 - matrix_name: "data-lake-spec-tests"
   matrix_spec:
     platform: rhel70
-    python-version: ["2.7", "3.4", "3.6"]
+    python-version: ["2.7", "3.6"]
     auth: "auth"
     c-extensions: "*"
   display_name: "Atlas Data Lake ${python-version} ${c-extensions}"
@@ -2906,7 +2893,7 @@ buildvariants:
 - matrix_name: "ocsp-test"
   matrix_spec:
     platform: awslinux
-    python-version: ["2.7", "3.4", "pypy3.5", "pypy3.6", "pypy3.7", "3.8", "3.9"]
+    python-version: ["2.7", "pypy3.5", "pypy3.6", "pypy3.7", "3.8", "3.9"]
     mongodb-version: ["4.4", "5.0", "latest"]
     auth: "noauth"
     ssl: "ssl"
@@ -2931,7 +2918,7 @@ buildvariants:
 - matrix_name: "ocsp-test-windows"
   matrix_spec:
     platform: windows-64-vsMulti-small
-    python-version-windows: ["2.7", "3.4", "3.9"]
+    python-version-windows: ["2.7", "3.5", "3.9"]
     mongodb-version: ["4.4", "5.0", "latest"]
     auth: "noauth"
     ssl: "ssl"
@@ -2978,7 +2965,7 @@ buildvariants:
     platform: awslinux
     mongodb-version: ["rapid", "latest"]
     auth-ssl: "*"
-    python-version: ["2.7", "3.4", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy", "pypy3.5", "pypy3.7"]
+    python-version: ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy", "pypy3.5", "pypy3.7"]
     loadbalancer: "*"
   display_name: "Load Balancer ${platform} ${python-version} ${mongodb-version} ${auth-ssl}"
   tasks:

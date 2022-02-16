@@ -16,23 +16,22 @@
 
 import datetime
 import warnings
-
 from abc import abstractmethod
 from collections import namedtuple
 
+from bson.binary import (
+    ALL_UUID_REPRESENTATIONS,
+    UUID_REPRESENTATION_NAMES,
+    UuidRepresentation,
+)
 from bson.py3compat import ABC, abc, abstractproperty, string_type
-
-from bson.binary import (UuidRepresentation,
-                         ALL_UUID_REPRESENTATIONS,
-                         UUID_REPRESENTATION_NAMES)
-
 
 _RAW_BSON_DOCUMENT_MARKER = 101
 
 
 def _raw_document_class(document_class):
     """Determine if a document_class is a RawBSONDocument class."""
-    marker = getattr(document_class, '_type_marker', None)
+    marker = getattr(document_class, "_type_marker", None)
     return marker == _RAW_BSON_DOCUMENT_MARKER
 
 
@@ -45,6 +44,7 @@ class TypeEncoder(ABC):
 
     See :ref:`custom-type-type-codec` documentation for an example.
     """
+
     @abstractproperty
     def python_type(self):
         """The Python type to be converted into something serializable."""
@@ -65,6 +65,7 @@ class TypeDecoder(ABC):
 
     See :ref:`custom-type-type-codec` documentation for an example.
     """
+
     @abstractproperty
     def bson_type(self):
         """The BSON type to be converted into our own type."""
@@ -88,6 +89,7 @@ class TypeCodec(TypeEncoder, TypeDecoder):
 
     See :ref:`custom-type-type-codec` documentation for an example.
     """
+
     pass
 
 
@@ -117,6 +119,7 @@ class TypeRegistry(object):
         :mod:`bson` can encode. See :ref:`fallback-encoder-callable`
         documentation for an example.
     """
+
     def __init__(self, type_codecs=None, fallback_encoder=None):
         self.__type_codecs = list(type_codecs or [])
         self._fallback_encoder = fallback_encoder
@@ -125,8 +128,7 @@ class TypeRegistry(object):
 
         if self._fallback_encoder is not None:
             if not callable(fallback_encoder):
-                raise TypeError("fallback_encoder %r is not a callable" % (
-                    fallback_encoder))
+                raise TypeError("fallback_encoder %r is not a callable" % (fallback_encoder))
 
         for codec in self.__type_codecs:
             is_valid_codec = False
@@ -139,36 +141,49 @@ class TypeRegistry(object):
                 self._decoder_map[codec.bson_type] = codec.transform_bson
             if not is_valid_codec:
                 raise TypeError(
-                    "Expected an instance of %s, %s, or %s, got %r instead" % (
-                        TypeEncoder.__name__, TypeDecoder.__name__,
-                        TypeCodec.__name__, codec))
+                    "Expected an instance of %s, %s, or %s, got %r instead"
+                    % (TypeEncoder.__name__, TypeDecoder.__name__, TypeCodec.__name__, codec)
+                )
 
     def _validate_type_encoder(self, codec):
         from bson import _BUILT_IN_TYPES
+
         for pytype in _BUILT_IN_TYPES:
             if issubclass(codec.python_type, pytype):
-                err_msg = ("TypeEncoders cannot change how built-in types are "
-                           "encoded (encoder %s transforms type %s)" %
-                           (codec, pytype))
+                err_msg = (
+                    "TypeEncoders cannot change how built-in types are "
+                    "encoded (encoder %s transforms type %s)" % (codec, pytype)
+                )
                 raise TypeError(err_msg)
 
     def __repr__(self):
-        return ('%s(type_codecs=%r, fallback_encoder=%r)' % (
-            self.__class__.__name__, self.__type_codecs,
-            self._fallback_encoder))
+        return "%s(type_codecs=%r, fallback_encoder=%r)" % (
+            self.__class__.__name__,
+            self.__type_codecs,
+            self._fallback_encoder,
+        )
 
     def __eq__(self, other):
         if not isinstance(other, type(self)):
             return NotImplemented
-        return ((self._decoder_map == other._decoder_map) and
-                (self._encoder_map == other._encoder_map) and
-                (self._fallback_encoder == other._fallback_encoder))
+        return (
+            (self._decoder_map == other._decoder_map)
+            and (self._encoder_map == other._encoder_map)
+            and (self._fallback_encoder == other._fallback_encoder)
+        )
 
 
 _options_base = namedtuple(
-    'CodecOptions',
-    ('document_class', 'tz_aware', 'uuid_representation',
-     'unicode_decode_error_handler', 'tzinfo', 'type_registry'))
+    "CodecOptions",
+    (
+        "document_class",
+        "tz_aware",
+        "uuid_representation",
+        "unicode_decode_error_handler",
+        "tzinfo",
+        "type_registry",
+    ),
+)
 
 
 class CodecOptions(_options_base):
@@ -242,33 +257,38 @@ class CodecOptions(_options_base):
        and stored back to the server.
     """
 
-    def __new__(cls, document_class=dict,
-                tz_aware=False,
-                uuid_representation=None,
-                unicode_decode_error_handler="strict",
-                tzinfo=None, type_registry=None):
-        if not (issubclass(document_class, abc.MutableMapping) or
-                _raw_document_class(document_class)):
-            raise TypeError("document_class must be dict, bson.son.SON, "
-                            "bson.raw_bson.RawBSONDocument, or a "
-                            "sublass of collections.MutableMapping")
+    def __new__(
+        cls,
+        document_class=dict,
+        tz_aware=False,
+        uuid_representation=None,
+        unicode_decode_error_handler="strict",
+        tzinfo=None,
+        type_registry=None,
+    ):
+        if not (
+            issubclass(document_class, abc.MutableMapping) or _raw_document_class(document_class)
+        ):
+            raise TypeError(
+                "document_class must be dict, bson.son.SON, "
+                "bson.raw_bson.RawBSONDocument, or a "
+                "sublass of collections.MutableMapping"
+            )
         if not isinstance(tz_aware, bool):
             raise TypeError("tz_aware must be True or False")
         if uuid_representation is None:
             uuid_representation = UuidRepresentation.PYTHON_LEGACY
         elif uuid_representation not in ALL_UUID_REPRESENTATIONS:
-            raise ValueError("uuid_representation must be a value "
-                             "from bson.binary.UuidRepresentation")
+            raise ValueError(
+                "uuid_representation must be a value " "from bson.binary.UuidRepresentation"
+            )
         if not isinstance(unicode_decode_error_handler, (string_type, None)):
-            raise ValueError("unicode_decode_error_handler must be a string "
-                             "or None")
+            raise ValueError("unicode_decode_error_handler must be a string " "or None")
         if tzinfo is not None:
             if not isinstance(tzinfo, datetime.tzinfo):
-                raise TypeError(
-                    "tzinfo must be an instance of datetime.tzinfo")
+                raise TypeError("tzinfo must be an instance of datetime.tzinfo")
             if not tz_aware:
-                raise ValueError(
-                    "cannot specify tzinfo without also setting tz_aware=True")
+                raise ValueError("cannot specify tzinfo without also setting tz_aware=True")
 
         type_registry = type_registry or TypeRegistry()
 
@@ -276,38 +296,53 @@ class CodecOptions(_options_base):
             raise TypeError("type_registry must be an instance of TypeRegistry")
 
         return tuple.__new__(
-            cls, (document_class, tz_aware, uuid_representation,
-                  unicode_decode_error_handler, tzinfo, type_registry))
+            cls,
+            (
+                document_class,
+                tz_aware,
+                uuid_representation,
+                unicode_decode_error_handler,
+                tzinfo,
+                type_registry,
+            ),
+        )
 
     def _arguments_repr(self):
         """Representation of the arguments used to create this object."""
-        document_class_repr = (
-            'dict' if self.document_class is dict
-            else repr(self.document_class))
+        document_class_repr = "dict" if self.document_class is dict else repr(self.document_class)
 
-        uuid_rep_repr = UUID_REPRESENTATION_NAMES.get(self.uuid_representation,
-                                                      self.uuid_representation)
+        uuid_rep_repr = UUID_REPRESENTATION_NAMES.get(
+            self.uuid_representation, self.uuid_representation
+        )
 
-        return ('document_class=%s, tz_aware=%r, uuid_representation=%s, '
-                'unicode_decode_error_handler=%r, tzinfo=%r, '
-                'type_registry=%r' %
-                (document_class_repr, self.tz_aware, uuid_rep_repr,
-                 self.unicode_decode_error_handler, self.tzinfo,
-                 self.type_registry))
+        return (
+            "document_class=%s, tz_aware=%r, uuid_representation=%s, "
+            "unicode_decode_error_handler=%r, tzinfo=%r, "
+            "type_registry=%r"
+            % (
+                document_class_repr,
+                self.tz_aware,
+                uuid_rep_repr,
+                self.unicode_decode_error_handler,
+                self.tzinfo,
+                self.type_registry,
+            )
+        )
 
     def _options_dict(self):
         """Dictionary of the arguments used to create this object."""
         # TODO: PYTHON-2442 use _asdict() instead
         return {
-            'document_class': self.document_class,
-            'tz_aware': self.tz_aware,
-            'uuid_representation': self.uuid_representation,
-            'unicode_decode_error_handler': self.unicode_decode_error_handler,
-            'tzinfo': self.tzinfo,
-            'type_registry': self.type_registry}
+            "document_class": self.document_class,
+            "tz_aware": self.tz_aware,
+            "uuid_representation": self.uuid_representation,
+            "unicode_decode_error_handler": self.unicode_decode_error_handler,
+            "tzinfo": self.tzinfo,
+            "type_registry": self.type_registry,
+        }
 
     def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__, self._arguments_repr())
+        return "%s(%s)" % (self.__class__.__name__, self._arguments_repr())
 
     def with_options(self, **kwargs):
         """Make a copy of this CodecOptions, overriding some options::
@@ -326,21 +361,18 @@ class CodecOptions(_options_base):
         return CodecOptions(**opts)
 
 
-DEFAULT_CODEC_OPTIONS = CodecOptions(
-    uuid_representation=UuidRepresentation.PYTHON_LEGACY)
+DEFAULT_CODEC_OPTIONS = CodecOptions(uuid_representation=UuidRepresentation.PYTHON_LEGACY)
 
 
 def _parse_codec_options(options):
     """Parse BSON codec options."""
     return CodecOptions(
-        document_class=options.get(
-            'document_class', DEFAULT_CODEC_OPTIONS.document_class),
-        tz_aware=options.get(
-            'tz_aware', DEFAULT_CODEC_OPTIONS.tz_aware),
-        uuid_representation=options.get('uuidrepresentation'),
+        document_class=options.get("document_class", DEFAULT_CODEC_OPTIONS.document_class),
+        tz_aware=options.get("tz_aware", DEFAULT_CODEC_OPTIONS.tz_aware),
+        uuid_representation=options.get("uuidrepresentation"),
         unicode_decode_error_handler=options.get(
-            'unicode_decode_error_handler',
-            DEFAULT_CODEC_OPTIONS.unicode_decode_error_handler),
-        tzinfo=options.get('tzinfo', DEFAULT_CODEC_OPTIONS.tzinfo),
-        type_registry=options.get(
-            'type_registry', DEFAULT_CODEC_OPTIONS.type_registry))
+            "unicode_decode_error_handler", DEFAULT_CODEC_OPTIONS.unicode_decode_error_handler
+        ),
+        tzinfo=options.get("tzinfo", DEFAULT_CODEC_OPTIONS.tzinfo),
+        type_registry=options.get("type_registry", DEFAULT_CODEC_OPTIONS.type_registry),
+    )

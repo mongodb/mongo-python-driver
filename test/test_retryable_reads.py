@@ -19,17 +19,15 @@ import sys
 
 sys.path[0:0] = [""]
 
-from pymongo.mongo_client import MongoClient
-from pymongo.write_concern import WriteConcern
-
-from test import unittest, client_context, PyMongoTestCase
+from test import PyMongoTestCase, client_context, unittest
 from test.utils import TestCreator
 from test.utils_spec_runner import SpecRunner
 
+from pymongo.mongo_client import MongoClient
+from pymongo.write_concern import WriteConcern
 
 # Location of JSON test specifications.
-_TEST_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), 'retryable_reads')
+_TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "retryable_reads")
 
 
 class TestClientOptions(PyMongoTestCase):
@@ -44,9 +42,9 @@ class TestClientOptions(PyMongoTestCase):
         self.assertEqual(client.retry_reads, False)
 
     def test_uri(self):
-        client = MongoClient('mongodb://h/?retryReads=true', connect=False)
+        client = MongoClient("mongodb://h/?retryReads=true", connect=False)
         self.assertEqual(client.retry_reads, True)
-        client = MongoClient('mongodb://h/?retryReads=false', connect=False)
+        client = MongoClient("mongodb://h/?retryReads=false", connect=False)
         self.assertEqual(client.retry_reads, False)
 
 
@@ -63,51 +61,49 @@ class TestSpec(SpecRunner):
 
     def maybe_skip_scenario(self, test):
         super(TestSpec, self).maybe_skip_scenario(test)
-        skip_names = [
-            'listCollectionObjects', 'listIndexNames', 'listDatabaseObjects']
+        skip_names = ["listCollectionObjects", "listIndexNames", "listDatabaseObjects"]
         for name in skip_names:
-            if name.lower() in test['description'].lower():
-                self.skipTest('PyMongo does not support %s' % (name,))
+            if name.lower() in test["description"].lower():
+                self.skipTest("PyMongo does not support %s" % (name,))
 
         # Serverless does not support $out and collation.
         if client_context.serverless:
-            for operation in test['operations']:
-                if operation['name'] == 'aggregate':
-                    for stage in operation['arguments']['pipeline']:
+            for operation in test["operations"]:
+                if operation["name"] == "aggregate":
+                    for stage in operation["arguments"]["pipeline"]:
                         if "$out" in stage:
-                            self.skipTest(
-                                "MongoDB Serverless does not support $out")
-                if "collation" in operation['arguments']:
-                    self.skipTest(
-                        "MongoDB Serverless does not support collations")
+                            self.skipTest("MongoDB Serverless does not support $out")
+                if "collation" in operation["arguments"]:
+                    self.skipTest("MongoDB Serverless does not support collations")
 
         # Skip changeStream related tests on MMAPv1 and serverless.
-        test_name = self.id().rsplit('.')[-1]
-        if 'changestream' in test_name.lower():
-            if client_context.storage_engine == 'mmapv1':
+        test_name = self.id().rsplit(".")[-1]
+        if "changestream" in test_name.lower():
+            if client_context.storage_engine == "mmapv1":
                 self.skipTest("MMAPv1 does not support change streams.")
             if client_context.serverless:
                 self.skipTest("Serverless does not support change streams.")
 
     def get_scenario_coll_name(self, scenario_def):
         """Override a test's collection name to support GridFS tests."""
-        if 'bucket_name' in scenario_def:
-            return scenario_def['bucket_name']
+        if "bucket_name" in scenario_def:
+            return scenario_def["bucket_name"]
         return super(TestSpec, self).get_scenario_coll_name(scenario_def)
 
     def setup_scenario(self, scenario_def):
         """Override a test's setup to support GridFS tests."""
-        if 'bucket_name' in scenario_def:
+        if "bucket_name" in scenario_def:
             db_name = self.get_scenario_db_name(scenario_def)
             db = client_context.client.get_database(
-                db_name, write_concern=WriteConcern(w='majority'))
+                db_name, write_concern=WriteConcern(w="majority")
+            )
             # Create a bucket for the retryable reads GridFS tests.
             client_context.client.drop_database(db_name)
-            if scenario_def['data']:
-                data = scenario_def['data']
+            if scenario_def["data"]:
+                data = scenario_def["data"]
                 # Load data.
-                db['fs.chunks'].insert_many(data['fs.chunks'])
-                db['fs.files'].insert_many(data['fs.files'])
+                db["fs.chunks"].insert_many(data["fs.chunks"])
+                db["fs.files"].insert_many(data["fs.files"])
         else:
             super(TestSpec, self).setup_scenario(scenario_def)
 

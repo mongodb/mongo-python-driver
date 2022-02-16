@@ -26,7 +26,7 @@ createvirtualenv () {
     # Upgrade to the latest versions of pip setuptools wheel so that
     # pip can always download the latest cryptography+cffi wheels.
     PYTHON_VERSION=$(python -c 'import sys;print("%s.%s" % sys.version_info[:2])')
-    if [[ $PYTHON_VERSION == "2.7" || $PYTHON_VERSION == "3.4" || $PYTHON_VERSION == "3.5" ]]; then
+    if [[ $PYTHON_VERSION == "2.7" || $PYTHON_VERSION == "3.5" ]]; then
         # Use get-pip for EOL Python versions.
         curl --retry 3 -L https://bootstrap.pypa.io/pip/$PYTHON_VERSION/get-pip.py | python
     else

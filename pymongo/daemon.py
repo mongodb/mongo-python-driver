@@ -25,19 +25,20 @@ import sys
 import time
 import warnings
 
-
 # The maximum amount of time to wait for the intermediate subprocess.
 _WAIT_TIMEOUT = 10
 _THIS_FILE = os.path.realpath(__file__)
 
 
 if sys.version_info[0] < 3:
+
     def _popen_wait(popen, timeout):
         """Implement wait timeout support for Python 2."""
         from pymongo.monotonic import time as _time
+
         deadline = _time() + timeout
         # Initial delay of 1ms
-        delay = .0005
+        delay = 0.0005
         while True:
             returncode = popen.poll()
             if returncode is not None:
@@ -47,10 +48,12 @@ if sys.version_info[0] < 3:
             if remaining <= 0:
                 # Just return None instead of raising an error.
                 return None
-            delay = min(delay * 2, remaining, .5)
+            delay = min(delay * 2, remaining, 0.5)
             time.sleep(delay)
 
+
 else:
+
     def _popen_wait(popen, timeout):
         """Implement wait timeout support for Python 3."""
         try:
@@ -74,23 +77,31 @@ def _silence_resource_warning(popen):
         popen.returncode = 0
 
 
-if sys.platform == 'win32':
+if sys.platform == "win32":
     # On Windows we spawn the daemon process simply by using DETACHED_PROCESS.
-    _DETACHED_PROCESS = getattr(subprocess, 'DETACHED_PROCESS', 0x00000008)
+    _DETACHED_PROCESS = getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
 
     def _spawn_daemon(args):
         """Spawn a daemon process (Windows)."""
         try:
-            with open(os.devnull, 'r+b') as devnull:
+            with open(os.devnull, "r+b") as devnull:
                 popen = subprocess.Popen(
                     args,
                     creationflags=_DETACHED_PROCESS,
-                    stdin=devnull, stderr=devnull, stdout=devnull)
+                    stdin=devnull,
+                    stderr=devnull,
+                    stdout=devnull,
+                )
                 _silence_resource_warning(popen)
         except FileNotFoundError as exc:
-            warnings.warn('Failed to start %s: is it on your $PATH?\n'
-                          'Original exception: %s' % (args[0], exc),
-                          RuntimeWarning, stacklevel=2)
+            warnings.warn(
+                "Failed to start %s: is it on your $PATH?\n"
+                "Original exception: %s" % (args[0], exc),
+                RuntimeWarning,
+                stacklevel=2,
+            )
+
+
 else:
     # On Unix we spawn the daemon process with a double Popen.
     # 1) The first Popen runs this file as a Python script using the current
@@ -106,15 +117,17 @@ else:
     def _spawn(args):
         """Spawn the process and silence stdout/stderr."""
         try:
-            with open(os.devnull, 'r+b') as devnull:
+            with open(os.devnull, "r+b") as devnull:
                 return subprocess.Popen(
-                    args,
-                    close_fds=True,
-                    stdin=devnull, stderr=devnull, stdout=devnull)
+                    args, close_fds=True, stdin=devnull, stderr=devnull, stdout=devnull
+                )
         except FileNotFoundError as exc:
-            warnings.warn('Failed to start %s: is it on your $PATH?\n'
-                          'Original exception: %s' % (args[0], exc),
-                          RuntimeWarning, stacklevel=2)
+            warnings.warn(
+                "Failed to start %s: is it on your $PATH?\n"
+                "Original exception: %s" % (args[0], exc),
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
     def _spawn_daemon_double_popen(args):
         """Spawn a daemon process using a double subprocess.Popen."""
@@ -124,7 +137,6 @@ else:
         # Reap the intermediate child process to avoid creating zombie
         # processes.
         _popen_wait(temp_proc, _WAIT_TIMEOUT)
-
 
     def _spawn_daemon(args):
         """Spawn a daemon process (Unix)."""
@@ -143,10 +155,9 @@ else:
             #    until the main application exits.
             _spawn(args)
 
-
-    if __name__ == '__main__':
+    if __name__ == "__main__":
         # Attempt to start a new session to decouple from the parent.
-        if hasattr(os, 'setsid'):
+        if hasattr(os, "setsid"):
             try:
                 os.setsid()
             except OSError:

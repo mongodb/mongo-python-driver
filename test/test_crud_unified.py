@@ -20,16 +20,13 @@ import sys
 sys.path[0:0] = [""]
 
 from test import unittest
-
 from test.unified_format import generate_test_classes
 
 # Location of JSON test specifications.
-TEST_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), 'crud', 'unified')
+TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "crud", "unified")
 
 # Generate unified tests.
-globals().update(generate_test_classes(
-    TEST_PATH, module=__name__, RUN_ON_SERVERLESS=True))
+globals().update(generate_test_classes(TEST_PATH, module=__name__, RUN_ON_SERVERLESS=True))
 
 if __name__ == "__main__":
     unittest.main()
