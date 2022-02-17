@@ -15,6 +15,7 @@ repos:
   - id: trailing-whitespace
     exclude: .patch
     exclude_types: [json]
+    additional_dependencies: [shellcheck-py]
 
 - repo: https://github.com/psf/black
   rev: 22.1.0
@@ -29,12 +30,3 @@ repos:
   - id: isort
     files: \.py$
     args: [--profile=black]
-
-# We use the Python version instead of the original version which seems to require Docker
-# https://github.com/koalaman/shellcheck-precommit
-- repo: https://github.com/shellcheck-py/shellcheck-py
-  rev: v0.8.0.1
-  hooks:
-    - id: shellcheck
-      name: shellcheck
-      args: ["--severity=warning"]

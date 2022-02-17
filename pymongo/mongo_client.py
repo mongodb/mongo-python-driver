@@ -1670,7 +1670,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             # Don't call end_session.
             yield session
             return
-        s = self._ensure_session()
+        s = self._ensure_session(session)
         if s:
             try:
                 yield s

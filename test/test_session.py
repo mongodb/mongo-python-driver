@@ -17,10 +17,10 @@
 import copy
 import os
 import sys
+import threading
 import time
 from io import BytesIO
 from typing import Set
-import threading
 
 from pymongo.mongo_client import MongoClient
 
@@ -35,7 +35,6 @@ from gridfs import GridFS, GridFSBucket
 from pymongo import ASCENDING, IndexModel, InsertOne, monitoring
 from pymongo.common import _MAX_END_SESSIONS
 from pymongo.errors import ConfigurationError, InvalidOperation, OperationFailure
-from pymongo.read_concern import ReadConcern
 from pymongo.operations import (
     DeleteMany,
     DeleteOne,
@@ -45,6 +44,8 @@ from pymongo.operations import (
     UpdateMany,
     UpdateOne,
 )
+from pymongo.read_concern import ReadConcern
+
 
 # Ignore auth commands like saslStart, so we can assert lsid is in all commands.
 class SessionTestListener(EventListener):
