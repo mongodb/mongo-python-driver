@@ -316,7 +316,7 @@ class _Bulk(object):
                     cmd["writeConcern"] = write_concern.document
                 if self.bypass_doc_val:
                     cmd["bypassDocumentValidation"] = True
-                if self.let and cmd_name in ("update", "delete"):
+                if self.let and run.op_type in (_DELETE, _UPDATE):
                     cmd["let"] = self.let
                 if session:
                     # Start a new retryable write unless one was already
