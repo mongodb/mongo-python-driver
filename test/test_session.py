@@ -19,6 +19,7 @@ import os
 import sys
 import threading
 import time
+import typing
 from io import BytesIO
 from typing import Set
 
@@ -197,6 +198,7 @@ class TestSession(IntegrationTest):
         threads = []
         listener.results.clear()
         for op, args in ops:
+            typing.cast(typing.Iterable, args)
             threads.append(threading.Thread(target=op, args=args))
             threads[-1].start()
         for thread in threads:

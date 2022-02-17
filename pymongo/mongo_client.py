@@ -67,8 +67,8 @@ from pymongo import (
 )
 from pymongo.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.client_options import ClientOptions
-from pymongo.command_cursor import CommandCursor
 from pymongo.client_session import _EmptyServerSession
+from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,

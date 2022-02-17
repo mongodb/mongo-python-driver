@@ -1103,8 +1103,11 @@ class _ServerSessionPool(collections.deque):
     def return_server_session_no_lock(self, server_session):
         # Discard sessions from an old pool to avoid duplicate sessions in the
         # child process after a fork.
-        if (server_session.generation == self.generation and not server_session.dirty and not
-                isinstance(server_session, _EmptyServerSession)):
+        if (
+            server_session.generation == self.generation
+            and not server_session.dirty
+            and not isinstance(server_session, _EmptyServerSession)
+        ):
             self.appendleft(server_session)
 
     def _clear_stale(self, session_timeout_minutes):
