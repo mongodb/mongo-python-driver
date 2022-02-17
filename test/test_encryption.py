@@ -718,7 +718,7 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
     MASTER_KEYS = {
         "aws": {
             "region": "us-east-1",
-            "key": "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-" "4bd9-9f25-e30687b580d0",
+            "key": "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
         },
         "azure": {
             "keyVaultEndpoint": "key-vault-csfle.vault.azure.net",
@@ -1259,7 +1259,7 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             {
                 "region": "us-east-1",
                 "key": (
-                    "arn:aws:kms:us-east-1:579766882180:key/" "89fcc2c4-08b0-4bd9-9f25-e30687b580d0"
+                    "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0"
                 ),
             },
         )
@@ -1271,7 +1271,7 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             {
                 "region": "us-east-1",
                 "key": (
-                    "arn:aws:kms:us-east-1:579766882180:key/" "89fcc2c4-08b0-4bd9-9f25-e30687b580d0"
+                    "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0"
                 ),
                 "endpoint": "kms.us-east-1.amazonaws.com",
             },
@@ -1284,7 +1284,7 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             {
                 "region": "us-east-1",
                 "key": (
-                    "arn:aws:kms:us-east-1:579766882180:key/" "89fcc2c4-08b0-4bd9-9f25-e30687b580d0"
+                    "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0"
                 ),
                 "endpoint": "kms.us-east-1.amazonaws.com:443",
             },
@@ -1294,9 +1294,7 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
     def test_04_aws_endpoint_invalid_port(self):
         master_key = {
             "region": "us-east-1",
-            "key": (
-                "arn:aws:kms:us-east-1:579766882180:key/" "89fcc2c4-08b0-4bd9-9f25-e30687b580d0"
-            ),
+            "key": ("arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0"),
             "endpoint": "kms.us-east-1.amazonaws.com:12345",
         }
         with self.assertRaises(EncryptionError) as ctx:
@@ -1307,9 +1305,7 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
     def test_05_aws_endpoint_wrong_region(self):
         master_key = {
             "region": "us-east-1",
-            "key": (
-                "arn:aws:kms:us-east-1:579766882180:key/" "89fcc2c4-08b0-4bd9-9f25-e30687b580d0"
-            ),
+            "key": ("arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0"),
             "endpoint": "kms.us-east-2.amazonaws.com",
         }
         # The full error should be something like:
@@ -1323,9 +1319,7 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
     def test_06_aws_endpoint_invalid_host(self):
         master_key = {
             "region": "us-east-1",
-            "key": (
-                "arn:aws:kms:us-east-1:579766882180:key/" "89fcc2c4-08b0-4bd9-9f25-e30687b580d0"
-            ),
+            "key": ("arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0"),
             "endpoint": "doesnotexist.invalid",
         }
         with self.assertRaisesRegex(EncryptionError, self.invalid_host_error):
@@ -1583,9 +1577,9 @@ class TestDeadlockProse(EncryptionIntegrationTest):
             event_listeners=[self.client_listener, self.topology_listener],
         )
 
-        if auto_encryption_opts._bypass_auto_encryption == True:
+        if auto_encryption_opts._bypass_auto_encryption is True:
             self.client_test.db.coll.insert_one({"_id": 0, "encrypted": self.ciphertext})
-        elif auto_encryption_opts._bypass_auto_encryption == False:
+        elif auto_encryption_opts._bypass_auto_encryption is False:
             client_encrypted.db.coll.insert_one({"_id": 0, "encrypted": "string0"})
         else:
             raise RuntimeError("bypass_auto_encryption must be a bool")
@@ -1825,7 +1819,7 @@ class TestKmsTLSProse(EncryptionIntegrationTest):
     def test_invalid_kms_certificate_expired(self):
         key = {
             "region": "us-east-1",
-            "key": "arn:aws:kms:us-east-1:579766882180:key/" "89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
+            "key": "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
             "endpoint": "mongodb://127.0.0.1:8000",
         }
         # Some examples:
@@ -1837,7 +1831,7 @@ class TestKmsTLSProse(EncryptionIntegrationTest):
     def test_invalid_hostname_in_kms_certificate(self):
         key = {
             "region": "us-east-1",
-            "key": "arn:aws:kms:us-east-1:579766882180:key/" "89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
+            "key": "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
             "endpoint": "mongodb://127.0.0.1:8001",
         }
         # Some examples:

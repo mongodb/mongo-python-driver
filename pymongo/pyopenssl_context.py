@@ -75,7 +75,7 @@ def _is_ip_address(address):
     try:
         _ip_address(address)
         return True
-    except (ValueError, UnicodeError):
+    except (ValueError, UnicodeError):  # noqa: B014
         return False
 
 
@@ -145,7 +145,7 @@ class _sslConn(_SSL.Connection):
             # XXX: It's not clear if this can actually happen. PyOpenSSL
             # doesn't appear to have any interrupt handling, nor any interrupt
             # errors for OpenSSL connections.
-            except (IOError, OSError) as exc:
+            except (IOError, OSError) as exc:  # noqa: B014
                 if _errno_from_exception(exc) == _EINTR:
                     continue
                 raise

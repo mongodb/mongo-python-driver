@@ -77,7 +77,7 @@ def create_test(test_case):
             options["tls"] = options.pop("ssl")
         parsed_options = test_case.get("parsed_options")
         # See DRIVERS-1324, unless tls is explicitly set to False we need TLS.
-        needs_tls = not (options and (options.get("ssl") == False or options.get("tls") == False))
+        needs_tls = not (options and (options.get("ssl") is False or options.get("tls") is False))
         if needs_tls and not client_context.tls:
             self.skipTest("this test requires a TLS cluster")
         if not needs_tls and client_context.tls:

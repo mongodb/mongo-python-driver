@@ -204,7 +204,7 @@ class ObjectId(object):
                 _raise_invalid_id(oid)
         else:
             raise TypeError(
-                "id must be an instance of (bytes, str, ObjectId), " "not %s" % (type(oid),)
+                "id must be an instance of (bytes, str, ObjectId), not %s" % (type(oid),)
             )
 
     @property

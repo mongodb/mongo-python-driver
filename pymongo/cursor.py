@@ -25,7 +25,6 @@ from typing import (
     Iterable,
     List,
     Mapping,
-    MutableMapping,
     Optional,
     Sequence,
     Tuple,
@@ -277,7 +276,7 @@ class Cursor(Generic[_DocumentType]):
         # Exhaust cursor support
         if cursor_type == CursorType.EXHAUST:
             if self.__collection.database.client.is_mongos:
-                raise InvalidOperation("Exhaust cursors are " "not supported by mongos")
+                raise InvalidOperation("Exhaust cursors are not supported by mongos")
             if limit:
                 raise InvalidOperation("Can't use limit and exhaust together.")
             self.__exhaust = True
@@ -509,7 +508,7 @@ class Cursor(Generic[_DocumentType]):
             if self.__limit:
                 raise InvalidOperation("Can't use limit and exhaust together.")
             if self.__collection.database.client.is_mongos:
-                raise InvalidOperation("Exhaust cursors are " "not supported by mongos")
+                raise InvalidOperation("Exhaust cursors are not supported by mongos")
             self.__exhaust = True
 
         self.__query_flags |= mask
@@ -730,14 +729,14 @@ class Cursor(Generic[_DocumentType]):
             skip = 0
             if index.start is not None:
                 if index.start < 0:
-                    raise IndexError("Cursor instances do not support " "negative indices")
+                    raise IndexError("Cursor instances do not support negative indices")
                 skip = index.start
 
             if index.stop is not None:
                 limit = index.stop - skip
                 if limit < 0:
                     raise IndexError(
-                        "stop index must be greater than start " "index for slice %r" % index
+                        "stop index must be greater than start index for slice %r" % index
                     )
                 if limit == 0:
                     self.__empty = True
@@ -750,7 +749,7 @@ class Cursor(Generic[_DocumentType]):
 
         if isinstance(index, int):
             if index < 0:
-                raise IndexError("Cursor instances do not support negative " "indices")
+                raise IndexError("Cursor instances do not support negative indices")
             clone = self.clone()
             clone.skip(index + self.__skip)
             clone.limit(-1)  # use a hard limit
@@ -758,7 +757,7 @@ class Cursor(Generic[_DocumentType]):
             for doc in clone:
                 return doc
             raise IndexError("no such item for Cursor instance")
-        raise TypeError("index %r cannot be applied to Cursor " "instances" % index)
+        raise TypeError("index %r cannot be applied to Cursor instances" % index)
 
     def max_scan(self, max_scan: Optional[int]) -> "Cursor[_DocumentType]":
         """**DEPRECATED** - Limit the number of documents to scan when

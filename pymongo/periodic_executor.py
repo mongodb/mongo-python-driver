@@ -124,7 +124,7 @@ class PeriodicExecutor(object):
                 if not self._target():
                     self._stopped = True
                     break
-            except:
+            except BaseException:
                 with self._lock:
                     self._stopped = True
                     self._thread_will_exit = True

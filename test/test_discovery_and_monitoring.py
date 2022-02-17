@@ -284,7 +284,7 @@ class TestIgnoreStaleErrors(IntegrationTest):
         def insert_command(i):
             try:
                 client.test.command("insert", "test", documents=[{"i": i}])
-            except AutoReconnect as exc:
+            except AutoReconnect:
                 pass
 
         threads = []

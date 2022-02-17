@@ -19,7 +19,7 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
+from test import IntegrationTest, unittest
 from test.utils import (
     TestCreator,
     camel_to_snake,

@@ -25,7 +25,7 @@ import pymongo
 from pymongo.ssl_support import HAS_SNI
 
 try:
-    import dns
+    import dns  # noqa
 
     HAS_DNS = True
 except ImportError:
@@ -120,7 +120,7 @@ class TestAtlasConnect(unittest.TestCase):
         duplicates = [names for names in uri_to_names.values() if len(names) > 1]
         self.assertFalse(
             duplicates,
-            "Error: the following env variables have " "duplicate values: %s" % (duplicates,),
+            "Error: the following env variables have duplicate values: %s" % (duplicates,),
         )
 
 

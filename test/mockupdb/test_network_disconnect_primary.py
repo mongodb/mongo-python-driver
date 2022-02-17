@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-from queue import Queue
 
 from mockupdb import Future, MockupDB, OpReply, going, wait_until
 

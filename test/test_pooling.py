@@ -320,7 +320,7 @@ class TestPooling(_TestPoolingBase):
         pool = self.create_pool(max_pool_size=1, wait_queue_timeout=wait_queue_timeout)
         self.addCleanup(pool.close)
 
-        with pool.get_socket() as sock_info:
+        with pool.get_socket():
             start = time.time()
             with self.assertRaises(ConnectionFailure):
                 with pool.get_socket():

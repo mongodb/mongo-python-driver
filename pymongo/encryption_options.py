@@ -14,11 +14,10 @@
 
 """Support for automatic client-side field level encryption."""
 
-import copy
 from typing import TYPE_CHECKING, Any, List, Mapping, Optional
 
 try:
-    import pymongocrypt
+    import pymongocrypt  # noqa: F401
 
     _HAVE_PYMONGOCRYPT = True
 except ImportError:

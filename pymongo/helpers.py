@@ -86,9 +86,7 @@ def _index_list(key_or_list, direction=None):
         if isinstance(key_or_list, abc.ItemsView):
             return list(key_or_list)
         elif not isinstance(key_or_list, (list, tuple)):
-            raise TypeError(
-                "if no direction is specified, " "key_or_list must be an instance of list"
-            )
+            raise TypeError("if no direction is specified, key_or_list must be an instance of list")
         return key_or_list
 
 
@@ -104,7 +102,7 @@ def _index_document(index_list):
             "mean %r?" % list(index_list.items())
         )
     elif not isinstance(index_list, (list, tuple)):
-        raise TypeError("must use a list of (key, direction) pairs, " "not: " + repr(index_list))
+        raise TypeError("must use a list of (key, direction) pairs, not: " + repr(index_list))
     if not len(index_list):
         raise ValueError("key_or_list must not be the empty list")
 
@@ -237,11 +235,11 @@ def _fields_list_to_dict(fields, option_name):
     if isinstance(fields, (abc.Sequence, abc.Set)):
         if not all(isinstance(field, str) for field in fields):
             raise TypeError(
-                "%s must be a list of key names, each an " "instance of str" % (option_name,)
+                "%s must be a list of key names, each an instance of str" % (option_name,)
             )
         return dict.fromkeys(fields, 1)
 
-    raise TypeError("%s must be a mapping or " "list of key names" % (option_name,))
+    raise TypeError("%s must be a mapping or list of key names" % (option_name,))
 
 
 def _handle_exception():

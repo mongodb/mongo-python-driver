@@ -69,7 +69,7 @@ class TestDBRef(unittest.TestCase):
         self.assertEqual(repr(DBRef("coll", 5, foo="bar")), "DBRef('coll', 5, foo='bar')")
         self.assertEqual(
             repr(DBRef("coll", ObjectId("1234567890abcdef12345678"), "foo")),
-            "DBRef('coll', ObjectId('1234567890abcdef12345678'), " "'foo')",
+            "DBRef('coll', ObjectId('1234567890abcdef12345678'), 'foo')",
         )
 
     def test_equality(self):

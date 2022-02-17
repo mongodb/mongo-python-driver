@@ -20,7 +20,6 @@ import os
 import socket
 import sys
 import threading
-import time
 import traceback
 import unittest
 import warnings
@@ -34,7 +33,7 @@ except (ImportError, ValueError):
     HAVE_XML = False
 
 try:
-    import ipaddress
+    import ipaddress  # noqa
 
     HAVE_IPADDRESS = True
 except ImportError:
@@ -667,7 +666,7 @@ class ClientContext(object):
         """
         return self._require(
             lambda: self.supports_secondary_read_pref,
-            "This cluster does not support secondary read " "preference",
+            "This cluster does not support secondary read preference",
         )
 
     def require_no_replica_set(self, func):
@@ -757,7 +756,7 @@ class ClientContext(object):
             return True
         return False
 
-    def require_cluster_type(self, topologies=[]):
+    def require_cluster_type(self, topologies=[]):  # noqa
         """Run a test only if the client is connected to a cluster that
         conforms to one of the specified topologies. Acceptable topologies
         are 'single', 'replicaset', and 'sharded'."""
@@ -825,7 +824,7 @@ class ClientContext(object):
         """Run a test only if the hostname 'server' is resolvable."""
         return self._require(
             lambda: self.server_is_resolvable,
-            "No hosts entry for 'server'. Cannot validate " "hostname in the certificate",
+            "No hosts entry for 'server'. Cannot validate hostname in the certificate",
             func=func,
         )
 
@@ -1125,9 +1124,9 @@ def test_cases(suite):
 # Helper method to workaround https://bugs.python.org/issue21724
 def clear_warning_registry():
     """Clear the __warningregistry__ for all modules."""
-    for name, module in list(sys.modules.items()):
+    for _, module in list(sys.modules.items()):
         if hasattr(module, "__warningregistry__"):
-            setattr(module, "__warningregistry__", {})
+            setattr(module, "__warningregistry__", {})  # noqa
 
 
 class SystemCertsPatcher(object):

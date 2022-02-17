@@ -47,7 +47,7 @@ def _check_name(name):
 
     for invalid_char in [" ", ".", "$", "/", "\\", "\x00", '"']:
         if invalid_char in name:
-            raise InvalidName("database names cannot contain the " "character %r" % invalid_char)
+            raise InvalidName("database names cannot contain the character %r" % invalid_char)
 
 
 if TYPE_CHECKING:
@@ -966,7 +966,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             name = name.name
 
         if not isinstance(name, str):
-            raise TypeError("name_or_collection must be an instance of str or " "Collection")
+            raise TypeError("name_or_collection must be an instance of str or Collection")
         cmd = SON([("validate", name), ("scandata", scandata), ("full", full)])
         if comment is not None:
             cmd["comment"] = comment
@@ -988,7 +988,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 if "result" in res:
                     info = res["result"]
                     if info.find("exception") != -1 or info.find("corrupt") != -1:
-                        raise CollectionInvalid("%s invalid: " "%s" % (name, info))
+                        raise CollectionInvalid("%s invalid: %s" % (name, info))
                 elif not res.get("valid", False):
                     valid = False
                     break

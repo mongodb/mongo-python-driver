@@ -18,7 +18,7 @@ import time
 import unittest
 from queue import Queue
 
-from mockupdb import MockupDB, OpMsg, go
+from mockupdb import MockupDB, go
 from operations import upgrades
 
 from pymongo import MongoClient

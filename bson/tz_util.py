@@ -15,7 +15,7 @@
 """Timezone related utilities for BSON."""
 
 from datetime import datetime, timedelta, tzinfo
-from typing import Any, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 ZERO: timedelta = timedelta(0)
 

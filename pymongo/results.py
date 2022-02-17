@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Result class definitions."""
-from typing import Any, Dict, List, Mapping, Optional, Sequence, cast
+from typing import Any, Dict, List, Optional, cast
 
 from pymongo.errors import InvalidOperation
 

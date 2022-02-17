@@ -158,7 +158,7 @@ class PoolLocker(ExceptionCatchingThread):
             # Wait for the unlock flag.
             unlock_pool = self.unlock.wait(10)
             if not unlock_pool:
-                raise Exception("timed out waiting for unlock signal:" " deadlock?")
+                raise Exception("timed out waiting for unlock signal: deadlock?")
 
 
 if __name__ == "__main__":

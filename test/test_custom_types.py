@@ -545,9 +545,7 @@ class TestTypeRegistry(unittest.TestCase):
         )
 
     def test_initialize_fail(self):
-        err_msg = (
-            "Expected an instance of TypeEncoder, TypeDecoder, " "or TypeCodec, got .* instead"
-        )
+        err_msg = "Expected an instance of TypeEncoder, TypeDecoder, or TypeCodec, got .* instead"
         with self.assertRaisesRegex(TypeError, err_msg):
             TypeRegistry(self.codecs)  # type: ignore[arg-type]
 

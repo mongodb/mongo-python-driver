@@ -40,7 +40,7 @@ else:
 
 
 def _connect(options):
-    uri = ("mongodb://localhost:27017/?serverSelectionTimeoutMS=%s" "&tlsCAFile=%s&%s") % (
+    uri = ("mongodb://localhost:27017/?serverSelectionTimeoutMS=%s&tlsCAFile=%s&%s") % (
         TIMEOUT_MS,
         CA_FILE,
         options,

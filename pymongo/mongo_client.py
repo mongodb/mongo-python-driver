@@ -52,7 +52,6 @@ from typing import (
     cast,
 )
 
-import bson
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.son import SON
 from bson.timestamp import Timestamp
@@ -687,7 +686,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         srv_service_name = keyword_opts.get("srvservicename")
         srv_max_hosts = keyword_opts.get("srvmaxhosts")
         if len([h for h in host if "/" in h]) > 1:
-            raise ConfigurationError("host must not contain multiple MongoDB " "URIs")
+            raise ConfigurationError("host must not contain multiple MongoDB URIs")
         for entity in host:
             # A hostname can only include a-z, 0-9, '-' and '.'. If we find a '/'
             # it must be a URI,
@@ -1165,7 +1164,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     and sock_info.max_wire_version < 8
                 ):
                     raise ConfigurationError(
-                        "Auto-encryption requires a minimum MongoDB version " "of 4.2"
+                        "Auto-encryption requires a minimum MongoDB version of 4.2"
                     )
                 yield sock_info
 
@@ -1229,7 +1228,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def _socket_for_reads(self, read_preference, session):
         assert read_preference is not None, "read_preference must not be None"
-        topology = self._get_topology()
+        _ = self._get_topology()
         server = self._select_server(read_preference, session)
         return self._socket_from_server(read_preference, server, session)
 
@@ -1814,7 +1813,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             name = name.name
 
         if not isinstance(name, str):
-            raise TypeError("name_or_database must be an instance " "of str or a Database")
+            raise TypeError("name_or_database must be an instance of str or a Database")
 
         with self._socket_for_writes(session) as sock_info:
             self[name]._command(

@@ -145,7 +145,7 @@ class TestSession(IntegrationTest):
                 kw = copy.copy(kw)
                 kw["session"] = s
                 with self.assertRaisesRegex(
-                    InvalidOperation, "Can only use session with the MongoClient" " that started it"
+                    InvalidOperation, "Can only use session with the MongoClient that started it"
                 ):
                     f(*args, **kw)
 

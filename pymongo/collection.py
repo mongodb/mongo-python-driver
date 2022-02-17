@@ -29,7 +29,6 @@ from typing import (
     Union,
 )
 
-from bson.code import Code
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
@@ -204,11 +203,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if not name or ".." in name:
             raise InvalidName("collection names cannot be empty")
         if "$" in name and not (name.startswith("oplog.$main") or name.startswith("$cmd")):
-            raise InvalidName("collection names must not " "contain '$': %r" % name)
+            raise InvalidName("collection names must not contain '$': %r" % name)
         if name[0] == "." or name[-1] == ".":
-            raise InvalidName("collection names must not start " "or end with '.': %r" % name)
+            raise InvalidName("collection names must not start or end with '.': %r" % name)
         if "\x00" in name:
-            raise InvalidName("collection names must not contain the " "null character")
+            raise InvalidName("collection names must not contain the null character")
         collation = validate_collation_or_none(kwargs.pop("collation", None))
 
         self.__database: Database[_DocumentType] = database
@@ -1873,7 +1872,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 for index in indexes:
                     if not isinstance(index, IndexModel):
                         raise TypeError(
-                            "%r is not an instance of " "pymongo.operations.IndexModel" % (index,)
+                            "%r is not an instance of pymongo.operations.IndexModel" % (index,)
                         )
                     document = index.document
                     names.append(document["name"])
@@ -2725,7 +2724,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         common.validate_is_mapping("filter", filter)
         if not isinstance(return_document, bool):
             raise ValueError(
-                "return_document must be " "ReturnDocument.BEFORE or ReturnDocument.AFTER"
+                "return_document must be ReturnDocument.BEFORE or ReturnDocument.AFTER"
             )
         collation = validate_collation_or_none(kwargs.pop("collation", None))
         cmd = SON([("findAndModify", self.__name), ("query", filter), ("new", return_document)])
@@ -2751,7 +2750,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             if array_filters is not None:
                 if not acknowledged:
                     raise ConfigurationError(
-                        "arrayFilters is unsupported for unacknowledged " "writes."
+                        "arrayFilters is unsupported for unacknowledged writes."
                     )
                 cmd["arrayFilters"] = list(array_filters)
             if hint is not None:

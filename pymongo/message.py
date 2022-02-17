@@ -638,7 +638,7 @@ def _op_msg_uncompressed(flags, command, identifier, docs, opts):
 
 
 if _use_c:
-    _op_msg_uncompressed = _cmessage._op_msg
+    _op_msg_uncompressed = _cmessage._op_msg  # noqa: F811
 
 
 def _op_msg(flags, command, dbname, read_preference, opts, ctx=None):
@@ -712,7 +712,7 @@ def _query_uncompressed(
 
 
 if _use_c:
-    _query_uncompressed = _cmessage._query_message
+    _query_uncompressed = _cmessage._query_message  # noqa: F811
 
 
 def _query(
@@ -754,7 +754,7 @@ def _get_more_uncompressed(collection_name, num_to_return, cursor_id):
 
 
 if _use_c:
-    _get_more_uncompressed = _cmessage._get_more_message
+    _get_more_uncompressed = _cmessage._get_more_message  # noqa: F811
 
 
 def _get_more(collection_name, num_to_return, cursor_id, ctx=None):
@@ -1085,7 +1085,7 @@ def _encode_batched_op_msg(operation, command, docs, ack, opts, ctx):
 
 
 if _use_c:
-    _encode_batched_op_msg = _cmessage._encode_batched_op_msg
+    _encode_batched_op_msg = _cmessage._encode_batched_op_msg  # noqa: F811
 
 
 def _batched_op_msg_compressed(operation, command, docs, ack, opts, ctx):
@@ -1120,7 +1120,7 @@ def _batched_op_msg(operation, command, docs, ack, opts, ctx):
 
 
 if _use_c:
-    _batched_op_msg = _cmessage._batched_op_msg
+    _batched_op_msg = _cmessage._batched_op_msg  # noqa: F811
 
 
 def _do_batched_op_msg(namespace, operation, command, docs, opts, ctx):
@@ -1149,7 +1149,7 @@ def _encode_batched_write_command(namespace, operation, command, docs, opts, ctx
 
 
 if _use_c:
-    _encode_batched_write_command = _cmessage._encode_batched_write_command
+    _encode_batched_write_command = _cmessage._encode_batched_write_command  # noqa: F811
 
 
 def _batched_write_command_impl(namespace, operation, command, docs, opts, ctx, buf):
@@ -1348,7 +1348,7 @@ class _OpMsg(object):
         self.flags = flags
         self.payload_document = payload_document
 
-    def raw_response(self, cursor_id=None, user_fields={}):
+    def raw_response(self, cursor_id=None, user_fields={}):  # noqa: B006
         """
         cursor_id is ignored
         user_fields is used to determine which fields must not be decoded
@@ -1395,12 +1395,12 @@ class _OpMsg(object):
         flags, first_payload_type, first_payload_size = cls.UNPACK_FROM(msg)
         if flags != 0:
             if flags & cls.CHECKSUM_PRESENT:
-                raise ProtocolError("Unsupported OP_MSG flag checksumPresent: " "0x%x" % (flags,))
+                raise ProtocolError("Unsupported OP_MSG flag checksumPresent: 0x%x" % (flags,))
 
             if flags ^ cls.MORE_TO_COME:
                 raise ProtocolError("Unsupported OP_MSG flags: 0x%x" % (flags,))
         if first_payload_type != 0:
-            raise ProtocolError("Unsupported OP_MSG payload type: " "0x%x" % (first_payload_type,))
+            raise ProtocolError("Unsupported OP_MSG payload type: 0x%x" % (first_payload_type,))
 
         if len(msg) != first_payload_size + 5:
             raise ProtocolError("Unsupported OP_MSG reply: >1 section")

@@ -208,13 +208,13 @@ def create_test(case_spec):
                     # Null bytes are validated when encoding to BSON.
                     if "Null" in description:
                         to_bson(doc)
-                    raise AssertionError("exception not raised for test " "case: " + description)
+                    raise AssertionError("exception not raised for test case: " + description)
                 except (ValueError, KeyError, TypeError, InvalidId, InvalidDocument):
                     pass
             elif bson_type == "0x05":
                 try:
                     decode_extjson(parse_error_case["string"])
-                    raise AssertionError("exception not raised for test " "case: " + description)
+                    raise AssertionError("exception not raised for test case: " + description)
                 except (TypeError, ValueError):
                     pass
             else:

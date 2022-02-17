@@ -192,7 +192,7 @@ class SessionOptions(object):
     ) -> None:
         if snapshot:
             if causal_consistency:
-                raise ConfigurationError("snapshot reads do not support " "causal_consistency=True")
+                raise ConfigurationError("snapshot reads do not support causal_consistency=True")
             causal_consistency = False
         elif causal_consistency is None:
             causal_consistency = True
@@ -717,7 +717,7 @@ class ClientSession(Generic[_DocumentType]):
         self._check_ended()
 
         if self.options.snapshot:
-            raise InvalidOperation("Transactions are not supported in " "snapshot sessions")
+            raise InvalidOperation("Transactions are not supported in snapshot sessions")
 
         if self.in_transaction:
             raise InvalidOperation("Transaction already in progress")
@@ -885,7 +885,7 @@ class ClientSession(Generic[_DocumentType]):
             another `ClientSession` instance.
         """
         if not isinstance(operation_time, Timestamp):
-            raise TypeError("operation_time must be an instance " "of bson.timestamp.Timestamp")
+            raise TypeError("operation_time must be an instance of bson.timestamp.Timestamp")
         self._advance_operation_time(operation_time)
 
     def _process_response(self, reply):

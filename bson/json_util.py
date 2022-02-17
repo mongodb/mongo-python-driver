@@ -283,7 +283,7 @@ class JSONOptions(CodecOptions):
         self.json_mode = json_mode
         if self.json_mode == JSONMode.RELAXED:
             if strict_number_long:
-                raise ValueError("Cannot specify strict_number_long=True with" " JSONMode.RELAXED")
+                raise ValueError("Cannot specify strict_number_long=True with JSONMode.RELAXED")
             if datetime_representation not in (None, DatetimeRepresentation.ISO8601):
                 raise ValueError(
                     "datetime_representation must be DatetimeRepresentation."
@@ -296,7 +296,7 @@ class JSONOptions(CodecOptions):
             self.strict_uuid = True
         elif self.json_mode == JSONMode.CANONICAL:
             if strict_number_long not in (None, True):
-                raise ValueError("Cannot specify strict_number_long=False with" " JSONMode.RELAXED")
+                raise ValueError("Cannot specify strict_number_long=False with JSONMode.RELAXED")
             if datetime_representation not in (None, DatetimeRepresentation.NUMBERLONG):
                 raise ValueError(
                     "datetime_representation must be DatetimeRepresentation."
@@ -581,11 +581,9 @@ def _parse_canonical_binary(doc: Any, json_options: JSONOptions) -> Union[Binary
     if not isinstance(b64, str):
         raise TypeError("$binary base64 must be a string: %s" % (doc,))
     if not isinstance(subtype, str) or len(subtype) > 2:
-        raise TypeError("$binary subType must be a string at most 2 " "characters: %s" % (doc,))
+        raise TypeError("$binary subType must be a string at most 2 characters: %s" % (doc,))
     if len(binary) != 2:
-        raise TypeError(
-            '$binary must include only "base64" and "subType" ' "components: %s" % (doc,)
-        )
+        raise TypeError('$binary must include only "base64" and "subType" components: %s' % (doc,))
 
     data = base64.b64decode(b64.encode())
     return _binary_or_uuid(data, int(subtype, 16), json_options)
@@ -686,7 +684,7 @@ def _parse_canonical_regex(doc: Any) -> Regex:
     opts = regex["options"]
     if not isinstance(opts, str):
         raise TypeError(
-            "Bad $regularExpression options, options must be " "string, was type %s" % (type(opts))
+            "Bad $regularExpression options, options must be string, was type %s" % (type(opts))
         )
     return Regex(regex["pattern"], opts)
 

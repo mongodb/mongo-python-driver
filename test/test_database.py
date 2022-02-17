@@ -14,22 +14,18 @@
 
 """Test the database module."""
 
-import datetime
 import re
 import sys
 from typing import Any, List, Mapping
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, SkipTest, client_context, unittest
+from test import IntegrationTest, client_context, unittest
 from test.test_custom_types import DECIMAL_CODECOPTS
 from test.utils import (
     IMPOSSIBLE_WRITE_CONCERN,
-    DeprecationFilter,
     OvertCommandListener,
-    ignore_deprecations,
     rs_or_single_client,
-    server_started_with_auth,
     wait_until,
 )
 
@@ -44,7 +40,6 @@ from pymongo.collection import Collection
 from pymongo.database import Database
 from pymongo.errors import (
     CollectionInvalid,
-    ConfigurationError,
     ExecutionTimeout,
     InvalidName,
     OperationFailure,

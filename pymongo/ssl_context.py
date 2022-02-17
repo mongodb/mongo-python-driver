@@ -31,10 +31,10 @@ IS_PYOPENSSL = False
 # Base Exception class
 SSLError = _ssl.SSLError
 
-from ssl import SSLContext
+from ssl import SSLContext  # noqa: F401,E402
 
 if hasattr(_ssl, "VERIFY_CRL_CHECK_LEAF"):
-    from ssl import VERIFY_CRL_CHECK_LEAF
+    from ssl import VERIFY_CRL_CHECK_LEAF  # noqa: F401
 # Python 3.7 uses OpenSSL's hostname matching implementation
 # making it the obvious version to start using SSLConext.check_hostname.
 # Python 3.6 might have been a good version, but it suffers

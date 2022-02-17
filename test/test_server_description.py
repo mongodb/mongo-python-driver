@@ -170,7 +170,7 @@ class TestServerDescription(unittest.TestCase):
     def test_repr(self):
         s = parse_hello_response({"ok": 1, "msg": "isdbgrid"})
         self.assertEqual(
-            repr(s), "<ServerDescription ('localhost', 27017)" " server_type: Mongos, rtt: None>"
+            repr(s), "<ServerDescription ('localhost', 27017) server_type: Mongos, rtt: None>"
         )
 
     def test_topology_version(self):

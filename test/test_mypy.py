@@ -16,7 +16,6 @@
 sample client code that uses PyMongo typings."""
 
 import os
-import sys
 import unittest
 from typing import Any, Dict, Iterable, List
 

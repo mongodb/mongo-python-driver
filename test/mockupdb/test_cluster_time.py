@@ -28,7 +28,7 @@ class TestClusterTime(unittest.TestCase):
         server = MockupDB()
 
         # First test all commands include $clusterTime with wire version 6.
-        responder = server.autoresponds(
+        _ = server.autoresponds(
             "ismaster",
             {
                 "minWireVersion": 0,

@@ -43,7 +43,7 @@ class _AggregationCommand(object):
     ):
         if "explain" in options:
             raise ConfigurationError(
-                "The explain option is not supported. " "Use Database.command instead."
+                "The explain option is not supported. Use Database.command instead."
             )
 
         self._target = target
