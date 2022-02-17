@@ -424,7 +424,6 @@ functions:
           fi
           if [ -n "${test_loadbalancer}" ]; then
             export TEST_LOADBALANCER=1
-            export LOAD_BALANCER=1
             export SINGLE_MONGOS_LB_URI="${SINGLE_MONGOS_LB_URI}"
             export MULTI_MONGOS_LB_URI="${MULTI_MONGOS_LB_URI}"
           fi
@@ -1803,8 +1802,6 @@ tasks:
             LOAD_BALANCER: true
         - func: "run load-balancer"
         - func: "run tests"
-          vars:
-            LOAD_BALANCER: true
 # }}}
     - name: "coverage-report"
       tags: ["coverage"]
