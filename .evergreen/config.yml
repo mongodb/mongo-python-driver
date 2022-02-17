@@ -291,6 +291,7 @@ functions:
             DISABLE_TEST_COMMANDS=${DISABLE_TEST_COMMANDS} \
             ORCHESTRATION_FILE=${ORCHESTRATION_FILE} \
             REQUIRE_API_VERSION=${REQUIRE_API_VERSION} \
+            LOAD_BALANCER=${LOAD_BALANCER} \
             bash ${DRIVERS_TOOLS}/.evergreen/run-orchestration.sh
     # run-orchestration generates expansion file with the MONGODB_URI for the cluster
     - command: expansions.update
@@ -1798,6 +1799,7 @@ tasks:
         - func: "bootstrap mongo-orchestration"
           vars:
             TOPOLOGY: "sharded_cluster"
+            LOAD_BALANCER: true
         - func: "run load-balancer"
         - func: "run tests"
 # }}}
@@ -2023,6 +2025,10 @@ axes:
         display_name: "MongoDB 5.0"
         variables:
           VERSION: "5.0"
+      - id: "rapid"
+        display_name: "MongoDB rapid"
+        variables:
+          VERSION: "rapid"
 
   # Choice of Python runtime version
   - id: python-version
@@ -2986,7 +2992,7 @@ buildvariants:
 - matrix_name: "load-balancer"
   matrix_spec:
     platform: awslinux
-    mongodb-version: ["5.0", "latest"]
+    mongodb-version: ["rapid", "latest"]
     auth-ssl: "*"
     python-version: ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy", "pypy3.5", "pypy3.7"]
     loadbalancer: "*"

@@ -242,9 +242,6 @@ else:
 # main thread, to avoid the deadlock. See PYTHON-607.
 u"foo".encode("idna")
 
-# Remove after PYTHON-2712
-_MOCK_SERVICE_ID = False
-
 
 def _raise_connection_failure(address, error, msg_prefix=None):
     """Convert a socket.error to ConnectionFailure and raise it."""
@@ -619,12 +616,6 @@ class SocketInfo(object):
             cmd["speculativeAuthenticate"] = auth_ctx.speculate_command()
 
         doc = self.command("admin", cmd, publish_events=False, exhaust_allowed=awaitable)
-        # PYTHON-2712 will remove this topologyVersion fallback logic.
-        if self.opts.load_balanced and _MOCK_SERVICE_ID:
-            process_id = doc.get("topologyVersion", {}).get("processId")
-            doc.setdefault("serviceId", process_id)
-        if not self.opts.load_balanced:
-            doc.pop("serviceId", None)
         hello = IsMaster(doc, awaitable=awaitable)
         self.is_writable = hello.is_writable
         self.max_wire_version = hello.max_wire_version
@@ -661,9 +652,6 @@ class SocketInfo(object):
         unpacked_docs = reply.unpack_response()
         response_doc = unpacked_docs[0]
         helpers._check_command_response(response_doc, self.max_wire_version)
-        # Remove after PYTHON-2712.
-        if not self.opts.load_balanced:
-            response_doc.pop("serviceId", None)
         return response_doc
 
     def command(
