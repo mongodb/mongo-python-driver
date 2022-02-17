@@ -2639,7 +2639,7 @@ buildvariants:
 
 - matrix_name: "load-balancer"
   matrix_spec:
-    platform: awslinux
+    platform: ubuntu-18.04
     mongodb-version: ["rapid", "latest"]
     auth-ssl: "*"
     python-version: ["3.6", "3.7", "3.8", "3.9", "pypy3.6", "pypy3.7"]
