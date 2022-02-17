@@ -68,7 +68,7 @@ from pymongo import (
 from pymongo.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.client_options import ClientOptions
 from pymongo.command_cursor import CommandCursor
-from pymongo.common import Empty
+from pymongo.client_session import _EmptyServerSession
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
@@ -1604,7 +1604,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def __start_session(self, implicit, **kwargs):
         # Raises ConfigurationError if sessions are not supported.
         if implicit:
-            server_session = Empty(self._topology._session_pool.generation)
+            server_session = _EmptyServerSession(self._topology._session_pool.generation)
         else:
             server_session = self._get_server_session()
         opts = client_session.SessionOptions(**kwargs)

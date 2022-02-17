@@ -948,11 +948,10 @@ class ClientSession(Generic[_DocumentType]):
         return None
 
     def _start_serv_sesh(self):
-        while isinstance(self._server_session, Empty):
+        if isinstance(self._server_session, _EmptyServerSession):
             self._server_session, old = self._client._get_server_session(), self._server_session
-            self._server_session.generation = old.generation
-            self._server_session.last_use = old.last_use
-            self._server_session._transaction_id = old._transaction_id
+            if old.started:
+                self._server_session.inc_transaction_id()
 
     def _apply_to(self, command, is_retryable, read_preference, sock_info):
         self._check_ended()
@@ -1006,6 +1005,26 @@ class ClientSession(Generic[_DocumentType]):
         raise TypeError("A ClientSession cannot be copied, create a new session instead")
 
 
+class _EmptyServerSession(object):
+    def __init__(self, generation):
+        self.generation = generation
+        self.last_use = time.monotonic()
+        self.lsid = None
+        self.dirty = False
+        self.started = False
+
+    def timed_out(self, session_timeout_minutes):
+        idle_seconds = time.monotonic() - self.last_use
+        # Timed out if we have less than a minute to live.
+        return True
+
+    def mark_dirty(self):
+        self.dirty = True
+
+    def inc_transaction_id(self):
+        self.started = True
+
+
 class _ServerSession(object):
     def __init__(self, generation):
         # Ensure id is type 4, regardless of CodecOptions.uuid_representation.
@@ -1055,11 +1074,7 @@ class _ServerSessionPool(collections.deque):
     def pop_all(self):
         ids = []
         while self:
-            try:
-                ids.append(self.pop().session_id)
-            except AttributeError:
-                # We found an uninitialized session, discard
-                continue
+            ids.append(self.pop().session_id)
         return ids
 
     def get_server_session(self, session_timeout_minutes):
@@ -1088,7 +1103,8 @@ class _ServerSessionPool(collections.deque):
     def return_server_session_no_lock(self, server_session):
         # Discard sessions from an old pool to avoid duplicate sessions in the
         # child process after a fork.
-        if server_session.generation == self.generation and not server_session.dirty:
+        if (server_session.generation == self.generation and not server_session.dirty and not
+                isinstance(server_session, _EmptyServerSession)):
             self.appendleft(server_session)
 
     def _clear_stale(self, session_timeout_minutes):
