@@ -1,7 +1,7 @@
 
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v3.4.0
+  rev: v4.1.0
   hooks:
   - id: check-added-large-files
   - id: check-case-conflict
@@ -24,14 +24,14 @@ repos:
     args: [--line-length=100]
 
 - repo: https://github.com/PyCQA/isort
-  rev: 5.7.0
+  rev: 5.10.1
   hooks:
   - id: isort
     files: \.py$
     args: [--profile=black]
 
 - repo: https://gitlab.com/pycqa/flake8
-  rev: 3.8.4
+  rev: 3.9.2
   hooks:
   - id: flake8
     additional_dependencies: [
@@ -43,14 +43,14 @@ repos:
 # We use the Python version instead of the original version which seems to require Docker
 # https://github.com/koalaman/shellcheck-precommit
 - repo: https://github.com/shellcheck-py/shellcheck-py
-  rev: v0.8.0.1
+  rev: v0.8.0.4
   hooks:
     - id: shellcheck
       name: shellcheck
       args: ["--severity=warning"]
 
 - repo: https://github.com/sirosen/check-jsonschema
-  rev: 0.10.2
+  rev: 0.11.0
   hooks:
     - id: check-jsonschema
       name: "Check GitHub Workflows"
