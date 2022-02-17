@@ -275,12 +275,18 @@ def _ocsp_callback(conn, ocsp_bytes, user_data):
         _LOGGER.debug("No peer cert?")
         return 0
     cert = cert.to_cryptography()
-    chain = conn.get_peer_cert_chain()
+    # Use the verified chain when available (pyopenssl>=20.0).
+    if hasattr(conn, "get_verified_chain"):
+        chain = conn.get_verified_chain()
+        trusted_ca_certs = None
+    else:
+        chain = conn.get_peer_cert_chain()
+        trusted_ca_certs = user_data.trusted_ca_certs
     if not chain:
         _LOGGER.debug("No peer cert chain?")
         return 0
     chain = [cer.to_cryptography() for cer in chain]
-    issuer = _get_issuer_cert(cert, chain, user_data.trusted_ca_certs)
+    issuer = _get_issuer_cert(cert, chain, trusted_ca_certs)
     must_staple = False
     # https://tools.ietf.org/html/rfc7633#section-4.2.3.1
     ext = _get_extension(cert, _TLSFeature)
