@@ -65,11 +65,13 @@
                       ]
                     }
                   },
-                  "update": {
-                    "$inc": {
-                      "x": 1
+                  "update": [
+                    {
+                      "$set": {
+                        "x": 21
+                      }
                     }
-                  }
+                  ]
                 }
               }
             ],
@@ -97,11 +99,13 @@
                           ]
                         }
                       },
-                      "u": {
-                        "$inc": {
-                          "x": 1
+                      "u": [
+                        {
+                          "$set": {
+                            "x": 21
+                          }
                         }
-                      },
+                      ],
                       "multi": true,
                       "upsert": {
                         "$$unsetOrMatches": false
@@ -158,11 +162,13 @@
                       ]
                     }
                   },
-                  "update": {
-                    "$inc": {
-                      "x": 1
+                  "update": [
+                    {
+                      "$set": {
+                        "x": 21
+                      }
                     }
-                  }
+                  ]
                 }
               }
             ],
@@ -194,17 +200,16 @@
                           ]
                         }
                       },
-                      "u": {
-                        "$inc": {
-                          "x": 1
+                      "u": [
+                        {
+                          "$set": {
+                            "x": 21
+                          }
                         }
-                      },
+                      ],
                       "multi": true,
                       "upsert": {
                         "$$unsetOrMatches": false
-                      },
-                      "limit": {
-                        "$$unsetOrMatches": 0
                       }
                     }
                   ],

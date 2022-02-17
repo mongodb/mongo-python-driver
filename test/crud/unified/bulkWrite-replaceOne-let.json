@@ -127,7 +127,7 @@
       "description": "Bulk Write replaceOne with let option unsupported (server-side error)",
       "runOnRequirements": [
         {
-          "minServerVersion": "3.6.0",
+          "minServerVersion": "4.2",
           "maxServerVersion": "4.9"
         }
       ],
@@ -148,7 +148,7 @@
                     }
                   },
                   "replacement": {
-                    "_id": 3
+                    "x": 3
                   }
                 }
               }
@@ -182,7 +182,7 @@
                         }
                       },
                       "u": {
-                        "_id": 3
+                        "x": 3
                       }
                     }
                   ],
