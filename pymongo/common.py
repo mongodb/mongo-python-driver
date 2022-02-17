@@ -132,26 +132,6 @@ _MAX_END_SESSIONS = 10000
 SRV_SERVICE_NAME = "mongodb"
 
 
-class Empty(object):
-    def __init__(self, generation):
-        self.generation = generation
-        self.last_use = time.monotonic()
-        self.lsid = None
-        self.dirty = False
-        self._transaction_id = 0
-
-    def timed_out(self, session_timeout_minutes):
-        idle_seconds = time.monotonic() - self.last_use
-        # Timed out if we have less than a minute to live.
-        return True
-
-    def mark_dirty(self):
-        self.dirty = True
-
-    def inc_transaction_id(self):
-        self._transaction_id += 1
-
-
 def partition_node(node: str) -> Tuple[str, int]:
     """Split a host:port string into (host, int(port)) pair."""
     host = node

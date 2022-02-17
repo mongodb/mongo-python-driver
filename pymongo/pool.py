@@ -41,7 +41,6 @@ from pymongo.common import (
     MIN_POOL_SIZE,
     ORDERED_TYPES,
     WAIT_QUEUE_TIMEOUT,
-    Empty,
 )
 from pymongo.errors import (
     AutoReconnect,
