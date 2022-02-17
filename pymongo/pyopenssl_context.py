@@ -276,7 +276,9 @@ class SSLContext(object):
         ssl.CERT_NONE.
         """
         self._ctx.load_verify_locations(cafile, capath)
-        self._callback_data.trusted_ca_certs = _load_trusted_ca_certs(cafile)
+        # Manually load the CA certs when get_verified_chain is not available (pyopenssl<20).
+        if not hasattr(_SSL.Connection, "get_verified_chain"):
+            self._callback_data.trusted_ca_certs = _load_trusted_ca_certs(cafile)
 
     def _load_certifi(self):
         """Attempt to load CA certs from certifi."""

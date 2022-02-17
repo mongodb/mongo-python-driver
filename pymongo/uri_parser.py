@@ -29,6 +29,7 @@ from pymongo.common import (
 )
 from pymongo.errors import ConfigurationError, InvalidURI
 from pymongo.srv_resolver import _HAVE_DNSPYTHON, _SrvResolver
+from pymongo.typings import _Address
 
 SCHEME = "mongodb://"
 SCHEME_LEN = len(SCHEME)
@@ -103,9 +104,7 @@ def parse_ipv6_literal_host(
     return entity[1:i], entity[i + 2 :]
 
 
-def parse_host(
-    entity: str, default_port: Optional[int] = DEFAULT_PORT
-) -> Tuple[str, Optional[int]]:
+def parse_host(entity: str, default_port: Optional[int] = DEFAULT_PORT) -> _Address:
     """Validates a host string
 
     Returns a 2-tuple of host followed by port where port is default_port
@@ -352,9 +351,7 @@ def split_options(
     return options
 
 
-def split_hosts(
-    hosts: str, default_port: Optional[int] = DEFAULT_PORT
-) -> List[Tuple[str, Optional[int]]]:
+def split_hosts(hosts: str, default_port: Optional[int] = DEFAULT_PORT) -> List[_Address]:
     """Takes a string of the form host1[:port],host2[:port]... and
     splits it into (host, port) tuples. If [:port] isn't present the
     default_port is used.

@@ -24,7 +24,7 @@ import struct
 import threading
 import time
 from random import SystemRandom
-from typing import Any, NoReturn, Optional, Type, Union
+from typing import Any, Optional, Type, Union
 
 from bson.errors import InvalidId
 from bson.tz_util import utc
@@ -32,7 +32,7 @@ from bson.tz_util import utc
 _MAX_COUNTER_VALUE = 0xFFFFFF
 
 
-def _raise_invalid_id(oid: str) -> NoReturn:
+def _raise_invalid_id(oid: str) -> None:
     raise InvalidId(
         "%r is not a valid ObjectId, it must be a 12-byte input"
         " or a 24-character hex string" % oid
