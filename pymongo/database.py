@@ -37,7 +37,7 @@ from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import CollectionInvalid, InvalidName
 from pymongo.read_preferences import ReadPreference, _ServerMode
-from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
+from pymongo.typings import _CollationIn, _DocumentOut, _DocumentType, _Pipeline
 
 
 def _check_name(name):
@@ -620,7 +620,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> _DocumentOut:
         """Issue a MongoDB command.
 
         Send command `command` to the database and return the
@@ -926,7 +926,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         session: Optional["ClientSession"] = None,
         background: Optional[bool] = None,
         comment: Optional[Any] = None,
-    ) -> Dict[str, Any]:
+    ) -> _DocumentOut:
         """Validate a collection.
 
         Returns a dict of validation info. Raises CollectionInvalid if

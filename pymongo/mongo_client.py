@@ -85,7 +85,13 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.settings import TopologySettings
 from pymongo.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
-from pymongo.typings import _Address, _CollationIn, _DocumentType, _Pipeline
+from pymongo.typings import (
+    _Address,
+    _CollationIn,
+    _DocumentOut,
+    _DocumentType,
+    _Pipeline,
+)
 from pymongo.uri_parser import (
     _check_options,
     _handle_option_deprecations,
@@ -1700,7 +1706,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if session is not None:
             session._process_response(reply)
 
-    def server_info(self, session: Optional[client_session.ClientSession] = None) -> Dict[str, Any]:
+    def server_info(self, session: Optional[client_session.ClientSession] = None) -> _DocumentOut:
         """Get information about the MongoDB server we're connected to.
 
         :Parameters:
