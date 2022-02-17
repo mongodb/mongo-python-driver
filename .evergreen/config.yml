@@ -1937,6 +1937,10 @@ axes:
         display_name: "MongoDB latest"
         variables:
           VERSION: "latest"
+      - id: "rapid"
+        display_name: "MongoDB rapid"
+        variables:
+          VERSION: "rapid"
 
   # Choice of Python runtime version
   - id: python-version
@@ -2636,7 +2640,7 @@ buildvariants:
 - matrix_name: "load-balancer"
   matrix_spec:
     platform: ubuntu-18.04
-    mongodb-version: ["5.0", "latest"]
+    mongodb-version: ["rapid", "latest"]
     auth-ssl: "*"
     python-version: "*"
     loadbalancer: "*"
