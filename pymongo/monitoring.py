@@ -633,7 +633,7 @@ class CommandStartedEvent(_CommandEvent):
         super(CommandStartedEvent, self).__init__(
             command_name, request_id, connection_id, operation_id, service_id=service_id
         )
-        cmd_name, _ = command_name.lower(), command[command_name]
+        cmd_name = command_name.lower()
         if cmd_name in _SENSITIVE_COMMANDS or _is_speculative_authenticate(cmd_name, command):
             self.__cmd: Mapping[str, Any] = {}
         else:

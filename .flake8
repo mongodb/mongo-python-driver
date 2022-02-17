@@ -7,6 +7,8 @@ extend-ignore =
     E203,
     # E501 line too long (let black handle line length)
     E501
+    # B305 `.next()` is not a thing on Python 3
+    B305
 per-file-ignores =
     # E402 module level import not at top of file
     pymongo/__init__.py: E402
@@ -23,7 +25,6 @@ per-file-ignores =
     # B001 Do not use bare `except:`
     # E722 do not use bare 'except'
     # E731 do not assign a lambda expression, use a def
-    # B305 `.next()` is not a thing on Python 3
     # F811 redefinition of unused 'foo' from line XXX
     # F841 local variable 'foo' is assigned to but never used
-    test/*: E402, B011, F405, E741, B007, F403, B001, E722, E731, B305, F811, F841
+    test/*: E402, B011, F405, E741, B007, F403, B001, E722, E731, F811, F841

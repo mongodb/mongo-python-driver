@@ -518,7 +518,7 @@ class GridOut(io.IOBase):
                     self, self.__chunks, self._session, chunk_number
                 )
 
-            chunk = next(self.__chunk_iter)
+            chunk = self.__chunk_iter.next()
             chunk_data = chunk["data"][self.__position % chunk_size :]
 
             if not chunk_data:
@@ -562,7 +562,7 @@ class GridOut(io.IOBase):
         # Detect extra chunks after reading the entire file.
         if size == remainder and self.__chunk_iter:
             try:
-                next(self.__chunk_iter)
+                self.__chunk_iter.next()
             except StopIteration:
                 pass
 
@@ -777,11 +777,11 @@ class _GridOutChunkIterator(object):
             self._create_cursor()
             assert self._cursor is not None
         try:
-            return next(self._cursor)
+            return self._cursor.next()
         except CursorNotFound:
             self._cursor.close()
             self._create_cursor()
-            return next(self._cursor)
+            return self._cursor.next()
 
     def next(self) -> Mapping[str, Any]:
         try:
@@ -834,7 +834,7 @@ class GridOutIterator(object):
         return self
 
     def next(self) -> bytes:
-        chunk = next(self.__chunk_iter)
+        chunk = self.__chunk_iter.next()
         return bytes(chunk["data"])
 
     __next__ = next
@@ -886,8 +886,7 @@ class GridOutCursor(Cursor):
     def next(self) -> GridOut:
         """Get next GridOut object from cursor."""
         _disallow_transactions(self.session)
-        # Work around "super is not iterable" issue in Python 3.x
-        next_file = super(GridOutCursor, self).next()  # noqa: B305
+        next_file = super(GridOutCursor, self).next()
         return GridOut(self.__root_collection, file_document=next_file, session=self.session)
 
     __next__ = next

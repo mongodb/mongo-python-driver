@@ -84,12 +84,12 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
         batch_size = 2
         cursor = self.coll.find(batch_size=batch_size)
         for _ in range(batch_size):
-            cursor.next()  # noqa
+            cursor.next()
         # Force step-down the primary.
         repl_set_step_down(self.client, replSetStepDown=5, force=True)
         # Get next batch of results.
         for _ in range(batch_size):
-            cursor.next()  # noqa
+            cursor.next()
         # Verify pool not cleared.
         self.verify_pool_not_cleared()
         # Attempt insertion to mark server description as stale and prevent a

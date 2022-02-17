@@ -1520,7 +1520,7 @@ class TestCollection(IntegrationTest):
         cursor = self.db.test.aggregate(pipeline=[], cursor={"batchSize": 2})
         n = 0
         while True:
-            next(cursor)
+            cursor.next()
             n += 1
             if 3 == n:
                 self.assertFalse(cursor.alive)
