@@ -198,8 +198,7 @@ class TestSession(IntegrationTest):
         threads = []
         listener.results.clear()
         for op, args in ops:
-            typing.cast(typing.Iterable, args)
-            threads.append(threading.Thread(target=op, args=args))
+            threads.append(threading.Thread(target=op, args=typing.cast(typing.Iterable, args)))
             threads[-1].start()
         for thread in threads:
             thread.join()
