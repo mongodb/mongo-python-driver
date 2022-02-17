@@ -1012,11 +1012,6 @@ class _EmptyServerSession(object):
         self.dirty = False
         self.started = False
 
-    def timed_out(self, session_timeout_minutes):
-        idle_seconds = time.monotonic() - self.last_use
-        # Timed out if we have less than a minute to live.
-        return True
-
     def mark_dirty(self):
         self.dirty = True
 

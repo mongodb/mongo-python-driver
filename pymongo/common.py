@@ -16,7 +16,6 @@
 """Functions and classes common to multiple pymongo modules."""
 
 import datetime
-import time
 import warnings
 from collections import OrderedDict, abc
 from typing import (
