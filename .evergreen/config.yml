@@ -1714,7 +1714,6 @@ tasks:
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
-            VERSION: "latest"
             TOPOLOGY: "sharded_cluster"
             LOAD_BALANCER: true
         - func: "run load-balancer"
