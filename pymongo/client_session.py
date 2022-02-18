@@ -946,22 +946,24 @@ class ClientSession(Generic[_DocumentType]):
             return self._transaction.opts.read_preference
         return None
 
-    def _start_serv_sesh(self):
+    def _start_serv_sesh(self, sock_info):
         if isinstance(self._server_session, _EmptyServerSession):
-            self._server_session, old = self._client._get_server_session(), self._server_session
-            self._server_session.generation = old.generation
-            if old.started:
+            self._server_session, old = (
+                self._client._topology.get_server_session(
+                    supports_sessions=sock_info.supports_sessions
+                ),
+                self._server_session,
+            )
+            for _ in range(old.started):
                 self._server_session.inc_transaction_id()
 
     def _apply_to(self, command, is_retryable, read_preference, sock_info):
         self._check_ended()
-        self._start_serv_sesh()
+        self._start_serv_sesh(sock_info)
         if self.options.snapshot:
             self._update_read_concern(command, sock_info)
-
         self._server_session.last_use = time.monotonic()
         command["lsid"] = self._server_session.session_id
-
         if is_retryable:
             command["txnNumber"] = self._server_session.transaction_id
             return
@@ -1011,7 +1013,7 @@ class _EmptyServerSession(object):
         self.last_use = time.monotonic()
         self.lsid = None
         self.dirty = False
-        self.started = False
+        self.started = 0
 
     def timed_out(self, session_timeout_minutes):
         return True
@@ -1020,7 +1022,7 @@ class _EmptyServerSession(object):
         self.dirty = True
 
     def inc_transaction_id(self):
-        self.started = True
+        self.started += 1
 
 
 class _ServerSession(object):
@@ -1088,7 +1090,6 @@ class _ServerSessionPool(collections.deque):
             s = self.popleft()
             if not s.timed_out(session_timeout_minutes):
                 return s
-
         return _ServerSession(self.generation)
 
     def return_server_session(self, server_session, session_timeout_minutes):

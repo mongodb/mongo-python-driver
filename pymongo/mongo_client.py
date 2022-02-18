@@ -1633,14 +1633,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.6
         """
-        ret = self.__start_session(
+        return self.__start_session(
             False,
             causal_consistency=causal_consistency,
             default_transaction_options=default_transaction_options,
             snapshot=snapshot,
         )
-        ret._start_serv_sesh()
-        return ret
 
     def _get_server_session(self):
         """Internal: start or resume a _ServerSession."""
