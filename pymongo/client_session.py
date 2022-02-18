@@ -949,6 +949,7 @@ class ClientSession(Generic[_DocumentType]):
     def _start_serv_sesh(self):
         if isinstance(self._server_session, _EmptyServerSession):
             self._server_session, old = self._client._get_server_session(), self._server_session
+            self._server_session.generation = old.generation
             if old.started:
                 self._server_session.inc_transaction_id()
 
@@ -1011,6 +1012,9 @@ class _EmptyServerSession(object):
         self.lsid = None
         self.dirty = False
         self.started = False
+
+    def timed_out(self, session_timeout_minutes):
+        return True
 
     def mark_dirty(self):
         self.dirty = True
