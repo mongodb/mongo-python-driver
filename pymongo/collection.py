@@ -423,6 +423,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         bypass_document_validation: bool = False,
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
+        let: Optional[Mapping] = None,
     ) -> BulkWriteResult:
         """Send a batch of write operations to the server.
 
@@ -474,6 +475,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.client_session.ClientSession`.
           - `comment` (optional): A user-provided comment to attach to this
             command.
+          - `let` (optional): Map of parameter names and values. Values must be
+            constant or closed expressions that do not reference document
+            fields. Parameters can then be accessed as variables in an
+            aggregate expression context (e.g. "$$var").
 
         :Returns:
           An instance of :class:`~pymongo.results.BulkWriteResult`.
@@ -485,6 +490,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. versionchanged:: 4.1
            Added ``comment`` parameter.
+           Added ``let`` parameter.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -496,7 +502,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """
         common.validate_list("requests", requests)
 
-        blk = _Bulk(self, ordered, bypass_document_validation, comment=comment)
+        blk = _Bulk(self, ordered, bypass_document_validation, comment=comment, let=let)
         for request in requests:
             try:
                 request._add_to_bulk(blk)
