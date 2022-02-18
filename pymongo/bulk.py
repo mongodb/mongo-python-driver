@@ -147,7 +147,7 @@ class _Bulk(object):
             )
         )
         self.let = let
-        if self.let:
+        if self.let is not None:
             common.validate_is_document_type("let", self.let)
         self.comment = comment
         self.ordered = ordered
