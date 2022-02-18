@@ -301,7 +301,7 @@ class TopologyDescription(object):
         if address:
             # Ignore selectors when explicit address is requested.
             description = self.server_descriptions().get(address)
-            return [description] if description else []
+            return [description] if description and description.is_readable else []
 
         selection = Selection.from_topology_description(self)
         # Ignore read preference for sharded clusters.
