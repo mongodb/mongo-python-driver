@@ -728,7 +728,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 hint = helpers._index_document(hint)
             update_doc["hint"] = hint
         command = SON([("update", self.name), ("ordered", ordered), ("updates", [update_doc])])
-        if let is not None::
+        if let is not None:
             common.validate_is_mapping("let", let)
             command["let"] = let
         if not write_concern.is_server_default:
@@ -893,7 +893,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """
         common.validate_is_mapping("filter", filter)
         common.validate_ok_for_replace(replacement)
-        if let is not None::
+        if let is not None:
             common.validate_is_mapping("let", let)
         write_concern = self._write_concern_for(session)
         return UpdateResult(
@@ -1189,7 +1189,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if not write_concern.is_server_default:
             command["writeConcern"] = write_concern.document
 
-        if let is not None::
+        if let is not None:
             common.validate_is_document_type("let", let)
             command["let"] = let
 
@@ -2728,7 +2728,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             )
         collation = validate_collation_or_none(kwargs.pop("collation", None))
         cmd = SON([("findAndModify", self.__name), ("query", filter), ("new", return_document)])
-        if let is not None::
+        if let is not None:
             common.validate_is_mapping("let", let)
             cmd["let"] = let
         cmd.update(kwargs)

@@ -248,7 +248,7 @@ class Cursor(Generic[_DocumentType]):
         if projection is not None:
             projection = helpers._fields_list_to_dict(projection, "projection")
 
-        if let is not None::
+        if let is not None:
             validate_is_document_type("let", let)
 
         self.__let = let
