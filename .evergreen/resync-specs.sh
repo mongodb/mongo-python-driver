@@ -136,7 +136,7 @@ do
     uri|uri*options)
       cpjson uri-options/tests uri_options
       ;;
-    versioned-api)
+    stable-api)
       cpjson versioned-api/tests versioned-api
       ;;
     *)

@@ -587,7 +587,7 @@ class SocketInfo(object):
 
     def hello_cmd(self):
         # Handshake spec requires us to use OP_MSG+hello command for the
-        # initial handshake in load balanced or versioned api mode.
+        # initial handshake in load balanced or stable API mode.
         if self.opts.server_api or self.hello_ok or self.opts.load_balanced:
             self.op_msg_enabled = True
             return SON([(HelloCompat.CMD, 1)])

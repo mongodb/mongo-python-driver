@@ -515,12 +515,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
               - ``bypass_auto_encrpytion=False`` is passed to
                 :class:`~pymongo.encryption_options.AutoEncryptionOpts`
 
-          | **Versioned API options:**
-          | (If not set explicitly, Versioned API will not be enabled.)
+          | **Stable API options:**
+          | (If not set explicitly, Stable API will not be enabled.)
 
           - `server_api`: A
             :class:`~pymongo.server_api.ServerApi` which configures this
-            client to use Versioned API. See :ref:`versioned-api-ref` for
+            client to use Stable API. See :ref:`versioned-api-ref` for
             details.
 
         .. seealso:: The MongoDB documentation on `connections <https://dochub.mongodb.org/core/connections>`_.

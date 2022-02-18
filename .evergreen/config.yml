@@ -2561,7 +2561,7 @@ buildvariants:
   tasks:
     - name: atlas-data-lake-tests
 
-- matrix_name: "versioned-api-tests"
+- matrix_name: "stable-api-tests"
   matrix_spec:
     platform: ubuntu-18.04
     python-version: ["3.6", "3.10"]
