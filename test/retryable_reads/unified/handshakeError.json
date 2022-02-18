@@ -121,6 +121,12 @@
             },
             {
               "connectionCheckOutStartedEvent": {}
+            },
+            {
+              "connectionCheckOutStartedEvent": {}
+            },
+            {
+              "connectionCheckOutStartedEvent": {}
             }
           ]
         },
@@ -207,6 +213,12 @@
           "client": "client0",
           "eventType": "cmap",
           "events": [
+            {
+              "connectionCheckOutStartedEvent": {}
+            },
+            {
+              "connectionCheckOutStartedEvent": {}
+            },
             {
               "connectionCheckOutStartedEvent": {}
             },
