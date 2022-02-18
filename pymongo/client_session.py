@@ -950,9 +950,7 @@ class ClientSession(Generic[_DocumentType]):
         supports_sessions = False if sock_info is None else sock_info.supports_sessions
         if isinstance(self._server_session, _EmptyServerSession):
             self._server_session, old = (
-                self._client._topology.get_server_session(
-                    supports_sessions=supports_sessions
-                ),
+                self._client._topology.get_server_session(supports_sessions=supports_sessions),
                 self._server_session,
             )
             for _ in range(old.started):
