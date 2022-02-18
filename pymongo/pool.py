@@ -635,8 +635,6 @@ class SocketInfo(object):
             cmd["speculativeAuthenticate"] = auth_ctx.speculate_command()
 
         doc = self.command("admin", cmd, publish_events=False, exhaust_allowed=awaitable)
-        if not self.opts.load_balanced:
-            doc.pop("serviceId", None)
         hello = Hello(doc, awaitable=awaitable)
         self.is_writable = hello.is_writable
         self.max_wire_version = hello.max_wire_version
@@ -673,9 +671,6 @@ class SocketInfo(object):
         unpacked_docs = reply.unpack_response()
         response_doc = unpacked_docs[0]
         helpers._check_command_response(response_doc, self.max_wire_version)
-        # Remove after PYTHON-2712.
-        if not self.opts.load_balanced:
-            response_doc.pop("serviceId", None)
         return response_doc
 
     def command(
