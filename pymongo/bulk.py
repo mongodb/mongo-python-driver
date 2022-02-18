@@ -22,6 +22,7 @@ from itertools import islice
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
+from pymongo import common
 from pymongo.client_session import _validate_session_write_concern
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import (
@@ -146,6 +147,8 @@ class _Bulk(object):
             )
         )
         self.let = let
+        if self.let:
+            common.validate_is_document_type("let", self.let)
         self.comment = comment
         self.ordered = ordered
         self.ops = []
@@ -316,7 +319,7 @@ class _Bulk(object):
                     cmd["writeConcern"] = write_concern.document
                 if self.bypass_doc_val:
                     cmd["bypassDocumentValidation"] = True
-                if self.let and run.op_type in (_DELETE, _UPDATE):
+                if self.let is not None and run.op_type in (_DELETE, _UPDATE):
                     cmd["let"] = self.let
                 if session:
                     # Start a new retryable write unless one was already
