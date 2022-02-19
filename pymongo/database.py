@@ -710,8 +710,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             kwargs["comment"] = comment
         if read_preference is None:
             read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
-        if session:
-            session._start_serv_sesh()
+            
         with self.__client._socket_for_reads(read_preference, session) as (
             sock_info,
             read_preference,
