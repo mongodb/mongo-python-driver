@@ -272,7 +272,7 @@ def _receive_data_on_socket(sock_info, length, deadline):
         try:
             wait_for_read(sock_info, deadline)
             chunk_length = sock_info.sock.recv_into(mv[bytes_read:])
-        except OSError as exc:  # noqa: B014
+        except OSError as exc:
             if _errno_from_exception(exc) == errno.EINTR:
                 continue
             raise

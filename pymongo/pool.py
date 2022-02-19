@@ -72,7 +72,7 @@ def is_ip_address(address):
     try:
         ipaddress.ip_address(address)
         return True
-    except (ValueError, UnicodeError):  # noqa: B014
+    except ValueError:
         return False
 
 
@@ -927,7 +927,7 @@ class SocketInfo:
             reason = ConnectionClosedReason.ERROR
         self.close_socket(reason)
         # SSLError from PyOpenSSL inherits directly from Exception.
-        if isinstance(error, (IOError, OSError, _SSLError)):
+        if isinstance(error, (OSError, _SSLError)):
             _raise_connection_failure(self.address, error)
         else:
             raise
@@ -1043,7 +1043,7 @@ def _configured_socket(address, options):
             # Raise _CertificateError directly like we do after match_hostname
             # below.
             raise
-        except (OSError, _SSLError) as exc:  # noqa: B014
+        except (OSError, _SSLError) as exc:
             sock.close()
             # We raise AutoReconnect for transient and permanent SSL handshake
             # failures alike. Permanent handshake failures, like protocol
@@ -1339,7 +1339,7 @@ class Pool:
                     self.address, conn_id, ConnectionClosedReason.ERROR
                 )
 
-            if isinstance(error, (IOError, OSError, _SSLError)):
+            if isinstance(error, (OSError, _SSLError)):
                 _raise_connection_failure(self.address, error)
 
             raise

@@ -415,18 +415,18 @@ class TestGridFile(IntegrationTest):
         self.assertEqual(b"hello world", g.read())
         g.seek(1)
         self.assertEqual(b"ello world", g.read())
-        self.assertRaises(IOError, g.seek, -1)
+        self.assertRaises(OSError, g.seek, -1)
 
         g.seek(-3, _SEEK_END)
         self.assertEqual(b"rld", g.read())
         g.seek(0, _SEEK_END)
         self.assertEqual(b"", g.read())
-        self.assertRaises(IOError, g.seek, -100, _SEEK_END)
+        self.assertRaises(OSError, g.seek, -100, _SEEK_END)
 
         g.seek(3)
         g.seek(3, _SEEK_CUR)
         self.assertEqual(b"world", g.read())
-        self.assertRaises(IOError, g.seek, -100, _SEEK_CUR)
+        self.assertRaises(OSError, g.seek, -100, _SEEK_CUR)
 
     def test_tell(self):
         f = GridIn(self.db.fs, chunkSize=3)

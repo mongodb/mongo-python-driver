@@ -99,7 +99,7 @@ class TestClientSSL(unittest.TestCase):
         self.assertRaises(TypeError, MongoClient, ssl=5.5)
         self.assertRaises(TypeError, MongoClient, ssl=[])
 
-        self.assertRaises(IOError, MongoClient, tlsCertificateKeyFile="NoSuchFile")
+        self.assertRaises(OSError, MongoClient, tlsCertificateKeyFile="NoSuchFile")
         self.assertRaises(TypeError, MongoClient, tlsCertificateKeyFile=True)
         self.assertRaises(TypeError, MongoClient, tlsCertificateKeyFile=[])
 
