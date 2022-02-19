@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # PyMongo documentation build configuration file
 #

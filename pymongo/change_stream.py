@@ -436,6 +436,6 @@ class ClusterChangeStream(DatabaseChangeStream, Generic[_DocumentType]):
     """
 
     def _change_stream_options(self):
-        options = super(ClusterChangeStream, self)._change_stream_options()
+        options = super()._change_stream_options()
         options["allChangesForCluster"] = True
         return options

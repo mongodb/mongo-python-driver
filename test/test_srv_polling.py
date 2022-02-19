@@ -32,7 +32,7 @@ from pymongo.srv_resolver import _HAVE_DNSPYTHON
 WAIT_TIME = 0.1
 
 
-class SrvPollingKnobs(object):
+class SrvPollingKnobs:
     def __init__(
         self,
         ttl_time=None,

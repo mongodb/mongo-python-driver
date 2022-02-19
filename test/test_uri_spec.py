@@ -73,7 +73,7 @@ class TestAllScenarios(unittest.TestCase):
 
 
 def get_error_message_template(expected, artefact):
-    return "%s %s for test '%s'" % ("Expected" if expected else "Unexpected", artefact, "%s")
+    return "{} {} for test '{}'".format("Expected" if expected else "Unexpected", artefact, "%s")
 
 
 def run_scenario_in_dir(target_workdir):
@@ -133,13 +133,15 @@ def create_test(test, test_workdir):
 
             for exp, actual in zip(test["hosts"], options["nodelist"]):
                 self.assertEqual(
-                    exp["host"], actual[0], "Expected host %s but got %s" % (exp["host"], actual[0])
+                    exp["host"],
+                    actual[0],
+                    "Expected host {} but got {}".format(exp["host"], actual[0]),
                 )
                 if exp["port"] is not None:
                     self.assertEqual(
                         exp["port"],
                         actual[1],
-                        "Expected port %s but got %s" % (exp["port"], actual),
+                        "Expected port {} but got {}".format(exp["port"], actual),
                     )
 
         # Compare auth options.
@@ -157,7 +159,7 @@ def create_test(test, test_workdir):
                     self.assertEqual(
                         auth[elm],
                         options[elm],
-                        "Expected %s but got %s" % (auth[elm], options[elm]),
+                        f"Expected {auth[elm]} but got {options[elm]}",
                     )
 
         # Compare URI options.
@@ -183,7 +185,7 @@ def create_test(test, test_workdir):
                         ),
                     )
                 else:
-                    self.fail("Missing expected option %s" % (opt,))
+                    self.fail(f"Missing expected option {opt}")
 
     return run_scenario_in_dir(test_workdir)(run_scenario)
 
@@ -209,7 +211,7 @@ def create_tests(test_path):
                     continue
 
                 testmethod = create_test(testcase, dirpath)
-                testname = "test_%s_%s_%s" % (
+                testname = "test_{}_{}_{}".format(
                     dirname,
                     os.path.splitext(filename)[0],
                     str(dsc).replace(" ", "_"),

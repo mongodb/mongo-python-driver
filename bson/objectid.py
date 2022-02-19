@@ -44,7 +44,7 @@ def _random_bytes() -> bytes:
     return os.urandom(5)
 
 
-class ObjectId(object):
+class ObjectId:
     """A MongoDB ObjectId."""
 
     _pid = os.getpid()
@@ -203,9 +203,7 @@ class ObjectId(object):
             else:
                 _raise_invalid_id(oid)
         else:
-            raise TypeError(
-                "id must be an instance of (bytes, str, ObjectId), not %s" % (type(oid),)
-            )
+            raise TypeError(f"id must be an instance of (bytes, str, ObjectId), not {type(oid)}")
 
     @property
     def binary(self) -> bytes:
@@ -250,7 +248,7 @@ class ObjectId(object):
         return binascii.hexlify(self.__id).decode()
 
     def __repr__(self):
-        return "ObjectId('%s')" % (str(self),)
+        return f"ObjectId('{str(self)}')"
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, ObjectId):

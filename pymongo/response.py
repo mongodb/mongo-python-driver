@@ -15,7 +15,7 @@
 """Represent a response from the server."""
 
 
-class Response(object):
+class Response:
     __slots__ = ("_data", "_address", "_request_id", "_duration", "_from_command", "_docs")
 
     def __init__(self, data, address, request_id, duration, from_command, docs):
@@ -86,9 +86,7 @@ class PinnedResponse(Response):
           - `more_to_come`: Bool indicating whether cursor is ready to be
             exhausted.
         """
-        super(PinnedResponse, self).__init__(
-            data, address, request_id, duration, from_command, docs
-        )
+        super().__init__(data, address, request_id, duration, from_command, docs)
         self._socket_info = socket_info
         self._more_to_come = more_to_come
 

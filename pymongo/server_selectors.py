@@ -17,7 +17,7 @@
 from pymongo.server_type import SERVER_TYPE
 
 
-class Selection(object):
+class Selection:
     """Input or output of a server selector function."""
 
     @classmethod

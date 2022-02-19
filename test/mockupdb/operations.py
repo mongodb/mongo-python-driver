@@ -105,7 +105,7 @@ operations = [
 ]
 
 
-_ops_by_name = dict([(op.name, op) for op in operations])
+_ops_by_name = {op.name: op for op in operations}
 
 Upgrade = namedtuple("Upgrade", ["name", "function", "old", "new", "wire_version"])
 

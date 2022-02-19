@@ -83,7 +83,7 @@ class TestSecondaryBecomesStandalone(MockClientTest):
         c.mock_members.remove("c:3")
         c.mock_standalones.append("c:3")
 
-        wait_until(lambda: set([("b", 2)]) == c.secondaries, "update the list of secondaries")
+        wait_until(lambda: {("b", 2)} == c.secondaries, "update the list of secondaries")
 
         self.assertEqual(("a", 1), c.primary)
 
@@ -106,7 +106,7 @@ class TestSecondaryRemoved(MockClientTest):
 
         # C is removed.
         c.mock_hello_hosts.remove("c:3")
-        wait_until(lambda: set([("b", 2)]) == c.secondaries, "update list of secondaries")
+        wait_until(lambda: {("b", 2)} == c.secondaries, "update list of secondaries")
 
         self.assertEqual(("a", 1), c.primary)
 
@@ -148,7 +148,7 @@ class TestSecondaryAdded(MockClientTest):
 
         # MongoClient connects to primary by default.
         self.assertEqual(c.address, ("a", 1))
-        self.assertEqual(set([("a", 1), ("b", 2)]), c.nodes)
+        self.assertEqual({("a", 1), ("b", 2)}, c.nodes)
 
         # C is added.
         c.mock_members.append("c:3")
@@ -159,7 +159,7 @@ class TestSecondaryAdded(MockClientTest):
         self.assertEqual(c.address, ("a", 1))
 
         wait_until(
-            lambda: set([("a", 1), ("b", 2), ("c", 3)]) == c.nodes, "reconnect to both secondaries"
+            lambda: {("a", 1), ("b", 2), ("c", 3)} == c.nodes, "reconnect to both secondaries"
         )
 
     def test_replica_set_client(self):
@@ -169,13 +169,13 @@ class TestSecondaryAdded(MockClientTest):
         self.addCleanup(c.close)
 
         wait_until(lambda: ("a", 1) == c.primary, "discover the primary")
-        wait_until(lambda: set([("b", 2)]) == c.secondaries, "discover the secondary")
+        wait_until(lambda: {("b", 2)} == c.secondaries, "discover the secondary")
 
         # C is added.
         c.mock_members.append("c:3")
         c.mock_hello_hosts.append("c:3")
 
-        wait_until(lambda: set([("b", 2), ("c", 3)]) == c.secondaries, "discover the new secondary")
+        wait_until(lambda: {("b", 2), ("c", 3)} == c.secondaries, "discover the new secondary")
 
         self.assertEqual(("a", 1), c.primary)
 

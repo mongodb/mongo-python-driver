@@ -110,7 +110,7 @@ def generate_mongos_read_mode_tests():
             # Skip something like command('foo', read_preference=SECONDARY).
             continue
         test = create_mongos_read_mode_test(mode, operation)
-        test_name = "test_%s_with_mode_%s" % (operation.name.replace(" ", "_"), mode)
+        test_name = "test_{}_with_mode_{}".format(operation.name.replace(" ", "_"), mode)
         test.__name__ = test_name
         setattr(TestMongosCommandReadMode, test_name, test)
 

@@ -46,7 +46,7 @@ SRV_POLLING_TOPOLOGIES: Tuple[int, int] = (TOPOLOGY_TYPE.Unknown, TOPOLOGY_TYPE.
 _ServerSelector = Callable[[List[ServerDescription]], List[ServerDescription]]
 
 
-class TopologyDescription(object):
+class TopologyDescription:
     def __init__(
         self,
         topology_type: int,
@@ -170,7 +170,7 @@ class TopologyDescription(object):
             topology_type = self._topology_type
 
         # The default ServerDescription's type is Unknown.
-        sds = dict((address, ServerDescription(address)) for address in self._server_descriptions)
+        sds = {address: ServerDescription(address) for address in self._server_descriptions}
 
         return TopologyDescription(
             topology_type,
@@ -345,7 +345,7 @@ class TopologyDescription(object):
     def __repr__(self):
         # Sort the servers by address.
         servers = sorted(self._server_descriptions.values(), key=lambda sd: sd.address)
-        return "<%s id: %s, topology_type: %s, servers: %r>" % (
+        return "<{} id: {}, topology_type: {}, servers: {!r}>".format(
             self.__class__.__name__,
             self._topology_settings._topology_id,
             self.topology_type_name,

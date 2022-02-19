@@ -106,7 +106,7 @@ def got_app_error(topology, app_error):
         elif error_type == "timeout":
             raise NetworkTimeout("mock network timeout error")
         else:
-            raise AssertionError("unknown error type: %s" % (error_type,))
+            raise AssertionError(f"unknown error type: {error_type}")
         assert False
     except (AutoReconnect, NotPrimaryError, OperationFailure) as e:
         if when == "beforeHandshakeCompletes":
@@ -114,7 +114,7 @@ def got_app_error(topology, app_error):
         elif when == "afterHandshakeCompletes":
             completed_handshake = True
         else:
-            assert False, "Unknown when field %s" % (when,)
+            assert False, f"Unknown when field {when}"
 
         topology.handle_error(
             server_address,
@@ -203,7 +203,7 @@ def create_test(scenario_def):
         for i, phase in enumerate(scenario_def["phases"]):
             # Including the phase description makes failures easier to debug.
             description = phase.get("description", str(i))
-            with assertion_context("phase: %s" % (description,)):
+            with assertion_context(f"phase: {description}"):
                 for response in phase.get("responses", []):
                     got_hello(c, common.partition_node(response[0]), response[1])
 
@@ -225,7 +225,7 @@ def create_tests():
 
             # Construct test from scenario.
             new_test = create_test(scenario_def)
-            test_name = "test_%s_%s" % (dirname, os.path.splitext(filename)[0])
+            test_name = f"test_{dirname}_{os.path.splitext(filename)[0]}"
 
             new_test.__name__ = test_name
             setattr(TestAllScenarios, new_test.__name__, new_test)
@@ -366,16 +366,14 @@ class TestIntegration(SpecRunner):
 
         Assert the given event was published exactly `count` times.
         """
-        self.assertEqual(self._event_count(event), count, "expected %s not %r" % (count, event))
+        self.assertEqual(self._event_count(event), count, f"expected {count} not {event!r}")
 
     def wait_for_event(self, event, count):
         """Run the waitForEvent test operation.
 
         Wait for a number of events to be published, or fail.
         """
-        wait_until(
-            lambda: self._event_count(event) >= count, "find %s %s event(s)" % (count, event)
-        )
+        wait_until(lambda: self._event_count(event) >= count, f"find {count} {event} event(s)")
 
     def configure_fail_point(self, fail_point):
         """Run the configureFailPoint test operation."""
@@ -427,7 +425,7 @@ class TestIntegration(SpecRunner):
         thread.join(60)
         if thread.exc:
             raise thread.exc
-        self.assertFalse(thread.is_alive(), "Thread %s is still running" % (name,))
+        self.assertFalse(thread.is_alive(), f"Thread {name} is still running")
 
 
 def create_spec_test(scenario_def, test, name):

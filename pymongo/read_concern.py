@@ -17,7 +17,7 @@
 from typing import Any, Dict, Optional
 
 
-class ReadConcern(object):
+class ReadConcern:
     """ReadConcern
 
     :Parameters:

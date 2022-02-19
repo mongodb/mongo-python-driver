@@ -306,7 +306,7 @@ class Binary(bytes):
         .. versionadded:: 3.11
         """
         if self.subtype not in ALL_UUID_SUBTYPES:
-            raise ValueError("cannot decode subtype %s as a uuid" % (self.subtype,))
+            raise ValueError(f"cannot decode subtype {self.subtype} as a uuid")
 
         if uuid_representation not in ALL_UUID_REPRESENTATIONS:
             raise ValueError(
@@ -341,7 +341,7 @@ class Binary(bytes):
 
     def __getnewargs__(self) -> Tuple[bytes, int]:  # type: ignore[override]
         # Work around http://bugs.python.org/issue7382
-        data = super(Binary, self).__getnewargs__()[0]
+        data = super().__getnewargs__()[0]
         if not isinstance(data, bytes):
             data = data.encode("latin-1")
         return data, self.__subtype
@@ -355,10 +355,10 @@ class Binary(bytes):
         return False
 
     def __hash__(self) -> int:
-        return super(Binary, self).__hash__() ^ hash(self.__subtype)
+        return super().__hash__() ^ hash(self.__subtype)
 
     def __ne__(self, other: Any) -> bool:
         return not self == other
 
     def __repr__(self):
-        return "Binary(%s, %s)" % (bytes.__repr__(self), self.__subtype)
+        return f"Binary({bytes.__repr__(self)}, {self.__subtype})"

@@ -165,7 +165,7 @@ def _parse_pool_options(username, password, database, options):
     )
 
 
-class ClientOptions(object):
+class ClientOptions:
     """Read only configuration options for a MongoClient.
 
     Should not be instantiated directly by application developers. Access

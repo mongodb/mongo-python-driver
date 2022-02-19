@@ -111,7 +111,7 @@ class TestCMAP(IntegrationTest):
         timeout = op.get("timeout", 10000) / 1000.0
         wait_until(
             lambda: self.listener.event_count(event) >= count,
-            "find %s %s event(s)" % (count, event),
+            f"find {count} {event} event(s)",
             timeout=timeout,
         )
 
@@ -186,11 +186,11 @@ class TestCMAP(IntegrationTest):
         """Check the events of a test."""
         actual_events = self.actual_events(ignore)
         for actual, expected in zip(actual_events, events):
-            self.logs.append("Checking event actual: %r vs expected: %r" % (actual, expected))
+            self.logs.append(f"Checking event actual: {actual!r} vs expected: {expected!r}")
             self.check_event(actual, expected)
 
         if len(events) > len(actual_events):
-            self.fail("missing events: %r" % (events[len(actual_events) :],))
+            self.fail(f"missing events: {events[len(actual_events) :]!r}")
 
     def check_error(self, actual, expected):
         message = expected.pop("message")
@@ -280,7 +280,7 @@ class TestCMAP(IntegrationTest):
             self.check_events(test["events"], test["ignore"])
         except Exception:
             # Print the events after a test failure.
-            print("\nFailed test: %r" % (test["description"],))
+            print("\nFailed test: {!r}".format(test["description"]))
             print("Operations:")
             for op in self._ops:
                 print(op)
@@ -327,8 +327,8 @@ class TestCMAP(IntegrationTest):
             self.assertEqual(pool.opts, pool_opts)
 
     def test_3_uri_connection_pool_options(self):
-        opts = "&".join(["%s=%s" % (k, v) for k, v in self.POOL_OPTIONS.items()])
-        uri = "mongodb://%s/?%s" % (client_context.pair, opts)
+        opts = "&".join([f"{k}={v}" for k, v in self.POOL_OPTIONS.items()])
+        uri = f"mongodb://{client_context.pair}/?{opts}"
         client = rs_or_single_client(uri)
         self.addCleanup(client.close)
         pool_opts = get_pool(client).opts

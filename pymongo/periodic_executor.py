@@ -20,7 +20,7 @@ import weakref
 from typing import Any, Optional
 
 
-class PeriodicExecutor(object):
+class PeriodicExecutor:
     def __init__(self, interval, min_interval, target, name=None):
         """ "Run a target function periodically on a background thread.
 
@@ -50,7 +50,7 @@ class PeriodicExecutor(object):
         self._lock = threading.Lock()
 
     def __repr__(self):
-        return "<%s(name=%s) object at 0x%x>" % (self.__class__.__name__, self._name, id(self))
+        return f"<{self.__class__.__name__}(name={self._name}) object at 0x{id(self):x}>"
 
     def open(self) -> None:
         """Start. Multiple calls have no effect.

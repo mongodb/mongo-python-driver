@@ -44,7 +44,7 @@ class TestRawBSONDocument(IntegrationTest):
 
     @classmethod
     def setUpClass(cls):
-        super(TestRawBSONDocument, cls).setUpClass()
+        super().setUpClass()
         client_context.client = rs_or_single_client()
         cls.client = client_context.client
 

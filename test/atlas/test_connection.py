@@ -120,7 +120,7 @@ class TestAtlasConnect(unittest.TestCase):
         duplicates = [names for names in uri_to_names.values() if len(names) > 1]
         self.assertFalse(
             duplicates,
-            "Error: the following env variables have duplicate values: %s" % (duplicates,),
+            f"Error: the following env variables have duplicate values: {duplicates}",
         )
 
 

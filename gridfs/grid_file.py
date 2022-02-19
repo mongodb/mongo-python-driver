@@ -76,7 +76,7 @@ def _grid_in_property(
     if read_only:
         docstring += "\n\nThis attribute is read-only."
     elif closed_only:
-        docstring = "%s\n\n%s" % (
+        docstring = "{}\n\n{}".format(
             docstring,
             "This attribute is read-only and "
             "can only be read after :meth:`close` "
@@ -114,7 +114,7 @@ def _disallow_transactions(session: Optional[ClientSession]) -> None:
         raise InvalidOperation("GridFS does not support multi-document transactions")
 
 
-class GridIn(object):
+class GridIn:
     """Class to write data to GridFS."""
 
     def __init__(
@@ -489,7 +489,7 @@ class GridOut(io.IOBase):
             self._file = self.__files.find_one({"_id": self.__file_id}, session=self._session)
             if not self._file:
                 raise NoFile(
-                    "no file in gridfs collection %r with _id %r" % (self.__files, self.__file_id)
+                    f"no file in gridfs collection {self.__files!r} with _id {self.__file_id!r}"
                 )
 
     def __getattr__(self, name: str) -> Any:
@@ -635,10 +635,10 @@ class GridOut(io.IOBase):
         elif whence == _SEEK_END:
             new_pos = int(self.length) + pos
         else:
-            raise IOError(22, "Invalid value for `whence`")
+            raise OSError(22, "Invalid value for `whence`")
 
         if new_pos < 0:
-            raise IOError(22, "Invalid value for `pos` - must be positive")
+            raise OSError(22, "Invalid value for `pos` - must be positive")
 
         # Optimization, continue using the same buffer and chunk iterator.
         if new_pos == self.__position:
@@ -726,7 +726,7 @@ class GridOut(io.IOBase):
         pass
 
 
-class _GridOutChunkIterator(object):
+class _GridOutChunkIterator:
     """Iterates over a file's chunks using a single cursor.
 
     Raises CorruptGridFile when encountering any truncated, missing, or extra
@@ -826,7 +826,7 @@ class _GridOutChunkIterator(object):
             self._cursor = None
 
 
-class GridOutIterator(object):
+class GridOutIterator:
     def __init__(self, grid_out: GridOut, chunks: Collection, session: ClientSession):
         self.__chunk_iter = _GridOutChunkIterator(grid_out, chunks, session, 0)
 
@@ -872,7 +872,7 @@ class GridOutCursor(Cursor):
         # Hold on to the base "fs" collection to create GridOut objects later.
         self.__root_collection = collection
 
-        super(GridOutCursor, self).__init__(
+        super().__init__(
             collection.files,
             filter,
             skip=skip,
@@ -886,7 +886,7 @@ class GridOutCursor(Cursor):
     def next(self) -> GridOut:
         """Get next GridOut object from cursor."""
         _disallow_transactions(self.session)
-        next_file = super(GridOutCursor, self).next()
+        next_file = super().next()
         return GridOut(self.__root_collection, file_document=next_file, session=self.session)
 
     __next__ = next

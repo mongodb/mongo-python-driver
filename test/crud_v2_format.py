@@ -27,7 +27,7 @@ class TestCrudV2(SpecRunner):
 
     def allowable_errors(self, op):
         """Override expected error classes."""
-        errors = super(TestCrudV2, self).allowable_errors(op)
+        errors = super().allowable_errors(op)
         errors += (ValueError,)
         return errors
 
@@ -51,4 +51,4 @@ class TestCrudV2(SpecRunner):
         """Allow specs to override a test's setup."""
         # PYTHON-1935 Only create the collection if there is data to insert.
         if scenario_def["data"]:
-            super(TestCrudV2, self).setup_scenario(scenario_def)
+            super().setup_scenario(scenario_def)

@@ -118,7 +118,7 @@ class TestDatabase(IntegrationTest):
     def test_repr(self):
         self.assertEqual(
             repr(Database(self.client, "pymongo_test")),
-            "Database(%r, %s)" % (self.client, repr("pymongo_test")),
+            "Database({!r}, {})".format(self.client, repr("pymongo_test")),
         )
 
     def test_create_collection(self):
@@ -231,8 +231,8 @@ class TestDatabase(IntegrationTest):
 
         # Checking if is there any collection which don't exists.
         if (
-            len(set(colls) - set(["test", "test.mike"])) == 0
-            or len(set(colls) - set(["test", "test.mike", "system.indexes"])) == 0
+            len(set(colls) - {"test", "test.mike"}) == 0
+            or len(set(colls) - {"test", "test.mike", "system.indexes"}) == 0
         ):
             self.assertTrue(True)
         else:
@@ -270,10 +270,7 @@ class TestDatabase(IntegrationTest):
         coll_cnt = {}
 
         # Checking if is there any collection which don't exists.
-        if (
-            len(set(colls) - set(["test"])) == 0
-            or len(set(colls) - set(["test", "system.indexes"])) == 0
-        ):
+        if len(set(colls) - {"test"}) == 0 or len(set(colls) - {"test", "system.indexes"}) == 0:
             self.assertTrue(True)
         else:
             self.assertTrue(False)

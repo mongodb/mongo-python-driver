@@ -50,12 +50,12 @@ class BulkTestBase(IntegrationTest):
 
     @classmethod
     def setUpClass(cls):
-        super(BulkTestBase, cls).setUpClass()
+        super().setUpClass()
         cls.coll = cls.db.test
         cls.coll_w0 = cls.coll.with_options(write_concern=WriteConcern(w=0))
 
     def setUp(self):
-        super(BulkTestBase, self).setUp()
+        super().setUp()
         self.coll.drop()
 
     def assertEqualResponse(self, expected, actual):
@@ -93,7 +93,7 @@ class BulkTestBase(IntegrationTest):
                 self.assertEqual(
                     actual.get(key),
                     value,
-                    "%r value of %r does not match expected %r" % (key, actual.get(key), value),
+                    f"{key!r} value of {actual.get(key)!r} does not match expected {value!r}",
                 )
 
     def assertEqualUpsert(self, expected, actual):
@@ -793,10 +793,10 @@ class BulkAuthorizationTestBase(BulkTestBase):
     @client_context.require_auth
     @client_context.require_no_api_version
     def setUpClass(cls):
-        super(BulkAuthorizationTestBase, cls).setUpClass()
+        super().setUpClass()
 
     def setUp(self):
-        super(BulkAuthorizationTestBase, self).setUp()
+        super().setUp()
         client_context.create_user(self.db.name, "readonly", "pw", ["read"])
         self.db.command(
             "createRole",
@@ -902,7 +902,7 @@ class TestBulkAuthorization(BulkAuthorizationTestBase):
             InsertOne({"x": 3}),  # Never attempted.
         ]
         self.assertRaises(OperationFailure, coll.bulk_write, requests)
-        self.assertEqual(set([1, 2]), set(self.coll.distinct("x")))
+        self.assertEqual({1, 2}, set(self.coll.distinct("x")))
 
 
 class TestBulkWriteConcern(BulkTestBase):
@@ -911,7 +911,7 @@ class TestBulkWriteConcern(BulkTestBase):
 
     @classmethod
     def setUpClass(cls):
-        super(TestBulkWriteConcern, cls).setUpClass()
+        super().setUpClass()
         cls.w = client_context.w
         cls.secondary = None
         if cls.w is not None and cls.w > 1:

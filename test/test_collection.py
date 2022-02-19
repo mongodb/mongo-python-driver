@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright 2009-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -132,7 +130,7 @@ class TestCollection(IntegrationTest):
 
     @classmethod
     def setUpClass(cls):
-        super(TestCollection, cls).setUpClass()
+        super().setUpClass()
         cls.w = client_context.w  # type: ignore
 
     @classmethod
@@ -346,7 +344,7 @@ class TestCollection(IntegrationTest):
         db.test.insert_one({})  # create collection
 
         def map_indexes(indexes):
-            return dict([(index["name"], index) for index in indexes])
+            return {index["name"]: index for index in indexes}
 
         indexes = list(db.test.list_indexes())
         self.assertEqual(len(indexes), 1)
@@ -1613,8 +1611,8 @@ class TestCollection(IntegrationTest):
         self.assertTrue("hello" in db.test.find_one(projection=("hello",)))
         self.assertTrue("hello" not in db.test.find_one(projection=("foo",)))
 
-        self.assertTrue("hello" in db.test.find_one(projection=set(["hello"])))
-        self.assertTrue("hello" not in db.test.find_one(projection=set(["foo"])))
+        self.assertTrue("hello" in db.test.find_one(projection={"hello"}))
+        self.assertTrue("hello" not in db.test.find_one(projection={"foo"}))
 
         self.assertTrue("hello" in db.test.find_one(projection=frozenset(["hello"])))
         self.assertTrue("hello" not in db.test.find_one(projection=frozenset(["foo"])))

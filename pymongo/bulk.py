@@ -59,7 +59,7 @@ _WRITE_CONCERN_ERROR = 64
 _COMMANDS = ("insert", "update", "delete")
 
 
-class _Run(object):
+class _Run:
     """Represents a batch of write operations."""
 
     def __init__(self, op_type):
@@ -135,7 +135,7 @@ def _raise_bulk_write_error(full_result):
     raise BulkWriteError(full_result)
 
 
-class _Bulk(object):
+class _Bulk:
     """The private guts of the bulk write API."""
 
     def __init__(self, collection, ordered, bypass_document_validation, comment=None, let=None):

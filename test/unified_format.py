@@ -195,7 +195,7 @@ def parse_bulk_write_error_result(error):
     return parse_bulk_write_result(write_result)
 
 
-class NonLazyCursor(object):
+class NonLazyCursor:
     """A find cursor proxy that creates the remote cursor when initialized."""
 
     def __init__(self, find_cursor):
@@ -218,7 +218,7 @@ class EventListenerUtil(CMAPListener, CommandListener):
     def __init__(
         self, observe_events, ignore_commands, observe_sensitive_commands, store_events, entity_map
     ):
-        self._event_types = set(name.lower() for name in observe_events)
+        self._event_types = {name.lower() for name in observe_events}
         if observe_sensitive_commands:
             self._observe_sensitive_commands = True
             self._ignore_commands = set(ignore_commands)
@@ -235,7 +235,7 @@ class EventListenerUtil(CMAPListener, CommandListener):
                 for i in events:
                     self._event_mapping[i].append(id)
                 self.entity_map[id] = []
-        super(EventListenerUtil, self).__init__()
+        super().__init__()
 
     def get_events(self, event_type):
         if event_type == "command":
@@ -245,7 +245,7 @@ class EventListenerUtil(CMAPListener, CommandListener):
     def add_event(self, event):
         event_name = type(event).__name__.lower()
         if event_name in self._event_types:
-            super(EventListenerUtil, self).add_event(event)
+            super().add_event(event)
         for id in self._event_mapping[event_name]:
             self.entity_map[id].append(
                 {
@@ -279,7 +279,7 @@ class EventListenerUtil(CMAPListener, CommandListener):
         self._command_event(event)
 
 
-class EntityMapUtil(object):
+class EntityMapUtil:
     """Utility class that implements an entity map as per the unified
     test format specification."""
 
@@ -299,22 +299,20 @@ class EntityMapUtil(object):
         try:
             return self._entities[item]
         except KeyError:
-            self.test.fail("Could not find entity named %s in map" % (item,))
+            self.test.fail(f"Could not find entity named {item} in map")
 
     def __setitem__(self, key, value):
         if not isinstance(key, str):
             self.test.fail("Expected entity name of type str, got %s" % (type(key)))
 
         if key in self._entities:
-            self.test.fail("Entity named %s already in map" % (key,))
+            self.test.fail(f"Entity named {key} already in map")
 
         self._entities[key] = value
 
     def _create_entity(self, entity_spec, uri=None):
         if len(entity_spec) != 1:
-            self.test.fail(
-                "Entity spec %s did not contain exactly one top-level key" % (entity_spec,)
-            )
+            self.test.fail(f"Entity spec {entity_spec} did not contain exactly one top-level key")
 
         entity_type, spec = next(iter(entity_spec.items()))
         if entity_type == "client":
@@ -392,7 +390,7 @@ class EntityMapUtil(object):
         elif entity_type == "bucket":
             # TODO: implement the 'bucket' entity type
             self.test.skipTest("GridFS is not currently supported (PYTHON-2459)")
-        self.test.fail("Unable to create entity of unknown type %s" % (entity_type,))
+        self.test.fail(f"Unable to create entity of unknown type {entity_type}")
 
     def create_entities_from_spec(self, entity_spec, uri=None):
         for spec in entity_spec:
@@ -402,12 +400,12 @@ class EntityMapUtil(object):
         client = self[client_name]
         if not isinstance(client, MongoClient):
             self.test.fail(
-                "Expected entity %s to be of type MongoClient, got %s" % (client_name, type(client))
+                f"Expected entity {client_name} to be of type MongoClient, got {type(client)}"
             )
 
         listener = self._listeners.get(client_name)
         if not listener:
-            self.test.fail("No listeners configured for client %s" % (client_name,))
+            self.test.fail(f"No listeners configured for client {client_name}")
 
         return listener
 
@@ -457,7 +455,7 @@ BSON_TYPE_ALIAS_MAP = {
 }
 
 
-class MatchEvaluatorUtil(object):
+class MatchEvaluatorUtil:
     """Utility class that implements methods for evaluating matches as per
     the unified test format specification."""
 
@@ -470,18 +468,16 @@ class MatchEvaluatorUtil(object):
         elif spec is False:
             self.test.assertNotIn(key_to_compare, actual)
         else:
-            self.test.fail("Expected boolean value for $$exists operator, got %s" % (spec,))
+            self.test.fail(f"Expected boolean value for $$exists operator, got {spec}")
 
     def __type_alias_to_type(self, alias):
         if alias not in BSON_TYPE_ALIAS_MAP:
-            self.test.fail("Unrecognized BSON type alias %s" % (alias,))
+            self.test.fail(f"Unrecognized BSON type alias {alias}")
         return BSON_TYPE_ALIAS_MAP[alias]
 
     def _operation_type(self, spec, actual, key_to_compare):
         if isinstance(spec, abc.MutableSequence):
-            permissible_types = tuple(
-                [t for alias in spec for t in self.__type_alias_to_type(alias)]
-            )
+            permissible_types = tuple(t for alias in spec for t in self.__type_alias_to_type(alias))
         else:
             permissible_types = self.__type_alias_to_type(spec)
         value = actual[key_to_compare] if key_to_compare else actual
@@ -511,11 +507,11 @@ class MatchEvaluatorUtil(object):
         self.test.assertEqual(expected_lsid, actual[key_to_compare])
 
     def _evaluate_special_operation(self, opname, spec, actual, key_to_compare):
-        method_name = "_operation_%s" % (opname.strip("$"),)
+        method_name = "_operation_{}".format(opname.strip("$"))
         try:
             method = getattr(self, method_name)
         except AttributeError:
-            self.test.fail("Unsupported special matching operator %s" % (opname,))
+            self.test.fail(f"Unsupported special matching operator {opname}")
         else:
             method(spec, actual, key_to_compare)
 
@@ -666,7 +662,7 @@ class MatchEvaluatorUtil(object):
         elif name == "connectionCheckedInEvent":
             self.test.assertIsInstance(actual, ConnectionCheckedInEvent)
         else:
-            self.test.fail("Unsupported event type %s" % (name,))
+            self.test.fail(f"Unsupported event type {name}")
 
 
 def coerce_result(opname, result):
@@ -737,11 +733,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     @classmethod
     def setUpClass(cls):
         # super call creates internal client cls.client
-        super(UnifiedSpecTestMixinV1, cls).setUpClass()
+        super().setUpClass()
         # process file-level runOnRequirements
         run_on_spec = cls.TEST_SPEC.get("runOnRequirements", [])
         if not cls.should_run_on(run_on_spec):
-            raise unittest.SkipTest("%s runOnRequirements not satisfied" % (cls.__name__,))
+            raise unittest.SkipTest(f"{cls.__name__} runOnRequirements not satisfied")
 
         # add any special-casing for skipping tests here
         if client_context.storage_engine == "mmapv1":
@@ -749,7 +745,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 raise unittest.SkipTest("MMAPv1 does not support retryWrites=True")
 
     def setUp(self):
-        super(UnifiedSpecTestMixinV1, self).setUp()
+        super().setUp()
         # process schemaVersion
         # note: we check major schema version during class generation
         # note: we do this here because we cannot run assertions in setUpClass
@@ -757,7 +753,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self.assertLessEqual(
             version,
             self.SCHEMA_VERSION,
-            "expected schema version %s or lower, got %s" % (self.SCHEMA_VERSION, version),
+            f"expected schema version {self.SCHEMA_VERSION} or lower, got {version}",
         )
 
         # initialize internals
@@ -818,20 +814,18 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if error_labels_omit:
             for err_label in error_labels_omit:
                 if exception.has_error_label(err_label):
-                    self.fail("Exception '%s' unexpectedly had label '%s'" % (exception, err_label))
+                    self.fail(f"Exception '{exception}' unexpectedly had label '{err_label}'")
 
         if expect_result:
             if isinstance(exception, BulkWriteError):
                 result = parse_bulk_write_error_result(exception)
                 self.match_evaluator.match_result(expect_result, result)
             else:
-                self.fail(
-                    "expectResult can only be specified with %s exceptions" % (BulkWriteError,)
-                )
+                self.fail(f"expectResult can only be specified with {BulkWriteError} exceptions")
 
     def __raise_if_unsupported(self, opname, target, *target_types):
         if not isinstance(target, target_types):
-            self.fail("Operation %s not supported for entity of type %s" % (opname, type(target)))
+            self.fail(f"Operation {opname} not supported for entity of type {type(target)}")
 
     def __entityOperation_createChangeStream(self, target, *args, **kwargs):
         if client_context.storage_engine == "mmapv1":
@@ -938,17 +932,17 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             arguments = tuple()
 
         if isinstance(target, MongoClient):
-            method_name = "_clientOperation_%s" % (opname,)
+            method_name = f"_clientOperation_{opname}"
         elif isinstance(target, Database):
-            method_name = "_databaseOperation_%s" % (opname,)
+            method_name = f"_databaseOperation_{opname}"
         elif isinstance(target, Collection):
-            method_name = "_collectionOperation_%s" % (opname,)
+            method_name = f"_collectionOperation_{opname}"
         elif isinstance(target, ChangeStream):
-            method_name = "_changeStreamOperation_%s" % (opname,)
+            method_name = f"_changeStreamOperation_{opname}"
         elif isinstance(target, NonLazyCursor):
-            method_name = "_cursor_%s" % (opname,)
+            method_name = f"_cursor_{opname}"
         elif isinstance(target, ClientSession):
-            method_name = "_sessionOperation_%s" % (opname,)
+            method_name = f"_sessionOperation_{opname}"
         elif isinstance(target, GridFSBucket):
             raise NotImplementedError
         else:
@@ -960,7 +954,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             try:
                 cmd = getattr(target, camel_to_snake(opname))
             except AttributeError:
-                self.fail("Unsupported operation %s on entity %s" % (opname, target))
+                self.fail(f"Unsupported operation {opname} on entity {target}")
         else:
             cmd = functools.partial(method, target)
 
@@ -976,9 +970,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             raise
         else:
             if expect_error:
-                self.fail(
-                    'Excepted error %s but "%s" succeeded: %s' % (expect_error, opname, result)
-                )
+                self.fail(f'Excepted error {expect_error} but "{opname}" succeeded: {result}')
 
         if expect_result:
             actual = coerce_result(opname, result)
@@ -1124,11 +1116,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def run_special_operation(self, spec):
         opname = spec["name"]
-        method_name = "_testOperation_%s" % (opname,)
+        method_name = f"_testOperation_{opname}"
         try:
             method = getattr(self, method_name)
         except AttributeError:
-            self.fail("Unsupported special test operation %s" % (opname,))
+            self.fail(f"Unsupported special test operation {opname}")
         else:
             method(spec["arguments"])
 
@@ -1154,7 +1146,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 continue
 
             if len(events) > len(actual_events):
-                self.fail("Expected to see %s events, got %s" % (len(events), len(actual_events)))
+                self.fail(f"Expected to see {len(events)} events, got {len(actual_events)}")
 
             for idx, expected_event in enumerate(events):
                 self.match_evaluator.match_event(event_type, expected_event, actual_events[idx])
@@ -1188,7 +1180,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         # process skipReason
         skip_reason = spec.get("skipReason", None)
         if skip_reason is not None:
-            raise unittest.SkipTest("%s" % (skip_reason,))
+            raise unittest.SkipTest(f"{skip_reason}")
 
         # process createEntities
         self.entity_map = EntityMapUtil(self)
@@ -1216,7 +1208,7 @@ class UnifiedSpecTestMeta(type):
     EXPECTED_FAILURES: Any
 
     def __init__(cls, *args, **kwargs):
-        super(UnifiedSpecTestMeta, cls).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         def create_test(spec):
             def test_case(self):
@@ -1226,7 +1218,9 @@ class UnifiedSpecTestMeta(type):
 
         for test_spec in cls.TEST_SPEC["tests"]:
             description = test_spec["description"]
-            test_name = "test_%s" % (description.strip(". ").replace(" ", "_").replace(".", "_"),)
+            test_name = "test_{}".format(
+                description.strip(". ").replace(" ", "_").replace(".", "_")
+            )
             test_method = create_test(copy.deepcopy(test_spec))
             test_method.__name__ = str(test_name)
 
@@ -1255,7 +1249,7 @@ def generate_test_classes(
     class_name_prefix="",
     expected_failures=[],  # noqa: B006
     bypass_test_generation_errors=False,
-    **kwargs
+    **kwargs,
 ):
     """Method for generating test classes. Returns a dictionary where keys are
     the names of test classes and values are the test class objects."""
@@ -1284,7 +1278,7 @@ def generate_test_classes(
                 scenario_def = json_util.loads(scenario_stream.read(), json_options=opts)
 
             test_type = os.path.splitext(filename)[0]
-            snake_class_name = "Test%s_%s_%s" % (
+            snake_class_name = "Test{}_{}_{}".format(
                 class_name_prefix,
                 dirname.replace("-", "_"),
                 test_type.replace("-", "_").replace(".", "_"),

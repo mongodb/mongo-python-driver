@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2009-present MongoDB, Inc.
 #
@@ -67,7 +66,7 @@ class TestCode(unittest.TestCase):
         c = Code("hello world", {"blah": 3})
         self.assertEqual(repr(c), "Code('hello world', {'blah': 3})")
         c = Code("\x08\xFF")
-        self.assertEqual(repr(c), "Code(%s, None)" % (repr("\x08\xFF"),))
+        self.assertEqual(repr(c), "Code({}, None)".format(repr("\x08\xFF")))
 
     def test_equality(self):
         b = Code("hello")

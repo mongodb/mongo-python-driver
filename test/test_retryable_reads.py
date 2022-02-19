@@ -76,14 +76,14 @@ class TestSpec(SpecRunner):
     # TODO: remove this once PYTHON-1948 is done.
     @client_context.require_no_mmap
     def setUpClass(cls):
-        super(TestSpec, cls).setUpClass()
+        super().setUpClass()
 
     def maybe_skip_scenario(self, test):
-        super(TestSpec, self).maybe_skip_scenario(test)
+        super().maybe_skip_scenario(test)
         skip_names = ["listCollectionObjects", "listIndexNames", "listDatabaseObjects"]
         for name in skip_names:
             if name.lower() in test["description"].lower():
-                self.skipTest("PyMongo does not support %s" % (name,))
+                self.skipTest(f"PyMongo does not support {name}")
 
         # Serverless does not support $out and collation.
         if client_context.serverless:
@@ -107,7 +107,7 @@ class TestSpec(SpecRunner):
         """Override a test's collection name to support GridFS tests."""
         if "bucket_name" in scenario_def:
             return scenario_def["bucket_name"]
-        return super(TestSpec, self).get_scenario_coll_name(scenario_def)
+        return super().get_scenario_coll_name(scenario_def)
 
     def setup_scenario(self, scenario_def):
         """Override a test's setup to support GridFS tests."""
@@ -124,7 +124,7 @@ class TestSpec(SpecRunner):
                 db["fs.chunks"].insert_many(data["fs.chunks"])
                 db["fs.files"].insert_many(data["fs.files"])
         else:
-            super(TestSpec, self).setup_scenario(scenario_def)
+            super().setup_scenario(scenario_def)
 
 
 def create_test(scenario_def, test, name):

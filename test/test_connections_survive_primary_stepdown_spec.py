@@ -40,7 +40,7 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
     @classmethod
     @client_context.require_replica_set
     def setUpClass(cls):
-        super(TestConnectionsSurvivePrimaryStepDown, cls).setUpClass()
+        super().setUpClass()
         cls.listener = CMAPListener()
         cls.client = rs_or_single_client(
             event_listeners=[cls.listener], retryWrites=False, heartbeatFrequencyMS=500

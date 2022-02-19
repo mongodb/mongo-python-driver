@@ -28,7 +28,7 @@ from pymongo.command_cursor import CommandCursor
 from pymongo.operations import IndexModel
 
 
-class Empty(object):
+class Empty:
     def __getattr__(self, item):
         try:
             self.__dict__[item]

@@ -66,7 +66,7 @@ class TestMonitor(IntegrationTest):
         del client
 
         for ref, name in executor_refs:
-            wait_until(partial(unregistered, ref), "unregister executor: %s" % (name,), timeout=5)
+            wait_until(partial(unregistered, ref), f"unregister executor: {name}", timeout=5)
 
     def test_cleanup_executors_on_client_close(self):
         client = create_client()
@@ -76,9 +76,7 @@ class TestMonitor(IntegrationTest):
         client.close()
 
         for executor in executors:
-            wait_until(
-                lambda: executor._stopped, "closed executor: %s" % (executor._name,), timeout=5
-            )
+            wait_until(lambda: executor._stopped, f"closed executor: {executor._name}", timeout=5)
 
 
 if __name__ == "__main__":

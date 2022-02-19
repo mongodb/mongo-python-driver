@@ -121,7 +121,7 @@ class TestChangeStreamBase(IntegrationTest):
         client._close_cursor_now(cursor.cursor_id, address)
 
 
-class APITestsMixin(object):
+class APITestsMixin:
     @no_type_check
     def test_watch(self):
         with self.change_stream(
@@ -209,7 +209,7 @@ class APITestsMixin(object):
             # Stream still works after a resume.
             coll.insert_one({"_id": 3})
             wait_until(lambda: stream.try_next() is not None, "get change from try_next")
-            self.assertEqual(set(listener.started_command_names()), set(["getMore"]))
+            self.assertEqual(set(listener.started_command_names()), {"getMore"})
             self.assertIsNone(stream.try_next())
 
     @no_type_check
@@ -446,7 +446,7 @@ class APITestsMixin(object):
             self.assertEqual(change["fullDocument"], {"_id": 2})
 
 
-class ProseSpecTestsMixin(object):
+class ProseSpecTestsMixin:
     @no_type_check
     def _client_with_listener(self, *commands):
         listener = AllowListEventListener(*commands)
@@ -772,14 +772,14 @@ class TestClusterChangeStream(TestChangeStreamBase, APITestsMixin):
     @client_context.require_no_mmap
     @client_context.require_no_standalone
     def setUpClass(cls):
-        super(TestClusterChangeStream, cls).setUpClass()
+        super().setUpClass()
         cls.dbs = [cls.db, cls.client.pymongo_test_2]
 
     @classmethod
     def tearDownClass(cls):
         for db in cls.dbs:
             cls.client.drop_database(db)
-        super(TestClusterChangeStream, cls).tearDownClass()
+        super().tearDownClass()
 
     def change_stream_with_client(self, client, *args, **kwargs):
         return client.watch(*args, **kwargs)
@@ -834,7 +834,7 @@ class TestDatabaseChangeStream(TestChangeStreamBase, APITestsMixin):
     @client_context.require_no_mmap
     @client_context.require_no_standalone
     def setUpClass(cls):
-        super(TestDatabaseChangeStream, cls).setUpClass()
+        super().setUpClass()
 
     def change_stream_with_client(self, client, *args, **kwargs):
         return client[self.db.name].watch(*args, **kwargs)
@@ -921,7 +921,7 @@ class TestCollectionChangeStream(TestChangeStreamBase, APITestsMixin, ProseSpecT
     @client_context.require_no_mmap
     @client_context.require_no_standalone
     def setUpClass(cls):
-        super(TestCollectionChangeStream, cls).setUpClass()
+        super().setUpClass()
 
     def setUp(self):
         # Use a new collection for each test.
@@ -1052,17 +1052,17 @@ class TestAllLegacyScenarios(IntegrationTest):
     @classmethod
     @client_context.require_connection
     def setUpClass(cls):
-        super(TestAllLegacyScenarios, cls).setUpClass()
+        super().setUpClass()
         cls.listener = AllowListEventListener("aggregate", "getMore")
         cls.client = rs_or_single_client(event_listeners=[cls.listener])
 
     @classmethod
     def tearDownClass(cls):
         cls.client.close()
-        super(TestAllLegacyScenarios, cls).tearDownClass()
+        super().tearDownClass()
 
     def setUp(self):
-        super(TestAllLegacyScenarios, self).setUp()
+        super().setUp()
         self.listener.results.clear()
 
     def setUpCluster(self, scenario_dict):
@@ -1112,7 +1112,7 @@ class TestAllLegacyScenarios(IntegrationTest):
         exempt_fields = ["documentKey", "_id", "getMore"]
         for key, value in subdict.items():
             if key not in superdict:
-                self.fail("Key %s not found in %s" % (key, superdict))
+                self.fail(f"Key {key} not found in {superdict}")
             if isinstance(value, dict):
                 self.assert_dict_is_subset(superdict[key], value)
                 continue
@@ -1253,7 +1253,7 @@ def create_tests():
                 topologies = test["topology"]
                 new_test = client_context.require_cluster_type(topologies)(new_test)
 
-                test_name = "test_%s_%s_%s" % (
+                test_name = "test_{}_{}_{}".format(
                     dirname,
                     test_type.replace("-", "_"),
                     str(test["description"].replace(" ", "_")),

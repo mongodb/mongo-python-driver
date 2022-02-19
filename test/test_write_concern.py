@@ -40,7 +40,7 @@ class TestWriteConcern(unittest.TestCase):
         self.assertTrue(concern != None)  # noqa
 
     def test_equality_compatible_type(self):
-        class _FakeWriteConcern(object):
+        class _FakeWriteConcern:
             def __init__(self, **document):
                 self.document = document
 

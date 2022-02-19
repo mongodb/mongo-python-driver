@@ -22,7 +22,7 @@ from pymongo.helpers import _gen_index_name, _index_document, _index_list
 from pymongo.typings import _CollationIn, _DocumentIn, _Pipeline
 
 
-class InsertOne(object):
+class InsertOne:
     """Represents an insert_one operation."""
 
     __slots__ = ("_doc",)
@@ -43,7 +43,7 @@ class InsertOne(object):
         bulkobj.add_insert(self._doc)
 
     def __repr__(self):
-        return "InsertOne(%r)" % (self._doc,)
+        return f"InsertOne({self._doc!r})"
 
     def __eq__(self, other: Any) -> bool:
         if type(other) == type(self):
@@ -58,7 +58,7 @@ _IndexList = Sequence[Tuple[str, Union[int, str, Mapping[str, Any]]]]
 _IndexKeyHint = Union[str, _IndexList]
 
 
-class DeleteOne(object):
+class DeleteOne:
     """Represents a delete_one operation."""
 
     __slots__ = ("_filter", "_collation", "_hint")
@@ -103,7 +103,7 @@ class DeleteOne(object):
         bulkobj.add_delete(self._filter, 1, collation=self._collation, hint=self._hint)
 
     def __repr__(self):
-        return "DeleteOne(%r, %r)" % (self._filter, self._collation)
+        return f"DeleteOne({self._filter!r}, {self._collation!r})"
 
     def __eq__(self, other: Any) -> bool:
         if type(other) == type(self):
@@ -114,7 +114,7 @@ class DeleteOne(object):
         return not self == other
 
 
-class DeleteMany(object):
+class DeleteMany:
     """Represents a delete_many operation."""
 
     __slots__ = ("_filter", "_collation", "_hint")
@@ -159,7 +159,7 @@ class DeleteMany(object):
         bulkobj.add_delete(self._filter, 0, collation=self._collation, hint=self._hint)
 
     def __repr__(self):
-        return "DeleteMany(%r, %r)" % (self._filter, self._collation)
+        return f"DeleteMany({self._filter!r}, {self._collation!r})"
 
     def __eq__(self, other: Any) -> bool:
         if type(other) == type(self):
@@ -170,7 +170,7 @@ class DeleteMany(object):
         return not self == other
 
 
-class ReplaceOne(object):
+class ReplaceOne:
     """Represents a replace_one operation."""
 
     __slots__ = ("_filter", "_doc", "_upsert", "_collation", "_hint")
@@ -241,7 +241,7 @@ class ReplaceOne(object):
         return not self == other
 
     def __repr__(self):
-        return "%s(%r, %r, %r, %r, %r)" % (
+        return "{}({!r}, {!r}, {!r}, {!r}, {!r})".format(
             self.__class__.__name__,
             self._filter,
             self._doc,
@@ -251,7 +251,7 @@ class ReplaceOne(object):
         )
 
 
-class _UpdateOp(object):
+class _UpdateOp:
     """Private base class for update operations."""
 
     __slots__ = ("_filter", "_doc", "_upsert", "_collation", "_array_filters", "_hint")
@@ -297,7 +297,7 @@ class _UpdateOp(object):
         return not self == other
 
     def __repr__(self):
-        return "%s(%r, %r, %r, %r, %r, %r)" % (
+        return "{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
             self.__class__.__name__,
             self._filter,
             self._doc,
@@ -351,7 +351,7 @@ class UpdateOne(_UpdateOp):
         .. versionchanged:: 3.5
            Added the `collation` option.
         """
-        super(UpdateOne, self).__init__(filter, update, upsert, collation, array_filters, hint)
+        super().__init__(filter, update, upsert, collation, array_filters, hint)
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
@@ -409,7 +409,7 @@ class UpdateMany(_UpdateOp):
         .. versionchanged:: 3.5
            Added the `collation` option.
         """
-        super(UpdateMany, self).__init__(filter, update, upsert, collation, array_filters, hint)
+        super().__init__(filter, update, upsert, collation, array_filters, hint)
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
@@ -424,7 +424,7 @@ class UpdateMany(_UpdateOp):
         )
 
 
-class IndexModel(object):
+class IndexModel:
     """Represents an index to create."""
 
     __slots__ = ("__document",)

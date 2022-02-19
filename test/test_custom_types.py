@@ -81,7 +81,7 @@ class DecimalCodec(DecimalDecoder, DecimalEncoder):
 DECIMAL_CODECOPTS = CodecOptions(type_registry=TypeRegistry([DecimalCodec()]))
 
 
-class UndecipherableInt64Type(object):
+class UndecipherableInt64Type:
     def __init__(self, value):
         self.value = value
 
@@ -146,7 +146,7 @@ def type_obfuscating_decoder_factory(rt_type):
     return ResumeTokenToNanDecoder
 
 
-class CustomBSONTypeTests(object):
+class CustomBSONTypeTests:
     @no_type_check
     def roundtrip(self, doc):
         bsonbytes = encode(doc, codec_options=self.codecopts)
@@ -164,7 +164,7 @@ class CustomBSONTypeTests(object):
     def test_decode_all(self):
         documents = []
         for dec in range(3):
-            documents.append({"average": Decimal("56.4%s" % (dec,))})
+            documents.append({"average": Decimal(f"56.4{dec}")})
 
         bsonstream = bytes()
         for doc in documents:
@@ -287,7 +287,7 @@ class TestBSONTypeEnDeCodecs(unittest.TestCase):
             else:
                 codec()
 
-        class MyType(object):
+        class MyType:
             pass
 
         run_test(
@@ -350,11 +350,11 @@ class TestBSONCustomTypeEncoderAndFallbackEncoderTandem(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        class TypeA(object):
+        class TypeA:
             def __init__(self, x):
                 self.value = x
 
-        class TypeB(object):
+        class TypeB:
             def __init__(self, x):
                 self.value = x
 
@@ -442,12 +442,12 @@ class TestTypeRegistry(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        class MyIntType(object):
+        class MyIntType:
             def __init__(self, x):
                 assert isinstance(x, int)
                 self.x = x
 
-        class MyStrType(object):
+        class MyStrType:
             def __init__(self, x):
                 assert isinstance(x, str)
                 self.x = x
@@ -552,18 +552,18 @@ class TestTypeRegistry(unittest.TestCase):
         with self.assertRaisesRegex(TypeError, err_msg):
             TypeRegistry([type("AnyType", (object,), {})()])
 
-        err_msg = "fallback_encoder %r is not a callable" % (True,)
+        err_msg = f"fallback_encoder {True!r} is not a callable"
         with self.assertRaisesRegex(TypeError, err_msg):
             TypeRegistry([], True)  # type: ignore[arg-type]
 
-        err_msg = "fallback_encoder %r is not a callable" % ("hello",)
+        err_msg = "fallback_encoder {!r} is not a callable".format("hello")
         with self.assertRaisesRegex(TypeError, err_msg):
             TypeRegistry(fallback_encoder="hello")  # type: ignore[arg-type]
 
     def test_type_registry_repr(self):
         codec_instances = [codec() for codec in self.codecs]
         type_registry = TypeRegistry(codec_instances)
-        r = "TypeRegistry(type_codecs=%r, fallback_encoder=%r)" % (codec_instances, None)
+        r = f"TypeRegistry(type_codecs={codec_instances!r}, fallback_encoder={None!r})"
         self.assertEqual(r, repr(type_registry))
 
     def test_type_registry_eq(self):
@@ -776,7 +776,7 @@ class TestGridFileCustomType(IntegrationTest):
             self.assertRaises(AttributeError, setattr, two, attr, 5)
 
 
-class ChangeStreamsWCustomTypesTestMixin(object):
+class ChangeStreamsWCustomTypesTestMixin:
     @no_type_check
     def change_stream(self, *args, **kwargs):
         return self.watched_target.watch(*args, **kwargs)
@@ -899,7 +899,7 @@ class TestCollectionChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCus
     @client_context.require_no_mmap
     @client_context.require_no_standalone
     def setUpClass(cls):
-        super(TestCollectionChangeStreamsWCustomTypes, cls).setUpClass()
+        super().setUpClass()
         cls.db.test.delete_many({})
 
     def tearDown(self):
@@ -919,7 +919,7 @@ class TestDatabaseChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCusto
     @client_context.require_no_mmap
     @client_context.require_no_standalone
     def setUpClass(cls):
-        super(TestDatabaseChangeStreamsWCustomTypes, cls).setUpClass()
+        super().setUpClass()
         cls.db.test.delete_many({})
 
     def tearDown(self):
@@ -939,7 +939,7 @@ class TestClusterChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCustom
     @client_context.require_no_mmap
     @client_context.require_no_standalone
     def setUpClass(cls):
-        super(TestClusterChangeStreamsWCustomTypes, cls).setUpClass()
+        super().setUpClass()
         cls.db.test.delete_many({})
 
     def tearDown(self):

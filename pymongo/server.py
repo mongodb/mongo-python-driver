@@ -25,7 +25,7 @@ from pymongo.response import PinnedResponse, Response
 _CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
 
 
-class Server(object):
+class Server:
     def __init__(
         self, server_description, pool, monitor, topology_id=None, listeners=None, events=None
     ):
@@ -244,4 +244,4 @@ class Server(object):
             return request_id, data, 0
 
     def __repr__(self):
-        return "<%s %r>" % (self.__class__.__name__, self._description)
+        return f"<{self.__class__.__name__} {self._description!r}>"

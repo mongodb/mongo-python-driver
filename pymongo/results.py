@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional, cast
 from pymongo.errors import InvalidOperation
 
 
-class _WriteResult(object):
+class _WriteResult:
     """Base class for write result classes."""
 
     __slots__ = ("__acknowledged",)
@@ -63,7 +63,7 @@ class InsertOneResult(_WriteResult):
 
     def __init__(self, inserted_id: Any, acknowledged: bool) -> None:
         self.__inserted_id = inserted_id
-        super(InsertOneResult, self).__init__(acknowledged)
+        super().__init__(acknowledged)
 
     @property
     def inserted_id(self) -> Any:
@@ -78,7 +78,7 @@ class InsertManyResult(_WriteResult):
 
     def __init__(self, inserted_ids: List[Any], acknowledged: bool) -> None:
         self.__inserted_ids = inserted_ids
-        super(InsertManyResult, self).__init__(acknowledged)
+        super().__init__(acknowledged)
 
     @property
     def inserted_ids(self) -> List:
@@ -102,7 +102,7 @@ class UpdateResult(_WriteResult):
 
     def __init__(self, raw_result: Dict[str, Any], acknowledged: bool) -> None:
         self.__raw_result = raw_result
-        super(UpdateResult, self).__init__(acknowledged)
+        super().__init__(acknowledged)
 
     @property
     def raw_result(self) -> Dict[str, Any]:
@@ -140,7 +140,7 @@ class DeleteResult(_WriteResult):
 
     def __init__(self, raw_result: Dict[str, Any], acknowledged: bool) -> None:
         self.__raw_result = raw_result
-        super(DeleteResult, self).__init__(acknowledged)
+        super().__init__(acknowledged)
 
     @property
     def raw_result(self) -> Dict[str, Any]:
@@ -169,7 +169,7 @@ class BulkWriteResult(_WriteResult):
             :exc:`~pymongo.errors.InvalidOperation`.
         """
         self.__bulk_api_result = bulk_api_result
-        super(BulkWriteResult, self).__init__(acknowledged)
+        super().__init__(acknowledged)
 
     @property
     def bulk_api_result(self) -> Dict[str, Any]:
@@ -211,7 +211,5 @@ class BulkWriteResult(_WriteResult):
         """A map of operation index to the _id of the upserted document."""
         self._raise_if_unacknowledged("upserted_ids")
         if self.__bulk_api_result:
-            return dict(
-                (upsert["index"], upsert["_id"]) for upsert in self.bulk_api_result["upserted"]
-            )
+            return {upsert["index"]: upsert["_id"] for upsert in self.bulk_api_result["upserted"]}
         return None

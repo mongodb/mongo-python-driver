@@ -55,7 +55,7 @@ def check_result(self, expected_result, result):
     if isinstance(result, _WriteResult):
         for res in expected_result:
             prop = camel_to_snake(res)
-            msg = "%s : %r != %r" % (prop, expected_result, result)
+            msg = f"{prop} : {expected_result!r} != {result!r}"
             # SPEC-869: Only BulkWriteResult has upserted_count.
             if prop == "upserted_count" and not isinstance(result, BulkWriteResult):
                 if result.upserted_id is not None:  # type: ignore

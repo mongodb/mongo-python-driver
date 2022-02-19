@@ -75,7 +75,7 @@ def process_events_queue(queue_ref):
     return True  # Continue PeriodicExecutor.
 
 
-class Topology(object):
+class Topology:
     """Monitor a topology of one or more servers."""
 
     def __init__(self, topology_settings):
@@ -412,7 +412,7 @@ class Topology(object):
             ):
                 return set()
 
-            return set([sd.address for sd in selector(self._new_selection())])
+            return {sd.address for sd in selector(self._new_selection())}
 
     def get_secondaries(self):
         """Return set of secondary addresses."""
@@ -778,14 +778,14 @@ class Topology(object):
                 else:
                     return "No %s available for writes" % server_plural
             else:
-                return 'No %s match selector "%s"' % (server_plural, selector)
+                return f'No {server_plural} match selector "{selector}"'
         else:
             addresses = list(self._description.server_descriptions())
             servers = list(self._description.server_descriptions().values())
             if not servers:
                 if is_replica_set:
                     # We removed all servers because of the wrong setName?
-                    return 'No %s available for replica set name "%s"' % (
+                    return 'No {} available for replica set name "{}"'.format(
                         server_plural,
                         self._settings.replica_set_name,
                     )
@@ -815,7 +815,7 @@ class Topology(object):
         msg = ""
         if not self._opened:
             msg = "CLOSED "
-        return "<%s %s%r>" % (self.__class__.__name__, msg, self._description)
+        return f"<{self.__class__.__name__} {msg}{self._description!r}>"
 
     def eq_props(self):
         """The properties to use for MongoClient/Topology equality checks."""
@@ -831,7 +831,7 @@ class Topology(object):
         return hash(self.eq_props())
 
 
-class _ErrorContext(object):
+class _ErrorContext:
     """An error with context for SDAM error handling."""
 
     def __init__(self, error, max_wire_version, sock_generation, completed_handshake, service_id):

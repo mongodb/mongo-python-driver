@@ -24,7 +24,7 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.typings import _Address
 
 
-class ServerDescription(object):
+class ServerDescription:
     """Immutable representation of one server.
 
     :Parameters:
@@ -272,8 +272,8 @@ class ServerDescription(object):
     def __repr__(self):
         errmsg = ""
         if self.error:
-            errmsg = ", error=%r" % (self.error,)
-        return "<%s %s server_type: %s, rtt: %s%s>" % (
+            errmsg = f", error={self.error!r}"
+        return "<{} {} server_type: {}, rtt: {}{}>".format(
             self.__class__.__name__,
             self.address,
             self.server_type_name,

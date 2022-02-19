@@ -531,8 +531,7 @@ def gen_list_name() -> Generator[bytes, None, None]:
     The first 1000 keys are returned from a pre-built cache. All
     subsequent keys are generated on the fly.
     """
-    for name in _LIST_NAMES:
-        yield name
+    yield from _LIST_NAMES
 
     counter = itertools.count(1000)
     while True:
@@ -840,18 +839,18 @@ def _name_value_to_bson(
             name, fallback_encoder(value), check_keys, opts, in_fallback_call=True
         )
 
-    raise InvalidDocument("cannot encode object: %r, of type: %r" % (value, type(value)))
+    raise InvalidDocument(f"cannot encode object: {value!r}, of type: {type(value)!r}")
 
 
 def _element_to_bson(key: Any, value: Any, check_keys: bool, opts: Any) -> bytes:
     """Encode a single key, value pair."""
     if not isinstance(key, str):
-        raise InvalidDocument("documents must have only string keys, key was %r" % (key,))
+        raise InvalidDocument(f"documents must have only string keys, key was {key!r}")
     if check_keys:
         if key.startswith("$"):
-            raise InvalidDocument("key %r must not start with '$'" % (key,))
+            raise InvalidDocument(f"key {key!r} must not start with '$'")
         if "." in key:
-            raise InvalidDocument("key %r must not contain '.'" % (key,))
+            raise InvalidDocument(f"key {key!r} must not contain '.'")
 
     name = _make_name(key)
     return _name_value_to_bson(name, value, check_keys, opts)
@@ -869,7 +868,7 @@ def _dict_to_bson(doc: Any, check_keys: bool, opts: Any, top_level: bool = True)
             if not top_level or key != "_id":
                 elements.append(_element_to_bson(key, value, check_keys, opts))
     except AttributeError:
-        raise TypeError("encoder expected a mapping type but got: %r" % (doc,))
+        raise TypeError(f"encoder expected a mapping type but got: {doc!r}")
 
     encoded = b"".join(elements)
     return _PACK_INT(len(encoded) + 5) + encoded + b"\x00"

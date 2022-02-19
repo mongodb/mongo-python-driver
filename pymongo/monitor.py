@@ -36,7 +36,7 @@ def _sanitize(error):
     error.__cause__ = None
 
 
-class MonitorBase(object):
+class MonitorBase:
     def __init__(self, topology, name, interval, min_interval):
         """Base class to do periodic work on a background thread.
 
@@ -107,7 +107,7 @@ class Monitor(MonitorBase):
         The Topology is weakly referenced. The Pool must be exclusive to this
         Monitor.
         """
-        super(Monitor, self).__init__(
+        super().__init__(
             topology,
             "pymongo_server_monitor_thread",
             topology_settings.heartbeat_frequency,
@@ -288,7 +288,7 @@ class SrvMonitor(MonitorBase):
 
         The Topology is weakly referenced.
         """
-        super(SrvMonitor, self).__init__(
+        super().__init__(
             topology,
             "pymongo_srv_polling_thread",
             common.MIN_SRV_RESCAN_INTERVAL,
@@ -341,7 +341,7 @@ class _RttMonitor(MonitorBase):
 
         The Topology is weakly referenced.
         """
-        super(_RttMonitor, self).__init__(
+        super().__init__(
             topology,
             "pymongo_server_rtt_thread",
             topology_settings.heartbeat_frequency,

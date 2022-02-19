@@ -52,7 +52,7 @@ class TestDataLakeProse(IntegrationTest):
     @classmethod
     @client_context.require_data_lake
     def setUpClass(cls):
-        super(TestDataLakeProse, cls).setUpClass()
+        super().setUpClass()
 
     # Test killCursors
     def test_1(self):
@@ -100,7 +100,7 @@ class DataLakeTestSpec(TestCrudV2):
     @classmethod
     @client_context.require_data_lake
     def setUpClass(cls):
-        super(DataLakeTestSpec, cls).setUpClass()
+        super().setUpClass()
 
     def setup_scenario(self, scenario_def):
         # Spec tests MUST NOT insert data/drop collection for

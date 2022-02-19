@@ -324,7 +324,7 @@ class RawBatchCommandCursor(CommandCursor, Generic[_DocumentType]):
         .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
         """
         assert not cursor_info.get("firstBatch")
-        super(RawBatchCommandCursor, self).__init__(
+        super().__init__(
             collection,
             cursor_info,
             address,

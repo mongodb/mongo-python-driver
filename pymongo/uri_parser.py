@@ -133,7 +133,7 @@ def parse_host(entity: str, default_port: Optional[int] = DEFAULT_PORT) -> _Addr
         host, port = host.split(":", 1)
     if isinstance(port, str):
         if not port.isdigit() or int(port) > 65535 or int(port) <= 0:
-            raise ValueError("Port must be an integer between 0 and 65535: %s" % (port,))
+            raise ValueError(f"Port must be an integer between 0 and 65535: {port}")
         port = int(port)
 
     # Normalize hostname to lowercase, since DNS is case-insensitive:
@@ -162,7 +162,7 @@ def _parse_options(opts, delim):
             options.setdefault(key, []).append(value)
         else:
             if key in options:
-                warnings.warn("Duplicate URI option '%s'." % (key,))
+                warnings.warn(f"Duplicate URI option '{key}'.")
             if key.lower() == "authmechanismproperties":
                 val = value
             else:
@@ -474,9 +474,7 @@ def parse_uri(
         is_srv = True
         scheme_free = uri[SRV_SCHEME_LEN:]
     else:
-        raise InvalidURI(
-            "Invalid URI scheme: URI must begin with '%s' or '%s'" % (SCHEME, SRV_SCHEME)
-        )
+        raise InvalidURI(f"Invalid URI scheme: URI must begin with '{SCHEME}' or '{SRV_SCHEME}'")
 
     if not scheme_free:
         raise InvalidURI("Must provide at least one hostname or IP.")
@@ -524,15 +522,13 @@ def parse_uri(
     srv_max_hosts = srv_max_hosts or options.get("srvMaxHosts")
     if is_srv:
         if options.get("directConnection"):
-            raise ConfigurationError(
-                "Cannot specify directConnection=true with %s URIs" % (SRV_SCHEME,)
-            )
+            raise ConfigurationError(f"Cannot specify directConnection=true with {SRV_SCHEME} URIs")
         nodes = split_hosts(hosts, default_port=None)
         if len(nodes) != 1:
-            raise InvalidURI("%s URIs must include one, and only one, hostname" % (SRV_SCHEME,))
+            raise InvalidURI(f"{SRV_SCHEME} URIs must include one, and only one, hostname")
         fqdn, port = nodes[0]
         if port is not None:
-            raise InvalidURI("%s URIs must not include a port number" % (SRV_SCHEME,))
+            raise InvalidURI(f"{SRV_SCHEME} URIs must not include a port number")
 
         # Use the connection timeout. connectTimeoutMS passed as a keyword
         # argument overrides the same option passed in the connection string.

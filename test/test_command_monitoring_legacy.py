@@ -61,9 +61,9 @@ def format_actual_results(results):
     started = results["started"]
     succeeded = results["succeeded"]
     failed = results["failed"]
-    msg = "\nStarted:   %r" % (started[0].command if len(started) else None,)
-    msg += "\nSucceeded: %r" % (succeeded[0].reply if len(succeeded) else None,)
-    msg += "\nFailed:    %r" % (failed[0].failure if len(failed) else None,)
+    msg = f"\nStarted:   {started[0].command if len(started) else None!r}"
+    msg += f"\nSucceeded: {succeeded[0].reply if len(succeeded) else None!r}"
+    msg += f"\nFailed:    {failed[0].failure if len(failed) else None!r}"
     return msg
 
 
@@ -156,7 +156,7 @@ def create_test(scenario_def, test):
                         for doc in reply["writeErrors"]:
                             # Remove any new fields the server adds. The tests
                             # only have index, code, and errmsg.
-                            diff = set(doc) - set(["index", "code", "errmsg"])
+                            diff = set(doc) - {"index", "code", "errmsg"}
                             for field in diff:
                                 doc.pop(field)
                             doc["code"] = 42
@@ -229,7 +229,7 @@ def create_tests():
                     if "sharded" in types:
                         new_test = client_context.require_no_mongos(None)(new_test)
 
-                test_name = "test_%s_%s_%s" % (
+                test_name = "test_{}_{}_{}".format(
                     dirname,
                     os.path.splitext(filename)[0],
                     str(test["description"].replace(" ", "_")),

@@ -143,7 +143,7 @@ else:
                 default = sock.getsockopt(socket.IPPROTO_TCP, sockopt)
                 if default > max_value:
                     sock.setsockopt(socket.IPPROTO_TCP, sockopt, max_value)
-            except socket.error:
+            except OSError:
                 pass
 
     def _set_keepalive_times(sock):
@@ -256,7 +256,7 @@ def _raise_connection_failure(address, error, msg_prefix=None):
     if port is not None:
         msg = "%s:%d: %s" % (host, port, error)
     else:
-        msg = "%s: %s" % (host, error)
+        msg = f"{host}: {error}"
     if msg_prefix:
         msg = msg_prefix + msg
     if isinstance(error, socket.timeout):
@@ -276,7 +276,7 @@ def _cond_wait(condition, deadline):
     return condition.wait(timeout)
 
 
-class PoolOptions(object):
+class PoolOptions:
     """Read only connection pool options for a MongoClient.
 
     Should not be instantiated directly by application developers. Access
@@ -361,17 +361,17 @@ class PoolOptions(object):
         # }
         if driver:
             if driver.name:
-                self.__metadata["driver"]["name"] = "%s|%s" % (
+                self.__metadata["driver"]["name"] = "{}|{}".format(
                     _METADATA["driver"]["name"],
                     driver.name,
                 )
             if driver.version:
-                self.__metadata["driver"]["version"] = "%s|%s" % (
+                self.__metadata["driver"]["version"] = "{}|{}".format(
                     _METADATA["driver"]["version"],
                     driver.version,
                 )
             if driver.platform:
-                self.__metadata["platform"] = "%s|%s" % (_METADATA["platform"], driver.platform)
+                self.__metadata["platform"] = "{}|{}".format(_METADATA["platform"], driver.platform)
 
     @property
     def _credentials(self):
@@ -500,7 +500,7 @@ class PoolOptions(object):
         return self.__load_balanced
 
 
-class _CancellationContext(object):
+class _CancellationContext:
     def __init__(self):
         self._cancelled = False
 
@@ -514,7 +514,7 @@ class _CancellationContext(object):
         return self._cancelled
 
 
-class SocketInfo(object):
+class SocketInfo:
     """Store a socket with some metadata.
 
     :Parameters:
@@ -942,7 +942,7 @@ class SocketInfo(object):
         return hash(self.sock)
 
     def __repr__(self):
-        return "SocketInfo(%s)%s at %s" % (
+        return "SocketInfo({}){} at {}".format(
             repr(self.sock),
             self.closed and " CLOSED" or "",
             id(self),
@@ -968,7 +968,7 @@ def _create_connection(address, options):
         try:
             sock.connect(host)
             return sock
-        except socket.error:
+        except OSError:
             sock.close()
             raise
 
@@ -987,7 +987,7 @@ def _create_connection(address, options):
         # all file descriptors are created non-inheritable. See PEP 446.
         try:
             sock = socket.socket(af, socktype | getattr(socket, "SOCK_CLOEXEC", 0), proto)
-        except socket.error:
+        except OSError:
             # Can SOCK_CLOEXEC be defined even if the kernel doesn't support
             # it?
             sock = socket.socket(af, socktype, proto)
@@ -1000,7 +1000,7 @@ def _create_connection(address, options):
             _set_keepalive_times(sock)
             sock.connect(sa)
             return sock
-        except socket.error as e:
+        except OSError as e:
             err = e
             sock.close()
 
@@ -1011,7 +1011,7 @@ def _create_connection(address, options):
         # host with an OS/kernel or Python interpreter that doesn't
         # support IPv6. The test case is Jython2.5.1 which doesn't
         # support IPv6 at all.
-        raise socket.error("getaddrinfo failed")
+        raise OSError("getaddrinfo failed")
 
 
 def _configured_socket(address, options):
@@ -1043,7 +1043,7 @@ def _configured_socket(address, options):
             # Raise _CertificateError directly like we do after match_hostname
             # below.
             raise
-        except (IOError, OSError, _SSLError) as exc:  # noqa: B014
+        except (OSError, _SSLError) as exc:  # noqa: B014
             sock.close()
             # We raise AutoReconnect for transient and permanent SSL handshake
             # failures alike. Permanent handshake failures, like protocol
@@ -1072,7 +1072,7 @@ class _PoolClosedError(PyMongoError):
     pass
 
 
-class _PoolGeneration(object):
+class _PoolGeneration:
     def __init__(self):
         # Maps service_id to generation.
         self._generations = collections.defaultdict(int)
@@ -1103,7 +1103,7 @@ class _PoolGeneration(object):
         return gen != self.get(service_id)
 
 
-class PoolState(object):
+class PoolState:
     PAUSED = 1
     READY = 2
     CLOSED = 3

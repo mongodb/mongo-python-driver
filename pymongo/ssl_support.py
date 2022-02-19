@@ -74,7 +74,7 @@ if HAVE_SSL:
             try:
                 ctx.load_cert_chain(certfile, None, passphrase)
             except _ssl.SSLError as exc:
-                raise ConfigurationError("Private key doesn't match certificate: %s" % (exc,))
+                raise ConfigurationError(f"Private key doesn't match certificate: {exc}")
         if crlfile is not None:
             if _ssl.IS_PYOPENSSL:
                 raise ConfigurationError("tlsCRLFile cannot be used with PyOpenSSL")

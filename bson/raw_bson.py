@@ -153,7 +153,7 @@ class RawBSONDocument(Mapping[str, Any]):
         return NotImplemented
 
     def __repr__(self):
-        return "RawBSONDocument(%r, codec_options=%r)" % (self.raw, self.__codec_options)
+        return f"RawBSONDocument({self.raw!r}, codec_options={self.__codec_options!r})"
 
 
 def _inflate_bson(bson_bytes: bytes, codec_options: CodecOptions) -> Mapping[Any, Any]:

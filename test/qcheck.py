@@ -232,7 +232,7 @@ def check(predicate, generator):
                 reduction = reduce(case, predicate)
                 counter_examples.append("after %s reductions: %r" % reduction)
         except:
-            counter_examples.append("%r : %s" % (case, traceback.format_exc()))
+            counter_examples.append(f"{case!r} : {traceback.format_exc()}")
     return counter_examples
 
 

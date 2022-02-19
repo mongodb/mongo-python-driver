@@ -122,15 +122,15 @@ class TestBinary(unittest.TestCase):
 
     def test_repr(self):
         one = Binary(b"hello world")
-        self.assertEqual(repr(one), "Binary(%s, 0)" % (repr(b"hello world"),))
+        self.assertEqual(repr(one), "Binary({}, 0)".format(repr(b"hello world")))
         two = Binary(b"hello world", 2)
-        self.assertEqual(repr(two), "Binary(%s, 2)" % (repr(b"hello world"),))
+        self.assertEqual(repr(two), "Binary({}, 2)".format(repr(b"hello world")))
         three = Binary(b"\x08\xFF")
-        self.assertEqual(repr(three), "Binary(%s, 0)" % (repr(b"\x08\xFF"),))
+        self.assertEqual(repr(three), "Binary({}, 0)".format(repr(b"\x08\xFF")))
         four = Binary(b"\x08\xFF", 2)
-        self.assertEqual(repr(four), "Binary(%s, 2)" % (repr(b"\x08\xFF"),))
+        self.assertEqual(repr(four), "Binary({}, 2)".format(repr(b"\x08\xFF")))
         five = Binary(b"test", 100)
-        self.assertEqual(repr(five), "Binary(%s, 100)" % (repr(b"test"),))
+        self.assertEqual(repr(five), "Binary({}, 100)".format(repr(b"test")))
 
     def test_hash(self):
         one = Binary(b"hello world")
@@ -351,7 +351,7 @@ class TestUuidSpecExplicitCoding(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        super(TestUuidSpecExplicitCoding, cls).setUpClass()
+        super().setUpClass()
         cls.uuid = uuid.UUID("00112233445566778899AABBCCDDEEFF")
 
     @staticmethod
@@ -452,7 +452,7 @@ class TestUuidSpecImplicitCoding(IntegrationTest):
 
     @classmethod
     def setUpClass(cls):
-        super(TestUuidSpecImplicitCoding, cls).setUpClass()
+        super().setUpClass()
         cls.uuid = uuid.UUID("00112233445566778899AABBCCDDEEFF")
 
     @staticmethod

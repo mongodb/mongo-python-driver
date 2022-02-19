@@ -146,7 +146,7 @@ class TestLB(IntegrationTest):
 
 class PoolLocker(ExceptionCatchingThread):
     def __init__(self, pool):
-        super(PoolLocker, self).__init__(target=self.lock_pool)
+        super().__init__(target=self.lock_pool)
         self.pool = pool
         self.daemon = True
         self.locked = threading.Event()

@@ -56,7 +56,7 @@ class TestAllScenarios(IntegrationTest):
 
     @classmethod
     def setUpClass(cls):
-        super(TestAllScenarios, cls).setUpClass()
+        super().setUpClass()
         cls.fs = gridfs.GridFSBucket(cls.db)
         cls.str_to_cmd = {
             "upload": cls.fs.upload_from_stream,
@@ -118,7 +118,7 @@ class TestAllScenarios(IntegrationTest):
                 if k == "uploadDate":  # Can't compare datetime.
                     self.assertTrue(isinstance(doc[k], datetime.datetime))
                 else:
-                    docstr += "%s:%s " % (k, repr(doc[k]))
+                    docstr += f"{k}:{repr(doc[k])} "
             to_sort.append(docstr + "}")
         return to_sort
 
@@ -140,7 +140,7 @@ def create_test(scenario_def):
 
             args.update(extra_opts)
 
-            converted_args = dict((camel_to_snake(c), v) for c, v in args.items())
+            converted_args = {camel_to_snake(c): v for c, v in args.items()}
 
             expect_error = test["assert"].get("error", False)
             result = None

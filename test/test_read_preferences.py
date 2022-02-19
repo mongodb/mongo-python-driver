@@ -90,10 +90,10 @@ class TestReadPreferencesBase(IntegrationTest):
     @classmethod
     @client_context.require_secondaries_count(1)
     def setUpClass(cls):
-        super(TestReadPreferencesBase, cls).setUpClass()
+        super().setUpClass()
 
     def setUp(self):
-        super(TestReadPreferencesBase, self).setUp()
+        super().setUp()
         # Insert some data so we can use cursors in read_from_which_host
         self.client.pymongo_test.test.drop()
         self.client.get_database(
@@ -128,7 +128,7 @@ class TestReadPreferencesBase(IntegrationTest):
         wait_until(lambda: len(c.nodes - c.arbiters) == client_context.w, "discovered all nodes")
 
         used = self.read_from_which_kind(c)
-        self.assertEqual(expected, used, "Cursor used %s, expected %s" % (used, expected))
+        self.assertEqual(expected, used, f"Cursor used {used}, expected {expected}")
 
 
 class TestSingleSecondaryOk(TestReadPreferencesBase):
@@ -280,18 +280,18 @@ class ReadPrefTester(MongoClient):
         self.has_read_from = set()
         client_options = client_context.client_options
         client_options.update(kwargs)
-        super(ReadPrefTester, self).__init__(*args, **client_options)
+        super().__init__(*args, **client_options)
 
     @contextlib.contextmanager
     def _socket_for_reads(self, read_preference, session):
-        context = super(ReadPrefTester, self)._socket_for_reads(read_preference, session)
+        context = super()._socket_for_reads(read_preference, session)
         with context as (sock_info, read_preference):
             self.record_a_read(sock_info.address)
             yield sock_info, read_preference
 
     @contextlib.contextmanager
     def _socket_from_server(self, read_preference, server, session):
-        context = super(ReadPrefTester, self)._socket_from_server(read_preference, server, session)
+        context = super()._socket_from_server(read_preference, server, session)
         with context as (sock_info, read_preference):
             self.record_a_read(sock_info.address)
             yield sock_info, read_preference
@@ -317,7 +317,7 @@ class TestCommandAndReadPreference(IntegrationTest):
     @classmethod
     @client_context.require_secondaries_count(1)
     def setUpClass(cls):
-        super(TestCommandAndReadPreference, cls).setUpClass()
+        super().setUpClass()
         cls.c = ReadPrefTester(
             client_context.pair,
             # Ignore round trip times, to test ReadPreference modes only.
@@ -360,7 +360,7 @@ class TestCommandAndReadPreference(IntegrationTest):
                         break
 
                 assert self.c.primary is not None
-                unused = self.c.secondaries.union(set([self.c.primary])).difference(used)
+                unused = self.c.secondaries.union({self.c.primary}).difference(used)
                 if unused:
                     self.fail("Some members not used for NEAREST: %s" % (unused))
             else:

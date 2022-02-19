@@ -230,7 +230,7 @@ def _gen_get_more_command(cursor_id, coll, batch_size, max_await_time_ms):
     return cmd
 
 
-class _Query(object):
+class _Query:
     """A query operation."""
 
     __slots__ = (
@@ -297,7 +297,7 @@ class _Query(object):
         self.exhaust = exhaust
 
     def namespace(self):
-        return "%s.%s" % (self.db, self.coll)
+        return f"{self.db}.{self.coll}"
 
     def use_command(self, sock_info):
         use_find_cmd = False
@@ -403,7 +403,7 @@ class _Query(object):
         )
 
 
-class _GetMore(object):
+class _GetMore:
     """A getmore operation."""
 
     __slots__ = (
@@ -451,7 +451,7 @@ class _GetMore(object):
         self.exhaust = exhaust
 
     def namespace(self):
-        return "%s.%s" % (self.db, self.coll)
+        return f"{self.db}.{self.coll}"
 
     def use_command(self, sock_info):
         use_cmd = False
@@ -508,7 +508,7 @@ class _GetMore(object):
 class _RawBatchQuery(_Query):
     def use_command(self, sock_info):
         # Compatibility checks.
-        super(_RawBatchQuery, self).use_command(sock_info)
+        super().use_command(sock_info)
         if sock_info.max_wire_version >= 8:
             # MongoDB 4.2+ supports exhaust over OP_MSG
             return True
@@ -520,7 +520,7 @@ class _RawBatchQuery(_Query):
 class _RawBatchGetMore(_GetMore):
     def use_command(self, sock_info):
         # Compatibility checks.
-        super(_RawBatchGetMore, self).use_command(sock_info)
+        super().use_command(sock_info)
         if sock_info.max_wire_version >= 8:
             # MongoDB 4.2+ supports exhaust over OP_MSG
             return True
@@ -764,7 +764,7 @@ def _get_more(collection_name, num_to_return, cursor_id, ctx=None):
     return _get_more_uncompressed(collection_name, num_to_return, cursor_id)
 
 
-class _BulkWriteContext(object):
+class _BulkWriteContext:
     """A wrapper around SocketInfo for use with write splitting functions."""
 
     __slots__ = (
@@ -1001,7 +1001,7 @@ def _raise_document_too_large(operation, doc_size, max_size):
     else:
         # There's nothing intelligent we can say
         # about size for update and delete
-        raise DocumentTooLarge("%r command document too large" % (operation,))
+        raise DocumentTooLarge(f"{operation!r} command document too large")
 
 
 # OP_MSG -------------------------------------------------------------
@@ -1221,7 +1221,7 @@ def _batched_write_command_impl(namespace, operation, command, docs, opts, ctx, 
     return to_send, length
 
 
-class _OpReply(object):
+class _OpReply:
     """A MongoDB OP_REPLY response message."""
 
     __slots__ = ("flags", "cursor_id", "number_returned", "documents")
@@ -1331,7 +1331,7 @@ class _OpReply(object):
         return cls(flags, cursor_id, number_returned, documents)
 
 
-class _OpMsg(object):
+class _OpMsg:
     """A MongoDB OP_MSG response message."""
 
     __slots__ = ("flags", "cursor_id", "number_returned", "payload_document")
@@ -1395,12 +1395,12 @@ class _OpMsg(object):
         flags, first_payload_type, first_payload_size = cls.UNPACK_FROM(msg)
         if flags != 0:
             if flags & cls.CHECKSUM_PRESENT:
-                raise ProtocolError("Unsupported OP_MSG flag checksumPresent: 0x%x" % (flags,))
+                raise ProtocolError(f"Unsupported OP_MSG flag checksumPresent: 0x{flags:x}")
 
             if flags ^ cls.MORE_TO_COME:
-                raise ProtocolError("Unsupported OP_MSG flags: 0x%x" % (flags,))
+                raise ProtocolError(f"Unsupported OP_MSG flags: 0x{flags:x}")
         if first_payload_type != 0:
-            raise ProtocolError("Unsupported OP_MSG payload type: 0x%x" % (first_payload_type,))
+            raise ProtocolError(f"Unsupported OP_MSG payload type: 0x{first_payload_type:x}")
 
         if len(msg) != first_payload_size + 5:
             raise ProtocolError("Unsupported OP_MSG reply: >1 section")

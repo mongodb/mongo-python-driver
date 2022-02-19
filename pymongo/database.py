@@ -115,7 +115,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
                db.__my_collection__
         """
-        super(Database, self).__init__(
+        super().__init__(
             codec_options or client.codec_options,
             read_preference or client.read_preference,
             write_concern or client.write_concern,
@@ -200,7 +200,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         return hash((self.__client, self.__name))
 
     def __repr__(self):
-        return "Database(%r, %r)" % (self.__client, self.__name)
+        return f"Database({self.__client!r}, {self.__name!r})"
 
     def __getattr__(self, name: str) -> Collection[_DocumentType]:
         """Get a collection of this database by name.
@@ -981,14 +981,14 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if "result" in result:
             info = result["result"]
             if info.find("exception") != -1 or info.find("corrupt") != -1:
-                raise CollectionInvalid("%s invalid: %s" % (name, info))
+                raise CollectionInvalid(f"{name} invalid: {info}")
         # Sharded results
         elif "raw" in result:
             for _, res in result["raw"].items():
                 if "result" in res:
                     info = res["result"]
                     if info.find("exception") != -1 or info.find("corrupt") != -1:
-                        raise CollectionInvalid("%s invalid: %s" % (name, info))
+                        raise CollectionInvalid(f"{name} invalid: {info}")
                 elif not res.get("valid", False):
                     valid = False
                     break
@@ -997,7 +997,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             valid = False
 
         if not valid:
-            raise CollectionInvalid("%s invalid: %r" % (name, result))
+            raise CollectionInvalid(f"{name} invalid: {result!r}")
 
         return result
 

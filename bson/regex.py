@@ -117,7 +117,7 @@ class Regex(Generic[_T]):
         return not self == other
 
     def __repr__(self):
-        return "Regex(%r, %r)" % (self.pattern, self.flags)
+        return f"Regex({self.pattern!r}, {self.flags!r})"
 
     def try_compile(self) -> "Pattern[_T]":
         """Compile this :class:`Regex` as a Python regular expression.

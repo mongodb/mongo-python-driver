@@ -64,10 +64,10 @@ def run(framework_name, *args):
 
 def main():
     """Parse options and run tests."""
-    usage = """python %s FRAMEWORK_NAME
+    usage = """python {} FRAMEWORK_NAME
 
 Test PyMongo with a variety of greenlet-based monkey-patching frameworks. See
-python %s --help-frameworks.""" % (
+python {} --help-frameworks.""".format(
         sys.argv[0],
         sys.argv[0],
     )

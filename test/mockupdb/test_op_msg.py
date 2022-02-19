@@ -304,7 +304,7 @@ def operation_test(op):
 
 def create_tests(ops):
     for op in ops:
-        test_name = "test_op_msg_%s" % (op.name,)
+        test_name = f"test_op_msg_{op.name}"
         setattr(TestOpMsg, test_name, operation_test(op))
 
 

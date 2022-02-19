@@ -41,15 +41,15 @@ from pymongo.read_concern import ReadConcern
 class SessionTestListener(EventListener):
     def started(self, event):
         if not event.command_name.startswith("sasl"):
-            super(SessionTestListener, self).started(event)
+            super().started(event)
 
     def succeeded(self, event):
         if not event.command_name.startswith("sasl"):
-            super(SessionTestListener, self).succeeded(event)
+            super().succeeded(event)
 
     def failed(self, event):
         if not event.command_name.startswith("sasl"):
-            super(SessionTestListener, self).failed(event)
+            super().failed(event)
 
     def first_command_started(self):
         assert len(self.results["started"]) >= 1, "No command-started events"
@@ -68,7 +68,7 @@ class TestSession(IntegrationTest):
     @classmethod
     @client_context.require_sessions
     def setUpClass(cls):
-        super(TestSession, cls).setUpClass()
+        super().setUpClass()
         # Create a second client so we can make sure clients cannot share
         # sessions.
         cls.client2 = rs_or_single_client()
@@ -81,7 +81,7 @@ class TestSession(IntegrationTest):
     def tearDownClass(cls):
         monitoring._SENSITIVE_COMMANDS.update(cls.sensitive_commands)
         cls.client2.close()
-        super(TestSession, cls).tearDownClass()
+        super().tearDownClass()
 
     def setUp(self):
         self.listener = SessionTestListener()
@@ -91,7 +91,7 @@ class TestSession(IntegrationTest):
         )
         self.addCleanup(self.client.close)
         self.db = self.client.pymongo_test
-        self.initial_lsids = set(s["id"] for s in session_ids(self.client))
+        self.initial_lsids = {s["id"] for s in session_ids(self.client)}
 
     def tearDown(self):
         """All sessions used in the test must be returned to the pool."""
@@ -101,7 +101,7 @@ class TestSession(IntegrationTest):
             if "lsid" in event.command:
                 used_lsids.add(event.command["lsid"]["id"])
 
-        current_lsids = set(s["id"] for s in session_ids(self.client))
+        current_lsids = {s["id"] for s in session_ids(self.client)}
         self.assertLessEqual(used_lsids, current_lsids)
 
     def _test_ops(self, client, *ops):
@@ -123,13 +123,13 @@ class TestSession(IntegrationTest):
                 for event in listener.results["started"]:
                     self.assertTrue(
                         "lsid" in event.command,
-                        "%s sent no lsid with %s" % (f.__name__, event.command_name),
+                        f"{f.__name__} sent no lsid with {event.command_name}",
                     )
 
                     self.assertEqual(
                         s.session_id,
                         event.command["lsid"],
-                        "%s sent wrong lsid with %s" % (f.__name__, event.command_name),
+                        f"{f.__name__} sent wrong lsid with {event.command_name}",
                     )
 
                 self.assertFalse(s.has_ended)
@@ -158,7 +158,7 @@ class TestSession(IntegrationTest):
             for event in listener.results["started"]:
                 self.assertTrue(
                     "lsid" in event.command,
-                    "%s sent no lsid with %s" % (f.__name__, event.command_name),
+                    f"{f.__name__} sent no lsid with {event.command_name}",
                 )
 
                 lsids.append(event.command["lsid"])
@@ -170,7 +170,7 @@ class TestSession(IntegrationTest):
                     self.assertIn(
                         lsid,
                         session_ids(client),
-                        "%s did not return implicit session to pool" % (f.__name__,),
+                        f"{f.__name__} did not return implicit session to pool",
                     )
 
     def test_pool_lifo(self):
@@ -344,13 +344,13 @@ class TestSession(IntegrationTest):
                 for event in listener.results["started"]:
                     self.assertTrue(
                         "lsid" in event.command,
-                        "%s sent no lsid with %s" % (name, event.command_name),
+                        f"{name} sent no lsid with {event.command_name}",
                     )
 
                     self.assertEqual(
                         s.session_id,
                         event.command["lsid"],
-                        "%s sent wrong lsid with %s" % (name, event.command_name),
+                        f"{name} sent wrong lsid with {event.command_name}",
                     )
 
             with self.assertRaisesRegex(InvalidOperation, "ended session"):
@@ -362,20 +362,20 @@ class TestSession(IntegrationTest):
             f(session=None)
             event0 = listener.first_command_started()
             self.assertTrue(
-                "lsid" in event0.command, "%s sent no lsid with %s" % (name, event0.command_name)
+                "lsid" in event0.command, f"{name} sent no lsid with {event0.command_name}"
             )
 
             lsid = event0.command["lsid"]
 
             for event in listener.results["started"][1:]:
                 self.assertTrue(
-                    "lsid" in event.command, "%s sent no lsid with %s" % (name, event.command_name)
+                    "lsid" in event.command, f"{name} sent no lsid with {event.command_name}"
                 )
 
                 self.assertEqual(
                     lsid,
                     event.command["lsid"],
-                    "%s sent wrong lsid with %s" % (name, event.command_name),
+                    f"{name} sent wrong lsid with {event.command_name}",
                 )
 
     def test_gridfs(self):
@@ -632,7 +632,7 @@ class TestSession(IntegrationTest):
                 kw = copy.copy(kw)
                 kw["session"] = s
                 with self.assertRaises(
-                    ConfigurationError, msg="%s did not raise ConfigurationError" % (f.__name__,)
+                    ConfigurationError, msg=f"{f.__name__} did not raise ConfigurationError"
                 ):
                     f(*args, **kw)
                 if f.__name__ == "create_collection":
@@ -642,11 +642,11 @@ class TestSession(IntegrationTest):
                     self.assertIn(
                         "lsid",
                         event.command,
-                        "%s sent no lsid with %s" % (f.__name__, event.command_name),
+                        f"{f.__name__} sent no lsid with {event.command_name}",
                     )
 
                 # Should not run any command before raising an error.
-                self.assertFalse(listener.results["started"], "%s sent command" % (f.__name__,))
+                self.assertFalse(listener.results["started"], f"{f.__name__} sent command")
 
             self.assertTrue(s.has_ended)
 
@@ -663,12 +663,12 @@ class TestSession(IntegrationTest):
                 self.assertIn(
                     "lsid",
                     event.command,
-                    "%s sent no lsid with %s" % (f.__name__, event.command_name),
+                    f"{f.__name__} sent no lsid with {event.command_name}",
                 )
 
             for event in listener.results["started"]:
                 self.assertNotIn(
-                    "lsid", event.command, "%s sent lsid with %s" % (f.__name__, event.command_name)
+                    "lsid", event.command, f"{f.__name__} sent lsid with {event.command_name}"
                 )
 
     def test_unacknowledged_writes(self):
@@ -731,7 +731,7 @@ class TestCausalConsistency(unittest.TestCase):
 
     @client_context.require_sessions
     def setUp(self):
-        super(TestCausalConsistency, self).setUp()
+        super().setUp()
 
     @client_context.require_no_standalone
     def test_core(self):
@@ -1009,7 +1009,7 @@ class TestCausalConsistency(unittest.TestCase):
 
 class TestClusterTime(IntegrationTest):
     def setUp(self):
-        super(TestClusterTime, self).setUp()
+        super().setUp()
         if "$clusterTime" not in client_context.hello:
             raise SkipTest("$clusterTime not supported")
 
@@ -1077,7 +1077,7 @@ class TestClusterTime(IntegrationTest):
             for i, event in enumerate(listener.results["started"]):
                 self.assertTrue(
                     "$clusterTime" in event.command,
-                    "%s sent no $clusterTime with %s" % (f.__name__, event.command_name),
+                    f"{f.__name__} sent no $clusterTime with {event.command_name}",
                 )
 
                 if i > 0:
@@ -1091,7 +1091,7 @@ class TestClusterTime(IntegrationTest):
                     self.assertTrue(
                         event.command["$clusterTime"]["clusterTime"]
                         >= succeeded.reply["$clusterTime"]["clusterTime"],
-                        "%s sent wrong $clusterTime with %s" % (f.__name__, event.command_name),
+                        f"{f.__name__} sent wrong $clusterTime with {event.command_name}",
                     )
 
 

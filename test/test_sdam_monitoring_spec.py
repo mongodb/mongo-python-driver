@@ -49,7 +49,7 @@ def compare_server_descriptions(expected, actual):
     ):
         return False
     expected_hosts = set(expected["arbiters"] + expected["passives"] + expected["hosts"])
-    return expected_hosts == set("%s:%s" % s for s in actual.all_hosts)
+    return expected_hosts == {"%s:%s" % s for s in actual.all_hosts}
 
 
 def compare_topology_descriptions(expected, actual):
@@ -145,7 +145,7 @@ def compare_events(expected_dict, actual):
             return False, "Expected TopologyClosedEvent, got %s" % (actual.__class__)
 
     else:
-        return False, "Incorrect event: expected %s, actual %s" % (expected_type, actual)
+        return False, f"Incorrect event: expected {expected_type}, actual {actual}"
 
     return True, ""
 
@@ -170,7 +170,7 @@ def compare_multiple_events(i, expected_results, actual_results):
 
 class TestAllScenarios(IntegrationTest):
     def setUp(self):
-        super(TestAllScenarios, self).setUp()
+        super().setUp()
         self.all_listener = ServerAndTopologyEventListener()
 
 
@@ -235,7 +235,7 @@ def create_test(scenario_def):
                 # Assert no extra events.
                 extra_events = self.all_listener.results[expected_len:]
                 if extra_events:
-                    self.fail("Extra events %r" % (extra_events,))
+                    self.fail(f"Extra events {extra_events!r}")
 
                 self.all_listener.reset()
         finally:
@@ -251,7 +251,7 @@ def create_tests():
                 scenario_def = json.load(scenario_stream, object_hook=object_hook)
             # Construct test from scenario.
             new_test = create_test(scenario_def)
-            test_name = "test_%s" % (os.path.splitext(filename)[0],)
+            test_name = f"test_{os.path.splitext(filename)[0]}"
             new_test.__name__ = test_name
             setattr(TestAllScenarios, new_test.__name__, new_test)
 
@@ -268,7 +268,7 @@ class TestSdamMonitoring(IntegrationTest):
     @classmethod
     @client_context.require_failCommand_fail_point
     def setUpClass(cls):
-        super(TestSdamMonitoring, cls).setUpClass()
+        super().setUpClass()
         # Speed up the tests by decreasing the event publish frequency.
         cls.knobs = client_knobs(events_queue_frequency=0.1)
         cls.knobs.enable()
@@ -284,7 +284,7 @@ class TestSdamMonitoring(IntegrationTest):
     def tearDownClass(cls):
         cls.test_client.close()
         cls.knobs.disable()
-        super(TestSdamMonitoring, cls).tearDownClass()
+        super().tearDownClass()
 
     def setUp(self):
         self.listener.reset()

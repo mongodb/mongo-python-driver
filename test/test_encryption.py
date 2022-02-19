@@ -189,7 +189,7 @@ class EncryptionIntegrationTest(IntegrationTest):
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
     @client_context.require_version_min(4, 2, -1)
     def setUpClass(cls):
-        super(EncryptionIntegrationTest, cls).setUpClass()
+        super().setUpClass()
 
     def assertEncrypted(self, val):
         self.assertIsInstance(val, Binary)
@@ -277,7 +277,7 @@ class TestClientSimple(EncryptionIntegrationTest):
 
         # Collection.distinct auto decrypts.
         decrypted_ssns = encrypted_coll.distinct("ssn")
-        self.assertEqual(set(decrypted_ssns), set(d["ssn"] for d in docs))
+        self.assertEqual(set(decrypted_ssns), {d["ssn"] for d in docs})
 
         # Make sure the field is actually encrypted.
         for encrypted_doc in self.db.test.find():
@@ -354,7 +354,7 @@ class TestClientMaxWireVersion(IntegrationTest):
     @classmethod
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
     def setUpClass(cls):
-        super(TestClientMaxWireVersion, cls).setUpClass()
+        super().setUpClass()
 
     @client_context.require_version_max(4, 0, 99)
     def test_raise_max_wire_version_error(self):
@@ -564,7 +564,7 @@ class TestSpec(SpecRunner):
     @classmethod
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
     def setUpClass(cls):
-        super(TestSpec, cls).setUpClass()
+        super().setUpClass()
 
     def parse_auto_encrypt_opts(self, opts):
         """Parse clientOptions.autoEncryptOpts."""
@@ -606,14 +606,14 @@ class TestSpec(SpecRunner):
         if encrypt_opts:
             opts["auto_encryption_opts"] = self.parse_auto_encrypt_opts(encrypt_opts)
 
-        return super(TestSpec, self).parse_client_options(opts)
+        return super().parse_client_options(opts)
 
     def get_object_name(self, op):
         """Default object is collection."""
         return op.get("object", "collection")
 
     def maybe_skip_scenario(self, test):
-        super(TestSpec, self).maybe_skip_scenario(test)
+        super().maybe_skip_scenario(test)
         desc = test["description"].lower()
         if "type=symbol" in desc:
             self.skipTest("PyMongo does not support the symbol type")
@@ -649,7 +649,7 @@ class TestSpec(SpecRunner):
 
     def allowable_errors(self, op):
         """Override expected error classes."""
-        errors = super(TestSpec, self).allowable_errors(op)
+        errors = super().allowable_errors(op)
         # An updateOne test expects encryption to error when no $ operator
         # appears but pymongo raises a client side ValueError in this case.
         if op["name"] == "updateOne":
@@ -740,7 +740,7 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
         "No environment credentials are set",
     )
     def setUpClass(cls):
-        super(TestDataKeyDoubleEncryption, cls).setUpClass()
+        super().setUpClass()
         cls.listener = OvertCommandListener()
         cls.client = rs_or_single_client(event_listeners=[cls.listener])
         cls.client.db.coll.drop()
@@ -785,7 +785,7 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
         # Create data key.
         master_key: Any = self.MASTER_KEYS[provider_name]
         datakey_id = self.client_encryption.create_data_key(
-            provider_name, master_key=master_key, key_alt_names=["%s_altname" % (provider_name,)]
+            provider_name, master_key=master_key, key_alt_names=[f"{provider_name}_altname"]
         )
         self.assertBinaryUUID(datakey_id)
         cmd = self.listener.results["started"][-1]
@@ -797,20 +797,20 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
 
         # Encrypt by key_id.
         encrypted = self.client_encryption.encrypt(
-            "hello %s" % (provider_name,),
+            f"hello {provider_name}",
             Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
             key_id=datakey_id,
         )
         self.assertEncrypted(encrypted)
         self.client_encrypted.db.coll.insert_one({"_id": provider_name, "value": encrypted})
         doc_decrypted = self.client_encrypted.db.coll.find_one({"_id": provider_name})
-        self.assertEqual(doc_decrypted["value"], "hello %s" % (provider_name,))  # type: ignore
+        self.assertEqual(doc_decrypted["value"], f"hello {provider_name}")  # type: ignore
 
         # Encrypt by key_alt_name.
         encrypted_altname = self.client_encryption.encrypt(
-            "hello %s" % (provider_name,),
+            f"hello {provider_name}",
             Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
-            key_alt_name="%s_altname" % (provider_name,),
+            key_alt_name=f"{provider_name}_altname",
         )
         self.assertEqual(encrypted_altname, encrypted)
 
@@ -936,7 +936,7 @@ class TestCorpus(EncryptionIntegrationTest):
     @classmethod
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
     def setUpClass(cls):
-        super(TestCorpus, cls).setUpClass()
+        super().setUpClass()
 
     @staticmethod
     def kms_providers():
@@ -1042,12 +1042,12 @@ class TestCorpus(EncryptionIntegrationTest):
                         value["value"], algo, **kwargs  # type: ignore[arg-type]
                     )
                     if not value["allowed"]:
-                        self.fail("encrypt should have failed: %r: %r" % (key, value))
+                        self.fail(f"encrypt should have failed: {key!r}: {value!r}")
                     corpus_copied[key]["value"] = encrypted_val
                 except Exception:
                     if value["allowed"]:
                         tb = traceback.format_exc()
-                        self.fail("encrypt failed: %r: %r, traceback: %s" % (key, value, tb))
+                        self.fail(f"encrypt failed: {key!r}: {value!r}, traceback: {tb}")
 
         client_encrypted.db.coll.insert_one(corpus_copied)
         corpus_decrypted = client_encrypted.db.coll.find_one()
@@ -1114,7 +1114,7 @@ class TestBsonSizeBatches(EncryptionIntegrationTest):
 
     @classmethod
     def setUpClass(cls):
-        super(TestBsonSizeBatches, cls).setUpClass()
+        super().setUpClass()
         db = client_context.client.db
         cls.coll = db.coll
         cls.coll.drop()
@@ -1145,7 +1145,7 @@ class TestBsonSizeBatches(EncryptionIntegrationTest):
     def tearDownClass(cls):
         cls.coll_encrypted.drop()
         cls.client_encrypted.close()
-        super(TestBsonSizeBatches, cls).tearDownClass()
+        super().tearDownClass()
 
     def test_01_insert_succeeds_under_2MiB(self):
         doc = {"_id": "over_2mib_under_16mib", "unencrypted": "a" * _2_MiB}
@@ -1215,7 +1215,7 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
         "No environment credentials are set",
     )
     def setUpClass(cls):
-        super(TestCustomEndpoint, cls).setUpClass()
+        super().setUpClass()
 
     def setUp(self):
         kms_providers = {"aws": AWS_CREDS, "azure": AZURE_CREDS, "gcp": GCP_CREDS, "kmip": KMIP}
@@ -1410,7 +1410,7 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             self.client_encryption.create_data_key("kmip", key)
 
 
-class AzureGCPEncryptionTestMixin(object):
+class AzureGCPEncryptionTestMixin:
     DEK = None
     KMS_PROVIDER_MAP = None
     KEYVAULT_DB = "keyvault"
@@ -1482,7 +1482,7 @@ class TestAzureEncryption(AzureGCPEncryptionTestMixin, EncryptionIntegrationTest
         cls.KMS_PROVIDER_MAP = {"azure": AZURE_CREDS}
         cls.DEK = json_data(BASE, "custom", "azure-dek.json")
         cls.SCHEMA_MAP = json_data(BASE, "custom", "azure-gcp-schema.json")
-        super(TestAzureEncryption, cls).setUpClass()
+        super().setUpClass()
 
     def test_explicit(self):
         return self._test_explicit(
@@ -1508,7 +1508,7 @@ class TestGCPEncryption(AzureGCPEncryptionTestMixin, EncryptionIntegrationTest):
         cls.KMS_PROVIDER_MAP = {"gcp": GCP_CREDS}
         cls.DEK = json_data(BASE, "custom", "gcp-dek.json")
         cls.SCHEMA_MAP = json_data(BASE, "custom", "azure-gcp-schema.json")
-        super(TestGCPEncryption, cls).setUpClass()
+        super().setUpClass()
 
     def test_explicit(self):
         return self._test_explicit(
@@ -1809,7 +1809,7 @@ class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
 class TestKmsTLSProse(EncryptionIntegrationTest):
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
     def setUp(self):
-        super(TestKmsTLSProse, self).setUp()
+        super().setUp()
         self.patch_system_certs(CA_PEM)
         self.client_encrypted = ClientEncryption(
             {"aws": AWS_CREDS}, "keyvault.datakeys", self.client, OPTS
@@ -1845,7 +1845,7 @@ class TestKmsTLSProse(EncryptionIntegrationTest):
 class TestKmsTLSOptions(EncryptionIntegrationTest):
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
     def setUp(self):
-        super(TestKmsTLSOptions, self).setUp()
+        super().setUp()
         # 1, create client with only tlsCAFile.
         providers: dict = copy.deepcopy(ALL_KMS_PROVIDERS)
         providers["azure"]["identityPlatformEndpoint"] = "127.0.0.1:8002"

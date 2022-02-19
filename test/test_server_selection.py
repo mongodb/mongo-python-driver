@@ -47,7 +47,7 @@ _TEST_PATH = os.path.join(
 )
 
 
-class SelectionStoreSelector(object):
+class SelectionStoreSelector:
     """No-op selector that keeps track of what was passed to it."""
 
     def __init__(self):
@@ -85,7 +85,7 @@ class TestCustomServerSelectorFunction(IntegrationTest):
             )
 
         wait_until(all_hosts_started, "receive heartbeat from all hosts")
-        expected_port = max([n.address[1] for n in client._topology._description.readable_servers])
+        expected_port = max(n.address[1] for n in client._topology._description.readable_servers)
 
         # Insert 1 record and access it 10 times.
         coll.insert_one({"name": "John Doe"})

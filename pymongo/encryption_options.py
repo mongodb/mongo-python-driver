@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from pymongo.mongo_client import MongoClient
 
 
-class AutoEncryptionOpts(object):
+class AutoEncryptionOpts:
     """Options to configure automatic client-side field level encryption."""
 
     def __init__(

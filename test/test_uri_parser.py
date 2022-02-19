@@ -504,7 +504,7 @@ class TestURI(unittest.TestCase):
     def test_special_chars(self):
         user = "user@ /9+:?~!$&'()*+,;="
         pwd = "pwd@ /9+:?~!$&'()*+,;="
-        uri = "mongodb://%s:%s@localhost" % (quote_plus(user), quote_plus(pwd))
+        uri = f"mongodb://{quote_plus(user)}:{quote_plus(pwd)}@localhost"
         res = parse_uri(uri)
         self.assertEqual(user, res["username"])
         self.assertEqual(pwd, res["password"])

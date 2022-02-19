@@ -49,7 +49,7 @@ from pymongo.write_concern import WriteConcern
 
 class SpecRunnerThread(threading.Thread):
     def __init__(self, name):
-        super(SpecRunnerThread, self).__init__()
+        super().__init__()
         self.name = name
         self.exc = None
         self.setDaemon(True)
@@ -88,7 +88,7 @@ class SpecRunner(IntegrationTest):
 
     @classmethod
     def setUpClass(cls):
-        super(SpecRunner, cls).setUpClass()
+        super().setUpClass()
         cls.mongos_clients = []
 
         # Speed up the tests by decreasing the heartbeat frequency.
@@ -98,10 +98,10 @@ class SpecRunner(IntegrationTest):
     @classmethod
     def tearDownClass(cls):
         cls.knobs.disable()
-        super(SpecRunner, cls).tearDownClass()
+        super().tearDownClass()
 
     def setUp(self):
-        super(SpecRunner, self).setUp()
+        super().setUp()
         self.targets = {}
         self.listener = None  # type: ignore
         self.pool_listener = None
@@ -170,7 +170,7 @@ class SpecRunner(IntegrationTest):
     def assertErrorLabelsOmit(self, exc, omit_labels):
         for label in omit_labels:
             self.assertFalse(
-                exc.has_error_label(label), msg="error labels should not contain %s" % (label,)
+                exc.has_error_label(label), msg=f"error labels should not contain {label}"
             )
 
     def kill_all_sessions(self):
@@ -412,12 +412,12 @@ class SpecRunner(IntegrationTest):
                     for key, val in expected.items():
                         if val is None:
                             if key in actual:
-                                self.fail("Unexpected key [%s] in %r" % (key, actual))
+                                self.fail(f"Unexpected key [{key}] in {actual!r}")
                         elif key not in actual:
-                            self.fail("Expected key [%s] in %r" % (key, actual))
+                            self.fail(f"Expected key [{key}] in {actual!r}")
                         else:
                             self.assertEqual(
-                                val, decode_raw(actual[key]), "Key [%s] in %s" % (key, actual)
+                                val, decode_raw(actual[key]), f"Key [{key}] in {actual}"
                             )
                 else:
                     self.assertEqual(actual, expected)

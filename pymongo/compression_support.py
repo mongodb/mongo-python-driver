@@ -41,8 +41,8 @@ except ImportError:
 from pymongo.hello import HelloCompat
 from pymongo.monitoring import _SENSITIVE_COMMANDS
 
-_SUPPORTED_COMPRESSORS = set(["snappy", "zlib", "zstd"])
-_NO_COMPRESSION = set([HelloCompat.CMD, HelloCompat.LEGACY_CMD])
+_SUPPORTED_COMPRESSORS = {"snappy", "zlib", "zstd"}
+_NO_COMPRESSION = {HelloCompat.CMD, HelloCompat.LEGACY_CMD}
 _NO_COMPRESSION.update(_SENSITIVE_COMMANDS)
 
 
@@ -57,7 +57,7 @@ def validate_compressors(dummy, value):
     for compressor in compressors[:]:
         if compressor not in _SUPPORTED_COMPRESSORS:
             compressors.remove(compressor)
-            warnings.warn("Unsupported compressor: %s" % (compressor,))
+            warnings.warn(f"Unsupported compressor: {compressor}")
         elif compressor == "snappy" and not _HAVE_SNAPPY:
             compressors.remove(compressor)
             warnings.warn(
@@ -83,13 +83,13 @@ def validate_zlib_compression_level(option, value):
     try:
         level = int(value)
     except Exception:
-        raise TypeError("%s must be an integer, not %r." % (option, value))
+        raise TypeError(f"{option} must be an integer, not {value!r}.")
     if level < -1 or level > 9:
         raise ValueError("%s must be between -1 and 9, not %d." % (option, level))
     return level
 
 
-class CompressionSettings(object):
+class CompressionSettings:
     def __init__(self, compressors, zlib_compression_level):
         self.compressors = compressors
         self.zlib_compression_level = zlib_compression_level
@@ -111,7 +111,7 @@ def _zlib_no_compress(data, level=None):
     return b"".join([cobj.compress(data), cobj.flush()])
 
 
-class SnappyContext(object):
+class SnappyContext:
     compressor_id = 1
 
     @staticmethod
@@ -119,7 +119,7 @@ class SnappyContext(object):
         return snappy.compress(data)
 
 
-class ZlibContext(object):
+class ZlibContext:
     compressor_id = 2
 
     def __init__(self, level):
@@ -135,7 +135,7 @@ class ZlibContext(object):
             self.compresss = lambda data, _: zlib.compress(data, level)
 
 
-class ZstdContext(object):
+class ZstdContext:
     compressor_id = 3
 
     @staticmethod

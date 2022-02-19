@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2009-present MongoDB, Inc.
 #
@@ -368,7 +367,7 @@ class TestBSON(unittest.TestCase):
             ),
         ]
         for i, data in enumerate(bad_bsons):
-            msg = "bad_bson[{}]".format(i)
+            msg = f"bad_bson[{i}]"
             with self.assertRaises(InvalidBSON, msg=msg):
                 decode_all(data)
             with self.assertRaises(InvalidBSON, msg=msg):
@@ -489,7 +488,7 @@ class TestBSON(unittest.TestCase):
 
     def test_unknown_type(self):
         # Repr value differs with major python version
-        part = "type %r for fieldname 'foo'" % (b"\x14",)
+        part = "type {!r} for fieldname 'foo'".format(b"\x14")
         docs = [
             b"\x0e\x00\x00\x00\x14foo\x00\x01\x00\x00\x00\x00",
             (b"\x16\x00\x00\x00\x04foo\x00\x0c\x00\x00\x00\x140\x00\x01\x00\x00\x00\x00\x00"),
@@ -646,7 +645,7 @@ class TestBSON(unittest.TestCase):
         encoded1 = encode({"x": 256})
         decoded1 = decode(encoded1)["x"]
         self.assertEqual(256, decoded1)
-        self.assertEqual(type(256), type(decoded1))
+        self.assertEqual(int, type(decoded1))
 
         encoded2 = encode({"x": Int64(256)})
         decoded2 = decode(encoded2)["x"]
@@ -923,7 +922,7 @@ class TestBSON(unittest.TestCase):
     def test_bson_encode_thread_safe(self):
         def target(i):
             for j in range(1000):
-                my_int = type("MyInt_%s_%s" % (i, j), (int,), {})
+                my_int = type(f"MyInt_{i}_{j}", (int,), {})
                 bson.encode({"my_int": my_int()})
 
         threads = [ExceptionCatchingThread(target=target, args=(i,)) for i in range(3)]
@@ -937,7 +936,7 @@ class TestBSON(unittest.TestCase):
             self.assertIsNone(t.exc)
 
     def test_raise_invalid_document(self):
-        class Wrapper(object):
+        class Wrapper:
             def __init__(self, val):
                 self.val = val
 

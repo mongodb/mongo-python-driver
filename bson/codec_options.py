@@ -117,7 +117,7 @@ _Codec = Union[TypeEncoder, TypeDecoder, TypeCodec]
 _Fallback = Callable[[Any], Any]
 
 
-class TypeRegistry(object):
+class TypeRegistry:
     """Encapsulates type codecs used in encoding and / or decoding BSON, as
     well as the fallback encoder. Type registries cannot be modified after
     instantiation.
@@ -185,7 +185,7 @@ class TypeRegistry(object):
                 raise TypeError(err_msg)
 
     def __repr__(self):
-        return "%s(type_codecs=%r, fallback_encoder=%r)" % (
+        return "{}(type_codecs={!r}, fallback_encoder={!r})".format(
             self.__class__.__name__,
             self.__type_codecs,
             self._fallback_encoder,
@@ -372,7 +372,7 @@ class CodecOptions(_options_base):
         }
 
     def __repr__(self):
-        return "%s(%s)" % (self.__class__.__name__, self._arguments_repr())
+        return f"{self.__class__.__name__}({self._arguments_repr()})"
 
     def with_options(self, **kwargs: Any) -> "CodecOptions":
         """Make a copy of this CodecOptions, overriding some options::

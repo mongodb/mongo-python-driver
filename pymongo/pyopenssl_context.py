@@ -68,7 +68,7 @@ _VERIFY_MAP = {
     _stdlibssl.CERT_REQUIRED: _SSL.VERIFY_PEER | _SSL.VERIFY_FAIL_IF_NO_PEER_CERT,
 }
 
-_REVERSE_VERIFY_MAP = dict((value, key) for key, value in _VERIFY_MAP.items())
+_REVERSE_VERIFY_MAP = {value: key for key, value in _VERIFY_MAP.items()}
 
 
 def _is_ip_address(address):
@@ -96,7 +96,7 @@ class _sslConn(_SSL.Connection):
     def __init__(self, ctx, sock, suppress_ragged_eofs):
         self.socket_checker = _SocketChecker()
         self.suppress_ragged_eofs = suppress_ragged_eofs
-        super(_sslConn, self).__init__(ctx, sock)
+        super().__init__(ctx, sock)
 
     def _call(self, call, *args, **kwargs):
         timeout = self.gettimeout()
@@ -112,11 +112,11 @@ class _sslConn(_SSL.Connection):
                 continue
 
     def do_handshake(self, *args, **kwargs):
-        return self._call(super(_sslConn, self).do_handshake, *args, **kwargs)
+        return self._call(super().do_handshake, *args, **kwargs)
 
     def recv(self, *args, **kwargs):
         try:
-            return self._call(super(_sslConn, self).recv, *args, **kwargs)
+            return self._call(super().recv, *args, **kwargs)
         except _SSL.SysCallError as exc:
             # Suppress ragged EOFs to match the stdlib.
             if self.suppress_ragged_eofs and _ragged_eof(exc):
@@ -125,7 +125,7 @@ class _sslConn(_SSL.Connection):
 
     def recv_into(self, *args, **kwargs):
         try:
-            return self._call(super(_sslConn, self).recv_into, *args, **kwargs)  # type: ignore
+            return self._call(super().recv_into, *args, **kwargs)  # type: ignore
         except _SSL.SysCallError as exc:
             # Suppress ragged EOFs to match the stdlib.
             if self.suppress_ragged_eofs and _ragged_eof(exc):
@@ -139,13 +139,11 @@ class _sslConn(_SSL.Connection):
         sent = 0
         while total_sent < total_length:
             try:
-                sent = self._call(
-                    super(_sslConn, self).send, view[total_sent:], flags  # type: ignore
-                )
+                sent = self._call(super().send, view[total_sent:], flags)  # type: ignore
             # XXX: It's not clear if this can actually happen. PyOpenSSL
             # doesn't appear to have any interrupt handling, nor any interrupt
             # errors for OpenSSL connections.
-            except (IOError, OSError) as exc:  # noqa: B014
+            except OSError as exc:  # noqa: B014
                 if _errno_from_exception(exc) == _EINTR:
                     continue
                 raise
@@ -156,7 +154,7 @@ class _sslConn(_SSL.Connection):
             total_sent += sent
 
 
-class _CallbackData(object):
+class _CallbackData:
     """Data class which is passed to the OCSP callback."""
 
     def __init__(self):
@@ -165,7 +163,7 @@ class _CallbackData(object):
         self.ocsp_response_cache = _OCSPCache()
 
 
-class SSLContext(object):
+class SSLContext:
     """A CPython compatible SSLContext implementation wrapping PyOpenSSL's
     context.
     """

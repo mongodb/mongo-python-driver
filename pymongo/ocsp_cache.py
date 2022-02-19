@@ -19,7 +19,7 @@ from datetime import datetime as _datetime
 from threading import Lock
 
 
-class _OCSPCache(object):
+class _OCSPCache:
     """A cache for OCSP responses."""
 
     CACHE_KEY_TYPE = namedtuple(  # type: ignore

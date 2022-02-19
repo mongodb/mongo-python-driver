@@ -246,7 +246,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
             self.mongocryptd_client = None
 
 
-class _Encrypter(object):
+class _Encrypter:
     """Encrypts and decrypts MongoDB commands.
 
     This class is used to support automatic encryption and decryption of
@@ -345,14 +345,14 @@ class _Encrypter(object):
             self._internal_client = None
 
 
-class Algorithm(object):
+class Algorithm:
     """An enum that defines the supported encryption algorithms."""
 
     AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic = "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic"
     AEAD_AES_256_CBC_HMAC_SHA_512_Random = "AEAD_AES_256_CBC_HMAC_SHA_512-Random"
 
 
-class ClientEncryption(object):
+class ClientEncryption:
     """Explicit client-side field level encryption."""
 
     def __init__(

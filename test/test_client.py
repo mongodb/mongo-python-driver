@@ -303,7 +303,7 @@ class ClientUnitTest(unittest.TestCase):
         self.assertRaises(TypeError, MongoClient, driver=("Foo", "1", "a"))
         # Test appending to driver info.
         metadata["driver"]["name"] = "PyMongo|FooDriver"
-        metadata["driver"]["version"] = "%s|1.2.3" % (_METADATA["driver"]["version"],)
+        metadata["driver"]["version"] = "{}|1.2.3".format(_METADATA["driver"]["version"])
         client = MongoClient(
             "foo",
             27017,
@@ -313,7 +313,7 @@ class ClientUnitTest(unittest.TestCase):
         )
         options = client._MongoClient__options
         self.assertEqual(options.pool_options.metadata, metadata)
-        metadata["platform"] = "%s|FooPlatform" % (_METADATA["platform"],)
+        metadata["platform"] = "{}|FooPlatform".format(_METADATA["platform"])
         client = MongoClient(
             "foo",
             27017,
@@ -325,7 +325,7 @@ class ClientUnitTest(unittest.TestCase):
         self.assertEqual(options.pool_options.metadata, metadata)
 
     def test_kwargs_codec_options(self):
-        class MyFloatType(object):
+        class MyFloatType:
             def __init__(self, x):
                 self.__x = x
 
@@ -699,7 +699,7 @@ class TestClient(IntegrationTest):
         with self.assertRaises(ValueError):
             connected(
                 MongoClient(
-                    "%s:1234567" % (client_context.host,),
+                    f"{client_context.host}:1234567",
                     connectTimeoutMS=1,
                     serverSelectionTimeoutMS=10,
                 )
@@ -961,7 +961,7 @@ class TestClient(IntegrationTest):
     @client_context.require_auth
     def test_lazy_auth_raises_operation_failure(self):
         lazy_client = rs_or_single_client_noauth(
-            "mongodb://user:wrong@%s/pymongo_test" % (client_context.host,), connect=False
+            f"mongodb://user:wrong@{client_context.host}/pymongo_test", connect=False
         )
 
         assertRaisesExactly(OperationFailure, lazy_client.test.collection.find_one)
@@ -1115,7 +1115,7 @@ class TestClient(IntegrationTest):
                 raise SkipTest("Need the ipaddress module to test with SSL")
 
         if client_context.auth_enabled:
-            auth_str = "%s:%s@" % (db_user, db_pwd)
+            auth_str = f"{db_user}:{db_pwd}@"
         else:
             auth_str = ""
 
@@ -1481,7 +1481,7 @@ class TestClient(IntegrationTest):
         # Continuously reset the pool.
         class ResetPoolThread(threading.Thread):
             def __init__(self, pool):
-                super(ResetPoolThread, self).__init__()
+                super().__init__()
                 self.running = True
                 self.pool = pool
 
@@ -1665,7 +1665,7 @@ class TestExhaustCursor(IntegrationTest):
     """Test that clients properly handle errors from exhaust cursors."""
 
     def setUp(self):
-        super(TestExhaustCursor, self).setUp()
+        super().setUp()
         if client_context.is_mongos:
             raise SkipTest("mongos doesn't support exhaust, SERVER-2627")
 
@@ -2056,7 +2056,7 @@ class TestClientPool(MockClientTest):
 
         wait_until(lambda: len(c.nodes) == 3, "connect")
         self.assertEqual(c.address, ("a", 1))
-        self.assertEqual(c.arbiters, set([("c", 3)]))
+        self.assertEqual(c.arbiters, {("c", 3)})
         # Assert that we create 2 and only 2 pooled connections.
         listener.wait_for_event(monitoring.ConnectionReadyEvent, 2)
         self.assertEqual(listener.event_count(monitoring.ConnectionCreatedEvent), 2)

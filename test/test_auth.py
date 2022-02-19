@@ -67,7 +67,7 @@ class AutoAuthenticateThread(threading.Thread):
     """
 
     def __init__(self, collection):
-        super(AutoAuthenticateThread, self).__init__()
+        super().__init__()
         self.collection = collection
         self.success = False
 
@@ -89,10 +89,10 @@ class TestGSSAPI(unittest.TestCase):
         cls.service_realm_required = (
             GSSAPI_SERVICE_REALM is not None and GSSAPI_SERVICE_REALM not in GSSAPI_PRINCIPAL
         )
-        mech_properties = "SERVICE_NAME:%s" % (GSSAPI_SERVICE_NAME,)
-        mech_properties += ",CANONICALIZE_HOST_NAME:%s" % (GSSAPI_CANONICALIZE,)
+        mech_properties = f"SERVICE_NAME:{GSSAPI_SERVICE_NAME}"
+        mech_properties += f",CANONICALIZE_HOST_NAME:{GSSAPI_CANONICALIZE}"
         if GSSAPI_SERVICE_REALM is not None:
-            mech_properties += ",SERVICE_REALM:%s" % (GSSAPI_SERVICE_REALM,)
+            mech_properties += f",SERVICE_REALM:{GSSAPI_SERVICE_REALM}"
         cls.mech_properties = mech_properties
 
     def test_credentials_hashing(self):
@@ -111,8 +111,8 @@ class TestGSSAPI(unittest.TestCase):
             "GSSAPI", None, "user", "pass", {"authmechanismproperties": {"SERVICE_NAME": "B"}}, None
         )
 
-        self.assertEqual(1, len(set([creds1, creds2])))
-        self.assertEqual(3, len(set([creds0, creds1, creds2, creds3])))
+        self.assertEqual(1, len({creds1, creds2}))
+        self.assertEqual(3, len({creds0, creds1, creds2, creds3}))
 
     @ignore_deprecations
     def test_gssapi_simple(self):
@@ -160,7 +160,7 @@ class TestGSSAPI(unittest.TestCase):
         client[GSSAPI_DB].collection.find_one()
 
         # Log in using URI, with authMechanismProperties.
-        mech_uri = uri + "&authMechanismProperties=%s" % (self.mech_properties,)
+        mech_uri = uri + f"&authMechanismProperties={self.mech_properties}"
         client = MongoClient(mech_uri)
         client[GSSAPI_DB].collection.find_one()
 
@@ -179,7 +179,7 @@ class TestGSSAPI(unittest.TestCase):
 
                 client[GSSAPI_DB].list_collection_names()
 
-                uri = uri + "&replicaSet=%s" % (str(set_name),)
+                uri = uri + f"&replicaSet={str(set_name)}"
                 client = MongoClient(uri)
                 client[GSSAPI_DB].list_collection_names()
 
@@ -196,7 +196,7 @@ class TestGSSAPI(unittest.TestCase):
 
             client[GSSAPI_DB].list_collection_names()
 
-            mech_uri = mech_uri + "&replicaSet=%s" % (str(set_name),)
+            mech_uri = mech_uri + f"&replicaSet={str(set_name)}"
             client = MongoClient(mech_uri)
             client[GSSAPI_DB].list_collection_names()
 
@@ -336,12 +336,12 @@ class TestSASLPlain(unittest.TestCase):
 class TestSCRAMSHA1(IntegrationTest):
     @client_context.require_auth
     def setUp(self):
-        super(TestSCRAMSHA1, self).setUp()
+        super().setUp()
         client_context.create_user("pymongo_test", "user", "pass", roles=["userAdmin", "readWrite"])
 
     def tearDown(self):
         client_context.drop_user("pymongo_test", "user")
-        super(TestSCRAMSHA1, self).tearDown()
+        super().tearDown()
 
     def test_scram_sha1(self):
         host, port = client_context.host, client_context.port
@@ -368,16 +368,16 @@ class TestSCRAM(IntegrationTest):
     @client_context.require_auth
     @client_context.require_version_min(3, 7, 2)
     def setUp(self):
-        super(TestSCRAM, self).setUp()
+        super().setUp()
         self._SENSITIVE_COMMANDS = monitoring._SENSITIVE_COMMANDS
-        monitoring._SENSITIVE_COMMANDS = set([])
+        monitoring._SENSITIVE_COMMANDS = set()
         self.listener = AllowListEventListener("saslStart")
 
     def tearDown(self):
         monitoring._SENSITIVE_COMMANDS = self._SENSITIVE_COMMANDS
         client_context.client.testscram.command("dropAllUsersFromDatabase")
         client_context.client.drop_database("testscram")
-        super(TestSCRAM, self).tearDown()
+        super().tearDown()
 
     def test_scram_skip_empty_exchange(self):
         listener = AllowListEventListener("saslStart", "saslContinue")
@@ -595,14 +595,14 @@ class TestSCRAM(IntegrationTest):
 class TestAuthURIOptions(IntegrationTest):
     @client_context.require_auth
     def setUp(self):
-        super(TestAuthURIOptions, self).setUp()
+        super().setUp()
         client_context.create_user("admin", "admin", "pass")
         client_context.create_user("pymongo_test", "user", "pass", ["userAdmin", "readWrite"])
 
     def tearDown(self):
         client_context.drop_user("pymongo_test", "user")
         client_context.drop_user("admin", "admin")
-        super(TestAuthURIOptions, self).tearDown()
+        super().tearDown()
 
     def test_uri_options(self):
         # Test default to admin

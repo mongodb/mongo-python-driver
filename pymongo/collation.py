@@ -21,7 +21,7 @@ from typing import Any, Dict, Mapping, Optional, Union
 from pymongo import common
 
 
-class CollationStrength(object):
+class CollationStrength:
     """
     An enum that defines values for `strength` on a
     :class:`~pymongo.collation.Collation`.
@@ -43,7 +43,7 @@ class CollationStrength(object):
     """Differentiate unicode code point (characters are exactly identical)."""
 
 
-class CollationAlternate(object):
+class CollationAlternate:
     """
     An enum that defines values for `alternate` on a
     :class:`~pymongo.collation.Collation`.
@@ -62,7 +62,7 @@ class CollationAlternate(object):
     """
 
 
-class CollationMaxVariable(object):
+class CollationMaxVariable:
     """
     An enum that defines values for `max_variable` on a
     :class:`~pymongo.collation.Collation`.
@@ -75,7 +75,7 @@ class CollationMaxVariable(object):
     """Spaces alone are ignored."""
 
 
-class CollationCaseFirst(object):
+class CollationCaseFirst:
     """
     An enum that defines values for `case_first` on a
     :class:`~pymongo.collation.Collation`.
@@ -91,7 +91,7 @@ class CollationCaseFirst(object):
     """Default for locale or collation strength."""
 
 
-class Collation(object):
+class Collation:
     """Collation
 
     :Parameters:
@@ -163,7 +163,7 @@ class Collation(object):
         maxVariable: Optional[str] = None,
         normalization: Optional[bool] = None,
         backwards: Optional[bool] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         locale = common.validate_string("locale", locale)
         self.__document: Dict[str, Any] = {"locale": locale}
@@ -201,7 +201,7 @@ class Collation(object):
 
     def __repr__(self):
         document = self.document
-        return "Collation(%s)" % (", ".join("%s=%r" % (key, document[key]) for key in document),)
+        return "Collation({})".format(", ".join(f"{key}={document[key]!r}" for key in document))
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Collation):

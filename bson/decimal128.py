@@ -115,7 +115,7 @@ def _decimal_to_128(value: _VALUE_OPTIONS) -> Tuple[int, int]:
     return high, low
 
 
-class Decimal128(object):
+class Decimal128:
     """BSON Decimal128 type::
 
       >>> Decimal128(Decimal("0.0005"))
@@ -226,7 +226,7 @@ class Decimal128(object):
                 )
             self.__high, self.__low = value  # type: ignore
         else:
-            raise TypeError("Cannot convert %r to Decimal128" % (value,))
+            raise TypeError(f"Cannot convert {value!r} to Decimal128")
 
     def to_decimal(self) -> decimal.Decimal:
         """Returns an instance of :class:`decimal.Decimal` for this
@@ -297,7 +297,7 @@ class Decimal128(object):
         return str(dec)
 
     def __repr__(self):
-        return "Decimal128('%s')" % (str(self),)
+        return f"Decimal128('{str(self)}')"
 
     def __setstate__(self, value: Tuple[int, int]) -> None:
         self.__high, self.__low = value

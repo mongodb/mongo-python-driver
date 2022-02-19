@@ -19,7 +19,7 @@ from typing import Any, Dict, Optional, Union
 from pymongo.errors import ConfigurationError
 
 
-class WriteConcern(object):
+class WriteConcern:
     """WriteConcern
 
     :Parameters:
@@ -113,7 +113,9 @@ class WriteConcern(object):
         return self.__acknowledged
 
     def __repr__(self):
-        return "WriteConcern(%s)" % (", ".join("%s=%s" % kvt for kvt in self.__document.items()),)
+        return "WriteConcern({})".format(
+            ", ".join("%s=%s" % kvt for kvt in self.__document.items())
+        )
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, WriteConcern):

@@ -40,7 +40,7 @@ class TestAllScenarios(unittest.TestCase):
             server.pool.operation_count = mock["operation_count"]
 
         pref = ReadPreference.NEAREST
-        counts = dict((address, 0) for address in topology._description.server_descriptions())
+        counts = {address: 0 for address in topology._description.server_descriptions()}
 
         # Number of times to repeat server selection
         iterations = scenario_def["iterations"]
@@ -85,7 +85,7 @@ CustomTestCreator(create_test, TestAllScenarios, TEST_PATH).create_tests()
 
 class FinderThread(threading.Thread):
     def __init__(self, collection, iterations):
-        super(FinderThread, self).__init__()
+        super().__init__()
         self.daemon = True
         self.collection = collection
         self.iterations = iterations

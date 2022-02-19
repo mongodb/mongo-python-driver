@@ -43,7 +43,7 @@ from pymongo.read_preferences import _ServerMode
 from pymongo.write_concern import WriteConcern
 
 
-class GridFS(object):
+class GridFS:
     """An instance of GridFS on top of a single Database."""
 
     def __init__(self, database: Database, collection: str = "fs"):
@@ -445,7 +445,7 @@ class GridFS(object):
         return f is not None
 
 
-class GridFSBucket(object):
+class GridFSBucket:
     """An instance of GridFS on top of a single Database."""
 
     def __init__(

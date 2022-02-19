@@ -81,7 +81,7 @@ _IndexList = Sequence[Tuple[str, Union[int, str, Mapping[str, Any]]]]
 _IndexKeyHint = Union[str, _IndexList]
 
 
-class ReturnDocument(object):
+class ReturnDocument:
     """An enum used with
     :meth:`~pymongo.collection.Collection.find_one_and_replace` and
     :meth:`~pymongo.collection.Collection.find_one_and_update`.
@@ -190,7 +190,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `collections <https://dochub.mongodb.org/core/collections>`_.
         """
-        super(Collection, self).__init__(
+        super().__init__(
             codec_options or database.codec_options,
             read_preference or database.read_preference,
             write_concern or database.write_concern,
@@ -212,7 +212,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         self.__database: Database[_DocumentType] = database
         self.__name = name
-        self.__full_name = "%s.%s" % (self.__database.name, self.__name)
+        self.__full_name = f"{self.__database.name}.{self.__name}"
         if create or kwargs or collation:
             self.__create(kwargs, collation, session)
 
@@ -311,7 +311,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `name`: the name of the collection to get
         """
         if name.startswith("_"):
-            full_name = "%s.%s" % (self.__name, name)
+            full_name = f"{self.__name}.{name}"
             raise AttributeError(
                 "Collection has no attribute %r. To access the %s"
                 " collection, use database['%s']." % (name, full_name, full_name)
@@ -321,7 +321,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def __getitem__(self, name: str) -> "Collection[_DocumentType]":
         return Collection(
             self.__database,
-            "%s.%s" % (self.__name, name),
+            f"{self.__name}.{name}",
             False,
             self.codec_options,
             self.read_preference,
@@ -330,7 +330,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         )
 
     def __repr__(self):
-        return "Collection(%r, %r)" % (self.__database, self.__name)
+        return f"Collection({self.__database!r}, {self.__name!r})"
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Collection):
@@ -507,7 +507,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             try:
                 request._add_to_bulk(blk)
             except AttributeError:
-                raise TypeError("%r is not a valid request" % (request,))
+                raise TypeError(f"{request!r} is not a valid request")
 
         write_concern = self._write_concern_for(session)
         bulk_api_result = blk.execute(write_concern, session)
@@ -1878,7 +1878,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 for index in indexes:
                     if not isinstance(index, IndexModel):
                         raise TypeError(
-                            "%r is not an instance of pymongo.operations.IndexModel" % (index,)
+                            f"{index!r} is not an instance of pymongo.operations.IndexModel"
                         )
                     document = index.document
                     names.append(document["name"])
@@ -2617,7 +2617,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if "$" in new_name and not new_name.startswith("oplog.$main"):
             raise InvalidName("collection names must not contain '$'")
 
-        new_name = "%s.%s" % (self.__database.name, new_name)
+        new_name = f"{self.__database.name}.{new_name}"
         cmd = SON([("renameCollection", self.__full_name), ("to", new_name)])
         cmd.update(kwargs)
         if comment is not None:

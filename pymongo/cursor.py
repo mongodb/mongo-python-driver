@@ -96,7 +96,7 @@ _QUERY_OPTIONS = {
 }
 
 
-class CursorType(object):
+class CursorType:
     NON_TAILABLE = 0
     """The standard cursor type."""
 
@@ -125,7 +125,7 @@ class CursorType(object):
     """
 
 
-class _SocketManager(object):
+class _SocketManager:
     """Used with exhaust cursors to ensure the socket is returned."""
 
     def __init__(self, sock, more_to_come):
@@ -386,11 +386,11 @@ class Cursor(Generic[_DocumentType]):
             "exhaust",
             "has_filter",
         )
-        data = dict(
-            (k, v)
+        data = {
+            k: v
             for k, v in self.__dict__.items()
             if k.startswith("_Cursor__") and k[9:] in values_to_clone
-        )
+        }
         if deepcopy:
             data = self._deepcopy(data)
         base.__dict__.update(data)
@@ -411,7 +411,7 @@ class Cursor(Generic[_DocumentType]):
         self.__killed = True
         if self.__id and not already_killed:
             cursor_id = self.__id
-            address = _CursorAddress(self.__address, "%s.%s" % (self.__dbname, self.__collname))
+            address = _CursorAddress(self.__address, f"{self.__dbname}.{self.__collname}")
         else:
             # Skip killCursors.
             cursor_id = 0
@@ -1319,7 +1319,7 @@ class RawBatchCursor(Cursor, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
         """
-        super(RawBatchCursor, self).__init__(collection, *args, **kwargs)
+        super().__init__(collection, *args, **kwargs)
 
     def _unpack_response(
         self, response, cursor_id, codec_options, user_fields=None, legacy_response=False

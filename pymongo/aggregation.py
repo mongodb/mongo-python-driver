@@ -21,7 +21,7 @@ from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import ReadPreference, _AggWritePref
 
 
-class _AggregationCommand(object):
+class _AggregationCommand:
     """The internal abstract base class for aggregation cursors.
 
     Should not be called directly by application developers. Use
@@ -199,7 +199,7 @@ class _CollectionAggregationCommand(_AggregationCommand):
 
 class _CollectionRawAggregationCommand(_CollectionAggregationCommand):
     def __init__(self, *args, **kwargs):
-        super(_CollectionRawAggregationCommand, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # For raw-batches, we set the initial batchSize for the cursor to 0.
         if not self._performs_write:
@@ -213,7 +213,7 @@ class _DatabaseAggregationCommand(_AggregationCommand):
 
     @property
     def _cursor_namespace(self):
-        return "%s.$cmd.aggregate" % (self._target.name,)
+        return f"{self._target.name}.$cmd.aggregate"
 
     @property
     def _database(self):

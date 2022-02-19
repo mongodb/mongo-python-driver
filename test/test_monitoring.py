@@ -39,18 +39,18 @@ class TestCommandMonitoring(IntegrationTest):
     @classmethod
     @client_context.require_connection
     def setUpClass(cls):
-        super(TestCommandMonitoring, cls).setUpClass()
+        super().setUpClass()
         cls.listener = EventListener()
         cls.client = rs_or_single_client(event_listeners=[cls.listener], retryWrites=False)
 
     @classmethod
     def tearDownClass(cls):
         cls.client.close()
-        super(TestCommandMonitoring, cls).tearDownClass()
+        super().tearDownClass()
 
     def tearDown(self):
         self.listener.results.clear()
-        super(TestCommandMonitoring, self).tearDown()
+        super().tearDown()
 
     def test_started_simple(self):
         self.client.pymongo_test.command("ping")
@@ -1077,7 +1077,7 @@ class TestCommandMonitoring(IntegrationTest):
                 errors.extend(succeed.reply["writeErrors"])
 
         self.assertEqual(2, len(errors))
-        fields = set(["index", "code", "errmsg"])
+        fields = {"index", "code", "errmsg"}
         for error in errors:
             self.assertTrue(fields.issubset(set(error)))
 
@@ -1142,7 +1142,7 @@ class TestGlobalListener(IntegrationTest):
     @classmethod
     @client_context.require_connection
     def setUpClass(cls):
-        super(TestGlobalListener, cls).setUpClass()
+        super().setUpClass()
         cls.listener = EventListener()
         # We plan to call register(), which internally modifies _LISTENERS.
         cls.saved_listeners = copy.deepcopy(monitoring._LISTENERS)
@@ -1155,10 +1155,10 @@ class TestGlobalListener(IntegrationTest):
     def tearDownClass(cls):
         monitoring._LISTENERS = cls.saved_listeners
         cls.client.close()
-        super(TestGlobalListener, cls).tearDownClass()
+        super().tearDownClass()
 
     def setUp(self):
-        super(TestGlobalListener, self).setUp()
+        super().setUp()
         self.listener.results.clear()
 
     def test_simple(self):

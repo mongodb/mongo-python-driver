@@ -144,7 +144,7 @@ class TestSSL(IntegrationTest):
     @classmethod
     @unittest.skipUnless(HAVE_SSL, "The ssl module is not available.")
     def setUpClass(cls):
-        super(TestSSL, cls).setUpClass()
+        super().setUpClass()
         # MongoClient should connect to the primary by default.
         cls.saved_port = MongoClient.PORT
         MongoClient.PORT = client_context.port
@@ -152,7 +152,7 @@ class TestSSL(IntegrationTest):
     @classmethod
     def tearDownClass(cls):
         MongoClient.PORT = cls.saved_port
-        super(TestSSL, cls).tearDownClass()
+        super().tearDownClass()
 
     @client_context.require_tls
     def test_simple_ssl(self):

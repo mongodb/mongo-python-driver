@@ -759,7 +759,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self.__kill_cursors_queue: List = []
 
         self._event_listeners = options.pool_options._event_listeners
-        super(MongoClient, self).__init__(
+        super().__init__(
             options.codec_options,
             options.read_preference,
             options.write_concern,
@@ -1413,11 +1413,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 if value is dict:
                     return "document_class=dict"
                 else:
-                    return "document_class=%s.%s" % (value.__module__, value.__name__)
+                    return f"document_class={value.__module__}.{value.__name__}"
             if option in common.TIMEOUT_OPTIONS and value is not None:
-                return "%s=%s" % (option, int(value * 1000))
+                return f"{option}={int(value * 1000)}"
 
-            return "%s=%r" % (option, value)
+            return f"{option}={value!r}"
 
         # Host first...
         options = [
@@ -1440,7 +1440,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return ", ".join(options)
 
     def __repr__(self):
-        return "MongoClient(%s)" % (self._repr_helper(),)
+        return f"MongoClient({self._repr_helper()})"
 
     def __getattr__(self, name: str) -> database.Database[_DocumentType]:
         """Get a database by name.
@@ -2009,7 +2009,7 @@ def _add_retryable_write_error(exc, max_wire_version):
         exc._add_error_label("RetryableWriteError")
 
 
-class _MongoClientErrorHandler(object):
+class _MongoClientErrorHandler:
     """Handle errors raised when executing an operation."""
 
     __slots__ = (

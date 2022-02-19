@@ -1415,7 +1415,7 @@ class TestRawBatchCursor(IntegrationTest):
 class TestRawBatchCommandCursor(IntegrationTest):
     @classmethod
     def setUpClass(cls):
-        super(TestRawBatchCommandCursor, cls).setUpClass()
+        super().setUpClass()
 
     def test_aggregate_raw(self):
         c = self.db.test

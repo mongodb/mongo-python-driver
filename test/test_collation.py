@@ -96,7 +96,7 @@ class TestCollation(IntegrationTest):
     @classmethod
     @client_context.require_connection
     def setUpClass(cls):
-        super(TestCollation, cls).setUpClass()
+        super().setUpClass()
         cls.listener = EventListener()
         cls.client = rs_or_single_client(event_listeners=[cls.listener])
         cls.db = cls.client.pymongo_test
@@ -110,11 +110,11 @@ class TestCollation(IntegrationTest):
         cls.warn_context.__exit__()
         cls.warn_context = None
         cls.client.close()
-        super(TestCollation, cls).tearDownClass()
+        super().tearDownClass()
 
     def tearDown(self):
         self.listener.results.clear()
-        super(TestCollation, self).tearDown()
+        super().tearDown()
 
     def last_command_started(self):
         return self.listener.results["started"][-1].command
