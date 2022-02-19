@@ -98,7 +98,7 @@ from bson.code import Code
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, _raw_document_class
 from bson.dbref import DBRef
 from bson.decimal128 import Decimal128
-from bson.errors import InvalidBSON, InvalidDocument, InvalidStringData
+from bson.errors import InvalidBSON, InvalidDocument, InvalidStringData, InvalidId
 from bson.int64 import Int64
 from bson.max_key import MaxKey
 from bson.min_key import MinKey
