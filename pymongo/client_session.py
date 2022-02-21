@@ -947,7 +947,7 @@ class ClientSession(Generic[_DocumentType]):
         return None
 
     def _start_serv_sesh(self, sock_info=None):
-        supports_sessions = sock_info and sock_info.supports_sessions
+        supports_sessions = getattr(sock_info, "supports_sessions", False)
         if isinstance(self._server_session, _EmptyServerSession):
             self._server_session, old = (
                 self._client._topology.get_server_session(supports_sessions=supports_sessions),
