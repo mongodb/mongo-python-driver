@@ -199,9 +199,7 @@ class TestSession(IntegrationTest):
             threads[-1].start()
         for thread in threads:
             thread.join()
-        wait_until(
-            lambda: len(listener.results["started"]) >= len(ops), "found all the events we need"
-        )
+
         lsid_set = set()
         for i in listener.results["started"]:
             if i.command.get("lsid"):
