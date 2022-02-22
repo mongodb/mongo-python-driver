@@ -69,6 +69,7 @@
   "tests": [
     {
       "description": "CommitTransaction succeeds after handshake network error",
+      "skipReason": "DRIVERS-2032: Pinned servers need to be checked if they are still selectable",
       "operations": [
         {
           "name": "startTransaction",
