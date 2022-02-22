@@ -533,9 +533,7 @@ class Topology(object):
 
             session_timeout = self._description.logical_session_timeout_minutes
             if session_timeout is None:
-                raise ConfigurationError(
-                    "Sessions are not supported by this MongoDB deployment"
-                )
+                raise ConfigurationError("Sessions are not supported by this MongoDB deployment")
         return session_timeout
 
     def get_server_session(self, supports_sessions=False):
