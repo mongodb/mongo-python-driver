@@ -188,9 +188,9 @@ class TestSession(IntegrationTest):
             (client.db.test.update_one, [{}, {"$set": {"x": 2}}]),
             (client.db.test.bulk_write, [[UpdateOne({}, {"$set": {"x": 2}})]]),
             (client.db.test.find_one_and_delete, [{}]),
-            (client.db.test.find_one_and_update,  [{}, {"$set": { "x": 1}}]),
+            (client.db.test.find_one_and_update, [{}, {"$set": {"x": 1}}]),
             (client.db.test.find_one_and_replace, [{}, {}]),
-            (client.db.test.find, [{}])
+            (client.db.test.find, [{}]),
         ]
         threads = []
         listener.results.clear()
