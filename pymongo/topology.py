@@ -516,8 +516,6 @@ class Topology(object):
 
     def _check_session_support(self, supports_sessions=False):
         """Internal check for session support on non-load balanced clusters."""
-        if supports_sessions:
-            return float("inf")
         session_timeout = self._description.logical_session_timeout_minutes
         if session_timeout is None:
             # Maybe we need an initial scan? Can raise ServerSelectionError.
@@ -532,6 +530,8 @@ class Topology(object):
                 )
 
             session_timeout = self._description.logical_session_timeout_minutes
+            if supports_sessions:
+                return session_timeout if session_timeout is not None else 30
             if session_timeout is None:
                 raise ConfigurationError("Sessions are not supported by this MongoDB deployment")
         return session_timeout
