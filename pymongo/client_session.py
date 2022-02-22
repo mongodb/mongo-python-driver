@@ -715,6 +715,7 @@ class ClientSession(Generic[_DocumentType]):
         .. versionadded:: 3.7
         """
         self._check_ended()
+
         if self.options.snapshot:
             raise InvalidOperation("Transactions are not supported in " "snapshot sessions")
 

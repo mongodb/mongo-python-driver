@@ -199,11 +199,10 @@ class TestSession(IntegrationTest):
             threads[-1].start()
         for thread in threads:
             thread.join()
-        self.assertGreaterEqual(len(listener.results["started"]), len(ops))
+        wait_until(lambda: len(listener.results["started"]) >= len(ops), "found all the events we need")
         lsid_set = set()
         for i in listener.results["started"]:
             if i.command.get("lsid"):
-                print(i.command.get("lsid")["id"])
                 lsid_set.add(i.command.get("lsid")["id"])
         self.assertEqual(len(lsid_set), 1)
 
