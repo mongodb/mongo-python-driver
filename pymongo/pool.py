@@ -724,6 +724,7 @@ class SocketInfo(object):
         """
         self.validate_session(client, session)
         session = _validate_session_write_concern(session, write_concern)
+
         # Ensure command name remains in first place.
         if not isinstance(spec, ORDERED_TYPES):  # type:ignore[arg-type]
             spec = SON(spec)
@@ -736,7 +737,6 @@ class SocketInfo(object):
         self.add_server_api(spec)
         if session:
             session._apply_to(spec, retryable_write, read_preference, self)
-
         self.send_cluster_time(spec, session, client)
         listeners = self.listeners if publish_events else None
         unacknowledged = write_concern and not write_concern.acknowledged

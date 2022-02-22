@@ -1670,6 +1670,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             # Don't call end_session.
             yield session
             return
+
         s = self._ensure_session(session)
         if s:
             try:
@@ -1677,6 +1678,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             except Exception as exc:
                 if isinstance(exc, ConnectionFailure):
                     s._server_session.mark_dirty()
+                
                 # Always call end_session on error.
                 s.end_session()
                 raise
