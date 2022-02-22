@@ -1678,7 +1678,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             except Exception as exc:
                 if isinstance(exc, ConnectionFailure):
                     s._server_session.mark_dirty()
-                
+
                 # Always call end_session on error.
                 s.end_session()
                 raise
