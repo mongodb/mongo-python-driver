@@ -962,11 +962,14 @@ class ClientSession(Generic[_DocumentType]):
         self._start_serv_sesh(sock_info)
         if self.options.snapshot:
             self._update_read_concern(command, sock_info)
+
         self._server_session.last_use = time.monotonic()
         command["lsid"] = self._server_session.session_id
+
         if is_retryable:
             command["txnNumber"] = self._server_session.transaction_id
             return
+
         if self.in_transaction:
             if read_preference != ReadPreference.PRIMARY:
                 raise InvalidOperation(
@@ -1090,6 +1093,7 @@ class _ServerSessionPool(collections.deque):
             s = self.popleft()
             if not s.timed_out(session_timeout_minutes):
                 return s
+
         return _ServerSession(self.generation)
 
     def return_server_session(self, server_session, session_timeout_minutes):
