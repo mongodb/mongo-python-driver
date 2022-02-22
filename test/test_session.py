@@ -187,6 +187,10 @@ class TestSession(IntegrationTest):
             (client.db.test.delete_one, [{}]),
             (client.db.test.update_one, [{}, {"$set": {"x": 2}}]),
             (client.db.test.bulk_write, [[UpdateOne({}, {"$set": {"x": 2}})]]),
+            (client.db.test.find_one_and_delete, [{}]),
+            (client.db.test.find_one_and_update,  [{}, {"$set": { "x": 1}}]),
+            (client.db.test.find_one_and_replace, [{}, {}]),
+            (client.db.test.find, [{}])
         ]
         threads = []
         listener.results.clear()
@@ -195,7 +199,7 @@ class TestSession(IntegrationTest):
             threads[-1].start()
         for thread in threads:
             thread.join()
-
+        self.assertGreaterEqual(len(listener.results["started"]), len(ops))
         lsid_set = set()
         for i in listener.results["started"]:
             if i.command.get("lsid"):
