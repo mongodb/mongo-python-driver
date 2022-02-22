@@ -734,10 +734,9 @@ class SocketInfo(object):
             spec["writeConcern"] = write_concern.document
 
         self.add_server_api(spec)
-        if session and self.supports_sessions:
+        if session:
             session._apply_to(spec, retryable_write, read_preference, self)
-        else:
-            session = None
+
         self.send_cluster_time(spec, session, client)
         listeners = self.listeners if publish_events else None
         unacknowledged = write_concern and not write_concern.acknowledged

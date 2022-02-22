@@ -947,11 +947,10 @@ class ClientSession(Generic[_DocumentType]):
             return self._transaction.opts.read_preference
         return None
 
-    def _start_serv_sesh(self, sock_info=None):
-        supports_sessions = getattr(sock_info, "supports_sessions", False)
+    def _start_serv_sesh(self):
         if isinstance(self._server_session, _EmptyServerSession):
             self._server_session, old = (
-                self._client._topology.get_server_session(supports_sessions=supports_sessions),
+                self._client._topology.get_server_session(),
                 self._server_session,
             )
             for _ in range(old.started):
@@ -959,7 +958,7 @@ class ClientSession(Generic[_DocumentType]):
 
     def _apply_to(self, command, is_retryable, read_preference, sock_info):
         self._check_ended()
-        self._start_serv_sesh(sock_info)
+        self._start_serv_sesh()
         if self.options.snapshot:
             self._update_read_concern(command, sock_info)
 

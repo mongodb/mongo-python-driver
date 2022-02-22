@@ -1604,6 +1604,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def __start_session(self, implicit, **kwargs):
         # Raises ConfigurationError if sessions are not supported.
         if implicit:
+            with self._topology._lock:
+                self._topology._check_session_support()
             server_session = _EmptyServerSession(self._topology._session_pool.generation)
         else:
             server_session = self._get_server_session()
