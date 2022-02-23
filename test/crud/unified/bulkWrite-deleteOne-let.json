@@ -115,7 +115,7 @@
       ]
     },
     {
-      "description": "Bulk Write deleteOne with let option unsupported (server-side error)",
+      "description": "BulkWrite deleteOne with let option unsupported (server-side error)",
       "runOnRequirements": [
         {
           "minServerVersion": "3.6.0",

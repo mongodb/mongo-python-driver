@@ -139,7 +139,7 @@
       ]
     },
     {
-      "description": "Bulk Write updateMany with let option unsupported (server-side error)",
+      "description": "BulkWrite updateMany with let option unsupported (server-side error)",
       "runOnRequirements": [
         {
           "minServerVersion": "3.6.0",

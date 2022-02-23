@@ -115,11 +115,11 @@
       ]
     },
     {
-      "description": "Bulk Write deleteMany with let option unsupported (server-side error)",
+      "description": "BulkWrite deleteMany with let option unsupported (server-side error)",
       "runOnRequirements": [
         {
           "minServerVersion": "3.6.0",
-          "maxServerVersion": "4.9"
+          "maxServerVersion": "4.4.99"
         }
       ],
       "operations": [
