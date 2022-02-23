@@ -22,6 +22,7 @@ from itertools import islice
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
+from pymongo import common
 from pymongo.client_session import _validate_session_write_concern
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import (
@@ -137,13 +138,16 @@ def _raise_bulk_write_error(full_result):
 class _Bulk(object):
     """The private guts of the bulk write API."""
 
-    def __init__(self, collection, ordered, bypass_document_validation, comment=None):
+    def __init__(self, collection, ordered, bypass_document_validation, comment=None, let=None):
         """Initialize a _Bulk instance."""
         self.collection = collection.with_options(
             codec_options=collection.codec_options._replace(
                 unicode_decode_error_handler="replace", document_class=dict
             )
         )
+        self.let = let
+        if self.let is not None:
+            common.validate_is_document_type("let", self.let)
         self.comment = comment
         self.ordered = ordered
         self.ops = []
@@ -314,6 +318,8 @@ class _Bulk(object):
                     cmd["writeConcern"] = write_concern.document
                 if self.bypass_doc_val:
                     cmd["bypassDocumentValidation"] = True
+                if self.let is not None and run.op_type in (_DELETE, _UPDATE):
+                    cmd["let"] = self.let
                 if session:
                     # Start a new retryable write unless one was already
                     # started for this command.

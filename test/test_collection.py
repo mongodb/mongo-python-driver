@@ -2123,7 +2123,7 @@ class TestCollection(IntegrationTest):
             (c.find_one_and_replace, ({}, {})),
             (c.aggregate, ([], {})),
         ]
-        for let in [10, "str"]:
+        for let in [10, "str", [], False]:
             for helper, args in helpers:
                 with self.assertRaisesRegex(TypeError, "let must be an instance of dict"):
                     helper(*args, let=let)  # type: ignore
