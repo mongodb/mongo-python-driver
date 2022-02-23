@@ -1153,8 +1153,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.assertEqual(actual_events, [])
                 continue
 
-            if len(events) > len(actual_events):
-                self.fail("Expected to see %s events, got %s" % (len(events), len(actual_events)))
+            self.assertGreaterEqual(len(actual_events), len(events), actual_events)
 
             for idx, expected_event in enumerate(events):
                 self.match_evaluator.match_event(event_type, expected_event, actual_events[idx])
