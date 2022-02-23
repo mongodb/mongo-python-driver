@@ -947,7 +947,7 @@ class ClientSession(Generic[_DocumentType]):
             return self._transaction.opts.read_preference
         return None
 
-    def _start_server_session(self):
+    def _start_serv_sess(self):
         if isinstance(self._server_session, _EmptyServerSession):
             self._server_session, old = (
                 self._client._topology.get_server_session(),
@@ -958,7 +958,7 @@ class ClientSession(Generic[_DocumentType]):
 
     def _apply_to(self, command, is_retryable, read_preference, sock_info):
         self._check_ended()
-        self._start_server_session()
+        self._start_serv_sess()
         if self.options.snapshot:
             self._update_read_concern(command, sock_info)
 

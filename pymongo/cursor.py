@@ -207,7 +207,7 @@ class Cursor(Generic[_DocumentType]):
         if session:
             self.__session = session
             self.__explicit_session = True
-            self.__session._start_server_session()
+            self.__session._start_serv_sess()
         else:
             self.__session = None
             self.__explicit_session = False
