@@ -15,7 +15,6 @@
 """Test the client_session module."""
 
 import copy
-import os
 import sys
 import time
 from io import BytesIO
@@ -26,8 +25,7 @@ from pymongo.mongo_client import MongoClient
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, SkipTest, client_context, unittest
-from test.utils import EventListener, TestCreator, rs_or_single_client, wait_until
-from test.utils_spec_runner import SpecRunner
+from test.utils import EventListener, rs_or_single_client, wait_until
 
 from bson import DBRef
 from gridfs import GridFS, GridFSBucket
@@ -1094,55 +1092,6 @@ class TestClusterTime(IntegrationTest):
                         "%s sent wrong $clusterTime with %s" % (f.__name__, event.command_name),
                     )
 
-
-class TestSpec(SpecRunner):
-    RUN_ON_SERVERLESS = True
-    # Location of JSON test specifications.
-    TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "sessions", "legacy")
-
-    def last_two_command_events(self):
-        """Return the last two command started events."""
-        started_events = self.listener.results["started"][-2:]
-        self.assertEqual(2, len(started_events))
-        return started_events
-
-    def assert_same_lsid_on_last_two_commands(self):
-        """Run the assertSameLsidOnLastTwoCommands test operation."""
-        event1, event2 = self.last_two_command_events()
-        self.assertEqual(event1.command["lsid"], event2.command["lsid"])
-
-    def assert_different_lsid_on_last_two_commands(self):
-        """Run the assertDifferentLsidOnLastTwoCommands test operation."""
-        event1, event2 = self.last_two_command_events()
-        self.assertNotEqual(event1.command["lsid"], event2.command["lsid"])
-
-    def assert_session_dirty(self, session):
-        """Run the assertSessionDirty test operation.
-
-        Assert that the given session is dirty.
-        """
-        self.assertIsNotNone(session._server_session)
-        self.assertTrue(session._server_session.dirty)
-
-    def assert_session_not_dirty(self, session):
-        """Run the assertSessionNotDirty test operation.
-
-        Assert that the given session is not dirty.
-        """
-        self.assertIsNotNone(session._server_session)
-        self.assertFalse(session._server_session.dirty)
-
-
-def create_test(scenario_def, test, name):
-    @client_context.require_test_commands
-    def run_scenario(self):
-        self.run_scenario(scenario_def, test)
-
-    return run_scenario
-
-
-test_creator = TestCreator(create_test, TestSpec, TestSpec.TEST_PATH)
-test_creator.create_tests()
 
 if __name__ == "__main__":
     unittest.main()

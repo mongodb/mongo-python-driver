@@ -1720,9 +1720,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 # MongoDB < 4.9
                 cmd = SON([("count", self.__name)])
                 cmd.update(kwargs)
-                return self._count_cmd(None, sock_info, read_preference, cmd, collation=None)
+                return self._count_cmd(session, sock_info, read_preference, cmd, collation=None)
 
-        return self.__database.client._retryable_read(_cmd, self.read_preference, None)
+        return self._retryable_non_cursor_read(_cmd, None)
 
     def count_documents(
         self,
@@ -1807,9 +1807,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 return 0
             return result["n"]
 
-        return self.__database.client._retryable_read(
-            _cmd, self._read_preference_for(session), session
-        )
+        return self._retryable_non_cursor_read(_cmd, session)
+
+    def _retryable_non_cursor_read(self, func, session):
+        """Non-cursor read helper to handle implicit session creation."""
+        client = self.__database.client
+        with client._tmp_session(session) as s:
+            return client._retryable_read(func, self._read_preference_for(s), s)
 
     def create_indexes(
         self,
@@ -2157,30 +2161,31 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             codec_options=codec_options, read_preference=ReadPreference.PRIMARY
         )
         read_pref = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
+        explicit_session = session is not None
 
         def _cmd(session, server, sock_info, read_preference):
             cmd = SON([("listIndexes", self.__name), ("cursor", {})])
             if comment is not None:
                 cmd["comment"] = comment
 
-            with self.__database.client._tmp_session(session, False) as s:
-                try:
-                    cursor = self._command(
-                        sock_info, cmd, read_preference, codec_options, session=s
-                    )["cursor"]
-                except OperationFailure as exc:
-                    # Ignore NamespaceNotFound errors to match the behavior
-                    # of reading from *.system.indexes.
-                    if exc.code != 26:
-                        raise
-                    cursor = {"id": 0, "firstBatch": []}
+            try:
+                cursor = self._command(
+                    sock_info, cmd, read_preference, codec_options, session=session
+                )["cursor"]
+            except OperationFailure as exc:
+                # Ignore NamespaceNotFound errors to match the behavior
+                # of reading from *.system.indexes.
+                if exc.code != 26:
+                    raise
+                cursor = {"id": 0, "firstBatch": []}
             cmd_cursor = CommandCursor(
-                coll, cursor, sock_info.address, session=s, explicit_session=session is not None
+                coll, cursor, sock_info.address, session=session, explicit_session=explicit_session
             )
             cmd_cursor._maybe_pin_connection(sock_info)
             return cmd_cursor
 
-        return self.__database.client._retryable_read(_cmd, read_pref, session)
+        with self.__database.client._tmp_session(session, False) as s:
+            return self.__database.client._retryable_read(_cmd, read_pref, s)
 
     def index_information(
         self,
@@ -2701,9 +2706,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 user_fields={"values": 1},
             )["values"]
 
-        return self.__database.client._retryable_read(
-            _cmd, self._read_preference_for(session), session
-        )
+        return self._retryable_non_cursor_read(_cmd, session)
 
     def _write_concern_for_cmd(self, cmd, session):
         raw_wc = cmd.get("writeConcern")
