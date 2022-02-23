@@ -62,7 +62,7 @@ cpjson () {
     sed -e '/^[0-9]/d' | sed -e 's|< ./||g' )"
     printf "%s\n" $IGNORED_FILES
     cd "$PYMONGO"/test/$2
-    printf "%s\n" $IGNORED_FILES | xargs git checkout master
+    printf "%s\n" $IGNORED_FILES | xargs git restore
 
 }
 
