@@ -1009,6 +1009,7 @@ class ClientSession(Generic[_DocumentType]):
 
 class _EmptyServerSession:
     __slots__ = "dirty", "started_retryable_write"
+
     def __init__(self):
         self.dirty = False
         self.started_retryable_write = False
