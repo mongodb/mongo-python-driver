@@ -947,18 +947,16 @@ class ClientSession(Generic[_DocumentType]):
             return self._transaction.opts.read_preference
         return None
 
-    def _ensure_server_session(self):
+    def _materialize(self):
         if isinstance(self._server_session, _EmptyServerSession):
-            self._server_session, old = (
-                self._client._topology.get_server_session(),
-                self._server_session,
-            )
-            for _ in range(old.started):
+            old = self._server_session
+            self._server_session = self._client._topology.get_server_session()
+            if old.started:
                 self._server_session.inc_transaction_id()
 
     def _apply_to(self, command, is_retryable, read_preference, sock_info):
         self._check_ended()
-        self._ensure_server_session()
+        self._materialize()
         if self.options.snapshot:
             self._update_read_concern(command, sock_info)
 
@@ -1010,12 +1008,10 @@ class ClientSession(Generic[_DocumentType]):
 
 
 class _EmptyServerSession(object):
-    def __init__(self, generation):
-        self.generation = generation
-        self.last_use = time.monotonic()
+    def __init__(self):
         self.lsid = None
         self.dirty = False
-        self.started = 0
+        self.started = False
 
     def timed_out(self, session_timeout_minutes):
         return True
@@ -1024,7 +1020,7 @@ class _EmptyServerSession(object):
         self.dirty = True
 
     def inc_transaction_id(self):
-        self.started += 1
+        self.started = True
 
 
 class _ServerSession(object):
@@ -1106,9 +1102,9 @@ class _ServerSessionPool(collections.deque):
         # Discard sessions from an old pool to avoid duplicate sessions in the
         # child process after a fork.
         if (
-            server_session.generation == self.generation
+            not isinstance(server_session, _EmptyServerSession)
+            and server_session.generation == self.generation
             and not server_session.dirty
-            and not isinstance(server_session, _EmptyServerSession)
         ):
             self.appendleft(server_session)
 

@@ -514,6 +514,10 @@ class Topology(object):
         with self._lock:
             return self._session_pool.pop_all()
 
+    def _check_implicit_session_support(self):
+        with self._lock:
+            self._check_session_support()
+
     def _check_session_support(self):
         """Internal check for session support on clusters."""
         if self._settings.load_balanced:
