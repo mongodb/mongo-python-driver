@@ -21,7 +21,7 @@ import threading
 import time
 import typing
 from io import BytesIO
-from typing import Set
+from typing import Set, Callable, List, Tuple, Any
 
 from pymongo.mongo_client import MongoClient
 
@@ -181,8 +181,8 @@ class TestSession(IntegrationTest):
         # successful connection checkout" test from Driver Sessions Spec.
         listener = EventListener()
         client = rs_or_single_client(event_listeners=[listener], maxPoolSize=1, retryWrites=True)
-
-        ops = [
+        
+        ops: List[Tuple[Callable, List[Any]]]= [
             (client.db.test.find_one, [{"_id": 1}]),
             (client.db.test.delete_one, [{}]),
             (client.db.test.update_one, [{}, {"$set": {"x": 2}}]),
@@ -195,7 +195,7 @@ class TestSession(IntegrationTest):
         threads = []
         listener.results.clear()
         for op, args in ops:
-            threads.append(threading.Thread(target=op, args=typing.cast(typing.Iterable, args)))
+            threads.append(threading.Thread(target=op, args=args))
             threads[-1].start()
         for thread in threads:
             thread.join()

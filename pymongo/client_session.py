@@ -1014,7 +1014,7 @@ class _EmptyServerSession(object):
         self.started = False
 
     def timed_out(self, session_timeout_minutes):
-        return True
+        return None
 
     def mark_dirty(self):
         self.dirty = True
