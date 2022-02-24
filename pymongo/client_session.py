@@ -951,7 +951,7 @@ class ClientSession(Generic[_DocumentType]):
         if isinstance(self._server_session, _EmptyServerSession):
             old = self._server_session
             self._server_session = self._client._topology.get_server_session()
-            if old.started:
+            if old.started_retryable_write:
                 self._server_session.inc_transaction_id()
 
     def _apply_to(self, command, is_retryable, read_preference, sock_info):
@@ -1007,17 +1007,17 @@ class ClientSession(Generic[_DocumentType]):
         raise TypeError("A ClientSession cannot be copied, create a new session instead")
 
 
-class _EmptyServerSession(object):
+class _EmptyServerSession:
+    __slots__ = "dirty", "started_retryable_write"
     def __init__(self):
-        self.lsid = None
         self.dirty = False
-        self.started = False
+        self.started_retryable_write = False
 
     def mark_dirty(self):
         self.dirty = True
 
     def inc_transaction_id(self):
-        self.started = True
+        self.started_retryable_write = True
 
 
 class _ServerSession(object):

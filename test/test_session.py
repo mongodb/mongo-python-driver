@@ -180,7 +180,7 @@ class TestSession(IntegrationTest):
         # successful connection checkout" test from Driver Sessions Spec.
         listener = EventListener()
         client = rs_or_single_client(event_listeners=[listener], maxPoolSize=1, retryWrites=True)
-
+        cursor = client.db.test.find({})
         ops: List[Tuple[Callable, List[Any]]] = [
             (client.db.test.find_one, [{"_id": 1}]),
             (client.db.test.delete_one, [{}]),
@@ -189,7 +189,11 @@ class TestSession(IntegrationTest):
             (client.db.test.find_one_and_delete, [{}]),
             (client.db.test.find_one_and_update, [{}, {"$set": {"x": 1}}]),
             (client.db.test.find_one_and_replace, [{}, {}]),
+            (client.db.test.aggregate, [[{"$set": {"x": 1}}]]),
             (client.db.test.find, [{}]),
+            (client.server_info, [{}]),
+            (cursor.distinct, ["_id"]),
+            (client.db.list_collections, [{}]),
         ]
         threads = []
         listener.results.clear()
