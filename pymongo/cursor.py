@@ -207,6 +207,7 @@ class Cursor(Generic[_DocumentType]):
         if session:
             self.__session = session
             self.__explicit_session = True
+            self.__session._materialize()
         else:
             self.__session = None
             self.__explicit_session = False
