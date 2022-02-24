@@ -19,7 +19,6 @@ import os
 import sys
 import threading
 import time
-import typing
 from io import BytesIO
 from typing import Any, Callable, List, Set, Tuple
 
