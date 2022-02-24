@@ -16,7 +16,6 @@
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
     Mapping,
     MutableMapping,
     Optional,
@@ -37,6 +36,4 @@ _CollationIn = Union[Mapping[str, Any], "Collation"]
 _DocumentIn = Union[MutableMapping[str, Any], "RawBSONDocument"]
 _Pipeline = Sequence[Mapping[str, Any]]
 _DocumentOut = _DocumentIn
-_DocumentType = TypeVar(
-    "_DocumentType", MutableMapping[str, Any], "RawBSONDocument"
-)
+_DocumentType = TypeVar("_DocumentType", MutableMapping[str, Any], "RawBSONDocument")

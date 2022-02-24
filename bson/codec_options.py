@@ -37,7 +37,6 @@ from bson.binary import (
     UuidRepresentation,
 )
 
-
 if TYPE_CHECKING:
     from bson.raw_bson import RawBSONDocument
 

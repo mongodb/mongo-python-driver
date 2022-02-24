@@ -48,12 +48,16 @@ from typing import (
     Sequence,
     Set,
     Tuple,
-    Type,
     Union,
     cast,
 )
 
-from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry, _DocumentClass
+from bson.codec_options import (
+    DEFAULT_CODEC_OPTIONS,
+    CodecOptions,
+    TypeRegistry,
+    _DocumentClass,
+)
 from bson.son import SON
 from bson.timestamp import Timestamp
 from pymongo import (
@@ -86,13 +90,7 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.settings import TopologySettings
 from pymongo.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
-from pymongo.typings import (
-    _Address,
-    _CollationIn,
-    _DocumentOut,
-    _DocumentType,
-    _Pipeline,
-)
+from pymongo.typings import _Address, _CollationIn, _DocumentType, _Pipeline
 from pymongo.uri_parser import (
     _check_options,
     _handle_option_deprecations,
@@ -1717,9 +1715,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        return cast(dict, self.admin.command(
-            "buildinfo", read_preference=ReadPreference.PRIMARY, session=session
-        ))
+        return cast(
+            dict,
+            self.admin.command(
+                "buildinfo", read_preference=ReadPreference.PRIMARY, session=session
+            ),
+        )
 
     def list_databases(
         self,
