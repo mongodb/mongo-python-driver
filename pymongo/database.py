@@ -24,6 +24,7 @@ from typing import (
     Optional,
     Sequence,
     Union,
+    cast,
 )
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
@@ -783,7 +784,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         filter: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> CommandCursor[Dict[str, Any]]:
+    ) -> CommandCursor[MutableMapping[str, Any]]:
         """Get a cursor over the collections of this database.
 
         :Parameters:
@@ -926,7 +927,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         session: Optional["ClientSession"] = None,
         background: Optional[bool] = None,
         comment: Optional[Any] = None,
-    ) -> _DocumentOut:
+    ) -> Dict[str, Any]:
         """Validate a collection.
 
         Returns a dict of validation info. Raises CollectionInvalid if
@@ -974,7 +975,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if background is not None:
             cmd["background"] = background
 
-        result = self.command(cmd, session=session)
+        result = cast(dict, self.command(cmd, session=session))
 
         valid = True
         # Pre 1.9 results

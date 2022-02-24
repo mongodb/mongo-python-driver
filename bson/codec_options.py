@@ -19,11 +19,11 @@ import datetime
 from collections import namedtuple
 from collections.abc import MutableMapping as _MutableMapping
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Dict,
     Iterable,
-    Mapping,
     MutableMapping,
     Optional,
     Type,
@@ -36,6 +36,10 @@ from bson.binary import (
     UUID_REPRESENTATION_NAMES,
     UuidRepresentation,
 )
+
+
+if TYPE_CHECKING:
+    from bson.raw_bson import RawBSONDocument
 
 
 def _abstractproperty(func: Callable[..., Any]) -> property:
@@ -111,6 +115,7 @@ class TypeCodec(TypeEncoder, TypeDecoder):
 
 _Codec = Union[TypeEncoder, TypeDecoder, TypeCodec]
 _Fallback = Callable[[Any], Any]
+_DocumentClass = Union[Type[MutableMapping], Type["RawBSONDocument"]]
 
 
 class TypeRegistry(object):
@@ -289,7 +294,7 @@ class CodecOptions(_options_base):
 
     def __new__(
         cls: Type["CodecOptions"],
-        document_class: Union[Type[MutableMapping], Type[Mapping], Type[Dict]] = dict,
+        document_class: _DocumentClass = dict,
         tz_aware: bool = False,
         uuid_representation: Optional[int] = UuidRepresentation.UNSPECIFIED,
         unicode_decode_error_handler: Optional[str] = "strict",

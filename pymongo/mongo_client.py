@@ -43,6 +43,7 @@ from typing import (
     Generic,
     List,
     Mapping,
+    MutableMapping,
     Optional,
     Sequence,
     Set,
@@ -52,7 +53,7 @@ from typing import (
     cast,
 )
 
-from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
+from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry, _DocumentClass
 from bson.son import SON
 from bson.timestamp import Timestamp
 from pymongo import (
@@ -125,7 +126,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self,
         host: Optional[Union[str, Sequence[str]]] = None,
         port: Optional[int] = None,
-        document_class: Type[_DocumentType] = dict,
+        document_class: _DocumentClass = dict,
         tz_aware: Optional[bool] = None,
         connect: Optional[bool] = None,
         type_registry: Optional[TypeRegistry] = None,
@@ -1706,7 +1707,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if session is not None:
             session._process_response(reply)
 
-    def server_info(self, session: Optional[client_session.ClientSession] = None) -> _DocumentOut:
+    def server_info(self, session: Optional[client_session.ClientSession] = None) -> Dict[str, Any]:
         """Get information about the MongoDB server we're connected to.
 
         :Parameters:
@@ -1716,16 +1717,16 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        return self.admin.command(
+        return cast(dict, self.admin.command(
             "buildinfo", read_preference=ReadPreference.PRIMARY, session=session
-        )
+        ))
 
     def list_databases(
         self,
         session: Optional[client_session.ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> CommandCursor[Dict[str, Any]]:
+    ) -> CommandCursor[MutableMapping[str, Any]]:
         """Get a cursor over the databases of the connected server.
 
         :Parameters:
