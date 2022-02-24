@@ -1647,6 +1647,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def _return_server_session(self, server_session, lock):
         """Internal: return a _ServerSession to the pool."""
+        if isinstance(server_session, _EmptyServerSession):
+            return
         return self._topology.return_server_session(server_session, lock)
 
     def _ensure_session(self, session=None):
