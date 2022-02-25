@@ -37,6 +37,7 @@ from bson.binary import (
     UuidRepresentation,
 )
 
+# Import RawBSONDocument for type-checking only to avoid circular dependency.
 if TYPE_CHECKING:
     from bson.raw_bson import RawBSONDocument
 
