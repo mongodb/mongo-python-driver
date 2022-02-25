@@ -198,7 +198,7 @@ class TestSession(IntegrationTest):
                 (client.db.test.find_one_and_delete, [{}]),
                 (client.db.test.find_one_and_update, [{}, {"$set": {"x": 1}}]),
                 (client.db.test.find_one_and_replace, [{}, {}]),
-                (client.db.test.aggregate, [[{"$set": {"x": 1}}]]),
+                (client.db.test.aggregate, [[{"$limit": 1}]]),
                 (client.db.test.find, [{}]),
                 (client.server_info, [{}]),
                 (client.db.aggregate, [[{"$listLocalSessions": {"allUsers": True}}]]),
