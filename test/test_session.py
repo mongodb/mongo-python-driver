@@ -207,7 +207,7 @@ class TestSession(IntegrationTest):
         for i in listener.results["started"]:
             if i.command.get("lsid"):
                 lsid_set.add(i.command.get("lsid")["id"])
-        self.assertEqual(len(lsid_set), 1)
+        self.assertLessEqual(len(lsid_set), 2)
 
     def test_pool_lifo(self):
         # "Pool is LIFO" test from Driver Sessions Spec.
