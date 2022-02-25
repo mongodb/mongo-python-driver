@@ -21,11 +21,10 @@ from urllib.parse import quote_plus
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, SkipTest, Version, client_context, unittest
+from test import IntegrationTest, SkipTest, client_context, unittest
 from test.utils import (
     AllowListEventListener,
     delay,
-    get_pool,
     ignore_deprecations,
     rs_or_single_client,
     rs_or_single_client_noauth,
@@ -119,14 +118,14 @@ class TestGSSAPI(unittest.TestCase):
     def test_gssapi_simple(self):
         assert GSSAPI_PRINCIPAL is not None
         if GSSAPI_PASS is not None:
-            uri = "mongodb://%s:%s@%s:%d/?authMechanism=" "GSSAPI" % (
+            uri = "mongodb://%s:%s@%s:%d/?authMechanism=GSSAPI" % (
                 quote_plus(GSSAPI_PRINCIPAL),
                 GSSAPI_PASS,
                 GSSAPI_HOST,
                 GSSAPI_PORT,
             )
         else:
-            uri = "mongodb://%s@%s:%d/?authMechanism=" "GSSAPI" % (
+            uri = "mongodb://%s@%s:%d/?authMechanism=GSSAPI" % (
                 quote_plus(GSSAPI_PRINCIPAL),
                 GSSAPI_HOST,
                 GSSAPI_PORT,
@@ -266,7 +265,7 @@ class TestSASLPlain(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         if not SASL_HOST or not SASL_USER or not SASL_PASS:
-            raise SkipTest("Must set SASL_HOST, " "SASL_USER, and SASL_PASS to test SASL")
+            raise SkipTest("Must set SASL_HOST, SASL_USER, and SASL_PASS to test SASL")
 
     def test_sasl_plain(self):
 
@@ -282,7 +281,7 @@ class TestSASLPlain(unittest.TestCase):
 
         assert SASL_USER is not None
         assert SASL_PASS is not None
-        uri = "mongodb://%s:%s@%s:%d/?authMechanism=PLAIN;" "authSource=%s" % (
+        uri = "mongodb://%s:%s@%s:%d/?authMechanism=PLAIN;authSource=%s" % (
             quote_plus(SASL_USER),
             quote_plus(SASL_PASS),
             SASL_HOST,
@@ -305,7 +304,7 @@ class TestSASLPlain(unittest.TestCase):
             )
             client.ldap.test.find_one()
 
-            uri = "mongodb://%s:%s@%s:%d/?authMechanism=PLAIN;" "authSource=%s;replicaSet=%s" % (
+            uri = "mongodb://%s:%s@%s:%d/?authMechanism=PLAIN;authSource=%s;replicaSet=%s" % (
                 quote_plus(SASL_USER),
                 quote_plus(SASL_PASS),
                 SASL_HOST,
@@ -318,7 +317,7 @@ class TestSASLPlain(unittest.TestCase):
 
     def test_sasl_plain_bad_credentials(self):
         def auth_string(user, password):
-            uri = "mongodb://%s:%s@%s:%d/?authMechanism=PLAIN;" "authSource=%s" % (
+            uri = "mongodb://%s:%s@%s:%d/?authMechanism=PLAIN;authSource=%s" % (
                 quote_plus(user),
                 quote_plus(password),
                 SASL_HOST,
@@ -484,7 +483,7 @@ class TestSCRAM(IntegrationTest):
 
         if client_context.is_rs:
             host, port = client_context.host, client_context.port
-            uri = "mongodb://both:pwd@%s:%d/testscram" "?replicaSet=%s" % (
+            uri = "mongodb://both:pwd@%s:%d/testscram?replicaSet=%s" % (
                 host,
                 port,
                 client_context.replica_set_name,
@@ -641,7 +640,7 @@ class TestAuthURIOptions(IntegrationTest):
             self.assertTrue(db.command("dbstats"))
 
         # Test authSource
-        uri = "mongodb://user:pass@%s:%d" "/pymongo_test2?authSource=pymongo_test" % (host, port)
+        uri = "mongodb://user:pass@%s:%d/pymongo_test2?authSource=pymongo_test" % (host, port)
         client = rs_or_single_client_noauth(uri)
         self.assertRaises(OperationFailure, client.pymongo_test2.command, "dbstats")
         self.assertTrue(client.pymongo_test.command("dbstats"))

@@ -1714,12 +1714,9 @@ tasks:
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
-            VERSION: "latest"
             TOPOLOGY: "sharded_cluster"
             LOAD_BALANCER: true
         - func: "run load-balancer"
-          vars:
-            LOAD_BALANCER: true
         - func: "run tests"
 
     - name: "test-fips-standalone"
@@ -1937,6 +1934,10 @@ axes:
         display_name: "MongoDB latest"
         variables:
           VERSION: "latest"
+      - id: "rapid"
+        display_name: "MongoDB rapid"
+        variables:
+          VERSION: "rapid"
 
   # Choice of Python runtime version
   - id: python-version
@@ -2561,7 +2562,7 @@ buildvariants:
   tasks:
     - name: atlas-data-lake-tests
 
-- matrix_name: "versioned-api-tests"
+- matrix_name: "stable-api-tests"
   matrix_spec:
     platform: ubuntu-18.04
     python-version: ["3.6", "3.10"]
@@ -2636,7 +2637,7 @@ buildvariants:
 - matrix_name: "load-balancer"
   matrix_spec:
     platform: ubuntu-18.04
-    mongodb-version: ["5.0", "latest"]
+    mongodb-version: ["rapid", "latest"]
     auth-ssl: "*"
     python-version: "*"
     loadbalancer: "*"

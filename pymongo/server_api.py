@@ -12,11 +12,11 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 
-"""Support for MongoDB Versioned API.
+"""Support for MongoDB Stable API.
 
 .. _versioned-api-ref:
 
-MongoDB Versioned API
+MongoDB Stable API
 =====================
 
 Starting in MongoDB 5.0, applications can specify the server API version
@@ -27,9 +27,9 @@ version, regardless of the server's actual release version.
 Declaring an API Version
 ````````````````````````
 
-.. attention:: Versioned API requires MongoDB >=5.0.
+.. attention:: Stable API requires MongoDB >=5.0.
 
-To configure MongoDB Versioned API, pass the ``server_api`` keyword option to
+To configure MongoDB Stable API, pass the ``server_api`` keyword option to
 :class:`~pymongo.mongo_client.MongoClient`::
 
     >>> from pymongo.mongo_client import MongoClient
@@ -44,7 +44,7 @@ including those sent through the generic
 :meth:`~pymongo.database.Database.command` helper.
 
 .. note:: Declaring an API version on the
-   :class:`~pymongo.mongo_client.MongoClient` **and** specifying versioned
+   :class:`~pymongo.mongo_client.MongoClient` **and** specifying stable
    API options in :meth:`~pymongo.database.Database.command` command document
    is not supported and will lead to undefined behaviour.
 
@@ -96,10 +96,10 @@ class ServerApiVersion:
 
 
 class ServerApi(object):
-    """MongoDB Versioned API."""
+    """MongoDB Stable API."""
 
     def __init__(self, version, strict=None, deprecation_errors=None):
-        """Options to configure MongoDB Versioned API.
+        """Options to configure MongoDB Stable API.
 
         :Parameters:
           - `version`: The API version string. Must be one of the values in

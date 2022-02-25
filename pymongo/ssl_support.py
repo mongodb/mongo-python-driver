@@ -34,7 +34,7 @@ if HAVE_SSL:
     # CPython ssl module constants to configure certificate verification
     # at a high level. This is legacy behavior, but requires us to
     # import the ssl module even if we're only using it for this purpose.
-    import ssl as _stdlibssl
+    import ssl as _stdlibssl  # noqa
     from ssl import CERT_NONE, CERT_REQUIRED
 
     HAS_SNI = _ssl.HAS_SNI
@@ -79,7 +79,7 @@ if HAVE_SSL:
             if _ssl.IS_PYOPENSSL:
                 raise ConfigurationError("tlsCRLFile cannot be used with PyOpenSSL")
             # Match the server's behavior.
-            setattr(ctx, "verify_flags", getattr(_ssl, "VERIFY_CRL_CHECK_LEAF", 0))
+            setattr(ctx, "verify_flags", getattr(_ssl, "VERIFY_CRL_CHECK_LEAF", 0))  # noqa
             ctx.load_verify_locations(crlfile)
         if ca_certs is not None:
             ctx.load_verify_locations(ca_certs)

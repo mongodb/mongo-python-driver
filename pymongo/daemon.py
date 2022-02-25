@@ -70,7 +70,7 @@ if sys.platform == "win32":
                 _silence_resource_warning(popen)
         except FileNotFoundError as exc:
             warnings.warn(
-                f"Failed to start {args[0]}: is it on your $PATH?\n" f"Original exception: {exc}",
+                f"Failed to start {args[0]}: is it on your $PATH?\nOriginal exception: {exc}",
                 RuntimeWarning,
                 stacklevel=2,
             )
@@ -96,7 +96,7 @@ else:
                 )
         except FileNotFoundError as exc:
             warnings.warn(
-                f"Failed to start {args[0]}: is it on your $PATH?\n" f"Original exception: {exc}",
+                f"Failed to start {args[0]}: is it on your $PATH?\nOriginal exception: {exc}",
                 RuntimeWarning,
                 stacklevel=2,
             )

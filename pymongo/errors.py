@@ -15,7 +15,7 @@
 """Exceptions raised by PyMongo."""
 from typing import Any, Iterable, List, Mapping, Optional, Sequence, Tuple, Union
 
-from bson.errors import *
+from bson.errors import InvalidDocument
 
 try:
     # CPython 3.7+

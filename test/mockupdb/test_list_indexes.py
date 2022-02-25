@@ -16,7 +16,7 @@
 
 import unittest
 
-from mockupdb import MockupDB, OpGetMore, going
+from mockupdb import MockupDB, going
 
 from bson import SON
 from pymongo import MongoClient

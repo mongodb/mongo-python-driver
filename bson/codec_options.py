@@ -23,12 +23,10 @@ from typing import (
     Any,
     Callable,
     Dict,
-    Generic,
     Iterable,
     MutableMapping,
     Optional,
     Type,
-    TypeVar,
     Union,
     cast,
 )
@@ -312,10 +310,10 @@ class CodecOptions(_options_base):
             raise TypeError("tz_aware must be True or False")
         if uuid_representation not in ALL_UUID_REPRESENTATIONS:
             raise ValueError(
-                "uuid_representation must be a value " "from bson.binary.UuidRepresentation"
+                "uuid_representation must be a value from bson.binary.UuidRepresentation"
             )
         if not isinstance(unicode_decode_error_handler, (str, None)):  # type: ignore
-            raise ValueError("unicode_decode_error_handler must be a string " "or None")
+            raise ValueError("unicode_decode_error_handler must be a string or None")
         if tzinfo is not None:
             if not isinstance(tzinfo, datetime.tzinfo):
                 raise TypeError("tzinfo must be an instance of datetime.tzinfo")

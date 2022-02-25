@@ -16,7 +16,6 @@
 sample client code that uses PyMongo typings."""
 
 import os
-import sys
 import unittest
 from typing import Any, Dict, Iterable, List
 
@@ -25,10 +24,10 @@ try:
 except ImportError:
     api = None
 
+from test import IntegrationTest
+
 from bson.son import SON
 from pymongo.collection import Collection
-from pymongo.errors import ServerSelectionTimeoutError
-from pymongo.mongo_client import MongoClient
 from pymongo.operations import InsertOne
 
 TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "mypy_fails")
@@ -53,22 +52,13 @@ class TestMypyFails(unittest.TestCase):
                 self.ensure_mypy_fails(filename)
 
 
-class TestPymongo(unittest.TestCase):
-    client: MongoClient
+class TestPymongo(IntegrationTest):
     coll: Collection
 
     @classmethod
-    def setUpClass(cls) -> None:
-        cls.client = MongoClient(serverSelectionTimeoutMS=250, directConnection=False)
+    def setUpClass(cls):
+        super().setUpClass()
         cls.coll = cls.client.test.test
-        try:
-            cls.client.admin.command("ping")
-        except ServerSelectionTimeoutError as exc:
-            raise unittest.SkipTest(f"Could not connect to MongoDB: {exc}")
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        cls.client.close()
 
     def test_insert_find(self) -> None:
         doc = {"my": "doc"}

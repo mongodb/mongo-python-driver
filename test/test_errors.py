@@ -49,11 +49,11 @@ class TestErrors(PyMongoTestCase):
         if sys.implementation.name == "pypy" and sys.implementation.version < (7, 3, 7):
             # PyPy used to display unicode in repr differently.
             self.assertEqual(
-                "unicode \U0001f40d, full error: {" "'errmsg': 'unicode \\U0001f40d'}", str(exc)
+                "unicode \U0001f40d, full error: {'errmsg': 'unicode \\U0001f40d'}", str(exc)
             )
         else:
             self.assertEqual(
-                "unicode \U0001f40d, full error: {" "'errmsg': 'unicode \U0001f40d'}", str(exc)
+                "unicode \U0001f40d, full error: {'errmsg': 'unicode \U0001f40d'}", str(exc)
             )
         try:
             raise exc

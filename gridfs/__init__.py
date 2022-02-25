@@ -35,11 +35,10 @@ from gridfs.grid_file import (
 )
 from pymongo import ASCENDING, DESCENDING
 from pymongo.client_session import ClientSession
-from pymongo.collation import Collation
 from pymongo.collection import Collection
-from pymongo.common import UNAUTHORIZED_CODES, validate_string
+from pymongo.common import validate_string
 from pymongo.database import Database
-from pymongo.errors import ConfigurationError, OperationFailure
+from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import _ServerMode
 from pymongo.write_concern import WriteConcern
 
@@ -83,7 +82,7 @@ class GridFS(object):
         database = _clear_entity_type_registry(database)
 
         if not database.write_concern.acknowledged:
-            raise ConfigurationError("database must use " "acknowledged write_concern")
+            raise ConfigurationError("database must use acknowledged write_concern")
 
         self.__collection = database[collection]
         self.__files = self.__collection.files

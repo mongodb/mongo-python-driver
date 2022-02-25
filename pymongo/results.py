@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Result class definitions."""
-from typing import Any, Dict, List, Mapping, Optional, Sequence, cast
+from typing import Any, Dict, List, Optional, cast
 
 from pymongo.errors import InvalidOperation
 
@@ -59,7 +59,7 @@ class _WriteResult(object):
 class InsertOneResult(_WriteResult):
     """The return type for :meth:`~pymongo.collection.Collection.insert_one`."""
 
-    __slots__ = ("__inserted_id", "__acknowledged")
+    __slots__ = ("__inserted_id",)
 
     def __init__(self, inserted_id: Any, acknowledged: bool) -> None:
         self.__inserted_id = inserted_id
@@ -74,7 +74,7 @@ class InsertOneResult(_WriteResult):
 class InsertManyResult(_WriteResult):
     """The return type for :meth:`~pymongo.collection.Collection.insert_many`."""
 
-    __slots__ = ("__inserted_ids", "__acknowledged")
+    __slots__ = ("__inserted_ids",)
 
     def __init__(self, inserted_ids: List[Any], acknowledged: bool) -> None:
         self.__inserted_ids = inserted_ids
@@ -98,7 +98,7 @@ class UpdateResult(_WriteResult):
     :meth:`~pymongo.collection.Collection.replace_one`.
     """
 
-    __slots__ = ("__raw_result", "__acknowledged")
+    __slots__ = ("__raw_result",)
 
     def __init__(self, raw_result: Dict[str, Any], acknowledged: bool) -> None:
         self.__raw_result = raw_result
@@ -136,7 +136,7 @@ class DeleteResult(_WriteResult):
     """The return type for :meth:`~pymongo.collection.Collection.delete_one`
     and :meth:`~pymongo.collection.Collection.delete_many`"""
 
-    __slots__ = ("__raw_result", "__acknowledged")
+    __slots__ = ("__raw_result",)
 
     def __init__(self, raw_result: Dict[str, Any], acknowledged: bool) -> None:
         self.__raw_result = raw_result
@@ -157,7 +157,7 @@ class DeleteResult(_WriteResult):
 class BulkWriteResult(_WriteResult):
     """An object wrapper for bulk API write results."""
 
-    __slots__ = ("__bulk_api_result", "__acknowledged")
+    __slots__ = ("__bulk_api_result",)
 
     def __init__(self, bulk_api_result: Dict[str, Any], acknowledged: bool) -> None:
         """Create a BulkWriteResult instance.

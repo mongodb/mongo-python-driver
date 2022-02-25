@@ -43,7 +43,7 @@ class _AggregationCommand(object):
     ):
         if "explain" in options:
             raise ConfigurationError(
-                "The explain option is not supported. " "Use Database.command instead."
+                "The explain option is not supported. Use Database.command instead."
             )
 
         self._target = target
@@ -55,7 +55,7 @@ class _AggregationCommand(object):
             self._performs_write = True
 
         common.validate_is_mapping("options", options)
-        if let:
+        if let is not None:
             common.validate_is_mapping("let", let)
             options["let"] = let
         if comment is not None:

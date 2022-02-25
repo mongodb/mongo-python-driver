@@ -59,7 +59,7 @@ def run(framework_name, *args):
 
     # Run the tests.
     sys.argv[:] = ["setup.py", "test"] + list(args)
-    import setup
+    import setup  # noqa
 
 
 def main():
@@ -87,7 +87,7 @@ python %s --help-frameworks.""" % (
             list_frameworks()
             sys.exit()
         else:
-            assert False, "unhandled option"
+            raise AssertionError("unhandled option")
 
     if not args:
         print(usage)

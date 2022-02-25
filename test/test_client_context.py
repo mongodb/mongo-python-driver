@@ -49,7 +49,7 @@ class TestClientContext(unittest.TestCase):
 
         self.assertFalse(
             client_context.test_commands_enabled,
-            "enableTestCommands must be disabled when " "PYMONGO_DISABLE_TEST_COMMANDS is set.",
+            "enableTestCommands must be disabled when PYMONGO_DISABLE_TEST_COMMANDS is set.",
         )
 
     def test_setdefaultencoding_worked(self):

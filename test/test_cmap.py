@@ -16,7 +16,6 @@
 
 import os
 import sys
-import threading
 import time
 
 sys.path[0:0] = [""]
@@ -25,7 +24,6 @@ from test import IntegrationTest, client_knobs, unittest
 from test.pymongo_mocks import DummyMonitor
 from test.utils import (
     CMAPListener,
-    OvertCommandListener,
     TestCreator,
     camel_to_snake,
     client_context,

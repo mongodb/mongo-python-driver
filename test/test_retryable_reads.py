@@ -46,7 +46,7 @@ from pymongo.monitoring import (
 from pymongo.write_concern import WriteConcern
 
 # Location of JSON test specifications.
-_TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "retryable_reads")
+_TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "retryable_reads", "legacy")
 
 
 class TestClientOptions(PyMongoTestCase):

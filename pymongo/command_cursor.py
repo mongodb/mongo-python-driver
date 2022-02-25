@@ -15,7 +15,7 @@
 """CommandCursor class to iterate over command results."""
 
 from collections import deque
-from typing import TYPE_CHECKING, Any, Generic, Iterator, Mapping, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Generic, Iterator, Mapping, Optional
 
 from bson import _convert_raw_document_lists_to_streams
 from pymongo.cursor import _CURSOR_CLOSED_ERRORS, _SocketManager

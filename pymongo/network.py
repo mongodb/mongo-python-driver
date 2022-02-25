@@ -210,10 +210,10 @@ def receive_message(sock_info, request_id, max_message_size=MAX_MESSAGE_SIZE):
     # No request_id for exhaust cursor "getMore".
     if request_id is not None:
         if request_id != response_to:
-            raise ProtocolError("Got response id %r but expected " "%r" % (response_to, request_id))
+            raise ProtocolError("Got response id %r but expected %r" % (response_to, request_id))
     if length <= 16:
         raise ProtocolError(
-            "Message length (%r) not longer than standard " "message header size (16)" % (length,)
+            "Message length (%r) not longer than standard message header size (16)" % (length,)
         )
     if length > max_message_size:
         raise ProtocolError(
@@ -231,7 +231,7 @@ def receive_message(sock_info, request_id, max_message_size=MAX_MESSAGE_SIZE):
     try:
         unpack_reply = _UNPACK_REPLY[op_code]
     except KeyError:
-        raise ProtocolError("Got opcode %r but expected " "%r" % (op_code, _UNPACK_REPLY.keys()))
+        raise ProtocolError("Got opcode %r but expected %r" % (op_code, _UNPACK_REPLY.keys()))
     return unpack_reply(data)
 
 
@@ -272,7 +272,7 @@ def _receive_data_on_socket(sock_info, length, deadline):
         try:
             wait_for_read(sock_info, deadline)
             chunk_length = sock_info.sock.recv_into(mv[bytes_read:])
-        except (IOError, OSError) as exc:
+        except (IOError, OSError) as exc:  # noqa: B014
             if _errno_from_exception(exc) == errno.EINTR:
                 continue
             raise

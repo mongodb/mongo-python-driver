@@ -320,7 +320,7 @@ class TestPooling(_TestPoolingBase):
         pool = self.create_pool(max_pool_size=1, wait_queue_timeout=wait_queue_timeout)
         self.addCleanup(pool.close)
 
-        with pool.get_socket() as sock_info:
+        with pool.get_socket():
             start = time.time()
             with self.assertRaises(ConnectionFailure):
                 with pool.get_socket():
@@ -378,12 +378,14 @@ class TestPooling(_TestPoolingBase):
     def test_maxConnecting(self):
         client = rs_or_single_client()
         self.addCleanup(client.close)
+        self.client.test.test.insert_one({})
+        self.addCleanup(self.client.test.test.delete_many, {})
         pool = get_pool(client)
         docs = []
 
         # Run 50 short running operations
         def find_one():
-            docs.append(client.test.test.find_one({"$where": delay(0.001)}))
+            docs.append(client.test.test.find_one({}))
 
         threads = [threading.Thread(target=find_one) for _ in range(50)]
         for thread in threads:
@@ -394,9 +396,8 @@ class TestPooling(_TestPoolingBase):
         self.assertEqual(len(docs), 50)
         self.assertLessEqual(len(pool.sockets), 50)
         # TLS and auth make connection establishment more expensive than
-        # the artificially delayed query which leads to more threads
-        # hitting maxConnecting. The end result is fewer total connections
-        # and better latency.
+        # the query which leads to more threads hitting maxConnecting.
+        # The end result is fewer total connections and better latency.
         if client_context.tls and client_context.auth_enabled:
             self.assertLessEqual(len(pool.sockets), 30)
         else:

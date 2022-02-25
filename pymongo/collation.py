@@ -221,4 +221,4 @@ def validate_collation_or_none(
         return value.document
     if isinstance(value, dict):
         return value
-    raise TypeError("collation must be a dict, an instance of collation.Collation, " "or None.")
+    raise TypeError("collation must be a dict, an instance of collation.Collation, or None.")

@@ -30,7 +30,6 @@ from typing import (
     Tuple,
     Type,
     Union,
-    cast,
 )
 from urllib.parse import unquote_plus
 
@@ -180,7 +179,7 @@ def validate_boolean_or_string(option: str, value: Any) -> bool:
     """Validates that value is True, False, 'true', or 'false'."""
     if isinstance(value, str):
         if value not in ("true", "false"):
-            raise ValueError("The value of %s must be " "'true' or 'false'" % (option,))
+            raise ValueError("The value of %s must be 'true' or 'false'" % (option,))
         return value == "true"
     return validate_boolean(option, value)
 
@@ -193,7 +192,7 @@ def validate_integer(option: str, value: Any) -> int:
         try:
             return int(value)
         except ValueError:
-            raise ValueError("The value of %s must be " "an integer" % (option,))
+            raise ValueError("The value of %s must be an integer" % (option,))
     raise TypeError("Wrong type for %s, value must be an integer" % (option,))
 
 
@@ -201,7 +200,7 @@ def validate_positive_integer(option: str, value: Any) -> int:
     """Validate that 'value' is a positive integer, which does not include 0."""
     val = validate_integer(option, value)
     if val <= 0:
-        raise ValueError("The value of %s must be " "a positive integer" % (option,))
+        raise ValueError("The value of %s must be a positive integer" % (option,))
     return val
 
 
@@ -209,7 +208,7 @@ def validate_non_negative_integer(option: str, value: Any) -> int:
     """Validate that 'value' is a positive integer or 0."""
     val = validate_integer(option, value)
     if val < 0:
-        raise ValueError("The value of %s must be " "a non negative integer" % (option,))
+        raise ValueError("The value of %s must be a non negative integer" % (option,))
     return val
 
 
@@ -242,7 +241,7 @@ def validate_string(option: str, value: Any) -> str:
     """Validates that 'value' is an instance of `str`."""
     if isinstance(value, str):
         return value
-    raise TypeError("Wrong type for %s, value must be an instance of " "str" % (option,))
+    raise TypeError("Wrong type for %s, value must be an instance of str" % (option,))
 
 
 def validate_string_or_none(option: str, value: Any) -> Optional[str]:
@@ -261,7 +260,7 @@ def validate_int_or_basestring(option: str, value: Any) -> Union[int, str]:
             return int(value)
         except ValueError:
             return value
-    raise TypeError("Wrong type for %s, value must be an " "integer or a string" % (option,))
+    raise TypeError("Wrong type for %s, value must be an integer or a string" % (option,))
 
 
 def validate_non_negative_int_or_basestring(option: Any, value: Any) -> Union[int, str]:
@@ -275,7 +274,7 @@ def validate_non_negative_int_or_basestring(option: Any, value: Any) -> Union[in
             return value
         return validate_non_negative_integer(option, val)
     raise TypeError(
-        "Wrong type for %s, value must be an " "non negative integer or a string" % (option,)
+        "Wrong type for %s, value must be an non negative integer or a string" % (option,)
     )
 
 
@@ -294,7 +293,7 @@ def validate_positive_float(option: str, value: Any) -> float:
     # float('inf') doesn't work in 2.4 or 2.5 on Windows, so just cap floats at
     # one billion - this is a reasonable approximation for infinity
     if not 0 < value < 1e9:
-        raise ValueError("%s must be greater than 0 and " "less than one billion" % (option,))
+        raise ValueError("%s must be greater than 0 and less than one billion" % (option,))
     return value
 
 
@@ -402,7 +401,7 @@ def validate_read_preference_tags(name: str, value: Any) -> List[Dict[str, str]]
                 tags[unquote_plus(key)] = unquote_plus(val)
             tag_sets.append(tags)
         except Exception:
-            raise ValueError("%r not a valid " "value for %s" % (tag_set, name))
+            raise ValueError("%r not a valid value for %s" % (tag_set, name))
     return tag_sets
 
 
@@ -735,7 +734,7 @@ def validate_auth_option(option: str, value: Any) -> Tuple[str, Any]:
     """Validate optional authentication parameters."""
     lower, value = validate(option, value)
     if lower not in _AUTH_OPTIONS:
-        raise ConfigurationError("Unknown " "authentication option: %s" % (option,))
+        raise ConfigurationError("Unknown authentication option: %s" % (option,))
     return option, value
 
 
@@ -762,12 +761,12 @@ def get_validated_options(
     validated_options: MutableMapping[str, Any]
     if isinstance(options, _CaseInsensitiveDictionary):
         validated_options = _CaseInsensitiveDictionary()
-        get_normed_key = lambda x: x
-        get_setter_key = lambda x: options.cased_key(x)
+        get_normed_key = lambda x: x  # noqa: E731
+        get_setter_key = lambda x: options.cased_key(x)  # noqa: E731
     else:
         validated_options = {}
-        get_normed_key = lambda x: x.lower()
-        get_setter_key = lambda x: x
+        get_normed_key = lambda x: x.lower()  # noqa: E731
+        get_setter_key = lambda x: x  # noqa: E731
 
     for opt, value in options.items():
         normed_key = get_normed_key(opt)
@@ -804,9 +803,7 @@ class BaseObject(object):
     ) -> None:
 
         if not isinstance(codec_options, CodecOptions):
-            raise TypeError(
-                "codec_options must be an instance of " "bson.codec_options.CodecOptions"
-            )
+            raise TypeError("codec_options must be an instance of bson.codec_options.CodecOptions")
         self.__codec_options = codec_options
 
         if not isinstance(read_preference, _ServerMode):
@@ -819,14 +816,12 @@ class BaseObject(object):
 
         if not isinstance(write_concern, WriteConcern):
             raise TypeError(
-                "write_concern must be an instance of " "pymongo.write_concern.WriteConcern"
+                "write_concern must be an instance of pymongo.write_concern.WriteConcern"
             )
         self.__write_concern = write_concern
 
         if not isinstance(read_concern, ReadConcern):
-            raise TypeError(
-                "read_concern must be an instance of " "pymongo.read_concern.ReadConcern"
-            )
+            raise TypeError("read_concern must be an instance of pymongo.read_concern.ReadConcern")
         self.__read_concern = read_concern
 
     @property

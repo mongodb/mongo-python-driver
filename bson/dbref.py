@@ -35,7 +35,7 @@ class DBRef(object):
         collection: str,
         id: Any,
         database: Optional[str] = None,
-        _extra: Mapping[str, Any] = {},
+        _extra: Optional[Mapping[str, Any]] = None,
         **kwargs: Any
     ) -> None:
         """Initialize a new :class:`DBRef`.
@@ -63,7 +63,7 @@ class DBRef(object):
         self.__collection = collection
         self.__id = id
         self.__database = database
-        kwargs.update(_extra)
+        kwargs.update(_extra or {})
         self.__kwargs = kwargs
 
     @property

@@ -258,7 +258,7 @@ Notable improvements
 ....................
 
 - Added support for MongoDB 5.0.
-- Support for MongoDB Versioned API, see :class:`~pymongo.server_api.ServerApi`.
+- Support for MongoDB Stable API, see :class:`~pymongo.server_api.ServerApi`.
 - Support for snapshot reads on secondaries (see :ref:`snapshot-reads-ref`).
 - Support for Azure and GCP KMS providers for client side field level
   encryption. See the docstring for :class:`~pymongo.mongo_client.MongoClient`,

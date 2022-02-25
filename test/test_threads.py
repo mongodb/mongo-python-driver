@@ -16,7 +16,7 @@
 
 import threading
 from test import IntegrationTest, client_context, unittest
-from test.utils import joinall, rs_or_single_client
+from test.utils import joinall
 
 
 @client_context.require_connection

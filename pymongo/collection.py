@@ -29,7 +29,6 @@ from typing import (
     Union,
 )
 
-from bson.code import Code
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
@@ -204,11 +203,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if not name or ".." in name:
             raise InvalidName("collection names cannot be empty")
         if "$" in name and not (name.startswith("oplog.$main") or name.startswith("$cmd")):
-            raise InvalidName("collection names must not " "contain '$': %r" % name)
+            raise InvalidName("collection names must not contain '$': %r" % name)
         if name[0] == "." or name[-1] == ".":
-            raise InvalidName("collection names must not start " "or end with '.': %r" % name)
+            raise InvalidName("collection names must not start or end with '.': %r" % name)
         if "\x00" in name:
-            raise InvalidName("collection names must not contain the " "null character")
+            raise InvalidName("collection names must not contain the null character")
         collation = validate_collation_or_none(kwargs.pop("collation", None))
 
         self.__database: Database[_DocumentType] = database
@@ -424,6 +423,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         bypass_document_validation: bool = False,
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
+        let: Optional[Mapping] = None,
     ) -> BulkWriteResult:
         """Send a batch of write operations to the server.
 
@@ -475,6 +475,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.client_session.ClientSession`.
           - `comment` (optional): A user-provided comment to attach to this
             command.
+          - `let` (optional): Map of parameter names and values. Values must be
+            constant or closed expressions that do not reference document
+            fields. Parameters can then be accessed as variables in an
+            aggregate expression context (e.g. "$$var").
 
         :Returns:
           An instance of :class:`~pymongo.results.BulkWriteResult`.
@@ -486,6 +490,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. versionchanged:: 4.1
            Added ``comment`` parameter.
+           Added ``let`` parameter.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -497,7 +502,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """
         common.validate_list("requests", requests)
 
-        blk = _Bulk(self, ordered, bypass_document_validation, comment=comment)
+        blk = _Bulk(self, ordered, bypass_document_validation, comment=comment, let=let)
         for request in requests:
             try:
                 request._add_to_bulk(blk)
@@ -729,7 +734,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 hint = helpers._index_document(hint)
             update_doc["hint"] = hint
         command = SON([("update", self.name), ("ordered", ordered), ("updates", [update_doc])])
-        if let:
+        if let is not None:
             common.validate_is_mapping("let", let)
             command["let"] = let
         if not write_concern.is_server_default:
@@ -894,7 +899,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """
         common.validate_is_mapping("filter", filter)
         common.validate_ok_for_replace(replacement)
-        if let:
+        if let is not None:
             common.validate_is_mapping("let", let)
         write_concern = self._write_concern_for(session)
         return UpdateResult(
@@ -1190,7 +1195,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if not write_concern.is_server_default:
             command["writeConcern"] = write_concern.document
 
-        if let:
+        if let is not None:
             common.validate_is_document_type("let", let)
             command["let"] = let
 
@@ -1715,9 +1720,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 # MongoDB < 4.9
                 cmd = SON([("count", self.__name)])
                 cmd.update(kwargs)
-                return self._count_cmd(None, sock_info, read_preference, cmd, collation=None)
+                return self._count_cmd(session, sock_info, read_preference, cmd, collation=None)
 
-        return self.__database.client._retryable_read(_cmd, self.read_preference, None)
+        return self._retryable_non_cursor_read(_cmd, None)
 
     def count_documents(
         self,
@@ -1802,9 +1807,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 return 0
             return result["n"]
 
-        return self.__database.client._retryable_read(
-            _cmd, self._read_preference_for(session), session
-        )
+        return self._retryable_non_cursor_read(_cmd, session)
+
+    def _retryable_non_cursor_read(self, func, session):
+        """Non-cursor read helper to handle implicit session creation."""
+        client = self.__database.client
+        with client._tmp_session(session) as s:
+            return client._retryable_read(func, self._read_preference_for(s), s)
 
     def create_indexes(
         self,
@@ -1873,7 +1882,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 for index in indexes:
                     if not isinstance(index, IndexModel):
                         raise TypeError(
-                            "%r is not an instance of " "pymongo.operations.IndexModel" % (index,)
+                            "%r is not an instance of pymongo.operations.IndexModel" % (index,)
                         )
                     document = index.document
                     names.append(document["name"])
@@ -2152,30 +2161,31 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             codec_options=codec_options, read_preference=ReadPreference.PRIMARY
         )
         read_pref = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
+        explicit_session = session is not None
 
         def _cmd(session, server, sock_info, read_preference):
             cmd = SON([("listIndexes", self.__name), ("cursor", {})])
             if comment is not None:
                 cmd["comment"] = comment
 
-            with self.__database.client._tmp_session(session, False) as s:
-                try:
-                    cursor = self._command(
-                        sock_info, cmd, read_preference, codec_options, session=s
-                    )["cursor"]
-                except OperationFailure as exc:
-                    # Ignore NamespaceNotFound errors to match the behavior
-                    # of reading from *.system.indexes.
-                    if exc.code != 26:
-                        raise
-                    cursor = {"id": 0, "firstBatch": []}
+            try:
+                cursor = self._command(
+                    sock_info, cmd, read_preference, codec_options, session=session
+                )["cursor"]
+            except OperationFailure as exc:
+                # Ignore NamespaceNotFound errors to match the behavior
+                # of reading from *.system.indexes.
+                if exc.code != 26:
+                    raise
+                cursor = {"id": 0, "firstBatch": []}
             cmd_cursor = CommandCursor(
-                coll, cursor, sock_info.address, session=s, explicit_session=session is not None
+                coll, cursor, sock_info.address, session=session, explicit_session=explicit_session
             )
             cmd_cursor._maybe_pin_connection(sock_info)
             return cmd_cursor
 
-        return self.__database.client._retryable_read(_cmd, read_pref, session)
+        with self.__database.client._tmp_session(session, False) as s:
+            return self.__database.client._retryable_read(_cmd, read_pref, s)
 
     def index_information(
         self,
@@ -2696,9 +2706,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 user_fields={"values": 1},
             )["values"]
 
-        return self.__database.client._retryable_read(
-            _cmd, self._read_preference_for(session), session
-        )
+        return self._retryable_non_cursor_read(_cmd, session)
 
     def _write_concern_for_cmd(self, cmd, session):
         raw_wc = cmd.get("writeConcern")
@@ -2725,11 +2733,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         common.validate_is_mapping("filter", filter)
         if not isinstance(return_document, bool):
             raise ValueError(
-                "return_document must be " "ReturnDocument.BEFORE or ReturnDocument.AFTER"
+                "return_document must be ReturnDocument.BEFORE or ReturnDocument.AFTER"
             )
         collation = validate_collation_or_none(kwargs.pop("collation", None))
         cmd = SON([("findAndModify", self.__name), ("query", filter), ("new", return_document)])
-        if let:
+        if let is not None:
             common.validate_is_mapping("let", let)
             cmd["let"] = let
         cmd.update(kwargs)
@@ -2751,7 +2759,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             if array_filters is not None:
                 if not acknowledged:
                     raise ConfigurationError(
-                        "arrayFilters is unsupported for unacknowledged " "writes."
+                        "arrayFilters is unsupported for unacknowledged writes."
                     )
                 cmd["arrayFilters"] = list(array_filters)
             if hint is not None:

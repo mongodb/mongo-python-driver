@@ -73,7 +73,7 @@ class WriteConcern(object):
             if not isinstance(fsync, bool):
                 raise TypeError("fsync must be True or False")
             if j and fsync:
-                raise ConfigurationError("Can't set both j " "and fsync at the same time")
+                raise ConfigurationError("Can't set both j and fsync at the same time")
             self.__document["fsync"] = fsync
 
         if w == 0 and j is True:

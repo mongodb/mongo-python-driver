@@ -15,10 +15,9 @@
 import itertools
 import unittest
 
-from mockupdb import MockupDB, OpMsg, go, going
+from mockupdb import MockupDB, OpMsg, going
 from operations import operations
 
-from bson import SON
 from pymongo import MongoClient, ReadPreference
 from pymongo.read_preferences import (
     _MONGOS_MODES,

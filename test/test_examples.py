@@ -945,9 +945,7 @@ class TestTransactionExamples(IntegrationTest):
                     except (ConnectionFailure, OperationFailure) as exc:
                         # Can retry commit
                         if exc.has_error_label("UnknownTransactionCommitResult"):
-                            print(
-                                "UnknownTransactionCommitResult, retrying " "commit operation ..."
-                            )
+                            print("UnknownTransactionCommitResult, retrying commit operation ...")
                             continue
                         else:
                             print("Error during commit ...")
@@ -970,11 +968,11 @@ class TestTransactionExamples(IntegrationTest):
                     txn_func(session)  # performs transaction
                     break
                 except (ConnectionFailure, OperationFailure) as exc:
-                    print("Transaction aborted. Caught exception during " "transaction.")
+                    print("Transaction aborted. Caught exception during transaction.")
 
                     # If transient error, retry the whole transaction
                     if exc.has_error_label("TransientTransactionError"):
-                        print("TransientTransactionError, retrying" "transaction ...")
+                        print("TransientTransactionError, retrying transaction ...")
                         continue
                     else:
                         raise
@@ -1000,7 +998,7 @@ class TestTransactionExamples(IntegrationTest):
                 except (ConnectionFailure, OperationFailure) as exc:
                     # Can retry commit
                     if exc.has_error_label("UnknownTransactionCommitResult"):
-                        print("UnknownTransactionCommitResult, retrying " "commit operation ...")
+                        print("UnknownTransactionCommitResult, retrying commit operation ...")
                         continue
                     else:
                         print("Error during commit ...")
@@ -1036,7 +1034,7 @@ class TestTransactionExamples(IntegrationTest):
                 except (ConnectionFailure, OperationFailure) as exc:
                     # If transient error, retry the whole transaction
                     if exc.has_error_label("TransientTransactionError"):
-                        print("TransientTransactionError, retrying " "transaction ...")
+                        print("TransientTransactionError, retrying transaction ...")
                         continue
                     else:
                         raise
@@ -1051,7 +1049,7 @@ class TestTransactionExamples(IntegrationTest):
                 except (ConnectionFailure, OperationFailure) as exc:
                     # Can retry commit
                     if exc.has_error_label("UnknownTransactionCommitResult"):
-                        print("UnknownTransactionCommitResult, retrying " "commit operation ...")
+                        print("UnknownTransactionCommitResult, retrying commit operation ...")
                         continue
                     else:
                         print("Error during commit ...")
@@ -1282,7 +1280,7 @@ class TestVersionedApiExamples(IntegrationTest):
 
         with self.assertRaisesRegex(
             OperationFailure,
-            "Provided apiStrict:true, but the command " "count is not in API Version 1",
+            "Provided apiStrict:true, but the command count is not in API Version 1",
         ):
             client.db.command("count", "sales", query={})
         # Start Versioned API Example 6
