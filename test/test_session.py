@@ -211,7 +211,6 @@ class TestSession(IntegrationTest):
             for i in listener.results["started"]:
                 if i.command.get("lsid"):
                     lsid_set.add(i.command.get("lsid")["id"])
-            self.assertEqual(len(lsid_set), 1)
             succeeded = len(lsid_set) == 1
         self.assertTrue(succeeded)
 
