@@ -17,7 +17,6 @@
 import copy
 import os
 import sys
-import threading
 import time
 from io import BytesIO
 from typing import Any, Callable, List, Set, Tuple
@@ -27,7 +26,13 @@ from pymongo.mongo_client import MongoClient
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, SkipTest, client_context, unittest
-from test.utils import EventListener, TestCreator, rs_or_single_client, wait_until
+from test.utils import (
+    EventListener,
+    ExceptionCatchingThread,
+    TestCreator,
+    rs_or_single_client,
+    wait_until,
+)
 from test.utils_spec_runner import SpecRunner
 
 from bson import DBRef
@@ -196,15 +201,19 @@ class TestSession(IntegrationTest):
                 (client.db.test.aggregate, [[{"$set": {"x": 1}}]]),
                 (client.db.test.find, [{}]),
                 (client.server_info, [{}]),
+                (client.db.aggregate, [[{"$listLocalSessions": {"allUsers": True}}]]),
+                (client.db.list_collections, []),
                 (cursor.distinct, ["_id"]),
             ]
             threads = []
             listener.results.clear()
             for op, args in ops:
-                threads.append(threading.Thread(target=op, args=args))
+                threads.append(ExceptionCatchingThread(target=op, args=args))
                 threads[-1].start()
+            self.assertEqual(len(threads), len(ops))
             for thread in threads:
                 thread.join()
+                self.assertIsNone(thread.exc)
             client.close()
             lsid_set = set()
             for i in listener.results["started"]:
