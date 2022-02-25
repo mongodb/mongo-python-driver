@@ -178,36 +178,42 @@ class TestSession(IntegrationTest):
     def test_implicit_sessions_checkout(self):
         # "To confirm that implicit sessions only allocate their server session after a
         # successful connection checkout" test from Driver Sessions Spec.
-        listener = EventListener()
-        client = rs_or_single_client(event_listeners=[listener], maxPoolSize=1, retryWrites=True)
-        cursor = client.db.test.find({})
-        ops: List[Tuple[Callable, List[Any]]] = [
-            (client.db.test.find_one, [{"_id": 1}]),
-            (client.db.test.delete_one, [{}]),
-            (client.db.test.update_one, [{}, {"$set": {"x": 2}}]),
-            (client.db.test.bulk_write, [[UpdateOne({}, {"$set": {"x": 2}})]]),
-            (client.db.test.find_one_and_delete, [{}]),
-            (client.db.test.find_one_and_update, [{}, {"$set": {"x": 1}}]),
-            (client.db.test.find_one_and_replace, [{}, {}]),
-            (client.db.test.aggregate, [[{"$set": {"x": 1}}]]),
-            (client.db.test.find, [{}]),
-            (client.server_info, [{}]),
-            (cursor.distinct, ["_id"]),
-            (client.db.list_collections, [{}]),
-        ]
-        threads = []
-        listener.results.clear()
-        for op, args in ops:
-            threads.append(threading.Thread(target=op, args=args))
-            threads[-1].start()
-        for thread in threads:
-            thread.join()
-
-        lsid_set = set()
-        for i in listener.results["started"]:
-            if i.command.get("lsid"):
-                lsid_set.add(i.command.get("lsid")["id"])
-        self.assertLessEqual(len(lsid_set), 2)
+        succeeded = False
+        for _ in range(5):
+            listener = EventListener()
+            client = rs_or_single_client(
+                event_listeners=[listener], maxPoolSize=1, retryWrites=True
+            )
+            cursor = client.db.test.find({})
+            ops: List[Tuple[Callable, List[Any]]] = [
+                (client.db.test.find_one, [{"_id": 1}]),
+                (client.db.test.delete_one, [{}]),
+                (client.db.test.update_one, [{}, {"$set": {"x": 2}}]),
+                (client.db.test.bulk_write, [[UpdateOne({}, {"$set": {"x": 2}})]]),
+                (client.db.test.find_one_and_delete, [{}]),
+                (client.db.test.find_one_and_update, [{}, {"$set": {"x": 1}}]),
+                (client.db.test.find_one_and_replace, [{}, {}]),
+                (client.db.test.aggregate, [[{"$set": {"x": 1}}]]),
+                (client.db.test.find, [{}]),
+                (client.server_info, [{}]),
+                (cursor.distinct, ["_id"]),
+                (client.db.list_collections, [{}]),
+            ]
+            threads = []
+            listener.results.clear()
+            for op, args in ops:
+                threads.append(threading.Thread(target=op, args=args))
+                threads[-1].start()
+            for thread in threads:
+                thread.join()
+            client.close()
+            lsid_set = set()
+            for i in listener.results["started"]:
+                if i.command.get("lsid"):
+                    lsid_set.add(i.command.get("lsid")["id"])
+            self.assertEqual(len(lsid_set), 1)
+            succeeded = len(lsid_set) == 1
+        self.assertTrue(succeeded)
 
     def test_pool_lifo(self):
         # "Pool is LIFO" test from Driver Sessions Spec.
