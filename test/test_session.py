@@ -28,11 +28,9 @@ from test import IntegrationTest, SkipTest, client_context, unittest
 from test.utils import (
     EventListener,
     ExceptionCatchingThread,
-    TestCreator,
     rs_or_single_client,
     wait_until,
 )
-from test.utils_spec_runner import SpecRunner
 
 from bson import DBRef
 from gridfs import GridFS, GridFSBucket
