@@ -216,7 +216,8 @@ class TestSession(IntegrationTest):
             for i in listener.results["started"]:
                 if i.command.get("lsid"):
                     lsid_set.add(i.command.get("lsid")["id"])
-            succeeded = len(lsid_set) == 1
+            if len(lsid_set) == 1:
+                succeeded = True
         self.assertTrue(succeeded)
 
     def test_pool_lifo(self):
