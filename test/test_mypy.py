@@ -103,6 +103,15 @@ class TestPymongo(IntegrationTest):
         value = cursor.next()
         value.items()
 
+    def test_explicit_document_type(self) -> None:
+        client: MongoClient[Dict[str, Any]] = MongoClient()
+        coll = client.test.test
+        doc = {"my": "doc"}
+        coll.insert_one(doc)
+        retreived = coll.find_one({"_id": doc["_id"]})
+        assert retreived is not None
+        retreived["a"] = 1
+
     def test_raw_bson(self) -> None:
         client: MongoClient[RawBSONDocument] = MongoClient(document_class=RawBSONDocument)
         coll = client.test.test
