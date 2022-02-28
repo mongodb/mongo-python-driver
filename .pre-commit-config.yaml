@@ -65,6 +65,6 @@ repos:
   hooks:
   - id: slotscheck
     files: \.py$
-    exclude: "^test/"
+    exclude: "^(test|tools)/"
     stages: [manual]
 
