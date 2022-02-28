@@ -16,8 +16,8 @@
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
     Mapping,
+    MutableMapping,
     Optional,
     Sequence,
     Tuple,
@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 # Common Shared Types.
 _Address = Tuple[str, Optional[int]]
 _CollationIn = Union[Mapping[str, Any], "Collation"]
-_DocumentIn = Union[Dict[str, Any], "RawBSONDocument"]
+_DocumentIn = Union[MutableMapping[str, Any], "RawBSONDocument"]
 _Pipeline = Sequence[Mapping[str, Any]]
 _DocumentOut = _DocumentIn
 _DocumentType = TypeVar("_DocumentType", bound=Mapping[str, Any])
