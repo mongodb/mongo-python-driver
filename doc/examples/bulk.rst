@@ -146,8 +146,7 @@ and fourth operations succeed.
                     'index': 0,...
                     'op': {'_id': 1}},
                    {'code': 11000,
-                    'errmsg': 'E11000 duplicate key error collection: '
-                              'bulk_example.test index: _id_ dup key: { _id: 3 }',
+                    'errmsg': '',
                     'index': 2,...
                     'op': {'_id': 3}}]}
 
