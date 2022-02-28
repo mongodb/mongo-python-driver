@@ -132,6 +132,7 @@ Classes
 """
 
 import collections
+import gc
 import time
 import uuid
 from collections.abc import Mapping as _Mapping
@@ -950,6 +951,7 @@ class ClientSession(Generic[_DocumentType]):
     def _materialize(self):
         if isinstance(self._server_session, _EmptyServerSession):
             old = self._server_session
+            gc.collect()
             self._server_session = self._client._topology.get_server_session()
             if old.started_retryable_write:
                 self._server_session.inc_transaction_id()
