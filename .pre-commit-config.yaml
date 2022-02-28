@@ -59,7 +59,6 @@ repos:
       types: [yaml]
       args: ["--schemafile", "https://json.schemastore.org/github-workflow"]
 
-repos:
 - repo: https://github.com/ariebovenberg/slotscheck
   rev: v0.14.0
   hooks:
@@ -67,4 +66,3 @@ repos:
     files: \.py$
     exclude: "^(test|tools)/"
     stages: [manual]
-
