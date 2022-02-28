@@ -784,7 +784,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         filter: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> CommandCursor[MutableMapping[str, Any]]:
+    ) -> CommandCursor[Dict[str, Any]]:
         """Get a cursor over the collections of this database.
 
         :Parameters:

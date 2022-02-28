@@ -24,7 +24,6 @@ from typing import (
     Callable,
     Dict,
     Iterable,
-    MutableMapping,
     Optional,
     Type,
     Union,
@@ -115,7 +114,7 @@ class TypeCodec(TypeEncoder, TypeDecoder):
 
 _Codec = Union[TypeEncoder, TypeDecoder, TypeCodec]
 _Fallback = Callable[[Any], Any]
-_DocumentClass = Union[Type[MutableMapping], Type["RawBSONDocument"]]
+_DocumentClass = Union[Type[Dict], Type["RawBSONDocument"]]
 
 
 class TypeRegistry(object):

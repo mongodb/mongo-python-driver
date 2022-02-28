@@ -18,6 +18,7 @@ from collections import abc
 from typing import (
     TYPE_CHECKING,
     Any,
+    Dict,
     Generic,
     Iterable,
     List,
@@ -2127,7 +2128,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self,
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
-    ) -> CommandCursor[MutableMapping[str, Any]]:
+    ) -> CommandCursor[Dict[str, Any]]:
         """Get a cursor over the index documents for this collection.
 
           >>> for index in db.test.list_indexes():
@@ -2152,7 +2153,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.0
         """
-        codec_options = CodecOptions(SON)
+        codec_options = CodecOptions(SON[str, Any])
         coll = self.with_options(
             codec_options=codec_options, read_preference=ReadPreference.PRIMARY
         )

@@ -22,12 +22,14 @@ from typing import Any, Dict, Iterable, List
 try:
     from mypy import api
 except ImportError:
-    api = None
+    api = None  # type: ignore[assignment]
 
 from test import IntegrationTest
 
+from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo.collection import Collection
+from pymongo.mongo_client import MongoClient
 from pymongo.operations import InsertOne
 
 TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "mypy_fails")
@@ -86,6 +88,29 @@ class TestPymongo(IntegrationTest):
         requests = [InsertOne({})]
         result = self.coll.bulk_write(requests)
         self.assertTrue(result.acknowledged)
+
+    def test_command(self) -> None:
+        result = self.client.admin.command("ping")
+        items = result.items()
+
+    def test_list_collections(self) -> None:
+        cursor = self.client.test.list_collections()
+        value = cursor.next()
+        items = value.items()
+
+    def test_list_databases(self) -> None:
+        cursor = self.client.list_databases()
+        value = cursor.next()
+        value.items()
+
+    def test_raw_bson(self) -> None:
+        client: MongoClient[RawBSONDocument] = MongoClient(document_class=RawBSONDocument)
+        coll = client.test.test
+        doc = {"my": "doc"}
+        coll.insert_one(doc)
+        retreived = coll.find_one({"_id": doc["_id"]})
+        assert retreived is not None
+        assert len(retreived.raw) > 0
 
     def test_aggregate_pipeline(self) -> None:
         coll3 = self.client.test.test3

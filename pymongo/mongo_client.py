@@ -43,21 +43,16 @@ from typing import (
     Generic,
     List,
     Mapping,
-    MutableMapping,
     Optional,
     Sequence,
     Set,
     Tuple,
+    Type,
     Union,
     cast,
 )
 
-from bson.codec_options import (
-    DEFAULT_CODEC_OPTIONS,
-    CodecOptions,
-    TypeRegistry,
-    _DocumentClass,
-)
+from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.son import SON
 from bson.timestamp import Timestamp
 from pymongo import (
@@ -124,7 +119,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self,
         host: Optional[Union[str, Sequence[str]]] = None,
         port: Optional[int] = None,
-        document_class: _DocumentClass = dict,
+        document_class: Type[Mapping[str, Any]] = dict,
         tz_aware: Optional[bool] = None,
         connect: Optional[bool] = None,
         type_registry: Optional[TypeRegistry] = None,
@@ -1727,7 +1722,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         session: Optional[client_session.ClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> CommandCursor[MutableMapping[str, Any]]:
+    ) -> CommandCursor[Dict[str, Any]]:
         """Get a cursor over the databases of the connected server.
 
         :Parameters:
