@@ -25,6 +25,7 @@ except ImportError:
     api = None
 
 from test import IntegrationTest
+from test.utils import rs_or_single_client
 
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
@@ -104,7 +105,7 @@ class TestPymongo(IntegrationTest):
         value.items()
 
     def test_explicit_document_type(self) -> None:
-        client: MongoClient[Dict[str, Any]] = MongoClient()
+        client: MongoClient[Dict[str, Any]] = rs_or_single_client()
         coll = client.test.test
         doc = {"my": "doc"}
         coll.insert_one(doc)
@@ -113,7 +114,7 @@ class TestPymongo(IntegrationTest):
         retreived["a"] = 1
 
     def test_raw_bson(self) -> None:
-        client: MongoClient[RawBSONDocument] = MongoClient(document_class=RawBSONDocument)
+        client: MongoClient[RawBSONDocument] = rs_or_single_client(document_class=RawBSONDocument)
         coll = client.test.test
         doc = {"my": "doc"}
         coll.insert_one(doc)
