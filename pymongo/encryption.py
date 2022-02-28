@@ -56,7 +56,7 @@ _HTTPS_PORT = 443
 _KMS_CONNECT_TIMEOUT = 10  # TODO: CDRIVER-3262 will define this value.
 _MONGOCRYPTD_TIMEOUT_MS = 10000
 
-_DATA_KEY_OPTS = CodecOptions(document_class=SON[str, Any], uuid_representation=STANDARD)
+_DATA_KEY_OPTS = CodecOptions(document_class=SON, uuid_representation=STANDARD)
 # Use RawBSONDocument codec options to avoid needlessly decoding
 # documents from the key vault.
 _KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument, uuid_representation=STANDARD)
