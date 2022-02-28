@@ -22,7 +22,7 @@ from typing import Any, Dict, Iterable, List
 try:
     from mypy import api
 except ImportError:
-    api = None  # type: ignore[assignment]
+    api = None
 
 from test import IntegrationTest
 
