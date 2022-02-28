@@ -182,7 +182,7 @@ class TestSession(IntegrationTest):
         # successful connection checkout" test from Driver Sessions Spec.
         succeeded = False
         failures = 0
-        for _ in range(100):
+        for _ in range(5):
             print("Starting test iteration" + str(_))
             listener = EventListener()
             client = rs_or_single_client(
