@@ -141,11 +141,13 @@ and fourth operations succeed.
    'upserted': [],
    'writeConcernErrors': [],
    'writeErrors': [{'code': 11000,
-                    'errmsg': '...E11000...duplicate key error...',
+                    'errmsg': 'E11000 duplicate key error collection: '
+                              'bulk_example.test index: _id_ dup key: { _id: 1 }',
                     'index': 0,...
                     'op': {'_id': 1}},
                    {'code': 11000,
-                    'errmsg': '...E11000...duplicate key error...',
+                    'errmsg': 'E11000 duplicate key error collection: '
+                              'bulk_example.test index: _id_ dup key: { _id: 3 }',
                     'index': 2,...
                     'op': {'_id': 3}}]}
 
