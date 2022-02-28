@@ -132,7 +132,6 @@ Classes
 """
 
 import collections
-import gc
 import time
 import uuid
 from collections.abc import Mapping as _Mapping
@@ -950,8 +949,8 @@ class ClientSession(Generic[_DocumentType]):
 
     def _materialize(self):
         if isinstance(self._server_session, _EmptyServerSession):
+            # print("Thread <%s> just materialized a session"%(threading.current_thread().name))
             old = self._server_session
-            gc.collect()
             self._server_session = self._client._topology.get_server_session()
             if old.started_retryable_write:
                 self._server_session.inc_transaction_id()
@@ -1087,8 +1086,12 @@ class _ServerSessionPool(collections.deque):
         while self:
             s = self.popleft()
             if not s.timed_out(session_timeout_minutes):
+                # print("Thread <%s> just got a server session from pool" % (
+                # threading.current_thread(
+                # ).name))
                 return s
-
+        # print("Thread <%s> just created a server session" % (threading.current_thread(
+        # ).name))
         return _ServerSession(self.generation)
 
     def return_server_session(self, server_session, session_timeout_minutes):
@@ -1101,6 +1104,8 @@ class _ServerSessionPool(collections.deque):
     def return_server_session_no_lock(self, server_session):
         # Discard sessions from an old pool to avoid duplicate sessions in the
         # child process after a fork.
+        # print("Thread <%s> just returned a server session" % (threading.current_thread(
+        # ).name))
         if server_session.generation == self.generation and not server_session.dirty:
             self.appendleft(server_session)
 
