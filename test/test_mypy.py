@@ -21,11 +21,6 @@ from typing import Any, Dict, Iterable, List
 
 try:
     from typing import TypedDict  # Not available in Python 3.6 and Python 3.7
-
-    class Movie(TypedDict):
-        name: str
-        year: int
-
 except ImportError:
     TypeDict = None
 
@@ -61,7 +56,7 @@ class TestMypyFails(unittest.TestCase):
 
     def test_mypy_failures(self) -> None:
         for filename in get_tests():
-            if filename == "typeddict_client.py" and TypeDict is None:
+            if filename == "typeddict_client.py" and TypedDict is None:
                 continue
             with self.subTest(filename=filename):
                 self.ensure_mypy_fails(filename)
