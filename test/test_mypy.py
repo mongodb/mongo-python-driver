@@ -20,6 +20,16 @@ import unittest
 from typing import Any, Dict, Iterable, List
 
 try:
+    from typing import TypedDict  # Not available in Python 3.6
+
+    class Movie(TypedDict):
+        name: str
+        year: int
+
+except ImportError:
+    TypeDict = None
+
+try:
     from mypy import api
 except ImportError:
     api = None
@@ -51,6 +61,8 @@ class TestMypyFails(unittest.TestCase):
 
     def test_mypy_failures(self) -> None:
         for filename in get_tests():
+            if filename == "typeddict_client.py" and TypeDict is None:
+                continue
             with self.subTest(filename=filename):
                 self.ensure_mypy_fails(filename)
 
@@ -121,6 +133,15 @@ class TestPymongo(IntegrationTest):
         retreived = coll.find_one({"_id": doc["_id"]})
         assert retreived is not None
         assert len(retreived.raw) > 0
+
+    def test_default_typedict(self) -> None:
+        if TypedDict is None:
+            raise unittest.SkipTest("TypedDict not available")
+        client: MongoClient[Movie] = MongoClient(document_class=Movie)
+        doc = client.test.test.find_one({})
+        if doc is not None:
+            doc["name"] = "LOTR"
+            doc["year"] = 2005
 
     def test_aggregate_pipeline(self) -> None:
         coll3 = self.client.test.test3
