@@ -18,20 +18,28 @@ import copy
 import sys
 import time
 from io import BytesIO
-from typing import Set
+from typing import Any, Callable, List, Set, Tuple
 
 from pymongo.mongo_client import MongoClient
 
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, SkipTest, client_context, unittest
-from test.utils import EventListener, rs_or_single_client, wait_until
+from test.utils import (
+    EventListener,
+    ExceptionCatchingThread,
+    rs_or_single_client,
+    wait_until,
+)
 
 from bson import DBRef
 from gridfs import GridFS, GridFSBucket
 from pymongo import ASCENDING, IndexModel, InsertOne, monitoring
+from pymongo.command_cursor import CommandCursor
 from pymongo.common import _MAX_END_SESSIONS
+from pymongo.cursor import Cursor
 from pymongo.errors import ConfigurationError, InvalidOperation, OperationFailure
+from pymongo.operations import UpdateOne
 from pymongo.read_concern import ReadConcern
 
 
@@ -170,6 +178,63 @@ class TestSession(IntegrationTest):
                         session_ids(client),
                         "%s did not return implicit session to pool" % (f.__name__,),
                     )
+
+    def test_implicit_sessions_checkout(self):
+        # "To confirm that implicit sessions only allocate their server session after a
+        # successful connection checkout" test from Driver Sessions Spec.
+        succeeded = False
+        failures = 0
+        for _ in range(5):
+            listener = EventListener()
+            client = rs_or_single_client(
+                event_listeners=[listener], maxPoolSize=1, retryWrites=True
+            )
+            cursor = client.db.test.find({})
+            ops: List[Tuple[Callable, List[Any]]] = [
+                (client.db.test.find_one, [{"_id": 1}]),
+                (client.db.test.delete_one, [{}]),
+                (client.db.test.update_one, [{}, {"$set": {"x": 2}}]),
+                (client.db.test.bulk_write, [[UpdateOne({}, {"$set": {"x": 2}})]]),
+                (client.db.test.find_one_and_delete, [{}]),
+                (client.db.test.find_one_and_update, [{}, {"$set": {"x": 1}}]),
+                (client.db.test.find_one_and_replace, [{}, {}]),
+                (client.db.test.aggregate, [[{"$limit": 1}]]),
+                (client.db.test.find, []),
+                (client.server_info, [{}]),
+                (client.db.aggregate, [[{"$listLocalSessions": {}}, {"$limit": 1}]]),
+                (cursor.distinct, ["_id"]),
+                (client.db.list_collections, []),
+            ]
+            threads = []
+            listener.results.clear()
+
+            def thread_target(op, *args):
+                res = op(*args)
+                if isinstance(res, (Cursor, CommandCursor)):
+                    list(res)
+
+            for op, args in ops:
+                threads.append(
+                    ExceptionCatchingThread(
+                        target=thread_target, args=[op, *args], name=op.__name__
+                    )
+                )
+                threads[-1].start()
+            self.assertEqual(len(threads), len(ops))
+            for thread in threads:
+                thread.join()
+                self.assertIsNone(thread.exc)
+            client.close()
+            lsid_set = set()
+            for i in listener.results["started"]:
+                if i.command.get("lsid"):
+                    lsid_set.add(i.command.get("lsid")["id"])
+            if len(lsid_set) == 1:
+                succeeded = True
+            else:
+                failures += 1
+        print(failures)
+        self.assertTrue(succeeded)
 
     def test_pool_lifo(self):
         # "Pool is LIFO" test from Driver Sessions Spec.

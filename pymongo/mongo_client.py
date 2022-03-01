@@ -66,6 +66,7 @@ from pymongo import (
 )
 from pymongo.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.client_options import ClientOptions
+from pymongo.client_session import _EmptyServerSession
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (
     AutoReconnect,
@@ -1601,7 +1602,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def __start_session(self, implicit, **kwargs):
         # Raises ConfigurationError if sessions are not supported.
-        server_session = self._get_server_session()
+        if implicit:
+            self._topology._check_implicit_session_support()
+            server_session = _EmptyServerSession()
+        else:
+            server_session = self._get_server_session()
         opts = client_session.SessionOptions(**kwargs)
         return client_session.ClientSession(self, server_session, opts, implicit)
 
@@ -1641,6 +1646,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def _return_server_session(self, server_session, lock):
         """Internal: return a _ServerSession to the pool."""
+        if isinstance(server_session, _EmptyServerSession):
+            return
         return self._topology.return_server_session(server_session, lock)
 
     def _ensure_session(self, session=None):

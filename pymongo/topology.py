@@ -514,8 +514,15 @@ class Topology(object):
         with self._lock:
             return self._session_pool.pop_all()
 
+    def _check_implicit_session_support(self):
+        with self._lock:
+            self._check_session_support()
+
     def _check_session_support(self):
-        """Internal check for session support on non-load balanced clusters."""
+        """Internal check for session support on clusters."""
+        if self._settings.load_balanced:
+            # Sessions never time out in load balanced mode.
+            return float("inf")
         session_timeout = self._description.logical_session_timeout_minutes
         if session_timeout is None:
             # Maybe we need an initial scan? Can raise ServerSelectionError.
@@ -537,12 +544,7 @@ class Topology(object):
     def get_server_session(self):
         """Start or resume a server session, or raise ConfigurationError."""
         with self._lock:
-            # Sessions are always supported in load balanced mode.
-            if not self._settings.load_balanced:
-                session_timeout = self._check_session_support()
-            else:
-                # Sessions never time out in load balanced mode.
-                session_timeout = float("inf")
+            session_timeout = self._check_session_support()
             return self._session_pool.get_server_session(session_timeout)
 
     def return_server_session(self, server_session, lock):

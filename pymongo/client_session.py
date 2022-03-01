@@ -947,9 +947,16 @@ class ClientSession(Generic[_DocumentType]):
             return self._transaction.opts.read_preference
         return None
 
+    def _materialize(self):
+        if isinstance(self._server_session, _EmptyServerSession):
+            old = self._server_session
+            self._server_session = self._client._topology.get_server_session()
+            if old.started_retryable_write:
+                self._server_session.inc_transaction_id()
+
     def _apply_to(self, command, is_retryable, read_preference, sock_info):
         self._check_ended()
-
+        self._materialize()
         if self.options.snapshot:
             self._update_read_concern(command, sock_info)
 
@@ -998,6 +1005,20 @@ class ClientSession(Generic[_DocumentType]):
 
     def __copy__(self):
         raise TypeError("A ClientSession cannot be copied, create a new session instead")
+
+
+class _EmptyServerSession:
+    __slots__ = "dirty", "started_retryable_write"
+
+    def __init__(self):
+        self.dirty = False
+        self.started_retryable_write = False
+
+    def mark_dirty(self):
+        self.dirty = True
+
+    def inc_transaction_id(self):
+        self.started_retryable_write = True
 
 
 class _ServerSession(object):
