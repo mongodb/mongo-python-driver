@@ -709,11 +709,11 @@ class TestClient(IntegrationTest):
         # Used to test 'eval' below.
         import bson  # noqa: F401
 
-        client = MongoClient(
+        client = MongoClient(  # type: ignore[type-var]
             "mongodb://localhost:27017,localhost:27018/?replicaSet=replset"
             "&connectTimeoutMS=12345&w=1&wtimeoutms=100",
             connect=False,
-            document_class=SON,  # type: ignore[type-var]
+            document_class=SON,
         )
 
         the_repr = repr(client)

@@ -675,7 +675,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         # Parse options passed as kwargs.
         keyword_opts = common._CaseInsensitiveDictionary(kwargs)
-        keyword_opts["document_class"] = document_class
+        keyword_opts["document_class"] = document_class or dict
 
         seeds = set()
         username = None

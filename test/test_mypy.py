@@ -23,7 +23,7 @@ try:
     from typing import TypedDict  # type: ignore[attr-defined]
 
     # Not available in Python 3.6 and Python 3.7
-    class Movie(TypedDict):
+    class Movie(TypedDict):  # type: ignore[misc]
         name: str
         year: int
 
