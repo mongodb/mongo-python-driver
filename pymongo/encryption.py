@@ -290,7 +290,7 @@ class _Encrypter(object):
         db, coll = opts._key_vault_namespace.split(".", 1)
         key_vault_coll = key_vault_client[db][coll]
 
-        mongocryptd_client = MongoClient(
+        mongocryptd_client: MongoClient = MongoClient(
             opts._mongocryptd_uri, connect=False, serverSelectionTimeoutMS=_MONGOCRYPTD_TIMEOUT_MS
         )
 

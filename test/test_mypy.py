@@ -23,8 +23,13 @@ try:
     from typing import TypedDict  # type: ignore[attr-defined]
 
     # Not available in Python 3.6 and Python 3.7
+    class Movie(TypedDict):
+        name: str
+        year: int
+
 except ImportError:
     TypeDict = None
+
 
 try:
     from mypy import api
@@ -130,6 +135,16 @@ class TestPymongo(IntegrationTest):
         retreived = coll.find_one({"_id": doc["_id"]})
         assert retreived is not None
         retreived["a"] = 1
+
+    def test_typeddict_document_type(self) -> None:
+        if not TYPE_CHECKING:
+            raise unittest.SkipTest("Do not use raw MongoClient")
+        client: MongoClient[Movie] = MongoClient()
+        coll = client.test.test
+        retreived = coll.find_one({"_id": "foo"})
+        assert retreived is not None
+        assert retreived["year"] == 1
+        assert retreived["name"] == "a"
 
     def test_raw_bson_document_type(self) -> None:
         if not TYPE_CHECKING:
