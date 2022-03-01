@@ -17,7 +17,7 @@ sample client code that uses PyMongo typings."""
 
 import os
 import unittest
-from typing import Any, Dict, Iterable, List
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List
 
 try:
     from typing import TypedDict  # Not available in Python 3.6 and Python 3.7
@@ -121,7 +121,7 @@ class TestPymongo(IntegrationTest):
         retreived["a"] = 1
 
     def test_explicit_document_type(self) -> None:
-        client: MongoClient[Dict[str, Any]] = rs_or_single_client()
+        client = rs_or_single_client()
         coll = client.test.test
         doc = {"my": "doc"}
         coll.insert_one(doc)
@@ -129,14 +129,30 @@ class TestPymongo(IntegrationTest):
         assert retreived is not None
         retreived["a"] = 1
 
-    def test_raw_bson(self) -> None:
-        client: MongoClient[RawBSONDocument] = rs_or_single_client(document_class=RawBSONDocument)
+    def test_raw_bson_document_type(self) -> None:
+        if not TYPE_CHECKING:
+            raise unittest.SkipTest("Do not use raw MongoClient")
+        client = MongoClient(document_class=RawBSONDocument)
+        coll = client.test.test
+        retreived = coll.find_one({"_id": "foo"})
+        assert retreived is not None
+        assert len(retreived.raw) > 0
+
+    def test_son_documenttype(self) -> None:
+        if not TYPE_CHECKING:
+            raise unittest.SkipTest("Do not use raw MongoClient")
+
+        # For Python 3.6 support.
+        class StrSON(SON[str, Any]):
+            pass
+
+        client = MongoClient(document_class=StrSON)
         coll = client.test.test
         doc = {"my": "doc"}
         coll.insert_one(doc)
         retreived = coll.find_one({"_id": doc["_id"]})
         assert retreived is not None
-        assert len(retreived.raw) > 0
+        retreived["a"] = 1
 
     def test_aggregate_pipeline(self) -> None:
         coll3 = self.client.test.test3
