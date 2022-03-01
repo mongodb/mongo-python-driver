@@ -710,14 +710,14 @@ class TestClient(IntegrationTest):
         import bson  # noqa: F401
 
         # For Python 3.6 support.
-        class StrSON(SON[str, Any]):
-            pass
+        def get_son() -> "Type[SON[str, Any]]":
+            return SON
 
         client = MongoClient(
             "mongodb://localhost:27017,localhost:27018/?replicaSet=replset"
             "&connectTimeoutMS=12345&w=1&wtimeoutms=100",
             connect=False,
-            document_class=StrSON,
+            document_class=get_son(),
         )
 
         the_repr = repr(client)

@@ -17,10 +17,12 @@ sample client code that uses PyMongo typings."""
 
 import os
 import unittest
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Type
 
 try:
-    from typing import TypedDict  # Not available in Python 3.6 and Python 3.7
+    from typing import TypedDict  # type: ignore[attr-defined]
+
+    # Not available in Python 3.6 and Python 3.7
 except ImportError:
     TypeDict = None
 
@@ -143,10 +145,10 @@ class TestPymongo(IntegrationTest):
             raise unittest.SkipTest("Do not use raw MongoClient")
 
         # For Python 3.6 support.
-        class StrSON(SON[str, Any]):
-            pass
+        def get_son() -> "Type[SON[str, Any]]":
+            return SON
 
-        client = MongoClient(document_class=StrSON)
+        client = MongoClient(document_class=get_son())
         coll = client.test.test
         doc = {"my": "doc"}
         coll.insert_one(doc)
