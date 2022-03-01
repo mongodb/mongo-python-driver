@@ -1,7 +1,7 @@
 from bson.raw_bson import RawBSONDocument
 from pymongo import MongoClient
 
-client: MongoClient[RawBSONDocument] = MongoClient(document_class=RawBSONDocument)
+client = MongoClient(document_class=RawBSONDocument)
 coll = client.test.test
 doc = {"my": "doc"}
 coll.insert_one(doc)

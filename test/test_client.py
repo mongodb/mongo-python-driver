@@ -709,15 +709,13 @@ class TestClient(IntegrationTest):
         # Used to test 'eval' below.
         import bson  # noqa: F401
 
-        try:
-            client = MongoClient(
-                "mongodb://localhost:27017,localhost:27018/?replicaSet=replset"
-                "&connectTimeoutMS=12345&w=1&wtimeoutms=100",
-                connect=False,
-                document_class=SON[str, Any],
-            )
-        except TypeError:
-            raise unittest.SkipTest("Not support on Python 3.6")
+        T = SON[str, Any]
+        client = MongoClient(
+            "mongodb://localhost:27017,localhost:27018/?replicaSet=replset"
+            "&connectTimeoutMS=12345&w=1&wtimeoutms=100",
+            connect=False,
+            document_class=T,
+        )
 
         the_repr = repr(client)
         self.assertIn("MongoClient(host=", the_repr)

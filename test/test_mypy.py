@@ -158,10 +158,8 @@ class TestPymongo(IntegrationTest):
     def test_son_documenttype(self) -> None:
         if not TYPE_CHECKING:
             raise unittest.SkipTest("Do not use raw MongoClient")
-        try:
-            client = MongoClient(document_class=SON[str, Any])
-        except TypeError:
-            raise unittest.SkipTest("Not supported on Python 3.6")
+        T = SON[str, Any]
+        client = MongoClient(document_class=T)
         coll = client.test.test
         doc = {"my": "doc"}
         coll.insert_one(doc)
