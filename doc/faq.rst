@@ -259,11 +259,11 @@ which is a dict that remembers its key order. First, get a handle to the
 collection, configured to use :class:`~bson.son.SON` instead of dict:
 
 .. doctest:: key-order
-  :options: +NORMALIZE_WHITESPACE
+  :options: +NORMALIZE_WHITESPACE +ELLIPSIS
 
   >>> from bson import CodecOptions, SON
   >>> opts = CodecOptions(document_class=SON)
-  >>> opts  # doctest:+ELLIPSIS
+  >>> opts
   CodecOptions(document_class=...SON..., tz_aware=False, uuid_representation=UuidRepresentation.UNSPECIFIED, unicode_decode_error_handler='strict', tzinfo=None, type_registry=TypeRegistry(type_codecs=[], fallback_encoder=None))
   >>> collection_son = collection.with_options(codec_options=opts)
 
