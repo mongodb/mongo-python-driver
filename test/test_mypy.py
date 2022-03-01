@@ -134,15 +134,6 @@ class TestPymongo(IntegrationTest):
         assert retreived is not None
         assert len(retreived.raw) > 0
 
-    def test_default_typedict(self) -> None:
-        if TypedDict is None:
-            raise unittest.SkipTest("TypedDict not available")
-        client: MongoClient[Movie] = MongoClient(document_class=Movie)
-        doc = client.test.test.find_one({})
-        if doc is not None:
-            doc["name"] = "LOTR"
-            doc["year"] = 2005
-
     def test_aggregate_pipeline(self) -> None:
         coll3 = self.client.test.test3
         coll3.insert_many(

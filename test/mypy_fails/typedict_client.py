@@ -8,10 +8,6 @@ class Movie(TypedDict):
     year: int
 
 
-client: MongoClient[Movie] = MongoClient(document_class=Movie)
-doc = client.test.test.find_one({})
-if doc is not None:
-    doc["name"] = "LOTR"
-    doc[
-        "year"
-    ] = "2005"  # Value of "year" has incompatible type "str"; expected "int"  [typeddict-item]
+client = MongoClient(
+    document_class=Movie
+)  # Value of type variable "_DocumentType" of "MongoClient" cannot be "Movie"  [type-var]
