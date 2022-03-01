@@ -20,7 +20,7 @@ import unittest
 from typing import Any, Dict, Iterable, List
 
 try:
-    from typing import TypedDict  # Not available in Python 3.6
+    from typing import TypedDict  # Not available in Python 3.6 and Python 3.7
 
     class Movie(TypedDict):
         name: str
@@ -32,7 +32,7 @@ except ImportError:
 try:
     from mypy import api
 except ImportError:
-    api = None
+    api = None  # type: ignore[assignment]
 
 from test import IntegrationTest
 from test.utils import rs_or_single_client
