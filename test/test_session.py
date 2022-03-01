@@ -199,7 +199,7 @@ class TestSession(IntegrationTest):
                 (client.db.test.aggregate, [[{"$limit": 1}]]),
                 (client.db.test.find, [{}]),
                 (client.server_info, [{}]),
-                (client.admin.aggregate, [[{"$currentOp": {}}]]),
+                (client.db.aggregate, [[{"$listLocalSessions": {}}, {"$limit": 1}]]),
                 (cursor.distinct, ["_id"]),
                 (client.db.list_collections, []),
             ]
