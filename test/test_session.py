@@ -35,7 +35,9 @@ from test.utils import (
 from bson import DBRef
 from gridfs import GridFS, GridFSBucket
 from pymongo import ASCENDING, IndexModel, InsertOne, monitoring
+from pymongo.command_cursor import CommandCursor
 from pymongo.common import _MAX_END_SESSIONS
+from pymongo.cursor import Cursor
 from pymongo.errors import ConfigurationError, InvalidOperation, OperationFailure
 from pymongo.operations import UpdateOne
 from pymongo.read_concern import ReadConcern
@@ -197,7 +199,7 @@ class TestSession(IntegrationTest):
                 (client.db.test.find_one_and_update, [{}, {"$set": {"x": 1}}]),
                 (client.db.test.find_one_and_replace, [{}, {}]),
                 (client.db.test.aggregate, [[{"$limit": 1}]]),
-                (client.db.test.find, [{"$limit": 1}]),
+                (client.db.test.find, []),
                 (client.server_info, [{}]),
                 (client.db.aggregate, [[{"$listLocalSessions": {}}, {"$limit": 1}]]),
                 (cursor.distinct, ["_id"]),
@@ -206,8 +208,17 @@ class TestSession(IntegrationTest):
             threads = []
             listener.results.clear()
 
+            def thread_target(op, *args):
+                res = op(*args)
+                if isinstance(res, (Cursor, CommandCursor)):
+                    list(res)
+
             for op, args in ops:
-                threads.append(ExceptionCatchingThread(target=op, args=args, name=op.__name__))
+                threads.append(
+                    ExceptionCatchingThread(
+                        target=thread_target, args=[op, *args], name=op.__name__
+                    )
+                )
                 threads[-1].start()
             self.assertEqual(len(threads), len(ops))
             for thread in threads:
