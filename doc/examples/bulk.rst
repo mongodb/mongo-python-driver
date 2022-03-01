@@ -145,7 +145,7 @@ and fourth operations succeed.
                     'index': 0,...
                     'op': {'_id': 1}},
                    {'code': 11000,
-                    'errmsg': '...E11000...duplicate key error...',
+                    'errmsg': '...',
                     'index': 2,...
                     'op': {'_id': 3}}]}
 

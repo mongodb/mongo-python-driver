@@ -36,7 +36,7 @@ insert a couple of example locations:
   >>> result = db.places.insert_many([{"loc": [2, 5]},
   ...                                 {"loc": [30, 5]},
   ...                                 {"loc": [1, 2]},
-  ...                                 {"loc": [4, 4]}])  # doctest: +ELLIPSIS
+  ...                                 {"loc": [4, 4]}])
   >>> result.inserted_ids
   [ObjectId('...'), ObjectId('...'), ObjectId('...'), ObjectId('...')]
 

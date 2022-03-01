@@ -21,8 +21,17 @@ extensions = [
     "sphinx.ext.coverage",
     "sphinx.ext.todo",
     "sphinx.ext.intersphinx",
-    "sphinxcontrib.shellcheck",
 ]
+
+
+# Add optional extensions
+try:
+    import sphinxcontrib.shellcheck  # noqa
+
+    extensions += ["sphinxcontrib.shellcheck"]
+except ImportError:
+    pass
+
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]

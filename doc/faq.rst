@@ -264,12 +264,7 @@ collection, configured to use :class:`~bson.son.SON` instead of dict:
   >>> from bson import CodecOptions, SON
   >>> opts = CodecOptions(document_class=SON)
   >>> opts
-  CodecOptions(document_class=<class 'bson.son.SON'>,
-               tz_aware=False,
-               uuid_representation=UuidRepresentation.UNSPECIFIED,
-               unicode_decode_error_handler='strict',
-               tzinfo=None, type_registry=TypeRegistry(type_codecs=[],
-                                                       fallback_encoder=None))
+  CodecOptions(document_class=...SON..., tz_aware=False, uuid_representation=UuidRepresentation.UNSPECIFIED, unicode_decode_error_handler='strict', tzinfo=None, type_registry=TypeRegistry(type_codecs=[], fallback_encoder=None))
   >>> collection_son = collection.with_options(codec_options=opts)
 
 Now, documents and subdocuments in query results are represented with
