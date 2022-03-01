@@ -155,6 +155,15 @@ class TestPymongo(IntegrationTest):
         assert retreived is not None
         assert len(retreived.raw) > 0
 
+    def test_son_document_type(self) -> None:
+        if not TYPE_CHECKING:
+            raise unittest.SkipTest("Do not use raw MongoClient")
+        client = MongoClient(document_class=SON[str, Any])
+        coll = client.test.test
+        retreived = coll.find_one({"_id": "foo"})
+        assert retreived is not None
+        retreived["a"] = 1
+
     def test_aggregate_pipeline(self) -> None:
         coll3 = self.client.test.test3
         coll3.insert_many(
