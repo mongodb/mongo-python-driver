@@ -26,7 +26,7 @@ import struct
 import sys
 import threading
 import time
-from typing import NewType, Type, no_type_check
+from typing import Type, no_type_check
 
 sys.path[0:0] = [""]
 
@@ -709,12 +709,11 @@ class TestClient(IntegrationTest):
         # Used to test 'eval' below.
         import bson  # noqa: F401
 
-        T = NewType("T", "SON[str, Any]")
         client = MongoClient(
             "mongodb://localhost:27017,localhost:27018/?replicaSet=replset"
             "&connectTimeoutMS=12345&w=1&wtimeoutms=100",
             connect=False,
-            document_class=T,
+            document_class=SON,  # type: ignore[type-var]
         )
 
         the_repr = repr(client)
