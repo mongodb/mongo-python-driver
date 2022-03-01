@@ -64,4 +64,4 @@ jobs:
       - name: Run mypy
         run: |
           mypy --install-types --non-interactive bson gridfs tools pymongo
-          mypy --install-types --non-interactive --disable-error-code var-annotated --disable-error-code attr-defined --disable-error-code union-attr --disable-error-code assignment --disable-error-code no-redef --disable-error-code index --allow-redefinition true --allow_untyped_globals true --exclude "test/mypy_fails/*.*" test
+          mypy --install-types --non-interactive --disable-error-code var-annotated --disable-error-code attr-defined --disable-error-code union-attr --disable-error-code assignment --disable-error-code no-redef --disable-error-code index --allow-redefinition true --allow-untyped-globals true --exclude "test/mypy_fails/*.*" test

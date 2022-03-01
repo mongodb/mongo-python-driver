@@ -17,7 +17,7 @@ sample client code that uses PyMongo typings."""
 
 import os
 import unittest
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Type
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List
 
 try:
     from typing import TypedDict  # type: ignore[attr-defined]
@@ -158,12 +158,10 @@ class TestPymongo(IntegrationTest):
     def test_son_documenttype(self) -> None:
         if not TYPE_CHECKING:
             raise unittest.SkipTest("Do not use raw MongoClient")
-
-        # For Python 3.6 support.
-        def get_son() -> "Type[SON[str, Any]]":
-            return SON
-
-        client = MongoClient(document_class=get_son())
+        try:
+            client = MongoClient(document_class=SON[str, Any])
+        except TypeError:
+            raise unittest.SkipTest("Not supported on Python 3.6")
         coll = client.test.test
         doc = {"my": "doc"}
         coll.insert_one(doc)
