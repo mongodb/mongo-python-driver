@@ -259,7 +259,7 @@ which is a dict that remembers its key order. First, get a handle to the
 collection, configured to use :class:`~bson.son.SON` instead of dict:
 
 .. doctest:: key-order
-  :options: +NORMALIZE_WHITESPACE +ELLIPSIS
+  :options: +NORMALIZE_WHITESPACE
 
   >>> from bson import CodecOptions, SON
   >>> opts = CodecOptions(document_class=SON)
