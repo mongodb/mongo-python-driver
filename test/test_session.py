@@ -183,7 +183,6 @@ class TestSession(IntegrationTest):
         succeeded = False
         failures = 0
         for _ in range(5):
-            print("Starting test iteration" + str(_))
             listener = EventListener()
             client = rs_or_single_client(
                 event_listeners=[listener], maxPoolSize=1, retryWrites=True
@@ -202,7 +201,7 @@ class TestSession(IntegrationTest):
                 (client.server_info, [{}]),
                 (
                     client.admin.aggregate,
-                    [[{"$currentOp": {"allUsers": True, "idleConnections": True}}]],
+                    [[{"$currentOp": {}}]],
                 ),
                 (cursor.distinct, ["_id"]),
                 (client.db.list_collections, []),
@@ -211,12 +210,7 @@ class TestSession(IntegrationTest):
             listener.results.clear()
 
             for op, args in ops:
-                if not isinstance(op, list):
-                    op = [op]
-                for fun in op:
-                    threads.append(
-                        ExceptionCatchingThread(target=fun, args=args, name=fun.__name__)
-                    )
+                threads.append(ExceptionCatchingThread(target=op, args=args, name=op.__name__))
                 threads[-1].start()
             self.assertEqual(len(threads), len(ops))
             for thread in threads:
@@ -229,9 +223,7 @@ class TestSession(IntegrationTest):
                     lsid_set.add(i.command.get("lsid")["id"])
             if len(lsid_set) == 1:
                 succeeded = True
-                print("this one SUCCEEDED")
             else:
-                print("this one failed")
                 failures += 1
         print(failures)
         self.assertTrue(succeeded)
