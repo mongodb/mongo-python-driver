@@ -1546,8 +1546,6 @@ class Pool:
                         self.sockets.appendleft(sock_info)
                         # Notify any threads waiting to create a connection.
                         self._max_connecting_cond.notify()
-                    # print("Thread <%s> just checked in a connection" % (threading.current_thread(
-                    # ).name))
 
         with self.size_cond:
             if txn:
