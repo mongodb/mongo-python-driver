@@ -31,6 +31,11 @@ from typing import (
     cast,
 )
 
+try:
+    from typing import TypedDict
+except ImportError:  # Not available in Python 3.6
+    TypedDict = Dict
+
 from bson.binary import (
     ALL_UUID_REPRESENTATIONS,
     UUID_REPRESENTATION_NAMES,
@@ -115,7 +120,7 @@ class TypeCodec(TypeEncoder, TypeDecoder):
 
 _Codec = Union[TypeEncoder, TypeDecoder, TypeCodec]
 _Fallback = Callable[[Any], Any]
-_DocumentClass = Union[Type[MutableMapping], Type["RawBSONDocument"]]
+_DocumentClass = Union[Type[MutableMapping], Type[TypedDict], Type["RawBSONDocument"]]
 
 
 class TypeRegistry(object):

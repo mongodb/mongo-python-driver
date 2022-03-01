@@ -47,12 +47,16 @@ from typing import (
     Sequence,
     Set,
     Tuple,
-    Type,
     Union,
     cast,
 )
 
-from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
+from bson.codec_options import (
+    DEFAULT_CODEC_OPTIONS,
+    CodecOptions,
+    TypeRegistry,
+    _DocumentClass,
+)
 from bson.son import SON
 from bson.timestamp import Timestamp
 from pymongo import (
@@ -119,7 +123,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self,
         host: Optional[Union[str, Sequence[str]]] = None,
         port: Optional[int] = None,
-        document_class: Type[Mapping[str, Any]] = dict,
+        document_class: _DocumentClass = dict,
         tz_aware: Optional[bool] = None,
         connect: Optional[bool] = None,
         type_registry: Optional[TypeRegistry] = None,

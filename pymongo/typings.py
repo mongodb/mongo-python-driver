@@ -36,4 +36,4 @@ _CollationIn = Union[Mapping[str, Any], "Collation"]
 _DocumentIn = Union[MutableMapping[str, Any], "RawBSONDocument"]
 _Pipeline = Sequence[Mapping[str, Any]]
 _DocumentOut = _DocumentIn
-_DocumentType = TypeVar("_DocumentType", bound=Mapping[str, Any])
+_DocumentType = TypeVar("_DocumentType", MutableMapping[str, Any], "RawBSONDocument")
