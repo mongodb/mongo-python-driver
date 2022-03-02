@@ -115,6 +115,7 @@ class TypeCodec(TypeEncoder, TypeDecoder):
 
 _Codec = Union[TypeEncoder, TypeDecoder, TypeCodec]
 _Fallback = Callable[[Any], Any]
+_DocumentClass = Union[Type[MutableMapping], Type["RawBSONDocument"]]
 
 
 class TypeRegistry(object):
@@ -293,7 +294,7 @@ class CodecOptions(_options_base):
 
     def __new__(
         cls: Type["CodecOptions"],
-        document_class: Union[Type[MutableMapping], Type["RawBSONDocument"]] = dict,
+        document_class: _DocumentClass = dict,
         tz_aware: bool = False,
         uuid_representation: Optional[int] = UuidRepresentation.UNSPECIFIED,
         unicode_decode_error_handler: Optional[str] = "strict",

@@ -120,7 +120,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self,
         host: Optional[Union[str, Sequence[str]]] = None,
         port: Optional[int] = None,
-        document_class: Type[_DocumentType] = dict,
+        document_class: Optional[Type[_DocumentType]] = None,
         tz_aware: Optional[bool] = None,
         connect: Optional[bool] = None,
         type_registry: Optional[TypeRegistry] = None,
@@ -652,7 +652,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self.__init_kwargs: Dict[str, Any] = {
             "host": host,
             "port": port,
-            "document_class": document_class,
+            "document_class": document_class or dict,
             "tz_aware": tz_aware,
             "connect": connect,
             "type_registry": type_registry,
@@ -676,7 +676,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         # Parse options passed as kwargs.
         keyword_opts = common._CaseInsensitiveDictionary(kwargs)
-        keyword_opts["document_class"] = document_class
+        keyword_opts["document_class"] = document_class or dict
 
         seeds = set()
         username = None
@@ -1717,8 +1717,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        return self.admin.command(
-            "buildinfo", read_preference=ReadPreference.PRIMARY, session=session
+        return cast(
+            dict,
+            self.admin.command(
+                "buildinfo", read_preference=ReadPreference.PRIMARY, session=session
+            ),
         )
 
     def list_databases(

@@ -17,17 +17,32 @@ sample client code that uses PyMongo typings."""
 
 import os
 import unittest
-from typing import Any, Dict, Iterable, List
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List
+
+try:
+    from typing import TypedDict  # type: ignore[attr-defined]
+
+    # Not available in Python 3.6 and Python 3.7
+    class Movie(TypedDict):  # type: ignore[misc]
+        name: str
+        year: int
+
+except ImportError:
+    TypeDict = None
+
 
 try:
     from mypy import api
 except ImportError:
-    api = None
+    api = None  # type: ignore[assignment]
 
 from test import IntegrationTest
+from test.utils import rs_or_single_client
 
+from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo.collection import Collection
+from pymongo.mongo_client import MongoClient
 from pymongo.operations import InsertOne
 
 TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "mypy_fails")
@@ -48,6 +63,8 @@ class TestMypyFails(unittest.TestCase):
 
     def test_mypy_failures(self) -> None:
         for filename in get_tests():
+            if filename == "typeddict_client.py" and TypedDict is None:
+                continue
             with self.subTest(filename=filename):
                 self.ensure_mypy_fails(filename)
 
@@ -86,6 +103,66 @@ class TestPymongo(IntegrationTest):
         requests = [InsertOne({})]
         result = self.coll.bulk_write(requests)
         self.assertTrue(result.acknowledged)
+
+    def test_command(self) -> None:
+        result = self.client.admin.command("ping")
+        items = result.items()
+
+    def test_list_collections(self) -> None:
+        cursor = self.client.test.list_collections()
+        value = cursor.next()
+        items = value.items()
+
+    def test_list_databases(self) -> None:
+        cursor = self.client.list_databases()
+        value = cursor.next()
+        value.items()
+
+    def test_default_document_type(self) -> None:
+        client = rs_or_single_client()
+        coll = client.test.test
+        doc = {"my": "doc"}
+        coll.insert_one(doc)
+        retreived = coll.find_one({"_id": doc["_id"]})
+        assert retreived is not None
+        retreived["a"] = 1
+
+    def test_explicit_document_type(self) -> None:
+        if not TYPE_CHECKING:
+            raise unittest.SkipTest("Do not use raw MongoClient")
+        client: MongoClient[Dict[str, Any]] = MongoClient()
+        coll = client.test.test
+        retreived = coll.find_one({"_id": "foo"})
+        assert retreived is not None
+        retreived["a"] = 1
+
+    def test_typeddict_document_type(self) -> None:
+        if not TYPE_CHECKING:
+            raise unittest.SkipTest("Do not use raw MongoClient")
+        client: MongoClient[Movie] = MongoClient()
+        coll = client.test.test
+        retreived = coll.find_one({"_id": "foo"})
+        assert retreived is not None
+        assert retreived["year"] == 1
+        assert retreived["name"] == "a"
+
+    def test_raw_bson_document_type(self) -> None:
+        if not TYPE_CHECKING:
+            raise unittest.SkipTest("Do not use raw MongoClient")
+        client = MongoClient(document_class=RawBSONDocument)
+        coll = client.test.test
+        retreived = coll.find_one({"_id": "foo"})
+        assert retreived is not None
+        assert len(retreived.raw) > 0
+
+    def test_son_document_type(self) -> None:
+        if not TYPE_CHECKING:
+            raise unittest.SkipTest("Do not use raw MongoClient")
+        client = MongoClient(document_class=SON[str, Any])
+        coll = client.test.test
+        retreived = coll.find_one({"_id": "foo"})
+        assert retreived is not None
+        retreived["a"] = 1
 
     def test_aggregate_pipeline(self) -> None:
         coll3 = self.client.test.test3
