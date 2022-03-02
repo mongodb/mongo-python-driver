@@ -128,11 +128,11 @@ class TestPymongo(IntegrationTest):
         retreived["a"] = 1
 
     def test_explicit_document_type(self) -> None:
-        client = rs_or_single_client()
+        if not TYPE_CHECKING:
+            raise unittest.SkipTest("Do not use raw MongoClient")
+        client: MongoClient[Dict[str, Any]] = MongoClient()
         coll = client.test.test
-        doc = {"my": "doc"}
-        coll.insert_one(doc)
-        retreived = coll.find_one({"_id": doc["_id"]})
+        retreived = coll.find_one({"_id": "foo"})
         assert retreived is not None
         retreived["a"] = 1
 
