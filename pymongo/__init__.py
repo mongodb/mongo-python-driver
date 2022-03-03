@@ -53,7 +53,7 @@ TEXT = "text"
 .. _text index: http://docs.mongodb.org/manual/core/index-text/
 """
 
-version_tuple = (4, 0, 2, ".dev0")
+version_tuple = (4, 0, 2)
 
 
 def get_version_string():

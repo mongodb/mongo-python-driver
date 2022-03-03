@@ -1,6 +1,26 @@
 Changelog
 =========
 
+Changes in Version 4.0.2
+-------------------------
+
+Issues Resolved
+...............
+
+Version 4.0.2 fixes a number of bugs:
+
+- Fixed a bug :meth:`pymongo.collection.Collection.bulk_write` did not apply
+  the collection's CodecOptions to ``upserted_ids`` result (`PYTHON-3075`_).
+- Fixes the :doc:`/examples/high_availability` example for initializing a
+  replica set (`PYTHON-3041`_).
+
+See the `PyMongo 4.0.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PYTHON-3041: https://jira.mongodb.org/browse/PYTHON-3027
+.. _PYTHON-3075: https://jira.mongodb.org/browse/PYTHON-3075
+.. _PyMongo 4.0.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=32522
+
 Changes in Version 4.0.1
 -------------------------
 
