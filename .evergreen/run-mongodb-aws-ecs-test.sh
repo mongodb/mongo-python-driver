@@ -23,9 +23,13 @@ set -o xtrace
 if command -v virtualenv ; then
     VIRTUALENV=$(command -v virtualenv)
 else
+    if ! python3 -m pip --version ; then
+        echo "Installing pip..."
+        apt-get update
+        apt install python3-pip -y
+    fi
     echo "Installing virtualenv..."
-    apt install python3-pip -y
-    pip3 install --user virtualenv
+    python3 -m pip install --user virtualenv
     VIRTUALENV='python3 -m virtualenv'
 fi
 
