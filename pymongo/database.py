@@ -38,7 +38,7 @@ from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import CollectionInvalid, InvalidName
 from pymongo.read_preferences import ReadPreference, _ServerMode
-from pymongo.typings import _CollationIn, _DocumentOut, _DocumentType, _Pipeline
+from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
 
 
 def _check_name(name):
@@ -617,11 +617,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         check: bool = True,
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_preference: Optional[_ServerMode] = None,
-        codec_options: Optional[CodecOptions] = DEFAULT_CODEC_OPTIONS,
+        codec_options: Optional[CodecOptions[_DocumentType]] = None,
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> _DocumentOut:
+    ) -> _DocumentType:
         """Issue a MongoDB command.
 
         Send command `command` to the database and return the
@@ -707,6 +707,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `commands <https://dochub.mongodb.org/core/commands>`_.
         """
+        codec_options = codec_options or DEFAULT_CODEC_OPTIONS  # type: ignore[assignment]
         if comment is not None:
             kwargs["comment"] = comment
 

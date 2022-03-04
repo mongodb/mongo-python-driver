@@ -114,12 +114,10 @@ from bson.son import RE_TYPE, SON
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
 
-# Import RawBSONDocument for type-checking only to avoid circular dependency.
+# Import some modules for type-checking only to avoid circular dependency.
 if TYPE_CHECKING:
     from array import array
     from mmap import mmap
-
-    from bson.raw_bson import RawBSONDocument
 
 
 try:
@@ -910,7 +908,6 @@ _CODEC_OPTIONS_TYPE_ERROR = TypeError("codec_options must be an instance of Code
 
 
 _DocumentIn = Mapping[str, Any]
-_DocumentOut = Union[MutableMapping[str, Any], "RawBSONDocument"]
 _ReadableBuffer = Union[bytes, memoryview, "mmap", "array"]
 
 
@@ -1118,8 +1115,8 @@ def _decode_all_selective(data: Any, codec_options: CodecOptions, fields: Any) -
 
 
 def decode_iter(
-    data: bytes, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS
-) -> Iterator[_DocumentOut]:
+    data: bytes, codec_options: Optional[CodecOptions[_DocumentType]] = None
+) -> Iterator[_DocumentType]:
     """Decode BSON data to multiple documents as a generator.
 
     Works similarly to the decode_all function, but yields one document at a
@@ -1139,6 +1136,7 @@ def decode_iter(
 
     .. versionadded:: 2.8
     """
+    codec_options = codec_options or DEFAULT_CODEC_OPTIONS  # type: ignore[assignment]
     if not isinstance(codec_options, CodecOptions):
         raise _CODEC_OPTIONS_TYPE_ERROR
 
@@ -1153,8 +1151,8 @@ def decode_iter(
 
 
 def decode_file_iter(
-    file_obj: Union[BinaryIO, IO], codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS
-) -> Iterator[_DocumentOut]:
+    file_obj: Union[BinaryIO, IO], codec_options: Optional[CodecOptions[_DocumentType]] = None
+) -> Iterator[_DocumentType]:
     """Decode bson data from a file to multiple documents as a generator.
 
     Works similarly to the decode_all function, but reads from the file object
@@ -1171,6 +1169,7 @@ def decode_file_iter(
 
     .. versionadded:: 2.8
     """
+    codec_options = codec_options or DEFAULT_CODEC_OPTIONS  # type: ignore[assignment]
     while True:
         # Read size of next object.
         size_data = file_obj.read(4)

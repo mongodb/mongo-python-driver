@@ -16,8 +16,9 @@
 sample client code that uses PyMongo typings."""
 
 import os
+import tempfile
 import unittest
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List
 
 try:
     from typing import TypedDict  # type: ignore[attr-defined]
@@ -39,7 +40,7 @@ except ImportError:
 from test import IntegrationTest
 from test.utils import rs_or_single_client
 
-from bson import CodecOptions, decode, decode_all, encode
+from bson import CodecOptions, decode, decode_all, decode_file_iter, decode_iter, encode
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo.collection import Collection
@@ -207,8 +208,73 @@ class TestDecode(unittest.TestCase):
         rt_documents3 = decode_all(bsonbytes3, codec_options3)
         assert rt_documents3[0].raw
 
+    def test_bson_decode_iter(self) -> None:
+        doc = {"_id": 1}
+        bsonbytes = encode(doc)
+        bsonbytes += encode(doc)
+        rt_documents: Iterator[Dict[str, Any]] = decode_iter(bsonbytes)
+        assert next(rt_documents)["_id"] == 1
+        next(rt_documents)["foo"] = "bar"
+
+        class MyDict(Dict[str, Any]):
+            def foo(self):
+                return "bar"
+
+        codec_options2 = CodecOptions(MyDict)
+        bsonbytes2 = encode(doc, codec_options=codec_options2)
+        bsonbytes2 += encode(doc, codec_options=codec_options2)
+        rt_documents2 = decode_iter(bsonbytes2, codec_options2)
+        assert next(rt_documents2).foo() == "bar"
+
+        codec_options3 = CodecOptions(RawBSONDocument)
+        bsonbytes3 = encode(doc, codec_options=codec_options3)
+        bsonbytes3 += encode(doc, codec_options=codec_options3)
+        rt_documents3 = decode_iter(bsonbytes3, codec_options3)
+        assert next(rt_documents3).raw
+
+    def make_tempfile(self, content: bytes) -> Any:
+        fileobj = tempfile.TemporaryFile()
+        fileobj.write(content)
+        fileobj.seek(0)
+        return fileobj
+
+    def test_bson_decode_file_iter(self) -> None:
+        doc = {"_id": 1}
+        bsonbytes = encode(doc)
+        bsonbytes += encode(doc)
+        fileobj = self.make_tempfile(bsonbytes)
+        rt_documents: Iterator[Dict[str, Any]] = decode_file_iter(fileobj)
+        assert next(rt_documents)["_id"] == 1
+        next(rt_documents)["foo"] = "bar"
+
+        class MyDict(Dict[str, Any]):
+            def foo(self):
+                return "bar"
+
+        codec_options2 = CodecOptions(MyDict)
+        bsonbytes2 = encode(doc, codec_options=codec_options2)
+        bsonbytes2 += encode(doc, codec_options=codec_options2)
+        fileobj2 = self.make_tempfile(bsonbytes2)
+        rt_documents2 = decode_file_iter(fileobj2, codec_options2)
+        assert next(rt_documents2).foo() == "bar"
+
+        codec_options3 = CodecOptions(RawBSONDocument)
+        bsonbytes3 = encode(doc, codec_options=codec_options3)
+        bsonbytes3 += encode(doc, codec_options=codec_options3)
+        fileobj3 = self.make_tempfile(bsonbytes3)
+        rt_documents3 = decode_file_iter(fileobj3, codec_options3)
+        assert next(rt_documents3).raw
+
 
 class TestDocumentType(unittest.TestCase):
+    @only_type_check
+    def test_default(self) -> None:
+        client: MongoClient = MongoClient()
+        coll = client.test.test
+        retreived = coll.find_one({"_id": "foo"})
+        assert retreived is not None
+        retreived["a"] = 1
+
     @only_type_check
     def test_explicit_document_type(self) -> None:
         client: MongoClient[Dict[str, Any]] = MongoClient()
@@ -241,6 +307,39 @@ class TestDocumentType(unittest.TestCase):
         retreived = coll.find_one({"_id": "foo"})
         assert retreived is not None
         retreived["a"] = 1
+
+
+class TestCommandDocumentType(unittest.TestCase):
+    @only_type_check
+    def test_default(self) -> None:
+        client: MongoClient = MongoClient()
+        result = client.admin.command("ping")
+        result["a"] = 1
+
+    @only_type_check
+    def test_explicit_document_type(self) -> None:
+        client: MongoClient[Dict[str, Any]] = MongoClient()
+        result = client.admin.command("ping")
+        result["a"] = 1
+
+    @only_type_check
+    def test_typeddict_document_type(self) -> None:
+        client: MongoClient[Movie] = MongoClient()
+        result = client.admin.command("ping")
+        assert result["year"] == 1
+        assert result["name"] == "a"
+
+    @only_type_check
+    def test_raw_bson_document_type(self) -> None:
+        client = MongoClient(document_class=RawBSONDocument)
+        result = client.admin.command("ping")
+        assert len(result.raw) > 0
+
+    @only_type_check
+    def test_son_document_type(self) -> None:
+        client = MongoClient(document_class=SON[str, Any])
+        result = client.admin.command("ping")
+        result["a"] = 1
 
 
 if __name__ == "__main__":
