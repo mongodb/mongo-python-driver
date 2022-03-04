@@ -2156,7 +2156,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.0
         """
-        codec_options = CodecOptions(SON)
+        codec_options: CodecOptions = CodecOptions(SON)
         coll = self.with_options(
             codec_options=codec_options, read_preference=ReadPreference.PRIMARY
         )

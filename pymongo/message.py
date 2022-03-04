@@ -24,7 +24,7 @@ import datetime
 import random
 import struct
 from io import BytesIO as _BytesIO
-from typing import Any
+from typing import Any, Dict
 
 import bson
 from bson import CodecOptions, _decode_selective, _dict_to_bson, _make_c_string, encode
@@ -76,7 +76,9 @@ _OP_MAP = {
 }
 _FIELD_MAP = {"insert": "documents", "update": "updates", "delete": "deletes"}
 
-_UNICODE_REPLACE_CODEC_OPTIONS = CodecOptions(unicode_decode_error_handler="replace")
+_UNICODE_REPLACE_CODEC_OPTIONS: CodecOptions[Dict[str, Any]] = CodecOptions(
+    unicode_decode_error_handler="replace"
+)
 
 
 def _randint():
@@ -1259,7 +1261,7 @@ class _OpReply(object):
             errobj = {"ok": 0, "errmsg": msg, "code": 43}
             raise CursorNotFound(msg, 43, errobj)
         elif self.flags & 2:
-            error_object = bson.BSON(self.documents).decode()
+            error_object: dict = bson.BSON(self.documents).decode()
             # Fake the ok field if it doesn't exist.
             error_object.setdefault("ok", 0)
             if error_object["$err"].startswith(HelloCompat.LEGACY_ERROR):

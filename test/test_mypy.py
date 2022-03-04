@@ -115,6 +115,11 @@ class TestPymongo(IntegrationTest):
         rt_document2 = decode(bsonbytes2, codec_options=codec_options)
         assert rt_document2.foo() == "bar"
 
+        codec_options = CodecOptions(document_class=RawBSONDocument)
+        bsonbytes3 = encode(doc, codec_options=codec_options)
+        rt_document3 = decode(bsonbytes2, codec_options=codec_options)
+        assert rt_document3.raw
+
     def test_bson_decode_all(self) -> None:
         doc = {"_id": 1}
         bsonbytes = encode(doc)
@@ -132,6 +137,12 @@ class TestPymongo(IntegrationTest):
         bsonbytes2 += encode(doc, codec_options=codec_options)
         rt_documents2 = decode_all(bsonbytes2, codec_options=codec_options)
         assert rt_documents2[0].foo() == "bar"
+
+        codec_options = CodecOptions(document_class=RawBSONDocument)
+        bsonbytes3 = encode(doc, codec_options=codec_options)
+        bsonbytes3 += encode(doc, codec_options=codec_options)
+        rt_documents3 = decode_all(bsonbytes3, codec_options=codec_options)
+        assert rt_documents3[0].raw
 
     def test_bulk_write(self) -> None:
         self.coll.insert_one({})
