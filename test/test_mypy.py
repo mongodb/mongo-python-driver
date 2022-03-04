@@ -115,9 +115,9 @@ class TestPymongo(IntegrationTest):
         rt_document2 = decode(bsonbytes2, codec_options=codec_options)
         assert rt_document2.foo() == "bar"
 
-        codec_options = CodecOptions(document_class=RawBSONDocument)
-        bsonbytes3 = encode(doc, codec_options=codec_options)
-        rt_document3 = decode(bsonbytes2, codec_options=codec_options)
+        codec_options2 = CodecOptions(document_class=RawBSONDocument)
+        bsonbytes3 = encode(doc, codec_options=codec_options2)
+        rt_document3 = decode(bsonbytes2, codec_options=codec_options2)
         assert rt_document3.raw
 
     def test_bson_decode_all(self) -> None:
@@ -132,16 +132,16 @@ class TestPymongo(IntegrationTest):
             def foo(self):
                 return "bar"
 
-        codec_options = CodecOptions(document_class=MyDict)
-        bsonbytes2 = encode(doc, codec_options=codec_options)
-        bsonbytes2 += encode(doc, codec_options=codec_options)
-        rt_documents2 = decode_all(bsonbytes2, codec_options=codec_options)
+        codec_options2 = CodecOptions(MyDict)
+        bsonbytes2 = encode(doc, codec_options=codec_options2)
+        bsonbytes2 += encode(doc, codec_options=codec_options2)
+        rt_documents2 = decode_all(bsonbytes2, codec_options=codec_options2)
         assert rt_documents2[0].foo() == "bar"
 
-        codec_options = CodecOptions(document_class=RawBSONDocument)
-        bsonbytes3 = encode(doc, codec_options=codec_options)
-        bsonbytes3 += encode(doc, codec_options=codec_options)
-        rt_documents3 = decode_all(bsonbytes3, codec_options=codec_options)
+        codec_options3 = CodecOptions(RawBSONDocument)
+        bsonbytes3 = encode(doc, codec_options=codec_options3)
+        bsonbytes3 += encode(doc, codec_options=codec_options3)
+        rt_documents3 = decode_all(bsonbytes3, codec_options=codec_options3)
         assert rt_documents3[0].raw
 
     def test_bulk_write(self) -> None:
