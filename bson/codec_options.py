@@ -235,7 +235,7 @@ class CodecOptions(Tuple, Generic[_DocumentType]):
     See :doc:`/examples/datetimes` for examples using the `tz_aware` and
     `tzinfo` options.
 
-    See :doc:`examples/uuid` for examples using the `uuid_representation`
+    See :doc:`/examples/uuid` for examples using the `uuid_representation`
     option.
 
     :Parameters:

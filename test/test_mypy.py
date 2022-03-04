@@ -135,13 +135,13 @@ class TestPymongo(IntegrationTest):
         codec_options2 = CodecOptions(MyDict)
         bsonbytes2 = encode(doc, codec_options=codec_options2)
         bsonbytes2 += encode(doc, codec_options=codec_options2)
-        rt_documents2 = decode_all(bsonbytes2, codec_options=codec_options2)
+        rt_documents2 = decode_all(bsonbytes2, codec_options2)
         assert rt_documents2[0].foo() == "bar"
 
         codec_options3 = CodecOptions(RawBSONDocument)
         bsonbytes3 = encode(doc, codec_options=codec_options3)
         bsonbytes3 += encode(doc, codec_options=codec_options3)
-        rt_documents3 = decode_all(bsonbytes3, codec_options=codec_options3)
+        rt_documents3 = decode_all(bsonbytes3, codec_options3)
         assert rt_documents3[0].raw
 
     def test_bulk_write(self) -> None:
