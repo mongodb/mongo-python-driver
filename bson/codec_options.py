@@ -383,7 +383,7 @@ class CodecOptions(Tuple, Generic[_DocumentType]):
 
     def __deepcopy__(self, memo: Any) -> "CodecOptions[_DocumentType]":
         """Support function for `copy.deepcopy()`."""
-        return CodecOptions(**deepcopy(self._asdict()))
+        return CodecOptions(**deepcopy(self._asdict(), memo))
 
     # End of namedtuple interface.
 
