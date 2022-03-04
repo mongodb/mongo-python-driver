@@ -353,7 +353,9 @@ class CodecOptions(Tuple, Generic[_DocumentType]):
         return self[5]
 
     def _replace(self, **kwargs: Any) -> "CodecOptions[_DocumentType]":
-        return CodecOptions(**self._options_dict(), **kwargs)
+        options = self._options_dict()
+        options.update(kwargs)
+        return CodecOptions(**options)
 
     def _arguments_repr(self) -> str:
         """Representation of the arguments used to create this object."""
