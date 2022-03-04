@@ -369,7 +369,7 @@ class CodecOptions(Tuple, Generic[_DocumentType]):
         return (
             "document_class",
             "tz_aware",
-            "uuidrepresentation",
+            "uuid_representation",
             "unicode_decode_error_handler",
             "tzinfo",
             "type_registry",
