@@ -56,10 +56,10 @@ def get_tests() -> Iterable[str]:
 
 
 def only_type_check(func):
-    def inner():
+    def inner(*args, **kwargs):
         if not TYPE_CHECKING:
             raise unittest.skip("Used for Type Checking Only")
-        func()
+        func(*args, **kwargs)
 
     return inner
 
