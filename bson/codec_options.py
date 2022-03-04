@@ -16,17 +16,19 @@
 
 import abc
 import datetime
-from collections import namedtuple
 from collections.abc import MutableMapping as _MutableMapping
 from typing import (
-    TYPE_CHECKING,
     Any,
     Callable,
     Dict,
+    Generic,
     Iterable,
+    Mapping,
     MutableMapping,
     Optional,
+    Tuple,
     Type,
+    TypeVar,
     Union,
     cast,
 )
@@ -36,10 +38,6 @@ from bson.binary import (
     UUID_REPRESENTATION_NAMES,
     UuidRepresentation,
 )
-
-# Import RawBSONDocument for type-checking only to avoid circular dependency.
-if TYPE_CHECKING:
-    from bson.raw_bson import RawBSONDocument
 
 
 def _abstractproperty(func: Callable[..., Any]) -> property:
@@ -115,7 +113,7 @@ class TypeCodec(TypeEncoder, TypeDecoder):
 
 _Codec = Union[TypeEncoder, TypeDecoder, TypeCodec]
 _Fallback = Callable[[Any], Any]
-_DocumentClass = Union[Type[MutableMapping], Type["RawBSONDocument"]]
+_DocumentType = TypeVar("_DocumentType", bound=Mapping[str, Any])
 
 
 class TypeRegistry(object):
@@ -202,20 +200,7 @@ class TypeRegistry(object):
         )
 
 
-_options_base = namedtuple(  # type: ignore
-    "CodecOptions",
-    (
-        "document_class",
-        "tz_aware",
-        "uuid_representation",
-        "unicode_decode_error_handler",
-        "tzinfo",
-        "type_registry",
-    ),
-)
-
-
-class CodecOptions(_options_base):
+class CodecOptions(Tuple, Generic[_DocumentType]):
     """Encapsulates options used encoding and / or decoding BSON.
 
     The `document_class` option is used to define a custom type for use
@@ -294,13 +279,15 @@ class CodecOptions(_options_base):
 
     def __new__(
         cls: Type["CodecOptions"],
-        document_class: _DocumentClass = dict,
+        document_class: Optional[Type[_DocumentType]] = None,
         tz_aware: bool = False,
         uuid_representation: Optional[int] = UuidRepresentation.UNSPECIFIED,
         unicode_decode_error_handler: Optional[str] = "strict",
         tzinfo: Optional[datetime.tzinfo] = None,
         type_registry: Optional[TypeRegistry] = None,
-    ) -> "CodecOptions":
+    ) -> "CodecOptions[_DocumentType]":
+        document_class = document_class or dict  # type: ignore[assignment]
+        assert document_class is not None
         if not (issubclass(document_class, _MutableMapping) or _raw_document_class(document_class)):
             raise TypeError(
                 "document_class must be dict, bson.son.SON, "
@@ -337,6 +324,33 @@ class CodecOptions(_options_base):
                 type_registry,
             ),
         )
+
+    # Present namedtuple interface without subclassing namedtuple to
+    # work around https://bugs.python.org/issue43923.
+
+    @property
+    def document_class(self) -> Type[_DocumentType]:
+        return self[0]
+
+    @property
+    def tz_aware(self) -> bool:
+        return self[1]
+
+    @property
+    def uuid_representation(self) -> int:
+        return self[2]
+
+    @property
+    def unicode_decode_error_handler(self) -> str:
+        return self[3]
+
+    @property
+    def tzinfo(self) -> Optional[datetime.tzinfo]:
+        return self[4]
+
+    @property
+    def type_registry(self) -> TypeRegistry:
+        return self[5]
 
     def _arguments_repr(self) -> str:
         """Representation of the arguments used to create this object."""
@@ -392,7 +406,7 @@ class CodecOptions(_options_base):
         return CodecOptions(**opts)
 
 
-DEFAULT_CODEC_OPTIONS: CodecOptions = CodecOptions()
+DEFAULT_CODEC_OPTIONS: CodecOptions[MutableMapping[str, Any]] = CodecOptions()
 
 
 def _parse_codec_options(options: Any) -> CodecOptions:

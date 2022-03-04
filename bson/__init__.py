@@ -76,6 +76,7 @@ from typing import (
     List,
     Mapping,
     MutableMapping,
+    Optional,
     Sequence,
     Tuple,
     Type,
@@ -95,7 +96,12 @@ from bson.binary import (  # noqa: F401
     UuidRepresentation,
 )
 from bson.code import Code
-from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, _raw_document_class
+from bson.codec_options import (
+    DEFAULT_CODEC_OPTIONS,
+    CodecOptions,
+    _DocumentType,
+    _raw_document_class,
+)
 from bson.dbref import DBRef
 from bson.decimal128 import Decimal128
 from bson.errors import InvalidBSON, InvalidDocument, InvalidStringData
@@ -940,8 +946,8 @@ def encode(
 
 
 def decode(
-    data: _ReadableBuffer, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS
-) -> Dict[str, Any]:
+    data: _ReadableBuffer, codec_options: Optional[CodecOptions[_DocumentType]] = None
+) -> _DocumentType:
     """Decode BSON to a document.
 
     By default, returns a BSON document represented as a Python
@@ -967,6 +973,7 @@ def decode(
 
     .. versionadded:: 3.9
     """
+    codec_options = codec_options or DEFAULT_CODEC_OPTIONS  # type: ignore[assignment]
     if not isinstance(codec_options, CodecOptions):
         raise _CODEC_OPTIONS_TYPE_ERROR
 
@@ -974,8 +981,8 @@ def decode(
 
 
 def decode_all(
-    data: _ReadableBuffer, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS
-) -> List[Dict[str, Any]]:
+    data: _ReadableBuffer, codec_options: Optional[CodecOptions[_DocumentType]] = None
+) -> List[_DocumentType]:
     """Decode BSON data to multiple documents.
 
     `data` must be a bytes-like object implementing the buffer protocol that
@@ -998,6 +1005,7 @@ def decode_all(
        Replaced `as_class`, `tz_aware`, and `uuid_subtype` options with
        `codec_options`.
     """
+    codec_options = codec_options or DEFAULT_CODEC_OPTIONS  # type: ignore[assignment]
     data, view = get_data_and_view(data)
     if not isinstance(codec_options, CodecOptions):
         raise _CODEC_OPTIONS_TYPE_ERROR
@@ -1017,7 +1025,7 @@ def decode_all(
                 raise InvalidBSON("bad eoo")
             if use_raw:
                 docs.append(
-                    codec_options.document_class(data[position : obj_end + 1], codec_options)
+                    codec_options.document_class(data[position : obj_end + 1], codec_options)  # type: ignore[call-arg]
                 )
             else:
                 docs.append(_elements_to_dict(data, view, position + 4, obj_end, codec_options))
@@ -1233,7 +1241,7 @@ class BSON(bytes):
         """
         return cls(encode(document, check_keys, codec_options))
 
-    def decode(self, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> Dict[str, Any]:  # type: ignore[override]
+    def decode(self, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> _DocumentType:  # type: ignore[override]
         """Decode this BSON data.
 
         By default, returns a BSON document represented as a Python

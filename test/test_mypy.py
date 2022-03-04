@@ -39,6 +39,7 @@ except ImportError:
 from test import IntegrationTest
 from test.utils import rs_or_single_client
 
+from bson import CodecOptions, decode, decode_all, encode
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo.collection import Collection
@@ -97,6 +98,40 @@ class TestPymongo(IntegrationTest):
         cursor = self.coll.find()
         docs = to_list(cursor)
         self.assertTrue(docs)
+
+    def test_bson_decode(self) -> None:
+        doc = {"_id": 1}
+        bsonbytes = encode(doc)
+        rt_document: Dict[str, Any] = decode(bsonbytes)
+        assert rt_document["_id"] == 1
+        rt_document["foo"] = "bar"
+
+        class MyDict(Dict[str, Any]):
+            def foo(self):
+                return "bar"
+
+        codec_options = CodecOptions(document_class=MyDict)
+        bsonbytes2 = encode(doc, codec_options=codec_options)
+        rt_document2 = decode(bsonbytes2, codec_options=codec_options)
+        assert rt_document2.foo() == "bar"
+
+    def test_bson_decode_all(self) -> None:
+        doc = {"_id": 1}
+        bsonbytes = encode(doc)
+        bsonbytes += encode(doc)
+        rt_documents: List[Dict[str, Any]] = decode_all(bsonbytes)
+        assert rt_documents[0]["_id"] == 1
+        rt_documents[0]["foo"] = "bar"
+
+        class MyDict(Dict[str, Any]):
+            def foo(self):
+                return "bar"
+
+        codec_options = CodecOptions(document_class=MyDict)
+        bsonbytes2 = encode(doc, codec_options=codec_options)
+        bsonbytes2 += encode(doc, codec_options=codec_options)
+        rt_documents2 = decode_all(bsonbytes2, codec_options=codec_options)
+        assert rt_documents2[0].foo() == "bar"
 
     def test_bulk_write(self) -> None:
         self.coll.insert_one({})
