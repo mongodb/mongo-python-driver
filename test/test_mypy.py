@@ -55,6 +55,15 @@ def get_tests() -> Iterable[str]:
             yield os.path.join(dirpath, filename)
 
 
+def only_type_check(func):
+    def inner():
+        if not TYPE_CHECKING:
+            raise unittest.skip("Used for Type Checking Only")
+        func()
+
+    return inner
+
+
 class TestMypyFails(unittest.TestCase):
     def ensure_mypy_fails(self, filename: str) -> None:
         if api is None:
@@ -99,6 +108,60 @@ class TestPymongo(IntegrationTest):
         docs = to_list(cursor)
         self.assertTrue(docs)
 
+    def test_bulk_write(self) -> None:
+        self.coll.insert_one({})
+        requests = [InsertOne({})]
+        result = self.coll.bulk_write(requests)
+        self.assertTrue(result.acknowledged)
+
+    def test_command(self) -> None:
+        result = self.client.admin.command("ping")
+        items = result.items()
+
+    def test_list_collections(self) -> None:
+        cursor = self.client.test.list_collections()
+        value = cursor.next()
+        items = value.items()
+
+    def test_list_databases(self) -> None:
+        cursor = self.client.list_databases()
+        value = cursor.next()
+        value.items()
+
+    def test_default_document_type(self) -> None:
+        client = rs_or_single_client()
+        coll = client.test.test
+        doc = {"my": "doc"}
+        coll.insert_one(doc)
+        retreived = coll.find_one({"_id": doc["_id"]})
+        assert retreived is not None
+        retreived["a"] = 1
+
+    def test_aggregate_pipeline(self) -> None:
+        coll3 = self.client.test.test3
+        coll3.insert_many(
+            [
+                {"x": 1, "tags": ["dog", "cat"]},
+                {"x": 2, "tags": ["cat"]},
+                {"x": 2, "tags": ["mouse", "cat", "dog"]},
+                {"x": 3, "tags": []},
+            ]
+        )
+
+        class mydict(Dict[str, Any]):
+            pass
+
+        result = coll3.aggregate(
+            [
+                mydict({"$unwind": "$tags"}),
+                {"$group": {"_id": "$tags", "count": {"$sum": 1}}},
+                {"$sort": SON([("count", -1), ("_id", -1)])},
+            ]
+        )
+        self.assertTrue(len(list(result)))
+
+
+class TestDecode(unittest.TestCase):
     def test_bson_decode(self) -> None:
         doc = {"_id": 1}
         bsonbytes = encode(doc)
@@ -144,47 +207,18 @@ class TestPymongo(IntegrationTest):
         rt_documents3 = decode_all(bsonbytes3, codec_options3)
         assert rt_documents3[0].raw
 
-    def test_bulk_write(self) -> None:
-        self.coll.insert_one({})
-        requests = [InsertOne({})]
-        result = self.coll.bulk_write(requests)
-        self.assertTrue(result.acknowledged)
 
-    def test_command(self) -> None:
-        result = self.client.admin.command("ping")
-        items = result.items()
-
-    def test_list_collections(self) -> None:
-        cursor = self.client.test.list_collections()
-        value = cursor.next()
-        items = value.items()
-
-    def test_list_databases(self) -> None:
-        cursor = self.client.list_databases()
-        value = cursor.next()
-        value.items()
-
-    def test_default_document_type(self) -> None:
-        client = rs_or_single_client()
-        coll = client.test.test
-        doc = {"my": "doc"}
-        coll.insert_one(doc)
-        retreived = coll.find_one({"_id": doc["_id"]})
-        assert retreived is not None
-        retreived["a"] = 1
-
+class TestDocumentType(unittest.TestCase):
+    @only_type_check
     def test_explicit_document_type(self) -> None:
-        if not TYPE_CHECKING:
-            raise unittest.SkipTest("Do not use raw MongoClient")
         client: MongoClient[Dict[str, Any]] = MongoClient()
         coll = client.test.test
         retreived = coll.find_one({"_id": "foo"})
         assert retreived is not None
         retreived["a"] = 1
 
+    @only_type_check
     def test_typeddict_document_type(self) -> None:
-        if not TYPE_CHECKING:
-            raise unittest.SkipTest("Do not use raw MongoClient")
         client: MongoClient[Movie] = MongoClient()
         coll = client.test.test
         retreived = coll.find_one({"_id": "foo"})
@@ -192,46 +226,21 @@ class TestPymongo(IntegrationTest):
         assert retreived["year"] == 1
         assert retreived["name"] == "a"
 
+    @only_type_check
     def test_raw_bson_document_type(self) -> None:
-        if not TYPE_CHECKING:
-            raise unittest.SkipTest("Do not use raw MongoClient")
         client = MongoClient(document_class=RawBSONDocument)
         coll = client.test.test
         retreived = coll.find_one({"_id": "foo"})
         assert retreived is not None
         assert len(retreived.raw) > 0
 
+    @only_type_check
     def test_son_document_type(self) -> None:
-        if not TYPE_CHECKING:
-            raise unittest.SkipTest("Do not use raw MongoClient")
         client = MongoClient(document_class=SON[str, Any])
         coll = client.test.test
         retreived = coll.find_one({"_id": "foo"})
         assert retreived is not None
         retreived["a"] = 1
-
-    def test_aggregate_pipeline(self) -> None:
-        coll3 = self.client.test.test3
-        coll3.insert_many(
-            [
-                {"x": 1, "tags": ["dog", "cat"]},
-                {"x": 2, "tags": ["cat"]},
-                {"x": 2, "tags": ["mouse", "cat", "dog"]},
-                {"x": 3, "tags": []},
-            ]
-        )
-
-        class mydict(Dict[str, Any]):
-            pass
-
-        result = coll3.aggregate(
-            [
-                mydict({"$unwind": "$tags"}),
-                {"$group": {"_id": "$tags", "count": {"$sum": 1}}},
-                {"$sort": SON([("count", -1), ("_id", -1)])},
-            ]
-        )
-        self.assertTrue(len(list(result)))
 
 
 if __name__ == "__main__":
