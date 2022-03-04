@@ -116,7 +116,7 @@ class TestPymongo(IntegrationTest):
         self.assertTrue(result.acknowledged)
 
     def test_command(self) -> None:
-        result = self.client.admin.command("ping")
+        result: Dict = self.client.admin.command("ping")
         items = result.items()
 
     def test_list_collections(self) -> None:
@@ -313,32 +313,36 @@ class TestCommandDocumentType(unittest.TestCase):
     @only_type_check
     def test_default(self) -> None:
         client: MongoClient = MongoClient()
-        result = client.admin.command("ping")
+        result: Dict = client.admin.command("ping")
         result["a"] = 1
 
     @only_type_check
     def test_explicit_document_type(self) -> None:
-        client: MongoClient[Dict[str, Any]] = MongoClient()
-        result = client.admin.command("ping")
+        client: MongoClient = MongoClient()
+        codec_options: CodecOptions[Dict[str, Any]] = CodecOptions()
+        result = client.admin.command("ping", codec_options=codec_options)
         result["a"] = 1
 
     @only_type_check
     def test_typeddict_document_type(self) -> None:
-        client: MongoClient[Movie] = MongoClient()
-        result = client.admin.command("ping")
+        client: MongoClient = MongoClient()
+        codec_options: CodecOptions[Movie] = CodecOptions()
+        result = client.admin.command("ping", codec_options=codec_options)
         assert result["year"] == 1
         assert result["name"] == "a"
 
     @only_type_check
     def test_raw_bson_document_type(self) -> None:
-        client = MongoClient(document_class=RawBSONDocument)
-        result = client.admin.command("ping")
+        client: MongoClient = MongoClient()
+        codec_options = CodecOptions(RawBSONDocument)
+        result = client.admin.command("ping", codec_options=codec_options)
         assert len(result.raw) > 0
 
     @only_type_check
     def test_son_document_type(self) -> None:
         client = MongoClient(document_class=SON[str, Any])
-        result = client.admin.command("ping")
+        codec_options = CodecOptions(SON[str, Any])
+        result = client.admin.command("ping", codec_options=codec_options)
         result["a"] = 1
 
 

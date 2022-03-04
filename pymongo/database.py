@@ -23,6 +23,7 @@ from typing import (
     MutableMapping,
     Optional,
     Sequence,
+    TypeVar,
     Union,
     cast,
 )
@@ -56,6 +57,9 @@ if TYPE_CHECKING:
     from pymongo.mongo_client import MongoClient
     from pymongo.read_concern import ReadConcern
     from pymongo.write_concern import WriteConcern
+
+
+_CodecDocumentType = TypeVar("_CodecDocumentType", bound=Mapping[str, Any])
 
 
 class Database(common.BaseObject, Generic[_DocumentType]):
@@ -617,11 +621,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         check: bool = True,
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_preference: Optional[_ServerMode] = None,
-        codec_options: Optional[CodecOptions[_DocumentType]] = None,
+        codec_options: Optional[CodecOptions[_CodecDocumentType]] = None,
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> _DocumentType:
+    ) -> _CodecDocumentType:
         """Issue a MongoDB command.
 
         Send command `command` to the database and return the
