@@ -277,15 +277,6 @@ class CodecOptions(Tuple, Generic[_DocumentType]):
        and stored back to the server.
     """
 
-    __slots__ = (
-        "document_class",
-        "tz_aware",
-        "uuidrepresentation",
-        "unicode_decode_error_handler",
-        "tzinfo",
-        "type_registry",
-    )
-
     def __new__(
         cls: Type["CodecOptions"],
         document_class: Optional[Type[_DocumentType]] = None,
@@ -366,7 +357,7 @@ class CodecOptions(Tuple, Generic[_DocumentType]):
         return self[5]
 
     def _asdict(self):
-        return dict(zip(self.__slots__, tuple(self)))
+        return dict(zip(self._fields(), self))
 
     def _replace(self, **kwargs: Any) -> "CodecOptions[_DocumentType]":
         options = self._options_dict()
@@ -374,7 +365,14 @@ class CodecOptions(Tuple, Generic[_DocumentType]):
         return CodecOptions(**options)
 
     def _fields(self) -> Tuple:
-        return self.__slots__
+        return (
+            "document_class",
+            "tz_aware",
+            "uuidrepresentation",
+            "unicode_decode_error_handler",
+            "tzinfo",
+            "type_registry",
+        )
 
     def _field_defaults(self):
         return {}
