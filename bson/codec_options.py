@@ -17,6 +17,7 @@
 import abc
 import datetime
 from collections.abc import MutableMapping as _MutableMapping
+from copy import deepcopy
 from typing import (
     Any,
     Callable,
@@ -326,7 +327,7 @@ class CodecOptions(Tuple, Generic[_DocumentType]):
         )
 
     # Present namedtuple interface without subclassing namedtuple to
-    # work around https://bugs.python.org/issue43923
+    # work around https://bugs.python.org/issue43923.
 
     @classmethod
     def _make(cls, iterable):
@@ -377,6 +378,22 @@ class CodecOptions(Tuple, Generic[_DocumentType]):
     def _field_defaults(self):
         return {}
 
+    # Copy and Deepcopy adopted from https://stackoverflow.com/a/15774013.
+
+    def __copy__(self):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        result.__dict__.update(self.__dict__)
+        return result
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            setattr(result, k, deepcopy(v, memo))
+        return result
+
     # End of namedtuple interface.
 
     def _arguments_repr(self) -> str:
@@ -416,7 +433,7 @@ class CodecOptions(Tuple, Generic[_DocumentType]):
     def __repr__(self):
         return "%s(%s)" % (self.__class__.__name__, self._arguments_repr())
 
-    def with_options(self, **kwargs: Any) -> "CodecOptions":
+    def with_options(self, **kwargs: Any) -> "CodecOptions[_DocumentType]":
         """Make a copy of this CodecOptions, overriding some options::
 
             >>> from bson.codec_options import DEFAULT_CODEC_OPTIONS
