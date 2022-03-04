@@ -378,21 +378,12 @@ class CodecOptions(Tuple, Generic[_DocumentType]):
     def _field_defaults(self):
         return {}
 
-    # Copy and Deepcopy adopted from https://stackoverflow.com/a/15774013.
+    def __copy__(self) -> "CodecOptions[_DocumentType]":
+        return CodecOptions(**self._asdict())
 
-    def __copy__(self):
-        cls = self.__class__
-        result = cls.__new__(cls)
-        result.__dict__.update(self.__dict__)
-        return result
-
-    def __deepcopy__(self, memo):
-        cls = self.__class__
-        result = cls.__new__(cls)
-        memo[id(self)] = result
-        for k, v in self.__dict__.items():
-            setattr(result, k, deepcopy(v, memo))
-        return result
+    def __deepcopy__(self, memo: Any) -> "CodecOptions[_DocumentType]":
+        """Support function for `copy.deepcopy()`."""
+        return CodecOptions(**deepcopy(self._asdict()))
 
     # End of namedtuple interface.
 
