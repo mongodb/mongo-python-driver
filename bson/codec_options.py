@@ -277,6 +277,15 @@ class CodecOptions(Tuple, Generic[_DocumentType]):
        and stored back to the server.
     """
 
+    __slots__ = (
+        "document_class",
+        "tz_aware",
+        "uuidrepresentation",
+        "unicode_decode_error_handler",
+        "tzinfo",
+        "type_registry",
+    )
+
     def __new__(
         cls: Type["CodecOptions"],
         document_class: Optional[Type[_DocumentType]] = None,
@@ -326,7 +335,11 @@ class CodecOptions(Tuple, Generic[_DocumentType]):
         )
 
     # Present namedtuple interface without subclassing namedtuple to
-    # work around https://bugs.python.org/issue43923.
+    # work around https://bugs.python.org/issue43923
+
+    @classmethod
+    def _make(cls, iterable):
+        return CodecOptions(*iterable)
 
     @property
     def document_class(self) -> Type[_DocumentType]:
@@ -352,10 +365,21 @@ class CodecOptions(Tuple, Generic[_DocumentType]):
     def type_registry(self) -> TypeRegistry:
         return self[5]
 
+    def _asdict(self):
+        return dict(zip(self.__slots__, tuple(self)))
+
     def _replace(self, **kwargs: Any) -> "CodecOptions[_DocumentType]":
         options = self._options_dict()
         options.update(kwargs)
         return CodecOptions(**options)
+
+    def _fields(self) -> Tuple:
+        return self.__slots__
+
+    def _field_defaults(self):
+        return {}
+
+    # End of namedtuple interface.
 
     def _arguments_repr(self) -> str:
         """Representation of the arguments used to create this object."""
