@@ -104,12 +104,6 @@ class CompressionSettings(object):
                 return ZstdContext()
 
 
-def _zlib_no_compress(data, level=None):
-    """Compress data with zlib level 0."""
-    cobj = zlib.compressobj(0)
-    return b"".join([cobj.compress(data), cobj.flush()])
-
-
 class SnappyContext(object):
     compressor_id = 1
 
