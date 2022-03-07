@@ -286,7 +286,7 @@ class CodecOptions(_BaseCodecOptions):
 
     def __new__(
         cls: Type["CodecOptions"],
-        document_class: Optional[Type[Mapping[str, Any]]] = dict,
+        document_class: Optional[Type[Mapping[str, Any]]] = dict,  # type: ignore[assignment]
         tz_aware: bool = False,
         uuid_representation: Optional[int] = UuidRepresentation.UNSPECIFIED,
         unicode_decode_error_handler: Optional[str] = "strict",
