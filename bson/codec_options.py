@@ -286,14 +286,13 @@ class CodecOptions(_BaseCodecOptions):
 
     def __new__(
         cls: Type["CodecOptions"],
-        document_class: Optional[Type[Mapping[str, Any]]] = None,
+        document_class: Optional[Type[Mapping[str, Any]]] = dict,
         tz_aware: bool = False,
         uuid_representation: Optional[int] = UuidRepresentation.UNSPECIFIED,
         unicode_decode_error_handler: Optional[str] = "strict",
         tzinfo: Optional[datetime.tzinfo] = None,
         type_registry: Optional[TypeRegistry] = None,
     ) -> "CodecOptions":
-        document_class = document_class or dict  # type: ignore[assignment]
         assert document_class is not None
         if not (issubclass(document_class, _MutableMapping) or _raw_document_class(document_class)):
             raise TypeError(

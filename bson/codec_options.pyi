@@ -22,7 +22,6 @@ you get the error: "TypeError: 'type' object is not subscriptable".
 import datetime
 import abc
 from typing import Tuple, Generic, Optional, Mapping, Any, TypeVar, Type, Dict, Iterable, Tuple, MutableMapping, Callable, Union
-from bson.binary import UuidRepresentation
 
 
 class TypeEncoder(abc.ABC, metaclass=abc.ABCMeta):
@@ -64,12 +63,12 @@ class CodecOptions(Tuple, Generic[_DocumentType]):
 
     def __new__(
         cls: Type[CodecOptions],
-        document_class: Optional[Type[_DocumentType]] = None,
-        tz_aware: bool = False,
-        uuid_representation: Optional[int] = UuidRepresentation.UNSPECIFIED,
-        unicode_decode_error_handler: Optional[str] = "strict",
-        tzinfo: Optional[datetime.tzinfo] = None,
-        type_registry: Optional[TypeRegistry] = None,
+        document_class: Optional[Type[_DocumentType]] = ...,
+        tz_aware: bool = ...,
+        uuid_representation: Optional[int] = ...,
+        unicode_decode_error_handler: Optional[str] = ...,
+        tzinfo: Optional[datetime.tzinfo] = ...,
+        type_registry: Optional[TypeRegistry] = ...,
     ) -> CodecOptions[_DocumentType]: ...
 
     # CodecOptions API
