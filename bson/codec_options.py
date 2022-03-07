@@ -196,7 +196,16 @@ class TypeRegistry(object):
         )
 
 
-class CodecOptions(NamedTuple):
+class _BaseCodecOptions(NamedTuple):
+    document_class: Type[Mapping[str, Any]]
+    tz_aware: bool
+    uuid_representation: int
+    unicode_decode_error_handler: Optional[str]
+    tzinfo: Optional[datetime.tzinfo]
+    type_registry: TypeRegistry
+
+
+class CodecOptions(_BaseCodecOptions):
     """Encapsulates options used encoding and / or decoding BSON.
 
     The `document_class` option is used to define a custom type for use
@@ -273,14 +282,7 @@ class CodecOptions(NamedTuple):
        and stored back to the server.
     """
 
-    document_class: Type[Mapping[str, Any]]
-    tz_aware: bool
-    uuid_representation: int
-    unicode_decode_error_handler: Optional[str]
-    tzinfo: Optional[datetime.tzinfo]
-    type_registry: TypeRegistry
-
-    def __new__(  # type: ignore[misc]
+    def __new__(
         cls: Type["CodecOptions"],
         document_class: Optional[Type[Mapping[str, Any]]] = None,
         tz_aware: bool = False,
