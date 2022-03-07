@@ -18,19 +18,14 @@ import abc
 import datetime
 from collections.abc import MutableMapping as _MutableMapping
 from typing import (
-    TYPE_CHECKING,
     Any,
     Callable,
     Dict,
-    Generic,
     Iterable,
     Mapping,
-    MutableMapping,
     NamedTuple,
     Optional,
-    Tuple,
     Type,
-    TypeVar,
     Union,
     cast,
 )
@@ -115,7 +110,6 @@ class TypeCodec(TypeEncoder, TypeDecoder):
 
 _Codec = Union[TypeEncoder, TypeDecoder, TypeCodec]
 _Fallback = Callable[[Any], Any]
-_DocumentType = TypeVar("_DocumentType", bound=Mapping[str, Any])
 
 
 class TypeRegistry(object):
@@ -202,252 +196,193 @@ class TypeRegistry(object):
         )
 
 
-class _CodecOptionsBase(NamedTuple):
+class CodecOptions(NamedTuple):
+    """Encapsulates options used encoding and / or decoding BSON.
+
+    The `document_class` option is used to define a custom type for use
+    decoding BSON documents. Access to the underlying raw BSON bytes for
+    a document is available using the :class:`~bson.raw_bson.RawBSONDocument`
+    type::
+
+      >>> from bson.raw_bson import RawBSONDocument
+      >>> from bson.codec_options import CodecOptions
+      >>> codec_options = CodecOptions(document_class=RawBSONDocument)
+      >>> coll = db.get_collection('test', codec_options=codec_options)
+      >>> doc = coll.find_one()
+      >>> doc.raw
+      '\\x16\\x00\\x00\\x00\\x07_id\\x00[0\\x165\\x91\\x10\\xea\\x14\\xe8\\xc5\\x8b\\x93\\x00'
+
+    The document class can be any type that inherits from
+    :class:`~collections.abc.MutableMapping`::
+
+      >>> class AttributeDict(dict):
+      ...     # A dict that supports attribute access.
+      ...     def __getattr__(self, key):
+      ...         return self[key]
+      ...     def __setattr__(self, key, value):
+      ...         self[key] = value
+      ...
+      >>> codec_options = CodecOptions(document_class=AttributeDict)
+      >>> coll = db.get_collection('test', codec_options=codec_options)
+      >>> doc = coll.find_one()
+      >>> doc._id
+      ObjectId('5b3016359110ea14e8c58b93')
+
+    See :doc:`/examples/datetimes` for examples using the `tz_aware` and
+    `tzinfo` options.
+
+    See :doc:`/examples/uuid` for examples using the `uuid_representation`
+    option.
+
+    :Parameters:
+      - `document_class`: BSON documents returned in queries will be decoded
+        to an instance of this class. Must be a subclass of
+        :class:`~collections.abc.MutableMapping`. Defaults to :class:`dict`.
+      - `tz_aware`: If ``True``, BSON datetimes will be decoded to timezone
+        aware instances of :class:`~datetime.datetime`. Otherwise they will be
+        naive. Defaults to ``False``.
+      - `uuid_representation`: The BSON representation to use when encoding
+        and decoding instances of :class:`~uuid.UUID`. Defaults to
+        :data:`~bson.binary.UuidRepresentation.UNSPECIFIED`. New
+        applications should consider setting this to
+        :data:`~bson.binary.UuidRepresentation.STANDARD` for cross language
+        compatibility. See :ref:`handling-uuid-data-example` for details.
+      - `unicode_decode_error_handler`: The error handler to apply when
+        a Unicode-related error occurs during BSON decoding that would
+        otherwise raise :exc:`UnicodeDecodeError`. Valid options include
+        'strict', 'replace', 'backslashreplace', 'surrogateescape', and
+        'ignore'. Defaults to 'strict'.
+      - `tzinfo`: A :class:`~datetime.tzinfo` subclass that specifies the
+        timezone to/from which :class:`~datetime.datetime` objects should be
+        encoded/decoded.
+      - `type_registry`: Instance of :class:`TypeRegistry` used to customize
+        encoding and decoding behavior.
+
+    .. versionchanged:: 4.0
+       The default for `uuid_representation` was changed from
+       :const:`~bson.binary.UuidRepresentation.PYTHON_LEGACY` to
+       :const:`~bson.binary.UuidRepresentation.UNSPECIFIED`.
+
+    .. versionadded:: 3.8
+       `type_registry` attribute.
+
+    .. warning:: Care must be taken when changing
+       `unicode_decode_error_handler` from its default value ('strict').
+       The 'replace' and 'ignore' modes should not be used when documents
+       retrieved from the server will be modified in the client application
+       and stored back to the server.
+    """
+
     document_class: Type[Mapping[str, Any]]
     tz_aware: bool
     uuid_representation: int
-    unicode_decode_error_handler: str
+    unicode_decode_error_handler: Optional[str]
     tzinfo: Optional[datetime.tzinfo]
     type_registry: TypeRegistry
 
+    def __new__(  # type: ignore[misc]
+        cls: Type["CodecOptions"],
+        document_class: Optional[Type[Mapping[str, Any]]] = None,
+        tz_aware: bool = False,
+        uuid_representation: Optional[int] = UuidRepresentation.UNSPECIFIED,
+        unicode_decode_error_handler: Optional[str] = "strict",
+        tzinfo: Optional[datetime.tzinfo] = None,
+        type_registry: Optional[TypeRegistry] = None,
+    ) -> "CodecOptions":
+        document_class = document_class or dict  # type: ignore[assignment]
+        assert document_class is not None
+        if not (issubclass(document_class, _MutableMapping) or _raw_document_class(document_class)):
+            raise TypeError(
+                "document_class must be dict, bson.son.SON, "
+                "bson.raw_bson.RawBSONDocument, or a "
+                "sublass of collections.abc.MutableMapping"
+            )
+        if not isinstance(tz_aware, bool):
+            raise TypeError("tz_aware must be True or False")
+        if uuid_representation not in ALL_UUID_REPRESENTATIONS:
+            raise ValueError(
+                "uuid_representation must be a value from bson.binary.UuidRepresentation"
+            )
+        if not isinstance(unicode_decode_error_handler, (str, None)):  # type: ignore[arg-type]
+            raise ValueError("unicode_decode_error_handler must be a string or None")
+        if tzinfo is not None:
+            if not isinstance(tzinfo, datetime.tzinfo):
+                raise TypeError("tzinfo must be an instance of datetime.tzinfo")
+            if not tz_aware:
+                raise ValueError("cannot specify tzinfo without also setting tz_aware=True")
 
-# Workaround for https://bugs.python.org/issue43923.
-# Ideally we would have done this with a single class, but
-# generic subclasses *must* take a parameter, and prior to Python 3.9
-# or in Python 3.7 and 3.8 with `from __future__ import annotations`,
-# you get the error: "TypeError: 'type' object is not subscriptable".
+        type_registry = type_registry or TypeRegistry()
 
-if not TYPE_CHECKING:
+        if not isinstance(type_registry, TypeRegistry):
+            raise TypeError("type_registry must be an instance of TypeRegistry")
 
-    class CodecOptions(_CodecOptionsBase):
-        """Encapsulates options used encoding and / or decoding BSON.
+        return tuple.__new__(
+            cls,
+            (
+                document_class,
+                tz_aware,
+                uuid_representation,
+                unicode_decode_error_handler,
+                tzinfo,
+                type_registry,
+            ),
+        )
 
-        The `document_class` option is used to define a custom type for use
-        decoding BSON documents. Access to the underlying raw BSON bytes for
-        a document is available using the :class:`~bson.raw_bson.RawBSONDocument`
-        type::
+    def _arguments_repr(self) -> str:
+        """Representation of the arguments used to create this object."""
+        document_class_repr = "dict" if self.document_class is dict else repr(self.document_class)
 
-          >>> from bson.raw_bson import RawBSONDocument
-          >>> from bson.codec_options import CodecOptions
-          >>> codec_options = CodecOptions(document_class=RawBSONDocument)
-          >>> coll = db.get_collection('test', codec_options=codec_options)
-          >>> doc = coll.find_one()
-          >>> doc.raw
-          '\\x16\\x00\\x00\\x00\\x07_id\\x00[0\\x165\\x91\\x10\\xea\\x14\\xe8\\xc5\\x8b\\x93\\x00'
+        uuid_rep_repr = UUID_REPRESENTATION_NAMES.get(
+            self.uuid_representation, self.uuid_representation
+        )
 
-        The document class can be any type that inherits from
-        :class:`~collections.abc.MutableMapping`::
+        return (
+            "document_class=%s, tz_aware=%r, uuid_representation=%s, "
+            "unicode_decode_error_handler=%r, tzinfo=%r, "
+            "type_registry=%r"
+            % (
+                document_class_repr,
+                self.tz_aware,
+                uuid_rep_repr,
+                self.unicode_decode_error_handler,
+                self.tzinfo,
+                self.type_registry,
+            )
+        )
 
-          >>> class AttributeDict(dict):
-          ...     # A dict that supports attribute access.
-          ...     def __getattr__(self, key):
-          ...         return self[key]
-          ...     def __setattr__(self, key, value):
-          ...         self[key] = value
-          ...
-          >>> codec_options = CodecOptions(document_class=AttributeDict)
-          >>> coll = db.get_collection('test', codec_options=codec_options)
-          >>> doc = coll.find_one()
-          >>> doc._id
-          ObjectId('5b3016359110ea14e8c58b93')
+    def _options_dict(self) -> Dict[str, Any]:
+        """Dictionary of the arguments used to create this object."""
+        # TODO: PYTHON-2442 use _asdict() instead
+        return {
+            "document_class": self.document_class,
+            "tz_aware": self.tz_aware,
+            "uuid_representation": self.uuid_representation,
+            "unicode_decode_error_handler": self.unicode_decode_error_handler,
+            "tzinfo": self.tzinfo,
+            "type_registry": self.type_registry,
+        }
 
-        See :doc:`/examples/datetimes` for examples using the `tz_aware` and
-        `tzinfo` options.
+    def __repr__(self):
+        return "%s(%s)" % (self.__class__.__name__, self._arguments_repr())
 
-        See :doc:`/examples/uuid` for examples using the `uuid_representation`
-        option.
+    def with_options(self, **kwargs: Any) -> "CodecOptions":
+        """Make a copy of this CodecOptions, overriding some options::
 
-        :Parameters:
-          - `document_class`: BSON documents returned in queries will be decoded
-            to an instance of this class. Must be a subclass of
-            :class:`~collections.abc.MutableMapping`. Defaults to :class:`dict`.
-          - `tz_aware`: If ``True``, BSON datetimes will be decoded to timezone
-            aware instances of :class:`~datetime.datetime`. Otherwise they will be
-            naive. Defaults to ``False``.
-          - `uuid_representation`: The BSON representation to use when encoding
-            and decoding instances of :class:`~uuid.UUID`. Defaults to
-            :data:`~bson.binary.UuidRepresentation.UNSPECIFIED`. New
-            applications should consider setting this to
-            :data:`~bson.binary.UuidRepresentation.STANDARD` for cross language
-            compatibility. See :ref:`handling-uuid-data-example` for details.
-          - `unicode_decode_error_handler`: The error handler to apply when
-            a Unicode-related error occurs during BSON decoding that would
-            otherwise raise :exc:`UnicodeDecodeError`. Valid options include
-            'strict', 'replace', 'backslashreplace', 'surrogateescape', and
-            'ignore'. Defaults to 'strict'.
-          - `tzinfo`: A :class:`~datetime.tzinfo` subclass that specifies the
-            timezone to/from which :class:`~datetime.datetime` objects should be
-            encoded/decoded.
-          - `type_registry`: Instance of :class:`TypeRegistry` used to customize
-            encoding and decoding behavior.
+            >>> from bson.codec_options import DEFAULT_CODEC_OPTIONS
+            >>> DEFAULT_CODEC_OPTIONS.tz_aware
+            False
+            >>> options = DEFAULT_CODEC_OPTIONS.with_options(tz_aware=True)
+            >>> options.tz_aware
+            True
 
-        .. versionchanged:: 4.0
-           The default for `uuid_representation` was changed from
-           :const:`~bson.binary.UuidRepresentation.PYTHON_LEGACY` to
-           :const:`~bson.binary.UuidRepresentation.UNSPECIFIED`.
-
-        .. versionadded:: 3.8
-           `type_registry` attribute.
-
-        .. warning:: Care must be taken when changing
-           `unicode_decode_error_handler` from its default value ('strict').
-           The 'replace' and 'ignore' modes should not be used when documents
-           retrieved from the server will be modified in the client application
-           and stored back to the server.
+        .. versionadded:: 3.5
         """
-
-        def __new__(
-            cls: Type["CodecOptions"],
-            document_class: Optional[Type[Mapping[str, Any]]] = None,
-            tz_aware: bool = False,
-            uuid_representation: Optional[int] = UuidRepresentation.UNSPECIFIED,
-            unicode_decode_error_handler: Optional[str] = "strict",
-            tzinfo: Optional[datetime.tzinfo] = None,
-            type_registry: Optional[TypeRegistry] = None,
-        ) -> "CodecOptions":
-            document_class = document_class or dict
-            assert document_class is not None
-            if not (
-                issubclass(document_class, _MutableMapping) or _raw_document_class(document_class)
-            ):
-                raise TypeError(
-                    "document_class must be dict, bson.son.SON, "
-                    "bson.raw_bson.RawBSONDocument, or a "
-                    "sublass of collections.abc.MutableMapping"
-                )
-            if not isinstance(tz_aware, bool):
-                raise TypeError("tz_aware must be True or False")
-            if uuid_representation not in ALL_UUID_REPRESENTATIONS:
-                raise ValueError(
-                    "uuid_representation must be a value from bson.binary.UuidRepresentation"
-                )
-            if not isinstance(unicode_decode_error_handler, (str, None)):
-                raise ValueError("unicode_decode_error_handler must be a string or None")
-            if tzinfo is not None:
-                if not isinstance(tzinfo, datetime.tzinfo):
-                    raise TypeError("tzinfo must be an instance of datetime.tzinfo")
-                if not tz_aware:
-                    raise ValueError("cannot specify tzinfo without also setting tz_aware=True")
-
-            type_registry = type_registry or TypeRegistry()
-
-            if not isinstance(type_registry, TypeRegistry):
-                raise TypeError("type_registry must be an instance of TypeRegistry")
-
-            return tuple.__new__(
-                cls,
-                (
-                    document_class,
-                    tz_aware,
-                    uuid_representation,
-                    unicode_decode_error_handler,
-                    tzinfo,
-                    type_registry,
-                ),
-            )
-
-        def _arguments_repr(self) -> str:
-            """Representation of the arguments used to create this object."""
-            document_class_repr = (
-                "dict" if self.document_class is dict else repr(self.document_class)
-            )
-
-            uuid_rep_repr = UUID_REPRESENTATION_NAMES.get(
-                self.uuid_representation, self.uuid_representation
-            )
-
-            return (
-                "document_class=%s, tz_aware=%r, uuid_representation=%s, "
-                "unicode_decode_error_handler=%r, tzinfo=%r, "
-                "type_registry=%r"
-                % (
-                    document_class_repr,
-                    self.tz_aware,
-                    uuid_rep_repr,
-                    self.unicode_decode_error_handler,
-                    self.tzinfo,
-                    self.type_registry,
-                )
-            )
-
-        def _options_dict(self) -> Dict[str, Any]:
-            """Dictionary of the arguments used to create this object."""
-            # TODO: PYTHON-2442 use _asdict() instead
-            return {
-                "document_class": self.document_class,
-                "tz_aware": self.tz_aware,
-                "uuid_representation": self.uuid_representation,
-                "unicode_decode_error_handler": self.unicode_decode_error_handler,
-                "tzinfo": self.tzinfo,
-                "type_registry": self.type_registry,
-            }
-
-        def __repr__(self):
-            return "%s(%s)" % (self.__class__.__name__, self._arguments_repr())
-
-        def with_options(self, **kwargs: Any) -> "CodecOptions":
-            """Make a copy of this CodecOptions, overriding some options::
-
-                >>> from bson.codec_options import DEFAULT_CODEC_OPTIONS
-                >>> DEFAULT_CODEC_OPTIONS.tz_aware
-                False
-                >>> options = DEFAULT_CODEC_OPTIONS.with_options(tz_aware=True)
-                >>> options.tz_aware
-                True
-
-            .. versionadded:: 3.5
-            """
-            opts = self._options_dict()
-            opts.update(kwargs)
-            return CodecOptions(**opts)
-
-else:
-
-    class CodecOptions(Tuple, Generic[_DocumentType]):
-        document_class: Type[_DocumentType]
-        tz_aware: bool
-        uuid_representation: int
-        unicode_decode_error_handler: str
-        tzinfo: Optional[datetime.tzinfo]
-        type_registry: TypeRegistry
-
-        def __new__(
-            cls: Type["CodecOptions"],
-            document_class: Optional[Type[_DocumentType]] = None,
-            tz_aware: bool = False,
-            uuid_representation: Optional[int] = UuidRepresentation.UNSPECIFIED,
-            unicode_decode_error_handler: Optional[str] = "strict",
-            tzinfo: Optional[datetime.tzinfo] = None,
-            type_registry: Optional[TypeRegistry] = None,
-        ) -> "CodecOptions[_DocumentType]":
-            ...
-
-        # CodecOptions API
-        def with_options(self, **kwargs: Any) -> "CodecOptions[_DocumentType]":
-            ...
-
-        def _arguments_repr(self) -> str:
-            ...
-
-        def _options_dict(self) -> Dict[Any, Any]:
-            ...
-
-        # NamedTuple API
-        @classmethod
-        def _make(cls, obj: Iterable) -> "CodecOptions[_DocumentType]":
-            ...
-
-        def _asdict(self) -> Dict[str, Any]:
-            ...
-
-        def _replace(self, **kwargs: Any) -> "CodecOptions[_DocumentType]":
-            ...
-
-        _source: str
-        _fields: Tuple[str]
+        opts = self._options_dict()
+        opts.update(kwargs)
+        return CodecOptions(**opts)
 
 
-DEFAULT_CODEC_OPTIONS: "CodecOptions[MutableMapping[str, Any]]" = CodecOptions()
+DEFAULT_CODEC_OPTIONS = CodecOptions()
 
 
 def _parse_codec_options(options: Any) -> CodecOptions:
