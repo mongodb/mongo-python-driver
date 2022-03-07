@@ -148,8 +148,8 @@ class TypeRegistry(object):
     ) -> None:
         self.__type_codecs = list(type_codecs or [])
         self._fallback_encoder = fallback_encoder
-        self._encoder_map = {}
-        self._decoder_map = {}
+        self._encoder_map: Dict[str, Any] = {}
+        self._decoder_map: Dict[str, Any] = {}
 
         if self._fallback_encoder is not None:
             if not callable(fallback_encoder):
