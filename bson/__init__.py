@@ -943,7 +943,7 @@ def encode(
 
 
 def decode(
-    data: _ReadableBuffer, codec_options: Optional[CodecOptions[_DocumentType]] = None
+    data: _ReadableBuffer, codec_options: "Optional[CodecOptions[_DocumentType]]" = None
 ) -> _DocumentType:
     """Decode BSON to a document.
 
@@ -978,7 +978,7 @@ def decode(
 
 
 def decode_all(
-    data: _ReadableBuffer, codec_options: Optional[CodecOptions[_DocumentType]] = None
+    data: _ReadableBuffer, codec_options: "Optional[CodecOptions[_DocumentType]]" = None
 ) -> List[_DocumentType]:
     """Decode BSON data to multiple documents.
 
@@ -1115,7 +1115,7 @@ def _decode_all_selective(data: Any, codec_options: CodecOptions, fields: Any) -
 
 
 def decode_iter(
-    data: bytes, codec_options: Optional[CodecOptions[_DocumentType]] = None
+    data: bytes, codec_options: "Optional[CodecOptions[_DocumentType]]" = None
 ) -> Iterator[_DocumentType]:
     """Decode BSON data to multiple documents as a generator.
 
@@ -1151,7 +1151,7 @@ def decode_iter(
 
 
 def decode_file_iter(
-    file_obj: Union[BinaryIO, IO], codec_options: Optional[CodecOptions[_DocumentType]] = None
+    file_obj: Union[BinaryIO, IO], codec_options: "Optional[CodecOptions[_DocumentType]]" = None
 ) -> Iterator[_DocumentType]:
     """Decode bson data from a file to multiple documents as a generator.
 

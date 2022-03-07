@@ -76,7 +76,7 @@ _OP_MAP = {
 }
 _FIELD_MAP = {"insert": "documents", "update": "updates", "delete": "deletes"}
 
-_UNICODE_REPLACE_CODEC_OPTIONS: CodecOptions[Dict[str, Any]] = CodecOptions(
+_UNICODE_REPLACE_CODEC_OPTIONS: "CodecOptions[Dict[str, Any]]" = CodecOptions(
     unicode_decode_error_handler="replace"
 )
 
