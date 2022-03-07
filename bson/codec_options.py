@@ -215,7 +215,6 @@ if not TYPE_CHECKING:
             "type_registry",
         ),
     )
-    T = _CodecOptionsBase
 else:
 
     class _CodecOptionsBase(Tuple, Generic[_DocumentType]):
@@ -226,10 +225,8 @@ else:
         tzinfo: Optional[datetime.tzinfo]
         type_registry: TypeRegistry
 
-    T = _CodecOptionsBase[_DocumentType]
 
-
-class CodecOptions(T):
+class CodecOptions(_CodecOptionsBase[_DocumentType]):
     """Encapsulates options used encoding and / or decoding BSON.
 
     The `document_class` option is used to define a custom type for use
