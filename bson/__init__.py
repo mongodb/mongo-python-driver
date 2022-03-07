@@ -114,7 +114,7 @@ from bson.son import RE_TYPE, SON
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
 
-# Import some modules for type-checking only to avoid circular dependency.
+# Import some modules for type-checking only.
 if TYPE_CHECKING:
     from array import array
     from mmap import mmap
