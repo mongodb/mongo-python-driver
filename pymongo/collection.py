@@ -23,10 +23,12 @@ from typing import (
     List,
     Mapping,
     MutableMapping,
+    NamedTuple,
     Optional,
     Sequence,
     Tuple,
     Union,
+    cast,
 )
 
 from bson.codec_options import CodecOptions
@@ -216,7 +218,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if create or kwargs or collation:
             self.__create(kwargs, collation, session)
 
-        self.__write_response_codec_options = self.codec_options._replace(
+        self.__write_response_codec_options = cast(NamedTuple, self.codec_options)._replace(
             unicode_decode_error_handler="replace", document_class=dict
         )
 
