@@ -26,6 +26,7 @@ from typing import (
     NamedTuple,
     Optional,
     Type,
+    TypeVar,
     Union,
     cast,
 )
@@ -110,6 +111,7 @@ class TypeCodec(TypeEncoder, TypeDecoder):
 
 _Codec = Union[TypeEncoder, TypeDecoder, TypeCodec]
 _Fallback = Callable[[Any], Any]
+_DocumentType = TypeVar("_DocumentType", bound=Mapping[str, Any])
 
 
 class TypeRegistry(object):
