@@ -16,9 +16,10 @@
 
 import abc
 import datetime
+from collections import namedtuple
 from collections.abc import MutableMapping as _MutableMapping
-from copy import deepcopy
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Dict,
@@ -201,7 +202,31 @@ class TypeRegistry(object):
         )
 
 
-class CodecOptions(Tuple, Generic[_DocumentType]):
+# Workaround for https://bugs.python.org/issue43923.
+if not TYPE_CHECKING:
+    _CodecOptionsBase = namedtuple(
+        "CodecOptions",
+        (
+            "document_class",
+            "tz_aware",
+            "uuid_representation",
+            "unicode_decode_error_handler",
+            "tzinfo",
+            "type_registry",
+        ),
+    )
+else:
+
+    class _CodecOptionsBase(Tuple, Generic[_DocumentType]):
+        document_class: Type[_DocumentType]
+        tz_aware: bool
+        uuid_representation: int
+        unicode_decode_error_handler: str
+        tzinfo: Optional[datetime.tzinfo]
+        type_registry: TypeRegistry
+
+
+class CodecOptions(_CodecOptionsBase[_DocumentType]):
     """Encapsulates options used encoding and / or decoding BSON.
 
     The `document_class` option is used to define a custom type for use
@@ -325,67 +350,6 @@ class CodecOptions(Tuple, Generic[_DocumentType]):
                 type_registry,
             ),
         )
-
-    # Present namedtuple interface without subclassing namedtuple to
-    # work around https://bugs.python.org/issue43923.
-
-    @classmethod
-    def _make(cls, iterable):
-        return CodecOptions(*iterable)
-
-    @property
-    def document_class(self) -> Type[_DocumentType]:
-        return self[0]
-
-    @property
-    def tz_aware(self) -> bool:
-        return self[1]
-
-    @property
-    def uuid_representation(self) -> int:
-        return self[2]
-
-    @property
-    def unicode_decode_error_handler(self) -> str:
-        return self[3]
-
-    @property
-    def tzinfo(self) -> Optional[datetime.tzinfo]:
-        return self[4]
-
-    @property
-    def type_registry(self) -> TypeRegistry:
-        return self[5]
-
-    def _asdict(self):
-        return dict(zip(self._fields(), self))
-
-    def _replace(self, **kwargs: Any) -> "CodecOptions[_DocumentType]":
-        options = self._options_dict()
-        options.update(kwargs)
-        return CodecOptions(**options)
-
-    def _fields(self) -> Tuple:
-        return (
-            "document_class",
-            "tz_aware",
-            "uuid_representation",
-            "unicode_decode_error_handler",
-            "tzinfo",
-            "type_registry",
-        )
-
-    def _field_defaults(self):
-        return {}
-
-    def __copy__(self) -> "CodecOptions[_DocumentType]":
-        return CodecOptions(**self._asdict())
-
-    def __deepcopy__(self, memo: Any) -> "CodecOptions[_DocumentType]":
-        """Support function for `copy.deepcopy()`."""
-        return CodecOptions(**deepcopy(self._asdict(), memo))
-
-    # End of namedtuple interface.
 
     def _arguments_repr(self) -> str:
         """Representation of the arguments used to create this object."""
