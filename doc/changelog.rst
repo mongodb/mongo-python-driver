@@ -26,6 +26,21 @@ PyMongo 4.1 brings a number of improvements including:
 - :meth:`gridfs.GridOut.seek` now returns the new position in the file, to
   conform to the behavior of :meth:`io.IOBase.seek`.
 
+Bug fixes
+.........
+
+- Fixed a bug where the client could be unable to discover the new primary
+  after a simultaneous replica set election and reconfig (`PYTHON-2970`_).
+
+.. _PYTHON-2970: https://jira.mongodb.org/browse/PYTHON-2970
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=30619
 
 Changes in Version 4.0
 ----------------------
