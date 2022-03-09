@@ -1,6 +1,48 @@
 Changelog
 =========
 
+Changes in Version 3.13.0
+-------------------------
+
+Issues Resolved
+...............
+
+PyMongo 3.13 drops support for Python 3.4.
+
+Bug fixes
+.........
+
+- Fixed a bug where the client could be unable to discover the new primary
+  after a simultaneous replica set election and reconfig (`PYTHON-2970`_).
+
+Deprecations
+............
+
+- Deprecated :meth:`~pymongo.collection.Collection.map_reduce` and
+  :meth:`~pymongo.collection.Collection.inline_map_reduce`.
+  Use :meth:`~pymongo.collection.Collection.aggregate` instead.
+
+See the `PyMongo 3.13.0 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PYTHON-2970: https://jira.mongodb.org/browse/PYTHON-2970
+.. _PyMongo 3.13.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=31570
+
+Changes in Version 3.12.3
+-------------------------
+
+Issues Resolved
+...............
+
+Version 3.12.3 fixes a bug that prevented :meth:`bson.json_util.loads` from
+decoding a document with a non-string "$regex" field (`PYTHON-3028`_).
+
+See the `PyMongo 3.12.3 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PYTHON-3028: https://jira.mongodb.org/browse/PYTHON-3028
+.. _PyMongo 3.12.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=32505
+
 Changes in Version 3.12.2
 -------------------------
 

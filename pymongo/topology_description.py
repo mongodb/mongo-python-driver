@@ -16,6 +16,7 @@
 
 from collections import namedtuple
 
+from bson.min_key import MinKey
 from pymongo import common
 from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import ReadPreference
@@ -493,24 +494,16 @@ def _update_rs_from_primary(
         sds.pop(server_description.address)
         return (_check_has_primary(sds), replica_set_name, max_set_version, max_election_id)
 
-    max_election_tuple = max_set_version, max_election_id
-    if None not in server_description.election_tuple:
-        if (
-            None not in max_election_tuple
-            and max_election_tuple > server_description.election_tuple
-        ):
-
-            # Stale primary, set to type Unknown.
-            sds[server_description.address] = server_description.to_unknown()
-            return (_check_has_primary(sds), replica_set_name, max_set_version, max_election_id)
-
-        max_election_id = server_description.election_id
-
-    if server_description.set_version is not None and (
-        max_set_version is None or server_description.set_version > max_set_version
-    ):
-
-        max_set_version = server_description.set_version
+    new_election_tuple = server_description.election_id, server_description.set_version
+    max_election_tuple = max_election_id, max_set_version
+    new_election_safe = tuple(MinKey() if i is None else i for i in new_election_tuple)
+    max_election_safe = tuple(MinKey() if i is None else i for i in max_election_tuple)
+    if new_election_safe >= max_election_safe:
+        max_election_id, max_set_version = new_election_tuple
+    else:
+        # Stale primary, set to type Unknown.
+        sds[server_description.address] = server_description.to_unknown()
+        return _check_has_primary(sds), replica_set_name, max_set_version, max_election_id
 
     # We've heard from the primary. Is it the same primary as before?
     for server in sds.values():

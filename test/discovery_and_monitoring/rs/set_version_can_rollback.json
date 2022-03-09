@@ -1,5 +1,5 @@
 {
-  "description": "Primaries with and without electionIds",
+  "description": "Set version rolls back after new primary with higher election Id",
   "uri": "mongodb://a/?replicaSet=rs",
   "phases": [
     {
@@ -8,14 +8,17 @@
           "a:27017",
           {
             "ok": 1,
+            "hello": true,
             "isWritablePrimary": true,
             "hosts": [
               "a:27017",
-              "b:27017",
-              "c:27017"
+              "b:27017"
             ],
-            "setVersion": 1,
             "setName": "rs",
+            "setVersion": 2,
+            "electionId": {
+              "$oid": "000000000000000000000001"
+            },
             "minWireVersion": 0,
             "maxWireVersion": 6
           }
@@ -26,15 +29,12 @@
           "a:27017": {
             "type": "RSPrimary",
             "setName": "rs",
-            "setVersion": 1,
-            "electionId": null
+            "setVersion": 2,
+            "electionId": {
+              "$oid": "000000000000000000000001"
+            }
           },
           "b:27017": {
-            "type": "Unknown",
-            "setName": null,
-            "electionId": null
-          },
-          "c:27017": {
             "type": "Unknown",
             "setName": null,
             "electionId": null
@@ -43,20 +43,24 @@
         "topologyType": "ReplicaSetWithPrimary",
         "logicalSessionTimeoutMinutes": null,
         "setName": "rs",
-        "maxSetVersion": 1
+        "maxSetVersion": 2,
+        "maxElectionId": {
+          "$oid": "000000000000000000000001"
+        }
       }
     },
     {
+      "_comment": "Response from new primary with newer election Id",
       "responses": [
         [
           "b:27017",
           {
             "ok": 1,
+            "hello": true,
             "isWritablePrimary": true,
             "hosts": [
               "a:27017",
-              "b:27017",
-              "c:27017"
+              "b:27017"
             ],
             "setName": "rs",
             "setVersion": 1,
@@ -82,11 +86,6 @@
             "electionId": {
               "$oid": "000000000000000000000002"
             }
-          },
-          "c:27017": {
-            "type": "Unknown",
-            "setName": null,
-            "electionId": null
           }
         },
         "topologyType": "ReplicaSetWithPrimary",
@@ -99,69 +98,20 @@
       }
     },
     {
+      "_comment": "Response from stale primary",
       "responses": [
         [
           "a:27017",
           {
             "ok": 1,
+            "hello": true,
             "isWritablePrimary": true,
             "hosts": [
               "a:27017",
-              "b:27017",
-              "c:27017"
-            ],
-            "setVersion": 1,
-            "setName": "rs",
-            "minWireVersion": 0,
-            "maxWireVersion": 6
-          }
-        ]
-      ],
-      "outcome": {
-        "servers": {
-          "a:27017": {
-            "type": "Unknown",
-            "setName": null,
-            "setVersion": null,
-            "electionId": null
-          },
-          "b:27017": {
-            "type": "RSPrimary",
-            "setName": "rs",
-            "setVersion": 1,
-            "electionId": {
-              "$oid": "000000000000000000000002"
-            }
-          },
-          "c:27017": {
-            "type": "Unknown",
-            "setName": null,
-            "electionId": null
-          }
-        },
-        "topologyType": "ReplicaSetWithPrimary",
-        "logicalSessionTimeoutMinutes": null,
-        "setName": "rs",
-        "maxSetVersion": 1,
-        "maxElectionId": {
-          "$oid": "000000000000000000000002"
-        }
-      }
-    },
-    {
-      "responses": [
-        [
-          "c:27017",
-          {
-            "ok": 1,
-            "isWritablePrimary": true,
-            "hosts": [
-              "a:27017",
-              "b:27017",
-              "c:27017"
+              "b:27017"
             ],
             "setName": "rs",
-            "setVersion": 1,
+            "setVersion": 2,
             "electionId": {
               "$oid": "000000000000000000000001"
             },
@@ -175,7 +125,6 @@
           "a:27017": {
             "type": "Unknown",
             "setName": null,
-            "setVersion": null,
             "electionId": null
           },
           "b:27017": {
@@ -185,11 +134,6 @@
             "electionId": {
               "$oid": "000000000000000000000002"
             }
-          },
-          "c:27017": {
-            "type": "Unknown",
-            "setName": null,
-            "electionId": null
           }
         },
         "topologyType": "ReplicaSetWithPrimary",
