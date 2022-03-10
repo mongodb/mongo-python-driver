@@ -294,13 +294,14 @@ class CodecOptions(_BaseCodecOptions):
         type_registry: Optional[TypeRegistry] = None,
     ) -> "CodecOptions":
         doc_class = document_class or dict
+        # issubclass can raise TypeError for generic aliases like SON[str, Any].
+        # In that case we can use the base class for the comparison.
         is_mapping = False
         try:
-            # fails for generic aliases
             is_mapping = issubclass(doc_class, _MutableMapping)
         except TypeError:
-            pass
-        if not (is_mapping or issubclass(doc_class, dict) or _raw_document_class(doc_class)):
+            is_mapping = issubclass(doc_class.__base__, _MutableMapping)
+        if not (is_mapping or _raw_document_class(doc_class)):
             raise TypeError(
                 "document_class must be dict, bson.son.SON, "
                 "bson.raw_bson.RawBSONDocument, or a "
