@@ -158,53 +158,53 @@ class TestBinary(unittest.TestCase):
     def test_legacy_java_uuid(self):
         # Test decoding
         data = self.java_data
-        docs = bson.decode_all(data, CodecOptions(SON, False, PYTHON_LEGACY))  # type: ignore[type-var]
+        docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, PYTHON_LEGACY))
         for d in docs:
-            self.assertNotEqual(d["newguid"], uuid.UUID(d["newguidstring"]))  # type: ignore[arg-type]
+            self.assertNotEqual(d["newguid"], uuid.UUID(d["newguidstring"]))
 
-        docs = bson.decode_all(data, CodecOptions(SON, False, STANDARD))  # type: ignore[type-var]
+        docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, STANDARD))
         for d in docs:
-            self.assertNotEqual(d["newguid"], uuid.UUID(d["newguidstring"]))  # type: ignore[arg-type]
+            self.assertNotEqual(d["newguid"], uuid.UUID(d["newguidstring"]))
 
-        docs = bson.decode_all(data, CodecOptions(SON, False, CSHARP_LEGACY))  # type: ignore[type-var]
+        docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, CSHARP_LEGACY))
         for d in docs:
-            self.assertNotEqual(d["newguid"], uuid.UUID(d["newguidstring"]))  # type: ignore[arg-type]
+            self.assertNotEqual(d["newguid"], uuid.UUID(d["newguidstring"]))
 
-        docs = bson.decode_all(data, CodecOptions(SON, False, JAVA_LEGACY))  # type: ignore[type-var]
+        docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, JAVA_LEGACY))
         for d in docs:
-            self.assertEqual(d["newguid"], uuid.UUID(d["newguidstring"]))  # type: ignore[arg-type]
+            self.assertEqual(d["newguid"], uuid.UUID(d["newguidstring"]))
 
         # Test encoding
         encoded = b"".join(
-            [encode(doc, False, CodecOptions(uuid_representation=PYTHON_LEGACY)) for doc in docs]  # type: ignore[arg-type]
+            [encode(doc, False, CodecOptions(uuid_representation=PYTHON_LEGACY)) for doc in docs]
         )
         self.assertNotEqual(data, encoded)
 
         encoded = b"".join(
-            [encode(doc, False, CodecOptions(uuid_representation=STANDARD)) for doc in docs]  # type: ignore[arg-type]
+            [encode(doc, False, CodecOptions(uuid_representation=STANDARD)) for doc in docs]
         )
         self.assertNotEqual(data, encoded)
 
         encoded = b"".join(
-            [encode(doc, False, CodecOptions(uuid_representation=CSHARP_LEGACY)) for doc in docs]  # type: ignore[arg-type]
+            [encode(doc, False, CodecOptions(uuid_representation=CSHARP_LEGACY)) for doc in docs]
         )
         self.assertNotEqual(data, encoded)
 
         encoded = b"".join(
-            [encode(doc, False, CodecOptions(uuid_representation=JAVA_LEGACY)) for doc in docs]  # type: ignore[arg-type]
+            [encode(doc, False, CodecOptions(uuid_representation=JAVA_LEGACY)) for doc in docs]
         )
         self.assertEqual(data, encoded)
 
     @client_context.require_connection
     def test_legacy_java_uuid_roundtrip(self):
         data = self.java_data
-        docs = bson.decode_all(data, CodecOptions(SON, False, JAVA_LEGACY))  # type: ignore[type-var]
+        docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, JAVA_LEGACY))
 
         client_context.client.pymongo_test.drop_collection("java_uuid")
         db = client_context.client.pymongo_test
         coll = db.get_collection("java_uuid", CodecOptions(uuid_representation=JAVA_LEGACY))
 
-        coll.insert_many(docs)  # type: ignore[arg-type]
+        coll.insert_many(docs)
         self.assertEqual(5, coll.count_documents({}))
         for d in coll.find():
             self.assertEqual(d["newguid"], uuid.UUID(d["newguidstring"]))
@@ -218,53 +218,53 @@ class TestBinary(unittest.TestCase):
         data = self.csharp_data
 
         # Test decoding
-        docs = bson.decode_all(data, CodecOptions(SON, False, PYTHON_LEGACY))  # type: ignore[type-var]
+        docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, PYTHON_LEGACY))
         for d in docs:
-            self.assertNotEqual(d["newguid"], uuid.UUID(d["newguidstring"]))  # type: ignore[arg-type]
+            self.assertNotEqual(d["newguid"], uuid.UUID(d["newguidstring"]))
 
-        docs = bson.decode_all(data, CodecOptions(SON, False, STANDARD))  # type: ignore[type-var]
+        docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, STANDARD))
         for d in docs:
-            self.assertNotEqual(d["newguid"], uuid.UUID(d["newguidstring"]))  # type: ignore[arg-type]
+            self.assertNotEqual(d["newguid"], uuid.UUID(d["newguidstring"]))
 
-        docs = bson.decode_all(data, CodecOptions(SON, False, JAVA_LEGACY))  # type: ignore[type-var]
+        docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, JAVA_LEGACY))
         for d in docs:
-            self.assertNotEqual(d["newguid"], uuid.UUID(d["newguidstring"]))  # type: ignore[arg-type]
+            self.assertNotEqual(d["newguid"], uuid.UUID(d["newguidstring"]))
 
-        docs = bson.decode_all(data, CodecOptions(SON, False, CSHARP_LEGACY))  # type: ignore[type-var]
+        docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, CSHARP_LEGACY))
         for d in docs:
-            self.assertEqual(d["newguid"], uuid.UUID(d["newguidstring"]))  # type: ignore[arg-type]
+            self.assertEqual(d["newguid"], uuid.UUID(d["newguidstring"]))
 
         # Test encoding
         encoded = b"".join(
-            [encode(doc, False, CodecOptions(uuid_representation=PYTHON_LEGACY)) for doc in docs]  # type: ignore[arg-type]
+            [encode(doc, False, CodecOptions(uuid_representation=PYTHON_LEGACY)) for doc in docs]
         )
         self.assertNotEqual(data, encoded)
 
         encoded = b"".join(
-            [encode(doc, False, CodecOptions(uuid_representation=STANDARD)) for doc in docs]  # type: ignore[arg-type]
+            [encode(doc, False, CodecOptions(uuid_representation=STANDARD)) for doc in docs]
         )
         self.assertNotEqual(data, encoded)
 
         encoded = b"".join(
-            [encode(doc, False, CodecOptions(uuid_representation=JAVA_LEGACY)) for doc in docs]  # type: ignore[arg-type]
+            [encode(doc, False, CodecOptions(uuid_representation=JAVA_LEGACY)) for doc in docs]
         )
         self.assertNotEqual(data, encoded)
 
         encoded = b"".join(
-            [encode(doc, False, CodecOptions(uuid_representation=CSHARP_LEGACY)) for doc in docs]  # type: ignore[arg-type]
+            [encode(doc, False, CodecOptions(uuid_representation=CSHARP_LEGACY)) for doc in docs]
         )
         self.assertEqual(data, encoded)
 
     @client_context.require_connection
     def test_legacy_csharp_uuid_roundtrip(self):
         data = self.csharp_data
-        docs = bson.decode_all(data, CodecOptions(SON, False, CSHARP_LEGACY))  # type: ignore[type-var]
+        docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, CSHARP_LEGACY))
 
         client_context.client.pymongo_test.drop_collection("csharp_uuid")
         db = client_context.client.pymongo_test
         coll = db.get_collection("csharp_uuid", CodecOptions(uuid_representation=CSHARP_LEGACY))
 
-        coll.insert_many(docs)  # type: ignore[arg-type]
+        coll.insert_many(docs)
         self.assertEqual(5, coll.count_documents({}))
         for d in coll.find():
             self.assertEqual(d["newguid"], uuid.UUID(d["newguidstring"]))

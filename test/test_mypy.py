@@ -236,6 +236,7 @@ class TestDecode(unittest.TestCase):
         fileobj = tempfile.TemporaryFile()
         fileobj.write(content)
         fileobj.seek(0)
+        self.addCleanup(fileobj.close)
         return fileobj
 
     def test_bson_decode_file_iter(self) -> None:

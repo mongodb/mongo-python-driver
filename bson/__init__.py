@@ -628,8 +628,8 @@ def _encode_list(name: bytes, value: Sequence[Any], check_keys: bool, opts: Code
 
 def _encode_text(name: bytes, value: str, dummy0: Any, dummy1: Any) -> bytes:
     """Encode a python str."""
-    value = _utf_8_encode(value)[0]
-    return b"\x02" + name + _PACK_INT(len(value) + 1) + value + b"\x00"  # type: ignore
+    bvalue = _utf_8_encode(value)[0]
+    return b"\x02" + name + _PACK_INT(len(bvalue) + 1) + bvalue + b"\x00"
 
 
 def _encode_binary(name: bytes, value: Binary, dummy0: Any, dummy1: Any) -> bytes:
