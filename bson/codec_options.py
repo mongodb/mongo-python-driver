@@ -286,19 +286,25 @@ class CodecOptions(_BaseCodecOptions):
 
     def __new__(
         cls: Type["CodecOptions"],
-        document_class: Optional[Type[Mapping[str, Any]]] = dict,  # type: ignore[assignment]
+        document_class: Optional[Type[Mapping[str, Any]]] = None,
         tz_aware: bool = False,
         uuid_representation: Optional[int] = UuidRepresentation.UNSPECIFIED,
         unicode_decode_error_handler: Optional[str] = "strict",
         tzinfo: Optional[datetime.tzinfo] = None,
         type_registry: Optional[TypeRegistry] = None,
     ) -> "CodecOptions":
-        assert document_class is not None
-        if not (issubclass(document_class, _MutableMapping) or _raw_document_class(document_class)):
+        doc_class = document_class or dict
+        is_mapping = False
+        try:
+            # fails for generic aliases
+            is_mapping = issubclass(doc_class, _MutableMapping)
+        except TypeError:
+            pass
+        if not (is_mapping or issubclass(doc_class, dict) or _raw_document_class(doc_class)):
             raise TypeError(
                 "document_class must be dict, bson.son.SON, "
                 "bson.raw_bson.RawBSONDocument, or a "
-                "sublass of collections.abc.MutableMapping"
+                "subclass of collections.abc.MutableMapping"
             )
         if not isinstance(tz_aware, bool):
             raise TypeError("tz_aware must be True or False")
@@ -322,7 +328,7 @@ class CodecOptions(_BaseCodecOptions):
         return tuple.__new__(
             cls,
             (
-                document_class,
+                doc_class,
                 tz_aware,
                 uuid_representation,
                 unicode_decode_error_handler,
