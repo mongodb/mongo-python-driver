@@ -347,5 +347,35 @@ class TestCommandDocumentType(unittest.TestCase):
         result["a"] = 1
 
 
+class TestCodecOptionsDocumentType(unittest.TestCase):
+    def test_default(self) -> None:
+        options: CodecOptions = CodecOptions()
+        obj = options.document_class()
+        obj["a"] = 1
+
+    def test_explicit_document_type(self) -> None:
+        options: CodecOptions[Dict[str, Any]] = CodecOptions()
+        obj = options.document_class()
+        obj["a"] = 1
+
+    def test_typeddict_document_type(self) -> None:
+        options: CodecOptions[Movie] = CodecOptions()
+        # Suppress: Cannot instantiate type "Type[Movie]".
+        obj = options.document_class(name="a", year=1)  # type: ignore[misc]
+        assert obj["year"] == 1
+        assert obj["name"] == "a"
+
+    def test_raw_bson_document_type(self) -> None:
+        options = CodecOptions(RawBSONDocument)
+        doc_bson = b"\x10\x00\x00\x00\x11a\x00\xff\xff\xff\xff\xff\xff\xff\xff\x00"
+        obj = options.document_class(doc_bson)
+        assert len(obj.raw) > 0
+
+    def test_son_document_type(self) -> None:
+        options = CodecOptions(SON[str, Any])
+        obj = options.document_class()
+        obj["a"] = 1
+
+
 if __name__ == "__main__":
     unittest.main()
