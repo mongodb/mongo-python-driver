@@ -23,6 +23,7 @@ from typing import (
     Dict,
     Iterable,
     Mapping,
+    MutableMapping,
     NamedTuple,
     Optional,
     Type,
@@ -392,7 +393,7 @@ class CodecOptions(_BaseCodecOptions):
         return CodecOptions(**opts)
 
 
-DEFAULT_CODEC_OPTIONS = CodecOptions()
+DEFAULT_CODEC_OPTIONS: CodecOptions[MutableMapping[str, Any]] = CodecOptions()
 
 
 def _parse_codec_options(options: Any) -> CodecOptions:
