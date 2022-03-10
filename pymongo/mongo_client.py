@@ -649,11 +649,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
                client.__my_database__
         """
-        document_class = document_class or dict  # type: ignore[assignment]
+        doc_class = document_class or dict
         self.__init_kwargs: Dict[str, Any] = {
             "host": host,
             "port": port,
-            "document_class": document_class,
+            "document_class": doc_class,
             "tz_aware": tz_aware,
             "connect": connect,
             "type_registry": type_registry,
@@ -677,7 +677,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         # Parse options passed as kwargs.
         keyword_opts = common._CaseInsensitiveDictionary(kwargs)
-        keyword_opts["document_class"] = document_class
+        keyword_opts["document_class"] = doc_class
 
         seeds = set()
         username = None

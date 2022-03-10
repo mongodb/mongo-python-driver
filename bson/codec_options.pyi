@@ -44,7 +44,9 @@ Codec = Union[TypeEncoder, TypeDecoder, TypeCodec]
 Fallback = Callable[[Any], Any]
 
 class TypeRegistry:
-    _decoder_map: Dict[str, Any]
+    _decoder_map: Dict[Any, Any]
+    _encoder_map: Dict[Any, Any]
+    _fallback_encoder: Optional[Fallback]
 
     def __init__(self, type_codecs: Optional[Iterable[Codec]] = ..., fallback_encoder: Optional[Fallback] = ...) -> None: ...
     def __eq__(self, other: Any) -> Any: ...

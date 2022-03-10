@@ -993,6 +993,18 @@ class TestCodecOptions(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "cannot encode native uuid"):
             bson.decode_all(bson.encode({"uuid": uuid.uuid4()}))
 
+    def test_decode_all_no_options(self):
+        # Test decode_all()'s default document_class is dict and tz_aware is
+        # False.
+        doc = {"sub_document": {}, "dt": datetime.datetime.utcnow()}
+
+        decoded = bson.decode_all(bson.encode(doc), None)[0]
+        self.assertIsInstance(decoded["sub_document"], dict)
+        self.assertIsNone(decoded["dt"].tzinfo)
+        # The default uuid_representation is UNSPECIFIED
+        with self.assertRaisesRegex(ValueError, "cannot encode native uuid"):
+            bson.decode_all(bson.encode({"uuid": uuid.uuid4()}), None)
+
     def test_unicode_decode_error_handler(self):
         enc = encode({"keystr": "foobar"})
 

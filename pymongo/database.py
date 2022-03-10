@@ -711,7 +711,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `commands <https://dochub.mongodb.org/core/commands>`_.
         """
-        codec_options = codec_options or DEFAULT_CODEC_OPTIONS  # type: ignore[assignment]
+        opts = codec_options or DEFAULT_CODEC_OPTIONS
         if comment is not None:
             kwargs["comment"] = comment
 
@@ -728,7 +728,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 check,
                 allowable_errors,
                 read_preference,
-                codec_options,
+                opts,
                 session=session,
                 **kwargs,
             )
