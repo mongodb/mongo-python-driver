@@ -202,7 +202,7 @@ class _BaseCodecOptions(NamedTuple):
     document_class: Type[Mapping[str, Any]]
     tz_aware: bool
     uuid_representation: int
-    unicode_decode_error_handler: Optional[str]
+    unicode_decode_error_handler: str
     tzinfo: Optional[datetime.tzinfo]
     type_registry: TypeRegistry
 
@@ -289,7 +289,7 @@ class CodecOptions(_BaseCodecOptions):
         document_class: Optional[Type[Mapping[str, Any]]] = None,
         tz_aware: bool = False,
         uuid_representation: Optional[int] = UuidRepresentation.UNSPECIFIED,
-        unicode_decode_error_handler: Optional[str] = "strict",
+        unicode_decode_error_handler: str = "strict",
         tzinfo: Optional[datetime.tzinfo] = None,
         type_registry: Optional[TypeRegistry] = None,
     ) -> "CodecOptions":
@@ -300,7 +300,7 @@ class CodecOptions(_BaseCodecOptions):
         try:
             is_mapping = issubclass(doc_class, _MutableMapping)
         except TypeError:
-            is_mapping = issubclass(doc_class.mro()[0], _MutableMapping)
+            is_mapping = issubclass(doc_class.__origin__, _MutableMapping)
         if not (is_mapping or _raw_document_class(doc_class)):
             raise TypeError(
                 "document_class must be dict, bson.son.SON, "
@@ -313,8 +313,8 @@ class CodecOptions(_BaseCodecOptions):
             raise ValueError(
                 "uuid_representation must be a value from bson.binary.UuidRepresentation"
             )
-        if not isinstance(unicode_decode_error_handler, (str, None)):  # type: ignore[arg-type]
-            raise ValueError("unicode_decode_error_handler must be a string or None")
+        if not isinstance(unicode_decode_error_handler, str):
+            raise ValueError("unicode_decode_error_handler must be a string")
         if tzinfo is not None:
             if not isinstance(tzinfo, datetime.tzinfo):
                 raise TypeError("tzinfo must be an instance of datetime.tzinfo")

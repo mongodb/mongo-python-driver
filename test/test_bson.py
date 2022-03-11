@@ -1001,9 +1001,10 @@ class TestCodecOptions(unittest.TestCase):
         decoded = bson.decode_all(bson.encode(doc), None)[0]
         self.assertIsInstance(decoded["sub_document"], dict)
         self.assertIsNone(decoded["dt"].tzinfo)
-        # The default uuid_representation is UNSPECIFIED
-        with self.assertRaisesRegex(ValueError, "cannot encode native uuid"):
-            bson.decode_all(bson.encode({"uuid": uuid.uuid4()}), None)
+
+        doc2 = {"id": Binary.from_uuid(uuid.uuid4())}
+        decoded = bson.decode_all(bson.encode(doc2), None)[0]
+        self.assertIsInstance(decoded["id"], Binary)
 
     def test_unicode_decode_error_handler(self):
         enc = encode({"keystr": "foobar"})

@@ -982,7 +982,7 @@ def decode(
 
 
 def decode_all(
-    data: _ReadableBuffer, codec_options: "Optional[CodecOptions[_DocumentType]]" = None
+    data: _ReadableBuffer, codec_options: Optional[CodecOptions[_DocumentType]] = None
 ) -> List[_DocumentType]:
     """Decode BSON data to multiple documents.
 
