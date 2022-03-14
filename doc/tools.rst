@@ -34,8 +34,7 @@ PyMODM
    libraries to target platforms like Django. At the same time, PyMODM is
    powerful enough to be used for developing applications on its own.  Complete
    documentation is available on `readthedocs
-   <https://pymodm.readthedocs.io/en/stable/>`_ in addition to a `Gitter channel
-   <https://gitter.im/mongodb/pymodm>`_ for discussing the project.
+   <https://pymodm.readthedocs.io/en/stable/>`_.
 
 Humongolus
    `Humongolus <https://github.com/entone/Humongolus>`_ is a lightweight ORM
@@ -72,7 +71,7 @@ MongoEngine
   documents and query collections using syntax inspired by the Django
   ORM. The code is available on `GitHub
   <http://github.com/mongoengine/mongoengine>`_; for more information, see
-  the `tutorial <http://docs.mongoengine.org/en/latest/tutorial.html>`_.
+  the `tutorial <https://docs.mongoengine.org/tutorial.html>`_.
 
 MotorEngine
   `MotorEngine <https://motorengine.readthedocs.io/>`_ is a port of
@@ -122,10 +121,10 @@ Framework Tools
 This section lists tools and adapters that have been designed to work with
 various Python frameworks and libraries.
 
-* `Djongo <https://nesdis.github.io/djongo/>`_ is a connector for using
+* `Djongo <https://www.djongomapper.com/>`_ is a connector for using
   Django with MongoDB as the database backend. Use the Django Admin GUI to add and
   modify documents in MongoDB.
-  The `Djongo Source Code <https://github.com/nesdis/djongo>`_ is hosted on GitHub
+  The `Djongo Source Code <https://github.com/doableware/djongo>`_ is hosted on GitHub
   and the `Djongo package <https://pypi.python.org/pypi/djongo>`_ is on pypi.
 * `Django MongoDB Engine
   <https://django-mongodb-engine.readthedocs.io/en/latest/>`_ is a MongoDB
@@ -138,22 +137,19 @@ various Python frameworks and libraries.
   <https://github.com/MongoEngine/django-mongoengine>`_ is a MongoDB backend for
   Django, an `example:
   <https://github.com/MongoEngine/django-mongoengine/tree/master/example/tumblelog>`_.
-  For more information `<http://docs.mongoengine.org/en/latest/django.html>`_
+  For more information see `<https://django-mongoengine.readthedocs.io/en/latest/>`_
 * `mongodb_beaker <http://pypi.python.org/pypi/mongodb_beaker>`_ is a
-  project to enable using MongoDB as a backend for `beaker's
-  <http://beaker.groovie.org/>`_ caching / session system.
+  project to enable using MongoDB as a backend for `beakers <https://beaker.readthedocs.io/en/latest/>`_ caching / session system.
   `The source is on GitHub <http://github.com/bwmcadams/mongodb_beaker>`_.
 * `Log4Mongo <https://github.com/log4mongo/log4mongo-python>`_ is a flexible
   Python logging handler that can store logs in MongoDB using normal and capped
   collections.
 * `MongoLog <http://github.com/puentesarrin/mongodb-log/>`_ is a Python logging
   handler that stores logs in MongoDB using a capped collection.
-* `c5t <http://bitbucket.org/percious/c5t/>`_ is a content-management system
-  using TurboGears and MongoDB.
 * `rod.recipe.mongodb <http://pypi.python.org/pypi/rod.recipe.mongodb/>`_ is a
   ZC Buildout recipe for downloading and installing MongoDB.
 * `repoze-what-plugins-mongodb
-  <http://code.google.com/p/repoze-what-plugins-mongodb/>`_ is a project
+  <https://code.google.com/archive/p/repoze-what-plugins-mongodb/>`_ is a project
   working to support a plugin for using MongoDB as a backend for
   :mod:`repoze.what`.
 * `mongobox <http://github.com/theorm/mongobox>`_ is a tool to run a sandboxed

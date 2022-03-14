@@ -80,6 +80,11 @@ pygments_style = "sphinx"
 # A list of ignored prefixes for module index sorting.
 # modindex_common_prefix = []
 
+# Options for link checking
+linkcheck_ignore = [
+    "https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-monitoring.rst#requesting-an-immediate-check"
+]
+
 # -- Options for extensions ----------------------------------------------------
 autoclass_content = "init"
 

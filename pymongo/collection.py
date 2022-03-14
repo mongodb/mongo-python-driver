@@ -1784,8 +1784,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. _$expr: https://docs.mongodb.com/manual/reference/operator/query/expr/
         .. _$geoWithin: https://docs.mongodb.com/manual/reference/operator/query/geoWithin/
-        .. _$center: https://docs.mongodb.com/manual/reference/operator/query/center/#op._S_center
-        .. _$centerSphere: https://docs.mongodb.com/manual/reference/operator/query/centerSphere/#op._S_centerSphere
+        .. _$center: https://docs.mongodb.com/manual/reference/operator/query/center/
+        .. _$centerSphere: https://docs.mongodb.com/manual/reference/operator/query/centerSphere/
         """
         pipeline = [{"$match": filter}]
         if "skip" in kwargs:
@@ -2011,7 +2011,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `indexes <https://dochub.mongodb.org/core/indexes>`_.
 
-        .. _wildcard index: https://docs.mongodb.com/master/core/index-wildcard/#wildcard-index-core
+        .. _wildcard index: https://docs.mongodb.com/master/core/index-wildcard/
         """
         cmd_options = {}
         if "maxTimeMS" in kwargs:
@@ -2557,7 +2557,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.6
 
-        .. seealso:: The MongoDB documentation on `changeStreams <https://dochub.mongodb.org/core/changeStreams>`_.
+        .. seealso:: The MongoDB documentation on `changeStreams <https://docs.mongodb.com/manual/changeStreams/>`_.
 
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.rst

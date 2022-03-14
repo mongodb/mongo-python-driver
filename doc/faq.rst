@@ -314,7 +314,7 @@ when it is serialized to BSON and used as a query. Thus you can create a
 subdocument that exactly matches the subdocument in the collection.
 
 .. seealso:: `MongoDB Manual entry on subdocument matching
-   <http://docs.mongodb.org/manual/tutorial/query-documents/#embedded-documents>`_.
+   <https://docs.mongodb.com/manual/tutorial/query-embedded-documents/>`_.
 
 What does *CursorNotFound* cursor id not valid at server mean?
 --------------------------------------------------------------
