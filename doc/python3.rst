@@ -6,7 +6,7 @@ Python 3 FAQ
 What Python 3 versions are supported?
 -------------------------------------
 
-PyMongo supports CPython 3.6+ and PyPy3.6+.
+PyMongo supports CPython 3.6.2+ and PyPy3.6+.
 
 Are there any PyMongo behavior changes with Python 3?
 -----------------------------------------------------
@@ -20,7 +20,7 @@ with subtype 0.
 For example, let's insert a :class:`bytes` instance using Python 3 then
 read it back. Notice the byte string is decoded back to :class:`bytes`::
 
-  Python 3.6.1 (v3.6.1:69c0db5050, Mar 21 2017, 01:21:04)
+  Python 3.6.2 (v3.6.1:69c0db5050, Mar 21 2017, 01:21:04)
   [GCC 4.9.3] on linux
   Type "help", "copyright", "credits" or "license" for more information.
   >>> import pymongo
@@ -49,7 +49,7 @@ decoded to :class:`~bson.binary.Binary` with subtype 0.
 For example, let's decode a JSON binary subtype 0 using Python 3. Notice the
 byte string is decoded to :class:`bytes`::
 
-  Python 3.6.1 (v3.6.1:69c0db5050, Mar 21 2017, 01:21:04)
+  Python 3.6.2 (v3.6.1:69c0db5050, Mar 21 2017, 01:21:04)
   [GCC 4.2.1 (Apple Inc. build 5666) (dot 3)] on darwin
   Type "help", "copyright", "credits" or "license" for more information.
   >>> from bson.json_util import loads
@@ -86,7 +86,7 @@ Python 3 you must pass ``encoding='latin-1'`` to pickle.loads::
   >>> pickle.dumps(oid)
   'ccopy_reg\n_reconstructor\np0\n(cbson.objectid\...'
 
-  Python 3.6.1 (v3.6.1:69c0db5050, Mar 21 2017, 01:21:04)
+  Python 3.6.2 (v3.6.1:69c0db5050, Mar 21 2017, 01:21:04)
   [GCC 4.9.3] on linux
   Type "help", "copyright", "credits" or "license" for more information.
   >>> import pickle

@@ -1726,7 +1726,7 @@ tasks:
           vars:
             VERSION: "latest"
             TOPOLOGY: "server"
-            PYTHON_BINARY: "/opt/mongodbtoolchain/v2/bin/python3"
+            PYTHON_BINARY: "/opt/mongodbtoolchain/v3/bin/python3"
         - func: "run tests"
 # }}}
     - name: "coverage-report"

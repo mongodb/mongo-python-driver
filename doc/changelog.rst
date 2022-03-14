@@ -42,7 +42,7 @@ before upgrading from PyMongo 3.x.
 Breaking Changes in 4.0
 .......................
 
-- Removed support for Python 2.7, 3.4, and 3.5. Python 3.6+ is now required.
+- Removed support for Python 2.7, 3.4, and 3.5. Python 3.6.2+ is now required.
 - The default uuid_representation for :class:`~bson.codec_options.CodecOptions`,
   :class:`~bson.json_util.JSONOptions`, and
   :class:`~pymongo.mongo_client.MongoClient` has been changed from
