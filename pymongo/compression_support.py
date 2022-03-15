@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import warnings
-from typing import Callable
 
 try:
     import snappy
@@ -105,12 +104,6 @@ class CompressionSettings(object):
                 return ZstdContext()
 
 
-def _zlib_no_compress(data, level=None):
-    """Compress data with zlib level 0."""
-    cobj = zlib.compressobj(0)
-    return b"".join([cobj.compress(data), cobj.flush()])
-
-
 class SnappyContext(object):
     compressor_id = 1
 
@@ -123,16 +116,10 @@ class ZlibContext(object):
     compressor_id = 2
 
     def __init__(self, level):
-        self.compress: Callable[[bytes], bytes]
+        self.level = level
 
-        # Jython zlib.compress doesn't support -1
-        if level == -1:
-            self.compress = zlib.compress
-        # Jython zlib.compress also doesn't support 0
-        elif level == 0:
-            self.compress = _zlib_no_compress
-        else:
-            self.compresss = lambda data, _: zlib.compress(data, level)
+    def compress(self, data: bytes) -> bytes:
+        return zlib.compress(data, self.level)
 
 
 class ZstdContext(object):
