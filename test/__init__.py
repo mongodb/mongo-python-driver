@@ -361,7 +361,7 @@ class ClientContext(object):
                     username=db_user,
                     password=db_pwd,
                     replicaSet=self.replica_set_name,
-                    **self.default_client_options
+                    **self.default_client_options,
                 )
 
                 # May not have this if OperationFailure was raised earlier.
@@ -390,7 +390,7 @@ class ClientContext(object):
                         username=db_user,
                         password=db_pwd,
                         replicaSet=self.replica_set_name,
-                        **self.default_client_options
+                        **self.default_client_options,
                     )
                 else:
                     self.client = pymongo.MongoClient(
@@ -493,7 +493,7 @@ class ClientContext(object):
             username=db_user,
             password=db_pwd,
             serverSelectionTimeoutMS=100,
-            **self.default_client_options
+            **self.default_client_options,
         )
 
         try:
@@ -1054,6 +1054,7 @@ def print_running_clients():
     # XXX: Can be removed after PYTHON-1634 or PYTHON-1896.
     c = client_context.client
     if c:
+        print(f"client_context.client._topology._topology_id: {c._topology._topology_id}")
         processed.add(c._topology._topology_id)
     # Call collect to manually cleanup any would-be gc'd clients to avoid
     # false positives.
