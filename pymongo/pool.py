@@ -12,6 +12,7 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 
+import asyncio
 import collections
 import contextlib
 import copy
@@ -1377,6 +1378,10 @@ class Pool:
         sock_info = self._get_socket()
         if self.enabled_for_cmap:
             listeners.publish_connection_checked_out(self.address, sock_info.id)
+
+        loop = asyncio.new_event_loop()
+        loop.run_until_complete(asyncio.sleep(0.001))
+
         try:
             yield sock_info
         except BaseException:
