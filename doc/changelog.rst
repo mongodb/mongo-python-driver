@@ -26,6 +26,10 @@ PyMongo 4.1 brings a number of improvements including:
 - :meth:`gridfs.GridOut.seek` now returns the new position in the file, to
   conform to the behavior of :meth:`io.IOBase.seek`.
 
+Breaking Changes in 4.1
+.......................
+- Removed support for Python 3.6.0 and 3.6.1, Python 3.6.2+ is now required.
+
 
 Changes in Version 4.0
 ----------------------
