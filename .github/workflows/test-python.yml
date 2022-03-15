@@ -81,5 +81,5 @@ jobs:
           python -m pip install sphinx
       - name: Check links
         run: |
-          cd docs
+          cd doc
           make linkcheck
