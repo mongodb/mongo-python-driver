@@ -1072,7 +1072,7 @@ Changes and Deprecations:
 - Deprecated the MongoClient option `socketKeepAlive`. It now defaults to true
   and disabling it is not recommended, see `does TCP keepalive time affect
   MongoDB Deployments?
-  <https://docs.mongodb.com/manual/faq/diagnostics/#does-tcp-keepalive-time-affect-mongodb-deployments>`_
+  <https://docs.mongodb.com/manual/faq/diagnostics/#does-tcp-keepalive-time-affect-mongodb-deployments->`_
 - Deprecated :meth:`~pymongo.collection.Collection.initialize_ordered_bulk_op`,
   :meth:`~pymongo.collection.Collection.initialize_unordered_bulk_op`, and
   :class:`~pymongo.bulk.BulkOperationBuilder`. Use
