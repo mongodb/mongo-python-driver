@@ -20,7 +20,6 @@ sys.path[0:0] = [""]
 
 from test import client_context, unittest
 from test.test_client import IntegrationTest
-from test.utils import rs_or_single_client
 
 from bson import decode, encode
 from bson.binary import JAVA_LEGACY, Binary, UuidRepresentation
@@ -41,12 +40,6 @@ class TestRawBSONDocument(IntegrationTest):
         b"\x00\x00\x00\x02street\x00\r\x00\x00\x00Baker Street\x00\x00\x00\x00"
     )
     document = RawBSONDocument(bson_string)
-
-    @classmethod
-    def setUpClass(cls):
-        super(TestRawBSONDocument, cls).setUpClass()
-        client_context.client = rs_or_single_client()
-        cls.client = client_context.client
 
     def tearDown(self):
         if client_context.connected:
