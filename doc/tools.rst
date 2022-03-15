@@ -148,10 +148,6 @@ various Python frameworks and libraries.
   handler that stores logs in MongoDB using a capped collection.
 * `rod.recipe.mongodb <http://pypi.python.org/pypi/rod.recipe.mongodb/>`_ is a
   ZC Buildout recipe for downloading and installing MongoDB.
-* `repoze-what-plugins-mongodb
-  <https://code.google.com/archive/p/repoze-what-plugins-mongodb/>`_ is a project
-  working to support a plugin for using MongoDB as a backend for
-  :mod:`repoze.what`.
 * `mongobox <http://github.com/theorm/mongobox>`_ is a tool to run a sandboxed
   MongoDB instance from within a python app.
 * `Flask-MongoAlchemy <http://github.com/cobrateam/flask-mongoalchemy/>`_ Add
