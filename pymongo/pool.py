@@ -1360,8 +1360,8 @@ class Pool:
 
     async def _run_jobs_async(self):
         while 1:
-            future = self._sync_queue.get()
-            await asyncio.sleep(0.001)
+            future, task = self._sync_queue.get()
+            await task
             future.set_result(None)
 
     def _run_jobs(self):
@@ -1401,7 +1401,7 @@ class Pool:
             thread.start()
 
         future = futures.Future()
-        self._sync_queue.put(future)
+        self._sync_queue.put((future, asyncio.sleep(0.001)))
         futures.wait([future])
 
         try:
