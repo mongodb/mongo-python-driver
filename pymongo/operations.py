@@ -456,7 +456,7 @@ class IndexModel(object):
            Added the ``partialFilterExpression`` option to support partial
            indexes.
 
-        .. _wildcard index: https://docs.mongodb.com/master/core/index-wildcard/#wildcard-index-core
+        .. _wildcard index: https://docs.mongodb.com/master/core/index-wildcard/
         """
         keys = _index_list(keys)
         if "name" not in kwargs:

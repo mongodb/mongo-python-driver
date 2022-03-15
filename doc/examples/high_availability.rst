@@ -304,7 +304,7 @@ milliseconds of the closest member's ping time.
   replica set *through* a mongos. The equivalent is the localThreshold_ command
   line option.
 
-.. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption--localThreshold
+.. _localThreshold: https://docs.mongodb.com/manual/reference/program/mongos/#std-option-mongos.--localThreshold
 
 .. _health-monitoring:
 
