@@ -66,7 +66,7 @@ When using CPython < 2.7.9 or PyPy < 2.5.1:
 
   You can read more about TLS versions and their security implications here:
 
-  `<https://www.owasp.org/index.php/Transport_Layer_Protection_Cheat_Sheet#Rule_-_Only_Support_Strong_Protocols>`_
+  `<https://cheatsheetseries.owasp.org/cheatsheets/Transport_Layer_Protection_Cheat_Sheet.html#only-support-strong-protocols>`_
 
 .. _python.org: https://www.python.org/downloads/
 .. _homebrew: https://brew.sh/

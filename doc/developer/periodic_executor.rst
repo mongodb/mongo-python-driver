@@ -106,7 +106,7 @@ Thus the current design of periodic executors is surprisingly simple: they
 do a simple `time.sleep` for a half-second, check if it is time to wake or
 terminate, and sleep again.
 
-.. _Server Discovery And Monitoring Spec: https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-discovery-and-monitoring.rst#requesting-an-immediate-check
+.. _Server Discovery And Monitoring Spec: https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-monitoring.rst#requesting-an-immediate-check
 
 .. _PYTHON-863: https://jira.mongodb.org/browse/PYTHON-863
 

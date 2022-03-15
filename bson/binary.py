@@ -197,7 +197,7 @@ class Binary(bytes):
       - `data`: the binary data to represent. Can be any bytes-like type
         that implements the buffer protocol.
       - `subtype` (optional): the `binary subtype
-        <http://bsonspec.org/#/specification>`_
+        <https://bsonspec.org/spec.html>`_
         to use
 
     .. versionchanged:: 3.9
