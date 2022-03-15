@@ -286,13 +286,8 @@ class ClientContext(object):
         return self._hello
 
     def _connect(self, host, port, **kwargs):
-        # Jython takes a long time to connect.
-        if sys.platform.startswith("java"):
-            timeout_ms = 10000
-        else:
-            timeout_ms = 5000
         kwargs.update(self.default_client_options)
-        client = pymongo.MongoClient(host, port, serverSelectionTimeoutMS=timeout_ms, **kwargs)
+        client = pymongo.MongoClient(host, port, serverSelectionTimeoutMS=5000, **kwargs)
         try:
             try:
                 client.admin.command(HelloCompat.LEGACY_CMD)  # Can we connect?
@@ -1037,21 +1032,26 @@ def _get_executors(topology):
     return [e for e in executors if e is not None]
 
 
-def all_executors_stopped(topology):
+def print_running_topology(topology):
     running = [e for e in _get_executors(topology) if not e._stopped]
     if running:
         print(
-            "  Topology %s has THREADS RUNNING: %s, created at: %s"
-            % (topology, running, topology._settings._stack)
+            "WARNING: found Topology with running threads:\n"
+            "  Threads: %s\n"
+            "  Topology: %s\n"
+            "  Creation traceback:\n%s" % (running, topology, topology._settings._stack)
         )
-        return False
-    return True
 
 
-def print_unclosed_clients():
+def print_running_clients():
     from pymongo.topology import Topology
 
     processed = set()
+    # Avoid false positives on the main test client.
+    # XXX: Can be removed after PYTHON-1634 or PYTHON-1896.
+    c = client_context.client
+    if c:
+        processed.add(c._topology._topology_id)
     # Call collect to manually cleanup any would-be gc'd clients to avoid
     # false positives.
     gc.collect()
@@ -1061,7 +1061,7 @@ def print_unclosed_clients():
                 # Avoid printing the same Topology multiple times.
                 if obj._topology_id in processed:
                     continue
-                all_executors_stopped(obj)
+                print_running_topology(obj)
                 processed.add(obj._topology_id)
         except ReferenceError:
             pass
@@ -1086,9 +1086,7 @@ def teardown():
             c.drop_database("pymongo_test_bernie")
         c.close()
 
-    # Jython does not support gc.get_objects.
-    if not sys.platform.startswith("java"):
-        print_unclosed_clients()
+    print_running_clients()
 
 
 class PymongoTestRunner(unittest.TextTestRunner):
