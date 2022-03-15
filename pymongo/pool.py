@@ -25,6 +25,7 @@ import sys
 import threading
 import time
 import weakref
+from queue import Queue
 from typing import Any
 
 from bson import DEFAULT_CODEC_OPTIONS
@@ -1175,6 +1176,9 @@ class Pool:
         self.ncursors = 0
         self.ntxns = 0
 
+        self._sync_thread = None
+        self._sync_queue = Queue()
+
     def ready(self):
         # Take the lock to avoid the race condition described in PYTHON-2699.
         with self.lock:
@@ -1353,6 +1357,15 @@ class Pool:
 
         return sock_info
 
+    async def _run_jobs_async(self):
+        while 1:
+            task = self._sync_queue.get()
+            await task
+
+    def _run_jobs(self):
+        self._io_loop = asyncio.new_event_loop()
+        self._io_loop.run_until_complete(self._run_jobs_async())
+
     @contextlib.contextmanager
     def get_socket(self, handler=None):
         """Get a socket from the pool. Use with a "with" statement.
@@ -1379,8 +1392,17 @@ class Pool:
         if self.enabled_for_cmap:
             listeners.publish_connection_checked_out(self.address, sock_info.id)
 
-        loop = asyncio.new_event_loop()
-        loop.run_until_complete(asyncio.sleep(0.001))
+        if not self._sync_thread:
+            thread = threading.Thread(target=self._run_jobs)
+            thread.daemon = True
+            self._sync_thread = weakref.proxy(thread)
+            thread.start()
+
+        task = asyncio.create_task(asyncio.sleep(0.001))
+        self._sync_queue.put(task)
+
+        while not task.done():
+            time.sleep(0.001)
 
         try:
             yield sock_info
