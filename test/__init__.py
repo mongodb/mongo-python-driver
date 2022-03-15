@@ -316,6 +316,7 @@ class ClientContext(object):
             if "dataLake" in build_info:
                 self.is_data_lake = True
                 self.auth_enabled = True
+                self.client.close()
                 self.client = self._connect(host, port, username=db_user, password=db_pwd)
                 self.connected = True
                 return
@@ -353,6 +354,7 @@ class ClientContext(object):
                     if not self._check_user_provided():
                         _create_user(self.client.admin, db_user, db_pwd)
 
+                self.client.close()
                 self.client = self._connect(
                     host,
                     port,
@@ -379,6 +381,7 @@ class ClientContext(object):
             if "setName" in hello:
                 self.replica_set_name = str(hello["setName"])
                 self.is_rs = True
+                self.client.close()
                 if self.auth_enabled:
                     # It doesn't matter which member we use as the seed here.
                     self.client = pymongo.MongoClient(
