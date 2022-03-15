@@ -25,6 +25,7 @@ import sys
 import threading
 import time
 import weakref
+from concurrent import futures
 from queue import Queue
 from typing import Any
 
@@ -1359,8 +1360,9 @@ class Pool:
 
     async def _run_jobs_async(self):
         while 1:
-            task = self._sync_queue.get()
-            await task
+            future = self._sync_queue.get()
+            await asyncio.sleep(0.001)
+            future.set_result(None)
 
     def _run_jobs(self):
         self._io_loop = asyncio.new_event_loop()
@@ -1398,11 +1400,9 @@ class Pool:
             self._sync_thread = weakref.proxy(thread)
             thread.start()
 
-        task = asyncio.create_task(asyncio.sleep(0.001))
-        self._sync_queue.put(task)
-
-        while not task.done():
-            time.sleep(0.001)
+        future = futures.Future()
+        self._sync_queue.put(future)
+        futures.wait([future])
 
         try:
             yield sock_info
