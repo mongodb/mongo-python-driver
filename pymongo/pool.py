@@ -27,9 +27,19 @@ import time
 import weakref
 from concurrent import futures
 from queue import Queue
-from typing import Any, NoReturn, Optional
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Generator,
+    List,
+    Mapping,
+    NoReturn,
+    Optional,
+    Union,
+)
 
-from bson import DEFAULT_CODEC_OPTIONS
+from bson import DEFAULT_CODEC_OPTIONS, CodecOptions, ObjectId
 from bson.son import SON
 from pymongo import __version__, auth, helpers
 from pymongo.client_session import _validate_session_write_concern
@@ -67,6 +77,16 @@ from pymongo.socket_checker import SocketChecker
 from pymongo.ssl_support import HAS_SNI as _HAVE_SNI
 from pymongo.ssl_support import IPADDR_SAFE as _IPADDR_SAFE
 from pymongo.ssl_support import SSLError as _SSLError
+from pymongo.typings import _Address, _DocumentType
+
+if TYPE_CHECKING:
+    from pymongo.client_session import ClientSession
+    from pymongo.collation import Collation
+    from pymongo.message import _OpMsg, _OpReply
+    from pymongo.mongo_client import MongoClient, _MongoClientErrorHandler
+    from pymongo.read_concern import ReadConcern
+    from pymongo.read_preferences import _ServerMode
+    from pymongo.write_concern import WriteConcern
 
 
 # For SNI support. According to RFC6066, section 3, IPv4 and IPv6 literals are
@@ -529,22 +549,22 @@ class SocketInfo(object):
       - `id`: the id of this socket in it's pool
     """
 
-    def __init__(self, sock, pool, address, id):
+    def __init__(self, sock: socket.socket, pool: "Pool", address: _Address, id: Any) -> None:
         self.pool_ref = weakref.ref(pool)
         self.sock = sock
         self.address = address
         self.id = id
-        self.authed = set()
+        self.authed: set = set()
         self.closed = False
         self.last_checkin_time = time.monotonic()
         self.performed_handshake = False
-        self.is_writable = False
+        self.is_writable: Optional[bool] = False
         self.max_wire_version = MAX_WIRE_VERSION
         self.max_bson_size = MAX_BSON_SIZE
         self.max_message_size = MAX_MESSAGE_SIZE
         self.max_write_batch_size = MAX_WRITE_BATCH_SIZE
         self.supports_sessions = False
-        self.hello_ok = None
+        self.hello_ok: Optional[bool] = None
         self.is_mongos = False
         self.op_msg_enabled = False
         self.listeners = pool.opts._event_listeners
@@ -553,7 +573,7 @@ class SocketInfo(object):
         self.compression_context = None
         self.socket_checker = SocketChecker()
         # Support for mechanism negotiation on the initial handshake.
-        self.negotiated_mechs = None
+        self.negotiated_mechs: Optional[List[Any]] = None
         self.auth_ctx = None
 
         # The pool's generation changes with each reset() so we can close
@@ -568,29 +588,29 @@ class SocketInfo(object):
         self.opts = pool.opts
         self.more_to_come = False
         # For load balancer support.
-        self.service_id = None
+        self.service_id: Optional[ObjectId] = None
         # When executing a transaction in load balancing mode, this flag is
         # set to true to indicate that the session now owns the connection.
         self.pinned_txn = False
         self.pinned_cursor = False
         self.active = False
 
-    def pin_txn(self):
+    def pin_txn(self) -> None:
         self.pinned_txn = True
         assert not self.pinned_cursor
 
-    def pin_cursor(self):
+    def pin_cursor(self) -> None:
         self.pinned_cursor = True
         assert not self.pinned_txn
 
-    def unpin(self):
+    def unpin(self) -> None:
         pool = self.pool_ref()
         if pool:
             pool.return_socket(self)
         else:
             self.close_socket(ConnectionClosedReason.STALE)
 
-    def hello_cmd(self):
+    def hello_cmd(self) -> SON:
         # Handshake spec requires us to use OP_MSG+hello command for the
         # initial handshake in load balanced or stable API mode.
         if self.opts.server_api or self.hello_ok or self.opts.load_balanced:
@@ -599,7 +619,7 @@ class SocketInfo(object):
         else:
             return SON([(HelloCompat.LEGACY_CMD, 1), ("helloOk", True)])
 
-    def hello(self):
+    def hello(self) -> Hello:
         return self._hello(None, None, None)
 
     def _hello(self, cluster_time, topology_version, heartbeat_frequency):
@@ -681,25 +701,25 @@ class SocketInfo(object):
         helpers._check_command_response(response_doc, self.max_wire_version)
         return response_doc
 
-    def command(
+    def command(  # type: ignore[return]
         self,
-        dbname,
-        spec,
-        read_preference=ReadPreference.PRIMARY,
-        codec_options=DEFAULT_CODEC_OPTIONS,
-        check=True,
-        allowable_errors=None,
-        read_concern=None,
-        write_concern=None,
-        parse_write_concern_error=False,
-        collation=None,
-        session=None,
-        client=None,
-        retryable_write=False,
-        publish_events=True,
-        user_fields=None,
-        exhaust_allowed=False,
-    ):
+        dbname: str,
+        spec: Dict[str, Any],
+        read_preference: "_ServerMode" = ReadPreference.PRIMARY,
+        codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS,
+        check: bool = True,
+        allowable_errors: Any = None,
+        read_concern: Optional["ReadConcern"] = None,
+        write_concern: Optional["WriteConcern"] = None,
+        parse_write_concern_error: bool = False,
+        collation: Optional["Collation"] = None,
+        session: Optional["ClientSession"] = None,
+        client: Optional["MongoClient"] = None,
+        retryable_write: bool = False,
+        publish_events: bool = True,
+        user_fields: Any = None,
+        exhaust_allowed: bool = False,
+    ) -> Mapping[str, Any]:
         """Execute a command or raise an error.
 
         :Parameters:
@@ -739,7 +759,7 @@ class SocketInfo(object):
             session._apply_to(spec, retryable_write, read_preference, self)
         self.send_cluster_time(spec, session, client)
         listeners = self.listeners if publish_events else None
-        unacknowledged = write_concern and not write_concern.acknowledged
+        unacknowledged: Optional[bool] = write_concern and not write_concern.acknowledged  # type: ignore[assignment]
         if self.op_msg_enabled:
             self._raise_if_not_writable(unacknowledged)
         try:
@@ -772,7 +792,7 @@ class SocketInfo(object):
         except BaseException as error:
             self._raise_connection_failure(error)
 
-    def send_message(self, message, max_doc_size):
+    def send_message(self, message: bytes, max_doc_size: int) -> None:
         """Send a raw BSON message or raise ConnectionFailure.
 
         If a network exception is raised, the socket is closed.
@@ -788,7 +808,7 @@ class SocketInfo(object):
         except BaseException as error:
             self._raise_connection_failure(error)
 
-    def receive_message(self, request_id):
+    def receive_message(self, request_id: Optional[int]) -> "Union[_OpMsg, _OpReply]":  # type: ignore[return]
         """Receive a raw BSON message or raise ConnectionFailure.
 
         If any exception is raised, the socket is closed.
@@ -806,7 +826,7 @@ class SocketInfo(object):
             # Write won't succeed, bail as if we'd received a not primary error.
             raise NotPrimaryError("not primary", {"ok": 0, "errmsg": "not primary", "code": 10107})
 
-    def unack_write(self, msg, max_doc_size):
+    def unack_write(self, msg: bytes, max_doc_size: int) -> None:
         """Send unack OP_MSG.
 
         Can raise ConnectionFailure or InvalidDocument.
@@ -818,7 +838,9 @@ class SocketInfo(object):
         self._raise_if_not_writable(True)
         self.send_message(msg, max_doc_size)
 
-    def write_command(self, request_id, msg, codec_options):
+    def write_command(
+        self, request_id: int, msg: bytes, codec_options: "CodecOptions[_DocumentType]"
+    ) -> _DocumentType:
         """Send "insert" etc. command, returning response as a dict.
 
         Can raise ConnectionFailure or OperationFailure.
@@ -835,7 +857,7 @@ class SocketInfo(object):
         helpers._check_command_response(result, self.max_wire_version)
         return result
 
-    def authenticate(self):
+    def authenticate(self) -> None:
         """Authenticate to the server if needed.
 
         Can raise ConnectionFailure or OperationFailure.
@@ -850,7 +872,9 @@ class SocketInfo(object):
             if self.enabled_for_cmap:
                 self.listeners.publish_connection_ready(self.address, self.id)
 
-    def validate_session(self, client, session):
+    def validate_session(
+        self, client: Optional["MongoClient"], session: Optional["ClientSession"]
+    ) -> None:
         """Validate this session before use with client.
 
         Raises error if the client is not the one that created the session.
@@ -859,7 +883,7 @@ class SocketInfo(object):
             if session._client is not client:
                 raise InvalidOperation("Can only use session with the MongoClient that started it")
 
-    def close_socket(self, reason):
+    def close_socket(self, reason: Any) -> None:
         """Close this connection with a reason."""
         if self.closed:
             return
@@ -881,27 +905,32 @@ class SocketInfo(object):
         except Exception:
             pass
 
-    def socket_closed(self):
+    def socket_closed(self) -> bool:
         """Return True if we know socket has been closed, False otherwise."""
         return self.socket_checker.socket_closed(self.sock)
 
-    def send_cluster_time(self, command, session, client):
+    def send_cluster_time(
+        self,
+        command: Mapping[str, Any],
+        session: Optional["ClientSession"],
+        client: Optional["MongoClient"],
+    ) -> None:
         """Add $clusterTime."""
         if client:
             client._send_cluster_time(command, session)
 
-    def add_server_api(self, command):
+    def add_server_api(self, command: Mapping[str, Any]) -> None:
         """Add server_api parameters."""
         if self.opts.server_api:
             _add_to_command(command, self.opts.server_api)
 
-    def update_last_checkin_time(self):
+    def update_last_checkin_time(self) -> None:
         self.last_checkin_time = time.monotonic()
 
-    def update_is_writable(self, is_writable):
+    def update_is_writable(self, is_writable: Optional[bool]) -> None:
         self.is_writable = is_writable
 
-    def idle_time_seconds(self):
+    def idle_time_seconds(self) -> float:
         """Seconds since this socket was last checked into its pool."""
         return time.monotonic() - self.last_checkin_time
 
@@ -1109,10 +1138,8 @@ class PoolState(object):
     CLOSED = 3
 
 
-# Do *not* explicitly inherit from object or Jython won't call __del__
-# http://bugs.jython.org/issue1057
 class Pool:
-    def __init__(self, address, options, handshake=True):
+    def __init__(self, address: _Address, options: PoolOptions, handshake: bool = True) -> None:
         """
         :Parameters:
           - `address`: a (hostname, port) tuple
@@ -1135,7 +1162,7 @@ class Pool:
         # Monotonically increasing connection ID required for CMAP Events.
         self.next_connection_id = 1
         # Track whether the sockets in this pool are writeable or not.
-        self.is_writable = None
+        self.is_writable: Optional[bool] = None
 
         # Keep track of resets, so we notice sockets created before the most
         # recent reset and close them.
@@ -1175,14 +1202,14 @@ class Pool:
         # Retain references to pinned connections to prevent the CPython GC
         # from thinking that a cursor's pinned connection can be GC'd when the
         # cursor is GC'd (see PYTHON-2751).
-        self.__pinned_sockets = set()
+        self.__pinned_sockets: set = set()
         self.ncursors = 0
         self.ntxns = 0
 
         self._sync_thread = None
         self._sync_queue: Queue = Queue()
 
-    def ready(self):
+    def ready(self) -> None:
         # Take the lock to avoid the race condition described in PYTHON-2699.
         with self.lock:
             if self.state != PoolState.READY:
@@ -1191,7 +1218,7 @@ class Pool:
                     self.opts._event_listeners.publish_pool_ready(self.address)
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         return self.state == PoolState.CLOSED
 
     def _reset(self, close, pause=True, service_id=None):
@@ -1241,7 +1268,7 @@ class Pool:
             for sock_info in sockets:
                 sock_info.close_socket(ConnectionClosedReason.STALE)
 
-    def update_is_writable(self, is_writable):
+    def update_is_writable(self, is_writable: Optional[bool]) -> None:
         """Updates the is_writable attribute on all sockets currently in the
         Pool.
         """
@@ -1250,19 +1277,19 @@ class Pool:
             for _socket in self.sockets:
                 _socket.update_is_writable(self.is_writable)
 
-    def reset(self, service_id=None):
+    def reset(self, service_id: Optional[ObjectId] = None) -> None:
         self._reset(close=False, service_id=service_id)
 
-    def reset_without_pause(self):
+    def reset_without_pause(self) -> None:
         self._reset(close=False, pause=False)
 
-    def close(self):
+    def close(self) -> None:
         self._reset(close=True)
 
-    def stale_generation(self, gen, service_id):
+    def stale_generation(self, gen: int, service_id: Optional[ObjectId]) -> bool:
         return self.gen.stale(gen, service_id)
 
-    def remove_stale_sockets(self, reference_generation):
+    def remove_stale_sockets(self, reference_generation: int) -> None:
         """Removes stale sockets then adds new ones if pool is too small and
         has not been reset. The `reference_generation` argument specifies the
         `generation` at the point in time this operation was requested on the
@@ -1318,7 +1345,7 @@ class Pool:
                     self.requests -= 1
                     self.size_cond.notify()
 
-    def connect(self):
+    def connect(self) -> SocketInfo:
         """Connect to Mongo and return a new SocketInfo.
 
         Can raise ConnectionFailure.
@@ -1371,7 +1398,9 @@ class Pool:
         self._io_loop.run_until_complete(self._run_jobs_async())
 
     @contextlib.contextmanager
-    def get_socket(self, handler=None):
+    def get_socket(
+        self, handler: Optional["_MongoClientErrorHandler"] = None
+    ) -> Generator[SocketInfo, None, None]:
         """Get a socket from the pool. Use with a "with" statement.
 
         Returns a :class:`SocketInfo` object wrapping a connected
@@ -1537,7 +1566,7 @@ class Pool:
         sock_info.active = True
         return sock_info
 
-    def return_socket(self, sock_info):
+    def return_socket(self, sock_info: SocketInfo) -> None:
         """Return the socket to the pool, or if it's closed discard it.
 
         :Parameters:

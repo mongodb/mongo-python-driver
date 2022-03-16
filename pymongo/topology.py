@@ -22,10 +22,10 @@ import threading
 import time
 import warnings
 import weakref
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, Dict, List, Mapping, Optional, Set
 
 from pymongo import common, helpers, periodic_executor
-from pymongo.client_session import _ServerSessionPool
+from pymongo.client_session import _ServerSession, _ServerSessionPool
 from pymongo.errors import (
     ConfigurationError,
     ConnectionFailure,
@@ -152,15 +152,15 @@ class Topology:
         self._lock = threading.Lock()
         self._alock = _ALock(self._lock)
         self._condition = self._settings.condition_class(self._lock)
-        self._servers = {}
-        self._pid = None
-        self._max_cluster_time = None
+        self._servers: Dict[_Address, Server] = {}
+        self._pid: Optional[int] = None
+        self._max_cluster_time: Optional[Mapping[str, Any]] = None
         self._session_pool = _ServerSessionPool()
 
         if self._publish_server or self._publish_tp:
 
             def target():
-                return process_events_queue(weak)
+                return process_events_queue(weak)  # type: ignore
 
             executor = periodic_executor.PeriodicExecutor(
                 interval=common.EVENTS_QUEUE_FREQUENCY,
@@ -243,7 +243,7 @@ class Topology:
     def select_servers(
         self,
         selector: _Selector,
-        server_selection_timeout: Optional[int] = None,
+        server_selection_timeout: Optional[float] = None,
         address: Optional[_Address] = None,
     ) -> List[Server]:
         """Return a list of Servers matching selector, or time out.
@@ -268,8 +268,8 @@ class Topology:
 
         with self._lock:
             server_descriptions = self._select_servers_loop(selector, server_timeout, address)
-
-            return [self.get_server_by_address(sd.address) for sd in server_descriptions]
+            servers = [self.get_server_by_address(sd.address) for sd in server_descriptions]
+            return [s for s in servers if s is not None]
 
     def _select_servers_loop(self, selector, timeout, address):
         """select_servers() guts. Hold the lock when calling this."""
@@ -307,7 +307,7 @@ class Topology:
     def select_server(
         self,
         selector: _Selector,
-        server_selection_timeout: Optional[int] = None,
+        server_selection_timeout: Optional[float] = None,
         address: Optional[_Address] = None,
     ) -> Server:
         """Like select_servers, but choose a random server if several match."""
@@ -321,8 +321,8 @@ class Topology:
             return server2
 
     def select_server_by_address(
-        self, address: _Address, server_selection_timeout: Optional[int] = None
-    ):
+        self, address: _Address, server_selection_timeout: Optional[float] = None
+    ) -> Server:
         """Return a Server for "address", reconnecting if necessary.
 
         If the server's type is not known, request an immediate check of all
@@ -403,7 +403,7 @@ class Topology:
         # Wake waiters in select_servers().
         self._condition.notify_all()
 
-    def on_change(self, server_description: ServerDescription, reset_pool: bool = False):
+    def on_change(self, server_description: ServerDescription, reset_pool: bool = False) -> None:
         """Process a new ServerDescription after an hello call completes."""
         # We do no I/O holding the lock.
         with self._lock:
@@ -479,15 +479,15 @@ class Topology:
 
             return set([sd.address for sd in selector(self._new_selection())])
 
-    def get_secondaries(self) -> List[_Address]:
+    def get_secondaries(self) -> Set[_Address]:
         """Return set of secondary addresses."""
         return self._get_replica_set_members(secondary_server_selector)
 
-    def get_arbiters(self) -> List[_Address]:
+    def get_arbiters(self) -> Set[_Address]:
         """Return set of arbiter addresses."""
         return self._get_replica_set_members(arbiter_server_selector)
 
-    def max_cluster_time(self) -> int:
+    def max_cluster_time(self) -> Optional[Mapping[str, Any]]:
         """Return a document, the highest seen $clusterTime."""
         return self._max_cluster_time
 
@@ -516,7 +516,7 @@ class Topology:
             self._request_check_all()
             self._condition.wait(wait_time)
 
-    def data_bearing_servers(self) -> List[Server]:
+    def data_bearing_servers(self) -> List[ServerDescription]:
         """Return a list of all data-bearing servers.
 
         This includes any server that might be selected for an operation.
@@ -574,7 +574,7 @@ class Topology:
     def description(self) -> TopologyDescription:
         return self._description
 
-    def pop_all_sessions(self) -> None:
+    def pop_all_sessions(self) -> List[Any]:
         """Pop all session ids from the pool."""
         with self._lock:
             return self._session_pool.pop_all()
@@ -606,7 +606,7 @@ class Topology:
                 raise ConfigurationError("Sessions are not supported by this MongoDB deployment")
         return session_timeout
 
-    def get_server_session(self):
+    def get_server_session(self) -> _ServerSession:
         """Start or resume a server session, or raise ConfigurationError."""
         with self._lock:
             session_timeout = self._check_session_support()
@@ -619,7 +619,7 @@ class Topology:
             session = self._session_pool.get_server_session(session_timeout)
         return session
 
-    def return_server_session(self, server_session, lock):
+    def return_server_session(self, server_session: _ServerSession, lock: bool) -> None:
         if lock:
             with self._lock:
                 self._session_pool.return_server_session(
@@ -758,7 +758,7 @@ class Topology:
             # that server and close the current monitoring connection."
             server._monitor.cancel_check()
 
-    def handle_error(self, address, err_ctx):
+    def handle_error(self, address: _Address, err_ctx: Any) -> None:
         """Handle an application error.
 
         May reset the server to Unknown, clear the pool, and request an
