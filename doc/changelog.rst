@@ -30,7 +30,6 @@ Breaking Changes in 4.1
 .......................
 - Removed support for Python 3.6.0 and 3.6.1, Python 3.6.2+ is now required.
 
-=========
 Bug fixes
 .........
 
