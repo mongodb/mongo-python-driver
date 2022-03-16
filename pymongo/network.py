@@ -19,6 +19,7 @@ import errno
 import socket
 import struct
 import time
+from typing import TYPE_CHECKING, Any, Dict, Mapping, Optional
 
 from bson import _decode_all_selective
 from pymongo import helpers, message
@@ -33,33 +34,44 @@ from pymongo.errors import (
 from pymongo.message import _UNPACK_REPLY, _OpMsg
 from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.socket_checker import _errno_from_exception
+from pymongo.typings import _Address
 
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
 
 
+if TYPE_CHECKING:
+    from bson.codec_options import CodecOptions
+    from pymongo.client_session import ClientSession
+    from pymongo.collation import Collation
+    from pymongo.mongo_client import MongoClient
+    from pymongo.pool import SocketInfo
+    from pymongo.read_concern import ReadConcern
+    from pymongo.read_preferences import _ServerMode
+
+
 def command(
-    sock_info,
-    dbname,
-    spec,
-    is_mongos,
-    read_preference,
-    codec_options,
-    session,
-    client,
-    check=True,
-    allowable_errors=None,
-    address=None,
-    listeners=None,
-    max_bson_size=None,
-    read_concern=None,
-    parse_write_concern_error=False,
-    collation=None,
-    compression_ctx=None,
-    use_op_msg=False,
-    unacknowledged=False,
-    user_fields=None,
-    exhaust_allowed=False,
-):
+    sock_info: "SocketInfo",
+    dbname: str,
+    spec: Dict[str, Any],
+    is_mongos: bool,
+    read_preference: "_ServerMode",
+    codec_options: "CodecOptions",
+    session: Optional["ClientSession"],
+    client: Optional["MongoClient"],
+    check: bool = True,
+    allowable_errors: Any = None,
+    address: Optional[_Address] = None,
+    listeners: Any = None,
+    max_bson_size: Optional[int] = None,
+    read_concern: Optional["ReadConcern"] = None,
+    parse_write_concern_error: bool = False,
+    collation: Optional["Collation"] = None,
+    compression_ctx: Any = None,
+    use_op_msg: bool = False,
+    unacknowledged: Optional[bool] = False,
+    user_fields: Any = None,
+    exhaust_allowed: bool = False,
+) -> Mapping[str, Any]:
     """Execute a command over the socket, or raise socket.error.
 
     :Parameters:
@@ -145,7 +157,7 @@ def command(
         if use_op_msg and unacknowledged:
             # Unacknowledged, fake a successful command response.
             reply = None
-            response_doc = {"ok": 1}
+            response_doc: Mapping[str, Any] = {"ok": 1}
         else:
             reply = receive_message(sock_info, request_id)
             sock_info.more_to_come = reply.more_to_come
@@ -196,7 +208,9 @@ def command(
 _UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack
 
 
-def receive_message(sock_info, request_id, max_message_size=MAX_MESSAGE_SIZE):
+def receive_message(
+    sock_info: "SocketInfo", request_id: Optional[int], max_message_size: int = MAX_MESSAGE_SIZE
+) -> _OpMsg:
     """Receive a raw BSON message or raise socket.error."""
     timeout = sock_info.sock.gettimeout()
     if timeout:
@@ -238,7 +252,7 @@ def receive_message(sock_info, request_id, max_message_size=MAX_MESSAGE_SIZE):
 _POLL_TIMEOUT = 0.5
 
 
-def wait_for_read(sock_info, deadline):
+def wait_for_read(sock_info: "SocketInfo", deadline: Optional[float]) -> None:
     """Block until at least one byte is read, or a timeout, or a cancel."""
     context = sock_info.cancel_context
     # Only Monitor connections can be cancelled.
@@ -246,7 +260,7 @@ def wait_for_read(sock_info, deadline):
         sock = sock_info.sock
         while True:
             # SSLSocket can have buffered data which won't be caught by select.
-            if hasattr(sock, "pending") and sock.pending() > 0:
+            if hasattr(sock, "pending") and sock.pending() > 0:  # type: ignore[attr-defined]
                 readable = True
             else:
                 # Wait up to 500ms for the socket to become readable and then
@@ -264,7 +278,9 @@ def wait_for_read(sock_info, deadline):
                 raise socket.timeout("timed out")
 
 
-def _receive_data_on_socket(sock_info, length, deadline):
+def _receive_data_on_socket(
+    sock_info: "SocketInfo", length: int, deadline: Optional[float]
+) -> memoryview:
     buf = bytearray(length)
     mv = memoryview(buf)
     bytes_read = 0

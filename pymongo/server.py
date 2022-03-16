@@ -15,20 +15,37 @@
 """Communicate with one MongoDB server in a topology."""
 
 from datetime import datetime
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
-from bson import _decode_all_selective
+from bson import ObjectId, _decode_all_selective
 from pymongo.errors import NotPrimaryError, OperationFailure
 from pymongo.helpers import _check_command_response
 from pymongo.message import _convert_exception, _OpMsg
 from pymongo.response import PinnedResponse, Response
 
+if TYPE_CHECKING:
+    from contextlib import _GeneratorContextManager
+
+    from pymongo.mongo_client import _MongoClientErrorHandler
+    from pymongo.monitor import Monitor
+    from pymongo.monitoring import _EventListeners
+    from pymongo.pool import Pool, SocketInfo
+    from pymongo.read_preferences import _ServerMode
+    from pymongo.server_description import ServerDescription
+
 _CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
 
 
-class Server(object):
+class Server:
     def __init__(
-        self, server_description, pool, monitor, topology_id=None, listeners=None, events=None
-    ):
+        self,
+        server_description: "ServerDescription",
+        pool: "Pool",
+        monitor: "Monitor",
+        topology_id: Optional[ObjectId] = None,
+        listeners: "Optional[_EventListeners]" = None,
+        events: Any = None,
+    ) -> None:
         """Represent one MongoDB server."""
         self._description = server_description
         self._pool = pool
@@ -40,7 +57,7 @@ class Server(object):
         if self._publish:
             self._events = events()
 
-    def open(self):
+    def open(self) -> None:
         """Start monitoring, or restart after a fork.
 
         Multiple calls have no effect.
@@ -48,11 +65,11 @@ class Server(object):
         if not self._pool.opts.load_balanced:
             self._monitor.open()
 
-    def reset(self, service_id=None):
+    def reset(self, service_id: Optional[ObjectId] = None) -> None:
         """Clear the connection pool."""
         self.pool.reset(service_id)
 
-    def close(self):
+    def close(self) -> None:
         """Clear the connection pool and stop the monitor.
 
         Reconnect with open().
@@ -69,11 +86,18 @@ class Server(object):
         self._monitor.close()
         self._pool.reset_without_pause()
 
-    def request_check(self):
+    def request_check(self) -> None:
         """Check the server's state soon."""
         self._monitor.request_check()
 
-    def run_operation(self, sock_info, operation, read_preference, listeners, unpack_res):
+    def run_operation(
+        self,
+        sock_info: "SocketInfo",
+        operation: Any,
+        read_preference: "_ServerMode",
+        listeners: "_EventListeners",
+        unpack_res: Callable,
+    ) -> Response:
         """Run a _Query or _GetMore operation and return a Response object.
 
         This method is used only to run _Query/_GetMore operations from
@@ -84,7 +108,7 @@ class Server(object):
           - `sock_info`: A SocketInfo instance.
           - `operation`: A _Query or _GetMore object.
           - `set_secondary_okay`: Pass to operation.get_message.
-          - `listeners`: Instance of _EventListeners or None.
+          - `listeners`: Instance of _EventListeners.
           - `unpack_res`: A callable that decodes the wire protocol response.
         """
         duration = None
@@ -158,7 +182,7 @@ class Server(object):
             elif operation.name == "explain":
                 res = docs[0] if docs else {}
             else:
-                res = {"cursor": {"id": reply.cursor_id, "ns": operation.namespace()}, "ok": 1}
+                res = {"cursor": {"id": reply.cursor_id, "ns": operation.namespace()}, "ok": 1}  # type: ignore[union-attr]
                 if operation.name == "find":
                     res["cursor"]["firstBatch"] = docs
                 else:
@@ -214,20 +238,22 @@ class Server(object):
 
         return response
 
-    def get_socket(self, handler=None):
+    def get_socket(
+        self, handler: Optional["_MongoClientErrorHandler"] = None
+    ) -> "_GeneratorContextManager[SocketInfo]":
         return self.pool.get_socket(handler)
 
     @property
-    def description(self):
+    def description(self) -> "ServerDescription":
         return self._description
 
     @description.setter
-    def description(self, server_description):
+    def description(self, server_description: "ServerDescription") -> None:
         assert server_description.address == self._description.address
         self._description = server_description
 
     @property
-    def pool(self):
+    def pool(self) -> "Pool":
         return self._pool
 
     def _split_message(self, message):

@@ -1008,7 +1008,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return self._server_property("address")
 
     @property
-    def primary(self) -> Optional[Tuple[str, int]]:
+    def primary(self) -> Optional[_Address]:
         """The (host, port) of the current primary of the replica set.
 
         Returns ``None`` if this client is not connected to a replica set,
@@ -1021,7 +1021,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return self._topology.get_primary()
 
     @property
-    def secondaries(self) -> Set[Tuple[str, int]]:
+    def secondaries(self) -> Set[_Address]:
         """The secondary members known to this client.
 
         A sequence of (host, port) pairs. Empty if this client is not
@@ -1034,7 +1034,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return self._topology.get_secondaries()
 
     @property
-    def arbiters(self) -> Set[Tuple[str, int]]:
+    def arbiters(self) -> Set[_Address]:
         """Arbiters in the replica set.
 
         A sequence of (host, port) pairs. Empty if this client is not

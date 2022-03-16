@@ -120,6 +120,8 @@ if TYPE_CHECKING:
     from array import array
     from mmap import mmap
 
+    from bson.raw_bson import RawBSONDocument
+
 
 try:
     from bson import _cbson  # type: ignore[attr-defined]
@@ -1045,7 +1047,12 @@ if _USE_C:
     decode_all = _cbson.decode_all  # noqa: F811
 
 
-def _decode_selective(rawdoc: Any, fields: Any, codec_options: Any) -> Mapping[Any, Any]:
+def _decode_selective(
+    rawdoc: "RawBSONDocument",
+    fields: Mapping[str, Any],
+    codec_options: "CodecOptions[_DocumentType]",
+) -> "_DocumentType":
+    doc: Any
     if _raw_document_class(codec_options.document_class):
         # If document_class is RawBSONDocument, use vanilla dictionary for
         # decoding command response.
@@ -1074,7 +1081,9 @@ def _convert_raw_document_lists_to_streams(document: Any) -> None:
                 cursor[key] = [stream]
 
 
-def _decode_all_selective(data: Any, codec_options: CodecOptions, fields: Any) -> List[Any]:
+def _decode_all_selective(
+    data: Any, codec_options: "CodecOptions[_DocumentType]", fields: Optional[Mapping[str, Any]]
+) -> "List[_DocumentType]":
     """Decode BSON data to a single document while using user-provided
     custom decoding logic.
 
