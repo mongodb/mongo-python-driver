@@ -24,7 +24,7 @@ import datetime
 import random
 import struct
 from io import BytesIO as _BytesIO
-from typing import Any, Dict
+from typing import Any, Dict, NoReturn
 
 import bson
 from bson import CodecOptions, _decode_selective, _dict_to_bson, _make_c_string, encode
@@ -991,7 +991,7 @@ class _EncryptedBulkWriteContext(_BulkWriteContext):
         return _MAX_SPLIT_SIZE_ENC
 
 
-def _raise_document_too_large(operation, doc_size, max_size):
+def _raise_document_too_large(operation: str, doc_size: int, max_size: int) -> NoReturn:
     """Internal helper for raising DocumentTooLarge."""
     if operation == "insert":
         raise DocumentTooLarge(

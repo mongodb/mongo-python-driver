@@ -17,7 +17,7 @@ import datetime
 import io
 import math
 import os
-from typing import Any, Iterable, List, Mapping, Optional
+from typing import Any, Iterable, List, Mapping, NoReturn, Optional
 
 from bson.binary import Binary
 from bson.int64 import Int64
@@ -298,7 +298,7 @@ class GridIn(object):
         except DuplicateKeyError:
             self._raise_file_exists(self._id)
 
-    def _raise_file_exists(self, file_id: Any) -> None:
+    def _raise_file_exists(self, file_id: Any) -> NoReturn:
         """Raise a FileExists exception for the given file_id."""
         raise FileExists("file with _id %r already exists" % file_id)
 
@@ -312,7 +312,7 @@ class GridIn(object):
             self.__flush()
             object.__setattr__(self, "_closed", True)
 
-    def read(self, size: Optional[int] = -1) -> None:
+    def read(self, size: Optional[int] = -1) -> NoReturn:
         raise io.UnsupportedOperation("read")
 
     def readable(self) -> bool:
@@ -682,10 +682,10 @@ class GridOut(io.IOBase):
             self.__chunk_iter = None
         super().close()
 
-    def write(self, value: Any) -> None:
+    def write(self, value: Any) -> NoReturn:
         raise io.UnsupportedOperation("write")
 
-    def writelines(self, lines: Any) -> None:
+    def writelines(self, lines: Any) -> NoReturn:
         raise io.UnsupportedOperation("writelines")
 
     def writable(self) -> bool:
@@ -704,7 +704,7 @@ class GridOut(io.IOBase):
         self.close()
         return False
 
-    def fileno(self) -> int:
+    def fileno(self) -> NoReturn:
         raise io.UnsupportedOperation("fileno")
 
     def flush(self) -> None:
@@ -714,7 +714,7 @@ class GridOut(io.IOBase):
     def isatty(self) -> bool:
         return False
 
-    def truncate(self, size: Optional[int] = None) -> int:
+    def truncate(self, size: Optional[int] = None) -> NoReturn:
         # See https://docs.python.org/3/library/io.html#io.IOBase.writable
         # for why truncate has to raise.
         raise io.UnsupportedOperation("truncate")
@@ -891,10 +891,10 @@ class GridOutCursor(Cursor):
 
     __next__ = next
 
-    def add_option(self, *args: Any, **kwargs: Any) -> None:  # type: ignore[override]
+    def add_option(self, *args: Any, **kwargs: Any) -> NoReturn:
         raise NotImplementedError("Method does not exist for GridOutCursor")
 
-    def remove_option(self, *args: Any, **kwargs: Any) -> None:  # type: ignore[override]
+    def remove_option(self, *args: Any, **kwargs: Any) -> NoReturn:
         raise NotImplementedError("Method does not exist for GridOutCursor")
 
     def _clone_base(self, session: ClientSession) -> "GridOutCursor":

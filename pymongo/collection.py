@@ -23,6 +23,7 @@ from typing import (
     List,
     Mapping,
     MutableMapping,
+    NoReturn,
     Optional,
     Sequence,
     Tuple,
@@ -343,7 +344,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def __hash__(self) -> int:
         return hash((self.__database, self.__name))
 
-    def __bool__(self) -> bool:
+    def __bool__(self) -> NoReturn:
         raise NotImplementedError(
             "Collection objects do not implement truth "
             "value testing or bool(). Please compare "
@@ -3143,12 +3144,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def __iter__(self) -> "Collection[_DocumentType]":
         return self
 
-    def __next__(self) -> None:
+    def __next__(self) -> NoReturn:
         raise TypeError("'Collection' object is not iterable")
 
     next = __next__
 
-    def __call__(self, *args: Any, **kwargs: Any) -> None:
+    def __call__(self, *args: Any, **kwargs: Any) -> NoReturn:
         """This is only here so that some API misusages are easier to debug."""
         if "." not in self.__name:
             raise TypeError(

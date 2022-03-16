@@ -76,6 +76,7 @@ from typing import (
     List,
     Mapping,
     MutableMapping,
+    NoReturn,
     Optional,
     Sequence,
     Tuple,
@@ -170,7 +171,7 @@ def get_data_and_view(data: Any) -> Tuple[Any, memoryview]:
     return view.tobytes(), view
 
 
-def _raise_unknown_type(element_type: int, element_name: str) -> None:
+def _raise_unknown_type(element_type: int, element_name: str) -> NoReturn:
     """Unknown type helper."""
     raise InvalidBSON(
         "Detected unknown BSON type %r for fieldname '%s'. Are "

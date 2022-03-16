@@ -25,6 +25,7 @@ from typing import (
     List,
     Mapping,
     MutableMapping,
+    NoReturn,
     Optional,
     Sequence,
     Tuple,
@@ -153,7 +154,7 @@ def clean_node(node: str) -> Tuple[str, int]:
     return host.lower(), port
 
 
-def raise_config_error(key: str, dummy: Any) -> None:
+def raise_config_error(key: str, dummy: Any) -> NoReturn:
     """Raise ConfigurationError with the given key name."""
     raise ConfigurationError("Unknown option %s" % (key,))
 
