@@ -312,7 +312,7 @@ class GridIn(object):
             self.__flush()
             object.__setattr__(self, "_closed", True)
 
-    def read(self, size: Optional[int] = -1) -> NoReturn:
+    def read(self, size: int = -1) -> NoReturn:
         raise io.UnsupportedOperation("read")
 
     def readable(self) -> bool:
