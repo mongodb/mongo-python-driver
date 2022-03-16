@@ -84,7 +84,7 @@ from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.settings import TopologySettings
-from pymongo.topology import Topology, _ErrorContext
+from pymongo.topology import Topology, _ALock, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
 from pymongo.typings import _Address, _CollationIn, _DocumentType, _Pipeline
 from pymongo.uri_parser import (
@@ -757,6 +757,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         self.__default_database_name = dbase
         self.__lock = threading.Lock()
+        self.__alock = _ALock(self.__lock)
         self.__kill_cursors_queue: List = []
 
         self._event_listeners = options.pool_options._event_listeners
@@ -1143,6 +1144,17 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             self._kill_cursors_executor.open()
         return self._topology
 
+    async def _get_topology_async(self):
+        """Get the internal :class:`~pymongo.topology.Topology` object.
+
+        If this client was created with "connect=False", calling _get_topology
+        launches the connection process in the background.
+        """
+        await self._topology.open_async()
+        async with self.__alock:
+            self._kill_cursors_executor.open()
+        return self._topology
+
     @contextlib.contextmanager
     def _get_socket(self, server, session):
         in_txn = session and session.in_transaction
@@ -1152,6 +1164,32 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 yield session._pinned_connection
                 return
             with server.get_socket(handler=err_handler) as sock_info:
+                # Pin this session to the selected server or connection.
+                if in_txn and server.description.server_type in (
+                    SERVER_TYPE.Mongos,
+                    SERVER_TYPE.LoadBalancer,
+                ):
+                    session._pin(server, sock_info)
+                err_handler.contribute_socket(sock_info)
+                if (
+                    self._encrypter
+                    and not self._encrypter._bypass_auto_encryption
+                    and sock_info.max_wire_version < 8
+                ):
+                    raise ConfigurationError(
+                        "Auto-encryption requires a minimum MongoDB version of 4.2"
+                    )
+                yield sock_info
+
+    @contextlib.asynccontextmanager
+    async def _get_socket_async(self, server, session):
+        in_txn = session and session.in_transaction
+        with _MongoClientErrorHandler(self, server, session) as err_handler:
+            # Reuse the pinned connection, if it exists.
+            if in_txn and session._pinned_connection:
+                yield session._pinned_connection
+                return
+            async with server.get_socket_async(handler=err_handler) as sock_info:
                 # Pin this session to the selected server or connection.
                 if in_txn and server.description.server_type in (
                     SERVER_TYPE.Mongos,
@@ -1200,6 +1238,37 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 session._unpin()
             raise
 
+    def _select_server_async(self, server_selector, session, address=None):
+        """Select a server to run an operation on this client.
+
+        :Parameters:
+          - `server_selector`: The server selector to use if the session is
+            not pinned and no address is given.
+          - `session`: The ClientSession for the next operation, or None. May
+            be pinned to a mongos server address.
+          - `address` (optional): Address when sending a message
+            to a specific server, used for getMore.
+        """
+        try:
+            topology = self._get_topology_async()
+            if session and not session.in_transaction:
+                session._transaction.reset()
+            address = address or (session and session._pinned_address)
+            if address:
+                # We're running a getMore or this session is pinned to a mongos.
+                server = topology.select_server_by_address(address)
+                if not server:
+                    raise AutoReconnect("server %s:%d no longer available" % address)
+            else:
+                server = topology.select_server(server_selector)
+            return server
+        except PyMongoError as exc:
+            # Server selection errors in a transaction are transient.
+            if session and session.in_transaction:
+                exc._add_error_label("TransientTransactionError")
+                session._unpin()
+            raise
+
     def _socket_for_writes(self, session):
         server = self._select_server(writable_server_selector, session)
         return self._get_socket(server, session)
@@ -1227,11 +1296,40 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     read_preference = ReadPreference.PRIMARY
             yield sock_info, read_preference
 
+    @contextlib.asynccontextmanager
+    async def _socket_from_server_async(self, read_preference, server, session):
+        assert read_preference is not None, "read_preference must not be None"
+        # Get a socket for a server matching the read preference, and yield
+        # sock_info with the effective read preference. The Server Selection
+        # Spec says not to send any $readPreference to standalones and to
+        # always send primaryPreferred when directly connected to a repl set
+        # member.
+        # Thread safe: if the type is single it cannot change.
+        topology = await self._get_topology_async()
+        single = topology.description.topology_type == TOPOLOGY_TYPE.Single
+
+        async with self._get_socket_async(server, session) as sock_info:
+            if single:
+                if sock_info.is_repl:
+                    # Use primary preferred to ensure any repl set member
+                    # can handle the request.
+                    read_preference = ReadPreference.PRIMARY_PREFERRED
+                elif sock_info.is_standalone:
+                    # Don't send read preference to standalones.
+                    read_preference = ReadPreference.PRIMARY
+            yield sock_info, read_preference
+
     def _socket_for_reads(self, read_preference, session):
         assert read_preference is not None, "read_preference must not be None"
         _ = self._get_topology()
         server = self._select_server(read_preference, session)
         return self._socket_from_server(read_preference, server, session)
+
+    async def _socket_for_reads_async(self, read_preference, session):
+        assert read_preference is not None, "read_preference must not be None"
+        _ = self._get_topology()
+        server = await self._select_server_async(read_preference, session)
+        return self._socket_from_server_async(read_preference, server, session)
 
     def _should_pin_cursor(self, session):
         return self.__options.load_balanced and not (session and session.in_transaction)
@@ -1283,6 +1381,19 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         )
         return self._retry_internal(retryable, func, session, bulk)
 
+    def _retry_with_session_async(self, retryable, func, session, bulk):
+        """Execute an operation with at most one consecutive retries
+
+        Returns func()'s return value on success. On error retries the same
+        command once.
+
+        Re-raises any exception thrown by func().
+        """
+        retryable = (
+            retryable and self.options.retry_writes and session and not session.in_transaction
+        )
+        return self._retry_internal_async(retryable, func, session, bulk)
+
     def _retry_internal(self, retryable, func, session, bulk):
         """Internal retryable write helper."""
         max_wire_version = 0
@@ -1303,6 +1414,66 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         while True:
             try:
                 server = self._select_server(writable_server_selector, session)
+                supports_session = (
+                    session is not None and server.description.retryable_writes_supported
+                )
+                with self._get_socket(server, session) as sock_info:
+                    max_wire_version = sock_info.max_wire_version
+                    if retryable and not supports_session:
+                        if is_retrying():
+                            # A retry is not possible because this server does
+                            # not support sessions raise the last error.
+                            assert last_error is not None
+                            raise last_error
+                        retryable = False
+                    return func(session, sock_info, retryable)
+            except ServerSelectionTimeoutError:
+                if is_retrying():
+                    # The application may think the write was never attempted
+                    # if we raise ServerSelectionTimeoutError on the retry
+                    # attempt. Raise the original exception instead.
+                    assert last_error is not None
+                    raise last_error
+                # A ServerSelectionTimeoutError error indicates that there may
+                # be a persistent outage. Attempting to retry in this case will
+                # most likely be a waste of time.
+                raise
+            except PyMongoError as exc:
+                if not retryable:
+                    raise
+                # Add the RetryableWriteError label, if applicable.
+                _add_retryable_write_error(exc, max_wire_version)
+                retryable_error = exc.has_error_label("RetryableWriteError")
+                if retryable_error:
+                    session._unpin()
+                if is_retrying() or not retryable_error:
+                    raise
+                if bulk:
+                    bulk.retrying = True
+                else:
+                    retrying = True
+                last_error = exc
+
+    async def _retry_internal_async(self, retryable, func, session, bulk):
+        """Internal retryable write helper."""
+        max_wire_version = 0
+        last_error: Optional[Exception] = None
+        retrying = False
+
+        def is_retrying():
+            return bulk.retrying if bulk else retrying
+
+        # Increment the transaction id up front to ensure any retry attempt
+        # will use the proper txnNumber, even if server or socket selection
+        # fails before the command can be sent.
+        if retryable and session and not session.in_transaction:
+            session._start_retryable_write()
+            if bulk:
+                bulk.started_retryable_write = True
+
+        while True:
+            try:
+                server = await self._select_server_async(writable_server_selector, session)
                 supports_session = (
                     session is not None and server.description.retryable_writes_supported
                 )
@@ -1395,6 +1566,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """Internal retryable write helper."""
         with self._tmp_session(session) as s:
             return self._retry_with_session(retryable, func, s, None)
+
+    async def _retryable_write_async(self, retryable, func, session):
+        """Internal retryable write helper."""
+        async with self._tmp_session_async(session) as s:
+            value = await self._retry_with_session_async(retryable, func, s, None)
+            return value
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, self.__class__):
@@ -1610,6 +1787,16 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         opts = client_session.SessionOptions(**kwargs)
         return client_session.ClientSession(self, server_session, opts, implicit)
 
+    async def __start_session_async(self, implicit, **kwargs):
+        # Raises ConfigurationError if sessions are not supported.
+        if implicit:
+            self._topology._check_implicit_session_support()
+            server_session = _EmptyServerSession()
+        else:
+            server_session = await self._get_server_session_async()
+        opts = client_session.SessionOptions(**kwargs)
+        return client_session.ClientSession(self, server_session, opts, implicit)
+
     def start_session(
         self,
         causal_consistency: Optional[bool] = None,
@@ -1644,11 +1831,21 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """Internal: start or resume a _ServerSession."""
         return self._topology.get_server_session()
 
+    async def _get_server_session_async(self):
+        """Internal: start or resume a _ServerSession."""
+        return self._topology.get_server_session_async()
+
     def _return_server_session(self, server_session, lock):
         """Internal: return a _ServerSession to the pool."""
         if isinstance(server_session, _EmptyServerSession):
             return
         return self._topology.return_server_session(server_session, lock)
+
+    def _return_server_session_async(self, server_session, lock):
+        """Internal: return a _ServerSession to the pool."""
+        if isinstance(server_session, _EmptyServerSession):
+            return
+        return self._topology.return_server_session_async(server_session, lock)
 
     def _ensure_session(self, session=None):
         """If provided session is None, lend a temporary session."""
@@ -1659,6 +1856,19 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             # Don't make implicit sessions causally consistent. Applications
             # should always opt-in.
             return self.__start_session(True, causal_consistency=False)
+        except (ConfigurationError, InvalidOperation):
+            # Sessions not supported.
+            return None
+
+    async def _ensure_session_async(self, session=None):
+        """If provided session is None, lend a temporary session."""
+        if session:
+            return session
+
+        try:
+            # Don't make implicit sessions causally consistent. Applications
+            # should always opt-in.
+            session = await self.__start_session_async(True, causal_consistency=False)
         except (ConfigurationError, InvalidOperation):
             # Sessions not supported.
             return None
@@ -1686,6 +1896,32 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 # Call end_session when we exit this scope.
                 if close:
                     s.end_session()
+        else:
+            yield None
+
+    @contextlib.asynccontextmanager
+    async def _tmp_session_async(self, session, close=True):
+        """If provided session is None, lend a temporary session."""
+        if session:
+            # Don't call end_session.
+            yield session
+            return
+
+        s = await self._ensure_session_async(session)
+        if s:
+            try:
+                yield s
+            except Exception as exc:
+                if isinstance(exc, ConnectionFailure):
+                    s._server_session.mark_dirty()
+
+                # Always call end_session on error.
+                await s.end_session_async()
+                raise
+            finally:
+                # Call end_session when we exit this scope.
+                if close:
+                    await s.end_session_async()
         else:
             yield None
 

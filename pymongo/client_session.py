@@ -491,12 +491,31 @@ class ClientSession(Generic[_DocumentType]):
         self._implicit = implicit
         self._transaction = _Transaction(None, client)
 
+    async def end_session_async(self) -> None:
+        """Finish this session. If a transaction has started, abort it.
+
+        It is an error to use the session after the session has ended.
+        """
+        await self._end_session_async(lock=True)
+
     def end_session(self) -> None:
         """Finish this session. If a transaction has started, abort it.
 
         It is an error to use the session after the session has ended.
         """
         self._end_session(lock=True)
+
+    async def _end_session_async(self, lock):
+        if self._server_session is not None:
+            try:
+                if self.in_transaction:
+                    self.abort_transaction()
+                # It's possible we're still pinned here when the transaction
+                # is in the committed state when the session is discarded.
+                self._unpin()
+            finally:
+                self._client._return_server_session_async(self._server_session, lock)
+                self._server_session = None
 
     def _end_session(self, lock):
         if self._server_session is not None:

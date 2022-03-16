@@ -1178,7 +1178,7 @@ class Pool:
         self.ntxns = 0
 
         self._sync_thread = None
-        self._sync_queue = Queue()
+        self._sync_queue: Queue = Queue()
 
     def ready(self):
         # Take the lock to avoid the race condition described in PYTHON-2699.
@@ -1400,7 +1400,7 @@ class Pool:
             self._sync_thread = weakref.proxy(thread)
             thread.start()
 
-        future = futures.Future()
+        future: futures.Future[None] = futures.Future()
         self._sync_queue.put((future, asyncio.sleep(0.001)))
         futures.wait([future])
 

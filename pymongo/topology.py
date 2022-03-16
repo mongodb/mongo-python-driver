@@ -14,6 +14,7 @@
 
 """Internal class to monitor a topology of one or more servers."""
 
+import asyncio
 import os
 import queue
 import random
@@ -21,7 +22,7 @@ import threading
 import time
 import warnings
 import weakref
-from typing import Any
+from typing import Any, Callable, List, Optional
 
 from pymongo import common, helpers, periodic_executor
 from pymongo.client_session import _ServerSessionPool
@@ -49,6 +50,7 @@ from pymongo.server_selectors import (
     secondary_server_selector,
     writable_server_selector,
 )
+from pymongo.settings import TopologySettings
 from pymongo.topology_description import (
     SRV_POLLING_TOPOLOGIES,
     TOPOLOGY_TYPE,
@@ -56,6 +58,7 @@ from pymongo.topology_description import (
     _updated_topology_description_srv_polling,
     updated_topology_description,
 )
+from pymongo.typings import _Address
 
 
 def process_events_queue(queue_ref):
@@ -75,10 +78,29 @@ def process_events_queue(queue_ref):
     return True  # Continue PeriodicExecutor.
 
 
-class Topology(object):
+class _ALock:
+    def __init__(self, lock):
+        self._lock = lock
+
+    async def __aenter__(self):
+        while True:
+            acquired = self._lock.acquire(False)
+            if not acquired:
+                await asyncio.sleep(0.0001)
+                continue
+            return self
+
+    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
+        self._lock.release()
+
+
+_Selector = Callable[[List[Server]], List[Server]]
+
+
+class Topology:
     """Monitor a topology of one or more servers."""
 
-    def __init__(self, topology_settings):
+    def __init__(self, topology_settings: TopologySettings) -> None:
         self._topology_id = topology_settings._topology_id
         self._listeners = topology_settings._pool_options._event_listeners
         pub = self._listeners is not None
@@ -128,6 +150,7 @@ class Topology(object):
         self._opened = False
         self._closed = False
         self._lock = threading.Lock()
+        self._alock = _ALock(self._lock)
         self._condition = self._settings.condition_class(self._lock)
         self._servers = {}
         self._pid = None
@@ -157,7 +180,7 @@ class Topology(object):
         if self._settings.fqdn is not None and not self._settings.load_balanced:
             self._srv_monitor = SrvMonitor(self, self._settings)
 
-    def open(self):
+    def open(self) -> None:
         """Start monitoring, or restart after a fork.
 
         No effect if called multiple times.
@@ -187,7 +210,42 @@ class Topology(object):
         with self._lock:
             self._ensure_opened()
 
-    def select_servers(self, selector, server_selection_timeout=None, address=None):
+    async def open_async(self) -> None:
+        """Start monitoring, or restart after a fork.
+
+        No effect if called multiple times.
+
+        .. warning:: Topology is shared among multiple threads and is protected
+          by mutual exclusion. Using Topology from a process other than the one
+          that initialized it will emit a warning and may result in deadlock. To
+          prevent this from happening, MongoClient must be created after any
+          forking.
+
+        """
+        if self._pid is None:
+            self._pid = os.getpid()
+        else:
+            if os.getpid() != self._pid:
+                warnings.warn(
+                    "MongoClient opened before fork. Create MongoClient only "
+                    "after forking. See PyMongo's documentation for details: "
+                    "https://pymongo.readthedocs.io/en/stable/faq.html#"
+                    "is-pymongo-fork-safe"
+                )
+                async with self._alock:
+                    # Reset the session pool to avoid duplicate sessions in
+                    # the child process.
+                    self._session_pool.reset()
+
+        async with self._alock:
+            self._ensure_opened()
+
+    def select_servers(
+        self,
+        selector: _Selector,
+        server_selection_timeout: Optional[int] = None,
+        address: Optional[_Address] = None,
+    ) -> List[Server]:
         """Return a list of Servers matching selector, or time out.
 
         :Parameters:
@@ -246,7 +304,12 @@ class Topology(object):
         self._description.check_compatible()
         return server_descriptions
 
-    def select_server(self, selector, server_selection_timeout=None, address=None):
+    def select_server(
+        self,
+        selector: _Selector,
+        server_selection_timeout: Optional[int] = None,
+        address: Optional[_Address] = None,
+    ) -> Server:
         """Like select_servers, but choose a random server if several match."""
         servers = self.select_servers(selector, server_selection_timeout, address)
         if len(servers) == 1:
@@ -257,7 +320,9 @@ class Topology(object):
         else:
             return server2
 
-    def select_server_by_address(self, address, server_selection_timeout=None):
+    def select_server_by_address(
+        self, address: _Address, server_selection_timeout: Optional[int] = None
+    ):
         """Return a Server for "address", reconnecting if necessary.
 
         If the server's type is not known, request an immediate check of all
@@ -338,7 +403,7 @@ class Topology(object):
         # Wake waiters in select_servers().
         self._condition.notify_all()
 
-    def on_change(self, server_description, reset_pool=False):
+    def on_change(self, server_description: ServerDescription, reset_pool: bool = False):
         """Process a new ServerDescription after an hello call completes."""
         # We do no I/O holding the lock.
         with self._lock:
@@ -378,7 +443,7 @@ class Topology(object):
             if self._opened:
                 self._process_srv_update(seedlist)
 
-    def get_server_by_address(self, address):
+    def get_server_by_address(self, address: _Address) -> Optional[Server]:
         """Get a Server or None.
 
         Returns the current version of the server immediately, even if it's
@@ -388,10 +453,10 @@ class Topology(object):
         """
         return self._servers.get(address)
 
-    def has_server(self, address):
+    def has_server(self, address: _Address) -> bool:
         return address in self._servers
 
-    def get_primary(self):
+    def get_primary(self) -> Optional[_Address]:
         """Return primary's address or None."""
         # Implemented here in Topology instead of MongoClient, so it can lock.
         with self._lock:
@@ -414,15 +479,15 @@ class Topology(object):
 
             return set([sd.address for sd in selector(self._new_selection())])
 
-    def get_secondaries(self):
+    def get_secondaries(self) -> List[_Address]:
         """Return set of secondary addresses."""
         return self._get_replica_set_members(secondary_server_selector)
 
-    def get_arbiters(self):
+    def get_arbiters(self) -> List[_Address]:
         """Return set of arbiter addresses."""
         return self._get_replica_set_members(arbiter_server_selector)
 
-    def max_cluster_time(self):
+    def max_cluster_time(self) -> int:
         """Return a document, the highest seen $clusterTime."""
         return self._max_cluster_time
 
@@ -441,17 +506,17 @@ class Topology(object):
             ):
                 self._max_cluster_time = cluster_time
 
-    def receive_cluster_time(self, cluster_time):
+    def receive_cluster_time(self, cluster_time: int) -> None:
         with self._lock:
             self._receive_cluster_time_no_lock(cluster_time)
 
-    def request_check_all(self, wait_time=5):
+    def request_check_all(self, wait_time: int = 5) -> None:
         """Wake all monitors, wait for at least one to check its server."""
         with self._lock:
             self._request_check_all()
             self._condition.wait(wait_time)
 
-    def data_bearing_servers(self):
+    def data_bearing_servers(self) -> List[Server]:
         """Return a list of all data-bearing servers.
 
         This includes any server that might be selected for an operation.
@@ -460,7 +525,7 @@ class Topology(object):
             return self._description.known_servers
         return self._description.readable_servers
 
-    def update_pool(self):
+    def update_pool(self) -> None:
         # Remove any stale sockets and add new sockets if pool is too small.
         servers = []
         with self._lock:
@@ -477,7 +542,7 @@ class Topology(object):
                 self.handle_error(server.description.address, ctx)
                 raise
 
-    def close(self):
+    def close(self) -> None:
         """Clear pools and terminate monitors. Topology does not reopen on
         demand. Any further operations will raise
         :exc:`~.errors.InvalidOperation`."""
@@ -506,10 +571,10 @@ class Topology(object):
             self.__events_executor.close()
 
     @property
-    def description(self):
+    def description(self) -> TopologyDescription:
         return self._description
 
-    def pop_all_sessions(self):
+    def pop_all_sessions(self) -> None:
         """Pop all session ids from the pool."""
         with self._lock:
             return self._session_pool.pop_all()
@@ -547,9 +612,26 @@ class Topology(object):
             session_timeout = self._check_session_support()
             return self._session_pool.get_server_session(session_timeout)
 
+    async def get_server_session_async(self):
+        """Start or resume a server session, or raise ConfigurationError."""
+        async with self._alock:
+            session_timeout = self._check_session_support()
+            session = self._session_pool.get_server_session(session_timeout)
+        return session
+
     def return_server_session(self, server_session, lock):
         if lock:
             with self._lock:
+                self._session_pool.return_server_session(
+                    server_session, self._description.logical_session_timeout_minutes
+                )
+        else:
+            # Called from a __del__ method, can't use a lock.
+            self._session_pool.return_server_session_no_lock(server_session)
+
+    async def return_server_session_async(self, server_session, lock):
+        if lock:
+            async with self._alock:
                 self._session_pool.return_server_session(
                     server_session, self._description.logical_session_timeout_minutes
                 )
