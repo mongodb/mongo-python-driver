@@ -89,3 +89,5 @@ Doing a Release
 15. File a ticket for DOCSP highlighting changes in server version and Python
     version compatibility or the lack thereof, for example:
     https://jira.mongodb.org/browse/DOCSP-13536
+
+16. Create a GitHub Release for the tag using https://github.com/mongodb/mongo-python-driver/releases/new.  The title should be "PyMongo X.Y.Z", and the description should contain a link to the release notes on the the community forum, e.g. "Release notes: mongodb.com/community/forums/t/pymongo-4-0-2-released/150457."
