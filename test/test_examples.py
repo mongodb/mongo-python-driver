@@ -1204,6 +1204,7 @@ class TestVersionedApiExamples(IntegrationTest):
         client = MongoClient(uri, server_api=ServerApi("1", deprecation_errors=True))
         # End Versioned API Example 4
 
+    @unittest.skip("PYTHON-3167 count has been added to API version 1")
     @client_context.require_version_min(4, 7)
     def test_versioned_api_migration(self):
         # SERVER-58785
