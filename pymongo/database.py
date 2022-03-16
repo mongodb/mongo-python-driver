@@ -21,6 +21,7 @@ from typing import (
     List,
     Mapping,
     MutableMapping,
+    NoReturn,
     Optional,
     Sequence,
     TypeVar,
@@ -1010,12 +1011,12 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     def __iter__(self) -> "Database[_DocumentType]":
         return self
 
-    def __next__(self) -> "Database[_DocumentType]":
+    def __next__(self) -> NoReturn:
         raise TypeError("'Database' object is not iterable")
 
     next = __next__
 
-    def __bool__(self) -> bool:
+    def __bool__(self) -> NoReturn:
         raise NotImplementedError(
             "Database objects do not implement truth "
             "value testing or bool(). Please compare "

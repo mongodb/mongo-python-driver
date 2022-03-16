@@ -43,6 +43,7 @@ from typing import (
     Generic,
     List,
     Mapping,
+    NoReturn,
     Optional,
     Sequence,
     Set,
@@ -1975,7 +1976,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def __iter__(self) -> "MongoClient[_DocumentType]":
         return self
 
-    def __next__(self) -> None:
+    def __next__(self) -> NoReturn:
         raise TypeError("'MongoClient' object is not iterable")
 
     next = __next__

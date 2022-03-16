@@ -25,6 +25,7 @@ from typing import (
     Iterable,
     List,
     Mapping,
+    NoReturn,
     Optional,
     Sequence,
     Tuple,
@@ -1339,5 +1340,5 @@ class RawBatchCursor(Cursor, Generic[_DocumentType]):
         clone = self._clone(deepcopy=True, base=Cursor(self.collection))
         return clone.explain()
 
-    def __getitem__(self, index: Any) -> "Cursor[_DocumentType]":
+    def __getitem__(self, index: Any) -> NoReturn:
         raise InvalidOperation("Cannot call __getitem__ on RawBatchCursor")
