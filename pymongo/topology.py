@@ -14,7 +14,6 @@
 
 """Internal class to monitor a topology of one or more servers."""
 
-import asyncio
 import os
 import queue
 import random
@@ -39,7 +38,7 @@ from pymongo.errors import (
 )
 from pymongo.hello import Hello
 from pymongo.monitor import SrvMonitor
-from pymongo.pool import PoolOptions
+from pymongo.pool import PoolOptions, _ALock
 from pymongo.server import Server
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import (
@@ -76,22 +75,6 @@ def process_events_queue(queue_ref):
             fn(*args)
 
     return True  # Continue PeriodicExecutor.
-
-
-class _ALock:
-    def __init__(self, lock):
-        self._lock = lock
-
-    async def __aenter__(self):
-        while True:
-            acquired = self._lock.acquire(False)
-            if not acquired:
-                await asyncio.sleep(0.0001)
-                continue
-            return self
-
-    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
-        self._lock.release()
 
 
 _Selector = Callable[[List[Server]], List[Server]]
@@ -612,7 +595,7 @@ class Topology:
             session_timeout = self._check_session_support()
             return self._session_pool.get_server_session(session_timeout)
 
-    async def get_server_session_async(self):
+    async def get_server_session_async(self) -> _ServerSession:
         """Start or resume a server session, or raise ConfigurationError."""
         async with self._alock:
             session_timeout = self._check_session_support()
@@ -629,7 +612,7 @@ class Topology:
             # Called from a __del__ method, can't use a lock.
             self._session_pool.return_server_session_no_lock(server_session)
 
-    async def return_server_session_async(self, server_session, lock):
+    async def return_server_session_async(self, server_session: _ServerSession, lock: bool) -> None:
         if lock:
             async with self._alock:
                 self._session_pool.return_server_session(

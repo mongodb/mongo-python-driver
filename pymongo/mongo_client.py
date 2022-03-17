@@ -38,8 +38,10 @@ from collections import defaultdict
 from typing import (
     TYPE_CHECKING,
     Any,
+    AsyncGenerator,
     Dict,
     FrozenSet,
+    Generator,
     Generic,
     List,
     Mapping,
@@ -97,7 +99,10 @@ from pymongo.uri_parser import (
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
 if TYPE_CHECKING:
+    from pymongo.client_session import ClientSession
+    from pymongo.pool import SocketInfo
     from pymongo.read_concern import ReadConcern
+    from pymongo.server import Server
 
 
 class MongoClient(common.BaseObject, Generic[_DocumentType]):
@@ -1158,11 +1163,14 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return self._topology
 
     @contextlib.contextmanager
-    def _get_socket(self, server, session):
+    def _get_socket(
+        self, server: "Server", session: "Optional[ClientSession]"
+    ) -> "Generator[SocketInfo, None, None]":
         in_txn = session and session.in_transaction
         with _MongoClientErrorHandler(self, server, session) as err_handler:
             # Reuse the pinned connection, if it exists.
-            if in_txn and session._pinned_connection:
+            if in_txn and session._pinned_connection:  # type: ignore[union-attr]
+                assert session is not None
                 yield session._pinned_connection
                 return
             with server.get_socket(handler=err_handler) as sock_info:
@@ -1171,6 +1179,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     SERVER_TYPE.Mongos,
                     SERVER_TYPE.LoadBalancer,
                 ):
+                    assert session is not None
                     session._pin(server, sock_info)
                 err_handler.contribute_socket(sock_info)
                 if (
@@ -1184,11 +1193,14 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 yield sock_info
 
     @contextlib.asynccontextmanager
-    async def _get_socket_async(self, server, session):
+    async def _get_socket_async(
+        self, server: "Server", session: "Optional[ClientSession]"
+    ) -> "AsyncGenerator[SocketInfo, None]":
         in_txn = session and session.in_transaction
         with _MongoClientErrorHandler(self, server, session) as err_handler:
             # Reuse the pinned connection, if it exists.
-            if in_txn and session._pinned_connection:
+            if in_txn and session._pinned_connection:  # type: ignore[union-attr]
+                assert session is not None
                 yield session._pinned_connection
                 return
             async with server.get_socket_async(handler=err_handler) as sock_info:
@@ -1197,6 +1209,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     SERVER_TYPE.Mongos,
                     SERVER_TYPE.LoadBalancer,
                 ):
+                    assert session is not None
                     session._pin(server, sock_info)
                 err_handler.contribute_socket(sock_info)
                 if (

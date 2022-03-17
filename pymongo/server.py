@@ -24,14 +24,13 @@ from pymongo.message import _convert_exception, _OpMsg
 from pymongo.response import PinnedResponse, Response
 
 if TYPE_CHECKING:
-    from contextlib import _GeneratorContextManager
-
     from pymongo.mongo_client import _MongoClientErrorHandler
     from pymongo.monitor import Monitor
     from pymongo.monitoring import _EventListeners
     from pymongo.pool import Pool, SocketInfo
     from pymongo.read_preferences import _ServerMode
     from pymongo.server_description import ServerDescription
+
 
 _CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
 
@@ -238,10 +237,11 @@ class Server:
 
         return response
 
-    def get_socket(
-        self, handler: Optional["_MongoClientErrorHandler"] = None
-    ) -> "_GeneratorContextManager[SocketInfo]":
+    def get_socket(self, handler: Optional["_MongoClientErrorHandler"] = None) -> Any:
         return self.pool.get_socket(handler)
+
+    def get_socket_async(self, handler: Optional["_MongoClientErrorHandler"] = None) -> Any:
+        return self.pool.get_socket_async(handler)
 
     @property
     def description(self) -> "ServerDescription":

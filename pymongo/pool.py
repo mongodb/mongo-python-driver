@@ -30,6 +30,8 @@ from queue import Queue
 from typing import (
     TYPE_CHECKING,
     Any,
+    AsyncGenerator,
+    Callable,
     Dict,
     Generator,
     List,
@@ -69,7 +71,7 @@ from pymongo.errors import (
 )
 from pymongo.hello import Hello, HelloCompat
 from pymongo.monitoring import ConnectionCheckOutFailedReason, ConnectionClosedReason
-from pymongo.network import command, receive_message
+from pymongo.network import command, command_async, receive_message
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
@@ -86,6 +88,8 @@ if TYPE_CHECKING:
     from pymongo.mongo_client import MongoClient, _MongoClientErrorHandler
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
+    from pymongo.server_api import ServerApi
+    from pymongo.ssl_context import SSLContext
     from pymongo.write_concern import WriteConcern
 
 
@@ -114,6 +118,88 @@ except ImportError:
     def _set_non_inheritable_non_atomic(fd):
         """Dummy function for platforms that don't provide fcntl."""
         pass
+
+
+class _ALock:
+    def __init__(self, lock: threading.Lock) -> None:
+        self._lock = lock
+
+    async def aquire(self, blocking: bool = True, timeout: float = -1) -> bool:
+        if timeout > 0:
+            tstart = time.monotonic()
+        while True:
+            acquired = self._lock.acquire(blocking=False)
+            if acquired:
+                return True
+            if timeout > 0 and (time.monotonic() - tstart) > timeout:
+                return False
+            if not blocking:
+                return False
+            await asyncio.sleep(0.0001)
+
+    def release(self) -> None:
+        self._lock.release()
+
+    async def __aenter__(self) -> "_ALock":
+        await self.aquire()
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
+        self.release()
+
+
+class _ACondition:
+    def __init__(self, condition: threading.Condition) -> None:
+        self._condition = condition
+
+    async def aquire(self, blocking: bool = True, timeout: float = -1) -> bool:
+        if timeout > 0:
+            tstart = time.monotonic()
+        while True:
+            acquired = self._condition.acquire(blocking=False)
+            if acquired:
+                return True
+            if timeout > 0 and (time.monotonic() - tstart) > timeout:
+                return False
+            if not blocking:
+                return False
+            await asyncio.sleep(0.0001)
+
+    async def wait(self, timeout: Optional[float] = None) -> bool:
+        if timeout is not None:
+            tstart = time.monotonic()
+        while True:
+            notified = self._condition.wait(0.001)
+            if notified:
+                return True
+            if timeout is not None and (time.monotonic() - tstart) > timeout:
+                return False
+
+    async def wait_for(self, predicate: Callable, timeout: Optional[float] = None) -> bool:
+        if timeout is not None:
+            tstart = time.monotonic()
+        while True:
+            notified = self._condition.wait_for(predicate, 0.001)
+            if notified:
+                return True
+            if timeout is not None and (time.monotonic() - tstart) > timeout:
+                return False
+
+    def notify(self, n: int = 1) -> None:
+        self._condition.notify(n)
+
+    def notify_all(self) -> None:
+        self._condition.notify_all()
+
+    def release(self) -> None:
+        self._condition.release()
+
+    async def __aenter__(self) -> "_ACondition":
+        await self.aquire()
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
+        self.release()
 
 
 _MAX_TCP_KEEPIDLE = 120
@@ -296,9 +382,15 @@ def _raise_connection_failure(
         raise AutoReconnect(msg) from error
 
 
-def _cond_wait(condition, deadline):
+def _cond_wait(condition: threading.Condition, deadline: Optional[float]) -> bool:
     timeout = deadline - time.monotonic() if deadline else None
     return condition.wait(timeout)
+
+
+async def _cond_wait_async(condition: _ACondition, deadline: Optional[float]) -> bool:
+    timeout = deadline - time.monotonic() if deadline else None
+    value = await condition.wait(timeout)
+    return value
 
 
 class PoolOptions(object):
@@ -423,7 +515,7 @@ class PoolOptions(object):
         return opts
 
     @property
-    def max_pool_size(self):
+    def max_pool_size(self) -> float:
         """The maximum allowable number of concurrent connections to each
         connected server. Requests to a server will block if there are
         `maxPoolSize` outstanding connections to the requested server.
@@ -438,25 +530,25 @@ class PoolOptions(object):
         return self.__max_pool_size
 
     @property
-    def min_pool_size(self):
+    def min_pool_size(self) -> float:
         """The minimum required number of concurrent connections that the pool
         will maintain to each connected server. Default is 0.
         """
         return self.__min_pool_size
 
     @property
-    def max_connecting(self):
+    def max_connecting(self) -> float:
         """The maximum number of concurrent connection creation attempts per
         pool. Defaults to 2.
         """
         return self.__max_connecting
 
     @property
-    def pause_enabled(self):
+    def pause_enabled(self) -> bool:
         return self.__pause_enabled
 
     @property
-    def max_idle_time_seconds(self):
+    def max_idle_time_seconds(self) -> Optional[float]:
         """The maximum number of seconds that a connection can remain
         idle in the pool before being removed and replaced. Defaults to
         `None` (no limit).
@@ -464,29 +556,29 @@ class PoolOptions(object):
         return self.__max_idle_time_seconds
 
     @property
-    def connect_timeout(self):
+    def connect_timeout(self) -> Optional[float]:
         """How long a connection can take to be opened before timing out."""
         return self.__connect_timeout
 
     @property
-    def socket_timeout(self):
+    def socket_timeout(self) -> Optional[float]:
         """How long a send or receive on a socket can take before timing out."""
         return self.__socket_timeout
 
     @property
-    def wait_queue_timeout(self):
+    def wait_queue_timeout(self) -> Optional[float]:
         """How long a thread will wait for a socket from the pool if the pool
         has no free sockets.
         """
         return self.__wait_queue_timeout
 
     @property
-    def _ssl_context(self):
+    def _ssl_context(self) -> "Optional[SSLContext]":
         """An SSLContext instance or None."""
         return self.__ssl_context
 
     @property
-    def tls_allow_invalid_hostnames(self):
+    def tls_allow_invalid_hostnames(self) -> bool:
         """If True skip ssl.match_hostname."""
         return self.__tls_allow_invalid_hostnames
 
@@ -496,7 +588,7 @@ class PoolOptions(object):
         return self.__event_listeners
 
     @property
-    def appname(self):
+    def appname(self) -> str:
         """The application name, for sending with hello in server handshake."""
         return self.__appname
 
@@ -510,17 +602,17 @@ class PoolOptions(object):
         return self.__compression_settings
 
     @property
-    def metadata(self):
+    def metadata(self) -> Mapping[str, Any]:
         """A dict of metadata about the application, driver, os, and platform."""
         return self.__metadata.copy()
 
     @property
-    def server_api(self):
+    def server_api(self) -> "Optional[ServerApi]":
         """A pymongo.server_api.ServerApi or None."""
         return self.__server_api
 
     @property
-    def load_balanced(self):
+    def load_balanced(self) -> bool:
         """True if this Pool is configured in load balanced mode."""
         return self.__load_balanced
 
@@ -610,6 +702,13 @@ class SocketInfo(object):
         else:
             self.close_socket(ConnectionClosedReason.STALE)
 
+    async def unpin_async(self) -> None:
+        pool = self.pool_ref()
+        if pool:
+            pool.return_socket_async(self)
+        else:
+            self.close_socket(ConnectionClosedReason.STALE)
+
     def hello_cmd(self) -> SON:
         # Handshake spec requires us to use OP_MSG+hello command for the
         # initial handshake in load balanced or stable API mode.
@@ -621,6 +720,10 @@ class SocketInfo(object):
 
     def hello(self) -> Hello:
         return self._hello(None, None, None)
+
+    async def hello_async(self) -> Hello:
+        result = await self._hello_async(None, None, None)
+        return result
 
     def _hello(self, cluster_time, topology_version, heartbeat_frequency):
         cmd = self.hello_cmd()
@@ -655,6 +758,79 @@ class SocketInfo(object):
             auth_ctx = None
 
         doc = self.command("admin", cmd, publish_events=False, exhaust_allowed=awaitable)
+        hello = Hello(doc, awaitable=awaitable)
+        self.is_writable = hello.is_writable
+        self.max_wire_version = hello.max_wire_version
+        self.max_bson_size = hello.max_bson_size
+        self.max_message_size = hello.max_message_size
+        self.max_write_batch_size = hello.max_write_batch_size
+        self.supports_sessions = hello.logical_session_timeout_minutes is not None
+        self.hello_ok = hello.hello_ok
+        self.is_repl = hello.server_type in (
+            SERVER_TYPE.RSPrimary,
+            SERVER_TYPE.RSSecondary,
+            SERVER_TYPE.RSArbiter,
+            SERVER_TYPE.RSOther,
+            SERVER_TYPE.RSGhost,
+        )
+        self.is_standalone = hello.server_type == SERVER_TYPE.Standalone
+        self.is_mongos = hello.server_type == SERVER_TYPE.Mongos
+        if performing_handshake and self.compression_settings:
+            ctx = self.compression_settings.get_compression_context(hello.compressors)
+            self.compression_context = ctx
+
+        self.op_msg_enabled = True
+        if creds:
+            self.negotiated_mechs = hello.sasl_supported_mechs
+        if auth_ctx:
+            auth_ctx.parse_response(hello)
+            if auth_ctx.speculate_succeeded():
+                self.auth_ctx = auth_ctx
+        if self.opts.load_balanced:
+            if not hello.service_id:
+                raise ConfigurationError(
+                    "Driver attempted to initialize in load balancing mode,"
+                    " but the server does not support this mode"
+                )
+            self.service_id = hello.service_id
+            self.generation = self.pool_gen.get(self.service_id)
+        return hello
+
+    async def _hello_async(self, cluster_time, topology_version, heartbeat_frequency):
+        cmd = self.hello_cmd()
+        performing_handshake = not self.performed_handshake
+        awaitable = False
+        if performing_handshake:
+            self.performed_handshake = True
+            cmd["client"] = self.opts.metadata
+            if self.compression_settings:
+                cmd["compression"] = self.compression_settings.compressors
+            if self.opts.load_balanced:
+                cmd["loadBalanced"] = True
+        elif topology_version is not None:
+            cmd["topologyVersion"] = topology_version
+            cmd["maxAwaitTimeMS"] = int(heartbeat_frequency * 1000)
+            awaitable = True
+            # If connect_timeout is None there is no timeout.
+            if self.opts.connect_timeout:
+                self.sock.settimeout(self.opts.connect_timeout + heartbeat_frequency)
+
+        if not performing_handshake and cluster_time is not None:
+            cmd["$clusterTime"] = cluster_time
+
+        creds = self.opts._credentials
+        if creds:
+            if creds.mechanism == "DEFAULT" and creds.username:
+                cmd["saslSupportedMechs"] = creds.source + "." + creds.username
+            auth_ctx = auth._AuthContext.from_credentials(creds)
+            if auth_ctx:
+                cmd["speculativeAuthenticate"] = auth_ctx.speculate_command()
+        else:
+            auth_ctx = None
+
+        doc = await self.command_async(
+            "admin", cmd, publish_events=False, exhaust_allowed=awaitable
+        )
         hello = Hello(doc, awaitable=awaitable)
         self.is_writable = hello.is_writable
         self.max_wire_version = hello.max_wire_version
@@ -764,6 +940,97 @@ class SocketInfo(object):
             self._raise_if_not_writable(unacknowledged)
         try:
             return command(
+                self,
+                dbname,
+                spec,
+                self.is_mongos,
+                read_preference,
+                codec_options,
+                session,
+                client,
+                check,
+                allowable_errors,
+                self.address,
+                listeners,
+                self.max_bson_size,
+                read_concern,
+                parse_write_concern_error=parse_write_concern_error,
+                collation=collation,
+                compression_ctx=self.compression_context,
+                use_op_msg=self.op_msg_enabled,
+                unacknowledged=unacknowledged,
+                user_fields=user_fields,
+                exhaust_allowed=exhaust_allowed,
+            )
+        except (OperationFailure, NotPrimaryError):
+            raise
+        # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.
+        except BaseException as error:
+            self._raise_connection_failure(error)
+
+    async def command_async(  # type: ignore[return]
+        self,
+        dbname: str,
+        spec: Dict[str, Any],
+        read_preference: "_ServerMode" = ReadPreference.PRIMARY,
+        codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS,
+        check: bool = True,
+        allowable_errors: Any = None,
+        read_concern: Optional["ReadConcern"] = None,
+        write_concern: Optional["WriteConcern"] = None,
+        parse_write_concern_error: bool = False,
+        collation: Optional["Collation"] = None,
+        session: Optional["ClientSession"] = None,
+        client: Optional["MongoClient"] = None,
+        retryable_write: bool = False,
+        publish_events: bool = True,
+        user_fields: Any = None,
+        exhaust_allowed: bool = False,
+    ) -> Mapping[str, Any]:
+        """Execute a command or raise an error.
+
+        :Parameters:
+          - `dbname`: name of the database on which to run the command
+          - `spec`: a command document as a dict, SON, or mapping object
+          - `read_preference`: a read preference
+          - `codec_options`: a CodecOptions instance
+          - `check`: raise OperationFailure if there are errors
+          - `allowable_errors`: errors to ignore if `check` is True
+          - `read_concern`: The read concern for this command.
+          - `write_concern`: The write concern for this command.
+          - `parse_write_concern_error`: Whether to parse the
+            ``writeConcernError`` field in the command response.
+          - `collation`: The collation for this command.
+          - `session`: optional ClientSession instance.
+          - `client`: optional MongoClient for gossipping $clusterTime.
+          - `retryable_write`: True if this command is a retryable write.
+          - `publish_events`: Should we publish events for this command?
+          - `user_fields` (optional): Response fields that should be decoded
+            using the TypeDecoders from codec_options, passed to
+            bson._decode_all_selective.
+        """
+        self.validate_session(client, session)
+        session = _validate_session_write_concern(session, write_concern)
+
+        # Ensure command name remains in first place.
+        if not isinstance(spec, ORDERED_TYPES):  # type:ignore[arg-type]
+            spec = SON(spec)
+
+        if not (write_concern is None or write_concern.acknowledged or collation is None):
+            raise ConfigurationError("Collation is unsupported for unacknowledged writes.")
+        if write_concern and not write_concern.is_server_default:
+            spec["writeConcern"] = write_concern.document
+
+        self.add_server_api(spec)
+        if session:
+            session._apply_to(spec, retryable_write, read_preference, self)
+        self.send_cluster_time(spec, session, client)
+        listeners = self.listeners if publish_events else None
+        unacknowledged: Optional[bool] = write_concern and not write_concern.acknowledged  # type: ignore[assignment]
+        if self.op_msg_enabled:
+            self._raise_if_not_writable(unacknowledged)
+        try:
+            return await command_async(
                 self,
                 dbname,
                 spec,
@@ -978,7 +1245,7 @@ class SocketInfo(object):
         )
 
 
-def _create_connection(address, options):
+def _create_connection(address: _Address, options: PoolOptions) -> socket.socket:
     """Given (host, port) and PoolOptions, connect and return a socket object.
 
     Can raise socket.error.
@@ -1043,7 +1310,81 @@ def _create_connection(address, options):
         raise socket.error("getaddrinfo failed")
 
 
-def _configured_socket(address, options):
+async def _create_connection_async(address: _Address, options: PoolOptions) -> socket.socket:
+    """Given (host, port) and PoolOptions, connect and return a socket object.
+
+    Can raise socket.error.
+
+    This is a modified version of create_connection from CPython >= 2.7.
+    """
+    host, port = address
+
+    # Check if dealing with a unix domain socket
+    if host.endswith(".sock"):
+        if not hasattr(socket, "AF_UNIX"):
+            raise ConnectionFailure("UNIX-sockets are not supported on this system")
+        sock = socket.socket(socket.AF_UNIX)
+        # SOCK_CLOEXEC not supported for Unix sockets.
+        _set_non_inheritable_non_atomic(sock.fileno())
+        try:
+            sock.connect(host)
+            return sock
+        except socket.error:
+            sock.close()
+            raise
+
+    # Don't try IPv6 if we don't support it. Also skip it if host
+    # is 'localhost' (::1 is fine). Avoids slow connect issues
+    # like PYTHON-356.
+    family = socket.AF_INET
+    if socket.has_ipv6 and host != "localhost":
+        family = socket.AF_UNSPEC
+
+    err = None
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+        af, socktype, proto, dummy, sa = res
+        # SOCK_CLOEXEC was new in CPython 3.2, and only available on a limited
+        # number of platforms (newer Linux and *BSD). Starting with CPython 3.4
+        # all file descriptors are created non-inheritable. See PEP 446.
+        try:
+            sock = socket.socket(af, socktype | getattr(socket, "SOCK_CLOEXEC", 0), proto)
+        except socket.error:
+            # Can SOCK_CLOEXEC be defined even if the kernel doesn't support
+            # it?
+            sock = socket.socket(af, socktype, proto)
+        # Fallback when SOCK_CLOEXEC isn't available.
+        _set_non_inheritable_non_atomic(sock.fileno())
+        try:
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            sock.setblocking(False)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
+            _set_keepalive_times(sock)
+            tstart = time.monotonic()
+            while True:
+                try:
+                    sock.connect(sa)
+                    sock.settimeout(options.connect_timeout)
+                    break
+                except BlockingIOError:
+                    if (time.monotonic() - tstart) > tstart:
+                        raise TimeoutError("Socket operation timed out")
+                    await asyncio.sleep(0.001)
+            return sock
+        except socket.error as e:
+            err = e
+            sock.close()
+
+    if err is not None:
+        raise err
+    else:
+        # This likely means we tried to connect to an IPv6 only
+        # host with an OS/kernel or Python interpreter that doesn't
+        # support IPv6. The test case is Jython2.5.1 which doesn't
+        # support IPv6 at all.
+        raise socket.error("getaddrinfo failed")
+
+
+def _configured_socket(address: _Address, options: PoolOptions) -> Any:
     """Given (host, port) and PoolOptions, return a configured socket.
 
     Can raise socket.error, ConnectionFailure, or _CertificateError.
@@ -1051,6 +1392,56 @@ def _configured_socket(address, options):
     Sets socket's SSL and timeout options.
     """
     sock = _create_connection(address, options)
+    ssl_context = options._ssl_context
+
+    if ssl_context is not None:
+        host = address[0]
+        try:
+            # According to RFC6066, section 3, IPv4 and IPv6 literals are
+            # not permitted for SNI hostname.
+            # Previous to Python 3.7 wrap_socket would blindly pass
+            # IP addresses as SNI hostname.
+            # https://bugs.python.org/issue32185
+            # We have to pass hostname / ip address to wrap_socket
+            # to use SSLContext.check_hostname.
+            if _HAVE_SNI and (not is_ip_address(host) or _IPADDR_SAFE):
+                sock = ssl_context.wrap_socket(sock, server_hostname=host)
+            else:
+                sock = ssl_context.wrap_socket(sock)
+        except _CertificateError:
+            sock.close()
+            # Raise _CertificateError directly like we do after match_hostname
+            # below.
+            raise
+        except (IOError, OSError, _SSLError) as exc:  # noqa: B014
+            sock.close()
+            # We raise AutoReconnect for transient and permanent SSL handshake
+            # failures alike. Permanent handshake failures, like protocol
+            # mismatch, will be turned into ServerSelectionTimeoutErrors later.
+            _raise_connection_failure(address, exc, "SSL handshake failed: ")
+        if (
+            ssl_context.verify_mode
+            and not getattr(ssl_context, "check_hostname", False)
+            and not options.tls_allow_invalid_hostnames
+        ):
+            try:
+                ssl.match_hostname(sock.getpeercert(), hostname=host)
+            except _CertificateError:
+                sock.close()
+                raise
+
+    sock.settimeout(options.socket_timeout)
+    return sock
+
+
+async def _configured_socket_async(address: _Address, options: PoolOptions) -> Any:
+    """Given (host, port) and PoolOptions, return a configured socket.
+
+    Can raise socket.error, ConnectionFailure, or _CertificateError.
+
+    Sets socket's SSL and timeout options.
+    """
+    sock = await _create_connection_async(address, options)
     ssl_context = options._ssl_context
 
     if ssl_context is not None:
@@ -1158,6 +1549,7 @@ class Pool:
         # from the right side.
         self.sockets: collections.deque = collections.deque()
         self.lock = threading.Lock()
+        self._alock = _ALock(self.lock)
         self.active_sockets = 0
         # Monotonically increasing connection ID required for CMAP Events.
         self.next_connection_id = 1
@@ -1183,6 +1575,7 @@ class Pool:
         # Enforces: maxPoolSize
         # Also used for: clearing the wait queue
         self.size_cond = threading.Condition(self.lock)
+        self._asize_cond = _ACondition(self.size_cond)
         self.requests = 0
         self.max_pool_size = self.opts.max_pool_size
         if not self.max_pool_size:
@@ -1191,6 +1584,7 @@ class Pool:
         # Enforces: maxConnecting
         # Also used for: clearing the wait queue
         self._max_connecting_cond = threading.Condition(self.lock)
+        self._amax_connecting_cond = _ACondition(self._max_connecting_cond)
         self._max_connecting = self.opts.max_connecting
         self._pending = 0
         if self.enabled_for_cmap:
@@ -1345,6 +1739,48 @@ class Pool:
                     self.requests -= 1
                     self.size_cond.notify()
 
+    async def connect_async(self) -> SocketInfo:
+        """Connect to Mongo and return a new SocketInfo.
+
+        Can raise ConnectionFailure.
+
+        Note that the pool does not keep a reference to the socket -- you
+        must call return_socket() when you're done with it.
+        """
+        async with self._alock:
+            conn_id = self.next_connection_id
+            self.next_connection_id += 1
+
+        listeners = self.opts._event_listeners
+        if self.enabled_for_cmap:
+            listeners.publish_connection_created(self.address, conn_id)
+
+        try:
+            sock = await _configured_socket_async(self.address, self.opts)
+        except BaseException as error:
+            if self.enabled_for_cmap:
+                listeners.publish_connection_closed(
+                    self.address, conn_id, ConnectionClosedReason.ERROR
+                )
+
+            if isinstance(error, (IOError, OSError, _SSLError)):
+                _raise_connection_failure(self.address, error)
+
+            raise
+
+        sock_info = SocketInfo(sock, self, self.address, conn_id)
+        try:
+            if self.handshake:
+                await sock_info.hello_async()
+                self.is_writable = sock_info.is_writable
+
+            sock_info.authenticate()
+        except BaseException:
+            sock_info.close_socket(ConnectionClosedReason.ERROR)
+            raise
+
+        return sock_info
+
     def connect(self) -> SocketInfo:
         """Connect to Mongo and return a new SocketInfo.
 
@@ -1396,6 +1832,71 @@ class Pool:
     def _run_jobs(self):
         self._io_loop = asyncio.new_event_loop()
         self._io_loop.run_until_complete(self._run_jobs_async())
+
+    @contextlib.asynccontextmanager
+    async def get_socket_async(
+        self, handler: Optional["_MongoClientErrorHandler"] = None
+    ) -> AsyncGenerator[SocketInfo, None]:
+        """Get a socket from the pool. Use with a "with" statement.
+
+        Returns a :class:`SocketInfo` object wrapping a connected
+        :class:`socket.socket`.
+
+        This method should always be used in a with-statement::
+
+            with pool.get_socket() as socket_info:
+                socket_info.send_message(msg)
+                data = socket_info.receive_message(op_code, request_id)
+
+        Can raise ConnectionFailure or OperationFailure.
+
+        :Parameters:
+          - `handler` (optional): A _MongoClientErrorHandler.
+        """
+        listeners = self.opts._event_listeners
+        if self.enabled_for_cmap:
+            listeners.publish_connection_check_out_started(self.address)
+
+        sock_info = await self._get_socket_async()
+        if self.enabled_for_cmap:
+            listeners.publish_connection_checked_out(self.address, sock_info.id)
+
+        if not self._sync_thread:
+            thread = threading.Thread(target=self._run_jobs)
+            thread.daemon = True
+            self._sync_thread = weakref.proxy(thread)
+            thread.start()
+
+        future: futures.Future[None] = futures.Future()
+        self._sync_queue.put((future, asyncio.sleep(0.001)))
+        futures.wait([future])
+
+        try:
+            yield sock_info
+        except BaseException:
+            # Exception in caller. Ensure the connection gets returned.
+            # Note that when pinned is True, the session owns the
+            # connection and it is responsible for checking the connection
+            # back into the pool.
+            pinned = sock_info.pinned_txn or sock_info.pinned_cursor
+            if handler:
+                # Perform SDAM error handling rules while the connection is
+                # still checked out.
+                exc_type, exc_val, _ = sys.exc_info()
+                handler.handle(exc_type, exc_val)
+            if not pinned and sock_info.active:
+                await self.return_socket_async(sock_info)
+            raise
+        if sock_info.pinned_txn:
+            with self.lock:
+                self.__pinned_sockets.add(sock_info)
+                self.ntxns += 1
+        elif sock_info.pinned_cursor:
+            with self.lock:
+                self.__pinned_sockets.add(sock_info)
+                self.ncursors += 1
+        elif sock_info.active:
+            await self.return_socket_async(sock_info)
 
     @contextlib.contextmanager
     def get_socket(
@@ -1566,6 +2067,102 @@ class Pool:
         sock_info.active = True
         return sock_info
 
+    async def _get_socket_async(self):
+        """Get or create a SocketInfo. Can raise ConnectionFailure."""
+        # We use the pid here to avoid issues with fork / multiprocessing.
+        # See test.test_client:TestClient.test_fork for an example of
+        # what could go wrong otherwise
+        if self.pid != os.getpid():
+            self.reset()
+
+        if self.closed:
+            if self.enabled_for_cmap:
+                self.opts._event_listeners.publish_connection_check_out_failed(
+                    self.address, ConnectionCheckOutFailedReason.POOL_CLOSED
+                )
+            raise _PoolClosedError(
+                "Attempted to check out a connection from closed connection pool"
+            )
+
+        async with self._alock:
+            self.operation_count += 1
+
+        # Get a free socket or create one.
+        if self.opts.wait_queue_timeout:
+            deadline = time.monotonic() + self.opts.wait_queue_timeout
+        else:
+            deadline = None
+
+        with self.size_cond:
+            self._raise_if_not_ready(emit_event=True)
+            while not (self.requests < self.max_pool_size):
+                if not await _cond_wait_async(self._asize_cond, deadline):
+                    # Timed out, notify the next thread to ensure a
+                    # timeout doesn't consume the condition.
+                    if self.requests < self.max_pool_size:
+                        self._asize_cond.notify()
+                    self._raise_wait_queue_timeout()
+                self._raise_if_not_ready(emit_event=True)
+            self.requests += 1
+
+        # We've now acquired the semaphore and must release it on error.
+        sock_info = None
+        incremented = False
+        emitted_event = False
+        try:
+            async with self._alock:
+                self.active_sockets += 1
+                incremented = True
+
+            while sock_info is None:
+                # CMAP: we MUST wait for either maxConnecting OR for a socket
+                # to be checked back into the pool.
+                with self._max_connecting_cond:
+                    self._raise_if_not_ready(emit_event=False)
+                    while not (self.sockets or self._pending < self._max_connecting):
+                        if not await _cond_wait_async(self._amax_connecting_cond, deadline):
+                            # Timed out, notify the next thread to ensure a
+                            # timeout doesn't consume the condition.
+                            if self.sockets or self._pending < self._max_connecting:
+                                self._amax_connecting_cond.notify()
+                            emitted_event = True
+                            self._raise_wait_queue_timeout()
+                        self._raise_if_not_ready(emit_event=False)
+
+                    try:
+                        sock_info = self.sockets.popleft()
+                    except IndexError:
+                        self._pending += 1
+                if sock_info:  # We got a socket from the pool
+                    if self._perished(sock_info):
+                        sock_info = None
+                        continue
+                else:  # We need to create a new connection
+                    try:
+                        sock_info = await self.connect_async()
+                    finally:
+                        async with self._amax_connecting_cond:
+                            self._pending -= 1
+                            self._amax_connecting_cond.notify()
+        except BaseException:
+            if sock_info:
+                # We checked out a socket but authentication failed.
+                sock_info.close_socket(ConnectionClosedReason.ERROR)
+            with self.size_cond:
+                self.requests -= 1
+                if incremented:
+                    self.active_sockets -= 1
+                self.size_cond.notify()
+
+            if self.enabled_for_cmap and not emitted_event:
+                self.opts._event_listeners.publish_connection_check_out_failed(
+                    self.address, ConnectionCheckOutFailedReason.CONN_ERROR
+                )
+            raise
+
+        sock_info.active = True
+        return sock_info
+
     def return_socket(self, sock_info: SocketInfo) -> None:
         """Return the socket to the pool, or if it's closed discard it.
 
@@ -1594,6 +2191,55 @@ class Pool:
                     )
             else:
                 with self.lock:
+                    # Hold the lock to ensure this section does not race with
+                    # Pool.reset().
+                    if self.stale_generation(sock_info.generation, sock_info.service_id):
+                        sock_info.close_socket(ConnectionClosedReason.STALE)
+                    else:
+                        sock_info.update_last_checkin_time()
+                        sock_info.update_is_writable(self.is_writable)
+                        self.sockets.appendleft(sock_info)
+                        # Notify any threads waiting to create a connection.
+                        self._max_connecting_cond.notify()
+
+        with self.size_cond:
+            if txn:
+                self.ntxns -= 1
+            elif cursor:
+                self.ncursors -= 1
+            self.requests -= 1
+            self.active_sockets -= 1
+            self.operation_count -= 1
+            self.size_cond.notify()
+
+    async def return_socket_async(self, sock_info: SocketInfo) -> None:
+        """Return the socket to the pool, or if it's closed discard it.
+
+        :Parameters:
+          - `sock_info`: The socket to check into the pool.
+        """
+        txn = sock_info.pinned_txn
+        cursor = sock_info.pinned_cursor
+        sock_info.active = False
+        sock_info.pinned_txn = False
+        sock_info.pinned_cursor = False
+        self.__pinned_sockets.discard(sock_info)
+        listeners = self.opts._event_listeners
+        if self.enabled_for_cmap:
+            listeners.publish_connection_checked_in(self.address, sock_info.id)
+        if self.pid != os.getpid():
+            self.reset()
+        else:
+            if self.closed:
+                sock_info.close_socket(ConnectionClosedReason.POOL_CLOSED)
+            elif sock_info.closed:
+                # CMAP requires the closed event be emitted after the check in.
+                if self.enabled_for_cmap:
+                    listeners.publish_connection_closed(
+                        self.address, sock_info.id, ConnectionClosedReason.ERROR
+                    )
+            else:
+                async with self._alock:
                     # Hold the lock to ensure this section does not race with
                     # Pool.reset().
                     if self.stale_generation(sock_info.generation, sock_info.service_id):

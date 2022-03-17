@@ -14,6 +14,7 @@
 
 """Internal network layer helper methods."""
 
+import asyncio
 import datetime
 import errno
 import socket
@@ -205,6 +206,182 @@ def command(
     return response_doc
 
 
+async def send_async(socket: socket.socket, buf: bytes, flags: int = 0) -> int:
+    timeout = socket.gettimeout()
+    socket.settimeout(0)
+    try:
+        sent = socket.send(buf, flags)
+        return sent
+    finally:
+        socket.settimeout(timeout)
+
+
+async def sendall_async(socket: socket.socket, buf: bytes, flags: int = 0) -> None:
+    view = memoryview(buf)
+    total_length = len(buf)
+    total_sent = 0
+    sent = 0
+    while total_sent < total_length:
+        sent = await send_async(socket, view[total_sent:], flags)
+        total_sent += sent
+
+
+async def command_async(
+    sock_info: "SocketInfo",
+    dbname: str,
+    spec: Dict[str, Any],
+    is_mongos: bool,
+    read_preference: "_ServerMode",
+    codec_options: "CodecOptions",
+    session: Optional["ClientSession"],
+    client: Optional["MongoClient"],
+    check: bool = True,
+    allowable_errors: Any = None,
+    address: Optional[_Address] = None,
+    listeners: Any = None,
+    max_bson_size: Optional[int] = None,
+    read_concern: Optional["ReadConcern"] = None,
+    parse_write_concern_error: bool = False,
+    collation: Optional["Collation"] = None,
+    compression_ctx: Any = None,
+    use_op_msg: bool = False,
+    unacknowledged: Optional[bool] = False,
+    user_fields: Any = None,
+    exhaust_allowed: bool = False,
+) -> Mapping[str, Any]:
+    """Execute a command over the socket, or raise socket.error.
+
+    :Parameters:
+      - `sock`: a raw socket instance
+      - `dbname`: name of the database on which to run the command
+      - `spec`: a command document as an ordered dict type, eg SON.
+      - `is_mongos`: are we connected to a mongos?
+      - `read_preference`: a read preference
+      - `codec_options`: a CodecOptions instance
+      - `session`: optional ClientSession instance.
+      - `client`: optional MongoClient instance for updating $clusterTime.
+      - `check`: raise OperationFailure if there are errors
+      - `allowable_errors`: errors to ignore if `check` is True
+      - `address`: the (host, port) of `sock`
+      - `listeners`: An instance of :class:`~pymongo.monitoring.EventListeners`
+      - `max_bson_size`: The maximum encoded bson size for this server
+      - `read_concern`: The read concern for this command.
+      - `parse_write_concern_error`: Whether to parse the ``writeConcernError``
+        field in the command response.
+      - `collation`: The collation for this command.
+      - `compression_ctx`: optional compression Context.
+      - `use_op_msg`: True if we should use OP_MSG.
+      - `unacknowledged`: True if this is an unacknowledged command.
+      - `user_fields` (optional): Response fields that should be decoded
+        using the TypeDecoders from codec_options, passed to
+        bson._decode_all_selective.
+      - `exhaust_allowed`: True if we should enable OP_MSG exhaustAllowed.
+    """
+    name = next(iter(spec))
+    ns = dbname + ".$cmd"
+    speculative_hello = False
+
+    # Publish the original command document, perhaps with lsid and $clusterTime.
+    orig = spec
+    if is_mongos and not use_op_msg:
+        spec = message._maybe_add_read_preference(spec, read_preference)
+    if read_concern and not (session and session.in_transaction):
+        if read_concern.level:
+            spec["readConcern"] = read_concern.document
+        if session:
+            session._update_read_concern(spec, sock_info)
+    if collation is not None:
+        spec["collation"] = collation
+
+    publish = listeners is not None and listeners.enabled_for_commands
+    if publish:
+        start = datetime.datetime.now()
+        speculative_hello = _is_speculative_authenticate(name, spec)
+
+    if compression_ctx and name.lower() in _NO_COMPRESSION:
+        compression_ctx = None
+
+    if client and client._encrypter and not client._encrypter._bypass_auto_encryption:
+        spec = orig = client._encrypter.encrypt(dbname, spec, codec_options)
+
+    if use_op_msg:
+        flags = _OpMsg.MORE_TO_COME if unacknowledged else 0
+        flags |= _OpMsg.EXHAUST_ALLOWED if exhaust_allowed else 0
+        request_id, msg, size, max_doc_size = message._op_msg(
+            flags, spec, dbname, read_preference, codec_options, ctx=compression_ctx
+        )
+        # If this is an unacknowledged write then make sure the encoded doc(s)
+        # are small enough, otherwise rely on the server to return an error.
+        if unacknowledged and max_bson_size is not None and max_doc_size > max_bson_size:
+            message._raise_document_too_large(name, size, max_bson_size)
+    else:
+        request_id, msg, size = message._query(
+            0, ns, 0, -1, spec, None, codec_options, compression_ctx
+        )
+
+    if max_bson_size is not None and size > max_bson_size + message._COMMAND_OVERHEAD:
+        message._raise_document_too_large(name, size, max_bson_size + message._COMMAND_OVERHEAD)
+
+    if publish:
+        encoding_duration = datetime.datetime.now() - start
+        listeners.publish_command_start(
+            orig, dbname, request_id, address, service_id=sock_info.service_id
+        )
+        start = datetime.datetime.now()
+
+    try:
+        await sendall_async(sock_info.sock, msg)
+        if use_op_msg and unacknowledged:
+            # Unacknowledged, fake a successful command response.
+            reply = None
+            response_doc: Mapping[str, Any] = {"ok": 1}
+        else:
+            reply = await receive_message_async(sock_info, request_id)
+            sock_info.more_to_come = reply.more_to_come
+            unpacked_docs = reply.unpack_response(
+                codec_options=codec_options, user_fields=user_fields
+            )
+
+            response_doc = unpacked_docs[0]
+            if client:
+                client._process_response(response_doc, session)
+            if check:
+                helpers._check_command_response(
+                    response_doc,
+                    sock_info.max_wire_version,
+                    allowable_errors,
+                    parse_write_concern_error=parse_write_concern_error,
+                )
+    except Exception as exc:
+        if publish:
+            duration = (datetime.datetime.now() - start) + encoding_duration
+            if isinstance(exc, (NotPrimaryError, OperationFailure)):
+                failure = exc.details
+            else:
+                failure = message._convert_exception(exc)
+            listeners.publish_command_failure(
+                duration, failure, name, request_id, address, service_id=sock_info.service_id
+            )
+        raise
+    if publish:
+        duration = (datetime.datetime.now() - start) + encoding_duration
+        listeners.publish_command_success(
+            duration,
+            response_doc,
+            name,
+            request_id,
+            address,
+            service_id=sock_info.service_id,
+            speculative_hello=speculative_hello,
+        )
+
+    if client and client._encrypter and reply:
+        decrypted = client._encrypter.decrypt(reply.raw_command_response())
+        response_doc = _decode_all_selective(decrypted, codec_options, user_fields)[0]
+
+    return response_doc
+
+
 _UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack
 
 
@@ -249,6 +426,46 @@ def receive_message(
     return unpack_reply(data)
 
 
+async def receive_message_async(
+    sock_info: "SocketInfo", request_id: Optional[int], max_message_size: int = MAX_MESSAGE_SIZE
+) -> _OpMsg:
+    """Receive a raw BSON message or raise socket.error."""
+    timeout = sock_info.sock.gettimeout()
+    if timeout:
+        deadline = time.monotonic() + timeout
+    else:
+        deadline = None
+    # Ignore the response's request id.
+    data = await _receive_data_on_socket_async(sock_info, 16, deadline)
+    length, _, response_to, op_code = _UNPACK_HEADER(data)
+    # No request_id for exhaust cursor "getMore".
+    if request_id is not None:
+        if request_id != response_to:
+            raise ProtocolError("Got response id %r but expected %r" % (response_to, request_id))
+    if length <= 16:
+        raise ProtocolError(
+            "Message length (%r) not longer than standard message header size (16)" % (length,)
+        )
+    if length > max_message_size:
+        raise ProtocolError(
+            "Message length (%r) is larger than server max "
+            "message size (%r)" % (length, max_message_size)
+        )
+    if op_code == 2012:
+        data = await _receive_data_on_socket_async(sock_info, 9, deadline)
+        op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(data)
+        data = await _receive_data_on_socket_async(sock_info, length - 25, deadline)
+        data = decompress(data, compressor_id)
+    else:
+        data = await _receive_data_on_socket_async(sock_info, length - 16, deadline)
+
+    try:
+        unpack_reply = _UNPACK_REPLY[op_code]
+    except KeyError:
+        raise ProtocolError("Got opcode %r but expected %r" % (op_code, _UNPACK_REPLY.keys()))
+    return unpack_reply(data)
+
+
 _POLL_TIMEOUT = 0.5
 
 
@@ -278,6 +495,33 @@ def wait_for_read(sock_info: "SocketInfo", deadline: Optional[float]) -> None:
                 raise socket.timeout("timed out")
 
 
+async def wait_for_read_async(sock_info: "SocketInfo", deadline: Optional[float]) -> None:
+    """Block until at least one byte is read, or a timeout, or a cancel."""
+    context = sock_info.cancel_context
+    # Only Monitor connections can be cancelled.
+    if context:
+        sock = sock_info.sock
+        while True:
+            # SSLSocket can have buffered data which won't be caught by select.
+            if hasattr(sock, "pending") and sock.pending() > 0:  # type: ignore[attr-defined]
+                readable = True
+            else:
+                # # Wait up to 500ms for the socket to become readable and then
+                # # check for cancellation.
+                # if deadline:
+                #     timeout = max(min(deadline - time.monotonic(), _POLL_TIMEOUT), 0.001)
+                # else:
+                #     timeout = _POLL_TIMEOUT
+                readable = sock_info.socket_checker.select(sock, read=True, timeout=0)
+            if context.cancelled:
+                raise _OperationCancelled("hello cancelled")
+            if readable:
+                return
+            if deadline and time.monotonic() > deadline:
+                raise socket.timeout("timed out")
+            await asyncio.sleep(0.001)
+
+
 def _receive_data_on_socket(
     sock_info: "SocketInfo", length: int, deadline: Optional[float]
 ) -> memoryview:
@@ -288,6 +532,37 @@ def _receive_data_on_socket(
         try:
             wait_for_read(sock_info, deadline)
             chunk_length = sock_info.sock.recv_into(mv[bytes_read:])
+        except (IOError, OSError) as exc:  # noqa: B014
+            if _errno_from_exception(exc) == errno.EINTR:
+                continue
+            raise
+        if chunk_length == 0:
+            raise OSError("connection closed")
+
+        bytes_read += chunk_length
+
+    return mv
+
+
+def _receive_into(socket: socket.socket, buf: memoryview) -> int:
+    timeout = socket.gettimeout()
+    socket.settimeout(0)
+    try:
+        return socket.recv_into(buf)
+    finally:
+        socket.settimeout(timeout)
+
+
+async def _receive_data_on_socket_async(
+    sock_info: "SocketInfo", length: int, deadline: Optional[float]
+) -> memoryview:
+    buf = bytearray(length)
+    mv = memoryview(buf)
+    bytes_read = 0
+    while bytes_read < length:
+        try:
+            await wait_for_read_async(sock_info, deadline)
+            chunk_length = _receive_into(sock_info.sock, mv[bytes_read:])
         except (IOError, OSError) as exc:  # noqa: B014
             if _errno_from_exception(exc) == errno.EINTR:
                 continue
