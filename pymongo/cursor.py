@@ -1182,6 +1182,7 @@ class Cursor(Generic[_DocumentType]):
                 self.__max_await_time_ms,
                 self.__sock_mgr,
                 self.__exhaust,
+                self.__comment,
             )
             self.__send_message(g)
 

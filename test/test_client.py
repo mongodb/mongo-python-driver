@@ -1321,7 +1321,7 @@ class TestClient(IntegrationTest):
         with self.assertRaises(AutoReconnect):
             client = rs_client(connect=False, serverSelectionTimeoutMS=100)
             client._run_operation(
-                operation=message._GetMore(
+                operation=message.kge_GetMore(
                     "pymongo_test",
                     "collection",
                     101,
@@ -1333,6 +1333,7 @@ class TestClient(IntegrationTest):
                     None,
                     None,
                     False,
+                    None,
                 ),
                 unpack_res=Cursor(client.pymongo_test.collection)._unpack_response,
                 address=("not-a-member", 27017),
