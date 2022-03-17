@@ -142,6 +142,7 @@ from typing import (
     ContextManager,
     Generic,
     Mapping,
+    NoReturn,
     Optional,
     TypeVar,
 )
@@ -422,7 +423,7 @@ class _Transaction(object):
             self.sock_mgr = None
 
 
-def _reraise_with_unknown_commit(exc):
+def _reraise_with_unknown_commit(exc: Any) -> NoReturn:
     """Re-raise an exception with the UnknownTransactionCommitResult label."""
     exc._add_error_label("UnknownTransactionCommitResult")
     raise
@@ -1022,7 +1023,7 @@ class ClientSession(Generic[_DocumentType]):
             if self._snapshot_time is not None:
                 rc["atClusterTime"] = self._snapshot_time
 
-    def __copy__(self):
+    def __copy__(self) -> NoReturn:
         raise TypeError("A ClientSession cannot be copied, create a new session instead")
 
 

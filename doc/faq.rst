@@ -145,7 +145,7 @@ they are returned to the pool.
 Does PyMongo support Python 3?
 ------------------------------
 
-PyMongo supports CPython 3.6+ and PyPy3.6+. See the :doc:`python3` for details.
+PyMongo supports CPython 3.6.2+ and PyPy3.6+. See the :doc:`python3` for details.
 
 Does PyMongo support asynchronous frameworks like Gevent, asyncio, Tornado, or Twisted?
 ---------------------------------------------------------------------------------------
@@ -314,7 +314,7 @@ when it is serialized to BSON and used as a query. Thus you can create a
 subdocument that exactly matches the subdocument in the collection.
 
 .. seealso:: `MongoDB Manual entry on subdocument matching
-   <http://docs.mongodb.org/manual/tutorial/query-documents/#embedded-documents>`_.
+   <https://docs.mongodb.com/manual/tutorial/query-embedded-documents/>`_.
 
 What does *CursorNotFound* cursor id not valid at server mean?
 --------------------------------------------------------------

@@ -21,8 +21,10 @@ from typing import (
     List,
     Mapping,
     MutableMapping,
+    NoReturn,
     Optional,
     Sequence,
+    TypeVar,
     Union,
     cast,
 )
@@ -56,6 +58,9 @@ if TYPE_CHECKING:
     from pymongo.mongo_client import MongoClient
     from pymongo.read_concern import ReadConcern
     from pymongo.write_concern import WriteConcern
+
+
+_CodecDocumentType = TypeVar("_CodecDocumentType", bound=Mapping[str, Any])
 
 
 class Database(common.BaseObject, Generic[_DocumentType]):
@@ -558,7 +563,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.7
 
-        .. seealso:: The MongoDB documentation on `changeStreams <https://dochub.mongodb.org/core/changeStreams>`_.
+        .. seealso:: The MongoDB documentation on `changeStreams <https://docs.mongodb.com/manual/changeStreams/>`_.
 
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.rst
@@ -736,11 +741,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         check: bool = True,
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_preference: Optional[_ServerMode] = None,
-        codec_options: Optional[CodecOptions] = DEFAULT_CODEC_OPTIONS,
+        codec_options: "Optional[CodecOptions[_CodecDocumentType]]" = None,
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> _DocumentOut:
+    ) -> _CodecDocumentType:
         """Issue a MongoDB command.
 
         Send command `command` to the database and return the
@@ -826,6 +831,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `commands <https://dochub.mongodb.org/core/commands>`_.
         """
+        opts = codec_options or DEFAULT_CODEC_OPTIONS
         if comment is not None:
             kwargs["comment"] = comment
 
@@ -842,7 +848,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 check,
                 allowable_errors,
                 read_preference,
-                codec_options,
+                opts,
                 session=session,
                 **kwargs,
             )
@@ -1124,12 +1130,12 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     def __iter__(self) -> "Database[_DocumentType]":
         return self
 
-    def __next__(self) -> "Database[_DocumentType]":
+    def __next__(self) -> NoReturn:
         raise TypeError("'Database' object is not iterable")
 
     next = __next__
 
-    def __bool__(self) -> bool:
+    def __bool__(self) -> NoReturn:
         raise NotImplementedError(
             "Database objects do not implement truth "
             "value testing or bool(). Please compare "

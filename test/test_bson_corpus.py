@@ -71,8 +71,8 @@ _DEPRECATED_BSON_TYPES = {
 
 
 # Need to set tz_aware=True in order to use "strict" dates in extended JSON.
-codec_options = CodecOptions(tz_aware=True, document_class=SON)
-codec_options_no_tzaware = CodecOptions(document_class=SON)
+codec_options: CodecOptions = CodecOptions(tz_aware=True, document_class=SON)
+codec_options_no_tzaware: CodecOptions = CodecOptions(document_class=SON)
 # We normally encode UUID as binary subtype 0x03,
 # but we'll need to encode to subtype 0x04 for one of the tests.
 codec_options_uuid_04 = codec_options._replace(uuid_representation=STANDARD)

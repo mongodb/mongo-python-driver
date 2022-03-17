@@ -27,7 +27,7 @@ import time
 import weakref
 from concurrent import futures
 from queue import Queue
-from typing import Any
+from typing import Any, NoReturn, Optional
 
 from bson import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
@@ -252,7 +252,9 @@ else:
 "foo".encode("idna")
 
 
-def _raise_connection_failure(address, error, msg_prefix=None):
+def _raise_connection_failure(
+    address: Any, error: Exception, msg_prefix: Optional[str] = None
+) -> NoReturn:
     """Convert a socket.error to ConnectionFailure and raise it."""
     host, port = address
     # If connecting to a Unix socket, port will be None.
@@ -1620,7 +1622,7 @@ class Pool:
 
         return False
 
-    def _raise_wait_queue_timeout(self):
+    def _raise_wait_queue_timeout(self) -> NoReturn:
         listeners = self.opts._event_listeners
         if self.enabled_for_cmap:
             listeners.publish_connection_check_out_failed(

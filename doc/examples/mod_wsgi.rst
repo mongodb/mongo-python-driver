@@ -3,7 +3,7 @@
 PyMongo and mod_wsgi
 ====================
 
-To run your application under `mod_wsgi <http://code.google.com/p/modwsgi/>`_,
+To run your application under `mod_wsgi <https://github.com/GrahamDumpleton/mod_wsgi/>`_,
 follow these guidelines:
 
 * Run ``mod_wsgi`` in daemon mode with the ``WSGIDaemonProcess`` directive.
@@ -48,9 +48,9 @@ interpreter.
 
 Python C extensions in general have issues running in multiple
 Python sub interpreters. These difficulties are explained in the documentation for
-`Py_NewInterpreter <http://docs.python.org/2/c-api/init.html#Py_NewInterpreter>`_
+`Py_NewInterpreter <https://docs.python.org/3/c-api/init.html#c.Py_NewInterpreter>`_
 and in the `Multiple Python Sub Interpreters
-<https://code.google.com/p/modwsgi/wiki/ApplicationIssues#Multiple_Python_Sub_Interpreters>`_
+<https://modwsgi.readthedocs.io/en/master/user-guides/application-issues.html#multiple-python-sub-interpreters>`_
 section of the ``mod_wsgi`` documentation.
 
 Beginning with PyMongo 2.7, the C extension for BSON detects when it is running

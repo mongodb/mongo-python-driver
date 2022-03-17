@@ -17,7 +17,7 @@
 import sys
 import traceback
 from collections import abc
-from typing import Any
+from typing import Any, List, NoReturn
 
 from bson.son import SON
 from pymongo import ASCENDING
@@ -180,7 +180,7 @@ def _check_command_response(
     raise OperationFailure(errmsg, code, response, max_wire_version)
 
 
-def _raise_last_write_error(write_errors):
+def _raise_last_write_error(write_errors: List[Any]) -> NoReturn:
     # If the last batch had multiple errors only report
     # the last error to emulate continue_on_error.
     error = write_errors[-1]
@@ -189,7 +189,7 @@ def _raise_last_write_error(write_errors):
     raise WriteError(error.get("errmsg"), error.get("code"), error)
 
 
-def _raise_write_concern_error(error):
+def _raise_write_concern_error(error: Any) -> NoReturn:
     if "errInfo" in error and error["errInfo"].get("wtimeout"):
         # Make sure we raise WTimeoutError
         raise WTimeoutError(error.get("errmsg"), error.get("code"), error)

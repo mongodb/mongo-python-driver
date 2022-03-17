@@ -64,4 +64,24 @@ jobs:
       - name: Run mypy
         run: |
           mypy --install-types --non-interactive bson gridfs tools pymongo
+          # Test overshadowed codec_options.py file
+          mypy --install-types --non-interactive bson/codec_options.py
           mypy --install-types --non-interactive --disable-error-code var-annotated --disable-error-code attr-defined --disable-error-code union-attr --disable-error-code assignment --disable-error-code no-redef --disable-error-code index --allow-redefinition --allow-untyped-globals --exclude "test/mypy_fails/*.*" test
+
+  linkcheck:
+    name: Check Links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          cache: 'pip'
+          cache-dependency-path: 'setup.py'
+      - name: Install dependencies
+        run: |
+          python -m pip install -U pip
+          python -m pip install sphinx
+      - name: Check links
+        run: |
+          cd doc
+          make linkcheck

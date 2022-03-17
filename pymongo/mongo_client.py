@@ -43,6 +43,7 @@ from typing import (
     Generic,
     List,
     Mapping,
+    NoReturn,
     Optional,
     Sequence,
     Set,
@@ -649,10 +650,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
                client.__my_database__
         """
+        doc_class = document_class or dict
         self.__init_kwargs: Dict[str, Any] = {
             "host": host,
             "port": port,
-            "document_class": document_class or dict,
+            "document_class": doc_class,
             "tz_aware": tz_aware,
             "connect": connect,
             "type_registry": type_registry,
@@ -676,7 +678,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         # Parse options passed as kwargs.
         keyword_opts = common._CaseInsensitiveDictionary(kwargs)
-        keyword_opts["document_class"] = document_class or dict
+        keyword_opts["document_class"] = doc_class
 
         seeds = set()
         username = None
@@ -933,7 +935,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.7
 
-        .. seealso:: The MongoDB documentation on `changeStreams <https://dochub.mongodb.org/core/changeStreams>`_.
+        .. seealso:: The MongoDB documentation on `changeStreams <https://docs.mongodb.com/manual/changeStreams/>`_.
 
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.rst
@@ -2210,7 +2212,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def __iter__(self) -> "MongoClient[_DocumentType]":
         return self
 
-    def __next__(self) -> None:
+    def __next__(self) -> NoReturn:
         raise TypeError("'MongoClient' object is not iterable")
 
     next = __next__

@@ -182,12 +182,12 @@ will not add that listener to existing client instances.
 
 import datetime
 from collections import abc, namedtuple
-from typing import TYPE_CHECKING, Any, Dict, Mapping, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from bson.objectid import ObjectId
 from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers import _handle_exception
-from pymongo.typings import _Address
+from pymongo.typings import _Address, _DocumentOut
 
 if TYPE_CHECKING:
     from pymongo.server_description import ServerDescription
@@ -206,9 +206,6 @@ _Listeners = namedtuple(
 )
 
 _LISTENERS = _Listeners([], [], [], [], [])
-
-
-_DocumentOut = Mapping[str, Any]
 
 
 class _EventListener(object):
@@ -635,7 +632,7 @@ class CommandStartedEvent(_CommandEvent):
         )
         cmd_name = command_name.lower()
         if cmd_name in _SENSITIVE_COMMANDS or _is_speculative_authenticate(cmd_name, command):
-            self.__cmd: Mapping[str, Any] = {}
+            self.__cmd: _DocumentOut = {}
         else:
             self.__cmd = command
         self.__db = database_name
@@ -693,7 +690,7 @@ class CommandSucceededEvent(_CommandEvent):
         self.__duration_micros = _to_micros(duration)
         cmd_name = command_name.lower()
         if cmd_name in _SENSITIVE_COMMANDS or _is_speculative_authenticate(cmd_name, reply):
-            self.__reply: Mapping[str, Any] = {}
+            self.__reply: _DocumentOut = {}
         else:
             self.__reply = reply
 

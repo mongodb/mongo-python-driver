@@ -16,17 +16,17 @@
 
 import abc
 import datetime
-from collections import namedtuple
 from collections.abc import MutableMapping as _MutableMapping
 from typing import (
-    TYPE_CHECKING,
     Any,
     Callable,
     Dict,
     Iterable,
-    MutableMapping,
+    Mapping,
+    NamedTuple,
     Optional,
     Type,
+    TypeVar,
     Union,
     cast,
 )
@@ -36,10 +36,6 @@ from bson.binary import (
     UUID_REPRESENTATION_NAMES,
     UuidRepresentation,
 )
-
-# Import RawBSONDocument for type-checking only to avoid circular dependency.
-if TYPE_CHECKING:
-    from bson.raw_bson import RawBSONDocument
 
 
 def _abstractproperty(func: Callable[..., Any]) -> property:
@@ -115,7 +111,7 @@ class TypeCodec(TypeEncoder, TypeDecoder):
 
 _Codec = Union[TypeEncoder, TypeDecoder, TypeCodec]
 _Fallback = Callable[[Any], Any]
-_DocumentClass = Union[Type[MutableMapping], Type["RawBSONDocument"]]
+_DocumentType = TypeVar("_DocumentType", bound=Mapping[str, Any])
 
 
 class TypeRegistry(object):
@@ -152,8 +148,8 @@ class TypeRegistry(object):
     ) -> None:
         self.__type_codecs = list(type_codecs or [])
         self._fallback_encoder = fallback_encoder
-        self._encoder_map = {}
-        self._decoder_map = {}
+        self._encoder_map: Dict[Any, Any] = {}
+        self._decoder_map: Dict[Any, Any] = {}
 
         if self._fallback_encoder is not None:
             if not callable(fallback_encoder):
@@ -202,20 +198,16 @@ class TypeRegistry(object):
         )
 
 
-_options_base = namedtuple(  # type: ignore
-    "CodecOptions",
-    (
-        "document_class",
-        "tz_aware",
-        "uuid_representation",
-        "unicode_decode_error_handler",
-        "tzinfo",
-        "type_registry",
-    ),
-)
+class _BaseCodecOptions(NamedTuple):
+    document_class: Type[Mapping[str, Any]]
+    tz_aware: bool
+    uuid_representation: int
+    unicode_decode_error_handler: str
+    tzinfo: Optional[datetime.tzinfo]
+    type_registry: TypeRegistry
 
 
-class CodecOptions(_options_base):
+class CodecOptions(_BaseCodecOptions):
     """Encapsulates options used encoding and / or decoding BSON.
 
     The `document_class` option is used to define a custom type for use
@@ -250,7 +242,7 @@ class CodecOptions(_options_base):
     See :doc:`/examples/datetimes` for examples using the `tz_aware` and
     `tzinfo` options.
 
-    See :doc:`examples/uuid` for examples using the `uuid_representation`
+    See :doc:`/examples/uuid` for examples using the `uuid_representation`
     option.
 
     :Parameters:
@@ -294,18 +286,27 @@ class CodecOptions(_options_base):
 
     def __new__(
         cls: Type["CodecOptions"],
-        document_class: _DocumentClass = dict,
+        document_class: Optional[Type[Mapping[str, Any]]] = None,
         tz_aware: bool = False,
         uuid_representation: Optional[int] = UuidRepresentation.UNSPECIFIED,
-        unicode_decode_error_handler: Optional[str] = "strict",
+        unicode_decode_error_handler: str = "strict",
         tzinfo: Optional[datetime.tzinfo] = None,
         type_registry: Optional[TypeRegistry] = None,
     ) -> "CodecOptions":
-        if not (issubclass(document_class, _MutableMapping) or _raw_document_class(document_class)):
+        doc_class = document_class or dict
+        # issubclass can raise TypeError for generic aliases like SON[str, Any].
+        # In that case we can use the base class for the comparison.
+        is_mapping = False
+        try:
+            is_mapping = issubclass(doc_class, _MutableMapping)
+        except TypeError:
+            if hasattr(doc_class, "__origin__"):
+                is_mapping = issubclass(doc_class.__origin__, _MutableMapping)  # type: ignore[union-attr]
+        if not (is_mapping or _raw_document_class(doc_class)):
             raise TypeError(
                 "document_class must be dict, bson.son.SON, "
                 "bson.raw_bson.RawBSONDocument, or a "
-                "sublass of collections.abc.MutableMapping"
+                "subclass of collections.abc.MutableMapping"
             )
         if not isinstance(tz_aware, bool):
             raise TypeError("tz_aware must be True or False")
@@ -313,8 +314,8 @@ class CodecOptions(_options_base):
             raise ValueError(
                 "uuid_representation must be a value from bson.binary.UuidRepresentation"
             )
-        if not isinstance(unicode_decode_error_handler, (str, None)):  # type: ignore
-            raise ValueError("unicode_decode_error_handler must be a string or None")
+        if not isinstance(unicode_decode_error_handler, str):
+            raise ValueError("unicode_decode_error_handler must be a string")
         if tzinfo is not None:
             if not isinstance(tzinfo, datetime.tzinfo):
                 raise TypeError("tzinfo must be an instance of datetime.tzinfo")
@@ -329,7 +330,7 @@ class CodecOptions(_options_base):
         return tuple.__new__(
             cls,
             (
-                document_class,
+                doc_class,
                 tz_aware,
                 uuid_representation,
                 unicode_decode_error_handler,
@@ -392,7 +393,7 @@ class CodecOptions(_options_base):
         return CodecOptions(**opts)
 
 
-DEFAULT_CODEC_OPTIONS: CodecOptions = CodecOptions()
+DEFAULT_CODEC_OPTIONS = CodecOptions()
 
 
 def _parse_codec_options(options: Any) -> CodecOptions:

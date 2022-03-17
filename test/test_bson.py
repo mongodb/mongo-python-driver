@@ -744,12 +744,12 @@ class TestBSON(unittest.TestCase):
     def test_custom_class(self):
         self.assertIsInstance(decode(encode({})), dict)
         self.assertNotIsInstance(decode(encode({})), SON)
-        self.assertIsInstance(decode(encode({}), CodecOptions(document_class=SON)), SON)
+        self.assertIsInstance(decode(encode({}), CodecOptions(document_class=SON)), SON)  # type: ignore[type-var]
 
-        self.assertEqual(1, decode(encode({"x": 1}), CodecOptions(document_class=SON))["x"])
+        self.assertEqual(1, decode(encode({"x": 1}), CodecOptions(document_class=SON))["x"])  # type: ignore[type-var]
 
         x = encode({"x": [{"y": 1}]})
-        self.assertIsInstance(decode(x, CodecOptions(document_class=SON))["x"][0], SON)
+        self.assertIsInstance(decode(x, CodecOptions(document_class=SON))["x"][0], SON)  # type: ignore[type-var]
 
     def test_subclasses(self):
         # make sure we can serialize subclasses of native Python types.
@@ -772,7 +772,7 @@ class TestBSON(unittest.TestCase):
 
     def test_ordered_dict(self):
         d = OrderedDict([("one", 1), ("two", 2), ("three", 3), ("four", 4)])
-        self.assertEqual(d, decode(encode(d), CodecOptions(document_class=OrderedDict)))
+        self.assertEqual(d, decode(encode(d), CodecOptions(document_class=OrderedDict)))  # type: ignore[type-var]
 
     def test_bson_regex(self):
         # Invalid Python regex, though valid PCRE.
@@ -954,7 +954,7 @@ class TestBSON(unittest.TestCase):
 class TestCodecOptions(unittest.TestCase):
     def test_document_class(self):
         self.assertRaises(TypeError, CodecOptions, document_class=object)
-        self.assertIs(SON, CodecOptions(document_class=SON).document_class)
+        self.assertIs(SON, CodecOptions(document_class=SON).document_class)  # type: ignore[type-var]
 
     def test_tz_aware(self):
         self.assertRaises(TypeError, CodecOptions, tz_aware=1)
@@ -992,6 +992,19 @@ class TestCodecOptions(unittest.TestCase):
         # The default uuid_representation is UNSPECIFIED
         with self.assertRaisesRegex(ValueError, "cannot encode native uuid"):
             bson.decode_all(bson.encode({"uuid": uuid.uuid4()}))
+
+    def test_decode_all_no_options(self):
+        # Test decode_all()'s default document_class is dict and tz_aware is
+        # False.
+        doc = {"sub_document": {}, "dt": datetime.datetime.utcnow()}
+
+        decoded = bson.decode_all(bson.encode(doc), None)[0]
+        self.assertIsInstance(decoded["sub_document"], dict)
+        self.assertIsNone(decoded["dt"].tzinfo)
+
+        doc2 = {"id": Binary.from_uuid(uuid.uuid4())}
+        decoded = bson.decode_all(bson.encode(doc2), None)[0]
+        self.assertIsInstance(decoded["id"], Binary)
 
     def test_unicode_decode_error_handler(self):
         enc = encode({"keystr": "foobar"})

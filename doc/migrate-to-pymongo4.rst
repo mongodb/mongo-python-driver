@@ -34,7 +34,7 @@ Python 3.6+
 -----------
 
 PyMongo 4.0 drops support for Python 2.7, 3.4, and 3.5. Users who wish to
-upgrade to 4.x must first upgrade to Python 3.6+. Users upgrading from
+upgrade to 4.x must first upgrade to Python 3.6.2+. Users upgrading from
 Python 2 should consult the :doc:`python3`.
 
 Enable Deprecation Warnings
@@ -88,8 +88,7 @@ The socketKeepAlive parameter is removed
 
 Removed the ``socketKeepAlive`` keyword argument to
 :class:`~pymongo.mongo_client.MongoClient`. PyMongo now always enables TCP
-keepalive. For more information see:
-https://docs.mongodb.com/manual/faq/diagnostics/#does-tcp-keepalive-time-affect-mongodb-deployments
+keepalive. For more information see the `documentation <https://docs.mongodb.com/manual/faq/diagnostics/#does-tcp-keepalive-time-affect-mongodb-deployments->`_.
 
 Renamed URI options
 ...................
@@ -545,8 +544,8 @@ Can be changed to this::
 
 .. _$expr: https://docs.mongodb.com/manual/reference/operator/query/expr/
 .. _$geoWithin: https://docs.mongodb.com/manual/reference/operator/query/geoWithin/
-.. _$center: https://docs.mongodb.com/manual/reference/operator/query/center/#op._S_center
-.. _$centerSphere: https://docs.mongodb.com/manual/reference/operator/query/centerSphere/#op._S_centerSphere
+.. _$center: https://docs.mongodb.com/manual/reference/operator/query/center/
+.. _$centerSphere: https://docs.mongodb.com/manual/reference/operator/query/centerSphere/
 
 Collection.initialize_ordered_bulk_op and initialize_unordered_bulk_op is removed
 .................................................................................

@@ -15,7 +15,7 @@
 """CommandCursor class to iterate over command results."""
 
 from collections import deque
-from typing import TYPE_CHECKING, Any, Generic, Iterator, Mapping, Optional
+from typing import TYPE_CHECKING, Any, Generic, Iterator, Mapping, NoReturn, Optional
 
 from bson import _convert_raw_document_lists_to_streams
 from pymongo.cursor import _CURSOR_CLOSED_ERRORS, _SocketManager
@@ -344,5 +344,5 @@ class RawBatchCommandCursor(CommandCursor, Generic[_DocumentType]):
             _convert_raw_document_lists_to_streams(raw_response[0])
         return raw_response
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> NoReturn:
         raise InvalidOperation("Cannot call __getitem__ on RawBatchCursor")

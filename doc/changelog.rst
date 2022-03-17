@@ -26,6 +26,10 @@ PyMongo 4.1 brings a number of improvements including:
 - :meth:`gridfs.GridOut.seek` now returns the new position in the file, to
   conform to the behavior of :meth:`io.IOBase.seek`.
 
+Breaking Changes in 4.1
+.......................
+- Removed support for Python 3.6.0 and 3.6.1, Python 3.6.2+ is now required.
+
 Bug fixes
 .........
 
@@ -57,7 +61,7 @@ before upgrading from PyMongo 3.x.
 Breaking Changes in 4.0
 .......................
 
-- Removed support for Python 2.7, 3.4, and 3.5. Python 3.6+ is now required.
+- Removed support for Python 2.7, 3.4, and 3.5. Python 3.6.2+ is now required.
 - The default uuid_representation for :class:`~bson.codec_options.CodecOptions`,
   :class:`~bson.json_util.JSONOptions`, and
   :class:`~pymongo.mongo_client.MongoClient` has been changed from
@@ -1072,7 +1076,7 @@ Changes and Deprecations:
 - Deprecated the MongoClient option `socketKeepAlive`. It now defaults to true
   and disabling it is not recommended, see `does TCP keepalive time affect
   MongoDB Deployments?
-  <https://docs.mongodb.com/manual/faq/diagnostics/#does-tcp-keepalive-time-affect-mongodb-deployments>`_
+  <https://docs.mongodb.com/manual/faq/diagnostics/#does-tcp-keepalive-time-affect-mongodb-deployments->`_
 - Deprecated :meth:`~pymongo.collection.Collection.initialize_ordered_bulk_op`,
   :meth:`~pymongo.collection.Collection.initialize_unordered_bulk_op`, and
   :class:`~pymongo.bulk.BulkOperationBuilder`. Use

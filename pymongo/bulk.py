@@ -18,6 +18,7 @@
 """
 import copy
 from itertools import islice
+from typing import Any, NoReturn
 
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
@@ -128,7 +129,7 @@ def _merge_command(run, full_result, offset, result):
         full_result["writeConcernErrors"].append(wce)
 
 
-def _raise_bulk_write_error(full_result):
+def _raise_bulk_write_error(full_result: Any) -> NoReturn:
     """Raise a BulkWriteError from the full bulk api result."""
     if full_result["writeErrors"]:
         full_result["writeErrors"].sort(key=lambda error: error["index"])

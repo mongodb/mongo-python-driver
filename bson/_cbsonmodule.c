@@ -2600,7 +2600,7 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "O|O", &bson, &options_obj)) {
         return NULL;
     }
-    if (PyTuple_GET_SIZE(args) < 2) {
+    if ((PyTuple_GET_SIZE(args) < 2) ||  (options_obj == Py_None)) {
         if (!default_codec_options(GETSTATE(self), &options)) {
             return NULL;
         }
