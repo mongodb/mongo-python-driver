@@ -16,6 +16,7 @@ import asyncio
 import collections
 import contextlib
 import copy
+import errno
 import ipaddress
 import os
 import platform
@@ -1318,7 +1319,6 @@ async def _create_connection_async(address: _Address, options: PoolOptions) -> s
     This is a modified version of create_connection from CPython >= 2.7.
     """
     host, port = address
-
     # Check if dealing with a unix domain socket
     if host.endswith(".sock"):
         if not hasattr(socket, "AF_UNIX"):
@@ -1371,8 +1371,12 @@ async def _create_connection_async(address: _Address, options: PoolOptions) -> s
                     await asyncio.sleep(0.001)
             return sock
         except socket.error as e:
-            err = e
-            sock.close()
+            if e.errno == errno.EISCONN:
+                sock.settimeout(options.connect_timeout)
+                return sock
+            else:
+                err = e
+                sock.close()
 
     if err is not None:
         raise err

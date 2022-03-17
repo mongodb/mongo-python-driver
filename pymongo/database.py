@@ -615,6 +615,39 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 client=self.__client,
             )
 
+    async def _command_async(
+        self,
+        sock_info,
+        command,
+        value=1,
+        check=True,
+        allowable_errors=None,
+        read_preference=ReadPreference.PRIMARY,
+        codec_options=DEFAULT_CODEC_OPTIONS,
+        write_concern=None,
+        parse_write_concern_error=False,
+        session=None,
+        **kwargs,
+    ):
+        """Internal command helper."""
+        if isinstance(command, str):
+            command = SON([(command, value)])
+
+        command.update(kwargs)
+        async with self.__client._tmp_session_async(session) as s:
+            return await sock_info.command_async(
+                self.__name,
+                command,
+                read_preference,
+                codec_options,
+                check,
+                allowable_errors,
+                write_concern=write_concern,
+                parse_write_concern_error=parse_write_concern_error,
+                session=s,
+                client=self.__client,
+            )
+
     async def command_async(
         self,
         command: Union[str, MutableMapping[str, Any]],
@@ -717,11 +750,12 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         if read_preference is None:
             read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
-        async with self.__client._socket_for_reads_async(read_preference, session) as (
+        manager = await self.__client._socket_for_reads_async(read_preference, session)
+        async with manager as (
             sock_info,
             read_preference,
         ):
-            result = await self._command(
+            result = await self._command_async(
                 sock_info,
                 command,
                 value,

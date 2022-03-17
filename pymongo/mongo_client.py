@@ -1253,7 +1253,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 session._unpin()
             raise
 
-    def _select_server_async(self, server_selector, session, address=None):
+    async def _select_server_async(self, server_selector, session, address=None):
         """Select a server to run an operation on this client.
 
         :Parameters:
@@ -1265,7 +1265,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             to a specific server, used for getMore.
         """
         try:
-            topology = self._get_topology_async()
+            topology = await self._get_topology_async()
             if session and not session.in_transaction:
                 session._transaction.reset()
             address = address or (session and session._pinned_address)

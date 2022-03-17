@@ -564,7 +564,7 @@ async def _receive_data_on_socket_async(
             await wait_for_read_async(sock_info, deadline)
             chunk_length = _receive_into(sock_info.sock, mv[bytes_read:])
         except (IOError, OSError) as exc:  # noqa: B014
-            if _errno_from_exception(exc) == errno.EINTR:
+            if _errno_from_exception(exc) in [errno.EINTR, errno.EAGAIN]:
                 continue
             raise
         if chunk_length == 0:
