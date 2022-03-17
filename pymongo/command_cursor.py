@@ -43,6 +43,7 @@ class CommandCursor(Generic[_DocumentType]):
         max_await_time_ms: Optional[int] = None,
         session: Optional["ClientSession"] = None,
         explicit_session: bool = False,
+        comment: Any = None,
     ) -> None:
         """Create a new command cursor."""
         self.__sock_mgr: Any = None
@@ -56,6 +57,7 @@ class CommandCursor(Generic[_DocumentType]):
         self.__session = session
         self.__explicit_session = explicit_session
         self.__killed = self.__id == 0
+        self.__comment = comment
         if self.__killed:
             self.__end_session(True)
 
@@ -156,6 +158,8 @@ class CommandCursor(Generic[_DocumentType]):
     def __send_message(self, operation):
         """Send a getmore message and handle the response."""
         client = self.__collection.database.client
+        if self.__comment is not None:
+            operation["comment"] = self.__comment
         try:
             response = client._run_operation(
                 operation, self._unpack_response, address=self.__address
@@ -224,6 +228,7 @@ class CommandCursor(Generic[_DocumentType]):
                     self.__max_await_time_ms,
                     self.__sock_mgr,
                     False,
+                    self.__comment,
                 )
             )
         else:  # Cursor id is zero nothing else to return
