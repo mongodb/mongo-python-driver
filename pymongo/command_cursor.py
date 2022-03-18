@@ -158,8 +158,6 @@ class CommandCursor(Generic[_DocumentType]):
     def __send_message(self, operation):
         """Send a getmore message and handle the response."""
         client = self.__collection.database.client
-        if self.__comment is not None:
-            operation["comment"] = self.__comment
         try:
             response = client._run_operation(
                 operation, self._unpack_response, address=self.__address
@@ -211,7 +209,6 @@ class CommandCursor(Generic[_DocumentType]):
         """
         if len(self.__data) or self.__killed:
             return len(self.__data)
-
         if self.__id:  # Get More
             dbname, collname = self.__ns.split(".", 1)
             read_pref = self.__collection._read_preference_for(self.session)
