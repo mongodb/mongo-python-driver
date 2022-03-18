@@ -1321,7 +1321,7 @@ class TestClient(IntegrationTest):
         with self.assertRaises(AutoReconnect):
             client = rs_client(connect=False, serverSelectionTimeoutMS=100)
             client._run_operation(
-                operation=message.kge_GetMore(
+                operation=message._GetMore(
                     "pymongo_test",
                     "collection",
                     101,
