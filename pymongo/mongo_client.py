@@ -1761,7 +1761,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             "firstBatch": res["databases"],
             "ns": "admin.$cmd",
         }
-        return CommandCursor(admin["$cmd"], cursor, None, comment)
+        return CommandCursor(admin["$cmd"], cursor, None, comment=comment)
 
     def list_database_names(
         self,
