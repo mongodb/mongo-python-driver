@@ -316,6 +316,7 @@ class RawBatchCommandCursor(CommandCursor, Generic[_DocumentType]):
         max_await_time_ms: Optional[int] = None,
         session: Optional["ClientSession"] = None,
         explicit_session: bool = False,
+        comment: Any = None,
     ) -> None:
         """Create a new cursor / iterator over raw batches of BSON data.
 
@@ -334,6 +335,7 @@ class RawBatchCommandCursor(CommandCursor, Generic[_DocumentType]):
             max_await_time_ms,
             session,
             explicit_session,
+            comment,
         )
 
     def _unpack_response(
