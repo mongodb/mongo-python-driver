@@ -330,7 +330,11 @@
       "description": "aggregate with comment sets comment on getMore",
       "runOnRequirements": [
         {
-          "minServerVersion": "3.6.0"
+          "minServerVersion": "4.4.0",
+          "topologies": [
+            "single",
+            "replicaset"
+          ]
         }
       ],
       "operations": [
