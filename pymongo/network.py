@@ -564,7 +564,12 @@ async def _receive_data_on_socket_async(
         try:
             await wait_for_read_async(sock_info, deadline)
             chunk_length = _receive_into(sock_info.sock, mv[bytes_read:])
-        except (IOError, OSError, _ssl.SSLWantReadError) as exc:  # noqa: B014
+        except _ssl.SSLWantReadError:
+            continue
+        except (  # noqa: B014
+            IOError,
+            OSError,
+        ) as exc:
             if _errno_from_exception(exc) in [errno.EINTR, errno.EAGAIN]:
                 continue
             raise
