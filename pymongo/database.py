@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Database level operations."""
-import asyncio
+
 import functools
 from typing import (
     TYPE_CHECKING,
@@ -76,14 +76,9 @@ def synchronize(async_method, doc=None):
 
     @functools.wraps(async_method)
     def method(self, *args, **kwargs):
-        if not hasattr(self, "__io_loop"):
-            try:
-                self.__io_loop = asyncio.get_running_loop()
-                # TODO: if there is a running loop we should use a thread pool executor.
-            except RuntimeError:
-                self.__io_loop = asyncio.new_event_loop()
-        coro = async_method(self, *args, **kwargs)
-        return self.__io_loop.run_until_complete(coro)
+        with self.client._get_io_loop() as loop:
+            coro = async_method(self, *args, **kwargs)
+            return loop.run_until_complete(coro)
 
     # This is for the benefit of generating documentation with Sphinx.
     method.is_sync_method = True  # type: ignore[attr-defined]

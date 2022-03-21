@@ -364,12 +364,12 @@ class TestCMAP(IntegrationTest):
         self.addCleanup(client.close)
         pool = get_pool(client)
 
-        def mock_connect(*args, **kwargs):
+        async def mock_connect(*args, **kwargs):
             raise ConnectionFailure("connect failed")
 
-        pool.connect = mock_connect
+        pool.connect_async = mock_connect
         # Un-patch Pool.connect to break the cyclic reference.
-        self.addCleanup(delattr, pool, "connect")
+        self.addCleanup(delattr, pool, "connect_async")
 
         # Attempt to create a new connection.
         with self.assertRaisesRegex(ConnectionFailure, "connect failed"):

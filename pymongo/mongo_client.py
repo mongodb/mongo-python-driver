@@ -31,6 +31,7 @@ access:
   Database(MongoClient(host=['localhost:27017'], document_class=dict, tz_aware=False, connect=True), 'test-database')
 """
 
+import asyncio
 import contextlib
 import threading
 import weakref
@@ -766,6 +767,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self.__lock = threading.Lock()
         self.__alock = _ALock(self.__lock)
         self.__kill_cursors_queue: List = []
+        self.__io_loop = None
+        self.__loop_lock = threading.Lock()
 
         self._event_listeners = options.pool_options._event_listeners
         super(MongoClient, self).__init__(
@@ -827,6 +830,17 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         args = self.__init_kwargs.copy()
         args.update(kwargs)
         return MongoClient(**args)
+
+    @contextlib.contextmanager
+    def _get_io_loop(self):
+        if self.__io_loop is None:
+            try:
+                self.__io_loop = asyncio.get_running_loop()
+                # TODO: if there is a running loop we should use a thread pool executor.
+            except RuntimeError:
+                self.__io_loop = asyncio.new_event_loop()
+        with self.__loop_lock:
+            yield self.__io_loop
 
     def _server_property(self, attr_name):
         """An attribute of the current server's description.
@@ -1139,6 +1153,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if self._encrypter:
             # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
             self._encrypter.close()
+        if self.__io_loop:
+            self.__io_loop.close()
+            self.__io_loop = None
 
     def _get_topology(self):
         """Get the internal :class:`~pymongo.topology.Topology` object.
