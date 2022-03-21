@@ -76,15 +76,19 @@ def synchronize(async_method, doc=None):
 
     @functools.wraps(async_method)
     def method(self, *args, **kwargs):
-        if not hasattr(self, "_io_loop"):
-            self._io_loop = asyncio.new_event_loop()
+        if not hasattr(self, "__io_loop"):
+            try:
+                self.__io_loop = asyncio.get_running_loop()
+                # TODO: if there is a running loop we should use a thread pool executor.
+            except RuntimeError:
+                self.__io_loop = asyncio.new_event_loop()
         coro = async_method(self, *args, **kwargs)
-        return self._io_loop.run_until_complete(coro)
+        return self.__io_loop.run_until_complete(coro)
 
     # This is for the benefit of generating documentation with Sphinx.
-    method.is_sync_method = True
+    method.is_sync_method = True  # type: ignore[attr-defined]
     name = async_method.__name__
-    method.async_method_name = name
+    method.async_method_name = name  # type: ignore[attr-defined]
     method.__name__ = async_method.__name__.replace("_async", "")
 
     if doc is not None:
@@ -165,6 +169,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             _check_name(name)
 
         self.__name = name
+        self.__io_loop = None
         self.__client: MongoClient[_DocumentType] = client
 
     @property

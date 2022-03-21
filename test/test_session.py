@@ -112,7 +112,6 @@ class TestSession(IntegrationTest):
 
     def _test_ops(self, client, *ops):
         listener = client.options.event_listeners[0]
-
         for f, args, kw in ops:
             with client.start_session() as s:
                 last_use = s._server_session.last_use
@@ -166,7 +165,6 @@ class TestSession(IntegrationTest):
                     "lsid" in event.command,
                     "%s sent no lsid with %s" % (f.__name__, event.command_name),
                 )
-
                 lsids.append(event.command["lsid"])
 
             if not (sys.platform.startswith("java") or "PyPy" in sys.version):
@@ -294,8 +292,8 @@ class TestSession(IntegrationTest):
         client = self.client
         ops: list = [
             (client.server_info, [], {}),
-            (client.list_database_names, [], {}),
-            (client.drop_database, ["pymongo_test"], {}),
+            # (client.list_database_names, [], {}),
+            # (client.drop_database, ["pymongo_test"], {}),
         ]
 
         self._test_ops(client, *ops)

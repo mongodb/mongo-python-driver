@@ -1848,7 +1848,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     async def _get_server_session_async(self):
         """Internal: start or resume a _ServerSession."""
-        return self._topology.get_server_session_async()
+        return await self._topology.get_server_session_async()
 
     def _return_server_session(self, server_session, lock):
         """Internal: return a _ServerSession to the pool."""
@@ -1856,11 +1856,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             return
         return self._topology.return_server_session(server_session, lock)
 
-    def _return_server_session_async(self, server_session, lock):
+    async def _return_server_session_async(self, server_session, lock):
         """Internal: return a _ServerSession to the pool."""
         if isinstance(server_session, _EmptyServerSession):
             return
-        return self._topology.return_server_session_async(server_session, lock)
+        return await self._topology.return_server_session_async(server_session, lock)
 
     def _ensure_session(self, session=None):
         """If provided session is None, lend a temporary session."""
@@ -1883,7 +1883,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         try:
             # Don't make implicit sessions causally consistent. Applications
             # should always opt-in.
-            session = await self.__start_session_async(True, causal_consistency=False)
+            return await self.__start_session_async(True, causal_consistency=False)
         except (ConfigurationError, InvalidOperation):
             # Sessions not supported.
             return None

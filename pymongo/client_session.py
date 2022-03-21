@@ -515,7 +515,7 @@ class ClientSession(Generic[_DocumentType]):
                 # is in the committed state when the session is discarded.
                 self._unpin()
             finally:
-                self._client._return_server_session_async(self._server_session, lock)
+                await self._client._return_server_session_async(self._server_session, lock)
                 self._server_session = None
 
     def _end_session(self, lock):

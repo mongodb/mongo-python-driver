@@ -519,7 +519,7 @@ async def wait_for_read_async(sock_info: "SocketInfo", deadline: Optional[float]
                 return
             if deadline and time.monotonic() > deadline:
                 raise socket.timeout("timed out")
-            await asyncio.sleep(0.001)
+            await asyncio.sleep(0)
 
 
 def _receive_data_on_socket(
