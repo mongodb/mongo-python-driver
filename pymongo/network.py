@@ -18,6 +18,7 @@ import asyncio
 import datetime
 import errno
 import socket
+import ssl as _ssl
 import struct
 import time
 from typing import TYPE_CHECKING, Any, Dict, Mapping, Optional
@@ -563,7 +564,7 @@ async def _receive_data_on_socket_async(
         try:
             await wait_for_read_async(sock_info, deadline)
             chunk_length = _receive_into(sock_info.sock, mv[bytes_read:])
-        except (IOError, OSError) as exc:  # noqa: B014
+        except (IOError, OSError, _ssl.SSLWantReadError) as exc:  # noqa: B014
             if _errno_from_exception(exc) in [errno.EINTR, errno.EAGAIN]:
                 continue
             raise

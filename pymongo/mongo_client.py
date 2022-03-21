@@ -122,6 +122,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     # Define order to retrieve options from ClientOptions for __repr__.
     # No host/port; these are retrieved from TopologySettings.
     _constructor_args = ("document_class", "tz_aware", "connect")
+    __loop_lock = threading.Lock()
 
     def __init__(
         self,
@@ -767,8 +768,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self.__lock = threading.Lock()
         self.__alock = _ALock(self.__lock)
         self.__kill_cursors_queue: List = []
-        self.__io_loop = None
-        self.__loop_lock = threading.Lock()
+        self.__io_loop: Optional[asyncio.AbstractEventLoop] = None
 
         self._event_listeners = options.pool_options._event_listeners
         super(MongoClient, self).__init__(
@@ -839,7 +839,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 # TODO: if there is a running loop we should use a thread pool executor.
             except RuntimeError:
                 self.__io_loop = asyncio.new_event_loop()
-        with self.__loop_lock:
+        with MongoClient.__loop_lock:
             yield self.__io_loop
 
     def _server_property(self, attr_name):
