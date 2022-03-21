@@ -2104,7 +2104,7 @@ class Pool:
                     # Timed out, notify the next thread to ensure a
                     # timeout doesn't consume the condition.
                     if self.requests < self.max_pool_size:
-                        self._asize_cond.notify()
+                        self.size_cond.notify()
                     self._raise_wait_queue_timeout()
                 self._raise_if_not_ready(emit_event=True)
             self.requests += 1
@@ -2128,7 +2128,7 @@ class Pool:
                             # Timed out, notify the next thread to ensure a
                             # timeout doesn't consume the condition.
                             if self.sockets or self._pending < self._max_connecting:
-                                self._amax_connecting_cond.notify()
+                                self._max_connecting_cond.notify()
                             emitted_event = True
                             self._raise_wait_queue_timeout()
                         self._raise_if_not_ready(emit_event=False)
@@ -2147,7 +2147,7 @@ class Pool:
                     finally:
                         async with self._amax_connecting_cond:
                             self._pending -= 1
-                            self._amax_connecting_cond.notify()
+                            self._max_connecting_cond.notify()
         except BaseException:
             if sock_info:
                 # We checked out a socket but authentication failed.

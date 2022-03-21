@@ -275,13 +275,13 @@ class TestIgnoreStaleErrors(IntegrationTest):
         starting_generation = pool.gen.get_overall()
         wait_until(lambda: len(pool.sockets) == N_THREADS, "created sockets")
 
-        def mock_command(*args, **kwargs):
+        async def mock_command(*args, **kwargs):
             # Synchronize all threads to ensure they use the same generation.
             barrier.wait()
             raise AutoReconnect("mock SocketInfo.command error")
 
         for sock in pool.sockets:
-            sock.command = mock_command
+            sock.command_async = mock_command
 
         def insert_command(i):
             try:
