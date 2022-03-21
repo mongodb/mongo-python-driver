@@ -136,7 +136,7 @@ class _ALock:
                 return False
             if not blocking:
                 return False
-            await asyncio.sleep(0.0001)
+            await asyncio.sleep(0)
 
     def release(self) -> None:
         self._lock.release()
@@ -164,7 +164,7 @@ class _ACondition:
                 return False
             if not blocking:
                 return False
-            await asyncio.sleep(0.0001)
+            await asyncio.sleep(0)
 
     async def wait(self, timeout: Optional[float] = None) -> bool:
         if timeout is not None:
@@ -1368,7 +1368,7 @@ async def _create_connection_async(address: _Address, options: PoolOptions) -> s
                 except BlockingIOError:
                     if (time.monotonic() - tstart) > tstart:
                         raise TimeoutError("Socket operation timed out")
-                    await asyncio.sleep(0.001)
+                    await asyncio.sleep(0)
             return sock
         except socket.error as e:
             if e.errno == errno.EISCONN:
@@ -1872,7 +1872,7 @@ class Pool:
             thread.start()
 
         future: futures.Future[None] = futures.Future()
-        self._sync_queue.put((future, asyncio.sleep(0.001)))
+        self._sync_queue.put((future, asyncio.sleep(0)))
         futures.wait([future])
 
         try:
@@ -1937,7 +1937,7 @@ class Pool:
             thread.start()
 
         future: futures.Future[None] = futures.Future()
-        self._sync_queue.put((future, asyncio.sleep(0.001)))
+        self._sync_queue.put((future, asyncio.sleep(0)))
         futures.wait([future])
 
         try:
