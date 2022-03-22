@@ -209,6 +209,7 @@ class CommandCursor(Generic[_DocumentType]):
         """
         if len(self.__data) or self.__killed:
             return len(self.__data)
+
         if self.__id:  # Get More
             dbname, collname = self.__ns.split(".", 1)
             read_pref = self.__collection._read_preference_for(self.session)

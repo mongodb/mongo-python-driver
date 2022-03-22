@@ -472,7 +472,6 @@ class _GetMore(object):
     def as_command(self, sock_info):
         """Return a getMore command document for this query."""
         # See _Query.as_command for an explanation of this caching.
-
         if self._as_command is not None:
             return self._as_command
 
