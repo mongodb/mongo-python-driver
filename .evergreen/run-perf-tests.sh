@@ -13,7 +13,7 @@ cd ..
 export TEST_PATH="${PROJECT_DIRECTORY}/driver-performance-test-data"
 export OUTPUT_FILE="${PROJECT_DIRECTORY}/results.json"
 
-MTCBIN=/opt/mongodbtoolchain/v2/bin
+MTCBIN=/opt/mongodbtoolchain/v3/bin
 VIRTUALENV="$MTCBIN/virtualenv -p $MTCBIN/python3"
 
 $VIRTUALENV pyperftest
