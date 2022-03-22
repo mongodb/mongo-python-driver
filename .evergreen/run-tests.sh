@@ -69,8 +69,8 @@ if [ -z "$PYTHON_BINARY" ]; then
     # system python3 doesn't exist or exists but is older than 3.6.
     if is_python_36 "$(command -v python3)"; then
         PYTHON=$(command -v python3)
-    elif is_python_36 "$(command -v /opt/mongodbtoolchain/v2/bin/python3)"; then
-        PYTHON=$(command -v /opt/mongodbtoolchain/v2/bin/python3)
+    elif is_python_36 "$(command -v /opt/mongodbtoolchain/v3/bin/python3)"; then
+        PYTHON=$(command -v /opt/mongodbtoolchain/v3/bin/python3)
     else
         echo "Cannot test without python3.6+ installed!"
     fi
