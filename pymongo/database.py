@@ -76,9 +76,9 @@ def synchronize(async_method, doc=None):
 
     @functools.wraps(async_method)
     def method(self, *args, **kwargs):
-        with self.client._get_io_loop() as loop:
-            coro = async_method(self, *args, **kwargs)
-            return loop.run_until_complete(coro)
+        loop = self.client._io_loop
+        coro = async_method(self, *args, **kwargs)
+        return loop.run_until_complete(coro)
 
     # This is for the benefit of generating documentation with Sphinx.
     method.is_sync_method = True  # type: ignore[attr-defined]
