@@ -769,6 +769,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self.__alock = _ALock(self.__lock)
         self.__kill_cursors_queue: List = []
         self.__io_loop: Optional[asyncio.AbstractEventLoop] = None
+        self.__owning_thread: Optional[int] = None
 
         self._event_listeners = options.pool_options._event_listeners
         super(MongoClient, self).__init__(
@@ -833,6 +834,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     @contextlib.contextmanager
     def _get_io_loop(self):
+        if self.__owning_thread == threading.current_thread().ident:
+            raise RuntimeError("io loop is already running in this thread")
         if self.__io_loop is None:
             try:
                 self.__io_loop = asyncio.get_running_loop()
@@ -840,7 +843,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             except RuntimeError:
                 self.__io_loop = asyncio.new_event_loop()
         with MongoClient.__loop_lock:
+            self.__owning_thread = threading.current_thread().ident
             yield self.__io_loop
+            self.__owning_thread = None
 
     def _server_property(self, attr_name):
         """An attribute of the current server's description.

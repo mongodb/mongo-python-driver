@@ -303,7 +303,7 @@ async def command_async(
         compression_ctx = None
 
     if client and client._encrypter and not client._encrypter._bypass_auto_encryption:
-        spec = orig = client._encrypter.encrypt(dbname, spec, codec_options)
+        spec = orig = await client._encrypter.encrypt_async(dbname, spec, codec_options)
 
     if use_op_msg:
         flags = _OpMsg.MORE_TO_COME if unacknowledged else 0
