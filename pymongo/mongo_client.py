@@ -767,7 +767,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self.__lock = threading.Lock()
         self.__alock = _ALock(self.__lock)
         self.__kill_cursors_queue: List = []
-        self.__io_loop: Optional[asyncio.AbstractEventLoop] = None
+        self.__io_loops = weakref.WeakKeyDictionary()
 
         self._event_listeners = options.pool_options._event_listeners
         super(MongoClient, self).__init__(
@@ -830,11 +830,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         args.update(kwargs)
         return MongoClient(**args)
 
-    @property
-    def _io_loop(self):
-        if self.__io_loop is None:
-            self.__io_loop = asyncio.new_event_loop()
-        return self.__io_loop
+    def _get_io_loop(self):
+        current_thread = threading.current_thread()
+        if current_thread not in self.__io_loops:
+            self.__io_loops[current_thread] = asyncio.new_event_loop()
+        return self.__io_loops[current_thread]
 
     def _server_property(self, attr_name):
         """An attribute of the current server's description.
@@ -1147,9 +1147,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if self._encrypter:
             # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
             self._encrypter.close()
-        if self.__io_loop:
-            self.__io_loop.close()
-            self.__io_loop = None
+        for loop in self.__io_loops.values():
+            loop.close()
+        self.__io_loops = weakref.WeakValueDictionary()
 
     def _get_topology(self):
         """Get the internal :class:`~pymongo.topology.Topology` object.

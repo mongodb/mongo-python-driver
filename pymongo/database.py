@@ -76,7 +76,7 @@ def synchronize(async_method, doc=None):
 
     @functools.wraps(async_method)
     def method(self, *args, **kwargs):
-        loop = self.client._io_loop
+        loop = self.client._get_io_loop()
         coro = async_method(self, *args, **kwargs)
         return loop.run_until_complete(coro)
 
