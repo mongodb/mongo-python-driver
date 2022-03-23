@@ -767,9 +767,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self.__lock = threading.Lock()
         self.__alock = _ALock(self.__lock)
         self.__kill_cursors_queue: List = []
-        self.__io_loops: weakref.WeakKeyDictionary[
-            threading.Thread, asyncio.AbstractEventLoop
-        ] = weakref.WeakKeyDictionary()
+        self.__io_loop: Optional[asyncio.AbstractEventLoop] = None
+        self.__runner_thread: Optional[threading.Thread] = None
 
         self._event_listeners = options.pool_options._event_listeners
         super(MongoClient, self).__init__(
@@ -832,11 +831,20 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         args.update(kwargs)
         return MongoClient(**args)
 
+    def _spinner(self):
+        loop = self.__io_loop
+        assert loop is not None
+        try:
+            loop.run_forever()
+        finally:
+            loop.close()
+
     def _get_io_loop(self):
-        current_thread = threading.current_thread()
-        if current_thread not in self.__io_loops:
-            self.__io_loops[current_thread] = asyncio.new_event_loop()
-        return self.__io_loops[current_thread]
+        if not self.__io_loop:
+            self.__io_loop = asyncio.new_event_loop()
+            self.__runner_thread = threading.Thread(target=self._spinner, daemon=True)
+            self.__runner_thread.start()
+        return self.__io_loop
 
     def _server_property(self, attr_name):
         """An attribute of the current server's description.
@@ -1149,9 +1157,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if self._encrypter:
             # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
             self._encrypter.close()
-        for loop in self.__io_loops.values():
-            loop.close()
-        self.__io_loops = weakref.WeakKeyDictionary()
+        if self.__io_loop:
+            if self.__io_loop.is_running():
+                self.__io_loop.stop()
+            self.__runner_thread = None
+            self.__io_loop = None
 
     def _get_topology(self):
         """Get the internal :class:`~pymongo.topology.Topology` object.
