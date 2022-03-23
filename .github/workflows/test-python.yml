@@ -20,6 +20,7 @@ jobs:
   build:
     # supercharge/mongodb-github-action requires containers so we don't test other platforms
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
       matrix:
         os: [ubuntu-20.04]
@@ -71,6 +72,7 @@ jobs:
   linkcheck:
     name: Check Links
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2

@@ -85,6 +85,7 @@ class TestMongosLoadBalancing(MockClientTest):
         # While connected() ensures we can trigger connection from the main
         # thread and wait for the monitors, this test triggers connection from
         # several threads at once to check for data races.
+        raise unittest.SkipTest("skip for now")
         nthreads = 10
         client = self.mock_client()
         self.assertEqual(0, len(client.nodes))
