@@ -767,7 +767,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self.__lock = threading.Lock()
         self.__alock = _ALock(self.__lock)
         self.__kill_cursors_queue: List = []
-        self.__io_loops = weakref.WeakKeyDictionary()
+        self.__io_loops: weakref.WeakKeyDictionary[
+            threading.Thread, asyncio.AbstractEventLoop
+        ] = weakref.WeakKeyDictionary()
 
         self._event_listeners = options.pool_options._event_listeners
         super(MongoClient, self).__init__(
@@ -1149,7 +1151,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             self._encrypter.close()
         for loop in self.__io_loops.values():
             loop.close()
-        self.__io_loops = weakref.WeakValueDictionary()
+        self.__io_loops = weakref.WeakKeyDictionary()
 
     def _get_topology(self):
         """Get the internal :class:`~pymongo.topology.Topology` object.
