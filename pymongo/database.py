@@ -15,7 +15,10 @@
 """Database level operations."""
 
 import asyncio
+import atexit
 import functools
+import threading
+from concurrent.futures import wait
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -66,6 +69,49 @@ if TYPE_CHECKING:
 _CodecDocumentType = TypeVar("_CodecDocumentType", bound=Mapping[str, Any])
 
 
+class TaskRunner:
+    __instance = None
+
+    @staticmethod
+    def getInstance():
+        if TaskRunner.__instance is None:
+            TaskRunner()
+        assert TaskRunner.__instance is not None
+        return TaskRunner.__instance
+
+    def __init__(self):
+        if TaskRunner.__instance is not None:
+            raise Exception("This class is a singleton!")
+        else:
+            TaskRunner.__instance = self
+        self.__io_loop: Optional[asyncio.AbstractEventLoop] = None
+        self.__runner_thread: Optional[threading.Thread] = None
+        self.__lock = threading.Lock()
+        atexit.register(self._close)
+
+    def _close(self):
+        if self.__io_loop:
+            self.__io_loop.stop()
+
+    def _runner(self):
+        loop = self.__io_loop
+        assert loop is not None
+        try:
+            loop.run_forever()
+        finally:
+            loop.close()
+
+    def run(self, coro):
+        with self.__lock:
+            if self.__io_loop is None:
+                self.__io_loop = asyncio.new_event_loop()
+                self.__runner_thread = threading.Thread(target=self._runner, daemon=True)
+                self.__runner_thread.start()
+        fut = asyncio.run_coroutine_threadsafe(coro, self.__io_loop)
+        wait([fut])
+        return fut.result()
+
+
 def synchronize(async_method, doc=None):
     """Decorate `async_method` so it runs synchronously
     The method runs on an event loop.
@@ -77,13 +123,9 @@ def synchronize(async_method, doc=None):
 
     @functools.wraps(async_method)
     def method(self, *args, **kwargs):
-        loop = self.client._get_io_loop()
+        runner = TaskRunner.getInstance()
         coro = async_method(self, *args, **kwargs)
-        fut = asyncio.run_coroutine_threadsafe(coro, loop)
-        from concurrent.futures import wait
-
-        wait([fut])
-        return fut.result()
+        return runner.run(coro)
 
     # This is for the benefit of generating documentation with Sphinx.
     method.is_sync_method = True  # type: ignore[attr-defined]

@@ -31,7 +31,6 @@ access:
   Database(MongoClient(host=['localhost:27017'], document_class=dict, tz_aware=False, connect=True), 'test-database')
 """
 
-import asyncio
 import contextlib
 import threading
 import weakref
@@ -767,8 +766,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self.__lock = threading.Lock()
         self.__alock = _ALock(self.__lock)
         self.__kill_cursors_queue: List = []
-        self.__io_loop: Optional[asyncio.AbstractEventLoop] = None
-        self.__runner_thread: Optional[threading.Thread] = None
 
         self._event_listeners = options.pool_options._event_listeners
         super(MongoClient, self).__init__(
@@ -830,21 +827,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         args = self.__init_kwargs.copy()
         args.update(kwargs)
         return MongoClient(**args)
-
-    def _spinner(self):
-        loop = self.__io_loop
-        assert loop is not None
-        try:
-            loop.run_forever()
-        finally:
-            loop.close()
-
-    def _get_io_loop(self):
-        if not self.__io_loop:
-            self.__io_loop = asyncio.new_event_loop()
-            self.__runner_thread = threading.Thread(target=self._spinner, daemon=True)
-            self.__runner_thread.start()
-        return self.__io_loop
 
     def _server_property(self, attr_name):
         """An attribute of the current server's description.
@@ -1157,11 +1139,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if self._encrypter:
             # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
             self._encrypter.close()
-        if self.__io_loop:
-            if self.__io_loop.is_running():
-                self.__io_loop.stop()
-            self.__runner_thread = None
-            self.__io_loop = None
 
     def _get_topology(self):
         """Get the internal :class:`~pymongo.topology.Topology` object.
