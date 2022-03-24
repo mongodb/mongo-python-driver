@@ -239,7 +239,6 @@ class TestCommandMonitoring(IntegrationTest):
             # Exhaust the cursor to avoid kill cursors.
             tuple(cursor)
 
-    @client_context.require_version_min(4, 4, 4)
     def test_find_options(self):
         query = dict(
             filter={},
