@@ -17,7 +17,7 @@ Due to `limitations in mypy`_, the default
 values for generics are not yet provided (they will eventually be ``Dict[str, any]``).
 
 If you would like to opt out of using the provided types, add the following to
-your `mypy config`_ ::
+your `mypy config`_: ::
 
     [mypy-pymongo]
     follow_imports = False
@@ -26,7 +26,8 @@ your `mypy config`_ ::
 Basic Usage
 -----------
 
-Note that a type for ``MongoClient`` must be specified.  To use a generic document type, use the untyped version.
+Note that a type for :class:`~pymongo.mongo_client.MongoClient` must be specified.  Here we use the
+default, specified type:
 
 .. doctest::
 
@@ -42,8 +43,8 @@ You can also use ``MongoClient[Dict[str, Any]]`` for a more accurate typing.
 Client Types
 ------------
 
-The ``MongoClient`` is generic on the document type returned by methods.
-You can specify a ``RawBSONDocument`` document type.
+:class:`~pymongo.mongo_client.MongoClient`is generic on the document type returned by methods.
+You can specify a :class:`~bson.raw_bson.RawBSONDocument` document type:
 
 .. doctest::
 
@@ -55,7 +56,7 @@ You can specify a ``RawBSONDocument`` document type.
   >>> result = collection.find_one({"x": 1})
   >>> assert isinstance(result, RawBSONDocument)
 
-Another option is to use a custom `TypedDict`_ for a well-defined schema.
+Another option is to use a custom :py:class:`~typing.TypedDict` when using a well-defined schema:
 
 .. doctest::
 
@@ -72,7 +73,7 @@ Another option is to use a custom `TypedDict`_ for a well-defined schema.
   >>> assert result is not None
   >>> assert result["year"] == 1993
 
-Custom classes that subclass `collections.abc.Mapping` can also be used, such as ``SON``.
+Custom classes that subclass :py:class:`collections.abc.Mapping` can also be used, such as :class:`~bson.son.SON`:
 
 .. doctest::
 
@@ -88,7 +89,7 @@ Custom classes that subclass `collections.abc.Mapping` can also be used, such as
 
 Database Command Types
 ----------------------
-The ``Database.command`` method can also be used directly with generic types by providing a custom ``codec_options``.
+The :meth:`~pymongo.database.Database.command` method can also be used directly with generic types by providing a custom :class:`~bson.codec_options.CodecOptions`:
 
 .. doctest::
 
@@ -100,13 +101,13 @@ The ``Database.command`` method can also be used directly with generic types by 
   >>> result = client.admin.command("ping", codec_options=options)
   >>> assert isinstance(result, RawBSONDocument)
 
-Custom ``collections.abc.Mapping`` classes and ``TypedDict`` are also supported.
-For ``TypeDict``, use `options: CodecOptions[MyTypedDict] = CodecOptions(...)``.
+Custom :py:class:`collections.abc.Mapping` subclasses and :py:class:`~typing.TypedDict` are also supported.
+For :py:class:`~typing.TypedDict`, use the form ``options: CodecOptions[MyTypedDict] = CodecOptions(...)``.
 
 
 BSON Decoding Types
 -------------------
-Finally, the `bson` decoding functions can be used with generic types by providing a custom `codec_options`.
+Finally, the :mod:`bson` decoding functions can be used with generic types by providing a custom :class:`~bson.codec_options.CodecOptions`:
 
 .. doctest::
 
@@ -122,8 +123,8 @@ Finally, the `bson` decoding functions can be used with generic types by providi
   >>> rt_document = decode(bsonbytes, codec_options=options)
   >>> assert rt_document.foo() == "bar"
 
-``RawBSONDocument`` and ``TypedDict`` are also supported.
-For ``TypeDict``, use ``options: CodecOptions[MyTypedDict] = CodecOptions(...)``.
+:class:`~bson.raw_bson.RawBSONDocument` and :py:class:`~typing.TypedDict` are also supported.
+For :py:class:`~typing.TypedDict`, use  the form ``options: CodecOptions[MyTypedDict] = CodecOptions(...)``.
 
 
 .. _type hints: https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html
