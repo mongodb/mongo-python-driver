@@ -32,9 +32,9 @@ Note that a type for ``MongoClient`` must be specified.  To use a generic docume
 
   >>> from pymongo import MongoClient
   >>> client: MongoClient = MongoClient()
-  >>> collection: client.test.test
-  >>> collection.insert_one([{"x": 1, "tags": ["dog", "cat"]})
-  >>> retreived = collection.find_one({"x": 1})
+  >>> collection = client.test.test
+  >>> inserted = collection.insert_one({"x": 1, "tags": ["dog", "cat"]})
+  >>> retrieved = collection.find_one({"x": 1})
   >>> assert isinstance(retrieved, dict)
 
 You can also use ``MongoClient[Dict[str, Any]]`` for a more accurate typing.
@@ -51,7 +51,7 @@ You can specify a ``RawBSONDocument`` document type::
   >>> from bson import RawBSONDocument
   >>> client = MongoClient(document_class=RawBSONDocument)
   >>> collection = client.test.test
-  >>> collection.insert_one([{"x": 1, "tags": ["dog", "cat"]})
+  >>> inserted = collection.insert_one([{"x": 1, "tags": ["dog", "cat"]})
   >>> retreived = collection.find_one({"x": 1})
   >>> assert isinstance(retrieved, RawBSONDocument)
 
@@ -66,8 +66,7 @@ Another option is to use a custom `TypedDict <INSERT LINK>` for a well-defined s
   >>>       year: int
   >>> client: MongoClient[Movie] = MongoClient()
   >>> collection = client.test.test
-  >>> collection.insert_one([{"name": "Jurassic Park", "year": 1993 })
-  >>> assert client['name'] ==
+  >>> inserted = collection.insert_one([{"name": "Jurassic Park", "year": 1993 })
   >>> retreived = collection.find_one({"name": "Jurassic Park"})
   >>> assert retreived is not None
   >>> assert retreived["year"] == 1993
@@ -88,7 +87,7 @@ Custom classes that subclass `collections.abc.Mapping` can also be used, such as
 
 Database Command Types
 ----------------------
-The ``Database.command` method can also be used directly with generic types by providing a custom `codec_options`::
+The ``Database.command`` method can also be used directly with generic types by providing a custom ``codec_options``::
 
 .. doctest::
 
