@@ -16,6 +16,8 @@ type of document object returned by methods.
 Due to `limitations in mypy`_, the default
 values for generics are not yet provided (they will eventually be ``Dict[str, any]``).
 
+For a larger set of example code that uses types, see the PyMongo `test mypy suite`_.
+
 If you would like to opt out of using the provided types, add the following to
 your `mypy config`_: ::
 
@@ -107,7 +109,7 @@ For :py:class:`~typing.TypedDict`, use the form ``options: CodecOptions[MyTypedD
 
 BSON Decoding Types
 -------------------
-Finally, the :mod:`bson` decoding functions can be used with generic types by providing a custom :class:`~bson.codec_options.CodecOptions`:
+The :mod:`bson` decoding functions can be used with generic types by providing a custom :class:`~bson.codec_options.CodecOptions`:
 
 .. doctest::
 
@@ -129,5 +131,5 @@ For :py:class:`~typing.TypedDict`, use  the form ``options: CodecOptions[MyTyped
 
 .. _type hints: https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html
 .. _limitations in mypy: https://github.com/python/mypy/issues/3737
-.. _TypedDict: https://docs.python.org/3/library/typing.html#typing.TypedDict
 .. _mypy config: https://mypy.readthedocs.io/en/stable/config_file.html
+.. _test mypy suite: https://github.com/mongodb/mongo-python-driver/blob/master/test/test_mypy.py
