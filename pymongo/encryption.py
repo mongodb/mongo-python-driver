@@ -422,7 +422,7 @@ class _Encrypter(object):
         self._check_closed()
         encoded_cmd = _dict_to_bson(cmd, False, codec_options)
         with _wrap_encryption_errors():
-            encrypted_cmd = self._auto_encrypter.encrypt(database, encoded_cmd)
+            encrypted_cmd = await encrypt_async(self._auto_encrypter, database, encoded_cmd)
             # TODO: PYTHON-1922 avoid decoding the encrypted_cmd.
             encrypt_cmd = _inflate_bson(encrypted_cmd, DEFAULT_RAW_BSON_OPTIONS)
             return encrypt_cmd
