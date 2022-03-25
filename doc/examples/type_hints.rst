@@ -146,4 +146,4 @@ For :py:class:`~typing.TypedDict`, use  the form: ``options: CodecOptions[MyType
 .. _mypy: https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html
 .. _limitations in mypy: https://github.com/python/mypy/issues/3737
 .. _mypy config: https://mypy.readthedocs.io/en/stable/config_file.html
-.. _test mypy suite: https://github.com/mongodb/mongo-python-driver/blob/master/test/test_mypy.py
+.. _test_mypy module: https://github.com/mongodb/mongo-python-driver/blob/master/test/test_mypy.py
