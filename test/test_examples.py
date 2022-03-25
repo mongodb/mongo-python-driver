@@ -1298,10 +1298,13 @@ class TestVersionedApiExamples(IntegrationTest):
 
 
 class TestSnapshotQueryExamples(IntegrationTest):
-    @client_context.require_replica_set
     @client_context.require_version_min(5, 0)
     def test_snapshot_query(self):
         client = self.client
+
+        if not client_context.is_topology_type(["replicaset", "sharded"]):
+            self.skipTest("Must be a sharded or replicaset")
+
         self.addCleanup(client.drop_database, "pets")
         db = client.pets
         db.drop_collection("cats")
