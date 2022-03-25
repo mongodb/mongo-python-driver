@@ -2180,7 +2180,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                     raise
                 cursor = {"id": 0, "firstBatch": []}
             cmd_cursor = CommandCursor(
-                coll, cursor, sock_info.address, session=session, explicit_session=explicit_session
+                coll,
+                cursor,
+                sock_info.address,
+                session=session,
+                explicit_session=explicit_session,
+                comment=cmd.get("comment"),
             )
             cmd_cursor._maybe_pin_connection(sock_info)
             return cmd_cursor

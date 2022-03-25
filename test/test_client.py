@@ -1344,6 +1344,7 @@ class TestClient(IntegrationTest):
                     None,
                     None,
                     False,
+                    None,
                 ),
                 unpack_res=Cursor(client.pymongo_test.collection)._unpack_response,
                 address=("not-a-member", 27017),
