@@ -1298,6 +1298,7 @@ class TestVersionedApiExamples(IntegrationTest):
 
 
 class TestSnapshotQueryExamples(IntegrationTest):
+    @client_context.require_replica_set
     @client_context.require_version_min(5, 0)
     def test_snapshot_query(self):
         client = self.client
