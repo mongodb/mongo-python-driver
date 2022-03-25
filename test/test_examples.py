@@ -17,6 +17,7 @@
 import datetime
 import sys
 import threading
+import time
 
 sys.path[0:0] = [""]
 
@@ -1308,6 +1309,8 @@ class TestSnapshotQueryExamples(IntegrationTest):
         db.drop_collection("dogs")
         db.cats.insert_one({"name": "Whiskers", "color": "white", "age": 10, "adoptable": True})
         db.dogs.insert_one({"name": "Pebbles", "color": "Brown", "age": 10, "adoptable": True})
+        wait_for_snapshot(db.cats, client)
+        wait_for_snapshot(db.dogs, client)
 
         # Start Snapshot Query Example 1
 
@@ -1327,10 +1330,10 @@ class TestSnapshotQueryExamples(IntegrationTest):
         db = client.retail
         self.addCleanup(client.drop_database, "retail")
         db.drop_collection("sales")
-        import datetime
 
         saleDate = datetime.datetime.now()
         db.sales.insert_one({"shoeType": "boot", "price": 30, "saleDate": saleDate})
+        wait_for_snapshot(db.sales, client)
 
         # Start Snapshot Query Example 2
         db = client.retail
@@ -1359,6 +1362,25 @@ class TestSnapshotQueryExamples(IntegrationTest):
             ).next()["totalDailySales"]
 
         # End Snapshot Query Example 2
+
+
+# Wait for snapshot reads to become available to prevent this error:
+# [246:SnapshotUnavailable]: Unable to read from a snapshot due to pending collection catalog changes; please retry the operation. Snapshot timestamp is Timestamp(1646666892, 4). Collection minimum is Timestamp(1646666892, 5) (on localhost:27017, modern retry, attempt 1)
+# From https://github.com/mongodb/mongo-ruby-driver/commit/7c4117b58e3d12e237f7536f7521e18fc15f79ac
+def wait_for_snapshot(collection, client):
+    start_time = time.monotonic()
+
+    with client.start_session(snapshot=True) as s:
+        while True:
+            try:
+                collection.aggregate([{"$match": {"any": True}}], session=s)
+                return
+            except OperationFailure as e:
+                # Retry them as the server demands...
+                if e.code == 246:  # SnapshotUnavailable
+                    if time.monotonic() < start_time + 10:
+                        continue
+                raise
 
 
 if __name__ == "__main__":
