@@ -1297,5 +1297,68 @@ class TestVersionedApiExamples(IntegrationTest):
         # End Versioned API Example 8
 
 
+class TestSnapshotQueryExamples(IntegrationTest):
+    @client_context.require_version_min(5, 0)
+    def test_snapshot_query(self):
+        client = self.client
+        self.addCleanup(client.drop_database, "pets")
+        db = client.pets
+        db.drop_collection("cats")
+        db.drop_collection("dogs")
+        db.cats.insert_one({"name": "Whiskers", "color": "white", "age": 10, "adoptable": True})
+        db.dogs.insert_one({"name": "Pebbles", "color": "Brown", "age": 10, "adoptable": True})
+
+        # Start Snapshot Query Example 1
+
+        db = client.pets
+        with client.start_session(snapshot=True) as s:
+            adoptablePetsCount = db.cats.aggregate(
+                [{"$match": {"adoptable": True}}, {"$count": "adoptableCatsCount"}], session=s
+            ).next()["adoptableCatsCount"]
+
+            adoptablePetsCount += db.dogs.aggregate(
+                [{"$match": {"adoptable": True}}, {"$count": "adoptableDogsCount"}], session=s
+            ).next()["adoptableDogsCount"]
+
+        print(adoptablePetsCount)
+
+        # End Snapshot Query Example 1
+        db = client.retail
+        self.addCleanup(client.drop_database, "retail")
+        db.drop_collection("sales")
+        import datetime
+
+        saleDate = datetime.datetime.now()
+        db.sales.insert_one({"shoeType": "boot", "price": 30, "saleDate": saleDate})
+
+        # Start Snapshot Query Example 2
+        db = client.retail
+        with client.start_session(snapshot=True) as s:
+            total = db.sales.aggregate(
+                [
+                    {
+                        "$match": {
+                            "$expr": {
+                                "$gt": [
+                                    "$saleDate",
+                                    {
+                                        "$dateSubtract": {
+                                            "startDate": "$$NOW",
+                                            "unit": "day",
+                                            "amount": 1,
+                                        }
+                                    },
+                                ]
+                            }
+                        }
+                    },
+                    {"$count": "totalDailySales"},
+                ],
+                session=s,
+            ).next()["totalDailySales"]
+
+        # End Snapshot Query Example 2
+
+
 if __name__ == "__main__":
     unittest.main()
