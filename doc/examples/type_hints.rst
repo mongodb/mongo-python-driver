@@ -4,19 +4,20 @@
 Type Hints
 ===========
 
-As of version 4.1, PyMongo ships with `type hints`_.
+As of version 4.1, PyMongo ships with type hints.
 
 With type hints, Python type checkers can easily find bugs before they reveal themselves in your code.  If your IDE is configured to use type hints,
 it can suggest more appropriate completions and highlight errors in your code.
+You can also use `mypy`_ tool from your command line or in Continuous Integration tests.
 
 All of the public APIs in PyMongo are fully type hinted, and
 several of them support generic parameters for the
-type of document object returned by methods.
+type of document object returned when decoding BSON documents.
 
 Due to `limitations in mypy`_, the default
-values for generics are not yet provided (they will eventually be ``Dict[str, any]``).
+values for generic document types are not yet provided (they will eventually be ``Dict[str, any]``).
 
-For a larger set of example code that uses types, see the PyMongo `test mypy suite`_.
+For a larger set of examples that uses types, see the PyMongo `test mypy suite`_.
 
 If you would like to opt out of using the provided types, add the following to
 your `mypy config`_: ::
@@ -29,7 +30,7 @@ Basic Usage
 -----------
 
 Note that a type for :class:`~pymongo.mongo_client.MongoClient` must be specified.  Here we use the
-default, specified type:
+default, unspecified document type:
 
 .. doctest::
 
@@ -40,12 +41,22 @@ default, specified type:
   >>> retrieved = collection.find_one({"x": 1})
   >>> assert isinstance(retrieved, dict)
 
-You can also use ``MongoClient[Dict[str, Any]]`` for a more accurate typing.
+For a more accurate typing for document type you can use:
 
-Client Types
-------------
+.. doctest::
 
-:class:`~pymongo.mongo_client.MongoClient`is generic on the document type returned by methods.
+  >>> from typing import Any, Dict
+  >>> from pymongo import MongoClient
+  >>> client: MongoClient[Dict[str, Any]] = MongoClient()
+  >>> collection = client.test.test
+  >>> inserted = collection.insert_one({"x": 1, "tags": ["dog", "cat"]})
+  >>> retrieved = collection.find_one({"x": 1})
+  >>> assert isinstance(retrieved, dict)
+
+Client Document Type
+--------------------
+
+:class:`~pymongo.mongo_client.MongoClient`is generic on the document type used to decode BSON documents.
 You can specify a :class:`~bson.raw_bson.RawBSONDocument` document type:
 
 .. doctest::
@@ -58,7 +69,7 @@ You can specify a :class:`~bson.raw_bson.RawBSONDocument` document type:
   >>> result = collection.find_one({"x": 1})
   >>> assert isinstance(result, RawBSONDocument)
 
-Another option is to use a custom :py:class:`~typing.TypedDict` when using a well-defined schema:
+Another option is to use a custom :py:class:`~typing.TypedDict` when using a well-defined schema for your data:
 
 .. doctest::
 
@@ -75,7 +86,7 @@ Another option is to use a custom :py:class:`~typing.TypedDict` when using a wel
   >>> assert result is not None
   >>> assert result["year"] == 1993
 
-Custom classes that subclass :py:class:`collections.abc.Mapping` can also be used, such as :class:`~bson.son.SON`:
+Subclasses of :py:class:`collections.abc.Mapping` can also be used, such as :class:`~bson.son.SON`:
 
 .. doctest::
 
@@ -88,10 +99,11 @@ Custom classes that subclass :py:class:`collections.abc.Mapping` can also be use
   >>> assert result is not None
   >>> assert result["x"] == 1
 
+Note that when using :class:`~bson.son.SON`, the key and value types must be given, e.g. ``SON[str, Any]``.
 
-Database Command Types
-----------------------
-The :meth:`~pymongo.database.Database.command` method can also be used directly with generic types by providing a custom :class:`~bson.codec_options.CodecOptions`:
+Database Command Document Type
+------------------------------
+The :meth:`~pymongo.database.Database.command` method can also specify the document type by providing a custom :class:`~bson.codec_options.CodecOptions`:
 
 .. doctest::
 
@@ -109,7 +121,7 @@ For :py:class:`~typing.TypedDict`, use the form ``options: CodecOptions[MyTypedD
 
 BSON Decoding Types
 -------------------
-The :mod:`bson` decoding functions can be used with generic types by providing a custom :class:`~bson.codec_options.CodecOptions`:
+The :mod:`bson` decoding functions can also specify the document type by providing :class:`~bson.codec_options.CodecOptions`:
 
 .. doctest::
 
@@ -129,7 +141,7 @@ The :mod:`bson` decoding functions can be used with generic types by providing a
 For :py:class:`~typing.TypedDict`, use  the form ``options: CodecOptions[MyTypedDict] = CodecOptions(...)``.
 
 
-.. _type hints: https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html
+.. _mypy: https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html
 .. _limitations in mypy: https://github.com/python/mypy/issues/3737
 .. _mypy config: https://mypy.readthedocs.io/en/stable/config_file.html
 .. _test mypy suite: https://github.com/mongodb/mongo-python-driver/blob/master/test/test_mypy.py
