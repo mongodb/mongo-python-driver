@@ -4,11 +4,11 @@
 Type Hints
 ===========
 
-As of version 4.1, PyMongo ships with type hints.
+As of version 4.1, PyMongo ships with `type hints`_.
 
 With type hints, Python type checkers can easily find bugs before they reveal themselves in your code.  If your IDE is configured to use type hints,
 it can suggest more appropriate completions and highlight errors in your code.
-You can also use `mypy`_ tool from your command line or in Continuous Integration tests.
+You can also use the `mypy`_ tool from your command line or in Continuous Integration tests.
 
 All of the public APIs in PyMongo are fully type hinted, and
 several of them support generic parameters for the
@@ -17,7 +17,7 @@ type of document object returned when decoding BSON documents.
 Due to `limitations in mypy`_, the default
 values for generic document types are not yet provided (they will eventually be ``Dict[str, any]``).
 
-For a larger set of examples that uses types, see the PyMongo `test mypy suite`_.
+For a larger set of examples that use types, see the PyMongo `test_mypy module`_.
 
 If you would like to opt out of using the provided types, add the following to
 your `mypy config`_: ::
@@ -56,7 +56,8 @@ For a more accurate typing for document type you can use:
 Client Document Type
 --------------------
 
-:class:`~pymongo.mongo_client.MongoClient`is generic on the document type used to decode BSON documents.
+:class:`~pymongo.mongo_client.MongoClient` is generic on the document type used to decode BSON documents.
+
 You can specify a :class:`~bson.raw_bson.RawBSONDocument` document type:
 
 .. doctest::
@@ -103,7 +104,7 @@ Note that when using :class:`~bson.son.SON`, the key and value types must be giv
 
 Database Command Document Type
 ------------------------------
-The :meth:`~pymongo.database.Database.command` method can also specify the document type by providing a custom :class:`~bson.codec_options.CodecOptions`:
+When using the :meth:`~pymongo.database.Database.command`, you can specify the document type by providing a custom :class:`~bson.codec_options.CodecOptions`:
 
 .. doctest::
 
@@ -116,12 +117,12 @@ The :meth:`~pymongo.database.Database.command` method can also specify the docum
   >>> assert isinstance(result, RawBSONDocument)
 
 Custom :py:class:`collections.abc.Mapping` subclasses and :py:class:`~typing.TypedDict` are also supported.
-For :py:class:`~typing.TypedDict`, use the form ``options: CodecOptions[MyTypedDict] = CodecOptions(...)``.
+For :py:class:`~typing.TypedDict`, use the form: ``options: CodecOptions[MyTypedDict] = CodecOptions(...)``.
 
 
 BSON Decoding Types
 -------------------
-The :mod:`bson` decoding functions can also specify the document type by providing :class:`~bson.codec_options.CodecOptions`:
+You can specify the document type returned by :mod:`bson` decoding functions by providing :class:`~bson.codec_options.CodecOptions`:
 
 .. doctest::
 
@@ -138,9 +139,10 @@ The :mod:`bson` decoding functions can also specify the document type by providi
   >>> assert rt_document.foo() == "bar"
 
 :class:`~bson.raw_bson.RawBSONDocument` and :py:class:`~typing.TypedDict` are also supported.
-For :py:class:`~typing.TypedDict`, use  the form ``options: CodecOptions[MyTypedDict] = CodecOptions(...)``.
+For :py:class:`~typing.TypedDict`, use  the form: ``options: CodecOptions[MyTypedDict] = CodecOptions(...)``.
 
 
+.. _type hints: https://docs.python.org/3/library/typing.html
 .. _mypy: https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html
 .. _limitations in mypy: https://github.com/python/mypy/issues/3737
 .. _mypy config: https://mypy.readthedocs.io/en/stable/config_file.html
