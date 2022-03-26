@@ -3146,8 +3146,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             **kwargs,
         )
 
-    def __iter__(self) -> "Collection[_DocumentType]":
-        return self
+    # See PYTHON-3084.
+    __iter__ = None
 
     def __next__(self) -> NoReturn:
         raise TypeError("'Collection' object is not iterable")

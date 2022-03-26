@@ -1009,8 +1009,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         return result
 
-    def __iter__(self) -> "Database[_DocumentType]":
-        return self
+    # See PYTHON-3084.
+    __iter__ = None
 
     def __next__(self) -> NoReturn:
         raise TypeError("'Database' object is not iterable")
