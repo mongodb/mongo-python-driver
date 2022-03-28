@@ -211,8 +211,12 @@ class ClientUnitTest(unittest.TestCase):
 
     def test_iteration(self):
         client = self.client
+        if "PyPy" in sys.version:
+            msg = "'NoneType' object is not callable"
+        else:
+            msg = "'MongoClient' object is not iterable"
         # Iteration fails
-        with self.assertRaisesRegex(TypeError, "'MongoClient' object is not iterable"):
+        with self.assertRaisesRegex(TypeError, msg):
             for _ in client:  # type: ignore[misc] # error: "None" not callable  [misc]
                 break
         # Index fails
