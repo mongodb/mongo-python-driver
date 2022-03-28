@@ -53,8 +53,8 @@ For a more accurate typing for document type you can use:
   >>> retrieved = collection.find_one({"x": 1})
   >>> assert isinstance(retrieved, dict)
 
-Client Document Type
---------------------
+Typed Client
+------------
 
 :class:`~pymongo.mongo_client.MongoClient` is generic on the document type used to decode BSON documents.
 
@@ -86,8 +86,8 @@ Subclasses of :py:class:`collections.abc.Mapping` can also be used, such as :cla
 Note that when using :class:`~bson.son.SON`, the key and value types must be given, e.g. ``SON[str, Any]``.
 
 
-Collection Document Type
-------------------------
+Typed Collection
+----------------
 
 You can use :py:class:`~typing.TypedDict` when using a well-defined schema for the data in a :class:`~pymongo.collection.Collection`:
 
@@ -106,8 +106,8 @@ You can use :py:class:`~typing.TypedDict` when using a well-defined schema for t
   >>> assert result is not None
   >>> assert result["year"] == 1993
 
-Database Document Type
-----------------------
+Typed Database
+--------------
 
 While less common, you could specify that the documents in an entire database
 match a well-defined shema using :py:class:`~typing.TypedDict`.
@@ -129,8 +129,8 @@ match a well-defined shema using :py:class:`~typing.TypedDict`.
   >>> assert result is not None
   >>> assert result["year"] == 1993
 
-Database Command Document Type
-------------------------------
+Typed Command
+-------------
 When using the :meth:`~pymongo.database.Database.command`, you can specify the document type by providing a custom :class:`~bson.codec_options.CodecOptions`:
 
 .. doctest::
@@ -146,7 +146,7 @@ When using the :meth:`~pymongo.database.Database.command`, you can specify the d
 Custom :py:class:`collections.abc.Mapping` subclasses and :py:class:`~typing.TypedDict` are also supported.
 For :py:class:`~typing.TypedDict`, use the form: ``options: CodecOptions[MyTypedDict] = CodecOptions(...)``.
 
-BSON Decoding Types
+Typed BSON Decoding
 -------------------
 You can specify the document type returned by :mod:`bson` decoding functions by providing :class:`~bson.codec_options.CodecOptions`:
 
@@ -175,9 +175,10 @@ Client Type Annotation
 ~~~~~~~~~~~~~~~~~~~~~~
 If you forget to add a type annotation for a :class:`~pymongo.mongo_client.MongoClient` object you may get the followig ``mypy`` error::
 
-    error: Need type annotation for "client"
+  from pymongo import MongoClient
+  client = MongoClient()  # error: Need type annotation for "client"
 
-The solution is to annotate the type as ``client: MongoClient`` or ``client: MongoClient[Dict[str, Any]]``.  See "Basic Usage" above.
+The solution is to annotate the type as ``client: MongoClient`` or ``client: MongoClient[Dict[str, Any]]``.  See `Basic Usage`_.
 
 Incompatible Types
 ~~~~~~~~~~~~~~~~~~
@@ -189,11 +190,12 @@ may encounter a ``mypy`` error like::
   client: MongoClient = MongoClient()
   client.test.test.insert_many(
       {"a": 1}
-  )  # error: Dict entry 0 has incompatible type "str": "int"; expected "Mapping[str, Any]": "int"
+  )  # error: Dict entry 0 has incompatible type "str": "int";
+     # expected "Mapping[str, Any]": "int"
 
 
-The solution is to use ``client: MongoClient[Dict[str, Any]]`` as in the
-"Basic Usage" above.
+The solution is to use ``client: MongoClient[Dict[str, Any]]`` as used in
+`Basic Usage`_ .
 
 Actual Type Errors
 ~~~~~~~~~~~~~~~~~~
@@ -202,13 +204,14 @@ Other times ``mypy`` will catch an actual error, like the following code::
 
     from pymongo import MongoClient
     from typing import Mapping
-    client = MongoClient()
+    client: MongoClient = MongoClient()
     client.test.test.insert_one(
         [{}]
-    )  # error: Argument 1 to "insert_one" of "Collection" has incompatible type "List[Dict[<nothing>, <nothing>]]"; expected "Mapping[str, Any]"
+    )  # error: Argument 1 to "insert_one" of "Collection" has
+       # incompatible type "List[Dict[<nothing>, <nothing>]]";
+       # expected "Mapping[str, Any]"
 
-In this case the solution is to use `.insert_one({})`, passing the appropriate
-input type.
+In this case the solution is to use ``insert_one({})``, passing a document instead of a list.
 
 Another example is trying to set a value on a :class:`~bson.raw_bson.RawBSONDocument`, which is read-only.::
 
@@ -224,7 +227,8 @@ Another example is trying to set a value on a :class:`~bson.raw_bson.RawBSONDocu
     assert len(retreived.raw) > 0
     retreived[
         "foo"
-    ] = "bar"  # error: Unsupported target for indexed assignment ("RawBSONDocument")  [index]
+    ] = "bar"  # error: Unsupported target for indexed assignment
+               # ("RawBSONDocument")  [index]
 
 .. _type hints: https://docs.python.org/3/library/typing.html
 .. _mypy: https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html
