@@ -211,7 +211,7 @@ class ClientUnitTest(unittest.TestCase):
 
     def test_iteration(self):
         def iterate():
-            [a for a in self.client]
+            [a for a in self.client]  # type: ignore[misc] # error: "None" not callable  [misc]
 
         self.assertRaises(TypeError, iterate)
 
