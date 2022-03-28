@@ -310,7 +310,7 @@ class TestDocumentType(unittest.TestCase):
         retreived["a"] = 1
 
     def test_son_document_type_runtime(self) -> None:
-        client = MongoClient(document_class=SON[str, Any])
+        client = MongoClient(document_class=SON[str, Any], connect=False)
 
 
 class TestCommandDocumentType(unittest.TestCase):
