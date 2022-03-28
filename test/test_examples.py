@@ -21,7 +21,7 @@ import threading
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_context, unittest
-from test.utils import rs_client
+from test.utils import rs_client, wait_until
 
 import pymongo
 from pymongo.errors import ConnectionFailure, OperationFailure
@@ -1295,6 +1295,91 @@ class TestVersionedApiExamples(IntegrationTest):
         # Start Versioned API Example 8
         # 8
         # End Versioned API Example 8
+
+
+class TestSnapshotQueryExamples(IntegrationTest):
+    @client_context.require_version_min(5, 0)
+    def test_snapshot_query(self):
+        client = self.client
+
+        if not client_context.is_topology_type(["replicaset", "sharded"]):
+            self.skipTest("Must be a sharded or replicaset")
+
+        self.addCleanup(client.drop_database, "pets")
+        db = client.pets
+        db.drop_collection("cats")
+        db.drop_collection("dogs")
+        db.cats.insert_one({"name": "Whiskers", "color": "white", "age": 10, "adoptable": True})
+        db.dogs.insert_one({"name": "Pebbles", "color": "Brown", "age": 10, "adoptable": True})
+        wait_until(lambda: self.check_for_snapshot(db.cats), "success")
+        wait_until(lambda: self.check_for_snapshot(db.dogs), "success")
+
+        # Start Snapshot Query Example 1
+
+        db = client.pets
+        with client.start_session(snapshot=True) as s:
+            adoptablePetsCount = db.cats.aggregate(
+                [{"$match": {"adoptable": True}}, {"$count": "adoptableCatsCount"}], session=s
+            ).next()["adoptableCatsCount"]
+
+            adoptablePetsCount += db.dogs.aggregate(
+                [{"$match": {"adoptable": True}}, {"$count": "adoptableDogsCount"}], session=s
+            ).next()["adoptableDogsCount"]
+
+        print(adoptablePetsCount)
+
+        # End Snapshot Query Example 1
+        db = client.retail
+        self.addCleanup(client.drop_database, "retail")
+        db.drop_collection("sales")
+
+        saleDate = datetime.datetime.now()
+        db.sales.insert_one({"shoeType": "boot", "price": 30, "saleDate": saleDate})
+        wait_until(lambda: self.check_for_snapshot(db.sales), "success")
+
+        # Start Snapshot Query Example 2
+        db = client.retail
+        with client.start_session(snapshot=True) as s:
+            total = db.sales.aggregate(
+                [
+                    {
+                        "$match": {
+                            "$expr": {
+                                "$gt": [
+                                    "$saleDate",
+                                    {
+                                        "$dateSubtract": {
+                                            "startDate": "$$NOW",
+                                            "unit": "day",
+                                            "amount": 1,
+                                        }
+                                    },
+                                ]
+                            }
+                        }
+                    },
+                    {"$count": "totalDailySales"},
+                ],
+                session=s,
+            ).next()["totalDailySales"]
+
+        # End Snapshot Query Example 2
+
+    def check_for_snapshot(self, collection):
+        """Wait for snapshot reads to become available to prevent this error:
+        [246:SnapshotUnavailable]: Unable to read from a snapshot due to pending collection catalog changes; please retry the operation. Snapshot timestamp is Timestamp(1646666892, 4). Collection minimum is Timestamp(1646666892, 5) (on localhost:27017, modern retry, attempt 1)
+        From https://github.com/mongodb/mongo-ruby-driver/commit/7c4117b58e3d12e237f7536f7521e18fc15f79ac
+        """
+        with self.client.start_session(snapshot=True) as s:
+            try:
+                with collection.aggregate([], session=s):
+                    pass
+                return True
+            except OperationFailure as e:
+                # Retry them as the server demands...
+                if e.code == 246:  # SnapshotUnavailable
+                    return False
+                raise
 
 
 if __name__ == "__main__":
