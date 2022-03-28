@@ -70,23 +70,6 @@ You can specify a :class:`~bson.raw_bson.RawBSONDocument` document type:
   >>> result = collection.find_one({"x": 1})
   >>> assert isinstance(result, RawBSONDocument)
 
-Another option is to use a custom :py:class:`~typing.TypedDict` when using a well-defined schema for your data:
-
-.. doctest::
-
-  >>> from typing import TypedDict
-  >>> from pymongo import MongoClient
-  >>> class Movie(TypedDict):
-  ...       name: str
-  ...       year: int
-  ...
-  >>> client: MongoClient[Movie] = MongoClient()
-  >>> collection = client.test.test
-  >>> inserted = collection.insert_one({"name": "Jurassic Park", "year": 1993 })
-  >>> result = collection.find_one({"name": "Jurassic Park"})
-  >>> assert result is not None
-  >>> assert result["year"] == 1993
-
 Subclasses of :py:class:`collections.abc.Mapping` can also be used, such as :class:`~bson.son.SON`:
 
 .. doctest::
@@ -101,6 +84,50 @@ Subclasses of :py:class:`collections.abc.Mapping` can also be used, such as :cla
   >>> assert result["x"] == 1
 
 Note that when using :class:`~bson.son.SON`, the key and value types must be given, e.g. ``SON[str, Any]``.
+
+
+Collection Document Type
+------------------------
+
+You can use :py:class:`~typing.TypedDict` when using a well-defined schema for the data in a :class:`~pymongo.collection.Collection`:
+
+.. doctest::
+
+  >>> from typing import TypedDict
+  >>> from pymongo import MongoClient, Collection
+  >>> class Movie(TypedDict):
+  ...       name: str
+  ...       year: int
+  ...
+  >>> client: MongoClient = MongoClient()
+  >>> collection: Collection[Movie] = client.test.test
+  >>> inserted = collection.insert_one({"name": "Jurassic Park", "year": 1993 })
+  >>> result = collection.find_one({"name": "Jurassic Park"})
+  >>> assert result is not None
+  >>> assert result["year"] == 1993
+
+Database Document Type
+----------------------
+
+While less common, you could specify that the documents in an entire database
+match a well-defined shema using :py:class:`~typing.TypedDict`.
+
+
+.. doctest::
+
+  >>> from typing import TypedDict
+  >>> from pymongo import MongoClient, Database
+  >>> class Movie(TypedDict):
+  ...       name: str
+  ...       year: int
+  ...
+  >>> client: MongoClient = MongoClient()
+  >>> db: Database[Movie] = client.test
+  >>> collection = db.test
+  >>> inserted = collection.insert_one({"name": "Jurassic Park", "year": 1993 })
+  >>> result = collection.find_one({"name": "Jurassic Park"})
+  >>> assert result is not None
+  >>> assert result["year"] == 1993
 
 Database Command Document Type
 ------------------------------
@@ -118,7 +145,6 @@ When using the :meth:`~pymongo.database.Database.command`, you can specify the d
 
 Custom :py:class:`collections.abc.Mapping` subclasses and :py:class:`~typing.TypedDict` are also supported.
 For :py:class:`~typing.TypedDict`, use the form: ``options: CodecOptions[MyTypedDict] = CodecOptions(...)``.
-
 
 BSON Decoding Types
 -------------------
@@ -141,6 +167,64 @@ You can specify the document type returned by :mod:`bson` decoding functions by 
 :class:`~bson.raw_bson.RawBSONDocument` and :py:class:`~typing.TypedDict` are also supported.
 For :py:class:`~typing.TypedDict`, use  the form: ``options: CodecOptions[MyTypedDict] = CodecOptions(...)``.
 
+
+Troubleshooting
+---------------
+
+Client Type Annotation
+~~~~~~~~~~~~~~~~~~~~~~
+If you forget to add a type annotation for a :class:`~pymongo.mongo_client.MongoClient` object you may get the followig ``mypy`` error::
+
+    error: Need type annotation for "client"
+
+The solution is to annotate the type as ``client: MongoClient`` or ``client: MongoClient[Dict[str, Any]]``.  See "Basic Usage" above.
+
+Incompatible Types
+~~~~~~~~~~~~~~~~~~
+If you use the generic form of :class:`~pymongo.mongo_client.MongoClient` you
+may encounter a ``mypy`` error like::
+
+  from pymongo import MongoClient
+
+  client: MongoClient = MongoClient()
+  client.test.test.insert_many(
+      {"a": 1}
+  )  # error: Dict entry 0 has incompatible type "str": "int"; expected "Mapping[str, Any]": "int"
+
+
+The solution is to use ``client: MongoClient[Dict[str, Any]]`` as in the
+"Basic Usage" above.
+
+Actual Type Errors
+~~~~~~~~~~~~~~~~~~
+
+Other times ``mypy`` will catch an actual error, like the following code::
+
+    from pymongo import MongoClient
+    from typing import Mapping
+    client = MongoClient()
+    client.test.test.insert_one(
+        [{}]
+    )  # error: Argument 1 to "insert_one" of "Collection" has incompatible type "List[Dict[<nothing>, <nothing>]]"; expected "Mapping[str, Any]"
+
+In this case the solution is to use `.insert_one({})`, passing the appropriate
+input type.
+
+Another example is trying to set a value on a :class:`~bson.raw_bson.RawBSONDocument`, which is read-only.::
+
+    from bson.raw_bson import RawBSONDocument
+    from pymongo import MongoClient
+
+    client = MongoClient(document_class=RawBSONDocument)
+    coll = client.test.test
+    doc = {"my": "doc"}
+    coll.insert_one(doc)
+    retreived = coll.find_one({"_id": doc["_id"]})
+    assert retreived is not None
+    assert len(retreived.raw) > 0
+    retreived[
+        "foo"
+    ] = "bar"  # error: Unsupported target for indexed assignment ("RawBSONDocument")  [index]
 
 .. _type hints: https://docs.python.org/3/library/typing.html
 .. _mypy: https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html
