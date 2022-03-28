@@ -212,17 +212,17 @@ class ClientUnitTest(unittest.TestCase):
     def test_iteration(self):
         client = self.client
         # Iteration fails
-        with self.assertRaises(TypeError):
-            for _ in client:
+        with self.assertRaisesRegex(TypeError, "'MongoClient' object is not iterable"):
+            for _ in client:  # type: ignore[misc] # error: "None" not callable  [misc]
                 break
         # Index fails
         with self.assertRaises(TypeError):
             _ = client[0]
         # next fails
-        with self.assertRaises(TypeError):
+        with self.assertRaisesRegex(TypeError, "'MongoClient' object is not iterable"):
             _ = next(client)
         # .next() fails
-        with self.assertRaises(TypeError):
+        with self.assertRaisesRegex(TypeError, "'MongoClient' object is not iterable"):
             _ = client.next()
         # Do not implement typing.Iterable.
         self.assertNotIsInstance(client, Iterable)

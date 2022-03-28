@@ -126,17 +126,17 @@ class TestCollectionNoConnect(unittest.TestCase):
     def test_iteration(self):
         coll = self.db.coll
         # Iteration fails
-        with self.assertRaises(TypeError):
+        with self.assertRaisesRegex(TypeError, "'Collection' object is not iterable"):
             for _ in coll:  # type: ignore[misc] # error: "None" not callable  [misc]
                 break
         # Non-string indices will start failing in PyMongo 5.
         self.assertEqual(coll[0].name, "coll.0")
         self.assertEqual(coll[{}].name, "coll.{}")
         # next fails
-        with self.assertRaises(TypeError):
+        with self.assertRaisesRegex(TypeError, "'Collection' object is not iterable"):
             _ = next(coll)
         # .next() fails
-        with self.assertRaises(TypeError):
+        with self.assertRaisesRegex(TypeError, "'Collection' object is not iterable"):
             _ = coll.next()
         # Do not implement typing.Iterable.
         self.assertNotIsInstance(coll, Iterable)

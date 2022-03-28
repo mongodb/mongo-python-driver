@@ -96,17 +96,17 @@ class TestDatabaseNoConnect(unittest.TestCase):
     def test_iteration(self):
         db = self.client.pymongo_test
         # Iteration fails
-        with self.assertRaises(TypeError):
-            for _ in db:
+        with self.assertRaisesRegex(TypeError, "'Database' object is not iterable"):
+            for _ in db:  # type: ignore[misc] # error: "None" not callable  [misc]
                 break
         # Index fails
         with self.assertRaises(TypeError):
             _ = db[0]
         # next fails
-        with self.assertRaises(TypeError):
+        with self.assertRaisesRegex(TypeError, "'Database' object is not iterable"):
             _ = next(db)
         # .next() fails
-        with self.assertRaises(TypeError):
+        with self.assertRaisesRegex(TypeError, "'Database' object is not iterable"):
             _ = db.next()
         # Do not implement typing.Iterable.
         self.assertNotIsInstance(db, Iterable)
