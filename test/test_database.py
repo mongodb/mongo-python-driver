@@ -16,7 +16,7 @@
 
 import re
 import sys
-from typing import Any, List, Mapping
+from typing import Any, Iterable, List, Mapping
 
 sys.path[0:0] = [""]
 
@@ -94,7 +94,22 @@ class TestDatabaseNoConnect(unittest.TestCase):
         self.assertIn("has no attribute '_does_not_exist'", str(context.exception))
 
     def test_iteration(self):
-        self.assertRaises(TypeError, next, self.client.pymongo_test)
+        db = self.client.pymongo_test
+        # Iteration fails
+        with self.assertRaises(TypeError):
+            for _ in db:
+                break
+        # Index fails
+        with self.assertRaises(TypeError):
+            _ = db[0]
+        # next fails
+        with self.assertRaises(TypeError):
+            _ = next(db)
+        # .next() fails
+        with self.assertRaises(TypeError):
+            _ = db.next()
+        # Do not implement typing.Iterable.
+        self.assertNotIsInstance(db, Iterable)
 
 
 class TestDatabase(IntegrationTest):

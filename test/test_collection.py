@@ -21,7 +21,7 @@ import re
 import sys
 from codecs import utf_8_decode  # type: ignore
 from collections import defaultdict
-from typing import no_type_check
+from typing import Iterable, no_type_check
 
 from pymongo.database import Database
 
@@ -124,7 +124,22 @@ class TestCollectionNoConnect(unittest.TestCase):
         self.assertEqual(coll2.write_concern, coll4.write_concern)
 
     def test_iteration(self):
-        self.assertRaises(TypeError, next, self.db)
+        coll = self.db.coll
+        # Iteration fails
+        with self.assertRaises(TypeError):
+            for _ in coll:  # type: ignore[misc] # error: "None" not callable  [misc]
+                break
+        # Non-string indices will start failing in PyMongo 5.
+        self.assertEqual(coll[0].name, "coll.0")
+        self.assertEqual(coll[{}].name, "coll.{}")
+        # next fails
+        with self.assertRaises(TypeError):
+            _ = next(coll)
+        # .next() fails
+        with self.assertRaises(TypeError):
+            _ = coll.next()
+        # Do not implement typing.Iterable.
+        self.assertNotIsInstance(coll, Iterable)
 
 
 class TestCollection(IntegrationTest):

@@ -26,7 +26,7 @@ import struct
 import sys
 import threading
 import time
-from typing import Type, no_type_check
+from typing import Iterable, Type, no_type_check
 
 sys.path[0:0] = [""]
 
@@ -210,10 +210,22 @@ class ClientUnitTest(unittest.TestCase):
         self.assertIn("has no attribute '_does_not_exist'", str(context.exception))
 
     def test_iteration(self):
-        def iterate():
-            [a for a in self.client]  # type: ignore[misc] # error: "None" not callable  [misc]
-
-        self.assertRaises(TypeError, iterate)
+        client = self.client
+        # Iteration fails
+        with self.assertRaises(TypeError):
+            for _ in client:
+                break
+        # Index fails
+        with self.assertRaises(TypeError):
+            _ = client[0]
+        # next fails
+        with self.assertRaises(TypeError):
+            _ = next(client)
+        # .next() fails
+        with self.assertRaises(TypeError):
+            _ = client.next()
+        # Do not implement typing.Iterable.
+        self.assertNotIsInstance(client, Iterable)
 
     def test_get_default_database(self):
         c = rs_or_single_client(

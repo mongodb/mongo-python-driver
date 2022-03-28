@@ -1973,9 +1973,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
-    # See PYTHON-3084.
-    __iter__ = None
-
     def __next__(self) -> NoReturn:
         raise TypeError("'MongoClient' object is not iterable")
 
