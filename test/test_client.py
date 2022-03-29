@@ -26,7 +26,7 @@ import struct
 import sys
 import threading
 import time
-from typing import Type, no_type_check
+from typing import Iterable, Type, no_type_check
 
 sys.path[0:0] = [""]
 
@@ -210,10 +210,26 @@ class ClientUnitTest(unittest.TestCase):
         self.assertIn("has no attribute '_does_not_exist'", str(context.exception))
 
     def test_iteration(self):
-        def iterate():
-            [a for a in self.client]
-
-        self.assertRaises(TypeError, iterate)
+        client = self.client
+        if "PyPy" in sys.version:
+            msg = "'NoneType' object is not callable"
+        else:
+            msg = "'MongoClient' object is not iterable"
+        # Iteration fails
+        with self.assertRaisesRegex(TypeError, msg):
+            for _ in client:  # type: ignore[misc] # error: "None" not callable  [misc]
+                break
+        # Index fails
+        with self.assertRaises(TypeError):
+            _ = client[0]
+        # next fails
+        with self.assertRaisesRegex(TypeError, "'MongoClient' object is not iterable"):
+            _ = next(client)
+        # .next() fails
+        with self.assertRaisesRegex(TypeError, "'MongoClient' object is not iterable"):
+            _ = client.next()
+        # Do not implement typing.Iterable.
+        self.assertNotIsInstance(client, Iterable)
 
     def test_get_default_database(self):
         c = rs_or_single_client(
@@ -1344,6 +1360,7 @@ class TestClient(IntegrationTest):
                     None,
                     None,
                     False,
+                    None,
                 ),
                 unpack_res=Cursor(client.pymongo_test.collection)._unpack_response,
                 address=("not-a-member", 27017),

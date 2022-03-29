@@ -222,13 +222,15 @@ def _gen_find_command(
     return cmd
 
 
-def _gen_get_more_command(cursor_id, coll, batch_size, max_await_time_ms):
+def _gen_get_more_command(cursor_id, coll, batch_size, max_await_time_ms, comment, sock_info):
     """Generate a getMore command document."""
     cmd = SON([("getMore", cursor_id), ("collection", coll)])
     if batch_size:
         cmd["batchSize"] = batch_size
     if max_await_time_ms is not None:
         cmd["maxTimeMS"] = max_await_time_ms
+    if comment is not None and sock_info.max_wire_version >= 9:
+        cmd["comment"] = comment
     return cmd
 
 
@@ -421,6 +423,7 @@ class _GetMore(object):
         "sock_mgr",
         "_as_command",
         "exhaust",
+        "comment",
     )
 
     name = "getMore"
@@ -438,6 +441,7 @@ class _GetMore(object):
         max_await_time_ms,
         sock_mgr,
         exhaust,
+        comment,
     ):
         self.db = db
         self.coll = coll
@@ -451,6 +455,7 @@ class _GetMore(object):
         self.sock_mgr = sock_mgr
         self._as_command = None
         self.exhaust = exhaust
+        self.comment = comment
 
     def namespace(self):
         return "%s.%s" % (self.db, self.coll)
@@ -473,9 +478,13 @@ class _GetMore(object):
             return self._as_command
 
         cmd = _gen_get_more_command(
-            self.cursor_id, self.coll, self.ntoreturn, self.max_await_time_ms
+            self.cursor_id,
+            self.coll,
+            self.ntoreturn,
+            self.max_await_time_ms,
+            self.comment,
+            sock_info,
         )
-
         if self.session:
             self.session._apply_to(cmd, False, self.read_preference, sock_info)
         sock_info.add_server_api(cmd)
