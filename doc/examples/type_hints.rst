@@ -4,10 +4,13 @@
 Type Hints
 ===========
 
-As of version 4.1, PyMongo ships with `type hints`_.
+As of version 4.1, PyMongo ships with `type hints`_. With type hints, Python
+type checkers can easily find bugs before they reveal themselves in your code.
 
-With type hints, Python type checkers can easily find bugs before they reveal themselves in your code.  If your IDE is configured to use type hints,
+If your IDE is configured to use type hints,
 it can suggest more appropriate completions and highlight errors in your code.
+Some examples include `PyCharm`_,  `Sublime Text`_, and `Visual Studio Code`_.
+
 You can also use the `mypy`_ tool from your command line or in Continuous Integration tests.
 
 All of the public APIs in PyMongo are fully type hinted, and
@@ -230,6 +233,9 @@ Another example is trying to set a value on a :class:`~bson.raw_bson.RawBSONDocu
     ] = "bar"  # error: Unsupported target for indexed assignment
                # ("RawBSONDocument")  [index]
 
+.. _PyCharm: https://www.jetbrains.com/help/pycharm/type-hinting-in-product.html
+.. _Visual Studio Code: https://code.visualstudio.com/docs/languages/python
+.. _Sublime Text: https://github.com/sublimelsp/LSP-pyright
 .. _type hints: https://docs.python.org/3/library/typing.html
 .. _mypy: https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html
 .. _limitations in mypy: https://github.com/python/mypy/issues/3737
