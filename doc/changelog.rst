@@ -8,6 +8,7 @@ Changes in Version 4.1
 
 PyMongo 4.1 brings a number of improvements including:
 
+- Type Hinting support (formerly provided by ``pymongo-stubs``).  See :doc:`examples/type_hints` for more information.
 - Added support for the ``let`` parameter to
   :meth:`~pymongo.collection.Collection.update_one`,
   :meth:`~pymongo.collection.Collection.update_many`,

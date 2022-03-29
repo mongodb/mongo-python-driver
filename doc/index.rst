@@ -28,6 +28,9 @@ everything you need to know to use **PyMongo**.
 :doc:`examples/encryption`
   Using PyMongo with client side encryption.
 
+:doc:`examples/type_hints`
+  Using PyMongo with type hints.
+
 :doc:`faq`
   Some questions that come up often.
 

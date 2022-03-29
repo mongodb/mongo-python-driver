@@ -309,6 +309,9 @@ class TestDocumentType(unittest.TestCase):
         assert retreived is not None
         retreived["a"] = 1
 
+    def test_son_document_type_runtime(self) -> None:
+        client = MongoClient(document_class=SON[str, Any], connect=False)
+
 
 class TestCommandDocumentType(unittest.TestCase):
     @only_type_check
