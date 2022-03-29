@@ -766,7 +766,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def maybe_skip_test(self, spec):
         # add any special-casing for skipping tests here
         if client_context.storage_engine == "mmapv1":
-            if "Dirty explicit session is discarded" in spec["description"]:
+            if (
+                "Dirty explicit session is discarded" in spec["description"]
+                or "Dirty implicit session is discarded" in spec["description"]
+            ):
                 raise unittest.SkipTest("MMAPv1 does not support retryWrites=True")
         elif "Client side error in command starting transaction" in spec["description"]:
             raise unittest.SkipTest("Implement PYTHON-1894")

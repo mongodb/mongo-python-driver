@@ -181,9 +181,7 @@
               "name": "test1"
             }
           },
-          "expectError": {
-            "isClientError": false
-          }
+          "saveResultAsEntity": "changeStream0"
         }
       ],
       "expectEvents": [
