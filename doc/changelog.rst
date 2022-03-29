@@ -2894,7 +2894,7 @@ highlights is `here
 - added support for :class:`~pymongo.cursor.Cursor.max_scan`.
 - raise :class:`~gridfs.errors.FileExists` exception when creating a
   duplicate GridFS file.
-- use `y2038 <http://code.google.com/p/y2038/>`_ for time handling in
+- use `y2038 <https://github.com/evalEmpire/y2038/>`_ for time handling in
   the C extension - eliminates 2038 problems when extension is
   installed.
 - added `sort` parameter to
