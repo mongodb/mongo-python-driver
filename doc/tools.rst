@@ -36,16 +36,13 @@ PyMODM
    documentation is available on `readthedocs
    <https://pymodm.readthedocs.io/en/stable/>`_.
 
-Humongolus
-   `Humongolus <https://github.com/entone/Humongolus>`_ is a lightweight ORM
-   framework for Python and MongoDB. The name comes from the combination of
-   MongoDB and `Homunculus <http://en.wikipedia.org/wiki/Homunculus>`_ (the
-   concept of a miniature though fully formed human body). Humongolus allows
-   you to create models/schemas with robust validation. It attempts to be as
-   pythonic as possible and exposes the pymongo cursor objects whenever
-   possible. The code is available for download
-   `at GitHub <https://github.com/entone/Humongolus>`_. Tutorials and usage
-   examples are also available at GitHub.
+MongoEngine
+  `MongoEngine <http://mongoengine.org/>`_ is another ORM-like
+  layer on top of PyMongo. It allows you to define schemas for
+  documents and query collections using syntax inspired by the Django
+  ORM. The code is available on `GitHub
+  <http://github.com/mongoengine/mongoengine>`_; for more information, see
+  the `tutorial <https://docs.mongoengine.org/tutorial.html>`_.
 
 MincePy
    `MincePy <https://mincepy.readthedocs.io/en/latest/>`_ is an
@@ -64,14 +61,6 @@ Ming
   MongoDB. See the `introductory blog post
   <http://blog.pythonisito.com/2009/12/ming-01-released-python-library-for.html>`_
   for more details.
-
-MongoEngine
-  `MongoEngine <http://mongoengine.org/>`_ is another ORM-like
-  layer on top of PyMongo. It allows you to define schemas for
-  documents and query collections using syntax inspired by the Django
-  ORM. The code is available on `GitHub
-  <http://github.com/mongoengine/mongoengine>`_; for more information, see
-  the `tutorial <https://docs.mongoengine.org/tutorial.html>`_.
 
 MotorEngine
   `MotorEngine <https://motorengine.readthedocs.io/>`_ is a port of
@@ -115,6 +104,17 @@ Manga
   layer on top of PyMongo. The syntax for defining schema is inspired by the
   Django ORM, but Pymongo's query language is maintained. The source `is on
   GitHub <http://github.com/wladston/manga>`_.
+
+Humongolus
+   `Humongolus <https://github.com/entone/Humongolus>`_ is a lightweight ORM
+   framework for Python and MongoDB. The name comes from the combination of
+   MongoDB and `Homunculus <http://en.wikipedia.org/wiki/Homunculus>`_ (the
+   concept of a miniature though fully formed human body). Humongolus allows
+   you to create models/schemas with robust validation. It attempts to be as
+   pythonic as possible and exposes the pymongo cursor objects whenever
+   possible. The code is available for download
+   `at GitHub <https://github.com/entone/Humongolus>`_. Tutorials and usage
+   examples are also available at GitHub.
 
 Framework Tools
 ---------------
