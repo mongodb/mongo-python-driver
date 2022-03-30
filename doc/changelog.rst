@@ -8,7 +8,9 @@ Changes in Version 4.1
 
 PyMongo 4.1 brings a number of improvements including:
 
-- Type Hinting support (formerly provided by ``pymongo-stubs``).  See :doc:`examples/type_hints` for more information.
+- Type Hinting support (formerly provided by `pymongo-stubs`_).  See :doc:`examples/type_hints` for more information.
+- Added support for the ``comment`` parameter to all helpers. For example see
+  :meth:`~pymongo.collection.Collection.insert_one`.
 - Added support for the ``let`` parameter to
   :meth:`~pymongo.collection.Collection.update_one`,
   :meth:`~pymongo.collection.Collection.update_many`,
@@ -31,6 +33,16 @@ PyMongo 4.1 brings a number of improvements including:
   MongoDB >= 5.0.
 - :meth:`gridfs.grid_file.GridOut.seek` now returns the new position in the file, to
   conform to the behavior of :meth:`io.IOBase.seek`.
+- Improved reuse of implicit sessions (`PYTHON-2956`_).
+
+Bug fixes
+.........
+
+- Fixed bug that would cause SDAM heartbeat timeouts and connection churn on
+  AWS Lambda and other FaaS environments (`PYTHON-3186`_).
+- Fixed bug where :class:`~pymongo.mongo_client.MongoClient`,
+  :class:`~pymongo.database.Database`, and :class:`~pymongo.collection.Collection`
+  mistakenly implemented :class:`typing.Iterable` (`PYTHON-3084`_).
 
 Issues Resolved
 ...............
@@ -39,6 +51,10 @@ See the `PyMongo 4.1 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
 .. _PyMongo 4.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=30619
+.. _PYTHON-2956: https://jira.mongodb.org/browse/PYTHON-2956
+.. _PYTHON-3084: https://jira.mongodb.org/browse/PYTHON-3084
+.. _PYTHON-3186: https://jira.mongodb.org/browse/PYTHON-3186
+.. _pymongo-stubs: https://github.com/mongodb-labs/pymongo-stubs
 
 Changes in Version 4.0
 ----------------------
