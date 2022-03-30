@@ -293,7 +293,7 @@ class ClientContext(object):
         opts_part = "&".join(opts_parts)
         auth_part = ""
         if client_context.auth_enabled:
-            auth_part = f"{quote_plus(db_user)}={quote_plus(db_pwd)}@"
+            auth_part = f"{quote_plus(db_user)}:{quote_plus(db_pwd)}@"
         return f"mongodb://{auth_part}{self.pair}/?{opts_part}"
 
     @property
