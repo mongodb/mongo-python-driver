@@ -26,6 +26,7 @@ import struct
 import sys
 import threading
 import time
+from multiprocessing import Process, Queue
 from typing import Iterable, Type, no_type_check
 
 sys.path[0:0] = [""]
@@ -1803,6 +1804,90 @@ class TestExhaustCursor(IntegrationTest):
         # The socket was closed and the semaphore was decremented.
         self.assertNotIn(sock_info, pool.sockets)
         self.assertEqual(0, pool.requests)
+
+    @unittest.skipIf(
+        client_context.load_balancer or client_context.serverless,
+        "loadBalanced clients do not run SDAM",
+    )
+    def test_sigstop_sigcont(self):
+        class HbListenerProxy(ServerHeartbeatListener):
+            def __init__(self, queue: Queue):
+                self.queue = queue
+                self.closed = False
+
+            def handle(self, event):
+                if self.closed:
+                    return
+                self.queue.put(event)
+
+            def started(self, event):
+                self.handle(event)
+
+            def succeeded(self, event):
+                self.handle(event)
+
+            def failed(self, event):
+                self.handle(event)
+
+        def subtest(host: str, opts: dict, event_queue: Queue, message_queue: Queue) -> None:
+            listener = HbListenerProxy(event_queue)
+            opts["event_listeners"] = [listener]
+            opts["heartbeatFrequencyMS"] = 500
+            opts["connectTimeoutMS"] = 500
+            client = MongoClient(host, **opts)
+            client.admin.command("ping")
+            # Wait until we're signalled to exit.
+            message_queue.get()
+            # Run one more command to ensure the client is still connected.
+            client.admin.command("ping")
+            event_queue.put("DONE")
+            listener.closed = True
+            client.close()
+            message_queue.close()
+            event_queue.close()
+            message_queue.join_thread()
+            event_queue.join_thread()
+            return
+
+        event_queue = Queue()
+        message_queue = Queue()
+        p = Process(
+            target=subtest,
+            args=(client_context.pair, client_context.client_options, event_queue, message_queue),
+        )
+        self.addCleanup(p.join, 1)
+        self.addCleanup(p.kill)
+        p.start()
+        wait_until(lambda: p.ident is not None, "start subprocess")
+        pid = p.ident
+        assert pid is not None
+        time.sleep(1)
+        # Stop the child, sleep for twice the streaming timeout
+        # (heartbeatFrequencyMS + connectTimeoutMS), and restart.
+        os.kill(pid, signal.SIGSTOP)
+        time.sleep(3)
+        os.kill(pid, signal.SIGCONT)
+        time.sleep(1)
+        message_queue.put("STOP")
+        # Ensure there are no heartbeat failures in the child.
+        events = []
+        while True:
+            event = event_queue.get()
+            if event == "DONE":
+                break
+            events.append(event)
+
+        p.join()
+
+        self.assertTrue(events, "expected to see heartbeat events from child")
+        self.assertFalse(
+            [e for e in events if isinstance(e, monitoring.ServerHeartbeatFailedEvent)],
+            "expected to see zero heartbeat failed events",
+        )
+        message_queue.close()
+        event_queue.close()
+        message_queue.join_thread()
+        event_queue.join_thread()
 
 
 class TestClientLazyConnect(IntegrationTest):
