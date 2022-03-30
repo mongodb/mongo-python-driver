@@ -23,10 +23,10 @@ import os
 import signal
 import socket
 import struct
+import subprocess
 import sys
 import threading
 import time
-from multiprocessing import Process, Queue
 from typing import Iterable, Type, no_type_check
 
 sys.path[0:0] = [""]
@@ -1689,99 +1689,39 @@ class TestClient(IntegrationTest):
         )
         self.assertEqual(len(client.topology_description.server_descriptions()), 2)
 
-    @staticmethod
-    def sigstop_sigcont(host: str, opts: dict, event_queue: Queue, message_queue: Queue) -> None:
-        """Used by test_sigstop_sigcont."""
-
-        class HbListenerProxy(ServerHeartbeatListener):
-            def __init__(self, queue: Queue):
-                self.queue = queue
-                self.closed = False
-
-            def handle(self, event):
-                if self.closed:
-                    return
-                self.queue.put(event)
-
-            def started(self, event):
-                self.handle(event)
-
-            def succeeded(self, event):
-                self.handle(event)
-
-            def failed(self, event):
-                self.handle(event)
-
-        listener = HbListenerProxy(event_queue)
-        opts["event_listeners"] = [listener]
-        opts["heartbeatFrequencyMS"] = 500
-        opts["connectTimeoutMS"] = 500
-        client = MongoClient(host, **opts)
-        client.admin.command("ping")
-        # Wait until we're signalled to exit.
-        message_queue.get()
-        # Run one more command to ensure the client is still connected.
-        client.admin.command("ping")
-        event_queue.put("DONE")
-        listener.closed = True
-        client.close()
-        message_queue.close()
-        event_queue.close()
-        message_queue.join_thread()
-        event_queue.join_thread()
-
     @unittest.skipIf(
         client_context.load_balancer or client_context.serverless,
         "loadBalanced clients do not run SDAM",
     )
-    @unittest.skipIf(
-        sys.platform == "win32",
-        "multiprocessing does not work with our test suite on Windows due to the issue "
-        "described in https://bugs.python.org/issue11240",
-    )
-    @unittest.skipIf(
-        is_greenthread_patched(), "multiprocessing does not work with gevent or eventlet"
-    )
     def test_sigstop_sigcont(self):
-        event_queue = Queue()
-        message_queue = Queue()
-        p = Process(
-            target=self.sigstop_sigcont,
-            args=(client_context.pair, client_context.client_options, event_queue, message_queue),
+        test_dir = os.path.dirname(os.path.realpath(__file__))
+        script = os.path.join(test_dir, "sigstop_sigcont.py")
+        p = subprocess.Popen(
+            [sys.executable, script, client_context.uri],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
-        p.start()
-        self.addCleanup(p.join, 1)
-        self.addCleanup(p.terminate)
-        wait_until(lambda: p.ident is not None, "start subprocess")
-        pid = p.ident
-        assert pid is not None
+        self.addCleanup(p.communicate, timeout=1)
+        self.addCleanup(p.kill)
         time.sleep(1)
         # Stop the child, sleep for twice the streaming timeout
         # (heartbeatFrequencyMS + connectTimeoutMS), and restart.
-        os.kill(pid, signal.SIGSTOP)
+        os.kill(p.pid, signal.SIGSTOP)
         time.sleep(3)
-        os.kill(pid, signal.SIGCONT)
+        os.kill(p.pid, signal.SIGCONT)
         time.sleep(1)
-        message_queue.put("STOP")
-        # Ensure there are no heartbeat failures in the child.
-        events = []
-        while True:
-            event = event_queue.get()
-            if event == "DONE":
-                break
-            events.append(event)
-
-        p.join()
-
-        self.assertTrue(events, "expected to see heartbeat events from child")
-        self.assertFalse(
-            [e for e in events if isinstance(e, monitoring.ServerHeartbeatFailedEvent)],
-            "expected to see zero heartbeat failed events",
-        )
-        message_queue.close()
-        event_queue.close()
-        message_queue.join_thread()
-        event_queue.join_thread()
+        # Tell the script to exit gracefully.
+        outs, errs = p.communicate(input=b"q\n", timeout=10)
+        # The script logs to stderr.
+        self.assertEqual(outs, b'Type "q" to quit: ')
+        self.assertTrue(errs)
+        log_output = errs.decode("utf-8")
+        self.assertIn("TEST STARTED", log_output)
+        self.assertIn("ServerHeartbeatStartedEvent", log_output)
+        self.assertIn("ServerHeartbeatSucceededEvent", log_output)
+        self.assertIn("TEST COMPLETED", log_output)
+        self.assertNotIn("ServerHeartbeatFailedEvent", log_output)
 
 
 class TestExhaustCursor(IntegrationTest):
