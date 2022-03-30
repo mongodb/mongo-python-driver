@@ -1739,6 +1739,9 @@ class TestClient(IntegrationTest):
         "multiprocessing does not work with our test suite on Windows due to the issue "
         "described in https://bugs.python.org/issue11240",
     )
+    @unittest.skipIf(
+        is_greenthread_patched(), "multiprocessing does not work with gevent or eventlet"
+    )
     def test_sigstop_sigcont(self):
         event_queue = Queue()
         message_queue = Queue()
