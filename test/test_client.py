@@ -1702,15 +1702,15 @@ class TestClient(IntegrationTest):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        self.addCleanup(p.communicate, timeout=1)
+        self.addCleanup(p.wait, timeout=1)
         self.addCleanup(p.kill)
         time.sleep(1)
         # Stop the child, sleep for twice the streaming timeout
         # (heartbeatFrequencyMS + connectTimeoutMS), and restart.
         os.kill(p.pid, signal.SIGSTOP)
-        time.sleep(3)
+        time.sleep(2)
         os.kill(p.pid, signal.SIGCONT)
-        time.sleep(1)
+        time.sleep(0.5)
         # Tell the script to exit gracefully.
         outs, errs = p.communicate(input=b"q\n", timeout=10)
         # The script logs to stderr.
