@@ -1689,11 +1689,10 @@ class TestClient(IntegrationTest):
         )
         self.assertEqual(len(client.topology_description.server_descriptions()), 2)
 
-    @unittest.skipIf(
-        client_context.load_balancer or client_context.serverless,
-        "loadBalanced clients do not run SDAM",
-    )
-    def test_sigstop_sigcont(self):
+    @staticmethod
+    def sigstop_sigcont(host: str, opts: dict, event_queue: Queue, message_queue: Queue) -> None:
+        """Used by test_sigstop_sigcont."""
+
         class HbListenerProxy(ServerHeartbeatListener):
             def __init__(self, queue: Queue):
                 self.queue = queue
@@ -1713,35 +1712,43 @@ class TestClient(IntegrationTest):
             def failed(self, event):
                 self.handle(event)
 
-        def subtest(host: str, opts: dict, event_queue: Queue, message_queue: Queue) -> None:
-            listener = HbListenerProxy(event_queue)
-            opts["event_listeners"] = [listener]
-            opts["heartbeatFrequencyMS"] = 500
-            opts["connectTimeoutMS"] = 500
-            client = MongoClient(host, **opts)
-            client.admin.command("ping")
-            # Wait until we're signalled to exit.
-            message_queue.get()
-            # Run one more command to ensure the client is still connected.
-            client.admin.command("ping")
-            event_queue.put("DONE")
-            listener.closed = True
-            client.close()
-            message_queue.close()
-            event_queue.close()
-            message_queue.join_thread()
-            event_queue.join_thread()
-            return
+        listener = HbListenerProxy(event_queue)
+        opts["event_listeners"] = [listener]
+        opts["heartbeatFrequencyMS"] = 500
+        opts["connectTimeoutMS"] = 500
+        client = MongoClient(host, **opts)
+        client.admin.command("ping")
+        # Wait until we're signalled to exit.
+        message_queue.get()
+        # Run one more command to ensure the client is still connected.
+        client.admin.command("ping")
+        event_queue.put("DONE")
+        listener.closed = True
+        client.close()
+        message_queue.close()
+        event_queue.close()
+        message_queue.join_thread()
+        event_queue.join_thread()
 
+    @unittest.skipIf(
+        client_context.load_balancer or client_context.serverless,
+        "loadBalanced clients do not run SDAM",
+    )
+    @unittest.skipIf(
+        sys.platform == "win32",
+        "multiprocessing does not work with our test suite on Windows due to the issue "
+        "described in https://bugs.python.org/issue11240",
+    )
+    def test_sigstop_sigcont(self):
         event_queue = Queue()
         message_queue = Queue()
         p = Process(
-            target=subtest,
+            target=self.sigstop_sigcont,
             args=(client_context.pair, client_context.client_options, event_queue, message_queue),
         )
+        p.start()
         self.addCleanup(p.join, 1)
         self.addCleanup(p.terminate)
-        p.start()
         wait_until(lambda: p.ident is not None, "start subprocess")
         pid = p.ident
         assert pid is not None
