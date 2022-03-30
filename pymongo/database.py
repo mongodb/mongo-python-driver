@@ -70,31 +70,21 @@ _CodecDocumentType = TypeVar("_CodecDocumentType", bound=Mapping[str, Any])
 
 
 class TaskRunner:
-    __instance = None
-
-    @staticmethod
-    def getInstance():
-        if TaskRunner.__instance is None:
-            TaskRunner()
-        assert TaskRunner.__instance is not None
-        return TaskRunner.__instance
+    """A class that runs an event loop in a thread."""
 
     def __init__(self):
-        if TaskRunner.__instance is not None:
-            raise Exception("This class is a singleton!")
-        else:
-            TaskRunner.__instance = self
-        self.__io_loop: Optional[asyncio.AbstractEventLoop] = None
-        self.__runner_thread: Optional[threading.Thread] = None
-        self.__lock = threading.Lock()
+        self.__loop = asyncio.new_event_loop()
+        self.__loop_thread = threading.Thread(target=self._runner, daemon=True)
+        self.__loop_thread.start()
+        self.waiting = False
         atexit.register(self._close)
 
     def _close(self):
-        if self.__io_loop:
-            self.__io_loop.stop()
+        if self.__loop and not self.__loop.is_closed():
+            self.__loop.stop()
 
     def _runner(self):
-        loop = self.__io_loop
+        loop = self.__loop
         assert loop is not None
         try:
             loop.run_forever()
@@ -102,14 +92,44 @@ class TaskRunner:
             loop.close()
 
     def run(self, coro):
-        with self.__lock:
-            if self.__io_loop is None:
-                self.__io_loop = asyncio.new_event_loop()
-                self.__runner_thread = threading.Thread(target=self._runner, daemon=True)
-                self.__runner_thread.start()
-        fut = asyncio.run_coroutine_threadsafe(coro, self.__io_loop)
-        wait([fut])
-        return fut.result()
+        """Run a coroutine on the event loop and return the result"""
+        fut = asyncio.run_coroutine_threadsafe(coro, self.__loop)
+        self.waiting = True
+        try:
+            wait([fut])
+            return fut.result()
+        finally:
+            self.waiting = False
+
+
+class TaskRunnerPool:
+    """A singleton class that manages a pool of task runners."""
+
+    __instance = None
+
+    @staticmethod
+    def getInstance():
+        if TaskRunnerPool.__instance is None:
+            TaskRunnerPool()
+        assert TaskRunnerPool.__instance is not None
+        return TaskRunnerPool.__instance
+
+    def __init__(self):
+        if TaskRunnerPool.__instance is not None:
+            raise Exception("This class is a singleton!")
+        else:
+            TaskRunnerPool.__instance = self
+        self._semaphore = threading.Semaphore(5)
+        self._runners: List[TaskRunner] = []
+
+    def run(self, coro):
+        with self._semaphore:
+            for runner in self._runners:
+                if not runner.waiting:
+                    return runner.run(coro)
+            runner = TaskRunner()
+            self._runners.append(runner)
+            return runner.run(coro)
 
 
 def synchronize(async_method, doc=None):
@@ -123,7 +143,7 @@ def synchronize(async_method, doc=None):
 
     @functools.wraps(async_method)
     def method(self, *args, **kwargs):
-        runner = TaskRunner.getInstance()
+        runner = TaskRunnerPool.getInstance()
         coro = async_method(self, *args, **kwargs)
         return runner.run(coro)
 
