@@ -207,24 +207,9 @@ def command(
     return response_doc
 
 
-async def send_async(socket: socket.socket, buf: bytes, flags: int = 0) -> int:
-    timeout = socket.gettimeout()
-    socket.settimeout(0)
-    try:
-        sent = socket.send(buf, flags)
-        return sent
-    finally:
-        socket.settimeout(timeout)
-
-
 async def sendall_async(socket: socket.socket, buf: bytes, flags: int = 0) -> None:
-    view = memoryview(buf)
-    total_length = len(buf)
-    total_sent = 0
-    sent = 0
-    while total_sent < total_length:
-        sent = await send_async(socket, view[total_sent:], flags)
-        total_sent += sent
+    loop = asyncio.get_running_loop()
+    await loop.sock_sendall(socket, buf)
 
 
 async def command_async(
@@ -513,14 +498,13 @@ async def wait_for_read_async(sock_info: "SocketInfo", deadline: Optional[float]
                 #     timeout = max(min(deadline - time.monotonic(), _POLL_TIMEOUT), 0.001)
                 # else:
                 #     timeout = _POLL_TIMEOUT
-                readable = sock_info.socket_checker.select(sock, read=True, timeout=0)
+                readable = sock_info.socket_checker.select(sock, read=True, timeout=0.001)
             if context.cancelled:
                 raise _OperationCancelled("hello cancelled")
             if readable:
                 return
             if deadline and time.monotonic() > deadline:
                 raise socket.timeout("timed out")
-            await asyncio.sleep(0)
 
 
 def _receive_data_on_socket(
@@ -545,25 +529,23 @@ def _receive_data_on_socket(
     return mv
 
 
-def _receive_into(socket: socket.socket, buf: memoryview) -> int:
-    timeout = socket.gettimeout()
-    socket.settimeout(0)
-    try:
-        return socket.recv_into(buf)
-    finally:
-        socket.settimeout(timeout)
-
-
 async def _receive_data_on_socket_async(
     sock_info: "SocketInfo", length: int, deadline: Optional[float]
 ) -> memoryview:
+    loop = asyncio.get_running_loop()
     buf = bytearray(length)
     mv = memoryview(buf)
     bytes_read = 0
+    # TODO: make this a cancelable task so we can use the deadline
     while bytes_read < length:
         try:
-            await wait_for_read_async(sock_info, deadline)
-            chunk_length = _receive_into(sock_info.sock, mv[bytes_read:])
+            readable = await wait_for_read_async(sock_info, deadline)
+            if readable:
+                chunk_length = sock_info.sock.recv_into(mv[bytes_read:])
+            else:
+                data = await loop.sock_recv(sock_info.sock, length - bytes_read)
+                chunk_length = len(data)
+                buf[bytes_read : chunk_length + bytes_read] = data
         except _ssl.SSLWantReadError:
             continue
         except (  # noqa: B014
