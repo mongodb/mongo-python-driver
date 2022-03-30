@@ -1693,6 +1693,7 @@ class TestClient(IntegrationTest):
         client_context.load_balancer or client_context.serverless,
         "loadBalanced clients do not run SDAM",
     )
+    @unittest.skipIf(sys.platform == "win32", "Windows does not support SIGSTOP")
     def test_sigstop_sigcont(self):
         test_dir = os.path.dirname(os.path.realpath(__file__))
         script = os.path.join(test_dir, "sigstop_sigcont.py")
