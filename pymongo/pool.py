@@ -26,8 +26,6 @@ import sys
 import threading
 import time
 import weakref
-from concurrent import futures
-from queue import Queue
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -1604,9 +1602,6 @@ class Pool:
         self.ncursors = 0
         self.ntxns = 0
 
-        self._sync_thread = None
-        self._sync_queue: Queue = Queue()
-
     def ready(self) -> None:
         # Take the lock to avoid the race condition described in PYTHON-2699.
         with self.lock:
@@ -1827,16 +1822,6 @@ class Pool:
 
         return sock_info
 
-    async def _run_jobs_async(self):
-        while 1:
-            future, task = self._sync_queue.get()
-            await task
-            future.set_result(None)
-
-    def _run_jobs(self):
-        self._io_loop = asyncio.new_event_loop()
-        self._io_loop.run_until_complete(self._run_jobs_async())
-
     @contextlib.asynccontextmanager
     async def get_socket_async(
         self, handler: Optional["_MongoClientErrorHandler"] = None
@@ -1864,16 +1849,6 @@ class Pool:
         sock_info = await self._get_socket_async()
         if self.enabled_for_cmap:
             listeners.publish_connection_checked_out(self.address, sock_info.id)
-
-        if not self._sync_thread:
-            thread = threading.Thread(target=self._run_jobs)
-            thread.daemon = True
-            self._sync_thread = weakref.proxy(thread)
-            thread.start()
-
-        future: futures.Future[None] = futures.Future()
-        self._sync_queue.put((future, asyncio.sleep(0)))
-        futures.wait([future])
 
         try:
             yield sock_info
@@ -1929,16 +1904,6 @@ class Pool:
         sock_info = self._get_socket()
         if self.enabled_for_cmap:
             listeners.publish_connection_checked_out(self.address, sock_info.id)
-
-        if not self._sync_thread:
-            thread = threading.Thread(target=self._run_jobs)
-            thread.daemon = True
-            self._sync_thread = weakref.proxy(thread)
-            thread.start()
-
-        future: futures.Future[None] = futures.Future()
-        self._sync_queue.put((future, asyncio.sleep(0)))
-        futures.wait([future])
 
         try:
             yield sock_info
