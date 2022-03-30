@@ -1700,7 +1700,7 @@ class TestClient(IntegrationTest):
             [sys.executable, script, client_context.uri],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
         )
         self.addCleanup(p.wait, timeout=1)
         self.addCleanup(p.kill)
@@ -1712,11 +1712,9 @@ class TestClient(IntegrationTest):
         os.kill(p.pid, signal.SIGCONT)
         time.sleep(0.5)
         # Tell the script to exit gracefully.
-        outs, errs = p.communicate(input=b"q\n", timeout=10)
-        # The script logs to stderr.
-        self.assertEqual(outs, b'Type "q" to quit: ')
-        self.assertTrue(errs)
-        log_output = errs.decode("utf-8")
+        outs, _ = p.communicate(input=b"q\n", timeout=10)
+        self.assertTrue(outs)
+        log_output = outs.decode("utf-8")
         self.assertIn("TEST STARTED", log_output)
         self.assertIn("ServerHeartbeatStartedEvent", log_output)
         self.assertIn("ServerHeartbeatSucceededEvent", log_output)
