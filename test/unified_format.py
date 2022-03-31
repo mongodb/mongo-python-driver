@@ -766,10 +766,29 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def maybe_skip_test(self, spec):
         # add any special-casing for skipping tests here
         if client_context.storage_engine == "mmapv1":
-            if "Dirty explicit session is discarded" in spec["description"]:
+            if (
+                "Dirty explicit session is discarded" in spec["description"]
+                or "Dirty implicit session is discarded" in spec["description"]
+            ):
                 raise unittest.SkipTest("MMAPv1 does not support retryWrites=True")
         elif "Client side error in command starting transaction" in spec["description"]:
             raise unittest.SkipTest("Implement PYTHON-1894")
+
+        # Some tests need to be skipped based on the operations they try to run.
+        for op in spec["operations"]:
+            name = op["name"]
+            if name == "count":
+                self.skipTest("PyMongo does not support count()")
+            if name == "listIndexNames":
+                self.skipTest("PyMongo does not support list_index_names()")
+            if client_context.storage_engine == "mmapv1":
+                if name == "createChangeStream":
+                    self.skipTest("MMAPv1 does not support change streams")
+                if name == "withTransaction" or name == "startTransaction":
+                    self.skipTest("MMAPv1 does not support document-level locking")
+            if not client_context.test_commands_enabled:
+                if name == "failPoint" or name == "targetedFailPoint":
+                    self.skipTest("Test commands must be enabled to use fail points")
 
     def process_error(self, exception, spec):
         is_error = spec.get("isError")

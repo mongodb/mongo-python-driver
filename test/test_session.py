@@ -183,12 +183,11 @@ class TestSession(IntegrationTest):
         # "To confirm that implicit sessions only allocate their server session after a
         # successful connection checkout" test from Driver Sessions Spec.
         succeeded = False
+        lsid_set = set()
         failures = 0
         for _ in range(5):
             listener = EventListener()
-            client = rs_or_single_client(
-                event_listeners=[listener], maxPoolSize=1, retryWrites=True
-            )
+            client = rs_or_single_client(event_listeners=[listener], maxPoolSize=1)
             cursor = client.db.test.find({})
             ops: List[Tuple[Callable, List[Any]]] = [
                 (client.db.test.find_one, [{"_id": 1}]),
@@ -225,7 +224,7 @@ class TestSession(IntegrationTest):
                 thread.join()
                 self.assertIsNone(thread.exc)
             client.close()
-            lsid_set = set()
+            lsid_set.clear()
             for i in listener.results["started"]:
                 if i.command.get("lsid"):
                     lsid_set.add(i.command.get("lsid")["id"])
@@ -233,8 +232,7 @@ class TestSession(IntegrationTest):
                 succeeded = True
             else:
                 failures += 1
-        print(failures)
-        self.assertTrue(succeeded)
+        self.assertTrue(succeeded, lsid_set)
 
     def test_pool_lifo(self):
         # "Pool is LIFO" test from Driver Sessions Spec.
