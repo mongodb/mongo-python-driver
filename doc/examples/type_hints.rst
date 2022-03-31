@@ -97,7 +97,8 @@ You can use :py:class:`~typing.TypedDict` when using a well-defined schema for t
 .. doctest::
 
   >>> from typing import TypedDict
-  >>> from pymongo import MongoClient, Collection
+  >>> from pymongo import MongoClient
+  >>> from pymongo.collection import Collection
   >>> class Movie(TypedDict):
   ...       name: str
   ...       year: int
@@ -119,7 +120,8 @@ match a well-defined shema using :py:class:`~typing.TypedDict`.
 .. doctest::
 
   >>> from typing import TypedDict
-  >>> from pymongo import MongoClient, Database
+  >>> from pymongo import MongoClient
+  >>> from pymongo.database import Database
   >>> class Movie(TypedDict):
   ...       name: str
   ...       year: int
