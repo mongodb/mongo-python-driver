@@ -284,6 +284,7 @@ class ClientContext(object):
     def uri(self):
         """Return the MongoClient URI for creating a duplicate client."""
         opts = client_context.default_client_options.copy()
+        opts.pop("server_api", None)  # Cannot be set from the URI
         opts_parts = []
         for opt, val in opts.items():
             strval = str(val)
