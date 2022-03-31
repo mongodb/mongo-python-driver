@@ -2506,7 +2506,7 @@ buildvariants:
 - matrix_name: "tests-doctests"
   matrix_spec:
     platform: ubuntu-18.04
-    python-version: ["3.7"]
+    python-version: ["3.8"]
   display_name: "Doctests ${python-version} ${platform}"
   tasks:
      - name: "doctests"

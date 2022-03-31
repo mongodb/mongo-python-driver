@@ -92,7 +92,7 @@ Note that when using :class:`~bson.son.SON`, the key and value types must be giv
 Typed Collection
 ----------------
 
-You can use :py:class:`~typing.TypedDict` when using a well-defined schema for the data in a :class:`~pymongo.collection.Collection`:
+You can use :py:class:`~typing.TypedDict` (Python 3.8+) when using a well-defined schema for the data in a :class:`~pymongo.collection.Collection`:
 
 .. doctest::
 
@@ -114,7 +114,7 @@ Typed Database
 --------------
 
 While less common, you could specify that the documents in an entire database
-match a well-defined shema using :py:class:`~typing.TypedDict`.
+match a well-defined shema using :py:class:`~typing.TypedDict` (Python 3.8+).
 
 
 .. doctest::
@@ -148,7 +148,7 @@ When using the :meth:`~pymongo.database.Database.command`, you can specify the d
   >>> result = client.admin.command("ping", codec_options=options)
   >>> assert isinstance(result, RawBSONDocument)
 
-Custom :py:class:`collections.abc.Mapping` subclasses and :py:class:`~typing.TypedDict` are also supported.
+Custom :py:class:`collections.abc.Mapping` subclasses and :py:class:`~typing.TypedDict` (Python 3.8+) are also supported.
 For :py:class:`~typing.TypedDict`, use the form: ``options: CodecOptions[MyTypedDict] = CodecOptions(...)``.
 
 Typed BSON Decoding
@@ -169,7 +169,7 @@ You can specify the document type returned by :mod:`bson` decoding functions by 
   >>> rt_document = decode(bsonbytes, codec_options=options)
   >>> assert rt_document.foo() == "bar"
 
-:class:`~bson.raw_bson.RawBSONDocument` and :py:class:`~typing.TypedDict` are also supported.
+:class:`~bson.raw_bson.RawBSONDocument` and :py:class:`~typing.TypedDict` (Python 3.8+) are also supported.
 For :py:class:`~typing.TypedDict`, use  the form: ``options: CodecOptions[MyTypedDict] = CodecOptions(...)``.
 
 
