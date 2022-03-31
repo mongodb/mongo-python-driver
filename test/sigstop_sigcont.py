@@ -15,12 +15,19 @@
 """Used by test_client.TestClient.test_sigstop_sigcont."""
 
 import logging
+import os
 import sys
 
 sys.path[0:0] = [""]
 
 from pymongo import monitoring
 from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
+
+SERVER_API = None
+MONGODB_API_VERSION = os.environ.get("MONGODB_API_VERSION")
+if MONGODB_API_VERSION:
+    SERVER_API = ServerApi(MONGODB_API_VERSION)
 
 
 class HeartbeatLogger(monitoring.ServerHeartbeatListener):
@@ -55,6 +62,7 @@ def main(uri: str) -> None:
         event_listeners=[heartbeat_logger],
         heartbeatFrequencyMS=500,
         connectTimeoutMS=500,
+        server_api=SERVER_API,
     )
     client.admin.command("ping")
     logging.info("TEST STARTED")
