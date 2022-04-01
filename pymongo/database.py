@@ -1030,6 +1030,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 sock_info.address,
                 session=tmp_session,
                 explicit_session=session is not None,
+                comment=cmd.get("comment"),
             )
         cmd_cursor._maybe_pin_connection(sock_info)
         return cmd_cursor
@@ -1258,8 +1259,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         return result
 
-    def __iter__(self) -> "Database[_DocumentType]":
-        return self
+    # See PYTHON-3084.
+    __iter__ = None
 
     def __next__(self) -> NoReturn:
         raise TypeError("'Database' object is not iterable")

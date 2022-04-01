@@ -23,10 +23,11 @@ import os
 import signal
 import socket
 import struct
+import subprocess
 import sys
 import threading
 import time
-from typing import Type, no_type_check
+from typing import Iterable, Type, no_type_check
 
 sys.path[0:0] = [""]
 
@@ -210,10 +211,26 @@ class ClientUnitTest(unittest.TestCase):
         self.assertIn("has no attribute '_does_not_exist'", str(context.exception))
 
     def test_iteration(self):
-        def iterate():
-            [a for a in self.client]
-
-        self.assertRaises(TypeError, iterate)
+        client = self.client
+        if "PyPy" in sys.version:
+            msg = "'NoneType' object is not callable"
+        else:
+            msg = "'MongoClient' object is not iterable"
+        # Iteration fails
+        with self.assertRaisesRegex(TypeError, msg):
+            for _ in client:  # type: ignore[misc] # error: "None" not callable  [misc]
+                break
+        # Index fails
+        with self.assertRaises(TypeError):
+            _ = client[0]
+        # next fails
+        with self.assertRaisesRegex(TypeError, "'MongoClient' object is not iterable"):
+            _ = next(client)
+        # .next() fails
+        with self.assertRaisesRegex(TypeError, "'MongoClient' object is not iterable"):
+            _ = client.next()
+        # Do not implement typing.Iterable.
+        self.assertNotIsInstance(client, Iterable)
 
     def test_get_default_database(self):
         c = rs_or_single_client(
@@ -1344,6 +1361,7 @@ class TestClient(IntegrationTest):
                     None,
                     None,
                     False,
+                    None,
                 ),
                 unpack_res=Cursor(client.pymongo_test.collection)._unpack_response,
                 address=("not-a-member", 27017),
@@ -1670,6 +1688,39 @@ class TestClient(IntegrationTest):
             "mongodb+srv://test1.test.build.10gen.cc/?srvMaxHosts=1", srvmaxhosts=2
         )
         self.assertEqual(len(client.topology_description.server_descriptions()), 2)
+
+    @unittest.skipIf(
+        client_context.load_balancer or client_context.serverless,
+        "loadBalanced clients do not run SDAM",
+    )
+    @unittest.skipIf(sys.platform == "win32", "Windows does not support SIGSTOP")
+    def test_sigstop_sigcont(self):
+        test_dir = os.path.dirname(os.path.realpath(__file__))
+        script = os.path.join(test_dir, "sigstop_sigcont.py")
+        p = subprocess.Popen(
+            [sys.executable, script, client_context.uri],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        self.addCleanup(p.wait, timeout=1)
+        self.addCleanup(p.kill)
+        time.sleep(1)
+        # Stop the child, sleep for twice the streaming timeout
+        # (heartbeatFrequencyMS + connectTimeoutMS), and restart.
+        os.kill(p.pid, signal.SIGSTOP)
+        time.sleep(2)
+        os.kill(p.pid, signal.SIGCONT)
+        time.sleep(0.5)
+        # Tell the script to exit gracefully.
+        outs, _ = p.communicate(input=b"q\n", timeout=10)
+        self.assertTrue(outs)
+        log_output = outs.decode("utf-8")
+        self.assertIn("TEST STARTED", log_output)
+        self.assertIn("ServerHeartbeatStartedEvent", log_output)
+        self.assertIn("ServerHeartbeatSucceededEvent", log_output)
+        self.assertIn("TEST COMPLETED", log_output)
+        self.assertNotIn("ServerHeartbeatFailedEvent", log_output)
 
 
 class TestExhaustCursor(IntegrationTest):

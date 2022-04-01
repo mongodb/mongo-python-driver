@@ -63,7 +63,7 @@ MAX_WRITE_BATCH_SIZE = 1000
 # What this version of PyMongo supports.
 MIN_SUPPORTED_SERVER_VERSION = "3.6"
 MIN_SUPPORTED_WIRE_VERSION = 6
-MAX_SUPPORTED_WIRE_VERSION = 14
+MAX_SUPPORTED_WIRE_VERSION = 15
 
 # Frequency to call hello on servers, in seconds.
 HEARTBEAT_FREQUENCY = 10
@@ -448,7 +448,15 @@ def validate_document_class(
     option: str, value: Any
 ) -> Union[Type[MutableMapping], Type[RawBSONDocument]]:
     """Validate the document_class option."""
-    if not issubclass(value, (abc.MutableMapping, RawBSONDocument)):
+    # issubclass can raise TypeError for generic aliases like SON[str, Any].
+    # In that case we can use the base class for the comparison.
+    is_mapping = False
+    try:
+        is_mapping = issubclass(value, abc.MutableMapping)
+    except TypeError:
+        if hasattr(value, "__origin__"):
+            is_mapping = issubclass(value.__origin__, abc.MutableMapping)
+    if not is_mapping and not issubclass(value, RawBSONDocument):
         raise TypeError(
             "%s must be dict, bson.son.SON, "
             "bson.raw_bson.RawBSONDocument, or a "

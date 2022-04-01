@@ -174,6 +174,7 @@ class _AggregationCommand(object):
             max_await_time_ms=self._max_await_time_ms,
             session=session,
             explicit_session=self._explicit_session,
+            comment=self._options.get("comment"),
         )
         cmd_cursor._maybe_pin_connection(sock_info)
         return cmd_cursor

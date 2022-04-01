@@ -476,6 +476,7 @@ def wait_for_read(sock_info: "SocketInfo", deadline: Optional[float]) -> None:
     # Only Monitor connections can be cancelled.
     if context:
         sock = sock_info.sock
+        timed_out = False
         while True:
             # SSLSocket can have buffered data which won't be caught by select.
             if hasattr(sock, "pending") and sock.pending() > 0:  # type: ignore[attr-defined]
@@ -484,7 +485,13 @@ def wait_for_read(sock_info: "SocketInfo", deadline: Optional[float]) -> None:
                 # Wait up to 500ms for the socket to become readable and then
                 # check for cancellation.
                 if deadline:
-                    timeout = max(min(deadline - time.monotonic(), _POLL_TIMEOUT), 0.001)
+                    remaining = deadline - time.monotonic()
+                    # When the timeout has expired perform one final check to
+                    # see if the socket is readable. This helps avoid spurious
+                    # timeouts on AWS Lambda and other FaaS environments.
+                    if remaining <= 0:
+                        timed_out = True
+                    timeout = max(min(remaining, _POLL_TIMEOUT), 0)
                 else:
                     timeout = _POLL_TIMEOUT
                 readable = sock_info.socket_checker.select(sock, read=True, timeout=timeout)
@@ -492,7 +499,7 @@ def wait_for_read(sock_info: "SocketInfo", deadline: Optional[float]) -> None:
                 raise _OperationCancelled("hello cancelled")
             if readable:
                 return
-            if deadline and time.monotonic() > deadline:
+            if timed_out:
                 raise socket.timeout("timed out")
 
 

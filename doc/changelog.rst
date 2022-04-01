@@ -4,39 +4,45 @@ Changelog
 Changes in Version 4.1
 ----------------------
 
+.. warning:: PyMongo 4.1 drops support for Python 3.6.0 and 3.6.1, Python 3.6.2+ is now required.
+
 PyMongo 4.1 brings a number of improvements including:
 
-- :meth:`pymongo.collection.Collection.update_one`,
-  :meth:`pymongo.collection.Collection.update_many`,
-  :meth:`pymongo.collection.Collection.delete_one`,
-  :meth:`pymongo.collection.Collection.delete_many`,
-  :meth:`pymongo.collection.Collection.aggregate`,
-  :meth:`pymongo.collection.Collection.find_one_and_delete`,
-  :meth:`pymongo.collection.Collection.find_one_and_replace`,
-  :meth:`pymongo.collection.Collection.find_one_and_update`,
-  :meth:`pymongo.collection.Collection.find`,
-  and :meth:`pymongo.collection.Collection.replace_one `all support a new
-  keyword argument ``let`` which is a map of parameter names and values.
+- Type Hinting support (formerly provided by `pymongo-stubs`_).  See :doc:`examples/type_hints` for more information.
+- Added support for the ``comment`` parameter to all helpers. For example see
+  :meth:`~pymongo.collection.Collection.insert_one`.
+- Added support for the ``let`` parameter to
+  :meth:`~pymongo.collection.Collection.update_one`,
+  :meth:`~pymongo.collection.Collection.update_many`,
+  :meth:`~pymongo.collection.Collection.delete_one`,
+  :meth:`~pymongo.collection.Collection.delete_many`,
+  :meth:`~pymongo.collection.Collection.replace_one`,
+  :meth:`~pymongo.collection.Collection.aggregate`,
+  :meth:`~pymongo.collection.Collection.find_one_and_delete`,
+  :meth:`~pymongo.collection.Collection.find_one_and_replace`,
+  :meth:`~pymongo.collection.Collection.find_one_and_update`,
+  :meth:`~pymongo.collection.Collection.find`,
+  :meth:`~pymongo.collection.Collection.find_one`,
+  and :meth:`~pymongo.collection.Collection.bulk_write`.
+  ``let`` is a map of parameter names and values.
   Parameters can then be accessed as variables in an aggregate expression
   context.
 - :meth:`~pymongo.collection.Collection.aggregate` now supports
   $merge and $out executing on secondaries on MongoDB >=5.0.
   aggregate() now always obeys the collection's :attr:`read_preference` on
   MongoDB >= 5.0.
-- :meth:`gridfs.GridOut.seek` now returns the new position in the file, to
+- :meth:`gridfs.grid_file.GridOut.seek` now returns the new position in the file, to
   conform to the behavior of :meth:`io.IOBase.seek`.
-
-Breaking Changes in 4.1
-.......................
-- Removed support for Python 3.6.0 and 3.6.1, Python 3.6.2+ is now required.
+- Improved reuse of implicit sessions (`PYTHON-2956`_).
 
 Bug fixes
 .........
 
-- Fixed a bug where the client could be unable to discover the new primary
-  after a simultaneous replica set election and reconfig (`PYTHON-2970`_).
-
-.. _PYTHON-2970: https://jira.mongodb.org/browse/PYTHON-2970
+- Fixed bug that would cause SDAM heartbeat timeouts and connection churn on
+  AWS Lambda and other FaaS environments (`PYTHON-3186`_).
+- Fixed bug where :class:`~pymongo.mongo_client.MongoClient`,
+  :class:`~pymongo.database.Database`, and :class:`~pymongo.collection.Collection`
+  mistakenly implemented :class:`typing.Iterable` (`PYTHON-3084`_).
 
 Issues Resolved
 ...............
@@ -45,6 +51,10 @@ See the `PyMongo 4.1 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
 .. _PyMongo 4.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=30619
+.. _PYTHON-2956: https://jira.mongodb.org/browse/PYTHON-2956
+.. _PYTHON-3084: https://jira.mongodb.org/browse/PYTHON-3084
+.. _PYTHON-3186: https://jira.mongodb.org/browse/PYTHON-3186
+.. _pymongo-stubs: https://github.com/mongodb-labs/pymongo-stubs
 
 Changes in Version 4.0
 ----------------------
@@ -2894,7 +2904,7 @@ highlights is `here
 - added support for :class:`~pymongo.cursor.Cursor.max_scan`.
 - raise :class:`~gridfs.errors.FileExists` exception when creating a
   duplicate GridFS file.
-- use `y2038 <http://code.google.com/p/y2038/>`_ for time handling in
+- use `y2038 <https://github.com/evalEmpire/y2038/>`_ for time handling in
   the C extension - eliminates 2038 problems when extension is
   installed.
 - added `sort` parameter to

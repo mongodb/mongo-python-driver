@@ -2278,7 +2278,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                     raise
                 cursor = {"id": 0, "firstBatch": []}
             cmd_cursor = CommandCursor(
-                coll, cursor, sock_info.address, session=session, explicit_session=explicit_session
+                coll,
+                cursor,
+                sock_info.address,
+                session=session,
+                explicit_session=explicit_session,
+                comment=cmd.get("comment"),
             )
             cmd_cursor._maybe_pin_connection(sock_info)
             return cmd_cursor
@@ -3239,8 +3244,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             **kwargs,
         )
 
-    def __iter__(self) -> "Collection[_DocumentType]":
-        return self
+    # See PYTHON-3084.
+    __iter__ = None
 
     def __next__(self) -> NoReturn:
         raise TypeError("'Collection' object is not iterable")

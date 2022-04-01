@@ -44,6 +44,7 @@ from functools import wraps
 from test.version import Version
 from typing import Dict, no_type_check
 from unittest import SkipTest
+from urllib.parse import quote_plus
 
 import pymongo
 import pymongo.errors
@@ -280,6 +281,23 @@ class ClientContext(object):
         return opts
 
     @property
+    def uri(self):
+        """Return the MongoClient URI for creating a duplicate client."""
+        opts = client_context.default_client_options.copy()
+        opts.pop("server_api", None)  # Cannot be set from the URI
+        opts_parts = []
+        for opt, val in opts.items():
+            strval = str(val)
+            if isinstance(val, bool):
+                strval = strval.lower()
+            opts_parts.append(f"{opt}={quote_plus(strval)}")
+        opts_part = "&".join(opts_parts)
+        auth_part = ""
+        if client_context.auth_enabled:
+            auth_part = f"{quote_plus(db_user)}:{quote_plus(db_pwd)}@"
+        return f"mongodb://{auth_part}{self.pair}/?{opts_part}"
+
+    @property
     def hello(self):
         if not self._hello:
             self._hello = self.client.admin.command(HelloCompat.LEGACY_CMD)
@@ -359,7 +377,7 @@ class ClientContext(object):
                     username=db_user,
                     password=db_pwd,
                     replicaSet=self.replica_set_name,
-                    **self.default_client_options
+                    **self.default_client_options,
                 )
 
                 # May not have this if OperationFailure was raised earlier.
@@ -387,7 +405,7 @@ class ClientContext(object):
                         username=db_user,
                         password=db_pwd,
                         replicaSet=self.replica_set_name,
-                        **self.default_client_options
+                        **self.default_client_options,
                     )
                 else:
                     self.client = pymongo.MongoClient(
@@ -490,7 +508,7 @@ class ClientContext(object):
             username=db_user,
             password=db_pwd,
             serverSelectionTimeoutMS=100,
-            **self.default_client_options
+            **self.default_client_options,
         )
 
         try:
