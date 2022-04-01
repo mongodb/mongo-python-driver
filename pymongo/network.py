@@ -520,6 +520,7 @@ async def wait_for_read_async(sock_info: "SocketInfo", deadline: Optional[float]
                 return
             if deadline and time.monotonic() > deadline:
                 raise socket.timeout("timed out")
+            await asyncio.sleep(0)
 
 
 def _receive_data_on_socket(
@@ -544,23 +545,26 @@ def _receive_data_on_socket(
     return mv
 
 
+def _receive_into(socket: socket.socket, buf: memoryview) -> int:
+    timeout = socket.gettimeout()
+    socket.settimeout(0)
+    try:
+        return socket.recv_into(buf)
+    finally:
+        socket.settimeout(timeout)
+
+
 async def _receive_data_on_socket_async(
     sock_info: "SocketInfo", length: int, deadline: Optional[float]
 ) -> memoryview:
-    loop = asyncio.get_running_loop()
     buf = bytearray(length)
     mv = memoryview(buf)
     bytes_read = 0
     # TODO: make this a cancelable task so we can use the deadline
     while bytes_read < length:
         try:
-            readable = await wait_for_read_async(sock_info, deadline)
-            if readable:
-                chunk_length = sock_info.sock.recv_into(mv[bytes_read:])
-            else:
-                data = await loop.sock_recv(sock_info.sock, length - bytes_read)
-                chunk_length = len(data)
-                buf[bytes_read : chunk_length + bytes_read] = data
+            await wait_for_read_async(sock_info, deadline)
+            chunk_length = _receive_into(sock_info.sock, mv[bytes_read:])
         except _ssl.SSLWantReadError:
             continue
         except (  # noqa: B014
