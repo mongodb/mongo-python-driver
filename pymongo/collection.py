@@ -160,7 +160,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             be passed as options for the create collection command
 
         .. versionchanged:: 4.0
-           Removed the reindex, map_reduce, inline_map_reduce,
+           Removed the reindex, map_reduce, inline_map_reduce, 
            parallel_scan, initialize_unordered_bulk_op,
            initialize_ordered_bulk_op, group, count, insert, save,
            update, remove, find_and_modify, and ensure_index methods. See the
@@ -246,7 +246,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         :Parameters:
           - `sock_info` - A SocketInfo instance.
-          - `command` - The command itself, as a SON instance.
+          - `command` - The command itself, as a :class:`~bson.son.SON` instance.
           - `codec_options` (optional) - An instance of
             :class:`~bson.codec_options.CodecOptions`.
           - `check`: raise OperationFailure if there are errors
@@ -1443,7 +1443,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         this :class:`Collection`.
 
         :Parameters:
-          - `filter` (optional): a JSON object specifying elements which
+          - `filter` (optional): a :class:`~bson.son.SON` object specifying elements which
             must be present for a document to be included in the
             result set
           - `projection` (optional): a list of field names that should be
