@@ -207,9 +207,24 @@ def command(
     return response_doc
 
 
+async def send_async(socket: socket.socket, buf: bytes, flags: int = 0) -> int:
+    timeout = socket.gettimeout()
+    socket.settimeout(0)
+    try:
+        sent = socket.send(buf, flags)
+        return sent
+    finally:
+        socket.settimeout(timeout)
+
+
 async def sendall_async(socket: socket.socket, buf: bytes, flags: int = 0) -> None:
-    loop = asyncio.get_running_loop()
-    await loop.sock_sendall(socket, buf)
+    view = memoryview(buf)
+    total_length = len(buf)
+    total_sent = 0
+    sent = 0
+    while total_sent < total_length:
+        sent = await send_async(socket, view[total_sent:], flags)
+        total_sent += sent
 
 
 async def command_async(
