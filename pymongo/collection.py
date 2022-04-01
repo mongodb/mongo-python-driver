@@ -1443,7 +1443,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         this :class:`Collection`.
 
         :Parameters:
-          - `filter` (optional): a SON object specifying elements which
+          - `filter` (optional): a JSON object specifying elements which
             must be present for a document to be included in the
             result set
           - `projection` (optional): a list of field names that should be
