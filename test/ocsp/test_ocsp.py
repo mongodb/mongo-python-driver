@@ -14,6 +14,7 @@
 
 """Test OCSP."""
 
+import asyncio
 import logging
 import os
 import sys
@@ -50,16 +51,31 @@ def _connect(options):
     client.admin.command("ping")
 
 
+async def _connect_async(options):
+    uri = ("mongodb://localhost:27017/?serverSelectionTimeoutMS=%s&tlsCAFile=%s&%s") % (
+        TIMEOUT_MS,
+        CA_FILE,
+        options,
+    )
+    print(uri)
+    client = pymongo.MongoClient(uri)
+    await client.admin.command_async("ping")
+
+
 class TestOCSP(unittest.TestCase):
     def test_tls_insecure(self):
         # Should always succeed
         options = "tls=true&tlsInsecure=true"
         _connect(options)
+        loop = asyncio.new_event_loop()
+        loop.run_until_complete(_connect_async(options))
 
     def test_allow_invalid_certificates(self):
         # Should always succeed
         options = "tls=true&tlsAllowInvalidCertificates=true"
         _connect(options)
+        loop = asyncio.new_event_loop()
+        loop.run_until_complete(_connect_async(options))
 
     def test_tls(self):
         options = "tls=true"
@@ -69,6 +85,8 @@ class TestOCSP(unittest.TestCase):
             )
         else:
             _connect(options)
+            loop = asyncio.new_event_loop()
+            loop.run_until_complete(_connect_async(options))
 
 
 if __name__ == "__main__":
