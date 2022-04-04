@@ -55,7 +55,7 @@ TEXT = "text"
 .. _text index: http://docs.mongodb.org/manual/core/index-text/
 """
 
-version_tuple: Tuple[Union[int, str], ...] = (4, 1, 0)
+version_tuple: Tuple[Union[int, str], ...] = (4, 2, 0, ".dev0")
 
 
 def get_version_string() -> str:
