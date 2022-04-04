@@ -27,7 +27,7 @@ class MainHandler(RequestHandler):
 
 def target():
     client = HTTPClient()
-    response = client.fetch("http://localhost:8890")
+    response = client.fetch("http://localhost:8890", request_timeout=60)
     return response.code
 
 
