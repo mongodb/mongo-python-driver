@@ -34,7 +34,7 @@ def target():
 class TestTornado(unittest.TestCase):
     def test_fetch_threaded(self):
         if not has_tornado:
-            unittest.skip("Requires tornado")
+            raise unittest.SkipTest("Requires tornado")
         futures = []
         app = tornado.web.Application(
             [
