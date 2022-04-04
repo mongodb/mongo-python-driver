@@ -2389,7 +2389,7 @@ buildvariants:
   matrix_spec:
     platform: awslinux
     # Python 3.10+ requires OpenSSL 1.1.1+
-    python-version: [ "3.7", "3.8", "3.9", "pypy3.7", "pypy3.8"]
+    python-version: ["3.7", "3.8", "3.9", "pypy3.7", "pypy3.8"]
     auth-ssl: "*"
   display_name: "OpenSSL 1.0.2 ${python-version} ${platform} ${auth-ssl}"
   tasks:
@@ -2467,7 +2467,7 @@ buildvariants:
 - matrix_name: "tests-mod-wsgi"
   matrix_spec:
     platform: ubuntu-18.04
-    python-version: [ "3.7", "3.8", "3.9", "3.10"]
+    python-version: ["3.7", "3.8", "3.9", "3.10"]
     mod-wsgi-version: "*"
   exclude_spec:
    # mod-wsgi 3.5 won't build against CPython 3.8+
