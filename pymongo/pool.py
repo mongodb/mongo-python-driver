@@ -76,7 +76,6 @@ from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
 from pymongo.ssl_support import HAS_SNI as _HAVE_SNI
-from pymongo.ssl_support import HAVE_SSL
 from pymongo.ssl_support import IPADDR_SAFE as _IPADDR_SAFE
 from pymongo.ssl_support import SSLError as _SSLError
 from pymongo.typings import _Address, _DocumentType
@@ -1458,12 +1457,12 @@ async def _configured_socket_async(address: _Address, options: PoolOptions) -> A
             # We have to pass hostname / ip address to wrap_socket
             # to use SSLContext.check_hostname.
             if _HAVE_SNI and (not is_ip_address(host) or _IPADDR_SAFE):
-                if HAVE_SSL:
+                if hasattr(ssl_context, "wrap_socket_async"):
                     sock = await ssl_context.wrap_socket_async(sock, server_hostname=host)
                 else:
                     sock = ssl_context.wrap_socket(sock, server_hostname=host)
             else:
-                if HAVE_SSL:
+                if hasattr(ssl_context, "wrap_socket_async"):
                     sock = await ssl_context.wrap_socket_async(sock)
                 else:
                     sock = await ssl_context.wrap_socket(sock)
