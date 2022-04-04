@@ -27,7 +27,7 @@ class MainHandler(RequestHandler):
 
 def target():
     client = HTTPClient()
-    response = client.fetch("http://localhost:8889")
+    response = client.fetch("http://localhost:8890")
     return response.code
 
 
@@ -41,7 +41,7 @@ class TestTornado(unittest.TestCase):
                 (r"/", MainHandler),
             ]
         )
-        app.listen(8889)
+        app.listen(8890)
         server = HTTPServer(app)
         io_loop = tornado.ioloop.IOLoop.current()
         server_thread = threading.Thread(target=io_loop.start)
