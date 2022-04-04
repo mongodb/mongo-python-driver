@@ -53,3 +53,7 @@ class TestTornado(unittest.TestCase):
             concurrent.futures.wait(futures)
             for future in futures:
                 assert future.result() == 200
+
+
+if __name__ == "__main__":
+    unittest.main()
