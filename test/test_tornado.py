@@ -44,7 +44,7 @@ class TestTornado(unittest.TestCase):
         app.listen(8889)
         server = HTTPServer(app)
         io_loop = tornado.ioloop.IOLoop.current()
-        server_thread = threading.Thread(target=io_loop.start, daemon=True)
+        server_thread = threading.Thread(target=io_loop.start)
         server_thread.start()
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
@@ -53,6 +53,8 @@ class TestTornado(unittest.TestCase):
             concurrent.futures.wait(futures)
             for future in futures:
                 assert future.result() == 200
+
+        io_loop.add_callback(io_loop.stop)
 
 
 if __name__ == "__main__":
