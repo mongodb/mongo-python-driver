@@ -85,10 +85,10 @@ if TYPE_CHECKING:
     from pymongo.collation import Collation
     from pymongo.message import _OpMsg, _OpReply
     from pymongo.mongo_client import MongoClient, _MongoClientErrorHandler
+    from pymongo.pyopenssl_context import SSLContext
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
     from pymongo.server_api import ServerApi
-    from pymongo.ssl_context import SSLContext
     from pymongo.write_concern import WriteConcern
 
 
@@ -1457,9 +1457,9 @@ async def _configured_socket_async(address: _Address, options: PoolOptions) -> A
             # We have to pass hostname / ip address to wrap_socket
             # to use SSLContext.check_hostname.
             if _HAVE_SNI and (not is_ip_address(host) or _IPADDR_SAFE):
-                sock = ssl_context.wrap_socket(sock, server_hostname=host)
+                sock = await ssl_context.wrap_socket_async(sock, server_hostname=host)
             else:
-                sock = ssl_context.wrap_socket(sock)
+                sock = await ssl_context.wrap_socket_async(sock)
         except _CertificateError:
             sock.close()
             # Raise _CertificateError directly like we do after match_hostname
