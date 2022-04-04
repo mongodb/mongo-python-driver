@@ -166,7 +166,7 @@ else
     OUTPUT=""
 fi
 
-$PYTHON -m pip install --prefer-binary tornado
+$PYTHON -m pip install --prefer-binary -U tornado
 
 echo "Running $AUTH tests over $SSL with python $PYTHON"
 $PYTHON -c 'import sys; print(sys.version)'
