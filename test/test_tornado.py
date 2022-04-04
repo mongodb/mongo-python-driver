@@ -27,7 +27,7 @@ class MainHandler(RequestHandler):
 
 def target():
     client = HTTPClient()
-    response = client.fetch("http://localhost:8890", request_timeout=60)
+    response = client.fetch("http://localhost:8890")
     return response.code
 
 
@@ -55,7 +55,3 @@ class TestTornado(unittest.TestCase):
                 assert future.result() == 200
 
         io_loop.add_callback(io_loop.stop)
-
-
-if __name__ == "__main__":
-    unittest.main()
