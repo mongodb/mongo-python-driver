@@ -1098,8 +1098,8 @@ tasks:
             TOPOLOGY: "server"
         - func: "run doctests"
 
-    - name: "test-3.7-standalone"
-      tags: ["3.7", "standalone"]
+    - name: "test-3.6-standalone"
+      tags: ["3.6", "standalone"]
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
@@ -1107,8 +1107,8 @@ tasks:
             TOPOLOGY: "server"
         - func: "run tests"
 
-    - name: "test-3.7-replica_set"
-      tags: ["3.7", "replica_set"]
+    - name: "test-3.6-replica_set"
+      tags: ["3.6", "replica_set"]
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
@@ -1116,8 +1116,8 @@ tasks:
             TOPOLOGY: "replica_set"
         - func: "run tests"
 
-    - name: "test-3.7-sharded_cluster"
-      tags: ["3.7", "sharded_cluster"]
+    - name: "test-3.6-sharded_cluster"
+      tags: ["3.6", "sharded_cluster"]
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
