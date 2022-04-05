@@ -1689,6 +1689,11 @@ class TestClient(IntegrationTest):
         )
         self.assertEqual(len(client.topology_description.server_descriptions()), 2)
 
+    @unittest.skipIf(_HAVE_DNSPYTHON, "dnspython must not be installed")
+    def test_srv_no_dnspython_error(self):
+        with self.assertRaisesRegex(ConfigurationError, 'The "dnspython" module must be'):
+            MongoClient("mongodb+srv://test1.test.build.10gen.cc/")
+
     @unittest.skipIf(
         client_context.load_balancer or client_context.serverless,
         "loadBalanced clients do not run SDAM",
