@@ -40,10 +40,11 @@ jobs:
           mongodb-version: 4.4
       - name: Install deps
         run: pip install mypy tornado asyncio-gevent gevent
-      - name: Run Gevent
-        run: python green_framework_test.py gevent
       - name: Run standard test
         run: python setup.py test
+      - name: Run Gevent
+        run: python green_framework_test.py gevent
+
 
   mypytest:
     name: Run mypy
