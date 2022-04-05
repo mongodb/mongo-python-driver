@@ -552,7 +552,6 @@ def parse_uri(
 
 if __name__ == "__main__":
     import pprint
-    import sys
 
     try:
         pprint.pprint(parse_uri(sys.argv[1]))

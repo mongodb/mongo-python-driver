@@ -1650,6 +1650,11 @@ class TestClient(IntegrationTest):
             # AssertionError: 4 != 22 within 5 delta (18 difference)
             self.assertAlmostEqual(initial_count, final_count, delta=10)
 
+    @unittest.skipIf(_HAVE_DNSPYTHON, "dnspython must not be installed")
+    def test_srv_no_dnspython_error(self):
+        with self.assertRaisesRegex(ConfigurationError, 'The "dnspython" module must be'):
+            MongoClient("mongodb+srv://test1.test.build.10gen.cc/")
+
 
 class TestExhaustCursor(IntegrationTest):
     """Test that clients properly handle errors from exhaust cursors."""
