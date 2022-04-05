@@ -8,7 +8,6 @@ except ImportError:
     has_gevent = False
 
 import unittest
-from test.utils import gevent_monkey_patched
 
 
 async def ping():
@@ -20,8 +19,8 @@ async def ping():
 
 class TestAsyncioGevent(unittest.TestCase):
     def test_asyncio_gevent(self):
-        if not gevent_monkey_patched() or not has_gevent:
-            raise unittest.SkipTest("Must have a patched gevent")
+        if not has_gevent:
+            raise unittest.SkipTest("Must have asyncio_gevent")
         asyncio.set_event_loop_policy(asyncio_gevent.EventLoopPolicy())
         future = ping()
         greenlet = asyncio_gevent.future_to_greenlet(future)
@@ -32,4 +31,7 @@ class TestAsyncioGevent(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    from gevent.monkey import patch_all
+
+    patch_all()
     unittest.main()
