@@ -77,6 +77,7 @@ class TaskRunner:
         self.__loop_thread = threading.Thread(target=self._runner, daemon=True)
         self.__loop_thread.start()
         self.waiting = False
+        self.lock = threading.Lock()
         atexit.register(self._close)
 
     def _close(self):
@@ -94,12 +95,14 @@ class TaskRunner:
     def run(self, coro):
         """Run a coroutine on the event loop and return the result"""
         fut = asyncio.run_coroutine_threadsafe(coro, self.__loop)
-        self.waiting = True
+        with self.lock:
+            self.waiting = True
         try:
             wait([fut])
             return fut.result()
         finally:
-            self.waiting = False
+            with self.lock:
+                self.waiting = False
 
 
 class TaskRunnerPool:
@@ -125,8 +128,9 @@ class TaskRunnerPool:
     def run(self, coro):
         with self._semaphore:
             for runner in self._runners:
-                if not runner.waiting:
-                    return runner.run(coro)
+                with runner.lock:
+                    if not runner.waiting:
+                        return runner.run(coro)
             runner = TaskRunner()
             self._runners.append(runner)
             return runner.run(coro)
