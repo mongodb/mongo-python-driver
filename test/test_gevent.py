@@ -8,8 +8,7 @@ except ImportError:
     has_gevent = False
 
 import unittest
-
-from .utils import gevent_monkey_patched
+from test.utils import gevent_monkey_patched
 
 
 async def ping():
