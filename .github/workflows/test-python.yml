@@ -40,7 +40,7 @@ jobs:
           mongodb-version: 4.4
       - name: Run tests
         run: |
-          pip install mypy tornado
+          pip install mypy tornado asyncio-gevent gevent
           python setup.py test
 
   mypytest:
