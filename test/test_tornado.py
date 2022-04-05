@@ -15,7 +15,7 @@ try:
 
     has_tornado = True
 except ImportError:
-    RequestHandler = object
+    RequestHandler = object  # type: ignore
     has_tornado = False
 
 
