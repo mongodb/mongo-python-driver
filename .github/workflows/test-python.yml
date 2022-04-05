@@ -60,7 +60,7 @@ jobs:
           cache-dependency-path: 'setup.py'
       - name: Install dependencies
         run: |
-          python -m pip install -U pip mypy
+          python -m pip install -U pip mypy tornado
           pip install -e ".[zstd, srv]"
       - name: Run mypy
         run: |
