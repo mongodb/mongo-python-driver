@@ -129,8 +129,9 @@ class TaskRunnerPool:
         with self._semaphore:
             for runner in self._runners:
                 with runner.lock:
-                    if not runner.waiting:
-                        return runner.run(coro)
+                    waiting = runner.waiting
+                if not waiting:
+                    return runner.run(coro)
             runner = TaskRunner()
             self._runners.append(runner)
             return runner.run(coro)
