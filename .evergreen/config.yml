@@ -1103,7 +1103,7 @@ tasks:
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
-            VERSION: "3.7"
+            VERSION: "3.6"
             TOPOLOGY: "server"
         - func: "run tests"
 
@@ -1112,7 +1112,7 @@ tasks:
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
-            VERSION: "3.7"
+            VERSION: "3.6"
             TOPOLOGY: "replica_set"
         - func: "run tests"
 
@@ -1121,7 +1121,7 @@ tasks:
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
-            VERSION: "3.7"
+            VERSION: "3.6"
             TOPOLOGY: "sharded_cluster"
         - func: "run tests"
 
