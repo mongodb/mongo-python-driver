@@ -246,7 +246,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         :Parameters:
           - `sock_info` - A SocketInfo instance.
-          - `command` - The command itself, as a SON instance.
+          - `command` - The command itself, as a :class:`~bson.son.SON` instance.
           - `codec_options` (optional) - An instance of
             :class:`~bson.codec_options.CodecOptions`.
           - `check`: raise OperationFailure if there are errors
@@ -1521,7 +1521,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def find(self, *args: Any, **kwargs: Any) -> Cursor[_DocumentType]:
         """Query the database.
 
-        The `filter` argument is a prototype document that all results
+        The `filter` argument is a query document that all results
         must match. For example:
 
         >>> db.test.find({"hello": "world"})
@@ -1541,9 +1541,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         this :class:`Collection`.
 
         :Parameters:
-          - `filter` (optional): a SON object specifying elements which
-            must be present for a document to be included in the
-            result set
+          - `filter` (optional): A query document that selects which documents
+            to include in the result set. Can be an empty document to include
+            all documents.
           - `projection` (optional): a list of field names that should be
             returned in the result set or a dict specifying the fields
             to include or exclude. If `projection` is a list "_id" will

@@ -364,9 +364,9 @@ class GridFS(object):
         are associated with that session.
 
         :Parameters:
-          - `filter` (optional): a SON object specifying elements which
-            must be present for a document to be included in the
-            result set
+          - `filter` (optional): A query document that selects which files
+            to include in the result set. Can be an empty document to include
+            all files.
           - `skip` (optional): the number of files to omit (from
             the start of the result set) when returning the results
           - `limit` (optional): the maximum number of results to
