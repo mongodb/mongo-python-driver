@@ -1,8 +1,4 @@
 try:
-    import gevent.monkey
-
-    gevent.monkey.patch_all()
-
     import asyncio
 
     import asyncio_gevent
@@ -12,6 +8,8 @@ except ImportError:
     has_gevent = False
 
 import unittest
+
+from .utils import gevent_monkey_patched
 
 
 async def ping():
@@ -23,6 +21,8 @@ async def ping():
 
 class TestAsyncioGevent(unittest.TestCase):
     def test_asyncio_gevent(self):
+        if not gevent_monkey_patched() or not has_gevent:
+            raise unittest.SkipTest("Must have a patched gevent")
         asyncio.set_event_loop_policy(asyncio_gevent.EventLoopPolicy())
         future = ping()
         greenlet = asyncio_gevent.future_to_greenlet(future)

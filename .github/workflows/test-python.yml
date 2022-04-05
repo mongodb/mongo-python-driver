@@ -41,6 +41,7 @@ jobs:
       - name: Run tests
         run: |
           pip install mypy tornado asyncio-gevent gevent
+          python green_framework_test.py gevent
           python setup.py test
 
   mypytest:
