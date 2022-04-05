@@ -15,6 +15,7 @@
 
 """Tools to parse and validate a MongoDB URI."""
 import re
+import sys
 import warnings
 from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Tuple, Union
 from urllib.parse import unquote_plus
@@ -615,7 +616,6 @@ def _parse_kms_tls_options(kms_tls_options):
 
 if __name__ == "__main__":
     import pprint
-    import sys
 
     try:
         pprint.pprint(parse_uri(sys.argv[1]))
