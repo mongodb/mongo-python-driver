@@ -346,6 +346,7 @@ setup(
         "Programming Language :: Python :: Implementation :: CPython",
         "Programming Language :: Python :: Implementation :: PyPy",
         "Topic :: Database",
+        "Typing :: Typed",
     ],
     cmdclass={"build_ext": custom_build_ext, "doc": doc, "test": test},
     extras_require=extras_require,
