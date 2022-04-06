@@ -1,7 +1,7 @@
 try:
     import asyncio
 
-    import asyncio_gevent
+    import asyncio_gevent  # type: ignore[import]
 
     has_gevent = True
 except ImportError:

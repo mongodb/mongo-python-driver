@@ -44,7 +44,7 @@ jobs:
         run: python setup.py test
       - name: Run Async Tests
         run: |
-          pip install asyncio-gevent gevent tornado
+          pip install asyncio-gevent gevent tornado pymongocrypt
           PYTHONWARNINGS=error python setup.py test -s test.test_gevent
           PYTHONWARNINGS=error python setup.py test -s test.test_tornado
           PYTHONWARNINGS=error python setup.py test -s test.test_client
