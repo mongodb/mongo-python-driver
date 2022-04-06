@@ -204,3 +204,14 @@ else
     # --no_ext has to come before "test" so there is no way to toggle extensions here.
     $PYTHON green_framework_test.py $GREEN_FRAMEWORK $OUTPUT
 fi
+
+
+# Run additional tests for asyncio
+$PYTHON -m pip install asyncio-gevent gevent tornado pymongocrypt
+PYTHONWARNINGS=error $PYTHON  setup.py test -s test.test_gevent
+PYTHONWARNINGS=error $PYTHON  setup.py test -s test.test_tornado
+PYTHONWARNINGS=error $PYTHON  setup.py test -s test.test_client
+
+if [ -n "$TEST_ENCRYPTION" ]; then
+    PYTHONWARNINGS=error python setup.py test -s test.test_encryption.TestClientSimple
+fi

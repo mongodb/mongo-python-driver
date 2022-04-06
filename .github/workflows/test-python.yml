@@ -45,33 +45,12 @@ jobs:
       - name: Run standard test
         run: python setup.py test
 
-      - name: Install libmongocrypt
-        run: |
-          git clone https://github.com/mongodb/mongo-c-driver
-          pushd mongo-c-driver
-          mkdir cmake-build
-          pushd cmake-build
-          cmake -DENABLE_MONGOC=OFF -DCMAKE_INSTALL_PREFIX="$HOME/bson-install" ../
-          make -j8 install
-          popd
-          popd
-
-          git clone https://github.com/mongodb/libmongocrypt
-          pushd libmongocrypt
-          mkdir cmake-build
-          pushd cmake-build
-          cmake -DCMAKE_PREFIX_PATH="$HOME/bson-install" ../
-          make
-          popd
-          popd
-
       - name: Run Async Tests
         run: |
           pip install asyncio-gevent gevent tornado pymongocrypt
           PYTHONWARNINGS=error python setup.py test -s test.test_gevent
           PYTHONWARNINGS=error python setup.py test -s test.test_tornado
           PYTHONWARNINGS=error python setup.py test -s test.test_client
-          PYTHONWARNINGS=error python setup.py test -s test.test_encryption.TestClientSimple
 
   mypytest:
     name: Run mypy
