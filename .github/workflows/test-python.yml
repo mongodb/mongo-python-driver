@@ -50,7 +50,7 @@ jobs:
           pushd mongo-c-driver
           mkdir cmake-build
           pushd cmake-build
-          cmake -DENABLE_MONGOC=OFF ../
+          cmake -DENABLE_MONGOC=OFF -DCMAKE_INSTALL_PREFIX="$HOME/bson-install" ../
           make -j8 install
           popd
           podp
@@ -59,7 +59,7 @@ jobs:
           pushd libmongocrypt
           mkdir cmake-build
           pushd cmake-build
-          cmake ../
+          cmake -DCMAKE_PREFIX_PATH=$HOME/bson-install" ../
           make
           popd
           popd
