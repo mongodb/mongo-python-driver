@@ -53,7 +53,7 @@ jobs:
           cmake -DENABLE_MONGOC=OFF -DCMAKE_INSTALL_PREFIX="$HOME/bson-install" ../
           make -j8 install
           popd
-          podp
+          popd
 
           git clone https://github.com/mongodb/libmongocrypt
           pushd libmongocrypt
