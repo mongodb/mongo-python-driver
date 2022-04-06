@@ -295,7 +295,14 @@ if sys.platform == "win32":
 else:
     extras_require["gssapi"] = ["pykerberos"]
 
-extra_opts = {"packages": ["bson", "pymongo", "gridfs"]}
+extra_opts = {
+    "packages": ["bson", "pymongo", "gridfs"],
+    "package_data": {
+        "bson": ["py.typed"],
+        "pymongo": ["py.typed"],
+        "gridfs": ["py.typed"],
+    },
+}
 
 if "--no_ext" in sys.argv:
     sys.argv.remove("--no_ext")
