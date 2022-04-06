@@ -1310,9 +1310,9 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
         }
         # The full error should be something like:
         # "Credential should be scoped to a valid region, not 'us-east-1'"
-        # but we only check for "us-east-1" to avoid breaking on slight
+        # but we only check for EncryptionError to avoid breaking on slight
         # changes to AWS' error message.
-        with self.assertRaisesRegex(EncryptionError, "us-east-1"):
+        with self.assertRaises(EncryptionError):
             self.client_encryption.create_data_key("aws", master_key=master_key)
 
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
