@@ -25,6 +25,7 @@ jobs:
       matrix:
         os: [ubuntu-20.04]
         python-version: ["3.7", "3.10", "pypy-3.8"]
+      fail-fast: false
     name: CPython ${{ matrix.python-version }}-${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -59,7 +60,7 @@ jobs:
           pushd libmongocrypt
           mkdir cmake-build
           pushd cmake-build
-          cmake -DCMAKE_PREFIX_PATH=$HOME/bson-install" ../
+          cmake -DCMAKE_PREFIX_PATH="$HOME/bson-install" ../
           make
           popd
           popd
