@@ -1,16 +1,15 @@
-# import concurrent.futures
+import concurrent.futures
 import json
-
-# import threading
+import threading
 import unittest
+import warnings
 
 from pymongo import MongoClient
 
 try:
-    # import tornado.ioloop
+    import tornado.ioloop
     from tornado.httpclient import HTTPClient
-
-    # from tornado.httpserver import HTTPServer
+    from tornado.httpserver import HTTPServer
     from tornado.web import RequestHandler
 
     has_tornado = True
@@ -19,9 +18,13 @@ except ImportError:
     has_tornado = False
 
 
+warnings.simplefilter("ignore", DeprecationWarning)
+
+
 class MainHandler(RequestHandler):
     async def get(self):
         client = MongoClient()
+        client.test.command("ping")
         value = await client.test.command_async("ping")
         value = json.dumps(value, default=str)
         self.write(value)
@@ -35,26 +38,26 @@ def target():
 
 class TestTornado(unittest.TestCase):
     def test_fetch_threaded(self):
-        pass
-        # if not has_tornado:
-        #     raise unittest.SkipTest("Requires tornado")
-        # futures = []
-        # app = tornado.web.Application(
-        #     [
-        #         (r"/", MainHandler),
-        #     ]
-        # )
-        # app.listen(8890)
-        # server = HTTPServer(app)
-        # io_loop = tornado.ioloop.IOLoop.current()
-        # server_thread = threading.Thread(target=io_loop.start)
-        # server_thread.start()
+        if not has_tornado:
+            raise unittest.SkipTest("Requires tornado")
+        futures = []
 
-        # with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-        #     for i in range(5):
-        #         futures.append(executor.submit(target))
-        #     concurrent.futures.wait(futures)
-        #     for future in futures:
-        #         assert future.result() == 200
+        app = tornado.web.Application(
+            [
+                (r"/", MainHandler),
+            ]
+        )
+        app.listen(8890)
+        server = HTTPServer(app)
+        io_loop = tornado.ioloop.IOLoop.current()
+        server_thread = threading.Thread(target=io_loop.start)
+        server_thread.start()
 
-        # io_loop.add_callback(io_loop.stop)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            for i in range(5):
+                futures.append(executor.submit(target))
+            concurrent.futures.wait(futures)
+            for future in futures:
+                assert future.result() == 200
+
+        io_loop.add_callback(io_loop.stop)

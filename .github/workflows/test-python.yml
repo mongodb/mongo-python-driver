@@ -39,14 +39,16 @@ jobs:
         with:
           mongodb-version: 4.4
       - name: Install deps
-        run: pip install mypy tornado
+        run: pip install mypy
       - name: Run standard test
         run: python setup.py test
-      - name: Run Gevent
+      - name: Run Async Tests
         run: |
-          pip install asyncio-gevent gevent
-          python -m unittest test/test_gevent.py
-
+          pip install asyncio-gevent gevent tornado
+          PYTHONWARNINGS=error python setup.py test -s test.test_gevent
+          PYTHONWARNINGS=error python setup.py test -s test.test_tornado
+          PYTHONWARNINGS=error python setup.py test -s test.test_client
+          PYTHONWARNINGS=error python setup.py test -s test.test_encryption.TestClientSimple
 
   mypytest:
     name: Run mypy

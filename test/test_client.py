@@ -27,6 +27,7 @@ import subprocess
 import sys
 import threading
 import time
+import warnings
 from typing import Iterable, Type, no_type_check
 
 sys.path[0:0] = [""]
@@ -1079,7 +1080,10 @@ class TestClient(IntegrationTest):
         client = MongoClient(serverSelectionTimeoutMS=100, connect=False)
         self.assertAlmostEqual(0.1, client.options.server_selection_timeout)
 
-        client = MongoClient(serverSelectionTimeoutMS=0, connect=False)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            client = MongoClient(serverSelectionTimeoutMS=0, connect=False)
+
         self.assertAlmostEqual(0, client.options.server_selection_timeout)
 
         self.assertRaises(ValueError, MongoClient, serverSelectionTimeoutMS="foo", connect=False)
@@ -1091,14 +1095,20 @@ class TestClient(IntegrationTest):
         client = MongoClient("mongodb://localhost/?serverSelectionTimeoutMS=100", connect=False)
         self.assertAlmostEqual(0.1, client.options.server_selection_timeout)
 
-        client = MongoClient("mongodb://localhost/?serverSelectionTimeoutMS=0", connect=False)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            client = MongoClient("mongodb://localhost/?serverSelectionTimeoutMS=0", connect=False)
         self.assertAlmostEqual(0, client.options.server_selection_timeout)
 
         # Test invalid timeout in URI ignored and set to default.
-        client = MongoClient("mongodb://localhost/?serverSelectionTimeoutMS=-1", connect=False)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            client = MongoClient("mongodb://localhost/?serverSelectionTimeoutMS=-1", connect=False)
         self.assertAlmostEqual(30, client.options.server_selection_timeout)
 
-        client = MongoClient("mongodb://localhost/?serverSelectionTimeoutMS=", connect=False)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            client = MongoClient("mongodb://localhost/?serverSelectionTimeoutMS=", connect=False)
         self.assertAlmostEqual(30, client.options.server_selection_timeout)
 
     def test_waitQueueTimeoutMS(self):
@@ -1440,12 +1450,16 @@ class TestClient(IntegrationTest):
         self.assertEqual(opts.compressors, [])
         self.assertEqual(opts.zlib_compression_level, -1)
         uri = "mongodb://localhost:27017/?compressors=foobar"
-        client = MongoClient(uri, connect=False)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            client = MongoClient(uri, connect=False)
         opts = compression_settings(client)
         self.assertEqual(opts.compressors, [])
         self.assertEqual(opts.zlib_compression_level, -1)
         uri = "mongodb://localhost:27017/?compressors=foobar,zlib"
-        client = MongoClient(uri, connect=False)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            client = MongoClient(uri, connect=False)
         opts = compression_settings(client)
         self.assertEqual(opts.compressors, ["zlib"])
         self.assertEqual(opts.zlib_compression_level, -1)
@@ -1453,18 +1467,24 @@ class TestClient(IntegrationTest):
         # According to the connection string spec, unsupported values
         # just raise a warning and are ignored.
         uri = "mongodb://localhost:27017/?compressors=zlib&zlibCompressionLevel=10"
-        client = MongoClient(uri, connect=False)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            client = MongoClient(uri, connect=False)
         opts = compression_settings(client)
         self.assertEqual(opts.compressors, ["zlib"])
         self.assertEqual(opts.zlib_compression_level, -1)
         uri = "mongodb://localhost:27017/?compressors=zlib&zlibCompressionLevel=-2"
-        client = MongoClient(uri, connect=False)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            client = MongoClient(uri, connect=False)
         opts = compression_settings(client)
         self.assertEqual(opts.compressors, ["zlib"])
         self.assertEqual(opts.zlib_compression_level, -1)
 
         if not _HAVE_SNAPPY:
-            uri = "mongodb://localhost:27017/?compressors=snappy"
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                uri = "mongodb://localhost:27017/?compressors=snappy"
             client = MongoClient(uri, connect=False)
             opts = compression_settings(client)
             self.assertEqual(opts.compressors, [])
@@ -1480,7 +1500,9 @@ class TestClient(IntegrationTest):
 
         if not _HAVE_ZSTD:
             uri = "mongodb://localhost:27017/?compressors=zstd"
-            client = MongoClient(uri, connect=False)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                client = MongoClient(uri, connect=False)
             opts = compression_settings(client)
             self.assertEqual(opts.compressors, [])
         else:

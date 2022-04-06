@@ -15,7 +15,6 @@
 """Database level operations."""
 
 import asyncio
-import atexit
 import functools
 import threading
 from concurrent.futures import wait
@@ -78,9 +77,8 @@ class TaskRunner:
         self.__loop_thread.start()
         self.waiting = False
         self.lock = threading.Lock()
-        atexit.register(self._close)
 
-    def _close(self):
+    def close(self):
         if self.__loop and not self.__loop.is_closed():
             self.__loop.stop()
 
@@ -108,22 +106,12 @@ class TaskRunner:
 class TaskRunnerPool:
     """A singleton class that manages a pool of task runners."""
 
-    __instance = None
-
-    @staticmethod
-    def getInstance():
-        if TaskRunnerPool.__instance is None:
-            TaskRunnerPool()
-        assert TaskRunnerPool.__instance is not None
-        return TaskRunnerPool.__instance
-
     def __init__(self):
-        if TaskRunnerPool.__instance is not None:
-            raise Exception("This class is a singleton!")
-        else:
-            TaskRunnerPool.__instance = self
-        self._semaphore = threading.Semaphore(5)
+        self._semaphore = threading.Semaphore(2)
         self._runners: List[TaskRunner] = []
+
+    def __del__(self):
+        self.close()
 
     def run(self, coro):
         with self._semaphore:
@@ -135,6 +123,11 @@ class TaskRunnerPool:
             runner = TaskRunner()
             self._runners.append(runner)
             return runner.run(coro)
+
+    def close(self):
+        for runner in self._runners:
+            runner.close()
+        self._runners = []
 
 
 def synchronize(async_method, doc=None):
@@ -148,7 +141,7 @@ def synchronize(async_method, doc=None):
 
     @functools.wraps(async_method)
     def method(self, *args, **kwargs):
-        runner = TaskRunnerPool.getInstance()
+        runner = self.client._task_runner_pool
         coro = async_method(self, *args, **kwargs)
         return runner.run(coro)
 
