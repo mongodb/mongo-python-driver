@@ -4,8 +4,6 @@ import threading
 import unittest
 import warnings
 
-from pymongo import MongoClient
-
 try:
     import tornado.ioloop
     from tornado.httpclient import HTTPClient
@@ -23,7 +21,9 @@ warnings.simplefilter("ignore", DeprecationWarning)
 
 class MainHandler(RequestHandler):
     async def get(self):
-        client = MongoClient()
+        from test.utils import rs_or_single_client
+
+        client = rs_or_single_client()
         client.test.command("ping")
         value = await client.test.command_async("ping")
         value = json.dumps(value, default=str)

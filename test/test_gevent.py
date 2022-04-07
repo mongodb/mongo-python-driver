@@ -11,9 +11,9 @@ import unittest
 
 
 async def ping():
-    from pymongo import MongoClient
+    from test.utils import rs_or_single_client
 
-    client = MongoClient()
+    client = rs_or_single_client()
     return await client.test.command_async("ping")
 
 
