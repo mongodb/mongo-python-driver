@@ -12,6 +12,3 @@ include tools/README.rst
 recursive-include test *.pem
 recursive-include test *.py
 recursive-include bson *.h
-include bson/py.typed
-include gridfs/py.typed
-include pymongo/py.typed

@@ -295,7 +295,7 @@ if sys.platform == "win32":
 else:
     extras_require["gssapi"] = ["pykerberos"]
 
-extra_opts = {"packages": ["bson", "pymongo", "gridfs"]}
+extra_opts = {}
 
 if "--no_ext" in sys.argv:
     sys.argv.remove("--no_ext")
@@ -339,8 +339,15 @@ setup(
         "Programming Language :: Python :: Implementation :: CPython",
         "Programming Language :: Python :: Implementation :: PyPy",
         "Topic :: Database",
+        "Typing :: Typed",
     ],
     cmdclass={"build_ext": custom_build_ext, "doc": doc, "test": test},
     extras_require=extras_require,
+    packages=["bson", "pymongo", "gridfs"],
+    package_data={
+        "bson": ["py.typed", "*.pyi"],
+        "pymongo": ["py.typed", "*.pyi"],
+        "gridfs": ["py.typed", "*.pyi"],
+    },
     **extra_opts
 )
