@@ -88,7 +88,7 @@ class TaskRunner:
         try:
             loop.run_forever()
         finally:
-            loop.close()
+            loop.stop()
 
     def run(self, coro):
         """Run a coroutine on the event loop and return the result"""
