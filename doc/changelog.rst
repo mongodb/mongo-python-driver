@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Changes in Version 4.2
+----------------------
+
+- Added the ``to`` parameter to :meth:`~pymongo.collection.Collection.rename`.
+
+
 Changes in Version 4.1
 ----------------------
 

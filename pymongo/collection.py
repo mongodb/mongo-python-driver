@@ -2625,6 +2625,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
            Apply this collection's write concern automatically to this operation
            when connected to MongoDB >= 3.4.
 
+        .. versionchanged:: 4.2
+           Added ``to`` parameter.
+
         """
         if new_name is None:
             new_name = to
