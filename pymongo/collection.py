@@ -2626,7 +2626,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
            when connected to MongoDB >= 3.4.
 
         """
-        new_name = new_name or to
+        if new_name is None:
+            new_name = to
+
         if not isinstance(new_name, str):
             raise TypeError("new_name must be an instance of str")
 
