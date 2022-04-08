@@ -685,10 +685,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         keyword_opts = common._CaseInsensitiveDictionary(kwargs)
         keyword_opts["document_class"] = doc_class
 
-        from pymongo.database import TaskRunnerPool
-
-        self._task_runner_pool = TaskRunnerPool()
-
         seeds = set()
         username = None
         password = None
@@ -1143,7 +1139,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if self._encrypter:
             # TODO: PYTHON-1921 Encrypted MongoClients cannot be re-opened.
             self._encrypter.close()
-        self._task_runner_pool.close()
 
     def _get_topology(self):
         """Get the internal :class:`~pymongo.topology.Topology` object.

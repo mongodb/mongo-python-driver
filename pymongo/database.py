@@ -106,8 +106,21 @@ class TaskRunner:
 class TaskRunnerPool:
     """A singleton class that manages a pool of task runners."""
 
+    __instance = None
+
+    @staticmethod
+    def getInstance():
+        if TaskRunnerPool.__instance is None:
+            TaskRunnerPool()
+        assert TaskRunnerPool.__instance is not None
+        return TaskRunnerPool.__instance
+
     def __init__(self):
-        self._semaphore = threading.Semaphore(2)
+        if TaskRunnerPool.__instance is not None:
+            raise Exception("This class is a singleton!")
+        else:
+            TaskRunnerPool.__instance = self
+        self._semaphore = threading.Semaphore(5)
         self._runners: List[TaskRunner] = []
 
     def __del__(self):
@@ -141,7 +154,7 @@ def synchronize(async_method, doc=None):
 
     @functools.wraps(async_method)
     def method(self, *args, **kwargs):
-        runner = self.client._task_runner_pool
+        runner = TaskRunnerPool.getInstance()
         coro = async_method(self, *args, **kwargs)
         return runner.run(coro)
 
