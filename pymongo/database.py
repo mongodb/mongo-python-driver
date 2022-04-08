@@ -120,7 +120,7 @@ class TaskRunnerPool:
             raise Exception("This class is a singleton!")
         else:
             TaskRunnerPool.__instance = self
-        self._semaphore = threading.Semaphore(5)
+        self._semaphore = threading.Semaphore(1)
         self._runners: List[TaskRunner] = []
 
     def __del__(self):
