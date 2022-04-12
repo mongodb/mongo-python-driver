@@ -193,7 +193,7 @@ class Cursor(Generic[_DocumentType]):
         Should not be called directly by application developers - see
         :meth:`~pymongo.collection.Collection.find` instead.
 
-        .. seealso:: The MongoDB documentation on `cursors <hhttps://www.mongodb.com/docs/manual/tutorial/query-documents/>`__.
+        .. seealso:: The MongoDB documentation on `cursors <https://www.mongodb.com/docs/manual/tutorial/query-documents/>`__.
         """
         # Initialize all attributes used in __del__ before possibly raising
         # an error to avoid attribute errors during garbage collection.
