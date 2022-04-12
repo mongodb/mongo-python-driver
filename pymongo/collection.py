@@ -2584,8 +2584,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def rename(
         self,
-        new_name: Optional[str] = None,
-        to: Optional[str] = None,
+        new_name: str,
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
@@ -2601,14 +2600,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         :Parameters:
           - `new_name`: new name for this collection
           - `session` (optional): a
-            :class:`~pymongo.client_session.ClientSession`. This is an
-            alternative to using the `to` argument.  Either this
-            or `to` must be given.
-          - `to`: new name for this collection
-          - `session` (optional): a
-            :class:`~pymongo.client_session.ClientSession`.  This is an
-            alternative to using the `new_name` argument.  Either this
-            or `new_name` must be given.
+            :class:`~pymongo.client_session.ClientSession`.
           - `comment` (optional): A user-provided comment to attach to this
             command.
           - `**kwargs` (optional): additional arguments to the rename command
@@ -2625,13 +2617,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
            Apply this collection's write concern automatically to this operation
            when connected to MongoDB >= 3.4.
 
-        .. versionchanged:: 4.2
-           Added ``to`` parameter.
-
         """
-        if new_name is None:
-            new_name = to
-
         if not isinstance(new_name, str):
             raise TypeError("new_name must be an instance of str")
 
