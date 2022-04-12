@@ -137,7 +137,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         execute.
 
         The `host` parameter can be a full `mongodb URI
-        <http://dochub.mongodb.org/core/connections>`_, in addition to
+        <https://www.mongodb.com/docs/manual/reference/connection-string/>`_, in addition to
         a simple hostname. It can also be a list of hostnames but no more
         than one URI. Any port specified in the host string(s) will override
         the `port` parameter. For username and
@@ -525,7 +525,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             client to use Stable API. See :ref:`versioned-api-ref` for
             details.
 
-        .. seealso:: The MongoDB documentation on `connections <https://dochub.mongodb.org/core/connections>`_.
+        .. seealso:: The MongoDB documentation on `connections <https://www.mongodb.com/docs/manual/reference/connection-string/>`_.
 
         .. versionchanged:: 4.0
 
@@ -934,7 +934,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.7
 
-        .. seealso:: The MongoDB documentation on `changeStreams <https://docs.mongodb.com/manual/changeStreams/>`_.
+        .. seealso:: The MongoDB documentation on `changeStreams <https://mongodb.com/docs/manual/changeStreams/>`_.
 
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.rst
@@ -1741,7 +1741,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             command.
           - `**kwargs` (optional): Optional parameters of the
             `listDatabases command
-            <https://docs.mongodb.com/manual/reference/command/listDatabases/>`_
+            <https://mongodb.com/docs/manual/reference/command/listDatabases/>`_
             can be passed as keyword arguments to this method. The supported
             options differ by server version.
 

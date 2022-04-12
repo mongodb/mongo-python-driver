@@ -193,7 +193,7 @@ class Cursor(Generic[_DocumentType]):
         Should not be called directly by application developers - see
         :meth:`~pymongo.collection.Collection.find` instead.
 
-        .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
+        .. seealso:: The MongoDB documentation on `cursors <hhttps://www.mongodb.com/docs/manual/tutorial/query-documents/>`_.
         """
         # Initialize all attributes used in __del__ before possibly raising
         # an error to avoid attribute errors during garbage collection.
@@ -223,7 +223,7 @@ class Cursor(Generic[_DocumentType]):
                 "use an explicit session with no_cursor_timeout=True "
                 "otherwise the cursor may still timeout after "
                 "30 minutes, for more info see "
-                "https://docs.mongodb.com/v4.4/reference/method/"
+                "https://mongodb.com/docs/v4.4/reference/method/"
                 "cursor.noCursorTimeout/"
                 "#session-idle-timeout-overrides-nocursortimeout",
                 UserWarning,
@@ -564,7 +564,7 @@ class Cursor(Generic[_DocumentType]):
         :Parameters:
           - `limit`: the number of results to return
 
-        .. seealso:: The MongoDB documentation on `limit <https://dochub.mongodb.org/core/limit>`_.
+        .. seealso:: The MongoDB documentation on `limit <https://www.mongodb.com/docs/manual/administration/analyzing-mongodb-performance/>`_.
         """
         if not isinstance(limit, int):
             raise TypeError("limit must be an integer")
@@ -908,12 +908,12 @@ class Cursor(Generic[_DocumentType]):
 
         .. note:: This method uses the default verbosity mode of the
           `explain command
-          <https://docs.mongodb.com/manual/reference/command/explain/>`_,
+          <https://mongodb.com/docs/manual/reference/command/explain/>`_,
           ``allPlansExecution``. To use a different verbosity use
           :meth:`~pymongo.database.Database.command` to run the explain
           command directly.
 
-        .. seealso:: The MongoDB documentation on `explain <https://dochub.mongodb.org/core/explain>`_.
+        .. seealso:: The MongoDB documentation on `explain <https://www.mongodb.com/docs/manual/reference/method/cursor.explain/>`_.
         """
         c = self.clone()
         c.__explain = True
@@ -961,7 +961,7 @@ class Cursor(Generic[_DocumentType]):
     def comment(self, comment: Any) -> "Cursor[_DocumentType]":
         """Adds a 'comment' to the cursor.
 
-        http://docs.mongodb.org/manual/reference/operator/comment/
+        http://mongodb.com/docs/manual/reference/operator/comment/
 
         :Parameters:
           - `comment`: A string to attach to the query to help interpret and
@@ -1000,8 +1000,8 @@ class Cursor(Generic[_DocumentType]):
         :Parameters:
           - `code`: JavaScript expression to use as a filter
 
-        .. _$expr: https://docs.mongodb.com/manual/reference/operator/query/expr/
-        .. _$where: https://docs.mongodb.com/manual/reference/operator/query/where/
+        .. _$expr: https://mongodb.com/docs/manual/reference/operator/query/expr/
+        .. _$where: https://mongodb.com/docs/manual/reference/operator/query/where/
         """
         self.__check_okay_to_chain()
         if not isinstance(code, Code):
@@ -1194,7 +1194,7 @@ class Cursor(Generic[_DocumentType]):
         """Does this cursor have the potential to return more data?
 
         This is mostly useful with `tailable cursors
-        <http://www.mongodb.org/display/DOCS/Tailable+Cursors>`_
+        <https://www.mongodb.com/docs/manual/core/tailable-cursors/>`_
         since they will stop iterating even though they *may* return more
         results in the future.
 
@@ -1319,7 +1319,7 @@ class RawBatchCursor(Cursor, Generic[_DocumentType]):
         see :meth:`~pymongo.collection.Collection.find_raw_batches`
         instead.
 
-        .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
+        .. seealso:: The MongoDB documentation on `cursors <https://www.mongodb.com/docs/manual/tutorial/query-documents/>`_.
         """
         super(RawBatchCursor, self).__init__(collection, *args, **kwargs)
 
@@ -1336,7 +1336,7 @@ class RawBatchCursor(Cursor, Generic[_DocumentType]):
     def explain(self) -> _DocumentType:
         """Returns an explain plan record for this cursor.
 
-        .. seealso:: The MongoDB documentation on `explain <https://dochub.mongodb.org/core/explain>`_.
+        .. seealso:: The MongoDB documentation on `explain <https://www.mongodb.com/docs/manual/reference/method/cursor.explain/>`_.
         """
         clone = self._clone(deepcopy=True, base=Cursor(self.collection))
         return clone.explain()

@@ -325,7 +325,7 @@ class RawBatchCommandCursor(CommandCursor, Generic[_DocumentType]):
         see :meth:`~pymongo.collection.Collection.aggregate_raw_batches`
         instead.
 
-        .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
+        .. seealso:: The MongoDB documentation on `cursors <https://www.mongodb.com/docs/manual/tutorial/query-documents/>`_.
         """
         assert not cursor_info.get("firstBatch")
         super(RawBatchCommandCursor, self).__init__(

@@ -3,7 +3,7 @@ TLS/SSL and PyMongo
 
 PyMongo supports connecting to MongoDB over TLS/SSL. This guide covers the
 configuration options supported by PyMongo. See `the server documentation
-<http://docs.mongodb.org/manual/tutorial/configure-ssl/>`_ to configure
+<http://mongodb.com/docs/manual/tutorial/configure-ssl/>`_ to configure
 MongoDB.
 
 .. warning:: Industry best practices recommend, and some regulations require,

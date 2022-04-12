@@ -2,25 +2,25 @@ High Availability and PyMongo
 =============================
 
 PyMongo makes it easy to write highly available applications whether
-you use a `single replica set <http://dochub.mongodb.org/core/rs>`_
+you use a `single replica set <https://www.mongodb.com/docs/manual/replication/>`_
 or a `large sharded cluster
-<http://www.mongodb.org/display/DOCS/Sharding+Introduction>`_.
+<https://www.mongodb.com/docs/manual/sharding/>`_.
 
 Connecting to a Replica Set
 ---------------------------
 
 PyMongo makes working with `replica sets
-<http://dochub.mongodb.org/core/rs>`_ easy. Here we'll launch a new
+<https://www.mongodb.com/docs/manual/replication/>`_ easy. Here we'll launch a new
 replica set and show how to handle both initialization and normal
 connections with PyMongo.
 
-.. seealso:: The MongoDB documentation on `replication <https://dochub.mongodb.org/core/rs>`_.
+.. seealso:: The MongoDB documentation on `replication <https://www.mongodb.com/docs/manual/replication/>`_.
 
 Starting a Replica Set
 ~~~~~~~~~~~~~~~~~~~~~~
 
 The main `replica set documentation
-<http://dochub.mongodb.org/core/rs>`_ contains extensive information
+<https://www.mongodb.com/docs/manual/replication/>`_ contains extensive information
 about setting up a new replica set or migrating an existing MongoDB
 setup, be sure to check that out. Here, we'll just do the bare minimum
 to get a three node replica set setup locally.
@@ -261,7 +261,7 @@ attributes:
 **Tag sets**:
 
 Replica-set members can be `tagged
-<http://www.mongodb.org/display/DOCS/Data+Center+Awareness>`_ according to any
+<https://www.mongodb.com/docs/manual/data-center-awareness/>`_ according to any
 criteria you choose. By default, PyMongo ignores tags when
 choosing a member to read from, but your read preference can be configured with
 a ``tag_sets`` parameter. ``tag_sets`` must be a list of dictionaries, each
@@ -308,7 +308,7 @@ milliseconds of the closest member's ping time.
   replica set *through* a mongos. The equivalent is the localThreshold_ command
   line option.
 
-.. _localThreshold: https://docs.mongodb.com/manual/reference/program/mongos/#std-option-mongos.--localThreshold
+.. _localThreshold: https://mongodb.com/docs/manual/reference/program/mongos/#std-option-mongos.--localThreshold
 
 .. _health-monitoring:
 

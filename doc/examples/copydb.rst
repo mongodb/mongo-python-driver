@@ -67,7 +67,7 @@ Versions of PyMongo before 3.0 included a ``copy_database`` helper method,
 but it has been removed.
 
 .. _copyDatabase function in the mongo shell:
-   http://docs.mongodb.org/manual/reference/method/db.copyDatabase/
+   http://mongodb.com/docs/manual/reference/method/db.copyDatabase/
 
 .. _Copy a Database:
    https://www.mongodb.com/docs/database-tools/mongodump/#std-label-mongodump-example-copy-clone-database

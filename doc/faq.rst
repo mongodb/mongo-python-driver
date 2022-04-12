@@ -314,7 +314,7 @@ when it is serialized to BSON and used as a query. Thus you can create a
 subdocument that exactly matches the subdocument in the collection.
 
 .. seealso:: `MongoDB Manual entry on subdocument matching
-   <https://docs.mongodb.com/manual/tutorial/query-embedded-documents/>`_.
+   <https://mongodb.com/docs/manual/tutorial/query-embedded-documents/>`_.
 
 What does *CursorNotFound* cursor id not valid at server mean?
 --------------------------------------------------------------
@@ -468,7 +468,7 @@ How can I use something like Python's ``json`` module to encode my documents to 
 -------------------------------------------------------------------------------------
 :mod:`~bson.json_util` is PyMongo's built in, flexible tool for using
 Python's :mod:`json` module with BSON documents and `MongoDB Extended JSON
-<https://docs.mongodb.com/manual/reference/mongodb-extended-json/>`_. The
+<https://mongodb.com/docs/manual/reference/mongodb-extended-json/>`_. The
 :mod:`json` module won't work out of the box with all documents from PyMongo
 as PyMongo supports some special types (like :class:`~bson.objectid.ObjectId`
 and :class:`~bson.dbref.DBRef`) that are not supported in JSON.

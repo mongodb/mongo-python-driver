@@ -3,9 +3,9 @@ Tailable Cursors
 
 By default, MongoDB will automatically close a cursor when the client has
 exhausted all results in the cursor. However, for `capped collections
-<https://docs.mongodb.org/manual/core/capped-collections/>`_ you may
+<https://mongodb.com/docs/manual/core/capped-collections/>`_ you may
 use a `tailable cursor
-<https://docs.mongodb.com/manual/core/tailable-cursors/>`_
+<https://mongodb.com/docs/manual/core/tailable-cursors/>`_
 that remains open after the client exhausts the results in the initial cursor.
 
 The following is a basic example of using a tailable cursor to tail the oplog
