@@ -56,7 +56,7 @@ Or use the MongoDB URI format:
 Getting a Database
 ------------------
 A single instance of MongoDB can support multiple independent
-`databases <https://www.mongodb.com/docs/manual/reference/glossary/#term-database>`_. When
+`databases <https://www.mongodb.com/docs/manual/core/databases-and-collections>`_. When
 working with PyMongo you access databases using attribute style access
 on :class:`~pymongo.mongo_client.MongoClient` instances:
 
@@ -74,7 +74,7 @@ instead:
 
 Getting a Collection
 --------------------
-A `collection <https://www.mongodb.com/docs/manual/reference/glossary/#term-collection>`_ is a
+A `collection <https://www.mongodb.com/docs/manual/core/databases-and-collections>`_ is a
 group of documents stored in MongoDB, and can be thought of as roughly
 the equivalent of a table in a relational database. Getting a
 collection in PyMongo works the same as getting a database:

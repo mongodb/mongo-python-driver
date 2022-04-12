@@ -97,7 +97,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
             default) client.read_concern is used.
 
-        .. seealso:: The MongoDB documentation on `databases <https://www.mongodb.com/docs/manual/reference/glossary/#term-database>`_.
+        .. seealso:: The MongoDB documentation on `databases <https://www.mongodb.com/docs/manual/core/databases-and-collections>`_.
 
         .. versionchanged:: 4.0
            Removed the eval, system_js, error, last_status, previous_error,
