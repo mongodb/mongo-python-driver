@@ -189,7 +189,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
                collection.__my_collection__
 
-        .. seealso:: The MongoDB documentation on `collections <https://www.mongodb.com/docs/manual/reference/glossary/#term-collection>`_.
+        .. seealso:: The MongoDB documentation on `collections <https://www.mongodb.com/docs/manual/core/databases-and-collections>`_.
         """
         super(Collection, self).__init__(
             codec_options or database.codec_options,
