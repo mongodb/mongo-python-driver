@@ -8,7 +8,7 @@ to encrypt specific data fields in addition to pre-existing MongoDB
 encryption features such as `Encryption at Rest
 <https://www.mongodb.com/docs/manual/core/security-encryption-at-rest/>`_ and
 `TLS/SSL (Transport Encryption)
-<https://www.mongodb.com/docs/manual/core/security-transport-encryption/`_.
+<https://www.mongodb.com/docs/manual/core/security-transport-encryption/`__.
 
 With field level encryption, applications can encrypt fields in documents
 *prior* to transmitting data over the wire to the server. Client-side field
