@@ -53,7 +53,6 @@ struct module_state {
     PyObject* BSONInt64;
     PyObject* Decimal128;
     PyObject* Mapping;
-    PyObject* DefaultCodecOptions;
 };
 
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
@@ -344,8 +343,7 @@ static int _load_python_objects(PyObject* module) {
         _load_object(&state->BSONInt64, "bson.int64", "Int64") ||
         _load_object(&state->Decimal128, "bson.decimal128", "Decimal128") ||
         _load_object(&state->UUID, "uuid", "UUID") ||
-        _load_object(&state->Mapping, "collections.abc", "Mapping") ||
-        _load_object(&state->DefaultCodecOptions, "bson.codec_options", "DEFAULT_CODEC_OPTIONS")) {
+        _load_object(&state->Mapping, "collections.abc", "Mapping")) {
         return 1;
     }
     /* Reload our REType hack too. */
@@ -496,23 +494,6 @@ int convert_codec_options(PyObject* options_obj, void* p) {
     Py_INCREF(options->tzinfo);
 
     return 1;
-}
-
-/* Fill out a codec_options_t* with default options.
- *
- * Return 1 on success.
- * Return 0 on failure.
- */
-int default_codec_options(struct module_state* state, codec_options_t* options) {
-    int ret;
-    PyObject* options_obj = _get_object(
-        state->DefaultCodecOptions, "bson.codec_options", "DEFAULT_CODEC_OPTIONS");
-    if (options_obj == NULL) {
-        return 0;
-    }
-    ret = convert_codec_options(options_obj, options);
-    Py_DECREF(options_obj);
-    return ret;
 }
 
 void destroy_codec_options(codec_options_t* options) {
@@ -2408,14 +2389,9 @@ static PyObject* _cbson_element_to_dict(PyObject* self, PyObject* args) {
     PyObject* value;
     PyObject* result_tuple;
 
-    if (!PyArg_ParseTuple(args, "OII|O&", &bson, &position, &max,
+    if (!PyArg_ParseTuple(args, "OIIO&", &bson, &position, &max,
                           convert_codec_options, &options)) {
         return NULL;
-    }
-    if (PyTuple_GET_SIZE(args) < 4) {
-        if (!default_codec_options(GETSTATE(self), &options)) {
-            return NULL;
-        }
     }
 
     if (!PyBytes_Check(bson)) {
@@ -2583,8 +2559,7 @@ done:
     return result;
 }
 
-static PyObject* _cbson_decode_all(PyObject* self, PyObject* args,
-                                   PyObject* kwargs) {
+static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
     int32_t size;
     Py_ssize_t total_size;
     const char* string;
@@ -2594,16 +2569,11 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args,
     codec_options_t options;
     PyObject* options_obj = NULL;
     Py_buffer view = {0};
-    static char *kwlist[] =  {"data", "codec_options", NULL};
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|O", kwlist, &bson, &options_obj)) {
+    if (!PyArg_ParseTuple(args, "OO", &bson, &options_obj)) {
         return NULL;
     }
-    if ((options_obj == NULL) || (options_obj == Py_None)) {
-        if (!default_codec_options(GETSTATE(self), &options)) {
-            return NULL;
-        }
-    } else if (!convert_codec_options(options_obj, &options)) {
+    if (!convert_codec_options(options_obj, &options)) {
         return NULL;
     }
 
@@ -2697,7 +2667,7 @@ static PyMethodDef _CBSONMethods[] = {
      "convert a dictionary to a string containing its BSON representation."},
     {"_bson_to_dict", _cbson_bson_to_dict, METH_VARARGS,
      "convert a BSON string to a SON object."},
-    {"decode_all", (PyCFunction)_cbson_decode_all, METH_VARARGS | METH_KEYWORDS,
+    {"_decode_all", _cbson_decode_all, METH_VARARGS,
      "convert binary data to a sequence of documents."},
     {"_element_to_dict", _cbson_element_to_dict, METH_VARARGS,
      "Decode a single key, value pair."},
