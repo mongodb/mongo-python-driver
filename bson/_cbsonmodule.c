@@ -2583,7 +2583,8 @@ done:
     return result;
 }
 
-static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
+static PyObject* _cbson_decode_all(PyObject* self, PyObject* args,
+                                   PyObject* kwargs) {
     int32_t size;
     Py_ssize_t total_size;
     const char* string;
@@ -2591,13 +2592,14 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
     PyObject* dict;
     PyObject* result = NULL;
     codec_options_t options;
-    PyObject* options_obj;
+    PyObject* options_obj = NULL;
     Py_buffer view = {0};
+    static char *kwlist[] =  {"data", "codec_options", NULL};
 
-    if (!PyArg_ParseTuple(args, "O|O", &bson, &options_obj)) {
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|O", kwlist, &bson, &options_obj)) {
         return NULL;
     }
-    if ((PyTuple_GET_SIZE(args) < 2) ||  (options_obj == Py_None)) {
+    if ((options_obj == NULL) || (options_obj == Py_None)) {
         if (!default_codec_options(GETSTATE(self), &options)) {
             return NULL;
         }
@@ -2695,7 +2697,7 @@ static PyMethodDef _CBSONMethods[] = {
      "convert a dictionary to a string containing its BSON representation."},
     {"_bson_to_dict", _cbson_bson_to_dict, METH_VARARGS,
      "convert a BSON string to a SON object."},
-    {"decode_all", _cbson_decode_all, METH_VARARGS,
+    {"decode_all", (PyCFunction)_cbson_decode_all, METH_VARARGS | METH_KEYWORDS,
      "convert binary data to a sequence of documents."},
     {"_element_to_dict", _cbson_element_to_dict, METH_VARARGS,
      "Decode a single key, value pair."},
