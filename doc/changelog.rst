@@ -1,6 +1,32 @@
 Changelog
 =========
 
+Changes in Version 4.1.1
+-------------------------
+
+Issues Resolved
+...............
+
+Version 4.1.1 fixes a number of bugs:
+
+- Fixed a memory leak bug when calling :func:`~bson.decode_all` without a
+  ``codec_options`` argument (`PYTHON-3222`_).
+- Fixed a bug where :func:`~bson.decode_all` did not accept ``codec_options``
+  as a keyword argument (`PYTHON-3222`_).
+- Fixed an oversight where type markers (py.typed files) were not included
+  in our release distributions (`PYTHON-3214`_).
+- Fixed a bug where pymongo would raise a "NameError: name sys is not defined"
+  exception when attempting to parse a "mongodb+srv://" URI when the dnspython
+  dependency was not installed (`PYTHON-3198`_).
+
+See the `PyMongo 4.1.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PYTHON-3198: https://jira.mongodb.org/browse/PYTHON-3198
+.. _PYTHON-3214: https://jira.mongodb.org/browse/PYTHON-3214
+.. _PYTHON-3222: https://jira.mongodb.org/browse/PYTHON-3222
+.. _PyMongo 4.1.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=33290
+
 Changes in Version 4.1
 ----------------------
 
