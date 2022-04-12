@@ -53,7 +53,7 @@ struct module_state {
     PyObject* BSONInt64;
     PyObject* Decimal128;
     PyObject* Mapping;
-    PyObject* CodecOptions;
+    PyObject* DefaultCodecOptions;
 };
 
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
@@ -345,7 +345,7 @@ static int _load_python_objects(PyObject* module) {
         _load_object(&state->Decimal128, "bson.decimal128", "Decimal128") ||
         _load_object(&state->UUID, "uuid", "UUID") ||
         _load_object(&state->Mapping, "collections.abc", "Mapping") ||
-        _load_object(&state->CodecOptions, "bson.codec_options", "CodecOptions")) {
+        _load_object(&state->DefaultCodecOptions, "bson.codec_options", "DEFAULT_CODEC_OPTIONS")) {
         return 1;
     }
     /* Reload our REType hack too. */
@@ -504,18 +504,15 @@ int convert_codec_options(PyObject* options_obj, void* p) {
  * Return 0 on failure.
  */
 int default_codec_options(struct module_state* state, codec_options_t* options) {
-    PyObject* options_obj = NULL;
-    PyObject* codec_options_func = _get_object(
-        state->CodecOptions, "bson.codec_options", "CodecOptions");
-    if (codec_options_func == NULL) {
-        return 0;
-    }
-    options_obj = PyObject_CallFunctionObjArgs(codec_options_func, NULL);
-    Py_DECREF(codec_options_func);
+    int ret;
+    PyObject* options_obj = _get_object(
+        state->DefaultCodecOptions, "bson.codec_options", "DEFAULT_CODEC_OPTIONS");
     if (options_obj == NULL) {
         return 0;
     }
-    return convert_codec_options(options_obj, options);
+    ret = convert_codec_options(options_obj, options);
+    Py_DECREF(options_obj);
+    return ret;
 }
 
 void destroy_codec_options(codec_options_t* options) {
