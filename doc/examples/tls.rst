@@ -167,6 +167,7 @@ handshake will only fail in this case if the response indicates that the
 certificate is revoked. Invalid or malformed responses will be ignored,
 favoring availability over maximum security.
 
+.. _TLSErrors:
 
 Troubleshooting TLS Errors
 ..........................
