@@ -4,9 +4,6 @@ Changelog
 Changes in Version 4.1.1
 -------------------------
 
-Issues Resolved
-...............
-
 Version 4.1.1 fixes a number of bugs:
 
 - Fixed a memory leak bug when calling :func:`~bson.decode_all` without a
@@ -18,6 +15,9 @@ Version 4.1.1 fixes a number of bugs:
 - Fixed a bug where pymongo would raise a "NameError: name sys is not defined"
   exception when attempting to parse a "mongodb+srv://" URI when the dnspython
   dependency was not installed (`PYTHON-3198`_).
+
+Issues Resolved
+...............
 
 See the `PyMongo 4.1.1 release notes in JIRA`_ for the list of resolved issues
 in this release.
