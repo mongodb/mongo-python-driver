@@ -17,15 +17,16 @@
 import errno
 import select
 import sys
+from typing import Any, Optional
 
 # PYTHON-2320: Jython does not fully support poll on SSL sockets,
 # https://bugs.jython.org/issue2900
-_HAVE_POLL = hasattr(select, "poll") and not sys.platform.startswith('java')
+_HAVE_POLL = hasattr(select, "poll") and not sys.platform.startswith("java")
 _SelectError = getattr(select, "error", OSError)
 
 
 def _errno_from_exception(exc):
-    if hasattr(exc, 'errno'):
+    if hasattr(exc, "errno"):
         return exc.errno
     if exc.args:
         return exc.args[0]
@@ -33,18 +34,21 @@ def _errno_from_exception(exc):
 
 
 class SocketChecker(object):
-
-    def __init__(self):
+    def __init__(self) -> None:
+        self._poller: Optional[select.poll]
         if _HAVE_POLL:
             self._poller = select.poll()
         else:
             self._poller = None
 
-    def select(self, sock, read=False, write=False, timeout=0):
+    def select(
+        self, sock: Any, read: bool = False, write: bool = False, timeout: Optional[float] = 0
+    ) -> bool:
         """Select for reads or writes with a timeout in seconds (or None).
 
         Returns True if the socket is readable/writable, False on timeout.
         """
+        res: Any
         while True:
             try:
                 if self._poller:
@@ -74,14 +78,13 @@ class SocketChecker(object):
                     # ready: subsets of the first three arguments. Return
                     # True if any of the lists are not empty.
                     return any(res)
-            except (_SelectError, IOError) as exc:
+            except (_SelectError, IOError) as exc:  # type: ignore
                 if _errno_from_exception(exc) in (errno.EINTR, errno.EAGAIN):
                     continue
                 raise
 
-    def socket_closed(self, sock):
-        """Return True if we know socket has been closed, False otherwise.
-        """
+    def socket_closed(self, sock: Any) -> bool:
+        """Return True if we know socket has been closed, False otherwise."""
         try:
             return self.select(sock, read=True)
         except (RuntimeError, KeyError):

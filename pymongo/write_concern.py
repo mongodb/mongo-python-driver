@@ -14,6 +14,8 @@
 
 """Tools for working with write concerns."""
 
+from typing import Any, Dict, Optional, Union
+
 from pymongo.errors import ConfigurationError
 
 
@@ -33,11 +35,9 @@ class WriteConcern(object):
           to complete. If replication does not complete in the given
           timeframe, a timeout exception is raised.
         - `j`: If ``True`` block until write operations have been committed
-          to the journal. Cannot be used in combination with `fsync`. Prior
-          to MongoDB 2.6 this option was ignored if the server was running
-          without journaling. Starting with MongoDB 2.6 write operations will
-          fail with an exception if this option is used when the server is
-          running without journaling.
+          to the journal. Cannot be used in combination with `fsync`. Write
+          operations will fail with an exception if this option is used when
+          the server is running without journaling.
         - `fsync`: If ``True`` and the server is running without journaling,
           blocks until the server has synced all data files to disk. If the
           server is running with journaling, this acts the same as the `j`
@@ -47,8 +47,14 @@ class WriteConcern(object):
 
     __slots__ = ("__document", "__acknowledged", "__server_default")
 
-    def __init__(self, w=None, wtimeout=None, j=None, fsync=None):
-        self.__document = {}
+    def __init__(
+        self,
+        w: Optional[Union[int, str]] = None,
+        wtimeout: Optional[int] = None,
+        j: Optional[bool] = None,
+        fsync: Optional[bool] = None,
+    ) -> None:
+        self.__document: Dict[str, Any] = {}
         self.__acknowledged = True
 
         if wtimeout is not None:
@@ -67,8 +73,7 @@ class WriteConcern(object):
             if not isinstance(fsync, bool):
                 raise TypeError("fsync must be True or False")
             if j and fsync:
-                raise ConfigurationError("Can't set both j "
-                                         "and fsync at the same time")
+                raise ConfigurationError("Can't set both j and fsync at the same time")
             self.__document["fsync"] = fsync
 
         if w == 0 and j is True:
@@ -86,12 +91,12 @@ class WriteConcern(object):
         self.__server_default = not self.__document
 
     @property
-    def is_server_default(self):
+    def is_server_default(self) -> bool:
         """Does this WriteConcern match the server default."""
         return self.__server_default
 
     @property
-    def document(self):
+    def document(self) -> Dict[str, Any]:
         """The document representation of this write concern.
 
         .. note::
@@ -101,22 +106,21 @@ class WriteConcern(object):
         return self.__document.copy()
 
     @property
-    def acknowledged(self):
+    def acknowledged(self) -> bool:
         """If ``True`` write operations will wait for acknowledgement before
         returning.
         """
         return self.__acknowledged
 
     def __repr__(self):
-        return ("WriteConcern(%s)" % (
-            ", ".join("%s=%s" % kvt for kvt in self.__document.items()),))
+        return "WriteConcern(%s)" % (", ".join("%s=%s" % kvt for kvt in self.__document.items()),)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, WriteConcern):
             return self.__document == other.document
         return NotImplemented
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         if isinstance(other, WriteConcern):
             return self.__document != other.document
         return NotImplemented

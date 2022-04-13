@@ -20,32 +20,27 @@ import socket as _socket
 import ssl as _stdlibssl
 import sys as _sys
 import time as _time
-
 from errno import EINTR as _EINTR
-
 from ipaddress import ip_address as _ip_address
 
 from cryptography.x509 import load_der_x509_certificate as _load_der_x509_certificate
-from OpenSSL import crypto as _crypto, SSL as _SSL
-from service_identity.pyopenssl import (
-    verify_hostname as _verify_hostname,
-    verify_ip_address as _verify_ip_address)
-from service_identity import (
-    CertificateError as _SICertificateError,
-    VerificationError as _SIVerificationError)
+from OpenSSL import SSL as _SSL
+from OpenSSL import crypto as _crypto
+from service_identity import CertificateError as _SICertificateError
+from service_identity import VerificationError as _SIVerificationError
+from service_identity.pyopenssl import verify_hostname as _verify_hostname
+from service_identity.pyopenssl import verify_ip_address as _verify_ip_address
 
-from pymongo.errors import (
-    _CertificateError,
-    ConfigurationError as _ConfigurationError)
-from pymongo.ocsp_support import (
-    _load_trusted_ca_certs,
-    _ocsp_callback)
+from pymongo.errors import ConfigurationError as _ConfigurationError
+from pymongo.errors import _CertificateError
 from pymongo.ocsp_cache import _OCSPCache
-from pymongo.socket_checker import (
-    _errno_from_exception, SocketChecker as _SocketChecker)
+from pymongo.ocsp_support import _load_trusted_ca_certs, _ocsp_callback
+from pymongo.socket_checker import SocketChecker as _SocketChecker
+from pymongo.socket_checker import _errno_from_exception
 
 try:
     import certifi
+
     _HAVE_CERTIFI = True
 except ImportError:
     _HAVE_CERTIFI = False
@@ -70,35 +65,34 @@ SSLError = _SSL.Error
 _VERIFY_MAP = {
     _stdlibssl.CERT_NONE: _SSL.VERIFY_NONE,
     _stdlibssl.CERT_OPTIONAL: _SSL.VERIFY_PEER,
-    _stdlibssl.CERT_REQUIRED: _SSL.VERIFY_PEER | _SSL.VERIFY_FAIL_IF_NO_PEER_CERT
+    _stdlibssl.CERT_REQUIRED: _SSL.VERIFY_PEER | _SSL.VERIFY_FAIL_IF_NO_PEER_CERT,
 }
 
-_REVERSE_VERIFY_MAP = dict(
-    (value, key) for key, value in _VERIFY_MAP.items())
+_REVERSE_VERIFY_MAP = dict((value, key) for key, value in _VERIFY_MAP.items())
+
 
 def _is_ip_address(address):
     try:
         _ip_address(address)
         return True
-    except (ValueError, UnicodeError):
+    except (ValueError, UnicodeError):  # noqa: B014
         return False
+
 
 # According to the docs for Connection.send it can raise
 # WantX509LookupError and should be retried.
-_RETRY_ERRORS = (
-    _SSL.WantReadError, _SSL.WantWriteError, _SSL.WantX509LookupError)
+_RETRY_ERRORS = (_SSL.WantReadError, _SSL.WantWriteError, _SSL.WantX509LookupError)
 
 
 def _ragged_eof(exc):
     """Return True if the OpenSSL.SSL.SysCallError is a ragged EOF."""
-    return exc.args == (-1, 'Unexpected EOF')
+    return exc.args == (-1, "Unexpected EOF")
 
 
 # https://github.com/pyca/pyopenssl/issues/168
 # https://github.com/pyca/pyopenssl/issues/176
 # https://docs.python.org/3/library/ssl.html#notes-on-non-blocking-sockets
 class _sslConn(_SSL.Connection):
-
     def __init__(self, ctx, sock, suppress_ragged_eofs):
         self.socket_checker = _SocketChecker()
         self.suppress_ragged_eofs = suppress_ragged_eofs
@@ -112,8 +106,7 @@ class _sslConn(_SSL.Connection):
             try:
                 return call(*args, **kwargs)
             except _RETRY_ERRORS:
-                self.socket_checker.select(
-                    self, True, True, timeout)
+                self.socket_checker.select(self, True, True, timeout)
                 if timeout and _time.monotonic() - start > timeout:
                     raise _socket.timeout("timed out")
                 continue
@@ -132,7 +125,7 @@ class _sslConn(_SSL.Connection):
 
     def recv_into(self, *args, **kwargs):
         try:
-            return self._call(super(_sslConn, self).recv_into, *args, **kwargs)
+            return self._call(super(_sslConn, self).recv_into, *args, **kwargs)  # type: ignore
         except _SSL.SysCallError as exc:
             # Suppress ragged EOFs to match the stdlib.
             if self.suppress_ragged_eofs and _ragged_eof(exc):
@@ -147,11 +140,12 @@ class _sslConn(_SSL.Connection):
         while total_sent < total_length:
             try:
                 sent = self._call(
-                    super(_sslConn, self).send, view[total_sent:], flags)
+                    super(_sslConn, self).send, view[total_sent:], flags  # type: ignore
+                )
             # XXX: It's not clear if this can actually happen. PyOpenSSL
             # doesn't appear to have any interrupt handling, nor any interrupt
             # errors for OpenSSL connections.
-            except (IOError, OSError) as exc:
+            except (IOError, OSError) as exc:  # noqa: B014
                 if _errno_from_exception(exc) == _EINTR:
                     continue
                 raise
@@ -164,6 +158,7 @@ class _sslConn(_SSL.Connection):
 
 class _CallbackData(object):
     """Data class which is passed to the OCSP callback."""
+
     def __init__(self):
         self.trusted_ca_certs = None
         self.check_ocsp_endpoint = None
@@ -175,7 +170,7 @@ class SSLContext(object):
     context.
     """
 
-    __slots__ = ('_protocol', '_ctx', '_callback_data', '_check_hostname')
+    __slots__ = ("_protocol", "_ctx", "_callback_data", "_check_hostname")
 
     def __init__(self, protocol):
         self._protocol = protocol
@@ -187,8 +182,7 @@ class SSLContext(object):
         # side configuration and wrap_socket tries to support both client and
         # server side sockets.
         self._callback_data.check_ocsp_endpoint = True
-        self._ctx.set_ocsp_client_callback(
-            callback=_ocsp_callback, data=self._callback_data)
+        self._ctx.set_ocsp_client_callback(callback=_ocsp_callback, data=self._callback_data)
 
     @property
     def protocol(self):
@@ -206,12 +200,14 @@ class SSLContext(object):
 
     def __set_verify_mode(self, value):
         """Setter for verify_mode."""
+
         def _cb(connobj, x509obj, errnum, errdepth, retcode):
             # It seems we don't need to do anything here. Twisted doesn't,
             # and OpenSSL's SSL_CTX_set_verify let's you pass NULL
             # for the callback option. It's weird that PyOpenSSL requires
             # this.
             return retcode
+
         self._ctx.set_verify(_VERIFY_MAP[value], _cb)
 
     verify_mode = property(__get_verify_mode, __set_verify_mode)
@@ -234,8 +230,7 @@ class SSLContext(object):
             raise TypeError("check_ocsp must be True or False")
         self._callback_data.check_ocsp_endpoint = value
 
-    check_ocsp_endpoint = property(__get_check_ocsp_endpoint,
-                                   __set_check_ocsp_endpoint)
+    check_ocsp_endpoint = property(__get_check_ocsp_endpoint, __set_check_ocsp_endpoint)
 
     def __get_options(self):
         # Calling set_options adds the option to the existing bitmask and
@@ -263,11 +258,13 @@ class SSLContext(object):
         # https://github.com/python/cpython/blob/v3.8.0/Modules/_ssl.c#L3930-L3971
         # Password callback MUST be set first or it will be ignored.
         if password:
+
             def _pwcb(max_length, prompt_twice, user_data):
                 # XXX:We could check the password length against what OpenSSL
                 # tells us is the max, but we can't raise an exception, so...
                 # warn?
-                return password.encode('utf-8')
+                return password.encode("utf-8")
+
             self._ctx.set_passwd_cb(_pwcb)
         self._ctx.use_certificate_chain_file(certfile)
         self._ctx.use_privatekey_file(keyfile or certfile)
@@ -279,7 +276,9 @@ class SSLContext(object):
         ssl.CERT_NONE.
         """
         self._ctx.load_verify_locations(cafile, capath)
-        self._callback_data.trusted_ca_certs = _load_trusted_ca_certs(cafile)
+        # Manually load the CA certs when get_verified_chain is not available (pyopenssl<20).
+        if not hasattr(_SSL.Connection, "get_verified_chain"):
+            self._callback_data.trusted_ca_certs = _load_trusted_ca_certs(cafile)
 
     def _load_certifi(self):
         """Attempt to load CA certs from certifi."""
@@ -290,18 +289,19 @@ class SSLContext(object):
                 "tlsAllowInvalidCertificates is False but no system "
                 "CA certificates could be loaded. Please install the "
                 "certifi package, or provide a path to a CA file using "
-                "the tlsCAFile option")
+                "the tlsCAFile option"
+            )
 
     def _load_wincerts(self, store):
         """Attempt to load CA certs from Windows trust store."""
         cert_store = self._ctx.get_cert_store()
         oid = _stdlibssl.Purpose.SERVER_AUTH.oid
-        for cert, encoding, trust in _stdlibssl.enum_certificates(store):
+        for cert, encoding, trust in _stdlibssl.enum_certificates(store):  # type: ignore
             if encoding == "x509_asn":
                 if trust is True or oid in trust:
                     cert_store.add_cert(
-                        _crypto.X509.from_cryptography(
-                            _load_der_x509_certificate(cert)))
+                        _crypto.X509.from_cryptography(_load_der_x509_certificate(cert))
+                    )
 
     def load_default_certs(self):
         """A PyOpenSSL version of load_default_certs from CPython."""
@@ -310,7 +310,7 @@ class SSLContext(object):
         # https://www.pyopenssl.org/en/stable/api/ssl.html#OpenSSL.SSL.Context.set_default_verify_paths
         if _sys.platform == "win32":
             try:
-                for storename in ('CA', 'ROOT'):
+                for storename in ("CA", "ROOT"):
                     self._load_wincerts(storename)
             except PermissionError:
                 # Fall back to certifi
@@ -326,10 +326,15 @@ class SSLContext(object):
         # but not that same as CPython's.
         self._ctx.set_default_verify_paths()
 
-    def wrap_socket(self, sock, server_side=False,
-                    do_handshake_on_connect=True,
-                    suppress_ragged_eofs=True,
-                    server_hostname=None, session=None):
+    def wrap_socket(
+        self,
+        sock,
+        server_side=False,
+        do_handshake_on_connect=True,
+        suppress_ragged_eofs=True,
+        server_hostname=None,
+        session=None,
+    ):
         """Wrap an existing Python socket sock and return a TLS socket
         object.
         """
@@ -343,7 +348,7 @@ class SSLContext(object):
             if server_hostname and not _is_ip_address(server_hostname):
                 # XXX: Do this in a callback registered with
                 # SSLContext.set_info_callback? See Twisted for an example.
-                ssl_conn.set_tlsext_host_name(server_hostname.encode('idna'))
+                ssl_conn.set_tlsext_host_name(server_hostname.encode("idna"))
             if self.verify_mode != _stdlibssl.CERT_NONE:
                 # Request a stapled OCSP response.
                 ssl_conn.request_ocsp()

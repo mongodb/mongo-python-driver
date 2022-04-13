@@ -19,12 +19,13 @@ import threading
 
 sys.path[0:0] = [""]
 
+from test import MockClientTest, client_context, unittest
+from test.pymongo_mocks import MockClient
+from test.utils import connected, wait_until
+
 from pymongo.errors import AutoReconnect, InvalidOperation
 from pymongo.server_selectors import writable_server_selector
 from pymongo.topology_description import TOPOLOGY_TYPE
-from test import unittest, client_context, MockClientTest
-from test.pymongo_mocks import MockClient
-from test.utils import connected, wait_until
 
 
 @client_context.require_connection
@@ -34,14 +35,13 @@ def setUpModule():
 
 
 class SimpleOp(threading.Thread):
-
     def __init__(self, client):
         super(SimpleOp, self).__init__()
         self.client = client
         self.passed = False
 
     def run(self):
-        self.client.db.command('ismaster')
+        self.client.db.command("ping")
         self.passed = True  # No exception raised.
 
 
@@ -58,26 +58,27 @@ def do_simple_op(client, nthreads):
 
 
 def writable_addresses(topology):
-    return set(server.description.address for server in
-               topology.select_servers(writable_server_selector))
+    return set(
+        server.description.address for server in topology.select_servers(writable_server_selector)
+    )
 
 
 class TestMongosLoadBalancing(MockClientTest):
-
     def mock_client(self, **kwargs):
         mock_client = MockClient(
             standalones=[],
             members=[],
-            mongoses=['a:1', 'b:2', 'c:3'],
-            host='a:1,b:2,c:3',
+            mongoses=["a:1", "b:2", "c:3"],
+            host="a:1,b:2,c:3",
             connect=False,
-            **kwargs)
+            **kwargs
+        )
         self.addCleanup(mock_client.close)
 
         # Latencies in seconds.
-        mock_client.mock_rtts['a:1'] = 0.020
-        mock_client.mock_rtts['b:2'] = 0.025
-        mock_client.mock_rtts['c:3'] = 0.045
+        mock_client.mock_rtts["a:1"] = 0.020
+        mock_client.mock_rtts["b:2"] = 0.025
+        mock_client.mock_rtts["c:3"] = 0.045
         return mock_client
 
     def test_lazy_connect(self):
@@ -90,30 +91,15 @@ class TestMongosLoadBalancing(MockClientTest):
 
         # Trigger initial connection.
         do_simple_op(client, nthreads)
-        wait_until(lambda: len(client.nodes) == 3, 'connect to all mongoses')
-
-    def test_reconnect(self):
-        nthreads = 10
-        client = connected(self.mock_client())
-
-        # connected() ensures we've contacted at least one mongos. Wait for
-        # all of them.
-        wait_until(lambda: len(client.nodes) == 3, 'connect to all mongoses')
-
-        # Trigger reconnect.
-        client.close()
-        do_simple_op(client, nthreads)
-
-        wait_until(lambda: len(client.nodes) == 3,
-                   'reconnect to all mongoses')
+        wait_until(lambda: len(client.nodes) == 3, "connect to all mongoses")
 
     def test_failover(self):
         nthreads = 10
         client = connected(self.mock_client(localThresholdMS=0.001))
-        wait_until(lambda: len(client.nodes) == 3, 'connect to all mongoses')
+        wait_until(lambda: len(client.nodes) == 3, "connect to all mongoses")
 
         # Our chosen mongos goes down.
-        client.kill_host('a:1')
+        client.kill_host("a:1")
 
         # Trigger failover to higher-latency nodes. AutoReconnect should be
         # raised at most once in each thread.
@@ -121,10 +107,10 @@ class TestMongosLoadBalancing(MockClientTest):
 
         def f():
             try:
-                client.db.command('ismaster')
+                client.db.command("ping")
             except AutoReconnect:
                 # Second attempt succeeds.
-                client.db.command('ismaster')
+                client.db.command("ping")
 
             passed.append(True)
 
@@ -142,35 +128,35 @@ class TestMongosLoadBalancing(MockClientTest):
 
     def test_local_threshold(self):
         client = connected(self.mock_client(localThresholdMS=30))
-        self.assertEqual(30, client.local_threshold_ms)
-        wait_until(lambda: len(client.nodes) == 3, 'connect to all mongoses')
+        self.assertEqual(30, client.options.local_threshold_ms)
+        wait_until(lambda: len(client.nodes) == 3, "connect to all mongoses")
         topology = client._topology
 
         # All are within a 30-ms latency window, see self.mock_client().
-        self.assertEqual(set([('a', 1), ('b', 2), ('c', 3)]),
-                         writable_addresses(topology))
+        self.assertEqual(set([("a", 1), ("b", 2), ("c", 3)]), writable_addresses(topology))
 
         # No error
-        client.admin.command('ismaster')
+        client.admin.command("ping")
 
         client = connected(self.mock_client(localThresholdMS=0))
-        self.assertEqual(0, client.local_threshold_ms)
+        self.assertEqual(0, client.options.local_threshold_ms)
         # No error
-        client.db.command('ismaster')
+        client.db.command("ping")
         # Our chosen mongos goes down.
-        client.kill_host('%s:%s' % next(iter(client.nodes)))
+        client.kill_host("%s:%s" % next(iter(client.nodes)))
         try:
-            client.db.command('ismaster')
+            client.db.command("ping")
         except:
             pass
 
         # We eventually connect to a new mongos.
         def connect_to_new_mongos():
             try:
-                return client.db.command('ismaster')
+                return client.db.command("ping")
             except AutoReconnect:
                 pass
-        wait_until(connect_to_new_mongos, 'connect to a new mongos')
+
+        wait_until(connect_to_new_mongos, "connect to a new mongos")
 
     def test_load_balancing(self):
         # Although the server selection JSON tests already prove that
@@ -178,25 +164,25 @@ class TestMongosLoadBalancing(MockClientTest):
         # test of discovering servers' round trip times and configuring
         # localThresholdMS.
         client = connected(self.mock_client())
-        wait_until(lambda: len(client.nodes) == 3, 'connect to all mongoses')
+        wait_until(lambda: len(client.nodes) == 3, "connect to all mongoses")
 
         # Prohibited for topology type Sharded.
         with self.assertRaises(InvalidOperation):
             client.address
 
         topology = client._topology
-        self.assertEqual(TOPOLOGY_TYPE.Sharded,
-                         topology.description.topology_type)
+        self.assertEqual(TOPOLOGY_TYPE.Sharded, topology.description.topology_type)
 
         # a and b are within the 15-ms latency window, see self.mock_client().
-        self.assertEqual(set([('a', 1), ('b', 2)]),
-                         writable_addresses(topology))
+        self.assertEqual(set([("a", 1), ("b", 2)]), writable_addresses(topology))
 
-        client.mock_rtts['a:1'] = 0.045
+        client.mock_rtts["a:1"] = 0.045
 
         # Discover only b is within latency window.
-        wait_until(lambda: set([('b', 2)]) == writable_addresses(topology),
-                   'discover server "a" is too far')
+        wait_until(
+            lambda: set([("b", 2)]) == writable_addresses(topology),
+            'discover server "a" is too far',
+        )
 
 
 if __name__ == "__main__":

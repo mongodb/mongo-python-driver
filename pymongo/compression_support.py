@@ -16,6 +16,7 @@ import warnings
 
 try:
     import snappy
+
     _HAVE_SNAPPY = True
 except ImportError:
     # python-snappy isn't available.
@@ -23,6 +24,7 @@ except ImportError:
 
 try:
     import zlib
+
     _HAVE_ZLIB = True
 except ImportError:
     # Python built without zlib support.
@@ -30,6 +32,7 @@ except ImportError:
 
 try:
     from zstandard import ZstdCompressor, ZstdDecompressor
+
     _HAVE_ZSTD = True
 except ImportError:
     _HAVE_ZSTD = False
@@ -58,28 +61,30 @@ def validate_compressors(dummy, value):
             compressors.remove(compressor)
             warnings.warn(
                 "Wire protocol compression with snappy is not available. "
-                "You must install the python-snappy module for snappy support.")
+                "You must install the python-snappy module for snappy support."
+            )
         elif compressor == "zlib" and not _HAVE_ZLIB:
             compressors.remove(compressor)
             warnings.warn(
                 "Wire protocol compression with zlib is not available. "
-                "The zlib module is not available.")
+                "The zlib module is not available."
+            )
         elif compressor == "zstd" and not _HAVE_ZSTD:
             compressors.remove(compressor)
             warnings.warn(
                 "Wire protocol compression with zstandard is not available. "
-                "You must install the zstandard module for zstandard support.")
+                "You must install the zstandard module for zstandard support."
+            )
     return compressors
 
 
 def validate_zlib_compression_level(option, value):
     try:
         level = int(value)
-    except:
+    except Exception:
         raise TypeError("%s must be an integer, not %r." % (option, value))
     if level < -1 or level > 9:
-        raise ValueError(
-            "%s must be between -1 and 9, not %d." % (option, level))
+        raise ValueError("%s must be between -1 and 9, not %d." % (option, level))
     return level
 
 
@@ -99,12 +104,6 @@ class CompressionSettings(object):
                 return ZstdContext()
 
 
-def _zlib_no_compress(data):
-    """Compress data with zlib level 0."""
-    cobj = zlib.compressobj(0)
-    return b"".join([cobj.compress(data), cobj.flush()])
-
-
 class SnappyContext(object):
     compressor_id = 1
 
@@ -117,14 +116,10 @@ class ZlibContext(object):
     compressor_id = 2
 
     def __init__(self, level):
-        # Jython zlib.compress doesn't support -1
-        if level == -1:
-            self.compress = zlib.compress
-        # Jython zlib.compress also doesn't support 0
-        elif level == 0:
-            self.compress = _zlib_no_compress
-        else:
-            self.compress = lambda data: zlib.compress(data, level)
+        self.level = level
+
+    def compress(self, data: bytes) -> bytes:
+        return zlib.compress(data, self.level)
 
 
 class ZstdContext(object):

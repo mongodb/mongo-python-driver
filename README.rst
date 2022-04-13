@@ -3,8 +3,7 @@ PyMongo
 =======
 :Info: See `the mongo site <http://www.mongodb.org>`_ for more information. See `GitHub <http://github.com/mongodb/mongo-python-driver>`_ for the latest source.
 :Documentation: Available at `pymongo.readthedocs.io <https://pymongo.readthedocs.io/en/stable/>`_
-:Author: Mike Dirolf
-:Maintainer: Bernie Hackett <bernie@mongodb.com>
+:Author: The MongoDB Python Team
 
 About
 =====
@@ -17,7 +16,7 @@ is a `gridfs
 <http://www.mongodb.org/display/DOCS/GridFS+Specification>`_
 implementation on top of ``pymongo``.
 
-PyMongo supports MongoDB 2.6, 3.0, 3.2, 3.4, 3.6, 4.0, 4.2, 4.4, and 5.0.
+PyMongo supports MongoDB 3.6, 4.0, 4.2, 4.4, and 5.0.
 
 Support / Feedback
 ==================
@@ -89,7 +88,7 @@ is incompatible with PyMongo.
 Dependencies
 ============
 
-PyMongo supports CPython 3.6+ and PyPy3.6+.
+PyMongo supports CPython 3.6.2+ and PyPy3.6+.
 
 Optional dependencies:
 
@@ -98,17 +97,17 @@ GSSAPI authentication requires `pykerberos
 <https://pypi.python.org/pypi/winkerberos>`_ on Windows. The correct
 dependency can be installed automatically along with PyMongo::
 
-  $ python -m pip install pymongo[gssapi]
+  $ python -m pip install "pymongo[gssapi]"
 
 MONGODB-AWS authentication requires `pymongo-auth-aws
 <https://pypi.org/project/pymongo-auth-aws/>`_::
 
-  $ python -m pip install pymongo[aws]
+  $ python -m pip install "pymongo[aws]"
 
 Support for mongodb+srv:// URIs requires `dnspython
 <https://pypi.python.org/pypi/dnspython>`_::
 
-  $ python -m pip install pymongo[srv]
+  $ python -m pip install "pymongo[srv]"
 
 OCSP (Online Certificate Status Protocol) requires `PyOpenSSL
 <https://pypi.org/project/pyOpenSSL/>`_, `requests
@@ -117,27 +116,27 @@ OCSP (Online Certificate Status Protocol) requires `PyOpenSSL
 require `certifi
 <https://pypi.python.org/pypi/certifi>`_::
 
-  $ python -m pip install pymongo[ocsp]
+  $ python -m pip install "pymongo[ocsp]"
 
 Wire protocol compression with snappy requires `python-snappy
 <https://pypi.org/project/python-snappy>`_::
 
-  $ python -m pip install pymongo[snappy]
+  $ python -m pip install "pymongo[snappy]"
 
 Wire protocol compression with zstandard requires `zstandard
 <https://pypi.org/project/zstandard>`_::
 
-  $ python -m pip install pymongo[zstd]
+  $ python -m pip install "pymongo[zstd]"
 
 Client-Side Field Level Encryption requires `pymongocrypt
 <https://pypi.org/project/pymongocrypt/>`_::
 
-  $ python -m pip install pymongo[encryption]
+  $ python -m pip install "pymongo[encryption]"
 
 You can install all dependencies automatically with the following
 command::
 
-  $ python -m pip install pymongo[gssapi,aws,ocsp,snappy,srv,tls,zstd,encryption]
+  $ python -m pip install "pymongo[gssapi,aws,ocsp,snappy,srv,tls,zstd,encryption]"
 
 Additional dependencies are:
 

@@ -16,6 +16,7 @@
 """
 
 from collections.abc import Mapping as _Mapping
+from typing import Any, Mapping, Optional, Type, Union
 
 
 class Code(str):
@@ -47,15 +48,21 @@ class Code(str):
     """
 
     _type_marker = 13
+    __scope: Union[Mapping[str, Any], None]
 
-    def __new__(cls, code, scope=None, **kwargs):
+    def __new__(
+        cls: Type["Code"],
+        code: Union[str, "Code"],
+        scope: Optional[Mapping[str, Any]] = None,
+        **kwargs: Any
+    ) -> "Code":
         if not isinstance(code, str):
             raise TypeError("code must be an instance of str")
 
         self = str.__new__(cls, code)
 
         try:
-            self.__scope = code.scope
+            self.__scope = code.scope  # type: ignore
         except AttributeError:
             self.__scope = None
 
@@ -63,33 +70,32 @@ class Code(str):
             if not isinstance(scope, _Mapping):
                 raise TypeError("scope must be an instance of dict")
             if self.__scope is not None:
-                self.__scope.update(scope)
+                self.__scope.update(scope)  # type: ignore
             else:
                 self.__scope = scope
 
         if kwargs:
             if self.__scope is not None:
-                self.__scope.update(kwargs)
+                self.__scope.update(kwargs)  # type: ignore
             else:
                 self.__scope = kwargs
 
         return self
 
     @property
-    def scope(self):
-        """Scope dictionary for this instance or ``None``.
-        """
+    def scope(self) -> Optional[Mapping[str, Any]]:
+        """Scope dictionary for this instance or ``None``."""
         return self.__scope
 
     def __repr__(self):
         return "Code(%s, %r)" % (str.__repr__(self), self.__scope)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, Code):
             return (self.__scope, str(self)) == (other.__scope, str(other))
         return False
 
-    __hash__ = None
+    __hash__: Any = None
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other

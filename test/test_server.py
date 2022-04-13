@@ -18,18 +18,19 @@ import sys
 
 sys.path[0:0] = [""]
 
+from test import unittest
+
 from pymongo.hello import Hello
 from pymongo.server import Server
 from pymongo.server_description import ServerDescription
-from test import unittest
 
 
 class TestServer(unittest.TestCase):
     def test_repr(self):
-        ismaster = Hello({'ok': 1})
-        sd = ServerDescription(('localhost', 27017), ismaster)
+        hello = Hello({"ok": 1})
+        sd = ServerDescription(("localhost", 27017), hello)
         server = Server(sd, pool=object(), monitor=object())
-        self.assertTrue('Standalone' in str(server))
+        self.assertTrue("Standalone" in str(server))
 
 
 if __name__ == "__main__":

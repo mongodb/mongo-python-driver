@@ -67,25 +67,22 @@ fi
 if [ -z "$PYTHON_BINARY" ]; then
     # Use Python 3 from the server toolchain to test on ARM, POWER or zSeries if a
     # system python3 doesn't exist or exists but is older than 3.6.
-    if is_python_36 $(command -v python3); then
+    if is_python_36 "$(command -v python3)"; then
         PYTHON=$(command -v python3)
-    elif is_python_36 $(command -v /opt/mongodbtoolchain/v2/bin/python3); then
-        PYTHON=$(command -v /opt/mongodbtoolchain/v2/bin/python3)
+    elif is_python_36 "$(command -v /opt/mongodbtoolchain/v3/bin/python3)"; then
+        PYTHON=$(command -v /opt/mongodbtoolchain/v3/bin/python3)
     else
         echo "Cannot test without python3.6+ installed!"
     fi
 elif [ "$COMPRESSORS" = "snappy" ]; then
-    $PYTHON_BINARY -m virtualenv --never-download snappytest
-    . snappytest/bin/activate
+    createvirtualenv $PYTHON_BINARY snappytest
     trap "deactivate; rm -rf snappytest" EXIT HUP
-    # 0.5.2 has issues in pypy3(.5)
-    pip install python-snappy==0.5.1
+    python -m pip install python-snappy
     PYTHON=python
 elif [ "$COMPRESSORS" = "zstd" ]; then
-    $PYTHON_BINARY -m virtualenv --never-download zstdtest
-    . zstdtest/bin/activate
+    createvirtualenv $PYTHON_BINARY zstdtest
     trap "deactivate; rm -rf zstdtest" EXIT HUP
-    pip install zstandard
+    python -m pip install zstandard
     PYTHON=python
 else
     PYTHON="$PYTHON_BINARY"
@@ -106,7 +103,8 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     PYTHON=python
 
     if [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
-        $PYTHON -m pip install -U setuptools
+        # PYTHON-2808 Ensure this machine has the CA cert for google KMS.
+        powershell.exe "Invoke-WebRequest -URI https://oauth2.googleapis.com/" > /dev/null || true
     fi
 
     if [ -z "$LIBMONGOCRYPT_URL" ]; then
@@ -121,20 +119,21 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     # Use the nocrypto build to avoid dependency issues with older windows/python versions.
     BASE=$(pwd)/libmongocrypt/nocrypto
     if [ -f "${BASE}/lib/libmongocrypt.so" ]; then
-        export PYMONGOCRYPT_LIB=${BASE}/lib/libmongocrypt.so
+        PYMONGOCRYPT_LIB=${BASE}/lib/libmongocrypt.so
     elif [ -f "${BASE}/lib/libmongocrypt.dylib" ]; then
-        export PYMONGOCRYPT_LIB=${BASE}/lib/libmongocrypt.dylib
+        PYMONGOCRYPT_LIB=${BASE}/lib/libmongocrypt.dylib
     elif [ -f "${BASE}/bin/mongocrypt.dll" ]; then
         PYMONGOCRYPT_LIB=${BASE}/bin/mongocrypt.dll
         # libmongocrypt's windows dll is not marked executable.
         chmod +x $PYMONGOCRYPT_LIB
-        export PYMONGOCRYPT_LIB=$(cygpath -m $PYMONGOCRYPT_LIB)
+        PYMONGOCRYPT_LIB=$(cygpath -m $PYMONGOCRYPT_LIB)
     elif [ -f "${BASE}/lib64/libmongocrypt.so" ]; then
-        export PYMONGOCRYPT_LIB=${BASE}/lib64/libmongocrypt.so
+        PYMONGOCRYPT_LIB=${BASE}/lib64/libmongocrypt.so
     else
         echo "Cannot find libmongocrypt shared object file"
         exit 1
     fi
+    export PYMONGOCRYPT_LIB
 
     # TODO: Test with 'pip install pymongocrypt'
     git clone --branch master https://github.com/mongodb/libmongocrypt.git libmongocrypt_git
@@ -147,17 +146,6 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     # Get access to the AWS temporary credentials:
     # CSFLE_AWS_TEMP_ACCESS_KEY_ID, CSFLE_AWS_TEMP_SECRET_ACCESS_KEY, CSFLE_AWS_TEMP_SESSION_TOKEN
     . $DRIVERS_TOOLS/.evergreen/csfle/set-temp-creds.sh
-
-    # Start the mock KMS servers.
-    if [ "$OS" = "Windows_NT" ]; then
-        # Remove after BUILD-13574.
-        python -m pip install certifi
-    fi
-    pushd ${DRIVERS_TOOLS}/.evergreen/csfle
-    python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/expired.pem --port 8000 &
-    python -u kms_http_server.py --ca_file ../x509gen/ca.pem --cert_file ../x509gen/wrong-host.pem --port 8001 &
-    trap 'kill $(jobs -p)' EXIT HUP
-    popd
 fi
 
 if [ -z "$DATA_LAKE" ]; then
@@ -188,7 +176,7 @@ $PYTHON -c 'import sys; print(sys.version)'
 # Only cover CPython. PyPy reports suspiciously low coverage.
 PYTHON_IMPL=$($PYTHON -c "import platform; print(platform.python_implementation())")
 COVERAGE_ARGS=""
-if [ -n "$COVERAGE" -a $PYTHON_IMPL = "CPython" ]; then
+if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
     if $PYTHON -m coverage --version; then
         echo "INFO: coverage is installed, running tests with coverage..."
         COVERAGE_ARGS="-m coverage run --branch"
@@ -199,7 +187,7 @@ fi
 
 $PYTHON setup.py clean
 if [ -z "$GREEN_FRAMEWORK" ]; then
-    if [ -z "$C_EXTENSIONS" -a $PYTHON_IMPL = "CPython" ]; then
+    if [ -z "$C_EXTENSIONS" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
         # Fail if the C extensions fail to build.
 
         # This always sets 0 for exit status, even if the build fails, due

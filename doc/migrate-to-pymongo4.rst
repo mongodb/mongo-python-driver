@@ -1,3 +1,5 @@
+.. _pymongo4-migration-guide:
+
 PyMongo 4 Migration Guide
 =========================
 
@@ -25,13 +27,14 @@ completely migrated to PyMongo 4. Most of the key new methods and options from
 PyMongo 4.0 are backported in PyMongo 3.12 making migration much easier.
 
 .. note:: Users of PyMongo 2.X who wish to upgrade to 4.x must first upgrade
-   to PyMongo 3.x by following the :doc:`migrate-to-pymongo3`.
+   to PyMongo 3.x by following the `PyMongo 3 Migration Guide
+   <https://pymongo.readthedocs.io/en/3.12.1/migrate-to-pymongo3.html>`_.
 
 Python 3.6+
 -----------
 
 PyMongo 4.0 drops support for Python 2.7, 3.4, and 3.5. Users who wish to
-upgrade to 4.x must first upgrade to Python 3.6+. Users upgrading from
+upgrade to 4.x must first upgrade to Python 3.6.2+. Users upgrading from
 Python 2 should consult the :doc:`python3`.
 
 Enable Deprecation Warnings
@@ -62,6 +65,15 @@ get the same behavior.
 MongoClient
 -----------
 
+``directConnection`` defaults to False
+......................................
+
+``directConnection`` URI option and keyword argument to :class:`~pymongo
+.mongo_client.MongoClient` defaults to ``False`` instead of ``None``,
+allowing for the automatic discovery of replica sets. This means that if you
+want a direct connection to a single server you must pass
+``directConnection=True`` as a URI option or keyword argument.
+
 The waitQueueMultiple parameter is removed
 ..........................................
 
@@ -76,8 +88,7 @@ The socketKeepAlive parameter is removed
 
 Removed the ``socketKeepAlive`` keyword argument to
 :class:`~pymongo.mongo_client.MongoClient`. PyMongo now always enables TCP
-keepalive. For more information see:
-https://docs.mongodb.com/manual/faq/diagnostics/#does-tcp-keepalive-time-affect-mongodb-deployments
+keepalive. For more information see the `documentation <https://docs.mongodb.com/manual/faq/diagnostics/#does-tcp-keepalive-time-affect-mongodb-deployments->`_.
 
 Renamed URI options
 ...................
@@ -132,32 +143,22 @@ instead. For example::
 MongoClient.unlock is removed
 .............................
 
-Removed :meth:`pymongo.mongo_client.MongoClient.unlock`. Users of MongoDB
-version 3.2 or newer can run the `fsyncUnlock command`_ directly with
-:meth:`~pymongo.database.Database.command`::
+Removed :meth:`pymongo.mongo_client.MongoClient.unlock`. Run the
+`fsyncUnlock command`_ directly with
+:meth:`~pymongo.database.Database.command` instead. For example::
 
      client.admin.command('fsyncUnlock')
-
-Users of MongoDB version 2.6 and 3.0 can query the "unlock" virtual
-collection::
-
-    client.admin["$cmd.sys.unlock"].find_one()
 
 .. _fsyncUnlock command: https://docs.mongodb.com/manual/reference/command/fsyncUnlock/
 
 MongoClient.is_locked is removed
 ................................
 
-Removed :attr:`pymongo.mongo_client.MongoClient.is_locked`. Users of MongoDB
-version 3.2 or newer can run the `currentOp command`_ directly with
-:meth:`~pymongo.database.Database.command`::
+Removed :attr:`pymongo.mongo_client.MongoClient.is_locked`. Run the
+`currentOp command`_ directly with
+:meth:`~pymongo.database.Database.command` instead. For example::
 
     is_locked = client.admin.command('currentOp').get('fsyncLock')
-
-Users of MongoDB version 2.6 and 3.0 can query the "inprog" virtual
-collection::
-
-    is_locked = client.admin["$cmd.sys.inprog"].find_one().get('fsyncLock')
 
 .. _currentOp command: https://docs.mongodb.com/manual/reference/command/currentOp/
 
@@ -173,6 +174,87 @@ this::
 can be changed to this::
 
     names = client.list_database_names()
+
+MongoClient.max_bson_size/max_message_size/max_write_batch_size are removed
+...........................................................................
+
+Removed :attr:`pymongo.mongo_client.MongoClient.max_bson_size`,
+:attr:`pymongo.mongo_client.MongoClient.max_message_size`, and
+:attr:`pymongo.mongo_client.MongoClient.max_write_batch_size`. These helpers
+were incorrect when in ``loadBalanced=true mode`` and ambiguous in clusters
+with mixed versions. Use the `hello command`_ to get the authoritative
+value from the remote server instead. Code like this::
+
+    max_bson_size = client.max_bson_size
+    max_message_size = client.max_message_size
+    max_write_batch_size = client.max_write_batch_size
+
+can be changed to this::
+
+    doc = client.admin.command('hello')
+    max_bson_size = doc['maxBsonObjectSize']
+    max_message_size = doc['maxMessageSizeBytes']
+    max_write_batch_size = doc['maxWriteBatchSize']
+
+.. _hello command: https://docs.mongodb.com/manual/reference/command/hello/
+
+MongoClient.event_listeners and other configuration option helpers are removed
+..............................................................................
+
+The following client configuration option helpers are removed:
+- :attr:`pymongo.mongo_client.MongoClient.event_listeners`.
+- :attr:`pymongo.mongo_client.MongoClient.max_pool_size`.
+- :attr:`pymongo.mongo_client.MongoClient.max_idle_time_ms`.
+- :attr:`pymongo.mongo_client.MongoClient.local_threshold_ms`.
+- :attr:`pymongo.mongo_client.MongoClient.server_selection_timeout`.
+- :attr:`pymongo.mongo_client.MongoClient.retry_writes`.
+- :attr:`pymongo.mongo_client.MongoClient.retry_reads`.
+
+These helpers have been replaced by
+:attr:`pymongo.mongo_client.MongoClient.options`. Code like this::
+
+    client.event_listeners
+    client.local_threshold_ms
+    client.server_selection_timeout
+    client.max_pool_size
+    client.min_pool_size
+    client.max_idle_time_ms
+
+can be changed to this::
+
+    client.options.event_listeners
+    client.options.local_threshold_ms
+    client.options.server_selection_timeout
+    client.options.pool_options.max_pool_size
+    client.options.pool_options.min_pool_size
+    client.options.pool_options.max_idle_time_seconds
+
+``tz_aware`` defaults to ``False``
+..................................
+
+``tz_aware``, an argument for :class:`~bson.json_util.JSONOptions`,
+now defaults to ``False`` instead of ``True``. ``json_util.loads`` now
+decodes datetime as naive by default.
+
+MongoClient cannot execute operations after ``close()``
+.......................................................
+
+:class:`~pymongo.mongo_client.MongoClient` cannot execute any operations
+after being closed. The previous behavior would simply reconnect. However,
+now you must create a new instance.
+
+MongoClient raises exception when given more than one URI
+.........................................................
+
+:class:`~pymongo.mongo_client.MongoClient` now raises a :exc:`~pymongo.errors.ConfigurationError`
+when more than one URI is passed into the ``hosts`` argument.
+
+MongoClient raises exception when given unescaped percent sign in login info
+............................................................................
+
+:class:`~pymongo.mongo_client.MongoClient` now raises an
+:exc:`~pymongo.errors.InvalidURI` exception
+when it encounters unescaped percent signs in username and password.
 
 Database
 --------
@@ -303,6 +385,19 @@ Can be changed to this::
   profiling_info = list(db['system.profile'].find())
 
 .. _'system.profile' collection: https://docs.mongodb.com/manual/reference/database-profiler/
+
+Database.__bool__ raises NotImplementedError
+............................................
+:class:`~pymongo.database.Database` now raises an error upon evaluating as a
+Boolean. Code like this::
+
+  if database:
+
+Can be changed to this::
+
+  if database is not None:
+
+You must now explicitly compare with None.
 
 Collection
 ----------
@@ -449,8 +544,8 @@ Can be changed to this::
 
 .. _$expr: https://docs.mongodb.com/manual/reference/operator/query/expr/
 .. _$geoWithin: https://docs.mongodb.com/manual/reference/operator/query/geoWithin/
-.. _$center: https://docs.mongodb.com/manual/reference/operator/query/center/#op._S_center
-.. _$centerSphere: https://docs.mongodb.com/manual/reference/operator/query/centerSphere/#op._S_centerSphere
+.. _$center: https://docs.mongodb.com/manual/reference/operator/query/center/
+.. _$centerSphere: https://docs.mongodb.com/manual/reference/operator/query/centerSphere/
 
 Collection.initialize_ordered_bulk_op and initialize_unordered_bulk_op is removed
 .................................................................................
@@ -591,6 +686,48 @@ can be changed to this::
       show_record_id=False,
   )
 
+The hint parameter is required with min/max
+...........................................
+
+The ``hint`` option is now required when using ``min`` or ``max`` queries
+with :meth:`~pymongo.collection.Collection.find` to ensure the query utilizes
+the correct index. For example, code like this::
+
+  cursor = coll.find({}, min={'x', min_value})
+
+can be changed to this::
+
+  cursor = coll.find({}, min={'x', min_value}, hint=[('x', ASCENDING)])
+
+Collection.__bool__ raises NotImplementedError
+..............................................
+:class:`~pymongo.collection.Collection` now raises an error upon evaluating
+as a Boolean. Code like this::
+
+  if collection:
+
+Can be changed to this::
+
+  if collection is not None:
+
+You must now explicitly compare with None.
+
+Collection.find returns entire document with empty projection
+.............................................................
+Empty projections (eg {} or []) for
+:meth:`~pymongo.collection.Collection.find`, and
+:meth:`~pymongo.collection.Collection.find_one`
+are passed to the server as-is rather than the previous behavior which
+substituted in a projection of ``{"_id": 1}``. This means that an empty
+projection will now return the entire document, not just the ``"_id"`` field.
+To ensure that behavior remains consistent, code like this::
+
+  coll.find({}, projection={})
+
+Can be changed to this::
+
+  coll.find({}, projection={"_id":1})
+
 SONManipulator is removed
 -------------------------
 
@@ -622,6 +759,21 @@ custom types to BSON, the :class:`~bson.codec_options.TypeCodec` and
 :class:`~bson.codec_options.TypeRegistry` APIs may be a suitable alternative.
 For more information, see the
 :doc:`custom type example <examples/custom_type>`.
+
+``SON().items()`` now returns ``dict_items`` object.
+----------------------------------------------------
+:meth:`~bson.son.SON.items` now returns a ``dict_items`` object rather than
+a list.
+
+``SON().iteritems()`` removed.
+------------------------------
+``SON.iteritems()`` now removed. Code that looks like this::
+
+    for k, v in son.iteritems():
+
+Can now be replaced by code that looks like::
+
+    for k, v in son.items():
 
 IsMaster is removed
 -------------------
@@ -661,6 +813,39 @@ can be changed to this::
 
   uu = uuid.uuid4()
   uuid_legacy = Binary.from_uuid(uu, PYTHON_LEGACY)
+
+Default JSONMode changed from LEGACY to RELAXED
+-----------------------------------------------
+
+Changed the default JSON encoding representation from legacy to relaxed.
+The json_mode parameter for :const:`bson.json_util.dumps` now defaults to
+:const:`~bson.json_util.RELAXED_JSON_OPTIONS`.
+
+GridFS changes
+--------------
+
+.. _removed-gridfs-checksum:
+
+disable_md5 parameter is removed
+................................
+
+Removed the `disable_md5` option for :class:`~gridfs.GridFSBucket` and
+:class:`~gridfs.GridFS`. GridFS no longer generates checksums.
+Applications that desire a file digest should implement it outside GridFS
+and store it with other file metadata. For example::
+
+  import hashlib
+  my_db = MongoClient().test
+  fs = GridFSBucket(my_db)
+  grid_in = fs.open_upload_stream("test_file")
+  file_data = b'...'
+  sha356 = hashlib.sha256(file_data).hexdigest()
+  grid_in.write(file_data)
+  grid_in.sha356 = sha356  # Set the custom 'sha356' field
+  grid_in.close()
+
+Note that for large files, the checksum may need to be computed in chunks
+to avoid the excessive memory needed to load the entire file at once.
 
 Removed features with no migration path
 ---------------------------------------
@@ -725,3 +910,43 @@ pymongo.message helpers are removed
 Removed :meth:`pymongo.message.delete`, :meth:`pymongo.message.get_more`,
 :meth:`pymongo.message.insert`, :meth:`pymongo.message.kill_cursors`,
 :meth:`pymongo.message.query`, and :meth:`pymongo.message.update`.
+
+
+Name is a required argument for pymongo.driver_info.DriverInfo
+..............................................................
+
+``name`` is now a required argument for the :class:`pymongo.driver_info.DriverInfo` class.
+
+DBRef BSON/JSON decoding behavior
+.................................
+
+Changed the BSON and JSON decoding behavior of :class:`~bson.dbref.DBRef`
+to match the behavior outlined in the `DBRef specification`_ version 1.0.
+Specifically, PyMongo now only decodes a subdocument into a
+:class:`~bson.dbref.DBRef` if and only if, it contains both ``$ref`` and
+``$id`` fields and the ``$ref``, ``$id``, and ``$db`` fields are of the
+correct type. Otherwise the document is returned as normal. Previously, any
+subdocument containing a ``$ref`` field would be decoded as a
+:class:`~bson.dbref.DBRef`.
+
+.. _DBRef specification: https://github.com/mongodb/specifications/blob/5a8c8d7/source/dbref.rst
+
+Encoding a UUID raises an error by default
+..........................................
+
+The default uuid_representation for :class:`~bson.codec_options.CodecOptions`,
+:class:`~bson.json_util.JSONOptions`, and
+:class:`~pymongo.mongo_client.MongoClient` has been changed from
+:data:`bson.binary.UuidRepresentation.PYTHON_LEGACY` to
+:data:`bson.binary.UuidRepresentation.UNSPECIFIED`. Attempting to encode a
+:class:`uuid.UUID` instance to BSON or JSON now produces an error by default.
+See :ref:`handling-uuid-data-example` for details.
+
+Additional BSON classes implement ``__slots__``
+...............................................
+
+:class:`~bson.int64.Int64`, :class:`~bson.min_key.MinKey`,
+:class:`~bson.max_key.MaxKey`, :class:`~bson.timestamp.Timestamp`,
+:class:`~bson.regex.Regex`, and :class:`~bson.dbref.DBRef` now implement
+``__slots__`` to reduce memory usage. This means that their attributes are fixed, and new
+attributes cannot be added to the object at runtime.

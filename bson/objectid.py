@@ -23,30 +23,29 @@ import os
 import struct
 import threading
 import time
-
 from random import SystemRandom
+from typing import Any, NoReturn, Optional, Type, Union
 
 from bson.errors import InvalidId
 from bson.tz_util import utc
 
-
 _MAX_COUNTER_VALUE = 0xFFFFFF
 
 
-def _raise_invalid_id(oid):
+def _raise_invalid_id(oid: str) -> NoReturn:
     raise InvalidId(
         "%r is not a valid ObjectId, it must be a 12-byte input"
-        " or a 24-character hex string" % oid)
+        " or a 24-character hex string" % oid
+    )
 
 
-def _random_bytes():
+def _random_bytes() -> bytes:
     """Get the 5-byte random field of an ObjectId."""
     return os.urandom(5)
 
 
 class ObjectId(object):
-    """A MongoDB ObjectId.
-    """
+    """A MongoDB ObjectId."""
 
     _pid = os.getpid()
 
@@ -55,11 +54,11 @@ class ObjectId(object):
 
     __random = _random_bytes()
 
-    __slots__ = ('__id',)
+    __slots__ = ("__id",)
 
     _type_marker = 7
 
-    def __init__(self, oid=None):
+    def __init__(self, oid: Optional[Union[str, "ObjectId", bytes]] = None) -> None:
         """Initialize a new ObjectId.
 
         An ObjectId is a 12-byte unique identifier consisting of:
@@ -105,7 +104,7 @@ class ObjectId(object):
             self.__validate(oid)
 
     @classmethod
-    def from_datetime(cls, generation_time):
+    def from_datetime(cls: Type["ObjectId"], generation_time: datetime.datetime) -> "ObjectId":
         """Create a dummy ObjectId instance with a specific generation time.
 
         This method is useful for doing range queries on a field
@@ -132,15 +131,15 @@ class ObjectId(object):
           - `generation_time`: :class:`~datetime.datetime` to be used
             as the generation time for the resulting ObjectId.
         """
-        if generation_time.utcoffset() is not None:
-            generation_time = generation_time - generation_time.utcoffset()
+        offset = generation_time.utcoffset()
+        if offset is not None:
+            generation_time = generation_time - offset
         timestamp = calendar.timegm(generation_time.timetuple())
-        oid = struct.pack(
-            ">I", int(timestamp)) + b"\x00\x00\x00\x00\x00\x00\x00\x00"
+        oid = struct.pack(">I", int(timestamp)) + b"\x00\x00\x00\x00\x00\x00\x00\x00"
         return cls(oid)
 
     @classmethod
-    def is_valid(cls, oid):
+    def is_valid(cls: Type["ObjectId"], oid: Any) -> bool:
         """Checks if a `oid` string is valid or not.
 
         :Parameters:
@@ -158,18 +157,16 @@ class ObjectId(object):
             return False
 
     @classmethod
-    def _random(cls):
-        """Generate a 5-byte random number once per process.
-        """
+    def _random(cls) -> bytes:
+        """Generate a 5-byte random number once per process."""
         pid = os.getpid()
         if pid != cls._pid:
             cls._pid = pid
             cls.__random = _random_bytes()
         return cls.__random
 
-    def __generate(self):
-        """Generate a new value for this ObjectId.
-        """
+    def __generate(self) -> None:
+        """Generate a new value for this ObjectId."""
 
         # 4 bytes current time
         oid = struct.pack(">I", int(time.time()))
@@ -184,7 +181,7 @@ class ObjectId(object):
 
         self.__id = oid
 
-    def __validate(self, oid):
+    def __validate(self, oid: Any) -> None:
         """Validate and use the given id for this ObjectId.
 
         Raises TypeError if id is not an instance of
@@ -206,17 +203,17 @@ class ObjectId(object):
             else:
                 _raise_invalid_id(oid)
         else:
-            raise TypeError("id must be an instance of (bytes, str, ObjectId), "
-                            "not %s" % (type(oid),))
+            raise TypeError(
+                "id must be an instance of (bytes, str, ObjectId), not %s" % (type(oid),)
+            )
 
     @property
-    def binary(self):
-        """12-byte binary representation of this ObjectId.
-        """
+    def binary(self) -> bytes:
+        """12-byte binary representation of this ObjectId."""
         return self.__id
 
     @property
-    def generation_time(self):
+    def generation_time(self) -> datetime.datetime:
         """A :class:`datetime.datetime` instance representing the time of
         generation for this :class:`ObjectId`.
 
@@ -227,15 +224,14 @@ class ObjectId(object):
         timestamp = struct.unpack(">I", self.__id[0:4])[0]
         return datetime.datetime.fromtimestamp(timestamp, utc)
 
-    def __getstate__(self):
+    def __getstate__(self) -> bytes:
         """return value of object for pickling.
         needed explicitly because __slots__() defined.
         """
         return self.__id
 
-    def __setstate__(self, value):
-        """explicit state set from pickling
-        """
+    def __setstate__(self, value: Any) -> None:
+        """explicit state set from pickling"""
         # Provide backwards compatability with OIDs
         # pickled with pymongo-1.9 or older.
         if isinstance(value, dict):
@@ -246,46 +242,46 @@ class ObjectId(object):
         # In python 3.x this has to be converted to `bytes`
         # by encoding latin-1.
         if isinstance(oid, str):
-            self.__id = oid.encode('latin-1')
+            self.__id = oid.encode("latin-1")
         else:
             self.__id = oid
 
-    def __str__(self):
+    def __str__(self) -> str:
         return binascii.hexlify(self.__id).decode()
 
     def __repr__(self):
         return "ObjectId('%s')" % (str(self),)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, ObjectId):
             return self.__id == other.binary
         return NotImplemented
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         if isinstance(other, ObjectId):
             return self.__id != other.binary
         return NotImplemented
 
-    def __lt__(self, other):
+    def __lt__(self, other: Any) -> bool:
         if isinstance(other, ObjectId):
             return self.__id < other.binary
         return NotImplemented
 
-    def __le__(self, other):
+    def __le__(self, other: Any) -> bool:
         if isinstance(other, ObjectId):
             return self.__id <= other.binary
         return NotImplemented
 
-    def __gt__(self, other):
+    def __gt__(self, other: Any) -> bool:
         if isinstance(other, ObjectId):
             return self.__id > other.binary
         return NotImplemented
 
-    def __ge__(self, other):
+    def __ge__(self, other: Any) -> bool:
         if isinstance(other, ObjectId):
             return self.__id >= other.binary
         return NotImplemented
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         """Get a hash value for this :class:`ObjectId`."""
         return hash(self.__id)

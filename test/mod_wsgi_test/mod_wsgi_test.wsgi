@@ -25,22 +25,17 @@ repository_path = os.path.normpath(os.path.join(this_path, '..', '..'))
 sys.path.insert(0, repository_path)
 
 import pymongo
+from pymongo.hello import HelloCompat  # noqa
 from pymongo.mongo_client import MongoClient
 
 client = MongoClient()
-
-# If the deployment is a replica set, connect to the whole set.
-replica_set_name = client.admin.command('ismaster').get('setName')
-if replica_set_name:
-    client = MongoClient(replicaSet=replica_set_name)
-
 collection = client.test.test
-
 ndocs = 20
-
 collection.drop()
 collection.insert_many([{'i': i} for i in range(ndocs)])
 client.close()  # Discard main thread's request socket.
+client = MongoClient()
+collection = client.test.test
 
 try:
     from mod_wsgi import version as mod_wsgi_version

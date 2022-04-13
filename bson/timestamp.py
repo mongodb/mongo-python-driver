@@ -17,19 +17,25 @@
 
 import calendar
 import datetime
+from typing import Any, Union
 
+from bson._helpers import _getstate_slots, _setstate_slots
 from bson.tz_util import utc
 
 UPPERBOUND = 4294967296
 
 
 class Timestamp(object):
-    """MongoDB internal timestamps used in the opLog.
-    """
+    """MongoDB internal timestamps used in the opLog."""
+
+    __slots__ = ("__time", "__inc")
+
+    __getstate__ = _getstate_slots
+    __setstate__ = _setstate_slots
 
     _type_marker = 17
 
-    def __init__(self, time, inc):
+    def __init__(self, time: Union[datetime.datetime, int], inc: int) -> None:
         """Create a new :class:`Timestamp`.
 
         This class is only for use with the MongoDB opLog. If you need
@@ -48,8 +54,9 @@ class Timestamp(object):
           - `inc`: the incrementing counter
         """
         if isinstance(time, datetime.datetime):
-            if time.utcoffset() is not None:
-                time = time - time.utcoffset()
+            offset = time.utcoffset()
+            if offset is not None:
+                time = time - offset
             time = int(calendar.timegm(time.timetuple()))
         if not isinstance(time, int):
             raise TypeError("time must be an instance of int")
@@ -64,45 +71,43 @@ class Timestamp(object):
         self.__inc = inc
 
     @property
-    def time(self):
-        """Get the time portion of this :class:`Timestamp`.
-        """
+    def time(self) -> int:
+        """Get the time portion of this :class:`Timestamp`."""
         return self.__time
 
     @property
-    def inc(self):
-        """Get the inc portion of this :class:`Timestamp`.
-        """
+    def inc(self) -> int:
+        """Get the inc portion of this :class:`Timestamp`."""
         return self.__inc
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, Timestamp):
-            return (self.__time == other.time and self.__inc == other.inc)
+            return self.__time == other.time and self.__inc == other.inc
         else:
             return NotImplemented
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.time) ^ hash(self.inc)
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other
 
-    def __lt__(self, other):
+    def __lt__(self, other: Any) -> bool:
         if isinstance(other, Timestamp):
             return (self.time, self.inc) < (other.time, other.inc)
         return NotImplemented
 
-    def __le__(self, other):
+    def __le__(self, other: Any) -> bool:
         if isinstance(other, Timestamp):
             return (self.time, self.inc) <= (other.time, other.inc)
         return NotImplemented
 
-    def __gt__(self, other):
+    def __gt__(self, other: Any) -> bool:
         if isinstance(other, Timestamp):
             return (self.time, self.inc) > (other.time, other.inc)
         return NotImplemented
 
-    def __ge__(self, other):
+    def __ge__(self, other: Any) -> bool:
         if isinstance(other, Timestamp):
             return (self.time, self.inc) >= (other.time, other.inc)
         return NotImplemented
@@ -110,7 +115,7 @@ class Timestamp(object):
     def __repr__(self):
         return "Timestamp(%s, %s)" % (self.__time, self.__inc)
 
-    def as_datetime(self):
+    def as_datetime(self) -> datetime.datetime:
         """Return a :class:`~datetime.datetime` instance corresponding
         to the time portion of this :class:`Timestamp`.
 

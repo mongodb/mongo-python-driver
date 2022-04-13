@@ -1,0 +1,68 @@
+
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.1.0
+  hooks:
+  - id: check-added-large-files
+  - id: check-case-conflict
+  - id: check-toml
+  - id: check-yaml
+  - id: debug-statements
+  - id: end-of-file-fixer
+    exclude: WHEEL
+    exclude_types: [json]
+  - id: forbid-new-submodules
+  - id: trailing-whitespace
+    exclude: .patch
+    exclude_types: [json]
+
+- repo: https://github.com/psf/black
+  rev: 22.3.0
+  hooks:
+  - id: black
+    files: \.py$
+    args: [--line-length=100]
+
+- repo: https://github.com/PyCQA/isort
+  rev: 5.10.1
+  hooks:
+  - id: isort
+    files: \.py$
+    args: [--profile=black]
+
+- repo: https://gitlab.com/pycqa/flake8
+  rev: 3.9.2
+  hooks:
+  - id: flake8
+    files: \.py$
+    additional_dependencies: [
+        'flake8-bugbear==20.1.4',
+        'flake8-logging-format==0.6.0',
+        'flake8-implicit-str-concat==0.2.0',
+    ]
+
+# We use the Python version instead of the original version which seems to require Docker
+# https://github.com/koalaman/shellcheck-precommit
+- repo: https://github.com/shellcheck-py/shellcheck-py
+  rev: v0.8.0.4
+  hooks:
+    - id: shellcheck
+      name: shellcheck
+      args: ["--severity=warning"]
+
+- repo: https://github.com/sirosen/check-jsonschema
+  rev: 0.14.1
+  hooks:
+    - id: check-jsonschema
+      name: "Check GitHub Workflows"
+      files: ^\.github/workflows/
+      types: [yaml]
+      args: ["--schemafile", "https://json.schemastore.org/github-workflow"]
+
+- repo: https://github.com/ariebovenberg/slotscheck
+  rev: v0.14.0
+  hooks:
+  - id: slotscheck
+    files: \.py$
+    exclude: "^(test|tools)/"
+    stages: [manual]

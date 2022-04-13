@@ -15,37 +15,49 @@
 """CommandCursor class to iterate over command results."""
 
 from collections import deque
+from typing import TYPE_CHECKING, Any, Generic, Iterator, Mapping, NoReturn, Optional
 
 from bson import _convert_raw_document_lists_to_streams
-from pymongo.cursor import _SocketManager, _CURSOR_CLOSED_ERRORS
-from pymongo.errors import (ConnectionFailure,
-                            InvalidOperation,
-                            OperationFailure)
-from pymongo.message import (_CursorAddress,
-                             _GetMore,
-                             _RawBatchGetMore)
+from pymongo.cursor import _CURSOR_CLOSED_ERRORS, _SocketManager
+from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
+from pymongo.message import _CursorAddress, _GetMore, _RawBatchGetMore
 from pymongo.response import PinnedResponse
+from pymongo.typings import _Address, _DocumentType
+
+if TYPE_CHECKING:
+    from pymongo.client_session import ClientSession
+    from pymongo.collection import Collection
 
 
-class CommandCursor(object):
+class CommandCursor(Generic[_DocumentType]):
     """A cursor / iterator over command cursors."""
+
     _getmore_class = _GetMore
 
-    def __init__(self, collection, cursor_info, address,
-                 batch_size=0, max_await_time_ms=None, session=None,
-                 explicit_session=False):
+    def __init__(
+        self,
+        collection: "Collection[_DocumentType]",
+        cursor_info: Mapping[str, Any],
+        address: Optional[_Address],
+        batch_size: int = 0,
+        max_await_time_ms: Optional[int] = None,
+        session: Optional["ClientSession"] = None,
+        explicit_session: bool = False,
+        comment: Any = None,
+    ) -> None:
         """Create a new command cursor."""
-        self.__sock_mgr = None
-        self.__collection = collection
-        self.__id = cursor_info['id']
-        self.__data = deque(cursor_info['firstBatch'])
-        self.__postbatchresumetoken = cursor_info.get('postBatchResumeToken')
+        self.__sock_mgr: Any = None
+        self.__collection: Collection[_DocumentType] = collection
+        self.__id = cursor_info["id"]
+        self.__data = deque(cursor_info["firstBatch"])
+        self.__postbatchresumetoken = cursor_info.get("postBatchResumeToken")
         self.__address = address
         self.__batch_size = batch_size
         self.__max_await_time_ms = max_await_time_ms
         self.__session = session
         self.__explicit_session = explicit_session
-        self.__killed = (self.__id == 0)
+        self.__killed = self.__id == 0
+        self.__comment = comment
         if self.__killed:
             self.__end_session(True)
 
@@ -56,22 +68,19 @@ class CommandCursor(object):
 
         self.batch_size(batch_size)
 
-        if (not isinstance(max_await_time_ms, int)
-                and max_await_time_ms is not None):
+        if not isinstance(max_await_time_ms, int) and max_await_time_ms is not None:
             raise TypeError("max_await_time_ms must be an integer or None")
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.__die()
 
     def __die(self, synchronous=False):
-        """Closes this cursor.
-        """
+        """Closes this cursor."""
         already_killed = self.__killed
         self.__killed = True
         if self.__id and not already_killed:
             cursor_id = self.__id
-            address = _CursorAddress(
-                self.__address, self.__ns)
+            address = _CursorAddress(self.__address, self.__ns)
         else:
             # Skip killCursors.
             cursor_id = 0
@@ -82,7 +91,8 @@ class CommandCursor(object):
             address,
             self.__sock_mgr,
             self.__session,
-            self.__explicit_session)
+            self.__explicit_session,
+        )
         if not self.__explicit_session:
             self.__session = None
         self.__sock_mgr = None
@@ -92,12 +102,11 @@ class CommandCursor(object):
             self.__session._end_session(lock=synchronous)
             self.__session = None
 
-    def close(self):
-        """Explicitly close / kill this cursor.
-        """
+    def close(self) -> None:
+        """Explicitly close / kill this cursor."""
         self.__die(True)
 
-    def batch_size(self, batch_size):
+    def batch_size(self, batch_size: int) -> "CommandCursor[_DocumentType]":
         """Limits the number of documents returned in one batch. Each batch
         requires a round trip to the server. It can be adjusted to optimize
         performance and limit data transfer.
@@ -147,12 +156,12 @@ class CommandCursor(object):
                 self.__sock_mgr = sock_mgr
 
     def __send_message(self, operation):
-        """Send a getmore message and handle the response.
-        """
+        """Send a getmore message and handle the response."""
         client = self.__collection.database.client
         try:
             response = client._run_operation(
-                operation, self._unpack_response, address=self.__address)
+                operation, self._unpack_response, address=self.__address
+            )
         except OperationFailure as exc:
             if exc.code in _CURSOR_CLOSED_ERRORS:
                 # Don't send killCursors because the cursor is already closed.
@@ -172,13 +181,12 @@ class CommandCursor(object):
 
         if isinstance(response, PinnedResponse):
             if not self.__sock_mgr:
-                self.__sock_mgr = _SocketManager(response.socket_info,
-                                                 response.more_to_come)
+                self.__sock_mgr = _SocketManager(response.socket_info, response.more_to_come)
         if response.from_command:
-            cursor = response.docs[0]['cursor']
-            documents = cursor['nextBatch']
-            self.__postbatchresumetoken = cursor.get('postBatchResumeToken')
-            self.__id = cursor['id']
+            cursor = response.docs[0]["cursor"]
+            documents = cursor["nextBatch"]
+            self.__postbatchresumetoken = cursor.get("postBatchResumeToken")
+            self.__id = cursor["id"]
         else:
             documents = response.docs
             self.__id = response.data.cursor_id
@@ -187,10 +195,10 @@ class CommandCursor(object):
             self.close()
         self.__data = deque(documents)
 
-    def _unpack_response(self, response, cursor_id, codec_options,
-                         user_fields=None, legacy_response=False):
-        return response.unpack_response(cursor_id, codec_options, user_fields,
-                                        legacy_response)
+    def _unpack_response(
+        self, response, cursor_id, codec_options, user_fields=None, legacy_response=False
+    ):
+        return response.unpack_response(cursor_id, codec_options, user_fields, legacy_response)
 
     def _refresh(self):
         """Refreshes the cursor with more data from the server.
@@ -203,26 +211,31 @@ class CommandCursor(object):
             return len(self.__data)
 
         if self.__id:  # Get More
-            dbname, collname = self.__ns.split('.', 1)
+            dbname, collname = self.__ns.split(".", 1)
             read_pref = self.__collection._read_preference_for(self.session)
             self.__send_message(
-                self._getmore_class(dbname,
-                                    collname,
-                                    self.__batch_size,
-                                    self.__id,
-                                    self.__collection.codec_options,
-                                    read_pref,
-                                    self.__session,
-                                    self.__collection.database.client,
-                                    self.__max_await_time_ms,
-                                    self.__sock_mgr, False))
+                self._getmore_class(
+                    dbname,
+                    collname,
+                    self.__batch_size,
+                    self.__id,
+                    self.__collection.codec_options,
+                    read_pref,
+                    self.__session,
+                    self.__collection.database.client,
+                    self.__max_await_time_ms,
+                    self.__sock_mgr,
+                    False,
+                    self.__comment,
+                )
+            )
         else:  # Cursor id is zero nothing else to return
             self.__die(True)
 
         return len(self.__data)
 
     @property
-    def alive(self):
+    def alive(self) -> bool:
         """Does this cursor have the potential to return more data?
 
         Even if :attr:`alive` is ``True``, :meth:`next` can raise
@@ -239,12 +252,12 @@ class CommandCursor(object):
         return bool(len(self.__data) or (not self.__killed))
 
     @property
-    def cursor_id(self):
+    def cursor_id(self) -> int:
         """Returns the id of the cursor."""
         return self.__id
 
     @property
-    def address(self):
+    def address(self) -> Optional[_Address]:
         """The (host, port) of the server used, or None.
 
         .. versionadded:: 3.0
@@ -252,18 +265,19 @@ class CommandCursor(object):
         return self.__address
 
     @property
-    def session(self):
+    def session(self) -> Optional["ClientSession"]:
         """The cursor's :class:`~pymongo.client_session.ClientSession`, or None.
 
         .. versionadded:: 3.6
         """
         if self.__explicit_session:
             return self.__session
+        return None
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[_DocumentType]:
         return self
 
-    def next(self):
+    def next(self) -> _DocumentType:
         """Advance the cursor."""
         # Block until a document is returnable.
         while self.alive:
@@ -284,19 +298,27 @@ class CommandCursor(object):
         else:
             return None
 
-    def __enter__(self):
+    def __enter__(self) -> "CommandCursor[_DocumentType]":
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
 
-class RawBatchCommandCursor(CommandCursor):
+class RawBatchCommandCursor(CommandCursor, Generic[_DocumentType]):
     _getmore_class = _RawBatchGetMore
 
-    def __init__(self, collection, cursor_info, address,
-                 batch_size=0, max_await_time_ms=None, session=None,
-                 explicit_session=False):
+    def __init__(
+        self,
+        collection: "Collection[_DocumentType]",
+        cursor_info: Mapping[str, Any],
+        address: Optional[_Address],
+        batch_size: int = 0,
+        max_await_time_ms: Optional[int] = None,
+        session: Optional["ClientSession"] = None,
+        explicit_session: bool = False,
+        comment: Any = None,
+    ) -> None:
         """Create a new cursor / iterator over raw batches of BSON data.
 
         Should not be called directly by application developers -
@@ -305,20 +327,27 @@ class RawBatchCommandCursor(CommandCursor):
 
         .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
         """
-        assert not cursor_info.get('firstBatch')
+        assert not cursor_info.get("firstBatch")
         super(RawBatchCommandCursor, self).__init__(
-            collection, cursor_info, address, batch_size,
-            max_await_time_ms, session, explicit_session)
+            collection,
+            cursor_info,
+            address,
+            batch_size,
+            max_await_time_ms,
+            session,
+            explicit_session,
+            comment,
+        )
 
-    def _unpack_response(self, response, cursor_id, codec_options,
-                         user_fields=None, legacy_response=False):
-        raw_response = response.raw_response(
-            cursor_id, user_fields=user_fields)
+    def _unpack_response(
+        self, response, cursor_id, codec_options, user_fields=None, legacy_response=False
+    ):
+        raw_response = response.raw_response(cursor_id, user_fields=user_fields)
         if not legacy_response:
             # OP_MSG returns firstBatch/nextBatch documents as a BSON array
             # Re-assemble the array of documents into a document stream
             _convert_raw_document_lists_to_streams(raw_response[0])
         return raw_response
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> NoReturn:
         raise InvalidOperation("Cannot call __getitem__ on RawBatchCursor")

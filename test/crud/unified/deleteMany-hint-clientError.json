@@ -1,6 +1,6 @@
 {
   "description": "deleteMany-hint-clientError",
-  "schemaVersion": "1.1",
+  "schemaVersion": "1.0",
   "runOnRequirements": [
     {
       "maxServerVersion": "3.3.99"

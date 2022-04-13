@@ -17,19 +17,18 @@
 from datetime import datetime
 
 from bson import _decode_all_selective
-
 from pymongo.errors import NotPrimaryError, OperationFailure
 from pymongo.helpers import _check_command_response
 from pymongo.message import _convert_exception, _OpMsg
-from pymongo.response import Response, PinnedResponse
-from pymongo.server_type import SERVER_TYPE
+from pymongo.response import PinnedResponse, Response
 
-_CURSOR_DOC_FIELDS = {'cursor': {'firstBatch': 1, 'nextBatch': 1}}
+_CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
 
 
 class Server(object):
-    def __init__(self, server_description, pool, monitor, topology_id=None,
-                 listeners=None, events=None):
+    def __init__(
+        self, server_description, pool, monitor, topology_id=None, listeners=None, events=None
+    ):
         """Represent one MongoDB server."""
         self._description = server_description
         self._pool = pool
@@ -59,8 +58,14 @@ class Server(object):
         Reconnect with open().
         """
         if self._publish:
-            self._events.put((self._listener.publish_server_closed,
-                              (self._description.address, self._topology_id)))
+            assert self._listener is not None
+            assert self._events is not None
+            self._events.put(
+                (
+                    self._listener.publish_server_closed,
+                    (self._description.address, self._topology_id),
+                )
+            )
         self._monitor.close()
         self._pool.reset_without_pause()
 
@@ -68,8 +73,7 @@ class Server(object):
         """Check the server's state soon."""
         self._monitor.request_check()
 
-    def run_operation(self, sock_info, operation, set_slave_okay, listeners,
-                      unpack_res):
+    def run_operation(self, sock_info, operation, read_preference, listeners, unpack_res):
         """Run a _Query or _GetMore operation and return a Response object.
 
         This method is used only to run _Query/_GetMore operations from
@@ -77,9 +81,9 @@ class Server(object):
         Can raise ConnectionFailure, OperationFailure, etc.
 
         :Parameters:
+          - `sock_info`: A SocketInfo instance.
           - `operation`: A _Query or _GetMore object.
-          - `set_slave_okay`: Pass to operation.get_message.
-          - `all_credentials`: dict, maps auth source to MongoCredential.
+          - `set_secondary_okay`: Pass to operation.get_message.
           - `listeners`: Instance of _EventListeners or None.
           - `unpack_res`: A callable that decodes the wire protocol response.
         """
@@ -89,20 +93,18 @@ class Server(object):
             start = datetime.now()
 
         use_cmd = operation.use_command(sock_info)
-        more_to_come = (operation.sock_mgr
-                        and operation.sock_mgr.more_to_come)
+        more_to_come = operation.sock_mgr and operation.sock_mgr.more_to_come
         if more_to_come:
             request_id = 0
         else:
-            message = operation.get_message(
-                set_slave_okay, sock_info, use_cmd)
+            message = operation.get_message(read_preference, sock_info, use_cmd)
             request_id, data, max_doc_size = self._split_message(message)
 
         if publish:
             cmd, dbn = operation.as_command(sock_info)
             listeners.publish_command_start(
-                cmd, dbn, request_id, sock_info.address,
-                service_id=sock_info.service_id)
+                cmd, dbn, request_id, sock_info.address, service_id=sock_info.service_id
+            )
             start = datetime.now()
 
         try:
@@ -119,10 +121,13 @@ class Server(object):
             else:
                 user_fields = None
                 legacy_response = True
-            docs = unpack_res(reply, operation.cursor_id,
-                              operation.codec_options,
-                              legacy_response=legacy_response,
-                              user_fields=user_fields)
+            docs = unpack_res(
+                reply,
+                operation.cursor_id,
+                operation.codec_options,
+                legacy_response=legacy_response,
+                user_fields=user_fields,
+            )
             if use_cmd:
                 first = docs[0]
                 operation.client._process_response(first, operation.session)
@@ -135,9 +140,13 @@ class Server(object):
                 else:
                     failure = _convert_exception(exc)
                 listeners.publish_command_failure(
-                    duration, failure, operation.name,
-                    request_id, sock_info.address,
-                    service_id=sock_info.service_id)
+                    duration,
+                    failure,
+                    operation.name,
+                    request_id,
+                    sock_info.address,
+                    service_id=sock_info.service_id,
+                )
             raise
 
         if publish:
@@ -149,25 +158,28 @@ class Server(object):
             elif operation.name == "explain":
                 res = docs[0] if docs else {}
             else:
-                res = {"cursor": {"id": reply.cursor_id,
-                                  "ns": operation.namespace()},
-                       "ok": 1}
+                res = {"cursor": {"id": reply.cursor_id, "ns": operation.namespace()}, "ok": 1}
                 if operation.name == "find":
                     res["cursor"]["firstBatch"] = docs
                 else:
                     res["cursor"]["nextBatch"] = docs
             listeners.publish_command_success(
-                duration, res, operation.name, request_id,
-                sock_info.address, service_id=sock_info.service_id)
+                duration,
+                res,
+                operation.name,
+                request_id,
+                sock_info.address,
+                service_id=sock_info.service_id,
+            )
 
         # Decrypt response.
         client = operation.client
         if client and client._encrypter:
             if use_cmd:
-                decrypted = client._encrypter.decrypt(
-                    reply.raw_command_response())
-                docs = _decode_all_selective(
-                    decrypted, operation.codec_options, user_fields)
+                decrypted = client._encrypter.decrypt(reply.raw_command_response())
+                docs = _decode_all_selective(decrypted, operation.codec_options, user_fields)
+
+        response: Response
 
         if client._should_pin_cursor(operation.session) or operation.exhaust:
             sock_info.pin_cursor()
@@ -188,7 +200,8 @@ class Server(object):
                 request_id=request_id,
                 from_command=use_cmd,
                 docs=docs,
-                more_to_come=more_to_come)
+                more_to_come=more_to_come,
+            )
         else:
             response = Response(
                 data=reply,
@@ -196,12 +209,13 @@ class Server(object):
                 duration=duration,
                 request_id=request_id,
                 from_command=use_cmd,
-                docs=docs)
+                docs=docs,
+            )
 
         return response
 
-    def get_socket(self, all_credentials, handler=None):
-        return self.pool.get_socket(all_credentials, handler)
+    def get_socket(self, handler=None):
+        return self.pool.get_socket(handler)
 
     @property
     def description(self):
@@ -230,4 +244,4 @@ class Server(object):
             return request_id, data, 0
 
     def __repr__(self):
-        return '<%s %r>' % (self.__class__.__name__, self._description)
+        return "<%s %r>" % (self.__class__.__name__, self._description)

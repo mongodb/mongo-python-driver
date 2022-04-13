@@ -14,28 +14,38 @@
 
 """Support for automatic client-side field level encryption."""
 
-import copy
+from typing import TYPE_CHECKING, Any, List, Mapping, Optional
 
 try:
-    import pymongocrypt
+    import pymongocrypt  # noqa: F401
+
     _HAVE_PYMONGOCRYPT = True
 except ImportError:
     _HAVE_PYMONGOCRYPT = False
 
 from pymongo.errors import ConfigurationError
+from pymongo.uri_parser import _parse_kms_tls_options
+
+if TYPE_CHECKING:
+    from pymongo.mongo_client import MongoClient
 
 
 class AutoEncryptionOpts(object):
     """Options to configure automatic client-side field level encryption."""
 
-    def __init__(self, kms_providers, key_vault_namespace,
-                 key_vault_client=None,
-                 schema_map=None,
-                 bypass_auto_encryption=False,
-                 mongocryptd_uri='mongodb://localhost:27020',
-                 mongocryptd_bypass_spawn=False,
-                 mongocryptd_spawn_path='mongocryptd',
-                 mongocryptd_spawn_args=None):
+    def __init__(
+        self,
+        kms_providers: Mapping[str, Any],
+        key_vault_namespace: str,
+        key_vault_client: Optional["MongoClient"] = None,
+        schema_map: Optional[Mapping[str, Any]] = None,
+        bypass_auto_encryption: Optional[bool] = False,
+        mongocryptd_uri: str = "mongodb://localhost:27020",
+        mongocryptd_bypass_spawn: bool = False,
+        mongocryptd_spawn_path: str = "mongocryptd",
+        mongocryptd_spawn_args: Optional[List[str]] = None,
+        kms_tls_options: Optional[Mapping[str, Any]] = None,
+    ) -> None:
         """Options to configure automatic client-side field level encryption.
 
         Automatic client-side field level encryption requires MongoDB 4.2
@@ -53,9 +63,8 @@ class AutoEncryptionOpts(object):
         See :ref:`automatic-client-side-encryption` for an example.
 
         :Parameters:
-          - `kms_providers`: Map of KMS provider options. Two KMS providers
-            are supported: "aws" and "local". The kmsProviders map values
-            differ by provider:
+          - `kms_providers`: Map of KMS provider options. The `kms_providers`
+            map values differ by provider:
 
               - `aws`: Map with "accessKeyId" and "secretAccessKey" as strings.
                 These are the AWS access key ID and AWS secret access key used
@@ -71,6 +80,8 @@ class AutoEncryptionOpts(object):
                 Additionally, "endpoint" may also be specified as a string
                 (defaults to 'oauth2.googleapis.com'). These are the
                 credentials used to generate Google Cloud KMS messages.
+              - `kmip`: Map with "endpoint" as a host with required port.
+                For example: ``{"endpoint": "example.com:443"}``.
               - `local`: Map with "key" as `bytes` (96 bytes in length) or
                 a base64 encoded string which decodes
                 to 96 bytes. "key" is the master key used to encrypt/decrypt
@@ -118,6 +129,20 @@ class AutoEncryptionOpts(object):
             ``['--idleShutdownTimeoutSecs=60']``. If the list does not include
             the ``idleShutdownTimeoutSecs`` option then
             ``'--idleShutdownTimeoutSecs=60'`` will be added.
+          - `kms_tls_options` (optional):  A map of KMS provider names to TLS
+            options to use when creating secure connections to KMS providers.
+            Accepts the same TLS options as
+            :class:`pymongo.mongo_client.MongoClient`. For example, to
+            override the system default CA file::
+
+              kms_tls_options={'kmip': {'tlsCAFile': certifi.where()}}
+
+            Or to supply a client certificate::
+
+              kms_tls_options={'kmip': {'tlsCertificateKeyFile': 'client.pem'}}
+
+        .. versionchanged:: 4.0
+           Added the `kms_tls_options` parameter and the "kmip" KMS provider.
 
         .. versionadded:: 3.9
         """
@@ -125,7 +150,8 @@ class AutoEncryptionOpts(object):
             raise ConfigurationError(
                 "client side encryption requires the pymongocrypt library: "
                 "install a compatible version with: "
-                "python -m pip install 'pymongo[encryption]'")
+                "python -m pip install 'pymongo[encryption]'"
+            )
 
         self._kms_providers = kms_providers
         self._key_vault_namespace = key_vault_namespace
@@ -135,21 +161,12 @@ class AutoEncryptionOpts(object):
         self._mongocryptd_uri = mongocryptd_uri
         self._mongocryptd_bypass_spawn = mongocryptd_bypass_spawn
         self._mongocryptd_spawn_path = mongocryptd_spawn_path
-        self._mongocryptd_spawn_args = (copy.copy(mongocryptd_spawn_args) or
-                                        ['--idleShutdownTimeoutSecs=60'])
+        if mongocryptd_spawn_args is None:
+            mongocryptd_spawn_args = ["--idleShutdownTimeoutSecs=60"]
+        self._mongocryptd_spawn_args = mongocryptd_spawn_args
         if not isinstance(self._mongocryptd_spawn_args, list):
-            raise TypeError('mongocryptd_spawn_args must be a list')
-        if not any('idleShutdownTimeoutSecs' in s
-                   for s in self._mongocryptd_spawn_args):
-            self._mongocryptd_spawn_args.append('--idleShutdownTimeoutSecs=60')
-
-
-def validate_auto_encryption_opts_or_none(option, value):
-    """Validate the driver keyword arg."""
-    if value is None:
-        return value
-    if not isinstance(value, AutoEncryptionOpts):
-        raise TypeError("%s must be an instance of AutoEncryptionOpts" % (
-            option,))
-
-    return value
+            raise TypeError("mongocryptd_spawn_args must be a list")
+        if not any("idleShutdownTimeoutSecs" in s for s in self._mongocryptd_spawn_args):
+            self._mongocryptd_spawn_args.append("--idleShutdownTimeoutSecs=60")
+        # Maps KMS provider name to a SSLContext.
+        self._kms_ssl_contexts = _parse_kms_tls_options(kms_tls_options)

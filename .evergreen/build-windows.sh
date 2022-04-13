@@ -8,9 +8,9 @@ rm -rf validdist
 mkdir -p validdist
 mv dist/* validdist || true
 
-for VERSION in 36 37 38 39; do
-    _pythons=(C:/Python/Python${VERSION}/python.exe \
-              C:/Python/32/Python${VERSION}/python.exe)
+for VERSION in 36 37 38 39 310; do
+    _pythons=("C:/Python/Python${VERSION}/python.exe" \
+              "C:/Python/32/Python${VERSION}/python.exe")
     for PYTHON in "${_pythons[@]}"; do
         rm -rf build
         $PYTHON setup.py bdist_wheel

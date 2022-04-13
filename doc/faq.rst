@@ -145,7 +145,7 @@ they are returned to the pool.
 Does PyMongo support Python 3?
 ------------------------------
 
-PyMongo supports CPython 3.6+ and PyPy3.6+. See the :doc:`python3` for details.
+PyMongo supports CPython 3.6.2+ and PyPy3.6+. See the :doc:`python3` for details.
 
 Does PyMongo support asynchronous frameworks like Gevent, asyncio, Tornado, or Twisted?
 ---------------------------------------------------------------------------------------
@@ -264,12 +264,7 @@ collection, configured to use :class:`~bson.son.SON` instead of dict:
   >>> from bson import CodecOptions, SON
   >>> opts = CodecOptions(document_class=SON)
   >>> opts
-  CodecOptions(document_class=<class 'bson.son.SON'>,
-               tz_aware=False,
-               uuid_representation=UuidRepresentation.PYTHON_LEGACY,
-               unicode_decode_error_handler='strict',
-               tzinfo=None, type_registry=TypeRegistry(type_codecs=[],
-                                                       fallback_encoder=None))
+  CodecOptions(document_class=...SON..., tz_aware=False, uuid_representation=UuidRepresentation.UNSPECIFIED, unicode_decode_error_handler='strict', tzinfo=None, type_registry=TypeRegistry(type_codecs=[], fallback_encoder=None))
   >>> collection_son = collection.with_options(codec_options=opts)
 
 Now, documents and subdocuments in query results are represented with
@@ -319,7 +314,7 @@ when it is serialized to BSON and used as a query. Thus you can create a
 subdocument that exactly matches the subdocument in the collection.
 
 .. seealso:: `MongoDB Manual entry on subdocument matching
-   <http://docs.mongodb.org/manual/tutorial/query-documents/#embedded-documents>`_.
+   <https://docs.mongodb.com/manual/tutorial/query-embedded-documents/>`_.
 
 What does *CursorNotFound* cursor id not valid at server mean?
 --------------------------------------------------------------

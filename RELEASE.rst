@@ -55,48 +55,43 @@ Doing a Release
 8. Push commit / tag, eg ``git push && git push --tags``.
 
 9. Pushing a tag will trigger a release process in Evergreen which builds
-   wheels and eggs for manylinux, macOS, and Windows. Wait for these jobs to
-   complete and then download the "Release files" archive from each task. See:
+   wheels for manylinux, macOS, and Windows. Wait for the "release-combine"
+   task to complete and then download the "Release files all" archive. See:
    https://evergreen.mongodb.com/waterfall/mongo-python-driver?bv_filter=release
 
-   Unpack each downloaded archive so that we can upload the included files. For
-   the next steps let's assume we unpacked these files into the following paths::
+   The contents should look like this::
 
-     $ ls path/to/manylinux
+     $ ls path/to/archive
+     pymongo-<version>-cp310-cp310-macosx_10_9_universal2.whl
+     ...
      pymongo-<version>-cp38-cp38-manylinux2014_x86_64.whl
      ...
-     $ ls path/to/windows/
      pymongo-<version>-cp38-cp38-win_amd64.whl
      ...
-
-10. Build the source distribution::
-
-     $ git clone git@github.com:mongodb/mongo-python-driver.git
-     $ cd mongo-python-driver
-     $ git checkout "<release version number>"
-     $ python3 setup.py sdist
-
-    This will create the following distribution::
-
-     $ ls dist
      pymongo-<version>.tar.gz
 
-11. Upload all the release packages to PyPI with twine::
+10. Upload all the release packages to PyPI with twine::
 
-     $ python3 -m twine upload dist/*.tar.gz path/to/manylinux/* path/to/mac/* path/to/windows/*
+     $ python3 -m twine upload path/to/archive/*
 
-12. Make sure the new version appears on https://pymongo.readthedocs.io/. If the
+11. Make sure the new version appears on https://pymongo.readthedocs.io/. If the
     new version does not show up automatically, trigger a rebuild of "latest":
     https://readthedocs.org/projects/pymongo/builds/
 
-13. Bump the version number to <next version>.dev0 in setup.py/__init__.py,
+12. Bump the version number to <next version>.dev0 in setup.py/__init__.py,
     commit, push.
 
-14. Publish the release version in Jira.
+13. Publish the release version in Jira.
 
-15. Announce the release on:
+14. Announce the release on:
     https://developer.mongodb.com/community/forums/c/community/release-notes/
 
-16. File a ticket for DOCSP highlighting changes in server version and Python
+15. File a ticket for DOCSP highlighting changes in server version and Python
     version compatibility or the lack thereof, for example:
     https://jira.mongodb.org/browse/DOCSP-13536
+
+16. Create a GitHub Release for the tag using
+    https://github.com/mongodb/mongo-python-driver/releases/new.
+    The title should be "PyMongo X.Y.Z", and the description should contain
+    a link to the release notes on the the community forum, e.g.
+    "Release notes: mongodb.com/community/forums/t/pymongo-4-0-2-released/150457."

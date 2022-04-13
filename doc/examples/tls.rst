@@ -32,7 +32,7 @@ MongoDB.
 
   You can read more about TLS versions and their security implications here:
 
-  `<https://www.owasp.org/index.php/Transport_Layer_Protection_Cheat_Sheet#Rule_-_Only_Support_Strong_Protocols>`_
+  `<https://cheatsheetseries.owasp.org/cheatsheets/Transport_Layer_Protection_Cheat_Sheet.html#only-support-strong-protocols>`_
 
 .. _python.org: https://www.python.org/downloads/
 .. _homebrew: https://brew.sh/
@@ -182,7 +182,7 @@ server's certificate::
 This often occurs because OpenSSL does not have access to the system's
 root certificates or the certificates are out of date. Linux users should
 ensure that they have the latest root certificate updates installed from
-their Linux vendor. macOS users using Python 3.6.0 or newer downloaded
+their Linux vendor. macOS users using Python 3.6.2 or newer downloaded
 from python.org `may have to run a script included with python
 <https://bugs.python.org/issue29065#msg283984>`_ to install
 root certificates::
@@ -214,3 +214,21 @@ revocation checking failed::
   [('SSL routines', 'tls_process_initial_server_flight', 'invalid status response')]
 
 See :ref:`OCSP` for more details.
+
+Python 3.10+ incompatibilities with TLS/SSL on MongoDB <= 4.0
+.............................................................
+
+Note that `changes made to the ssl module in Python 3.10+
+<https://docs.python.org/3/whatsnew/3.10.html#ssl>`_ may cause incompatibilities
+with MongoDB <= 4.0. The following are some example errors that may occur with this
+combination::
+
+  SSL handshake failed: localhost:27017: [SSL: SSLV3_ALERT_HANDSHAKE_FAILURE] sslv3 alert handshake failure (_ssl.c:997)
+  SSL handshake failed: localhost:27017: EOF occurred in violation of protocol (_ssl.c:997)
+
+The MongoDB server logs may show the following error::
+
+  2021-06-30T21:22:44.917+0100 E NETWORK  [conn16] SSL: error:1408A0C1:SSL routines:ssl3_get_client_hello:no shared cipher
+
+To resolve this issue, use Python <=3.10, upgrade to MongoDB 4.2+, or install
+pymongo with the :ref:`OCSP` extra which relies on PyOpenSSL.

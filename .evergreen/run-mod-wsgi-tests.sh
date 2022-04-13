@@ -4,7 +4,7 @@ set -o errexit
 
 APACHE=$(command -v apache2 || command -v /usr/lib/apache2/mpm-prefork/apache2) || true
 if [ -n "$APACHE" ]; then
-    APACHE_CONFIG=apache22ubuntu1204.conf
+    APACHE_CONFIG=apache24ubuntu161404.conf
 else
     APACHE=$(command -v httpd) || true
     if [ -z "$APACHE" ]; then
@@ -23,7 +23,7 @@ export PYTHONHOME=/opt/python/$PYTHON_VERSION
 
 cd ..
 $APACHE -k start -f ${PROJECT_DIRECTORY}/test/mod_wsgi_test/${APACHE_CONFIG}
-trap "$APACHE -k stop -f ${PROJECT_DIRECTORY}/test/mod_wsgi_test/${APACHE_CONFIG}" EXIT HUP
+trap '$APACHE -k stop -f ${PROJECT_DIRECTORY}/test/mod_wsgi_test/${APACHE_CONFIG}' EXIT HUP
 
 set +e
 wget -t 1 -T 10 -O - "http://localhost:8080${PROJECT_DIRECTORY}"

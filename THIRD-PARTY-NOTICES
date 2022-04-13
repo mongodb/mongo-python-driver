@@ -4,7 +4,7 @@ be distributed under licenses different than the PyMongo software.
 In the event that we accidentally failed to list a required notice,
 please bring it to our attention through any of the ways detailed here:
 
-           mongodb-dev@googlegroups.com
+           https://jira.mongodb.org/projects/PYTHON
 
 The attached notices are provided for information only.
 
@@ -94,4 +94,3 @@ supplied in this file in the creation of products supporting the
 Unicode Standard, and to make copies of this file in any form
 for internal or external distribution as long as this notice
 remains attached.
-

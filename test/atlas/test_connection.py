@@ -17,7 +17,6 @@
 import os
 import sys
 import unittest
-
 from collections import defaultdict
 
 sys.path[0:0] = [""]
@@ -26,7 +25,8 @@ import pymongo
 from pymongo.ssl_support import HAS_SNI
 
 try:
-    import dns
+    import dns  # noqa
+
     HAS_DNS = True
 except ImportError:
     HAS_DNS = False
@@ -57,59 +57,59 @@ def connect(uri):
         raise Exception("Must set env variable to test.")
     client = pymongo.MongoClient(uri)
     # No TLS error
-    client.admin.command('ismaster')
+    client.admin.command("ping")
     # No auth error
     client.test.test.count_documents({})
 
 
 class TestAtlasConnect(unittest.TestCase):
-    @unittest.skipUnless(HAS_SNI, 'Free tier requires SNI support')
+    @unittest.skipUnless(HAS_SNI, "Free tier requires SNI support")
     def test_free_tier(self):
-        connect(URIS['ATLAS_FREE'])
+        connect(URIS["ATLAS_FREE"])
 
     def test_replica_set(self):
-        connect(URIS['ATLAS_REPL'])
+        connect(URIS["ATLAS_REPL"])
 
     def test_sharded_cluster(self):
-        connect(URIS['ATLAS_SHRD'])
+        connect(URIS["ATLAS_SHRD"])
 
     def test_tls_11(self):
-        connect(URIS['ATLAS_TLS11'])
+        connect(URIS["ATLAS_TLS11"])
 
     def test_tls_12(self):
-        connect(URIS['ATLAS_TLS12'])
+        connect(URIS["ATLAS_TLS12"])
 
     def test_serverless(self):
-        connect(URIS['ATLAS_SERVERLESS'])
+        connect(URIS["ATLAS_SERVERLESS"])
 
     def connect_srv(self, uri):
         connect(uri)
-        self.assertIn('mongodb+srv://', uri)
+        self.assertIn("mongodb+srv://", uri)
 
-    @unittest.skipUnless(HAS_SNI, 'Free tier requires SNI support')
-    @unittest.skipUnless(HAS_DNS or MUST_TEST_SRV, 'SRV requires dnspython')
+    @unittest.skipUnless(HAS_SNI, "Free tier requires SNI support")
+    @unittest.skipUnless(HAS_DNS or MUST_TEST_SRV, "SRV requires dnspython")
     def test_srv_free_tier(self):
-        self.connect_srv(URIS['ATLAS_SRV_FREE'])
+        self.connect_srv(URIS["ATLAS_SRV_FREE"])
 
-    @unittest.skipUnless(HAS_DNS or MUST_TEST_SRV, 'SRV requires dnspython')
+    @unittest.skipUnless(HAS_DNS or MUST_TEST_SRV, "SRV requires dnspython")
     def test_srv_replica_set(self):
-        self.connect_srv(URIS['ATLAS_SRV_REPL'])
+        self.connect_srv(URIS["ATLAS_SRV_REPL"])
 
-    @unittest.skipUnless(HAS_DNS or MUST_TEST_SRV, 'SRV requires dnspython')
+    @unittest.skipUnless(HAS_DNS or MUST_TEST_SRV, "SRV requires dnspython")
     def test_srv_sharded_cluster(self):
-        self.connect_srv(URIS['ATLAS_SRV_SHRD'])
+        self.connect_srv(URIS["ATLAS_SRV_SHRD"])
 
-    @unittest.skipUnless(HAS_DNS or MUST_TEST_SRV, 'SRV requires dnspython')
+    @unittest.skipUnless(HAS_DNS or MUST_TEST_SRV, "SRV requires dnspython")
     def test_srv_tls_11(self):
-        self.connect_srv(URIS['ATLAS_SRV_TLS11'])
+        self.connect_srv(URIS["ATLAS_SRV_TLS11"])
 
-    @unittest.skipUnless(HAS_DNS or MUST_TEST_SRV, 'SRV requires dnspython')
+    @unittest.skipUnless(HAS_DNS or MUST_TEST_SRV, "SRV requires dnspython")
     def test_srv_tls_12(self):
-        self.connect_srv(URIS['ATLAS_SRV_TLS12'])
+        self.connect_srv(URIS["ATLAS_SRV_TLS12"])
 
-    @unittest.skipUnless(HAS_DNS or MUST_TEST_SRV, 'SRV requires dnspython')
+    @unittest.skipUnless(HAS_DNS or MUST_TEST_SRV, "SRV requires dnspython")
     def test_srv_serverless(self):
-        self.connect_srv(URIS['ATLAS_SRV_SERVERLESS'])
+        self.connect_srv(URIS["ATLAS_SRV_SERVERLESS"])
 
     def test_uniqueness(self):
         """Ensure that we don't accidentally duplicate the test URIs."""
@@ -117,11 +117,12 @@ class TestAtlasConnect(unittest.TestCase):
         for name, uri in URIS.items():
             if uri:
                 uri_to_names[uri].append(name)
-        duplicates = [names for names in uri_to_names.values()
-                      if len(names) > 1]
-        self.assertFalse(duplicates, 'Error: the following env variables have '
-                                     'duplicate values: %s' % (duplicates,))
+        duplicates = [names for names in uri_to_names.values() if len(names) > 1]
+        self.assertFalse(
+            duplicates,
+            "Error: the following env variables have duplicate values: %s" % (duplicates,),
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

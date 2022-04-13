@@ -14,6 +14,8 @@
 
 """Python driver for MongoDB."""
 
+from typing import Tuple, Union
+
 ASCENDING = 1
 """Ascending sort order."""
 DESCENDING = -1
@@ -53,35 +55,45 @@ TEXT = "text"
 .. _text index: http://docs.mongodb.org/manual/core/index-text/
 """
 
-version_tuple = (4, 0, '.dev0')
+version_tuple: Tuple[Union[int, str], ...] = (4, 2, 0, ".dev0")
 
-def get_version_string():
+
+def get_version_string() -> str:
     if isinstance(version_tuple[-1], str):
-        return '.'.join(map(str, version_tuple[:-1])) + version_tuple[-1]
-    return '.'.join(map(str, version_tuple))
+        return ".".join(map(str, version_tuple[:-1])) + version_tuple[-1]
+    return ".".join(map(str, version_tuple))
 
-__version__ = version = get_version_string()
+
+__version__: str = get_version_string()
+version = __version__
+
 """Current version of PyMongo."""
 
-from pymongo.collection import ReturnDocument
-from pymongo.common import (MIN_SUPPORTED_WIRE_VERSION,
-                            MAX_SUPPORTED_WIRE_VERSION)
-from pymongo.cursor import CursorType
-from pymongo.mongo_client import MongoClient
-from pymongo.operations import (IndexModel,
-                                InsertOne,
-                                DeleteOne,
-                                DeleteMany,
-                                UpdateOne,
-                                UpdateMany,
-                                ReplaceOne)
-from pymongo.read_preferences import ReadPreference
-from pymongo.write_concern import WriteConcern
+from pymongo.collection import ReturnDocument  # noqa: F401
+from pymongo.common import (  # noqa: F401
+    MAX_SUPPORTED_WIRE_VERSION,
+    MIN_SUPPORTED_WIRE_VERSION,
+)
+from pymongo.cursor import CursorType  # noqa: F401
+from pymongo.mongo_client import MongoClient  # noqa: F401
+from pymongo.operations import (  # noqa: F401
+    DeleteMany,
+    DeleteOne,
+    IndexModel,
+    InsertOne,
+    ReplaceOne,
+    UpdateMany,
+    UpdateOne,
+)
+from pymongo.read_preferences import ReadPreference  # noqa: F401
+from pymongo.write_concern import WriteConcern  # noqa: F401
 
-def has_c():
+
+def has_c() -> bool:
     """Is the C extension installed?"""
     try:
-        from pymongo import _cmessage
+        from pymongo import _cmessage  # type: ignore[attr-defined] # noqa: F401
+
         return True
     except ImportError:
         return False

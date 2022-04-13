@@ -74,11 +74,6 @@ of operations performed.
    'writeConcernErrors': [],
    'writeErrors': []}
 
-.. warning:: ``nModified`` is only reported by MongoDB 2.6 and later. When
-  connected to an earlier server version, or in certain mixed version sharding
-  configurations, PyMongo omits this field from the results of a bulk
-  write operation.
-
 The first write failure that occurs (e.g. duplicate key error) aborts the
 remaining operations, and PyMongo raises
 :class:`~pymongo.errors.BulkWriteError`. The :attr:`details` attibute of
@@ -150,7 +145,7 @@ and fourth operations succeed.
                     'index': 0,...
                     'op': {'_id': 1}},
                    {'code': 11000,
-                    'errmsg': '...E11000...duplicate key error...',
+                    'errmsg': '...',
                     'index': 2,...
                     'op': {'_id': 3}}]}
 

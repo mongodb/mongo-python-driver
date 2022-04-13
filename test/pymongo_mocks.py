@@ -15,18 +15,16 @@
 """Tools for mocking parts of PyMongo to test other parts."""
 
 import contextlib
-from functools import partial
 import weakref
+from functools import partial
+from test import client_context
 
-from pymongo import common
-from pymongo import MongoClient
+from pymongo import MongoClient, common
 from pymongo.errors import AutoReconnect, NetworkTimeout
-from pymongo.hello import Hello
+from pymongo.hello import Hello, HelloCompat
 from pymongo.monitor import Monitor
 from pymongo.pool import Pool
 from pymongo.server_description import ServerDescription
-
-from test import client_context
 
 
 class MockPool(Pool):
@@ -40,18 +38,17 @@ class MockPool(Pool):
         Pool.__init__(self, (client_context.host, client_context.port), *args, **kwargs)
 
     @contextlib.contextmanager
-    def get_socket(self, all_credentials, handler=None):
+    def get_socket(self, handler=None):
         client = self.client
-        host_and_port = '%s:%s' % (self.mock_host, self.mock_port)
+        host_and_port = "%s:%s" % (self.mock_host, self.mock_port)
         if host_and_port in client.mock_down_hosts:
-            raise AutoReconnect('mock error')
+            raise AutoReconnect("mock error")
 
         assert host_and_port in (
-            client.mock_standalones
-            + client.mock_members
-            + client.mock_mongoses), "bad host: %s" % host_and_port
+            client.mock_standalones + client.mock_members + client.mock_mongoses
+        ), ("bad host: %s" % host_and_port)
 
-        with Pool.get_socket(self, all_credentials, handler) as sock_info:
+        with Pool.get_socket(self, handler) as sock_info:
             sock_info.mock_host = self.mock_host
             sock_info.mock_port = self.mock_port
             yield sock_info
@@ -79,40 +76,37 @@ class DummyMonitor(object):
 
 
 class MockMonitor(Monitor):
-    def __init__(
-            self,
-            client,
-            server_description,
-            topology,
-            pool,
-            topology_settings):
+    def __init__(self, client, server_description, topology, pool, topology_settings):
         # MockMonitor gets a 'client' arg, regular monitors don't. Weakref it
         # to avoid cycles.
         self.client = weakref.proxy(client)
-        Monitor.__init__(
-            self,
-            server_description,
-            topology,
-            pool,
-            topology_settings)
+        Monitor.__init__(self, server_description, topology, pool, topology_settings)
 
     def _check_once(self):
         client = self.client
         address = self._server_description.address
-        response, rtt = client.mock_is_master('%s:%d' % address)
+        response, rtt = client.mock_hello("%s:%d" % address)
         return ServerDescription(address, Hello(response), rtt)
 
 
 class MockClient(MongoClient):
     def __init__(
-            self, standalones, members, mongoses, ismaster_hosts=None,
-            arbiters=None, down_hosts=None, *args, **kwargs):
+        self,
+        standalones,
+        members,
+        mongoses,
+        hello_hosts=None,
+        arbiters=None,
+        down_hosts=None,
+        *args,
+        **kwargs
+    ):
         """A MongoClient connected to the default server, with a mock topology.
 
         standalones, members, mongoses, arbiters, and down_hosts determine the
         configuration of the topology. They are formatted like ['a:1', 'b:2'].
-        ismaster_hosts provides an alternative host list for the server's
-        mocked ismaster response; see test_connect_with_internal_ips.
+        hello_hosts provides an alternative host list for the server's
+        mocked hello response; see test_connect_with_internal_ips.
         """
         self.mock_standalones = standalones[:]
         self.mock_members = members[:]
@@ -125,10 +119,10 @@ class MockClient(MongoClient):
         # Hosts that should be considered an arbiter.
         self.mock_arbiters = arbiters[:] if arbiters else []
 
-        if ismaster_hosts is not None:
-            self.mock_ismaster_hosts = ismaster_hosts
+        if hello_hosts is not None:
+            self.mock_hello_hosts = hello_hosts
         else:
-            self.mock_ismaster_hosts = members[:]
+            self.mock_hello_hosts = members[:]
 
         self.mock_mongoses = mongoses[:]
 
@@ -144,8 +138,8 @@ class MockClient(MongoClient):
         # Hostname -> round trip time
         self.mock_rtts = {}
 
-        kwargs['_pool_class'] = partial(MockPool, self)
-        kwargs['_monitor_class'] = partial(MockMonitor, self)
+        kwargs["_pool_class"] = partial(MockPool, self)
+        kwargs["_monitor_class"] = partial(MockMonitor, self)
 
         client_options = client_context.default_client_options.copy()
         client_options.update(kwargs)
@@ -166,8 +160,8 @@ class MockClient(MongoClient):
     def set_max_write_batch_size(self, host, size):
         self.mock_max_write_batch_sizes[host] = size
 
-    def mock_is_master(self, host):
-        """Return mock ismaster response (a dict) and round trip time."""
+    def mock_hello(self, host):
+        """Return mock hello response (a dict) and round trip time."""
         if host in self.mock_wire_versions:
             min_wire_version, max_wire_version = self.mock_wire_versions[host]
         else:
@@ -175,53 +169,57 @@ class MockClient(MongoClient):
             max_wire_version = common.MAX_SUPPORTED_WIRE_VERSION
 
         max_write_batch_size = self.mock_max_write_batch_sizes.get(
-            host, common.MAX_WRITE_BATCH_SIZE)
+            host, common.MAX_WRITE_BATCH_SIZE
+        )
 
         rtt = self.mock_rtts.get(host, 0)
 
         # host is like 'a:1'.
         if host in self.mock_down_hosts:
-            raise NetworkTimeout('mock timeout')
+            raise NetworkTimeout("mock timeout")
 
         elif host in self.mock_standalones:
             response = {
-                'ok': 1,
-                'ismaster': True,
-                'minWireVersion': min_wire_version,
-                'maxWireVersion': max_wire_version,
-                'maxWriteBatchSize': max_write_batch_size}
+                "ok": 1,
+                HelloCompat.LEGACY_CMD: True,
+                "minWireVersion": min_wire_version,
+                "maxWireVersion": max_wire_version,
+                "maxWriteBatchSize": max_write_batch_size,
+            }
         elif host in self.mock_members:
-            ismaster = (host == self.mock_primary)
+            primary = host == self.mock_primary
 
             # Simulate a replica set member.
             response = {
-                'ok': 1,
-                'ismaster': ismaster,
-                'secondary': not ismaster,
-                'setName': 'rs',
-                'hosts': self.mock_ismaster_hosts,
-                'minWireVersion': min_wire_version,
-                'maxWireVersion': max_wire_version,
-                'maxWriteBatchSize': max_write_batch_size}
+                "ok": 1,
+                HelloCompat.LEGACY_CMD: primary,
+                "secondary": not primary,
+                "setName": "rs",
+                "hosts": self.mock_hello_hosts,
+                "minWireVersion": min_wire_version,
+                "maxWireVersion": max_wire_version,
+                "maxWriteBatchSize": max_write_batch_size,
+            }
 
             if self.mock_primary:
-                response['primary'] = self.mock_primary
+                response["primary"] = self.mock_primary
 
             if host in self.mock_arbiters:
-                response['arbiterOnly'] = True
-                response['secondary'] = False
+                response["arbiterOnly"] = True
+                response["secondary"] = False
         elif host in self.mock_mongoses:
             response = {
-                'ok': 1,
-                'ismaster': True,
-                'minWireVersion': min_wire_version,
-                'maxWireVersion': max_wire_version,
-                'msg': 'isdbgrid',
-                'maxWriteBatchSize': max_write_batch_size}
+                "ok": 1,
+                HelloCompat.LEGACY_CMD: True,
+                "minWireVersion": min_wire_version,
+                "maxWireVersion": max_wire_version,
+                "msg": "isdbgrid",
+                "maxWriteBatchSize": max_write_batch_size,
+            }
         else:
             # In test_internal_ips(), we try to connect to a host listed
-            # in ismaster['hosts'] but not publicly accessible.
-            raise AutoReconnect('Unknown host: %s' % host)
+            # in hello['hosts'] but not publicly accessible.
+            raise AutoReconnect("Unknown host: %s" % host)
 
         return response, rtt
 

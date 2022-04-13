@@ -52,11 +52,11 @@ At this point all of our nodes are up and running, but the set has yet
 to be initialized. Until the set is initialized no node will become
 the primary, and things are essentially "offline".
 
-To initialize the set we need to connect to a single node and run the
-initiate command::
+To initialize the set we need to connect directly to a single node and run the
+initiate command using the ``directConnection`` option::
 
   >>> from pymongo import MongoClient
-  >>> c = MongoClient('localhost', 27017)
+  >>> c = MongoClient('localhost', 27017, directConnection=True)
 
 .. note:: We could have connected to any of the other nodes instead,
    but only the node we initiate from is allowed to contain any
@@ -81,15 +81,19 @@ The initial connection as made above is a special case for an
 uninitialized replica set. Normally we'll want to connect
 differently. A connection to a replica set can be made using the
 :meth:`~pymongo.mongo_client.MongoClient` constructor, specifying
-one or more members of the set, along with the replica set name. Any of
-the following connects to the replica set we just created::
+one or more members of the set and optionally the replica set name.
+Any of the following connects to the replica set we just created::
 
+  >>> MongoClient('localhost')
+  MongoClient(host=['localhost:27017'], ...)
   >>> MongoClient('localhost', replicaset='foo')
   MongoClient(host=['localhost:27017'], replicaset='foo', ...)
   >>> MongoClient('localhost:27018', replicaset='foo')
   MongoClient(['localhost:27018'], replicaset='foo', ...)
   >>> MongoClient('localhost', 27019, replicaset='foo')
   MongoClient(['localhost:27019'], replicaset='foo', ...)
+  >>> MongoClient('mongodb://localhost:27017,localhost:27018/')
+  MongoClient(['localhost:27017', 'localhost:27018'], ...)
   >>> MongoClient('mongodb://localhost:27017,localhost:27018/?replicaSet=foo')
   MongoClient(['localhost:27017', 'localhost:27018'], replicaset='foo', ...)
 
@@ -304,7 +308,7 @@ milliseconds of the closest member's ping time.
   replica set *through* a mongos. The equivalent is the localThreshold_ command
   line option.
 
-.. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption--localThreshold
+.. _localThreshold: https://docs.mongodb.com/manual/reference/program/mongos/#std-option-mongos.--localThreshold
 
 .. _health-monitoring:
 

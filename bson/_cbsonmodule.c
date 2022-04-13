@@ -53,7 +53,6 @@ struct module_state {
     PyObject* BSONInt64;
     PyObject* Decimal128;
     PyObject* Mapping;
-    PyObject* CodecOptions;
 };
 
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
@@ -344,8 +343,7 @@ static int _load_python_objects(PyObject* module) {
         _load_object(&state->BSONInt64, "bson.int64", "Int64") ||
         _load_object(&state->Decimal128, "bson.decimal128", "Decimal128") ||
         _load_object(&state->UUID, "uuid", "UUID") ||
-        _load_object(&state->Mapping, "collections.abc", "Mapping") ||
-        _load_object(&state->CodecOptions, "bson.codec_options", "CodecOptions")) {
+        _load_object(&state->Mapping, "collections.abc", "Mapping")) {
         return 1;
     }
     /* Reload our REType hack too. */
@@ -496,26 +494,6 @@ int convert_codec_options(PyObject* options_obj, void* p) {
     Py_INCREF(options->tzinfo);
 
     return 1;
-}
-
-/* Fill out a codec_options_t* with default options.
- *
- * Return 1 on success.
- * Return 0 on failure.
- */
-int default_codec_options(struct module_state* state, codec_options_t* options) {
-    PyObject* options_obj = NULL;
-    PyObject* codec_options_func = _get_object(
-        state->CodecOptions, "bson.codec_options", "CodecOptions");
-    if (codec_options_func == NULL) {
-        return 0;
-    }
-    options_obj = PyObject_CallFunctionObjArgs(codec_options_func, NULL);
-    Py_DECREF(codec_options_func);
-    if (options_obj == NULL) {
-        return 0;
-    }
-    return convert_codec_options(options_obj, options);
 }
 
 void destroy_codec_options(codec_options_t* options) {
@@ -1506,6 +1484,71 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
     return result;
 }
 
+/*
+ * Hook for optional decoding BSON documents to DBRef.
+ */
+static PyObject *_dbref_hook(PyObject* self, PyObject* value) {
+    struct module_state *state = GETSTATE(self);
+    PyObject* dbref = NULL;
+    PyObject* dbref_type = NULL;
+    PyObject* ref = NULL;
+    PyObject* id = NULL;
+    PyObject* database = NULL;
+    PyObject* ret = NULL;
+    int db_present = 0;
+
+    /* Decoding for DBRefs */
+    if (PyMapping_HasKeyString(value, "$ref") && PyMapping_HasKeyString(value, "$id")) { /* DBRef */
+        ref = PyMapping_GetItemString(value, "$ref");
+        /* PyMapping_GetItemString returns NULL to indicate error. */
+        if (!ref) {
+            goto invalid;
+        }
+        id = PyMapping_GetItemString(value, "$id");
+        /* PyMapping_GetItemString returns NULL to indicate error. */
+        if (!id) {
+            goto invalid;
+        }
+
+        if (PyMapping_HasKeyString(value, "$db")) {
+            database = PyMapping_GetItemString(value, "$db");
+            if (!database) {
+                goto invalid;
+            }
+            db_present = 1;
+        } else {
+            database = Py_None;
+            Py_INCREF(database);
+        }
+
+        // check types
+        if (!(PyUnicode_Check(ref) && (database == Py_None || PyUnicode_Check(database)))) {
+            ret = value;
+            goto invalid;
+        }
+
+        PyMapping_DelItemString(value, "$ref");
+        PyMapping_DelItemString(value, "$id");
+        if (db_present) {
+            PyMapping_DelItemString(value, "$db");
+        }
+
+        if ((dbref_type = _get_object(state->DBRef, "bson.dbref", "DBRef"))) {
+            dbref = PyObject_CallFunctionObjArgs(dbref_type, ref, id, database, value, NULL);
+            Py_DECREF(value);
+            ret = dbref;
+        }
+    } else {
+        ret = value;
+    }
+invalid:
+    Py_XDECREF(dbref_type);
+    Py_XDECREF(ref);
+    Py_XDECREF(id);
+    Py_XDECREF(database);
+    return ret;
+}
+
 static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                            unsigned* position, unsigned char type,
                            unsigned max, const codec_options_t* options) {
@@ -1552,7 +1595,6 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
         }
     case 3:
         {
-            PyObject* collection;
             uint32_t size;
 
             if (max < 4) {
@@ -1585,55 +1627,10 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                 goto invalid;
             }
 
-            /* Decoding for DBRefs */
-            if (PyMapping_HasKeyString(value, "$ref")) { /* DBRef */
-                PyObject* dbref = NULL;
-                PyObject* dbref_type;
-                PyObject* id;
-                PyObject* database;
-
-                collection = PyMapping_GetItemString(value, "$ref");
-                /* PyMapping_GetItemString returns NULL to indicate error. */
-                if (!collection) {
-                    goto invalid;
-                }
-                PyMapping_DelItemString(value, "$ref");
-
-                if (PyMapping_HasKeyString(value, "$id")) {
-                    id = PyMapping_GetItemString(value, "$id");
-                    if (!id) {
-                        Py_DECREF(collection);
-                        goto invalid;
-                    }
-                    PyMapping_DelItemString(value, "$id");
-                } else {
-                    id = Py_None;
-                    Py_INCREF(id);
-                }
-
-                if (PyMapping_HasKeyString(value, "$db")) {
-                    database = PyMapping_GetItemString(value, "$db");
-                    if (!database) {
-                        Py_DECREF(collection);
-                        Py_DECREF(id);
-                        goto invalid;
-                    }
-                    PyMapping_DelItemString(value, "$db");
-                } else {
-                    database = Py_None;
-                    Py_INCREF(database);
-                }
-
-                if ((dbref_type = _get_object(state->DBRef, "bson.dbref", "DBRef"))) {
-                    dbref = PyObject_CallFunctionObjArgs(dbref_type, collection, id, database, value, NULL);
-                    Py_DECREF(dbref_type);
-                }
-                Py_DECREF(value);
-                value = dbref;
-
-                Py_DECREF(id);
-                Py_DECREF(collection);
-                Py_DECREF(database);
+            /* Hook for DBRefs */
+            value = _dbref_hook(self, value);
+            if (!value) {
+                goto invalid;
             }
 
             *position += size;
@@ -1741,8 +1738,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             if (!data) {
                 goto invalid;
             }
-            /* Encode as UUID or Binary based on options->uuid_rep
-             * TODO: PYTHON-2245 Decoding should follow UUID spec in PyMongo 4.0  */
+            /* Encode as UUID or Binary based on options->uuid_rep */
             if (subtype == 3 || subtype == 4) {
                 PyObject* binary_type = NULL;
                 PyObject* binary_value = NULL;
@@ -1763,15 +1759,12 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                     goto uuiderror;
                 }
 
-                if (uuid_rep == UNSPECIFIED) {
+                if ((uuid_rep == UNSPECIFIED) ||
+                        (subtype == 4 && uuid_rep != STANDARD) ||
+                        (subtype == 3 && uuid_rep == STANDARD)) {
                     value = binary_value;
                     Py_INCREF(value);
                 } else {
-                    if (subtype == 4) {
-                        uuid_rep = STANDARD;
-                    } else if (uuid_rep == STANDARD) {
-                        uuid_rep = PYTHON_LEGACY;
-                    }
                     value = PyObject_CallMethod(binary_value, "as_uuid", "(i)", uuid_rep);
                 }
 
@@ -2396,14 +2389,9 @@ static PyObject* _cbson_element_to_dict(PyObject* self, PyObject* args) {
     PyObject* value;
     PyObject* result_tuple;
 
-    if (!PyArg_ParseTuple(args, "OII|O&", &bson, &position, &max,
+    if (!PyArg_ParseTuple(args, "OIIO&", &bson, &position, &max,
                           convert_codec_options, &options)) {
         return NULL;
-    }
-    if (PyTuple_GET_SIZE(args) < 4) {
-        if (!default_codec_options(GETSTATE(self), &options)) {
-            return NULL;
-        }
     }
 
     if (!PyBytes_Check(bson)) {
@@ -2579,17 +2567,13 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
     PyObject* dict;
     PyObject* result = NULL;
     codec_options_t options;
-    PyObject* options_obj;
+    PyObject* options_obj = NULL;
     Py_buffer view = {0};
 
-    if (!PyArg_ParseTuple(args, "O|O", &bson, &options_obj)) {
+    if (!PyArg_ParseTuple(args, "OO", &bson, &options_obj)) {
         return NULL;
     }
-    if (PyTuple_GET_SIZE(args) < 2) {
-        if (!default_codec_options(GETSTATE(self), &options)) {
-            return NULL;
-        }
-    } else if (!convert_codec_options(options_obj, &options)) {
+    if (!convert_codec_options(options_obj, &options)) {
         return NULL;
     }
 
@@ -2683,7 +2667,7 @@ static PyMethodDef _CBSONMethods[] = {
      "convert a dictionary to a string containing its BSON representation."},
     {"_bson_to_dict", _cbson_bson_to_dict, METH_VARARGS,
      "convert a BSON string to a SON object."},
-    {"decode_all", _cbson_decode_all, METH_VARARGS,
+    {"_decode_all", _cbson_decode_all, METH_VARARGS,
      "convert binary data to a sequence of documents."},
     {"_element_to_dict", _cbson_element_to_dict, METH_VARARGS,
      "Decode a single key, value pair."},

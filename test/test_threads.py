@@ -15,11 +15,7 @@
 """Test that pymongo is thread safe."""
 
 import threading
-
-from test import (client_context,
-                  IntegrationTest,
-                  unittest)
-from test.utils import rs_or_single_client
+from test import IntegrationTest, client_context, unittest
 from test.utils import joinall
 
 
@@ -29,7 +25,6 @@ def setUpModule():
 
 
 class AutoAuthenticateThreads(threading.Thread):
-
     def __init__(self, collection, num):
         threading.Thread.__init__(self)
         self.coll = collection
@@ -39,14 +34,13 @@ class AutoAuthenticateThreads(threading.Thread):
 
     def run(self):
         for i in range(self.num):
-            self.coll.insert_one({'num': i})
-            self.coll.find_one({'num': i})
+            self.coll.insert_one({"num": i})
+            self.coll.find_one({"num": i})
 
         self.success = True
 
 
 class SaveAndFind(threading.Thread):
-
     def __init__(self, collection):
         threading.Thread.__init__(self)
         self.collection = collection
@@ -63,7 +57,6 @@ class SaveAndFind(threading.Thread):
 
 
 class Insert(threading.Thread):
-
     def __init__(self, collection, n, expect_exception):
         threading.Thread.__init__(self)
         self.collection = collection
@@ -87,7 +80,6 @@ class Insert(threading.Thread):
 
 
 class Update(threading.Thread):
-
     def __init__(self, collection, n, expect_exception):
         threading.Thread.__init__(self)
         self.collection = collection
@@ -100,8 +92,7 @@ class Update(threading.Thread):
             error = True
 
             try:
-                self.collection.update_one({"test": "unique"},
-                                           {"$set": {"test": "update"}})
+                self.collection.update_one({"test": "unique"}, {"$set": {"test": "update"}})
                 error = False
             except:
                 if not self.expect_exception:
@@ -109,21 +100,6 @@ class Update(threading.Thread):
 
             if self.expect_exception:
                 assert error
-
-
-class Disconnect(threading.Thread):
-
-    def __init__(self, client, n):
-        threading.Thread.__init__(self)
-        self.client = client
-        self.n = n
-        self.passed = False
-
-    def run(self):
-        for _ in range(self.n):
-            self.client.close()
-
-        self.passed = True
 
 
 class TestThreads(IntegrationTest):
@@ -179,25 +155,6 @@ class TestThreads(IntegrationTest):
 
         error.join()
         okay.join()
-
-    def test_client_disconnect(self):
-        db = rs_or_single_client(serverSelectionTimeoutMS=30000).pymongo_test
-        db.drop_collection("test")
-        db.test.insert_many([{"x": i} for i in range(1000)])
-
-        # Start 10 threads that execute a query, and 10 threads that call
-        # client.close() 10 times in a row.
-        threads = [SaveAndFind(db.test) for _ in range(10)]
-        threads.extend(Disconnect(db.client, 10) for _ in range(10))
-
-        for t in threads:
-            t.start()
-
-        for t in threads:
-            t.join(300)
-
-        for t in threads:
-            self.assertTrue(t.passed)
 
 
 if __name__ == "__main__":

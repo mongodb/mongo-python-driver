@@ -15,9 +15,11 @@
 """Support for resolving hosts and options from mongodb+srv:// URIs."""
 
 import ipaddress
+import random
 
 try:
     from dns import resolver
+
     _HAVE_DNSPYTHON = True
 except ImportError:
     _HAVE_DNSPYTHON = False
@@ -36,21 +38,25 @@ def maybe_decode(text):
 
 # PYTHON-2667 Lazily call dns.resolver methods for compatibility with eventlet.
 def _resolve(*args, **kwargs):
-    if hasattr(resolver, 'resolve'):
+    if hasattr(resolver, "resolve"):
         # dnspython >= 2
         return resolver.resolve(*args, **kwargs)
     # dnspython 1.X
     return resolver.query(*args, **kwargs)
 
+
 _INVALID_HOST_MSG = (
     "Invalid URI host: %s is not a valid hostname for 'mongodb+srv://'. "
-    "Did you mean to use 'mongodb://'?")
+    "Did you mean to use 'mongodb://'?"
+)
+
 
 class _SrvResolver(object):
-    def __init__(self, fqdn, connect_timeout=None):
+    def __init__(self, fqdn, connect_timeout, srv_service_name, srv_max_hosts=0):
         self.__fqdn = fqdn
+        self.__srv = srv_service_name
         self.__connect_timeout = connect_timeout or CONNECT_TIMEOUT
-
+        self.__srv_max_hosts = srv_max_hosts or 0
         # Validate the fully qualified domain name.
         try:
             ipaddress.ip_address(fqdn)
@@ -68,23 +74,21 @@ class _SrvResolver(object):
 
     def get_options(self):
         try:
-            results = _resolve(self.__fqdn, 'TXT',
-                               lifetime=self.__connect_timeout)
+            results = _resolve(self.__fqdn, "TXT", lifetime=self.__connect_timeout)
         except (resolver.NoAnswer, resolver.NXDOMAIN):
             # No TXT records
             return None
         except Exception as exc:
             raise ConfigurationError(str(exc))
         if len(results) > 1:
-            raise ConfigurationError('Only one TXT record is supported')
-        return (
-            b'&'.join([b''.join(res.strings) for res in results])).decode(
-            'utf-8')
+            raise ConfigurationError("Only one TXT record is supported")
+        return (b"&".join([b"".join(res.strings) for res in results])).decode("utf-8")
 
     def _resolve_uri(self, encapsulate_errors):
         try:
-            results = _resolve('_mongodb._tcp.' + self.__fqdn, 'SRV',
-                               lifetime=self.__connect_timeout)
+            results = _resolve(
+                "_" + self.__srv + "._tcp." + self.__fqdn, "SRV", lifetime=self.__connect_timeout
+            )
         except Exception as exc:
             if not encapsulate_errors:
                 # Raise the original error.
@@ -98,18 +102,19 @@ class _SrvResolver(object):
 
         # Construct address tuples
         nodes = [
-            (maybe_decode(res.target.to_text(omit_final_dot=True)), res.port)
-            for res in results]
+            (maybe_decode(res.target.to_text(omit_final_dot=True)), res.port) for res in results
+        ]
 
         # Validate hosts
         for node in nodes:
             try:
-                nlist = node[0].split(".")[1:][-self.__slen:]
+                nlist = node[0].split(".")[1:][-self.__slen :]
             except Exception:
                 raise ConfigurationError("Invalid SRV host: %s" % (node[0],))
             if self.__plist != nlist:
                 raise ConfigurationError("Invalid SRV host: %s" % (node[0],))
-
+        if self.__srv_max_hosts:
+            nodes = random.sample(nodes, min(self.__srv_max_hosts, len(nodes)))
         return results, nodes
 
     def get_hosts(self):

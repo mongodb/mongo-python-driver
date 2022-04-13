@@ -28,14 +28,14 @@ everything you need to know to use **PyMongo**.
 :doc:`examples/encryption`
   Using PyMongo with client side encryption.
 
+:doc:`examples/type_hints`
+  Using PyMongo with type hints.
+
 :doc:`faq`
   Some questions that come up often.
 
 :doc:`migrate-to-pymongo4`
   A PyMongo 3.x to 4.x migration guide.
-
-:doc:`migrate-to-pymongo3`
-  A PyMongo 2.x to 3.x migration guide.
 
 :doc:`python3`
   Frequently asked questions about python 3 support.
@@ -60,7 +60,7 @@ everything you need to know to use **PyMongo**.
 Getting Help
 ------------
 If you're having trouble or have questions about PyMongo, ask your question on
-our `MongoDB Community Forum <https://developer.mongodb.com/community/forums/tags/c/drivers-odms-connectors/7/python-driver>`_.
+our `MongoDB Community Forum <https://www.mongodb.com/community/forums/tag/python>`_.
 You may also want to consider a
 `commercial support subscription <https://support.mongodb.com/welcome>`_.
 Once you get an answer, it'd be great if you could work it back into this
@@ -126,6 +126,5 @@ Indices and tables
    changelog
    python3
    migrate-to-pymongo4
-   migrate-to-pymongo3
    developer/index
    common-issues

@@ -96,7 +96,7 @@ functions:
             # If this was a patch build, doing a fresh clone would not actually test the patch
             cp -R ${PROJECT_DIRECTORY}/ $DRIVERS_TOOLS
           else
-            git clone git://github.com/mongodb-labs/drivers-evergreen-tools.git $DRIVERS_TOOLS
+            git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $DRIVERS_TOOLS
           fi
           echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
 
@@ -133,9 +133,8 @@ functions:
         file_location: src/report.json
 
   "send dashboard data":
-    - command: json.send
+    - command: perf.send
       params:
-        name: perf
         file: src/results.json
 
   "cleanup":
@@ -200,28 +199,6 @@ post:
   - func: "cleanup"
 
 tasks:
-    - name: "perf-3.0-standalone"
-      tags: ["perf"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "3.0"
-            TOPOLOGY: "server"
-        - func: "run perf tests"
-        - func: "attach benchmark test results"
-        - func: "send dashboard data"
-
-    - name: "perf-3.4-standalone"
-      tags: ["perf"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "3.4"
-            TOPOLOGY: "server"
-        - func: "run perf tests"
-        - func: "attach benchmark test results"
-        - func: "send dashboard data"
-
     - name: "perf-3.6-standalone"
       tags: ["perf"]
       commands:
@@ -273,8 +250,6 @@ buildvariants:
   batchtime: 10080  # 7 days
   run_on: centos6-perf
   tasks:
-     - name: "perf-3.0-standalone"
-     - name: "perf-3.4-standalone"
      - name: "perf-3.6-standalone"
      - name: "perf-4.0-standalone"
      - name: "perf-4.2-standalone"

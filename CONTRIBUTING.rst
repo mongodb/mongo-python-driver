@@ -38,6 +38,23 @@ General Guidelines
   from the cmd line to run the test suite).
 - Add yourself to doc/contributors.rst :)
 
+Running Linters
+---------------
+
+PyMongo uses `pre-commit <https://pypi.org/project/pre-commit/>`_
+for managing linting of the codebase.
+``pre-commit`` performs various checks on all files in PyMongo and uses tools
+that help follow a consistent code style within the codebase.
+
+To set up ``pre-commit`` locally, run::
+
+    pip install pre-commit
+    pre-commit install
+
+To run ``pre-commit`` manually, run::
+
+    pre-commit run --all-files
+
 Documentation
 -------------
 
@@ -48,3 +65,23 @@ just make your changes to the inline documentation of the appropriate
 branch and submit a `pull request <https://help.github.com/articles/using-pull-requests>`_.
 You might also use the GitHub `Edit <https://github.com/blog/844-forking-with-the-edit-button>`_
 button.
+
+Re-sync Spec Tests
+-----------------
+
+If you would like to re-sync the copy of the specification tests in the
+PyMongo repository with that which is inside the `specifications repo
+<https://github.com/mongodb/specifications>`_, please
+use the script provided in ``.evergreen/resync-specs.sh``.::
+
+    git clone git@github.com:mongodb/specifications.git
+    export MDB_SPECS=~/specifications
+    cd ~/mongo-python-driver/.evergreen
+    ./resync-specs.sh -b "connection-string*" crud bson-corpus
+    cd ..
+
+The ``-b`` flag adds as a regex pattern to block files you do not wish to
+update in PyMongo.
+This is primarily helpful if you are implementing a new feature in PyMongo
+that has spec tests already implemented, or if you are attempting to
+validate new spec tests in PyMongo.

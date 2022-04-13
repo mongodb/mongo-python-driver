@@ -15,14 +15,11 @@
 """Tools for working with the BSON decimal128 type.
 
 .. versionadded:: 3.4
-
-.. note:: The Decimal128 BSON type requires MongoDB 3.4+.
 """
 
 import decimal
 import struct
-import sys
-
+from typing import Any, Sequence, Tuple, Type, Union
 
 _PACK_64 = struct.Struct("<Q").pack
 _UNPACK_64 = struct.Struct("<Q").unpack
@@ -34,8 +31,8 @@ _EXPONENT_MIN = -6143
 _MAX_DIGITS = 34
 
 _INF = 0x7800000000000000
-_NAN = 0x7c00000000000000
-_SNAN = 0x7e00000000000000
+_NAN = 0x7C00000000000000
+_SNAN = 0x7E00000000000000
 _SIGN = 0x8000000000000000
 
 _NINF = (_INF + _SIGN, 0)
@@ -46,31 +43,30 @@ _NSNAN = (_SNAN + _SIGN, 0)
 _PSNAN = (_SNAN, 0)
 
 _CTX_OPTIONS = {
-    'prec': _MAX_DIGITS,
-    'rounding': decimal.ROUND_HALF_EVEN,
-    'Emin': _EXPONENT_MIN,
-    'Emax': _EXPONENT_MAX,
-    'capitals': 1,
-    'flags': [],
-    'traps': [decimal.InvalidOperation,
-              decimal.Overflow,
-              decimal.Inexact],
-    'clamp': 1
+    "prec": _MAX_DIGITS,
+    "rounding": decimal.ROUND_HALF_EVEN,
+    "Emin": _EXPONENT_MIN,
+    "Emax": _EXPONENT_MAX,
+    "capitals": 1,
+    "flags": [],
+    "traps": [decimal.InvalidOperation, decimal.Overflow, decimal.Inexact],
+    "clamp": 1,
 }
 
-_DEC128_CTX = decimal.Context(**_CTX_OPTIONS.copy())
+_DEC128_CTX = decimal.Context(**_CTX_OPTIONS.copy())  # type: ignore
+_VALUE_OPTIONS = Union[decimal.Decimal, float, str, Tuple[int, Sequence[int], int]]
 
 
-def create_decimal128_context():
+def create_decimal128_context() -> decimal.Context:
     """Returns an instance of :class:`decimal.Context` appropriate
     for working with IEEE-754 128-bit decimal floating point values.
     """
     opts = _CTX_OPTIONS.copy()
-    opts['traps'] = []
-    return decimal.Context(**opts)
+    opts["traps"] = []
+    return decimal.Context(**opts)  # type: ignore
 
 
-def _decimal_to_128(value):
+def _decimal_to_128(value: _VALUE_OPTIONS) -> Tuple[int, int]:
     """Converts a decimal.Decimal to BID (high bits, low bits).
 
     :Parameters:
@@ -107,9 +103,9 @@ def _decimal_to_128(value):
     biased_exponent = exponent + _EXPONENT_BIAS
 
     if high >> 49 == 1:
-        high = high & 0x7fffffffffff
+        high = high & 0x7FFFFFFFFFFF
         high |= _EXPONENT_MASK
-        high |= (biased_exponent & 0x3fff) << 47
+        high |= (biased_exponent & 0x3FFF) << 47
     else:
         high |= biased_exponent << 49
 
@@ -213,23 +209,26 @@ class Decimal128(object):
         >>> Decimal('NaN') == Decimal('NaN')
         False
     """
-    __slots__ = ('__high', '__low')
+
+    __slots__ = ("__high", "__low")
 
     _type_marker = 19
 
-    def __init__(self, value):
+    def __init__(self, value: _VALUE_OPTIONS) -> None:
         if isinstance(value, (str, decimal.Decimal)):
             self.__high, self.__low = _decimal_to_128(value)
         elif isinstance(value, (list, tuple)):
             if len(value) != 2:
-                raise ValueError('Invalid size for creation of Decimal128 '
-                                 'from list or tuple. Must have exactly 2 '
-                                 'elements.')
-            self.__high, self.__low = value
+                raise ValueError(
+                    "Invalid size for creation of Decimal128 "
+                    "from list or tuple. Must have exactly 2 "
+                    "elements."
+                )
+            self.__high, self.__low = value  # type: ignore
         else:
             raise TypeError("Cannot convert %r to Decimal128" % (value,))
 
-    def to_decimal(self):
+    def to_decimal(self) -> decimal.Decimal:
         """Returns an instance of :class:`decimal.Decimal` for this
         :class:`Decimal128`.
         """
@@ -238,25 +237,25 @@ class Decimal128(object):
         sign = 1 if (high & _SIGN) else 0
 
         if (high & _SNAN) == _SNAN:
-            return decimal.Decimal((sign, (), 'N'))
+            return decimal.Decimal((sign, (), "N"))  # type: ignore
         elif (high & _NAN) == _NAN:
-            return decimal.Decimal((sign, (), 'n'))
+            return decimal.Decimal((sign, (), "n"))  # type: ignore
         elif (high & _INF) == _INF:
-            return decimal.Decimal((sign, (), 'F'))
+            return decimal.Decimal((sign, (), "F"))  # type: ignore
 
         if (high & _EXPONENT_MASK) == _EXPONENT_MASK:
-            exponent = ((high & 0x1fffe00000000000) >> 47) - _EXPONENT_BIAS
+            exponent = ((high & 0x1FFFE00000000000) >> 47) - _EXPONENT_BIAS
             return decimal.Decimal((sign, (0,), exponent))
         else:
-            exponent = ((high & 0x7fff800000000000) >> 49) - _EXPONENT_BIAS
+            exponent = ((high & 0x7FFF800000000000) >> 49) - _EXPONENT_BIAS
 
         arr = bytearray(15)
-        mask = 0x00000000000000ff
+        mask = 0x00000000000000FF
         for i in range(14, 6, -1):
             arr[i] = (low & mask) >> ((14 - i) << 3)
             mask = mask << 8
 
-        mask = 0x00000000000000ff
+        mask = 0x00000000000000FF
         for i in range(6, 0, -1):
             arr[i] = (high & mask) >> ((6 - i) << 3)
             mask = mask << 8
@@ -265,14 +264,13 @@ class Decimal128(object):
         arr[0] = (high & mask) >> 48
 
         # cdecimal only accepts a tuple for digits.
-        digits = tuple(
-            int(digit) for digit in str(int.from_bytes(arr, 'big')))
+        digits = tuple(int(digit) for digit in str(int.from_bytes(arr, "big")))
 
         with decimal.localcontext(_DEC128_CTX) as ctx:
             return ctx.create_decimal((sign, digits, exponent))
 
     @classmethod
-    def from_bid(cls, value):
+    def from_bid(cls: Type["Decimal128"], value: bytes) -> "Decimal128":
         """Create an instance of :class:`Decimal128` from Binary Integer
         Decimal string.
 
@@ -284,14 +282,14 @@ class Decimal128(object):
             raise TypeError("value must be an instance of bytes")
         if len(value) != 16:
             raise ValueError("value must be exactly 16 bytes")
-        return cls((_UNPACK_64(value[8:])[0], _UNPACK_64(value[:8])[0]))
+        return cls((_UNPACK_64(value[8:])[0], _UNPACK_64(value[:8])[0]))  # type: ignore
 
     @property
-    def bid(self):
+    def bid(self) -> bytes:
         """The Binary Integer Decimal (BID) encoding of this instance."""
         return _PACK_64(self.__low) + _PACK_64(self.__high)
 
-    def __str__(self):
+    def __str__(self) -> str:
         dec = self.to_decimal()
         if dec.is_nan():
             # Required by the drivers spec to match MongoDB behavior.
@@ -301,16 +299,16 @@ class Decimal128(object):
     def __repr__(self):
         return "Decimal128('%s')" % (str(self),)
 
-    def __setstate__(self, value):
+    def __setstate__(self, value: Tuple[int, int]) -> None:
         self.__high, self.__low = value
 
-    def __getstate__(self):
+    def __getstate__(self) -> Tuple[int, int]:
         return self.__high, self.__low
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, Decimal128):
             return self.bid == other.bid
         return NotImplemented
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other

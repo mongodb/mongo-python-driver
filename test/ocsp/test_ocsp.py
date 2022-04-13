@@ -22,19 +22,17 @@ import unittest
 sys.path[0:0] = [""]
 
 import pymongo
-
 from pymongo.errors import ServerSelectionTimeoutError
 
-
 CA_FILE = os.environ.get("CA_FILE")
-OCSP_TLS_SHOULD_SUCCEED = (os.environ.get('OCSP_TLS_SHOULD_SUCCEED') == 'true')
+OCSP_TLS_SHOULD_SUCCEED = os.environ.get("OCSP_TLS_SHOULD_SUCCEED") == "true"
 
 # Enable logs in this format:
 # 2020-06-08 23:49:35,982 DEBUG ocsp_support Peer did not staple an OCSP response
-FORMAT = '%(asctime)s %(levelname)s %(module)s %(message)s'
+FORMAT = "%(asctime)s %(levelname)s %(module)s %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 
-if sys.platform == 'win32':
+if sys.platform == "win32":
     # The non-stapled OCSP endpoint check is slow on Windows.
     TIMEOUT_MS = 5000
 else:
@@ -42,15 +40,17 @@ else:
 
 
 def _connect(options):
-    uri = ("mongodb://localhost:27017/?serverSelectionTimeoutMS=%s"
-           "&tlsCAFile=%s&%s") % (TIMEOUT_MS, CA_FILE, options)
+    uri = ("mongodb://localhost:27017/?serverSelectionTimeoutMS=%s&tlsCAFile=%s&%s") % (
+        TIMEOUT_MS,
+        CA_FILE,
+        options,
+    )
     print(uri)
     client = pymongo.MongoClient(uri)
-    client.admin.command('ismaster')
+    client.admin.command("ping")
 
 
 class TestOCSP(unittest.TestCase):
-
     def test_tls_insecure(self):
         # Should always succeed
         options = "tls=true&tlsInsecure=true"
@@ -65,12 +65,11 @@ class TestOCSP(unittest.TestCase):
         options = "tls=true"
         if not OCSP_TLS_SHOULD_SUCCEED:
             self.assertRaisesRegex(
-                ServerSelectionTimeoutError,
-                "invalid status response",
-                _connect, options)
+                ServerSelectionTimeoutError, "invalid status response", _connect, options
+            )
         else:
             _connect(options)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

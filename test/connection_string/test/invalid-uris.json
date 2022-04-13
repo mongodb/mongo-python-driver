@@ -190,15 +190,6 @@
       "options": null
     },
     {
-      "description": "Username with password containing an unescaped colon",
-      "uri": "mongodb://alice:foo:bar@127.0.0.1",
-      "valid": false,
-      "warning": null,
-      "hosts": null,
-      "auth": null,
-      "options": null
-    },
-    {
       "description": "Username containing an unescaped at-sign",
       "uri": "mongodb://alice@@127.0.0.1",
       "valid": false,
@@ -246,6 +237,51 @@
     {
       "description": "Host with unescaped slash",
       "uri": "mongodb:///tmp/mongodb-27017.sock/",
+      "valid": false,
+      "warning": null,
+      "hosts": null,
+      "auth": null,
+      "options": null
+    },
+    {
+      "description": "mongodb+srv with multiple service names",
+      "uri": "mongodb+srv://test5.test.mongodb.com,test6.test.mongodb.com",
+      "valid": false,
+      "warning": null,
+      "hosts": null,
+      "auth": null,
+      "options": null
+    },
+    {
+      "description": "mongodb+srv with port number",
+      "uri": "mongodb+srv://test7.test.mongodb.com:27018",
+      "valid": false,
+      "warning": null,
+      "hosts": null,
+      "auth": null,
+      "options": null
+    },
+    {
+      "description": "Username with password containing an unescaped percent sign",
+      "uri": "mongodb://alice%foo:bar@127.0.0.1",
+      "valid": false,
+      "warning": null,
+      "hosts": null,
+      "auth": null,
+      "options": null
+    },
+    {
+      "description": "Username with password containing an unescaped percent sign and an escaped one",
+      "uri": "mongodb://user%20%:password@localhost",
+      "valid": false,
+      "warning": null,
+      "hosts": null,
+      "auth": null,
+      "options": null
+    },
+    {
+      "description": "Username with password containing an unescaped percent sign (non hex digit)",
+      "uri": "mongodb://user%w:password@localhost",
       "valid": false,
       "warning": null,
       "hosts": null,

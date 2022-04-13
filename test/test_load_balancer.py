@@ -21,16 +21,12 @@ import threading
 
 sys.path[0:0] = [""]
 
-from test import unittest, IntegrationTest, client_context
-from test.utils import (ExceptionCatchingThread,
-                        get_pool,
-                        rs_client,
-                        wait_until)
+from test import IntegrationTest, client_context, unittest
 from test.unified_format import generate_test_classes
+from test.utils import ExceptionCatchingThread, get_pool, rs_client, wait_until
 
 # Location of JSON test specifications.
-TEST_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), 'load_balancer')
+TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "load_balancer")
 
 # Generate unified tests.
 globals().update(generate_test_classes(TEST_PATH, module=__name__))
@@ -38,13 +34,14 @@ globals().update(generate_test_classes(TEST_PATH, module=__name__))
 
 class TestLB(IntegrationTest):
     RUN_ON_LOAD_BALANCER = True
+    RUN_ON_SERVERLESS = True
 
     def test_connections_are_only_returned_once(self):
         pool = get_pool(self.client)
         nconns = len(pool.sockets)
         self.db.test.find_one({})
         self.assertEqual(len(pool.sockets), nconns)
-        self.db.test.aggregate([{'$limit': 1}])
+        list(self.db.test.aggregate([{"$limit": 1}]))
         self.assertEqual(len(pool.sockets), nconns)
 
     @client_context.require_load_balancer
@@ -61,16 +58,13 @@ class TestLB(IntegrationTest):
             self.assertEqual(pool.active_sockets, 1)  # Still pinned.
         self.assertEqual(pool.active_sockets, 0)  # Unpinned.
 
-    def test_client_can_be_reopened(self):
-        self.client.close()
-        self.db.test.find_one({})
-
     @client_context.require_failCommand_fail_point
     def test_cursor_gc(self):
         def create_resource(coll):
             cursor = coll.find({}, batch_size=3)
             next(cursor)
             return cursor
+
         self._test_no_gc_deadlock(create_resource)
 
     @client_context.require_failCommand_fail_point
@@ -79,6 +73,7 @@ class TestLB(IntegrationTest):
             cursor = coll.aggregate([], batchSize=3)
             next(cursor)
             return cursor
+
         self._test_no_gc_deadlock(create_resource)
 
     def _test_no_gc_deadlock(self, create_resource):
@@ -90,16 +85,11 @@ class TestLB(IntegrationTest):
         self.assertEqual(pool.active_sockets, 0)
         # Cause the initial find attempt to fail to induce a reference cycle.
         args = {
-            "mode": {
-              "times": 1
-            },
+            "mode": {"times": 1},
             "data": {
-              "failCommands": [
-                "find", "aggregate"
-              ],
-              "errorCode": 91,
-              "closeConnection": True,
-            }
+                "failCommands": ["find", "aggregate"],
+                "closeConnection": True,
+            },
         }
         with self.fail_point(args):
             resource = create_resource(coll)
@@ -108,7 +98,7 @@ class TestLB(IntegrationTest):
 
         thread = PoolLocker(pool)
         thread.start()
-        self.assertTrue(thread.locked.wait(5), 'timed out')
+        self.assertTrue(thread.locked.wait(5), "timed out")
         # Garbage collect the resource while the pool is locked to ensure we
         # don't deadlock.
         del resource
@@ -120,7 +110,7 @@ class TestLB(IntegrationTest):
         self.assertFalse(thread.is_alive())
         self.assertIsNone(thread.exc)
 
-        wait_until(lambda: pool.active_sockets == 0, 'return socket')
+        wait_until(lambda: pool.active_sockets == 0, "return socket")
         # Run another operation to ensure the socket still works.
         coll.delete_many({})
 
@@ -137,7 +127,7 @@ class TestLB(IntegrationTest):
 
         thread = PoolLocker(pool)
         thread.start()
-        self.assertTrue(thread.locked.wait(5), 'timed out')
+        self.assertTrue(thread.locked.wait(5), "timed out")
         # Garbage collect the session while the pool is locked to ensure we
         # don't deadlock.
         del session
@@ -149,7 +139,7 @@ class TestLB(IntegrationTest):
         self.assertFalse(thread.is_alive())
         self.assertIsNone(thread.exc)
 
-        wait_until(lambda: pool.active_sockets == 0, 'return socket')
+        wait_until(lambda: pool.active_sockets == 0, "return socket")
         # Run another operation to ensure the socket still works.
         client[self.db.name].test.delete_many({})
 
@@ -168,8 +158,7 @@ class PoolLocker(ExceptionCatchingThread):
             # Wait for the unlock flag.
             unlock_pool = self.unlock.wait(10)
             if not unlock_pool:
-                raise Exception('timed out waiting for unlock signal:'
-                                ' deadlock?')
+                raise Exception("timed out waiting for unlock signal: deadlock?")
 
 
 if __name__ == "__main__":

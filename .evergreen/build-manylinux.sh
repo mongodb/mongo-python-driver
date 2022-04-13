@@ -27,7 +27,7 @@ fi
 
 for image in "${images[@]}"; do
   docker pull $image
-  docker run --rm -v `pwd`:/src $image /src/.evergreen/build-manylinux-internal.sh
+  docker run --rm -v "`pwd`:/src" $image /src/.evergreen/build-manylinux-internal.sh
 done
 
 ls dist
@@ -37,7 +37,8 @@ unexpected=$(find dist \! \( -iname dist -or \
                              -iname '*cp36*' -or \
                              -iname '*cp37*' -or \
                              -iname '*cp38*' -or \
-                             -iname '*cp39*' \))
+                             -iname '*cp39*' -or \
+                             -iname '*cp310*' \))
 if [ -n "$unexpected" ]; then
   echo "Unexpected files:" $unexpected
   exit 1

@@ -8,7 +8,7 @@ rm -rf validdist
 mkdir -p validdist
 mv dist/* validdist || true
 
-for VERSION in 3.6 3.7 3.8 3.9; do
+for VERSION in 3.6 3.7 3.8 3.9 3.10; do
     PYTHON=/Library/Frameworks/Python.framework/Versions/$VERSION/bin/python3
     rm -rf build
 
@@ -16,7 +16,7 @@ for VERSION in 3.6 3.7 3.8 3.9; do
     if ! $PYTHON -m wheel version; then
         createvirtualenv $PYTHON releasevenv
         WHEELPYTHON=python
-        pip install --upgrade wheel
+        python -m pip install --upgrade wheel
     else
         WHEELPYTHON=$PYTHON
     fi

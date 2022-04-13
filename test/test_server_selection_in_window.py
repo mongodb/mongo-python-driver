@@ -16,18 +16,17 @@
 
 import os
 import threading
+from test import IntegrationTest, client_context, unittest
+from test.utils import OvertCommandListener, TestCreator, rs_client, wait_until
+from test.utils_selection_tests import create_topology
 
 from pymongo.common import clean_node
 from pymongo.read_preferences import ReadPreference
-from test import client_context, IntegrationTest, unittest
-from test.utils_selection_tests import create_topology
-from test.utils import TestCreator, rs_client, OvertCommandListener, wait_until
-
 
 # Location of JSON test specifications.
 TEST_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)),
-    os.path.join('server_selection', 'in_window'))
+    os.path.dirname(os.path.realpath(__file__)), os.path.join("server_selection", "in_window")
+)
 
 
 class TestAllScenarios(unittest.TestCase):
@@ -35,28 +34,27 @@ class TestAllScenarios(unittest.TestCase):
         topology = create_topology(scenario_def)
 
         # Update mock operation_count state:
-        for mock in scenario_def['mocked_topology_state']:
-            address = clean_node(mock['address'])
+        for mock in scenario_def["mocked_topology_state"]:
+            address = clean_node(mock["address"])
             server = topology.get_server_by_address(address)
-            server.pool.operation_count = mock['operation_count']
+            server.pool.operation_count = mock["operation_count"]
 
         pref = ReadPreference.NEAREST
-        counts = dict((address, 0) for address in
-                      topology._description.server_descriptions())
+        counts = dict((address, 0) for address in topology._description.server_descriptions())
 
         # Number of times to repeat server selection
-        iterations = scenario_def['iterations']
+        iterations = scenario_def["iterations"]
         for _ in range(iterations):
             server = topology.select_server(pref, server_selection_timeout=0)
             counts[server.description.address] += 1
 
         # Verify expected_frequencies
-        outcome = scenario_def['outcome']
-        tolerance = outcome['tolerance']
-        expected_frequencies = outcome['expected_frequencies']
+        outcome = scenario_def["outcome"]
+        tolerance = outcome["tolerance"]
+        expected_frequencies = outcome["expected_frequencies"]
         for host_str, freq in expected_frequencies.items():
             address = clean_node(host_str)
-            actual_freq = float(counts[address])/iterations
+            actual_freq = float(counts[address]) / iterations
             if freq == 0:
                 # Should be exactly 0.
                 self.assertEqual(actual_freq, 0)
@@ -112,15 +110,15 @@ class TestProse(IntegrationTest):
         for thread in threads:
             self.assertTrue(thread.passed)
 
-        events = listener.results['started']
+        events = listener.results["started"]
         self.assertEqual(len(events), N_FINDS * N_THREADS)
         nodes = client.nodes
         self.assertEqual(len(nodes), 2)
-        freqs = {address: 0 for address in nodes}
+        freqs = {address: 0.0 for address in nodes}
         for event in events:
             freqs[event.connection_id] += 1
         for address in freqs:
-            freqs[address] = freqs[address]/float(len(events))
+            freqs[address] = freqs[address] / float(len(events))
         return freqs
 
     @client_context.require_failCommand_appName
@@ -129,21 +127,23 @@ class TestProse(IntegrationTest):
         listener = OvertCommandListener()
         # PYTHON-2584: Use a large localThresholdMS to avoid the impact of
         # varying RTTs.
-        client = rs_client(client_context.mongos_seeds(),
-                           appName='loadBalancingTest',
-                           event_listeners=[listener],
-                           localThresholdMS=10000)
+        client = rs_client(
+            client_context.mongos_seeds(),
+            appName="loadBalancingTest",
+            event_listeners=[listener],
+            localThresholdMS=10000,
+        )
         self.addCleanup(client.close)
-        wait_until(lambda: len(client.nodes) == 2, 'discover both nodes')
+        wait_until(lambda: len(client.nodes) == 2, "discover both nodes")
         # Delay find commands on
         delay_finds = {
-            'configureFailPoint': 'failCommand',
-            'mode': {'times': 10000},
-            'data': {
-                'failCommands': ['find'],
-                'blockConnection': True,
-                'blockTimeMS': 500,
-                'appName': 'loadBalancingTest',
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 10000},
+            "data": {
+                "failCommands": ["find"],
+                "blockConnection": True,
+                "blockTimeMS": 500,
+                "appName": "loadBalancingTest",
             },
         }
         with self.fail_point(delay_finds):

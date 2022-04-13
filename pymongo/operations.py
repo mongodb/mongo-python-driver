@@ -13,11 +13,13 @@
 # limitations under the License.
 
 """Operation class definitions."""
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 from pymongo import helpers
-from pymongo.common import validate_boolean, validate_is_mapping, validate_list
 from pymongo.collation import validate_collation_or_none
+from pymongo.common import validate_boolean, validate_is_mapping, validate_list
 from pymongo.helpers import _gen_index_name, _index_document, _index_list
+from pymongo.typings import _CollationIn, _DocumentIn, _Pipeline
 
 
 class InsertOne(object):
@@ -25,7 +27,7 @@ class InsertOne(object):
 
     __slots__ = ("_doc",)
 
-    def __init__(self, document):
+    def __init__(self, document: _DocumentIn) -> None:
         """Create an InsertOne instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -43,13 +45,17 @@ class InsertOne(object):
     def __repr__(self):
         return "InsertOne(%r)" % (self._doc,)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if type(other) == type(self):
             return other._doc == self._doc
         return NotImplemented
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other
+
+
+_IndexList = Sequence[Tuple[str, Union[int, str, Mapping[str, Any]]]]
+_IndexKeyHint = Union[str, _IndexList]
 
 
 class DeleteOne(object):
@@ -57,7 +63,12 @@ class DeleteOne(object):
 
     __slots__ = ("_filter", "_collation", "_hint")
 
-    def __init__(self, filter, collation=None, hint=None):
+    def __init__(
+        self,
+        filter: Mapping[str, Any],
+        collation: Optional[_CollationIn] = None,
+        hint: Optional[_IndexKeyHint] = None,
+    ) -> None:
         """Create a DeleteOne instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -65,8 +76,7 @@ class DeleteOne(object):
         :Parameters:
           - `filter`: A query that matches the document to delete.
           - `collation` (optional): An instance of
-            :class:`~pymongo.collation.Collation`. This option is only
-            supported on MongoDB 3.4 and above.
+            :class:`~pymongo.collation.Collation`.
           - `hint` (optional): An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
@@ -90,19 +100,17 @@ class DeleteOne(object):
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
-        bulkobj.add_delete(self._filter, 1, collation=self._collation,
-                           hint=self._hint)
+        bulkobj.add_delete(self._filter, 1, collation=self._collation, hint=self._hint)
 
     def __repr__(self):
         return "DeleteOne(%r, %r)" % (self._filter, self._collation)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if type(other) == type(self):
-            return ((other._filter, other._collation) ==
-                    (self._filter, self._collation))
+            return (other._filter, other._collation) == (self._filter, self._collation)
         return NotImplemented
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other
 
 
@@ -111,7 +119,12 @@ class DeleteMany(object):
 
     __slots__ = ("_filter", "_collation", "_hint")
 
-    def __init__(self, filter, collation=None, hint=None):
+    def __init__(
+        self,
+        filter: Mapping[str, Any],
+        collation: Optional[_CollationIn] = None,
+        hint: Optional[_IndexKeyHint] = None,
+    ) -> None:
         """Create a DeleteMany instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -119,8 +132,7 @@ class DeleteMany(object):
         :Parameters:
           - `filter`: A query that matches the documents to delete.
           - `collation` (optional): An instance of
-            :class:`~pymongo.collation.Collation`. This option is only
-            supported on MongoDB 3.4 and above.
+            :class:`~pymongo.collation.Collation`.
           - `hint` (optional): An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
@@ -144,19 +156,17 @@ class DeleteMany(object):
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
-        bulkobj.add_delete(self._filter, 0, collation=self._collation,
-                           hint=self._hint)
+        bulkobj.add_delete(self._filter, 0, collation=self._collation, hint=self._hint)
 
     def __repr__(self):
         return "DeleteMany(%r, %r)" % (self._filter, self._collation)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if type(other) == type(self):
-            return ((other._filter, other._collation) ==
-                    (self._filter, self._collation))
+            return (other._filter, other._collation) == (self._filter, self._collation)
         return NotImplemented
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other
 
 
@@ -165,8 +175,14 @@ class ReplaceOne(object):
 
     __slots__ = ("_filter", "_doc", "_upsert", "_collation", "_hint")
 
-    def __init__(self, filter, replacement, upsert=False, collation=None,
-                 hint=None):
+    def __init__(
+        self,
+        filter: Mapping[str, Any],
+        replacement: Mapping[str, Any],
+        upsert: bool = False,
+        collation: Optional[_CollationIn] = None,
+        hint: Optional[_IndexKeyHint] = None,
+    ) -> None:
         """Create a ReplaceOne instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -177,8 +193,7 @@ class ReplaceOne(object):
           - `upsert` (optional): If ``True``, perform an insert if no documents
             match the filter.
           - `collation` (optional): An instance of
-            :class:`~pymongo.collation.Collation`. This option is only
-            supported on MongoDB 3.4 and above.
+            :class:`~pymongo.collation.Collation`.
           - `hint` (optional): An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
@@ -207,31 +222,39 @@ class ReplaceOne(object):
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
-        bulkobj.add_replace(self._filter, self._doc, self._upsert,
-                            collation=self._collation, hint=self._hint)
+        bulkobj.add_replace(
+            self._filter, self._doc, self._upsert, collation=self._collation, hint=self._hint
+        )
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if type(other) == type(self):
-            return (
-                (other._filter, other._doc, other._upsert, other._collation,
-                 other._hint) == (self._filter, self._doc, self._upsert,
-                                  self._collation, other._hint))
+            return (other._filter, other._doc, other._upsert, other._collation, other._hint) == (
+                self._filter,
+                self._doc,
+                self._upsert,
+                self._collation,
+                other._hint,
+            )
         return NotImplemented
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other
 
     def __repr__(self):
         return "%s(%r, %r, %r, %r, %r)" % (
-            self.__class__.__name__, self._filter, self._doc, self._upsert,
-            self._collation, self._hint)
+            self.__class__.__name__,
+            self._filter,
+            self._doc,
+            self._upsert,
+            self._collation,
+            self._hint,
+        )
 
 
 class _UpdateOp(object):
     """Private base class for update operations."""
 
-    __slots__ = ("_filter", "_doc", "_upsert", "_collation", "_array_filters",
-                 "_hint")
+    __slots__ = ("_filter", "_doc", "_upsert", "_collation", "_array_filters", "_hint")
 
     def __init__(self, filter, doc, upsert, collation, array_filters, hint):
         if filter is not None:
@@ -244,7 +267,6 @@ class _UpdateOp(object):
             if not isinstance(hint, str):
                 hint = helpers._index_document(hint)
 
-
         self._filter = filter
         self._doc = doc
         self._upsert = upsert
@@ -255,10 +277,20 @@ class _UpdateOp(object):
     def __eq__(self, other):
         if type(other) == type(self):
             return (
-                (other._filter, other._doc, other._upsert, other._collation,
-                 other._array_filters, other._hint) ==
-                (self._filter, self._doc, self._upsert, self._collation,
-                 self._array_filters, self._hint))
+                other._filter,
+                other._doc,
+                other._upsert,
+                other._collation,
+                other._array_filters,
+                other._hint,
+            ) == (
+                self._filter,
+                self._doc,
+                self._upsert,
+                self._collation,
+                self._array_filters,
+                self._hint,
+            )
         return NotImplemented
 
     def __ne__(self, other):
@@ -266,8 +298,14 @@ class _UpdateOp(object):
 
     def __repr__(self):
         return "%s(%r, %r, %r, %r, %r, %r)" % (
-            self.__class__.__name__, self._filter, self._doc, self._upsert,
-            self._collation, self._array_filters, self._hint)
+            self.__class__.__name__,
+            self._filter,
+            self._doc,
+            self._upsert,
+            self._collation,
+            self._array_filters,
+            self._hint,
+        )
 
 
 class UpdateOne(_UpdateOp):
@@ -275,8 +313,15 @@ class UpdateOne(_UpdateOp):
 
     __slots__ = ()
 
-    def __init__(self, filter, update, upsert=False, collation=None,
-                 array_filters=None, hint=None):
+    def __init__(
+        self,
+        filter: Mapping[str, Any],
+        update: Union[Mapping[str, Any], _Pipeline],
+        upsert: bool = False,
+        collation: Optional[_CollationIn] = None,
+        array_filters: Optional[List[Mapping[str, Any]]] = None,
+        hint: Optional[_IndexKeyHint] = None,
+    ) -> None:
         """Represents an update_one operation.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -287,10 +332,9 @@ class UpdateOne(_UpdateOp):
           - `upsert` (optional): If ``True``, perform an insert if no documents
             match the filter.
           - `collation` (optional): An instance of
-            :class:`~pymongo.collation.Collation`. This option is only
-            supported on MongoDB 3.4 and above.
+            :class:`~pymongo.collation.Collation`.
           - `array_filters` (optional): A list of filters specifying which
-            array elements an update should apply. Requires MongoDB 3.6+.
+            array elements an update should apply.
           - `hint` (optional): An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
@@ -307,15 +351,19 @@ class UpdateOne(_UpdateOp):
         .. versionchanged:: 3.5
            Added the `collation` option.
         """
-        super(UpdateOne, self).__init__(filter, update, upsert, collation,
-                                        array_filters, hint)
+        super(UpdateOne, self).__init__(filter, update, upsert, collation, array_filters, hint)
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
-        bulkobj.add_update(self._filter, self._doc, False, self._upsert,
-                           collation=self._collation,
-                           array_filters=self._array_filters,
-                           hint=self._hint)
+        bulkobj.add_update(
+            self._filter,
+            self._doc,
+            False,
+            self._upsert,
+            collation=self._collation,
+            array_filters=self._array_filters,
+            hint=self._hint,
+        )
 
 
 class UpdateMany(_UpdateOp):
@@ -323,8 +371,15 @@ class UpdateMany(_UpdateOp):
 
     __slots__ = ()
 
-    def __init__(self, filter, update, upsert=False, collation=None,
-                 array_filters=None, hint=None):
+    def __init__(
+        self,
+        filter: Mapping[str, Any],
+        update: Union[Mapping[str, Any], _Pipeline],
+        upsert: bool = False,
+        collation: Optional[_CollationIn] = None,
+        array_filters: Optional[List[Mapping[str, Any]]] = None,
+        hint: Optional[_IndexKeyHint] = None,
+    ) -> None:
         """Create an UpdateMany instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -335,10 +390,9 @@ class UpdateMany(_UpdateOp):
           - `upsert` (optional): If ``True``, perform an insert if no documents
             match the filter.
           - `collation` (optional): An instance of
-            :class:`~pymongo.collation.Collation`. This option is only
-            supported on MongoDB 3.4 and above.
+            :class:`~pymongo.collation.Collation`.
           - `array_filters` (optional): A list of filters specifying which
-            array elements an update should apply. Requires MongoDB 3.6+.
+            array elements an update should apply.
           - `hint` (optional): An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
@@ -355,15 +409,19 @@ class UpdateMany(_UpdateOp):
         .. versionchanged:: 3.5
            Added the `collation` option.
         """
-        super(UpdateMany, self).__init__(filter, update, upsert, collation,
-                                         array_filters, hint)
+        super(UpdateMany, self).__init__(filter, update, upsert, collation, array_filters, hint)
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
-        bulkobj.add_update(self._filter, self._doc, True, self._upsert,
-                           collation=self._collation,
-                           array_filters=self._array_filters,
-                           hint=self._hint)
+        bulkobj.add_update(
+            self._filter,
+            self._doc,
+            True,
+            self._upsert,
+            collation=self._collation,
+            array_filters=self._array_filters,
+            hint=self._hint,
+        )
 
 
 class IndexModel(object):
@@ -371,7 +429,7 @@ class IndexModel(object):
 
     __slots__ = ("__document",)
 
-    def __init__(self, keys, **kwargs):
+    def __init__(self, keys: _IndexKeyHint, **kwargs: Any) -> None:
         """Create an Index instance.
 
         For use with :meth:`~pymongo.collection.Collection.create_indexes`.
@@ -404,9 +462,9 @@ class IndexModel(object):
             this collection after <int> seconds. The indexed field must
             be a UTC datetime or the data will not expire.
           - `partialFilterExpression`: A document that specifies a filter for
-            a partial index. Requires MongoDB >= 3.2.
+            a partial index.
           - `collation`: An instance of :class:`~pymongo.collation.Collation`
-            that specifies the collation to use in MongoDB >= 3.4.
+            that specifies the collation to use.
           - `wildcardProjection`: Allows users to include or exclude specific
             field paths from a `wildcard index`_ using the { "$**" : 1} key
             pattern. Requires MongoDB >= 4.2.
@@ -430,19 +488,19 @@ class IndexModel(object):
            Added the ``partialFilterExpression`` option to support partial
            indexes.
 
-        .. _wildcard index: https://docs.mongodb.com/master/core/index-wildcard/#wildcard-index-core
+        .. _wildcard index: https://docs.mongodb.com/master/core/index-wildcard/
         """
         keys = _index_list(keys)
         if "name" not in kwargs:
             kwargs["name"] = _gen_index_name(keys)
         kwargs["key"] = _index_document(keys)
-        collation = validate_collation_or_none(kwargs.pop('collation', None))
+        collation = validate_collation_or_none(kwargs.pop("collation", None))
         self.__document = kwargs
         if collation is not None:
-            self.__document['collation'] = collation
+            self.__document["collation"] = collation
 
     @property
-    def document(self):
+    def document(self) -> Dict[str, Any]:
         """An index document suitable for passing to the createIndexes
         command.
         """

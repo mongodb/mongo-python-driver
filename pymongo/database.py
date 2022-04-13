@@ -13,44 +13,68 @@
 # limitations under the License.
 
 """Database level operations."""
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Generic,
+    List,
+    Mapping,
+    MutableMapping,
+    NoReturn,
+    Optional,
+    Sequence,
+    TypeVar,
+    Union,
+    cast,
+)
 
-import warnings
-
-from bson.codec_options import DEFAULT_CODEC_OPTIONS
+from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
 from bson.son import SON
-from pymongo import auth, common
+from bson.timestamp import Timestamp
+from pymongo import common
 from pymongo.aggregation import _DatabaseAggregationCommand
 from pymongo.change_stream import DatabaseChangeStream
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
-from pymongo.errors import (CollectionInvalid,
-                            InvalidName)
-from pymongo.message import _first_batch
-from pymongo.read_preferences import ReadPreference
-
-
-_INDEX_REGEX = {"name": {"$regex": r"^(?!.*\$)"}}
+from pymongo.errors import CollectionInvalid, InvalidName
+from pymongo.read_preferences import ReadPreference, _ServerMode
+from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
 
 
 def _check_name(name):
-    """Check if a database name is valid.
-    """
+    """Check if a database name is valid."""
     if not name:
         raise InvalidName("database name cannot be the empty string")
 
-    for invalid_char in [' ', '.', '$', '/', '\\', '\x00', '"']:
+    for invalid_char in [" ", ".", "$", "/", "\\", "\x00", '"']:
         if invalid_char in name:
-            raise InvalidName("database names cannot contain the "
-                              "character %r" % invalid_char)
+            raise InvalidName("database names cannot contain the character %r" % invalid_char)
 
 
-class Database(common.BaseObject):
-    """A Mongo database.
-    """
+if TYPE_CHECKING:
+    from pymongo.client_session import ClientSession
+    from pymongo.mongo_client import MongoClient
+    from pymongo.read_concern import ReadConcern
+    from pymongo.write_concern import WriteConcern
 
-    def __init__(self, client, name, codec_options=None, read_preference=None,
-                 write_concern=None, read_concern=None):
+
+_CodecDocumentType = TypeVar("_CodecDocumentType", bound=Mapping[str, Any])
+
+
+class Database(common.BaseObject, Generic[_DocumentType]):
+    """A Mongo database."""
+
+    def __init__(
+        self,
+        client: "MongoClient[_DocumentType]",
+        name: str,
+        codec_options: Optional[CodecOptions] = None,
+        read_preference: Optional[_ServerMode] = None,
+        write_concern: Optional["WriteConcern"] = None,
+        read_concern: Optional["ReadConcern"] = None,
+    ) -> None:
         """Get a database by client and name.
 
         Raises :class:`TypeError` if `name` is not an instance of
@@ -75,6 +99,13 @@ class Database(common.BaseObject):
 
         .. seealso:: The MongoDB documentation on `databases <https://dochub.mongodb.org/core/databases>`_.
 
+        .. versionchanged:: 4.0
+           Removed the eval, system_js, error, last_status, previous_error,
+           reset_error_history, authenticate, logout, collection_names,
+           current_op, add_user, remove_user, profiling_level,
+           set_profiling_level, and profiling_info methods.
+           See the :ref:`pymongo4-migration-guide`.
+
         .. versionchanged:: 3.2
            Added the read_concern option.
 
@@ -94,29 +125,35 @@ class Database(common.BaseObject):
             codec_options or client.codec_options,
             read_preference or client.read_preference,
             write_concern or client.write_concern,
-            read_concern or client.read_concern)
+            read_concern or client.read_concern,
+        )
 
         if not isinstance(name, str):
             raise TypeError("name must be an instance of str")
 
-        if name != '$external':
+        if name != "$external":
             _check_name(name)
 
         self.__name = name
-        self.__client = client
+        self.__client: MongoClient[_DocumentType] = client
 
     @property
-    def client(self):
+    def client(self) -> "MongoClient[_DocumentType]":
         """The client instance for this :class:`Database`."""
         return self.__client
 
     @property
-    def name(self):
+    def name(self) -> str:
         """The name of this :class:`Database`."""
         return self.__name
 
-    def with_options(self, codec_options=None, read_preference=None,
-                     write_concern=None, read_concern=None):
+    def with_options(
+        self,
+        codec_options: Optional[CodecOptions] = None,
+        read_preference: Optional[_ServerMode] = None,
+        write_concern: Optional["WriteConcern"] = None,
+        read_concern: Optional["ReadConcern"] = None,
+    ) -> "Database[_DocumentType]":
         """Get a clone of this database changing the specified settings.
 
           >>> db1.read_preference
@@ -148,29 +185,30 @@ class Database(common.BaseObject):
 
         .. versionadded:: 3.8
         """
-        return Database(self.client,
-                        self.__name,
-                        codec_options or self.codec_options,
-                        read_preference or self.read_preference,
-                        write_concern or self.write_concern,
-                        read_concern or self.read_concern)
+        return Database(
+            self.client,
+            self.__name,
+            codec_options or self.codec_options,
+            read_preference or self.read_preference,
+            write_concern or self.write_concern,
+            read_concern or self.read_concern,
+        )
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, Database):
-            return (self.__client == other.client and
-                    self.__name == other.name)
+            return self.__client == other.client and self.__name == other.name
         return NotImplemented
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.__client, self.__name))
 
     def __repr__(self):
         return "Database(%r, %r)" % (self.__client, self.__name)
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Collection[_DocumentType]:
         """Get a collection of this database by name.
 
         Raises InvalidName if an invalid collection name is used.
@@ -178,13 +216,14 @@ class Database(common.BaseObject):
         :Parameters:
           - `name`: the name of the collection to get
         """
-        if name.startswith('_'):
+        if name.startswith("_"):
             raise AttributeError(
                 "Database has no attribute %r. To access the %s"
-                " collection, use database[%r]." % (name, name, name))
+                " collection, use database[%r]." % (name, name, name)
+            )
         return self.__getitem__(name)
 
-    def __getitem__(self, name):
+    def __getitem__(self, name: str) -> "Collection[_DocumentType]":
         """Get a collection of this database by name.
 
         Raises InvalidName if an invalid collection name is used.
@@ -194,8 +233,14 @@ class Database(common.BaseObject):
         """
         return Collection(self, name)
 
-    def get_collection(self, name, codec_options=None, read_preference=None,
-                       write_concern=None, read_concern=None):
+    def get_collection(
+        self,
+        name: str,
+        codec_options: Optional[CodecOptions] = None,
+        read_preference: Optional[_ServerMode] = None,
+        write_concern: Optional["WriteConcern"] = None,
+        read_concern: Optional["ReadConcern"] = None,
+    ) -> Collection[_DocumentType]:
         """Get a :class:`~pymongo.collection.Collection` with the given name
         and options.
 
@@ -234,12 +279,19 @@ class Database(common.BaseObject):
             used.
         """
         return Collection(
-            self, name, False, codec_options, read_preference,
-            write_concern, read_concern)
+            self, name, False, codec_options, read_preference, write_concern, read_concern
+        )
 
-    def create_collection(self, name, codec_options=None,
-                          read_preference=None, write_concern=None,
-                          read_concern=None, session=None, **kwargs):
+    def create_collection(
+        self,
+        name: str,
+        codec_options: Optional[CodecOptions] = None,
+        read_preference: Optional[_ServerMode] = None,
+        write_concern: Optional["WriteConcern"] = None,
+        read_concern: Optional["ReadConcern"] = None,
+        session: Optional["ClientSession"] = None,
+        **kwargs: Any,
+    ) -> Collection[_DocumentType]:
         """Create a new :class:`~pymongo.collection.Collection` in this
         database.
 
@@ -276,15 +328,30 @@ class Database(common.BaseObject):
         as keyword arguments to this method. Valid options include, but are not
         limited to:
 
-          - ``size``: desired initial size for the collection (in
+          - ``size`` (int): desired initial size for the collection (in
             bytes). For capped collections this size is the max
             size of the collection.
-          - ``capped``: if True, this is a capped collection
-          - ``max``: maximum number of objects if capped (optional)
-          - ``timeseries``: a document specifying configuration options for
+          - ``capped`` (bool): if True, this is a capped collection
+          - ``max`` (int): maximum number of objects if capped (optional)
+          - ``timeseries`` (dict): a document specifying configuration options for
             timeseries collections
-          - ``expireAfterSeconds``: the number of seconds after which a
+          - ``expireAfterSeconds`` (int): the number of seconds after which a
             document in a timeseries collection expires
+          - ``validator`` (dict): a document specifying validation rules or expressions
+            for the collection
+          - ``validationLevel`` (str): how strictly to apply the
+            validation rules to existing documents during an update.  The default level
+            is "strict"
+          - ``validationAction`` (str): whether to "error" on invalid documents
+            (the default) or just "warn" about the violations but allow invalid
+            documents to be inserted
+          - ``indexOptionDefaults`` (dict): a document specifying a default configuration
+            for indexes when creating a collection
+          - ``viewOn`` (str): the name of the source collection or view from which
+            to create the view
+          - ``pipeline`` (list): a list of aggregation pipeline stages
+          - ``comment`` (str): a user-provided comment to attach to this command.
+            This option is only supported on MongoDB >= 4.4.
 
         .. versionchanged:: 3.11
            This method is now supported inside multi-document transactions
@@ -305,22 +372,30 @@ class Database(common.BaseObject):
         with self.__client._tmp_session(session) as s:
             # Skip this check in a transaction where listCollections is not
             # supported.
-            if ((not s or not s.in_transaction) and
-                    name in self.list_collection_names(
-                        filter={"name": name}, session=s)):
+            if (not s or not s.in_transaction) and name in self.list_collection_names(
+                filter={"name": name}, session=s
+            ):
                 raise CollectionInvalid("collection %s already exists" % name)
 
-            return Collection(self, name, True, codec_options,
-                              read_preference, write_concern,
-                              read_concern, session=s, **kwargs)
+            return Collection(
+                self,
+                name,
+                True,
+                codec_options,
+                read_preference,
+                write_concern,
+                read_concern,
+                session=s,
+                **kwargs,
+            )
 
-    def aggregate(self, pipeline, session=None, **kwargs):
+    def aggregate(
+        self, pipeline: _Pipeline, session: Optional["ClientSession"] = None, **kwargs: Any
+    ) -> CommandCursor[_DocumentType]:
         """Perform a database-level aggregation.
 
         See the `aggregation pipeline`_ documentation for a list of stages
         that are supported.
-
-        Introduced in MongoDB 3.6.
 
         .. code-block:: python
 
@@ -380,15 +455,30 @@ class Database(common.BaseObject):
         """
         with self.client._tmp_session(session, close=False) as s:
             cmd = _DatabaseAggregationCommand(
-                self, CommandCursor, pipeline, kwargs, session is not None,
-                user_fields={'cursor': {'firstBatch': 1}})
+                self,
+                CommandCursor,
+                pipeline,
+                kwargs,
+                session is not None,
+                user_fields={"cursor": {"firstBatch": 1}},
+            )
             return self.client._retryable_read(
-                cmd.get_cursor, cmd.get_read_preference(s), s,
-                retryable=not cmd._performs_write)
+                cmd.get_cursor, cmd.get_read_preference(s), s, retryable=not cmd._performs_write
+            )
 
-    def watch(self, pipeline=None, full_document=None, resume_after=None,
-              max_await_time_ms=None, batch_size=None, collation=None,
-              start_at_operation_time=None, session=None, start_after=None):
+    def watch(
+        self,
+        pipeline: Optional[_Pipeline] = None,
+        full_document: Optional[str] = None,
+        resume_after: Optional[Mapping[str, Any]] = None,
+        max_await_time_ms: Optional[int] = None,
+        batch_size: Optional[int] = None,
+        collation: Optional[_CollationIn] = None,
+        start_at_operation_time: Optional[Timestamp] = None,
+        session: Optional["ClientSession"] = None,
+        start_after: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
+    ) -> DatabaseChangeStream[_DocumentType]:
         """Watch changes on this database.
 
         Performs an aggregation with an implicit initial ``$changeStream``
@@ -459,30 +549,53 @@ class Database(common.BaseObject):
           - `start_after` (optional): The same as `resume_after` except that
             `start_after` can resume notifications after an invalidate event.
             This option and `resume_after` are mutually exclusive.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
 
         :Returns:
           A :class:`~pymongo.change_stream.DatabaseChangeStream` cursor.
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionchanged:: 3.9
            Added the ``start_after`` parameter.
 
         .. versionadded:: 3.7
 
-        .. seealso:: The MongoDB documentation on `changeStreams <https://dochub.mongodb.org/core/changeStreams>`_.
+        .. seealso:: The MongoDB documentation on `changeStreams <https://docs.mongodb.com/manual/changeStreams/>`_.
 
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.rst
         """
         return DatabaseChangeStream(
-            self, pipeline, full_document, resume_after, max_await_time_ms,
-            batch_size, collation, start_at_operation_time, session,
-            start_after)
+            self,
+            pipeline,
+            full_document,
+            resume_after,
+            max_await_time_ms,
+            batch_size,
+            collation,
+            start_at_operation_time,
+            session,
+            start_after,
+            comment=comment,
+        )
 
-    def _command(self, sock_info, command, slave_ok=False, value=1, check=True,
-                 allowable_errors=None, read_preference=ReadPreference.PRIMARY,
-                 codec_options=DEFAULT_CODEC_OPTIONS,
-                 write_concern=None,
-                 parse_write_concern_error=False, session=None, **kwargs):
+    def _command(
+        self,
+        sock_info,
+        command,
+        value=1,
+        check=True,
+        allowable_errors=None,
+        read_preference=ReadPreference.PRIMARY,
+        codec_options=DEFAULT_CODEC_OPTIONS,
+        write_concern=None,
+        parse_write_concern_error=False,
+        session=None,
+        **kwargs,
+    ):
         """Internal command helper."""
         if isinstance(command, str):
             command = SON([(command, value)])
@@ -492,7 +605,6 @@ class Database(common.BaseObject):
             return sock_info.command(
                 self.__name,
                 command,
-                slave_ok,
                 read_preference,
                 codec_options,
                 check,
@@ -500,11 +612,21 @@ class Database(common.BaseObject):
                 write_concern=write_concern,
                 parse_write_concern_error=parse_write_concern_error,
                 session=s,
-                client=self.__client)
+                client=self.__client,
+            )
 
-    def command(self, command, value=1, check=True,
-                allowable_errors=None, read_preference=None,
-                codec_options=DEFAULT_CODEC_OPTIONS, session=None, **kwargs):
+    def command(
+        self,
+        command: Union[str, MutableMapping[str, Any]],
+        value: Any = 1,
+        check: bool = True,
+        allowable_errors: Optional[Sequence[Union[str, int]]] = None,
+        read_preference: Optional[_ServerMode] = None,
+        codec_options: "Optional[CodecOptions[_CodecDocumentType]]" = None,
+        session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> _CodecDocumentType:
         """Issue a MongoDB command.
 
         Send command `command` to the database and return the
@@ -557,8 +679,11 @@ class Database(common.BaseObject):
             instance.
           - `session` (optional): A
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
           - `**kwargs` (optional): additional keyword arguments will
             be added to the command document before it is sent
+
 
         .. note:: :meth:`command` does **not** obey this Database's
            :attr:`read_preference` or :attr:`codec_options`. You must use the
@@ -567,7 +692,7 @@ class Database(common.BaseObject):
         .. note:: :meth:`command` does **not** apply any custom TypeDecoders
            when decoding the command response.
 
-        .. note:: If this client has been configured to use MongoDB Versioned
+        .. note:: If this client has been configured to use MongoDB Stable
            API (see :ref:`versioned-api-ref`), then :meth:`command` will
            automactically add API versioning options to the given command.
            Explicitly adding API versioning options in the command and
@@ -587,72 +712,86 @@ class Database(common.BaseObject):
 
         .. seealso:: The MongoDB documentation on `commands <https://dochub.mongodb.org/core/commands>`_.
         """
-        if read_preference is None:
-            read_preference = ((session and session._txn_read_preference())
-                               or ReadPreference.PRIMARY)
-        with self.__client._socket_for_reads(
-                read_preference, session) as (sock_info, slave_ok):
-            return self._command(sock_info, command, slave_ok, value,
-                                 check, allowable_errors, read_preference,
-                                 codec_options, session=session, **kwargs)
+        opts = codec_options or DEFAULT_CODEC_OPTIONS
+        if comment is not None:
+            kwargs["comment"] = comment
 
-    def _retryable_read_command(self, command, value=1, check=True,
-                allowable_errors=None, read_preference=None,
-                codec_options=DEFAULT_CODEC_OPTIONS, session=None, **kwargs):
+        if read_preference is None:
+            read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
+        with self.__client._socket_for_reads(read_preference, session) as (
+            sock_info,
+            read_preference,
+        ):
+            return self._command(
+                sock_info,
+                command,
+                value,
+                check,
+                allowable_errors,
+                read_preference,
+                opts,
+                session=session,
+                **kwargs,
+            )
+
+    def _retryable_read_command(
+        self,
+        command,
+        value=1,
+        check=True,
+        allowable_errors=None,
+        read_preference=None,
+        codec_options=DEFAULT_CODEC_OPTIONS,
+        session=None,
+        **kwargs,
+    ):
         """Same as command but used for retryable read commands."""
         if read_preference is None:
-            read_preference = ((session and session._txn_read_preference())
-                               or ReadPreference.PRIMARY)
+            read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
 
-        def _cmd(session, server, sock_info, slave_ok):
-            return self._command(sock_info, command, slave_ok, value,
-                                 check, allowable_errors, read_preference,
-                                 codec_options, session=session, **kwargs)
+        def _cmd(session, server, sock_info, read_preference):
+            return self._command(
+                sock_info,
+                command,
+                value,
+                check,
+                allowable_errors,
+                read_preference,
+                codec_options,
+                session=session,
+                **kwargs,
+            )
 
-        return self.__client._retryable_read(
-            _cmd, read_preference, session)
+        return self.__client._retryable_read(_cmd, read_preference, session)
 
-    def _list_collections(self, sock_info, slave_okay, session,
-                          read_preference, **kwargs):
+    def _list_collections(self, sock_info, session, read_preference, **kwargs):
         """Internal listCollections helper."""
 
-        coll = self.get_collection(
-            "$cmd", read_preference=read_preference)
-        if sock_info.max_wire_version > 2:
-            cmd = SON([("listCollections", 1),
-                       ("cursor", {})])
-            cmd.update(kwargs)
-            with self.__client._tmp_session(
-                    session, close=False) as tmp_session:
-                cursor = self._command(
-                    sock_info, cmd, slave_okay,
-                    read_preference=read_preference,
-                    session=tmp_session)["cursor"]
-                cmd_cursor = CommandCursor(
-                    coll,
-                    cursor,
-                    sock_info.address,
-                    session=tmp_session,
-                    explicit_session=session is not None)
-        else:
-            match = _INDEX_REGEX
-            if "filter" in kwargs:
-                match = {"$and": [_INDEX_REGEX, kwargs["filter"]]}
-            dblen = len(self.name.encode("utf8") + b".")
-            pipeline = [
-                {"$project": {"name": {"$substr": ["$name", dblen, -1]},
-                              "options": 1}},
-                {"$match": match}
-            ]
-            cmd = SON([("aggregate", "system.namespaces"),
-                       ("pipeline", pipeline),
-                       ("cursor", kwargs.get("cursor", {}))])
-            cursor = self._command(sock_info, cmd, slave_okay)["cursor"]
-            cmd_cursor = CommandCursor(coll, cursor, sock_info.address)
+        coll = self.get_collection("$cmd", read_preference=read_preference)
+        cmd = SON([("listCollections", 1), ("cursor", {})])
+        cmd.update(kwargs)
+        with self.__client._tmp_session(session, close=False) as tmp_session:
+            cursor = self._command(
+                sock_info, cmd, read_preference=read_preference, session=tmp_session
+            )["cursor"]
+            cmd_cursor = CommandCursor(
+                coll,
+                cursor,
+                sock_info.address,
+                session=tmp_session,
+                explicit_session=session is not None,
+                comment=cmd.get("comment"),
+            )
         cmd_cursor._maybe_pin_connection(sock_info)
         return cmd_cursor
 
-    def list_collections(self, session=None, filter=None, **kwargs):
+    def list_collections(
+        self,
+        session: Optional["ClientSession"] = None,
+        filter: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> CommandCursor[Dict[str, Any]]:
         """Get a cursor over the collections of this database.
 
         :Parameters:
@@ -660,11 +799,14 @@ class Database(common.BaseObject):
             :class:`~pymongo.client_session.ClientSession`.
           - `filter` (optional):  A query document to filter the list of
             collections returned from the listCollections command.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
           - `**kwargs` (optional): Optional parameters of the
             `listCollections command
             <https://docs.mongodb.com/manual/reference/command/listCollections/>`_
             can be passed as keyword arguments to this method. The supported
             options differ by server version.
+
 
         :Returns:
           An instance of :class:`~pymongo.command_cursor.CommandCursor`.
@@ -672,19 +814,25 @@ class Database(common.BaseObject):
         .. versionadded:: 3.6
         """
         if filter is not None:
-            kwargs['filter'] = filter
-        read_pref = ((session and session._txn_read_preference())
-                     or ReadPreference.PRIMARY)
+            kwargs["filter"] = filter
+        read_pref = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
+        if comment is not None:
+            kwargs["comment"] = comment
 
-        def _cmd(session, server, sock_info, slave_okay):
+        def _cmd(session, server, sock_info, read_preference):
             return self._list_collections(
-                sock_info, slave_okay, session, read_preference=read_pref,
-                **kwargs)
+                sock_info, session, read_preference=read_preference, **kwargs
+            )
 
-        return self.__client._retryable_read(
-            _cmd, read_pref, session)
+        return self.__client._retryable_read(_cmd, read_pref, session)
 
-    def list_collection_names(self, session=None, filter=None, **kwargs):
+    def list_collection_names(
+        self,
+        session: Optional["ClientSession"] = None,
+        filter: Optional[Mapping[str, Any]] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> List[str]:
         """Get a list of all the collection names in this database.
 
         For example, to list all non-system collections::
@@ -697,19 +845,25 @@ class Database(common.BaseObject):
             :class:`~pymongo.client_session.ClientSession`.
           - `filter` (optional):  A query document to filter the list of
             collections returned from the listCollections command.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
           - `**kwargs` (optional): Optional parameters of the
             `listCollections command
             <https://docs.mongodb.com/manual/reference/command/listCollections/>`_
             can be passed as keyword arguments to this method. The supported
             options differ by server version.
 
+
         .. versionchanged:: 3.8
            Added the ``filter`` and ``**kwargs`` parameters.
 
         .. versionadded:: 3.6
         """
+        if comment is not None:
+            kwargs["comment"] = comment
         if filter is None:
             kwargs["nameOnly"] = True
+
         else:
             # The enumerate collections spec states that "drivers MUST NOT set
             # nameOnly if a filter specifies any keys other than name."
@@ -718,10 +872,14 @@ class Database(common.BaseObject):
             if not filter or (len(filter) == 1 and "name" in filter):
                 kwargs["nameOnly"] = True
 
-        return [result["name"]
-                for result in self.list_collections(session=session, **kwargs)]
+        return [result["name"] for result in self.list_collections(session=session, **kwargs)]
 
-    def drop_collection(self, name_or_collection, session=None):
+    def drop_collection(
+        self,
+        name_or_collection: Union[str, Collection],
+        session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
+    ) -> Dict[str, Any]:
         """Drop a collection.
 
         :Parameters:
@@ -729,10 +887,15 @@ class Database(common.BaseObject):
             collection object itself
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+
 
         .. note:: The :attr:`~pymongo.database.Database.write_concern` of
-           this database is automatically applied to this operation when using
-           MongoDB >= 3.4.
+           this database is automatically applied to this operation.
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -749,17 +912,29 @@ class Database(common.BaseObject):
         if not isinstance(name, str):
             raise TypeError("name_or_collection must be an instance of str")
 
+        command = SON([("drop", name)])
+        if comment is not None:
+            command["comment"] = comment
+
         with self.__client._socket_for_writes(session) as sock_info:
             return self._command(
-                sock_info, 'drop', value=name,
-                allowable_errors=['ns not found', 26],
+                sock_info,
+                command,
+                allowable_errors=["ns not found", 26],
                 write_concern=self._write_concern_for(session),
                 parse_write_concern_error=True,
-                session=session)
+                session=session,
+            )
 
-    def validate_collection(self, name_or_collection,
-                            scandata=False, full=False, session=None,
-                            background=None):
+    def validate_collection(
+        self,
+        name_or_collection: Union[str, Collection],
+        scandata: bool = False,
+        full: bool = False,
+        session: Optional["ClientSession"] = None,
+        background: Optional[bool] = None,
+        comment: Optional[Any] = None,
+    ) -> Dict[str, Any]:
         """Validate a collection.
 
         Returns a dict of validation info. Raises CollectionInvalid if
@@ -780,6 +955,11 @@ class Database(common.BaseObject):
             :class:`~pymongo.client_session.ClientSession`.
           - `background` (optional): A boolean flag that determines whether
             the command runs in the background. Requires MongoDB 4.4+.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
 
         .. versionchanged:: 3.11
            Added ``background`` parameter.
@@ -794,16 +974,15 @@ class Database(common.BaseObject):
             name = name.name
 
         if not isinstance(name, str):
-            raise TypeError("name_or_collection must be an instance of str or "
-                            "Collection")
+            raise TypeError("name_or_collection must be an instance of str or Collection")
+        cmd = SON([("validate", name), ("scandata", scandata), ("full", full)])
+        if comment is not None:
+            cmd["comment"] = comment
 
-        cmd = SON([("validate", name),
-                   ("scandata", scandata),
-                   ("full", full)])
         if background is not None:
             cmd["background"] = background
 
-        result = self.command(cmd, session=session)
+        result = cast(dict, self.command(cmd, session=session))
 
         valid = True
         # Pre 1.9 results
@@ -816,10 +995,8 @@ class Database(common.BaseObject):
             for _, res in result["raw"].items():
                 if "result" in res:
                     info = res["result"]
-                    if (info.find("exception") != -1 or
-                            info.find("corrupt") != -1):
-                        raise CollectionInvalid("%s invalid: "
-                                                "%s" % (name, info))
+                    if info.find("exception") != -1 or info.find("corrupt") != -1:
+                        raise CollectionInvalid("%s invalid: %s" % (name, info))
                 elif not res.get("valid", False):
                     valid = False
                     break
@@ -832,15 +1009,28 @@ class Database(common.BaseObject):
 
         return result
 
-    def __iter__(self):
-        return self
+    # See PYTHON-3084.
+    __iter__ = None
 
-    def __next__(self):
+    def __next__(self) -> NoReturn:
         raise TypeError("'Database' object is not iterable")
 
     next = __next__
 
-    def dereference(self, dbref, session=None, **kwargs):
+    def __bool__(self) -> NoReturn:
+        raise NotImplementedError(
+            "Database objects do not implement truth "
+            "value testing or bool(). Please compare "
+            "with None instead: database is not None"
+        )
+
+    def dereference(
+        self,
+        dbref: DBRef,
+        session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> Optional[_DocumentType]:
         """Dereference a :class:`~bson.dbref.DBRef`, getting the
         document it points to.
 
@@ -854,18 +1044,25 @@ class Database(common.BaseObject):
           - `dbref`: the reference
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
           - `**kwargs` (optional): any additional keyword arguments
             are the same as the arguments to
             :meth:`~pymongo.collection.Collection.find`.
 
+
+        .. versionchanged:: 4.1
+           Added ``comment`` parameter.
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
         if not isinstance(dbref, DBRef):
             raise TypeError("cannot dereference a %s" % type(dbref))
         if dbref.database is not None and dbref.database != self.__name:
-            raise ValueError("trying to dereference a DBRef that points to "
-                             "another database (%r not %r)" % (dbref.database,
-                                                               self.__name))
+            raise ValueError(
+                "trying to dereference a DBRef that points to "
+                "another database (%r not %r)" % (dbref.database, self.__name)
+            )
         return self[dbref.collection].find_one(
-            {"_id": dbref.id}, session=session, **kwargs)
+            {"_id": dbref.id}, session=session, comment=comment, **kwargs
+        )
