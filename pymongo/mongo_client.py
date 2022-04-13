@@ -137,7 +137,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         execute.
 
         The `host` parameter can be a full `mongodb URI
-        <https://www.mongodb.com/docs/manual/reference/connection-string/>`_, in addition to
+        <http://dochub.mongodb.org/core/connections>`_, in addition to
         a simple hostname. It can also be a list of hostnames but no more
         than one URI. Any port specified in the host string(s) will override
         the `port` parameter. For username and
@@ -525,7 +525,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             client to use Stable API. See :ref:`versioned-api-ref` for
             details.
 
-        .. seealso:: The MongoDB documentation on `connections <https://www.mongodb.com/docs/manual/reference/connection-string/>`_.
+        .. seealso:: The MongoDB documentation on `connections <http://dochub.mongodb.org/core/connections>`_.
 
         .. versionchanged:: 4.0
 

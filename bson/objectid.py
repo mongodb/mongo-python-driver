@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Tools for working with MongoDB `ObjectIds
-<https://www.mongodb.com/docs/manual/reference/method/ObjectId/>`_.
+<http://dochub.mongodb.org/core/objectids/>`_.
 """
 
 import binascii

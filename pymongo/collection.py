@@ -189,7 +189,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
                collection.__my_collection__
 
-        .. seealso:: The MongoDB documentation on `collections <https://www.mongodb.com/docs/manual/core/databases-and-collections>`_.
+        .. seealso:: The MongoDB documentation on `collections <https://dochub.mongodb.org/core/collections>`_.
         """
         super(Collection, self).__init__(
             codec_options or database.codec_options,
@@ -1605,7 +1605,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
            expression object.
            Soft deprecated the ``manipulate`` option.
 
-        .. seealso:: The MongoDB documentation on `find <https://www.mongodb.com/docs/manual/reference/method/db.collection.find/>`_.
+        .. seealso:: The MongoDB documentation on `find <https://dochub.mongodb.org/core/find>`_.
         """
         return Cursor(self, *args, **kwargs)
 
@@ -2010,9 +2010,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
            :meth:`create_index` no longer caches index names. Removed support
            for the drop_dups and bucket_size aliases.
 
-        .. seealso:: The MongoDB documentation on `indexes <https://www.mongodb.com/docs/manual/indexes/>`_.
+        .. seealso:: The MongoDB documentation on `indexes <https://dochub.mongodb.org/core/indexes>`_.
 
-        .. _wildcard index: https://mongodb.com/docs/master/core/index-wildcard/
+        .. _wildcard index: https://dochub.mongodb.org/core/index-wildcard/
         """
         cmd_options = {}
         if "maxTimeMS" in kwargs:

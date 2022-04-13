@@ -130,7 +130,7 @@ class GridIn(object):
         instance of :class:`~pymongo.collection.Collection`.
 
         Any of the file level options specified in the `GridFS Spec
-        <https://github.com/mongodb/specifications/blob/master/source/gridfs/gridfs-spec.rst/>`_ may be passed as
+        <http://dochub.mongodb.org/core/gridfsspec>`_ may be passed as
         keyword arguments. Any additional keyword arguments will be
         set as additional fields on the file document. Valid keyword
         arguments include:
@@ -864,7 +864,7 @@ class GridOutCursor(Cursor):
 
         .. versionadded 2.7
 
-        .. seealso:: The MongoDB documentation on `cursors <https://www.mongodb.com/docs/manual/tutorial/query-documents/>`_.
+        .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
         """
         _disallow_transactions(session)
         collection = _clear_entity_type_registry(collection)

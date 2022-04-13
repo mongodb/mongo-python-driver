@@ -97,7 +97,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
             default) client.read_concern is used.
 
-        .. seealso:: The MongoDB documentation on `databases <https://www.mongodb.com/docs/manual/core/databases-and-collections>`_.
+        .. seealso:: The MongoDB documentation on `databases <https://dochub.mongodb.org/core/databases>`_.
 
         .. versionchanged:: 4.0
            Removed the eval, system_js, error, last_status, previous_error,
@@ -710,7 +710,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
            BSON regular expression to a Python regular expression object.
            Added the `codec_options` parameter.
 
-        .. seealso:: The MongoDB documentation on `commands <https://www.mongodb.com/docs/manual/reference/command/>`_.
+        .. seealso:: The MongoDB documentation on `commands <https://dochub.mongodb.org/core/commands>`_.
         """
         opts = codec_options or DEFAULT_CODEC_OPTIONS
         if comment is not None:

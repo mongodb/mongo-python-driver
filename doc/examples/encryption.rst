@@ -6,9 +6,9 @@ Client-Side Field Level Encryption
 New in MongoDB 4.2, client-side field level encryption allows an application
 to encrypt specific data fields in addition to pre-existing MongoDB
 encryption features such as `Encryption at Rest
-<https://www.mongodb.com/docs/manual/core/security-encryption-at-rest/>`_ and
+<https://dochub.mongodb.org/core/security-encryption-at-rest>`_ and
 `TLS/SSL (Transport Encryption)
-<https://www.mongodb.com/docs/manual/core/security-transport-encryption/>`_.
+<https://dochub.mongodb.org/core/security-tls-transport-encryption>`_.
 
 With field level encryption, applications can encrypt fields in documents
 *prior* to transmitting data over the wire to the server. Client-side field
@@ -16,7 +16,7 @@ level encryption supports workloads where applications must guarantee that
 unauthorized parties, including server administrators, cannot read the
 encrypted data.
 
-.. seealso:: The MongoDB documentation on `Client Side Field Level Encryption <https://www.mongodb.com/docs/manual/core/security-client-side-encryption/>`_.
+.. seealso:: The MongoDB documentation on `Client Side Field Level Encryption <https://dochub.mongodb.org/core/client-side-field-level-encryption>`_.
 
 Dependencies
 ------------
@@ -39,10 +39,10 @@ mongocryptd
 
 The ``mongocryptd`` binary is required for automatic client-side encryption
 and is included as a component in the `MongoDB Enterprise Server package
-<https://www.mongodb.com/docs/manual/administration/install-enterprise/>`_.
+<https://dochub.mongodb.org/core/install-mongodb-enterprise>`_.
 For detailed installation instructions see
 `the MongoDB documentation on mongocryptd
-<https://www.mongodb.com/docs/manual/reference/security-client-side-encryption-appendix/#mongocryptd>`_.
+<https://dochub.mongodb.org/core/client-side-field-level-encryption-mongocryptd>`_.
 
 ``mongocryptd`` performs the following:
 
@@ -54,7 +54,7 @@ For detailed installation instructions see
 - Rejects read/write operations that may return unexpected or incorrect results
   when applied to an encrypted field. For supported and unsupported operations,
   see `Read/Write Support with Automatic Field Level Encryption
-  <https://www.mongodb.com/docs/manual/reference/security-client-side-query-aggregation-support/>`_.
+  <https://dochub.mongodb.org/core/client-side-field-level-encryption-read-write-support>`_.
 
 A MongoClient configured with auto encryption will automatically spawn the
 ``mongocryptd`` process from the application's ``PATH``. Applications can
@@ -108,7 +108,7 @@ Providing Local Automatic Encryption Rules
 The following example shows how to specify automatic encryption rules via the
 ``schema_map`` option. The automatic encryption rules are expressed using a
 `strict subset of the JSON Schema syntax
-<https://www.mongodb.com/docs/manual/reference/security-client-side-automatic-json-schema/>`_.
+<https://dochub.mongodb.org/core/client-side-field-level-encryption-automatic-encryption-rules>`_.
 
 Supplying a ``schema_map`` provides more security than relying on
 JSON Schemas obtained from the server. It protects against a
@@ -145,7 +145,7 @@ will result in an error.::
           CodecOptions())
 
       # Create a new data key and json schema for the encryptedField.
-      # https://www.mongodb.com/docs/manual/reference/security-client-side-automatic-json-schema/
+      # https://dochub.mongodb.org/core/client-side-field-level-encryption-automatic-encryption-rules
       data_key_id = client_encryption.create_data_key(
           'local', key_alt_names=['pymongo_encryption_example_1'])
       schema = {
@@ -235,7 +235,7 @@ encryption using
 :class:`~pymongo.encryption.ClientEncryption` to create a new encryption
 data key and create a collection with the
 `Automatic Encryption JSON Schema Syntax
-<https://www.mongodb.com/docs/manual/reference/security-client-side-automatic-json-schema/>`_::
+<https://dochub.mongodb.org/core/client-side-field-level-encryption-automatic-encryption-rules>`_::
 
   import os
 

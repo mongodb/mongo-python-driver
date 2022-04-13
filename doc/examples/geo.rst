@@ -10,7 +10,7 @@ Geospatial Indexing Example
 This example shows how to create and use a :data:`~pymongo.GEO2D`
 index in PyMongo. To create a spherical (earth-like) geospatial index use :data:`~pymongo.GEOSPHERE` instead.
 
-.. seealso:: The MongoDB documentation on `Geospatial Indexes <https://www.mongodb.com/docs/manual/core/geospatial-indexes/>`_.
+.. seealso:: The MongoDB documentation on `Geospatial Indexes <hthttps://dochub.mongodb.org/core/geo>`_.
 
 Creating a Geospatial Index
 ---------------------------
