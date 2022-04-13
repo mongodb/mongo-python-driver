@@ -815,7 +815,7 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
         self.assertEqual(encrypted_altname, encrypted)
 
         # Explicitly encrypting an auto encrypted field.
-        with self.assertRaisesRegex(EncryptionError, r"encrypt element of type binData"):
+        with self.assertRaisesRegex(EncryptionError, r"encrypt element of type"):
             self.client_encrypted.db.coll.insert_one({"encrypted_placeholder": encrypted})
 
     def test_data_key_local(self):
