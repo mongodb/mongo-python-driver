@@ -1488,16 +1488,7 @@ class TestCollection(IntegrationTest):
     def test_acknowledged_delete(self):
         db = self.db
         db.drop_collection("test")
-        db.create_collection("test", capped=True, size=1000)
-
-        db.test.insert_one({"x": 1})
-        self.assertEqual(1, db.test.count_documents({}))
-
-        # Can't remove from capped collection.
-        self.assertRaises(OperationFailure, db.test.delete_one, {"x": 1})
-        db.drop_collection("test")
-        db.test.insert_one({"x": 1})
-        db.test.insert_one({"x": 1})
+        db.test.insert_many([{"x": 1}, {"x": 1}])
         self.assertEqual(2, db.test.delete_many({}).deleted_count)
         self.assertEqual(0, db.test.delete_many({}).deleted_count)
 
