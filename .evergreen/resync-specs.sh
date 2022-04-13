@@ -81,6 +81,12 @@ do
     change*streams)
       cpjson change-streams/tests/ change_streams/
       ;;
+    client-side-encryption|csfle|fle)
+      cpjson client-side-encryption/tests/ client-side-encryption/spec
+      cpjson client-side-encryption/corpus/ client-side-encryption/corpus
+      cpjson client-side-encryption/external/ client-side-encryption/external
+      cpjson client-side-encryption/limits/ client-side-encryption/limits
+      ;;
     cmap|CMAP)
       cpjson connection-monitoring-and-pooling/tests cmap
       rm $PYMONGO/test/cmap/wait-queue-fairness.json  # PYTHON-1873
