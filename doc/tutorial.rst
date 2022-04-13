@@ -22,7 +22,7 @@ should run without raising an exception:
 
 This tutorial also assumes that a MongoDB instance is running on the
 default host and port. Assuming you have `downloaded and installed
-<http://www.mongodb.org/display/DOCS/Getting+Started>`_ MongoDB, you
+<https://www.mongodb.com/docs/manual/installation/>`_ MongoDB, you
 can start it like so:
 
 .. code-block:: bash
@@ -56,7 +56,7 @@ Or use the MongoDB URI format:
 Getting a Database
 ------------------
 A single instance of MongoDB can support multiple independent
-`databases <http://www.mongodb.org/display/DOCS/Databases>`_. When
+`databases <https://www.mongodb.com/docs/manual/core/databases-and-collections>`_. When
 working with PyMongo you access databases using attribute style access
 on :class:`~pymongo.mongo_client.MongoClient` instances:
 
@@ -74,7 +74,7 @@ instead:
 
 Getting a Collection
 --------------------
-A `collection <http://www.mongodb.org/display/DOCS/Collections>`_ is a
+A `collection <https://www.mongodb.com/docs/manual/core/databases-and-collections>`_ is a
 group of documents stored in MongoDB, and can be thought of as roughly
 the equivalent of a table in a relational database. Getting a
 collection in PyMongo works the same as getting a database:
@@ -112,7 +112,7 @@ post:
 Note that documents can contain native Python types (like
 :class:`datetime.datetime` instances) which will be automatically
 converted to and from the appropriate `BSON
-<http://www.mongodb.org/display/DOCS/BSON>`_ types.
+<https://bsonspec.org/>`_ types.
 
 .. todo:: link to table of Python <-> BSON types
 
@@ -134,7 +134,7 @@ of ``"_id"`` must be unique across the
 collection. :meth:`~pymongo.collection.Collection.insert_one` returns an
 instance of :class:`~pymongo.results.InsertOneResult`. For more information
 on ``"_id"``, see the `documentation on _id
-<http://www.mongodb.org/display/DOCS/Object+IDs>`_.
+<https://www.mongodb.com/docs/manual/reference/method/ObjectId/>`_.
 
 After inserting the first document, the *posts* collection has
 actually been created on the server. We can verify this by listing all
@@ -335,7 +335,7 @@ or just of those documents that match a specific query:
 Range Queries
 -------------
 MongoDB supports many different types of `advanced queries
-<http://www.mongodb.org/display/DOCS/Advanced+Queries>`_. As an
+<https://www.mongodb.com/docs/manual/reference/operator/>`_. As an
 example, lets perform a query where we limit results to posts older
 than a certain date, but also sort the results by author:
 
@@ -366,7 +366,7 @@ Indexing
 Adding indexes can help accelerate certain queries and can also add additional
 functionality to querying and storing documents. In this example, we'll
 demonstrate how to create a `unique index
-<http://docs.mongodb.org/manual/core/index-unique/>`_ on a key that rejects
+<http://mongodb.com/docs/manual/core/index-unique/>`_ on a key that rejects
 documents whose value for that key already exists in the index.
 
 First, we'll need to create the index:
@@ -404,4 +404,4 @@ the collection:
    Traceback (most recent call last):
    DuplicateKeyError: E11000 duplicate key error index: test_database.profiles.$user_id_1 dup key: { : 212 }
 
-.. seealso:: The MongoDB documentation on `indexes <http://www.mongodb.org/display/DOCS/Indexes>`_
+.. seealso:: The MongoDB documentation on `indexes <https://www.mongodb.com/docs/manual/indexes/>`_

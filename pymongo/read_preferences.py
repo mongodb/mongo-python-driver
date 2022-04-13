@@ -153,7 +153,7 @@ class _ServerMode(object):
         until it finds a set of tags with at least one matching member.
 
            .. seealso:: `Data-Center Awareness
-               <http://www.mongodb.org/display/DOCS/Data+Center+Awareness>`_
+               <https://www.mongodb.com/docs/manual/data-center-awareness/>`_
         """
         return list(self.__tag_sets) if self.__tag_sets else [{}]
 

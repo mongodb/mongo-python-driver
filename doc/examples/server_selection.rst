@@ -19,7 +19,7 @@ to prefer servers running on ``localhost``.
    from pymongo import MongoClient
 
 
-.. _server selection algorithm: https://docs.mongodb.com/manual/core/read-preference-mechanics/
+.. _server selection algorithm: https://mongodb.com/docs/manual/core/read-preference-mechanics/
 
 
 Example: Selecting Servers Running on ``localhost``
@@ -105,4 +105,4 @@ list of known hosts. As an example, for a 3-member replica set with a
 all available secondaries.
 
 
-.. _server selection algorithm: https://docs.mongodb.com/manual/core/read-preference-mechanics/
+.. _server selection algorithm: https://mongodb.com/docs/manual/core/read-preference-mechanics/

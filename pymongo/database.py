@@ -367,7 +367,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
            Added the codec_options, read_preference, and write_concern options.
 
         .. _create collection command:
-            https://docs.mongodb.com/manual/reference/command/create
+            https://mongodb.com/docs/manual/reference/command/create
         """
         with self.__client._tmp_session(session) as s:
             # Skip this check in a transaction where listCollections is not
@@ -448,10 +448,10 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         .. versionadded:: 3.9
 
         .. _aggregation pipeline:
-            https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline
+            https://mongodb.com/docs/manual/reference/operator/aggregation-pipeline
 
         .. _aggregate command:
-            https://docs.mongodb.com/manual/reference/command/aggregate
+            https://mongodb.com/docs/manual/reference/command/aggregate
         """
         with self.client._tmp_session(session, close=False) as s:
             cmd = _DatabaseAggregationCommand(
@@ -563,7 +563,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.7
 
-        .. seealso:: The MongoDB documentation on `changeStreams <https://docs.mongodb.com/manual/changeStreams/>`_.
+        .. seealso:: The MongoDB documentation on `changeStreams <https://mongodb.com/docs/manual/changeStreams/>`_.
 
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.rst
@@ -803,7 +803,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             command.
           - `**kwargs` (optional): Optional parameters of the
             `listCollections command
-            <https://docs.mongodb.com/manual/reference/command/listCollections/>`_
+            <https://mongodb.com/docs/manual/reference/command/listCollections/>`_
             can be passed as keyword arguments to this method. The supported
             options differ by server version.
 
@@ -849,7 +849,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             command.
           - `**kwargs` (optional): Optional parameters of the
             `listCollections command
-            <https://docs.mongodb.com/manual/reference/command/listCollections/>`_
+            <https://mongodb.com/docs/manual/reference/command/listCollections/>`_
             can be passed as keyword arguments to this method. The supported
             options differ by server version.
 
@@ -967,7 +967,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
 
-        .. _validate command: https://docs.mongodb.com/manual/reference/command/validate/
+        .. _validate command: https://mongodb.com/docs/manual/reference/command/validate/
         """
         name = name_or_collection
         if isinstance(name, Collection):

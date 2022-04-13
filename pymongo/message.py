@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Tools for creating `messages
-<http://www.mongodb.org/display/DOCS/Mongo+Wire+Protocol>`_ to be sent to
+<https://www.mongodb.com/docs/manual/reference/mongodb-wire-protocol/>`_ to be sent to
 MongoDB.
 
 .. note:: This module is for internal use and is generally not needed by
