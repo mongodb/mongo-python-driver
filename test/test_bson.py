@@ -41,7 +41,7 @@ from bson import (
     encode,
     is_valid,
 )
-from bson.binary import Binary, UUIDLegacy
+from bson.binary import Binary, UUIDLegacy, UuidRepresentation
 from bson.code import Code
 from bson.codec_options import CodecOptions
 from bson.dbref import DBRef
@@ -1035,6 +1035,15 @@ class TestCodecOptions(unittest.TestCase):
         self.assertIsInstance(decoded["sub_document"], dict)
         self.assertEqual(decoded["uuid"], doc["uuid"])
         self.assertIsNone(decoded["dt"].tzinfo)
+
+    def test_decode_all_kwarg(self):
+        doc = {"a": uuid.uuid4()}
+        opts = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
+        encoded = encode(doc, codec_options=opts)
+        # Positional codec_options
+        self.assertEqual([doc], decode_all(encoded, opts))
+        # Keyword codec_options
+        self.assertEqual([doc], decode_all(encoded, codec_options=opts))
 
     def test_unicode_decode_error_handler(self):
         enc = encode({"keystr": "foobar"})

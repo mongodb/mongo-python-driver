@@ -965,38 +965,8 @@ def decode(data, codec_options=DEFAULT_CODEC_OPTIONS):
     return _bson_to_dict(data, codec_options)
 
 
-def decode_all(data, codec_options=DEFAULT_CODEC_OPTIONS):
-    """Decode BSON data to multiple documents.
-
-    `data` must be a bytes-like object implementing the buffer protocol that
-    provides concatenated, valid, BSON-encoded documents.
-
-    :Parameters:
-      - `data`: BSON data
-      - `codec_options` (optional): An instance of
-        :class:`~bson.codec_options.CodecOptions`.
-
-    .. versionchanged:: 3.9
-       Supports bytes-like objects that implement the buffer protocol.
-
-    .. versionchanged:: 3.0
-       Removed `compile_re` option: PyMongo now always represents BSON regular
-       expressions as :class:`~bson.regex.Regex` objects. Use
-       :meth:`~bson.regex.Regex.try_compile` to attempt to convert from a
-       BSON regular expression to a Python regular expression object.
-
-       Replaced `as_class`, `tz_aware`, and `uuid_subtype` options with
-       `codec_options`.
-
-    .. versionchanged:: 2.7
-       Added `compile_re` option. If set to False, PyMongo represented BSON
-       regular expressions as :class:`~bson.regex.Regex` objects instead of
-       attempting to compile BSON regular expressions as Python native
-       regular expressions, thus preventing errors for some incompatible
-       patterns, see `PYTHON-500`_.
-
-    .. _PYTHON-500: https://jira.mongodb.org/browse/PYTHON-500
-    """
+def _decode_all(data, codec_options):
+    """Decode BSON data to multiple documents."""
     data, view = get_data_and_view(data)
     if not isinstance(codec_options, CodecOptions):
         raise _CODEC_OPTIONS_TYPE_ERROR
@@ -1031,7 +1001,44 @@ def decode_all(data, codec_options=DEFAULT_CODEC_OPTIONS):
 
 
 if _USE_C:
-    decode_all = _cbson.decode_all
+    _decode_all = _cbson._decode_all
+
+
+def decode_all(data, codec_options=DEFAULT_CODEC_OPTIONS):
+    """Decode BSON data to multiple documents.
+
+    `data` must be a bytes-like object implementing the buffer protocol that
+    provides concatenated, valid, BSON-encoded documents.
+
+    :Parameters:
+      - `data`: BSON data
+      - `codec_options` (optional): An instance of
+        :class:`~bson.codec_options.CodecOptions`.
+
+    .. versionchanged:: 3.9
+       Supports bytes-like objects that implement the buffer protocol.
+
+    .. versionchanged:: 3.0
+       Removed `compile_re` option: PyMongo now always represents BSON regular
+       expressions as :class:`~bson.regex.Regex` objects. Use
+       :meth:`~bson.regex.Regex.try_compile` to attempt to convert from a
+       BSON regular expression to a Python regular expression object.
+
+       Replaced `as_class`, `tz_aware`, and `uuid_subtype` options with
+       `codec_options`.
+
+    .. versionchanged:: 2.7
+       Added `compile_re` option. If set to False, PyMongo represented BSON
+       regular expressions as :class:`~bson.regex.Regex` objects instead of
+       attempting to compile BSON regular expressions as Python native
+       regular expressions, thus preventing errors for some incompatible
+       patterns, see `PYTHON-500`_.
+
+    .. _PYTHON-500: https://jira.mongodb.org/browse/PYTHON-500
+    """
+    if not isinstance(codec_options, CodecOptions):
+        raise _CODEC_OPTIONS_TYPE_ERROR
+    return _decode_all(data, codec_options)
 
 
 def _decode_selective(rawdoc, fields, codec_options):
