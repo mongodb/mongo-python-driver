@@ -525,7 +525,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             client to use Stable API. See :ref:`versioned-api-ref` for
             details.
 
-        .. seealso:: The MongoDB documentation on `connections <http://dochub.mongodb.org/core/connections>`_.
+        .. seealso:: The MongoDB documentation on `connections <https://dochub.mongodb.org/core/connections>`_.
 
         .. versionchanged:: 4.0
 

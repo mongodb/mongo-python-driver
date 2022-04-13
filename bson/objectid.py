@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Tools for working with MongoDB `ObjectIds
-<http://dochub.mongodb.org/core/objectids/>`_.
+<http://dochub.mongodb.org/core/objectids>`_.
 """
 
 import binascii

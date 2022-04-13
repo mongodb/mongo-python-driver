@@ -74,7 +74,7 @@ class GridFS(object):
            `database` must use an acknowledged
            :attr:`~pymongo.database.Database.write_concern`
 
-        .. seealso:: The MongoDB documentation on `gridfs <https://www.mongodb.com/docs/manual/core/gridfs/>`_.
+        .. seealso:: The MongoDB documentation on `gridfs <https://dochub.mongodb.org/core/gridfs>`_.
         """
         if not isinstance(database, Database):
             raise TypeError("database must be an instance of Database")
