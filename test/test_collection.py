@@ -1540,7 +1540,7 @@ class TestCollection(IntegrationTest):
 
     def test_invalid_session_parameter(self):
         def try_invalid_session():
-            with self.db.test.aggregate({}, {}):  # type:ignore
+            with self.db.test.aggregate([], {}):  # type:ignore
                 pass
 
         self.assertRaisesRegex(ValueError, "must be a ClientSession", try_invalid_session)
