@@ -507,8 +507,6 @@ class ClientUnitTest(unittest.TestCase):
 
     def test_session_validation(self):
         c = MongoClient(connect=False)
-        with c._tmp_session(None):
-            pass
 
         def try_improper_session():
             with c._tmp_session({}):  # type:ignore
