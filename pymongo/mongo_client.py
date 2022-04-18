@@ -1671,13 +1671,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self, session: Optional[client_session.ClientSession], close: bool = True
     ) -> Generator[Optional[client_session.ClientSession[Any]], None, None]:
         """If provided session is None, lend a temporary session."""
-        if session is None:
+        if session is not None:
+            if not isinstance(session, client_session.ClientSession):
+                raise ValueError("'session' argument must be a ClientSession or None.")
             # Don't call end_session.
             yield session
             return
-
-        if not isinstance(session, client_session.ClientSession):
-            raise ValueError("'session' argument must be a ClientSession or None.")
 
         s = self._ensure_session(session)
         if s:
