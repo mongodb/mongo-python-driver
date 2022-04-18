@@ -40,7 +40,6 @@ from typing import (
     Any,
     Dict,
     FrozenSet,
-    Generator,
     Generic,
     List,
     Mapping,
@@ -98,7 +97,15 @@ from pymongo.uri_parser import (
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
 if TYPE_CHECKING:
+    import sys
+
     from pymongo.read_concern import ReadConcern
+
+    if sys.version_info[:2] >= (3, 9):
+        from collections.abc import Generator
+    else:
+        # Deprecated since version 3.9: collections.abc.Generator now supports [].
+        from typing import Generator
 
 
 class MongoClient(common.BaseObject, Generic[_DocumentType]):

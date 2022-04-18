@@ -1538,6 +1538,13 @@ class TestCollection(IntegrationTest):
 
             self.assertTrue(cursor.alive)
 
+    def test_invalid_session_parameter(self):
+        def try_invalid_session():
+            with self.db.test.aggregate({}, {}):  # type:ignore
+                pass
+
+        self.assertRaisesRegex(ValueError, "must be a ClientSession", try_invalid_session)
+
     def test_large_limit(self):
         db = self.db
         db.drop_collection("test_large_limit")
