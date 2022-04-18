@@ -505,6 +505,17 @@ class ClientUnitTest(unittest.TestCase):
         self.assertIsInstance(c.options.retry_writes, bool)
         self.assertIsInstance(c.options.retry_reads, bool)
 
+    def test_session_validation(self):
+        c = MongoClient(connect=False)
+        with c._tmp_session(None):
+            pass
+
+        def try_improper_session():
+            with c._tmp_session({}):  # type:ignore
+                pass
+
+        self.assertRaisesRegex(ValueError, "must be a ClientSession", try_improper_session)
+
 
 class TestClient(IntegrationTest):
     def test_multiple_uris(self):

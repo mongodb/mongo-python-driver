@@ -2131,7 +2131,7 @@ class TestCollection(IntegrationTest):
             (c.update_one, ({}, {"$inc": {"x": 3}})),
             (c.find_one_and_delete, ({}, {})),
             (c.find_one_and_replace, ({}, {})),
-            (c.aggregate, ([], {})),
+            (c.aggregate, ([],)),
         ]
         for let in [10, "str", [], False]:
             for helper, args in helpers:
