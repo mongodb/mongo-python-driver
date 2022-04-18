@@ -1676,7 +1676,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     @contextlib.contextmanager
     def _tmp_session(
         self, session: Optional[client_session.ClientSession], close: bool = True
-    ) -> Generator[Optional[client_session.ClientSession[Any]], None, None]:
+    ) -> "Generator[Optional[client_session.ClientSession[Any]], None, None]":
         """If provided session is None, lend a temporary session."""
         if session is not None:
             if not isinstance(session, client_session.ClientSession):
