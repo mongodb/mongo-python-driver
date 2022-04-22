@@ -40,6 +40,7 @@ repos:
         'flake8-logging-format==0.6.0',
         'flake8-implicit-str-concat==0.2.0',
     ]
+    stages: [manual]
 
 # We use the Python version instead of the original version which seems to require Docker
 # https://github.com/koalaman/shellcheck-precommit
@@ -49,6 +50,14 @@ repos:
     - id: shellcheck
       name: shellcheck
       args: ["--severity=warning"]
+      stages: [manual]
+
+- repo: https://github.com/PyCQA/doc8
+  rev: 0.11.1
+  hooks:
+    - id: doc8
+      args: [--max-line-length=200]
+      stages: [manual]
 
 - repo: https://github.com/sirosen/check-jsonschema
   rev: 0.14.1
@@ -58,6 +67,7 @@ repos:
       files: ^\.github/workflows/
       types: [yaml]
       args: ["--schemafile", "https://json.schemastore.org/github-workflow"]
+      stages: [manual]
 
 - repo: https://github.com/ariebovenberg/slotscheck
   rev: v0.14.0
