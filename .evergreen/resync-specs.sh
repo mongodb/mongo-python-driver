@@ -69,6 +69,9 @@ cpjson () {
 for spec in "$@"
 do
   case "$spec" in
+    atlas-data-lake-testing|data_lake)
+      cpjson atlas-data-lake-testing/tests/ data_lake
+      ;;
     bson*corpus)
       cpjson bson-corpus/tests/ bson_corpus
       ;;

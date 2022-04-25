@@ -1694,7 +1694,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             command.
           - `**kwargs` (optional): See list of options above.
 
-
         .. versionadded:: 3.7
         """
         if "session" in kwargs:
@@ -1703,25 +1702,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             kwargs["comment"] = comment
 
         def _cmd(session, server, sock_info, read_preference):
-            if sock_info.max_wire_version >= 12:
-                # MongoDB 4.9+
-                pipeline = [
-                    {"$collStats": {"count": {}}},
-                    {"$group": {"_id": 1, "n": {"$sum": "$count"}}},
-                ]
-                cmd = SON([("aggregate", self.__name), ("pipeline", pipeline), ("cursor", {})])
-                cmd.update(kwargs)
-                result = self._aggregate_one_result(
-                    sock_info, read_preference, cmd, collation=None, session=session
-                )
-                if not result:
-                    return 0
-                return int(result["n"])
-            else:
-                # MongoDB < 4.9
-                cmd = SON([("count", self.__name)])
-                cmd.update(kwargs)
-                return self._count_cmd(session, sock_info, read_preference, cmd, collation=None)
+            cmd = SON([("count", self.__name)])
+            cmd.update(kwargs)
+            return self._count_cmd(session, sock_info, read_preference, cmd, collation=None)
 
         return self._retryable_non_cursor_read(_cmd, None)
 
