@@ -1006,6 +1006,15 @@ class TestCodecOptions(unittest.TestCase):
         decoded = bson.decode_all(bson.encode(doc2), None)[0]
         self.assertIsInstance(decoded["id"], Binary)
 
+    def test_decode_all_kwarg(self):
+        doc = {"a": uuid.uuid4()}
+        opts = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
+        encoded = encode(doc, codec_options=opts)
+        # Positional codec_options
+        self.assertEqual([doc], decode_all(encoded, opts))
+        # Keyword codec_options
+        self.assertEqual([doc], decode_all(encoded, codec_options=opts))
+
     def test_unicode_decode_error_handler(self):
         enc = encode({"keystr": "foobar"})
 

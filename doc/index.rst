@@ -54,6 +54,9 @@ everything you need to know to use **PyMongo**.
 :doc:`developer/index`
   Developer guide for contributors to PyMongo.
 
+:doc:`common-issues`
+  Common issues encountered when using PyMongo.
+
 Getting Help
 ------------
 If you're having trouble or have questions about PyMongo, ask your question on
@@ -124,3 +127,4 @@ Indices and tables
    python3
    migrate-to-pymongo4
    developer/index
+   common-issues

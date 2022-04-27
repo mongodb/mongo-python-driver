@@ -78,7 +78,7 @@ class ChangeStream(Generic[_DocumentType]):
     :meth:`pymongo.mongo_client.MongoClient.watch` instead.
 
     .. versionadded:: 3.6
-    .. seealso:: The MongoDB documentation on `changeStreams <https://docs.mongodb.com/manual/changeStreams/>`_.
+    .. seealso:: The MongoDB documentation on `changeStreams <https://mongodb.com/docs/manual/changeStreams/>`_.
     """
 
     def __init__(

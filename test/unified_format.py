@@ -432,7 +432,7 @@ unicode_type = str
 
 
 BSON_TYPE_ALIAS_MAP = {
-    # https://docs.mongodb.com/manual/reference/operator/query/type/
+    # https://mongodb.com/docs/manual/reference/operator/query/type/
     # https://pymongo.readthedocs.io/en/stable/api/bson/index.html
     "double": (float,),
     "string": (str,),

@@ -13,7 +13,7 @@ database from Python.  The ``bson`` package is an implementation of
 the `BSON format <http://bsonspec.org>`_ for Python. The ``pymongo``
 package is a native Python driver for MongoDB. The ``gridfs`` package
 is a `gridfs
-<http://www.mongodb.org/display/DOCS/GridFS+Specification>`_
+<https://github.com/mongodb/specifications/blob/master/source/gridfs/gridfs-spec.rst/>`_
 implementation on top of ``pymongo``.
 
 PyMongo supports MongoDB 3.6, 4.0, 4.2, 4.4, and 5.0.
@@ -63,7 +63,7 @@ Security Vulnerabilities
 
 If you’ve identified a security vulnerability in a driver or any other
 MongoDB project, please report it according to the `instructions here
-<http://docs.mongodb.org/manual/tutorial/create-a-vulnerability-report>`_.
+<https://www.mongodb.com/docs/manual/tutorial/create-a-vulnerability-report/>`_.
 
 Installation
 ============

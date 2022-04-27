@@ -4,7 +4,7 @@ High Availability and PyMongo
 PyMongo makes it easy to write highly available applications whether
 you use a `single replica set <http://dochub.mongodb.org/core/rs>`_
 or a `large sharded cluster
-<http://www.mongodb.org/display/DOCS/Sharding+Introduction>`_.
+<https://www.mongodb.com/docs/manual/sharding/>`_.
 
 Connecting to a Replica Set
 ---------------------------
@@ -14,7 +14,7 @@ PyMongo makes working with `replica sets
 replica set and show how to handle both initialization and normal
 connections with PyMongo.
 
-.. seealso:: The MongoDB documentation on `replication <https://dochub.mongodb.org/core/rs>`_.
+.. seealso:: The MongoDB documentation on `replication <http://dochub.mongodb.org/core/rs>`_.
 
 Starting a Replica Set
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -261,7 +261,7 @@ attributes:
 **Tag sets**:
 
 Replica-set members can be `tagged
-<http://www.mongodb.org/display/DOCS/Data+Center+Awareness>`_ according to any
+<https://www.mongodb.com/docs/manual/data-center-awareness/>`_ according to any
 criteria you choose. By default, PyMongo ignores tags when
 choosing a member to read from, but your read preference can be configured with
 a ``tag_sets`` parameter. ``tag_sets`` must be a list of dictionaries, each
@@ -308,7 +308,7 @@ milliseconds of the closest member's ping time.
   replica set *through* a mongos. The equivalent is the localThreshold_ command
   line option.
 
-.. _localThreshold: https://docs.mongodb.com/manual/reference/program/mongos/#std-option-mongos.--localThreshold
+.. _localThreshold: https://mongodb.com/docs/manual/reference/program/mongos/#std-option-mongos.--localThreshold
 
 .. _health-monitoring:
 

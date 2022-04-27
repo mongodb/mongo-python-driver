@@ -97,7 +97,15 @@ from pymongo.uri_parser import (
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
 if TYPE_CHECKING:
+    import sys
+
     from pymongo.read_concern import ReadConcern
+
+    if sys.version_info[:2] >= (3, 9):
+        from collections.abc import Generator
+    else:
+        # Deprecated since version 3.9: collections.abc.Generator now supports [].
+        from typing import Generator
 
 
 class MongoClient(common.BaseObject, Generic[_DocumentType]):
@@ -934,7 +942,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.7
 
-        .. seealso:: The MongoDB documentation on `changeStreams <https://docs.mongodb.com/manual/changeStreams/>`_.
+        .. seealso:: The MongoDB documentation on `changeStreams <https://mongodb.com/docs/manual/changeStreams/>`_.
 
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.rst
@@ -1666,9 +1674,13 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             return None
 
     @contextlib.contextmanager
-    def _tmp_session(self, session, close=True):
+    def _tmp_session(
+        self, session: Optional[client_session.ClientSession], close: bool = True
+    ) -> "Generator[Optional[client_session.ClientSession[Any]], None, None]":
         """If provided session is None, lend a temporary session."""
-        if session:
+        if session is not None:
+            if not isinstance(session, client_session.ClientSession):
+                raise ValueError("'session' argument must be a ClientSession or None.")
             # Don't call end_session.
             yield session
             return
@@ -1741,7 +1753,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             command.
           - `**kwargs` (optional): Optional parameters of the
             `listDatabases command
-            <https://docs.mongodb.com/manual/reference/command/listDatabases/>`_
+            <https://mongodb.com/docs/manual/reference/command/listDatabases/>`_
             can be passed as keyword arguments to this method. The supported
             options differ by server version.
 

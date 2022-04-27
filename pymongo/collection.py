@@ -1475,7 +1475,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
               marks the final document position. If more data is received
               iteration of the cursor will continue from the last document
               received. For details, see the `tailable cursor documentation
-              <http://www.mongodb.org/display/DOCS/Tailable+Cursors>`_.
+              <https://www.mongodb.com/docs/manual/core/tailable-cursors/>`_.
             - :attr:`~pymongo.cursor.CursorType.TAILABLE_AWAIT` - the result
               of this find call will be a tailable cursor with the await flag
               set. The server will wait for a few seconds after returning the
@@ -1783,10 +1783,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.7
 
-        .. _$expr: https://docs.mongodb.com/manual/reference/operator/query/expr/
-        .. _$geoWithin: https://docs.mongodb.com/manual/reference/operator/query/geoWithin/
-        .. _$center: https://docs.mongodb.com/manual/reference/operator/query/center/
-        .. _$centerSphere: https://docs.mongodb.com/manual/reference/operator/query/centerSphere/
+        .. _$expr: https://mongodb.com/docs/manual/reference/operator/query/expr/
+        .. _$geoWithin: https://mongodb.com/docs/manual/reference/operator/query/geoWithin/
+        .. _$center: https://mongodb.com/docs/manual/reference/operator/query/center/
+        .. _$centerSphere: https://mongodb.com/docs/manual/reference/operator/query/centerSphere/
         """
         pipeline = [{"$match": filter}]
         if "skip" in kwargs:
@@ -1857,7 +1857,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
            when connected to MongoDB >= 3.4.
         .. versionadded:: 3.0
 
-        .. _createIndexes: https://docs.mongodb.com/manual/reference/command/createIndexes/
+        .. _createIndexes: https://mongodb.com/docs/manual/reference/command/createIndexes/
         """
         common.validate_list("indexes", indexes)
         if comment is not None:
@@ -2012,7 +2012,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `indexes <https://dochub.mongodb.org/core/indexes>`_.
 
-        .. _wildcard index: https://docs.mongodb.com/master/core/index-wildcard/
+        .. _wildcard index: https://dochub.mongodb.org/core/index-wildcard/
         """
         cmd_options = {}
         if "maxTimeMS" in kwargs:
@@ -2395,7 +2395,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. seealso:: :doc:`/examples/aggregation`
 
         .. _aggregate command:
-            https://docs.mongodb.com/manual/reference/command/aggregate
+            https://mongodb.com/docs/manual/reference/command/aggregate
         """
 
         with self.__database.client._tmp_session(session, close=False) as s:
@@ -2563,7 +2563,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 3.6
 
-        .. seealso:: The MongoDB documentation on `changeStreams <https://docs.mongodb.com/manual/changeStreams/>`_.
+        .. seealso:: The MongoDB documentation on `changeStreams <https://mongodb.com/docs/manual/changeStreams/>`_.
 
         .. _change streams specification:
             https://github.com/mongodb/specifications/blob/master/source/change-streams/change-streams.rst

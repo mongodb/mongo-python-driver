@@ -24,7 +24,7 @@ DESCENDING = -1
 GEO2D = "2d"
 """Index specifier for a 2-dimensional `geospatial index`_.
 
-.. _geospatial index: http://docs.mongodb.org/manual/core/2d/
+.. _geospatial index: http://mongodb.com/docs/manual/core/2d/
 """
 
 GEOSPHERE = "2dsphere"
@@ -32,7 +32,7 @@ GEOSPHERE = "2dsphere"
 
 .. versionadded:: 2.5
 
-.. _spherical geospatial index: http://docs.mongodb.org/manual/core/2dsphere/
+.. _spherical geospatial index: http://mongodb.com/docs/manual/core/2dsphere/
 """
 
 HASHED = "hashed"
@@ -40,7 +40,7 @@ HASHED = "hashed"
 
 .. versionadded:: 2.5
 
-.. _hashed index: http://docs.mongodb.org/manual/core/index-hashed/
+.. _hashed index: http://mongodb.com/docs/manual/core/index-hashed/
 """
 
 TEXT = "text"
@@ -52,10 +52,10 @@ TEXT = "text"
 
 .. versionadded:: 2.7.1
 
-.. _text index: http://docs.mongodb.org/manual/core/index-text/
+.. _text index: http://mongodb.com/docs/manual/core/index-text/
 """
 
-version_tuple: Tuple[Union[int, str], ...] = (4, 2, 0, ".dev0")
+version_tuple: Tuple[Union[int, str], ...] = (4, 2, 0, ".dev1")
 
 
 def get_version_string() -> str:

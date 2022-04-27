@@ -1,6 +1,32 @@
 Changelog
 =========
 
+Changes in Version 4.1.1
+-------------------------
+
+Version 4.1.1 fixes a number of bugs:
+
+- Fixed a memory leak bug when calling :func:`~bson.decode_all` without a
+  ``codec_options`` argument (`PYTHON-3222`_).
+- Fixed a bug where :func:`~bson.decode_all` did not accept ``codec_options``
+  as a keyword argument (`PYTHON-3222`_).
+- Fixed an oversight where type markers (py.typed files) were not included
+  in our release distributions (`PYTHON-3214`_).
+- Fixed a bug where pymongo would raise a "NameError: name sys is not defined"
+  exception when attempting to parse a "mongodb+srv://" URI when the dnspython
+  dependency was not installed (`PYTHON-3198`_).
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.1.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PYTHON-3198: https://jira.mongodb.org/browse/PYTHON-3198
+.. _PYTHON-3214: https://jira.mongodb.org/browse/PYTHON-3214
+.. _PYTHON-3222: https://jira.mongodb.org/browse/PYTHON-3222
+.. _PyMongo 4.1.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=33290
+
 Changes in Version 4.1
 ----------------------
 
@@ -350,7 +376,7 @@ Deprecations
 .. _PYTHON-2466: https://jira.mongodb.org/browse/PYTHON-2466
 .. _PYTHON-1690: https://jira.mongodb.org/browse/PYTHON-1690
 .. _PYTHON-2472: https://jira.mongodb.org/browse/PYTHON-2472
-.. _profile command: https://docs.mongodb.com/manual/reference/command/profile/
+.. _profile command: https://mongodb.com/docs/manual/reference/command/profile/
 
 Issues Resolved
 ...............
@@ -522,7 +548,7 @@ Unavoidable breaking changes:
   now always raises the following error:
   ``InvalidOperation: GridFS does not support multi-document transactions``
 
-.. _validate command: https://docs.mongodb.com/manual/reference/command/validate/
+.. _validate command: https://mongodb.com/docs/manual/reference/command/validate/
 
 Issues Resolved
 ...............
@@ -870,7 +896,7 @@ Deprecations:
 - Deprecated :meth:`pymongo.collection.Collection.count` and
   :meth:`pymongo.cursor.Cursor.count`. These two methods use the `count`
   command and `may or may not be accurate
-  <https://docs.mongodb.com/manual/reference/command/count/#behavior>`_,
+  <https://mongodb.com/docs/manual/reference/command/count/#behavior>`_,
   depending on the options used and connected MongoDB topology. Use
   :meth:`~pymongo.collection.Collection.count_documents` instead.
 - Deprecated the snapshot option of :meth:`~pymongo.collection.Collection.find`
@@ -1086,7 +1112,7 @@ Changes and Deprecations:
 - Deprecated the MongoClient option `socketKeepAlive`. It now defaults to true
   and disabling it is not recommended, see `does TCP keepalive time affect
   MongoDB Deployments?
-  <https://docs.mongodb.com/manual/faq/diagnostics/#does-tcp-keepalive-time-affect-mongodb-deployments->`_
+  <https://mongodb.com/docs/manual/faq/diagnostics/#does-tcp-keepalive-time-affect-mongodb-deployments->`_
 - Deprecated :meth:`~pymongo.collection.Collection.initialize_ordered_bulk_op`,
   :meth:`~pymongo.collection.Collection.initialize_unordered_bulk_op`, and
   :class:`~pymongo.bulk.BulkOperationBuilder`. Use
@@ -2382,7 +2408,7 @@ Important New Features:
 - Support for mongos failover.
 - A new :meth:`~pymongo.collection.Collection.aggregate` method to support
   MongoDB's new `aggregation framework
-  <http://docs.mongodb.org/manual/applications/aggregation/>`_.
+  <http://mongodb.com/docs/manual/applications/aggregation/>`_.
 - Support for legacy Java and C# byte order when encoding and decoding UUIDs.
 - Support for connecting directly to an arbiter.
 
@@ -2390,7 +2416,7 @@ Important New Features:
 
     Starting with MongoDB 2.2 the getLastError command requires authentication
     when the server's `authentication features
-    <http://www.mongodb.org/display/DOCS/Security+and+Authentication>`_ are enabled.
+    <https://www.mongodb.com/docs/manual/core/authentication/>`_ are enabled.
     Changes to PyMongo were required to support this behavior change. Users of
     authentication must upgrade to PyMongo 2.3 (or newer) for "safe" write operations
     to function correctly.

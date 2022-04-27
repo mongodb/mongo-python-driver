@@ -55,6 +55,10 @@ To run ``pre-commit`` manually, run::
 
     pre-commit run --all-files
 
+To run a manual hook like `flake8` manually, run::
+
+    pre-commit run --all-files --hook-stage manual flake8
+
 Documentation
 -------------
 
@@ -67,7 +71,7 @@ You might also use the GitHub `Edit <https://github.com/blog/844-forking-with-th
 button.
 
 Re-sync Spec Tests
------------------
+------------------
 
 If you would like to re-sync the copy of the specification tests in the
 PyMongo repository with that which is inside the `specifications repo

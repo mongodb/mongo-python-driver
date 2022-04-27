@@ -982,6 +982,40 @@ def decode(
     return _bson_to_dict(data, opts)
 
 
+def _decode_all(data: _ReadableBuffer, opts: "CodecOptions[_DocumentType]") -> List[_DocumentType]:
+    """Decode a BSON data to multiple documents."""
+    data, view = get_data_and_view(data)
+    data_len = len(data)
+    docs: List[_DocumentType] = []
+    position = 0
+    end = data_len - 1
+    use_raw = _raw_document_class(opts.document_class)
+    try:
+        while position < end:
+            obj_size = _UNPACK_INT_FROM(data, position)[0]
+            if data_len - position < obj_size:
+                raise InvalidBSON("invalid object size")
+            obj_end = position + obj_size - 1
+            if data[obj_end] != 0:
+                raise InvalidBSON("bad eoo")
+            if use_raw:
+                docs.append(opts.document_class(data[position : obj_end + 1], opts))  # type: ignore
+            else:
+                docs.append(_elements_to_dict(data, view, position + 4, obj_end, opts))
+            position += obj_size
+        return docs
+    except InvalidBSON:
+        raise
+    except Exception:
+        # Change exception type to InvalidBSON but preserve traceback.
+        _, exc_value, exc_tb = sys.exc_info()
+        raise InvalidBSON(str(exc_value)).with_traceback(exc_tb)
+
+
+if _USE_C:
+    _decode_all = _cbson._decode_all  # noqa: F811
+
+
 def decode_all(
     data: _ReadableBuffer, codec_options: "Optional[CodecOptions[_DocumentType]]" = None
 ) -> List[_DocumentType]:
@@ -1008,41 +1042,10 @@ def decode_all(
        `codec_options`.
     """
     opts = codec_options or DEFAULT_CODEC_OPTIONS
-    data, view = get_data_and_view(data)
     if not isinstance(opts, CodecOptions):
         raise _CODEC_OPTIONS_TYPE_ERROR
 
-    data_len = len(data)
-    docs: List[_DocumentType] = []
-    position = 0
-    end = data_len - 1
-    use_raw = _raw_document_class(opts.document_class)
-    try:
-        while position < end:
-            obj_size = _UNPACK_INT_FROM(data, position)[0]
-            if data_len - position < obj_size:
-                raise InvalidBSON("invalid object size")
-            obj_end = position + obj_size - 1
-            if data[obj_end] != 0:
-                raise InvalidBSON("bad eoo")
-            if use_raw:
-                docs.append(
-                    opts.document_class(data[position : obj_end + 1], codec_options)  # type: ignore
-                )
-            else:
-                docs.append(_elements_to_dict(data, view, position + 4, obj_end, opts))
-            position += obj_size
-        return docs
-    except InvalidBSON:
-        raise
-    except Exception:
-        # Change exception type to InvalidBSON but preserve traceback.
-        _, exc_value, exc_tb = sys.exc_info()
-        raise InvalidBSON(str(exc_value)).with_traceback(exc_tb)
-
-
-if _USE_C:
-    decode_all = _cbson.decode_all  # noqa: F811
+    return _decode_all(data, opts)  # type: ignore[arg-type]
 
 
 def _decode_selective(rawdoc: Any, fields: Any, codec_options: Any) -> Mapping[Any, Any]:
