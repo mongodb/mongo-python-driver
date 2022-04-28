@@ -615,7 +615,7 @@
       "description": "estimatedDocumentCount appends declared API version",
       "runOnRequirements": [
         {
-          "minServerVersion": "5.0.8",
+          "minServerVersion": "5.0.9",
           "maxServerVersion": "5.0.99"
         },
         {
