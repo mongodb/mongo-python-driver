@@ -39,7 +39,7 @@ jobs:
           mongodb-version: 4.4
       - name: Run tests
         run: |
-          pip install mypy
+          pip install mypy==0.942
           python setup.py test
 
   mypytest:
@@ -59,7 +59,7 @@ jobs:
           cache-dependency-path: 'setup.py'
       - name: Install dependencies
         run: |
-          python -m pip install -U pip mypy
+          python -m pip install -U pip mypy==0.942
           pip install -e ".[zstd, srv]"
       - name: Run mypy
         run: |
