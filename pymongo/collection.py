@@ -1696,7 +1696,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. versionchanged:: 4.2
            This method now always uses the `count`_ command. Due to an oversight in versions
-           5.0.0-5.0.8 of MongoDB, the count command was not included in v1 of the
+           5.0.0-5.0.8 of MongoDB, the count command was not included in V1 of the
            :ref:`versioned-api-ref`. Users of the Stable API with estimated_document_count are
            recommended to upgrade their server version to 5.0.9+ or set
            :attr:`pymongo.server_api.ServerApi.strict` to ``False`` to avoid encountering errors.
