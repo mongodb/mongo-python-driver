@@ -955,7 +955,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         If ``upsert=True`` and no documents match the filter, create a
         new document based on the filter criteria and update modifications.
 
-          >>> result = db.test.update_one({'x': -1*2**32}, {'$inc': {'x': 3}}, upsert=True)
+          >>> result = db.test.update_one({'x': -10}, {'$inc': {'x': 3}}, upsert=True)
           >>> result.matched_count
           0
           >>> result.modified_count
@@ -965,7 +965,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           >>> for doc in db.test.find():
           ...     print(doc)
           ...
-          {'_id': ObjectId('626a678eeaa80587d4bb3fb7'), 'x': -4294967293}
+          {'_id': ObjectId('626a678eeaa80587d4bb3fb7'), 'x': -7}
 
         :Parameters:
           - `filter`: A query that matches the document to update.
