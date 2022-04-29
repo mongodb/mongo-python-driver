@@ -962,9 +962,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           0
           >>> result.upserted_id
           ObjectId('626a678eeaa80587d4bb3fb7')
-          >>> for doc in db.test.find():
-          ...     print(doc)
-          ...
+          >>> db.test.find_one(result.upserted_id)
           {'_id': ObjectId('626a678eeaa80587d4bb3fb7'), 'x': -7}
 
         :Parameters:
