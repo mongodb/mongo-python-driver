@@ -34,6 +34,13 @@
         "database": "database0",
         "collectionName": "coll1"
       }
+    },
+    {
+      "collection": {
+        "id": "collection0View",
+        "database": "database0",
+        "collectionName": "coll0view"
+      }
     }
   ],
   "initialData": [
@@ -254,6 +261,89 @@
               "commandStartedEvent": {
                 "command": {
                   "count": "coll0"
+                },
+                "commandName": "count",
+                "databaseName": "edc-tests"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "estimatedDocumentCount works correctly on views",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "3.4.0"
+        }
+      ],
+      "operations": [
+        {
+          "name": "dropCollection",
+          "object": "database0",
+          "arguments": {
+            "collection": "coll0view"
+          }
+        },
+        {
+          "name": "createCollection",
+          "object": "database0",
+          "arguments": {
+            "collection": "coll0view",
+            "viewOn": "coll0",
+            "pipeline": [
+              {
+                "$match": {
+                  "_id": {
+                    "$gt": 1
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "estimatedDocumentCount",
+          "object": "collection0View",
+          "expectResult": 2
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "drop": "coll0view"
+                },
+                "commandName": "drop",
+                "databaseName": "edc-tests"
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "create": "coll0view",
+                  "viewOn": "coll0",
+                  "pipeline": [
+                    {
+                      "$match": {
+                        "_id": {
+                          "$gt": 1
+                        }
+                      }
+                    }
+                  ]
+                },
+                "commandName": "create",
+                "databaseName": "edc-tests"
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "count": "coll0view"
                 },
                 "commandName": "count",
                 "databaseName": "edc-tests"
