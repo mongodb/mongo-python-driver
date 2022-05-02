@@ -68,17 +68,24 @@ cpjson () {
 
 for spec in "$@"
 do
+  # Match the spec dir name, the python test dir name, and/or common abbreviations.
   case "$spec" in
-    bson*corpus)
+    atlas-data-lake-testing|data_lake)
+      cpjson atlas-data-lake-testing/tests/ data_lake
+      ;;
+    bson-corpus|bson_corpus)
       cpjson bson-corpus/tests/ bson_corpus
       ;;
-    max*staleness)
+    max-staleness|max_staleness)
       cpjson max-staleness/tests/ max_staleness
       ;;
-    connection*string)
+    collection-management|collection_management)
+      cpjson collection-management/tests/ collection_management
+      ;;
+    connection-string|connection_string)
       cpjson connection-string/tests/ connection_string/test
       ;;
-    change*streams)
+    change-streams|change_streams)
       cpjson change-streams/tests/ change_streams/
       ;;
     client-side-encryption|csfle|fle)
@@ -87,32 +94,29 @@ do
       cpjson client-side-encryption/external/ client-side-encryption/external
       cpjson client-side-encryption/limits/ client-side-encryption/limits
       ;;
-    cmap|CMAP)
+    cmap|CMAP|connection-monitoring-and-pooling)
       cpjson connection-monitoring-and-pooling/tests cmap
       rm $PYMONGO/test/cmap/wait-queue-fairness.json  # PYTHON-1873
       ;;
-    command*monitoring)
+    apm|APM|command-monitoring|command_monitoring)
       cpjson command-monitoring/tests command_monitoring
       ;;
     crud|CRUD)
       cpjson crud/tests/ crud
       ;;
-    load*balancer)
+    load-balancers|load_balancer)
       cpjson load-balancers/tests load_balancer
       ;;
-    initial-dns-seedlist-discovery|srv_seedlist)
+    srv|SRV|initial-dns-seedlist-discovery|srv_seedlist)
       cpjson initial-dns-seedlist-discovery/tests/ srv_seedlist
       ;;
-    old_srv_seedlist)
-      cpjson initial-dns-seedlist-discovery/tests srv_seedlist
-      ;;
-    retryable*reads)
+    retryable-reads|retryable_reads)
       cpjson retryable-reads/tests/ retryable_reads
       ;;
-    retryable*writes)
+    retryable-writes|retryable_writes)
       cpjson retryable-writes/tests/ retryable_writes
       ;;
-    sdam|SDAM)
+    sdam|SDAM|server-discovery-and-monitoring|discovery_and_monitoring)
       cpjson server-discovery-and-monitoring/tests/errors \
       discovery_and_monitoring/errors
       cpjson server-discovery-and-monitoring/tests/rs \
@@ -126,10 +130,10 @@ do
       cpjson server-discovery-and-monitoring/tests/load-balanced \
       discovery_and_monitoring/load-balanced
       ;;
-    sdam*monitoring)
+    sdam-monitoring|sdam_monitoring)
       cpjson server-discovery-and-monitoring/tests/monitoring sdam_monitoring
       ;;
-    server*selection)
+    server-selection|server_selection)
       cpjson server-selection/tests/ server_selection
       ;;
     sessions)
@@ -140,13 +144,13 @@ do
       cpjson transactions-convenient-api/tests/ transactions-convenient-api
       rm $PYMONGO/test/transactions/legacy/errors-client.json  # PYTHON-1894
       ;;
-    unified)
+    unified|unified-test-format)
       cpjson unified-test-format/tests/ unified-test-format/
       ;;
-    uri|uri*options)
+    uri|uri-options|uri_options)
       cpjson uri-options/tests uri_options
       ;;
-    stable-api)
+    stable-api|versioned-api)
       cpjson versioned-api/tests versioned-api
       ;;
     *)

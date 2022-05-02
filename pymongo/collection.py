@@ -1707,8 +1707,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             command.
           - `**kwargs` (optional): See list of options above.
 
+        .. versionchanged:: 4.2
+           This method now always uses the `count`_ command. Due to an oversight in versions
+           5.0.0-5.0.8 of MongoDB, the count command was not included in V1 of the
+           :ref:`versioned-api-ref`. Users of the Stable API with estimated_document_count are
+           recommended to upgrade their server version to 5.0.9+ or set
+           :attr:`pymongo.server_api.ServerApi.strict` to ``False`` to avoid encountering errors.
 
         .. versionadded:: 3.7
+        .. _count: https://mongodb.com/docs/manual/reference/command/count/
         """
         if "session" in kwargs:
             raise ConfigurationError("estimated_document_count does not support sessions")
@@ -1716,25 +1723,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             kwargs["comment"] = comment
 
         def _cmd(session, server, sock_info, read_preference):
-            if sock_info.max_wire_version >= 12:
-                # MongoDB 4.9+
-                pipeline = [
-                    {"$collStats": {"count": {}}},
-                    {"$group": {"_id": 1, "n": {"$sum": "$count"}}},
-                ]
-                cmd = SON([("aggregate", self.__name), ("pipeline", pipeline), ("cursor", {})])
-                cmd.update(kwargs)
-                result = self._aggregate_one_result(
-                    sock_info, read_preference, cmd, collation=None, session=session
-                )
-                if not result:
-                    return 0
-                return int(result["n"])
-            else:
-                # MongoDB < 4.9
-                cmd = SON([("count", self.__name)])
-                cmd.update(kwargs)
-                return self._count_cmd(session, sock_info, read_preference, cmd, collation=None)
+            cmd = SON([("count", self.__name)])
+            cmd.update(kwargs)
+            return self._count_cmd(session, sock_info, read_preference, cmd, collation=None)
 
         return self._retryable_non_cursor_read(_cmd, None)
 

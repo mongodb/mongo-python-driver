@@ -79,6 +79,12 @@
                         "$set": {
                           "x": 22
                         }
+                      },
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
                       }
                     }
                   ],
@@ -145,6 +151,12 @@
                         "$set": {
                           "x": 22
                         }
+                      },
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
                       }
                     }
                   ],
@@ -174,6 +186,7 @@
       "description": "UpdateOne with comment - pre 4.4",
       "runOnRequirements": [
         {
+          "minServerVersion": "3.4.0",
           "maxServerVersion": "4.2.99"
         }
       ],
@@ -214,6 +227,12 @@
                         "$set": {
                           "x": 22
                         }
+                      },
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
                       }
                     }
                   ],

@@ -1,6 +1,37 @@
 Changelog
 =========
 
+Changes in Version 4.2
+----------------------
+
+Bug fixes
+.........
+
+- Fixed a bug where :meth:`~pymongo.collection.Collection.estimated_document_count`
+  would fail with a "CommandNotSupportedOnView" error on views (`PYTHON-2885`_).
+
+Unavoidable breaking changes
+............................
+
+- :meth:`~pymongo.collection.Collection.estimated_document_count` now always uses
+  the `count`_ command. Due to an oversight in versions 5.0.0-5.0.8 of MongoDB,
+  the count command was not included in V1 of the :ref:`versioned-api-ref`.
+  Users of the Stable API with estimated_document_count are recommended to upgrade
+  their server version to 5.0.9+ or set :attr:`pymongo.server_api.ServerApi.strict`
+  to ``False`` to avoid encountering errors (`PYTHON-3167`_).
+
+.. _count: https://mongodb.com/docs/manual/reference/command/count/
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PYTHON-2885: https://jira.mongodb.org/browse/PYTHON-2885
+.. _PYTHON-3167: https://jira.mongodb.org/browse/PYTHON-3167
+.. _PyMongo 4.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=33196
+
 Changes in Version 4.1.1
 -------------------------
 

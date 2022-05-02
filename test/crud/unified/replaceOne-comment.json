@@ -75,6 +75,12 @@
                       },
                       "u": {
                         "x": 22
+                      },
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
                       }
                     }
                   ],
@@ -137,6 +143,12 @@
                       },
                       "u": {
                         "x": 22
+                      },
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
                       }
                     }
                   ],
@@ -166,6 +178,7 @@
       "description": "ReplaceOne with comment - pre 4.4",
       "runOnRequirements": [
         {
+          "minServerVersion": "3.4.0",
           "maxServerVersion": "4.2.99"
         }
       ],
@@ -202,6 +215,12 @@
                       },
                       "u": {
                         "x": 22
+                      },
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
                       }
                     }
                   ],
