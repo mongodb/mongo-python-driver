@@ -74,6 +74,30 @@ allowing for the automatic discovery of replica sets. This means that if you
 want a direct connection to a single server you must pass
 ``directConnection=True`` as a URI option or keyword argument.
 
+Here are some example errors that you might see
+
+.. code-block::
+
+        _select_servers_loop
+            raise ServerSelectionTimeoutError(
+        pymongo.errors.ServerSelectionTimeoutError: mongo_node2: [Errno 8] nodename nor servname
+        provided, or not known,mongo_node1:27017
+
+.. code-block::
+
+        ServerSelectionTimeoutError: No servers match selector "Primary()", Timeout: 30s,
+        Topology Description: ...
+
+
+Additionally, the "isWritablePrimary" attribute of a hello command sent back by the server will
+always be True if ``directConnection=False``::
+
+    doc = client.admin.command('hello')
+    result = doc['isWritablePrimary']
+    print(result)
+    >> True
+
+
 The waitQueueMultiple parameter is removed
 ..........................................
 
