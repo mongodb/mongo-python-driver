@@ -79,6 +79,9 @@ do
     max-staleness|max_staleness)
       cpjson max-staleness/tests/ max_staleness
       ;;
+    collection-management|collection_management)
+      cpjson collection-management/tests/ collection_management
+      ;;
     connection-string|connection_string)
       cpjson connection-string/tests/ connection_string/test
       ;;

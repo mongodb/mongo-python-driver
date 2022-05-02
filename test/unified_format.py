@@ -226,6 +226,7 @@ class EventListenerUtil(CMAPListener, CommandListener):
             self._observe_sensitive_commands = False
             self._ignore_commands = _SENSITIVE_COMMANDS | set(ignore_commands)
             self._ignore_commands.add("configurefailpoint")
+        self.ignore_list_collections = False
         self._event_mapping = collections.defaultdict(list)
         self.entity_map = entity_map
         if store_events:
@@ -256,7 +257,10 @@ class EventListenerUtil(CMAPListener, CommandListener):
             )
 
     def _command_event(self, event):
-        if event.command_name.lower() not in self._ignore_commands:
+        if not (
+            event.command_name.lower() in self._ignore_commands
+            or (self.ignore_list_collections and event.command_name == "listCollections")
+        ):
             self.add_event(event)
 
     def started(self, event):
@@ -882,6 +886,17 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             kwargs["cursor"] = {"batchSize": kwargs.pop("batch_size")}
         cursor = target.list_collections(*args, **kwargs)
         return list(cursor)
+
+    def _databaseOperation_createCollection(self, target, *args, **kwargs):
+        # PYTHON-1936 Ignore the listCollections event from create_collection.
+        for listener in target.client.options.event_listeners:
+            if isinstance(listener, EventListenerUtil):
+                listener.ignore_list_collections = True
+        ret = target.create_collection(*args, **kwargs)
+        for listener in target.client.options.event_listeners:
+            if isinstance(listener, EventListenerUtil):
+                listener.ignore_list_collections = False
+        return ret
 
     def __entityOperation_aggregate(self, target, *args, **kwargs):
         self.__raise_if_unsupported("aggregate", target, Database, Collection)
