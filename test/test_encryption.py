@@ -621,31 +621,30 @@ class TestSpec(SpecRunner):
     def setup_scenario(self, scenario_def):
         """Override a test's setup."""
         key_vault_data = scenario_def["key_vault_data"]
+        json_schema = scenario_def["json_schema"]
+        data = scenario_def["data"]
         if key_vault_data:
-            coll = client_context.client.get_database(
-                "keyvault", write_concern=WriteConcern(w="majority"), codec_options=OPTS
-            )["datakeys"]
-            coll.drop()
+            coll = client_context.client.get_database("keyvault", codec_options=OPTS)["datakeys"]
+            coll.delete_many({})
             coll.insert_many(key_vault_data)
 
         db_name = self.get_scenario_db_name(scenario_def)
         coll_name = self.get_scenario_coll_name(scenario_def)
-        db = client_context.client.get_database(
-            db_name, write_concern=WriteConcern(w="majority"), codec_options=OPTS
-        )
+        db = client_context.client.get_database(db_name, codec_options=OPTS)
         coll = db[coll_name]
         coll.drop()
-        json_schema = scenario_def["json_schema"]
+        wc = WriteConcern(w="majority")
+        kwargs = {}
         if json_schema:
-            db.create_collection(
-                coll_name, validator={"$jsonSchema": json_schema}, codec_options=OPTS
-            )
-        else:
-            db.create_collection(coll_name)
+            kwargs["validator"] = {"$jsonSchema": json_schema}
+            kwargs["codec_options"] = OPTS
+        if not data:
+            kwargs["write_concern"] = wc
+        db.create_collection(coll_name, **kwargs)
 
-        if scenario_def["data"]:
+        if data:
             # Load data.
-            coll.insert_many(scenario_def["data"])
+            coll.with_options(write_concern=wc).insert_many(scenario_def["data"])
 
     def allowable_errors(self, op):
         """Override expected error classes."""
