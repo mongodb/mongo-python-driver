@@ -453,13 +453,20 @@ class SpecRunner(IntegrationTest):
         """Allow specs to override a test's setup."""
         db_name = self.get_scenario_db_name(scenario_def)
         coll_name = self.get_scenario_coll_name(scenario_def)
-        db = client_context.client.get_database(db_name, write_concern=WriteConcern(w="majority"))
-        coll = db[coll_name]
-        coll.drop()
-        db.create_collection(coll_name)
-        if scenario_def["data"]:
-            # Load data.
-            coll.insert_many(scenario_def["data"])
+        documents = scenario_def["data"]
+
+        # Setup the collection with as few majority writes as possible.
+        db = client_context.client.get_database(db_name)
+        coll_exists = bool(db.list_collection_names(filter={"name": coll_name}))
+        if coll_exists:
+            db[coll_name].delete_many({})
+        # Only use majority wc only on the final write.
+        wc = WriteConcern(w="majority")
+        if documents:
+            db.get_collection(coll_name, write_concern=wc).insert_many(documents)
+        elif not coll_exists:
+            # Ensure collection exists.
+            db.create_collection(coll_name, write_concern=wc)
 
     def run_scenario(self, scenario_def, test):
         self.maybe_skip_scenario(test)

@@ -1029,10 +1029,15 @@ class MockClientTest(unittest.TestCase):
         super(MockClientTest, self).tearDown()
 
 
+# Global knobs to speed up the test suite.
+global_knobs = client_knobs(events_queue_frequency=0.05)
+
+
 def setup():
     client_context.init()
     warnings.resetwarnings()
     warnings.simplefilter("always")
+    global_knobs.enable()
 
 
 def _get_executors(topology):
@@ -1086,6 +1091,7 @@ def print_running_clients():
 
 
 def teardown():
+    global_knobs.disable()
     garbage = []
     for g in gc.garbage:
         garbage.append("GARBAGE: %r" % (g,))
