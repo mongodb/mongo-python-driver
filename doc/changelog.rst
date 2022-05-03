@@ -95,7 +95,8 @@ Changes in Version 4.0
   discovery of replica sets. This means that if you
   want a direct connection to a single server you must pass
   ``directConnection=True`` as a URI option or keyword argument.
-  See the :doc:`migrate-to-pymongo4` for more details.
+  For more details, see the relevant section of the PyMongo 4.x migration
+  guide: :ref:`pymongo4-migration-direct-connection`.
 
 PyMongo 4.0 brings a number of improvements as well as some backward breaking
 changes. For example, all APIs deprecated in PyMongo 3.X have been removed.
@@ -225,6 +226,11 @@ Breaking Changes in 4.0
 - ``tz_aware``, an argument for :class:`~bson.json_util.JSONOptions`,
   now defaults to ``False`` instead of ``True``. ``json_util.loads`` now
   decodes datetime as naive by default.
+- ``directConnection`` URI option and keyword argument to :class:`~pymongo.mongo_client.MongoClient`
+  defaults to ``False`` instead of ``None``, allowing for the automatic
+  discovery of replica sets. This means that if you
+  want a direct connection to a single server you must pass
+  ``directConnection=True`` as a URI option or keyword argument.
 - The ``hint`` option is now required when using ``min`` or ``max`` queries
   with :meth:`~pymongo.collection.Collection.find`.
 - ``name`` is now a required argument for the :class:`pymongo.driver_info.DriverInfo` class.

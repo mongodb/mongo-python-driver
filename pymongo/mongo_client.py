@@ -138,8 +138,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """Client for a MongoDB instance, a replica set, or a set of mongoses.
 
         .. warning:: Starting in PyMongo 4.0, ``directConnection`` now has a default value of
-          False instead of None (which is the same as specifying ``directionConnection=True``).
-          Please see the :ref:`pymongo4-migration-guide` for more details.
+          False instead of None.
+         For more details, see the relevant section of the PyMongo 4.x migration guide:
+         :ref:`pymongo4-migration-direct-connection`.
 
         The client object is thread-safe and has connection-pooling built in.
         If an operation fails because of a network error,

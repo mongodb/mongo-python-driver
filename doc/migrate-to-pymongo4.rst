@@ -65,6 +65,8 @@ get the same behavior.
 MongoClient
 -----------
 
+.. _pymongo4-migration-direct-connection:
+
 ``directConnection`` defaults to False
 ......................................
 
@@ -74,7 +76,9 @@ allowing for the automatic discovery of replica sets. This means that if you
 want a direct connection to a single server you must pass
 ``directConnection=True`` as a URI option or keyword argument.
 
-Here are some example errors that you might see
+If you see any :exc:`~pymongo.errors.ServerSelectionTimeoutError`'s after upgrading from PyMongo 3 to 4.x, you likely
+need to add ``directConnection=True`` when creating the client.
+Here are some example errors:
 
 .. code-block::
 
@@ -92,10 +96,8 @@ Here are some example errors that you might see
 Additionally, the "isWritablePrimary" attribute of a hello command sent back by the server will
 always be True if ``directConnection=False``::
 
-    doc = client.admin.command('hello')
-    result = doc['isWritablePrimary']
-    print(result)
-    >> True
+   >>> client.admin.command('hello')['isWritablePrimary']
+   True
 
 
 The waitQueueMultiple parameter is removed
