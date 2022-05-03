@@ -82,8 +82,6 @@ Here are some example errors:
 
 .. code-block::
 
-        _select_servers_loop
-            raise ServerSelectionTimeoutError(
         pymongo.errors.ServerSelectionTimeoutError: mongo_node2: [Errno 8] nodename nor servname
         provided, or not known,mongo_node1:27017
 
