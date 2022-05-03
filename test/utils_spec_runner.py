@@ -469,10 +469,6 @@ class SpecRunner(IntegrationTest):
             db.create_collection(coll_name, write_concern=wc)
 
     def run_scenario(self, scenario_def, test):
-        """----------------------------------------------------------------------
-        Ran 363 tests in 251.381s
-
-        OK (skipped=89)"""
         self.maybe_skip_scenario(test)
 
         # Kill all sessions before and after each test to prevent an open

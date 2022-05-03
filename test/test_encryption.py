@@ -24,7 +24,7 @@ import sys
 import textwrap
 import traceback
 import uuid
-from typing import Any
+from typing import Any, Dict
 
 from pymongo.collection import Collection
 
@@ -634,7 +634,7 @@ class TestSpec(SpecRunner):
         coll = db[coll_name]
         coll.drop()
         wc = WriteConcern(w="majority")
-        kwargs = {}
+        kwargs: Dict[str, Any] = {}
         if json_schema:
             kwargs["validator"] = {"$jsonSchema": json_schema}
             kwargs["codec_options"] = OPTS
