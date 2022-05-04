@@ -61,8 +61,15 @@ operations = [
         not_master=not_master_reply,
     ),
     Operation(
-        "count",
+        "count_documents",
         lambda client: client.db.collection.count_documents({}),
+        reply={"n": 1},
+        op_type="may-use-secondary",
+        not_master=not_master_reply,
+    ),
+    Operation(
+        "estimated_document_count",
+        lambda client: client.db.collection.estimated_document_count(),
         reply={"n": 1},
         op_type="may-use-secondary",
         not_master=not_master_reply,
@@ -109,12 +116,4 @@ _ops_by_name = dict([(op.name, op) for op in operations])
 
 Upgrade = namedtuple("Upgrade", ["name", "function", "old", "new", "wire_version"])
 
-upgrades = [
-    Upgrade(
-        "estimated_document_count",
-        lambda client: client.db.collection.estimated_document_count(),
-        old=OpMsg("count", "collection", namespace="db"),
-        new=OpMsg("aggregate", "collection", namespace="db"),
-        wire_version=12,
-    ),
-]
+upgrades = []
