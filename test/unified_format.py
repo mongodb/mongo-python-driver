@@ -226,6 +226,7 @@ class EventListenerUtil(CMAPListener, CommandListener):
             self._observe_sensitive_commands = False
             self._ignore_commands = _SENSITIVE_COMMANDS | set(ignore_commands)
             self._ignore_commands.add("configurefailpoint")
+        self.ignore_list_collections = False
         self._event_mapping = collections.defaultdict(list)
         self.entity_map = entity_map
         if store_events:
@@ -256,7 +257,10 @@ class EventListenerUtil(CMAPListener, CommandListener):
             )
 
     def _command_event(self, event):
-        if event.command_name.lower() not in self._ignore_commands:
+        if not (
+            event.command_name.lower() in self._ignore_commands
+            or (self.ignore_list_collections and event.command_name == "listCollections")
+        ):
             self.add_event(event)
 
     def started(self, event):
@@ -717,22 +721,24 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         return False
 
     def insert_initial_data(self, initial_data):
-        for collection_data in initial_data:
+        for i, collection_data in enumerate(initial_data):
             coll_name = collection_data["collectionName"]
             db_name = collection_data["databaseName"]
             documents = collection_data["documents"]
 
-            coll = self.client.get_database(db_name).get_collection(
-                coll_name, write_concern=WriteConcern(w="majority")
-            )
-            coll.drop()
-
-            if len(documents) > 0:
-                coll.insert_many(documents)
+            # Setup the collection with as few majority writes as possible.
+            db = self.client[db_name]
+            db.drop_collection(coll_name)
+            # Only use majority wc only on the final write.
+            if i == len(initial_data) - 1:
+                wc = WriteConcern(w="majority")
             else:
-                # ensure collection exists
-                result = coll.insert_one({})
-                coll.delete_one({"_id": result.inserted_id})
+                wc = WriteConcern(w=1)
+            if documents:
+                db.get_collection(coll_name, write_concern=wc).insert_many(documents)
+            else:
+                # Ensure collection exists
+                db.create_collection(coll_name, write_concern=wc)
 
     @classmethod
     def setUpClass(cls):
@@ -882,6 +888,17 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             kwargs["cursor"] = {"batchSize": kwargs.pop("batch_size")}
         cursor = target.list_collections(*args, **kwargs)
         return list(cursor)
+
+    def _databaseOperation_createCollection(self, target, *args, **kwargs):
+        # PYTHON-1936 Ignore the listCollections event from create_collection.
+        for listener in target.client.options.event_listeners:
+            if isinstance(listener, EventListenerUtil):
+                listener.ignore_list_collections = True
+        ret = target.create_collection(*args, **kwargs)
+        for listener in target.client.options.event_listeners:
+            if isinstance(listener, EventListenerUtil):
+                listener.ignore_list_collections = False
+        return ret
 
     def __entityOperation_aggregate(self, target, *args, **kwargs):
         self.__raise_if_unsupported("aggregate", target, Database, Collection)

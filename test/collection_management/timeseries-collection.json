@@ -85,14 +85,6 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "listCollections": 1
-                },
-                "databaseName": "ts-tests"
-              }
-            },
-            {
-              "commandStartedEvent": {
-                "command": {
                   "create": "test",
                   "expireAfterSeconds": 604800,
                   "timeseries": {
@@ -200,14 +192,6 @@
               "commandStartedEvent": {
                 "command": {
                   "drop": "test"
-                },
-                "databaseName": "ts-tests"
-              }
-            },
-            {
-              "commandStartedEvent": {
-                "command": {
-                  "listCollections": 1
                 },
                 "databaseName": "ts-tests"
               }
