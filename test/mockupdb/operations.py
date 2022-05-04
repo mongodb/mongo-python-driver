@@ -14,7 +14,7 @@
 
 from collections import namedtuple
 
-from mockupdb import OpMsg, OpMsgReply, OpReply
+from mockupdb import OpMsgReply, OpReply
 
 from pymongo import ReadPreference
 
