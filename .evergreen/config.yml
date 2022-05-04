@@ -135,8 +135,8 @@ functions:
           # Coverage combine merges (and removes) all the coverage files and
           # generates a new .coverage file in the current directory.
           ls -la coverage/
-          /opt/python/3.6/bin/python3 -m coverage combine coverage/coverage.*
-          /opt/python/3.6/bin/python3 -m coverage html -d htmlcov
+          /opt/python/3.7/bin/python3 -m coverage combine coverage/coverage.*
+          /opt/python/3.7/bin/python3 -m coverage html -d htmlcov
     # Upload the resulting html coverage report.
     - command: shell.exec
       params:
@@ -932,7 +932,7 @@ functions:
           done
           # Build source distribution.
           cd src/
-          /opt/python/3.6/bin/python3 setup.py sdist
+          /opt/python/3.7/bin/python3 setup.py sdist
           cp dist/* ../releases
     - command: archive.targz_pack
       params:
@@ -1324,7 +1324,7 @@ tasks:
       commands:
         - func: "run tests"
           vars:
-            PYTHON_BINARY: /opt/python/3.6/bin/python3
+            PYTHON_BINARY: /opt/python/3.7/bin/python3
 
     - name: "atlas-connect"
       tags: ["atlas-connect"]
@@ -1945,10 +1945,6 @@ axes:
     values:
       # Note: always display platform with python-version to avoid ambiguous display names.
       # Linux
-      - id: "3.6"
-        display_name: "Python 3.6"
-        variables:
-           PYTHON_BINARY: "/opt/python/3.6/bin/python3"
       - id: "3.7"
         display_name: "Python 3.7"
         variables:
@@ -1965,10 +1961,6 @@ axes:
         display_name: "Python 3.10"
         variables:
           PYTHON_BINARY: "/opt/python/3.10/bin/python3"
-      - id: "pypy3.6"
-        display_name: "PyPy 3.6"
-        variables:
-           PYTHON_BINARY: "/opt/python/pypy3.6/bin/pypy3"
       - id: "pypy3.7"
         display_name: "PyPy 3.7"
         variables:
@@ -1985,10 +1977,6 @@ axes:
   - id: python-version-windows
     display_name: "Python"
     values:
-      - id: "3.6"
-        display_name: "Python 3.6"
-        variables:
-          PYTHON_BINARY: "C:/python/Python36/python.exe"
       - id: "3.7"
         display_name: "Python 3.7"
         variables:
@@ -2009,10 +1997,6 @@ axes:
   - id: python-version-windows-32
     display_name: "Python"
     values:
-      - id: "3.6"
-        display_name: "32-bit Python 3.6"
-        variables:
-          PYTHON_BINARY: "C:/python/32/Python36/python.exe"
       - id: "3.7"
         display_name: "32-bit Python 3.7"
         variables:
@@ -2281,7 +2265,7 @@ buildvariants:
   # Only test "noauth" with Python 3.7.
   exclude_spec:
     platform: ubuntu-18.04
-    python-version: ["3.6", "3.8", "3.9", "3.10", "pypy3.6", "pypy3.7", "pypy3.8"]
+    python-version: ["3.8", "3.9", "3.10", "pypy3.7", "pypy3.8"]
     auth: "noauth"
     ssl: "ssl"
     pyopenssl: "*"
@@ -2334,7 +2318,7 @@ buildvariants:
   exclude_spec:
    # These interpreters are always tested without extensions.
    - platform: ubuntu-18.04
-     python-version: ["pypy3.6", "pypy3.7", "pypy3.8"]
+     python-version: ["pypy3.7", "pypy3.8"]
      c-extensions: "*"
      auth-ssl: "*"
      coverage: "*"
@@ -2350,7 +2334,7 @@ buildvariants:
   exclude_spec:
    # These interpreters are always tested without extensions.
    - platform: ubuntu-18.04
-     python-version: ["pypy3.6", "pypy3.7", "pypy3.8"]
+     python-version: ["pypy3.7", "pypy3.8"]
      c-extensions: "with-c-extensions"
      compression: "*"
   display_name: "${compression} ${c-extensions} ${python-version} ${platform}"
@@ -2379,7 +2363,7 @@ buildvariants:
   exclude_spec:
    # Don't test green frameworks on these Python versions.
    - platform: ubuntu-18.04
-     python-version: ["pypy3.6", "pypy3.7", "pypy3.8", "system-python3"]
+     python-version: ["pypy3.7", "pypy3.8", "system-python3"]
      green-framework: "*"
      auth-ssl: "*"
   display_name: "${green-framework} ${python-version} ${platform} ${auth-ssl}"
@@ -2405,7 +2389,7 @@ buildvariants:
   matrix_spec:
     platform: awslinux
     # Python 3.10+ requires OpenSSL 1.1.1+
-    python-version: ["3.6", "3.7", "3.8", "3.9", "pypy3.6", "pypy3.7", "pypy3.8"]
+    python-version: ["3.7", "3.8", "3.9", "pypy3.7", "pypy3.8"]
     auth-ssl: "*"
   display_name: "OpenSSL 1.0.2 ${python-version} ${platform} ${auth-ssl}"
   tasks:
@@ -2420,12 +2404,12 @@ buildvariants:
   display_name: "Encryption ${platform} ${python-version-windows} ${auth-ssl}"
   tasks: *encryption-server-versions
 
-# Storage engine tests on Ubuntu 18.04 (x86_64) with Python 3.6.
+# Storage engine tests on Ubuntu 18.04 (x86_64) with Python 3.7.
 - matrix_name: "tests-storage-engines"
   matrix_spec:
     platform: ubuntu-18.04
     storage-engine: "*"
-    python-version: 3.6
+    python-version: 3.7
   display_name: "Storage ${storage-engine} ${python-version} ${platform}"
   rules:
     - if:
@@ -2452,12 +2436,12 @@ buildvariants:
           - "test-3.6-standalone"
           - "test-3.6-replica_set"
 
-# enableTestCommands=0 tests on Ubuntu18 (x86_64) with Python 3.6.
+# enableTestCommands=0 tests on Ubuntu18 (x86_64) with Python 3.7.
 - matrix_name: "test-disableTestCommands"
   matrix_spec:
     platform: ubuntu-18.04
     disableTestCommands: "*"
-    python-version: "3.6"
+    python-version: "3.7"
   display_name: "Disable test commands ${python-version} ${platform}"
   tasks:
      - ".latest"
@@ -2483,7 +2467,7 @@ buildvariants:
 - matrix_name: "tests-mod-wsgi"
   matrix_spec:
     platform: ubuntu-18.04
-    python-version: ["3.6", "3.7", "3.8", "3.9", "3.10"]
+    python-version: ["3.7", "3.8", "3.9", "3.10"]
     mod-wsgi-version: "*"
   exclude_spec:
    # mod-wsgi 3.5 won't build against CPython 3.8+
@@ -2498,7 +2482,7 @@ buildvariants:
 - matrix_name: "mockupdb-tests"
   matrix_spec:
     platform: ubuntu-18.04
-    python-version: 3.6
+    python-version: 3.7
   display_name: "MockupDB Tests"
   tasks:
      - name: "mockupdb"
@@ -2555,7 +2539,7 @@ buildvariants:
 - matrix_name: "data-lake-spec-tests"
   matrix_spec:
     platform: ubuntu-18.04
-    python-version: ["3.6", "3.10"]
+    python-version: ["3.7", "3.10"]
     auth: "auth"
     c-extensions: "*"
   display_name: "Atlas Data Lake ${python-version} ${c-extensions}"
@@ -2565,7 +2549,7 @@ buildvariants:
 - matrix_name: "stable-api-tests"
   matrix_spec:
     platform: ubuntu-18.04
-    python-version: ["3.6", "3.10"]
+    python-version: ["3.7", "3.10"]
     auth: "auth"
     versionedApi: "*"
   display_name: "Versioned API ${versionedApi} ${python-version}"
@@ -2580,7 +2564,7 @@ buildvariants:
     # OCSP stapling is not supported on Ubuntu 18.04.
     # See https://jira.mongodb.org/browse/SERVER-51364.
     platform: ubuntu-20.04
-    python-version: ["3.6", "3.10", "pypy3.6", "pypy3.8"]
+    python-version: ["3.7", "3.10", "pypy3.7", "pypy3.8"]
     mongodb-version: ["4.4", "5.0", "latest"]
     auth: "noauth"
     ssl: "ssl"
@@ -2592,7 +2576,7 @@ buildvariants:
 - matrix_name: "ocsp-test-windows"
   matrix_spec:
     platform: windows-64-vsMulti-small
-    python-version-windows: ["3.6", "3.10"]
+    python-version-windows: ["3.7", "3.10"]
     mongodb-version: ["4.4", "5.0", "latest"]
     auth: "noauth"
     ssl: "ssl"

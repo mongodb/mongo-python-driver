@@ -15,7 +15,6 @@
 """A fake SSLContext implementation."""
 
 import ssl as _ssl
-import sys as _sys
 
 # PROTOCOL_TLS_CLIENT is Python 3.6+
 PROTOCOL_SSLv23 = getattr(_ssl, "PROTOCOL_TLS_CLIENT", _ssl.PROTOCOL_SSLv23)
@@ -35,8 +34,3 @@ from ssl import SSLContext  # noqa: F401,E402
 
 if hasattr(_ssl, "VERIFY_CRL_CHECK_LEAF"):
     from ssl import VERIFY_CRL_CHECK_LEAF  # noqa: F401
-# Python 3.7 uses OpenSSL's hostname matching implementation
-# making it the obvious version to start using SSLConext.check_hostname.
-# Python 3.6 might have been a good version, but it suffers
-# from https://bugs.python.org/issue32185.
-CHECK_HOSTNAME_SAFE = _sys.version_info[:2] >= (3, 7)

@@ -55,7 +55,7 @@ if HAVE_SSL:
         ctx = _ssl.SSLContext(_ssl.PROTOCOL_SSLv23)
         # SSLContext.check_hostname was added in CPython 3.4.
         if hasattr(ctx, "check_hostname"):
-            if _ssl.CHECK_HOSTNAME_SAFE and verify_mode != CERT_NONE:
+            if verify_mode != CERT_NONE:
                 ctx.check_hostname = not allow_invalid_hostnames
             else:
                 ctx.check_hostname = False

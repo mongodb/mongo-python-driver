@@ -55,7 +55,6 @@ OP_NO_RENEGOTIATION = getattr(_SSL, "OP_NO_RENEGOTIATION", 0)
 
 # Always available
 HAS_SNI = True
-CHECK_HOSTNAME_SAFE = True
 IS_PYOPENSSL = True
 
 # Base Exception class
