@@ -4,7 +4,7 @@ Changelog
 Changes in Version 4.2
 ----------------------
 
-.. warning:: PyMongo 4.2 drops support for Python 3.6, Python 3.7+ is now required.
+.. warning:: PyMongo 4.2 drops support for Python 3.6: Python 3.7+ is now required.
 
 Bug fixes
 .........
