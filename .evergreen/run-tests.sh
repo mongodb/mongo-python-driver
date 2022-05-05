@@ -66,13 +66,13 @@ fi
 
 if [ -z "$PYTHON_BINARY" ]; then
     # Use Python 3 from the server toolchain to test on ARM, POWER or zSeries if a
-    # system python3 doesn't exist or exists but is older than 3.6.
-    if is_python_36 "$(command -v python3)"; then
+    # system python3 doesn't exist or exists but is older than 3.7.
+    if is_python_37 "$(command -v python3)"; then
         PYTHON=$(command -v python3)
-    elif is_python_36 "$(command -v /opt/mongodbtoolchain/v3/bin/python3)"; then
+    elif is_python_37 "$(command -v /opt/mongodbtoolchain/v3/bin/python3)"; then
         PYTHON=$(command -v /opt/mongodbtoolchain/v3/bin/python3)
     else
-        echo "Cannot test without python3.6+ installed!"
+        echo "Cannot test without python3.7+ installed!"
     fi
 elif [ "$COMPRESSORS" = "snappy" ]; then
     createvirtualenv $PYTHON_BINARY snappytest

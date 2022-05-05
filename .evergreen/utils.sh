@@ -59,15 +59,15 @@ testinstall () {
     fi
 }
 
-# Function that returns success if the provided Python binary is version 3.6 or later
+# Function that returns success if the provided Python binary is version 3.7 or later
 # Usage:
-# is_python_36 /path/to/python
+# is_python_37 /path/to/python
 # * param1: Python binary
-is_python_36() {
+is_python_37() {
     if [ -z "$1" ]; then
         return 1
-    elif $1 -c "import sys; exit(sys.version_info[:2] < (3, 6))"; then
-        # runs when sys.version_info[:2] >= (3, 6)
+    elif $1 -c "import sys; exit(sys.version_info[:2] < (3, 7))"; then
+        # runs when sys.version_info[:2] >= (3, 7)
         return 0
     else
         return 1

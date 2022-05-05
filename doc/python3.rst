@@ -6,7 +6,7 @@ Python 3 FAQ
 What Python 3 versions are supported?
 -------------------------------------
 
-PyMongo supports CPython 3.6.2+ and PyPy3.6+.
+PyMongo supports CPython 3.7+ and PyPy3.7+.
 
 Are there any PyMongo behavior changes with Python 3?
 -----------------------------------------------------
@@ -20,8 +20,8 @@ with subtype 0.
 For example, let's insert a :class:`bytes` instance using Python 3 then
 read it back. Notice the byte string is decoded back to :class:`bytes`::
 
-  Python 3.6.8 (v3.6.8:3c6b436a57, Dec 24 2018, 02:04:31)
-  [GCC 4.2.1 Compatible Apple LLVM 6.0 (clang-600.0.57)] on darwin
+  Python 3.7.9 (v3.7.9:13c94747c7, Aug 15 2020, 01:31:08)
+  [Clang 6.0 (clang-600.0.57)] on darwin
   Type "help", "copyright", "credits" or "license" for more information.
   >>> import pymongo
   >>> c = pymongo.MongoClient()
@@ -49,8 +49,8 @@ decoded to :class:`~bson.binary.Binary` with subtype 0.
 For example, let's decode a JSON binary subtype 0 using Python 3. Notice the
 byte string is decoded to :class:`bytes`::
 
-  Python 3.6.8 (v3.6.8:3c6b436a57, Dec 24 2018, 02:04:31)
-  [GCC 4.2.1 Compatible Apple LLVM 6.0 (clang-600.0.57)] on darwin
+  Python 3.7.9 (v3.7.9:13c94747c7, Aug 15 2020, 01:31:08)
+  [Clang 6.0 (clang-600.0.57)] on darwin
   Type "help", "copyright", "credits" or "license" for more information.
   >>> from bson.json_util import loads
   >>> loads('{"b": {"$binary": "dGhpcyBpcyBhIGJ5dGUgc3RyaW5n", "$type": "00"}}')
@@ -86,8 +86,8 @@ Python 3 you must pass ``encoding='latin-1'`` to pickle.loads::
   >>> pickle.dumps(oid)
   'ccopy_reg\n_reconstructor\np0\n(cbson.objectid\...'
 
-  Python 3.6.8 (v3.6.8:3c6b436a57, Dec 24 2018, 02:04:31)
-  [GCC 4.2.1 Compatible Apple LLVM 6.0 (clang-600.0.57)] on darwin
+  Python 3.7.9 (v3.7.9:13c94747c7, Aug 15 2020, 01:31:08)
+  [Clang 6.0 (clang-600.0.57)] on darwin
   Type "help", "copyright", "credits" or "license" for more information.
   >>> import pickle
   >>> pickle.loads(b'ccopy_reg\n_reconstructor\np0\n(cbson.objectid\...', encoding='latin-1')
@@ -97,8 +97,8 @@ Python 3 you must pass ``encoding='latin-1'`` to pickle.loads::
 If you need to pickle ObjectIds using Python 3 and unpickle them using Python 2
 you must use ``protocol <= 2``::
 
-  Python 3.6.8 (v3.6.8:3c6b436a57, Dec 24 2018, 02:04:31)
-  [GCC 4.2.1 Compatible Apple LLVM 6.0 (clang-600.0.57)] on darwin
+  Python 3.7.9 (v3.7.9:13c94747c7, Aug 15 2020, 01:31:08)
+  [Clang 6.0 (clang-600.0.57)] on darwin
   Type "help", "copyright", "credits" or "license" for more information.
   >>> import pickle
   >>> from bson.objectid import ObjectId
