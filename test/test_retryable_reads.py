@@ -112,17 +112,20 @@ class TestSpec(SpecRunner):
     def setup_scenario(self, scenario_def):
         """Override a test's setup to support GridFS tests."""
         if "bucket_name" in scenario_def:
+            data = scenario_def["data"]
             db_name = self.get_scenario_db_name(scenario_def)
-            db = client_context.client.get_database(
-                db_name, write_concern=WriteConcern(w="majority")
-            )
-            # Create a bucket for the retryable reads GridFS tests.
-            client_context.client.drop_database(db_name)
-            if scenario_def["data"]:
-                data = scenario_def["data"]
-                # Load data.
+            db = client_context.client[db_name]
+            # Create a bucket for the retryable reads GridFS tests with as few
+            # majority writes as possible.
+            wc = WriteConcern(w="majority")
+            if data:
+                db["fs.chunks"].drop()
+                db["fs.files"].drop()
                 db["fs.chunks"].insert_many(data["fs.chunks"])
-                db["fs.files"].insert_many(data["fs.files"])
+                db.get_collection("fs.files", write_concern=wc).insert_many(data["fs.files"])
+            else:
+                db.get_collection("fs.chunks").drop()
+                db.get_collection("fs.files", write_concern=wc).drop()
         else:
             super(TestSpec, self).setup_scenario(scenario_def)
 

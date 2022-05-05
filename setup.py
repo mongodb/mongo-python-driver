@@ -4,8 +4,8 @@ import re
 import sys
 import warnings
 
-if sys.version_info[:3] < (3, 6, 2):
-    raise RuntimeError("Python version >= 3.6.2 required.")
+if sys.version_info[:3] < (3, 7):
+    raise RuntimeError("Python version >= 3.7 required.")
 
 
 # Hack to silence atexit traceback in some Python versions
@@ -321,7 +321,7 @@ setup(
     keywords=["mongo", "mongodb", "pymongo", "gridfs", "bson"],
     install_requires=[],
     license="Apache License, Version 2.0",
-    python_requires=">=3.6.2",
+    python_requires=">=3.7",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
@@ -331,7 +331,6 @@ setup(
         "Operating System :: POSIX",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3 :: Only",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",

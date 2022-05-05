@@ -357,9 +357,9 @@ class PoolOptions(object):
         # {
         #    'driver': {
         #        'name': 'PyMongo|MyDriver',
-        #        'version': '3.7.0|1.2.3',
+        #        'version': '4.2.0|1.2.3',
         #    },
-        #    'platform': 'CPython 3.6.0|MyPlatform'
+        #    'platform': 'CPython 3.7.0|MyPlatform'
         # }
         if driver:
             if driver.name:

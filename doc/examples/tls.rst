@@ -182,7 +182,7 @@ server's certificate::
 This often occurs because OpenSSL does not have access to the system's
 root certificates or the certificates are out of date. Linux users should
 ensure that they have the latest root certificate updates installed from
-their Linux vendor. macOS users using Python 3.6.2 or newer downloaded
+their Linux vendor. macOS users using Python 3.7 or newer downloaded
 from python.org `may have to run a script included with python
 <https://bugs.python.org/issue29065#msg283984>`_ to install
 root certificates::

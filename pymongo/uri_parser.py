@@ -134,7 +134,7 @@ def parse_host(entity: str, default_port: Optional[int] = DEFAULT_PORT) -> _Addr
         host, port = host.split(":", 1)
     if isinstance(port, str):
         if not port.isdigit() or int(port) > 65535 or int(port) <= 0:
-            raise ValueError("Port must be an integer between 0 and 65535: %s" % (port,))
+            raise ValueError("Port must be an integer between 0 and 65535: %r" % (port,))
         port = int(port)
 
     # Normalize hostname to lowercase, since DNS is case-insensitive:

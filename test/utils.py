@@ -875,17 +875,14 @@ def lazy_client_trial(reset, target, test, get_client):
 
 def gevent_monkey_patched():
     """Check if gevent's monkey patching is active."""
-    # In Python 3.6 importing gevent.socket raises an ImportWarning.
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", ImportWarning)
-        try:
-            import socket
+    try:
+        import socket
 
-            import gevent.socket
+        import gevent.socket
 
-            return socket.socket is gevent.socket.socket
-        except ImportError:
-            return False
+        return socket.socket is gevent.socket.socket
+    except ImportError:
+        return False
 
 
 def eventlet_monkey_patched():

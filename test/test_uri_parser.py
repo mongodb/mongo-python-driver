@@ -147,6 +147,10 @@ class TestURI(unittest.TestCase):
         self.assertRaises(InvalidURI, parse_uri, "http://foo@foobar.com")
         self.assertRaises(ValueError, parse_uri, "mongodb://::1", 27017)
 
+        # Extra whitespace should be visible in error message.
+        with self.assertRaisesRegex(ValueError, "'27017 '"):
+            parse_uri("mongodb://localhost:27017 ")
+
         orig: dict = {
             "nodelist": [("localhost", 27017)],
             "username": None,

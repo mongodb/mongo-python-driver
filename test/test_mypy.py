@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List
 try:
     from typing import TypedDict  # type: ignore[attr-defined]
 
-    # Not available in Python 3.6 and Python 3.7
+    # Not available in Python 3.7
     class Movie(TypedDict):  # type: ignore[misc]
         name: str
         year: int
@@ -131,6 +131,7 @@ class TestPymongo(IntegrationTest):
 
     def test_default_document_type(self) -> None:
         client = rs_or_single_client()
+        self.addCleanup(client.close)
         coll = client.test.test
         doc = {"my": "doc"}
         coll.insert_one(doc)
