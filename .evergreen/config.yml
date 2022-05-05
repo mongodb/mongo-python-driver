@@ -1969,6 +1969,10 @@ axes:
         display_name: "PyPy 3.8"
         variables:
            PYTHON_BINARY: "/opt/python/pypy3.8/bin/pypy3"
+
+  - id: python-version-mac
+    display_name: "Python"
+    values:
       - id: "system-python3"
         display_name: "Python3"
         variables:
@@ -2363,7 +2367,7 @@ buildvariants:
   exclude_spec:
    # Don't test green frameworks on these Python versions.
    - platform: ubuntu-18.04
-     python-version: ["pypy3.7", "pypy3.8", "system-python3"]
+     python-version: ["pypy3.7", "pypy3.8"]
      green-framework: "*"
      auth-ssl: "*"
   display_name: "${green-framework} ${python-version} ${platform} ${auth-ssl}"
@@ -2527,11 +2531,6 @@ buildvariants:
     python-version: "*"
     auth-ssl: auth-ssl
     serverless: "*"
-  exclude_spec:
-   - platform: ubuntu-18.04
-     python-version: ["system-python3"]
-     auth-ssl: auth-ssl
-     serverless: "*"
   display_name: "Serverless ${python-version} ${platform}"
   tasks:
     - "serverless_task_group"
@@ -2600,9 +2599,19 @@ buildvariants:
 
 - matrix_name: "aws-auth-test"
   matrix_spec:
-    platform: [ubuntu-18.04, macos-1014]
-    python-version: ["system-python3"]
+    platform: [ubuntu-18.04]
+    python-version: ["3.7"]
   display_name: "MONGODB-AWS Auth ${platform} ${python-version}"
+  tasks:
+    - name: "aws-auth-test-4.4"
+    - name: "aws-auth-test-5.0"
+    - name: "aws-auth-test-latest"
+
+- matrix_name: "aws-auth-test-mac"
+  matrix_spec:
+    platform: [macos-1014]
+    python-version-mac: ["system-python3"]
+  display_name: "MONGODB-AWS Auth ${platform} ${python-version-mac}"
   tasks:
     - name: "aws-auth-test-4.4"
     - name: "aws-auth-test-5.0"
