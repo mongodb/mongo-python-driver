@@ -1930,6 +1930,10 @@ axes:
         display_name: "MongoDB 5.0"
         variables:
           VERSION: "5.0"
+      - id: "6.0"
+        display_name: "MongoDB 6.0"
+        variables:
+          VERSION: "6.0"
       - id: "latest"
         display_name: "MongoDB latest"
         variables:
@@ -2174,6 +2178,7 @@ buildvariants:
   tasks: &all-server-versions
     - ".rapid"
     - ".latest"
+    - ".6.0"
     - ".5.0"
     - ".4.4"
     - ".4.2"
@@ -2190,6 +2195,7 @@ buildvariants:
   display_name: "Encryption ${platform} ${auth-ssl}"
   tasks: &encryption-server-versions
     - ".latest"
+    - ".6.0"
     - ".5.0"
     - ".4.4"
     - ".4.2"
@@ -2234,6 +2240,7 @@ buildvariants:
   display_name: "${platform} ${auth} ${ssl}"
   tasks:
     - ".latest"
+    - ".6.0"
     - ".5.0"
     - ".4.4"
     - ".4.2"
@@ -2581,7 +2588,7 @@ buildvariants:
     # See https://jira.mongodb.org/browse/SERVER-51364.
     platform: ubuntu-20.04
     python-version: ["3.6", "3.10", "pypy3.6", "pypy3.8"]
-    mongodb-version: ["4.4", "5.0", "latest"]
+    mongodb-version: ["4.4", "5.0", "6.0", "latest"]
     auth: "noauth"
     ssl: "ssl"
   display_name: "OCSP test ${platform} ${python-version} ${mongodb-version}"
@@ -2593,7 +2600,7 @@ buildvariants:
   matrix_spec:
     platform: windows-64-vsMulti-small
     python-version-windows: ["3.6", "3.10"]
-    mongodb-version: ["4.4", "5.0", "latest"]
+    mongodb-version: ["4.4", "5.0", "6.0", "latest"]
     auth: "noauth"
     ssl: "ssl"
   display_name: "OCSP test ${platform} ${python-version-windows} ${mongodb-version}"
@@ -2605,7 +2612,7 @@ buildvariants:
 - matrix_name: "ocsp-test-macos"
   matrix_spec:
     platform: macos-1014
-    mongodb-version: ["4.4", "5.0", "latest"]
+    mongodb-version: ["4.4", "5.0", "6.0", "latest"]
     auth: "noauth"
     ssl: "ssl"
   display_name: "OCSP test ${platform} ${mongodb-version}"
@@ -2637,7 +2644,7 @@ buildvariants:
 - matrix_name: "load-balancer"
   matrix_spec:
     platform: ubuntu-18.04
-    mongodb-version: ["rapid", "latest"]
+    mongodb-version: ["rapid", "latest", "6.0"]
     auth-ssl: "*"
     python-version: "*"
     loadbalancer: "*"
