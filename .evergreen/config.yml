@@ -1233,6 +1233,33 @@ tasks:
             TOPOLOGY: "sharded_cluster"
         - func: "run tests"
 
+    - name: "test-6.0-standalone"
+      tags: ["6.0", "standalone"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "6.0"
+            TOPOLOGY: "server"
+        - func: "run tests"
+
+    - name: "test-6.0-replica_set"
+      tags: ["6.0", "replica_set"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "6.0"
+            TOPOLOGY: "replica_set"
+        - func: "run tests"
+
+    - name: "test-6.0-sharded_cluster"
+      tags: ["6.0", "sharded_cluster"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "6.0"
+            TOPOLOGY: "sharded_cluster"
+        - func: "run tests"
+
     - name: "test-latest-standalone"
       tags: ["latest", "standalone"]
       commands:

@@ -89,15 +89,6 @@ Changes in Version 4.0
 
 .. warning:: PyMongo 4.0 drops support for MongoDB 2.6, 3.0, 3.2, and 3.4.
 
-.. warning:: PyMongo 4.0 changes the default value of the ``directConnection`` URI option and
-  keyword argument to :class:`~pymongo.mongo_client.MongoClient`
-  to ``False`` instead of ``None``, allowing for the automatic
-  discovery of replica sets. This means that if you
-  want a direct connection to a single server you must pass
-  ``directConnection=True`` as a URI option or keyword argument.
-  For more details, see the relevant section of the PyMongo 4.x migration
-  guide: :ref:`pymongo4-migration-direct-connection`.
-
 PyMongo 4.0 brings a number of improvements as well as some backward breaking
 changes. For example, all APIs deprecated in PyMongo 3.X have been removed.
 Be sure to read the changes listed below and the :doc:`migrate-to-pymongo4`
