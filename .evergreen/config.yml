@@ -2682,6 +2682,8 @@ buildvariants:
     - name: "aws-auth-test-4.4"
     - name: "aws-auth-test-5.0"
     - name: "aws-auth-test-latest"
+    - name: "aws-auth-test-6.0"
+    - name: "aws-auth-test-rapid"
 
 - matrix_name: "aws-auth-test-mac"
   matrix_spec:
@@ -2692,7 +2694,8 @@ buildvariants:
     - name: "aws-auth-test-4.4"
     - name: "aws-auth-test-5.0"
     - name: "aws-auth-test-latest"
-
+    - name: "aws-auth-test-6.0"
+    - name: "aws-auth-test-rapid"
 - matrix_name: "aws-auth-test-windows"
   matrix_spec:
     platform: [windows-64-vsMulti-small]
@@ -2702,6 +2705,8 @@ buildvariants:
     - name: "aws-auth-test-4.4"
     - name: "aws-auth-test-5.0"
     - name: "aws-auth-test-latest"
+    - name: "aws-auth-test-6.0"
+    - name: "aws-auth-test-rapid"
 
 - matrix_name: "load-balancer"
   matrix_spec:
