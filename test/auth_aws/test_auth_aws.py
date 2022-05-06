@@ -17,7 +17,6 @@
 import os
 import sys
 import unittest
-from urllib.parse import unquote_plus
 
 sys.path[0:0] = [""]
 
