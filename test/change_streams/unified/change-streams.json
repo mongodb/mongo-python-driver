@@ -560,7 +560,7 @@
           "maxServerVersion": "5.2"
         },
         {
-          "maxServerVersion": "6.0"
+          "minServerVersion": "6.0"
         }
       ],
       "operations": [
