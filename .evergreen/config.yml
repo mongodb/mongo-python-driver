@@ -1233,6 +1233,33 @@ tasks:
             TOPOLOGY: "sharded_cluster"
         - func: "run tests"
 
+    - name: "test-6.0-standalone"
+      tags: ["6.0", "standalone"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "6.0"
+            TOPOLOGY: "server"
+        - func: "run tests"
+
+    - name: "test-6.0-replica_set"
+      tags: ["6.0", "replica_set"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "6.0"
+            TOPOLOGY: "replica_set"
+        - func: "run tests"
+
+    - name: "test-6.0-sharded_cluster"
+      tags: ["6.0", "sharded_cluster"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "6.0"
+            TOPOLOGY: "sharded_cluster"
+        - func: "run tests"
+
     - name: "test-latest-standalone"
       tags: ["latest", "standalone"]
       commands:
@@ -1694,6 +1721,22 @@ tasks:
         - func: "run aws auth test with aws EC2 credentials"
         - func: "run aws ECS auth test"
 
+    - name: "aws-auth-test-6.0"
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            AUTH: "auth"
+            ORCHESTRATION_FILE: "auth-aws.json"
+            TOPOLOGY: "server"
+            VERSION: "6.0"
+        - func: "add aws auth variables to file"
+        - func: "run aws auth test with regular aws credentials"
+        - func: "run aws auth test with assume role credentials"
+        - func: "run aws auth test with aws credentials as environment variables"
+        - func: "run aws auth test with aws credentials and session token as environment variables"
+        - func: "run aws auth test with aws EC2 credentials"
+        - func: "run aws ECS auth test"
+
     - name: "aws-auth-test-latest"
       commands:
         - func: "bootstrap mongo-orchestration"
@@ -1702,6 +1745,21 @@ tasks:
             ORCHESTRATION_FILE: "auth-aws.json"
             TOPOLOGY: "server"
             VERSION: "latest"
+        - func: "add aws auth variables to file"
+        - func: "run aws auth test with regular aws credentials"
+        - func: "run aws auth test with assume role credentials"
+        - func: "run aws auth test with aws credentials as environment variables"
+        - func: "run aws auth test with aws credentials and session token as environment variables"
+        - func: "run aws auth test with aws EC2 credentials"
+        - func: "run aws ECS auth test"
+    - name: "aws-auth-test-rapid"
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            AUTH: "auth"
+            ORCHESTRATION_FILE: "auth-aws.json"
+            TOPOLOGY: "server"
+            VERSION: "rapid"
         - func: "add aws auth variables to file"
         - func: "run aws auth test with regular aws credentials"
         - func: "run aws auth test with assume role credentials"
@@ -1930,6 +1988,10 @@ axes:
         display_name: "MongoDB 5.0"
         variables:
           VERSION: "5.0"
+      - id: "6.0"
+        display_name: "MongoDB 6.0"
+        variables:
+          VERSION: "6.0"
       - id: "latest"
         display_name: "MongoDB latest"
         variables:
@@ -2159,9 +2221,8 @@ buildvariants:
       - awslinux
     auth-ssl: "*"
   display_name: "${platform} ${auth-ssl}"
-  tasks: &all-server-versions
-    - ".rapid"
-    - ".latest"
+  tasks:
+    - ".6.0"
     - ".5.0"
     - ".4.4"
     - ".4.2"
@@ -2176,8 +2237,8 @@ buildvariants:
     auth-ssl: "*"
     encryption: "*"
   display_name: "Encryption ${platform} ${auth-ssl}"
-  tasks: &encryption-server-versions
-    - ".latest"
+  tasks:
+    - ".6.0"
     - ".5.0"
     - ".4.4"
     - ".4.2"
@@ -2222,6 +2283,7 @@ buildvariants:
   display_name: "${platform} ${auth} ${ssl}"
   tasks:
     - ".latest"
+    - ".6.0"
     - ".5.0"
     - ".4.4"
     - ".4.2"
@@ -2236,7 +2298,13 @@ buildvariants:
     ssl: "nossl"
     encryption: "*"
   display_name: "Encryption ${platform} ${auth} ${ssl}"
-  tasks: *encryption-server-versions
+  tasks: &encryption-server-versions
+    - ".latest"
+    - ".6.0"
+    - ".5.0"
+    - ".4.4"
+    - ".4.2"
+    - ".4.0"
 
 # Test one server version (4.2) with zSeries, POWER8, and ARM.
 - matrix_name: "test-different-cpu-architectures"
@@ -2257,7 +2325,15 @@ buildvariants:
     auth-ssl: "*"
     coverage: "*"
   display_name: "${python-version} ${platform} ${auth-ssl} ${coverage}"
-  tasks: *all-server-versions
+  tasks: &all-server-versions
+    - ".rapid"
+    - ".latest"
+    - ".6.0"
+    - ".5.0"
+    - ".4.4"
+    - ".4.2"
+    - ".4.0"
+    - ".3.6"
 
 - matrix_name: "tests-pyopenssl"
   matrix_spec:
@@ -2397,7 +2473,7 @@ buildvariants:
     auth-ssl: "*"
   display_name: "OpenSSL 1.0.2 ${python-version} ${platform} ${auth-ssl}"
   tasks:
-     - ".latest"
+     - ".5.0"
 
 - matrix_name: "tests-windows-encryption"
   matrix_spec:
@@ -2564,7 +2640,7 @@ buildvariants:
     # See https://jira.mongodb.org/browse/SERVER-51364.
     platform: ubuntu-20.04
     python-version: ["3.7", "3.10", "pypy3.7", "pypy3.8"]
-    mongodb-version: ["4.4", "5.0", "latest"]
+    mongodb-version: ["4.4", "5.0", "6.0", "latest"]
     auth: "noauth"
     ssl: "ssl"
   display_name: "OCSP test ${platform} ${python-version} ${mongodb-version}"
@@ -2576,7 +2652,7 @@ buildvariants:
   matrix_spec:
     platform: windows-64-vsMulti-small
     python-version-windows: ["3.7", "3.10"]
-    mongodb-version: ["4.4", "5.0", "latest"]
+    mongodb-version: ["4.4", "5.0", "6.0", "latest"]
     auth: "noauth"
     ssl: "ssl"
   display_name: "OCSP test ${platform} ${python-version-windows} ${mongodb-version}"
@@ -2588,7 +2664,7 @@ buildvariants:
 - matrix_name: "ocsp-test-macos"
   matrix_spec:
     platform: macos-1014
-    mongodb-version: ["4.4", "5.0", "latest"]
+    mongodb-version: ["4.4", "5.0", "6.0", "latest"]
     auth: "noauth"
     ssl: "ssl"
   display_name: "OCSP test ${platform} ${mongodb-version}"
@@ -2606,6 +2682,8 @@ buildvariants:
     - name: "aws-auth-test-4.4"
     - name: "aws-auth-test-5.0"
     - name: "aws-auth-test-latest"
+    - name: "aws-auth-test-6.0"
+    - name: "aws-auth-test-rapid"
 
 - matrix_name: "aws-auth-test-mac"
   matrix_spec:
@@ -2616,7 +2694,8 @@ buildvariants:
     - name: "aws-auth-test-4.4"
     - name: "aws-auth-test-5.0"
     - name: "aws-auth-test-latest"
-
+    - name: "aws-auth-test-6.0"
+    - name: "aws-auth-test-rapid"
 - matrix_name: "aws-auth-test-windows"
   matrix_spec:
     platform: [windows-64-vsMulti-small]
@@ -2626,11 +2705,13 @@ buildvariants:
     - name: "aws-auth-test-4.4"
     - name: "aws-auth-test-5.0"
     - name: "aws-auth-test-latest"
+    - name: "aws-auth-test-6.0"
+    - name: "aws-auth-test-rapid"
 
 - matrix_name: "load-balancer"
   matrix_spec:
     platform: ubuntu-18.04
-    mongodb-version: ["rapid", "latest"]
+    mongodb-version: ["rapid", "latest", "6.0"]
     auth-ssl: "*"
     python-version: "*"
     loadbalancer: "*"
