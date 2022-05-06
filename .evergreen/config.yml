@@ -1882,17 +1882,17 @@ axes:
         batchtime: 10080  # 7 days
         variables:
           python3_binary: python3
-      - id: ubuntu1804-zseries
-        display_name: "Ubuntu 18.04 (zSeries)"
-        run_on: ubuntu1804-zseries-small
+      - id: rhel83-zseries
+        display_name: "RHEL 8.3 (zSeries)"
+        run_on: rhel83-zseries-small
         batchtime: 10080  # 7 days
-      - id: ubuntu1804-power8
-        display_name: "Ubuntu 18.04 (POWER8)"
-        run_on: ubuntu1804-power8-small
+      - id: rhel81-power8
+        display_name: "RHEL 8.1 (POWER8)"
+        run_on: rhel81-power8-small
         batchtime: 10080  # 7 days
-      - id: ubuntu1804-arm64
-        display_name: "Ubuntu 18.04 (ARM64)"
-        run_on: ubuntu1804-arm64-small
+      - id: rhel82-arm64
+        display_name: "RHEL 8.2 (ARM64)"
+        run_on: rhel82-arm64-small
         batchtime: 10080  # 7 days
         variables:
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/ubuntu1804-arm64/master/latest/libmongocrypt.tar.gz
@@ -2306,17 +2306,17 @@ buildvariants:
     - ".4.2"
     - ".4.0"
 
-# Test one server version (4.2) with zSeries, POWER8, and ARM.
+# Test one server version with zSeries, POWER8, and ARM.
 - matrix_name: "test-different-cpu-architectures"
   matrix_spec:
     platform:
-      - ubuntu1804-zseries # Ubuntu 18 or RHEL 8.x?
-      - ubuntu1804-power8 # Ubuntu 18 or RHEL 7?
-      - ubuntu1804-arm64
+      - rhel83-zseries  # Added in 5.0.8 (SERVER-44074)
+      - rhel81-power8 # Added in 4.2.7 (SERVER-44072)
+      - rhel82-arm64 # Added in 4.4.2 (SERVER-48282)
     auth-ssl: "*"
   display_name: "${platform} ${auth-ssl}"
   tasks:
-    - ".4.2"
+    - ".6.0"
 
 - matrix_name: "tests-python-version-ubuntu18-test-ssl"
   matrix_spec:
