@@ -17,12 +17,41 @@
 import os
 import sys
 import unittest
+from urllib.parse import unquote_plus
 
 sys.path[0:0] = [""]
+
+from test.utils import get_pool
 
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure
 from pymongo.uri_parser import parse_uri
+
+
+class AuthProvider:
+    """Auth provider that returns good credentials except for the
+    third time it is called."""
+
+    auth_mechanism = "MONGODB-AWS"
+
+    def __init__(self, uri):
+        self.count = 0
+        parts = parse_uri(uri)
+        self.access_key = parts["username"]
+        self.secret_access_key = parts["password"]
+        auth_props = parts["options"]["authMechanismProperties"]
+        self.session_token = auth_props["AWS_SESSION_TOKEN"]
+
+    def get_auth(self):
+        self.count += 1
+        if self.count == 3:
+            return dict(access_key="fake", secret_access_key="fake")
+
+        return dict(
+            access_key=self.access_key,
+            secret_access_key=self.secret_access_key,
+            session_token=self.session_token,
+        )
 
 
 class TestAuthAWS(unittest.TestCase):
@@ -52,6 +81,19 @@ class TestAuthAWS(unittest.TestCase):
     def test_connect_uri(self):
         with MongoClient(self.uri) as client:
             client.get_database().test.find_one()
+
+    def test_credential_provider(self):
+        provider = AuthProvider(self.uri)
+        with MongoClient(self.uri, credential_provider=provider) as client:
+            client.get_database().test.find_one()
+            # Reset the pool between each request to force an auth refresh.
+            get_pool(client).reset()
+            client.get_database().test.find_one()
+            get_pool(client).reset()
+            with self.assertRaises(OperationFailure):
+                client.get_database().test.find_one()
+            client.get_database().test.find_one()
+            get_pool(client).reset()
 
 
 if __name__ == "__main__":
