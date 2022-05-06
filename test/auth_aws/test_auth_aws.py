@@ -38,8 +38,8 @@ class AuthProvider:
         parts = parse_uri(uri)
         self.access_key = parts["username"]
         self.secret_access_key = parts["password"]
-        auth_props = parts["options"]["authMechanismProperties"]
-        self.session_token = auth_props["AWS_SESSION_TOKEN"]
+        auth_props = parts["options"].get("authMechanismProperties", {})
+        self.session_token = auth_props.get("AWS_SESSION_TOKEN", None)
 
     def get_auth(self):
         self.count += 1
