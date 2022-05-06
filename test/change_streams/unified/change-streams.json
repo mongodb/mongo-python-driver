@@ -554,6 +554,15 @@
     },
     {
       "description": "Test new structure in ns document MUST NOT err",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "3.6",
+          "maxServerVersion": "5.2"
+        },
+        {
+          "maxServerVersion": "6.0"
+        }
+      ],
       "operations": [
         {
           "name": "createChangeStream",
