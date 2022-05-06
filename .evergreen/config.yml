@@ -2473,7 +2473,7 @@ buildvariants:
     auth-ssl: "*"
   display_name: "OpenSSL 1.0.2 ${python-version} ${platform} ${auth-ssl}"
   tasks:
-     - ".6.0"
+     - ".5.0"
 
 - matrix_name: "tests-windows-encryption"
   matrix_spec:
