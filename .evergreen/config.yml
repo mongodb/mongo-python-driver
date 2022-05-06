@@ -1721,6 +1721,22 @@ tasks:
         - func: "run aws auth test with aws EC2 credentials"
         - func: "run aws ECS auth test"
 
+    - name: "aws-auth-test-6.0"
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            AUTH: "auth"
+            ORCHESTRATION_FILE: "auth-aws.json"
+            TOPOLOGY: "server"
+            VERSION: "6.0"
+        - func: "add aws auth variables to file"
+        - func: "run aws auth test with regular aws credentials"
+        - func: "run aws auth test with assume role credentials"
+        - func: "run aws auth test with aws credentials as environment variables"
+        - func: "run aws auth test with aws credentials and session token as environment variables"
+        - func: "run aws auth test with aws EC2 credentials"
+        - func: "run aws ECS auth test"
+
     - name: "aws-auth-test-latest"
       commands:
         - func: "bootstrap mongo-orchestration"
@@ -1729,6 +1745,21 @@ tasks:
             ORCHESTRATION_FILE: "auth-aws.json"
             TOPOLOGY: "server"
             VERSION: "latest"
+        - func: "add aws auth variables to file"
+        - func: "run aws auth test with regular aws credentials"
+        - func: "run aws auth test with assume role credentials"
+        - func: "run aws auth test with aws credentials as environment variables"
+        - func: "run aws auth test with aws credentials and session token as environment variables"
+        - func: "run aws auth test with aws EC2 credentials"
+        - func: "run aws ECS auth test"
+    - name: "aws-auth-test-rapid"
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            AUTH: "auth"
+            ORCHESTRATION_FILE: "auth-aws.json"
+            TOPOLOGY: "server"
+            VERSION: "rapid"
         - func: "add aws auth variables to file"
         - func: "run aws auth test with regular aws credentials"
         - func: "run aws auth test with assume role credentials"
@@ -2190,9 +2221,7 @@ buildvariants:
       - awslinux
     auth-ssl: "*"
   display_name: "${platform} ${auth-ssl}"
-  tasks: &all-server-versions
-    - ".rapid"
-    - ".latest"
+  tasks:
     - ".6.0"
     - ".5.0"
     - ".4.4"
@@ -2208,8 +2237,7 @@ buildvariants:
     auth-ssl: "*"
     encryption: "*"
   display_name: "Encryption ${platform} ${auth-ssl}"
-  tasks: &encryption-server-versions
-    - ".latest"
+  tasks:
     - ".6.0"
     - ".5.0"
     - ".4.4"
@@ -2270,7 +2298,13 @@ buildvariants:
     ssl: "nossl"
     encryption: "*"
   display_name: "Encryption ${platform} ${auth} ${ssl}"
-  tasks: *encryption-server-versions
+  tasks: &encryption-server-versions
+    - ".latest"
+    - ".6.0"
+    - ".5.0"
+    - ".4.4"
+    - ".4.2"
+    - ".4.0"
 
 # Test one server version (4.2) with zSeries, POWER8, and ARM.
 - matrix_name: "test-different-cpu-architectures"
@@ -2291,7 +2325,15 @@ buildvariants:
     auth-ssl: "*"
     coverage: "*"
   display_name: "${python-version} ${platform} ${auth-ssl} ${coverage}"
-  tasks: *all-server-versions
+  tasks: &all-server-versions
+    - ".rapid"
+    - ".latest"
+    - ".6.0"
+    - ".5.0"
+    - ".4.4"
+    - ".4.2"
+    - ".4.0"
+    - ".3.6"
 
 - matrix_name: "tests-pyopenssl"
   matrix_spec:
@@ -2431,7 +2473,7 @@ buildvariants:
     auth-ssl: "*"
   display_name: "OpenSSL 1.0.2 ${python-version} ${platform} ${auth-ssl}"
   tasks:
-     - ".latest"
+     - ".6.0"
 
 - matrix_name: "tests-windows-encryption"
   matrix_spec:
