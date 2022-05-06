@@ -33,7 +33,8 @@ def _parse_credentials(username, password, database, options):
     """Parse authentication credentials."""
     mechanism = options.get("authmechanism", "DEFAULT" if username else None)
     source = options.get("authsource")
-    if username or mechanism:
+    credential_provider = options.get("credential_provider")
+    if username or mechanism or credential_provider:
         return _build_credentials_tuple(mechanism, source, username, password, options, database)
     return None
 

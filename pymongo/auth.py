@@ -95,12 +95,23 @@ GSSAPIProperties = namedtuple(
 """Mechanism properties for GSSAPI authentication."""
 
 
-_AWSProperties = namedtuple("_AWSProperties", ["aws_session_token"])
+_AWSProperties = namedtuple("_AWSProperties", ["aws_session_token", "credential_provider"])
 """Mechanism properties for MONGODB-AWS authentication."""
+
+
+_SUPPORTED_CREDENTIAL_PROVIDERS = ["MONGODB-AWS"]
 
 
 def _build_credentials_tuple(mech, source, user, passwd, extra, database):
     """Build and return a mechanism specific credentials tuple."""
+    credential_provider = extra.get("credential_provider")
+    if credential_provider:
+        mech = credential_provider.auth_mechanism
+        if mech not in _SUPPORTED_CREDENTIAL_PROVIDERS:
+            raise ValueError(
+                f"Auth mechanism {mech} is not supported for credential provider, must be one of {_SUPPORTED_CREDENTIAL_PROVIDERS}"
+            )
+
     if mech not in ("MONGODB-X509", "MONGODB-AWS") and user is None:
         raise ConfigurationError("%s requires a username." % (mech,))
     if mech == "GSSAPI":
@@ -134,7 +145,9 @@ def _build_credentials_tuple(mech, source, user, passwd, extra, database):
 
         properties = extra.get("authmechanismproperties", {})
         aws_session_token = properties.get("AWS_SESSION_TOKEN")
-        aws_props = _AWSProperties(aws_session_token=aws_session_token)
+        aws_props = _AWSProperties(
+            aws_session_token=aws_session_token, credential_provider=credential_provider
+        )
         # user can be None for temporary link-local EC2 credentials.
         return MongoCredential(mech, "$external", user, passwd, aws_props, None)
     elif mech == "PLAIN":

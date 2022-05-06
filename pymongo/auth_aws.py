@@ -59,14 +59,21 @@ def _authenticate_aws(credentials, sock_info):
     if sock_info.max_wire_version < 9:
         raise ConfigurationError("MONGODB-AWS authentication requires MongoDB version 4.4 or later")
 
-    try:
-        ctx = _AwsSaslContext(
-            AwsCredential(
-                credentials.username,
-                credentials.password,
-                credentials.mechanism_properties.aws_session_token,
-            )
+    if credentials.mechanism_properties.credential_provider:
+        auth = credentials.mechanism_properties.credential_provider.get_auth()
+        cred = AwsCredential(
+            auth.get("access_key", credentials.username),
+            auth.get("secret_access_key", credentials.password),
+            auth.get("session_token", credentials.mechanism_properties.aws_session_token),
         )
+    else:
+        cred = AwsCredential(
+            credentials.username,
+            credentials.password,
+            credentials.mechanism_properties.aws_session_token,
+        )
+    try:
+        ctx = _AwsSaslContext(cred)
         client_payload = ctx.step(None)
         client_first = SON(
             [("saslStart", 1), ("mechanism", "MONGODB-AWS"), ("payload", client_payload)]

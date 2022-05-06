@@ -133,6 +133,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         tz_aware: Optional[bool] = None,
         connect: Optional[bool] = None,
         type_registry: Optional[TypeRegistry] = None,
+        credential_provider=None,
         **kwargs: Any,
     ) -> None:
         """Client for a MongoDB instance, a replica set, or a set of mongoses.
@@ -751,6 +752,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         keyword_opts = common._CaseInsensitiveDictionary(
             dict(common.validate(keyword_opts.cased_key(k), v) for k, v in keyword_opts.items())
         )
+        if credential_provider:
+            opts["credential_provider"] = credential_provider
 
         # Override connection string options with kwarg options.
         opts.update(keyword_opts)
