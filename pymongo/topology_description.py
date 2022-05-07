@@ -477,6 +477,7 @@ def _updated_topology_description_srv_polling(topology_description, seedlist):
       - `seedlist`: a list of new seeds new ServerDescription that resulted from
         a hello call
     """
+    assert topology_description.topology_type in SRV_POLLING_TOPOLOGIES
     # Create a copy of the server descriptions.
     sds = topology_description.server_descriptions()
 
