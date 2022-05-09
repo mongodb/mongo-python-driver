@@ -108,6 +108,30 @@ if TYPE_CHECKING:
         from typing import Generator
 
 
+class MongoCredential:
+    def __init__(
+        self,
+        user_name: Optional[str] = None,
+        password: Optional[str] = None,
+        mechanism_properties: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        self._user_name = user_name
+        self._password = password
+        self._mechanism_properties = mechanism_properties
+
+    @property
+    def user_name(self) -> Optional[str]:
+        return self._user_name
+
+    @property
+    def password(self) -> Optional[str]:
+        return self._password
+
+    @property
+    def mechanism_properties(self) -> Optional[Dict[str, Any]]:
+        return self._mechanism_properties and self._mechanism_properties.copy() or None
+
+
 class MongoClient(common.BaseObject, Generic[_DocumentType]):
     """
     A client-side representation of a MongoDB cluster.

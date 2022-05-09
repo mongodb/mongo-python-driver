@@ -75,7 +75,7 @@ from pymongo.common import (  # noqa: F401
     MIN_SUPPORTED_WIRE_VERSION,
 )
 from pymongo.cursor import CursorType  # noqa: F401
-from pymongo.mongo_client import MongoClient  # noqa: F401
+from pymongo.mongo_client import MongoClient, MongoCredential  # noqa: F401
 from pymongo.operations import (  # noqa: F401
     DeleteMany,
     DeleteOne,

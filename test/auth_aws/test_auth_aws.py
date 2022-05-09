@@ -22,7 +22,7 @@ sys.path[0:0] = [""]
 
 from test.utils import get_pool
 
-from pymongo import MongoClient
+from pymongo import MongoClient, MongoCredential
 from pymongo.errors import OperationFailure
 from pymongo.uri_parser import parse_uri
 
@@ -41,15 +41,15 @@ class AuthProvider:
         auth_props = parts["options"].get("authMechanismProperties", {})
         self.session_token = auth_props.get("AWS_SESSION_TOKEN", None)
 
-    def get_auth(self):
+    def get_credential(self) -> MongoCredential:
         self.count += 1
         if self.count == 3:
-            return dict(access_key="fake", secret_access_key="fake")
+            return MongoCredential(user_name="fake", password="fake")
 
-        return dict(
-            access_key=self.access_key,
-            secret_access_key=self.secret_access_key,
-            session_token=self.session_token,
+        return MongoCredential(
+            user_name=self.access_key,
+            password=self.secret_access_key,
+            mechanism_properties=dict(aws_session_token=self.session_token),
         )
 
 
