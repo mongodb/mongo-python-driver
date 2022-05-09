@@ -30,6 +30,8 @@ from test.utils import (
 )
 from test.utils_spec_runner import SpecRunner
 
+from bson import encode
+from bson.raw_bson import RawBSONDocument
 from gridfs import GridFS, GridFSBucket
 from pymongo import WriteConcern, client_session
 from pymongo.client_session import TransactionOptions
@@ -330,14 +332,14 @@ class TestTransactions(TransactionsBase):
         listener.reset()
         self.addCleanup(client.close)
         self.addCleanup(coll.drop)
-        large_str = "\0" * (10 * 1024 * 1024)
-        ops = [InsertOne({"a": large_str}) for _ in range(10)]
+        large_str = "\0" * (1 * 1024 * 1024)
+        ops = [InsertOne(RawBSONDocument(encode({"a": large_str}))) for _ in range(48)]
         with client.start_session() as session:
             with session.start_transaction():
                 coll.bulk_write(ops, session=session)
         # Assert commands were constructed properly.
         self.assertEqual(
-            ["insert", "insert", "insert", "commitTransaction"], listener.started_command_names()
+            ["insert", "insert", "commitTransaction"], listener.started_command_names()
         )
         first_cmd = listener.results["started"][0].command
         self.assertTrue(first_cmd["startTransaction"])
@@ -347,7 +349,7 @@ class TestTransactions(TransactionsBase):
             self.assertNotIn("startTransaction", event.command)
             self.assertEqual(lsid, event.command["lsid"])
             self.assertEqual(txn_number, event.command["txnNumber"])
-        self.assertEqual(10, coll.count_documents({}))
+        self.assertEqual(48, coll.count_documents({}))
 
 
 class PatchSessionTimeout(object):
