@@ -340,6 +340,8 @@ class Topology(object):
         Hold the lock when calling this.
         """
         td_old = self._description
+        if td_old.topology_type not in SRV_POLLING_TOPOLOGIES:
+            return
         self._description = _updated_topology_description_srv_polling(self._description, seedlist)
 
         self._update_servers()
