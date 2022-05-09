@@ -1596,7 +1596,6 @@ class TestClient(IntegrationTest):
         with self.assertRaises(ConfigurationError):
             MongoClient(["host1", "host2"], directConnection=True)
 
-    @unittest.skipIf(sys.platform.startswith("java"), "Jython does not support gc.get_objects")
     @unittest.skipIf("PyPy" in sys.version, "PYTHON-2927 fails often on PyPy")
     def test_continuous_network_errors(self):
         def server_description_count():
@@ -1612,7 +1611,7 @@ class TestClient(IntegrationTest):
         gc.collect()
         with client_knobs(min_heartbeat_interval=0.003):
             client = MongoClient(
-                "invalid:27017", heartbeatFrequencyMS=3, serverSelectionTimeoutMS=100
+                "invalid:27017", heartbeatFrequencyMS=3, serverSelectionTimeoutMS=150
             )
             initial_count = server_description_count()
             self.addCleanup(client.close)
@@ -1622,8 +1621,8 @@ class TestClient(IntegrationTest):
             final_count = server_description_count()
             # If a bug like PYTHON-2433 is reintroduced then too many
             # ServerDescriptions will be kept alive and this test will fail:
-            # AssertionError: 4 != 22 within 5 delta (18 difference)
-            self.assertAlmostEqual(initial_count, final_count, delta=10)
+            # AssertionError: 19 != 46 within 15 delta (27 difference)
+            self.assertAlmostEqual(initial_count, final_count, delta=15)
 
     @client_context.require_failCommand_fail_point
     def test_network_error_message(self):
