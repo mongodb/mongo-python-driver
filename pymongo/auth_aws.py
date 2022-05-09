@@ -60,7 +60,7 @@ def _authenticate_aws(credentials, sock_info):
         raise ConfigurationError("MONGODB-AWS authentication requires MongoDB version 4.4 or later")
 
     if credentials.mechanism_properties.credential_provider:
-        new_creds = credentials.mechanism_properties.credential_provider.get_credentials()
+        new_creds = credentials.mechanism_properties.credential_provider.get_credential()
         if new_creds.mechanism_properties:
             aws_session_token = new_creds.mechanism_properties.get("aws_session_token")
         else:
