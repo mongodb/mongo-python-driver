@@ -258,7 +258,7 @@ can be changed to this::
 ``tz_aware`` defaults to ``False``
 ..................................
 
-``tz_aware``, an argument for :class:`~bson.json_util.JSONOptions`,
+The ``tz_aware`` argument to :class:`~bson.json_util.JSONOptions`
 now defaults to ``False`` instead of ``True``. :meth:`bson.json_util.loads`
 now decodes datetime as naive by default::
 
@@ -275,6 +275,8 @@ To retain the PyMongo 3 behavior set ``tz_aware=True``, for example::
     >>> json_util.loads(s, json_options=opts)
     {'dt': datetime.datetime(2022, 5, 9, 17, 54, tzinfo=<bson.tz_util.FixedOffset object at 0x7fd1ebc1add0>)}
 
+This change was made to match the default behavior of
+:class:`~bson.codec_options.CodecOptions` and :class:`bson.decode`.
 
 MongoClient cannot execute operations after ``close()``
 .......................................................
