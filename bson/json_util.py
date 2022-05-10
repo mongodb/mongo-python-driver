@@ -438,6 +438,11 @@ def loads(s: str, *args: Any, **kwargs: Any) -> Any:
         decoding of MongoDB Extended JSON types. Defaults to
         :const:`DEFAULT_JSON_OPTIONS`.
 
+    .. versionchanged:: 4.0
+       Now loads :class:`datetime.datetime` instances as naive by default. To
+       load timezone aware instances utilize the `json_options` parameter.
+       See :ref:`tz_aware_default_change` for an example.
+
     .. versionchanged:: 3.5
        Parses Relaxed and Canonical Extended JSON as well as PyMongo's legacy
        format. Now raises ``TypeError`` or ``ValueError`` when parsing JSON
