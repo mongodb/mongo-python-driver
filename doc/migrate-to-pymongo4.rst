@@ -253,12 +253,28 @@ can be changed to this::
     client.options.pool_options.min_pool_size
     client.options.pool_options.max_idle_time_seconds
 
+.. _tz_aware_default_change:
+
 ``tz_aware`` defaults to ``False``
 ..................................
 
 ``tz_aware``, an argument for :class:`~bson.json_util.JSONOptions`,
-now defaults to ``False`` instead of ``True``. ``json_util.loads`` now
-decodes datetime as naive by default.
+now defaults to ``False`` instead of ``True``. :meth:`bson.json_util.loads`
+now decodes datetime as naive by default::
+
+    >>> from bson import json_util
+    >>> s = '{"dt": {"$date": "2022-05-09T17:54:00Z"}}'
+    >>> json_util.loads(s)
+    {'dt': datetime.datetime(2022, 5, 9, 17, 54)}
+
+To retain the PyMongo 3 behavior set ``tz_aware=True``, for example::
+
+    >>> from bson import json_util
+    >>> opts = json_util.JSONOptions(tz_aware=True)
+    >>> s = '{"dt": {"$date": "2022-05-09T17:54:00Z"}}'
+    >>> json_util.loads(s, json_options=opts)
+    {'dt': datetime.datetime(2022, 5, 9, 17, 54, tzinfo=<bson.tz_util.FixedOffset object at 0x7fd1ebc1add0>)}
+
 
 MongoClient cannot execute operations after ``close()``
 .......................................................
