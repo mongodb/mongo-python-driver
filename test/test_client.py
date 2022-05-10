@@ -1621,7 +1621,6 @@ class TestClient(IntegrationTest):
         with self.assertRaises(ConfigurationError):
             MongoClient(["host1", "host2"], directConnection=True)
 
-    @unittest.skipIf(sys.platform.startswith("java"), "Jython does not support gc.get_objects")
     @unittest.skipIf("PyPy" in sys.version, "PYTHON-2927 fails often on PyPy")
     def test_continuous_network_errors(self):
         def server_description_count():
@@ -1637,7 +1636,7 @@ class TestClient(IntegrationTest):
         gc.collect()
         with client_knobs(min_heartbeat_interval=0.003):
             client = MongoClient(
-                "invalid:27017", heartbeatFrequencyMS=3, serverSelectionTimeoutMS=100
+                "invalid:27017", heartbeatFrequencyMS=3, serverSelectionTimeoutMS=150
             )
             initial_count = server_description_count()
             self.addCleanup(client.close)
@@ -1650,6 +1649,70 @@ class TestClient(IntegrationTest):
             # AssertionError: 19 != 46 within 15 delta (27 difference)
             # On Python 3.11 we seem to get more of a delta.
             self.assertAlmostEqual(initial_count, final_count, delta=20)
+
+    @client_context.require_failCommand_fail_point
+    def test_network_error_message(self):
+        client = single_client(retryReads=False)
+        self.addCleanup(client.close)
+        client.admin.command("ping")  # connect
+        with self.fail_point(
+            {"mode": {"times": 1}, "data": {"closeConnection": True, "failCommands": ["find"]}}
+        ):
+            expected = "%s:%s: " % client.address
+            with self.assertRaisesRegex(AutoReconnect, expected):
+                client.pymongo_test.test.find_one({})
+
+    @unittest.skipIf("PyPy" in sys.version, "PYTHON-2938 could fail on PyPy")
+    def test_process_periodic_tasks(self):
+        client = rs_or_single_client()
+        coll = client.db.collection
+        coll.insert_many([{} for _ in range(5)])
+        cursor = coll.find(batch_size=2)
+        cursor.next()
+        c_id = cursor.cursor_id
+        self.assertIsNotNone(c_id)
+        client.close()
+        # Add cursor to kill cursors queue
+        del cursor
+        wait_until(
+            lambda: client._MongoClient__kill_cursors_queue,
+            "waited for cursor to be added to queue",
+        )
+        client._process_periodic_tasks()  # This must not raise or print any exceptions
+        with self.assertRaises(InvalidOperation):
+            coll.insert_many([{} for _ in range(5)])
+
+    @unittest.skipUnless(_HAVE_DNSPYTHON, "DNS-related tests need dnspython to be installed")
+    def test_service_name_from_kwargs(self):
+        client = MongoClient(
+            "mongodb+srv://user:password@test22.test.build.10gen.cc",
+            srvServiceName="customname",
+            connect=False,
+        )
+        self.assertEqual(client._topology_settings.srv_service_name, "customname")
+        client = MongoClient(
+            "mongodb+srv://user:password@test22.test.build.10gen.cc"
+            "/?srvServiceName=shouldbeoverriden",
+            srvServiceName="customname",
+            connect=False,
+        )
+        self.assertEqual(client._topology_settings.srv_service_name, "customname")
+        client = MongoClient(
+            "mongodb+srv://user:password@test22.test.build.10gen.cc/?srvServiceName=customname",
+            connect=False,
+        )
+        self.assertEqual(client._topology_settings.srv_service_name, "customname")
+
+    @unittest.skipUnless(_HAVE_DNSPYTHON, "DNS-related tests need dnspython to be installed")
+    def test_srv_max_hosts_kwarg(self):
+        client = MongoClient("mongodb+srv://test1.test.build.10gen.cc/")
+        self.assertGreater(len(client.topology_description.server_descriptions()), 1)
+        client = MongoClient("mongodb+srv://test1.test.build.10gen.cc/", srvmaxhosts=1)
+        self.assertEqual(len(client.topology_description.server_descriptions()), 1)
+        client = MongoClient(
+            "mongodb+srv://test1.test.build.10gen.cc/?srvMaxHosts=1", srvmaxhosts=2
+        )
+        self.assertEqual(len(client.topology_description.server_descriptions()), 2)
 
     @unittest.skipIf(_HAVE_DNSPYTHON, "dnspython must not be installed")
     def test_srv_no_dnspython_error(self):
