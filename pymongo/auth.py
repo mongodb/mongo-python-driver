@@ -106,7 +106,7 @@ class MongoCredential:
     source: str
     password: str
     mechanism: str
-    mechanism_properties: dict[str, str] = field(default_factory=dict)
+    mechanism_properties: Mapping[str, str] = field(default_factory=dict)
 
 
 def _credentials_tuple_from_dataclass(credentials: MongoCredential):
