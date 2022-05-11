@@ -303,6 +303,62 @@ A sample URI would be::
 .. note:: The access_key_id, secret_access_key, and session_token passed into
           the URI MUST be `percent escaped`_.
 
+Since the temporary credentials expire, it is recommended that you use
+a ``credential_callback`` to ensure valid credentials are available as needed.
+Here is an example using ``boto3`` to retrieve and store credentials, refreshing
+when credentials are about to expire.::
+
+  import boto3
+  from pymongo import MongoClient, MongoCredential
+
+
+  class AWSCredentialProvider:
+      _credentials = None
+
+      def __init__(self, role_arn, session_name=None):
+          self._role_arn = role_arn
+          self._session_name = session_name or f"AWSCredentialProviderSession{id(self)}"
+          self._sts_client = boto3.client('sts')
+
+      def _refresh_auth(self):
+          should_refresh = False
+          if self._credentials is None:
+              should_refresh = True
+          else:
+              now_utc = datetime.now(timezone.utc)
+              exp_utc = self._credentials['Expiration']
+              if now_utc > exp_utc:
+                  should_refresh = True
+              else:
+                  delta = exp_utc - now_utc
+                  if delta.seconds < 60:
+                      should_refresh = True
+
+          if should_refresh:
+              assumed_role_object = self._sts_client.assume_role(
+                  RoleArn=self._role_arn,
+                  RoleSessionName=self._session_name
+              )
+              self._credentials = assumed_role_object['Credentials']
+
+      def get_auth(self) -> MongoCredential:
+          self._refresh_auth()
+          assert self._credentials is not None
+          session_token = self._credentials['SessionToken']
+
+          return MongoCredential(
+              username=self._credentials['AccessKeyId'],
+              password=self._credentials['SecretAccessKey'],
+              mechanism="MONGODB-AWS",
+              source="$external",
+              mechanism_properties=dict(AWS_SESSION_TOKEN=session_token),
+          )
+
+    provider = AWSCredentialProvider("arn:aws:iam::...")
+    uri = "mongodb:example.com"
+    client = MongoClient(uri, credential_callback=provider.get_auth)
+
+
 AWS Lambda (Environment Variables)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
