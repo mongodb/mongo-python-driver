@@ -308,6 +308,7 @@ a ``credential_callback`` to ensure valid credentials are available as needed.
 Here is an example using ``boto3`` to retrieve and store credentials, refreshing
 when credentials are about to expire.::
 
+  from datetime import datetime, timezone
   import boto3
   from pymongo import MongoClient, MongoCredential
 
