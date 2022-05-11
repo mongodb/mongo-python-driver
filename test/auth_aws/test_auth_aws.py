@@ -83,7 +83,7 @@ class TestAuthAWS(unittest.TestCase):
         with MongoClient(self.uri) as client:
             client.get_database().test.find_one()
 
-    def test_credential_provider(self):
+    def test_credential_callback(self):
         callback = AuthProvider(self.uri).get_credential
         with MongoClient(self.uri, credential_callback=callback) as client:
             client.get_database().test.find_one()
