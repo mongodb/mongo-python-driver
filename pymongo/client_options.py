@@ -33,8 +33,7 @@ def _parse_credentials(username, password, database, options):
     """Parse authentication credentials."""
     mechanism = options.get("authmechanism", "DEFAULT" if username else None)
     source = options.get("authsource")
-    credential_provider = options.get("credential_provider")
-    if username or mechanism or credential_provider:
+    if username or mechanism:
         return _build_credentials_tuple(mechanism, source, username, password, options, database)
     return None
 
@@ -128,6 +127,7 @@ def _parse_ssl_options(options):
 def _parse_pool_options(username, password, database, options):
     """Parse connection pool options."""
     credentials = _parse_credentials(username, password, database, options)
+    credential_callback = options.get("credential_callback", None)
     max_pool_size = options.get("maxpoolsize", common.MAX_POOL_SIZE)
     min_pool_size = options.get("minpoolsize", common.MIN_POOL_SIZE)
     max_idle_time_seconds = options.get("maxidletimems", common.MAX_IDLE_TIME_SEC)
@@ -163,6 +163,7 @@ def _parse_pool_options(username, password, database, options):
         server_api=server_api,
         load_balanced=load_balanced,
         credentials=credentials,
+        credential_callback=credential_callback,
     )
 
 

@@ -108,30 +108,6 @@ if TYPE_CHECKING:
         from typing import Generator
 
 
-class MongoCredential:
-    def __init__(
-        self,
-        user_name: Optional[str] = None,
-        password: Optional[str] = None,
-        mechanism_properties: Optional[Dict[str, Any]] = None,
-    ) -> None:
-        self._user_name = user_name
-        self._password = password
-        self._mechanism_properties = mechanism_properties
-
-    @property
-    def user_name(self) -> Optional[str]:
-        return self._user_name
-
-    @property
-    def password(self) -> Optional[str]:
-        return self._password
-
-    @property
-    def mechanism_properties(self) -> Optional[Dict[str, Any]]:
-        return self._mechanism_properties and self._mechanism_properties.copy() or None
-
-
 class MongoClient(common.BaseObject, Generic[_DocumentType]):
     """
     A client-side representation of a MongoDB cluster.
@@ -157,7 +133,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         tz_aware: Optional[bool] = None,
         connect: Optional[bool] = None,
         type_registry: Optional[TypeRegistry] = None,
-        credential_provider=None,
+        credential_callback=None,
         **kwargs: Any,
     ) -> None:
         """Client for a MongoDB instance, a replica set, or a set of mongoses.
@@ -776,8 +752,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         keyword_opts = common._CaseInsensitiveDictionary(
             dict(common.validate(keyword_opts.cased_key(k), v) for k, v in keyword_opts.items())
         )
-        if credential_provider:
-            opts["credential_provider"] = credential_provider
+        if credential_callback:
+            opts["credential_callback"] = credential_callback
 
         # Override connection string options with kwarg options.
         opts.update(keyword_opts)

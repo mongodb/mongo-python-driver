@@ -310,6 +310,7 @@ class PoolOptions(object):
         "__server_api",
         "__load_balanced",
         "__credentials",
+        "__credential_callback",
     )
 
     def __init__(
@@ -331,6 +332,7 @@ class PoolOptions(object):
         server_api=None,
         load_balanced=None,
         credentials=None,
+        credential_callback=None,
     ):
         self.__max_pool_size = max_pool_size
         self.__min_pool_size = min_pool_size
@@ -349,6 +351,7 @@ class PoolOptions(object):
         self.__server_api = server_api
         self.__load_balanced = load_balanced
         self.__credentials = credentials
+        self.__credential_callback = credential_callback
         self.__metadata = copy.deepcopy(_METADATA)
         if appname:
             self.__metadata["application"] = {"name": appname}
@@ -378,6 +381,12 @@ class PoolOptions(object):
     @property
     def _credentials(self):
         """A :class:`~pymongo.auth.MongoCredentials` instance or None."""
+        return self.__credentials
+
+    def get_credentials(self):
+        if self.__credential_callback:
+            credentials = self.__credential_callback()
+            return auth._credentials_tuple_from_dataclass(credentials)
         return self.__credentials
 
     @property
@@ -621,7 +630,7 @@ class SocketInfo(object):
         if not performing_handshake and cluster_time is not None:
             cmd["$clusterTime"] = cluster_time
 
-        creds = self.opts._credentials
+        creds = self.opts.get_credentials()
         if creds:
             if creds.mechanism == "DEFAULT" and creds.username:
                 cmd["saslSupportedMechs"] = creds.source + "." + creds.username
@@ -840,7 +849,7 @@ class SocketInfo(object):
         # CMAP spec says to publish the ready event only after authenticating
         # the connection.
         if not self.ready:
-            creds = self.opts._credentials
+            creds = self.opts.get_credentials()
             if creds:
                 auth.authenticate(creds, self)
             self.ready = True

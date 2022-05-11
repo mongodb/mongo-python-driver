@@ -69,13 +69,14 @@ version = __version__
 
 """Current version of PyMongo."""
 
+from pymongo.auth import MongoCredential  # noqa: F401
 from pymongo.collection import ReturnDocument  # noqa: F401
 from pymongo.common import (  # noqa: F401
     MAX_SUPPORTED_WIRE_VERSION,
     MIN_SUPPORTED_WIRE_VERSION,
 )
 from pymongo.cursor import CursorType  # noqa: F401
-from pymongo.mongo_client import MongoClient, MongoCredential  # noqa: F401
+from pymongo.mongo_client import MongoClient  # noqa: F401
 from pymongo.operations import (  # noqa: F401
     DeleteMany,
     DeleteOne,

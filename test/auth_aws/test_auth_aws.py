@@ -31,8 +31,6 @@ class AuthProvider:
     """Auth provider that returns good credentials except for the
     third time it is called."""
 
-    auth_mechanism = "MONGODB-AWS"
-
     def __init__(self, uri):
         self.count = 0
         parts = parse_uri(uri)
@@ -44,12 +42,16 @@ class AuthProvider:
     def get_credential(self) -> MongoCredential:
         self.count += 1
         if self.count == 3:
-            return MongoCredential(user_name="fake", password="fake")
+            return MongoCredential(
+                username="fake", password="fake", mechanism="MONGODB-AWS", source="$external"
+            )
 
         return MongoCredential(
-            user_name=self.access_key,
+            username=self.access_key,
             password=self.secret_access_key,
-            mechanism_properties=dict(aws_session_token=self.session_token),
+            mechanism="MONGODB-AWS",
+            source="$external",
+            mechanism_properties=dict(AWS_SESSION_TOKEN=self.session_token),
         )
 
 
@@ -82,8 +84,8 @@ class TestAuthAWS(unittest.TestCase):
             client.get_database().test.find_one()
 
     def test_credential_provider(self):
-        provider = AuthProvider(self.uri)
-        with MongoClient(self.uri, credential_provider=provider) as client:
+        callback = AuthProvider(self.uri).get_credential
+        with MongoClient(self.uri, credential_callback=callback) as client:
             client.get_database().test.find_one()
             # Reset the pool between each request to force an auth refresh.
             get_pool(client).reset()
