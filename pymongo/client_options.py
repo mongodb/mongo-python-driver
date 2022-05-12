@@ -127,7 +127,7 @@ def _parse_ssl_options(options):
 def _parse_pool_options(username, password, database, options):
     """Parse connection pool options."""
     credentials = _parse_credentials(username, password, database, options)
-    credential_callback = options.get("credential_callback", None)
+    dynamic_credential_callback = options.get("dynamic_credential_callback", None)
     max_pool_size = options.get("maxpoolsize", common.MAX_POOL_SIZE)
     min_pool_size = options.get("minpoolsize", common.MIN_POOL_SIZE)
     max_idle_time_seconds = options.get("maxidletimems", common.MAX_IDLE_TIME_SEC)
@@ -163,7 +163,7 @@ def _parse_pool_options(username, password, database, options):
         server_api=server_api,
         load_balanced=load_balanced,
         credentials=credentials,
-        credential_callback=credential_callback,
+        dynamic_credential_callback=dynamic_credential_callback,
     )
 
 

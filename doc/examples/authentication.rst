@@ -310,7 +310,7 @@ when credentials are about to expire.::
 
   from datetime import datetime, timezone
   import boto3
-  from pymongo import MongoClient, MongoCredential
+  from pymongo import MongoClient
 
 
   class AWSCredentialProvider:
@@ -342,22 +342,15 @@ when credentials are about to expire.::
               )
               self._credentials = assumed_role_object['Credentials']
 
-      def get_auth(self) -> MongoCredential:
+      def get_auth(self, credential):
           self._refresh_auth()
           assert self._credentials is not None
-          session_token = self._credentials['SessionToken']
+          return self._credentials['SessionToken']
 
-          return MongoCredential(
-              username=self._credentials['AccessKeyId'],
-              password=self._credentials['SecretAccessKey'],
-              mechanism="MONGODB-AWS",
-              source="$external",
-              mechanism_properties=dict(AWS_SESSION_TOKEN=session_token),
-          )
 
     provider = AWSCredentialProvider("arn:aws:iam::...")
-    uri = "mongodb:example.com"
-    client = MongoClient(uri, credential_callback=provider.get_auth)
+    uri = "mongodb://example.com"
+    client = MongoClient(uri, dynamic_credential_callback=provider.get_auth)
 
 
 AWS Lambda (Environment Variables)

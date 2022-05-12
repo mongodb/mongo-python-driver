@@ -39,20 +39,11 @@ class AuthProvider:
         auth_props = parts["options"].get("authMechanismProperties", {})
         self.session_token = auth_props.get("AWS_SESSION_TOKEN", None)
 
-    def get_credential(self) -> MongoCredential:
+    def get_credential(self, credential: MongoCredential) -> str:
         self.count += 1
         if self.count == 3:
-            return MongoCredential(
-                username="fake", password="fake", mechanism="MONGODB-AWS", source="$external"
-            )
-
-        return MongoCredential(
-            username=self.access_key,
-            password=self.secret_access_key,
-            mechanism="MONGODB-AWS",
-            source="$external",
-            mechanism_properties=dict(AWS_SESSION_TOKEN=self.session_token),
-        )
+            return "fake"
+        return self.session_token
 
 
 class TestAuthAWS(unittest.TestCase):
@@ -83,9 +74,9 @@ class TestAuthAWS(unittest.TestCase):
         with MongoClient(self.uri) as client:
             client.get_database().test.find_one()
 
-    def test_credential_callback(self):
+    def test_dynamic_credential_callback(self):
         callback = AuthProvider(self.uri).get_credential
-        with MongoClient(self.uri, credential_callback=callback) as client:
+        with MongoClient(self.uri, dynamic_credential_callback=callback) as client:
             client.get_database().test.find_one()
             # Reset the pool between each request to force an auth refresh.
             get_pool(client).reset()

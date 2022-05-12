@@ -38,6 +38,7 @@ from collections import defaultdict
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     Dict,
     FrozenSet,
     Generic,
@@ -99,6 +100,7 @@ from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 if TYPE_CHECKING:
     import sys
 
+    from pymongo.auth import MongoCredential
     from pymongo.read_concern import ReadConcern
 
     if sys.version_info[:2] >= (3, 9):
@@ -133,7 +135,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         tz_aware: Optional[bool] = None,
         connect: Optional[bool] = None,
         type_registry: Optional[TypeRegistry] = None,
-        credential_callback=None,
+        dynamic_credential_callback: Optional[Callable[["MongoCredential"], str]] = None,
         **kwargs: Any,
     ) -> None:
         """Client for a MongoDB instance, a replica set, or a set of mongoses.
@@ -752,8 +754,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         keyword_opts = common._CaseInsensitiveDictionary(
             dict(common.validate(keyword_opts.cased_key(k), v) for k, v in keyword_opts.items())
         )
-        if credential_callback:
-            opts["credential_callback"] = credential_callback
+        if dynamic_credential_callback:
+            opts["dynamic_credential_callback"] = dynamic_credential_callback
 
         # Override connection string options with kwarg options.
         opts.update(keyword_opts)

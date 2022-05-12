@@ -310,7 +310,7 @@ class PoolOptions(object):
         "__server_api",
         "__load_balanced",
         "__credentials",
-        "__credential_callback",
+        "__dynamic_credential_callback",
     )
 
     def __init__(
@@ -332,7 +332,7 @@ class PoolOptions(object):
         server_api=None,
         load_balanced=None,
         credentials=None,
-        credential_callback=None,
+        dynamic_credential_callback=None,
     ):
         self.__max_pool_size = max_pool_size
         self.__min_pool_size = min_pool_size
@@ -351,7 +351,7 @@ class PoolOptions(object):
         self.__server_api = server_api
         self.__load_balanced = load_balanced
         self.__credentials = credentials
-        self.__credential_callback = credential_callback
+        self.__dynamic_credential_callback = dynamic_credential_callback
         self.__metadata = copy.deepcopy(_METADATA)
         if appname:
             self.__metadata["application"] = {"name": appname}
@@ -384,9 +384,11 @@ class PoolOptions(object):
         return self.__credentials
 
     def get_credentials(self):
-        if self.__credential_callback:
-            credentials = self.__credential_callback()
-            return auth._credentials_tuple_from_dataclass(credentials)
+        credentials = self.__credentials
+        if self.__dynamic_credential_callback:
+            self.__credentials = auth._handle_dynamic_credential(
+                credentials, self.__dynamic_credential_callback
+            )
         return self.__credentials
 
     @property

@@ -109,15 +109,35 @@ class MongoCredential:
     mechanism_properties: Mapping[str, str] = field(default_factory=dict)
 
 
-def _credentials_tuple_from_dataclass(credentials: MongoCredential):
-    c = credentials
-    return _build_credentials_tuple(
-        c.mechanism,
-        c.source,
-        c.username,
-        c.password,
-        dict(authmechanismproperties=c.mechanism_properties),
-        None,
+def _credentials_dataclass_from_tuple(credentials: _MongoCredential) -> MongoCredential:
+    mechanism_properties = dict()
+    tuple_props = credentials.mechanism_properties
+    if tuple_props:
+        for (key, value) in tuple_props._asdict().iteritems():
+            mechanism_properties[key.upper()] = value
+
+    return MongoCredential(
+        username=credentials.username,
+        source=credentials.source,
+        password=credentials.password,
+        mechanism=credentials.mechanism,
+        mechanism_properties=mechanism_properties,
+    )
+
+
+def _handle_dynamic_credential(
+    credentials: _MongoCredential, dynamic_credential_callback: Callable[[MongoCredential], str]
+) -> _MongoCredential:
+    mech = credentials.mechanism
+    if mech != "MONGODB-AWS":
+        raise ValueError(f"Dynamic Credential Callback not supported for mechanism type {mech}")
+
+    dataclass_creds = _credentials_dataclass_from_tuple(credentials)
+    dynamic_credential = dynamic_credential_callback(dataclass_creds)
+    aws_props = _AWSProperties(aws_session_token=dynamic_credential)
+    creds = credentials
+    return _MongoCredential(
+        mech, creds.source, creds.username, creds.password, aws_props, creds.cache
     )
 
 
