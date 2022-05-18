@@ -471,12 +471,12 @@ class MatchEvaluatorUtil(object):
     def _operation_exists(self, spec, actual, key_to_compare):
         if spec is True:
             if key_to_compare is None:
-                assert len(actual)
+                assert actual is not None
             else:
                 self.test.assertIn(key_to_compare, actual)
         elif spec is False:
             if key_to_compare is None:
-                assert not len(actual)
+                assert actual is None
             else:
                 self.test.assertNotIn(key_to_compare, actual)
         else:
@@ -514,6 +514,7 @@ class MatchEvaluatorUtil(object):
             # we add a dummy value for the compared key to pass map size check
             actual[key_to_compare] = "dummyValue"
             return
+
         self.match_result(spec, actual[key_to_compare], in_recursive_call=True)
 
     def _operation_sessionLsid(self, spec, actual, key_to_compare):
