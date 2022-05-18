@@ -16,7 +16,6 @@
 
 import os
 import random
-import re
 import string
 import sys
 import threading
@@ -36,7 +35,7 @@ from test.utils import (
     wait_until,
 )
 
-from bson import SON, ObjectId, Timestamp, encode, json_util
+from bson import SON, ObjectId, Timestamp, encode
 from bson.binary import ALL_UUID_REPRESENTATIONS, PYTHON_LEGACY, STANDARD, Binary
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument
 from pymongo import MongoClient
