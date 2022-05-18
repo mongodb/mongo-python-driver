@@ -17,6 +17,7 @@
 import os
 import sys
 import unittest
+from typing import Optional
 
 sys.path[0:0] = [""]
 
@@ -39,7 +40,7 @@ class AuthProvider:
         auth_props = parts["options"].get("authMechanismProperties", {})
         self.session_token = auth_props.get("AWS_SESSION_TOKEN", None)
 
-    def get_credential(self, credential: MongoCredential) -> MongoCredential:
+    def get_credential(self, credential: Optional[MongoCredential]) -> MongoCredential:
         self.count += 1
         if self.count == 3:
             return MongoCredential(

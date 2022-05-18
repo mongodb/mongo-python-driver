@@ -358,15 +358,6 @@ when credentials are about to expire.::
             mechanism_properties=mech_props
           )
 
-access_key = self._credentials['AccessKeyId']
-        secret_access_key = self._credentials['SecretAccessKey']
-        session_token = self._credentials['SessionToken']
-        return pymongo.MongoCredential(
-            username=access_key,
-            password=secret_access_key,
-
-        )
-
     provider = AWSCredentialProvider("arn:aws:iam::...")
     uri = "mongodb://example.com"
     client = MongoClient(uri, dynamic_credential_callback=provider.get_auth)
