@@ -135,7 +135,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         tz_aware: Optional[bool] = None,
         connect: Optional[bool] = None,
         type_registry: Optional[TypeRegistry] = None,
-        dynamic_credential_callback: Optional[Callable[["MongoCredential"], str]] = None,
+        dynamic_credential_callback: Optional[
+            Callable[["Optional[MongoCredential]"], "MongoCredential"]
+        ] = None,
         **kwargs: Any,
     ) -> None:
         """Client for a MongoDB instance, a replica set, or a set of mongoses.

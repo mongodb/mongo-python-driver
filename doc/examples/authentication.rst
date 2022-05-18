@@ -310,7 +310,7 @@ when credentials are about to expire.::
 
   from datetime import datetime, timezone
   import boto3
-  from pymongo import MongoClient
+  from pymongo import MongoClient, MongoCredential
 
 
   class AWSCredentialProvider:
@@ -345,8 +345,27 @@ when credentials are about to expire.::
       def get_auth(self, credential):
           self._refresh_auth()
           assert self._credentials is not None
-          return self._credentials['SessionToken']
+          creds = self._credentials
+          mech_props = dict(
+            AWS_SESSION_TOKEN=creds['SessionToken'],
+            AWS_ROLE_ARN=self._role_arn
+          )
+          return MongoCredential(
+            username=creds['AccessKeyId'],
+            password=creds['SecretAccessKey'],
+            mechanism="MONGODB-AWS",
+            source="$external",
+            mechanism_properties=mech_props
+          )
 
+access_key = self._credentials['AccessKeyId']
+        secret_access_key = self._credentials['SecretAccessKey']
+        session_token = self._credentials['SessionToken']
+        return pymongo.MongoCredential(
+            username=access_key,
+            password=secret_access_key,
+
+        )
 
     provider = AWSCredentialProvider("arn:aws:iam::...")
     uri = "mongodb://example.com"

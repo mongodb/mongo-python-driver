@@ -39,11 +39,20 @@ class AuthProvider:
         auth_props = parts["options"].get("authMechanismProperties", {})
         self.session_token = auth_props.get("AWS_SESSION_TOKEN", None)
 
-    def get_credential(self, credential: MongoCredential) -> str:
+    def get_credential(self, credential: MongoCredential) -> MongoCredential:
         self.count += 1
         if self.count == 3:
-            return "fake"
-        return self.session_token
+            return MongoCredential(
+                username="fake", password="fake", source="$$external", mechanism="MONGODB-AWS"
+            )
+        mechanism_props = dict(AWS_SESSION_TOKEN=self.session_token, AWS_ROLE_ARN="test")
+        return MongoCredential(
+            username=self.access_key,
+            password=self.secret_access_key,
+            source="$$external",
+            mechanism="MONGODB-AWS",
+            mechanism_properties=mechanism_props,
+        )
 
 
 class TestAuthAWS(unittest.TestCase):

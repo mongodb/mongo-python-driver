@@ -22,7 +22,7 @@ import socket
 from base64 import standard_b64decode, standard_b64encode
 from collections import namedtuple
 from dataclasses import dataclass, field
-from typing import Callable, Mapping
+from typing import Callable, Mapping, Optional
 from urllib.parse import quote
 
 from bson.binary import Binary
@@ -113,7 +113,7 @@ def _credentials_dataclass_from_tuple(credentials: _MongoCredential) -> MongoCre
     mechanism_properties = dict()
     tuple_props = credentials.mechanism_properties
     if tuple_props:
-        for (key, value) in tuple_props._asdict().iteritems():
+        for (key, value) in tuple_props._asdict().items():
             mechanism_properties[key.upper()] = value
 
     return MongoCredential(
@@ -126,18 +126,37 @@ def _credentials_dataclass_from_tuple(credentials: _MongoCredential) -> MongoCre
 
 
 def _handle_dynamic_credential(
-    credentials: _MongoCredential, dynamic_credential_callback: Callable[[MongoCredential], str]
+    credentials: _MongoCredential,
+    dynamic_credential_callback: Callable[[Optional[MongoCredential]], MongoCredential],
 ) -> _MongoCredential:
-    mech = credentials.mechanism
+    if credentials:
+        mech = credentials.mechanism
+        if mech != "MONGODB-AWS":
+            raise ValueError(f"Dynamic Credential Callback not supported for mechanism type {mech}")
+
+        dataclass_creds = _credentials_dataclass_from_tuple(credentials)
+    else:
+        dataclass_creds = None
+    dynamic_creds = dynamic_credential_callback(dataclass_creds)
+
+    mech = dynamic_creds.mechanism
     if mech != "MONGODB-AWS":
         raise ValueError(f"Dynamic Credential Callback not supported for mechanism type {mech}")
-
-    dataclass_creds = _credentials_dataclass_from_tuple(credentials)
-    dynamic_credential = dynamic_credential_callback(dataclass_creds)
-    aws_props = _AWSProperties(aws_session_token=dynamic_credential)
-    creds = credentials
-    return _MongoCredential(
-        mech, creds.source, creds.username, creds.password, aws_props, creds.cache
+    if credentials:
+        cache = credentials.cache
+    else:
+        cache = None
+    props = dynamic_creds.mechanism_properties
+    if not props or not "AWS_IAM_ROLE" not in props:
+        raise ValueError("AWS_IAM_ROLE must be included in mechanism_properties")
+    extras = dict(authmechanismproperties=props)
+    return _build_credentials_tuple(
+        dynamic_creds.mechanism,
+        dynamic_creds.source,
+        dynamic_creds.username,
+        dynamic_creds.password,
+        extras,
+        cache,
     )
 
 
