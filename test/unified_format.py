@@ -470,9 +470,15 @@ class MatchEvaluatorUtil(object):
 
     def _operation_exists(self, spec, actual, key_to_compare):
         if spec is True:
-            self.test.assertIn(key_to_compare, actual)
+            if key_to_compare is None:
+                assert len(actual)
+            else:
+                self.test.assertIn(key_to_compare, actual)
         elif spec is False:
-            self.test.assertNotIn(key_to_compare, actual)
+            if key_to_compare is None:
+                assert not len(actual)
+            else:
+                self.test.assertNotIn(key_to_compare, actual)
         else:
             self.test.fail("Expected boolean value for $$exists operator, got %s" % (spec,))
 
