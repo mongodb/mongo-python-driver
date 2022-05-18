@@ -704,7 +704,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     a class attribute ``TEST_SPEC``.
     """
 
-    SCHEMA_VERSION = Version.from_string("1.5")
+    SCHEMA_VERSION = Version.from_string("1.7")
     RUN_ON_LOAD_BALANCER = True
     RUN_ON_SERVERLESS = True
     TEST_SPEC: Any
@@ -1181,18 +1181,29 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             events = event_spec["events"]
             # Valid types: 'command', 'cmap'
             event_type = event_spec.get("eventType", "command")
+            ignore_extra_events = event_spec.get("ignoreExtraEvents", False)
+            server_connection_id = event_spec.get("serverConnectionId")
+
             assert event_type in ("command", "cmap")
 
             listener = self.entity_map.get_listener_for_client(client_name)
             actual_events = listener.get_events(event_type)
             if len(events) == 0:
-                self.assertEqual(actual_events, [])
+                if not ignore_extra_events:
+                    self.assertEqual(actual_events, [])
                 continue
 
-            self.assertGreaterEqual(len(actual_events), len(events), actual_events)
+            if ignore_extra_events:
+                self.assertGreaterEqual(len(actual_events), len(events), actual_events)
+            else:
+                self.assertEqual(len(actual_events), len(events), actual_events)
 
             for idx, expected_event in enumerate(events):
                 self.match_evaluator.match_event(event_type, expected_event, actual_events[idx])
+
+            if server_connection_id is not None:
+                assert isinstance(server_connection_id, int)
+                assert server_connection_id < 0
 
     def verify_outcome(self, spec):
         for collection_data in spec:
