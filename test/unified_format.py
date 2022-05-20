@@ -520,7 +520,6 @@ class MatchEvaluatorUtil(object):
             # we add a dummy value for the compared key to pass map size check
             actual[key_to_compare] = "dummyValue"
             return
-
         self.match_result(spec, actual[key_to_compare], in_recursive_call=True)
 
     def _operation_sessionLsid(self, spec, actual, key_to_compare):
@@ -1201,15 +1200,14 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
             listener = self.entity_map.get_listener_for_client(client_name)
             actual_events = listener.get_events(event_type)
+            if ignore_extra_events:
+                actual_events = actual_events[: len(events)]
+
             if len(events) == 0:
-                if not ignore_extra_events:
-                    self.assertEqual(actual_events, [])
+                self.assertEqual(actual_events, [])
                 continue
 
-            if ignore_extra_events:
-                self.assertGreaterEqual(len(actual_events), len(events), actual_events)
-            else:
-                self.assertEqual(len(actual_events), len(events), actual_events)
+            self.assertEqual(len(actual_events), len(events), actual_events)
 
             for idx, expected_event in enumerate(events):
                 self.match_evaluator.match_event(event_type, expected_event, actual_events[idx])
