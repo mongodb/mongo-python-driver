@@ -84,7 +84,8 @@ pygments_style = "sphinx"
 # The anchors on the rendered markdown page are created after the fact,
 # so this link results in a 404.
 linkcheck_ignore = [
-    "https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-monitoring.rst#requesting-an-immediate-check"
+    "https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-monitoring.rst#requesting-an-immediate-check",
+    r"https://wiki.centos.org/[\w/]*",
 ]
 
 # -- Options for extensions ----------------------------------------------------
