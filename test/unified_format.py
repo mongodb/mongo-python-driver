@@ -1214,7 +1214,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
             if server_connection_id is not None:
                 assert isinstance(server_connection_id, int)
-                assert server_connection_id < 0
+                assert server_connection_id <= 0
 
     def verify_outcome(self, spec):
         for collection_data in spec:
