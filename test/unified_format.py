@@ -1195,6 +1195,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             event_type = event_spec.get("eventType", "command")
             ignore_extra_events = event_spec.get("ignoreExtraEvents", False)
             server_connection_id = event_spec.get("serverConnectionId")
+            has_server_connection_id = event_spec.get("hasServerConnectionId", False)
 
             assert event_type in ("command", "cmap")
 
@@ -1212,9 +1213,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             for idx, expected_event in enumerate(events):
                 self.match_evaluator.match_event(event_type, expected_event, actual_events[idx])
 
-            if server_connection_id is not None:
-                assert isinstance(server_connection_id, int)
-                assert server_connection_id <= 0
+            if has_server_connection_id:
+                assert server_connection_id is not None
+                assert server_connection_id >= 0
+            else:
+                assert server_connection_id is None
 
     def verify_outcome(self, spec):
         for collection_data in spec:
