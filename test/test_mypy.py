@@ -43,6 +43,7 @@ from test.utils import rs_or_single_client
 from bson import CodecOptions, decode, decode_all, decode_file_iter, decode_iter, encode
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
+from pymongo import ASCENDING
 from pymongo.collection import Collection
 from pymongo.mongo_client import MongoClient
 from pymongo.operations import InsertOne
@@ -318,10 +319,8 @@ class TestDocumentType(unittest.TestCase):
         client: MongoClient[Dict[str, str]] = MongoClient("test")
         db = client.test
         with client.start_session() as session:
-            with session.start_transaction():
-                retreived = db.test.find_one({"_id": "foo"}, session=session)
-                assert retreived is not None
-                assert retreived["_id"] == "foo"
+            index = db.test.create_index([("user_id", ASCENDING)], unique=True, session=session)
+            assert isinstance(index, str)
 
 
 class TestCommandDocumentType(unittest.TestCase):
