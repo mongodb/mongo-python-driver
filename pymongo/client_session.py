@@ -140,7 +140,6 @@ from typing import (
     Any,
     Callable,
     ContextManager,
-    Generic,
     Mapping,
     NoReturn,
     Optional,
