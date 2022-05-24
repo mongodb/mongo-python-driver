@@ -1023,7 +1023,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 return self.process_error(exc, expect_error)
             raise
         else:
-            if expect_error and opname != "iterateUntilDocumentOrError":
+            if expect_error:
                 self.fail(
                     'Excepted error %s but "%s" succeeded: %s' % (expect_error, opname, result)
                 )
