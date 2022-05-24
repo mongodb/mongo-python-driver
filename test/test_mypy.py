@@ -43,6 +43,7 @@ from test.utils import rs_or_single_client
 from bson import CodecOptions, decode, decode_all, decode_file_iter, decode_iter, encode
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
+from pymongo import ASCENDING
 from pymongo.collection import Collection
 from pymongo.mongo_client import MongoClient
 from pymongo.operations import InsertOne
@@ -312,6 +313,16 @@ class TestDocumentType(unittest.TestCase):
 
     def test_son_document_type_runtime(self) -> None:
         client = MongoClient(document_class=SON[str, Any], connect=False)
+
+    @only_type_check
+    def test_create_index(self) -> None:
+        client: MongoClient[Dict[str, str]] = MongoClient("test")
+        db = client.test
+        with client.start_session() as session:
+            with session.start_transaction():
+                retreived = db.test.find_one({"_id": "foo"}, session=session)
+                assert retreived is not None
+                assert retreived["_id"] == "foo"
 
 
 class TestCommandDocumentType(unittest.TestCase):
