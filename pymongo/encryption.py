@@ -298,9 +298,9 @@ class _Encrypter(object):
         self._auto_encrypter = AutoEncrypter(
             io_callbacks,
             MongoCryptOptions(opts._kms_providers, schema_map),
-            self.opts._csfle_path,
-            self.opts._csfle_required,
-            self.opts._bypass_auto_encryption,
+            opts._csfle_path,
+            opts._csfle_required,
+            opts._bypass_auto_encryption,
         )
         self._closed = False
 
