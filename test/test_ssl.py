@@ -65,8 +65,6 @@ CA_BUNDLE_PEM = os.path.join(CERT_PATH, "trusted-ca.pem")
 CRL_PEM = os.path.join(CERT_PATH, "crl.pem")
 MONGODB_X509_USERNAME = "C=US,ST=New York,L=New York City,O=MDB,OU=Drivers,CN=client"
 
-_PY37PLUS = sys.version_info[:2] >= (3, 7)
-
 # To fully test this start a mongod instance (built with SSL support) like so:
 # mongod --dbpath /path/to/data/directory --sslOnNormalPorts \
 # --sslPEMKeyFile /path/to/pymongo/test/certificates/server.pem \
@@ -306,10 +304,7 @@ class TestSSL(IntegrationTest):
         ctx = get_ssl_context(None, None, None, None, False, True, False)
         self.assertFalse(ctx.check_hostname)
         ctx = get_ssl_context(None, None, None, None, False, False, False)
-        if _PY37PLUS or _HAVE_PYOPENSSL:
-            self.assertTrue(ctx.check_hostname)
-        else:
-            self.assertFalse(ctx.check_hostname)
+        self.assertTrue(ctx.check_hostname)
 
         response = self.client.admin.command(HelloCompat.LEGACY_CMD)
 

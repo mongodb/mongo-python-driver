@@ -14,8 +14,6 @@
 
 """Support for SSL in PyMongo."""
 
-import sys
-
 from pymongo.errors import ConfigurationError
 
 HAVE_SSL = True
@@ -38,7 +36,7 @@ if HAVE_SSL:
     from ssl import CERT_NONE, CERT_REQUIRED
 
     HAS_SNI = _ssl.HAS_SNI
-    IPADDR_SAFE = _ssl.IS_PYOPENSSL or sys.version_info[:2] >= (3, 7)
+    IPADDR_SAFE = True
     SSLError = _ssl.SSLError
 
     def get_ssl_context(
@@ -53,12 +51,10 @@ if HAVE_SSL:
         """Create and return an SSLContext object."""
         verify_mode = CERT_NONE if allow_invalid_certificates else CERT_REQUIRED
         ctx = _ssl.SSLContext(_ssl.PROTOCOL_SSLv23)
-        # SSLContext.check_hostname was added in CPython 3.4.
-        if hasattr(ctx, "check_hostname"):
-            if verify_mode != CERT_NONE:
-                ctx.check_hostname = not allow_invalid_hostnames
-            else:
-                ctx.check_hostname = False
+        if verify_mode != CERT_NONE:
+            ctx.check_hostname = not allow_invalid_hostnames
+        else:
+            ctx.check_hostname = False
         if hasattr(ctx, "check_ocsp_endpoint"):
             ctx.check_ocsp_endpoint = not disable_ocsp_endpoint_check
         if hasattr(ctx, "options"):

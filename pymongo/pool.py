@@ -15,7 +15,6 @@
 import collections
 import contextlib
 import copy
-import ipaddress
 import os
 import platform
 import socket
@@ -61,20 +60,7 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
-from pymongo.ssl_support import HAS_SNI as _HAVE_SNI
-from pymongo.ssl_support import IPADDR_SAFE as _IPADDR_SAFE
-from pymongo.ssl_support import SSLError as _SSLError
-
-
-# For SNI support. According to RFC6066, section 3, IPv4 and IPv6 literals are
-# not permitted for SNI hostname.
-def is_ip_address(address):
-    try:
-        ipaddress.ip_address(address)
-        return True
-    except (ValueError, UnicodeError):  # noqa: B014
-        return False
-
+from pymongo.ssl_support import HAS_SNI, SSLError
 
 try:
     from fcntl import F_GETFD, F_SETFD, FD_CLOEXEC, fcntl
@@ -263,7 +249,7 @@ def _raise_connection_failure(
         msg = msg_prefix + msg
     if isinstance(error, socket.timeout):
         raise NetworkTimeout(msg) from error
-    elif isinstance(error, _SSLError) and "timed out" in str(error):
+    elif isinstance(error, SSLError) and "timed out" in str(error):
         # Eventlet does not distinguish TLS network timeouts from other
         # SSLErrors (https://github.com/eventlet/eventlet/issues/692).
         # Luckily, we can work around this limitation because the phrase
@@ -924,7 +910,7 @@ class SocketInfo(object):
             reason = ConnectionClosedReason.ERROR
         self.close_socket(reason)
         # SSLError from PyOpenSSL inherits directly from Exception.
-        if isinstance(error, (IOError, OSError, _SSLError)):
+        if isinstance(error, (IOError, OSError, SSLError)):
             _raise_connection_failure(self.address, error)
         else:
             raise
@@ -1024,14 +1010,9 @@ def _configured_socket(address, options):
     if ssl_context is not None:
         host = address[0]
         try:
-            # According to RFC6066, section 3, IPv4 and IPv6 literals are
-            # not permitted for SNI hostname.
-            # Previous to Python 3.7 wrap_socket would blindly pass
-            # IP addresses as SNI hostname.
-            # https://bugs.python.org/issue32185
             # We have to pass hostname / ip address to wrap_socket
             # to use SSLContext.check_hostname.
-            if _HAVE_SNI and (not is_ip_address(host) or _IPADDR_SAFE):
+            if HAS_SNI:
                 sock = ssl_context.wrap_socket(sock, server_hostname=host)
             else:
                 sock = ssl_context.wrap_socket(sock)
@@ -1040,7 +1021,7 @@ def _configured_socket(address, options):
             # Raise _CertificateError directly like we do after match_hostname
             # below.
             raise
-        except (IOError, OSError, _SSLError) as exc:  # noqa: B014
+        except (IOError, OSError, SSLError) as exc:  # noqa: B014
             sock.close()
             # We raise AutoReconnect for transient and permanent SSL handshake
             # failures alike. Permanent handshake failures, like protocol
@@ -1048,7 +1029,7 @@ def _configured_socket(address, options):
             _raise_connection_failure(address, exc, "SSL handshake failed: ")
         if (
             ssl_context.verify_mode
-            and not getattr(ssl_context, "check_hostname", False)
+            and not ssl_context.check_hostname
             and not options.tls_allow_invalid_hostnames
         ):
             try:
@@ -1336,7 +1317,7 @@ class Pool:
                     self.address, conn_id, ConnectionClosedReason.ERROR
                 )
 
-            if isinstance(error, (IOError, OSError, _SSLError)):
+            if isinstance(error, (IOError, OSError, SSLError)):
                 _raise_connection_failure(self.address, error)
 
             raise
