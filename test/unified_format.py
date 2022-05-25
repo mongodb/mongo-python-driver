@@ -471,18 +471,12 @@ class MatchEvaluatorUtil(object):
     def _operation_exists(self, spec, actual, key_to_compare):
         if spec is True:
             if key_to_compare is None:
-                if isinstance(actual, dict):
-                    assert len(actual)
-                else:
-                    assert actual is not None
+                assert actual is not None
             else:
                 self.test.assertIn(key_to_compare, actual)
         elif spec is False:
             if key_to_compare is None:
-                if isinstance(actual, dict):
-                    assert len(actual) == 0
-                else:
-                    assert actual is None
+                assert actual is None
             else:
                 self.test.assertNotIn(key_to_compare, actual)
         else:
