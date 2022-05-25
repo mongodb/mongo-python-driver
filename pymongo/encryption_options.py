@@ -146,6 +146,9 @@ class AutoEncryptionOpts(object):
           - `csfle_required` (optional): If 'true', refuse to continue encryption without a CSFLE
           library
 
+        .. versionchanged:: 4.2
+           Added `csfle_path` and `csfle_required` parameters
+
         .. versionchanged:: 4.0
            Added the `kms_tls_options` parameter and the "kmip" KMS provider.
 
