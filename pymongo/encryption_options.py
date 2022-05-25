@@ -39,14 +39,14 @@ class AutoEncryptionOpts(object):
         key_vault_namespace: str,
         key_vault_client: Optional["MongoClient"] = None,
         schema_map: Optional[Mapping[str, Any]] = None,
-        bypass_auto_encryption: Optional[bool] = False,
+        bypass_auto_encryption: bool = False,
         mongocryptd_uri: str = "mongodb://localhost:27020",
         mongocryptd_bypass_spawn: bool = False,
         mongocryptd_spawn_path: str = "mongocryptd",
         mongocryptd_spawn_args: Optional[List[str]] = None,
         kms_tls_options: Optional[Mapping[str, Any]] = None,
         csfle_path: Optional[str] = None,
-        csfle_required: Optional[bool] = False,
+        csfle_required: bool = False,
     ) -> None:
         """Options to configure automatic client-side field level encryption.
 
@@ -144,8 +144,8 @@ class AutoEncryptionOpts(object):
               kms_tls_options={'kmip': {'tlsCertificateKeyFile': 'client.pem'}}
           - `csfle_path` (optional): Override the path to load the CSFLE library.
           - `csfle_required` (optional): If 'true', refuse to continue encryption without a CSFLE
-          library
-          
+            library
+
         .. versionchanged:: 4.2
            Added `csfle_path` and `csfle_required` parameters
 
