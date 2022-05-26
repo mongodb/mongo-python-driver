@@ -2266,7 +2266,7 @@ buildvariants:
     - ".4.4"
     - ".4.2"
     - ".4.0"
-  rules:
+  rules: &encryption-exclude-rules
     - if:
         platform: "*"
         auth: "*"
@@ -2352,6 +2352,8 @@ buildvariants:
     encryption: "*"
   display_name: "${encryption} ${python-version} ${platform} ${auth-ssl}"
   tasks: *encryption-server-versions
+  rules: *encryption-exclude-rules
+
 
 - matrix_name: "tests-python-version-ubuntu18-without-c-extensions"
   matrix_spec:
@@ -2448,6 +2450,7 @@ buildvariants:
     encryption: "*"
   display_name: "${encryption} ${platform} ${python-version-windows} ${auth-ssl}"
   tasks: *encryption-server-versions
+  rules: *encryption-exclude-rules
 
 # Storage engine tests on Ubuntu 18.04 (x86_64) with Python 3.7.
 - matrix_name: "tests-storage-engines"
