@@ -158,8 +158,7 @@ fi
 if [ -z $TEST_CSFLE ]; then
     echo "CSFLE not being tested"
 else
-    git clone git@github.com:mongodb-labs/drivers-evergreen-tools.git
-    $PYTHON drivers-evergreen-tools/.evergreen/mongodl.py --component csfle \
+    $PYTHON $DRIVERS_TOOLS/.evergreen/mongodl.py --component csfle \
         --version latest --out ../csfle/
     export DYLD_FALLBACK_LIBRARY_PATH=../csfle/lib/:$DYLD_FALLBACK_LIBRARY_PATH
     export LD_LIBRARY_PATH=../csfle/lib:$LD_LIBRARY_PATH

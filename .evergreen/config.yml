@@ -1235,6 +1235,32 @@ tasks:
             VERSION: "5.0"
             TOPOLOGY: "sharded_cluster"
         - func: "run tests"
+    - name: "test-6.0-standalone"
+      tags: [ "6.0", "standalone" ]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "6.0"
+            TOPOLOGY: "server"
+        - func: "run tests"
+
+    - name: "test-6.0-replica_set"
+      tags: [ "6.0", "replica_set" ]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "6.0"
+            TOPOLOGY: "replica_set"
+        - func: "run tests"
+
+    - name: "test-6.0-sharded_cluster"
+      tags: [ "6.0", "sharded_cluster" ]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "6.0"
+            TOPOLOGY: "sharded_cluster"
+        - func: "run tests"
 
     - name: "test-latest-standalone"
       tags: ["latest", "standalone"]
@@ -2231,13 +2257,23 @@ buildvariants:
     auth: "auth"
     ssl: "nossl"
     encryption: "*"
-  display_name: "Encryption ${platform} ${auth} ${ssl} ${encryption}"
+  display_name: "${encryption} ${platform} ${auth} ${ssl}"
   tasks: &encryption-server-versions
+    - ".rapid"
     - ".latest"
     - ".5.0"
     - ".4.4"
     - ".4.2"
     - ".4.0"
+  rules:
+    - if:
+        encryption: [ "encryption_with_csfle" ]
+      then:
+        remove_tasks:
+          - ".5.0"
+          - ".4.4"
+          - ".4.2"
+          - ".4.0"
 
 # Test one server version (4.2) with zSeries, POWER8, and ARM.
 - matrix_name: "test-different-cpu-architectures"
@@ -2310,7 +2346,7 @@ buildvariants:
 # dependency tests-python-version-rhel62-test-encryption_.../test-2.6-standalone is not present in the project config
 #    coverage: "*"
     encryption: "*"
-  display_name: "Encryption ${python-version} ${platform} ${auth-ssl} ${encryption}"
+  display_name: "${encryption} ${python-version} ${platform} ${auth-ssl}"
   tasks: *encryption-server-versions
 
 - matrix_name: "tests-python-version-ubuntu18-without-c-extensions"
@@ -2406,7 +2442,7 @@ buildvariants:
     python-version-windows: "*"
     auth-ssl: "*"
     encryption: "*"
-  display_name: "Encryption ${platform} ${python-version-windows} ${auth-ssl} ${encryption}"
+  display_name: "${encryption} ${platform} ${python-version-windows} ${auth-ssl}"
   tasks: *encryption-server-versions
 
 # Storage engine tests on Ubuntu 18.04 (x86_64) with Python 3.7.

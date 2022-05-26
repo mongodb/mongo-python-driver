@@ -86,12 +86,13 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
     @unittest.skipUnless(os.environ.get("TEST_CSFLE"), "csfle is not installed")
     def test_csfle(self):
         # Test that we can pick up csfle automatically
-        MongoClient(
+        client = MongoClient(
             auto_encryption_opts=AutoEncryptionOpts(
                 KMS_PROVIDERS, "keyvault.datakeys", csfle_required=True
             ),
             connect=False,
         )
+        self.addCleanup(client.close)
 
     @unittest.skipIf(_HAVE_PYMONGOCRYPT, "pymongocrypt is installed")
     def test_init_requires_pymongocrypt(self):
