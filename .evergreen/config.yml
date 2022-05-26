@@ -2268,6 +2268,9 @@ buildvariants:
     - ".4.0"
   rules:
     - if:
+        platform: "*"
+        auth: "*"
+        ssl: "*"
         encryption: [ "encryption_with_csfle" ]
       then:
         remove_tasks:
