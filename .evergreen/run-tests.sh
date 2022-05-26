@@ -159,8 +159,13 @@ if [ -z $TEST_CSFLE ]; then
     echo "CSFLE not being tested"
 else
     git clone git@github.com:mongodb-labs/drivers-evergreen-tools.git
+    if [[ "$(cat /etc/system-release)" == *"Amazon Linux"* ]]; then
+        MONGODL_ARGS="--target amazon2"
+    else
+        MONGODL_ARGS=""
+    fi
     $PYTHON drivers-evergreen-tools/.evergreen/mongodl.py --component csfle \
-        --version latest --out ../csfle/
+        --version latest --out ../csfle/ $MONGODL_ARGS
     export DYLD_FALLBACK_LIBRARY_PATH=../csfle/lib/:$DYLD_FALLBACK_LIBRARY_PATH
     export LD_LIBRARY_PATH=../csfle/lib:$LD_LIBRARY_PATH
     export PATH=../csfle/bin:$PATH
