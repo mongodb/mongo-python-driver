@@ -2261,6 +2261,7 @@ buildvariants:
   tasks: &encryption-server-versions
     - ".rapid"
     - ".latest"
+    - ".6.0"
     - ".5.0"
     - ".4.4"
     - ".4.2"
