@@ -1767,7 +1767,7 @@ class TestDeadlockProse(EncryptionIntegrationTest):
 class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
     @unittest.skipIf(
         os.environ.get("TEST_CSFLE"),
-        "this prose test does not work when CSFLE is " "on a system dynamic library search path.",
+        "this prose test does not work when CSFLE is on a system dynamic library search path.",
     )
     def test_mongocryptd_bypass_spawn(self):
         # Lower the mongocryptd timeout to reduce the test run time.
