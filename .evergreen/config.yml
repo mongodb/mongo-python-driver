@@ -2355,8 +2355,8 @@ buildvariants:
   rules:
     - if:
         platform: "*"
-        auth: "*"
-        ssl: "*"
+        python-version: "*"
+        auth-ssl: "*"
         encryption: [ "encryption_with_csfle" ]
       then:
         remove_tasks:
@@ -2464,8 +2464,8 @@ buildvariants:
   rules:
     - if:
         platform: "*"
-        auth: "*"
-        ssl: "*"
+        python-version-windows: "*"
+        auth-ssl: "*"
         encryption: [ "encryption_with_csfle" ]
       then:
         remove_tasks:
