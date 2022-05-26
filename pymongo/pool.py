@@ -1420,7 +1420,7 @@ class Pool:
         # See test.test_client:TestClient.test_fork for an example of
         # what could go wrong otherwise
         if self.pid != os.getpid():
-            self.reset()
+            self.reset_without_pause()
 
         if self.closed:
             if self.enabled_for_cmap:
@@ -1526,7 +1526,7 @@ class Pool:
         if self.enabled_for_cmap:
             listeners.publish_connection_checked_in(self.address, sock_info.id)
         if self.pid != os.getpid():
-            self.reset()
+            self.reset_without_pause()
         else:
             if self.closed:
                 sock_info.close_socket(ConnectionClosedReason.POOL_CLOSED)

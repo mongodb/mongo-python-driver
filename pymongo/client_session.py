@@ -140,7 +140,6 @@ from typing import (
     Any,
     Callable,
     ContextManager,
-    Generic,
     Mapping,
     NoReturn,
     Optional,
@@ -164,7 +163,6 @@ from pymongo.helpers import _RETRYABLE_ERROR_CODES
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_type import SERVER_TYPE
-from pymongo.typings import _DocumentType
 from pymongo.write_concern import WriteConcern
 
 
@@ -461,7 +459,7 @@ if TYPE_CHECKING:
     from pymongo.mongo_client import MongoClient
 
 
-class ClientSession(Generic[_DocumentType]):
+class ClientSession:
     """A session for ordering sequential operations.
 
     :class:`ClientSession` instances are **not thread-safe or fork-safe**.
@@ -476,13 +474,13 @@ class ClientSession(Generic[_DocumentType]):
 
     def __init__(
         self,
-        client: "MongoClient[_DocumentType]",
+        client: "MongoClient",
         server_session: Any,
         options: SessionOptions,
         implicit: bool,
     ) -> None:
         # A MongoClient, a _ServerSession, a SessionOptions, and a set.
-        self._client: MongoClient[_DocumentType] = client
+        self._client: MongoClient = client
         self._server_session = server_session
         self._options = options
         self._cluster_time = None
@@ -515,14 +513,14 @@ class ClientSession(Generic[_DocumentType]):
         if self._server_session is None:
             raise InvalidOperation("Cannot use ended session")
 
-    def __enter__(self) -> "ClientSession[_DocumentType]":
+    def __enter__(self) -> "ClientSession":
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self._end_session(lock=True)
 
     @property
-    def client(self) -> "MongoClient[_DocumentType]":
+    def client(self) -> "MongoClient":
         """The :class:`~pymongo.mongo_client.MongoClient` this session was
         created from.
         """

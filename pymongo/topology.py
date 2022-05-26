@@ -169,20 +169,24 @@ class Topology(object):
           forking.
 
         """
+        pid = os.getpid()
         if self._pid is None:
-            self._pid = os.getpid()
-        else:
-            if os.getpid() != self._pid:
-                warnings.warn(
-                    "MongoClient opened before fork. Create MongoClient only "
-                    "after forking. See PyMongo's documentation for details: "
-                    "https://pymongo.readthedocs.io/en/stable/faq.html#"
-                    "is-pymongo-fork-safe"
-                )
-                with self._lock:
-                    # Reset the session pool to avoid duplicate sessions in
-                    # the child process.
-                    self._session_pool.reset()
+            self._pid = pid
+        elif pid != self._pid:
+            self._pid = pid
+            warnings.warn(
+                "MongoClient opened before fork. Create MongoClient only "
+                "after forking. See PyMongo's documentation for details: "
+                "https://pymongo.readthedocs.io/en/stable/faq.html#"
+                "is-pymongo-fork-safe"
+            )
+            with self._lock:
+                # Close servers and clear the pools.
+                for server in self._servers.values():
+                    server.close()
+                # Reset the session pool to avoid duplicate sessions in
+                # the child process.
+                self._session_pool.reset()
 
         with self._lock:
             self._ensure_opened()
@@ -358,6 +362,8 @@ class Topology(object):
         Hold the lock when calling this.
         """
         td_old = self._description
+        if td_old.topology_type not in SRV_POLLING_TOPOLOGIES:
+            return
         self._description = _updated_topology_description_srv_polling(self._description, seedlist)
 
         self._update_servers()

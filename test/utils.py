@@ -1080,5 +1080,7 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callbac
             arguments["keys"] = list(arguments.pop(arg_name).items())
         elif opname == "drop_index" and arg_name == "name":
             arguments["index_or_name"] = arguments.pop(arg_name)
+        elif opname == "rename" and arg_name == "to":
+            arguments["new_name"] = arguments.pop(arg_name)
         else:
             arguments[c2s] = arguments.pop(arg_name)

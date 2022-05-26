@@ -1630,7 +1630,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         causal_consistency: Optional[bool] = None,
         default_transaction_options: Optional[client_session.TransactionOptions] = None,
         snapshot: Optional[bool] = False,
-    ) -> client_session.ClientSession[_DocumentType]:
+    ) -> client_session.ClientSession:
         """Start a logical session.
 
         This method takes the same parameters as
@@ -1681,7 +1681,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     @contextlib.contextmanager
     def _tmp_session(
         self, session: Optional[client_session.ClientSession], close: bool = True
-    ) -> "Generator[Optional[client_session.ClientSession[Any]], None, None]":
+    ) -> "Generator[Optional[client_session.ClientSession], None, None]":
         """If provided session is None, lend a temporary session."""
         if session is not None:
             if not isinstance(session, client_session.ClientSession):

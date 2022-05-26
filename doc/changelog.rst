@@ -256,9 +256,9 @@ Breaking Changes in 4.0
   :class:`~bson.dbref.DBRef`.
 - The "tls" install extra is no longer necessary or supported and will be
   ignored by pip.
-- ``tz_aware``, an argument for :class:`~bson.json_util.JSONOptions`,
-  now defaults to ``False`` instead of ``True``. ``json_util.loads`` now
-  decodes datetime as naive by default.
+- The ``tz_aware`` argument to :class:`~bson.json_util.JSONOptions`
+  now defaults to ``False`` instead of ``True``. :meth:`bson.json_util.loads` now
+  decodes datetime as naive by default. See :ref:`tz_aware_default_change` for more info.
 - ``directConnection`` URI option and keyword argument to :class:`~pymongo.mongo_client.MongoClient`
   defaults to ``False`` instead of ``None``, allowing for the automatic
   discovery of replica sets. This means that if you
@@ -755,8 +755,8 @@ Changes in Version 3.8.0
 
 .. warning:: PyMongo no longer supports Python 2.6. RHEL 6 users should install
   Python 2.7 or newer from `Red Hat Software Collections
-  <https://www.softwarecollections.org>`_. CentOS 6 users should install Python
-  2.7 or newer from `SCL
+  <https://developers.redhat.com/products/softwarecollections/overview>`_.
+  CentOS 6 users should install Python 2.7 or newer from `SCL
   <https://wiki.centos.org/AdditionalResources/Repositories/SCL>`_
 
 .. warning:: PyMongo no longer supports PyPy3 versions older than 3.5. Users
