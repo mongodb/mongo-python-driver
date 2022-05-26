@@ -2099,6 +2099,14 @@ axes:
         variables:
           test_encryption: true
         batchtime: 10080  # 7 days
+      - id: "encryption_with_csfle"
+        display_name: "Encryption with CSFLE"
+        tags: ["encryption_tag", "csfle"]
+        variables:
+          test_encryption: true
+          TEST_CSFLE: true
+        batchtime: 10080  # 7 days
+
 
   # Run pyopenssl tests?
   - id: pyopenssl
@@ -2235,7 +2243,7 @@ buildvariants:
     auth: "auth"
     ssl: "nossl"
     encryption: "*"
-  display_name: "Encryption ${platform} ${auth} ${ssl}"
+  display_name: "Encryption ${platform} ${auth} ${ssl} ${encryption}"
   tasks: *encryption-server-versions
 
 # Test one server version (4.2) with zSeries, POWER8, and ARM.

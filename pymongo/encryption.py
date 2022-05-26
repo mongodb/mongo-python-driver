@@ -300,9 +300,9 @@ class _Encrypter(object):
             MongoCryptOptions(
                 opts._kms_providers,
                 schema_map,
-                opts._csfle_path,
-                opts._csfle_required,
-                opts._bypass_auto_encryption,
+                csfle_path=opts._csfle_path,
+                csfle_required=opts._csfle_required,
+                bypass_encryption=opts._bypass_auto_encryption,
             ),
         )
         self._closed = False

@@ -27,6 +27,7 @@ COVERAGE=${COVERAGE:-}
 COMPRESSORS=${COMPRESSORS:-}
 MONGODB_API_VERSION=${MONGODB_API_VERSION:-}
 TEST_ENCRYPTION=${TEST_ENCRYPTION:-}
+TEST_CSFLE=${TEST_CSFLE:-}
 LIBMONGOCRYPT_URL=${LIBMONGOCRYPT_URL:-}
 DATA_LAKE=${DATA_LAKE:-}
 
@@ -153,7 +154,15 @@ if [ -z "$DATA_LAKE" ]; then
 else
     TEST_ARGS="-s test.test_data_lake"
 fi
-
+if [ -n "$TEST_CSFLE" ]; then
+    git clone git@github.com:mongodb-labs/drivers-evergreen-tools.git
+    $PYTHON drivers-evergreen-tools/.evergreen/mongodl.py --component csfle \
+        --version latest --out ../csfle/
+    export DYLD_FALLBACK_LIBRARY_PATH=../csfle/lib/:$DYLD_FALLBACK_LIBRARY_PATH
+    export LD_LIBRARY_PATH=../csfle/lib:$LD_LIBRARY_PATH
+    export PATH=../csfle/bin:$PATH
+    TEST_ARGS="-s test.test_encryption"
+fi
 # Don't download unittest-xml-reporting from pypi, which often fails.
 if $PYTHON -c "import xmlrunner"; then
     # The xunit output dir must be a Python style absolute path.
