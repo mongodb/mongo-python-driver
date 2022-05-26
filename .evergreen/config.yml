@@ -2179,21 +2179,6 @@ buildvariants:
     - ".4.0"
     - ".3.6"
 
-- matrix_name: "tests-all-encryption"
-  matrix_spec:
-    platform:
-      # OSes that support versions of MongoDB>=2.6 with SSL.
-      - awslinux
-    auth-ssl: "*"
-    encryption: "*"
-  display_name: "Encryption ${platform} ${auth-ssl} ${test_csfle} ${encryption}"
-  tasks: &encryption-server-versions
-    - ".latest"
-    - ".5.0"
-    - ".4.4"
-    - ".4.2"
-    - ".4.0"
-
 - matrix_name: "tests-archlinux"
   matrix_spec:
     platform:
@@ -2247,7 +2232,12 @@ buildvariants:
     ssl: "nossl"
     encryption: "*"
   display_name: "Encryption ${platform} ${auth} ${ssl} ${encryption}"
-  tasks: *encryption-server-versions
+  tasks: &encryption-server-versions
+    - ".latest"
+    - ".5.0"
+    - ".4.4"
+    - ".4.2"
+    - ".4.0"
 
 # Test one server version (4.2) with zSeries, POWER8, and ARM.
 - matrix_name: "test-different-cpu-architectures"
