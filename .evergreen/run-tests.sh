@@ -11,6 +11,7 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #  COVERAGE           If non-empty, run the test suite with coverage.
 #  TEST_ENCRYPTION    If non-empty, install pymongocrypt.
 #  LIBMONGOCRYPT_URL  The URL to download libmongocrypt.
+#  TEST_CSFLE         If non-empty, install CSFLE
 
 if [ -n "${SET_XTRACE_ON}" ]; then
     set -o xtrace
@@ -154,7 +155,9 @@ if [ -z "$DATA_LAKE" ]; then
 else
     TEST_ARGS="-s test.test_data_lake"
 fi
-if [ -n "$TEST_CSFLE" ]; then
+if [ -z $TEST_CSFLE ]; then
+    echo "CSFLE not being tested"
+else
     git clone git@github.com:mongodb-labs/drivers-evergreen-tools.git
     $PYTHON drivers-evergreen-tools/.evergreen/mongodl.py --component csfle \
         --version latest --out ../csfle/

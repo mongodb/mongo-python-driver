@@ -450,6 +450,9 @@ functions:
             export LIBMONGOCRYPT_URL="${libmongocrypt_url}"
             export TEST_ENCRYPTION=1
           fi
+          if [ -n "${test_csfle}" ]; then
+            export TEST_CSFLE=1
+          fi
           if [ -n "${test_pyopenssl}" ]; then
             export TEST_PYOPENSSL=1
           fi
@@ -2104,7 +2107,7 @@ axes:
         tags: ["encryption_tag", "csfle"]
         variables:
           test_encryption: true
-          TEST_CSFLE: true
+          test_csfle: true
         batchtime: 10080  # 7 days
 
 
