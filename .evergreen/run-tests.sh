@@ -11,6 +11,7 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #  COVERAGE           If non-empty, run the test suite with coverage.
 #  TEST_ENCRYPTION    If non-empty, install pymongocrypt.
 #  LIBMONGOCRYPT_URL  The URL to download libmongocrypt.
+#  TEST_CSFLE         If non-empty, install CSFLE
 
 if [ -n "${SET_XTRACE_ON}" ]; then
     set -o xtrace
@@ -27,6 +28,7 @@ COVERAGE=${COVERAGE:-}
 COMPRESSORS=${COMPRESSORS:-}
 MONGODB_API_VERSION=${MONGODB_API_VERSION:-}
 TEST_ENCRYPTION=${TEST_ENCRYPTION:-}
+TEST_CSFLE=${TEST_CSFLE:-}
 LIBMONGOCRYPT_URL=${LIBMONGOCRYPT_URL:-}
 DATA_LAKE=${DATA_LAKE:-}
 
@@ -153,7 +155,16 @@ if [ -z "$DATA_LAKE" ]; then
 else
     TEST_ARGS="-s test.test_data_lake"
 fi
-
+if [ -z $TEST_CSFLE ]; then
+    echo "CSFLE not being tested"
+else
+    $PYTHON $DRIVERS_TOOLS/.evergreen/mongodl.py --component csfle \
+        --version latest --out ../csfle/
+    export DYLD_FALLBACK_LIBRARY_PATH=../csfle/lib/:$DYLD_FALLBACK_LIBRARY_PATH
+    export LD_LIBRARY_PATH=../csfle/lib:$LD_LIBRARY_PATH
+    export PATH=../csfle/bin:$PATH
+    TEST_ARGS="-s test.test_encryption"
+fi
 # Don't download unittest-xml-reporting from pypi, which often fails.
 if $PYTHON -c "import xmlrunner"; then
     # The xunit output dir must be a Python style absolute path.

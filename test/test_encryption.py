@@ -82,6 +82,18 @@ KMS_PROVIDERS = {"local": {"key": b"\x00" * 96}}
 
 
 class TestAutoEncryptionOpts(PyMongoTestCase):
+    @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
+    @unittest.skipUnless(os.environ.get("TEST_CSFLE"), "csfle is not installed")
+    def test_csfle(self):
+        # Test that we can pick up csfle automatically
+        client = MongoClient(
+            auto_encryption_opts=AutoEncryptionOpts(
+                KMS_PROVIDERS, "keyvault.datakeys", csfle_required=True
+            ),
+            connect=False,
+        )
+        self.addCleanup(client.close)
+
     @unittest.skipIf(_HAVE_PYMONGOCRYPT, "pymongocrypt is installed")
     def test_init_requires_pymongocrypt(self):
         with self.assertRaises(ConfigurationError):
@@ -1749,6 +1761,10 @@ class TestDeadlockProse(EncryptionIntegrationTest):
 
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#bypass-spawning-mongocryptd
 class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
+    @unittest.skipIf(
+        os.environ.get("TEST_CSFLE"),
+        "this prose test does not work when CSFLE is on a system dynamic library search path.",
+    )
     def test_mongocryptd_bypass_spawn(self):
         # Lower the mongocryptd timeout to reduce the test run time.
         self._original_timeout = encryption._MONGOCRYPTD_TIMEOUT_MS

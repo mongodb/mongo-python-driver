@@ -296,7 +296,14 @@ class _Encrypter(object):
 
         io_callbacks = _EncryptionIO(metadata_client, key_vault_coll, mongocryptd_client, opts)
         self._auto_encrypter = AutoEncrypter(
-            io_callbacks, MongoCryptOptions(opts._kms_providers, schema_map)
+            io_callbacks,
+            MongoCryptOptions(
+                opts._kms_providers,
+                schema_map,
+                csfle_path=opts._csfle_path,
+                csfle_required=opts._csfle_required,
+                bypass_encryption=opts._bypass_auto_encryption,
+            ),
         )
         self._closed = False
 
