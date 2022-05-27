@@ -163,6 +163,7 @@ from pymongo.helpers import _RETRYABLE_ERROR_CODES
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_type import SERVER_TYPE
+from pymongo.vars import _VARS
 from pymongo.write_concern import WriteConcern
 
 
@@ -826,7 +827,7 @@ class ClientSession:
         wc = opts.write_concern
         cmd = SON([(command_name, 1)])
         if command_name == "commitTransaction":
-            if opts.max_commit_time_ms:
+            if opts.max_commit_time_ms and _VARS.get_timeout() is None:
                 cmd["maxTimeMS"] = opts.max_commit_time_ms
 
             # Transaction spec says that after the initial commit attempt,

@@ -38,6 +38,7 @@ from collections import defaultdict
 from typing import (
     TYPE_CHECKING,
     Any,
+    ContextManager,
     Dict,
     FrozenSet,
     Generic,
@@ -94,6 +95,7 @@ from pymongo.uri_parser import (
     _handle_security_options,
     _normalize_options,
 )
+from pymongo.vars import _VARS
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
 if TYPE_CHECKING:
@@ -260,6 +262,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             replaced. Defaults to `None` (no limit).
           - `maxConnecting` (optional): The maximum number of connections that
             each pool can establish concurrently. Defaults to `2`.
+          - `timeoutMS`: (integer or None) Controls how long (in
+            milliseconds) the driver will wait when executing an operation
+            (including retry attempts) before raising a timeout error.
+            ``0`` or ``None`` means no timeout.
           - `socketTimeoutMS`: (integer or None) Controls how long (in
             milliseconds) the driver will wait for a response after sending an
             ordinary (non-monitoring) database operation before concluding that
@@ -540,6 +546,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `connections <https://dochub.mongodb.org/core/connections>`_.
 
+        .. versionchanged:: 4.2
+           Added the ``timeoutMS`` keyword argument.
+
         .. versionchanged:: 4.0
 
              - Removed the fsync, unlock, is_locked, database_names, and
@@ -780,6 +789,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             options.read_preference,
             options.write_concern,
             options.read_concern,
+            options.timeout,
         )
 
         self._topology_settings = TopologySettings(
@@ -1273,6 +1283,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     )
 
         def _cmd(session, server, sock_info, read_preference):
+            operation.reset()  # Reset op in case of retry.
             return server.run_operation(
                 sock_info, operation, read_preference, self._event_listeners, unpack_res
             )
@@ -1303,6 +1314,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         max_wire_version = 0
         last_error: Optional[Exception] = None
         retrying = False
+        multiple_retries = _VARS.get_timeout() is not None
 
         def is_retrying():
             return bulk.retrying if bulk else retrying
@@ -1350,7 +1362,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 retryable_error = exc.has_error_label("RetryableWriteError")
                 if retryable_error:
                     session._unpin()
-                if is_retrying() or not retryable_error:
+                if not retryable_error or (is_retrying() and not multiple_retries):
                     raise
                 if bulk:
                     bulk.retrying = True
@@ -1371,6 +1383,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         )
         last_error: Optional[Exception] = None
         retrying = False
+        multiple_retries = _VARS.get_timeout() is not None
 
         while True:
             try:
@@ -1394,12 +1407,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 # most likely be a waste of time.
                 raise
             except ConnectionFailure as exc:
-                if not retryable or retrying:
+                if not retryable or (retrying and not multiple_retries):
                     raise
                 retrying = True
                 last_error = exc
             except OperationFailure as exc:
-                if not retryable or retrying:
+                if not retryable or (retrying and not multiple_retries):
                     raise
                 if exc.code not in helpers._RETRYABLE_ERROR_CODES:
                     raise
@@ -1726,6 +1739,29 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if session is not None:
             session._process_response(reply)
 
+    def settimeout(self, timeout: Optional[float]) -> ContextManager:
+        """Apply the given timeout for a block of operations.
+
+        Use client.settimeout() in a with-statement::
+
+          with client.settimeout(0.5):
+              client.test.test.insert_one({})
+
+        TODO: Support nesting::
+
+          with client.settimeout(0.5):
+              client.test.test.insert_one({})
+              with client.settimeout(0.1):
+                  client.test.test.insert_one({})
+        """
+        if not isinstance(timeout, (int, float, type(None))):
+            raise TypeError("timeout must be None, an int, or a float")
+        if timeout and timeout < 0:
+            raise TypeError("timeout cannot be negative")
+        if timeout is not None:
+            timeout = float(timeout)
+        return _VARS.with_timeout(timeout)
+
     def server_info(self, session: Optional[client_session.ClientSession] = None) -> Dict[str, Any]:
         """Get information about the MongoDB server we're connected to.
 
@@ -1922,6 +1958,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional["ReadConcern"] = None,
+        timeout: Optional[float] = None,
     ) -> database.Database[_DocumentType]:
         """Get a :class:`~pymongo.database.Database` with the given name and
         options.
@@ -1972,7 +2009,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             name = self.__default_database_name
 
         return database.Database(
-            self, name, codec_options, read_preference, write_concern, read_concern
+            self, name, codec_options, read_preference, write_concern, read_concern, timeout
         )
 
     def _database_default_options(self, name):

@@ -74,6 +74,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
+        timeout: Optional[float] = None,
     ) -> None:
         """Get a database by client and name.
 
@@ -126,6 +127,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             read_preference or client.read_preference,
             write_concern or client.write_concern,
             read_concern or client.read_concern,
+            timeout if timeout is not None else client.timeout,
         )
 
         if not isinstance(name, str):
@@ -153,6 +155,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
+        timeout: Optional[float] = None,
     ) -> "Database[_DocumentType]":
         """Get a clone of this database changing the specified settings.
 
@@ -192,6 +195,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             read_preference or self.read_preference,
             write_concern or self.write_concern,
             read_concern or self.read_concern,
+            timeout if timeout is not None else self.timeout,
         )
 
     def __eq__(self, other: Any) -> bool:
@@ -240,6 +244,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
+        timeout: Optional[float] = None,
     ) -> Collection[_DocumentType]:
         """Get a :class:`~pymongo.collection.Collection` with the given name
         and options.
@@ -279,7 +284,14 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             used.
         """
         return Collection(
-            self, name, False, codec_options, read_preference, write_concern, read_concern
+            self,
+            name,
+            False,
+            codec_options,
+            read_preference,
+            write_concern,
+            read_concern,
+            timeout=timeout,
         )
 
     def create_collection(
@@ -290,6 +302,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
         session: Optional["ClientSession"] = None,
+        timeout: Optional[float] = None,
         **kwargs: Any,
     ) -> Collection[_DocumentType]:
         """Create a new :class:`~pymongo.collection.Collection` in this
@@ -386,6 +399,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 write_concern,
                 read_concern,
                 session=s,
+                timeout=timeout,
                 **kwargs,
             )
 

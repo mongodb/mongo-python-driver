@@ -15,6 +15,7 @@
 """Support for explicit client-side field level encryption."""
 
 import contextlib
+import socket
 import uuid
 import weakref
 from typing import Any, Mapping, Optional, Sequence
@@ -46,10 +47,12 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
 )
 from pymongo.mongo_client import MongoClient
+from pymongo.network import BLOCKING_IO_ERRORS
 from pymongo.pool import PoolOptions, _configured_socket
 from pymongo.read_concern import ReadConcern
-from pymongo.ssl_support import get_ssl_context
+from pymongo.ssl_support import BLOCKING_IO_ERRORS, get_ssl_context
 from pymongo.uri_parser import parse_host
+from pymongo.vars import _VARS
 from pymongo.write_concern import WriteConcern
 
 _HTTPS_PORT = 443
@@ -118,9 +121,11 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
                 False,  # allow_invalid_hostnames
                 False,
             )  # disable_ocsp_endpoint_check
+        # CSOT: set timeout for socket creation.
+        connect_timeout = max(_VARS.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0.001)
         opts = PoolOptions(
-            connect_timeout=_KMS_CONNECT_TIMEOUT,
-            socket_timeout=_KMS_CONNECT_TIMEOUT,
+            connect_timeout=connect_timeout,
+            socket_timeout=connect_timeout,
             ssl_context=ctx,
         )
         host, port = parse_host(endpoint, _HTTPS_PORT)
@@ -128,10 +133,14 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         try:
             conn.sendall(message)
             while kms_context.bytes_needed > 0:
+                # CSOT: update timeout.
+                conn.settimeout(max(_VARS.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
                 data = conn.recv(kms_context.bytes_needed)
                 if not data:
                     raise OSError("KMS connection closed")
                 kms_context.feed(data)
+        except BLOCKING_IO_ERRORS:
+            raise socket.timeout("timed out")
         finally:
             conn.close()
 

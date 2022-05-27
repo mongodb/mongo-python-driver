@@ -395,7 +395,7 @@ class TestIntegration(SpecRunner):
         """Run the recordPrimary test operation."""
         self._previous_primary = self.scenario_client.primary
 
-    def wait_for_primary_change(self, timeout_ms):
+    def wait_for_primary_change(self, timeout):
         """Run the waitForPrimaryChange test operation."""
 
         def primary_changed():
@@ -404,7 +404,6 @@ class TestIntegration(SpecRunner):
                 return False
             return primary != self._previous_primary
 
-        timeout = timeout_ms / 1000.0
         wait_until(primary_changed, "change primary", timeout=timeout)
 
     def wait(self, ms):

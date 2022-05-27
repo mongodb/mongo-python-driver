@@ -56,6 +56,7 @@ from pymongo.topology_description import (
     _updated_topology_description_srv_polling,
     updated_topology_description,
 )
+from pymongo.vars import _VARS
 
 
 def process_events_queue(queue_ref):
@@ -191,6 +192,13 @@ class Topology(object):
         with self._lock:
             self._ensure_opened()
 
+    def get_server_selection_timeout(self):
+        # CSOT: use remaining timeout when set.
+        timeout = _VARS.remaining()
+        if timeout is None:
+            return self._settings.server_selection_timeout
+        return timeout
+
     def select_servers(self, selector, server_selection_timeout=None, address=None):
         """Return a list of Servers matching selector, or time out.
 
@@ -208,7 +216,7 @@ class Topology(object):
         `server_selection_timeout` if no matching servers are found.
         """
         if server_selection_timeout is None:
-            server_timeout = self._settings.server_selection_timeout
+            server_timeout = self.get_server_selection_timeout()
         else:
             server_timeout = server_selection_timeout
 
@@ -250,8 +258,7 @@ class Topology(object):
         self._description.check_compatible()
         return server_descriptions
 
-    def select_server(self, selector, server_selection_timeout=None, address=None):
-        """Like select_servers, but choose a random server if several match."""
+    def _select_server(self, selector, server_selection_timeout=None, address=None):
         servers = self.select_servers(selector, server_selection_timeout, address)
         if len(servers) == 1:
             return servers[0]
@@ -260,6 +267,12 @@ class Topology(object):
             return server1
         else:
             return server2
+
+    def select_server(self, selector, server_selection_timeout=None, address=None):
+        """Like select_servers, but choose a random server if several match."""
+        server = self._select_server(selector, server_selection_timeout, address)
+        _VARS.set_rtt(server.description.round_trip_time)
+        return server
 
     def select_server_by_address(self, address, server_selection_timeout=None):
         """Return a Server for "address", reconnecting if necessary.
@@ -535,11 +548,11 @@ class Topology(object):
             if self._description.topology_type == TOPOLOGY_TYPE.Single:
                 if not self._description.has_known_servers:
                     self._select_servers_loop(
-                        any_server_selector, self._settings.server_selection_timeout, None
+                        any_server_selector, self.get_server_selection_timeout(), None
                     )
             elif not self._description.readable_servers:
                 self._select_servers_loop(
-                    readable_server_selector, self._settings.server_selection_timeout, None
+                    readable_server_selector, self.get_server_selection_timeout(), None
                 )
 
             session_timeout = self._description.logical_session_timeout_minutes
