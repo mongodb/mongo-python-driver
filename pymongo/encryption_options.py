@@ -47,6 +47,8 @@ class AutoEncryptionOpts(object):
         kms_tls_options: Optional[Mapping[str, Any]] = None,
         csfle_path: Optional[str] = None,
         csfle_required: bool = False,
+        encrypted_fields_map: Optional[Mapping] = None,
+        bypass_query_analysis: bool = False,
     ) -> None:
         """Options to configure automatic client-side field level encryption.
 
@@ -145,9 +147,15 @@ class AutoEncryptionOpts(object):
           - `csfle_path` (optional): Override the path to load the CSFLE library.
           - `csfle_required` (optional): If 'true', refuse to continue encryption without a CSFLE
             library
+          - `encrypted_fields_map`: Optional map encoded to BSON `bytes`.
+          - `bypass_query_analysis`: If ``True``, disable automatic analysis of
+            outgoing commands. Set `bypass_query_analysis` to use explicit
+            encryption on indexed fields without the MongoDB Enterprise Advanced
+            licensed csfle shared library.
 
         .. versionchanged:: 4.2
            Added `csfle_path` and `csfle_required` parameters
+           Added `encrypted_fields_map` and `bypass_query_analysis` parameters
 
         .. versionchanged:: 4.0
            Added the `kms_tls_options` parameter and the "kmip" KMS provider.
@@ -160,6 +168,8 @@ class AutoEncryptionOpts(object):
                 "install a compatible version with: "
                 "python -m pip install 'pymongo[encryption]'"
             )
+        self._encrypted_fields_map = encrypted_fields_map
+        self._bypass_query_analysis = bypass_query_analysis
         self._csfle_path = csfle_path
         self._csfle_required = csfle_required
         self._kms_providers = kms_providers

@@ -303,6 +303,8 @@ class _Encrypter(object):
                 csfle_path=opts._csfle_path,
                 csfle_required=opts._csfle_required,
                 bypass_encryption=opts._bypass_auto_encryption,
+                encrypted_fields_map=opts._encrypted_fields_map,
+                bypass_query_analysis=opts._bypass_query_analysis,
             ),
         )
         self._closed = False

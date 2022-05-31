@@ -210,7 +210,7 @@ class EncryptionIntegrationTest(IntegrationTest):
 
 # Location of JSON test files.
 BASE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "client-side-encryption")
-SPEC_PATH = os.path.join(BASE, "spec")
+SPEC_PATH = os.path.join(BASE, "spec", "legacy")
 
 OPTS = CodecOptions(uuid_representation=STANDARD)
 
