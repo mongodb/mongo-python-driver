@@ -50,7 +50,7 @@ from pymongo.mongo_client import MongoClient
 from pymongo.network import BLOCKING_IO_ERRORS
 from pymongo.pool import PoolOptions, _configured_socket
 from pymongo.read_concern import ReadConcern
-from pymongo.ssl_support import BLOCKING_IO_ERRORS, get_ssl_context
+from pymongo.ssl_support import get_ssl_context
 from pymongo.uri_parser import parse_host
 from pymongo.vars import _VARS
 from pymongo.write_concern import WriteConcern
