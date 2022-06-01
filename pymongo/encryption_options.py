@@ -142,9 +142,9 @@ class AutoEncryptionOpts(object):
             Or to supply a client certificate::
 
               kms_tls_options={'kmip': {'tlsCertificateKeyFile': 'client.pem'}}
-          - `crypt_shared_lib_path` (optional): Override the path to load the CSFLE library.
-          - `crypt_shared_lib_required` (optional): If 'true', refuse to continue encryption without a CSFLE
-            library
+          - `crypt_shared_lib_path` (optional): Override the path to load the crypt_shared library.
+          - `crypt_shared_lib_required` (optional): If True, raise an error if libmongocrypt is
+            unable to load the crypt_shared library.
 
         .. versionchanged:: 4.2
            Added `crypt_shared_lib_path` and `crypt_shared_lib_required` parameters

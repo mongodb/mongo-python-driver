@@ -11,7 +11,7 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #  COVERAGE           If non-empty, run the test suite with coverage.
 #  TEST_ENCRYPTION    If non-empty, install pymongocrypt.
 #  LIBMONGOCRYPT_URL  The URL to download libmongocrypt.
-#  TEST_CRYPT_SHARED         If non-empty, install CSFLE
+#  TEST_CRYPT_SHARED  If non-empty, install crypt_shared lib.
 
 if [ -n "${SET_XTRACE_ON}" ]; then
     set -o xtrace

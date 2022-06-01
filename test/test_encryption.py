@@ -83,9 +83,9 @@ KMS_PROVIDERS = {"local": {"key": b"\x00" * 96}}
 
 class TestAutoEncryptionOpts(PyMongoTestCase):
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
-    @unittest.skipUnless(os.environ.get("TEST_CRYPT_SHARED"), "csfle is not installed")
+    @unittest.skipUnless(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is not installed")
     def test_crypt_shared(self):
-        # Test that we can pick up csfle automatically
+        # Test that we can pick up crypt_shared lib automatically
         client = MongoClient(
             auto_encryption_opts=AutoEncryptionOpts(
                 KMS_PROVIDERS, "keyvault.datakeys", crypt_shared_lib_required=True
@@ -1763,7 +1763,8 @@ class TestDeadlockProse(EncryptionIntegrationTest):
 class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
     @unittest.skipIf(
         os.environ.get("TEST_CRYPT_SHARED"),
-        "this prose test does not work when CSFLE is on a system dynamic library search path.",
+        "this prose test does not work when crypt_shared is on a system dynamic "
+        "library search path.",
     )
     def test_mongocryptd_bypass_spawn(self):
         # Lower the mongocryptd timeout to reduce the test run time.
