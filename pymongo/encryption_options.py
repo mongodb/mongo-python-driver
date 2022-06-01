@@ -45,8 +45,8 @@ class AutoEncryptionOpts(object):
         mongocryptd_spawn_path: str = "mongocryptd",
         mongocryptd_spawn_args: Optional[List[str]] = None,
         kms_tls_options: Optional[Mapping[str, Any]] = None,
-        csfle_path: Optional[str] = None,
-        csfle_required: bool = False,
+        crypt_shared_lib_path: Optional[str] = None,
+        crypt_shared_lib_required: bool = False,
     ) -> None:
         """Options to configure automatic client-side field level encryption.
 
@@ -142,12 +142,12 @@ class AutoEncryptionOpts(object):
             Or to supply a client certificate::
 
               kms_tls_options={'kmip': {'tlsCertificateKeyFile': 'client.pem'}}
-          - `csfle_path` (optional): Override the path to load the CSFLE library.
-          - `csfle_required` (optional): If 'true', refuse to continue encryption without a CSFLE
-            library
+          - `crypt_shared_lib_path` (optional): Override the path to load the crypt_shared library.
+          - `crypt_shared_lib_required` (optional): If True, raise an error if libmongocrypt is
+            unable to load the crypt_shared library.
 
         .. versionchanged:: 4.2
-           Added `csfle_path` and `csfle_required` parameters
+           Added `crypt_shared_lib_path` and `crypt_shared_lib_required` parameters
 
         .. versionchanged:: 4.0
            Added the `kms_tls_options` parameter and the "kmip" KMS provider.
@@ -160,8 +160,8 @@ class AutoEncryptionOpts(object):
                 "install a compatible version with: "
                 "python -m pip install 'pymongo[encryption]'"
             )
-        self._csfle_path = csfle_path
-        self._csfle_required = csfle_required
+        self._crypt_shared_lib_path = crypt_shared_lib_path
+        self._crypt_shared_lib_required = crypt_shared_lib_required
         self._kms_providers = kms_providers
         self._key_vault_namespace = key_vault_namespace
         self._key_vault_client = key_vault_client
