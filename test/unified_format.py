@@ -42,6 +42,7 @@ from test.utils import (
 from test.version import Version
 from typing import Any
 
+import pymongo
 from bson import SON, Code, DBRef, Decimal128, Int64, MaxKey, MinKey, json_util
 from bson.binary import Binary
 from bson.objectid import ObjectId
@@ -1080,13 +1081,14 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             cmd = functools.partial(method, target)
 
         try:
+            # TODO: PYTHON-3289 apply inherited timeout by default.
             inherit_timeout = getattr(target, "timeout", None)
+            # CSOT: Translate the spec test "timeout" arg into pymongo's context timeout API.
             if "timeout" in arguments or inherit_timeout is not None:
-                # TODO support timeout parameter on all methods.
                 timeout = arguments.pop("timeout", None)
                 if timeout is None:
                     timeout = inherit_timeout
-                with client.settimeout(timeout):
+                with pymongo.timeout(timeout):
                     result = cmd(**dict(arguments))
             else:
                 result = cmd(**dict(arguments))

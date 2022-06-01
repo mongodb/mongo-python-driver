@@ -55,8 +55,9 @@ class _Vars:
             return max_timeout
         return min(remaining, max_timeout)
 
-    def with_timeout(self, timeout: Optional[float]) -> ContextManager:
-        """Set a timeout context for client.settimeout()."""
+    @staticmethod
+    def with_timeout(timeout: Optional[float]) -> ContextManager:
+        """Set a timeout context for pymongo.timeout()."""
         return _TimeoutContext(timeout)
 
     def enter(self, timeout: Optional[float]) -> None:
@@ -69,9 +70,9 @@ class _Vars:
 class _TimeoutContext(object):
     """Internal timeout context manager.
 
-    Use client.settimeout() instead::
+    Use :func:`pymongo.timeout` instead::
 
-      with client.settimeout(0.5):
+      with client.timeout(0.5):
           client.test.test.insert_one({})
     """
 

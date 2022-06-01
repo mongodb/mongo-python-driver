@@ -54,6 +54,7 @@ from typing import (
     cast,
 )
 
+import pymongo
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.son import SON
 from bson.timestamp import Timestamp
@@ -1738,29 +1739,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self._topology.receive_cluster_time(reply.get("$clusterTime"))
         if session is not None:
             session._process_response(reply)
-
-    def settimeout(self, timeout: Optional[float]) -> ContextManager:
-        """Apply the given timeout for a block of operations.
-
-        Use client.settimeout() in a with-statement::
-
-          with client.settimeout(0.5):
-              client.test.test.insert_one({})
-
-        TODO: Support nesting::
-
-          with client.settimeout(0.5):
-              client.test.test.insert_one({})
-              with client.settimeout(0.1):
-                  client.test.test.insert_one({})
-        """
-        if not isinstance(timeout, (int, float, type(None))):
-            raise TypeError("timeout must be None, an int, or a float")
-        if timeout and timeout < 0:
-            raise TypeError("timeout cannot be negative")
-        if timeout is not None:
-            timeout = float(timeout)
-        return _VARS.with_timeout(timeout)
 
     def server_info(self, session: Optional[client_session.ClientSession] = None) -> Dict[str, Any]:
         """Get information about the MongoDB server we're connected to.

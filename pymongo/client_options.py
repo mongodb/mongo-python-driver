@@ -14,6 +14,8 @@
 
 """Tools to parse mongo client options."""
 
+from typing import Optional
+
 from bson.codec_options import _parse_codec_options
 from pymongo import common
 from pymongo.auth import _build_credentials_tuple
@@ -262,8 +264,11 @@ class ClientOptions(object):
         return self.__read_concern
 
     @property
-    def timeout(self):
-        """The timeout."""
+    def timeout(self) -> Optional[float]:
+        """The timeout.
+
+        ..versionadded: 4.2
+        """
         return self.__timeout
 
     @property
