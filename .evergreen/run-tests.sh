@@ -150,7 +150,7 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     # CSFLE_AWS_TEMP_ACCESS_KEY_ID, CSFLE_AWS_TEMP_SECRET_ACCESS_KEY, CSFLE_AWS_TEMP_SESSION_TOKEN
     . $DRIVERS_TOOLS/.evergreen/csfle/set-temp-creds.sh
 
-    if [ -n $TEST_CRYPT_SHARED ]; then
+    if [ -n "$TEST_CRYPT_SHARED" ]; then
         echo "Testing CSFLE with crypt_shared lib"
         $PYTHON $DRIVERS_TOOLS/.evergreen/mongodl.py --component crypt_shared \
             --version latest --out ../crypt_shared/
