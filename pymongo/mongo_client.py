@@ -38,7 +38,6 @@ from collections import defaultdict
 from typing import (
     TYPE_CHECKING,
     Any,
-    ContextManager,
     Dict,
     FrozenSet,
     Generic,
@@ -54,7 +53,6 @@ from typing import (
     cast,
 )
 
-import pymongo
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.son import SON
 from bson.timestamp import Timestamp
