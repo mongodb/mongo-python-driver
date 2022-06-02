@@ -45,7 +45,6 @@ class AutoEncryptionOpts(object):
         mongocryptd_spawn_path: str = "mongocryptd",
         mongocryptd_spawn_args: Optional[List[str]] = None,
         kms_tls_options: Optional[Mapping[str, Any]] = None,
-        csfle_required: bool = False,
         encrypted_fields_map: Optional[Mapping] = None,
         bypass_query_analysis: bool = False,
         crypt_shared_lib_path: Optional[str] = None,
@@ -150,7 +149,6 @@ class AutoEncryptionOpts(object):
             unable to load the crypt_shared library.
 
         .. versionchanged:: 4.2
-           Added `csfle_path` and `csfle_required` parameters
            Added `encrypted_fields_map` and `bypass_query_analysis` parameters
            Added `crypt_shared_lib_path` and `crypt_shared_lib_required` parameters
 
