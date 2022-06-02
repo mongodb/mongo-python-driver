@@ -27,7 +27,7 @@ from typing import Any, NoReturn, Optional
 
 from bson import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
-from pymongo import __version__, auth, helpers
+from pymongo import __version__, _csot, auth, helpers
 from pymongo.client_session import _validate_session_write_concern
 from pymongo.common import (
     MAX_BSON_SIZE,
@@ -62,7 +62,6 @@ from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
 from pymongo.ssl_support import HAS_SNI, SSLError
-from pymongo.vars import _VARS
 
 try:
     from fcntl import F_GETFD, F_SETFD, FD_CLOEXEC, fcntl
@@ -570,7 +569,7 @@ class SocketInfo(object):
 
     def apply_timeout(self, client, cmd, write_concern=None):
         # CSOT: use remaining timeout when set.
-        timeout = _VARS.remaining()
+        timeout = _csot.remaining()
         if timeout is None:
             # Reset the socket timeout unless we're performing a streaming monitor check.
             if not self.more_to_come:
@@ -580,7 +579,7 @@ class SocketInfo(object):
                 cmd["writeConcern"] = write_concern.document
             return None
         # RTT validation.
-        rtt = _VARS.get_rtt()
+        rtt = _csot.get_rtt()
         max_time_ms = timeout - rtt
         if max_time_ms < 0:
             # CSOT: raise an error without running the command since we know it will time out.
@@ -1017,7 +1016,7 @@ def _create_connection(address, options):
         try:
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             # CSOT: apply timeout to socket connect.
-            timeout = _VARS.remaining()
+            timeout = _csot.remaining()
             if timeout is None:
                 timeout = options.connect_timeout
             elif timeout <= 0:
@@ -1460,8 +1459,8 @@ class Pool:
             self.operation_count += 1
 
         # Get a free socket or create one.
-        if _VARS.get_timeout():
-            deadline = _VARS.get_deadline()
+        if _csot.get_timeout():
+            deadline = _csot.get_deadline()
         elif self.opts.wait_queue_timeout:
             deadline = time.monotonic() + self.opts.wait_queue_timeout
         else:
@@ -1628,7 +1627,7 @@ class Pool:
             listeners.publish_connection_check_out_failed(
                 self.address, ConnectionCheckOutFailedReason.TIMEOUT
             )
-        timeout = _VARS.get_timeout() or self.opts.wait_queue_timeout
+        timeout = _csot.get_timeout() or self.opts.wait_queue_timeout
         if self.opts.load_balanced:
             other_ops = self.active_sockets - self.ncursors - self.ntxns
             raise ConnectionFailure(

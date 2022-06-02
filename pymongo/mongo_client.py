@@ -57,6 +57,7 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.son import SON
 from bson.timestamp import Timestamp
 from pymongo import (
+    _csot,
     client_session,
     common,
     database,
@@ -94,7 +95,6 @@ from pymongo.uri_parser import (
     _handle_security_options,
     _normalize_options,
 )
-from pymongo.vars import _VARS
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
 if TYPE_CHECKING:
@@ -1313,7 +1313,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         max_wire_version = 0
         last_error: Optional[Exception] = None
         retrying = False
-        multiple_retries = _VARS.get_timeout() is not None
+        multiple_retries = _csot.get_timeout() is not None
 
         def is_retrying():
             return bulk.retrying if bulk else retrying
@@ -1382,7 +1382,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         )
         last_error: Optional[Exception] = None
         retrying = False
-        multiple_retries = _VARS.get_timeout() is not None
+        multiple_retries = _csot.get_timeout() is not None
 
         while True:
             try:

@@ -38,6 +38,7 @@ from bson.codec_options import CodecOptions
 from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from bson.son import SON
+from pymongo import _csot
 from pymongo.daemon import _spawn_daemon
 from pymongo.encryption_options import AutoEncryptionOpts
 from pymongo.errors import (
@@ -52,7 +53,6 @@ from pymongo.pool import PoolOptions, _configured_socket
 from pymongo.read_concern import ReadConcern
 from pymongo.ssl_support import get_ssl_context
 from pymongo.uri_parser import parse_host
-from pymongo.vars import _VARS
 from pymongo.write_concern import WriteConcern
 
 _HTTPS_PORT = 443
@@ -122,7 +122,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
                 False,
             )  # disable_ocsp_endpoint_check
         # CSOT: set timeout for socket creation.
-        connect_timeout = max(_VARS.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0.001)
+        connect_timeout = max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0.001)
         opts = PoolOptions(
             connect_timeout=connect_timeout,
             socket_timeout=connect_timeout,
@@ -134,7 +134,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
             conn.sendall(message)
             while kms_context.bytes_needed > 0:
                 # CSOT: update timeout.
-                conn.settimeout(max(_VARS.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
+                conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
                 data = conn.recv(kms_context.bytes_needed)
                 if not data:
                     raise OSError("KMS connection closed")

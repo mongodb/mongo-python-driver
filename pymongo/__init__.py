@@ -69,6 +69,7 @@ version = __version__
 
 """Current version of PyMongo."""
 
+from pymongo import _csot
 from pymongo.collection import ReturnDocument  # noqa: F401
 from pymongo.common import (  # noqa: F401
     MAX_SUPPORTED_WIRE_VERSION,
@@ -86,7 +87,6 @@ from pymongo.operations import (  # noqa: F401
     UpdateOne,
 )
 from pymongo.read_preferences import ReadPreference  # noqa: F401
-from pymongo.vars import _VARS
 from pymongo.write_concern import WriteConcern  # noqa: F401
 
 
@@ -138,4 +138,4 @@ def timeout(seconds: Optional[float]) -> ContextManager:
         raise ValueError("timeout cannot be negative")
     if seconds is not None:
         seconds = float(seconds)
-    return _VARS.with_timeout(seconds)
+    return _csot._TimeoutContext(seconds)

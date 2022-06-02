@@ -23,7 +23,7 @@ import warnings
 import weakref
 from typing import Any
 
-from pymongo import common, helpers, periodic_executor
+from pymongo import _csot, common, helpers, periodic_executor
 from pymongo.client_session import _ServerSessionPool
 from pymongo.errors import (
     ConfigurationError,
@@ -56,7 +56,6 @@ from pymongo.topology_description import (
     _updated_topology_description_srv_polling,
     updated_topology_description,
 )
-from pymongo.vars import _VARS
 
 
 def process_events_queue(queue_ref):
@@ -194,7 +193,7 @@ class Topology(object):
 
     def get_server_selection_timeout(self):
         # CSOT: use remaining timeout when set.
-        timeout = _VARS.remaining()
+        timeout = _csot.remaining()
         if timeout is None:
             return self._settings.server_selection_timeout
         return timeout
@@ -271,7 +270,7 @@ class Topology(object):
     def select_server(self, selector, server_selection_timeout=None, address=None):
         """Like select_servers, but choose a random server if several match."""
         server = self._select_server(selector, server_selection_timeout, address)
-        _VARS.set_rtt(server.description.round_trip_time)
+        _csot.set_rtt(server.description.round_trip_time)
         return server
 
     def select_server_by_address(self, address, server_selection_timeout=None):
