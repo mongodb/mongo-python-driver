@@ -103,7 +103,7 @@ def has_c() -> bool:
 def timeout(seconds: Optional[float]) -> ContextManager:
     """Apply the given timeout for a block of operations.
 
-    Use pymongo.timeout() in a with-statement::
+    Use :func:`~pymongo.timeout` in a with-statement::
 
       with pymongo.timeout(5):
           client.db.coll.insert_one({})
