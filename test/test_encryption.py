@@ -575,7 +575,7 @@ class TestSpec(SpecRunner):
     def setUpClass(cls):
         super(TestSpec, cls).setUpClass()
 
-    def parse_auto_encrypt_opts(self, opts, encrypted_fields=None):
+    def parse_auto_encrypt_opts(self, opts):
         """Parse clientOptions.autoEncryptOpts."""
         opts = camel_to_snake_args(opts)
         kms_providers = opts["kms_providers"]
@@ -606,19 +606,15 @@ class TestSpec(SpecRunner):
             opts["kms_tls_options"] = KMS_TLS_OPTS
         if "key_vault_namespace" not in opts:
             opts["key_vault_namespace"] = "keyvault.datakeys"
-        if encrypted_fields:
-            opts["encrypted_fields_map"] = encrypted_fields
 
         opts = dict(opts)
         return AutoEncryptionOpts(**opts)
 
-    def parse_client_options(self, opts, encrypted_fields=None):
+    def parse_client_options(self, opts):
         """Override clientOptions parsing to support autoEncryptOpts."""
         encrypt_opts = opts.pop("autoEncryptOpts")
-        if encrypt_opts or encrypted_fields:
-            opts["auto_encryption_opts"] = self.parse_auto_encrypt_opts(
-                encrypt_opts, encrypted_fields=encrypted_fields
-            )
+        if encrypt_opts:
+            opts["auto_encryption_opts"] = self.parse_auto_encrypt_opts(encrypt_opts)
 
         return super(TestSpec, self).parse_client_options(opts)
 
@@ -655,7 +651,7 @@ class TestSpec(SpecRunner):
             kwargs["codec_options"] = OPTS
         if not data:
             kwargs["write_concern"] = wc
-        db.create_collection(coll_name, **kwargs)
+        db.create_collection(coll_name, **kwargs, encrypted_fields=encrypted_fields)
 
         if data:
             # Load data.

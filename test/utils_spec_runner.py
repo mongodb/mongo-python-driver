@@ -495,9 +495,7 @@ class SpecRunner(IntegrationTest):
         pool_listener = CMAPListener()
         server_listener = ServerAndTopologyEventListener()
         # Create a new client, to avoid interference from pooled sessions.
-        client_options = self.parse_client_options(
-            test["clientOptions"], encrypted_fields=test.get("encrypted_fields", {})
-        )
+        client_options = self.parse_client_options(test["clientOptions"])
         # MMAPv1 does not support retryable writes.
         if client_options.get("retryWrites") is True and client_context.storage_engine == "mmapv1":
             self.skipTest("MMAPv1 does not support retryWrites=True")

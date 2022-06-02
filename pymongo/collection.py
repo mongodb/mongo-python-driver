@@ -116,7 +116,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional["ReadConcern"] = None,
         session: Optional["ClientSession"] = None,
-        encrypted_fields: Optional[Mapping[str, Any]] = {},
+        encrypted_fields: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
         """Get / create a Mongo collection.
@@ -216,38 +216,74 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self.__database: Database[_DocumentType] = database
         self.__name = name
         self.__full_name = "%s.%s" % (self.__database.name, self.__name)
-        check_fields = kwargs.get("check_fields")
-        if check_fields:
-            del kwargs["check_fields"]
-            self.__fields = None
-            if encrypted_fields:
-                self.__fields = encrypted_fields.get(self.__full_name)
-            if (
-                self.__database.client.options.auto_encryption_opts
-                and self.__database.client.options.auto_encryption_opts._encrypted_fields_map
-            ):
-                self.__fields = (
-                    self.__database.client.options.auto_encryption_opts._encrypted_fields_map.get(
-                        self.__full_name
-                    )
+        self.__fields = None
+        if encrypted_fields:
+            self.__fields = encrypted_fields.get(self.__full_name)
+        if (
+            not self.__fields
+            and self.__database.client.options.auto_encryption_opts
+            and self.__database.client.options.auto_encryption_opts._encrypted_fields_map
+        ):
+            self.__fields = (
+                self.__database.client.options.auto_encryption_opts._encrypted_fields_map.get(
+                    self.__full_name
                 )
-            if self.__fields:
-                self.self.__database.create_collection(
-                    self.__fields.get("escCollection", f"enxcol_.{name}.esc")
-                )
-                self.self.__database.create_collection(
-                    self.__fields.get("eccCollection", f"enxcol_.{name}.ecc")
-                )
-                self.self.__database.create_collection(
-                    self.__fields.get("ecocCollection", f"enxcol_.{name}.ecoc")
-                )
+            )
         if create or kwargs or collation:
-            self.__create(kwargs, collation, session)
-        if check_fields:
-            self.create_index("__safeContent__", session)
+            if self.__fields:
+                self._create_helper(
+                    self.__name,
+                    create,
+                    kwargs,
+                    collation,
+                    encrypted_fields,
+                    session,
+                    check_fields=True,
+                )
+            else:
+                self._create_helper(
+                    self.__name, create, kwargs, collation, encrypted_fields, session
+                )
+
         self.__write_response_codec_options = self.codec_options._replace(
             unicode_decode_error_handler="replace", document_class=dict
         )
+
+    def _create_helper(
+        self, name, create, kwargs, collation, encrypted_fields, session, check_fields=False
+    ):
+        if check_fields:
+            if self.__fields:
+                self._create_helper(
+                    self.__fields.get("escCollection", f"enxcol_.{self.__name}.esc"),
+                    create,
+                    kwargs,
+                    collation,
+                    encrypted_fields,
+                    session,
+                )
+                self._create_helper(
+                    self.__fields.get("eccCollection", f"enxcol_.{self.__name}.ecc"),
+                    create,
+                    kwargs,
+                    collation,
+                    encrypted_fields,
+                    session,
+                )
+                self._create_helper(
+                    self.__fields.get("ecocCollection", f"enxcol_.{self.__name}.ecoc"),
+                    create,
+                    kwargs,
+                    collation,
+                    encrypted_fields,
+                    session,
+                )
+        if check_fields:
+            self.__create(name, kwargs, collation, session, encrypted_fields=self.__fields)
+        else:
+            self.__create(name, kwargs, collation, session)
+        if check_fields and self.__fields:
+            self.create_index("__safeContent__", session)
 
     def _socket_for_reads(self, session):
         return self.__database.client._socket_for_reads(self._read_preference_for(session), session)
@@ -314,9 +350,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 user_fields=user_fields,
             )
 
-    def __create(self, options, collation, session):
+    def __create(self, name, options, collation, session, encrypted_fields=None):
         """Sends a create command with the given options."""
-        cmd = SON([("create", self.__name)])
+        cmd = SON([("create", name)])
+        if encrypted_fields:
+            cmd["encryptedFields"] = encrypted_fields
+
         if options:
             if "size" in options:
                 options["size"] = float(options["size"])
