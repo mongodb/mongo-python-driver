@@ -305,8 +305,8 @@ class _Encrypter(object):
             MongoCryptOptions(
                 opts._kms_providers,
                 schema_map,
-                csfle_path=opts._csfle_path,
-                csfle_required=opts._csfle_required,
+                crypt_shared_lib_path=opts._crypt_shared_lib_path,
+                crypt_shared_lib_required=opts._crypt_shared_lib_required,
                 bypass_encryption=opts._bypass_auto_encryption,
                 encrypted_fields_map=encrypted_fields_map,
                 bypass_query_analysis=opts._bypass_query_analysis,

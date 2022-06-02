@@ -16,7 +16,6 @@
 
 import os
 import random
-import re
 import string
 import sys
 import threading
@@ -36,7 +35,7 @@ from test.utils import (
     wait_until,
 )
 
-from bson import SON, ObjectId, Timestamp, encode, json_util
+from bson import SON, ObjectId, Timestamp, encode
 from bson.binary import ALL_UUID_REPRESENTATIONS, PYTHON_LEGACY, STANDARD, Binary
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument
 from pymongo import MongoClient
@@ -1139,131 +1138,6 @@ class TestAllLegacyScenarios(IntegrationTest):
 
 
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "change_streams")
-
-
-def camel_to_snake(camel):
-    # Regex to convert CamelCase to snake_case.
-    snake = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", camel)
-    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", snake).lower()
-
-
-def get_change_stream(client, scenario_def, test):
-    # Get target namespace on which to instantiate change stream
-    target = test["target"]
-    if target == "collection":
-        db = client.get_database(scenario_def["database_name"])
-        cs_target = db.get_collection(scenario_def["collection_name"])
-    elif target == "database":
-        cs_target = client.get_database(scenario_def["database_name"])
-    elif target == "client":
-        cs_target = client
-    else:
-        raise ValueError("Invalid target in spec")
-
-    # Construct change stream kwargs dict
-    cs_pipeline = test["changeStreamPipeline"]
-    options = test["changeStreamOptions"]
-    cs_options = {}
-    for key, value in options.items():
-        cs_options[camel_to_snake(key)] = value
-
-    # Create and return change stream
-    return cs_target.watch(pipeline=cs_pipeline, **cs_options)
-
-
-def run_operation(client, operation):
-    # Apply specified operations
-    opname = camel_to_snake(operation["name"])
-    arguments = operation.get("arguments", {})
-    if opname == "rename":
-        # Special case for rename operation.
-        arguments = {"new_name": arguments["to"]}
-    cmd = getattr(
-        client.get_database(operation["database"]).get_collection(operation["collection"]), opname
-    )
-    return cmd(**arguments)
-
-
-def create_test(scenario_def, test):
-    def run_scenario(self):
-        # Set up
-        self.setUpCluster(scenario_def)
-        self.setFailPoint(test)
-        is_error = test["result"].get("error", False)
-        try:
-            with get_change_stream(self.client, scenario_def, test) as change_stream:
-                for operation in test["operations"]:
-                    # Run specified operations
-                    run_operation(self.client, operation)
-                num_expected_changes = len(test["result"].get("success", []))
-                changes = [change_stream.next() for _ in range(num_expected_changes)]
-                # Run a next() to induce an error if one is expected and
-                # there are no changes.
-                if is_error and not changes:
-                    change_stream.next()
-
-        except OperationFailure as exc:
-            if not is_error:
-                raise
-            expected_code = test["result"]["error"]["code"]
-            self.assertEqual(exc.code, expected_code)
-
-        else:
-            # Check for expected output from change streams
-            if test["result"].get("success"):
-                for change, expected_changes in zip(changes, test["result"]["success"]):
-                    self.assert_dict_is_subset(change, expected_changes)
-                self.assertEqual(len(changes), len(test["result"]["success"]))
-
-        finally:
-            # Check for expected events
-            results = self.listener.results
-            # Note: expectations may be missing, null, or a list of events.
-            # Extra events emitted by the test are intentionally ignored.
-            for idx, expectation in enumerate(test.get("expectations") or []):
-                for event_type, event_desc in expectation.items():
-                    results_key = event_type.split("_")[1]
-                    event = results[results_key][idx] if len(results[results_key]) > idx else None
-                    self.check_event(event, event_desc)
-
-    return run_scenario
-
-
-def create_tests():
-    for dirpath, _, filenames in os.walk(os.path.join(_TEST_PATH, "legacy")):
-        dirname = os.path.split(dirpath)[-1]
-
-        for filename in filenames:
-            with open(os.path.join(dirpath, filename)) as scenario_stream:
-                scenario_def = json_util.loads(scenario_stream.read())
-
-            test_type = os.path.splitext(filename)[0]
-
-            for test in scenario_def["tests"]:
-                new_test = create_test(scenario_def, test)
-                new_test = client_context.require_no_mmap(new_test)
-
-                if "minServerVersion" in test:
-                    min_ver = tuple(int(elt) for elt in test["minServerVersion"].split("."))
-                    new_test = client_context.require_version_min(*min_ver)(new_test)
-                if "maxServerVersion" in test:
-                    max_ver = tuple(int(elt) for elt in test["maxServerVersion"].split("."))
-                    new_test = client_context.require_version_max(*max_ver)(new_test)
-
-                topologies = test["topology"]
-                new_test = client_context.require_cluster_type(topologies)(new_test)
-
-                test_name = "test_%s_%s_%s" % (
-                    dirname,
-                    test_type.replace("-", "_"),
-                    str(test["description"].replace(" ", "_")),
-                )
-
-                new_test.__name__ = test_name
-                setattr(TestAllLegacyScenarios, new_test.__name__, new_test)
-
-
-create_tests()
 
 
 globals().update(
