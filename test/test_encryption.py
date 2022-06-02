@@ -39,6 +39,7 @@ from test import (
     unittest,
 )
 from test.test_bulk import BulkTestBase
+from test.unified_format import generate_test_classes
 from test.utils import (
     AllowListEventListener,
     OvertCommandListener,
@@ -672,9 +673,16 @@ def create_test(scenario_def, test, name):
     return run_scenario
 
 
-test_creator = TestCreator(create_test, TestSpec, SPEC_PATH)
+test_creator = TestCreator(create_test, TestSpec, os.path.join(SPEC_PATH, "legacy"))
 test_creator.create_tests()
 
+
+globals().update(
+    generate_test_classes(
+        os.path.join(SPEC_PATH, "unified"),
+        module=__name__,
+    )
+)
 
 # Prose Tests
 LOCAL_MASTER_KEY = base64.b64decode(
