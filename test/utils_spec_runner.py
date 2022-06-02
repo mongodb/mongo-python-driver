@@ -32,7 +32,7 @@ from test.utils import (
 )
 from typing import List
 
-from bson import decode, encode
+from bson import _dict_to_bson, decode, encode
 from bson.binary import Binary
 from bson.int64 import Int64
 from bson.son import SON
@@ -443,7 +443,7 @@ class SpecRunner(IntegrationTest):
         operation."""
         self.run_operations(sessions, collection, test["operations"])
 
-    def parse_client_options(self, opts):
+    def parse_client_options(self, opts, encrypted_fields=None):
         """Allow encryption spec to override a clientOptions parsing."""
         # Convert test['clientOptions'] to dict to avoid a Jython bug using
         # "**" with ScenarioDict.
@@ -495,7 +495,9 @@ class SpecRunner(IntegrationTest):
         pool_listener = CMAPListener()
         server_listener = ServerAndTopologyEventListener()
         # Create a new client, to avoid interference from pooled sessions.
-        client_options = self.parse_client_options(test["clientOptions"])
+        client_options = self.parse_client_options(
+            test["clientOptions"], encrypted_fields=test.get("encrypted_fields", {})
+        )
         # MMAPv1 does not support retryable writes.
         if client_options.get("retryWrites") is True and client_context.storage_engine == "mmapv1":
             self.skipTest("MMAPv1 does not support retryWrites=True")

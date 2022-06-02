@@ -290,6 +290,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
         session: Optional["ClientSession"] = None,
+        encrypted_fields: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> Collection[_DocumentType]:
         """Create a new :class:`~pymongo.collection.Collection` in this
@@ -369,6 +370,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         .. _create collection command:
             https://mongodb.com/docs/manual/reference/command/create
         """
+        kwargs["check_fields"] = True
         with self.__client._tmp_session(session) as s:
             # Skip this check in a transaction where listCollections is not
             # supported.
@@ -386,6 +388,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 write_concern,
                 read_concern,
                 session=s,
+                encrypted_fields=encrypted_fields,
                 **kwargs,
             )
 
@@ -879,6 +882,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         name_or_collection: Union[str, Collection],
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
+        encrypted_fields: Optional[Mapping[str, Any]] = {},
     ) -> Dict[str, Any]:
         """Drop a collection.
 
@@ -911,7 +915,33 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         if not isinstance(name, str):
             raise TypeError("name_or_collection must be an instance of str")
+        full_name = "%s.%s" % (self.name, name)
+        fields = None
+        if encrypted_fields:
+            fields = encrypted_fields.get(full_name)
+        if (
+            self.client.options.auto_encryption_opts
+            and self.client.options.auto_encryption_opts._encrypted_fields_map
+        ):
+            fields = self.client.options.auto_encryption_opts._encrypted_fields_map.get(full_name)
+            try:
+                fields = next(self.list_collections(session=session, filter={"name": name}))[
+                    "encryptedFields"
+                ]
+            except (KeyError, StopIteration):
+                pass
 
+        if fields:
+            print("dropping collections")
+            self.drop_collection(
+                fields.get("escCollection", f"enxcol_.{name}.esc"), session=session
+            )
+            self.drop_collection(
+                fields.get("eccCollection", f"enxcol_.{name}.ecc"), session=session
+            )
+            self.drop_collection(
+                fields.get("ecocCollection", f"enxcol_.{name}.ecc"), session=session
+            )
         command = SON([("drop", name)])
         if comment is not None:
             command["comment"] = comment

@@ -30,6 +30,7 @@ from typing import (
     Union,
 )
 
+from bson import decode
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
@@ -115,6 +116,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional["ReadConcern"] = None,
         session: Optional["ClientSession"] = None,
+        encrypted_fields: Optional[Mapping[str, Any]] = {},
         **kwargs: Any,
     ) -> None:
         """Get / create a Mongo collection.
@@ -214,9 +216,31 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self.__database: Database[_DocumentType] = database
         self.__name = name
         self.__full_name = "%s.%s" % (self.__database.name, self.__name)
+        check_fields = kwargs.get("check_fields")
+        if check_fields:
+            del kwargs["check_fields"]
+            self.__fields = None
+            if encrypted_fields:
+                self.__fields = encrypted_fields.get(self.__full_name)
+            if (
+                self.__database.client.options.auto_encryption_opts
+                and self.__database.client.options.auto_encryption_opts._encrypted_fields_map
+            ):
+                self.__fields = (
+                    self.__database.client.options.auto_encryption_opts._encrypted_fields_map.get(
+                        self.__full_name
+                    )
+                )
+            if self.__fields:
+                self.__database.create_collection(self.__fields["escCollection"], session=session)
+                self.__database.create_collection(self.__fields["eccCollection"], session=session)
+                self.__database.create_collection(self.__fields["ecocCollection"], session=session)
+                self.__database.create_collection(self.__fields["ecocCollection"], session=session)
+
         if create or kwargs or collation:
             self.__create(kwargs, collation, session)
-
+        if check_fields:
+            self.create_index("__safeContent__", session)
         self.__write_response_codec_options = self.codec_options._replace(
             unicode_decode_error_handler="replace", document_class=dict
         )

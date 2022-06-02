@@ -42,6 +42,7 @@ from test.test_bulk import BulkTestBase
 from test.utils import (
     AllowListEventListener,
     OvertCommandListener,
+    ScenarioDict,
     TestCreator,
     TopologyEventListener,
     camel_to_snake_args,
@@ -574,7 +575,7 @@ class TestSpec(SpecRunner):
     def setUpClass(cls):
         super(TestSpec, cls).setUpClass()
 
-    def parse_auto_encrypt_opts(self, opts):
+    def parse_auto_encrypt_opts(self, opts, encrypted_fields=None):
         """Parse clientOptions.autoEncryptOpts."""
         opts = camel_to_snake_args(opts)
         kms_providers = opts["kms_providers"]
@@ -605,14 +606,19 @@ class TestSpec(SpecRunner):
             opts["kms_tls_options"] = KMS_TLS_OPTS
         if "key_vault_namespace" not in opts:
             opts["key_vault_namespace"] = "keyvault.datakeys"
+        if encrypted_fields:
+            opts["encrypted_fields_map"] = encrypted_fields
+
         opts = dict(opts)
         return AutoEncryptionOpts(**opts)
 
-    def parse_client_options(self, opts):
+    def parse_client_options(self, opts, encrypted_fields=None):
         """Override clientOptions parsing to support autoEncryptOpts."""
         encrypt_opts = opts.pop("autoEncryptOpts")
-        if encrypt_opts:
-            opts["auto_encryption_opts"] = self.parse_auto_encrypt_opts(encrypt_opts)
+        if encrypt_opts or encrypted_fields:
+            opts["auto_encryption_opts"] = self.parse_auto_encrypt_opts(
+                encrypt_opts, encrypted_fields=encrypted_fields
+            )
 
         return super(TestSpec, self).parse_client_options(opts)
 
@@ -629,6 +635,7 @@ class TestSpec(SpecRunner):
     def setup_scenario(self, scenario_def):
         """Override a test's setup."""
         key_vault_data = scenario_def["key_vault_data"]
+        encrypted_fields = scenario_def["encrypted_fields"]
         json_schema = scenario_def["json_schema"]
         data = scenario_def["data"]
         if key_vault_data:
