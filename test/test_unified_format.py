@@ -65,6 +65,12 @@ class TestMatchEvaluatorUtil(unittest.TestCase):
         for actual in [{}, {"x": {}}, {"x": {"y": 2}}]:
             self.match_evaluator.match_result(spec, actual)
 
+        spec = {"y": {"$$unsetOrMatches": {"$$exists": True}}}
+        self.match_evaluator.match_result(spec, {})
+        self.match_evaluator.match_result(spec, {"y": 2})
+        self.match_evaluator.match_result(spec, {"x": 1})
+        self.match_evaluator.match_result(spec, {"y": {}})
+
     def test_type(self):
         self.match_evaluator.match_result(
             {

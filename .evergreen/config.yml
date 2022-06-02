@@ -450,8 +450,8 @@ functions:
             export LIBMONGOCRYPT_URL="${libmongocrypt_url}"
             export TEST_ENCRYPTION=1
           fi
-          if [ -n "${test_csfle}" ]; then
-            export TEST_CSFLE=1
+          if [ -n "${test_crypt_shared}" ]; then
+            export TEST_CRYPT_SHARED=1
           fi
           if [ -n "${test_pyopenssl}" ]; then
             export TEST_PYOPENSSL=1
@@ -2163,14 +2163,13 @@ axes:
         variables:
           test_encryption: true
         batchtime: 10080  # 7 days
-      - id: "encryption_with_csfle"
-        display_name: "Encryption with CSFLE"
-        tags: ["encryption_tag", "csfle"]
+      - id: "encryption_crypt_shared"
+        display_name: "Encryption shared lib"
+        tags: ["encryption_tag"]
         variables:
           test_encryption: true
-          test_csfle: true
+          test_crypt_shared: true
         batchtime: 10080  # 7 days
-
 
   # Run pyopenssl tests?
   - id: pyopenssl
@@ -2306,7 +2305,7 @@ buildvariants:
         platform: "*"
         auth: "*"
         ssl: "*"
-        encryption: [ "encryption_with_csfle" ]
+        encryption: [ "encryption_crypt_shared" ]
       then:
         remove_tasks:
           - ".5.0"
@@ -2400,7 +2399,7 @@ buildvariants:
         platform: "*"
         python-version: "*"
         auth-ssl: "*"
-        encryption: [ "encryption_with_csfle" ]
+        encryption: [ "encryption_crypt_shared" ]
       then:
         remove_tasks:
           - ".5.0"
@@ -2509,7 +2508,7 @@ buildvariants:
         platform: "*"
         python-version-windows: "*"
         auth-ssl: "*"
-        encryption: [ "encryption_with_csfle" ]
+        encryption: [ "encryption_crypt_shared" ]
       then:
         remove_tasks:
           - ".5.0"
