@@ -216,71 +216,45 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self.__database: Database[_DocumentType] = database
         self.__name = name
         self.__full_name = "%s.%s" % (self.__database.name, self.__name)
-        self.__fields = None
-        if encrypted_fields:
-            self.__fields = encrypted_fields.get(self.__full_name)
+
         if (
-            not self.__fields
+            not encrypted_fields
             and self.__database.client.options.auto_encryption_opts
             and self.__database.client.options.auto_encryption_opts._encrypted_fields_map
         ):
-            self.__fields = (
+            encrypted_fields = (
                 self.__database.client.options.auto_encryption_opts._encrypted_fields_map.get(
                     self.__full_name
                 )
             )
         if create or kwargs or collation:
-            if self.__fields:
-                self._create_helper(
-                    self.__name,
-                    create,
-                    kwargs,
-                    collation,
-                    encrypted_fields,
+            if encrypted_fields:
+                self.__create(
+                    encrypted_fields.get("escCollection", f"enxcol_.{self.__name}.esc"),
+                    {},
+                    None,
                     session,
-                    check_fields=True,
                 )
+                self.__create(
+                    encrypted_fields.get("eccCollection", f"enxcol_.{self.__name}.ecc"),
+                    {},
+                    None,
+                    session,
+                )
+                self.__create(
+                    encrypted_fields.get("ecocCollection", f"enxcol_.{self.__name}.ecoc"),
+                    {},
+                    None,
+                    session,
+                )
+                self.__create(name, kwargs, collation, session, encrypted_fields=encrypted_fields)
+                self.create_index("__safeContent__", session)
             else:
-                self._create_helper(
-                    self.__name, create, kwargs, collation, encrypted_fields, session
-                )
+                self.__create(name, kwargs, collation, session)
 
         self.__write_response_codec_options = self.codec_options._replace(
             unicode_decode_error_handler="replace", document_class=dict
         )
-
-    def _create_helper(
-        self, name, create, kwargs, collation, encrypted_fields, session, check_fields=False
-    ):
-        if check_fields and self.__fields:
-            self._create_helper(
-                self.__fields.get("escCollection", f"enxcol_.{self.__name}.esc"),
-                create,
-                kwargs,
-                collation,
-                encrypted_fields,
-                session,
-            )
-            self._create_helper(
-                self.__fields.get("eccCollection", f"enxcol_.{self.__name}.ecc"),
-                create,
-                kwargs,
-                collation,
-                encrypted_fields,
-                session,
-            )
-            self._create_helper(
-                self.__fields.get("ecocCollection", f"enxcol_.{self.__name}.ecoc"),
-                create,
-                kwargs,
-                collation,
-                encrypted_fields,
-                session,
-            )
-            self.__create(name, kwargs, collation, session, encrypted_fields=self.__fields)
-            self.create_index("__safeContent__", session)
-        else:
-            self.__create(name, kwargs, collation, session)
 
     def _socket_for_reads(self, session):
         return self.__database.client._socket_for_reads(self._read_preference_for(session), session)
