@@ -233,13 +233,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 )
             if self.__fields:
                 self.self.__database.create_collection(
-                    self.__fields.get("escCollection", f"enxcol_.{name}.esc"), session=session
+                    self.__fields.get("escCollection", f"enxcol_.{name}.esc")
                 )
                 self.self.__database.create_collection(
-                    self.__fields.get("eccCollection", f"enxcol_.{name}.ecc"), session=session
+                    self.__fields.get("eccCollection", f"enxcol_.{name}.ecc")
                 )
                 self.self.__database.create_collection(
-                    self.__fields.get("ecocCollection", f"enxcol_.{name}.ecoc"), session=session
+                    self.__fields.get("ecocCollection", f"enxcol_.{name}.ecoc")
                 )
         if create or kwargs or collation:
             self.__create(kwargs, collation, session)

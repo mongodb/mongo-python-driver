@@ -370,7 +370,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         .. _create collection command:
             https://mongodb.com/docs/manual/reference/command/create
         """
-        print(name)
         kwargs["check_fields"] = True
         with self.__client._tmp_session(session) as s:
             # Skip this check in a transaction where listCollections is not
@@ -884,6 +883,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
         encrypted_fields: Optional[Mapping[str, Any]] = {},
+        **kwargs,
     ) -> Dict[str, Any]:
         """Drop a collection.
 
@@ -918,30 +918,32 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             raise TypeError("name_or_collection must be an instance of str")
         full_name = "%s.%s" % (self.name, name)
         fields = None
-        if encrypted_fields:
-            fields = encrypted_fields.get(full_name)
-        if (
-            self.client.options.auto_encryption_opts
-            and self.client.options.auto_encryption_opts._encrypted_fields_map
-        ):
-            fields = self.client.options.auto_encryption_opts._encrypted_fields_map.get(full_name)
-            try:
-                fields = next(self.list_collections(session=session, filter={"name": name}))[
-                    "encryptedFields"
-                ]
-            except (KeyError, StopIteration):
-                pass
-
-        if fields:
-            self.drop_collection(
-                fields.get("escCollection", f"enxcol_.{name}.esc"), session=session
-            )
-            self.drop_collection(
-                fields.get("eccCollection", f"enxcol_.{name}.ecc"), session=session
-            )
-            self.drop_collection(
-                fields.get("ecocCollection", f"enxcol_.{name}.ecoc"), session=session
-            )
+        if not kwargs.get("top_level"):
+            if encrypted_fields:
+                fields = encrypted_fields.get(full_name)
+            if (
+                self.client.options.auto_encryption_opts
+                and self.client.options.auto_encryption_opts._encrypted_fields_map
+            ):
+                fields = self.client.options.auto_encryption_opts._encrypted_fields_map.get(
+                    full_name
+                )
+                try:
+                    fields = next(self.list_collections(session=session, filter={"name": name}))[
+                        "encryptedFields"
+                    ]
+                except (KeyError, StopIteration):
+                    pass
+            if fields:
+                self.drop_collection(
+                    fields.get("escCollection", f"enxcol_.{name}.esc"), top_level=True
+                )
+                self.drop_collection(
+                    fields.get("eccCollection", f"enxcol_.{name}.ecc"), top_level=True
+                )
+                self.drop_collection(
+                    fields.get("ecocCollection", f"enxcol_.{name}.ecoc"), top_level=True
+                )
         command = SON([("drop", name)])
         if comment is not None:
             command["comment"] = comment
