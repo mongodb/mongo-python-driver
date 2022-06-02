@@ -677,12 +677,13 @@ test_creator = TestCreator(create_test, TestSpec, os.path.join(SPEC_PATH, "legac
 test_creator.create_tests()
 
 
-globals().update(
-    generate_test_classes(
-        os.path.join(SPEC_PATH, "unified"),
-        module=__name__,
+if _HAVE_PYMONGOCRYPT:
+    globals().update(
+        generate_test_classes(
+            os.path.join(SPEC_PATH, "unified"),
+            module=__name__,
+        )
     )
-)
 
 # Prose Tests
 LOCAL_MASTER_KEY = base64.b64decode(

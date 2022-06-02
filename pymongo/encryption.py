@@ -56,6 +56,13 @@ _HTTPS_PORT = 443
 _KMS_CONNECT_TIMEOUT = 10  # TODO: CDRIVER-3262 will define this value.
 _MONGOCRYPTD_TIMEOUT_MS = 10000
 
+
+# TODO: add key_material to _DATA_KEY_OPTS
+# keyMaterial is used to encrypt data. If omitted, keyMaterial is generated from
+# a cryptographically secure random source.
+# keyMaterial: Optional<Array[byte]>
+
+
 _DATA_KEY_OPTS: CodecOptions = CodecOptions(document_class=SON, uuid_representation=STANDARD)
 # Use RawBSONDocument codec options to avoid needlessly decoding
 # documents from the key vault.
@@ -626,3 +633,54 @@ class ClientEncryption(object):
             self._encryption.close()
             self._io_callbacks = None
             self._encryption = None
+
+
+# # rewrapManyDataKey decrypts and encrypts all matching data keys with a possibly new
+# # masterKey.
+# # Post-conditions:
+# # - Overwrites the "masterKey", "updateDate" and "keyMaterial" of matching data key
+# #   documents.
+# # - On error, some matching data keys may have been rewrapped.
+# # - Returns a RewrapDataKeyResult.
+# rewrapManyDataKey(filter: Document, opts: RewrapManyDataKeyOpts): RewrapDataKeyResult;
+
+# # deleteKey deletes one key from the key vault collection.
+# deleteKey(id: UUID) DeleteResult;
+
+# # addKeyAlternateName adds keyAltName to the data key if it is not present on the data
+# # key.
+# addKeyAlternateName (id: UUID, keyAltName: string) UpdateResult;
+
+# # getKey returns one data key.
+# getKey (id: UUID) Document;
+
+# # getKeys returns all data keys.
+# getKeys () Iterable<Document>;
+
+# # getKeyByAltName returns one data key by matching keyAltName.
+# getKeyByAltName (keyAltName: string) Document;
+
+# # removeKeyAlternateName removes keyAltName from the data key if it is present on the data
+# # key.
+# removeKeyAlternateName (id: UUID, keyAltName: string) UpdateResult;
+
+# # createKey is an alias of createDataKey.
+# createKey(kmsProvider: String,
+#           masterKey: Optional<Document>,
+#           keyAltNames: Optional<Array[String]>) UUID;
+
+
+# class RewrapManyDataKeyOpts
+#    # newProvider identifies the new KMS provider.
+#    # If omitted, encrypting uses the current KMS provider.
+#    newProvider: Optional<String>
+
+#    # newMasterKey identifies the new masterKey.
+#    # If omitted, rewraps with the current masterKey.
+#    # It is an error to omit if newProvider is set.
+#    newMasterKey: Optional<Document>
+
+
+# class RewrapDataKeyResult
+#    # bulkWriteResult is the result of the bulk write operation used to update the data keys.
+#    bulkWriteResult: BulkWriteResult
