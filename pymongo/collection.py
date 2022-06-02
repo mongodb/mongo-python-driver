@@ -235,7 +235,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 self.__database.create_collection(self.__fields["escCollection"], session=session)
                 self.__database.create_collection(self.__fields["eccCollection"], session=session)
                 self.__database.create_collection(self.__fields["ecocCollection"], session=session)
-                self.__database.create_collection(self.__fields["ecocCollection"], session=session)
 
         if create or kwargs or collation:
             self.__create(kwargs, collation, session)
