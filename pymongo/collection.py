@@ -201,7 +201,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         )
 
         if not isinstance(name, str):
-            raise TypeError("name must be an instance of str")
+            raise TypeError(f"name must be an instance of str")
 
         if not name or ".." in name:
             raise InvalidName("collection names cannot be empty")
@@ -232,10 +232,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                     )
                 )
             if self.__fields:
-                self.__database.create_collection(self.__fields["escCollection"], session=session)
-                self.__database.create_collection(self.__fields["eccCollection"], session=session)
-                self.__database.create_collection(self.__fields["ecocCollection"], session=session)
-
+                self.self.__database.create_collection(
+                    self.__fields.get("escCollection", f"enxcol_.{name}.esc"), session=session
+                )
+                self.self.__database.create_collection(
+                    self.__fields.get("eccCollection", f"enxcol_.{name}.ecc"), session=session
+                )
+                self.self.__database.create_collection(
+                    self.__fields.get("ecocCollection", f"enxcol_.{name}.ecoc"), session=session
+                )
         if create or kwargs or collation:
             self.__create(kwargs, collation, session)
         if check_fields:

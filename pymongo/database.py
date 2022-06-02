@@ -370,6 +370,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         .. _create collection command:
             https://mongodb.com/docs/manual/reference/command/create
         """
+        print(name)
         kwargs["check_fields"] = True
         with self.__client._tmp_session(session) as s:
             # Skip this check in a transaction where listCollections is not
@@ -932,7 +933,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 pass
 
         if fields:
-            print("dropping collections")
             self.drop_collection(
                 fields.get("escCollection", f"enxcol_.{name}.esc"), session=session
             )
@@ -940,7 +940,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 fields.get("eccCollection", f"enxcol_.{name}.ecc"), session=session
             )
             self.drop_collection(
-                fields.get("ecocCollection", f"enxcol_.{name}.ecc"), session=session
+                fields.get("ecocCollection", f"enxcol_.{name}.ecoc"), session=session
             )
         command = SON([("drop", name)])
         if comment is not None:
