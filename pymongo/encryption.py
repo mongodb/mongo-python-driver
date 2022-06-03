@@ -15,6 +15,7 @@
 """Support for explicit client-side field level encryption."""
 
 import contextlib
+import enum
 import uuid
 import weakref
 from typing import Any, Mapping, Optional, Sequence
@@ -353,13 +354,33 @@ class _Encrypter(object):
             self._internal_client = None
 
 
-class Algorithm(object):
+class Algorithm(str, enum.Enum):
     """An enum that defines the supported encryption algorithms."""
 
     AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic = "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic"
+    """AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic."""
     AEAD_AES_256_CBC_HMAC_SHA_512_Random = "AEAD_AES_256_CBC_HMAC_SHA_512-Random"
+    """AEAD_AES_256_CBC_HMAC_SHA_512_Random."""
     INDEXED = "Indexed"
+    """Indexed.
+
+    .. versionadded:: 4.2
+    """
     UNINDEXED = "Unindexed"
+    """Unindexed.
+
+    .. versionadded:: 4.2
+    """
+
+
+class QueryType(enum.IntEnum):
+    """An enum that defines the supported values for explicit encryption query_type.
+
+    .. versionadded:: 4.2
+    """
+
+    EQUALITY = 1
+    """Used to encrypt a value for an equality query."""
 
 
 class ClientEncryption(object):
@@ -571,7 +592,8 @@ class ClientEncryption(object):
             :attr:`~bson.binary.UUID_SUBTYPE`).
           - `key_alt_name`: Identifies a key vault document by 'keyAltName'.
           - `index_key_id` (bytes): the index key id to use for Queryable Encryption.
-          - `query_type` (int): The query type to execute.
+          - `query_type` (int): The query type to execute. See
+            :class:`QueryType` for valid options.
           - `contention_factor` (int): The contention factor to use
             when the algorithm is "Indexed".
 

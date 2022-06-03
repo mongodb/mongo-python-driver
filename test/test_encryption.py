@@ -58,7 +58,7 @@ from bson.json_util import JSONOptions
 from bson.son import SON
 from pymongo import encryption
 from pymongo.cursor import CursorType
-from pymongo.encryption import Algorithm, ClientEncryption
+from pymongo.encryption import Algorithm, ClientEncryption, QueryType
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts
 from pymongo.errors import (
     BulkWriteError,
@@ -2023,7 +2023,7 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
         )
 
         find_payload = self.client_encryption.encrypt(
-            val, Algorithm.INDEXED, self.key1_id, query_type=1
+            val, Algorithm.INDEXED, self.key1_id, query_type=QueryType.EQUALITY
         )
         docs = list(
             self.encrypted_client[self.db.name].explicit_encryption.find(
@@ -2046,7 +2046,7 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
 
         # Find without contention_factor non-deterministically returns 0-9 documents.
         find_payload = self.client_encryption.encrypt(
-            val, Algorithm.INDEXED, self.key1_id, query_type=1
+            val, Algorithm.INDEXED, self.key1_id, query_type=QueryType.EQUALITY
         )
         docs = list(
             self.encrypted_client[self.db.name].explicit_encryption.find(
@@ -2059,7 +2059,11 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
 
         # Find with contention_factor will return all 10 documents.
         find_payload = self.client_encryption.encrypt(
-            val, Algorithm.INDEXED, self.key1_id, query_type=1, contention_factor=contention
+            val,
+            Algorithm.INDEXED,
+            self.key1_id,
+            query_type=QueryType.EQUALITY,
+            contention_factor=contention,
         )
         docs = list(
             self.encrypted_client[self.db.name].explicit_encryption.find(
