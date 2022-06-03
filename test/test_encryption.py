@@ -1971,7 +1971,9 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         with self.assertRaisesRegex(EncryptionError, "expired|certificate verify failed"):
             self.client_encryption_expired.create_data_key("kmip")
         # Invalid cert hostname error.
-        with self.assertRaisesRegex(EncryptionError, "IP address mismatch|wronghost"):
+        with self.assertRaisesRegex(
+            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch"
+        ):
             self.client_encryption_invalid_hostname.create_data_key("kmip")
 
 
@@ -2006,23 +2008,78 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
         self.addCleanup(self.encrypted_client.close)
 
     def test_01_insert_encrypted_indexed_and_find(self):
-        insert_payload = self.client_encryption.encrypt(
-            "encrypted indexed value", "Indexed", self.key1_id
-        )
+        val = "encrypted indexed value"
+        insert_payload = self.client_encryption.encrypt(val, "Indexed", self.key1_id)
         self.encrypted_client[self.db.name].explicit_encryption.insert_one(
             {"encryptedIndexed": insert_payload}
         )
 
-        find_payload = self.client_encryption.encrypt(
-            "encrypted indexed value", "Indexed", self.key1_id, query_type=1
-        )
+        find_payload = self.client_encryption.encrypt(val, "Indexed", self.key1_id, query_type=1)
         docs = list(
             self.encrypted_client[self.db.name].explicit_encryption.find(
                 {"encryptedIndexed": find_payload}
             )
         )
         self.assertEqual(len(docs), 1)
-        self.assertEqual(docs[0]["encryptedIndexed"], "encrypted indexed value")
+        self.assertEqual(docs[0]["encryptedIndexed"], val)
+
+    def test_02_insert_encrypted_indexed_and_find_contention(self):
+        val = "encrypted indexed value"
+        contention = 10
+        for _ in range(contention):
+            insert_payload = self.client_encryption.encrypt(
+                val, "Indexed", self.key1_id, contention_factor=contention
+            )
+            self.encrypted_client[self.db.name].explicit_encryption.insert_one(
+                {"encryptedIndexed": insert_payload}
+            )
+
+        # Find without contention_factor non-deterministically returns 0-9 documents.
+        find_payload = self.client_encryption.encrypt(val, "Indexed", self.key1_id, query_type=1)
+        docs = list(
+            self.encrypted_client[self.db.name].explicit_encryption.find(
+                {"encryptedIndexed": find_payload}
+            )
+        )
+        self.assertLessEqual(len(docs), 10)
+        for doc in docs:
+            self.assertEqual(doc["encryptedIndexed"], val)
+
+        # Find with contention_factor will return all 10 documents.
+        find_payload = self.client_encryption.encrypt(
+            val, "Indexed", self.key1_id, query_type=1, contention_factor=contention
+        )
+        docs = list(
+            self.encrypted_client[self.db.name].explicit_encryption.find(
+                {"encryptedIndexed": find_payload}
+            )
+        )
+        self.assertEqual(len(docs), 10)
+        for doc in docs:
+            self.assertEqual(doc["encryptedIndexed"], val)
+
+    def test_03_insert_encrypted_unindexed(self):
+        val = "encrypted unindexed value"
+        insert_payload = self.client_encryption.encrypt(val, "Unindexed", self.key1_id)
+        self.encrypted_client[self.db.name].explicit_encryption.insert_one(
+            {"_id": 1, "encryptedUnindexed": insert_payload}
+        )
+
+        docs = list(self.encrypted_client[self.db.name].explicit_encryption.find({"_id": 1}))
+        self.assertEqual(len(docs), 1)
+        self.assertEqual(docs[0]["encryptedUnindexed"], val)
+
+    def test_04_roundtrip_encrypted_indexed(self):
+        val = "encrypted indexed value"
+        payload = self.client_encryption.encrypt(val, "Indexed", self.key1_id)
+        decrypted = self.client_encryption.decrypt(payload)
+        self.assertEqual(decrypted, val)
+
+    def test_05_roundtrip_encrypted_unindexed(self):
+        val = "encrypted indexed value"
+        payload = self.client_encryption.encrypt(val, "Unindexed", self.key1_id)
+        decrypted = self.client_encryption.decrypt(payload)
+        self.assertEqual(decrypted, val)
 
 
 if __name__ == "__main__":
