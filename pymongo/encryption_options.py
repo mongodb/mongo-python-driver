@@ -151,6 +151,29 @@ class AutoEncryptionOpts(object):
             outgoing commands. Set `bypass_query_analysis` to use explicit
             encryption on indexed fields without the MongoDB Enterprise Advanced
             licensed crypt_shared library.
+          - `encrypted_fields_map`: Map of collection namespace ("db.coll") to documents that
+            described the encrypted fields for Queryable Encryption. For example::
+
+                {
+                  "db.coll": {
+                      "escCollection": "escCollectionName",
+                      "eccCollection": "eccCollectionName",
+                      "ecocCollection": "ecocCollectionName",
+                      "fields": [
+                          {
+                              "path": "firstName",
+                              "keyId": Binary.from_uuid(UUID('00000000-0000-0000-0000-000000000000')),
+                              "bsonType": "string",
+                              "queries": {"queryType": "equality"}
+                          },
+                          {
+                              "path": "ssn",
+                              "keyId": Binary.from_uuid(UUID('04104104-1041-0410-4104-104104104104')),
+                              "bsonType": "string"
+                          }
+                      ]
+                  }
+                }
 
         .. versionchanged:: 4.2
            Added `encrypted_fields_map` `crypt_shared_lib_path`, `crypt_shared_lib_required`,
