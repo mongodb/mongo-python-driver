@@ -51,7 +51,7 @@ from test.utils import (
 from test.utils_spec_runner import SpecRunner
 
 from bson import encode, json_util
-from bson.binary import JAVA_LEGACY, STANDARD, UUID_SUBTYPE, Binary, UuidRepresentation
+from bson.binary import UUID_SUBTYPE, Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.errors import BSONError
 from bson.json_util import JSONOptions
@@ -466,7 +466,7 @@ class TestExplicitSimple(EncryptionIntegrationTest):
             client_encryption.encrypt(
                 unencodable_value,
                 Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
-                key_id=Binary(uuid.uuid4().bytes, UUID_SUBTYPE),
+                key_id=Binary.from_uuid(uuid.uuid4()),
             )
 
     def test_codec_options(self):
@@ -475,7 +475,7 @@ class TestExplicitSimple(EncryptionIntegrationTest):
                 KMS_PROVIDERS, "keyvault.datakeys", client_context.client, None  # type: ignore[arg-type]
             )
 
-        opts = CodecOptions(uuid_representation=JAVA_LEGACY)
+        opts = CodecOptions(uuid_representation=UuidRepresentation.JAVA_LEGACY)
         client_encryption_legacy = ClientEncryption(
             KMS_PROVIDERS, "keyvault.datakeys", client_context.client, opts
         )
