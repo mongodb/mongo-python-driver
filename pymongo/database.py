@@ -370,15 +370,24 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         .. _create collection command:
             https://mongodb.com/docs/manual/reference/command/create
         """
+        if (
+            not encrypted_fields
+            and self.client.options.auto_encryption_opts
+            and self.client.options.auto_encryption_opts._encrypted_fields_map
+        ):
+            encrypted_fields = self.client.options.auto_encryption_opts._encrypted_fields_map.get(
+                "%s.%s" % (self.name, name)
+            )
+        if encrypted_fields:
+            common.validate_is_mapping("encrypted_fields", encrypted_fields)
         with self.__client._tmp_session(session) as s:
-            # Skip this check in a transaction where listCollections is not
-            # supported.
 
-            if (not s or not s.in_transaction) and name in self.list_collection_names(
-                filter={"name": name}, session=s
-            ):
+            if (
+                (not s or not s.in_transaction)
+                and not encrypted_fields
+                and not self.client.options.auto_encryption_opts
+            ) and name in self.list_collection_names(filter={"name": name}, session=s):
                 raise CollectionInvalid("collection %s already exists" % name)
-
             return Collection(
                 self,
                 name,
@@ -946,14 +955,26 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             encrypted_fields = self.client.options.auto_encryption_opts._encrypted_fields_map.get(
                 full_name
             )
-            if not encrypted_fields or not encrypted_fields.get(full_name):
-                fields = list(self.list_collections(filter={"name": name}))
-                if fields and fields[0]["options"].get("encryptedFields"):
-                    encrypted_fields = fields[0]["options"]["encryptedFields"]
+        if not encrypted_fields:
+            fields = list(self.list_collections(filter={"name": name}))
+            if fields and fields[0]["options"].get("encryptedFields"):
+                encrypted_fields = fields[0]["options"]["encryptedFields"]
         if encrypted_fields:
-            self._drop_helper(encrypted_fields.get("escCollection", f"enxcol_.{name}.esc"))
-            self._drop_helper(encrypted_fields.get("eccCollection", f"enxcol_.{name}.ecc"))
-            self._drop_helper(encrypted_fields.get("ecocCollection", f"enxcol_.{name}.ecoc"))
+            self._drop_helper(
+                encrypted_fields.get("escCollection", f"enxcol_.{name}.esc"),
+                session=session,
+                comment=comment,
+            )
+            self._drop_helper(
+                encrypted_fields.get("eccCollection", f"enxcol_.{name}.ecc"),
+                session=session,
+                comment=comment,
+            )
+            self._drop_helper(
+                encrypted_fields.get("ecocCollection", f"enxcol_.{name}.ecoc"),
+                session=session,
+                comment=comment,
+            )
         self._drop_helper(name, comment, session, **kwargs)
 
     def validate_collection(

@@ -174,23 +174,15 @@ class AllowListEventListener(EventListener):
 class OvertCommandListener(EventListener):
     """A CommandListener that ignores sensitive commands."""
 
-    ignore_list_collections = False
-
     def started(self, event):
-        if self.ignore_list_collections and event.command_name.lower() == "listcollections":
-            return
         if event.command_name.lower() not in _SENSITIVE_COMMANDS:
             super(OvertCommandListener, self).started(event)
 
     def succeeded(self, event):
-        if self.ignore_list_collections and event.command_name.lower() == "listcollections":
-            return
         if event.command_name.lower() not in _SENSITIVE_COMMANDS:
             super(OvertCommandListener, self).succeeded(event)
 
     def failed(self, event):
-        if self.ignore_list_collections and event.command_name.lower() == "listcollections":
-            return
         if event.command_name.lower() not in _SENSITIVE_COMMANDS:
             super(OvertCommandListener, self).failed(event)
 

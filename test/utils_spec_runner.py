@@ -229,7 +229,19 @@ class SpecRunner(IntegrationTest):
 
             return True
         else:
-            self.assertEqual(result, expected_result)
+
+            def _helper(expected_result, result):
+                if isinstance(expected_result, abc.Mapping):
+                    for i in expected_result.keys():
+                        _helper(expected_result[i], result[i])
+
+                elif isinstance(expected_result, list):
+                    for i, k in zip(expected_result, result):
+                        _helper(i, k)
+                else:
+                    self.assertEqual(expected_result, result)
+
+            _helper(expected_result, result)
 
     def get_object_name(self, op):
         """Allow subclasses to override handling of 'object'
@@ -294,12 +306,8 @@ class SpecRunner(IntegrationTest):
             args = {"sessions": sessions, "collection": collection}
             args.update(arguments)
             arguments = args
-        try:
-            if name == "create_collection":
-                self.listener.ignore_list_collections = True
-            result = cmd(**dict(arguments))
-        finally:
-            self.listener.ignore_list_collections = False
+
+        result = cmd(**dict(arguments))
 
         # Cleanup open change stream cursors.
         if name == "watch":

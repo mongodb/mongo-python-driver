@@ -36,7 +36,7 @@ from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from bson.timestamp import Timestamp
-from pymongo import common, helpers, message
+from pymongo import ASCENDING, common, helpers, message
 from pymongo.aggregation import (
     _CollectionAggregationCommand,
     _CollectionRawAggregationCommand,
@@ -199,7 +199,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             write_concern or database.write_concern,
             read_concern or database.read_concern,
         )
-
         if not isinstance(name, str):
             raise TypeError(f"name must be an instance of str")
 
@@ -211,22 +210,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             raise InvalidName("collection names must not start or end with '.': %r" % name)
         if "\x00" in name:
             raise InvalidName("collection names must not contain the null character")
-        collation = validate_collation_or_none(kwargs.pop("collation", None))
-
         self.__database: Database[_DocumentType] = database
         self.__name = name
         self.__full_name = "%s.%s" % (self.__database.name, self.__name)
 
-        if (
-            not encrypted_fields
-            and self.__database.client.options.auto_encryption_opts
-            and self.__database.client.options.auto_encryption_opts._encrypted_fields_map
-        ):
-            encrypted_fields = (
-                self.__database.client.options.auto_encryption_opts._encrypted_fields_map.get(
-                    self.__full_name
-                )
-            )
+        collation = validate_collation_or_none(kwargs.pop("collation", None))
+        # Skip this check in a transaction where listCollections is not
+        # supported.
+
         if create or kwargs or collation:
             if encrypted_fields:
                 self.__create(
@@ -248,7 +239,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                     session,
                 )
                 self.__create(name, kwargs, collation, session, encrypted_fields=encrypted_fields)
-                self.create_index("__safeContent__", session)
+                self.create_index([("__safeContent__", ASCENDING)], session)
             else:
                 self.__create(name, kwargs, collation, session)
 
