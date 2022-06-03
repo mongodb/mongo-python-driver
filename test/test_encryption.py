@@ -642,8 +642,10 @@ class TestSpec(SpecRunner):
         db_name = self.get_scenario_db_name(scenario_def)
         coll_name = self.get_scenario_coll_name(scenario_def)
         db = client_context.client.get_database(db_name, codec_options=OPTS)
-        coll = db[coll_name]
-        coll.drop()
+        if encrypted_fields:
+            db.drop_collection(coll_name, encrypted_fields=encrypted_fields)
+        else:
+            coll = db[coll_name].drop()
         wc = WriteConcern(w="majority")
         kwargs: Dict[str, Any] = {}
         if json_schema:
@@ -652,7 +654,7 @@ class TestSpec(SpecRunner):
         if not data:
             kwargs["write_concern"] = wc
         db.create_collection(coll_name, **kwargs, encrypted_fields=encrypted_fields)
-
+        coll = db[coll_name]
         if data:
             # Load data.
             coll.with_options(write_concern=wc).insert_many(scenario_def["data"])

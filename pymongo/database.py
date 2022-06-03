@@ -373,6 +373,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         with self.__client._tmp_session(session) as s:
             # Skip this check in a transaction where listCollections is not
             # supported.
+
             if (not s or not s.in_transaction) and name in self.list_collection_names(
                 filter={"name": name}, session=s
             ):
@@ -881,7 +882,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         name,
         session=None,
         comment=None,
-        encrypted_fields=None,
         **kwargs,
     ) -> Dict[str, Any]:
         command = SON([("drop", name)])
@@ -903,7 +903,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         name_or_collection: Union[str, Collection],
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
-        encrypted_fields: Optional[Mapping[str, Any]] = {},
+        encrypted_fields: Optional[Mapping[str, Any]] = None,
         **kwargs,
     ) -> Dict[str, Any]:
         """Drop a collection.
@@ -938,30 +938,23 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if not isinstance(name, str):
             raise TypeError("name_or_collection must be an instance of str")
         full_name = "%s.%s" % (self.name, name)
-        fields = None
-        if not kwargs.get("top_level"):
-            if encrypted_fields:
-                fields = encrypted_fields.get(full_name)
-            if (
-                not fields
-                and self.client.options.auto_encryption_opts
-                and self.client.options.auto_encryption_opts._encrypted_fields_map
-            ):
-                fields = self.client.options.auto_encryption_opts._encrypted_fields_map.get(
-                    full_name
-                )
-                if not fields:
-                    try:
-                        fields = next(
-                            self.list_collections(session=session, filter={"name": name})
-                        )["encryptedFields"]
-                    except (KeyError, StopIteration):
-                        pass
-            if fields:
-                self._drop_helper(fields.get("escCollection", f"enxcol_.{name}.esc"))
-                self._drop_helper(fields.get("eccCollection", f"enxcol_.{name}.ecc"))
-                self._drop_helper(fields.get("ecocCollection", f"enxcol_.{name}.ecoc"))
-            self._drop_helper(name=name, comment=comment, session=session, **kwargs)
+        if (
+            not encrypted_fields
+            and self.client.options.auto_encryption_opts
+            and self.client.options.auto_encryption_opts._encrypted_fields_map
+        ):
+            encrypted_fields = self.client.options.auto_encryption_opts._encrypted_fields_map.get(
+                full_name
+            )
+            if not encrypted_fields or not encrypted_fields.get(full_name):
+                fields = list(self.list_collections(filter={"name": name}))
+                if fields and fields[0]["options"].get("encryptedFields"):
+                    encrypted_fields = fields[0]["options"]["encryptedFields"]
+        if encrypted_fields:
+            self._drop_helper(encrypted_fields.get("escCollection", f"enxcol_.{name}.esc"))
+            self._drop_helper(encrypted_fields.get("eccCollection", f"enxcol_.{name}.ecc"))
+            self._drop_helper(encrypted_fields.get("ecocCollection", f"enxcol_.{name}.ecoc"))
+        self._drop_helper(name, comment, session, **kwargs)
 
     def validate_collection(
         self,

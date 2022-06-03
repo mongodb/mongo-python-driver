@@ -231,19 +231,19 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             if encrypted_fields:
                 self.__create(
                     encrypted_fields.get("escCollection", f"enxcol_.{self.__name}.esc"),
-                    {},
+                    {"clusteredIndex": {"key": {"_id": 1}, "unique": True}},
                     None,
                     session,
                 )
                 self.__create(
                     encrypted_fields.get("eccCollection", f"enxcol_.{self.__name}.ecc"),
-                    {},
+                    {"clusteredIndex": {"key": {"_id": 1}, "unique": True}},
                     None,
                     session,
                 )
                 self.__create(
                     encrypted_fields.get("ecocCollection", f"enxcol_.{self.__name}.ecoc"),
-                    {},
+                    {"clusteredIndex": {"key": {"_id": 1}, "unique": True}},
                     None,
                     session,
                 )

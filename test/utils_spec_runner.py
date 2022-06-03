@@ -294,7 +294,12 @@ class SpecRunner(IntegrationTest):
             args = {"sessions": sessions, "collection": collection}
             args.update(arguments)
             arguments = args
-        result = cmd(**dict(arguments))
+        try:
+            if name == "create_collection":
+                self.listener.ignore_list_collections = True
+            result = cmd(**dict(arguments))
+        finally:
+            self.listener.ignore_list_collections = False
 
         # Cleanup open change stream cursors.
         if name == "watch":
