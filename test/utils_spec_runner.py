@@ -336,8 +336,7 @@ class SpecRunner(IntegrationTest):
         expected_result = op.get("result")
         if expect_error(op):
             with self.assertRaises(self.allowable_errors(op), msg=op["name"]) as context:
-                self.run_operation(sessions, collection, op.copy())
-
+                out = self.run_operation(sessions, collection, op.copy())
             if expect_error_message(expected_result):
                 if isinstance(context.exception, BulkWriteError):
                     errmsg = str(context.exception.details).lower()

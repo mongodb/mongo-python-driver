@@ -621,7 +621,7 @@ class TestSpec(SpecRunner):
 
     def parse_client_options(self, opts):
         """Override clientOptions parsing to support autoEncryptOpts."""
-        encrypt_opts = opts.pop("autoEncryptOpts")
+        encrypt_opts = opts.pop("autoEncryptOpts", None)
         if encrypt_opts:
             opts["auto_encryption_opts"] = self.parse_auto_encrypt_opts(encrypt_opts)
 
@@ -643,9 +643,9 @@ class TestSpec(SpecRunner):
         encrypted_fields = scenario_def["encrypted_fields"]
         json_schema = scenario_def["json_schema"]
         data = scenario_def["data"]
+        coll = client_context.client.get_database("keyvault", codec_options=OPTS)["datakeys"]
+        coll.delete_many({})
         if key_vault_data:
-            coll = client_context.client.get_database("keyvault", codec_options=OPTS)["datakeys"]
-            coll.delete_many({})
             coll.insert_many(key_vault_data)
 
         db_name = self.get_scenario_db_name(scenario_def)

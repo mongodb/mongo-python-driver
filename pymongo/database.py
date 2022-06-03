@@ -891,7 +891,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         name,
         session=None,
         comment=None,
-        **kwargs,
     ):
         command = SON([("drop", name)])
         if comment is not None:
@@ -913,7 +912,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
         encrypted_fields: Optional[Mapping[str, Any]] = None,
-        **kwargs,
     ) -> Dict[str, Any]:
         """Drop a collection.
 
@@ -955,8 +953,10 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             encrypted_fields = self.client.options.auto_encryption_opts._encrypted_fields_map.get(
                 full_name
             )
-        if not encrypted_fields:
-            fields = list(self.list_collections(filter={"name": name}))
+        if not encrypted_fields and self.client.options.auto_encryption_opts:
+            fields = list(
+                self.list_collections(filter={"name": name}, session=session, comment=comment)
+            )
             if fields and fields[0]["options"].get("encryptedFields"):
                 encrypted_fields = fields[0]["options"]["encryptedFields"]
         if encrypted_fields:
@@ -975,7 +975,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 session=session,
                 comment=comment,
             )
-        self._drop_helper(name, comment, session, **kwargs)
+        self._drop_helper(name, session, comment)
 
     def validate_collection(
         self,
