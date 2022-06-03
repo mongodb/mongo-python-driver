@@ -975,7 +975,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 session=session,
                 comment=comment,
             )
-        self._drop_helper(name, session, comment)
+        return self._drop_helper(name, session, comment)
 
     def validate_collection(
         self,
