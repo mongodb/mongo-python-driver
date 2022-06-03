@@ -886,12 +886,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         return [result["name"] for result in self.list_collections(session=session, **kwargs)]
 
-    def _drop_helper(
-        self,
-        name,
-        session=None,
-        comment=None,
-    ):
+    def _drop_helper(self, name, session=None, comment=None):
         command = SON([("drop", name)])
         if comment is not None:
             command["comment"] = comment

@@ -455,7 +455,7 @@ class SpecRunner(IntegrationTest):
         operation."""
         self.run_operations(sessions, collection, test["operations"])
 
-    def parse_client_options(self, opts, encrypted_fields=None):
+    def parse_client_options(self, opts):
         """Allow encryption spec to override a clientOptions parsing."""
         # Convert test['clientOptions'] to dict to avoid a Jython bug using
         # "**" with ScenarioDict.
