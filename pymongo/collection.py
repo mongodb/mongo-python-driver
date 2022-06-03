@@ -30,7 +30,6 @@ from typing import (
     Union,
 )
 
-from bson import decode
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
@@ -200,7 +199,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             read_concern or database.read_concern,
         )
         if not isinstance(name, str):
-            raise TypeError(f"name must be an instance of str")
+            raise TypeError("name must be an instance of str")
 
         if not name or ".." in name:
             raise InvalidName("collection names cannot be empty")

@@ -42,7 +42,6 @@ from test.test_bulk import BulkTestBase
 from test.utils import (
     AllowListEventListener,
     OvertCommandListener,
-    ScenarioDict,
     TestCreator,
     TopologyEventListener,
     camel_to_snake_args,

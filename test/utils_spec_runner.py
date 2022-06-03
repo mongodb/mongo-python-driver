@@ -32,7 +32,7 @@ from test.utils import (
 )
 from typing import List
 
-from bson import _dict_to_bson, decode, encode
+from bson import decode, encode
 from bson.binary import Binary
 from bson.int64 import Int64
 from bson.son import SON
