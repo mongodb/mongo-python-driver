@@ -31,6 +31,7 @@ TEST_ENCRYPTION=${TEST_ENCRYPTION:-}
 TEST_CRYPT_SHARED=${TEST_CRYPT_SHARED:-}
 LIBMONGOCRYPT_URL=${LIBMONGOCRYPT_URL:-}
 DATA_LAKE=${DATA_LAKE:-}
+SERVER_VERSION=${SERVER_VERSION:-"latest"}
 TEST_ARGS=""
 
 if [ -n "$COMPRESSORS" ]; then
@@ -153,7 +154,7 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     if [ -n "$TEST_CRYPT_SHARED" ]; then
         echo "Testing CSFLE with crypt_shared lib"
         $PYTHON $DRIVERS_TOOLS/.evergreen/mongodl.py --component crypt_shared \
-            --version latest --out ../crypt_shared/
+            --version ${SERVER_VERSION} --out ../crypt_shared/
         export DYLD_FALLBACK_LIBRARY_PATH=../crypt_shared/lib/:$DYLD_FALLBACK_LIBRARY_PATH
         export LD_LIBRARY_PATH=../crypt_shared/lib:$LD_LIBRARY_PATH
         export PATH=../crypt_shared/bin:$PATH

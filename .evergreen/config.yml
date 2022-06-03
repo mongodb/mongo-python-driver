@@ -483,6 +483,7 @@ functions:
             SSL=${SSL} \
             DATA_LAKE=${DATA_LAKE} \
             MONGODB_API_VERSION=${MONGODB_API_VERSION} \
+            SERVER_VERSION=${VERSION} \
             bash ${PROJECT_DIRECTORY}/.evergreen/run-tests.sh
 
   "run enterprise auth tests":
