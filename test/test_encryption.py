@@ -449,10 +449,18 @@ class TestExplicitSimple(EncryptionIntegrationTest):
 
         msg = "key_id must be a bson.binary.Binary with subtype 4"
         algo = Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic
+        uid = uuid.uuid4()
         with self.assertRaisesRegex(TypeError, msg):
-            client_encryption.encrypt("str", algo, key_id=uuid.uuid4())  # type: ignore[arg-type]
+            client_encryption.encrypt("str", algo, key_id=uid)  # type: ignore[arg-type]
         with self.assertRaisesRegex(TypeError, msg):
             client_encryption.encrypt("str", algo, key_id=Binary(b"123"))
+
+        msg = "index_key_id must be a bson.binary.Binary with subtype 4"
+        algo = Algorithm.INDEXED
+        with self.assertRaisesRegex(TypeError, msg):
+            client_encryption.encrypt("str", algo, index_key_id=uid)  # type: ignore[arg-type]
+        with self.assertRaisesRegex(TypeError, msg):
+            client_encryption.encrypt("str", algo, index_key_id=Binary(b"123"))
 
     def test_bson_errors(self):
         client_encryption = ClientEncryption(
@@ -2009,12 +2017,14 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
 
     def test_01_insert_encrypted_indexed_and_find(self):
         val = "encrypted indexed value"
-        insert_payload = self.client_encryption.encrypt(val, "Indexed", self.key1_id)
+        insert_payload = self.client_encryption.encrypt(val, Algorithm.INDEXED, self.key1_id)
         self.encrypted_client[self.db.name].explicit_encryption.insert_one(
             {"encryptedIndexed": insert_payload}
         )
 
-        find_payload = self.client_encryption.encrypt(val, "Indexed", self.key1_id, query_type=1)
+        find_payload = self.client_encryption.encrypt(
+            val, Algorithm.INDEXED, self.key1_id, query_type=1
+        )
         docs = list(
             self.encrypted_client[self.db.name].explicit_encryption.find(
                 {"encryptedIndexed": find_payload}
@@ -2028,14 +2038,16 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
         contention = 10
         for _ in range(contention):
             insert_payload = self.client_encryption.encrypt(
-                val, "Indexed", self.key1_id, contention_factor=contention
+                val, Algorithm.INDEXED, self.key1_id, contention_factor=contention
             )
             self.encrypted_client[self.db.name].explicit_encryption.insert_one(
                 {"encryptedIndexed": insert_payload}
             )
 
         # Find without contention_factor non-deterministically returns 0-9 documents.
-        find_payload = self.client_encryption.encrypt(val, "Indexed", self.key1_id, query_type=1)
+        find_payload = self.client_encryption.encrypt(
+            val, Algorithm.INDEXED, self.key1_id, query_type=1
+        )
         docs = list(
             self.encrypted_client[self.db.name].explicit_encryption.find(
                 {"encryptedIndexed": find_payload}
@@ -2047,7 +2059,7 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
 
         # Find with contention_factor will return all 10 documents.
         find_payload = self.client_encryption.encrypt(
-            val, "Indexed", self.key1_id, query_type=1, contention_factor=contention
+            val, Algorithm.INDEXED, self.key1_id, query_type=1, contention_factor=contention
         )
         docs = list(
             self.encrypted_client[self.db.name].explicit_encryption.find(
@@ -2060,7 +2072,7 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
 
     def test_03_insert_encrypted_unindexed(self):
         val = "encrypted unindexed value"
-        insert_payload = self.client_encryption.encrypt(val, "Unindexed", self.key1_id)
+        insert_payload = self.client_encryption.encrypt(val, Algorithm.UNINDEXED, self.key1_id)
         self.encrypted_client[self.db.name].explicit_encryption.insert_one(
             {"_id": 1, "encryptedUnindexed": insert_payload}
         )
@@ -2071,13 +2083,13 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
 
     def test_04_roundtrip_encrypted_indexed(self):
         val = "encrypted indexed value"
-        payload = self.client_encryption.encrypt(val, "Indexed", self.key1_id)
+        payload = self.client_encryption.encrypt(val, Algorithm.INDEXED, self.key1_id)
         decrypted = self.client_encryption.decrypt(payload)
         self.assertEqual(decrypted, val)
 
     def test_05_roundtrip_encrypted_unindexed(self):
         val = "encrypted indexed value"
-        payload = self.client_encryption.encrypt(val, "Unindexed", self.key1_id)
+        payload = self.client_encryption.encrypt(val, Algorithm.UNINDEXED, self.key1_id)
         decrypted = self.client_encryption.decrypt(payload)
         self.assertEqual(decrypted, val)
 
