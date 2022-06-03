@@ -38,7 +38,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -78,7 +78,7 @@
                   "listDatabases"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -217,7 +217,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -257,7 +257,7 @@
                   "listDatabases"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -390,7 +390,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -430,7 +430,7 @@
                   "aggregate"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -569,7 +569,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -609,7 +609,7 @@
                   "aggregate"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -762,7 +762,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -802,7 +802,7 @@
                   "listCollections"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -941,7 +941,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -981,7 +981,7 @@
                   "listCollections"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -1120,7 +1120,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -1160,7 +1160,7 @@
                   "ping"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -1305,7 +1305,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -1345,7 +1345,7 @@
                   "aggregate"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -1484,7 +1484,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -1524,7 +1524,7 @@
                   "aggregate"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -1663,7 +1663,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -1703,7 +1703,7 @@
                   "count"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -1842,7 +1842,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -1882,7 +1882,7 @@
                   "aggregate"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -2021,7 +2021,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -2061,7 +2061,7 @@
                   "count"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -2194,7 +2194,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -2234,7 +2234,7 @@
                   "distinct"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -2375,7 +2375,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -2415,7 +2415,7 @@
                   "find"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -2554,7 +2554,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -2594,7 +2594,7 @@
                   "find"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -2733,7 +2733,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -2773,7 +2773,7 @@
                   "listIndexes"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -2906,7 +2906,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -2946,7 +2946,7 @@
                   "listIndexes"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -3079,7 +3079,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -3119,7 +3119,7 @@
                   "aggregate"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -3258,7 +3258,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -3298,7 +3298,7 @@
                   "insert"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -3441,7 +3441,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -3481,7 +3481,7 @@
                   "insert"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -3628,7 +3628,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -3668,7 +3668,7 @@
                   "delete"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -3807,7 +3807,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -3847,7 +3847,7 @@
                   "delete"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -3986,7 +3986,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -4026,7 +4026,7 @@
                   "update"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -4171,7 +4171,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -4211,7 +4211,7 @@
                   "update"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -4360,7 +4360,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -4400,7 +4400,7 @@
                   "update"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -4549,7 +4549,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -4589,7 +4589,7 @@
                   "findAndModify"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -4728,7 +4728,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -4768,7 +4768,7 @@
                   "findAndModify"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -4913,7 +4913,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -4953,7 +4953,7 @@
                   "findAndModify"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -5102,7 +5102,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -5142,7 +5142,7 @@
                   "insert"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -5297,7 +5297,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -5337,7 +5337,7 @@
                   "createIndexes"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -5482,7 +5482,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -5522,7 +5522,7 @@
                   "dropIndexes"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
@@ -5665,7 +5665,7 @@
                 "client": {
                   "id": "client",
                   "uriOptions": {
-                    "timeoutMS": 150
+                    "timeoutMS": 250
                   },
                   "useMultipleMongoses": false,
                   "observeEvents": [
@@ -5705,7 +5705,7 @@
                   "dropIndexes"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 200
+                "blockTimeMS": 350
               }
             }
           }
