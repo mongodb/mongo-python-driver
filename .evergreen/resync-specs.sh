@@ -93,6 +93,7 @@ do
       cpjson client-side-encryption/corpus/ client-side-encryption/corpus
       cpjson client-side-encryption/external/ client-side-encryption/external
       cpjson client-side-encryption/limits/ client-side-encryption/limits
+      cpjson client-side-encryption/etc/data client-side-encryption/etc/data
       ;;
     cmap|CMAP|connection-monitoring-and-pooling)
       cpjson connection-monitoring-and-pooling/tests cmap
