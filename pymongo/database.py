@@ -892,7 +892,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         session=None,
         comment=None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ):
         command = SON([("drop", name)])
         if comment is not None:
             command["comment"] = comment
