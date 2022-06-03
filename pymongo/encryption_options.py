@@ -49,6 +49,7 @@ class AutoEncryptionOpts(object):
         bypass_query_analysis: bool = False,
         crypt_shared_lib_path: Optional[str] = None,
         crypt_shared_lib_required: bool = False,
+        bypass_query_analysis: bool = False,
     ) -> None:
         """Options to configure automatic client-side field level encryption.
 
@@ -147,10 +148,14 @@ class AutoEncryptionOpts(object):
           - `crypt_shared_lib_path` (optional): Override the path to load the crypt_shared library.
           - `crypt_shared_lib_required` (optional): If True, raise an error if libmongocrypt is
             unable to load the crypt_shared library.
+          - `bypass_query_analysis` (optional):  If ``True``, disable automatic analysis of
+            outgoing commands. Set `bypass_query_analysis` to use explicit
+            encryption on indexed fields without the MongoDB Enterprise Advanced
+            licensed crypt_shared library.
 
         .. versionchanged:: 4.2
-           Added `encrypted_fields_map` and `bypass_query_analysis` parameters
-           Added `crypt_shared_lib_path` and `crypt_shared_lib_required` parameters
+           Added `encrypted_fields_map` `crypt_shared_lib_path`, `crypt_shared_lib_required`,
+           and `bypass_query_analysis` parameters.
 
         .. versionchanged:: 4.0
            Added the `kms_tls_options` parameter and the "kmip" KMS provider.
@@ -184,3 +189,4 @@ class AutoEncryptionOpts(object):
             self._mongocryptd_spawn_args.append("--idleShutdownTimeoutSecs=60")
         # Maps KMS provider name to a SSLContext.
         self._kms_ssl_contexts = _parse_kms_tls_options(kms_tls_options)
+        self._bypass_query_analysis = bypass_query_analysis
