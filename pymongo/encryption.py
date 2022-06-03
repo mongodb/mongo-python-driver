@@ -576,7 +576,7 @@ class ClientEncryption(object):
         :Returns:
           The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
 
-        .. versionchanged:: 1.3
+        .. versionchanged:: 4.2
            Added the `index_key_id`, `query_type`, and `contention_factor` parameters.
         """
         self._check_closed()
