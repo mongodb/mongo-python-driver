@@ -591,11 +591,12 @@ class ClientEncryption(object):
             :class:`~bson.binary.Binary` with subtype 4 (
             :attr:`~bson.binary.UUID_SUBTYPE`).
           - `key_alt_name`: Identifies a key vault document by 'keyAltName'.
-          - `index_key_id` (bytes): the index key id to use for Queryable Encryption.
+          - `index_key_id`: The index key id to use for Queryable Encryption. Must be
+            a :class:`~bson.binary.Binary` with subtype 4 (:attr:`~bson.binary.UUID_SUBTYPE`).
           - `query_type` (int): The query type to execute. See
             :class:`QueryType` for valid options.
           - `contention_factor` (int): The contention factor to use
-            when the algorithm is "Indexed".
+            when the algorithm is :attr:`Algorithm.INDEXED`.
 
         :Returns:
           The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
