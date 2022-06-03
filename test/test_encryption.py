@@ -51,14 +51,14 @@ from test.utils import (
 from test.utils_spec_runner import SpecRunner
 
 from bson import encode, json_util
-from bson.binary import JAVA_LEGACY, STANDARD, UUID_SUBTYPE, Binary, UuidRepresentation
+from bson.binary import UUID_SUBTYPE, Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.errors import BSONError
 from bson.json_util import JSONOptions
 from bson.son import SON
 from pymongo import encryption
 from pymongo.cursor import CursorType
-from pymongo.encryption import Algorithm, ClientEncryption
+from pymongo.encryption import Algorithm, ClientEncryption, QueryType
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts
 from pymongo.errors import (
     BulkWriteError,
@@ -212,11 +212,11 @@ class EncryptionIntegrationTest(IntegrationTest):
 BASE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "client-side-encryption")
 SPEC_PATH = os.path.join(BASE, "spec")
 
-OPTS = CodecOptions(uuid_representation=STANDARD)
+OPTS = CodecOptions()
 
 # Use SON to preserve the order of fields while parsing json. Use tz_aware
 # =False to match how CodecOptions decodes dates.
-JSON_OPTS = JSONOptions(document_class=SON, uuid_representation=STANDARD, tz_aware=False)
+JSON_OPTS = JSONOptions(document_class=SON, tz_aware=False)
 
 
 def read(*paths):
@@ -324,7 +324,7 @@ class TestClientSimple(EncryptionIntegrationTest):
 
 
 class TestEncryptedBulkWrite(BulkTestBase, EncryptionIntegrationTest):
-    def test_upsert_uuid_standard_encrypte(self):
+    def test_upsert_uuid_standard_encrypt(self):
         opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
         client = rs_or_single_client(auto_encryption_opts=opts)
         self.addCleanup(client.close)
@@ -449,10 +449,18 @@ class TestExplicitSimple(EncryptionIntegrationTest):
 
         msg = "key_id must be a bson.binary.Binary with subtype 4"
         algo = Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic
+        uid = uuid.uuid4()
         with self.assertRaisesRegex(TypeError, msg):
-            client_encryption.encrypt("str", algo, key_id=uuid.uuid4())  # type: ignore[arg-type]
+            client_encryption.encrypt("str", algo, key_id=uid)  # type: ignore[arg-type]
         with self.assertRaisesRegex(TypeError, msg):
             client_encryption.encrypt("str", algo, key_id=Binary(b"123"))
+
+        msg = "index_key_id must be a bson.binary.Binary with subtype 4"
+        algo = Algorithm.INDEXED
+        with self.assertRaisesRegex(TypeError, msg):
+            client_encryption.encrypt("str", algo, index_key_id=uid)  # type: ignore[arg-type]
+        with self.assertRaisesRegex(TypeError, msg):
+            client_encryption.encrypt("str", algo, index_key_id=Binary(b"123"))
 
     def test_bson_errors(self):
         client_encryption = ClientEncryption(
@@ -466,7 +474,7 @@ class TestExplicitSimple(EncryptionIntegrationTest):
             client_encryption.encrypt(
                 unencodable_value,
                 Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
-                key_id=Binary(uuid.uuid4().bytes, UUID_SUBTYPE),
+                key_id=Binary.from_uuid(uuid.uuid4()),
             )
 
     def test_codec_options(self):
@@ -475,7 +483,7 @@ class TestExplicitSimple(EncryptionIntegrationTest):
                 KMS_PROVIDERS, "keyvault.datakeys", client_context.client, None  # type: ignore[arg-type]
             )
 
-        opts = CodecOptions(uuid_representation=JAVA_LEGACY)
+        opts = CodecOptions(uuid_representation=UuidRepresentation.JAVA_LEGACY)
         client_encryption_legacy = ClientEncryption(
             KMS_PROVIDERS, "keyvault.datakeys", client_context.client, opts
         )
@@ -493,8 +501,9 @@ class TestExplicitSimple(EncryptionIntegrationTest):
         self.assertEqual(decrypted_value_legacy, value)
 
         # Encrypt the same UUID with STANDARD codec options.
+        opts = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
         client_encryption = ClientEncryption(
-            KMS_PROVIDERS, "keyvault.datakeys", client_context.client, OPTS
+            KMS_PROVIDERS, "keyvault.datakeys", client_context.client, opts
         )
         self.addCleanup(client_encryption.close)
         encrypted_standard = client_encryption.encrypt(
@@ -986,9 +995,7 @@ class TestCorpus(EncryptionIntegrationTest):
         )
         self.addCleanup(vault.drop)
 
-        client_encrypted = rs_or_single_client(
-            auto_encryption_opts=opts, uuidRepresentation="standard"
-        )
+        client_encrypted = rs_or_single_client(auto_encryption_opts=opts)
         self.addCleanup(client_encrypted.close)
 
         client_encryption = ClientEncryption(
@@ -1436,7 +1443,7 @@ class AzureGCPEncryptionTestMixin(object):
         ciphertext = client_encryption.encrypt(
             "string0",
             algorithm=Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
-            key_id=Binary.from_uuid(self.DEK["_id"], STANDARD),
+            key_id=self.DEK["_id"],
         )
 
         self.assertEqual(bytes(ciphertext), base64.b64decode(expectation))
@@ -1972,8 +1979,123 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         with self.assertRaisesRegex(EncryptionError, "expired|certificate verify failed"):
             self.client_encryption_expired.create_data_key("kmip")
         # Invalid cert hostname error.
-        with self.assertRaisesRegex(EncryptionError, "IP address mismatch|wronghost"):
+        with self.assertRaisesRegex(
+            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch"
+        ):
             self.client_encryption_invalid_hostname.create_data_key("kmip")
+
+
+# https://github.com/mongodb/specifications/blob/d4c9432/source/client-side-encryption/tests/README.rst#explicit-encryption
+class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
+    @client_context.require_no_standalone
+    @client_context.require_version_min(6, 0, -1)
+    def setUp(self):
+        super().setUp()
+        self.encrypted_fields = json_data("etc", "data", "encryptedFields.json")
+        self.key1_document = json_data("etc", "data", "keys", "key1-document.json")
+        self.key1_id = self.key1_document["_id"]
+        self.db = self.client.test_queryable_encryption
+        self.client.drop_database(self.db)
+        self.db.command("create", self.encrypted_fields["escCollection"])
+        self.db.command("create", self.encrypted_fields["eccCollection"])
+        self.db.command("create", self.encrypted_fields["ecocCollection"])
+        self.db.command("create", "explicit_encryption", encryptedFields=self.encrypted_fields)
+        key_vault = create_key_vault(self.client.keyvault.datakeys, self.key1_document)
+        self.addCleanup(key_vault.drop)
+        self.key_vault_client = self.client
+        self.client_encryption = ClientEncryption(
+            {"local": {"key": LOCAL_MASTER_KEY}}, key_vault.full_name, self.key_vault_client, OPTS
+        )
+        self.addCleanup(self.client_encryption.close)
+        opts = AutoEncryptionOpts(
+            {"local": {"key": LOCAL_MASTER_KEY}},
+            key_vault.full_name,
+            bypass_query_analysis=True,
+        )
+        self.encrypted_client = rs_or_single_client(auto_encryption_opts=opts)
+        self.addCleanup(self.encrypted_client.close)
+
+    def test_01_insert_encrypted_indexed_and_find(self):
+        val = "encrypted indexed value"
+        insert_payload = self.client_encryption.encrypt(val, Algorithm.INDEXED, self.key1_id)
+        self.encrypted_client[self.db.name].explicit_encryption.insert_one(
+            {"encryptedIndexed": insert_payload}
+        )
+
+        find_payload = self.client_encryption.encrypt(
+            val, Algorithm.INDEXED, self.key1_id, query_type=QueryType.EQUALITY
+        )
+        docs = list(
+            self.encrypted_client[self.db.name].explicit_encryption.find(
+                {"encryptedIndexed": find_payload}
+            )
+        )
+        self.assertEqual(len(docs), 1)
+        self.assertEqual(docs[0]["encryptedIndexed"], val)
+
+    def test_02_insert_encrypted_indexed_and_find_contention(self):
+        val = "encrypted indexed value"
+        contention = 10
+        for _ in range(contention):
+            insert_payload = self.client_encryption.encrypt(
+                val, Algorithm.INDEXED, self.key1_id, contention_factor=contention
+            )
+            self.encrypted_client[self.db.name].explicit_encryption.insert_one(
+                {"encryptedIndexed": insert_payload}
+            )
+
+        # Find without contention_factor non-deterministically returns 0-9 documents.
+        find_payload = self.client_encryption.encrypt(
+            val, Algorithm.INDEXED, self.key1_id, query_type=QueryType.EQUALITY
+        )
+        docs = list(
+            self.encrypted_client[self.db.name].explicit_encryption.find(
+                {"encryptedIndexed": find_payload}
+            )
+        )
+        self.assertLessEqual(len(docs), 10)
+        for doc in docs:
+            self.assertEqual(doc["encryptedIndexed"], val)
+
+        # Find with contention_factor will return all 10 documents.
+        find_payload = self.client_encryption.encrypt(
+            val,
+            Algorithm.INDEXED,
+            self.key1_id,
+            query_type=QueryType.EQUALITY,
+            contention_factor=contention,
+        )
+        docs = list(
+            self.encrypted_client[self.db.name].explicit_encryption.find(
+                {"encryptedIndexed": find_payload}
+            )
+        )
+        self.assertEqual(len(docs), 10)
+        for doc in docs:
+            self.assertEqual(doc["encryptedIndexed"], val)
+
+    def test_03_insert_encrypted_unindexed(self):
+        val = "encrypted unindexed value"
+        insert_payload = self.client_encryption.encrypt(val, Algorithm.UNINDEXED, self.key1_id)
+        self.encrypted_client[self.db.name].explicit_encryption.insert_one(
+            {"_id": 1, "encryptedUnindexed": insert_payload}
+        )
+
+        docs = list(self.encrypted_client[self.db.name].explicit_encryption.find({"_id": 1}))
+        self.assertEqual(len(docs), 1)
+        self.assertEqual(docs[0]["encryptedUnindexed"], val)
+
+    def test_04_roundtrip_encrypted_indexed(self):
+        val = "encrypted indexed value"
+        payload = self.client_encryption.encrypt(val, Algorithm.INDEXED, self.key1_id)
+        decrypted = self.client_encryption.decrypt(payload)
+        self.assertEqual(decrypted, val)
+
+    def test_05_roundtrip_encrypted_unindexed(self):
+        val = "encrypted indexed value"
+        payload = self.client_encryption.encrypt(val, Algorithm.UNINDEXED, self.key1_id)
+        decrypted = self.client_encryption.decrypt(payload)
+        self.assertEqual(decrypted, val)
 
 
 if __name__ == "__main__":
