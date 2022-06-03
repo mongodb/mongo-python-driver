@@ -303,6 +303,7 @@ class _Encrypter(object):
                 crypt_shared_lib_path=opts._crypt_shared_lib_path,
                 crypt_shared_lib_required=opts._crypt_shared_lib_required,
                 bypass_encryption=opts._bypass_auto_encryption,
+                bypass_query_analysis=opts._bypass_query_analysis,
             ),
         )
         self._closed = False
@@ -550,6 +551,9 @@ class ClientEncryption(object):
         algorithm: str,
         key_id: Optional[Binary] = None,
         key_alt_name: Optional[str] = None,
+        index_key_id: Optional[Binary] = None,
+        query_type: Optional[int] = None,
+        contention_factor: Optional[int] = None,
     ) -> Binary:
         """Encrypt a BSON value with a given key and algorithm.
 
@@ -564,9 +568,16 @@ class ClientEncryption(object):
             :class:`~bson.binary.Binary` with subtype 4 (
             :attr:`~bson.binary.UUID_SUBTYPE`).
           - `key_alt_name`: Identifies a key vault document by 'keyAltName'.
+          - `index_key_id` (bytes): the index key id to use for Queryable Encryption.
+          - `query_type` (int): The query type to execute.
+          - `contention_factor` (int): The contention factor to use
+            when the algorithm is "Indexed".
 
         :Returns:
           The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
+
+        .. versionchanged:: 1.3
+           Added the `index_key_id`, `query_type`, and `contention_factor` parameters.
         """
         self._check_closed()
         if key_id is not None and not (
@@ -577,7 +588,13 @@ class ClientEncryption(object):
         doc = encode({"v": value}, codec_options=self._codec_options)
         with _wrap_encryption_errors():
             encrypted_doc = self._encryption.encrypt(
-                doc, algorithm, key_id=key_id, key_alt_name=key_alt_name
+                doc,
+                algorithm,
+                key_id=key_id,
+                key_alt_name=key_alt_name,
+                index_key_id=index_key_id,
+                query_type=query_type,
+                contention_factor=contention_factor,
             )
             return decode(encrypted_doc)["v"]  # type: ignore[index]
 

@@ -216,7 +216,7 @@ OPTS = CodecOptions(uuid_representation=STANDARD)
 
 # Use SON to preserve the order of fields while parsing json. Use tz_aware
 # =False to match how CodecOptions decodes dates.
-JSON_OPTS = JSONOptions(document_class=SON, uuid_representation=STANDARD, tz_aware=False)
+JSON_OPTS = JSONOptions(document_class=SON, tz_aware=False)
 
 
 def read(*paths):
@@ -1974,6 +1974,56 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         # Invalid cert hostname error.
         with self.assertRaisesRegex(EncryptionError, "IP address mismatch|wronghost"):
             self.client_encryption_invalid_hostname.create_data_key("kmip")
+
+
+# https://github.com/mongodb/specifications/blob/d4c9432/source/client-side-encryption/tests/README.rst#explicit-encryption
+class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
+    @client_context.require_no_standalone
+    @client_context.require_version_min(6, 0, -1)
+    def setUp(self):
+        super().setUp()
+        self.encrypted_fields = json_data("etc", "data", "encryptedFields.json")
+        self.key1_document = json_data("etc", "data", "keys", "key1-document.json")
+        self.key1_id = self.key1_document["_id"]
+        self.db = self.client.test_queryable_encryption
+        self.client.drop_database(self.db)
+        self.db.command("create", self.encrypted_fields["escCollection"])
+        self.db.command("create", self.encrypted_fields["eccCollection"])
+        self.db.command("create", self.encrypted_fields["ecocCollection"])
+        self.db.command("create", "explicit_encryption", encryptedFields=self.encrypted_fields)
+        key_vault = create_key_vault(self.client.keyvault.datakeys, self.key1_document)
+        self.addCleanup(key_vault.drop)
+        self.key_vault_client = self.client
+        self.client_encryption = ClientEncryption(
+            {"local": {"key": LOCAL_MASTER_KEY}}, key_vault.full_name, self.key_vault_client, OPTS
+        )
+        self.addCleanup(self.client_encryption.close)
+        opts = AutoEncryptionOpts(
+            {"local": {"key": LOCAL_MASTER_KEY}},
+            key_vault.full_name,
+            bypass_query_analysis=True,
+        )
+        self.encrypted_client = rs_or_single_client(auto_encryption_opts=opts)
+        self.addCleanup(self.encrypted_client.close)
+
+    def test_01_insert_encrypted_indexed_and_find(self):
+        insert_payload = self.client_encryption.encrypt(
+            "encrypted indexed value", "Indexed", self.key1_id
+        )
+        self.encrypted_client[self.db.name].explicit_encryption.insert_one(
+            {"encryptedIndexed": insert_payload}
+        )
+
+        find_payload = self.client_encryption.encrypt(
+            "encrypted indexed value", "Indexed", self.key1_id, query_type=1
+        )
+        docs = list(
+            self.encrypted_client[self.db.name].explicit_encryption.find(
+                {"encryptedIndexed": find_payload}
+            )
+        )
+        self.assertEqual(len(docs), 1)
+        self.assertEqual(docs[0]["encryptedIndexed"], "encrypted indexed value")
 
 
 if __name__ == "__main__":
