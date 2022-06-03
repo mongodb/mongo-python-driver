@@ -212,7 +212,7 @@ class EncryptionIntegrationTest(IntegrationTest):
 BASE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "client-side-encryption")
 SPEC_PATH = os.path.join(BASE, "spec")
 
-OPTS = CodecOptions(uuid_representation=STANDARD)
+OPTS = CodecOptions()
 
 # Use SON to preserve the order of fields while parsing json. Use tz_aware
 # =False to match how CodecOptions decodes dates.
@@ -324,7 +324,7 @@ class TestClientSimple(EncryptionIntegrationTest):
 
 
 class TestEncryptedBulkWrite(BulkTestBase, EncryptionIntegrationTest):
-    def test_upsert_uuid_standard_encrypte(self):
+    def test_upsert_uuid_standard_encrypt(self):
         opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
         client = rs_or_single_client(auto_encryption_opts=opts)
         self.addCleanup(client.close)
@@ -493,8 +493,9 @@ class TestExplicitSimple(EncryptionIntegrationTest):
         self.assertEqual(decrypted_value_legacy, value)
 
         # Encrypt the same UUID with STANDARD codec options.
+        opts = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
         client_encryption = ClientEncryption(
-            KMS_PROVIDERS, "keyvault.datakeys", client_context.client, OPTS
+            KMS_PROVIDERS, "keyvault.datakeys", client_context.client, opts
         )
         self.addCleanup(client_encryption.close)
         encrypted_standard = client_encryption.encrypt(
@@ -986,9 +987,7 @@ class TestCorpus(EncryptionIntegrationTest):
         )
         self.addCleanup(vault.drop)
 
-        client_encrypted = rs_or_single_client(
-            auto_encryption_opts=opts, uuidRepresentation="standard"
-        )
+        client_encrypted = rs_or_single_client(auto_encryption_opts=opts)
         self.addCleanup(client_encrypted.close)
 
         client_encryption = ClientEncryption(
@@ -1436,7 +1435,7 @@ class AzureGCPEncryptionTestMixin(object):
         ciphertext = client_encryption.encrypt(
             "string0",
             algorithm=Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
-            key_id=Binary.from_uuid(self.DEK["_id"], STANDARD),
+            key_id=self.DEK["_id"],
         )
 
         self.assertEqual(bytes(ciphertext), base64.b64decode(expectation))
