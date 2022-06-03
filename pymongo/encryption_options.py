@@ -49,7 +49,6 @@ class AutoEncryptionOpts(object):
         bypass_query_analysis: bool = False,
         crypt_shared_lib_path: Optional[str] = None,
         crypt_shared_lib_required: bool = False,
-        bypass_query_analysis: bool = False,
     ) -> None:
         """Options to configure automatic client-side field level encryption.
 
