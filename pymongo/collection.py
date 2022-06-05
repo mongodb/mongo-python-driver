@@ -44,6 +44,7 @@ from pymongo.bulk import _Bulk
 from pymongo.change_stream import CollectionChangeStream
 from pymongo.collation import validate_collation_or_none
 from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
+from pymongo.common import _ecc_coll_name, _ecoc_coll_name, _esc_coll_name
 from pymongo.cursor import Cursor, RawBatchCursor
 from pymongo.errors import (
     ConfigurationError,
@@ -209,34 +210,18 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             raise InvalidName("collection names must not start or end with '.': %r" % name)
         if "\x00" in name:
             raise InvalidName("collection names must not contain the null character")
+        collation = validate_collation_or_none(kwargs.pop("collation", None))
+
         self.__database: Database[_DocumentType] = database
         self.__name = name
         self.__full_name = "%s.%s" % (self.__database.name, self.__name)
-
-        collation = validate_collation_or_none(kwargs.pop("collation", None))
-        # Skip this check in a transaction where listCollections is not
-        # supported.
-
         if create or kwargs or collation:
             if encrypted_fields:
-                self.__create(
-                    encrypted_fields.get("escCollection", f"enxcol_.{self.__name}.esc"),
-                    {"clusteredIndex": {"key": {"_id": 1}, "unique": True}},
-                    None,
-                    session,
-                )
-                self.__create(
-                    encrypted_fields.get("eccCollection", f"enxcol_.{self.__name}.ecc"),
-                    {"clusteredIndex": {"key": {"_id": 1}, "unique": True}},
-                    None,
-                    session,
-                )
-                self.__create(
-                    encrypted_fields.get("ecocCollection", f"enxcol_.{self.__name}.ecoc"),
-                    {"clusteredIndex": {"key": {"_id": 1}, "unique": True}},
-                    None,
-                    session,
-                )
+                common.validate_is_mapping("encrypted_fields", encrypted_fields)
+                opts = {"clusteredIndex": {"key": {"_id": 1}, "unique": True}}
+                self.__create(_esc_coll_name(encrypted_fields, name), opts, None, session)
+                self.__create(_ecc_coll_name(encrypted_fields, name), opts, None, session)
+                self.__create(_ecoc_coll_name(encrypted_fields, name), opts, None, session)
                 self.__create(name, kwargs, collation, session, encrypted_fields=encrypted_fields)
                 self.create_index([("__safeContent__", ASCENDING)], session)
             else:

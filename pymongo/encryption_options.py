@@ -23,6 +23,7 @@ try:
 except ImportError:
     _HAVE_PYMONGOCRYPT = False
 
+from pymongo.common import validate_is_mapping
 from pymongo.errors import ConfigurationError
 from pymongo.uri_parser import _parse_kms_tls_options
 
@@ -45,10 +46,10 @@ class AutoEncryptionOpts(object):
         mongocryptd_spawn_path: str = "mongocryptd",
         mongocryptd_spawn_args: Optional[List[str]] = None,
         kms_tls_options: Optional[Mapping[str, Any]] = None,
-        encrypted_fields_map: Optional[Mapping] = None,
-        bypass_query_analysis: bool = False,
         crypt_shared_lib_path: Optional[str] = None,
         crypt_shared_lib_required: bool = False,
+        bypass_query_analysis: bool = False,
+        encrypted_fields_map: Optional[Mapping] = None,
     ) -> None:
         """Options to configure automatic client-side field level encryption.
 
@@ -156,9 +157,9 @@ class AutoEncryptionOpts(object):
 
                 {
                   "db.coll": {
-                      "escCollection": "escCollectionName",
-                      "eccCollection": "eccCollectionName",
-                      "ecocCollection": "ecocCollectionName",
+                      "escCollection": "enxcol_.encryptedCollection.esc",
+                      "eccCollection": "enxcol_.encryptedCollection.ecc",
+                      "ecocCollection": "enxcol_.encryptedCollection.ecoc",
                       "fields": [
                           {
                               "path": "firstName",
@@ -190,6 +191,8 @@ class AutoEncryptionOpts(object):
                 "install a compatible version with: "
                 "python -m pip install 'pymongo[encryption]'"
             )
+        if encrypted_fields_map:
+            validate_is_mapping("encrypted_fields_map", encrypted_fields_map)
         self._encrypted_fields_map = encrypted_fields_map
         self._bypass_query_analysis = bypass_query_analysis
         self._crypt_shared_lib_path = crypt_shared_lib_path

@@ -307,8 +307,15 @@ class SpecRunner(IntegrationTest):
             args.update(arguments)
             arguments = args
 
-        result = cmd(**dict(arguments))
-
+        try:
+            if name == "create_collection" and (
+                "encrypted" in operation["arguments"]["name"]
+                or "plaintext" in operation["arguments"]["name"]
+            ):
+                self.listener.ignore_list_collections = True
+            result = cmd(**dict(arguments))
+        finally:
+            self.listener.ignore_list_collections = False
         # Cleanup open change stream cursors.
         if name == "watch":
             self.addCleanup(result.close)
