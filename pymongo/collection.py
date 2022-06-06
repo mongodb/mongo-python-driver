@@ -116,6 +116,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional["ReadConcern"] = None,
         session: Optional["ClientSession"] = None,
+        timeout: Optional[float] = None,
         encrypted_fields: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
@@ -198,6 +199,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             read_preference or database.read_preference,
             write_concern or database.write_concern,
             read_concern or database.read_concern,
+            timeout if timeout is not None else database.timeout,
         )
         if not isinstance(name, str):
             raise TypeError("name must be an instance of str")
@@ -390,6 +392,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional["ReadConcern"] = None,
+        timeout: Optional[float] = None,
     ) -> "Collection[_DocumentType]":
         """Get a clone of this collection changing the specified settings.
 
@@ -428,6 +431,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             read_preference or self.read_preference,
             write_concern or self.write_concern,
             read_concern or self.read_concern,
+            timeout=timeout if timeout is not None else self.timeout,
         )
 
     def bulk_write(

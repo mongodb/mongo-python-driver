@@ -16,6 +16,7 @@
 
 import contextlib
 import enum
+import socket
 import uuid
 import weakref
 from typing import Any, Mapping, Optional, Sequence
@@ -38,6 +39,7 @@ from bson.codec_options import CodecOptions
 from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from bson.son import SON
+from pymongo import _csot
 from pymongo.daemon import _spawn_daemon
 from pymongo.encryption_options import AutoEncryptionOpts
 from pymongo.errors import (
@@ -47,6 +49,7 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
 )
 from pymongo.mongo_client import MongoClient
+from pymongo.network import BLOCKING_IO_ERRORS
 from pymongo.pool import PoolOptions, _configured_socket
 from pymongo.read_concern import ReadConcern
 from pymongo.ssl_support import get_ssl_context
@@ -119,9 +122,11 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
                 False,  # allow_invalid_hostnames
                 False,
             )  # disable_ocsp_endpoint_check
+        # CSOT: set timeout for socket creation.
+        connect_timeout = max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0.001)
         opts = PoolOptions(
-            connect_timeout=_KMS_CONNECT_TIMEOUT,
-            socket_timeout=_KMS_CONNECT_TIMEOUT,
+            connect_timeout=connect_timeout,
+            socket_timeout=connect_timeout,
             ssl_context=ctx,
         )
         host, port = parse_host(endpoint, _HTTPS_PORT)
@@ -129,10 +134,14 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         try:
             conn.sendall(message)
             while kms_context.bytes_needed > 0:
+                # CSOT: update timeout.
+                conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
                 data = conn.recv(kms_context.bytes_needed)
                 if not data:
                     raise OSError("KMS connection closed")
                 kms_context.feed(data)
+        except BLOCKING_IO_ERRORS:
+            raise socket.timeout("timed out")
         finally:
             conn.close()
 

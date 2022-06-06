@@ -14,6 +14,8 @@
 
 """Tools to parse mongo client options."""
 
+from typing import Optional
+
 from bson.codec_options import _parse_codec_options
 from pymongo import common
 from pymongo.auth import _build_credentials_tuple
@@ -195,6 +197,7 @@ class ClientOptions(object):
         self.__server_selector = options.get("server_selector", any_server_selector)
         self.__auto_encryption_opts = options.get("auto_encryption_opts")
         self.__load_balanced = options.get("loadbalanced")
+        self.__timeout = options.get("timeoutms")
 
     @property
     def _options(self):
@@ -259,6 +262,14 @@ class ClientOptions(object):
     def read_concern(self):
         """A :class:`~pymongo.read_concern.ReadConcern` instance."""
         return self.__read_concern
+
+    @property
+    def timeout(self) -> Optional[float]:
+        """The timeout.
+
+        ..versionadded: 4.2
+        """
+        return self.__timeout
 
     @property
     def retry_writes(self):

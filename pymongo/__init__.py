@@ -14,7 +14,7 @@
 
 """Python driver for MongoDB."""
 
-from typing import Tuple, Union
+from typing import ContextManager, Optional, Tuple, Union
 
 ASCENDING = 1
 """Ascending sort order."""
@@ -69,6 +69,7 @@ version = __version__
 
 """Current version of PyMongo."""
 
+from pymongo import _csot
 from pymongo.collection import ReturnDocument  # noqa: F401
 from pymongo.common import (  # noqa: F401
     MAX_SUPPORTED_WIRE_VERSION,
@@ -97,3 +98,47 @@ def has_c() -> bool:
         return True
     except ImportError:
         return False
+
+
+def timeout(seconds: Optional[float]) -> ContextManager:
+    """**(Provisional)** Apply the given timeout for a block of operations.
+
+    .. note:: :func:`~pymongo.timeout` is currently provisional. Backwards
+       incompatible changes may occur before becoming officially supported.
+
+    Use :func:`~pymongo.timeout` in a with-statement::
+
+      with pymongo.timeout(5):
+          client.db.coll.insert_one({})
+          client.db.coll2.insert_one({})
+
+    When the with-statement is entered, a deadline is set for the entire
+    block. When that deadline is exceeded, any blocking pymongo operation
+    will raise a timeout exception. For example::
+
+      try:
+          with pymongo.timeout(5):
+              client.db.coll.insert_one({})
+              time.sleep(5)
+              # The deadline has now expired, the next operation will raise
+              # a timeout exception.
+              client.db.coll2.insert_one({})
+      except (ServerSelectionTimeoutError, ExecutionTimeout, WTimeoutError,
+              NetworkTimeout) as exc:
+          print(f"block timed out: {exc!r}")
+
+    :Parameters:
+      - `seconds`: A non-negative floating point number expressing seconds, or None.
+
+    :Raises:
+      - :py:class:`ValueError`: When `seconds` is negative.
+
+    .. versionadded:: 4.2
+    """
+    if not isinstance(seconds, (int, float, type(None))):
+        raise TypeError("timeout must be None, an int, or a float")
+    if seconds and seconds < 0:
+        raise ValueError("timeout cannot be negative")
+    if seconds is not None:
+        seconds = float(seconds)
+    return _csot._TimeoutContext(seconds)
