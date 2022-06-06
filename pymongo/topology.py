@@ -270,7 +270,8 @@ class Topology(object):
     def select_server(self, selector, server_selection_timeout=None, address=None):
         """Like select_servers, but choose a random server if several match."""
         server = self._select_server(selector, server_selection_timeout, address)
-        _csot.set_rtt(server.description.round_trip_time)
+        if _csot.get_timeout():
+            _csot.set_rtt(server.description.round_trip_time)
         return server
 
     def select_server_by_address(self, address, server_selection_timeout=None):
