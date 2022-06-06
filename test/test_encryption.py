@@ -210,7 +210,7 @@ class EncryptionIntegrationTest(IntegrationTest):
 
 # Location of JSON test files.
 BASE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "client-side-encryption")
-SPEC_PATH = os.path.join(BASE, "spec")
+SPEC_PATH = os.path.join(BASE, "spec", "legacy")
 
 OPTS = CodecOptions()
 
@@ -614,12 +614,13 @@ class TestSpec(SpecRunner):
             opts["kms_tls_options"] = KMS_TLS_OPTS
         if "key_vault_namespace" not in opts:
             opts["key_vault_namespace"] = "keyvault.datakeys"
+
         opts = dict(opts)
         return AutoEncryptionOpts(**opts)
 
     def parse_client_options(self, opts):
         """Override clientOptions parsing to support autoEncryptOpts."""
-        encrypt_opts = opts.pop("autoEncryptOpts")
+        encrypt_opts = opts.pop("autoEncryptOpts", None)
         if encrypt_opts:
             opts["auto_encryption_opts"] = self.parse_auto_encrypt_opts(encrypt_opts)
 
@@ -638,18 +639,18 @@ class TestSpec(SpecRunner):
     def setup_scenario(self, scenario_def):
         """Override a test's setup."""
         key_vault_data = scenario_def["key_vault_data"]
+        encrypted_fields = scenario_def["encrypted_fields"]
         json_schema = scenario_def["json_schema"]
         data = scenario_def["data"]
+        coll = client_context.client.get_database("keyvault", codec_options=OPTS)["datakeys"]
+        coll.delete_many({})
         if key_vault_data:
-            coll = client_context.client.get_database("keyvault", codec_options=OPTS)["datakeys"]
-            coll.delete_many({})
             coll.insert_many(key_vault_data)
 
         db_name = self.get_scenario_db_name(scenario_def)
         coll_name = self.get_scenario_coll_name(scenario_def)
         db = client_context.client.get_database(db_name, codec_options=OPTS)
-        coll = db[coll_name]
-        coll.drop()
+        coll = db.drop_collection(coll_name, encrypted_fields=encrypted_fields)
         wc = WriteConcern(w="majority")
         kwargs: Dict[str, Any] = {}
         if json_schema:
@@ -657,8 +658,8 @@ class TestSpec(SpecRunner):
             kwargs["codec_options"] = OPTS
         if not data:
             kwargs["write_concern"] = wc
-        db.create_collection(coll_name, **kwargs)
-
+        db.create_collection(coll_name, **kwargs, encrypted_fields=encrypted_fields)
+        coll = db[coll_name]
         if data:
             # Load data.
             coll.with_options(write_concern=wc).insert_many(scenario_def["data"])

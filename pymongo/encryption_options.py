@@ -23,6 +23,7 @@ try:
 except ImportError:
     _HAVE_PYMONGOCRYPT = False
 
+from pymongo.common import validate_is_mapping
 from pymongo.errors import ConfigurationError
 from pymongo.uri_parser import _parse_kms_tls_options
 
@@ -48,6 +49,7 @@ class AutoEncryptionOpts(object):
         crypt_shared_lib_path: Optional[str] = None,
         crypt_shared_lib_required: bool = False,
         bypass_query_analysis: bool = False,
+        encrypted_fields_map: Optional[Mapping] = None,
     ) -> None:
         """Options to configure automatic client-side field level encryption.
 
@@ -150,10 +152,33 @@ class AutoEncryptionOpts(object):
             outgoing commands. Set `bypass_query_analysis` to use explicit
             encryption on indexed fields without the MongoDB Enterprise Advanced
             licensed crypt_shared library.
+          - `encrypted_fields_map`: Map of collection namespace ("db.coll") to documents that
+            described the encrypted fields for Queryable Encryption. For example::
+
+                {
+                  "db.encryptedCollection": {
+                      "escCollection": "enxcol_.encryptedCollection.esc",
+                      "eccCollection": "enxcol_.encryptedCollection.ecc",
+                      "ecocCollection": "enxcol_.encryptedCollection.ecoc",
+                      "fields": [
+                          {
+                              "path": "firstName",
+                              "keyId": Binary.from_uuid(UUID('00000000-0000-0000-0000-000000000000')),
+                              "bsonType": "string",
+                              "queries": {"queryType": "equality"}
+                          },
+                          {
+                              "path": "ssn",
+                              "keyId": Binary.from_uuid(UUID('04104104-1041-0410-4104-104104104104')),
+                              "bsonType": "string"
+                          }
+                      ]
+                  }
+                }
 
         .. versionchanged:: 4.2
-           Added `crypt_shared_lib_path`, `crypt_shared_lib_required`, and `bypass_query_analysis`
-           parameters.
+           Added `encrypted_fields_map` `crypt_shared_lib_path`, `crypt_shared_lib_required`,
+           and `bypass_query_analysis` parameters.
 
         .. versionchanged:: 4.0
            Added the `kms_tls_options` parameter and the "kmip" KMS provider.
@@ -166,6 +191,10 @@ class AutoEncryptionOpts(object):
                 "install a compatible version with: "
                 "python -m pip install 'pymongo[encryption]'"
             )
+        if encrypted_fields_map:
+            validate_is_mapping("encrypted_fields_map", encrypted_fields_map)
+        self._encrypted_fields_map = encrypted_fields_map
+        self._bypass_query_analysis = bypass_query_analysis
         self._crypt_shared_lib_path = crypt_shared_lib_path
         self._crypt_shared_lib_required = crypt_shared_lib_required
         self._kms_providers = kms_providers
