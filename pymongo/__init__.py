@@ -101,7 +101,10 @@ def has_c() -> bool:
 
 
 def timeout(seconds: Optional[float]) -> ContextManager:
-    """Apply the given timeout for a block of operations.
+    """**(Provisional)** Apply the given timeout for a block of operations.
+
+    .. note:: :func:`~pymongo.timeout` is currently provisional. Backwards
+       incompatible changes may occur before becoming officially supported.
 
     Use :func:`~pymongo.timeout` in a with-statement::
 

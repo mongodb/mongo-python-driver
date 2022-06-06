@@ -6,6 +6,13 @@ Changes in Version 4.2
 
 .. warning:: PyMongo 4.2 drops support for Python 3.6: Python 3.7+ is now required.
 
+PyMongo 4.2 brings a number of improvements including:
+
+- Support for MongoDB 6.0.
+- Provisional (beta) support for :func:`pymongo.timeout` to apply a single timeout
+  to an entire block of pymongo operations.
+- Beta support for Queryable Encryption with MongoDB 6.0.
+
 Bug fixes
 .........
 
