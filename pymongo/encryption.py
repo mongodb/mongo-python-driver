@@ -17,7 +17,7 @@
 import contextlib
 import uuid
 import weakref
-from typing import Any, Mapping, Optional, Sequence
+from typing import Any, Iterable, Mapping, Optional, Sequence
 
 try:
     from pymongocrypt.auto_encrypter import AutoEncrypter
@@ -551,6 +551,85 @@ class ClientEncryption(object):
                 kms_provider, master_key=master_key, key_alt_names=key_alt_names
             )
 
+    def create_key(
+        self,
+        kms_provider: str,
+        master_key: Optional[Mapping[str, Any]] = None,
+        key_alt_names: Optional[Sequence[str]] = None,
+    ) -> Binary:
+        """Create and insert a new key into the key vault collection.
+
+        :Parameters:
+          - `kms_provider`: The KMS provider to use. Supported values are
+            "aws", "azure", "gcp", "kmip", and "local".
+          - `master_key`: Identifies a KMS-specific key used to encrypt the
+            new key. If the kmsProvider is "local" the `master_key` is
+            not applicable and may be omitted.
+
+            If the `kms_provider` is "aws" it is required and has the
+            following fields::
+
+              - `region` (string): Required. The AWS region, e.g. "us-east-1".
+              - `key` (string): Required. The Amazon Resource Name (ARN) to
+                 the AWS customer.
+              - `endpoint` (string): Optional. An alternate host to send KMS
+                requests to. May include port number, e.g.
+                "kms.us-east-1.amazonaws.com:443".
+
+            If the `kms_provider` is "azure" it is required and has the
+            following fields::
+
+              - `keyVaultEndpoint` (string): Required. Host with optional
+                 port, e.g. "example.vault.azure.net".
+              - `keyName` (string): Required. Key name in the key vault.
+              - `keyVersion` (string): Optional. Version of the key to use.
+
+            If the `kms_provider` is "gcp" it is required and has the
+            following fields::
+
+              - `projectId` (string): Required. The Google cloud project ID.
+              - `location` (string): Required. The GCP location, e.g. "us-east1".
+              - `keyRing` (string): Required. Name of the key ring that contains
+                the key to use.
+              - `keyName` (string): Required. Name of the key to use.
+              - `keyVersion` (string): Optional. Version of the key to use.
+              - `endpoint` (string): Optional. Host with optional port.
+                Defaults to "cloudkms.googleapis.com".
+
+            If the `kms_provider` is "kmip" it is optional and has the
+            following fields::
+
+              - `keyId` (string): Optional. `keyId` is the KMIP Unique
+                Identifier to a 96 byte KMIP Secret Data managed object. If
+                keyId is omitted, the driver creates a random 96 byte KMIP
+                Secret Data managed object.
+              - `endpoint` (string): Optional. Host with optional
+                 port, e.g. "example.vault.azure.net:".
+
+          - `key_alt_names` (optional): An optional list of string alternate
+            names used to reference a key. If a key is created with alternate
+            names, then encryption may refer to the key by the unique alternate
+            name instead of by ``key_id``. The following example shows creating
+            and referring to a key by alternate name::
+
+              client_encryption.create_key("local", keyAltNames=["name1"])
+              # reference the key with the alternate name
+              client_encryption.encrypt("457-55-5462", keyAltName="name1",
+                                        algorithm=Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Random)
+
+        :Returns:
+          The ``_id`` of the created key document as a
+          :class:`~bson.binary.Binary` with subtype
+          :data:`~bson.binary.UUID_SUBTYPE`.
+
+        .. versionadded:: 4.2
+            Added create_key as an alias to create_data_key to support
+            queryable encryption API.
+        """
+        return self.create_data_key(
+            kms_provider, master_key=master_key, key_alt_names=key_alt_names
+        )
+
     def encrypt(
         self,
         value: Any,
@@ -607,6 +686,27 @@ class ClientEncryption(object):
             decrypted_doc = self._encryption.decrypt(doc)
             return decode(decrypted_doc, codec_options=self._codec_options)["v"]
 
+    def get_key(self, key_id: Binary) -> Any:
+        """Get a data key by id.
+
+        :Parameters:
+          - `id` (Binary): The UUID of a key a which must be a
+            :class:`~bson.binary.Binary` with subtype 4 (
+            :attr:`~bson.binary.UUID_SUBTYPE`).
+
+        :Returns:
+          The key document.
+        """
+        return self._encryption.get_key(key_id)
+
+    def get_keys(self) -> Iterable[Any]:
+        """Get all of the data keys.
+
+        :Returns:
+          An iterable of all the data keys.
+        """
+        return self._encryption.get_keys()
+
     def __enter__(self) -> "ClientEncryption":
         return self
 
@@ -651,23 +751,12 @@ class ClientEncryption(object):
 # # key.
 # addKeyAlternateName (id: UUID, keyAltName: string) UpdateResult;
 
-# # getKey returns one data key.
-# getKey (id: UUID) Document;
-
-# # getKeys returns all data keys.
-# getKeys () Iterable<Document>;
-
 # # getKeyByAltName returns one data key by matching keyAltName.
 # getKeyByAltName (keyAltName: string) Document;
 
 # # removeKeyAlternateName removes keyAltName from the data key if it is present on the data
 # # key.
 # removeKeyAlternateName (id: UUID, keyAltName: string) UpdateResult;
-
-# # createKey is an alias of createDataKey.
-# createKey(kmsProvider: String,
-#           masterKey: Optional<Document>,
-#           keyAltNames: Optional<Array[String]>) UUID;
 
 
 # class RewrapManyDataKeyOpts

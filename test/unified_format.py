@@ -1007,7 +1007,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             opts = kwargs.pop("opts")
             kwargs["master_key"] = opts.get("masterKey")
             kwargs["key_alt_names"] = opts.get("keyAltNames")
-        return target.create_data_key(*args, **kwargs)
+        return target.create_key(*args, **kwargs)
 
     def run_entity_operation(self, spec):
         target = self.entity_map[spec["object"]]
