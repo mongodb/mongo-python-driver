@@ -38,6 +38,7 @@ from pymongo.aggregation import _DatabaseAggregationCommand
 from pymongo.change_stream import DatabaseChangeStream
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
+from pymongo.common import _ecc_coll_name, _ecoc_coll_name, _esc_coll_name
 from pymongo.errors import CollectionInvalid, InvalidName
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
@@ -290,6 +291,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
         session: Optional["ClientSession"] = None,
+        encrypted_fields: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> Collection[_DocumentType]:
         """Create a new :class:`~pymongo.collection.Collection` in this
@@ -321,6 +323,29 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.collation.Collation`.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - `encrypted_fields`: Document that describes the encrypted fields for Queryable
+            Encryption.
+            For example::
+
+                {
+                  "escCollection": "enxcol_.encryptedCollection.esc",
+                  "eccCollection": "enxcol_.encryptedCollection.ecc",
+                  "ecocCollection": "enxcol_.encryptedCollection.ecoc",
+                  "fields": [
+                      {
+                          "path": "firstName",
+                          "keyId": Binary.from_uuid(UUID('00000000-0000-0000-0000-000000000000')),
+                          "bsonType": "string",
+                          "queries": {"queryType": "equality"}
+                      },
+                      {
+                          "path": "ssn",
+                          "keyId": Binary.from_uuid(UUID('04104104-1041-0410-4104-104104104104')),
+                          "bsonType": "string"
+                      }
+                  ]
+
+                }                }
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the `create collection command`_
 
@@ -369,6 +394,17 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         .. _create collection command:
             https://mongodb.com/docs/manual/reference/command/create
         """
+        if (
+            not encrypted_fields
+            and self.client.options.auto_encryption_opts
+            and self.client.options.auto_encryption_opts._encrypted_fields_map
+        ):
+            encrypted_fields = self.client.options.auto_encryption_opts._encrypted_fields_map.get(
+                "%s.%s" % (self.name, name)
+            )
+        if encrypted_fields:
+            common.validate_is_mapping("encrypted_fields", encrypted_fields)
+
         with self.__client._tmp_session(session) as s:
             # Skip this check in a transaction where listCollections is not
             # supported.
@@ -376,7 +412,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 filter={"name": name}, session=s
             ):
                 raise CollectionInvalid("collection %s already exists" % name)
-
             return Collection(
                 self,
                 name,
@@ -386,6 +421,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 write_concern,
                 read_concern,
                 session=s,
+                encrypted_fields=encrypted_fields,
                 **kwargs,
             )
 
@@ -874,11 +910,27 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         return [result["name"] for result in self.list_collections(session=session, **kwargs)]
 
+    def _drop_helper(self, name, session=None, comment=None):
+        command = SON([("drop", name)])
+        if comment is not None:
+            command["comment"] = comment
+
+        with self.__client._socket_for_writes(session) as sock_info:
+            return self._command(
+                sock_info,
+                command,
+                allowable_errors=["ns not found", 26],
+                write_concern=self._write_concern_for(session),
+                parse_write_concern_error=True,
+                session=session,
+            )
+
     def drop_collection(
         self,
         name_or_collection: Union[str, Collection],
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
+        encrypted_fields: Optional[Mapping[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Drop a collection.
 
@@ -889,6 +941,29 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.client_session.ClientSession`.
           - `comment` (optional): A user-provided comment to attach to this
             command.
+          - `encrypted_fields`: Document that describes the encrypted fields for Queryable
+            Encryption.
+            For example::
+
+                {
+                  "escCollection": "enxcol_.encryptedCollection.esc",
+                  "eccCollection": "enxcol_.encryptedCollection.ecc",
+                  "ecocCollection": "enxcol_.encryptedCollection.ecoc",
+                  "fields": [
+                      {
+                          "path": "firstName",
+                          "keyId": Binary.from_uuid(UUID('00000000-0000-0000-0000-000000000000')),
+                          "bsonType": "string",
+                          "queries": {"queryType": "equality"}
+                      },
+                      {
+                          "path": "ssn",
+                          "keyId": Binary.from_uuid(UUID('04104104-1041-0410-4104-104104104104')),
+                          "bsonType": "string"
+                      }
+                  ]
+
+                }
 
 
         .. note:: The :attr:`~pymongo.database.Database.write_concern` of
@@ -911,20 +986,34 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         if not isinstance(name, str):
             raise TypeError("name_or_collection must be an instance of str")
-
-        command = SON([("drop", name)])
-        if comment is not None:
-            command["comment"] = comment
-
-        with self.__client._socket_for_writes(session) as sock_info:
-            return self._command(
-                sock_info,
-                command,
-                allowable_errors=["ns not found", 26],
-                write_concern=self._write_concern_for(session),
-                parse_write_concern_error=True,
-                session=session,
+        full_name = "%s.%s" % (self.name, name)
+        if (
+            not encrypted_fields
+            and self.client.options.auto_encryption_opts
+            and self.client.options.auto_encryption_opts._encrypted_fields_map
+        ):
+            encrypted_fields = self.client.options.auto_encryption_opts._encrypted_fields_map.get(
+                full_name
             )
+        if not encrypted_fields and self.client.options.auto_encryption_opts:
+            colls = list(
+                self.list_collections(filter={"name": name}, session=session, comment=comment)
+            )
+            if colls and colls[0]["options"].get("encryptedFields"):
+                encrypted_fields = colls[0]["options"]["encryptedFields"]
+        if encrypted_fields:
+            common.validate_is_mapping("encrypted_fields", encrypted_fields)
+            self._drop_helper(
+                _esc_coll_name(encrypted_fields, name), session=session, comment=comment
+            )
+            self._drop_helper(
+                _ecc_coll_name(encrypted_fields, name), session=session, comment=comment
+            )
+            self._drop_helper(
+                _ecoc_coll_name(encrypted_fields, name), session=session, comment=comment
+            )
+
+        return self._drop_helper(name, session, comment)
 
     def validate_collection(
         self,

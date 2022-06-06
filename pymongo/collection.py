@@ -35,7 +35,7 @@ from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from bson.timestamp import Timestamp
-from pymongo import common, helpers, message
+from pymongo import ASCENDING, common, helpers, message
 from pymongo.aggregation import (
     _CollectionAggregationCommand,
     _CollectionRawAggregationCommand,
@@ -44,6 +44,7 @@ from pymongo.bulk import _Bulk
 from pymongo.change_stream import CollectionChangeStream
 from pymongo.collation import validate_collation_or_none
 from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
+from pymongo.common import _ecc_coll_name, _ecoc_coll_name, _esc_coll_name
 from pymongo.cursor import Cursor, RawBatchCursor
 from pymongo.errors import (
     ConfigurationError,
@@ -115,6 +116,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional["ReadConcern"] = None,
         session: Optional["ClientSession"] = None,
+        encrypted_fields: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
         """Get / create a Mongo collection.
@@ -197,7 +199,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             write_concern or database.write_concern,
             read_concern or database.read_concern,
         )
-
         if not isinstance(name, str):
             raise TypeError("name must be an instance of str")
 
@@ -215,7 +216,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self.__name = name
         self.__full_name = "%s.%s" % (self.__database.name, self.__name)
         if create or kwargs or collation:
-            self.__create(kwargs, collation, session)
+            if encrypted_fields:
+                common.validate_is_mapping("encrypted_fields", encrypted_fields)
+                opts = {"clusteredIndex": {"key": {"_id": 1}, "unique": True}}
+                self.__create(_esc_coll_name(encrypted_fields, name), opts, None, session)
+                self.__create(_ecc_coll_name(encrypted_fields, name), opts, None, session)
+                self.__create(_ecoc_coll_name(encrypted_fields, name), opts, None, session)
+                self.__create(name, kwargs, collation, session, encrypted_fields=encrypted_fields)
+                self.create_index([("__safeContent__", ASCENDING)], session)
+            else:
+                self.__create(name, kwargs, collation, session)
 
         self.__write_response_codec_options = self.codec_options._replace(
             unicode_decode_error_handler="replace", document_class=dict
@@ -286,9 +296,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 user_fields=user_fields,
             )
 
-    def __create(self, options, collation, session):
+    def __create(self, name, options, collation, session, encrypted_fields=None):
         """Sends a create command with the given options."""
-        cmd = SON([("create", self.__name)])
+        cmd = SON([("create", name)])
+        if encrypted_fields:
+            cmd["encryptedFields"] = encrypted_fields
+
         if options:
             if "size" in options:
                 options["size"] = float(options["size"])

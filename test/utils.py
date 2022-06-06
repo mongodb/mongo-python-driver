@@ -174,15 +174,26 @@ class AllowListEventListener(EventListener):
 class OvertCommandListener(EventListener):
     """A CommandListener that ignores sensitive commands."""
 
+    ignore_list_collections = False
+
     def started(self, event):
+        if self.ignore_list_collections and event.command_name.lower() == "listcollections":
+            self.ignore_list_collections = False
+            return
         if event.command_name.lower() not in _SENSITIVE_COMMANDS:
             super(OvertCommandListener, self).started(event)
 
     def succeeded(self, event):
+        if self.ignore_list_collections and event.command_name.lower() == "listcollections":
+            self.ignore_list_collections = False
+            return
         if event.command_name.lower() not in _SENSITIVE_COMMANDS:
             super(OvertCommandListener, self).succeeded(event)
 
     def failed(self, event):
+        if self.ignore_list_collections and event.command_name.lower() == "listcollections":
+            self.ignore_list_collections = False
+            return
         if event.command_name.lower() not in _SENSITIVE_COMMANDS:
             super(OvertCommandListener, self).failed(event)
 
@@ -983,6 +994,8 @@ def parse_spec_options(opts):
     if "maxCommitTimeMS" in opts:
         opts["max_commit_time_ms"] = opts.pop("maxCommitTimeMS")
 
+    if "encryptedFields" in opts:
+        opts["encrypted_fields"] = opts.pop("encryptedFields")
     if "hint" in opts:
         hint = opts.pop("hint")
         if not isinstance(hint, str):
@@ -1049,11 +1062,6 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callbac
             arguments["requests"] = requests
         elif arg_name == "session":
             arguments["session"] = entity_map[arguments["session"]]
-        elif opname in ("command", "run_admin_command") and arg_name == "command":
-            # Ensure the first key is the command name.
-            ordered_command = SON([(spec["command_name"], 1)])
-            ordered_command.update(arguments["command"])
-            arguments["command"] = ordered_command
         elif opname == "open_download_stream" and arg_name == "id":
             arguments["file_id"] = arguments.pop(arg_name)
         elif opname != "find" and c2s == "max_time_ms":

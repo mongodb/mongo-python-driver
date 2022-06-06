@@ -264,6 +264,11 @@ class _Encrypter(object):
             schema_map = None
         else:
             schema_map = _dict_to_bson(opts._schema_map, False, _DATA_KEY_OPTS)
+
+        if opts._encrypted_fields_map is None:
+            encrypted_fields_map = None
+        else:
+            encrypted_fields_map = _dict_to_bson(opts._encrypted_fields_map, False, _DATA_KEY_OPTS)
         self._bypass_auto_encryption = opts._bypass_auto_encryption
         self._internal_client = None
 
@@ -304,6 +309,7 @@ class _Encrypter(object):
                 crypt_shared_lib_path=opts._crypt_shared_lib_path,
                 crypt_shared_lib_required=opts._crypt_shared_lib_required,
                 bypass_encryption=opts._bypass_auto_encryption,
+                encrypted_fields_map=encrypted_fields_map,
                 bypass_query_analysis=opts._bypass_query_analysis,
             ),
         )
