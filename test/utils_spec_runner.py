@@ -233,7 +233,7 @@ class SpecRunner(IntegrationTest):
             def _helper(expected_result, result):
                 if isinstance(expected_result, abc.Mapping):
                     for i in expected_result.keys():
-                        _helper(expected_result[i], result[i])
+                        self.assertEqual(expected_result[i], result[i])
 
                 elif isinstance(expected_result, list):
                     for i, k in zip(expected_result, result):

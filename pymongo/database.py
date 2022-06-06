@@ -323,29 +323,29 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.collation.Collation`.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
-          - `encrypted_fields`: Map of collection namespace ("db.coll") to documents that
-            described the encrypted fields for Queryable Encryption. For example::
+          - `encrypted_fields`: Document that describes the encrypted fields for Queryable
+            Encryption.
+            For example::
 
                 {
-                  "db.coll": {
-                      "escCollection": "enxcol_.encryptedCollection.esc",
-                      "eccCollection": "enxcol_.encryptedCollection.ecc",
-                      "ecocCollection": "enxcol_.encryptedCollection.ecoc",
-                      "fields": [
-                          {
-                              "path": "firstName",
-                              "keyId": Binary.from_uuid(UUID('00000000-0000-0000-0000-000000000000')),
-                              "bsonType": "string",
-                              "queries": {"queryType": "equality"}
-                          },
-                          {
-                              "path": "ssn",
-                              "keyId": Binary.from_uuid(UUID('04104104-1041-0410-4104-104104104104')),
-                              "bsonType": "string"
-                          }
-                      ]
-                  }
-                }
+                  "escCollection": "enxcol_.encryptedCollection.esc",
+                  "eccCollection": "enxcol_.encryptedCollection.ecc",
+                  "ecocCollection": "enxcol_.encryptedCollection.ecoc",
+                  "fields": [
+                      {
+                          "path": "firstName",
+                          "keyId": Binary.from_uuid(UUID('00000000-0000-0000-0000-000000000000')),
+                          "bsonType": "string",
+                          "queries": {"queryType": "equality"}
+                      },
+                      {
+                          "path": "ssn",
+                          "keyId": Binary.from_uuid(UUID('04104104-1041-0410-4104-104104104104')),
+                          "bsonType": "string"
+                      }
+                  ]
+
+                }                }
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the `create collection command`_
 
@@ -941,28 +941,28 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.client_session.ClientSession`.
           - `comment` (optional): A user-provided comment to attach to this
             command.
-          - `encrypted_fields`: Map of collection namespace ("db.coll") to documents that described the encrypted fields for Queryable Encryption.
+          - `encrypted_fields`: Document that describes the encrypted fields for Queryable
+            Encryption.
             For example::
 
                 {
-                  "db.coll": {
-                      "escCollection": "enxcol_.encryptedCollection.esc",
-                      "eccCollection": "enxcol_.encryptedCollection.ecc",
-                      "ecocCollection": "enxcol_.encryptedCollection.ecoc",
-                      "fields": [
-                          {
-                              "path": "firstName",
-                              "keyId": Binary.from_uuid(UUID('00000000-0000-0000-0000-000000000000')),
-                              "bsonType": "string",
-                              "queries": {"queryType": "equality"}
-                          },
-                          {
-                              "path": "ssn",
-                              "keyId": Binary.from_uuid(UUID('04104104-1041-0410-4104-104104104104')),
-                              "bsonType": "string"
-                          }
-                      ]
-                  }
+                  "escCollection": "enxcol_.encryptedCollection.esc",
+                  "eccCollection": "enxcol_.encryptedCollection.ecc",
+                  "ecocCollection": "enxcol_.encryptedCollection.ecoc",
+                  "fields": [
+                      {
+                          "path": "firstName",
+                          "keyId": Binary.from_uuid(UUID('00000000-0000-0000-0000-000000000000')),
+                          "bsonType": "string",
+                          "queries": {"queryType": "equality"}
+                      },
+                      {
+                          "path": "ssn",
+                          "keyId": Binary.from_uuid(UUID('04104104-1041-0410-4104-104104104104')),
+                          "bsonType": "string"
+                      }
+                  ]
+
                 }
 
 

@@ -156,7 +156,7 @@ class AutoEncryptionOpts(object):
             described the encrypted fields for Queryable Encryption. For example::
 
                 {
-                  "db.coll": {
+                  "db.encryptedCollection": {
                       "escCollection": "enxcol_.encryptedCollection.esc",
                       "eccCollection": "enxcol_.encryptedCollection.ecc",
                       "ecocCollection": "enxcol_.encryptedCollection.ecoc",
