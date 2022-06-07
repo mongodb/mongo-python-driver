@@ -406,8 +406,8 @@ Automatic encryption in Queryable Encryption is configured with an ``encrypted_f
   docs = list(coll.find({"firstName": "Jane"}))
   print(docs)
 
-In the above example, the ``firstName`` field is automatically encrypted and
-decrypted.
+In the above example, the ``firstName`` and ``lastName`` fields are
+automatically encrypted and decrypted.
 
 .. _explicit-client-side-encryption:
 
