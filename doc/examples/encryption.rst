@@ -336,7 +336,7 @@ data key and create a collection with the
   if __name__ == "__main__":
       main()
 
-.. automatic-queryable-client-side-encryption:
+.. _automatic-queryable-client-side-encryption:
 
 Automatic Queryable Encryption (Beta)
 `````````````````````````````````````
