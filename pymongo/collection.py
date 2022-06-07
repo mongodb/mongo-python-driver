@@ -159,8 +159,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession` that is used with
             the create collection command
+          - `encrypted_fields`: **(BETA)** Document that describes the encrypted fields for
+            Queryable Encryption. If provided it will be passed to the create collection command.
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the create collection command
+
+        .. versionchanged:: 4.2
+           Added ``encrypted_fields`` parameter.
 
         .. versionchanged:: 4.0
            Removed the reindex, map_reduce, inline_map_reduce,
@@ -1156,6 +1161,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self,
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
+        encrypted_fields: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Alias for :meth:`~pymongo.database.Database.drop_collection`.
 
@@ -1164,11 +1170,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.client_session.ClientSession`.
           - `comment` (optional): A user-provided comment to attach to this
             command.
+          - `encrypted_fields`: **(BETA)** Document that describes the encrypted fields for
+            Queryable Encryption.
 
         The following two calls are equivalent:
 
           >>> db.foo.drop()
           >>> db.drop_collection("foo")
+
+        .. versionchanged:: 4.2
+           Added ``encrypted_fields`` parameter.
 
         .. versionchanged:: 4.1
            Added ``comment`` parameter.
@@ -1186,7 +1197,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             self.write_concern,
             self.read_concern,
         )
-        dbo.drop_collection(self.__name, session=session, comment=comment)
+        dbo.drop_collection(
+            self.__name, session=session, comment=comment, encrypted_fields=encrypted_fields
+        )
 
     def _delete(
         self,

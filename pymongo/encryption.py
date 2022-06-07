@@ -379,17 +379,26 @@ class Algorithm(str, enum.Enum):
     INDEXED = "Indexed"
     """Indexed.
 
+    .. note:: Support for Queryable Encryption is in beta.
+       Backwards-breaking changes may be made before the final release.
+
     .. versionadded:: 4.2
     """
     UNINDEXED = "Unindexed"
     """Unindexed.
+
+    .. note:: Support for Queryable Encryption is in beta.
+       Backwards-breaking changes may be made before the final release.
 
     .. versionadded:: 4.2
     """
 
 
 class QueryType(enum.IntEnum):
-    """An enum that defines the supported values for explicit encryption query_type.
+    """**(BETA)** An enum that defines the supported values for explicit encryption query_type.
+
+    .. note:: Support for Queryable Encryption is in beta.
+       Backwards-breaking changes may be made before the final release.
 
     .. versionadded:: 4.2
     """
@@ -606,12 +615,16 @@ class ClientEncryption(object):
             :class:`~bson.binary.Binary` with subtype 4 (
             :attr:`~bson.binary.UUID_SUBTYPE`).
           - `key_alt_name`: Identifies a key vault document by 'keyAltName'.
-          - `index_key_id`: The index key id to use for Queryable Encryption. Must be
+          - `index_key_id`: **(BETA)** The index key id to use for Queryable Encryption. Must be
             a :class:`~bson.binary.Binary` with subtype 4 (:attr:`~bson.binary.UUID_SUBTYPE`).
-          - `query_type` (int): The query type to execute. See
+          - `query_type` (int): **(BETA)** The query type to execute. See
             :class:`QueryType` for valid options.
-          - `contention_factor` (int): The contention factor to use
+          - `contention_factor` (int): **(BETA)** The contention factor to use
             when the algorithm is :attr:`Algorithm.INDEXED`.
+
+        .. note:: `index_key_id`, `query_type`, and `contention_factor` are part of the
+           Queryable Encryption beta. Backwards-breaking changes may be made before the
+           final release.
 
         :Returns:
           The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.

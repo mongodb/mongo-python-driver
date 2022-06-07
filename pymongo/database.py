@@ -336,9 +336,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.collation.Collation`.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
-          - `encrypted_fields`: Document that describes the encrypted fields for Queryable
-            Encryption.
-            For example::
+          - `encrypted_fields`: **(BETA)** Document that describes the encrypted fields for
+            Queryable Encryption. For example::
 
                 {
                   "escCollection": "enxcol_.encryptedCollection.esc",
@@ -390,6 +389,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
           - ``pipeline`` (list): a list of aggregation pipeline stages
           - ``comment`` (str): a user-provided comment to attach to this command.
             This option is only supported on MongoDB >= 4.4.
+
+        .. versionchanged:: 4.2
+           Added ``encrypted_fields`` parameter.
 
         .. versionchanged:: 3.11
            This method is now supported inside multi-document transactions
@@ -955,9 +957,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.client_session.ClientSession`.
           - `comment` (optional): A user-provided comment to attach to this
             command.
-          - `encrypted_fields`: Document that describes the encrypted fields for Queryable
-            Encryption.
-            For example::
+          - `encrypted_fields`: **(BETA)** Document that describes the encrypted fields for
+            Queryable Encryption. For example::
 
                 {
                   "escCollection": "enxcol_.encryptedCollection.esc",
@@ -982,6 +983,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         .. note:: The :attr:`~pymongo.database.Database.write_concern` of
            this database is automatically applied to this operation.
+
+        .. versionchanged:: 4.2
+           Added ``encrypted_fields`` parameter.
 
         .. versionchanged:: 4.1
            Added ``comment`` parameter.
