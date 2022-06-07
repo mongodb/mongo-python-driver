@@ -15,8 +15,8 @@
 """Internal helpers for CSOT."""
 
 import time
-from contextvars import ContextVar
-from typing import Optional
+from contextvars import ContextVar, Token
+from typing import Optional, Tuple
 
 TIMEOUT: ContextVar[Optional[float]] = ContextVar("TIMEOUT", default=None)
 RTT: ContextVar[float] = ContextVar("RTT", default=0.0)
@@ -37,11 +37,6 @@ def get_deadline() -> float:
 
 def set_rtt(rtt: float) -> None:
     RTT.set(rtt)
-
-
-def set_timeout(timeout: Optional[float]) -> None:
-    TIMEOUT.set(timeout)
-    DEADLINE.set(time.monotonic() + timeout if timeout else float("inf"))
 
 
 def remaining() -> Optional[float]:
@@ -67,14 +62,24 @@ class _TimeoutContext(object):
           client.test.test.insert_one({})
     """
 
-    __slots__ = ("_timeout",)
+    __slots__ = ("_timeout", "_tokens")
 
     def __init__(self, timeout: Optional[float]):
         self._timeout = timeout
+        self._tokens: Optional[Tuple[Token, Token, Token]] = None
 
     def __enter__(self):
-        set_timeout(self._timeout)
+        timeout_token = TIMEOUT.set(self._timeout)
+        deadline_token = DEADLINE.set(
+            time.monotonic() + self._timeout if self._timeout else float("inf")
+        )
+        rtt_token = RTT.set(0.0)
+        self._tokens = (timeout_token, deadline_token, rtt_token)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        set_timeout(None)
+        if self._tokens:
+            timeout_token, deadline_token, rtt_token = self._tokens
+            TIMEOUT.reset(timeout_token)
+            DEADLINE.reset(deadline_token)
+            RTT.reset(rtt_token)

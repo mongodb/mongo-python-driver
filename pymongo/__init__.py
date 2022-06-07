@@ -127,6 +127,18 @@ def timeout(seconds: Optional[float]) -> ContextManager:
               NetworkTimeout) as exc:
           print(f"block timed out: {exc!r}")
 
+    When nesting :func:`~pymongo.timeout`, the nested block overrides the
+    timeout. When exiting the block, the previous deadline is restored::
+
+      with pymongo.timeout(5):
+          coll.find_one()  # Uses the 5 second deadline.
+          with pymongo.timeout(3):
+              coll.find_one() # Uses the 3 second deadline.
+          coll.find_one()  # Uses the original 5 second deadline.
+          with pymongo.timeout(10):
+              coll.find_one()  # Uses the 10 second deadline.
+          coll.find_one()  # Uses the original 5 second deadline.
+
     :Parameters:
       - `seconds`: A non-negative floating point number expressing seconds, or None.
 

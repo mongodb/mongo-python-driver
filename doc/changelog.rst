@@ -9,9 +9,10 @@ Changes in Version 4.2
 PyMongo 4.2 brings a number of improvements including:
 
 - Support for MongoDB 6.0.
+- Support for the Queryable Encryption beta with MongoDB 6.0. Note that backwards-breaking
+  changes may be made before the final release.  See :ref:`automatic-queryable-client-side-encryption` for example usage.
 - Provisional (beta) support for :func:`pymongo.timeout` to apply a single timeout
   to an entire block of pymongo operations.
-- Provisional support for :ref:`automatic-queryable-client-side-encryption` with MongoDB 6.0.
 
 Bug fixes
 .........
