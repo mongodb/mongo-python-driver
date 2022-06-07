@@ -11,7 +11,7 @@ PyMongo 4.2 brings a number of improvements including:
 - Support for MongoDB 6.0.
 - Provisional (beta) support for :func:`pymongo.timeout` to apply a single timeout
   to an entire block of pymongo operations.
-- Beta support for Queryable Encryption with MongoDB 6.0.
+- Provisional support for :ref:`automatic-queryable-client-side-encryption` with MongoDB 6.0.
 
 Bug fixes
 .........
@@ -40,6 +40,7 @@ in this release.
 .. _PYTHON-2885: https://jira.mongodb.org/browse/PYTHON-2885
 .. _PYTHON-3167: https://jira.mongodb.org/browse/PYTHON-3167
 .. _PyMongo 4.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=33196
+.. _Queryable Encryption: automatic-queryable-client-side-encryption
 
 Changes in Version 4.1.1
 -------------------------

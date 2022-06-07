@@ -336,6 +336,8 @@ data key and create a collection with the
   if __name__ == "__main__":
       main()
 
+.. automatic-queryable-client-side-encryption:
+
 Automatic Queryable Encryption (Beta)
 `````````````````````````````````````
 
@@ -349,7 +351,9 @@ You must have MongoDB 6.0rc8+ Enterprise to preview the capability.
 
 Until PyMongo 4.2 release is finalized, it can be installed using::
 
-  pip install pymongo@git+https://github.com/mongodb/python-mongo-driver.git@4.2.0b0"
+  pip install "pymongo@git+ssh://git@github.com/mongodb/mongo-python-driver.git@4.2.0b0#egg=pymongo[encryption]"
+
+Additionally, ``libmongocrypt`` must be installed from `source <https://github.com/mongodb/libmongocrypt/blob/master/bindings/python/README.rst#installing-from-source>__`
 
 Automatic encryption in Queryable Encryption is configured with an ``encrypted_fields`` mapping, as demonstrated by the following example::
 
@@ -391,7 +395,7 @@ Automatic encryption in Queryable Encryption is configured with an ``encrypted_f
   client = MongoClient(auto_encryption_opts=auto_encryption_opts)
   client.default.drop_collection('encryptedCollection')
   coll = client.default.create_collection('encryptedCollection')
-  coll.insert_one({ "_id": 1, "firstName": "Snuffy"})
+  coll.insert_one({ "_id": 1, "firstName": "Jane", "lastName": "Doe" })
 
 In the above example, the ``firstName`` field is automatically encrypted and
 decrypted.
