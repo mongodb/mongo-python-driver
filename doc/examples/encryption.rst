@@ -337,7 +337,7 @@ data key and create a collection with the
       main()
 
 Automatic Queryable Encryption (Beta)
-````````````````````````````````````
+`````````````````````````````````````
 
 PyMongo 4.2 brings beta support for Queryable Encryption with MongoDB 6.0.
 
