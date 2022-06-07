@@ -134,10 +134,10 @@ def timeout(seconds: Optional[float]) -> ContextManager:
           coll.find_one()  # Uses the 5 second deadline.
           with pymongo.timeout(3):
               coll.find_one() # Uses the 3 second deadline.
-          coll.find_one()  # Uses the 5 second deadline.
+          coll.find_one()  # Uses the original 5 second deadline.
           with pymongo.timeout(10):
               coll.find_one()  # Uses the 10 second deadline.
-          coll.find_one()  # Uses the 5 second deadline.
+          coll.find_one()  # Uses the original 5 second deadline.
 
     :Parameters:
       - `seconds`: A non-negative floating point number expressing seconds, or None.
