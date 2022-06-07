@@ -341,7 +341,9 @@ Automatic Queryable Encryption (Beta)
 
 PyMongo 4.2 brings beta support for Queryable Encryption with MongoDB 6.0.
 
-Queryable Encryption is the second version of Client-Side Field Level Encryption. Data is encrypted client-side. Queryable Encryption supports indexed encrypted fields, which are further processed server-side.
+Queryable Encryption is the second version of Client-Side Field Level Encryption.
+Data is encrypted client-side. Queryable Encryption supports indexed encrypted fields,
+which are further processed server-side.
 
 You must have MongoDB 6.0rc8+ Enterprise to preview the capability.
 
