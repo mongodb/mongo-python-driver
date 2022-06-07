@@ -353,14 +353,14 @@ Until PyMongo 4.2 release is finalized, it can be installed using::
 
   pip install "pymongo@git+ssh://git@github.com/mongodb/mongo-python-driver.git@4.2.0b0#egg=pymongo[encryption]"
 
-Additionally, ``libmongocrypt`` must be installed from `source <https://github.com/mongodb/libmongocrypt/blob/master/bindings/python/README.rst#installing-from-source>__`
+Additionally, ``libmongocrypt`` must be installed from `source <https://github.com/mongodb/libmongocrypt/blob/master/bindings/python/README.rst#installing-from-source>`_.
 
 Automatic encryption in Queryable Encryption is configured with an ``encrypted_fields`` mapping, as demonstrated by the following example::
 
   import os
   from bson.codec_options import CodecOptions
   from pymongo import MongoClient
-  from pymongo.encryption import ClientEncryption
+  from pymongo.encryption import Algorithm, ClientEncryption, QueryType
   from pymongo.encryption_options import AutoEncryptionOpts
 
 
@@ -373,7 +373,8 @@ Automatic encryption in Queryable Encryption is configured with an ``encrypted_f
   )
   key_vault = key_vault_client["keyvault"]["datakeys"]
   key_vault.drop()
-  key_id = client_encryption.create_data_key("local", key_alt_names=["name"])
+  key1_id = client_encryption.create_data_key("local", key_alt_names=["firstName"])
+  key2_id = client_encryption.create_data_key("local", key_alt_names=["lastName"])
 
   encrypted_fields_map = {
       "default.encryptedCollection": {
@@ -384,8 +385,14 @@ Automatic encryption in Queryable Encryption is configured with an ``encrypted_f
           {
             "path": "firstName",
             "bsonType": "string",
-            "keyId": key_id
-          }
+            "keyId": key1_id,
+            "queries": [{"queryType": "equality"}],
+          },
+            {
+              "path": "lastName",
+              "bsonType": "string",
+              "keyId": key2_id,
+            }
         ]
       }
   }
@@ -396,6 +403,8 @@ Automatic encryption in Queryable Encryption is configured with an ``encrypted_f
   client.default.drop_collection('encryptedCollection')
   coll = client.default.create_collection('encryptedCollection')
   coll.insert_one({ "_id": 1, "firstName": "Jane", "lastName": "Doe" })
+  docs = list(coll.find({"firstName": "Jane"}))
+  print(docs)
 
 In the above example, the ``firstName`` field is automatically encrypted and
 decrypted.
