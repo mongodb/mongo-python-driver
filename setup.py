@@ -282,7 +282,7 @@ if sys.platform in ("win32", "darwin"):
 
 extras_require = {
     "encryption": [
-        "pymongocrypt@git+https://github.com/mongodb/libmongocrypt.git@1.5.0-rc1#subdirectory=bindings/python"
+        "pymongocrypt@git+ssh://git@github.com/mongodb/libmongocrypt.git@pymongocrypt-1.3.0b0#subdirectory=bindings/python"
     ],
     "ocsp": pyopenssl_reqs,
     "snappy": ["python-snappy"],
