@@ -70,9 +70,9 @@ class _TimeoutContext(object):
 
     def __enter__(self):
         timeout_token = TIMEOUT.set(self._timeout)
-        deadline_token = DEADLINE.set(
-            time.monotonic() + self._timeout if self._timeout else float("inf")
-        )
+        prev_deadline = DEADLINE.get()
+        next_deadline = time.monotonic() + self._timeout if self._timeout else float("inf")
+        deadline_token = DEADLINE.set(min(prev_deadline, next_deadline))
         rtt_token = RTT.set(0.0)
         self._tokens = (timeout_token, deadline_token, rtt_token)
         return self

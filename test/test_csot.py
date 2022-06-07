@@ -43,10 +43,11 @@ class TestCSOT(IntegrationTest):
             self.assertEqual(_csot.get_timeout(), 10)
             deadline_10 = _csot.get_deadline()
 
+            # Capped at the original 10 deadline.
             with pymongo.timeout(15):
                 coll.find_one()
                 self.assertEqual(_csot.get_timeout(), 15)
-                self.assertGreater(_csot.get_deadline(), deadline_10)
+                self.assertEqual(_csot.get_deadline(), deadline_10)
 
             # Should be reset to previous values
             self.assertEqual(_csot.get_timeout(), 10)
