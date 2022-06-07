@@ -336,6 +336,64 @@ data key and create a collection with the
   if __name__ == "__main__":
       main()
 
+Automatic Queryable Encryption (Beta)
+````````````````````````````````````
+
+PyMongo 4.2 brings beta support for Queryable Encryption with MongoDB 6.0.
+
+Queryable Encryption is the second version of Client-Side Field Level Encryption. Data is encrypted client-side. Queryable Encryption supports indexed encrypted fields, which are further processed server-side.
+
+You must have MongoDB 6.0rc8+ Enterprise to preview the capability.
+
+Until PyMongo 4.2 release is finalized, it can be installed using::
+
+  pip install pymongo@git+https://github.com/mongodb/python-mongo-driver.git@4.2.0b0"
+
+Automatic encryption in Queryable Encryption is configured with an ``encrypted_fields`` mapping, as demonstrated by the following example::
+
+  import os
+  from bson.codec_options import CodecOptions
+  from pymongo import MongoClient
+  from pymongo.encryption import ClientEncryption
+  from pymongo.encryption_options import AutoEncryptionOpts
+
+
+  local_master_key = os.urandom(96)
+  kms_providers = {"local": {"key": local_master_key}}
+  key_vault_namespace = "keyvault.datakeys"
+  key_vault_client = MongoClient()
+  client_encryption = ClientEncryption(
+      kms_providers, key_vault_namespace, key_vault_client, CodecOptions()
+  )
+  key_vault = key_vault_client["keyvault"]["datakeys"]
+  key_vault.drop()
+  key_id = client_encryption.create_data_key("local", key_alt_names=["name"])
+
+  encrypted_fields_map = {
+      "default.encryptedCollection": {
+        "escCollection": "encryptedCollection.esc",
+        "eccCollection": "encryptedCollection.ecc",
+        "ecocCollection": "encryptedCollection.ecoc",
+        "fields": [
+          {
+            "path": "firstName",
+            "bsonType": "string",
+            "keyId": key_id
+          }
+        ]
+      }
+  }
+
+  auto_encryption_opts = AutoEncryptionOpts(
+            kms_providers, key_vault_namespace, encrypted_fields_map=encrypted_fields_map)
+  client = MongoClient(auto_encryption_opts=auto_encryption_opts)
+  client.default.drop_collection('encryptedCollection')
+  coll = client.default.create_collection('encryptedCollection')
+  coll.insert_one({ "_id": 1, "firstName": "Snuffy"})
+
+In the above example, the ``firstName`` field is automatically encrypted and
+decrypted.
+
 .. _explicit-client-side-encryption:
 
 Explicit Encryption
