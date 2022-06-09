@@ -458,7 +458,7 @@ struct tm * cbson_fake_localtime_r(const time_t *time, struct tm *result) {
 
 
 /* Simulate gmtime_r() to the best of our ability */
-struct tm * fake_gmtime_r(const time_t *time, struct tm *result) {
+struct tm * cbson_fake_gmtime_r(const time_t *time, struct tm *result) {
     const struct tm *static_result = gmtime(time);
 
     assert(result != NULL);

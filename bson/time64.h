@@ -60,7 +60,7 @@ Time64_T   timelocal64   (const struct TM *);
 #ifdef HAS_GMTIME_R
 #    define GMTIME_R(clock, result)    gmtime_r(clock, result)
 #else
-#    define GMTIME_R(clock, result)    fake_gmtime_r(clock, result)
+#    define GMTIME_R(clock, result)    cbson_fake_gmtime_r(clock, result)
 #endif
 
 
