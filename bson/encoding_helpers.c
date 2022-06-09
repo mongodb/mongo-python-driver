@@ -87,7 +87,7 @@ static unsigned char isLegalUTF8(const unsigned char* source, int length) {
     return 1;
 }
 
-result_t check_string(const unsigned char* string, const int length,
+result_t cbson_check_string(const unsigned char* string, const int length,
                       const char check_utf8, const char check_null) {
     int position = 0;
     /* By default we go character by character. Will be different for checking

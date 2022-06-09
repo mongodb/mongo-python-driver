@@ -23,7 +23,7 @@ typedef enum {
     HAS_NULL
 } result_t;
 
-result_t check_string(const unsigned char* string, const int length,
+result_t cbson_check_string(const unsigned char* string, const int length,
                       const char check_utf8, const char check_null);
 
 #endif

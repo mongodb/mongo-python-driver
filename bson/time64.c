@@ -29,13 +29,13 @@ THE SOFTWARE.
 /*
 
 Programmers who have available to them 64-bit time values as a 'long
-long' type can use localtime64_r() and gmtime64_r() which correctly
+long' type can use cbson_localtime64_r() and cbson_gmtime64_r() which correctly
 converts the time even on 32-bit systems. Whether you have 64-bit time
 values will depend on the operating system.
 
-localtime64_r() is a 64-bit equivalent of localtime_r().
+cbson_localtime64_r() is a 64-bit equivalent of localtime_r().
 
-gmtime64_r() is a 64-bit equivalent of gmtime_r().
+cbson_gmtime64_r() is a 64-bit equivalent of gmtime_r().
 
 */
 
@@ -158,7 +158,7 @@ static int is_exception_century(Year year)
    The result is like cmp.
    Ignores things like gmtoffset and dst
 */
-int cmp_date( const struct TM* left, const struct tm* right ) {
+int cbson_cmp_date( const struct TM* left, const struct tm* right ) {
     if( left->tm_year > right->tm_year )
         return 1;
     else if( left->tm_year < right->tm_year )
@@ -196,11 +196,11 @@ int cmp_date( const struct TM* left, const struct tm* right ) {
 /* Check if a date is safely inside a range.
    The intention is to check if its a few days inside.
 */
-int date_in_safe_range( const struct TM* date, const struct tm* min, const struct tm* max ) {
-    if( cmp_date(date, min) == -1 )
+int cbson_date_in_safe_range( const struct TM* date, const struct tm* min, const struct tm* max ) {
+    if( cbson_cmp_date(date, min) == -1 )
         return 0;
 
-    if( cmp_date(date, max) == 1 )
+    if( cbson_cmp_date(date, max) == 1 )
         return 0;
 
     return 1;
@@ -209,9 +209,9 @@ int date_in_safe_range( const struct TM* date, const struct tm* min, const struc
 
 /* timegm() is not in the C or POSIX spec, but it is such a useful
    extension I would be remiss in leaving it out.  Also I need it
-   for localtime64()
+   for cbson_localtime64()
 */
-Time64_T timegm64(const struct TM *date) {
+Time64_T cbson_timegm64(const struct TM *date) {
     Time64_T days    = 0;
     Time64_T seconds = 0;
     Year     year;
@@ -376,7 +376,7 @@ static int safe_year(const Year year)
 }
 
 
-void copy_tm_to_TM64(const struct tm *src, struct TM *dest) {
+void pymongo_copy_tm_to_TM64(const struct tm *src, struct TM *dest) {
     if( src == NULL ) {
         memset(dest, 0, sizeof(*dest));
     }
@@ -408,7 +408,7 @@ void copy_tm_to_TM64(const struct tm *src, struct TM *dest) {
 }
 
 
-void copy_TM64_to_tm(const struct TM *src, struct tm *dest) {
+void cbson_copy_TM64_to_tm(const struct TM *src, struct tm *dest) {
     if( src == NULL ) {
         memset(dest, 0, sizeof(*dest));
     }
@@ -441,7 +441,7 @@ void copy_TM64_to_tm(const struct TM *src, struct tm *dest) {
 
 
 /* Simulate localtime_r() to the best of our ability */
-struct tm * fake_localtime_r(const time_t *time, struct tm *result) {
+struct tm * cbson_fake_localtime_r(const time_t *time, struct tm *result) {
     const struct tm *static_result = localtime(time);
 
     assert(result != NULL);
@@ -499,22 +499,22 @@ static Time64_T seconds_between_years(Year left_year, Year right_year) {
 }
 
 
-Time64_T mktime64(const struct TM *input_date) {
+Time64_T cbson_mktime64(const struct TM *input_date) {
     struct tm safe_date;
     struct TM date;
     Time64_T  time;
     Year      year = input_date->tm_year + 1900;
 
-    if( date_in_safe_range(input_date, &SYSTEM_MKTIME_MIN, &SYSTEM_MKTIME_MAX) )
+    if( cbson_date_in_safe_range(input_date, &SYSTEM_MKTIME_MIN, &SYSTEM_MKTIME_MAX) )
     {
-        copy_TM64_to_tm(input_date, &safe_date);
+        cbson_copy_TM64_to_tm(input_date, &safe_date);
         return (Time64_T)mktime(&safe_date);
     }
 
     /* Have to make the year safe in date else it won't fit in safe_date */
     date = *input_date;
     date.tm_year = safe_year(year) - 1900;
-    copy_TM64_to_tm(&date, &safe_date);
+    cbson_copy_TM64_to_tm(&date, &safe_date);
 
     time = (Time64_T)mktime(&safe_date);
 
@@ -526,11 +526,11 @@ Time64_T mktime64(const struct TM *input_date) {
 
 /* Because I think mktime() is a crappy name */
 Time64_T timelocal64(const struct TM *date) {
-    return mktime64(date);
+    return cbson_mktime64(date);
 }
 
 
-struct TM *gmtime64_r (const Time64_T *in_time, struct TM *p)
+struct TM *cbson_gmtime64_r (const Time64_T *in_time, struct TM *p)
 {
     int v_tm_sec, v_tm_min, v_tm_hour, v_tm_mon, v_tm_wday;
     Time64_T v_tm_tday;
@@ -549,7 +549,7 @@ struct TM *gmtime64_r (const Time64_T *in_time, struct TM *p)
         struct tm safe_date;
         GMTIME_R(&safe_time, &safe_date);
 
-        copy_tm_to_TM64(&safe_date, p);
+        pymongo_copy_tm_to_TM64(&safe_date, p);
         assert(check_tm(p));
 
         return p;
@@ -659,7 +659,7 @@ struct TM *gmtime64_r (const Time64_T *in_time, struct TM *p)
 }
 
 
-struct TM *localtime64_r (const Time64_T *time, struct TM *local_tm)
+struct TM *cbson_localtime64_r (const Time64_T *time, struct TM *local_tm)
 {
     time_t safe_time;
     struct tm safe_date;
@@ -678,15 +678,15 @@ struct TM *localtime64_r (const Time64_T *time, struct TM *local_tm)
 
         LOCALTIME_R(&safe_time, &safe_date);
 
-        copy_tm_to_TM64(&safe_date, local_tm);
+        pymongo_copy_tm_to_TM64(&safe_date, local_tm);
         assert(check_tm(local_tm));
 
         return local_tm;
     }
 #endif
 
-    if( gmtime64_r(time, &gm_tm) == NULL ) {
-        TIME64_TRACE1("gmtime64_r returned null for %lld\n", *time);
+    if( cbson_gmtime64_r(time, &gm_tm) == NULL ) {
+        TIME64_TRACE1("cbson_gmtime64_r returned null for %lld\n", *time);
         return NULL;
     }
 
@@ -700,13 +700,13 @@ struct TM *localtime64_r (const Time64_T *time, struct TM *local_tm)
         gm_tm.tm_year = safe_year((Year)(gm_tm.tm_year + 1900)) - 1900;
     }
 
-    safe_time = (time_t)timegm64(&gm_tm);
+    safe_time = (time_t)cbson_timegm64(&gm_tm);
     if( LOCALTIME_R(&safe_time, &safe_date) == NULL ) {
         TIME64_TRACE1("localtime_r(%d) returned NULL\n", (int)safe_time);
         return NULL;
     }
 
-    copy_tm_to_TM64(&safe_date, local_tm);
+    pymongo_copy_tm_to_TM64(&safe_date, local_tm);
 
     local_tm->tm_year = (int)orig_year;
     if( local_tm->tm_year != orig_year ) {
@@ -751,14 +751,14 @@ struct TM *localtime64_r (const Time64_T *time, struct TM *local_tm)
 }
 
 
-int valid_tm_wday( const struct TM* date ) {
+int cbson_valid_tm_wday( const struct TM* date ) {
     if( 0 <= date->tm_wday && date->tm_wday <= 6 )
         return 1;
     else
         return 0;
 }
 
-int valid_tm_mon( const struct TM* date ) {
+int cbson_valid_tm_mon( const struct TM* date ) {
     if( 0 <= date->tm_mon && date->tm_mon <= 11 )
         return 1;
     else
@@ -767,15 +767,15 @@ int valid_tm_mon( const struct TM* date ) {
 
 
 /* Non-thread safe versions of the above */
-struct TM *localtime64(const Time64_T *time) {
+struct TM *cbson_localtime64(const Time64_T *time) {
 #ifdef _MSC_VER
     _tzset();
 #else
     tzset();
 #endif
-    return localtime64_r(time, &Static_Return_Date);
+    return cbson_localtime64_r(time, &Static_Return_Date);
 }
 
-struct TM *gmtime64(const Time64_T *time) {
-    return gmtime64_r(time, &Static_Return_Date);
+struct TM *cbson_gmtime64(const Time64_T *time) {
+    return cbson_gmtime64_r(time, &Static_Return_Date);
 }
