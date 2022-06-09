@@ -2718,7 +2718,7 @@ static struct PyModuleDef moduledef = {
 };
 
 PyMODINIT_FUNC
-PyInit__cbson(void)
+cbson_PyInit__cbson(void)
 {
     PyObject *m;
     PyObject *c_api_object;
