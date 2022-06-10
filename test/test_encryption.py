@@ -2099,5 +2099,92 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
         self.assertEqual(decrypted, val)
 
 
+class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):
+    # Queryable Encryption is not supported on Standalone topology.
+    @client_context.require_no_standalone
+    @client_context.require_version_min(6, 0, -1)
+    def setUp(self):
+        super().setUp()
+
+    def test_queryable_encryption(self):
+        # Drop data from prior test runs.
+        MongoClient().keyvault.datakeys.drop()
+        MongoClient().docs_examples.encrypted.drop()
+
+        kms_providers_map = {"local": {"key": LOCAL_MASTER_KEY}}
+
+        # Create two data keys.
+        key_vault_client = MongoClient()
+        client_encryption = ClientEncryption(
+            kms_providers_map, "keyvault.datakeys", key_vault_client, CodecOptions()
+        )
+        key1_id = client_encryption.create_data_key("local")
+        key2_id = client_encryption.create_data_key("local")
+        key_vault_client.close()
+
+        # Create an encryptedFieldsMap.
+        encrypted_fields_map = {
+            "docs_examples.encrypted": {
+                "fields": [
+                    {
+                        "path": "encrypted_indexed",
+                        "bsonType": "string",
+                        "keyId": key1_id,
+                        "queries": [
+                            {
+                                "queryType": "equality",
+                            },
+                        ],
+                    },
+                    {
+                        "path": "encrypted_unindexed",
+                        "bsonType": "string",
+                        "keyId": key2_id,
+                    },
+                ],
+            },
+        }
+
+        #  Create an Queryable Encryption collection.
+        opts = AutoEncryptionOpts(
+            kms_providers_map, "keyvault.datakeys", encrypted_fields_map=encrypted_fields_map
+        )
+        encrypted_client = MongoClient(auto_encryption_opts=opts)
+
+        # Create a Queryable Encryption collection "docs_examples.encrypted".
+        db = encrypted_client.docs_examples
+
+        # Because docs_examples.encrypted is in encrypted_fields_map, it is
+        # created with Queryable Encryption support.
+        encrypted_coll = db.encrypted
+
+        # Auto encrypt an insert and find.
+
+        # Encrypt an insert.
+        encrypted_coll.insert_one(
+            {
+                "_id": 1,
+                "encrypted_indexed": "indexed_value",
+                "encrypted_unindexed": "unindexed_value",
+            }
+        )
+
+        # Encrypt a find.
+        res = encrypted_coll.find_one({"encrypted_indexed": "indexed_value"})
+        assert res is not None
+        assert res["encrypted_indexed"] == "indexed_value"
+        assert res["encrypted_unindexed"] == "unindexed_value"
+        encrypted_client.close()
+
+        # Find documents without decryption.
+        unencrypted_client = MongoClient()
+        unencrypted_coll = unencrypted_client.docs_examples.encrypted
+        res = unencrypted_coll.find_one({"_id": 1})
+        assert res is not None
+        assert isinstance(res["encrypted_indexed"], Binary)
+        assert isinstance(res["encrypted_unindexed"], Binary)
+        unencrypted_client.close()
+
+
 if __name__ == "__main__":
     unittest.main()
