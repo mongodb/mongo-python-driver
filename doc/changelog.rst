@@ -19,6 +19,8 @@ Bug fixes
 
 - Fixed a bug where :meth:`~pymongo.collection.Collection.estimated_document_count`
   would fail with a "CommandNotSupportedOnView" error on views (`PYTHON-2885`_).
+- Fixed a bug where invalid UTF-8 strings could be passed as patterns for :class:`~bson.regex.Regex`
+  objects (`PYTHON-3048`_). :func:`bson.encode` now correctly raises :class:`bson.errors.InvalidStringData`.
 
 Unavoidable breaking changes
 ............................
@@ -38,6 +40,7 @@ Issues Resolved
 See the `PyMongo 4.2 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
+.. _PYTHON-3048: https://jira.mongodb.org/browse/PYTHON-3048
 .. _PYTHON-2885: https://jira.mongodb.org/browse/PYTHON-2885
 .. _PYTHON-3167: https://jira.mongodb.org/browse/PYTHON-3167
 .. _PyMongo 4.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=33196
