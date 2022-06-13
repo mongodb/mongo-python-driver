@@ -2107,9 +2107,16 @@ class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):
         super().setUp()
 
     def test_queryable_encryption(self):
+        # MongoClient to use in testing that handles auth/tls/etc,
+        # and cleanup.
+        def MongoClient(**kwargs):
+            c = rs_or_single_client(**kwargs)
+            self.addCleanup(c.close)
+            return c
+
         # Drop data from prior test runs.
-        MongoClient().keyvault.datakeys.drop()
-        MongoClient().docs_examples.encrypted.drop()
+        self.client.keyvault.datakeys.drop()
+        self.client.drop_database("docs_examples")
 
         kms_providers_map = {"local": {"key": LOCAL_MASTER_KEY}}
 
@@ -2145,17 +2152,16 @@ class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):
             },
         }
 
-        #  Create an Queryable Encryption collection.
+        # Create an Queryable Encryption collection.
         opts = AutoEncryptionOpts(
             kms_providers_map, "keyvault.datakeys", encrypted_fields_map=encrypted_fields_map
         )
         encrypted_client = MongoClient(auto_encryption_opts=opts)
 
         # Create a Queryable Encryption collection "docs_examples.encrypted".
-        db = encrypted_client.docs_examples
-
         # Because docs_examples.encrypted is in encrypted_fields_map, it is
         # created with Queryable Encryption support.
+        db = encrypted_client.docs_examples
         encrypted_coll = db.encrypted
 
         # Auto encrypt an insert and find.
