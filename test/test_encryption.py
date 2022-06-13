@@ -2127,7 +2127,6 @@ class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):
         )
         key1_id = client_encryption.create_data_key("local")
         key2_id = client_encryption.create_data_key("local")
-        key_vault_client.close()
 
         # Create an encryptedFieldsMap.
         encrypted_fields_map = {
@@ -2162,7 +2161,7 @@ class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):
         # Because docs_examples.encrypted is in encrypted_fields_map, it is
         # created with Queryable Encryption support.
         db = encrypted_client.docs_examples
-        encrypted_coll = db.encrypted
+        encrypted_coll = db.create_collection("encrypted")
 
         # Auto encrypt an insert and find.
 
@@ -2180,7 +2179,6 @@ class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):
         assert res is not None
         assert res["encrypted_indexed"] == "indexed_value"
         assert res["encrypted_unindexed"] == "unindexed_value"
-        encrypted_client.close()
 
         # Find documents without decryption.
         unencrypted_client = MongoClient()
@@ -2189,7 +2187,8 @@ class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):
         assert res is not None
         assert isinstance(res["encrypted_indexed"], Binary)
         assert isinstance(res["encrypted_unindexed"], Binary)
-        unencrypted_client.close()
+
+        client_encryption.close()
 
 
 if __name__ == "__main__":
