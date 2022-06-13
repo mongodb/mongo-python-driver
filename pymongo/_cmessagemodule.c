@@ -935,7 +935,7 @@ static struct PyModuleDef moduledef = {
 };
 
 PyMODINIT_FUNC
-pymongo_PyInit__cmessage(void)
+PyInit__cmessage(void)
 {
     PyObject *_cbson = NULL;
     PyObject *c_api_object = NULL;
