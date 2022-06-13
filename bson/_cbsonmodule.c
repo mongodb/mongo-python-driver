@@ -26,7 +26,6 @@
 
 #include "buffer.h"
 #include "time64.h"
-#include "encoding_helpers.h"
 
 #define _CBSON_MODULE
 #include "_cbsonmodule.h"
@@ -553,12 +552,13 @@ static int _write_regex_to_buffer(
     PyObject* py_flags;
     PyObject* py_pattern;
     PyObject* encoded_pattern;
+    PyObject* decoded_pattern;
     long int_flags;
     char flags[FLAGS_SIZE];
     char check_utf8 = 0;
     const char* pattern_data;
     int pattern_length, flags_length;
-    result_t status;
+    //result_t status;
 
     /*
      * Both the builtin re type and our Regex class have attributes
@@ -597,26 +597,21 @@ static int _write_regex_to_buffer(
         Py_DECREF(encoded_pattern);
         return 0;
     }
-    status = check_string((const unsigned char*)pattern_data,
-                          pattern_length, check_utf8, 1);
-    if (status == NOT_UTF_8) {
-        PyObject* InvalidStringData = _error("InvalidStringData");
-        if (InvalidStringData) {
-            PyErr_SetString(InvalidStringData,
-                            "regex patterns must be valid UTF-8");
-            Py_DECREF(InvalidStringData);
+
+    if (check_utf8) {
+        decoded_pattern = PyUnicode_DecodeUTF8(pattern_data, (Py_ssize_t) pattern_length, NULL);
+        if (decoded_pattern == NULL) {
+            PyErr_Clear();
+            PyObject* InvalidStringData = _error("InvalidStringData");
+            if (InvalidStringData) {
+                PyErr_SetString(InvalidStringData,
+                                "regex patterns must be valid UTF-8");
+                Py_DECREF(InvalidStringData);
+            }
+            Py_DECREF(encoded_pattern);
+            return 0;
         }
-        Py_DECREF(encoded_pattern);
-        return 0;
-    } else if (status == HAS_NULL) {
-        PyObject* InvalidDocument = _error("InvalidDocument");
-        if (InvalidDocument) {
-            PyErr_SetString(InvalidDocument,
-                            "regex patterns must not contain the NULL byte");
-            Py_DECREF(InvalidDocument);
-        }
-        Py_DECREF(encoded_pattern);
-        return 0;
+        Py_DECREF(decoded_pattern);
     }
 
     if (!buffer_write_bytes(buffer, pattern_data, pattern_length + 1)) {
