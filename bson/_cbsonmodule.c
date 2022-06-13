@@ -597,6 +597,17 @@ static int _write_regex_to_buffer(
         return 0;
     }
 
+    if (strlen(pattern_data) != (size_t) pattern_length){
+        PyObject* InvalidDocument = _error("InvalidDocument");
+        if (InvalidDocument) {
+            PyErr_SetString(InvalidDocument,
+                            "regex patterns must not contain the NULL byte");
+            Py_DECREF(InvalidDocument);
+        }
+        Py_DECREF(encoded_pattern);
+        return 0;
+    }
+
     if (check_utf8) {
         decoded_pattern = PyUnicode_DecodeUTF8(pattern_data, (Py_ssize_t) pattern_length, NULL);
         if (decoded_pattern == NULL) {
