@@ -558,7 +558,6 @@ static int _write_regex_to_buffer(
     char check_utf8 = 0;
     const char* pattern_data;
     int pattern_length, flags_length;
-    //result_t status;
 
     /*
      * Both the builtin re type and our Regex class have attributes
