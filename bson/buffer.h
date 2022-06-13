@@ -27,25 +27,25 @@ typedef int buffer_position;
 
 /* Allocate and return a new buffer.
  * Return NULL on allocation failure. */
-buffer_t buffer_new(void);
+buffer_t pymongo_buffer_new(void);
 
 /* Free the memory allocated for `buffer`.
  * Return non-zero on failure. */
-int buffer_free(buffer_t buffer);
+int pymongo_buffer_free(buffer_t buffer);
 
 /* Save `size` bytes from the current position in `buffer` (and grow if needed).
  * Return offset for writing, or -1 on allocation failure. */
-buffer_position buffer_save_space(buffer_t buffer, int size);
+buffer_position pymongo_buffer_save_space(buffer_t buffer, int size);
 
 /* Write `size` bytes from `data` to `buffer` (and grow if needed).
  * Return non-zero on allocation failure. */
-int buffer_write(buffer_t buffer, const char* data, int size);
+int pymongo_buffer_write(buffer_t buffer, const char* data, int size);
 
 /* Getters for the internals of a buffer_t.
  * Should try to avoid using these as much as possible
  * since they break the abstraction. */
-buffer_position buffer_get_position(buffer_t buffer);
-char* buffer_get_buffer(buffer_t buffer);
-void buffer_update_position(buffer_t buffer, buffer_position new_position);
+buffer_position pymongo_buffer_get_position(buffer_t buffer);
+char* pymongo_buffer_get_buffer(buffer_t buffer);
+void pymongo_buffer_update_position(buffer_t buffer, buffer_position new_position);
 
 #endif

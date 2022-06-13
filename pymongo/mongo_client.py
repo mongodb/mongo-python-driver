@@ -1080,7 +1080,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def is_mongos(self) -> bool:
         """If this client is connected to mongos. If the client is not
         connected, this will block until a connection is established or raise
-        ServerSelectionTimeoutError if no server is available..
+        ServerSelectionTimeoutError if no server is available.
         """
         return self._server_property("server_type") == SERVER_TYPE.Mongos
 

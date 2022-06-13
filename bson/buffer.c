@@ -39,7 +39,7 @@ static void set_memory_error(void) {
 
 /* Allocate and return a new buffer.
  * Return NULL and sets MemoryError on allocation failure. */
-buffer_t buffer_new(void) {
+buffer_t pymongo_buffer_new(void) {
     buffer_t buffer;
     buffer = (buffer_t)malloc(sizeof(struct buffer));
     if (buffer == NULL) {
@@ -61,7 +61,7 @@ buffer_t buffer_new(void) {
 
 /* Free the memory allocated for `buffer`.
  * Return non-zero on failure. */
-int buffer_free(buffer_t buffer) {
+int pymongo_buffer_free(buffer_t buffer) {
     if (buffer == NULL) {
         return 1;
     }
@@ -122,7 +122,7 @@ static int buffer_assure_space(buffer_t buffer, int size) {
 /* Save `size` bytes from the current position in `buffer` (and grow if needed).
  * Return offset for writing, or -1 on failure.
  * Sets MemoryError or ValueError on failure. */
-buffer_position buffer_save_space(buffer_t buffer, int size) {
+buffer_position pymongo_buffer_save_space(buffer_t buffer, int size) {
     int position = buffer->position;
     if (buffer_assure_space(buffer, size) != 0) {
         return -1;
@@ -134,7 +134,7 @@ buffer_position buffer_save_space(buffer_t buffer, int size) {
 /* Write `size` bytes from `data` to `buffer` (and grow if needed).
  * Return non-zero on failure.
  * Sets MemoryError or ValueError on failure. */
-int buffer_write(buffer_t buffer, const char* data, int size) {
+int pymongo_buffer_write(buffer_t buffer, const char* data, int size) {
     if (buffer_assure_space(buffer, size) != 0) {
         return 1;
     }
@@ -144,14 +144,14 @@ int buffer_write(buffer_t buffer, const char* data, int size) {
     return 0;
 }
 
-int buffer_get_position(buffer_t buffer) {
+int pymongo_buffer_get_position(buffer_t buffer) {
     return buffer->position;
 }
 
-char* buffer_get_buffer(buffer_t buffer) {
+char* pymongo_buffer_get_buffer(buffer_t buffer) {
     return buffer->buffer;
 }
 
-void buffer_update_position(buffer_t buffer, buffer_position new_position) {
+void pymongo_buffer_update_position(buffer_t buffer, buffer_position new_position) {
     buffer->position = new_position;
 }

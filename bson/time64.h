@@ -41,13 +41,13 @@ struct TM64 {
 
 
 /* Declare public functions */
-struct TM *gmtime64_r    (const Time64_T *, struct TM *);
-struct TM *localtime64_r (const Time64_T *, struct TM *);
-struct TM *gmtime64      (const Time64_T *);
-struct TM *localtime64   (const Time64_T *);
+struct TM *cbson_gmtime64_r    (const Time64_T *, struct TM *);
+struct TM *cbson_localtime64_r (const Time64_T *, struct TM *);
+struct TM *cbson_gmtime64      (const Time64_T *);
+struct TM *cbson_localtime64   (const Time64_T *);
 
-Time64_T   timegm64      (const struct TM *);
-Time64_T   mktime64      (const struct TM *);
+Time64_T   cbson_timegm64      (const struct TM *);
+Time64_T   cbson_mktime64      (const struct TM *);
 Time64_T   timelocal64   (const struct TM *);
 
 
@@ -55,12 +55,12 @@ Time64_T   timelocal64   (const struct TM *);
 #ifdef HAS_LOCALTIME_R
 #    define LOCALTIME_R(clock, result) localtime_r(clock, result)
 #else
-#    define LOCALTIME_R(clock, result) fake_localtime_r(clock, result)
+#    define LOCALTIME_R(clock, result) cbson_fake_localtime_r(clock, result)
 #endif
 #ifdef HAS_GMTIME_R
 #    define GMTIME_R(clock, result)    gmtime_r(clock, result)
 #else
-#    define GMTIME_R(clock, result)    fake_gmtime_r(clock, result)
+#    define GMTIME_R(clock, result)    cbson_fake_gmtime_r(clock, result)
 #endif
 
 
