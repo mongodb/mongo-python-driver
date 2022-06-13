@@ -19,6 +19,8 @@ Bug fixes
 
 - Fixed a bug where :meth:`~pymongo.collection.Collection.estimated_document_count`
   would fail with a "CommandNotSupportedOnView" error on views (`PYTHON-2885`_).
+- Fixed a bug where invalid UTF-8 strings could be passed as patterns for `Regex`
+  objects (`PYTHON-3048`).
 
 Unavoidable breaking changes
 ............................
