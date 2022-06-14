@@ -166,6 +166,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             configuration.
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the create collection command
+
         .. versionchanged:: 4.2
            Added the ``clustered_index`` and ``encrypted_fields`` parameters.
 
