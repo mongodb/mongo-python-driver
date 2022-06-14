@@ -426,8 +426,9 @@ Until PyMongo 4.2 release is finalized, it can be installed using::
 
 Additionally, ``libmongocrypt`` must be installed from `source <https://github.com/mongodb/libmongocrypt/blob/master/bindings/python/README.rst#installing-from-source>`_.
 
-Explicit encryption in Queryable Encryption is configured with an ``encrypted_fields`` mapping, as
-demonstrated by the following example::
+Explicit encryption in Queryable Encryption is performed using the ``encrypt`` and ``decrypt``
+methods. Automatic encryption (to allow the ``find_one`` to automatically decrypt) is configured
+using an ``encrypted_fields`` mapping, as demonstrated by the following example::
 
     import os
 
@@ -503,18 +504,27 @@ demonstrated by the following example::
         # Create the collection with encrypted fields.
         coll = db.create_collection("coll", encrypted_fields=encrypted_fields)
 
+        # Create and encrypt an indexed and unindexed value.
         val = "encrypted indexed value"
         unindexed_val = "encrypted unindexed value"
         insert_payload_indexed = client_encryption.encrypt(val, Algorithm.INDEXED, data_key_id)
         insert_payload_unindexed = client_encryption.encrypt(unindexed_val, Algorithm.UNINDEXED, data_key_id)
+
+        # Insert the payloads.
         coll.insert_one({
             "encryptedIndexed": insert_payload_indexed,
             "encryptedUnindexed": insert_payload_unindexed
         })
 
+        # Encrypt our find payload using QueryType.EQUALITY.
+        # The value of "data_key_id" must be the same as used to encrypt the values
+        # above.
         find_payload = client_encryption.encrypt(
             val, Algorithm.INDEXED, data_key_id, query_type=QueryType.EQUALITY
         )
+
+        # Find the document we inserted using the encrypted payload.
+        # The returned document is automatically decrypted.
         doc = coll.find_one({"encryptedIndexed": find_payload})
         print('Returned document: %s' % (doc,))
 
