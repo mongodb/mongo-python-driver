@@ -658,7 +658,9 @@ class TestSpec(SpecRunner):
             kwargs["codec_options"] = OPTS
         if not data:
             kwargs["write_concern"] = wc
-        db.create_collection(coll_name, **kwargs, encrypted_fields=encrypted_fields)
+        if encrypted_fields:
+            kwargs["encryptedFields"] = encrypted_fields
+        db.create_collection(coll_name, **kwargs)
         coll = db[coll_name]
         if data:
             # Load data.
