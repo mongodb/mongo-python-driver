@@ -611,7 +611,10 @@ class MatchEvaluatorUtil(object):
             return self._match_document(expectation, actual, is_root=not in_recursive_call)
 
         if isinstance(expectation, abc.MutableSequence):
-            self.test.assertIsInstance(actual, abc.MutableSequence)
+
+            self.test.assertIsInstance(
+                actual, (abc.MutableSequence, pymongo.command_cursor.CommandCursor)
+            )
             for e, a in zip(expectation, actual):
                 if isinstance(e, abc.Mapping):
                     self._match_document(e, a, is_root=not in_recursive_call)

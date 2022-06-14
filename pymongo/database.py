@@ -305,6 +305,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         session: Optional["ClientSession"] = None,
         timeout: Optional[float] = None,
         encrypted_fields: Optional[Mapping[str, Any]] = None,
+        clustered_index: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> Collection[_DocumentType]:
         """Create a new :class:`~pymongo.collection.Collection` in this
@@ -358,6 +359,17 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                   ]
 
                 }                }
+          - `clustered_index` (optional): Document that specifies the clustered index
+            configuration. It must have the following form::
+
+                {
+                    // key pattern must be {_id: 1}
+                    key: <key pattern>, // required
+                    unique: <bool>, // required, must be ‘true’
+                    name: <string>, // optional, otherwise automatically generated
+                    v: <int>, // optional, must be ‘2’ if provided
+                }
+
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the `create collection command`_
 
@@ -391,7 +403,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             This option is only supported on MongoDB >= 4.4.
 
         .. versionchanged:: 4.2
-           Added ``encrypted_fields`` parameter.
+           Added the ``clustered_index`` and ``encrypted_fields`` parameters.
 
         .. versionchanged:: 3.11
            This method is now supported inside multi-document transactions
@@ -420,6 +432,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if encrypted_fields:
             common.validate_is_mapping("encrypted_fields", encrypted_fields)
 
+        if clustered_index:
+            common.validate_is_mapping("clustered_index", clustered_index)
+
         with self.__client._tmp_session(session) as s:
             # Skip this check in a transaction where listCollections is not
             # supported.
@@ -438,6 +453,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 session=s,
                 timeout=timeout,
                 encrypted_fields=encrypted_fields,
+                clustered_index=clustered_index,
                 **kwargs,
             )
 
