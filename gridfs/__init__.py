@@ -135,10 +135,8 @@ class GridFS(object):
            w=0 writes to GridFS are now prohibited.
         """
         grid_file = GridIn(self.__collection, **kwargs)
-        try:
-            grid_file.write(data)
-        finally:
-            grid_file.close()
+        grid_file.write(data)
+        grid_file.close()
 
         return grid_file._id
 

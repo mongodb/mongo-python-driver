@@ -396,9 +396,10 @@ class GridIn(object):
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Any:
         """Support for the context manager protocol.
 
-        Close the file and allow exceptions to propagate.
+        Close the file if no exceptions occur and allow exceptions to propagate.
         """
-        self.close()
+        if exc_type is None:
+            self.close()
 
         # propagate exceptions
         return False

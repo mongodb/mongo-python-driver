@@ -32,7 +32,7 @@ from test.utils import EventListener, rs_or_single_client
 
 from bson.objectid import ObjectId
 from gridfs import GridFS
-from gridfs.errors import CorruptGridFile, NoFile
+from gridfs.errors import NoFile
 from gridfs.grid_file import (
     _SEEK_CUR,
     _SEEK_END,
@@ -678,19 +678,16 @@ Bye"""
     def test_exception_file_non_existence(self):
         contents = b"Imagine this is some important data..."
 
-        try:
+        with self.assertRaises(ConnectionError):
             with GridIn(self.db.fs, filename="important") as infile:
                 infile.write(contents)
-                raise CorruptGridFile("Test exception")
-                # Never calls infile.flush.
-        except CorruptGridFile as e:
-            pass
+                raise ConnectionError("Test exception")
 
         # Expectation: File chunks are written, entry in files doesn't appear.
-        with GridOut(self.db.fs, infile._id) as outfile:
-            self.assertEqual(contents, outfile.read())
-
-        self.assertIsNone(self.db.files.find_one({"_id": infile._id}))
+        self.assertEqual(
+            self.db.fs.chunks.count_documents({"files_id": infile._id}), infile._chunk_number
+        )
+        self.assertIsNone(self.db.fs.files.find_one({"_id": infile._id}))
 
     def test_prechunked_string(self):
         def write_me(s, chunk_size):
