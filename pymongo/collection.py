@@ -117,8 +117,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         read_concern: Optional["ReadConcern"] = None,
         session: Optional["ClientSession"] = None,
         timeout: Optional[float] = None,
-        encrypted_fields: Optional[Mapping[str, Any]] = None,
-        clustered_index: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
         """Get / create a Mongo collection.
@@ -160,15 +158,47 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession` that is used with
             the create collection command
-          - `encrypted_fields`: **(BETA)** Document that describes the encrypted fields for
-            Queryable Encryption. If provided it will be passed to the create collection command.
-          - `clustered_index` (optional): Document that specifies the clustered index
-            configuration.
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the create collection command
 
+        All optional parameters should be passed as keyword arguments to this method. Valid
+        options include, but are not limited to::
+
+          - ``encryptedFields`` (dict): **(BETA)** Document that describes the encrypted fields for
+            Queryable Encryption. For example::
+
+                {
+                  "escCollection": "enxcol_.encryptedCollection.esc",
+                  "eccCollection": "enxcol_.encryptedCollection.ecc",
+                  "ecocCollection": "enxcol_.encryptedCollection.ecoc",
+                  "fields": [
+                      {
+                          "path": "firstName",
+                          "keyId": Binary.from_uuid(UUID('00000000-0000-0000-0000-000000000000')),
+                          "bsonType": "string",
+                          "queries": {"queryType": "equality"}
+                      },
+                      {
+                          "path": "ssn",
+                          "keyId": Binary.from_uuid(UUID('04104104-1041-0410-4104-104104104104')),
+                          "bsonType": "string"
+                      }
+                    ]
+                }
+
+          - ``clusteredIndex`` (dict): Document that specifies the clustered index
+            configuration. It must have the following form::
+
+                {
+                    // key pattern must be {_id: 1}
+                    key: <key pattern>, // required
+                    unique: <bool>, // required, must be ‘true’
+                    name: <string>, // optional, otherwise automatically generated
+                    v: <int>, // optional, must be ‘2’ if provided
+                }
+
         .. versionchanged:: 4.2
-           Added the ``clustered_index`` and ``encrypted_fields`` parameters.
+           Added the ``clusteredIndex`` and ``encryptedFields`` parameters.
 
         .. versionchanged:: 4.0
            Removed the reindex, map_reduce, inline_map_reduce,
@@ -225,8 +255,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self.__database: Database[_DocumentType] = database
         self.__name = name
         self.__full_name = "%s.%s" % (self.__database.name, self.__name)
-        if clustered_index:
-            kwargs["clusteredIndex"] = clustered_index
+        encrypted_fields = kwargs.pop("encryptedFields", None)
         if create or kwargs or collation:
             if encrypted_fields:
                 common.validate_is_mapping("encrypted_fields", encrypted_fields)
