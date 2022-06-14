@@ -389,6 +389,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
           - ``pipeline`` (list): a list of aggregation pipeline stages
           - ``comment`` (str): a user-provided comment to attach to this command.
             This option is only supported on MongoDB >= 4.4.
+          - ``changeStreamPreAndPostImages``  (dict): a document with a boolean field ``enabled`` for
+            enabling pre- and post-images.
 
         .. versionchanged:: 4.2
            Added ``encrypted_fields`` parameter.
@@ -522,6 +524,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         self,
         pipeline: Optional[_Pipeline] = None,
         full_document: Optional[str] = None,
+        full_document_before_change: Optional[str] = None,
         resume_after: Optional[Mapping[str, Any]] = None,
         max_await_time_ms: Optional[int] = None,
         batch_size: Optional[int] = None,
@@ -576,11 +579,13 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             pipeline stages are valid after a ``$changeStream`` stage, see the
             MongoDB documentation on change streams for the supported stages.
           - `full_document` (optional): The fullDocument to pass as an option
-            to the ``$changeStream`` stage. Allowed values: 'updateLookup'.
+            to the ``$changeStream`` stage. Allowed values: 'updateLookup', 'whenAvailable', 'required'.
             When set to 'updateLookup', the change notification for partial
             updates will include both a delta describing the changes to the
             document, as well as a copy of the entire document that was
             changed from some time after the change occurred.
+          - `full_document_before_change`: Allowed values: `whenAvailable` and `required`. Change events
+            may now result in a `fullDocumentBeforeChange` response field.
           - `resume_after` (optional): A resume token. If provided, the
             change stream will start returning changes that occur directly
             after the operation specified in the resume token. A resume token
@@ -624,6 +629,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             self,
             pipeline,
             full_document,
+            full_document_before_change,
             resume_after,
             max_await_time_ms,
             batch_size,
