@@ -844,6 +844,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.skipTest("PyMongo does not support timeoutMode")
             if name == "createEntities":
                 self.maybe_skip_entity(op.get("arguments", {}).get("entities", []))
+            if name == "modifyCollection":
+                self.skipTest("PyMongo does not support modifyCollection")
 
     def maybe_skip_entity(self, entities):
         for entity in entities:
