@@ -337,7 +337,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.client_session.ClientSession`.
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the `create collection command`_
-            Examples of valid
 
         All optional `create collection command`_ parameters should be passed
         as keyword arguments to this method. Valid options include, but are not
