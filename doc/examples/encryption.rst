@@ -409,6 +409,59 @@ Automatic encryption in Queryable Encryption is configured with an ``encrypted_f
 In the above example, the ``firstName`` and ``lastName`` fields are
 automatically encrypted and decrypted.
 
+Explicit Queryable Encryption (Beta)
+````````````````````````````````````
+
+PyMongo 4.2 brings beta support for Queryable Encryption with MongoDB 6.0.
+
+Queryable Encryption is the second version of Client-Side Field Level Encryption.
+Data is encrypted client-side. Queryable Encryption supports indexed encrypted fields,
+which are further processed server-side.
+
+You must have MongoDB 6.0rc8+ Enterprise to preview the capability.
+
+Until PyMongo 4.2 release is finalized, it can be installed using::
+
+  pip install "pymongo@git+ssh://git@github.com/mongodb/mongo-python-driver.git@4.2.0b0#egg=pymongo[encryption]"
+
+Additionally, ``libmongocrypt`` must be installed from `source <https://github.com/mongodb/libmongocrypt/blob/master/bindings/python/README.rst#installing-from-source>`_.
+
+Explicit encryption in Queryable Encryption is configured with an ``encrypted_fields`` mapping, as
+demonstrated by the following example::
+
+    import os
+    from bson.codec_options import CodecOptions
+    from pymongo import MongoClient
+    from pymongo.encryption import Algorithm, ClientEncryption, QueryType
+    from pymongo.encryption_options import AutoEncryptionOpts
+
+
+    local_master_key = os.urandom(96)
+    kms_providers = {"local": {"key": local_master_key}}
+    client = MongoClient(username="user", password="password")
+    client_encryption = ClientEncryption(
+      kms_providers, "keyvault.datakeys", client, CodecOptions()
+    )
+    client.test.explicit_encryption.create_index("encryptedIndexed")
+    key1_id = client_encryption.create_data_key("local", key_alt_names=['pymongo_encryption_example_5'])
+    val = "encrypted indexed value"
+    insert_payload = client_encryption.encrypt(val, Algorithm.INDEXED, key1_id,
+    query_type=QueryType.EQUALITY)
+    res = client.test.explicit_encryption.insert_one(
+        {"encryptedIndexed": insert_payload}
+    )
+    print(res.inserted_id)
+    find_payload = client_encryption.encrypt(
+        val, Algorithm.INDEXED, key1_id, query_type=QueryType.EQUALITY
+    )
+    doc =  client.test.explicit_encryption.find_one(
+          {"encryptedIndexed": find_payload}
+        )
+    # Explicitly decrypt the field:
+    print(doc)
+    doc["encryptedIndexed"] = client_encryption.decrypt(doc["encryptedIndexed"])
+    print('Decrypted document: %s' % (doc,))
+
 .. _explicit-client-side-encryption:
 
 Explicit Encryption
