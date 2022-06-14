@@ -612,6 +612,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         :Returns:
           A :class:`~pymongo.change_stream.DatabaseChangeStream` cursor.
 
+        .. versionchanged:: 4.2
+            Added ``full_document_before_change`` parameter.
+
         .. versionchanged:: 4.1
            Added ``comment`` parameter.
 

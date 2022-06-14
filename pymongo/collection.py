@@ -2501,6 +2501,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         session: Optional["ClientSession"] = None,
         start_after: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
+        full_document_before_change: Optional[str] = None,
     ) -> CollectionChangeStream[_DocumentType]:
         """Watch changes on this collection.
 
@@ -2559,6 +2560,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             updates will include both a delta describing the changes to the
             document, as well as a copy of the entire document that was
             changed from some time after the change occurred.
+          - `full_document_before_change`: Allowed values: `whenAvailable` and `required`. Change events
+            may now result in a `fullDocumentBeforeChange` response field.
           - `resume_after` (optional): A resume token. If provided, the
             change stream will start returning changes that occur directly
             after the operation specified in the resume token. A resume token
@@ -2585,6 +2588,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         :Returns:
           A :class:`~pymongo.change_stream.CollectionChangeStream` cursor.
 
+        .. versionchanged:: 4.2
+            Added ``full_document_before_change`` parameter.
 
         .. versionchanged:: 4.1
            Added ``comment`` parameter.
@@ -2613,7 +2618,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             start_at_operation_time,
             session,
             start_after,
-            comment=comment,
+            comment,
+            full_document_before_change,
         )
 
     def rename(

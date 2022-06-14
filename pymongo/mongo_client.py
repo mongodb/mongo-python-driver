@@ -923,6 +923,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             updates will include both a delta describing the changes to the
             document, as well as a copy of the entire document that was
             changed from some time after the change occurred.
+          - `full_document_before_change`: Allowed values: `whenAvailable` and `required`. Change events
+            may now result in a `fullDocumentBeforeChange` response field.
           - `resume_after` (optional): A resume token. If provided, the
             change stream will start returning changes that occur directly
             after the operation specified in the resume token. A resume token
@@ -948,6 +950,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         :Returns:
           A :class:`~pymongo.change_stream.ClusterChangeStream` cursor.
+
+        .. versionchanged:: 4.2
+            Added ``full_document_before_change`` parameter.
 
         .. versionchanged:: 4.1
            Added ``comment`` parameter.
