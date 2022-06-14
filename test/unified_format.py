@@ -611,10 +611,7 @@ class MatchEvaluatorUtil(object):
             return self._match_document(expectation, actual, is_root=not in_recursive_call)
 
         if isinstance(expectation, abc.MutableSequence):
-
-            self.test.assertIsInstance(
-                actual, (abc.MutableSequence, pymongo.command_cursor.CommandCursor)
-            )
+            self.test.assertIsInstance(actual, abc.MutableSequence)
             for e, a in zip(expectation, actual):
                 if isinstance(e, abc.Mapping):
                     self._match_document(e, a, is_root=not in_recursive_call)
@@ -997,7 +994,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def _collectionOperation_listIndexes(self, target, *args, **kwargs):
         if "batch_size" in kwargs:
             self.skipTest("PyMongo does not support batch_size for list_indexes")
-        return target.list_indexes(*args, **kwargs)
+        return list(target.list_indexes(*args, **kwargs))
 
     def _collectionOperation_listIndexNames(self, target, *args, **kwargs):
         self.skipTest("PyMongo does not support list_index_names")
