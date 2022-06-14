@@ -503,7 +503,6 @@ using an ``encrypted_fields`` mapping, as demonstrated by the following example:
             {"local": {"key": local_master_key}},
             key_vault.full_name,
             bypass_query_analysis=True,
-            bypass_auto_encryption=True,
         )
 
         # The MongoClient used to read/write application data.
