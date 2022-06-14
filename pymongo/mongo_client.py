@@ -871,6 +871,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         session: Optional[client_session.ClientSession] = None,
         start_after: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
+        full_document_before_change: Optional[str] = None,
     ) -> ChangeStream[_DocumentType]:
         """Watch changes on this cluster.
 
@@ -972,7 +973,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             start_at_operation_time,
             session,
             start_after,
-            comment=comment,
+            comment,
+            full_document_before_change,
         )
 
     @property

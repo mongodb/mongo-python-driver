@@ -524,7 +524,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         self,
         pipeline: Optional[_Pipeline] = None,
         full_document: Optional[str] = None,
-        full_document_before_change: Optional[str] = None,
         resume_after: Optional[Mapping[str, Any]] = None,
         max_await_time_ms: Optional[int] = None,
         batch_size: Optional[int] = None,
@@ -533,6 +532,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         session: Optional["ClientSession"] = None,
         start_after: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
+        full_document_before_change: Optional[str] = None,
     ) -> DatabaseChangeStream[_DocumentType]:
         """Watch changes on this database.
 
@@ -629,7 +629,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             self,
             pipeline,
             full_document,
-            full_document_before_change,
             resume_after,
             max_await_time_ms,
             batch_size,
@@ -637,7 +636,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             start_at_operation_time,
             session,
             start_after,
-            comment=comment,
+            comment,
+            full_document_before_change,
         )
 
     def _command(

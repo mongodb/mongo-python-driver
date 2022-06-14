@@ -88,7 +88,6 @@ class ChangeStream(Generic[_DocumentType]):
         ],
         pipeline: Optional[_Pipeline],
         full_document: Optional[str],
-        full_document_before_change: Optional[str],
         resume_after: Optional[Mapping[str, Any]],
         max_await_time_ms: Optional[int],
         batch_size: Optional[int],
@@ -97,6 +96,7 @@ class ChangeStream(Generic[_DocumentType]):
         session: Optional["ClientSession"],
         start_after: Optional[Mapping[str, Any]],
         comment: Optional[Any] = None,
+        full_document_before_change: Optional[str] = None,
     ) -> None:
         if pipeline is None:
             pipeline = []
