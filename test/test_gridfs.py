@@ -540,7 +540,7 @@ class TestGridfsReplicaSet(IntegrationTest):
 
         # Connects, doesn't create index.
         self.assertRaises(NoFile, fs.get_last_version)
-        self.assertRaises(NotPrimaryError, fs.put, "data")
+        self.assertRaises(NotPrimaryError, fs.put, "data", encoding="utf-8")
 
 
 if __name__ == "__main__":
