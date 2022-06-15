@@ -389,6 +389,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
           - ``pipeline`` (list): a list of aggregation pipeline stages
           - ``comment`` (str): a user-provided comment to attach to this command.
             This option is only supported on MongoDB >= 4.4.
+          - ``changeStreamPreAndPostImages`` (dict): a document with a boolean field ``enabled`` for
+            enabling pre- and post-images.
 
         .. versionchanged:: 4.2
            Added ``encrypted_fields`` parameter.
@@ -530,6 +532,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         session: Optional["ClientSession"] = None,
         start_after: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
+        full_document_before_change: Optional[str] = None,
     ) -> DatabaseChangeStream[_DocumentType]:
         """Watch changes on this database.
 
@@ -576,11 +579,13 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             pipeline stages are valid after a ``$changeStream`` stage, see the
             MongoDB documentation on change streams for the supported stages.
           - `full_document` (optional): The fullDocument to pass as an option
-            to the ``$changeStream`` stage. Allowed values: 'updateLookup'.
+            to the ``$changeStream`` stage. Allowed values: 'updateLookup', 'whenAvailable', 'required'.
             When set to 'updateLookup', the change notification for partial
             updates will include both a delta describing the changes to the
             document, as well as a copy of the entire document that was
             changed from some time after the change occurred.
+          - `full_document_before_change`: Allowed values: `whenAvailable` and `required`. Change events
+            may now result in a `fullDocumentBeforeChange` response field.
           - `resume_after` (optional): A resume token. If provided, the
             change stream will start returning changes that occur directly
             after the operation specified in the resume token. A resume token
@@ -607,6 +612,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         :Returns:
           A :class:`~pymongo.change_stream.DatabaseChangeStream` cursor.
 
+        .. versionchanged:: 4.2
+            Added ``full_document_before_change`` parameter.
+
         .. versionchanged:: 4.1
            Added ``comment`` parameter.
 
@@ -631,7 +639,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             start_at_operation_time,
             session,
             start_after,
-            comment=comment,
+            comment,
+            full_document_before_change,
         )
 
     def _command(
