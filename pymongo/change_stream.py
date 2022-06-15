@@ -96,6 +96,7 @@ class ChangeStream(Generic[_DocumentType]):
         session: Optional["ClientSession"],
         start_after: Optional[Mapping[str, Any]],
         comment: Optional[Any] = None,
+        full_document_before_change: Optional[str] = None,
     ) -> None:
         if pipeline is None:
             pipeline = []
@@ -118,6 +119,7 @@ class ChangeStream(Generic[_DocumentType]):
 
         self._pipeline = copy.deepcopy(pipeline)
         self._full_document = full_document
+        self._full_document_before_change = full_document_before_change
         self._uses_start_after = start_after is not None
         self._uses_resume_after = resume_after is not None
         self._resume_token = copy.deepcopy(start_after or resume_after)
@@ -146,6 +148,9 @@ class ChangeStream(Generic[_DocumentType]):
         options: Dict[str, Any] = {}
         if self._full_document is not None:
             options["fullDocument"] = self._full_document
+
+        if self._full_document_before_change is not None:
+            options["fullDocumentBeforeChange"] = self._full_document_before_change
 
         resume_token = self.resume_token
         if resume_token is not None:
