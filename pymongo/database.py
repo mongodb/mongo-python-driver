@@ -426,6 +426,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             encrypted_fields = self.client.options.auto_encryption_opts._encrypted_fields_map.get(
                 "%s.%s" % (self.name, name)
             )
+            kwargs["encryptedFields"] = encrypted_fields
+
         if encrypted_fields:
             common.validate_is_mapping("encryptedFields", encrypted_fields)
 
