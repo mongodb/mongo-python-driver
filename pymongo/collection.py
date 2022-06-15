@@ -161,42 +161,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the create collection command
 
-        All optional parameters should be passed as keyword arguments to this method. Valid
-        options include, but are not limited to::
-
-          - ``encryptedFields`` (dict): **(BETA)** Document that describes the encrypted fields for
-            Queryable Encryption. For example::
-
-                {
-                  "escCollection": "enxcol_.encryptedCollection.esc",
-                  "eccCollection": "enxcol_.encryptedCollection.ecc",
-                  "ecocCollection": "enxcol_.encryptedCollection.ecoc",
-                  "fields": [
-                      {
-                          "path": "firstName",
-                          "keyId": Binary.from_uuid(UUID('00000000-0000-0000-0000-000000000000')),
-                          "bsonType": "string",
-                          "queries": {"queryType": "equality"}
-                      },
-                      {
-                          "path": "ssn",
-                          "keyId": Binary.from_uuid(UUID('04104104-1041-0410-4104-104104104104')),
-                          "bsonType": "string"
-                      }
-                    ]
-                }
-
-          - ``clusteredIndex`` (dict): Document that specifies the clustered index
-            configuration. It must have the following form::
-
-                {
-                    // key pattern must be {_id: 1}
-                    key: <key pattern>, // required
-                    unique: <bool>, // required, must be ‘true’
-                    name: <string>, // optional, otherwise automatically generated
-                    v: <int>, // optional, must be ‘2’ if provided
-                }
-
         .. versionchanged:: 4.2
            Added the ``clusteredIndex`` and ``encryptedFields`` parameters.
 
