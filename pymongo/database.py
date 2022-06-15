@@ -304,7 +304,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         read_concern: Optional["ReadConcern"] = None,
         session: Optional["ClientSession"] = None,
         timeout: Optional[float] = None,
-        encrypted_fields: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> Collection[_DocumentType]:
         """Create a new :class:`~pymongo.collection.Collection` in this
@@ -336,28 +335,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.collation.Collation`.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
-          - `encrypted_fields`: **(BETA)** Document that describes the encrypted fields for
-            Queryable Encryption. For example::
-
-                {
-                  "escCollection": "enxcol_.encryptedCollection.esc",
-                  "eccCollection": "enxcol_.encryptedCollection.ecc",
-                  "ecocCollection": "enxcol_.encryptedCollection.ecoc",
-                  "fields": [
-                      {
-                          "path": "firstName",
-                          "keyId": Binary.from_uuid(UUID('00000000-0000-0000-0000-000000000000')),
-                          "bsonType": "string",
-                          "queries": {"queryType": "equality"}
-                      },
-                      {
-                          "path": "ssn",
-                          "keyId": Binary.from_uuid(UUID('04104104-1041-0410-4104-104104104104')),
-                          "bsonType": "string"
-                      }
-                  ]
-
-                }                }
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the `create collection command`_
 
@@ -389,11 +366,42 @@ class Database(common.BaseObject, Generic[_DocumentType]):
           - ``pipeline`` (list): a list of aggregation pipeline stages
           - ``comment`` (str): a user-provided comment to attach to this command.
             This option is only supported on MongoDB >= 4.4.
+          - ``encryptedFields`` (dict): **(BETA)** Document that describes the encrypted fields for
+            Queryable Encryption. For example::
+
+                {
+                  "escCollection": "enxcol_.encryptedCollection.esc",
+                  "eccCollection": "enxcol_.encryptedCollection.ecc",
+                  "ecocCollection": "enxcol_.encryptedCollection.ecoc",
+                  "fields": [
+                      {
+                          "path": "firstName",
+                          "keyId": Binary.from_uuid(UUID('00000000-0000-0000-0000-000000000000')),
+                          "bsonType": "string",
+                          "queries": {"queryType": "equality"}
+                      },
+                      {
+                          "path": "ssn",
+                          "keyId": Binary.from_uuid(UUID('04104104-1041-0410-4104-104104104104')),
+                          "bsonType": "string"
+                      }
+                    ]
+                }
+          - ``clusteredIndex`` (dict): Document that specifies the clustered index
+            configuration. It must have the following form::
+
+                {
+                    // key pattern must be {_id: 1}
+                    key: <key pattern>, // required
+                    unique: <bool>, // required, must be ‘true’
+                    name: <string>, // optional, otherwise automatically generated
+                    v: <int>, // optional, must be ‘2’ if provided
+                }
           - ``changeStreamPreAndPostImages`` (dict): a document with a boolean field ``enabled`` for
             enabling pre- and post-images.
 
         .. versionchanged:: 4.2
-           Added ``encrypted_fields`` parameter.
+           Added the ``clusteredIndex`` and ``encryptedFields`` parameters.
 
         .. versionchanged:: 3.11
            This method is now supported inside multi-document transactions
@@ -411,6 +419,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         .. _create collection command:
             https://mongodb.com/docs/manual/reference/command/create
         """
+        encrypted_fields = kwargs.get("encryptedFields")
         if (
             not encrypted_fields
             and self.client.options.auto_encryption_opts
@@ -419,8 +428,14 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             encrypted_fields = self.client.options.auto_encryption_opts._encrypted_fields_map.get(
                 "%s.%s" % (self.name, name)
             )
+            kwargs["encryptedFields"] = encrypted_fields
+
         if encrypted_fields:
-            common.validate_is_mapping("encrypted_fields", encrypted_fields)
+            common.validate_is_mapping("encryptedFields", encrypted_fields)
+
+        clustered_index = kwargs.get("clusteredIndex")
+        if clustered_index:
+            common.validate_is_mapping("clusteredIndex", clustered_index)
 
         with self.__client._tmp_session(session) as s:
             # Skip this check in a transaction where listCollections is not
@@ -439,7 +454,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 read_concern,
                 session=s,
                 timeout=timeout,
-                encrypted_fields=encrypted_fields,
                 **kwargs,
             )
 

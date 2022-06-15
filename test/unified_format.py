@@ -996,7 +996,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def _collectionOperation_listIndexes(self, target, *args, **kwargs):
         if "batch_size" in kwargs:
             self.skipTest("PyMongo does not support batch_size for list_indexes")
-        return target.list_indexes(*args, **kwargs)
+        return list(target.list_indexes(*args, **kwargs))
 
     def _collectionOperation_listIndexNames(self, target, *args, **kwargs):
         self.skipTest("PyMongo does not support list_index_names")

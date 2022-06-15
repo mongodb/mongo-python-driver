@@ -1002,8 +1002,6 @@ def parse_spec_options(opts):
     if "maxCommitTimeMS" in opts:
         opts["max_commit_time_ms"] = opts.pop("maxCommitTimeMS")
 
-    if "encryptedFields" in opts:
-        opts["encrypted_fields"] = opts.pop("encryptedFields")
     if "hint" in opts:
         hint = opts.pop("hint")
         if not isinstance(hint, str):

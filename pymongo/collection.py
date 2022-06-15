@@ -117,7 +117,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         read_concern: Optional["ReadConcern"] = None,
         session: Optional["ClientSession"] = None,
         timeout: Optional[float] = None,
-        encrypted_fields: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
         """Get / create a Mongo collection.
@@ -159,13 +158,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession` that is used with
             the create collection command
-          - `encrypted_fields`: **(BETA)** Document that describes the encrypted fields for
-            Queryable Encryption. If provided it will be passed to the create collection command.
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the create collection command
 
         .. versionchanged:: 4.2
-           Added ``encrypted_fields`` parameter.
+           Added the ``clusteredIndex`` and ``encryptedFields`` parameters.
 
         .. versionchanged:: 4.0
            Removed the reindex, map_reduce, inline_map_reduce,
@@ -222,6 +219,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self.__database: Database[_DocumentType] = database
         self.__name = name
         self.__full_name = "%s.%s" % (self.__database.name, self.__name)
+        encrypted_fields = kwargs.pop("encryptedFields", None)
         if create or kwargs or collation:
             if encrypted_fields:
                 common.validate_is_mapping("encrypted_fields", encrypted_fields)
