@@ -409,6 +409,142 @@ Automatic encryption in Queryable Encryption is configured with an ``encrypted_f
 In the above example, the ``firstName`` and ``lastName`` fields are
 automatically encrypted and decrypted.
 
+Explicit Queryable Encryption (Beta)
+````````````````````````````````````
+
+PyMongo 4.2 brings beta support for Queryable Encryption with MongoDB 6.0.
+
+Queryable Encryption is the second version of Client-Side Field Level Encryption.
+Data is encrypted client-side. Queryable Encryption supports indexed encrypted fields,
+which are further processed server-side.
+
+You must have MongoDB 6.0rc8+ to preview the capability.
+
+Until PyMongo 4.2 release is finalized, it can be installed using::
+
+  pip install "pymongo@git+ssh://git@github.com/mongodb/mongo-python-driver.git@4.2.0b0#egg=pymongo[encryption]"
+
+Additionally, ``libmongocrypt`` must be installed from `source <https://github.com/mongodb/libmongocrypt/blob/master/bindings/python/README.rst#installing-from-source>`_.
+
+Explicit encryption in Queryable Encryption is performed using the ``encrypt`` and ``decrypt``
+methods. Automatic encryption (to allow the ``find_one`` to automatically decrypt) is configured
+using an ``encrypted_fields`` mapping, as demonstrated by the following example::
+
+    import os
+
+    from pymongo import MongoClient
+    from pymongo.encryption import (Algorithm, AutoEncryptionOpts,
+                                  ClientEncryption, QueryType)
+
+
+    def main():
+        # This must be the same master key that was used to create
+        # the encryption key.
+        local_master_key = os.urandom(96)
+        kms_providers = {"local": {"key": local_master_key}}
+
+        # The MongoDB namespace (db.collection) used to store
+        # the encryption data keys.
+        key_vault_namespace = "encryption.__pymongoTestKeyVault"
+        key_vault_db_name, key_vault_coll_name = key_vault_namespace.split(".", 1)
+
+        # Set up the key vault (key_vault_namespace) for this example.
+        client = MongoClient()
+        key_vault = client[key_vault_db_name][key_vault_coll_name]
+
+        # Ensure that two data keys cannot share the same keyAltName.
+        key_vault.drop()
+        key_vault.create_index(
+            "keyAltNames",
+            unique=True,
+            partialFilterExpression={"keyAltNames": {"$exists": True}})
+
+        client_encryption = ClientEncryption(
+            kms_providers,
+            key_vault_namespace,
+            # The MongoClient to use for reading/writing to the key vault.
+            # This can be the same MongoClient used by the main application.
+            client,
+            # The CodecOptions class used for encrypting and decrypting.
+            # This should be the same CodecOptions instance you have configured
+            # on MongoClient, Database, or Collection.
+            client.codec_options)
+
+        # Create a new data key for the encryptedField.
+        indexed_key_id = client_encryption.create_data_key(
+            'local')
+        unindexed_key_id = client_encryption.create_data_key(
+            'local')
+
+        encrypted_fields = {
+          "escCollection": "enxcol_.default.esc",
+          "eccCollection": "enxcol_.default.ecc",
+          "ecocCollection": "enxcol_.default.ecoc",
+          "fields": [
+            {
+              "keyId": indexed_key_id,
+              "path": "encryptedIndexed",
+              "bsonType": "string",
+              "queries": {
+                "queryType": "equality"
+              }
+            },
+            {
+              "keyId": unindexed_key_id,
+              "path": "encryptedUnindexed",
+              "bsonType": "string",
+            }
+          ]
+        }
+
+        opts = AutoEncryptionOpts(
+            {"local": {"key": local_master_key}},
+            key_vault.full_name,
+            bypass_query_analysis=True,
+            key_vault_client=client,
+        )
+
+        # The MongoClient used to read/write application data.
+        encrypted_client = MongoClient(auto_encryption_opts=opts)
+        encrypted_client.drop_database("test")
+        db = encrypted_client.test
+
+        # Create the collection with encrypted fields.
+        coll = db.create_collection("coll", encrypted_fields=encrypted_fields)
+
+        # Create and encrypt an indexed and unindexed value.
+        val = "encrypted indexed value"
+        unindexed_val = "encrypted unindexed value"
+        insert_payload_indexed = client_encryption.encrypt(val, Algorithm.INDEXED, indexed_key_id)
+        insert_payload_unindexed = client_encryption.encrypt(unindexed_val, Algorithm.UNINDEXED,
+        unindexed_key_id)
+
+        # Insert the payloads.
+        coll.insert_one({
+            "encryptedIndexed": insert_payload_indexed,
+            "encryptedUnindexed": insert_payload_unindexed
+        })
+
+        # Encrypt our find payload using QueryType.EQUALITY.
+        # The value of "data_key_id" must be the same as used to encrypt the values
+        # above.
+        find_payload = client_encryption.encrypt(
+            val, Algorithm.INDEXED, indexed_key_id, query_type=QueryType.EQUALITY
+        )
+
+        # Find the document we inserted using the encrypted payload.
+        # The returned document is automatically decrypted.
+        doc = coll.find_one({"encryptedIndexed": find_payload})
+        print('Returned document: %s' % (doc,))
+
+        # Cleanup resources.
+        client_encryption.close()
+        encrypted_client.close()
+
+
+    if __name__ == "__main__":
+        main()
+
 .. _explicit-client-side-encryption:
 
 Explicit Encryption
