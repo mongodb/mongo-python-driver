@@ -540,6 +540,7 @@ using an ``encrypted_fields`` mapping, as demonstrated by the following example:
         # Cleanup resources.
         client_encryption.close()
         encrypted_client.close()
+        client.close()
 
 
     if __name__ == "__main__":
