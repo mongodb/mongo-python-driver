@@ -109,7 +109,7 @@ class GridFS(object):
 
         Equivalent to doing::
 
-          with GridIn(self.database[collection], **kwargs) as f:
+          with new_file(**kwargs) as f:
               f.write(data)
 
         `data` can be either an instance of :class:`bytes` or a file-like
