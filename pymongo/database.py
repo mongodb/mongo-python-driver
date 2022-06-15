@@ -389,7 +389,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
           - ``pipeline`` (list): a list of aggregation pipeline stages
           - ``comment`` (str): a user-provided comment to attach to this command.
             This option is only supported on MongoDB >= 4.4.
-          - ``changeStreamPreAndPostImages``  (dict): a document with a boolean field ``enabled`` for
+          - ``changeStreamPreAndPostImages`` (dict): a document with a boolean field ``enabled`` for
             enabling pre- and post-images.
 
         .. versionchanged:: 4.2
