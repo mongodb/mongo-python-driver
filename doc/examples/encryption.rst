@@ -496,13 +496,12 @@ using an ``encrypted_fields`` mapping, as demonstrated by the following example:
             }
           ]
         }
-        # bypass_auto_encryption=True disable automatic encryption but keeps
-        # the automatic _decryption_ behavior. bypass_auto_encryption will
-        # also disable spawning mongocryptd.
+
         opts = AutoEncryptionOpts(
             {"local": {"key": local_master_key}},
             key_vault.full_name,
             bypass_query_analysis=True,
+            key_vault_client=client,
         )
 
         # The MongoClient used to read/write application data.
