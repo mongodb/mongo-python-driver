@@ -687,7 +687,9 @@ Bye"""
         self.assertEqual(
             self.db.fs.chunks.count_documents({"files_id": infile._id}), infile._chunk_number
         )
+
         self.assertIsNone(self.db.fs.files.find_one({"_id": infile._id}))
+        self.assertTrue(infile.closed)
 
     def test_prechunked_string(self):
         def write_me(s, chunk_size):

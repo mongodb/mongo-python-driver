@@ -109,11 +109,8 @@ class GridFS(object):
 
         Equivalent to doing::
 
-          try:
-              f = new_file(**kwargs)
+          with GridIn(self.database[collection], **kwargs) as f:
               f.write(data)
-          finally:
-              f.close()
 
         `data` can be either an instance of :class:`bytes` or a file-like
         object providing a :meth:`read` method. If an `encoding` keyword
@@ -134,11 +131,10 @@ class GridFS(object):
         .. versionchanged:: 3.0
            w=0 writes to GridFS are now prohibited.
         """
-        grid_file = GridIn(self.__collection, **kwargs)
-        grid_file.write(data)
-        grid_file.close()
 
-        return grid_file._id
+        with GridIn(self.__collection, **kwargs) as grid_file:
+            grid_file.write(data)
+            return grid_file._id
 
     def get(self, file_id: Any, session: Optional[ClientSession] = None) -> GridOut:
         """Get a file from GridFS by ``"_id"``.

@@ -399,7 +399,11 @@ class GridIn(object):
         Close the file if no exceptions occur and allow exceptions to propagate.
         """
         if exc_type is None:
+            # No exceptions happened.
             self.close()
+        else:
+            # Something happened, at minimum mark as closed.
+            object.__setattr__(self, "_closed", True)
 
         # propagate exceptions
         return False
