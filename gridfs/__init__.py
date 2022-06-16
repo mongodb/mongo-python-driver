@@ -522,11 +522,11 @@ class GridFSBucket(object):
 
           my_db = MongoClient().test
           fs = GridFSBucket(my_db)
-          grid_in = fs.open_upload_stream(
+          with fs.open_upload_stream(
                 "test_file", chunk_size_bytes=4,
-                metadata={"contentType": "text/plain"})
-          grid_in.write("data I want to store!")
-          grid_in.close()  # uploaded on close
+                metadata={"contentType": "text/plain"}) as grid_in:
+              grid_in.write("data I want to store!")
+          # uploaded on close
 
         Returns an instance of :class:`~gridfs.grid_file.GridIn`.
 
@@ -578,13 +578,13 @@ class GridFSBucket(object):
 
           my_db = MongoClient().test
           fs = GridFSBucket(my_db)
-          grid_in = fs.open_upload_stream_with_id(
+          with fs.open_upload_stream_with_id(
                 ObjectId(),
                 "test_file",
                 chunk_size_bytes=4,
-                metadata={"contentType": "text/plain"})
-          grid_in.write("data I want to store!")
-          grid_in.close()  # uploaded on close
+                metadata={"contentType": "text/plain"}) as grid_in:
+              grid_in.write("data I want to store!")
+          # uploaded on close
 
         Returns an instance of :class:`~gridfs.grid_file.GridIn`.
 
