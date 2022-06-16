@@ -675,6 +675,22 @@ Bye"""
         with GridOut(self.db.fs, infile._id) as outfile:
             self.assertEqual(contents, outfile.read())
 
+    def test_exception_file_non_existence(self):
+        contents = b"Imagine this is some important data..."
+
+        with self.assertRaises(ConnectionError):
+            with GridIn(self.db.fs, filename="important") as infile:
+                infile.write(contents)
+                raise ConnectionError("Test exception")
+
+        # Expectation: File chunks are written, entry in files doesn't appear.
+        self.assertEqual(
+            self.db.fs.chunks.count_documents({"files_id": infile._id}), infile._chunk_number
+        )
+
+        self.assertIsNone(self.db.fs.files.find_one({"_id": infile._id}))
+        self.assertTrue(infile.closed)
+
     def test_prechunked_string(self):
         def write_me(s, chunk_size):
             buf = BytesIO(s)
