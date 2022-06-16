@@ -255,11 +255,15 @@ class ObjectId(object):
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, ObjectId):
             return self.__id == other.binary
+        elif isinstance(other, str):
+            return str(self) == other
         return NotImplemented
 
     def __ne__(self, other: Any) -> bool:
         if isinstance(other, ObjectId):
             return self.__id != other.binary
+        elif isinstance(other, str):
+            return str(self) != other
         return NotImplemented
 
     def __lt__(self, other: Any) -> bool:

@@ -85,6 +85,14 @@ class TestObjectId(unittest.TestCase):
         self.assertEqual(a, ObjectId(a.binary))
         self.assertEqual(a, ObjectId(str(a)))
 
+    def test_str_equality(self):
+        a = ObjectId()
+        self.assertEqual(a, str(a))
+        self.assertEqual(str(a), a)
+
+        self.assertNotEqual("123456789012", a)
+        self.assertNotEqual(a, "123456789012")
+
     def test_generation_time(self):
         d1 = datetime.datetime.utcnow()
         d2 = ObjectId().generation_time
