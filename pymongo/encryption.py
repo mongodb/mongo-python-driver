@@ -25,7 +25,7 @@ try:
     from pymongocrypt.auto_encrypter import AutoEncrypter
     from pymongocrypt.errors import MongoCryptError  # noqa: F401
     from pymongocrypt.explicit_encrypter import ExplicitEncrypter
-    from pymongocrypt.mongocrypt import MongoCryptOptions
+    from pymongocrypt.mongocrypt import MongoCryptOptions, RewrapManyDataKeyResult
     from pymongocrypt.state_machine import MongoCryptCallback
 
     _HAVE_PYMONGOCRYPT = True
@@ -50,6 +50,7 @@ from pymongo.errors import (
 )
 from pymongo.mongo_client import MongoClient
 from pymongo.network import BLOCKING_IO_ERRORS
+from pymongo.operations import ReplaceOne
 from pymongo.pool import PoolOptions, _configured_socket
 from pymongo.read_concern import ReadConcern
 from pymongo.ssl_support import get_ssl_context
@@ -237,6 +238,22 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
 
         self.key_vault_coll.insert_one(raw_doc)
         return Binary(data_key_id.bytes, subtype=UUID_SUBTYPE)
+
+    def rewrap_many_data_key(self, data_keys):
+        """**Experimental** Decrypts multiple data keys and (re-)encrypts them.
+
+        :Parameters:
+            `data_keys`: The data keys to rewrap.
+
+        :Returns:
+           A :class:`RewrapManyDataKeyResult`.
+        """
+        replacements = []
+        for key in data_keys:
+            op = ReplaceOne({"_id": key.id}, key)
+            replacements.append(op)
+        result = self.key_vault_coll.bulk_write(replacements)
+        return RewrapManyDataKeyResult(result)
 
     def bson_encode(self, doc):
         """Encode a document to BSON.
