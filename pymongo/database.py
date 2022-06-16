@@ -38,6 +38,7 @@ from pymongo.aggregation import _DatabaseAggregationCommand
 from pymongo.change_stream import DatabaseChangeStream
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
+from pymongo.common import _ecc_coll_name, _ecoc_coll_name, _esc_coll_name
 from pymongo.errors import CollectionInvalid, InvalidName
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
@@ -74,6 +75,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
+        timeout: Optional[float] = None,
     ) -> None:
         """Get a database by client and name.
 
@@ -126,6 +128,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             read_preference or client.read_preference,
             write_concern or client.write_concern,
             read_concern or client.read_concern,
+            timeout if timeout is not None else client.timeout,
         )
 
         if not isinstance(name, str):
@@ -153,6 +156,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
+        timeout: Optional[float] = None,
     ) -> "Database[_DocumentType]":
         """Get a clone of this database changing the specified settings.
 
@@ -192,6 +196,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             read_preference or self.read_preference,
             write_concern or self.write_concern,
             read_concern or self.read_concern,
+            timeout if timeout is not None else self.timeout,
         )
 
     def __eq__(self, other: Any) -> bool:
@@ -240,6 +245,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
+        timeout: Optional[float] = None,
     ) -> Collection[_DocumentType]:
         """Get a :class:`~pymongo.collection.Collection` with the given name
         and options.
@@ -279,7 +285,14 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             used.
         """
         return Collection(
-            self, name, False, codec_options, read_preference, write_concern, read_concern
+            self,
+            name,
+            False,
+            codec_options,
+            read_preference,
+            write_concern,
+            read_concern,
+            timeout=timeout,
         )
 
     def create_collection(
@@ -290,6 +303,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
         session: Optional["ClientSession"] = None,
+        timeout: Optional[float] = None,
         **kwargs: Any,
     ) -> Collection[_DocumentType]:
         """Create a new :class:`~pymongo.collection.Collection` in this
@@ -352,6 +366,42 @@ class Database(common.BaseObject, Generic[_DocumentType]):
           - ``pipeline`` (list): a list of aggregation pipeline stages
           - ``comment`` (str): a user-provided comment to attach to this command.
             This option is only supported on MongoDB >= 4.4.
+          - ``encryptedFields`` (dict): **(BETA)** Document that describes the encrypted fields for
+            Queryable Encryption. For example::
+
+                {
+                  "escCollection": "enxcol_.encryptedCollection.esc",
+                  "eccCollection": "enxcol_.encryptedCollection.ecc",
+                  "ecocCollection": "enxcol_.encryptedCollection.ecoc",
+                  "fields": [
+                      {
+                          "path": "firstName",
+                          "keyId": Binary.from_uuid(UUID('00000000-0000-0000-0000-000000000000')),
+                          "bsonType": "string",
+                          "queries": {"queryType": "equality"}
+                      },
+                      {
+                          "path": "ssn",
+                          "keyId": Binary.from_uuid(UUID('04104104-1041-0410-4104-104104104104')),
+                          "bsonType": "string"
+                      }
+                    ]
+                }
+          - ``clusteredIndex`` (dict): Document that specifies the clustered index
+            configuration. It must have the following form::
+
+                {
+                    // key pattern must be {_id: 1}
+                    key: <key pattern>, // required
+                    unique: <bool>, // required, must be ‘true’
+                    name: <string>, // optional, otherwise automatically generated
+                    v: <int>, // optional, must be ‘2’ if provided
+                }
+          - ``changeStreamPreAndPostImages`` (dict): a document with a boolean field ``enabled`` for
+            enabling pre- and post-images.
+
+        .. versionchanged:: 4.2
+           Added the ``clusteredIndex`` and ``encryptedFields`` parameters.
 
         .. versionchanged:: 3.11
            This method is now supported inside multi-document transactions
@@ -369,6 +419,24 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         .. _create collection command:
             https://mongodb.com/docs/manual/reference/command/create
         """
+        encrypted_fields = kwargs.get("encryptedFields")
+        if (
+            not encrypted_fields
+            and self.client.options.auto_encryption_opts
+            and self.client.options.auto_encryption_opts._encrypted_fields_map
+        ):
+            encrypted_fields = self.client.options.auto_encryption_opts._encrypted_fields_map.get(
+                "%s.%s" % (self.name, name)
+            )
+            kwargs["encryptedFields"] = encrypted_fields
+
+        if encrypted_fields:
+            common.validate_is_mapping("encryptedFields", encrypted_fields)
+
+        clustered_index = kwargs.get("clusteredIndex")
+        if clustered_index:
+            common.validate_is_mapping("clusteredIndex", clustered_index)
+
         with self.__client._tmp_session(session) as s:
             # Skip this check in a transaction where listCollections is not
             # supported.
@@ -376,7 +444,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 filter={"name": name}, session=s
             ):
                 raise CollectionInvalid("collection %s already exists" % name)
-
             return Collection(
                 self,
                 name,
@@ -386,6 +453,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 write_concern,
                 read_concern,
                 session=s,
+                timeout=timeout,
                 **kwargs,
             )
 
@@ -478,6 +546,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         session: Optional["ClientSession"] = None,
         start_after: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
+        full_document_before_change: Optional[str] = None,
     ) -> DatabaseChangeStream[_DocumentType]:
         """Watch changes on this database.
 
@@ -524,11 +593,13 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             pipeline stages are valid after a ``$changeStream`` stage, see the
             MongoDB documentation on change streams for the supported stages.
           - `full_document` (optional): The fullDocument to pass as an option
-            to the ``$changeStream`` stage. Allowed values: 'updateLookup'.
+            to the ``$changeStream`` stage. Allowed values: 'updateLookup', 'whenAvailable', 'required'.
             When set to 'updateLookup', the change notification for partial
             updates will include both a delta describing the changes to the
             document, as well as a copy of the entire document that was
             changed from some time after the change occurred.
+          - `full_document_before_change`: Allowed values: `whenAvailable` and `required`. Change events
+            may now result in a `fullDocumentBeforeChange` response field.
           - `resume_after` (optional): A resume token. If provided, the
             change stream will start returning changes that occur directly
             after the operation specified in the resume token. A resume token
@@ -555,6 +626,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         :Returns:
           A :class:`~pymongo.change_stream.DatabaseChangeStream` cursor.
 
+        .. versionchanged:: 4.2
+            Added ``full_document_before_change`` parameter.
+
         .. versionchanged:: 4.1
            Added ``comment`` parameter.
 
@@ -579,7 +653,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             start_at_operation_time,
             session,
             start_after,
-            comment=comment,
+            comment,
+            full_document_before_change,
         )
 
     def _command(
@@ -874,11 +949,27 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         return [result["name"] for result in self.list_collections(session=session, **kwargs)]
 
+    def _drop_helper(self, name, session=None, comment=None):
+        command = SON([("drop", name)])
+        if comment is not None:
+            command["comment"] = comment
+
+        with self.__client._socket_for_writes(session) as sock_info:
+            return self._command(
+                sock_info,
+                command,
+                allowable_errors=["ns not found", 26],
+                write_concern=self._write_concern_for(session),
+                parse_write_concern_error=True,
+                session=session,
+            )
+
     def drop_collection(
         self,
         name_or_collection: Union[str, Collection],
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
+        encrypted_fields: Optional[Mapping[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Drop a collection.
 
@@ -889,10 +980,35 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.client_session.ClientSession`.
           - `comment` (optional): A user-provided comment to attach to this
             command.
+          - `encrypted_fields`: **(BETA)** Document that describes the encrypted fields for
+            Queryable Encryption. For example::
+
+                {
+                  "escCollection": "enxcol_.encryptedCollection.esc",
+                  "eccCollection": "enxcol_.encryptedCollection.ecc",
+                  "ecocCollection": "enxcol_.encryptedCollection.ecoc",
+                  "fields": [
+                      {
+                          "path": "firstName",
+                          "keyId": Binary.from_uuid(UUID('00000000-0000-0000-0000-000000000000')),
+                          "bsonType": "string",
+                          "queries": {"queryType": "equality"}
+                      },
+                      {
+                          "path": "ssn",
+                          "keyId": Binary.from_uuid(UUID('04104104-1041-0410-4104-104104104104')),
+                          "bsonType": "string"
+                      }
+                  ]
+
+                }
 
 
         .. note:: The :attr:`~pymongo.database.Database.write_concern` of
            this database is automatically applied to this operation.
+
+        .. versionchanged:: 4.2
+           Added ``encrypted_fields`` parameter.
 
         .. versionchanged:: 4.1
            Added ``comment`` parameter.
@@ -911,20 +1027,34 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         if not isinstance(name, str):
             raise TypeError("name_or_collection must be an instance of str")
-
-        command = SON([("drop", name)])
-        if comment is not None:
-            command["comment"] = comment
-
-        with self.__client._socket_for_writes(session) as sock_info:
-            return self._command(
-                sock_info,
-                command,
-                allowable_errors=["ns not found", 26],
-                write_concern=self._write_concern_for(session),
-                parse_write_concern_error=True,
-                session=session,
+        full_name = "%s.%s" % (self.name, name)
+        if (
+            not encrypted_fields
+            and self.client.options.auto_encryption_opts
+            and self.client.options.auto_encryption_opts._encrypted_fields_map
+        ):
+            encrypted_fields = self.client.options.auto_encryption_opts._encrypted_fields_map.get(
+                full_name
             )
+        if not encrypted_fields and self.client.options.auto_encryption_opts:
+            colls = list(
+                self.list_collections(filter={"name": name}, session=session, comment=comment)
+            )
+            if colls and colls[0]["options"].get("encryptedFields"):
+                encrypted_fields = colls[0]["options"]["encryptedFields"]
+        if encrypted_fields:
+            common.validate_is_mapping("encrypted_fields", encrypted_fields)
+            self._drop_helper(
+                _esc_coll_name(encrypted_fields, name), session=session, comment=comment
+            )
+            self._drop_helper(
+                _ecc_coll_name(encrypted_fields, name), session=session, comment=comment
+            )
+            self._drop_helper(
+                _ecoc_coll_name(encrypted_fields, name), session=session, comment=comment
+            )
+
+        return self._drop_helper(name, session, comment)
 
     def validate_collection(
         self,

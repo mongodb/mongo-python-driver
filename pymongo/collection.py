@@ -35,7 +35,7 @@ from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from bson.timestamp import Timestamp
-from pymongo import common, helpers, message
+from pymongo import ASCENDING, common, helpers, message
 from pymongo.aggregation import (
     _CollectionAggregationCommand,
     _CollectionRawAggregationCommand,
@@ -44,6 +44,7 @@ from pymongo.bulk import _Bulk
 from pymongo.change_stream import CollectionChangeStream
 from pymongo.collation import validate_collation_or_none
 from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
+from pymongo.common import _ecc_coll_name, _ecoc_coll_name, _esc_coll_name
 from pymongo.cursor import Cursor, RawBatchCursor
 from pymongo.errors import (
     ConfigurationError,
@@ -115,6 +116,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional["ReadConcern"] = None,
         session: Optional["ClientSession"] = None,
+        timeout: Optional[float] = None,
         **kwargs: Any,
     ) -> None:
         """Get / create a Mongo collection.
@@ -159,6 +161,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the create collection command
 
+        .. versionchanged:: 4.2
+           Added the ``clusteredIndex`` and ``encryptedFields`` parameters.
+
         .. versionchanged:: 4.0
            Removed the reindex, map_reduce, inline_map_reduce,
            parallel_scan, initialize_unordered_bulk_op,
@@ -196,8 +201,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             read_preference or database.read_preference,
             write_concern or database.write_concern,
             read_concern or database.read_concern,
+            timeout if timeout is not None else database.timeout,
         )
-
         if not isinstance(name, str):
             raise TypeError("name must be an instance of str")
 
@@ -214,8 +219,18 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self.__database: Database[_DocumentType] = database
         self.__name = name
         self.__full_name = "%s.%s" % (self.__database.name, self.__name)
+        encrypted_fields = kwargs.pop("encryptedFields", None)
         if create or kwargs or collation:
-            self.__create(kwargs, collation, session)
+            if encrypted_fields:
+                common.validate_is_mapping("encrypted_fields", encrypted_fields)
+                opts = {"clusteredIndex": {"key": {"_id": 1}, "unique": True}}
+                self.__create(_esc_coll_name(encrypted_fields, name), opts, None, session)
+                self.__create(_ecc_coll_name(encrypted_fields, name), opts, None, session)
+                self.__create(_ecoc_coll_name(encrypted_fields, name), opts, None, session)
+                self.__create(name, kwargs, collation, session, encrypted_fields=encrypted_fields)
+                self.create_index([("__safeContent__", ASCENDING)], session)
+            else:
+                self.__create(name, kwargs, collation, session)
 
         self.__write_response_codec_options = self.codec_options._replace(
             unicode_decode_error_handler="replace", document_class=dict
@@ -286,9 +301,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 user_fields=user_fields,
             )
 
-    def __create(self, options, collation, session):
+    def __create(self, name, options, collation, session, encrypted_fields=None):
         """Sends a create command with the given options."""
-        cmd = SON([("create", self.__name)])
+        cmd = SON([("create", name)])
+        if encrypted_fields:
+            cmd["encryptedFields"] = encrypted_fields
+
         if options:
             if "size" in options:
                 options["size"] = float(options["size"])
@@ -377,6 +395,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional["ReadConcern"] = None,
+        timeout: Optional[float] = None,
     ) -> "Collection[_DocumentType]":
         """Get a clone of this collection changing the specified settings.
 
@@ -415,6 +434,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             read_preference or self.read_preference,
             write_concern or self.write_concern,
             read_concern or self.read_concern,
+            timeout=timeout if timeout is not None else self.timeout,
         )
 
     def bulk_write(
@@ -1139,6 +1159,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self,
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
+        encrypted_fields: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Alias for :meth:`~pymongo.database.Database.drop_collection`.
 
@@ -1147,11 +1168,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.client_session.ClientSession`.
           - `comment` (optional): A user-provided comment to attach to this
             command.
+          - `encrypted_fields`: **(BETA)** Document that describes the encrypted fields for
+            Queryable Encryption.
 
         The following two calls are equivalent:
 
           >>> db.foo.drop()
           >>> db.drop_collection("foo")
+
+        .. versionchanged:: 4.2
+           Added ``encrypted_fields`` parameter.
 
         .. versionchanged:: 4.1
            Added ``comment`` parameter.
@@ -1169,7 +1195,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             self.write_concern,
             self.read_concern,
         )
-        dbo.drop_collection(self.__name, session=session, comment=comment)
+        dbo.drop_collection(
+            self.__name, session=session, comment=comment, encrypted_fields=encrypted_fields
+        )
 
     def _delete(
         self,
@@ -2471,6 +2499,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         session: Optional["ClientSession"] = None,
         start_after: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
+        full_document_before_change: Optional[str] = None,
     ) -> CollectionChangeStream[_DocumentType]:
         """Watch changes on this collection.
 
@@ -2529,6 +2558,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             updates will include both a delta describing the changes to the
             document, as well as a copy of the entire document that was
             changed from some time after the change occurred.
+          - `full_document_before_change`: Allowed values: `whenAvailable` and `required`. Change events
+            may now result in a `fullDocumentBeforeChange` response field.
           - `resume_after` (optional): A resume token. If provided, the
             change stream will start returning changes that occur directly
             after the operation specified in the resume token. A resume token
@@ -2555,6 +2586,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         :Returns:
           A :class:`~pymongo.change_stream.CollectionChangeStream` cursor.
 
+        .. versionchanged:: 4.2
+            Added ``full_document_before_change`` parameter.
 
         .. versionchanged:: 4.1
            Added ``comment`` parameter.
@@ -2583,7 +2616,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             start_at_operation_time,
             session,
             start_after,
-            comment=comment,
+            comment,
+            full_document_before_change,
         )
 
     def rename(

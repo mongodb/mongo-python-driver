@@ -35,6 +35,7 @@ from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo import MongoClient, monitoring, operations, read_preferences
 from pymongo.collection import ReturnDocument
+from pymongo.cursor import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
 from pymongo.monitoring import _SENSITIVE_COMMANDS
@@ -174,15 +175,26 @@ class AllowListEventListener(EventListener):
 class OvertCommandListener(EventListener):
     """A CommandListener that ignores sensitive commands."""
 
+    ignore_list_collections = False
+
     def started(self, event):
+        if self.ignore_list_collections and event.command_name.lower() == "listcollections":
+            self.ignore_list_collections = False
+            return
         if event.command_name.lower() not in _SENSITIVE_COMMANDS:
             super(OvertCommandListener, self).started(event)
 
     def succeeded(self, event):
+        if self.ignore_list_collections and event.command_name.lower() == "listcollections":
+            self.ignore_list_collections = False
+            return
         if event.command_name.lower() not in _SENSITIVE_COMMANDS:
             super(OvertCommandListener, self).succeeded(event)
 
     def failed(self, event):
+        if self.ignore_list_collections and event.command_name.lower() == "listcollections":
+            self.ignore_list_collections = False
+            return
         if event.command_name.lower() not in _SENSITIVE_COMMANDS:
             super(OvertCommandListener, self).failed(event)
 
@@ -640,6 +652,9 @@ def parse_collection_options(opts):
 
     if "readConcern" in opts:
         opts["read_concern"] = ReadConcern(**dict(opts.pop("readConcern")))
+
+    if "timeoutMS" in opts:
+        opts["timeout"] = int(opts.pop("timeoutMS")) / 1000.0
     return opts
 
 
@@ -977,6 +992,10 @@ def parse_spec_options(opts):
     if "readConcern" in opts:
         opts["read_concern"] = ReadConcern(**dict(opts.pop("readConcern")))
 
+    if "timeoutMS" in opts:
+        assert isinstance(opts["timeoutMS"], int)
+        opts["timeout"] = int(opts.pop("timeoutMS")) / 1000.0
+
     if "maxTimeMS" in opts:
         opts["max_time_ms"] = opts.pop("maxTimeMS")
 
@@ -1028,6 +1047,8 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callbac
         # Aggregate uses "batchSize", while find uses batch_size.
         elif (arg_name == "batchSize" or arg_name == "allowDiskUse") and opname == "aggregate":
             continue
+        elif arg_name == "timeoutMode":
+            raise unittest.SkipTest("PyMongo does not support timeoutMode")
         # Requires boolean returnDocument.
         elif arg_name == "returnDocument":
             arguments[c2s] = getattr(ReturnDocument, arguments.pop(arg_name).upper())
@@ -1049,11 +1070,6 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callbac
             arguments["requests"] = requests
         elif arg_name == "session":
             arguments["session"] = entity_map[arguments["session"]]
-        elif opname in ("command", "run_admin_command") and arg_name == "command":
-            # Ensure the first key is the command name.
-            ordered_command = SON([(spec["command_name"], 1)])
-            ordered_command.update(arguments["command"])
-            arguments["command"] = ordered_command
         elif opname == "open_download_stream" and arg_name == "id":
             arguments["file_id"] = arguments.pop(arg_name)
         elif opname != "find" and c2s == "max_time_ms":
@@ -1082,5 +1098,13 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callbac
             arguments["index_or_name"] = arguments.pop(arg_name)
         elif opname == "rename" and arg_name == "to":
             arguments["new_name"] = arguments.pop(arg_name)
+        elif arg_name == "cursorType":
+            cursor_type = arguments.pop(arg_name)
+            if cursor_type == "tailable":
+                arguments["cursor_type"] = CursorType.TAILABLE
+            elif cursor_type == "tailableAwait":
+                arguments["cursor_type"] = CursorType.TAILABLE
+            else:
+                assert False, f"Unsupported cursorType: {cursor_type}"
         else:
             arguments[c2s] = arguments.pop(arg_name)

@@ -27,7 +27,7 @@ from typing import Any, NoReturn, Optional
 
 from bson import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
-from pymongo import __version__, auth, helpers
+from pymongo import __version__, _csot, auth, helpers
 from pymongo.client_session import _validate_session_write_concern
 from pymongo.common import (
     MAX_BSON_SIZE,
@@ -46,6 +46,7 @@ from pymongo.errors import (
     ConfigurationError,
     ConnectionFailure,
     DocumentTooLarge,
+    ExecutionTimeout,
     InvalidOperation,
     NetworkTimeout,
     NotPrimaryError,
@@ -557,6 +558,43 @@ class SocketInfo(object):
         self.pinned_txn = False
         self.pinned_cursor = False
         self.active = False
+        self.last_timeout = self.opts.socket_timeout
+
+    def set_socket_timeout(self, timeout):
+        """Cache last timeout to avoid duplicate calls to sock.settimeout."""
+        if timeout == self.last_timeout:
+            return
+        self.last_timeout = timeout
+        self.sock.settimeout(timeout)
+
+    def apply_timeout(self, client, cmd, write_concern=None):
+        # CSOT: use remaining timeout when set.
+        timeout = _csot.remaining()
+        if timeout is None:
+            # Reset the socket timeout unless we're performing a streaming monitor check.
+            if not self.more_to_come:
+                self.set_socket_timeout(self.opts.socket_timeout)
+
+            if cmd and write_concern and not write_concern.is_server_default:
+                cmd["writeConcern"] = write_concern.document
+            return None
+        # RTT validation.
+        rtt = _csot.get_rtt()
+        max_time_ms = timeout - rtt
+        if max_time_ms < 0:
+            # CSOT: raise an error without running the command since we know it will time out.
+            errmsg = f"operation would exceed time limit, remaining timeout:{timeout:.5f} <= network round trip time:{rtt:.5f}"
+            raise ExecutionTimeout(
+                errmsg, 50, {"ok": 0, "errmsg": errmsg, "code": 50}, self.max_wire_version
+            )
+        if cmd is not None:
+            cmd["maxTimeMS"] = int(max_time_ms * 1000)
+            wc = write_concern.document if write_concern else {}
+            wc.pop("wtimeout", None)
+            if wc:
+                cmd["writeConcern"] = wc
+        self.set_socket_timeout(timeout)
+        return timeout
 
     def pin_txn(self):
         self.pinned_txn = True
@@ -602,7 +640,7 @@ class SocketInfo(object):
             awaitable = True
             # If connect_timeout is None there is no timeout.
             if self.opts.connect_timeout:
-                self.sock.settimeout(self.opts.connect_timeout + heartbeat_frequency)
+                self.set_socket_timeout(self.opts.connect_timeout + heartbeat_frequency)
 
         if not performing_handshake and cluster_time is not None:
             cmd["$clusterTime"] = cluster_time
@@ -714,8 +752,6 @@ class SocketInfo(object):
 
         if not (write_concern is None or write_concern.acknowledged or collation is None):
             raise ConfigurationError("Collation is unsupported for unacknowledged writes.")
-        if write_concern and not write_concern.is_server_default:
-            spec["writeConcern"] = write_concern.document
 
         self.add_server_api(spec)
         if session:
@@ -748,6 +784,7 @@ class SocketInfo(object):
                 unacknowledged=unacknowledged,
                 user_fields=user_fields,
                 exhaust_allowed=exhaust_allowed,
+                write_concern=write_concern,
             )
         except (OperationFailure, NotPrimaryError):
             raise
@@ -978,7 +1015,13 @@ def _create_connection(address, options):
         _set_non_inheritable_non_atomic(sock.fileno())
         try:
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            sock.settimeout(options.connect_timeout)
+            # CSOT: apply timeout to socket connect.
+            timeout = _csot.remaining()
+            if timeout is None:
+                timeout = options.connect_timeout
+            elif timeout <= 0:
+                raise socket.timeout("timed out")
+            sock.settimeout(timeout)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
             _set_keepalive_times(sock)
             sock.connect(sa)
@@ -1416,7 +1459,9 @@ class Pool:
             self.operation_count += 1
 
         # Get a free socket or create one.
-        if self.opts.wait_queue_timeout:
+        if _csot.get_timeout():
+            deadline = _csot.get_deadline()
+        elif self.opts.wait_queue_timeout:
             deadline = time.monotonic() + self.opts.wait_queue_timeout
         else:
             deadline = None
@@ -1582,25 +1627,25 @@ class Pool:
             listeners.publish_connection_check_out_failed(
                 self.address, ConnectionCheckOutFailedReason.TIMEOUT
             )
+        timeout = _csot.get_timeout() or self.opts.wait_queue_timeout
         if self.opts.load_balanced:
             other_ops = self.active_sockets - self.ncursors - self.ntxns
             raise ConnectionFailure(
                 "Timeout waiting for connection from the connection pool. "
                 "maxPoolSize: %s, connections in use by cursors: %s, "
                 "connections in use by transactions: %s, connections in use "
-                "by other operations: %s, wait_queue_timeout: %s"
+                "by other operations: %s, timeout: %s"
                 % (
                     self.opts.max_pool_size,
                     self.ncursors,
                     self.ntxns,
                     other_ops,
-                    self.opts.wait_queue_timeout,
+                    timeout,
                 )
             )
         raise ConnectionFailure(
             "Timed out while checking out a connection from connection pool. "
-            "maxPoolSize: %s, wait_queue_timeout: %s"
-            % (self.opts.max_pool_size, self.opts.wait_queue_timeout)
+            "maxPoolSize: %s, timeout: %s" % (self.opts.max_pool_size, timeout)
         )
 
     def __del__(self):

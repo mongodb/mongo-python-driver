@@ -229,7 +229,19 @@ class SpecRunner(IntegrationTest):
 
             return True
         else:
-            self.assertEqual(result, expected_result)
+
+            def _helper(expected_result, result):
+                if isinstance(expected_result, abc.Mapping):
+                    for i in expected_result.keys():
+                        self.assertEqual(expected_result[i], result[i])
+
+                elif isinstance(expected_result, list):
+                    for i, k in zip(expected_result, result):
+                        _helper(i, k)
+                else:
+                    self.assertEqual(expected_result, result)
+
+            _helper(expected_result, result)
 
     def get_object_name(self, op):
         """Allow subclasses to override handling of 'object'
@@ -294,8 +306,16 @@ class SpecRunner(IntegrationTest):
             args = {"sessions": sessions, "collection": collection}
             args.update(arguments)
             arguments = args
-        result = cmd(**dict(arguments))
 
+        try:
+            if name == "create_collection" and (
+                "encrypted" in operation["arguments"]["name"]
+                or "plaintext" in operation["arguments"]["name"]
+            ):
+                self.listener.ignore_list_collections = True
+            result = cmd(**dict(arguments))
+        finally:
+            self.listener.ignore_list_collections = False
         # Cleanup open change stream cursors.
         if name == "watch":
             self.addCleanup(result.close)
@@ -323,8 +343,7 @@ class SpecRunner(IntegrationTest):
         expected_result = op.get("result")
         if expect_error(op):
             with self.assertRaises(self.allowable_errors(op), msg=op["name"]) as context:
-                self.run_operation(sessions, collection, op.copy())
-
+                out = self.run_operation(sessions, collection, op.copy())
             if expect_error_message(expected_result):
                 if isinstance(context.exception, BulkWriteError):
                     errmsg = str(context.exception.details).lower()

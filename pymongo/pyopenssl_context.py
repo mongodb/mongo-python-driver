@@ -82,7 +82,7 @@ def _is_ip_address(address):
 
 # According to the docs for Connection.send it can raise
 # WantX509LookupError and should be retried.
-_RETRY_ERRORS = (_SSL.WantReadError, _SSL.WantWriteError, _SSL.WantX509LookupError)
+BLOCKING_IO_ERRORS = (_SSL.WantReadError, _SSL.WantWriteError, _SSL.WantX509LookupError)
 
 
 def _ragged_eof(exc):
@@ -106,7 +106,7 @@ class _sslConn(_SSL.Connection):
         while True:
             try:
                 return call(*args, **kwargs)
-            except _RETRY_ERRORS as exc:
+            except BLOCKING_IO_ERRORS as exc:
                 if isinstance(exc, _SSL.WantReadError):
                     want_read = True
                     want_write = False

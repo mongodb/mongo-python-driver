@@ -93,6 +93,7 @@ do
       cpjson client-side-encryption/corpus/ client-side-encryption/corpus
       cpjson client-side-encryption/external/ client-side-encryption/external
       cpjson client-side-encryption/limits/ client-side-encryption/limits
+      cpjson client-side-encryption/etc/data client-side-encryption/etc/data
       ;;
     cmap|CMAP|connection-monitoring-and-pooling)
       cpjson connection-monitoring-and-pooling/tests cmap
@@ -103,6 +104,9 @@ do
       ;;
     crud|CRUD)
       cpjson crud/tests/ crud
+      ;;
+    csot|CSOT|client-side-operations-timeout)
+      cpjson client-side-operations-timeout/tests csot
       ;;
     load-balancers|load_balancer)
       cpjson load-balancers/tests load_balancer
@@ -149,6 +153,7 @@ do
       ;;
     uri|uri-options|uri_options)
       cpjson uri-options/tests uri_options
+      cp "$SPECS"/source/uri-options/tests/*.pem  $PYMONGO/test/uri_options
       ;;
     stable-api|versioned-api)
       cpjson versioned-api/tests versioned-api

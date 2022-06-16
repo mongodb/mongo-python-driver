@@ -34,7 +34,7 @@ except ImportError:
     except ImportError:
         _HAVE_SPHINX = False
 
-version = "4.2.0.dev1"
+version = "4.2.0.dev2"
 
 f = open("README.rst")
 try:
@@ -255,12 +255,7 @@ ext_modules = [
     Extension(
         "bson._cbson",
         include_dirs=["bson"],
-        sources=[
-            "bson/_cbsonmodule.c",
-            "bson/time64.c",
-            "bson/buffer.c",
-            "bson/encoding_helpers.c",
-        ],
+        sources=["bson/_cbsonmodule.c", "bson/time64.c", "bson/buffer.c"],
     ),
     Extension(
         "pymongo._cmessage",
@@ -281,7 +276,9 @@ if sys.platform in ("win32", "darwin"):
     pyopenssl_reqs.append("certifi")
 
 extras_require = {
-    "encryption": ["pymongocrypt>=1.2.0,<2.0.0"],
+    "encryption": [
+        "pymongocrypt@git+ssh://git@github.com/mongodb/libmongocrypt.git@pymongocrypt-1.3.0b0#subdirectory=bindings/python"
+    ],
     "ocsp": pyopenssl_reqs,
     "snappy": ["python-snappy"],
     "zstd": ["zstandard"],

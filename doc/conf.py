@@ -85,6 +85,7 @@ pygments_style = "sphinx"
 # so this link results in a 404.
 linkcheck_ignore = [
     "https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-monitoring.rst#requesting-an-immediate-check",
+    "https://github.com/mongodb/libmongocrypt/blob/master/bindings/python/README.rst#installing-from-source",
     r"https://wiki.centos.org/[\w/]*",
 ]
 

@@ -42,6 +42,7 @@ from test.utils import (
 from test.version import Version
 from typing import Any
 
+import pymongo
 from bson import SON, Code, DBRef, Decimal128, Int64, MaxKey, MinKey, json_util
 from bson.binary import Binary
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
@@ -59,9 +60,13 @@ from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
     ConnectionFailure,
+    ExecutionTimeout,
     InvalidOperation,
+    NetworkTimeout,
     NotPrimaryError,
     PyMongoError,
+    ServerSelectionTimeoutError,
+    WriteConcernError,
 )
 from pymongo.monitoring import (
     _SENSITIVE_COMMANDS,
@@ -212,10 +217,15 @@ def parse_bulk_write_error_result(error):
 class NonLazyCursor(object):
     """A find cursor proxy that creates the remote cursor when initialized."""
 
-    def __init__(self, find_cursor):
+    def __init__(self, find_cursor, client):
+        self.client = client
         self.find_cursor = find_cursor
         # Create the server side cursor.
         self.first_result = next(find_cursor, None)
+
+    @property
+    def alive(self):
+        return self.first_result is not None or self.find_cursor.alive
 
     def __next__(self):
         if self.first_result is not None:
@@ -224,8 +234,12 @@ class NonLazyCursor(object):
             return first
         return next(self.find_cursor)
 
+    # Added to support the iterateOnce operation.
+    try_next = __next__
+
     def close(self):
         self.find_cursor.close()
+        self.client = None
 
 
 class EventListenerUtil(CMAPListener, CommandListener):
@@ -561,6 +575,11 @@ class MatchEvaluatorUtil(object):
         expected_lsid = self.test.entity_map.get_lsid_for_session(spec)
         self.test.assertEqual(expected_lsid, actual[key_to_compare])
 
+    def _operation_lte(self, spec, actual, key_to_compare):
+        if key_to_compare not in actual:
+            self.test.fail(f"Actual command is missing the {key_to_compare} field: {spec}")
+        self.test.assertLessEqual(actual[key_to_compare], spec)
+
     def _evaluate_special_operation(self, opname, spec, actual, key_to_compare):
         method_name = "_operation_%s" % (opname.strip("$"),)
         try:
@@ -771,6 +790,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         for i, collection_data in enumerate(initial_data):
             coll_name = collection_data["collectionName"]
             db_name = collection_data["databaseName"]
+            opts = collection_data.get("createOptions", {})
             documents = collection_data["documents"]
 
             # Setup the collection with as few majority writes as possible.
@@ -782,10 +802,12 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             else:
                 wc = WriteConcern(w=1)
             if documents:
+                if opts:
+                    db.create_collection(coll_name, **opts)
                 db.get_collection(coll_name, write_concern=wc).insert_many(documents)
             else:
                 # Ensure collection exists
-                db.create_collection(coll_name, write_concern=wc)
+                db.create_collection(coll_name, write_concern=wc, **opts)
 
     @classmethod
     def setUpClass(cls):
@@ -823,9 +845,26 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 "Dirty explicit session is discarded" in spec["description"]
                 or "Dirty implicit session is discarded" in spec["description"]
             ):
-                raise unittest.SkipTest("MMAPv1 does not support retryWrites=True")
+                self.skipTest("MMAPv1 does not support retryWrites=True")
         elif "Client side error in command starting transaction" in spec["description"]:
-            raise unittest.SkipTest("Implement PYTHON-1894")
+            self.skipTest("Implement PYTHON-1894")
+        class_name = self.__class__.__name__.lower()
+        description = spec["description"].lower()
+        if "csot" in class_name:
+            if "change" in description or "change" in class_name:
+                self.skipTest("CSOT not implemented for watch()")
+            if "cursors" in class_name:
+                self.skipTest("CSOT not implemented for cursors")
+            if "tailable" in class_name:
+                self.skipTest("CSOT not implemented for tailable cursors")
+            if "sessions" in class_name:
+                self.skipTest("CSOT not implemented for sessions")
+            if "withtransaction" in description:
+                self.skipTest("CSOT not implemented for with_transaction")
+            if "transaction" in class_name or "transaction" in description:
+                self.skipTest("CSOT not implemented for transactions")
+            if "socket timeout" in description:
+                self.skipTest("CSOT not implemented for socket timeouts")
 
         # Some tests need to be skipped based on the operations they try to run.
         for op in spec["operations"]:
@@ -842,10 +881,23 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if not client_context.test_commands_enabled:
                 if name == "failPoint" or name == "targetedFailPoint":
                     self.skipTest("Test commands must be enabled to use fail points")
+            if "timeoutMode" in op.get("arguments", {}):
+                self.skipTest("PyMongo does not support timeoutMode")
+            if name == "createEntities":
+                self.maybe_skip_entity(op.get("arguments", {}).get("entities", []))
+            if name == "modifyCollection":
+                self.skipTest("PyMongo does not support modifyCollection")
+
+    def maybe_skip_entity(self, entities):
+        for entity in entities:
+            entity_type = next(iter(entity))
+            if entity_type == "bucket":
+                self.skipTest("GridFS is not currently supported (PYTHON-2459)")
 
     def process_error(self, exception, spec):
         is_error = spec.get("isError")
         is_client_error = spec.get("isClientError")
+        is_timeout_error = spec.get("isTimeoutError")
         error_contains = spec.get("errorContains")
         error_code = spec.get("errorCode")
         error_code_name = spec.get("errorCodeName")
@@ -865,6 +917,15 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 pass
             else:
                 self.assertNotIsInstance(exception, PyMongoError)
+
+        if is_timeout_error:
+            # TODO: PYTHON-3291 Implement error transformation.
+            if isinstance(exception, WriteConcernError):
+                self.assertEqual(exception.code, 50)
+            else:
+                self.assertIsInstance(
+                    exception, (NetworkTimeout, ExecutionTimeout, ServerSelectionTimeoutError)
+                )
 
         if error_contains:
             if isinstance(exception, BulkWriteError):
@@ -966,14 +1027,20 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self.__raise_if_unsupported("find", target, Collection)
         if "filter" not in kwargs:
             self.fail('createFindCursor requires a "filter" argument')
-        cursor = NonLazyCursor(target.find(*args, **kwargs))
+        cursor = NonLazyCursor(target.find(*args, **kwargs), target.database.client)
         self.addCleanup(cursor.close)
         return cursor
+
+    def _collectionOperation_count(self, target, *args, **kwargs):
+        self.skipTest("PyMongo does not support collection.count()")
 
     def _collectionOperation_listIndexes(self, target, *args, **kwargs):
         if "batch_size" in kwargs:
             self.skipTest("PyMongo does not support batch_size for list_indexes")
-        return target.list_indexes(*args, **kwargs)
+        return list(target.list_indexes(*args, **kwargs))
+
+    def _collectionOperation_listIndexNames(self, target, *args, **kwargs):
+        self.skipTest("PyMongo does not support list_index_names")
 
     def _sessionOperation_withTransaction(self, target, *args, **kwargs):
         if client_context.storage_engine == "mmapv1":
@@ -987,13 +1054,21 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self.__raise_if_unsupported("startTransaction", target, ClientSession)
         return target.start_transaction(*args, **kwargs)
 
+    def _cursor_iterateOnce(self, target, *args, **kwargs):
+        self.__raise_if_unsupported("iterateOnce", target, NonLazyCursor, ChangeStream)
+        return target.try_next()
+
     def _changeStreamOperation_iterateUntilDocumentOrError(self, target, *args, **kwargs):
         self.__raise_if_unsupported("iterateUntilDocumentOrError", target, ChangeStream)
         return next(target)
 
     def _cursor_iterateUntilDocumentOrError(self, target, *args, **kwargs):
         self.__raise_if_unsupported("iterateUntilDocumentOrError", target, NonLazyCursor)
-        return next(target)
+        while target.alive:
+            try:
+                return next(target)
+            except StopIteration:
+                pass
 
     def _cursor_close(self, target, *args, **kwargs):
         self.__raise_if_unsupported("close", target, NonLazyCursor)
@@ -1011,6 +1086,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def run_entity_operation(self, spec):
         target = self.entity_map[spec["object"]]
+        client = target
         opname = spec["name"]
         opargs = spec.get("arguments")
         expect_error = spec.get("expectError")
@@ -1028,20 +1104,26 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 spec, arguments, camel_to_snake(opname), self.entity_map, self.run_operations
             )
         else:
-            arguments = tuple()
+            arguments = {}
 
         if isinstance(target, MongoClient):
             method_name = "_clientOperation_%s" % (opname,)
+            client = target
         elif isinstance(target, Database):
             method_name = "_databaseOperation_%s" % (opname,)
+            client = target.client
         elif isinstance(target, Collection):
             method_name = "_collectionOperation_%s" % (opname,)
+            client = target.database.client
         elif isinstance(target, ChangeStream):
             method_name = "_changeStreamOperation_%s" % (opname,)
+            client = target._client
         elif isinstance(target, NonLazyCursor):
             method_name = "_cursor_%s" % (opname,)
+            client = target.client
         elif isinstance(target, ClientSession):
             method_name = "_sessionOperation_%s" % (opname,)
+            client = target._client
         elif isinstance(target, GridFSBucket):
             raise NotImplementedError
         elif isinstance(target, ClientEncryption):
@@ -1060,7 +1142,17 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             cmd = functools.partial(method, target)
 
         try:
-            result = cmd(**dict(arguments))
+            # TODO: PYTHON-3289 apply inherited timeout by default.
+            inherit_timeout = getattr(target, "timeout", None)
+            # CSOT: Translate the spec test "timeout" arg into pymongo's context timeout API.
+            if "timeout" in arguments or inherit_timeout is not None:
+                timeout = arguments.pop("timeout", None)
+                if timeout is None:
+                    timeout = inherit_timeout
+                with pymongo.timeout(timeout):
+                    result = cmd(**dict(arguments))
+            else:
+                result = cmd(**dict(arguments))
         except Exception as exc:
             # Ignore all operation errors but to avoid masking bugs don't
             # ignore things like TypeError and ValueError.
@@ -1109,6 +1201,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         client = single_client("%s:%s" % session._pinned_address)
         self.addCleanup(client.close)
         self.__set_fail_point(client=client, command_args=spec["failPoint"])
+
+    def _testOperation_createEntities(self, spec):
+        self.entity_map.create_entities_from_spec(spec["entities"], uri=self._uri)
 
     def _testOperation_assertSessionTransactionState(self, spec):
         session = self.entity_map[spec["session"]]
@@ -1298,6 +1393,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             raise unittest.SkipTest("%s" % (skip_reason,))
 
         # process createEntities
+        self._uri = uri
         self.entity_map = EntityMapUtil(self)
         self.entity_map.create_entities_from_spec(self.TEST_SPEC.get("createEntities", []), uri=uri)
         # process initialData

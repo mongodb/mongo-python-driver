@@ -48,6 +48,8 @@ from cryptography.x509.oid import ExtendedKeyUsageOID as _ExtendedKeyUsageOID
 from requests import post as _post
 from requests.exceptions import RequestException as _RequestException
 
+from pymongo import _csot
+
 # Note: the functions in this module generally return 1 or 0. The reason
 # is simple. The entry point, ocsp_callback, is registered as a callback
 # with OpenSSL through PyOpenSSL. The callback must return 1 (success) or
@@ -235,12 +237,16 @@ def _get_ocsp_response(cert, issuer, uri, ocsp_response_cache):
         ocsp_response = ocsp_response_cache[ocsp_request]
         _LOGGER.debug("Using cached OCSP response.")
     except KeyError:
+        # CSOT: use the configured timeout or 5 seconds, whichever is smaller.
+        # Note that request's timeout works differently and does not imply an absolute
+        # deadline: https://requests.readthedocs.io/en/stable/user/quickstart/#timeouts
+        timeout = max(_csot.clamp_remaining(5), 0.001)
         try:
             response = _post(
                 uri,
                 data=ocsp_request.public_bytes(_Encoding.DER),
                 headers={"Content-Type": "application/ocsp-request"},
-                timeout=5,
+                timeout=timeout,
             )
         except _RequestException as exc:
             _LOGGER.debug("HTTP request failed: %s", exc)

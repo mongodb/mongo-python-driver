@@ -339,6 +339,15 @@ def validate_timeout_or_none_or_zero(option: Any, value: Any) -> Optional[float]
     return validate_positive_float(option, value) / 1000.0
 
 
+def validate_timeoutms(option: Any, value: Any) -> Optional[float]:
+    """Validates a timeout specified in milliseconds returning
+    a value in floating point seconds.
+    """
+    if value is None:
+        return None
+    return validate_positive_float_or_zero(option, value) / 1000.0
+
+
 def validate_max_staleness(option: str, value: Any) -> int:
     """Validates maxStalenessSeconds according to the Max Staleness Spec."""
     if value == -1 or value == "-1":
@@ -658,6 +667,7 @@ URI_OPTIONS_VALIDATOR_MAP: Dict[str, Callable[[Any, Any], Any]] = {
     "zlibcompressionlevel": validate_zlib_compression_level,
     "srvservicename": validate_string,
     "srvmaxhosts": validate_non_negative_integer,
+    "timeoutms": validate_timeoutms,
 }
 
 # Dictionary where keys are the names of URI options specific to pymongo,
@@ -792,6 +802,18 @@ def get_validated_options(
     return validated_options
 
 
+def _esc_coll_name(encrypted_fields, name):
+    return encrypted_fields.get("escCollection", f"enxcol_.{name}.esc")
+
+
+def _ecc_coll_name(encrypted_fields, name):
+    return encrypted_fields.get("eccCollection", f"enxcol_.{name}.ecc")
+
+
+def _ecoc_coll_name(encrypted_fields, name):
+    return encrypted_fields.get("ecocCollection", f"enxcol_.{name}.ecoc")
+
+
 # List of write-concern-related options.
 WRITE_CONCERN_OPTIONS = frozenset(["w", "wtimeout", "wtimeoutms", "fsync", "j", "journal"])
 
@@ -809,8 +831,8 @@ class BaseObject(object):
         read_preference: _ServerMode,
         write_concern: WriteConcern,
         read_concern: ReadConcern,
+        timeout: Optional[float],
     ) -> None:
-
         if not isinstance(codec_options, CodecOptions):
             raise TypeError("codec_options must be an instance of bson.codec_options.CodecOptions")
         self.__codec_options = codec_options
@@ -832,6 +854,12 @@ class BaseObject(object):
         if not isinstance(read_concern, ReadConcern):
             raise TypeError("read_concern must be an instance of pymongo.read_concern.ReadConcern")
         self.__read_concern = read_concern
+
+        if not isinstance(timeout, (int, float, type(None))):
+            raise TypeError("timeout must be None, an int, or a float")
+        if timeout and timeout < 0:
+            raise TypeError("timeout cannot be negative")
+        self.__timeout = float(timeout) if timeout else None
 
     @property
     def codec_options(self) -> CodecOptions:
@@ -881,6 +909,14 @@ class BaseObject(object):
         .. versionadded:: 3.2
         """
         return self.__read_concern
+
+    @property
+    def timeout(self) -> Optional[float]:
+        """Read only access to the timeout of this instance.
+
+        .. versionadded:: 4.2
+        """
+        return self.__timeout
 
 
 class _CaseInsensitiveDictionary(abc.MutableMapping):

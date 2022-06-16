@@ -22,6 +22,8 @@
 
       The maximum wire protocol version PyMongo supports.
 
+   .. autofunction:: timeout
+
 Sub-modules:
 
 .. toctree::

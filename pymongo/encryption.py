@@ -15,6 +15,8 @@
 """Support for explicit client-side field level encryption."""
 
 import contextlib
+import enum
+import socket
 import uuid
 import weakref
 from typing import Any, Iterable, Mapping, Optional, Sequence
@@ -37,6 +39,7 @@ from bson.codec_options import CodecOptions
 from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from bson.son import SON
+from pymongo import _csot
 from pymongo.daemon import _spawn_daemon
 from pymongo.encryption_options import AutoEncryptionOpts
 from pymongo.errors import (
@@ -46,6 +49,7 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
 )
 from pymongo.mongo_client import MongoClient
+from pymongo.network import BLOCKING_IO_ERRORS
 from pymongo.pool import PoolOptions, _configured_socket
 from pymongo.read_concern import ReadConcern
 from pymongo.ssl_support import get_ssl_context
@@ -125,9 +129,11 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
                 False,  # allow_invalid_hostnames
                 False,
             )  # disable_ocsp_endpoint_check
+        # CSOT: set timeout for socket creation.
+        connect_timeout = max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0.001)
         opts = PoolOptions(
-            connect_timeout=_KMS_CONNECT_TIMEOUT,
-            socket_timeout=_KMS_CONNECT_TIMEOUT,
+            connect_timeout=connect_timeout,
+            socket_timeout=connect_timeout,
             ssl_context=ctx,
         )
         host, port = parse_host(endpoint, _HTTPS_PORT)
@@ -135,10 +141,14 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         try:
             conn.sendall(message)
             while kms_context.bytes_needed > 0:
+                # CSOT: update timeout.
+                conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
                 data = conn.recv(kms_context.bytes_needed)
                 if not data:
                     raise OSError("KMS connection closed")
                 kms_context.feed(data)
+        except BLOCKING_IO_ERRORS:
+            raise socket.timeout("timed out")
         finally:
             conn.close()
 
@@ -270,6 +280,11 @@ class _Encrypter(object):
             schema_map = None
         else:
             schema_map = _dict_to_bson(opts._schema_map, False, _DATA_KEY_OPTS)
+
+        if opts._encrypted_fields_map is None:
+            encrypted_fields_map = None
+        else:
+            encrypted_fields_map = _dict_to_bson(opts._encrypted_fields_map, False, _DATA_KEY_OPTS)
         self._bypass_auto_encryption = opts._bypass_auto_encryption
         self._internal_client = None
 
@@ -310,6 +325,8 @@ class _Encrypter(object):
                 crypt_shared_lib_path=opts._crypt_shared_lib_path,
                 crypt_shared_lib_required=opts._crypt_shared_lib_required,
                 bypass_encryption=opts._bypass_auto_encryption,
+                encrypted_fields_map=encrypted_fields_map,
+                bypass_query_analysis=opts._bypass_query_analysis,
             ),
         )
         self._closed = False
@@ -359,11 +376,42 @@ class _Encrypter(object):
             self._internal_client = None
 
 
-class Algorithm(object):
+class Algorithm(str, enum.Enum):
     """An enum that defines the supported encryption algorithms."""
 
     AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic = "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic"
+    """AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic."""
     AEAD_AES_256_CBC_HMAC_SHA_512_Random = "AEAD_AES_256_CBC_HMAC_SHA_512-Random"
+    """AEAD_AES_256_CBC_HMAC_SHA_512_Random."""
+    INDEXED = "Indexed"
+    """Indexed.
+
+    .. note:: Support for Queryable Encryption is in beta.
+       Backwards-breaking changes may be made before the final release.
+
+    .. versionadded:: 4.2
+    """
+    UNINDEXED = "Unindexed"
+    """Unindexed.
+
+    .. note:: Support for Queryable Encryption is in beta.
+       Backwards-breaking changes may be made before the final release.
+
+    .. versionadded:: 4.2
+    """
+
+
+class QueryType(enum.IntEnum):
+    """**(BETA)** An enum that defines the supported values for explicit encryption query_type.
+
+    .. note:: Support for Queryable Encryption is in beta.
+       Backwards-breaking changes may be made before the final release.
+
+    .. versionadded:: 4.2
+    """
+
+    EQUALITY = 1
+    """Used to encrypt a value for an equality query."""
 
 
 class ClientEncryption(object):
@@ -636,6 +684,9 @@ class ClientEncryption(object):
         algorithm: str,
         key_id: Optional[Binary] = None,
         key_alt_name: Optional[str] = None,
+        index_key_id: Optional[Binary] = None,
+        query_type: Optional[int] = None,
+        contention_factor: Optional[int] = None,
     ) -> Binary:
         """Encrypt a BSON value with a given key and algorithm.
 
@@ -650,20 +701,43 @@ class ClientEncryption(object):
             :class:`~bson.binary.Binary` with subtype 4 (
             :attr:`~bson.binary.UUID_SUBTYPE`).
           - `key_alt_name`: Identifies a key vault document by 'keyAltName'.
+          - `index_key_id`: **(BETA)** The index key id to use for Queryable Encryption. Must be
+            a :class:`~bson.binary.Binary` with subtype 4 (:attr:`~bson.binary.UUID_SUBTYPE`).
+          - `query_type` (int): **(BETA)** The query type to execute. See
+            :class:`QueryType` for valid options.
+          - `contention_factor` (int): **(BETA)** The contention factor to use
+            when the algorithm is :attr:`Algorithm.INDEXED`.
+
+        .. note:: `index_key_id`, `query_type`, and `contention_factor` are part of the
+           Queryable Encryption beta. Backwards-breaking changes may be made before the
+           final release.
 
         :Returns:
           The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
+
+        .. versionchanged:: 4.2
+           Added the `index_key_id`, `query_type`, and `contention_factor` parameters.
         """
         self._check_closed()
         if key_id is not None and not (
             isinstance(key_id, Binary) and key_id.subtype == UUID_SUBTYPE
         ):
             raise TypeError("key_id must be a bson.binary.Binary with subtype 4")
+        if index_key_id is not None and not (
+            isinstance(index_key_id, Binary) and index_key_id.subtype == UUID_SUBTYPE
+        ):
+            raise TypeError("index_key_id must be a bson.binary.Binary with subtype 4")
 
         doc = encode({"v": value}, codec_options=self._codec_options)
         with _wrap_encryption_errors():
             encrypted_doc = self._encryption.encrypt(
-                doc, algorithm, key_id=key_id, key_alt_name=key_alt_name
+                doc,
+                algorithm,
+                key_id=key_id,
+                key_alt_name=key_alt_name,
+                index_key_id=index_key_id,
+                query_type=query_type,
+                contention_factor=contention_factor,
             )
             return decode(encrypted_doc)["v"]  # type: ignore[index]
 
