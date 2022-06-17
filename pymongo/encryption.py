@@ -268,6 +268,18 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         """
         return encode(doc)
 
+    def get_key(self, key_id):
+        coll = self.key_vault_coll.with_options(
+            codec_options=DEFAULT_RAW_BSON_OPTIONS,
+        )
+        return coll.find_one({"_id": key_id})
+
+    def get_keys(self):
+        coll = self.key_vault_coll.with_options(
+            codec_options=DEFAULT_RAW_BSON_OPTIONS,
+        )
+        return list(coll.find({}))
+
     def close(self):
         """Release resources.
 
@@ -788,7 +800,8 @@ class ClientEncryption(object):
         :Returns:
           The key document.
         """
-        return self._encryption.get_key(key_id)
+
+        return self._io_callbacks.get_key(key_id)
 
     def get_keys(self) -> Iterable[Any]:
         """Get all of the data keys.
@@ -796,7 +809,7 @@ class ClientEncryption(object):
         :Returns:
           An iterable of all the data keys.
         """
-        return self._encryption.get_keys()
+        return self._io_callbacks.get_keys()
 
     def __enter__(self) -> "ClientEncryption":
         return self
@@ -824,43 +837,3 @@ class ClientEncryption(object):
             self._encryption.close()
             self._io_callbacks = None
             self._encryption = None
-
-
-# # rewrapManyDataKey decrypts and encrypts all matching data keys with a possibly new
-# # masterKey.
-# # Post-conditions:
-# # - Overwrites the "masterKey", "updateDate" and "keyMaterial" of matching data key
-# #   documents.
-# # - On error, some matching data keys may have been rewrapped.
-# # - Returns a RewrapDataKeyResult.
-# rewrapManyDataKey(filter: Document, opts: RewrapManyDataKeyOpts): RewrapDataKeyResult;
-
-# # deleteKey deletes one key from the key vault collection.
-# deleteKey(id: UUID) DeleteResult;
-
-# # addKeyAlternateName adds keyAltName to the data key if it is not present on the data
-# # key.
-# addKeyAlternateName (id: UUID, keyAltName: string) UpdateResult;
-
-# # getKeyByAltName returns one data key by matching keyAltName.
-# getKeyByAltName (keyAltName: string) Document;
-
-# # removeKeyAlternateName removes keyAltName from the data key if it is present on the data
-# # key.
-# removeKeyAlternateName (id: UUID, keyAltName: string) UpdateResult;
-
-
-# class RewrapManyDataKeyOpts
-#    # newProvider identifies the new KMS provider.
-#    # If omitted, encrypting uses the current KMS provider.
-#    newProvider: Optional<String>
-
-#    # newMasterKey identifies the new masterKey.
-#    # If omitted, rewraps with the current masterKey.
-#    # It is an error to omit if newProvider is set.
-#    newMasterKey: Optional<Document>
-
-
-# class RewrapDataKeyResult
-#    # bulkWriteResult is the result of the bulk write operation used to update the data keys.
-#    bulkWriteResult: BulkWriteResult
