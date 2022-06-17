@@ -117,15 +117,15 @@ KMIP = {"endpoint": os.environ.get("FLE_KMIP_ENDPOINT", "localhost:5698")}
 
 # Build up a placeholder map.
 PLACEHOLDER_MAP = dict()
-for (name, data) in [
+for (provider_name, provider_data) in [
     ("local", KMS_PROVIDERS["local"]),
     ("aws", AWS_CREDS),
     ("azure", AZURE_CREDS),
     ("gcp", GCP_CREDS),
     ("kmip", KMIP),
 ]:
-    for (key, value) in data.items:
-        placeholder = f"/clientEncryptionOpts/kmsProviders/{name}/{key}"
+    for (key, value) in provider_data.items():
+        placeholder = f"/clientEncryptionOpts/kmsProviders/{provider_name}/{key}"
         PLACEHOLDER_MAP[placeholder] = value
 
 
