@@ -268,65 +268,6 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         """
         return encode(doc)
 
-    def get_key(self, key_id):
-        """Get a data key by id.
-
-        :Parameters:
-          - `id` (Binary): The UUID of a key a which must be a
-            :class:`~bson.binary.Binary` with subtype 4 (
-            :attr:`~bson.binary.UUID_SUBTYPE`).
-
-        :Returns:
-          The key document.
-        """
-        coll = self.key_vault_coll.with_options(
-            codec_options=DEFAULT_RAW_BSON_OPTIONS,
-        )
-        return coll.find_one({"_id": key_id})
-
-    def add_key_alt_name(self, key_id: Binary, key_alt_name: str) -> Any:
-        """Add ``key_alt_name`` to the set of alternate names in the key document with UUID ``key_id``.
-
-        :Parameters:
-          - ``key_id``: The UUID of a key a which must be a
-            :class:`~bson.binary.Binary` with subtype 4 (
-            :attr:`~bson.binary.UUID_SUBTYPE`).
-          - ``key_alt_name``: The key alternate name to add.
-
-        :Returns:
-          The key document.
-        """
-        coll = self.key_vault_coll.with_options(
-            codec_options=DEFAULT_RAW_BSON_OPTIONS,
-        )
-        update = {"$addToSet": {"keyAltNames": key_alt_name}}
-        return coll.find_one_and_update({"_id": key_id}, update)
-
-    def get_key_by_alt_name(self, key_alt_name: str) -> Any:
-        """Get a key document in the key vault collection that has the given ``key_alt_name``.
-
-        :Parameters:
-          - `key_alt_name`: (str): The key alternate name of the key to get.
-
-        :Returns:
-          The key document.
-        """
-        coll = self.key_vault_coll.with_options(
-            codec_options=DEFAULT_RAW_BSON_OPTIONS,
-        )
-        return coll.find_one({"keyAltNames": key_alt_name})
-
-    def get_keys(self):
-        """Get all of the data keys.
-
-        :Returns:
-          An iterable of all the data keys.
-        """
-        coll = self.key_vault_coll.with_options(
-            codec_options=DEFAULT_RAW_BSON_OPTIONS,
-        )
-        return list(coll.find({}))
-
     def close(self):
         """Release resources.
 
@@ -597,6 +538,9 @@ class ClientEncryption(object):
         self._encryption = ExplicitEncrypter(
             self._io_callbacks, MongoCryptOptions(kms_providers, None)
         )
+        self._key_vault_coll = self._io_callbacks.key_vault_coll.with_options(
+            codec_options=DEFAULT_RAW_BSON_OPTIONS,
+        )
 
     def create_data_key(
         self,
@@ -836,8 +780,8 @@ class ClientEncryption(object):
             decrypted_doc = self._encryption.decrypt(doc)
             return decode(decrypted_doc, codec_options=self._codec_options)["v"]
 
-    def get_key(self, id: Binary) -> Any:
-        """Get a key document in the key vault collection that has the given key id.
+    def get_key(self, id):
+        """Get a data key by id.
 
         :Parameters:
           - `id` (Binary): The UUID of a key a which must be a
@@ -847,7 +791,25 @@ class ClientEncryption(object):
         :Returns:
           The key document.
         """
-        return self._io_callbacks.get_key(id)
+        return self._key_vault_coll.find_one({"_id": id})
+
+    def delete_key(self, id: Binary) -> Any:
+        """Delete a key document in the key vault collection that has the given ``key_id``.
+
+        :Parameters:
+          - `id` (Binary): The UUID of a key a which must be a
+            :class:`~bson.binary.Binary` with subtype 4 (
+            :attr:`~bson.binary.UUID_SUBTYPE`).
+
+        :Returns:
+          The delete result.
+        """
+        result = self._key_vault_coll.delete_one({"_id": id})
+        raw_result = result.raw_result
+        raw_result.update(
+            {"deletedCount": result.deleted_count, "acknowledged": result.acknowledged}
+        )
+        return raw_result
 
     def add_key_alt_name(self, id: Binary, key_alt_name: str) -> Any:
         """Add ``key_alt_name`` to the set of alternate names in the key document with UUID ``key_id``.
@@ -861,7 +823,28 @@ class ClientEncryption(object):
         :Returns:
           The key document.
         """
-        return self._io_callbacks.add_key_alt_name(id, key_alt_name)
+        update = {"$addToSet": {"keyAltNames": key_alt_name}}
+        return self._key_vault_coll.find_one_and_update({"_id": id}, update)
+
+    def remove_key_alt_name(self, id: Binary, key_alt_name: str) -> Any:
+        """Remove ``key_alt_name`` from the set of keyAltNames in the key document with UUID ``id``.
+
+        Also removes the ``keyAltNames`` field from the key document if it would otherwise be empty.
+
+        :Parameters:
+          - ``id``: The UUID of a key a which must be a
+            :class:`~bson.binary.Binary` with subtype 4 (
+            :attr:`~bson.binary.UUID_SUBTYPE`).
+          - ``key_alt_name``: The key alternate name to remove.
+
+        :Returns:
+          The removal result.
+        """
+        update = {"$pull": {"keyAltNames": key_alt_name}}
+        reply = self._key_vault_coll.find_one_and_update({"_id": id}, update)
+        # Ensure keyAltNames field is removed if it would otherwise be empty.
+        if reply:
+            pass
 
     def get_key_by_alt_name(self, key_alt_name: str) -> Any:
         """Get a key document in the key vault collection that has the given ``key_alt_name``.
@@ -872,15 +855,15 @@ class ClientEncryption(object):
         :Returns:
           The key document.
         """
-        return self._io_callbacks.get_key_by_alt_name(key_alt_name)
+        return self._key_vault_coll.find_one({"keyAltNames": key_alt_name})
 
-    def get_keys(self) -> Iterable[Any]:
-        """Get all the key documents in the key vault collection.
+    def get_keys(self):
+        """Get all of the data keys.
 
         :Returns:
-          An iterable of key documents.
+          An iterable of all the data keys.
         """
-        return self._io_callbacks.get_keys()
+        return list(self._key_vault_coll.find({}))
 
     def __enter__(self) -> "ClientEncryption":
         return self
