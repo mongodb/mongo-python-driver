@@ -284,6 +284,38 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         )
         return coll.find_one({"_id": key_id})
 
+    def add_key_alt_name(self, key_id: Binary, key_alt_name: str) -> Any:
+        """Add ``key_alt_name`` to the set of alternate names in the key document with UUID ``key_id``.
+
+        :Parameters:
+          - ``key_id``: The UUID of a key a which must be a
+            :class:`~bson.binary.Binary` with subtype 4 (
+            :attr:`~bson.binary.UUID_SUBTYPE`).
+          - ``key_alt_name``: The key alternate name to add.
+
+        :Returns:
+          The key document.
+        """
+        coll = self.key_vault_coll.with_options(
+            codec_options=DEFAULT_RAW_BSON_OPTIONS,
+        )
+        update = {"$addToSet": {"keyAltNames": key_alt_name}}
+        return coll.find_one_and_update({"_id": key_id}, update)
+
+    def get_key_by_alt_name(self, key_alt_name: str) -> Any:
+        """Get a key document in the key vault collection that has the given ``key_alt_name``.
+
+        :Parameters:
+          - `key_alt_name`: (str): The key alternate name of the key to get.
+
+        :Returns:
+          The key document.
+        """
+        coll = self.key_vault_coll.with_options(
+            codec_options=DEFAULT_RAW_BSON_OPTIONS,
+        )
+        return coll.find_one({"keyAltNames": key_alt_name})
+
     def get_keys(self):
         """Get all of the data keys.
 
@@ -817,16 +849,30 @@ class ClientEncryption(object):
         """
         return self._io_callbacks.get_key(id)
 
-    def get_key_by_alt_name(self, name: str) -> Any:
-        """Get a key document in the key vault collection that has the given ``key_alt_name``.
+    def add_key_alt_name(self, id: Binary, key_alt_name: str) -> Any:
+        """Add ``key_alt_name`` to the set of alternate names in the key document with UUID ``key_id``.
 
         :Parameters:
-          - `name`: (str): The key alternate name of the key to get.
+          - ``id``: The UUID of a key a which must be a
+            :class:`~bson.binary.Binary` with subtype 4 (
+            :attr:`~bson.binary.UUID_SUBTYPE`).
+          - ``key_alt_name``: The key alternate name to add.
 
         :Returns:
           The key document.
         """
-        return self._io_callbacks.get_key_by_alt_name(name)
+        return self._io_callbacks.add_key_alt_name(id, key_alt_name)
+
+    def get_key_by_alt_name(self, key_alt_name: str) -> Any:
+        """Get a key document in the key vault collection that has the given ``key_alt_name``.
+
+        :Parameters:
+          - `key_alt_name`: (str): The key alternate name of the key to get.
+
+        :Returns:
+          The key document.
+        """
+        return self._io_callbacks.get_key_by_alt_name(key_alt_name)
 
     def get_keys(self) -> Iterable[Any]:
         """Get all the key documents in the key vault collection.
