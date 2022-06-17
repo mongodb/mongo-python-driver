@@ -115,19 +115,18 @@ GCP_CREDS = {
 }
 KMIP = {"endpoint": os.environ.get("FLE_KMIP_ENDPOINT", "localhost:5698")}
 
-
-PLACEHOLDER_MAP = {
-    "/clientEncryptionOpts/kmsProviders/local/key": KMS_PROVIDERS["local"]["key"],
-    "/clientEncryptionOpts/kmsProviders/aws/accessKeyId": AWS_CREDS["accessKeyId"],
-    "/clientEncryptionOpts/kmsProviders/aws/secretAccessKey": AWS_CREDS["secretAccessKey"],
-    "/clientEncryptionOpts/kmsProviders/azure/tenantId": AZURE_CREDS["tenantId"],
-    "/clientEncryptionOpts/kmsProviders/azure/tenantId": AZURE_CREDS["tenantId"],
-    "/clientEncryptionOpts/kmsProviders/azure/clientId": AZURE_CREDS["clientId"],
-    "/clientEncryptionOpts/kmsProviders/azure/clientSecret": AZURE_CREDS["clientSecret"],
-    "/clientEncryptionOpts/kmsProviders/gcp/email": GCP_CREDS["email"],
-    "/clientEncryptionOpts/kmsProviders/gcp/privateKey": GCP_CREDS["privateKey"],
-    "/clientEncryptionOpts/kmsProviders/kmip/endpoint": KMIP["endpoint"],
-}
+# Build up a placeholder map.
+PLACEHOLDER_MAP = dict()
+for (name, data) in [
+    ("local", KMS_PROVIDERS["local"]),
+    ("aws", AWS_CREDS),
+    ("azure", AZURE_CREDS),
+    ("gcp", GCP_CREDS),
+    ("kmip", KMIP),
+]:
+    for (key, value) in data.items:
+        placeholder = f"/clientEncryptionOpts/kmsProviders/{name}/{key}"
+        PLACEHOLDER_MAP[placeholder] = value
 
 
 def interrupt_loop():
