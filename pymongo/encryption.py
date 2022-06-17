@@ -269,12 +269,27 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         return encode(doc)
 
     def get_key(self, key_id):
+        """Get a data key by id.
+
+        :Parameters:
+          - `id` (Binary): The UUID of a key a which must be a
+            :class:`~bson.binary.Binary` with subtype 4 (
+            :attr:`~bson.binary.UUID_SUBTYPE`).
+
+        :Returns:
+          The key document.
+        """
         coll = self.key_vault_coll.with_options(
             codec_options=DEFAULT_RAW_BSON_OPTIONS,
         )
         return coll.find_one({"_id": key_id})
 
     def get_keys(self):
+        """Get all of the data keys.
+
+        :Returns:
+          An iterable of all the data keys.
+        """
         coll = self.key_vault_coll.with_options(
             codec_options=DEFAULT_RAW_BSON_OPTIONS,
         )
@@ -789,8 +804,8 @@ class ClientEncryption(object):
             decrypted_doc = self._encryption.decrypt(doc)
             return decode(decrypted_doc, codec_options=self._codec_options)["v"]
 
-    def get_key(self, key_id: Binary) -> Any:
-        """Get a data key by id.
+    def get_key(self, id: Binary) -> Any:
+        """Get a key document in the key vault collection that has the given key id.
 
         :Parameters:
           - `id` (Binary): The UUID of a key a which must be a
@@ -800,14 +815,24 @@ class ClientEncryption(object):
         :Returns:
           The key document.
         """
+        return self._io_callbacks.get_key(id)
 
-        return self._io_callbacks.get_key(key_id)
+    def get_key_by_alt_name(self, name: str) -> Any:
+        """Get a key document in the key vault collection that has the given ``key_alt_name``.
 
-    def get_keys(self) -> Iterable[Any]:
-        """Get all of the data keys.
+        :Parameters:
+          - `name`: (str): The key alternate name of the key to get.
 
         :Returns:
-          An iterable of all the data keys.
+          The key document.
+        """
+        return self._io_callbacks.get_key_by_alt_name(name)
+
+    def get_keys(self) -> Iterable[Any]:
+        """Get all the key documents in the key vault collection.
+
+        :Returns:
+          An iterable of key documents.
         """
         return self._io_callbacks.get_keys()
 

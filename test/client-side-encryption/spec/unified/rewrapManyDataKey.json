@@ -372,8 +372,12 @@
                           "updateDate": true
                         }
                       },
-                      "upsert": false,
-                      "multi": false
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
+                      }
                     },
                     {
                       "q": {
@@ -396,8 +400,12 @@
                           "updateDate": true
                         }
                       },
-                      "upsert": false,
-                      "multi": false
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
+                      }
                     },
                     {
                       "q": {
@@ -420,8 +428,12 @@
                           "updateDate": true
                         }
                       },
-                      "upsert": false,
-                      "multi": false
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
+                      }
                     },
                     {
                       "q": {
@@ -444,8 +456,12 @@
                           "updateDate": true
                         }
                       },
-                      "upsert": false,
-                      "multi": false
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
+                      }
                     }
                   ],
                   "writeConcern": {
@@ -538,8 +554,12 @@
                           "updateDate": true
                         }
                       },
-                      "upsert": false,
-                      "multi": false
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
+                      }
                     },
                     {
                       "q": {
@@ -562,8 +582,12 @@
                           "updateDate": true
                         }
                       },
-                      "upsert": false,
-                      "multi": false
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
+                      }
                     },
                     {
                       "q": {
@@ -586,8 +610,12 @@
                           "updateDate": true
                         }
                       },
-                      "upsert": false,
-                      "multi": false
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
+                      }
                     },
                     {
                       "q": {
@@ -610,8 +638,12 @@
                           "updateDate": true
                         }
                       },
-                      "upsert": false,
-                      "multi": false
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
+                      }
                     }
                   ],
                   "writeConcern": {
@@ -708,8 +740,12 @@
                           "updateDate": true
                         }
                       },
-                      "upsert": false,
-                      "multi": false
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
+                      }
                     },
                     {
                       "q": {
@@ -734,8 +770,12 @@
                           "updateDate": true
                         }
                       },
-                      "upsert": false,
-                      "multi": false
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
+                      }
                     },
                     {
                       "q": {
@@ -760,8 +800,12 @@
                           "updateDate": true
                         }
                       },
-                      "upsert": false,
-                      "multi": false
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
+                      }
                     },
                     {
                       "q": {
@@ -786,8 +830,12 @@
                           "updateDate": true
                         }
                       },
-                      "upsert": false,
-                      "multi": false
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
+                      }
                     }
                   ],
                   "writeConcern": {
@@ -877,8 +925,12 @@
                           "updateDate": true
                         }
                       },
-                      "upsert": false,
-                      "multi": false
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
+                      }
                     },
                     {
                       "q": {
@@ -902,8 +954,12 @@
                           "updateDate": true
                         }
                       },
-                      "upsert": false,
-                      "multi": false
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
+                      }
                     },
                     {
                       "q": {
@@ -927,8 +983,12 @@
                           "updateDate": true
                         }
                       },
-                      "upsert": false,
-                      "multi": false
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
+                      }
                     },
                     {
                       "q": {
@@ -952,8 +1012,12 @@
                           "updateDate": true
                         }
                       },
-                      "upsert": false,
-                      "multi": false
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
+                      }
                     }
                   ],
                   "writeConcern": {
@@ -1040,8 +1104,12 @@
                           "updateDate": true
                         }
                       },
-                      "upsert": false,
-                      "multi": false
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
+                      }
                     },
                     {
                       "q": {
@@ -1062,8 +1130,12 @@
                           "updateDate": true
                         }
                       },
-                      "upsert": false,
-                      "multi": false
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
+                      }
                     },
                     {
                       "q": {
@@ -1084,8 +1156,12 @@
                           "updateDate": true
                         }
                       },
-                      "upsert": false,
-                      "multi": false
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
+                      }
                     },
                     {
                       "q": {
@@ -1106,8 +1182,12 @@
                           "updateDate": true
                         }
                       },
-                      "upsert": false,
-                      "multi": false
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
+                      }
                     }
                   ],
                   "writeConcern": {
@@ -1262,8 +1342,12 @@
                           "updateDate": true
                         }
                       },
-                      "upsert": false,
-                      "multi": false
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
+                      }
                     },
                     {
                       "q": {
@@ -1284,8 +1368,12 @@
                           "updateDate": true
                         }
                       },
-                      "upsert": false,
-                      "multi": false
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
+                      }
                     },
                     {
                       "q": {
@@ -1306,8 +1394,12 @@
                           "updateDate": true
                         }
                       },
-                      "upsert": false,
-                      "multi": false
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
+                      }
                     },
                     {
                       "q": {
@@ -1328,8 +1420,12 @@
                           "updateDate": true
                         }
                       },
-                      "upsert": false,
-                      "multi": false
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
+                      }
                     },
                     {
                       "q": {
@@ -1350,8 +1446,12 @@
                           "updateDate": true
                         }
                       },
-                      "upsert": false,
-                      "multi": false
+                      "multi": {
+                        "$$unsetOrMatches": false
+                      },
+                      "upsert": {
+                        "$$unsetOrMatches": false
+                      }
                     }
                   ],
                   "writeConcern": {
