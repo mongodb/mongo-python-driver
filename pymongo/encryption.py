@@ -840,11 +840,30 @@ class ClientEncryption(object):
         :Returns:
           The removal result.
         """
-        update = {"$pull": {"keyAltNames": key_alt_name}}
-        reply = self._key_vault_coll.find_one_and_update({"_id": id}, update)
+        pipeline = [
+            {
+                "$set": {
+                    "keyAltNames": {
+                        "$cond": [
+                            {"$eq": ["$keyAltNames", [key_alt_name]]},
+                            "$$REMOVE",
+                            {
+                                "$filter": {
+                                    "input": "$keyAltNames",
+                                    "cond": {"$ne": ["$$this", key_alt_name]},
+                                }
+                            },
+                        ]
+                    }
+                }
+            }
+        ]
+        reply = self._key_vault_coll.find_one_and_update({"_id": id}, pipeline)
         # Ensure keyAltNames field is removed if it would otherwise be empty.
-        if reply:
-            pass
+        if reply and not reply["keyAltNames"]:
+            update = {"$unset": {"keyAltNames": True}}
+            reply = self._key_vault_coll.find_one_and_update({"_id": id}, update)
+        return reply
 
     def get_key_by_alt_name(self, key_alt_name: str) -> Any:
         """Get a key document in the key vault collection that has the given ``key_alt_name``.

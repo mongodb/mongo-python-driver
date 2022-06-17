@@ -97,8 +97,36 @@ JSON_OPTS = json_util.JSONOptions(tz_aware=False)
 IS_INTERRUPTED = False
 
 
+# Shared KMS data.
+KMS_PROVIDERS = {"local": {"key": b"\x00" * 96}}
+AWS_CREDS = {
+    "accessKeyId": os.environ.get("FLE_AWS_KEY", ""),
+    "secretAccessKey": os.environ.get("FLE_AWS_SECRET", ""),
+}
+AZURE_CREDS = {
+    "tenantId": os.environ.get("FLE_AZURE_TENANTID", ""),
+    "clientId": os.environ.get("FLE_AZURE_CLIENTID", ""),
+    "clientSecret": os.environ.get("FLE_AZURE_CLIENTSECRET", ""),
+}
+
+GCP_CREDS = {
+    "email": os.environ.get("FLE_GCP_EMAIL", ""),
+    "privateKey": os.environ.get("FLE_GCP_PRIVATEKEY", ""),
+}
+KMIP = {"endpoint": os.environ.get("FLE_KMIP_ENDPOINT", "localhost:5698")}
+
+
 PLACEHOLDER_MAP = {
-    "/clientEncryptionOpts/kmsProviders/local/key": b"\x00" * 96,
+    "/clientEncryptionOpts/kmsProviders/local/key": KMS_PROVIDERS["local"]["key"],
+    "/clientEncryptionOpts/kmsProviders/aws/accessKeyId": AWS_CREDS["accessKeyId"],
+    "/clientEncryptionOpts/kmsProviders/aws/secretAccessKey": AWS_CREDS["secretAccessKey"],
+    "/clientEncryptionOpts/kmsProviders/azure/tenantId": AZURE_CREDS["tenantId"],
+    "/clientEncryptionOpts/kmsProviders/azure/tenantId": AZURE_CREDS["tenantId"],
+    "/clientEncryptionOpts/kmsProviders/azure/clientId": AZURE_CREDS["clientId"],
+    "/clientEncryptionOpts/kmsProviders/azure/clientSecret": AZURE_CREDS["clientSecret"],
+    "/clientEncryptionOpts/kmsProviders/gcp/email": GCP_CREDS["email"],
+    "/clientEncryptionOpts/kmsProviders/gcp/privateKey": GCP_CREDS["privateKey"],
+    "/clientEncryptionOpts/kmsProviders/kmip/endpoint": KMIP["endpoint"],
 }
 
 

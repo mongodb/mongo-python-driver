@@ -39,7 +39,14 @@ from test import (
     unittest,
 )
 from test.test_bulk import BulkTestBase
-from test.unified_format import generate_test_classes
+from test.unified_format import (
+    AWS_CREDS,
+    AZURE_CREDS,
+    GCP_CREDS,
+    KMIP,
+    KMS_PROVIDERS,
+    generate_test_classes,
+)
 from test.utils import (
     AllowListEventListener,
     OvertCommandListener,
@@ -77,9 +84,6 @@ from pymongo.write_concern import WriteConcern
 
 def get_client_opts(client):
     return client._MongoClient__options
-
-
-KMS_PROVIDERS = {"local": {"key": b"\x00" * 96}}
 
 
 class TestAutoEncryptionOpts(PyMongoTestCase):
@@ -547,11 +551,6 @@ class TestExplicitSimple(EncryptionIntegrationTest):
 
 
 # Spec tests
-AWS_CREDS = {
-    "accessKeyId": os.environ.get("FLE_AWS_KEY", ""),
-    "secretAccessKey": os.environ.get("FLE_AWS_SECRET", ""),
-}
-
 AWS_TEMP_CREDS = {
     "accessKeyId": os.environ.get("CSFLE_AWS_TEMP_ACCESS_KEY_ID", ""),
     "secretAccessKey": os.environ.get("CSFLE_AWS_TEMP_SECRET_ACCESS_KEY", ""),
@@ -562,19 +561,6 @@ AWS_TEMP_NO_SESSION_CREDS = {
     "accessKeyId": os.environ.get("CSFLE_AWS_TEMP_ACCESS_KEY_ID", ""),
     "secretAccessKey": os.environ.get("CSFLE_AWS_TEMP_SECRET_ACCESS_KEY", ""),
 }
-
-AZURE_CREDS = {
-    "tenantId": os.environ.get("FLE_AZURE_TENANTID", ""),
-    "clientId": os.environ.get("FLE_AZURE_CLIENTID", ""),
-    "clientSecret": os.environ.get("FLE_AZURE_CLIENTSECRET", ""),
-}
-
-GCP_CREDS = {
-    "email": os.environ.get("FLE_GCP_EMAIL", ""),
-    "privateKey": os.environ.get("FLE_GCP_PRIVATEKEY", ""),
-}
-
-KMIP = {"endpoint": os.environ.get("FLE_KMIP_ENDPOINT", "localhost:5698")}
 KMS_TLS_OPTS = {"kmip": {"tlsCAFile": CA_PEM, "tlsCertificateKeyFile": CLIENT_PEM}}
 
 
