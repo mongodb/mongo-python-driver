@@ -394,7 +394,7 @@ class Algorithm(str, enum.Enum):
     """
 
 
-class QueryType(enum.IntEnum):
+class QueryType(str, enum.Enum):
     """**(BETA)** An enum that defines the supported values for explicit encryption query_type.
 
     .. note:: Support for Queryable Encryption is in beta.
@@ -403,7 +403,7 @@ class QueryType(enum.IntEnum):
     .. versionadded:: 4.2
     """
 
-    EQUALITY = 1
+    EQUALITY = "equality"
     """Used to encrypt a value for an equality query."""
 
 
