@@ -599,7 +599,7 @@ class ClientEncryption(object):
         key_id: Optional[Binary] = None,
         key_alt_name: Optional[str] = None,
         index_key_id: Optional[Binary] = None,
-        query_type: Optional[int] = None,
+        query_type: Optional[str] = None,
         contention_factor: Optional[int] = None,
     ) -> Binary:
         """Encrypt a BSON value with a given key and algorithm.
@@ -617,7 +617,7 @@ class ClientEncryption(object):
           - `key_alt_name`: Identifies a key vault document by 'keyAltName'.
           - `index_key_id`: **(BETA)** The index key id to use for Queryable Encryption. Must be
             a :class:`~bson.binary.Binary` with subtype 4 (:attr:`~bson.binary.UUID_SUBTYPE`).
-          - `query_type` (int): **(BETA)** The query type to execute. See
+          - `query_type` (str): **(BETA)** The query type to execute. See
             :class:`QueryType` for valid options.
           - `contention_factor` (int): **(BETA)** The contention factor to use
             when the algorithm is :attr:`Algorithm.INDEXED`.
