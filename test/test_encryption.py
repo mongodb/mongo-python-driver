@@ -1770,6 +1770,8 @@ class TestDeadlockProse(EncryptionIntegrationTest):
         self.assertEqual(len(self.topology_listener.results["opened"]), 1)
 
 
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests
+# /README.rst#14-decryption-events
 class TestDecryptProse(EncryptionIntegrationTest):
     def setUp(self):
         self.setup_client = MongoClient()
