@@ -1117,7 +1117,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
             opts = kwargs.pop("opts")
             kwargs["opts"] = RewrapManyDataKeyOpts(opts.get("provider"), opts.get("masterKey"))
-        return target.rewrapManyDataKey(*args, **kwargs)
+        return target.rewrap_many_data_key(*args, **kwargs)
 
     def run_entity_operation(self, spec):
         target = self.entity_map[spec["object"]]
