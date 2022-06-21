@@ -58,6 +58,7 @@ from bson.objectid import ObjectId
 from bson.son import SON
 from bson.timestamp import Timestamp
 from bson.tz_util import FixedOffset, utc
+from bson.utc_datetime import UTCDatetimeRaw
 
 
 class NotADict(abc.MutableMapping):
@@ -551,6 +552,71 @@ class TestBSON(unittest.TestCase):
         dt2 = decode(encode({"date": dt1}))["date"]
         self.assertEqual(dt1, dt2)
 
+        # Other timestamp formats.
+
+    @unittest.skipIf(bson.has_c(), "C extension not implemented yet")  # Temporary
+    def test_extended_datetime(self):
+        # Test each of the rich comparison methods.
+        pairs = [
+            (UTCDatetimeRaw(-1), UTCDatetimeRaw(1)),
+            (UTCDatetimeRaw(0), UTCDatetimeRaw(0)),
+            (UTCDatetimeRaw(1), UTCDatetimeRaw(-1)),
+        ]
+
+        comp_ops = ["__lt__", "__le__", "__eq__", "__ne__", "__gt__", "__ge__"]
+        for lh, rh in pairs:
+            for op in comp_ops:
+                self.assertEqual(getattr(lh, op)(rh), getattr(lh._value, op)(rh._value))
+
+        # Test class conversions.
+        dtr1 = UTCDatetimeRaw(1234)
+        dt1 = dtr1.to_datetime()
+        self.assertEqual(dtr1, UTCDatetimeRaw(dt1))
+
+        dt2 = datetime.datetime(1969, 1, 1, tzinfo=datetime.timezone.utc)
+        dtr2 = UTCDatetimeRaw(dt2)
+        self.assertEqual(dtr2.to_datetime(), dt2)
+
+        # Test encode and decode without codec options. Expect: UTCDatetimeRaw => datetime
+        dtr1 = UTCDatetimeRaw(0)
+        enc1 = encode({"x": dtr1})
+        dec1 = decode(enc1)
+        self.assertEqual(dec1["x"], datetime.datetime(1970, 1, 1))
+        self.assertNotEqual(type(dtr1), type(dec1["x"]))
+
+        # Test encode and decode with codec options. Expect: UTCDateimteRaw => UTCDatetimeRaw
+        opts1 = CodecOptions(datetime_conversion="raw")
+        enc1 = encode({"x": dtr1})
+        dec1 = decode(enc1, opts1)
+        self.assertEqual(type(dtr1), type(dec1["x"]))
+        self.assertEqual(dtr1, dec1["x"])
+
+        # Expect: datetime => UTCDatetimeRaw
+        opts1 = CodecOptions(datetime_conversion="raw")
+        dt1 = datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
+        enc1 = encode({"x": dt1})
+        dec1 = decode(enc1, opts1)
+        self.assertEqual(dec1["x"], UTCDatetimeRaw(0))
+        self.assertNotEqual(dt1, type(dec1["x"]))
+
+        # Test clamping from below and above.
+        opts2 = CodecOptions(
+            datetime_conversion="datetime_clamp", tz_aware=True, tzinfo=datetime.timezone.utc
+        )
+        millis = lambda dt: dt.replace(tzinfo=datetime.timezone.utc).timestamp() * 1000
+        below = encode({"x": UTCDatetimeRaw(millis(datetime.datetime.min) - 1)})
+        dec_below = decode(below, opts2)
+        self.assertEqual(
+            dec_below["x"], datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
+        )
+
+        above = encode({"x": UTCDatetimeRaw(millis(datetime.datetime.max) + 1)})
+        dec_above = decode(above, opts2)
+        self.assertEqual(
+            dec_above["x"],
+            datetime.datetime.max.replace(tzinfo=datetime.timezone.utc, microsecond=999000),
+        )
+
     def test_large_datetime_truncation(self):
         # Ensure that a large datetime is truncated correctly.
         dt1 = datetime.datetime(9999, 1, 1, 1, 1, 1, 999999)
@@ -977,7 +1043,7 @@ class TestCodecOptions(unittest.TestCase):
             "uuid_representation=UuidRepresentation.UNSPECIFIED, "
             "unicode_decode_error_handler='strict', "
             "tzinfo=None, type_registry=TypeRegistry(type_codecs=[], "
-            "fallback_encoder=None))"
+            "fallback_encoder=None), datetime_conversion='datetime')"
         )
         self.assertEqual(r, repr(CodecOptions()))
 

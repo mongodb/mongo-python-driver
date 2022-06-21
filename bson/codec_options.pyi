@@ -62,6 +62,7 @@ class CodecOptions(Tuple, Generic[_DocumentType]):
     unicode_decode_error_handler: Optional[str]
     tzinfo: Optional[datetime.tzinfo]
     type_registry: TypeRegistry
+    datetime_conversion: Optional[str]
 
     def __new__(
         cls: Type[CodecOptions],
@@ -71,6 +72,7 @@ class CodecOptions(Tuple, Generic[_DocumentType]):
         unicode_decode_error_handler: Optional[str] = ...,
         tzinfo: Optional[datetime.tzinfo] = ...,
         type_registry: Optional[TypeRegistry] = ...,
+        datetime_conversion: Optional[str] = ...,
     ) -> CodecOptions[_DocumentType]: ...
 
     # CodecOptions API

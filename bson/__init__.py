@@ -114,6 +114,7 @@ from bson.regex import Regex
 from bson.son import RE_TYPE, SON
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
+from bson.utc_datetime import UTCDatetimeRaw
 
 # Import some modules for type-checking only.
 if TYPE_CHECKING:
@@ -778,6 +779,15 @@ _ENCODERS = {
     _abc.Mapping: _encode_mapping,
 }
 
+# Temporary
+if not _USE_C:
+    _ENCODERS[UTCDatetimeRaw] = _encode_datetime
+else:
+
+    def _decode_utc_datetime_raw_not_implemented():
+        raise NotImplemented("C extension for UTCDatetimeRaw has not been implemented")
+
+    _ENCODERS[UTCDatetimeRaw] = _decode_utc_datetime_raw_not_implemented
 
 _MARKERS = {
     5: _encode_binary,
@@ -887,26 +897,41 @@ def _dict_to_bson(doc: Any, check_keys: bool, opts: CodecOptions, top_level: boo
 if _USE_C:
     _dict_to_bson = _cbson._dict_to_bson  # noqa: F811
 
+# Inclusive, not inclusive.
+MIN_PYDATETIME = datetime.datetime.min.replace(tzinfo=datetime.timezone.utc).timestamp() * 1000
+MAX_PYDATETIME = datetime.datetime.max.replace(tzinfo=datetime.timezone.utc).timestamp() * 1000 - 1
 
-def _millis_to_datetime(millis: int, opts: CodecOptions) -> datetime.datetime:
+
+def _millis_to_datetime(
+    millis: int, opts: CodecOptions
+) -> Union[datetime.datetime, UTCDatetimeRaw]:
     """Convert milliseconds since epoch UTC to datetime."""
-    diff = ((millis % 1000) + 1000) % 1000
-    seconds = (millis - diff) // 1000
-    micros = diff * 1000
-    if opts.tz_aware:
-        dt = EPOCH_AWARE + datetime.timedelta(seconds=seconds, microseconds=micros)
-        if opts.tzinfo:
-            dt = dt.astimezone(opts.tzinfo)
-        return dt
-    else:
-        return EPOCH_NAIVE + datetime.timedelta(seconds=seconds, microseconds=micros)
+    if opts.datetime_conversion == "datetime" or opts.datetime_conversion == "datetime_clamp":
+        if opts.datetime_conversion == "datetime_clamp":
+            millis = max(MIN_PYDATETIME, min(millis, MAX_PYDATETIME))
+        diff = ((millis % 1000) + 1000) % 1000
+        seconds = (millis - diff) // 1000
+        micros = diff * 1000
+
+        if opts.tz_aware:
+            dt = EPOCH_AWARE + datetime.timedelta(seconds=seconds, microseconds=micros)
+            if opts.tzinfo:
+                dt = dt.astimezone(opts.tzinfo)
+            return dt
+        else:
+            return EPOCH_NAIVE + datetime.timedelta(seconds=seconds, microseconds=micros)
+    elif opts.datetime_conversion == "raw":
+        return UTCDatetimeRaw(millis)
 
 
-def _datetime_to_millis(dtm: datetime.datetime) -> int:
+def _datetime_to_millis(dtm: Union[datetime.datetime, UTCDatetimeRaw]) -> int:
     """Convert datetime to milliseconds since epoch UTC."""
-    if dtm.utcoffset() is not None:
-        dtm = dtm - dtm.utcoffset()  # type: ignore
-    return int(calendar.timegm(dtm.timetuple()) * 1000 + dtm.microsecond // 1000)
+    if isinstance(dtm, UTCDatetimeRaw):
+        return int(dtm)
+    else:  # default: datetime.datetime
+        if dtm.utcoffset() is not None:
+            dtm = dtm - dtm.utcoffset()  # type: ignore
+        return int(calendar.timegm(dtm.timetuple()) * 1000 + dtm.microsecond // 1000)
 
 
 _CODEC_OPTIONS_TYPE_ERROR = TypeError("codec_options must be an instance of CodecOptions")

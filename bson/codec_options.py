@@ -205,6 +205,7 @@ class _BaseCodecOptions(NamedTuple):
     unicode_decode_error_handler: str
     tzinfo: Optional[datetime.tzinfo]
     type_registry: TypeRegistry
+    datetime_conversion: str
 
 
 class CodecOptions(_BaseCodecOptions):
@@ -268,7 +269,12 @@ class CodecOptions(_BaseCodecOptions):
         encoded/decoded.
       - `type_registry`: Instance of :class:`TypeRegistry` used to customize
         encoding and decoding behavior.
-
+      - `datetime_conversion`: Specifies how UTC datetimes should be decoded
+        within BSON. Valid options include 'raw' to return as a
+        UTCDatetimeRaw, 'datetime' to return as a datetime.datetime and
+        raising a ValueError for out-of-range values, and
+        'datetime_clamp' to clamp to the minimum and maximum possible
+        datetimes. Defaults to 'datetime'.
     .. versionchanged:: 4.0
        The default for `uuid_representation` was changed from
        :const:`~bson.binary.UuidRepresentation.PYTHON_LEGACY` to
@@ -292,6 +298,7 @@ class CodecOptions(_BaseCodecOptions):
         unicode_decode_error_handler: str = "strict",
         tzinfo: Optional[datetime.tzinfo] = None,
         type_registry: Optional[TypeRegistry] = None,
+        datetime_conversion: Optional[str] = "datetime",
     ) -> "CodecOptions":
         doc_class = document_class or dict
         # issubclass can raise TypeError for generic aliases like SON[str, Any].
@@ -327,6 +334,11 @@ class CodecOptions(_BaseCodecOptions):
         if not isinstance(type_registry, TypeRegistry):
             raise TypeError("type_registry must be an instance of TypeRegistry")
 
+        if not isinstance(datetime_conversion, str):
+            raise TypeError("datetime_conversion must be a string")
+        if datetime_conversion not in ["datetime", "datetime_clamp", "raw"]:
+            raise ValueError(f"{datetime_conversion} is not a valid option for datetime_conversion")
+
         return tuple.__new__(
             cls,
             (
@@ -336,6 +348,7 @@ class CodecOptions(_BaseCodecOptions):
                 unicode_decode_error_handler,
                 tzinfo,
                 type_registry,
+                datetime_conversion,
             ),
         )
 
@@ -350,7 +363,7 @@ class CodecOptions(_BaseCodecOptions):
         return (
             "document_class=%s, tz_aware=%r, uuid_representation=%s, "
             "unicode_decode_error_handler=%r, tzinfo=%r, "
-            "type_registry=%r"
+            "type_registry=%r, datetime_conversion=%r"
             % (
                 document_class_repr,
                 self.tz_aware,
@@ -358,6 +371,7 @@ class CodecOptions(_BaseCodecOptions):
                 self.unicode_decode_error_handler,
                 self.tzinfo,
                 self.type_registry,
+                self.datetime_conversion,
             )
         )
 
@@ -371,6 +385,7 @@ class CodecOptions(_BaseCodecOptions):
             "unicode_decode_error_handler": self.unicode_decode_error_handler,
             "tzinfo": self.tzinfo,
             "type_registry": self.type_registry,
+            "datetime_conversion": self.datetime_conversion,
         }
 
     def __repr__(self):
@@ -406,6 +421,7 @@ def _parse_codec_options(options: Any) -> CodecOptions:
         "unicode_decode_error_handler",
         "tzinfo",
         "type_registry",
+        "datetime_conversion",
     }:
         if k == "uuidrepresentation":
             kwargs["uuid_representation"] = options[k]
