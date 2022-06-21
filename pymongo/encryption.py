@@ -240,7 +240,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         return Binary(data_key_id.bytes, subtype=UUID_SUBTYPE)
 
     def rewrap_many_data_key(self, data_keys):
-        """**Experimental** Decrypts multiple data keys and (re-)encrypts them.
+        """**Experimental** Rewraps zero or more data keys in the key vault collection.
 
         :Parameters:
             `data_keys`: The data keys to rewrap.
