@@ -244,6 +244,8 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         """
         replacements = []
         for key in data_keys:
+            if isinstance(key, int):
+                key = self.key_vault_coll.find_one({"_id": key})
             op = ReplaceOne({"_id": key.id}, key)
             replacements.append(op)
         result = self.key_vault_coll.bulk_write(replacements)
