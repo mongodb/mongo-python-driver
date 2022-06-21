@@ -25,6 +25,7 @@ import re
 import sys
 import time
 import types
+import uuid
 from collections import abc
 from test import IntegrationTest, client_context, unittest
 from test.utils import (
@@ -60,6 +61,7 @@ from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
     ConnectionFailure,
+    EncryptionError,
     ExecutionTimeout,
     InvalidOperation,
     NetworkTimeout,
@@ -512,7 +514,7 @@ class EntityMapUtil(object):
             return self._session_lsids[session_name]
 
 
-binary_types = (Binary, bytes)
+binary_types = (Binary, bytes, uuid.UUID)
 long_types = (Int64,)
 unicode_type = str
 
@@ -940,7 +942,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             # Connection errors are considered client errors.
             if isinstance(exception, ConnectionFailure):
                 self.assertNotIsInstance(exception, NotPrimaryError)
-            elif isinstance(exception, (InvalidOperation, ConfigurationError)):
+            elif isinstance(exception, (InvalidOperation, ConfigurationError, EncryptionError)):
                 pass
             else:
                 self.assertNotIsInstance(exception, PyMongoError)
@@ -1106,6 +1108,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             opts = kwargs.pop("opts")
             kwargs["master_key"] = opts.get("masterKey")
             kwargs["key_alt_names"] = opts.get("keyAltNames")
+            kwargs["key_material"] = opts.get("keyMaterial")
         return target.create_key(*args, **kwargs)
 
     def _clientEncryptionOperation_rewrapManyDataKey(self, target, *args, **kwargs):

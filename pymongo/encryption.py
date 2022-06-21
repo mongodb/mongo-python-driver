@@ -62,12 +62,6 @@ _KMS_CONNECT_TIMEOUT = 10  # TODO: CDRIVER-3262 will define this value.
 _MONGOCRYPTD_TIMEOUT_MS = 10000
 
 
-# TODO: add key_material to _DATA_KEY_OPTS
-# keyMaterial is used to encrypt data. If omitted, keyMaterial is generated from
-# a cryptographically secure random source.
-# keyMaterial: Optional<Array[byte]>
-
-
 _DATA_KEY_OPTS: CodecOptions = CodecOptions(document_class=SON, uuid_representation=STANDARD)
 # Use RawBSONDocument codec options to avoid needlessly decoding
 # documents from the key vault.
@@ -547,6 +541,7 @@ class ClientEncryption(object):
         kms_provider: str,
         master_key: Optional[Mapping[str, Any]] = None,
         key_alt_names: Optional[Sequence[str]] = None,
+        key_material: Optional[Binary] = None,
     ) -> Binary:
         """Create and insert a new data key into the key vault collection.
 
@@ -607,16 +602,23 @@ class ClientEncryption(object):
               # reference the key with the alternate name
               client_encryption.encrypt("457-55-5462", keyAltName="name1",
                                         algorithm=Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Random)
+          - `key_material` (optional): Sets the custom key material to be used by the data key for encryption and decryption.
 
         :Returns:
           The ``_id`` of the created data key document as a
           :class:`~bson.binary.Binary` with subtype
           :data:`~bson.binary.UUID_SUBTYPE`.
+
+        .. versionchanged:: 4.2
+           Added the `key_material` parameter.
         """
         self._check_closed()
         with _wrap_encryption_errors():
             return self._encryption.create_data_key(
-                kms_provider, master_key=master_key, key_alt_names=key_alt_names
+                kms_provider,
+                master_key=master_key,
+                key_alt_names=key_alt_names,
+                key_material=key_material,
             )
 
     def create_key(
@@ -624,6 +626,7 @@ class ClientEncryption(object):
         kms_provider: str,
         master_key: Optional[Mapping[str, Any]] = None,
         key_alt_names: Optional[Sequence[str]] = None,
+        key_material: Optional[Binary] = None,
     ) -> Binary:
         """Create and insert a new key into the key vault collection.
 
@@ -684,6 +687,7 @@ class ClientEncryption(object):
               # reference the key with the alternate name
               client_encryption.encrypt("457-55-5462", keyAltName="name1",
                                         algorithm=Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Random)
+          - `key_material` (optional): Sets the custom key material to be used by the data key for encryption and decryption.
 
         :Returns:
           The ``_id`` of the created key document as a
@@ -691,11 +695,14 @@ class ClientEncryption(object):
           :data:`~bson.binary.UUID_SUBTYPE`.
 
         .. versionadded:: 4.2
-            Added create_key as an alias to create_data_key to support
+            Added ``create_key`` as an alias to ``create_data_key`` to support
             queryable encryption API.
         """
         return self.create_data_key(
-            kms_provider, master_key=master_key, key_alt_names=key_alt_names
+            kms_provider,
+            master_key=master_key,
+            key_alt_names=key_alt_names,
+            key_material=key_material,
         )
 
     def encrypt(
