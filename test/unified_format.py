@@ -1101,9 +1101,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self.__raise_if_unsupported("close", target, NonLazyCursor)
         return target.close()
 
-    def _clientEncryptionOperation_getKeys(self, target, *args, **kwargs):
-        return target.get_keys()
-
     def _clientEncryptionOperation_createKey(self, target, *args, **kwargs):
         if "opts" in kwargs:
             opts = kwargs.pop("opts")
