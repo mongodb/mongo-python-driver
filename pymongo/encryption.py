@@ -19,7 +19,7 @@ import enum
 import socket
 import uuid
 import weakref
-from typing import Any, Iterable, Mapping, Optional, Sequence
+from typing import Any, Mapping, Optional, Sequence
 
 try:
     from pymongocrypt.auto_encrypter import AutoEncrypter
