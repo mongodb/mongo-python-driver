@@ -884,6 +884,20 @@ class ClientEncryption(object):
         """
         return list(self._key_vault_coll.find({}))
 
+    def rewrap_many_data_key(self, filter, opts=None):
+        """**Experimental** Rewraps zero or more data keys in the key vault collection that match the provided ``filter``.
+
+        :Parameters:
+          - `filter`: A document used to filter the data keys.
+          - `opts`: (optional) :class:`RewrapManyDataKeyOpts`.
+
+        :Returns:
+          A :class:`RewrapManyDataKeyResult`.
+        """
+        self._check_closed()
+        with _wrap_encryption_errors():
+            return self._encryption.rewrap_many_data_key(filter, opts)
+
     def __enter__(self) -> "ClientEncryption":
         return self
 
