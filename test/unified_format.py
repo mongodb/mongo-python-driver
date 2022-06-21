@@ -1111,6 +1111,14 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             kwargs["key_alt_names"] = opts.get("keyAltNames")
         return target.create_key(*args, **kwargs)
 
+    def _clientEncryptionOperation_rewrapManyDataKey(self, target, *args, **kwargs):
+        if "opts" in kwargs:
+            from pymongocrypt.mongocrypt import RewrapManyDataKeyOpts
+
+            opts = kwargs.pop("opts")
+            kwargs["opts"] = RewrapManyDataKeyOpts(opts.get("provider"), opts.get("masterKey"))
+        return target.rewrapManyDataKey(*args, **kwargs)
+
     def run_entity_operation(self, spec):
         target = self.entity_map[spec["object"]]
         client = target
