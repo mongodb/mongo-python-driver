@@ -1110,6 +1110,9 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callbac
             opts = arguments["opts"]
             from pymongocrypt.mongocrypt import RewrapManyDataKeyOpts
 
-            arguments["opts"] = RewrapManyDataKeyOpts(opts.get("provider"), opts.get("masterKey"))
+            if isinstance(opts, dict):
+                arguments["opts"] = RewrapManyDataKeyOpts(
+                    opts.get("provider"), opts.get("masterKey")
+                )
         else:
             arguments[c2s] = arguments.pop(arg_name)
