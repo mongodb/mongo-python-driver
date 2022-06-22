@@ -1773,14 +1773,12 @@ class TestDeadlockProse(EncryptionIntegrationTest):
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#14-decryption-events
 class TestDecryptProse(EncryptionIntegrationTest):
     def setUp(self):
-        self.client = MongoClient()
+        self.client = client_context.client
         self.client.db.drop_collection("decryption_events")
         self.client.keyvault.drop_collection("datakeys")
         self.client.keyvault.datakeys.create_index(
             "keyAltNames", unique=True, partialFilterExpression={"keyAltNames": {"$exists": True}}
         )
-        self.addCleanup(self.client.close)
-
         kms_providers_map = {"local": {"key": LOCAL_MASTER_KEY}}
 
         self.client_encryption = ClientEncryption(
@@ -1836,6 +1834,7 @@ class TestDecryptProse(EncryptionIntegrationTest):
         with self.assertRaises(EncryptionError):
             next(self.encrypted_client.db.decryption_events.aggregate([]))
         event = self.listener.results["succeeded"][0]
+        self.assertEqual(len(self.listener.results["failed"]), 0)
         self.assertEqual(
             event.reply["cursor"]["firstBatch"][0]["encrypted"], self.malformed_cipher_text
         )
