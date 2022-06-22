@@ -109,11 +109,8 @@ class GridFS(object):
 
         Equivalent to doing::
 
-          try:
-              f = new_file(**kwargs)
+          with fs.new_file(**kwargs) as f:
               f.write(data)
-          finally:
-              f.close()
 
         `data` can be either an instance of :class:`bytes` or a file-like
         object providing a :meth:`read` method. If an `encoding` keyword
@@ -134,13 +131,10 @@ class GridFS(object):
         .. versionchanged:: 3.0
            w=0 writes to GridFS are now prohibited.
         """
-        grid_file = GridIn(self.__collection, **kwargs)
-        try:
-            grid_file.write(data)
-        finally:
-            grid_file.close()
 
-        return grid_file._id
+        with GridIn(self.__collection, **kwargs) as grid_file:
+            grid_file.write(data)
+            return grid_file._id
 
     def get(self, file_id: Any, session: Optional[ClientSession] = None) -> GridOut:
         """Get a file from GridFS by ``"_id"``.
@@ -528,11 +522,11 @@ class GridFSBucket(object):
 
           my_db = MongoClient().test
           fs = GridFSBucket(my_db)
-          grid_in = fs.open_upload_stream(
+          with fs.open_upload_stream(
                 "test_file", chunk_size_bytes=4,
-                metadata={"contentType": "text/plain"})
-          grid_in.write("data I want to store!")
-          grid_in.close()  # uploaded on close
+                metadata={"contentType": "text/plain"}) as grid_in:
+              grid_in.write("data I want to store!")
+          # uploaded on close
 
         Returns an instance of :class:`~gridfs.grid_file.GridIn`.
 
@@ -584,13 +578,13 @@ class GridFSBucket(object):
 
           my_db = MongoClient().test
           fs = GridFSBucket(my_db)
-          grid_in = fs.open_upload_stream_with_id(
+          with fs.open_upload_stream_with_id(
                 ObjectId(),
                 "test_file",
                 chunk_size_bytes=4,
-                metadata={"contentType": "text/plain"})
-          grid_in.write("data I want to store!")
-          grid_in.close()  # uploaded on close
+                metadata={"contentType": "text/plain"}) as grid_in:
+              grid_in.write("data I want to store!")
+          # uploaded on close
 
         Returns an instance of :class:`~gridfs.grid_file.GridIn`.
 
