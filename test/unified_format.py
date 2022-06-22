@@ -16,6 +16,7 @@
 
 https://github.com/mongodb/specifications/blob/master/source/unified-test-format/unified-test-format.rst
 """
+import base64
 import collections
 import copy
 import datetime
@@ -100,11 +101,8 @@ IS_INTERRUPTED = False
 
 
 # Shared KMS data.
-KMS_PROVIDERS = {
-    "local": {
-        "key": b"Mng0NCt4ZHVUYUJCa1kxNkVyNUR1QURhZ2h2UzR2d2RrZzh0cFBwM3R6NmdWMDFBMUN3YkQ5aXRRMkhGRGdQV09wOGVNYUMxT2k3NjZKelhaQmRCZGJkTXVyZG9uSjFk"
-    }
-}
+LOCAL_KEY_BASE64 = "Mng0NCt4ZHVUYUJCa1kxNkVyNUR1QURhZ2h2UzR2d2RrZzh0cFBwM3R6NmdWMDFBMUN3YkQ5aXRRMkhGRGdQV09wOGVNYUMxT2k3NjZKelhaQmRCZGJkTXVyZG9uSjFk"
+KMS_PROVIDERS = {"local": {"key": base64.b64decode(LOCAL_KEY_BASE64)}}
 AWS_CREDS = {
     "accessKeyId": os.environ.get("FLE_AWS_KEY", ""),
     "secretAccessKey": os.environ.get("FLE_AWS_SECRET", ""),
