@@ -233,17 +233,18 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         self.key_vault_coll.insert_one(raw_doc)
         return Binary(data_key_id.bytes, subtype=UUID_SUBTYPE)
 
-    def rewrap_many_data_key(self, data_keys):
+    def rewrap_many_data_key(self, data_key):
         """**Experimental** Rewraps zero or more data keys in the key vault collection.
 
         :Parameters:
-            `data_keys`: The data keys to rewrap.
+            `data_key`: The data key document to rewrap.
 
         :Returns:
            A :class:`RewrapManyDataKeyResult`.
         """
+        raw_doc = RawBSONDocument(data_keys, _KEY_VAULT_OPTS)
         replacements = []
-        for key in data_keys:
+        for key in raw_doc.v:
             op = ReplaceOne({"_id": key._id}, key)
             replacements.append(op)
         if replacements:

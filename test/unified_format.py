@@ -100,7 +100,11 @@ IS_INTERRUPTED = False
 
 
 # Shared KMS data.
-KMS_PROVIDERS = {"local": {"key": b"\x00" * 96}}
+KMS_PROVIDERS = {
+    "local": {
+        "key": b"Mng0NCt4ZHVUYUJCa1kxNkVyNUR1QURhZ2h2UzR2d2RrZzh0cFBwM3R6NmdWMDFBMUN3YkQ5aXRRMkhGRGdQV09wOGVNYUMxT2k3NjZKelhaQmRCZGJkTXVyZG9uSjFk"
+    }
+}
 AWS_CREDS = {
     "accessKeyId": os.environ.get("FLE_AWS_KEY", ""),
     "secretAccessKey": os.environ.get("FLE_AWS_SECRET", ""),
