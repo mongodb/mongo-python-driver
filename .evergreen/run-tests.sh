@@ -147,6 +147,10 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     python -c "import pymongocrypt; print('libmongocrypt version: '+pymongocrypt.libmongocrypt_version())"
     # PATH is updated by PREPARE_SHELL for access to mongocryptd.
 
+    # Add the TLS certs.
+    export CLIENT_PEM="$DRIVERS_TOOLS/.evergreen/x509gen/client.pem"
+    export CA_PEM="$DRIVERS_TOOLS/.evergreen/x509gen/ca.pem"
+
     # Get access to the AWS temporary credentials:
     # CSFLE_AWS_TEMP_ACCESS_KEY_ID, CSFLE_AWS_TEMP_SECRET_ACCESS_KEY, CSFLE_AWS_TEMP_SESSION_TOKEN
     . $DRIVERS_TOOLS/.evergreen/csfle/set-temp-creds.sh
@@ -161,10 +165,6 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     fi
     # Only run the encryption tests.
     TEST_ARGS="-s test.test_encryption"
-
-    # Add the TLS certs.
-    export CLIENT_PEM="$DRIVERS_TOOLS/.evergreen/x509gen/client.pem"
-    export CA_PEM="$DRIVERS_TOOLS/.evergreen/x509gen/ca.pem"
 fi
 
 if [ -n "$DATA_LAKE" ]; then
