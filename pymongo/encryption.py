@@ -50,7 +50,7 @@ from pymongo.errors import (
 )
 from pymongo.mongo_client import MongoClient
 from pymongo.network import BLOCKING_IO_ERRORS
-from pymongo.operations import ReplaceOne
+from pymongo.operations import UpdateOne
 from pymongo.pool import PoolOptions, _configured_socket
 from pymongo.read_concern import ReadConcern
 from pymongo.ssl_support import get_ssl_context
@@ -245,7 +245,11 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         raw_doc = RawBSONDocument(data_key, _KEY_VAULT_OPTS)
         replacements = []
         for key in raw_doc["v"]:
-            op = ReplaceOne({"_id": key["_id"]}, key)
+            update_model = {
+                "$set": {"keyMaterial": key.keyMaterial, "masterKey": key.masterKey},
+                "$currentDate": {"updateDate": True},
+            }
+            op = UpdateOne({"_id": key["_id"]}, update_model)
             replacements.append(op)
         if replacements:
             result = self.key_vault_coll.bulk_write(replacements)
