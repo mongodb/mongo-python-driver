@@ -245,7 +245,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         raw_doc = RawBSONDocument(data_key, _KEY_VAULT_OPTS)
         replacements = []
         for key in raw_doc["v"]:
-            op = ReplaceOne({"_id": key._id}, key)
+            op = ReplaceOne({"_id": key["_id"]}, key)
             replacements.append(op)
         if replacements:
             result = self.key_vault_coll.bulk_write(replacements)
