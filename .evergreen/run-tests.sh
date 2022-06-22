@@ -161,6 +161,10 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     fi
     # Only run the encryption tests.
     TEST_ARGS="-s test.test_encryption"
+
+    # Add the TLS certs.
+    export CLIENT_PEM="$DRIVERS_TOOLS/.evergreen/x509gen/client.pem"
+    export CA_PEM="$DRIVERS_TOOLS/.evergreen/x509gen/ca.pem"
 fi
 
 if [ -n "$DATA_LAKE" ]; then

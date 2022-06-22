@@ -244,11 +244,12 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         """
         replacements = []
         for key in data_keys:
-            if isinstance(key, int):
-                key = self.key_vault_coll.find_one({"_id": key})
-            op = ReplaceOne({"_id": key.id}, key)
+            op = ReplaceOne({"_id": key._id}, key)
             replacements.append(op)
-        result = self.key_vault_coll.bulk_write(replacements)
+        if replacements:
+            result = self.key_vault_coll.bulk_write(replacements)
+        else:
+            result = {}
         return RewrapManyDataKeyResult(result)
 
     def bson_encode(self, doc):
