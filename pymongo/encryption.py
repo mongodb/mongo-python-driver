@@ -246,7 +246,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         replacements = []
         for key in raw_doc["v"]:
             update_model = {
-                "$set": {"keyMaterial": key.keyMaterial, "masterKey": key.masterKey},
+                "$set": {"keyMaterial": key["keyMaterial"], "masterKey": key["masterKey"]},
                 "$currentDate": {"updateDate": True},
             }
             op = UpdateOne({"_id": key["_id"]}, update_model)
