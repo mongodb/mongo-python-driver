@@ -118,6 +118,13 @@ GCP_CREDS = {
     "privateKey": os.environ.get("FLE_GCP_PRIVATEKEY", ""),
 }
 KMIP = {"endpoint": os.environ.get("FLE_KMIP_ENDPOINT", "localhost:5698")}
+KMS_TLS_OPTS = {
+    "kmip": {
+        "tlsCAFile": os.environ["CSFLE_TLS_CA_PEM"],
+        "tlsCertificateKeyFile": os.environ["CSFLE_TLS_CLIENT_PEM"],
+    }
+}
+
 
 # Build up a placeholder map.
 PLACEHOLDER_MAP = dict()
@@ -478,7 +485,7 @@ class EntityMapUtil(object):
                 opts["key_vault_namespace"],
                 opts["key_vault_client"],
                 DEFAULT_CODEC_OPTIONS,
-                opts.get("kms_tls_options"),
+                opts.get("kms_tls_options", KMS_TLS_OPTIONS),
             )
             return
 
