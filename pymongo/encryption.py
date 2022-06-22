@@ -242,6 +242,9 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         :Returns:
            A :class:`RewrapManyDataKeyResult`.
         """
+        if data_key is None:
+            return RewrapManyDataKeyResult(BulkWriteResult())
+
         raw_doc = RawBSONDocument(data_key, _KEY_VAULT_OPTS)
         replacements = []
         for key in raw_doc["v"]:
