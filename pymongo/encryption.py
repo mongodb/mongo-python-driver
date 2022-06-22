@@ -250,7 +250,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         if replacements:
             result = self.key_vault_coll.bulk_write(replacements)
         else:
-            result = {}
+            result = BulkWriteResult()
         return RewrapManyDataKeyResult(result)
 
     def bson_encode(self, doc):
