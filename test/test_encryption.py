@@ -1770,22 +1770,21 @@ class TestDeadlockProse(EncryptionIntegrationTest):
         self.assertEqual(len(self.topology_listener.results["opened"]), 1)
 
 
-# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests
-# /README.rst#14-decryption-events
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#14-decryption-events
 class TestDecryptProse(EncryptionIntegrationTest):
     def setUp(self):
-        self.setup_client = MongoClient()
-        self.setup_client.db.drop_collection("decryption_events")
-        self.setup_client.keyvault.drop_collection("datakeys")
-        self.setup_client.keyvault.datakeys.create_index(
+        self.client = MongoClient()
+        self.client.db.drop_collection("decryption_events")
+        self.client.keyvault.drop_collection("datakeys")
+        self.client.keyvault.datakeys.create_index(
             "keyAltNames", unique=True, partialFilterExpression={"keyAltNames": {"$exists": True}}
         )
-        self.addCleanup(self.setup_client.close)
+        self.addCleanup(self.client.close)
 
         kms_providers_map = {"local": {"key": LOCAL_MASTER_KEY}}
 
         self.client_encryption = ClientEncryption(
-            kms_providers_map, "keyvault.datakeys", self.setup_client, CodecOptions()
+            kms_providers_map, "keyvault.datakeys", self.client, CodecOptions()
         )
         keyID = self.client_encryption.create_data_key("local")
         self.cipher_text = self.client_encryption.encrypt(
@@ -1805,48 +1804,48 @@ class TestDecryptProse(EncryptionIntegrationTest):
         )
         self.addCleanup(self.encrypted_client.close)
 
-    def test_command_error(self):
-        self.setup_client.admin.command(
+    def test_01_command_error(self):
+        with self.fail_point(
             {
-                "configureFailPoint": "failCommand",
                 "mode": {"times": 1},
                 "data": {"errorCode": 123, "failCommands": ["aggregate"]},
             }
-        )
-        with self.assertRaises(OperationFailure):
-            self.encrypted_client.db.decryption_events.aggregate([])
-        for i in self.listener.results["failed"]:
-            self.assertEqual(i.failure["code"], 123)
+        ):
+            with self.assertRaises(OperationFailure):
+                self.encrypted_client.db.decryption_events.aggregate([])
+        self.assertEqual(len(self.listener.results["failed"]), 1)
+        for event in self.listener.results["failed"]:
+            self.assertEqual(event.failure["code"], 123)
 
-    def test_network_error(self):
-        self.setup_client.admin.command(
+    def test_02_network_error(self):
+        with self.fail_point(
             {
-                "configureFailPoint": "failCommand",
                 "mode": {"times": 1},
                 "data": {"errorCode": 123, "closeConnection": True, "failCommands": ["aggregate"]},
             }
-        )
-        with self.assertRaises(AutoReconnect):
-            self.encrypted_client.db.decryption_events.aggregate([])
+        ):
+            with self.assertRaises(AutoReconnect):
+                self.encrypted_client.db.decryption_events.aggregate([])
         self.assertEqual(len(self.listener.results["failed"]), 1)
         self.assertEqual(self.listener.results["failed"][0].command_name, "aggregate")
 
-    def test_decrypt_error(self):
+    def test_03_decrypt_error(self):
+        self.encrypted_client.db.decryption_events.insert_one(
+            {"encrypted": self.malformed_cipher_text}
+        )
         with self.assertRaises(EncryptionError):
-            self.encrypted_client.db.decryption_events.insert_one(
-                {"encrypted": self.malformed_cipher_text}
-            )
             next(self.encrypted_client.db.decryption_events.aggregate([]))
-        i = self.listener.results["succeeded"][0]
+        event = self.listener.results["succeeded"][0]
         self.assertEqual(
-            i.reply["cursor"]["firstBatch"][0]["encrypted"], self.malformed_cipher_text
+            event.reply["cursor"]["firstBatch"][0]["encrypted"], self.malformed_cipher_text
         )
 
-    def test_decrypt_success(self):
+    def test_04_decrypt_success(self):
         self.encrypted_client.db.decryption_events.insert_one({"encrypted": self.cipher_text})
         next(self.encrypted_client.db.decryption_events.aggregate([]))
-        i = self.listener.results["succeeded"][0]
-        self.assertEqual(i.reply["cursor"]["firstBatch"][0]["encrypted"], self.cipher_text)
+        event = self.listener.results["succeeded"][0]
+        self.assertEqual(len(self.listener.results["failed"]), 0)
+        self.assertEqual(event.reply["cursor"]["firstBatch"][0]["encrypted"], self.cipher_text)
 
 
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#bypass-spawning-mongocryptd
