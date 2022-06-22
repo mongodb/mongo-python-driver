@@ -485,7 +485,7 @@ class EntityMapUtil(object):
                 opts["key_vault_namespace"],
                 opts["key_vault_client"],
                 DEFAULT_CODEC_OPTIONS,
-                opts.get("kms_tls_options", KMS_TLS_OPTIONS),
+                opts.get("kms_tls_options", KMS_TLS_OPTS),
             )
             return
 
