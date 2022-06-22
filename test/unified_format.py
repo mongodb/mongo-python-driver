@@ -120,8 +120,8 @@ GCP_CREDS = {
 KMIP = {"endpoint": os.environ.get("FLE_KMIP_ENDPOINT", "localhost:5698")}
 KMS_TLS_OPTS = {
     "kmip": {
-        "tlsCAFile": os.environ["CSFLE_TLS_CA_PEM"],
-        "tlsCertificateKeyFile": os.environ["CSFLE_TLS_CLIENT_PEM"],
+        "tlsCAFile": os.environ.get("CSFLE_TLS_CA_PEM", ""),
+        "tlsCertificateKeyFile": os.environ.get("CSFLE_TLS_CLIENT_PEM", ""),
     }
 }
 
