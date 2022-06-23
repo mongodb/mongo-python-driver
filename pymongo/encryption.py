@@ -235,7 +235,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         return Binary(data_key_id.bytes, subtype=UUID_SUBTYPE)
 
     def rewrap_many_data_key(self, data_key):
-        """**Experimental** Rewraps zero or more data keys in the key vault collection.
+        """Decrypts and encrypts all matched data keys in the key vault.
 
         :Parameters:
             `data_key`: The data key document to rewrap.
@@ -243,8 +243,8 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         :Returns:
            A :class:`RewrapManyDataKeyResult`.
         """
+        empty = dict(nInserted=0, nMatched=0, nModified=0, nRemoved=0, nUpserted=0, upserted=[])
         if data_key is None:
-            empty = dict(nInserted=0, nMatched=0, nModified=0, nRemoved=0, nUpserted=0, upserted=[])
             return RewrapManyDataKeyResult(BulkWriteResult(empty, True))
 
         raw_doc = RawBSONDocument(data_key, _KEY_VAULT_OPTS)
@@ -256,10 +256,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
             }
             op = UpdateOne({"_id": key["_id"]}, update_model)
             replacements.append(op)
-        if replacements:
-            result = self.key_vault_coll.bulk_write(replacements)
-        else:
-            result = BulkWriteResult()
+        result = self.key_vault_coll.bulk_write(replacements)
         return RewrapManyDataKeyResult(result)
 
     def bson_encode(self, doc):
@@ -905,7 +902,7 @@ class ClientEncryption(object):
         return list(self._key_vault_coll.find({}))
 
     def rewrap_many_data_key(self, filter, opts=None):
-        """**Experimental** Rewraps zero or more data keys in the key vault collection that match the provided ``filter``.
+        """Decrypts and encrypts all matching data keys in the key vault with a possibly new `master_key` value.
 
         :Parameters:
           - `filter`: A document used to filter the data keys.
