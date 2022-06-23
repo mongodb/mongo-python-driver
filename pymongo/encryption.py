@@ -40,6 +40,7 @@ from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from bson.son import SON
 from pymongo import _csot
+from pymongo.bulk import BulkWriteResult
 from pymongo.daemon import _spawn_daemon
 from pymongo.encryption_options import AutoEncryptionOpts
 from pymongo.errors import (
