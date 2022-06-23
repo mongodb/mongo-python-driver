@@ -69,6 +69,7 @@ from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts
 from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
+    DuplicateKeyError,
     EncryptionError,
     InvalidOperation,
     OperationFailure,
@@ -1981,6 +1982,38 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
             EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch"
         ):
             self.client_encryption_invalid_hostname.create_data_key("kmip")
+
+
+# https://github.com/mongodb/specifications/blob/50e26fe/source/client-side-encryption/tests/README.rst#unique-index-on-keyaltnames
+class TestUniqueIndexOnKeyAltNamesProse(EncryptionIntegrationTest):
+    def setUp(self):
+        self.client = client_context.client
+        self.client.keyvault.drop_collection("datakeys")
+        self.client.keyvault.datakeys.create_index(
+            "keyAltNames", unique=True, partialFilterExpression={"keyAltNames": {"$exists": True}}
+        )
+        kms_providers_map = {"local": {"key": LOCAL_MASTER_KEY}}
+        self.client_encryption = ClientEncryption(
+            kms_providers_map, "keyvault.datakeys", self.client, CodecOptions()
+        )
+        self.def_key_id = self.client_encryption.create_data_key("local", key_alt_names=["def"])
+
+    def test_01_create_key(self):
+        self.client_encryption.create_data_key("local", key_alt_names=["abc"])
+        with self.assertRaisesRegex(EncryptionError, "E11000 duplicate key error collection"):
+            self.client_encryption.create_data_key("local", key_alt_names=["abc"])
+        with self.assertRaisesRegex(EncryptionError, "E11000 duplicate key error collection"):
+            self.client_encryption.create_data_key("local", key_alt_names=["def"])
+
+    def test_02_add_key_alt_name(self):
+        key_id = self.client_encryption.create_data_key("local")
+        self.client_encryption.add_key_alt_name(key_id, "abc")
+        key_doc = self.client_encryption.add_key_alt_name(key_id, "abc")
+        assert key_doc["keyAltNames"] == ["abc"]
+        with self.assertRaisesRegex(DuplicateKeyError, "E11000 duplicate key error collection"):
+            self.client_encryption.add_key_alt_name(key_id, "def")
+        key_doc = self.client_encryption.add_key_alt_name(self.def_key_id, "def")
+        assert key_doc["keyAltNames"] == ["def"]
 
 
 # https://github.com/mongodb/specifications/blob/d4c9432/source/client-side-encryption/tests/README.rst#explicit-encryption
