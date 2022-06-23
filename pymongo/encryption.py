@@ -53,7 +53,6 @@ from pymongo.network import BLOCKING_IO_ERRORS
 from pymongo.operations import UpdateOne
 from pymongo.pool import PoolOptions, _configured_socket
 from pymongo.read_concern import ReadConcern
-from pymongo.results import BulkWriteResult
 from pymongo.ssl_support import get_ssl_context
 from pymongo.uri_parser import parse_host
 from pymongo.write_concern import WriteConcern

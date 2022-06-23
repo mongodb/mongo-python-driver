@@ -16,7 +16,6 @@
 
 https://github.com/mongodb/specifications/blob/master/source/unified-test-format/unified-test-format.rst
 """
-import base64
 import collections
 import copy
 import datetime
