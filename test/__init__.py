@@ -15,6 +15,7 @@
 """Test suite for pymongo, bson, and gridfs.
 """
 
+import base64
 import gc
 import os
 import socket
