@@ -31,22 +31,20 @@ from pymongo.collection import Collection
 sys.path[0:0] = [""]
 
 from test import (
+    AWS_CREDS,
+    AZURE_CREDS,
     CA_PEM,
     CLIENT_PEM,
+    GCP_CREDS,
+    KMIP_CREDS,
+    LOCAL_MASTER_KEY,
     IntegrationTest,
     PyMongoTestCase,
     client_context,
     unittest,
 )
 from test.test_bulk import BulkTestBase
-from test.unified_format import (
-    AWS_CREDS,
-    AZURE_CREDS,
-    GCP_CREDS,
-    KMIP,
-    KMS_PROVIDERS,
-    generate_test_classes,
-)
+from test.unified_format import generate_test_classes
 from test.utils import (
     AllowListEventListener,
     OvertCommandListener,
@@ -80,6 +78,8 @@ from pymongo.errors import (
 from pymongo.mongo_client import MongoClient
 from pymongo.operations import InsertOne, ReplaceOne, UpdateOne
 from pymongo.write_concern import WriteConcern
+
+KMS_PROVIDERS = {"local": {"key": b"\x00" * 96}}
 
 
 def get_client_opts(client):
@@ -684,16 +684,11 @@ if _HAVE_PYMONGOCRYPT:
     )
 
 # Prose Tests
-LOCAL_MASTER_KEY = base64.b64decode(
-    b"Mng0NCt4ZHVUYUJCa1kxNkVyNUR1QURhZ2h2UzR2d2RrZzh0cFBwM3R6NmdWMDFBMUN3YkQ"
-    b"5aXRRMkhGRGdQV09wOGVNYUMxT2k3NjZKelhaQmRCZGJkTXVyZG9uSjFk"
-)
-
 ALL_KMS_PROVIDERS = {
     "aws": AWS_CREDS,
     "azure": AZURE_CREDS,
     "gcp": GCP_CREDS,
-    "kmip": KMIP,
+    "kmip": KMIP_CREDS,
     "local": {"key": LOCAL_MASTER_KEY},
 }
 

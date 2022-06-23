@@ -28,7 +28,16 @@ import time
 import types
 import uuid
 from collections import abc
-from test import IntegrationTest, client_context, unittest
+from test import (
+    AWS_CREDS,
+    AZURE_CREDS,
+    GCP_CREDS,
+    KMIP_CREDS,
+    LOCAL_MASTER_KEY,
+    IntegrationTest,
+    client_context,
+    unittest,
+)
 from test.utils import (
     CMAPListener,
     camel_to_snake,
@@ -99,25 +108,6 @@ JSON_OPTS = json_util.JSONOptions(tz_aware=False)
 
 IS_INTERRUPTED = False
 
-
-# Shared KMS data.
-LOCAL_KEY_BASE64 = "Mng0NCt4ZHVUYUJCa1kxNkVyNUR1QURhZ2h2UzR2d2RrZzh0cFBwM3R6NmdWMDFBMUN3YkQ5aXRRMkhGRGdQV09wOGVNYUMxT2k3NjZKelhaQmRCZGJkTXVyZG9uSjFk"
-KMS_PROVIDERS = {"local": {"key": base64.b64decode(LOCAL_KEY_BASE64)}}
-AWS_CREDS = {
-    "accessKeyId": os.environ.get("FLE_AWS_KEY", ""),
-    "secretAccessKey": os.environ.get("FLE_AWS_SECRET", ""),
-}
-AZURE_CREDS = {
-    "tenantId": os.environ.get("FLE_AZURE_TENANTID", ""),
-    "clientId": os.environ.get("FLE_AZURE_CLIENTID", ""),
-    "clientSecret": os.environ.get("FLE_AZURE_CLIENTSECRET", ""),
-}
-
-GCP_CREDS = {
-    "email": os.environ.get("FLE_GCP_EMAIL", ""),
-    "privateKey": os.environ.get("FLE_GCP_PRIVATEKEY", ""),
-}
-KMIP = {"endpoint": os.environ.get("FLE_KMIP_ENDPOINT", "localhost:5698")}
 KMS_TLS_OPTS = {
     "kmip": {
         "tlsCAFile": os.environ.get("CSFLE_TLS_CA_PEM", ""),
@@ -129,11 +119,11 @@ KMS_TLS_OPTS = {
 # Build up a placeholder map.
 PLACEHOLDER_MAP = dict()
 for (provider_name, provider_data) in [
-    ("local", KMS_PROVIDERS["local"]),
+    ("local", {"key": LOCAL_MASTER_KEY}),
     ("aws", AWS_CREDS),
     ("azure", AZURE_CREDS),
     ("gcp", GCP_CREDS),
-    ("kmip", KMIP),
+    ("kmip", KMIP_CREDS),
 ]:
     for (key, value) in provider_data.items():
         placeholder = f"/clientEncryptionOpts/kmsProviders/{provider_name}/{key}"

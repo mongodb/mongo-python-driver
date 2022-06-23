@@ -116,6 +116,27 @@ elif TEST_SERVERLESS:
     COMPRESSORS = COMPRESSORS or "zlib"
 
 
+# Shared KMS data.
+LOCAL_MASTER_KEY = base64.b64decode(
+    b"Mng0NCt4ZHVUYUJCa1kxNkVyNUR1QURhZ2h2UzR2d2RrZzh0cFBwM3R6NmdWMDFBMUN3YkQ"
+    b"5aXRRMkhGRGdQV09wOGVNYUMxT2k3NjZKelhaQmRCZGJkTXVyZG9uSjFk"
+)
+AWS_CREDS = {
+    "accessKeyId": os.environ.get("FLE_AWS_KEY", ""),
+    "secretAccessKey": os.environ.get("FLE_AWS_SECRET", ""),
+}
+AZURE_CREDS = {
+    "tenantId": os.environ.get("FLE_AZURE_TENANTID", ""),
+    "clientId": os.environ.get("FLE_AZURE_CLIENTID", ""),
+    "clientSecret": os.environ.get("FLE_AZURE_CLIENTSECRET", ""),
+}
+GCP_CREDS = {
+    "email": os.environ.get("FLE_GCP_EMAIL", ""),
+    "privateKey": os.environ.get("FLE_GCP_PRIVATEKEY", ""),
+}
+KMIP_CREDS = {"endpoint": os.environ.get("FLE_KMIP_ENDPOINT", "localhost:5698")}
+
+
 def is_server_resolvable():
     """Returns True if 'server' is resolvable."""
     socket_timeout = socket.getdefaulttimeout()
