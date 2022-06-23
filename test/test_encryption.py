@@ -597,7 +597,7 @@ class TestSpec(SpecRunner):
             if not any(AZURE_CREDS.values()):
                 self.skipTest("GCP environment credentials are not set")
         if "kmip" in kms_providers:
-            kms_providers["kmip"] = KMIP
+            kms_providers["kmip"] = KMIP_CREDS
             opts["kms_tls_options"] = KMS_TLS_OPTS
         if "key_vault_namespace" not in opts:
             opts["key_vault_namespace"] = "keyvault.datakeys"
@@ -1221,7 +1221,12 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
         super(TestCustomEndpoint, cls).setUpClass()
 
     def setUp(self):
-        kms_providers = {"aws": AWS_CREDS, "azure": AZURE_CREDS, "gcp": GCP_CREDS, "kmip": KMIP}
+        kms_providers = {
+            "aws": AWS_CREDS,
+            "azure": AZURE_CREDS,
+            "gcp": GCP_CREDS,
+            "kmip": KMIP_CREDS,
+        }
         self.client_encryption = ClientEncryption(
             kms_providers=kms_providers,
             key_vault_namespace="keyvault.datakeys",
@@ -1398,7 +1403,7 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             self.client_encryption_invalid.create_data_key("kmip", key)
 
     def test_11_kmip_master_key_endpoint(self):
-        key = {"keyId": "1", "endpoint": KMIP["endpoint"]}
+        key = {"keyId": "1", "endpoint": KMIP_CREDS["endpoint"]}
         self.run_test_expected_success("kmip", key)
         # Override invalid endpoint:
         data_key_id = self.client_encryption_invalid.create_data_key("kmip", master_key=key)
