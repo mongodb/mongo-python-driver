@@ -245,7 +245,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         """
         if data_key is None:
             empty = dict(nInserted=0, nMatched=0, nModified=0, nRemoved=0, nUpserted=0)
-            return RewrapManyDataKeyResult(BulkWriteResult(empty, False))
+            return RewrapManyDataKeyResult(BulkWriteResult(empty, True))
 
         raw_doc = RawBSONDocument(data_key, _KEY_VAULT_OPTS)
         replacements = []
