@@ -56,6 +56,7 @@ bytes [#bytes]_                          binary         both
 
 import calendar
 import datetime
+import functools
 import itertools
 import re
 import struct
@@ -100,6 +101,7 @@ from bson.code import Code
 from bson.codec_options import (
     DEFAULT_CODEC_OPTIONS,
     CodecOptions,
+    DatetimeConversionOpts,
     _DocumentType,
     _raw_document_class,
 )
@@ -665,6 +667,12 @@ def _encode_datetime(name: bytes, value: datetime.datetime, dummy0: Any, dummy1:
     return b"\x09" + name + _PACK_LONG(millis)
 
 
+def _encode_datetime_raw(name: bytes, value: UTCDatetimeRaw, dummy0: Any, dummy1: Any) -> bytes:
+    """Encode datetime.datetime."""
+    millis = int(value)
+    return b"\x09" + name + _PACK_LONG(millis)
+
+
 def _encode_none(name: bytes, dummy0: Any, dummy1: Any, dummy2: Any) -> bytes:
     """Encode python None."""
     return b"\x0A" + name
@@ -755,6 +763,7 @@ _ENCODERS = {
     bool: _encode_bool,
     bytes: _encode_bytes,
     datetime.datetime: _encode_datetime,
+    UTCDatetimeRaw: _encode_datetime_raw,
     dict: _encode_mapping,
     float: _encode_float,
     int: _encode_int,
@@ -778,16 +787,6 @@ _ENCODERS = {
     # Special case. This will never be looked up directly.
     _abc.Mapping: _encode_mapping,
 }
-
-# Temporary
-if not _USE_C:
-    _ENCODERS[UTCDatetimeRaw] = _encode_datetime
-else:
-
-    def _decode_utc_datetime_raw_not_implemented():
-        raise NotImplemented("C extension for UTCDatetimeRaw has not been implemented")
-
-    _ENCODERS[UTCDatetimeRaw] = _decode_utc_datetime_raw_not_implemented
 
 _MARKERS = {
     5: _encode_binary,
@@ -897,18 +896,31 @@ def _dict_to_bson(doc: Any, check_keys: bool, opts: CodecOptions, top_level: boo
 if _USE_C:
     _dict_to_bson = _cbson._dict_to_bson  # noqa: F811
 
-# Inclusive, not inclusive.
-MIN_PYDATETIME = datetime.datetime.min.replace(tzinfo=datetime.timezone.utc).timestamp() * 1000
-MAX_PYDATETIME = datetime.datetime.max.replace(tzinfo=datetime.timezone.utc).timestamp() * 1000 - 1
+# Inclusive and exclusive min and max for timezones.
+# Timezones are hashed by their offset, which is a timedelta
+# and therefore there are more than 24 possible timezones.
+@functools.cache
+def _min_datetime_ms(tz=datetime.timezone.utc):
+    return datetime.datetime.min.replace(tzinfo=tz).timestamp() * 1000
+
+
+@functools.cache
+def _max_datetime_ms(tz=datetime.timezone.utc):
+    return datetime.datetime.max.replace(tzinfo=tz).timestamp() * 1000 - 1
 
 
 def _millis_to_datetime(
     millis: int, opts: CodecOptions
 ) -> Union[datetime.datetime, UTCDatetimeRaw]:
     """Convert milliseconds since epoch UTC to datetime."""
-    if opts.datetime_conversion == "datetime" or opts.datetime_conversion == "datetime_clamp":
-        if opts.datetime_conversion == "datetime_clamp":
-            millis = max(MIN_PYDATETIME, min(millis, MAX_PYDATETIME))
+    if (
+        opts.datetime_conversion == DatetimeConversionOpts.DATETIME
+        or opts.datetime_conversion == DatetimeConversionOpts.DATETIME_CLAMP
+    ):
+        if opts.datetime_conversion == DatetimeConversionOpts.DATETIME_CLAMP:
+            tz = opts.tzinfo or datetime.timezone.utc
+            millis = max(_min_datetime_ms(tz), min(millis, _max_datetime_ms(tz)))
+
         diff = ((millis % 1000) + 1000) % 1000
         seconds = (millis - diff) // 1000
         micros = diff * 1000
@@ -924,14 +936,11 @@ def _millis_to_datetime(
         return UTCDatetimeRaw(millis)
 
 
-def _datetime_to_millis(dtm: Union[datetime.datetime, UTCDatetimeRaw]) -> int:
+def _datetime_to_millis(dtm: Union[datetime.datetime]) -> int:
     """Convert datetime to milliseconds since epoch UTC."""
-    if isinstance(dtm, UTCDatetimeRaw):
-        return int(dtm)
-    else:  # default: datetime.datetime
-        if dtm.utcoffset() is not None:
-            dtm = dtm - dtm.utcoffset()  # type: ignore
-        return int(calendar.timegm(dtm.timetuple()) * 1000 + dtm.microsecond // 1000)
+    if dtm.utcoffset() is not None:
+        dtm = dtm - dtm.utcoffset()  # type: ignore
+    return int(calendar.timegm(dtm.timetuple()) * 1000 + dtm.microsecond // 1000)
 
 
 _CODEC_OPTIONS_TYPE_ERROR = TypeError("codec_options must be an instance of CodecOptions")

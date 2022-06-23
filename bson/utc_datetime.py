@@ -1,4 +1,4 @@
-# Copyright 2010-2022 MongoDB, Inc.
+# Copyright 2022-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,18 +15,41 @@
 """Representation of a UTC datetime in milliseconds as an int64.
 """
 import numbers
+from calendar import calendar
 from datetime import datetime, timezone
+
+EPOCH_AWARE = datetime.fromtimestamp(0, timezone.utc)
+EPOCH_NAIVE = datetime.utcfromtimestamp(0)
 
 
 class UTCDatetimeRaw:
+    """
+    Represents a BSON UTC datetime, which is defined as an int64 of
+    milliseconds since the Unix epoch. Principal use is to represent
+    datetimes outside the range of the Python builtin
+    :class:`~datetime.datetime` class when encoding/decoding BSON.
+    To decode UTC datetimes as a ``UTCDatetimeRaw``,
+    `datetime_conversion` in :class:`~bson.CodecOptions` must be set
+    to 'raw'.
+    """
+
+    def __init__(self, value: [int, datetime]):
+        if isinstance(value, int):
+            self._value = value
+        elif isinstance(value, datetime):
+            if value.utcoffset() is not None:
+                value = value - value.utcoffset()  # type: ignore
+            self._value = int(calendar.timegm(value.timetuple()) * 1000 + value.microsecond // 1000)
+        else:
+            raise TypeError(f"{type(value)} is not a valid type for UTCDatetimeRaw")
+
     def __hash__(self) -> int:
         return hash(self._value)
 
     def __repr__(self) -> str:
         return type(self).__name__ + "(" + str(self._value) + ")"
 
-    def __str__(self) -> str:
-        return self.__repr__()
+    __str__ = __repr__
 
     # Avoids using functools.total_ordering for speed.
 
@@ -50,16 +73,24 @@ class UTCDatetimeRaw:
 
     _type_marker = 9
 
-    def __init__(self, value):
-        if isinstance(value, numbers.Number):
-            self._value = int(value)
-        elif isinstance(value, datetime):
-            self._value = value.timestamp() * 1000
+    def to_datetime(self, tz_aware=True, tzinfo=timezone.utc) -> datetime:
+        """
+        Converts this ``UTCDatetimeRaw`` into a :class:`~datetime.datetime`
+        object. If `opts` is not set, then it will default to a
+        :class:`~bson.CodecOptions` with `tz_aware = True` and
+        `tzinfo = datetime.timezone.utc`.
+        """
+        diff = ((self._value % 1000) + 1000) % 1000
+        seconds = (self._value - diff) // 1000
+        micros = diff * 1000
+
+        if tz_aware:
+            dt = EPOCH_AWARE + datetime.timedelta(seconds=seconds, microseconds=micros)
+            if tzinfo:
+                dt = dt.astimezone(tzinfo)
+            return dt
         else:
-            raise TypeError(f"{type(value)} is not a valid type for UTCDatetimeRaw")
+            return EPOCH_NAIVE + datetime.timedelta(seconds=seconds, microseconds=micros)
 
-    def to_datetime(self):
-        return datetime.fromtimestamp(self._value / 1000, timezone.utc)
-
-    def __int__(self) -> float:
+    def __int__(self) -> int:
         return int(self._value)

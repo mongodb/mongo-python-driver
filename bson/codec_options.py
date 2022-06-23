@@ -16,6 +16,7 @@
 
 import abc
 import datetime
+import enum
 from collections.abc import MutableMapping as _MutableMapping
 from typing import (
     Any,
@@ -198,6 +199,12 @@ class TypeRegistry(object):
         )
 
 
+class DatetimeConversionOpts(str, enum.Enum):
+    DATETIME = "datetime"
+    DATETIME_CLAMP = "datetime_clamp"
+    RAW = "raw"
+
+
 class _BaseCodecOptions(NamedTuple):
     document_class: Type[Mapping[str, Any]]
     tz_aware: bool
@@ -205,7 +212,7 @@ class _BaseCodecOptions(NamedTuple):
     unicode_decode_error_handler: str
     tzinfo: Optional[datetime.tzinfo]
     type_registry: TypeRegistry
-    datetime_conversion: str
+    datetime_conversion: Optional[DatetimeConversionOpts]
 
 
 class CodecOptions(_BaseCodecOptions):
@@ -272,9 +279,9 @@ class CodecOptions(_BaseCodecOptions):
       - `datetime_conversion`: Specifies how UTC datetimes should be decoded
         within BSON. Valid options include 'raw' to return as a
         UTCDatetimeRaw, 'datetime' to return as a datetime.datetime and
-        raising a ValueError for out-of-range values, and
-        'datetime_clamp' to clamp to the minimum and maximum possible
-        datetimes. Defaults to 'datetime'.
+        raising a ValueError for out-of-range values, and 'datetime_clamp'
+        to clamp to the minimum and maximum possible datetimes.
+        Defaults to 'datetime'.
     .. versionchanged:: 4.0
        The default for `uuid_representation` was changed from
        :const:`~bson.binary.UuidRepresentation.PYTHON_LEGACY` to
@@ -298,7 +305,7 @@ class CodecOptions(_BaseCodecOptions):
         unicode_decode_error_handler: str = "strict",
         tzinfo: Optional[datetime.tzinfo] = None,
         type_registry: Optional[TypeRegistry] = None,
-        datetime_conversion: Optional[str] = "datetime",
+        datetime_conversion: Optional[DatetimeConversionOpts] = DatetimeConversionOpts.DATETIME,
     ) -> "CodecOptions":
         doc_class = document_class or dict
         # issubclass can raise TypeError for generic aliases like SON[str, Any].
@@ -336,7 +343,7 @@ class CodecOptions(_BaseCodecOptions):
 
         if not isinstance(datetime_conversion, str):
             raise TypeError("datetime_conversion must be a string")
-        if datetime_conversion not in ["datetime", "datetime_clamp", "raw"]:
+        if datetime_conversion not in DatetimeConversionOpts.__members__.values():
             raise ValueError(f"{datetime_conversion} is not a valid option for datetime_conversion")
 
         return tuple.__new__(
