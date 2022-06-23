@@ -208,7 +208,8 @@ def is_run_on_requirement_satisfied(requirement):
     csfle_satisfied = True
     req_csfle = requirement.get("csfle")
     if req_csfle is True:
-        csfle_satisfied = _HAVE_PYMONGOCRYPT
+        min_version_satisfied = Version.from_string("4.2") <= server_version
+        csfle_satisfied = _HAVE_PYMONGOCRYPT and min_version_satisfied
 
     return (
         topology_satisfied
@@ -1117,7 +1118,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             opts = kwargs.pop("opts")
             kwargs["opts"] = RewrapManyDataKeyOpts(opts.get("provider"), opts.get("masterKey"))
         data = target.rewrap_many_data_key(*args, **kwargs)
-        return dict(bulkWriteResult=parse_bulk_write_result(data.bulk_write_result))
+        if hasattr(data, "bulk_write_result"):
+            return dict(bulkWriteResult=parse_bulk_write_result(data.bulk_write_result))
+        return dict()
 
     def run_entity_operation(self, spec):
         target = self.entity_map[spec["object"]]
