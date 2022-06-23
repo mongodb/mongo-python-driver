@@ -1118,7 +1118,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             opts = kwargs.pop("opts")
             kwargs["opts"] = RewrapManyDataKeyOpts(opts.get("provider"), opts.get("masterKey"))
         data = target.rewrap_many_data_key(*args, **kwargs)
-        if hasattr(data, "bulk_write_result"):
+        if data.bulk_write_result:
             return dict(bulkWriteResult=parse_bulk_write_result(data.bulk_write_result))
         return dict()
 
