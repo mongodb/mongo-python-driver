@@ -282,7 +282,7 @@ extras_require = {
     "ocsp": pyopenssl_reqs,
     "snappy": ["python-snappy"],
     "zstd": ["zstandard"],
-    "aws": ["pymongo-auth-aws<2.0.0"],
+    "aws": ["pymongo-auth-aws@git+ssh://git@github.com/mongodb/pymongo-auth-aws.git@b4c6505"],
     "srv": ["dnspython>=1.16.0,<3.0.0"],
 }
 
