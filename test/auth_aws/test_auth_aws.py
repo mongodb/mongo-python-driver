@@ -17,6 +17,7 @@
 import os
 import sys
 import unittest
+from unittest import mock
 
 sys.path[0:0] = [""]
 
@@ -60,7 +61,7 @@ class TestAuthAWS(unittest.TestCase):
             client.get_database().test.find_one()
             pool = get_pool(client)
         pool.reset()
-        with unittest.mock.patch.dict(os.environ, {}, clear=True):
+        with mock.patch.dict(os.environ, {}, clear=True):
             with MongoClient(self.uri) as client:
                 client.get_database().test.find_one()
 
