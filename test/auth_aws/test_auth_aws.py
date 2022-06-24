@@ -55,7 +55,7 @@ class TestAuthAWS(unittest.TestCase):
         with MongoClient(self.uri) as client:
             client.get_database().test.find_one()
 
-    def test_cache_credentials():
+    def test_cache_credentials(self):
         with MongoClient(self.uri) as client:
             client.get_database().test.find_one()
             pool = get_pool(client)
