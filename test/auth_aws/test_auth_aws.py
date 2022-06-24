@@ -20,8 +20,6 @@ import unittest
 
 sys.path[0:0] = [""]
 
-from test.utils import get_pool
-
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure
 from pymongo.uri_parser import parse_uri
@@ -54,15 +52,6 @@ class TestAuthAWS(unittest.TestCase):
     def test_connect_uri(self):
         with MongoClient(self.uri) as client:
             client.get_database().test.find_one()
-
-    def test_cache_credentials():
-        with MongoClient(self.uri) as client:
-            client.get_database().test.find_one()
-            pool = get_pool(client)
-        pool.reset()
-        with unittest.mock.patch.dict(os.environ, {}, clear=True):
-            with MongoClient(self.uri) as client:
-                client.get_database().test.find_one()
 
 
 if __name__ == "__main__":
