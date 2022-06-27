@@ -30,6 +30,8 @@ from collections import abc
 from test import (
     AWS_CREDS,
     AZURE_CREDS,
+    CA_PEM,
+    CLIENT_PEM,
     GCP_CREDS,
     KMIP_CREDS,
     LOCAL_MASTER_KEY,
@@ -109,8 +111,8 @@ IS_INTERRUPTED = False
 
 KMS_TLS_OPTS = {
     "kmip": {
-        "tlsCAFile": os.environ.get("CSFLE_TLS_CA_PEM", ""),
-        "tlsCertificateKeyFile": os.environ.get("CSFLE_TLS_CLIENT_PEM", ""),
+        "tlsCAFile": CA_PEM,
+        "tlsCertificateKeyFile": CLIENT_PEM,
     }
 }
 
