@@ -1104,13 +1104,13 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self.__raise_if_unsupported("close", target, NonLazyCursor)
         return target.close()
 
-    def _clientEncryptionOperation_createKey(self, target, *args, **kwargs):
+    def _clientEncryptionOperation_creatDataKey(self, target, *args, **kwargs):
         if "opts" in kwargs:
             opts = kwargs.pop("opts")
             kwargs["master_key"] = opts.get("masterKey")
             kwargs["key_alt_names"] = opts.get("keyAltNames")
             kwargs["key_material"] = opts.get("keyMaterial")
-        return target.create_key(*args, **kwargs)
+        return target.create_data_key(*args, **kwargs)
 
     def _clientEncryptionOperation_rewrapManyDataKey(self, target, *args, **kwargs):
         if "opts" in kwargs:
