@@ -54,5 +54,40 @@ class TestAuthAWS(unittest.TestCase):
             client.get_database().test.find_one()
 
 
+class TestAWSLambdaExamples(unittest.TestCase):
+    def test_shared_client(self):
+        # Start AWS Lambda Example 1
+        from pymongo import MongoClient
+
+        client = MongoClient(host=os.environ["MONGODB_URI"])
+
+        def lambda_handler(event, context):
+            return client.db.command("ping")
+
+        # End AWS Lambda Example 1
+
+    @unittest.skipIf(
+        not os.environ.get("AWS_ACCESS_KEY_ID"), "Must have IAM credentials in " "environment."
+    )
+    def test_IAM_auth(self):
+        # Start AWS Lambda Example 2
+        import os
+
+        from pymongo import MongoClient
+
+        client = MongoClient(
+            host=os.environ["MONGODB_URI"],
+            username=os.environ["AWS_ACCESS_KEY_ID"],
+            password=os.environ["AWS_SECRET_ACCESS_KEY"],
+            authSource="$external",
+            authMechanism="MONGODB-AWS",
+        )
+
+        def lambda_handler(event, context):
+            return client.db.command("ping")
+
+        # End AWS Lambda Example 2
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -17,6 +17,7 @@
 import datetime
 import sys
 import threading
+import unittest
 
 sys.path[0:0] = [""]
 
