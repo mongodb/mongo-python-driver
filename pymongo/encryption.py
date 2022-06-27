@@ -25,7 +25,7 @@ try:
     from pymongocrypt.auto_encrypter import AutoEncrypter
     from pymongocrypt.errors import MongoCryptError  # noqa: F401
     from pymongocrypt.explicit_encrypter import ExplicitEncrypter
-    from pymongocrypt.mongocrypt import MongoCryptOptions, RewrapManyDataKeyResult
+    from pymongocrypt.mongocrypt import MongoCryptOptions
     from pymongocrypt.state_machine import MongoCryptCallback
 
     _HAVE_PYMONGOCRYPT = True
@@ -53,6 +53,7 @@ from pymongo.network import BLOCKING_IO_ERRORS
 from pymongo.operations import UpdateOne
 from pymongo.pool import PoolOptions, _configured_socket
 from pymongo.read_concern import ReadConcern
+from pymongo.results import DeleteResult
 from pymongo.ssl_support import get_ssl_context
 from pymongo.uri_parser import parse_host
 from pymongo.write_concern import WriteConcern
@@ -243,7 +244,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
            A :class:`RewrapManyDataKeyResult`.
         """
         if data_key is None:
-            return RewrapManyDataKeyResult()
+            return dict()
 
         raw_doc = RawBSONDocument(data_key, _KEY_VAULT_OPTS)
         replacements = []
@@ -254,8 +255,10 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
             }
             op = UpdateOne({"_id": key["_id"]}, update_model)
             replacements.append(op)
+        if not replacements:
+            return dict()
         result = self.key_vault_coll.bulk_write(replacements)
-        return RewrapManyDataKeyResult(result)
+        return dict(bulk_write_result=result)
 
     def bson_encode(self, doc):
         """Encode a document to BSON.
@@ -280,6 +283,36 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         if self.mongocryptd_client:
             self.mongocryptd_client.close()
             self.mongocryptd_client = None
+
+
+class RewrapManyDataKeyOpts(object):
+    def __init__(self, provider, master_key=None):
+        """Options given to a ``rewrap_many_data_key`` operation.
+
+        :Parameters:
+          - `provider`: The new KMS provider to use to encrypt the data keys,
+            or ``None`` to use the current KMS provider(s).
+          - ``master_key``: The master key fields corresponding to the new KMS
+            provider when ``provider`` is not ``None``.
+        """
+        self.provider = provider
+        self.master_key = master_key
+
+
+class RewrapManyDataKeyResult(object):
+    def __init__(self, raw_result=None):
+        """Result object returned by a ``rewrap_many_data_key`` operation.
+
+        :Parameters:
+          - `raw_result`: The result of the bulk write operation used to
+            update the key vault collection with rewrapped data keys.   If
+          - ``rewrap_many_data_key()`` does not find any matching keys to
+            rewrap, no bulk write operation will be executed and the ``bulk_write_result`` field will be unset.
+        """
+        if isinstance(raw_result, dict) and "bulk_write_result" in raw_result:
+            self.bulk_write_result = raw_result["bulk_write_result"]
+        else:
+            self.bulk_write_result = None
 
 
 class _Encrypter(object):
@@ -549,7 +582,7 @@ class ClientEncryption(object):
         kms_provider: str,
         master_key: Optional[Mapping[str, Any]] = None,
         key_alt_names: Optional[Sequence[str]] = None,
-        key_material: Optional[Binary] = None,
+        key_material: Optional[bytes] = None,
     ) -> Binary:
         """Create and insert a new data key into the key vault collection.
 
@@ -628,90 +661,6 @@ class ClientEncryption(object):
                 key_alt_names=key_alt_names,
                 key_material=key_material,
             )
-
-    def create_key(
-        self,
-        kms_provider: str,
-        master_key: Optional[Mapping[str, Any]] = None,
-        key_alt_names: Optional[Sequence[str]] = None,
-        key_material: Optional[Binary] = None,
-    ) -> Binary:
-        """Create and insert a new key into the key vault collection.
-
-        :Parameters:
-          - `kms_provider`: The KMS provider to use. Supported values are
-            "aws", "azure", "gcp", "kmip", and "local".
-          - `master_key`: Identifies a KMS-specific key used to encrypt the
-            new key. If the kmsProvider is "local" the `master_key` is
-            not applicable and may be omitted.
-
-            If the `kms_provider` is "aws" it is required and has the
-            following fields::
-
-              - `region` (string): Required. The AWS region, e.g. "us-east-1".
-              - `key` (string): Required. The Amazon Resource Name (ARN) to
-                 the AWS customer.
-              - `endpoint` (string): Optional. An alternate host to send KMS
-                requests to. May include port number, e.g.
-                "kms.us-east-1.amazonaws.com:443".
-
-            If the `kms_provider` is "azure" it is required and has the
-            following fields::
-
-              - `keyVaultEndpoint` (string): Required. Host with optional
-                 port, e.g. "example.vault.azure.net".
-              - `keyName` (string): Required. Key name in the key vault.
-              - `keyVersion` (string): Optional. Version of the key to use.
-
-            If the `kms_provider` is "gcp" it is required and has the
-            following fields::
-
-              - `projectId` (string): Required. The Google cloud project ID.
-              - `location` (string): Required. The GCP location, e.g. "us-east1".
-              - `keyRing` (string): Required. Name of the key ring that contains
-                the key to use.
-              - `keyName` (string): Required. Name of the key to use.
-              - `keyVersion` (string): Optional. Version of the key to use.
-              - `endpoint` (string): Optional. Host with optional port.
-                Defaults to "cloudkms.googleapis.com".
-
-            If the `kms_provider` is "kmip" it is optional and has the
-            following fields::
-
-              - `keyId` (string): Optional. `keyId` is the KMIP Unique
-                Identifier to a 96 byte KMIP Secret Data managed object. If
-                keyId is omitted, the driver creates a random 96 byte KMIP
-                Secret Data managed object.
-              - `endpoint` (string): Optional. Host with optional
-                 port, e.g. "example.vault.azure.net:".
-
-          - `key_alt_names` (optional): An optional list of string alternate
-            names used to reference a key. If a key is created with alternate
-            names, then encryption may refer to the key by the unique alternate
-            name instead of by ``key_id``. The following example shows creating
-            and referring to a key by alternate name::
-
-              client_encryption.create_key("local", keyAltNames=["name1"])
-              # reference the key with the alternate name
-              client_encryption.encrypt("457-55-5462", keyAltName="name1",
-                                        algorithm=Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Random)
-          - `key_material` (optional): Sets the custom key material to be used by the data key for encryption and decryption.
-
-        :Returns:
-          The ``_id`` of the created key document as a
-          :class:`~bson.binary.Binary` with subtype
-          :data:`~bson.binary.UUID_SUBTYPE`.
-
-        .. versionadded:: 4.2
-            Added ``create_key`` as an alias to ``create_data_key`` to support
-            queryable encryption API.
-        """
-        return self.create_data_key(
-            kms_provider,
-            master_key=master_key,
-            key_alt_names=key_alt_names,
-            key_material=key_material,
-        )
 
     def encrypt(
         self,
@@ -795,7 +744,7 @@ class ClientEncryption(object):
             decrypted_doc = self._encryption.decrypt(doc)
             return decode(decrypted_doc, codec_options=self._codec_options)["v"]
 
-    def get_key(self, id):
+    def get_key(self, id: Binary) -> Optional[RawBSONDocument]:
         """Get a data key by id.
 
         :Parameters:
@@ -806,9 +755,19 @@ class ClientEncryption(object):
         :Returns:
           The key document.
         """
+        self._check_closed()
         return self._key_vault_coll.find_one({"_id": id})
 
-    def delete_key(self, id: Binary) -> Any:
+    def get_keys(self) -> Sequence[RawBSONDocument]:
+        """Get all of the data keys.
+
+        :Returns:
+          An iterable of all the data keys.
+        """
+        self._check_closed()
+        return list(self._key_vault_coll.find({}))
+
+    def delete_key(self, id: Binary) -> DeleteResult:
         """Delete a key document in the key vault collection that has the given ``key_id``.
 
         :Parameters:
@@ -819,12 +778,13 @@ class ClientEncryption(object):
         :Returns:
           The delete result.
         """
+        self._check_closed()
         result = self._key_vault_coll.delete_one({"_id": id})
         raw_result = result.raw_result
         raw_result.update(
             {"deletedCount": result.deleted_count, "acknowledged": result.acknowledged}
         )
-        return raw_result
+        return result
 
     def add_key_alt_name(self, id: Binary, key_alt_name: str) -> Any:
         """Add ``key_alt_name`` to the set of alternate names in the key document with UUID ``key_id``.
@@ -838,10 +798,23 @@ class ClientEncryption(object):
         :Returns:
           The key document.
         """
+        self._check_closed()
         update = {"$addToSet": {"keyAltNames": key_alt_name}}
         return self._key_vault_coll.find_one_and_update({"_id": id}, update)
 
-    def remove_key_alt_name(self, id: Binary, key_alt_name: str) -> Any:
+    def get_key_by_alt_name(self, key_alt_name: str) -> Optional[RawBSONDocument]:
+        """Get a key document in the key vault collection that has the given ``key_alt_name``.
+
+        :Parameters:
+          - `key_alt_name`: (str): The key alternate name of the key to get.
+
+        :Returns:
+          The key document.
+        """
+        self._check_closed()
+        return self._key_vault_coll.find_one({"keyAltNames": key_alt_name})
+
+    def remove_key_alt_name(self, id: Binary, key_alt_name: str) -> Optional[RawBSONDocument]:
         """Remove ``key_alt_name`` from the set of keyAltNames in the key document with UUID ``id``.
 
         Also removes the ``keyAltNames`` field from the key document if it would otherwise be empty.
@@ -853,8 +826,9 @@ class ClientEncryption(object):
           - ``key_alt_name``: The key alternate name to remove.
 
         :Returns:
-          The removal result.
+          Returns the previous version of the key document.
         """
+        self._check_closed()
         pipeline = [
             {
                 "$set": {
@@ -877,29 +851,13 @@ class ClientEncryption(object):
         # Ensure keyAltNames field is removed if it would otherwise be empty.
         if reply and not reply["keyAltNames"]:
             update = {"$unset": {"keyAltNames": True}}
-            reply = self._key_vault_coll.find_one_and_update({"_id": id}, update)
+            self._key_vault_coll.find_one_and_update({"_id": id}, update)
+        # Return the original document (or None) if no match was found.
         return reply
 
-    def get_key_by_alt_name(self, key_alt_name: str) -> Any:
-        """Get a key document in the key vault collection that has the given ``key_alt_name``.
-
-        :Parameters:
-          - `key_alt_name`: (str): The key alternate name of the key to get.
-
-        :Returns:
-          The key document.
-        """
-        return self._key_vault_coll.find_one({"keyAltNames": key_alt_name})
-
-    def get_keys(self):
-        """Get all of the data keys.
-
-        :Returns:
-          An iterable of all the data keys.
-        """
-        return list(self._key_vault_coll.find({}))
-
-    def rewrap_many_data_key(self, filter, opts=None):
+    def rewrap_many_data_key(
+        self, filter: Mapping[str, Any], opts: RewrapManyDataKeyOpts
+    ) -> RewrapManyDataKeyResult:
         """Decrypts and encrypts all matching data keys in the key vault with a possibly new `master_key` value.
 
         :Parameters:
@@ -911,7 +869,8 @@ class ClientEncryption(object):
         """
         self._check_closed()
         with _wrap_encryption_errors():
-            return self._encryption.rewrap_many_data_key(filter, opts)
+            result = self._encryption.rewrap_many_data_key(filter, opts.provider, opts.master_key)
+            return RewrapManyDataKeyResult(result)
 
     def __enter__(self) -> "ClientEncryption":
         return self
