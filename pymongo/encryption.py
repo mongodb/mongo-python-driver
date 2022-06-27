@@ -40,6 +40,7 @@ from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from bson.son import SON
 from pymongo import _csot
+from pymongo.cursor import Cursor
 from pymongo.daemon import _spawn_daemon
 from pymongo.encryption_options import AutoEncryptionOpts
 from pymongo.errors import (
@@ -53,7 +54,7 @@ from pymongo.network import BLOCKING_IO_ERRORS
 from pymongo.operations import UpdateOne
 from pymongo.pool import PoolOptions, _configured_socket
 from pymongo.read_concern import ReadConcern
-from pymongo.results import DeleteResult
+from pymongo.results import BulkWriteResult, DeleteResult
 from pymongo.ssl_support import get_ssl_context
 from pymongo.uri_parser import parse_host
 from pymongo.write_concern import WriteConcern
@@ -234,32 +235,6 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         self.key_vault_coll.insert_one(raw_doc)
         return Binary(data_key_id.bytes, subtype=UUID_SUBTYPE)
 
-    def rewrap_many_data_key(self, data_key):
-        """Decrypts and encrypts all matched data keys in the key vault.
-
-        :Parameters:
-            `data_key`: The data key document to rewrap.
-
-        :Returns:
-           A :class:`RewrapManyDataKeyResult`.
-        """
-        if data_key is None:
-            return dict()
-
-        raw_doc = RawBSONDocument(data_key, _KEY_VAULT_OPTS)
-        replacements = []
-        for key in raw_doc["v"]:
-            update_model = {
-                "$set": {"keyMaterial": key["keyMaterial"], "masterKey": key["masterKey"]},
-                "$currentDate": {"updateDate": True},
-            }
-            op = UpdateOne({"_id": key["_id"]}, update_model)
-            replacements.append(op)
-        if not replacements:
-            return dict()
-        result = self.key_vault_coll.bulk_write(replacements)
-        return dict(bulk_write_result=result)
-
     def bson_encode(self, doc):
         """Encode a document to BSON.
 
@@ -285,34 +260,23 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
             self.mongocryptd_client = None
 
 
-class RewrapManyDataKeyOpts(object):
-    def __init__(self, provider, master_key=None):
-        """Options given to a ``rewrap_many_data_key`` operation.
-
-        :Parameters:
-          - `provider`: The new KMS provider to use to encrypt the data keys,
-            or ``None`` to use the current KMS provider(s).
-          - ``master_key``: The master key fields corresponding to the new KMS
-            provider when ``provider`` is not ``None``.
-        """
-        self.provider = provider
-        self.master_key = master_key
-
-
 class RewrapManyDataKeyResult(object):
     def __init__(self, raw_result=None):
         """Result object returned by a ``rewrap_many_data_key`` operation.
 
         :Parameters:
           - `raw_result`: The result of the bulk write operation used to
-            update the key vault collection with rewrapped data keys.   If
-          - ``rewrap_many_data_key()`` does not find any matching keys to
-            rewrap, no bulk write operation will be executed and the ``bulk_write_result`` field will be unset.
+            update the key vault collection with rewrapped data keys.
         """
         if isinstance(raw_result, dict) and "bulk_write_result" in raw_result:
-            self.bulk_write_result = raw_result["bulk_write_result"]
+            self._bulk_write_result = raw_result["bulk_write_result"]
         else:
-            self.bulk_write_result = None
+            self._bulk_write_result = None
+
+    @property
+    def bulk_write_result(self) -> Optional[BulkWriteResult]:
+        """The result of the bulk write operation used to update the key vault collection with one or more rewrapped data keys. If ``rewrap_many_data_key()`` does not find any matching keys to rewrap, no bulk write operation will be executed and this field will be ``None``."""
+        return self._bulk_write_result
 
 
 class _Encrypter(object):
@@ -573,6 +537,8 @@ class ClientEncryption(object):
         self._encryption = ExplicitEncrypter(
             self._io_callbacks, MongoCryptOptions(kms_providers, None)
         )
+        # Create a version of the key vault collection that returns ObjectId
+        # objects instead of UUIDs.
         self._key_vault_coll = self._io_callbacks.key_vault_coll.with_options(
             codec_options=DEFAULT_RAW_BSON_OPTIONS,
         )
@@ -643,7 +609,8 @@ class ClientEncryption(object):
               # reference the key with the alternate name
               client_encryption.encrypt("457-55-5462", keyAltName="name1",
                                         algorithm=Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Random)
-          - `key_material` (optional): Sets the custom key material to be used by the data key for encryption and decryption.
+          - `key_material` (optional): Sets the custom key material to be used
+            by the data key for encryption and decryption.
 
         :Returns:
           The ``_id`` of the created data key document as a
@@ -758,14 +725,15 @@ class ClientEncryption(object):
         self._check_closed()
         return self._key_vault_coll.find_one({"_id": id})
 
-    def get_keys(self) -> Sequence[RawBSONDocument]:
+    def get_keys(self) -> Cursor[RawBSONDocument]:
         """Get all of the data keys.
 
         :Returns:
-          An iterable of all the data keys.
+          An instance of :class:`~pymongo.cursor.Cursor` over the data key
+          documents.
         """
         self._check_closed()
-        return list(self._key_vault_coll.find({}))
+        return self._key_vault_coll.find({})
 
     def delete_key(self, id: Binary) -> DeleteResult:
         """Delete a key document in the key vault collection that has the given ``key_id``.
@@ -779,12 +747,7 @@ class ClientEncryption(object):
           The delete result.
         """
         self._check_closed()
-        result = self._key_vault_coll.delete_one({"_id": id})
-        raw_result = result.raw_result
-        raw_result.update(
-            {"deletedCount": result.deleted_count, "acknowledged": result.acknowledged}
-        )
-        return result
+        return self._key_vault_coll.delete_one({"_id": id})
 
     def add_key_alt_name(self, id: Binary, key_alt_name: str) -> Any:
         """Add ``key_alt_name`` to the set of alternate names in the key document with UUID ``key_id``.
@@ -796,7 +759,7 @@ class ClientEncryption(object):
           - ``key_alt_name``: The key alternate name to add.
 
         :Returns:
-          The key document.
+          The previous version of the key document.
         """
         self._check_closed()
         update = {"$addToSet": {"keyAltNames": key_alt_name}}
@@ -847,30 +810,45 @@ class ClientEncryption(object):
                 }
             }
         ]
-        reply = self._key_vault_coll.find_one_and_update({"_id": id}, pipeline)
-        # Ensure keyAltNames field is removed if it would otherwise be empty.
-        if reply and not reply["keyAltNames"]:
-            update = {"$unset": {"keyAltNames": True}}
-            self._key_vault_coll.find_one_and_update({"_id": id}, update)
-        # Return the original document (or None) if no match was found.
-        return reply
+        return self._key_vault_coll.find_one_and_update({"_id": id}, pipeline)
 
     def rewrap_many_data_key(
-        self, filter: Mapping[str, Any], opts: RewrapManyDataKeyOpts
+        self,
+        filter: Mapping[str, Any],
+        provider: Optional[str] = None,
+        master_key: Optional[Mapping[str, Any]] = None,
     ) -> RewrapManyDataKeyResult:
         """Decrypts and encrypts all matching data keys in the key vault with a possibly new `master_key` value.
 
         :Parameters:
           - `filter`: A document used to filter the data keys.
-          - `opts`: (optional) :class:`RewrapManyDataKeyOpts`.
+          - `provider`: The new KMS provider to use to encrypt the data keys,
+            or ``None`` to use the current KMS provider(s).
+          - ``master_key``: The master key fields corresponding to the new KMS
+            provider when ``provider`` is not ``None``.
 
         :Returns:
           A :class:`RewrapManyDataKeyResult`.
         """
         self._check_closed()
         with _wrap_encryption_errors():
-            result = self._encryption.rewrap_many_data_key(filter, opts.provider, opts.master_key)
-            return RewrapManyDataKeyResult(result)
+            raw_result = self._encryption.rewrap_many_data_key(filter, provider, master_key)
+            if raw_result is None:
+                return RewrapManyDataKeyResult()
+
+        raw_doc = RawBSONDocument(raw_result, _KEY_VAULT_OPTS)
+        replacements = []
+        for key in raw_doc["v"]:
+            update_model = {
+                "$set": {"keyMaterial": key["keyMaterial"], "masterKey": key["masterKey"]},
+                "$currentDate": {"updateDate": True},
+            }
+            op = UpdateOne({"_id": key["_id"]}, update_model)
+            replacements.append(op)
+        if not replacements:
+            return RewrapManyDataKeyResult()
+        result = self._key_vault_coll.bulk_write(replacements)
+        return RewrapManyDataKeyResult(result)
 
     def __enter__(self) -> "ClientEncryption":
         return self
