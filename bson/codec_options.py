@@ -202,7 +202,12 @@ class TypeRegistry(object):
 class DatetimeConversionOpts(str, enum.Enum):
     DATETIME = "datetime"
     DATETIME_CLAMP = "datetime_clamp"
-    RAW = "raw"
+    DATETIME_MS = "datetime_ms"
+
+    def __str__(self):
+        return f"'{self.value}'"
+
+    __repr__ = __str__
 
 
 class _BaseCodecOptions(NamedTuple):
@@ -277,8 +282,8 @@ class CodecOptions(_BaseCodecOptions):
       - `type_registry`: Instance of :class:`TypeRegistry` used to customize
         encoding and decoding behavior.
       - `datetime_conversion`: Specifies how UTC datetimes should be decoded
-        within BSON. Valid options include 'raw' to return as a
-        UTCDatetimeRaw, 'datetime' to return as a datetime.datetime and
+        within BSON. Valid options include 'datetime_ms' to return as a
+        DatetimeMS, 'datetime' to return as a datetime.datetime and
         raising a ValueError for out-of-range values, and 'datetime_clamp'
         to clamp to the minimum and maximum possible datetimes.
         Defaults to 'datetime'.

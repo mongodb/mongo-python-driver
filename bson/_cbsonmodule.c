@@ -465,14 +465,16 @@ int convert_codec_options(PyObject* options_obj, void* p) {
     long type_marker;
 
     options->unicode_decode_error_handler = NULL;
+    options->datetime_conversion = NULL;
 
-    if (!PyArg_ParseTuple(options_obj, "ObbzOO",
+    if (!PyArg_ParseTuple(options_obj, "ObbzOOz",
                           &options->document_class,
                           &options->tz_aware,
                           &options->uuid_rep,
                           &options->unicode_decode_error_handler,
                           &options->tzinfo,
-                          &type_registry_obj))
+                          &type_registry_obj,
+                          &options->datetime_conversion))
         return 0;
 
     type_marker = _type_marker(options->document_class);

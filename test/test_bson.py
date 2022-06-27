@@ -38,6 +38,7 @@ import bson
 from bson import (
     BSON,
     EPOCH_AWARE,
+    DatetimeMS,
     Regex,
     _datetime_to_millis,
     decode,
@@ -59,7 +60,6 @@ from bson.objectid import ObjectId
 from bson.son import SON
 from bson.timestamp import Timestamp
 from bson.tz_util import FixedOffset, utc
-from bson.utc_datetime import UTCDatetimeRaw
 
 
 class NotADict(abc.MutableMapping):
@@ -1150,9 +1150,9 @@ class TestDatetimeConversion(unittest.TestCase):
         # Tests other timestamp formats.
         # Test each of the rich comparison methods.
         pairs = [
-            (UTCDatetimeRaw(-1), UTCDatetimeRaw(1)),
-            (UTCDatetimeRaw(0), UTCDatetimeRaw(0)),
-            (UTCDatetimeRaw(1), UTCDatetimeRaw(-1)),
+            (DatetimeMS(-1), DatetimeMS(1)),
+            (DatetimeMS(0), DatetimeMS(0)),
+            (DatetimeMS(1), DatetimeMS(-1)),
         ]
 
         comp_ops = ["__lt__", "__le__", "__eq__", "__ne__", "__gt__", "__ge__"]
@@ -1162,34 +1162,34 @@ class TestDatetimeConversion(unittest.TestCase):
 
     def test_class_conversions(self):
         # Test class conversions.
-        dtr1 = UTCDatetimeRaw(1234)
+        dtr1 = DatetimeMS(1234)
         dt1 = dtr1.to_datetime()
-        self.assertEqual(dtr1, UTCDatetimeRaw(dt1))
+        self.assertEqual(dtr1, DatetimeMS(dt1))
 
         dt2 = datetime.datetime(1969, 1, 1, tzinfo=datetime.timezone.utc)
-        dtr2 = UTCDatetimeRaw(dt2)
+        dtr2 = DatetimeMS(dt2)
         self.assertEqual(dtr2.to_datetime(), dt2)
 
-        # Test encode and decode without codec options. Expect: UTCDatetimeRaw => datetime
-        dtr1 = UTCDatetimeRaw(0)
+        # Test encode and decode without codec options. Expect: DatetimeMS => datetime
+        dtr1 = DatetimeMS(0)
         enc1 = encode({"x": dtr1})
         dec1 = decode(enc1)
         self.assertEqual(dec1["x"], datetime.datetime(1970, 1, 1))
         self.assertNotEqual(type(dtr1), type(dec1["x"]))
 
-        # Test encode and decode with codec options. Expect: UTCDateimteRaw => UTCDatetimeRaw
-        opts1 = CodecOptions(datetime_conversion="raw")
+        # Test encode and decode with codec options. Expect: UTCDateimteRaw => DatetimeMS
+        opts1 = CodecOptions(datetime_conversion="datetime_ms")
         enc1 = encode({"x": dtr1})
         dec1 = decode(enc1, opts1)
         self.assertEqual(type(dtr1), type(dec1["x"]))
         self.assertEqual(dtr1, dec1["x"])
 
-        # Expect: datetime => UTCDatetimeRaw
-        opts1 = CodecOptions(datetime_conversion="raw")
+        # Expect: datetime => DatetimeMS
+        opts1 = CodecOptions(datetime_conversion="datetime_ms")
         dt1 = datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
         enc1 = encode({"x": dt1})
         dec1 = decode(enc1, opts1)
-        self.assertEqual(dec1["x"], UTCDatetimeRaw(0))
+        self.assertEqual(dec1["x"], DatetimeMS(0))
         self.assertNotEqual(dt1, type(dec1["x"]))
 
     def test_clamping(self):
@@ -1197,13 +1197,13 @@ class TestDatetimeConversion(unittest.TestCase):
         opts1 = CodecOptions(
             datetime_conversion="datetime_clamp", tz_aware=True, tzinfo=datetime.timezone.utc
         )
-        below = encode({"x": UTCDatetimeRaw(_datetime_to_millis(datetime.datetime.min, opts1) - 1)})
+        below = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 1)})
         dec_below = decode(below, opts1)
         self.assertEqual(
             dec_below["x"], datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
         )
 
-        above = encode({"x": UTCDatetimeRaw(_datetime_to_millis(datetime.datetime.max, opts1) + 1)})
+        above = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 1)})
         dec_above = decode(above, opts1)
         self.assertEqual(
             dec_above["x"],
@@ -1211,18 +1211,34 @@ class TestDatetimeConversion(unittest.TestCase):
         )
 
     def test_tz_clamping(self):
-        # Naive clamping.
+        # Naive clamping to local tz.
         opts1 = CodecOptions(datetime_conversion="datetime_clamp", tz_aware=False)
-        below = encode(
-            {"x": UTCDatetimeRaw(_datetime_to_millis(datetime.datetime.min, opts1) - 24 * 60 * 60)}
-        )
-        # Could be any timezone.
+        below = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 24 * 60 * 60)})
+
         dec_below = decode(below, opts1)
+        self.assertEqual(dec_below["x"], datetime.datetime.min)
+
+        above = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 24 * 60 * 60)})
+        dec_above = decode(above, opts1)
+        self.assertEqual(
+            dec_above["x"],
+            datetime.datetime.max.replace(microsecond=999000),
+        )
+
+        # Aware clamping.
+        opts2 = CodecOptions(datetime_conversion="datetime_clamp", tz_aware=True)
+        below = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 24 * 60 * 60)})
+        dec_below = decode(below, opts2)
         self.assertEqual(
             dec_below["x"], datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
         )
 
-        # Aware clamping.
+        above = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 24 * 60 * 60)})
+        dec_above = decode(above, opts2)
+        self.assertEqual(
+            dec_above["x"],
+            datetime.datetime.max.replace(tzinfo=datetime.timezone.utc, microsecond=999000),
+        )
 
 
 if __name__ == "__main__":
