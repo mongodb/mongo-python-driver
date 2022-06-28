@@ -17,12 +17,11 @@
 import os
 import sys
 import threading
-from test import IntegrationTest, client_context, unittest
-from test.utils import joinall
-from unittest.mock import MagicMock, patch
+from test import IntegrationTest, client_context
+from unittest import skipIf
+from unittest.mock import patch
 
 from bson.objectid import ObjectId
-from pymongo.mongo_client import MongoClient
 
 
 @client_context.require_connection
@@ -30,6 +29,10 @@ def setUpModule():
     pass
 
 
+# Not available for versions of Python without "register_at_fork"
+@skipIf(
+    not hasattr(os, "register_at_fork"), "register_at_fork not available in this version of Python"
+)
 class TestFork(IntegrationTest):
     def setUp(self):
         self.db = self.client.pymongo_test

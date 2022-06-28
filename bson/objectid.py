@@ -288,4 +288,7 @@ class ObjectId(object):
 
     @classmethod
     def _after_fork(cls):
+        """
+        Reinitializes _inc_lock after a process fork.
+        """
         cls._inc_lock = threading.Lock()

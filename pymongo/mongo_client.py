@@ -126,7 +126,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     # No host/port; these are retrieved from TopologySettings.
     _constructor_args = ("document_class", "tz_aware", "connect")
 
-    _clients = weakref.WeakSet()
+    _clients: weakref.WeakSet = weakref.WeakSet()
 
     def __init__(
         self,

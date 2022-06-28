@@ -159,14 +159,18 @@ def timeout(seconds: Optional[float]) -> ContextManager:
 
 import os
 
-from bson.objectid import ObjectId
+from bson.objectid import ObjectId as _ObjectId
 
 
 def _after_fork():
+    """
+    Reinitialiazes the locks for all active MongoClients
+    and ObjectID.
+    """
     for client in MongoClient._clients:
         client._after_fork()
 
-    ObjectId._after_fork()
+    _ObjectId._after_fork()
 
 
 if hasattr(os, "register_at_fork"):
