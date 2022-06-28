@@ -834,6 +834,7 @@ class ClientEncryption(object):
         with _wrap_encryption_errors():
             raw_result = self._encryption.rewrap_many_data_key(filter, provider, master_key)
             if raw_result is None:
+                raise ValueError("Raw result was None")
                 return RewrapManyDataKeyResult()
 
         raw_doc = RawBSONDocument(raw_result, DEFAULT_RAW_BSON_OPTIONS)
@@ -846,6 +847,7 @@ class ClientEncryption(object):
             op = UpdateOne({"_id": key["_id"]}, update_model)
             replacements.append(op)
         if not replacements:
+            raise ValueError("No replacements")
             return RewrapManyDataKeyResult()
         result = self._key_vault_coll.bulk_write(replacements)
         return RewrapManyDataKeyResult(result)
