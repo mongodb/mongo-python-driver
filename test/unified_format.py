@@ -1115,6 +1115,12 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def _clientEncryptionOperation_getKeys(self, target, *args, **kwargs):
         return list(target.get_keys(*args, **kwargs))
 
+    def _clientEncryptionOperation_deleteKey(self, target, *args, **kwargs):
+        result = target.delete_key(*args, **kwargs)
+        response = result.raw_result
+        response["deletedCount"] = result.deleted_count
+        return response
+
     def _clientEncryptionOperation_rewrapManyDataKey(self, target, *args, **kwargs):
         if "opts" in kwargs:
             opts = kwargs.pop("opts")
