@@ -261,17 +261,13 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
 
 
 class RewrapManyDataKeyResult(object):
-    def __init__(self, raw_result=None):
+    def __init__(self, bulk_write_result: Optional[BulkWriteResult] = None) -> None:
         """Result object returned by a ``rewrap_many_data_key`` operation.
 
         :Parameters:
-          - `raw_result`: The result of the bulk write operation used to
-            update the key vault collection with rewrapped data keys.
+          - `bulk_write_result`: he result of the bulk write operation used to update the key vault collection with one or more rewrapped data keys. If ``rewrap_many_data_key()`` does not find any matching keys to rewrap, no bulk write operation will be executed and this field will be ``None``.
         """
-        if isinstance(raw_result, dict) and "bulk_write_result" in raw_result:
-            self._bulk_write_result = raw_result["bulk_write_result"]
-        else:
-            self._bulk_write_result = None
+        self._bulk_write_result = bulk_write_result
 
     @property
     def bulk_write_result(self) -> Optional[BulkWriteResult]:
@@ -834,7 +830,6 @@ class ClientEncryption(object):
         with _wrap_encryption_errors():
             raw_result = self._encryption.rewrap_many_data_key(filter, provider, master_key)
             if raw_result is None:
-                raise ValueError("Raw result was None")
                 return RewrapManyDataKeyResult()
 
         raw_doc = RawBSONDocument(raw_result, DEFAULT_RAW_BSON_OPTIONS)
@@ -847,10 +842,8 @@ class ClientEncryption(object):
             op = UpdateOne({"_id": key["_id"]}, update_model)
             replacements.append(op)
         if not replacements:
-            raise ValueError("No replacements")
             return RewrapManyDataKeyResult()
         result = self._key_vault_coll.bulk_write(replacements)
-        raise ValueError(result)
         return RewrapManyDataKeyResult(result)
 
     def __enter__(self) -> "ClientEncryption":
