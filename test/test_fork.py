@@ -49,6 +49,9 @@ class TestFork(IntegrationTest):
         def __exit__(self, exc_type, exc_value, traceback):
             self.__lock.__exit__(exc_type, exc_value, traceback)
 
+        def __getattr__(self, item):
+            return getattr(self.__lock, item)
+
     def test_lock_client(self):
         """
         Forks the client with some items locked.
