@@ -155,3 +155,19 @@ def timeout(seconds: Optional[float]) -> ContextManager:
     if seconds is not None:
         seconds = float(seconds)
     return _csot._TimeoutContext(seconds)
+
+
+import os
+
+from bson.objectid import ObjectId
+
+
+def _after_fork():
+    for client in MongoClient._clients:
+        client._after_fork()
+
+    ObjectId._after_fork()
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_after_fork)

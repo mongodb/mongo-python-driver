@@ -126,6 +126,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     # No host/port; these are retrieved from TopologySettings.
     _constructor_args = ("document_class", "tz_aware", "connect")
 
+    _clients = weakref.WeakSet()
+
     def __init__(
         self,
         host: Optional[Union[str, Sequence[str]]] = None,
@@ -838,6 +840,16 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             from pymongo.encryption import _Encrypter
 
             self._encrypter = _Encrypter(self, self.__options.auto_encryption_opts)
+
+        # Add this client to the list of weakly referenced items.
+        # This will be used later if we fork.
+        MongoClient._clients.add(self)
+
+    def _after_fork(self):
+        """
+        Resets lock in a child after successfully forking.
+        """
+        self.__lock = threading.Lock()
 
     def _duplicate(self, **kwargs):
         args = self.__init_kwargs.copy()

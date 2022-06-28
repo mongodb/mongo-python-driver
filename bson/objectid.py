@@ -285,3 +285,7 @@ class ObjectId(object):
     def __hash__(self) -> int:
         """Get a hash value for this :class:`ObjectId`."""
         return hash(self.__id)
+
+    @classmethod
+    def _after_fork(cls):
+        cls._inc_lock = threading.Lock()
