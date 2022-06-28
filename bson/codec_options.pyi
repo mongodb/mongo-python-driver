@@ -21,6 +21,7 @@ you get the error: "TypeError: 'type' object is not subscriptable".
 
 import datetime
 import abc
+import enum
 from typing import Tuple, Generic, Optional, Mapping, Any, TypeVar, Type, Dict, Iterable, Tuple, MutableMapping, Callable, Union
 
 
@@ -54,6 +55,10 @@ class TypeRegistry:
 
 _DocumentType = TypeVar("_DocumentType", bound=Mapping[str, Any])
 
+class DatetimeConversionOpts(str, enum.Enum):
+    DATETIME = ...
+    DATETIME_CLAMP = ...
+    DATETIME_MS = ...
 
 class CodecOptions(Tuple, Generic[_DocumentType]):
     document_class: Type[_DocumentType]

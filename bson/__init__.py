@@ -390,13 +390,15 @@ class DatetimeMS:
     def __le__(self, other: "DatetimeMS") -> bool:
         return self._value.__le__(other._value)
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, DatetimeMS):
             return self._value.__eq__(other._value)
         return False
 
-    def __ne__(self, other: "DatetimeMS") -> bool:
-        return self._value.__ne__(other._value)
+    def __ne__(self, other: Any) -> bool:
+        if isinstance(other, DatetimeMS):
+            return self._value.__eq__(other._value)
+        return True
 
     def __gt__(self, other: "DatetimeMS") -> bool:
         return self._value.__gt__(other._value)
