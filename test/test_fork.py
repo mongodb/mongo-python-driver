@@ -47,7 +47,7 @@ class TestFork(IntegrationTest):
             self._after_enter()
 
         def __exit__(self, exc_type, exc_value, traceback):
-            self.__lock.__exit__()
+            self.__lock.__exit__(exc_type, exc_value, traceback)
 
     def test_lock_client(self):
         """
@@ -73,7 +73,7 @@ class TestFork(IntegrationTest):
                     sys.exit(0 if not self.db.client._MongoClient__lock.locked() else 1)
                 self.assertEqual(ex.exception.code, 0)
             else:  # Parent
-                self.assertEqual(0, os.waitpid(lock_pid, 0)[1])
+                self.assertEqual(0, os.waitpid(lock_pid, 0)[1] >> 8)
 
     def test_lock_object_id(self):
         """
@@ -98,4 +98,4 @@ class TestFork(IntegrationTest):
                     sys.exit(0 if not ObjectId._inc_lock.locked() else 1)
                 self.assertEqual(ex.exception.code, 0)
             else:  # Parent
-                self.assertEqual(0, os.waitpid(lock_pid, 0)[1])
+                self.assertEqual(0, os.waitpid(lock_pid, 0)[1] >> 8)
