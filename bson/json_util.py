@@ -95,7 +95,7 @@ import uuid
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Type, Union, cast
 
 import bson
-from bson import EPOCH_AWARE
+from bson import EPOCH_AWARE, DatetimeMS
 from bson.binary import ALL_UUID_SUBTYPES, UUID_SUBTYPE, Binary, UuidRepresentation
 from bson.code import Code
 from bson.codec_options import CodecOptions
@@ -600,7 +600,9 @@ def _parse_canonical_binary(doc: Any, json_options: JSONOptions) -> Union[Binary
     return _binary_or_uuid(data, int(subtype, 16), json_options)
 
 
-def _parse_canonical_datetime(doc: Any, json_options: JSONOptions) -> datetime.datetime:
+def _parse_canonical_datetime(
+    doc: Any, json_options: JSONOptions
+) -> [datetime.datetime, DatetimeMS]:
     """Decode a JSON datetime to python datetime.datetime."""
     dtm = doc["$date"]
     if len(doc) != 1:
@@ -816,6 +818,12 @@ def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
         if json_options.datetime_representation == DatetimeRepresentation.LEGACY:
             return {"$date": millis}
         return {"$date": {"$numberLong": str(millis)}}
+    if isinstance(obj, DatetimeMS):
+        if json_options.datetime_representation == DatetimeRepresentation.ISO8601:
+            raise NotImplemented()
+        elif json_options.datetime_representation == DatetimeRepresentation.LEGACY:
+            return {"$date": int(obj)}
+        return {"$date": {"$numberLong": int(obj)}}
     if json_options.strict_number_long and isinstance(obj, Int64):
         return {"$numberLong": str(obj)}
     if isinstance(obj, (RE_TYPE, Regex)):

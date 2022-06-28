@@ -384,22 +384,22 @@ class DatetimeMS:
 
     # Avoids using functools.total_ordering for speed.
 
-    def __lt__(self, other) -> bool:
+    def __lt__(self, other: "DatetimeMS") -> bool:
         return self._value.__lt__(other._value)
 
-    def __le__(self, other) -> bool:
+    def __le__(self, other: "DatetimeMS") -> bool:
         return self._value.__le__(other._value)
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: "DatetimeMS") -> bool:
         return self._value.__eq__(other._value)
 
-    def __ne__(self, other) -> bool:
+    def __ne__(self, other: "DatetimeMS") -> bool:
         return self._value.__ne__(other._value)
 
-    def __gt__(self, other) -> bool:
+    def __gt__(self, other: "DatetimeMS") -> bool:
         return self._value.__gt__(other._value)
 
-    def __ge__(self, other) -> bool:
+    def __ge__(self, other: "DatetimeMS") -> bool:
         return self._value.__ge__(other._value)
 
     _type_marker = 9
@@ -411,9 +411,12 @@ class DatetimeMS:
         :class:`~bson.CodecOptions` with `tz_aware = True` and
         `tzinfo = datetime.timezone.utc`.
         """
-        return _millis_to_datetime(
-            self._value,
-            CodecOptions(tz_aware=tz_aware, tzinfo=tzinfo, datetime_conversion="datetime"),
+        return cast(
+            datetime.datetime,
+            _millis_to_datetime(
+                self._value,
+                CodecOptions(tz_aware=tz_aware, tzinfo=tzinfo, datetime_conversion="datetime"),
+            ),
         )
 
     def __int__(self) -> int:
