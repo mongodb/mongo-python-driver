@@ -836,7 +836,7 @@ class ClientEncryption(object):
             if raw_result is None:
                 return RewrapManyDataKeyResult()
 
-        raw_doc = RawBSONDocument(raw_result, _KEY_VAULT_OPTS)
+        raw_doc = RawBSONDocument(raw_result, DEFAULT_RAW_BSON_OPTIONS)
         replacements = []
         for key in raw_doc["v"]:
             update_model = {
