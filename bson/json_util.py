@@ -228,6 +228,12 @@ class JSONOptions(CodecOptions):
       - `tzinfo`: A :class:`datetime.tzinfo` subclass that specifies the
         timezone from which :class:`~datetime.datetime` objects should be
         decoded. Defaults to :const:`~bson.tz_util.utc`.
+      - `datetime_conversion`: Specifies how UTC datetimes should be decoded
+        within BSON. Valid options include 'datetime_ms' to return as a
+        DatetimeMS, 'datetime' to return as a datetime.datetime and
+        raising a ValueError for out-of-range values, and 'datetime_clamp'
+        to clamp to the minimum and maximum possible datetimes.
+        Defaults to 'datetime'.
       - `args`: arguments to :class:`~bson.codec_options.CodecOptions`
       - `kwargs`: arguments to :class:`~bson.codec_options.CodecOptions`
 

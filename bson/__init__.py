@@ -353,9 +353,76 @@ def _get_boolean(
     raise InvalidBSON("invalid boolean value: %r" % boolean_byte)
 
 
+class DatetimeMS:
+    """
+    Represents a BSON UTC datetime, which is defined as an int64 of
+    milliseconds since the Unix epoch. Principal use is to represent
+    datetimes outside the range of the Python builtin
+    :class:`~datetime.datetime` class when encoding/decoding BSON.
+    To decode UTC datetimes as a ``DatetimeMS``,
+    `datetime_conversion` in :class:`~bson.CodecOptions` must be set
+    to 'datetime_ms'.
+    """
+
+    def __init__(self, value: Union[int, datetime.datetime]):
+        if isinstance(value, int):
+            self._value = value
+        elif isinstance(value, datetime.datetime):
+            if value.utcoffset() is not None:
+                value = value - value.utcoffset()  # type: ignore
+            self._value = _datetime_to_millis(value)
+        else:
+            raise TypeError(f"{type(value)} is not a valid type for DatetimeMS")
+
+    def __hash__(self) -> int:
+        return hash(self._value)
+
+    def __repr__(self) -> str:
+        return type(self).__name__ + "(" + str(self._value) + ")"
+
+    __str__ = __repr__
+
+    # Avoids using functools.total_ordering for speed.
+
+    def __lt__(self, other) -> bool:
+        return self._value.__lt__(other._value)
+
+    def __le__(self, other) -> bool:
+        return self._value.__le__(other._value)
+
+    def __eq__(self, other) -> bool:
+        return self._value.__eq__(other._value)
+
+    def __ne__(self, other) -> bool:
+        return self._value.__ne__(other._value)
+
+    def __gt__(self, other) -> bool:
+        return self._value.__gt__(other._value)
+
+    def __ge__(self, other) -> bool:
+        return self._value.__ge__(other._value)
+
+    _type_marker = 9
+
+    def to_datetime(self, tz_aware=True, tzinfo=datetime.timezone.utc) -> datetime.datetime:
+        """
+        Converts this ``DatetimeMS`` into a :class:`~datetime.datetime`
+        object. If `opts` is not set, then it will default to a
+        :class:`~bson.CodecOptions` with `tz_aware = True` and
+        `tzinfo = datetime.timezone.utc`.
+        """
+        return _millis_to_datetime(
+            self._value,
+            CodecOptions(tz_aware=tz_aware, tzinfo=tzinfo, datetime_conversion="datetime"),
+        )
+
+    def __int__(self) -> int:
+        return int(self._value)
+
+
 def _get_date(
     data: Any, view: Any, position: int, dummy0: int, opts: CodecOptions, dummy1: Any
-) -> Tuple[datetime.datetime, int]:
+) -> Tuple[Union[datetime.datetime, DatetimeMS], int]:
     """Decode a BSON datetime to python datetime.datetime."""
     return _millis_to_datetime(_UNPACK_LONG_FROM(data, position)[0], opts), position + 8
 
@@ -521,70 +588,6 @@ def _bson_to_dict(data: Any, opts: CodecOptions) -> Any:
         # Change exception type to InvalidBSON but preserve traceback.
         _, exc_value, exc_tb = sys.exc_info()
         raise InvalidBSON(str(exc_value)).with_traceback(exc_tb)
-
-
-class DatetimeMS:
-    """
-    Represents a BSON UTC datetime, which is defined as an int64 of
-    milliseconds since the Unix epoch. Principal use is to represent
-    datetimes outside the range of the Python builtin
-    :class:`~datetime.datetime` class when encoding/decoding BSON.
-    To decode UTC datetimes as a ``DatetimeMS``,
-    `datetime_conversion` in :class:`~bson.CodecOptions` must be set
-    to 'datetime_ms'.
-    """
-
-    def __init__(self, value: [int, datetime.datetime]):
-        if isinstance(value, int):
-            self._value = value
-        elif isinstance(value, datetime.datetime):
-            if value.utcoffset() is not None:
-                value = value - value.utcoffset()  # type: ignore
-            self._value = _datetime_to_millis(value)
-        else:
-            raise TypeError(f"{type(value)} is not a valid type for DatetimeMS")
-
-    def __hash__(self) -> int:
-        return hash(self._value)
-
-    def __repr__(self) -> str:
-        return type(self).__name__ + "(" + str(self._value) + ")"
-
-    __str__ = __repr__
-
-    # Avoids using functools.total_ordering for speed.
-
-    def __lt__(self, other):
-        return self._value.__lt__(other._value)
-
-    def __le__(self, other):
-        return self._value.__le__(other._value)
-
-    def __eq__(self, other):
-        return self._value.__eq__(other._value)
-
-    def __ne__(self, other):
-        return self._value.__ne__(other._value)
-
-    def __gt__(self, other):
-        return self._value.__gt__(other._value)
-
-    def __ge__(self, other):
-        return self._value.__ge__(other._value)
-
-    _type_marker = 9
-
-    def to_datetime(self, tz_aware=True, tzinfo=datetime.timezone.utc) -> datetime:
-        """
-        Converts this ``DatetimeMS`` into a :class:`~datetime.datetime`
-        object. If `opts` is not set, then it will default to a
-        :class:`~bson.CodecOptions` with `tz_aware = True` and
-        `tzinfo = datetime.timezone.utc`.
-        """
-        return _millis_to_datetime(self._value, CodecOptions(tz_aware=tz_aware, tzinfo=tzinfo))
-
-    def __int__(self) -> int:
-        return int(self._value)
 
 
 if _USE_C:
@@ -960,6 +963,7 @@ def _dict_to_bson(doc: Any, check_keys: bool, opts: CodecOptions, top_level: boo
 if _USE_C:
     _dict_to_bson = _cbson._dict_to_bson  # noqa: F811
 
+
 # Inclusive and exclusive min and max for timezones.
 # Timezones are hashed by their offset, which is a timedelta
 # and therefore there are more than 24 possible timezones.
@@ -996,6 +1000,8 @@ def _millis_to_datetime(millis: int, opts: CodecOptions) -> Union[datetime.datet
             return EPOCH_NAIVE + datetime.timedelta(seconds=seconds, microseconds=micros)
     elif opts.datetime_conversion == DatetimeConversionOpts.DATETIME_MS:
         return DatetimeMS(millis)
+    else:
+        raise ValueError("datetime_conversion must be an element of DatetimeConversionOpts")
 
 
 def _datetime_to_millis(dtm: datetime.datetime) -> int:
