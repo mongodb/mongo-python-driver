@@ -35,6 +35,8 @@ from bson.raw_bson import RawBSONDocument
 from gridfs import GridFS, GridFSBucket
 from pymongo import WriteConcern, client_session
 from pymongo.client_session import TransactionOptions
+from pymongo.command_cursor import CommandCursor
+from pymongo.cursor import Cursor
 from pymongo.errors import (
     CollectionInvalid,
     ConfigurationError,
@@ -350,6 +352,42 @@ class TestTransactions(TransactionsBase):
             self.assertEqual(lsid, event.command["lsid"])
             self.assertEqual(txn_number, event.command["txnNumber"])
         self.assertEqual(48, coll.count_documents({}))
+
+    @client_context.require_transactions
+    def test_transaction_direct_connection(self):
+        client = single_client()
+        self.addCleanup(client.close)
+        coll = client.pymongo_test.test
+
+        # Make sure the collection exists.
+        coll.insert_one({})
+        self.assertEqual(client.topology_description.topology_type_name, "Single")
+        ops = [
+            (coll.bulk_write, [[InsertOne({})]]),
+            (coll.insert_one, [{}]),
+            (coll.insert_many, [[{}, {}]]),
+            (coll.replace_one, [{}, {}]),
+            (coll.update_one, [{}, {"$set": {"a": 1}}]),
+            (coll.update_many, [{}, {"$set": {"a": 1}}]),
+            (coll.delete_one, [{}]),
+            (coll.delete_many, [{}]),
+            (coll.find_one_and_replace, [{}, {}]),
+            (coll.find_one_and_update, [{}, {"$set": {"a": 1}}]),
+            (coll.find_one_and_delete, [{}, {}]),
+            (coll.find_one, [{}]),
+            (coll.count_documents, [{}]),
+            (coll.distinct, ["foo"]),
+            (coll.aggregate, [[]]),
+            (coll.find, [{}]),
+            (coll.aggregate_raw_batches, [[]]),
+            (coll.find_raw_batches, [{}]),
+            (coll.database.command, ["find", coll.name]),
+        ]
+        for f, args in ops:
+            with client.start_session() as s, s.start_transaction():
+                res = f(*args, session=s)
+                if isinstance(res, (CommandCursor, Cursor)):
+                    list(res)
 
 
 class PatchSessionTimeout(object):
