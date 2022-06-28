@@ -1104,7 +1104,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self.__raise_if_unsupported("close", target, NonLazyCursor)
         return target.close()
 
-    def _clientEncryptionOperation_creatDataKey(self, target, *args, **kwargs):
+    def _clientEncryptionOperation_createDataKey(self, target, *args, **kwargs):
         if "opts" in kwargs:
             opts = kwargs.pop("opts")
             kwargs["master_key"] = opts.get("masterKey")
@@ -1112,12 +1112,14 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             kwargs["key_material"] = opts.get("keyMaterial")
         return target.create_data_key(*args, **kwargs)
 
+    def _clientEncryptionOperation_getKeys(self, target, *args, **kwargs):
+        return list(target.get_keys(*args, **kwargs))
+
     def _clientEncryptionOperation_rewrapManyDataKey(self, target, *args, **kwargs):
         if "opts" in kwargs:
-            from pymongocrypt.mongocrypt import RewrapManyDataKeyOpts
-
             opts = kwargs.pop("opts")
-            kwargs["opts"] = RewrapManyDataKeyOpts(opts.get("provider"), opts.get("masterKey"))
+            kwargs["provider"] = opts.get("provider")
+            kwargs["master_key"] = opts.get("masterKey")
         data = target.rewrap_many_data_key(*args, **kwargs)
         if data.bulk_write_result:
             return dict(bulkWriteResult=parse_bulk_write_result(data.bulk_write_result))
