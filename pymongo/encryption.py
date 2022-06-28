@@ -850,6 +850,7 @@ class ClientEncryption(object):
             raise ValueError("No replacements")
             return RewrapManyDataKeyResult()
         result = self._key_vault_coll.bulk_write(replacements)
+        raise ValueError(result)
         return RewrapManyDataKeyResult(result)
 
     def __enter__(self) -> "ClientEncryption":
