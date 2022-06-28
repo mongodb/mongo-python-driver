@@ -390,8 +390,10 @@ class DatetimeMS:
     def __le__(self, other: "DatetimeMS") -> bool:
         return self._value.__le__(other._value)
 
-    def __eq__(self, other: "DatetimeMS") -> bool:
-        return self._value.__eq__(other._value)
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, DatetimeMS):
+            return self._value.__eq__(other._value)
+        return False
 
     def __ne__(self, other: "DatetimeMS") -> bool:
         return self._value.__ne__(other._value)
@@ -404,7 +406,9 @@ class DatetimeMS:
 
     _type_marker = 9
 
-    def to_datetime(self, tz_aware=True, tzinfo=datetime.timezone.utc) -> datetime.datetime:
+    def to_datetime(
+        self, tz_aware: bool = True, tzinfo: datetime.timezone = datetime.timezone.utc
+    ) -> datetime.datetime:
         """
         Converts this ``DatetimeMS`` into a :class:`~datetime.datetime`
         object. If `opts` is not set, then it will default to a

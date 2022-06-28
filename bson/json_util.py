@@ -602,7 +602,7 @@ def _parse_canonical_binary(doc: Any, json_options: JSONOptions) -> Union[Binary
 
 def _parse_canonical_datetime(
     doc: Any, json_options: JSONOptions
-) -> [datetime.datetime, DatetimeMS]:
+) -> Union[datetime.datetime, DatetimeMS]:
     """Decode a JSON datetime to python datetime.datetime."""
     dtm = doc["$date"]
     if len(doc) != 1:
@@ -820,7 +820,7 @@ def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
         return {"$date": {"$numberLong": str(millis)}}
     if isinstance(obj, DatetimeMS):
         if json_options.datetime_representation == DatetimeRepresentation.ISO8601:
-            raise NotImplemented()
+            raise NotImplementedError()
         elif json_options.datetime_representation == DatetimeRepresentation.LEGACY:
             return {"$date": int(obj)}
         return {"$date": {"$numberLong": int(obj)}}
