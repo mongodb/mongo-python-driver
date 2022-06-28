@@ -397,7 +397,7 @@ class DatetimeMS:
 
     def __ne__(self, other: Any) -> bool:
         if isinstance(other, DatetimeMS):
-            return self._value.__eq__(other._value)
+            return self._value.__ne__(other._value)
         return True
 
     def __gt__(self, other: "DatetimeMS") -> bool:
