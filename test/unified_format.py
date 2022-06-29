@@ -25,7 +25,6 @@ import re
 import sys
 import time
 import types
-import uuid
 from collections import abc
 from test import (
     AWS_CREDS,
