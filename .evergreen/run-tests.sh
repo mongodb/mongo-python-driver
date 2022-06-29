@@ -141,8 +141,7 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     # TODO: Test with 'pip install pymongocrypt'
     git clone https://github.com/mongodb/libmongocrypt.git libmongocrypt_git
     python -m pip install --prefer-binary -r .evergreen/test-encryption-requirements.txt
-    #python -m pip install ./libmongocrypt_git/bindings/python
-    python -m pip install pymongocrypt@git+ssh://git@github.com/blink1073/libmongocrypt.git@PYTHON-3053#subdirectory=bindings/python
+    python -m pip install ./libmongocrypt_git/bindings/python
     python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
     python -c "import pymongocrypt; print('libmongocrypt version: '+pymongocrypt.libmongocrypt_version())"
     # PATH is updated by PREPARE_SHELL for access to mongocryptd.
