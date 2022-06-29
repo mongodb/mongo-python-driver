@@ -421,7 +421,15 @@ class DatetimeMS:
             datetime.datetime,
             _millis_to_datetime(
                 self._value,
-                CodecOptions(tz_aware=tz_aware, tzinfo=tzinfo, datetime_conversion="datetime"),
+                CodecOptions(
+                    tz_aware=tz_aware,
+                    tzinfo=tzinfo,
+                    datetime_conversion=DatetimeConversionOpts.DATETIME,
+                )
+                if tz_aware
+                else CodecOptions(
+                    tz_aware=False, datetime_conversion=DatetimeConversionOpts.DATETIME
+                ),
             ),
         )
 

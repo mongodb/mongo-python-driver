@@ -98,7 +98,7 @@ import bson
 from bson import EPOCH_AWARE, DatetimeMS
 from bson.binary import ALL_UUID_SUBTYPES, UUID_SUBTYPE, Binary, UuidRepresentation
 from bson.code import Code
-from bson.codec_options import CodecOptions
+from bson.codec_options import CodecOptions, DatetimeConversionOpts
 from bson.dbref import DBRef
 from bson.decimal128 import Decimal128
 from bson.int64 import Int64
@@ -655,8 +655,12 @@ def _parse_canonical_datetime(
         if json_options.tz_aware:
             if json_options.tzinfo:
                 aware = aware.astimezone(json_options.tzinfo)
+            if json_options.datetime_conversion == DatetimeConversionOpts.DATETIME_MS:
+                return DatetimeMS(aware)
             return aware
         else:
+            if json_options.datetime_conversion == DatetimeConversionOpts.DATETIME_MS:
+                return DatetimeMS(aware.replace(tzinfo=None))
             return aware.replace(tzinfo=None)
     return bson._millis_to_datetime(int(dtm), json_options)
 
