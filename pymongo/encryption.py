@@ -265,13 +265,22 @@ class RewrapManyDataKeyResult(object):
         """Result object returned by a ``rewrap_many_data_key`` operation.
 
         :Parameters:
-          - `bulk_write_result`: he result of the bulk write operation used to update the key vault collection with one or more rewrapped data keys. If ``rewrap_many_data_key()`` does not find any matching keys to rewrap, no bulk write operation will be executed and this field will be ``None``.
+          - `bulk_write_result`: The result of the bulk write operation used to
+          update the key vault collection with one or more rewrapped data keys.
+          If ``rewrap_many_data_key()`` does not find any matching keys to
+          rewrap, no bulk write operation will be executed and this field will
+          be ``None``.
         """
         self._bulk_write_result = bulk_write_result
 
     @property
     def bulk_write_result(self) -> Optional[BulkWriteResult]:
-        """The result of the bulk write operation used to update the key vault collection with one or more rewrapped data keys. If ``rewrap_many_data_key()`` does not find any matching keys to rewrap, no bulk write operation will be executed and this field will be ``None``."""
+        """The result of the bulk write operation used to update the key vault
+        collection with one or more rewrapped data keys. If
+        ``rewrap_many_data_key()`` does not find any matching keys to rewrap,
+        no bulk write operation will be executed and this field will be
+        ``None``.
+        """
         return self._bulk_write_result
 
 
@@ -533,7 +542,7 @@ class ClientEncryption(object):
         self._encryption = ExplicitEncrypter(
             self._io_callbacks, MongoCryptOptions(kms_providers, None)
         )
-        # Create a version of the key vault collection that returns ObjectId
+        # Create a version of the key vault collection that returns Binary
         # objects instead of UUIDs.
         self._key_vault_coll = self._io_callbacks.key_vault_coll.with_options(
             codec_options=DEFAULT_RAW_BSON_OPTIONS,

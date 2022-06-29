@@ -515,7 +515,7 @@ class EntityMapUtil(object):
             return self._session_lsids[session_name]
 
 
-binary_types = (Binary, bytes, uuid.UUID)
+binary_types = (Binary, bytes)
 long_types = (Int64,)
 unicode_type = str
 
