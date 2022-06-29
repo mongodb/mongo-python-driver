@@ -20,7 +20,7 @@ import time
 import weakref
 from typing import Any, Mapping, cast
 
-from pymongo import common, periodic_executor
+from pymongo import MongoClientLock, common, periodic_executor
 from pymongo.errors import NotPrimaryError, OperationFailure, _OperationCancelled
 from pymongo.hello import Hello
 from pymongo.periodic_executor import _shutdown_executors
@@ -350,7 +350,7 @@ class _RttMonitor(MonitorBase):
 
         self._pool = pool
         self._moving_average = MovingAverage()
-        self._lock = threading.Lock()
+        self._lock = MongoClientLock()
 
     def close(self):
         self.gc_safe_close()

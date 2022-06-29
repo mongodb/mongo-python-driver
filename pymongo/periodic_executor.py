@@ -19,6 +19,8 @@ import time
 import weakref
 from typing import Any, Optional
 
+from pymongo import MongoClientLock
+
 
 class PeriodicExecutor(object):
     def __init__(self, interval, min_interval, target, name=None):
@@ -47,7 +49,7 @@ class PeriodicExecutor(object):
         self._skip_sleep = False
 
         self._thread_will_exit = False
-        self._lock = threading.Lock()
+        self._lock = MongoClientLock()
 
     def __repr__(self):
         return "<%s(name=%s) object at 0x%x>" % (self.__class__.__name__, self._name, id(self))

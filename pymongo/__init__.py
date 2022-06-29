@@ -13,8 +13,9 @@
 # limitations under the License.
 
 """Python driver for MongoDB."""
-
 from typing import ContextManager, Optional, Tuple, Union
+
+from pymongo.lock import MongoClientLock
 
 ASCENDING = 1
 """Ascending sort order."""
@@ -159,18 +160,18 @@ def timeout(seconds: Optional[float]) -> ContextManager:
 
 import os
 
-from bson.objectid import ObjectId as _ObjectId
-
 
 def _after_fork():
     """
     Reinitialiazes the locks for all active MongoClients
     and ObjectID.
     """
+    # Perform cleanup in clients (i.e. get rid of topology)
     for client in MongoClient._clients:
         client._after_fork()
 
-    _ObjectId._after_fork()
+    # Reinitialize locks
+    MongoClientLock._reset_locks()
 
 
 if hasattr(os, "register_at_fork"):

@@ -57,6 +57,7 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.son import SON
 from bson.timestamp import Timestamp
 from pymongo import (
+    MongoClientLock,
     _csot,
     client_session,
     common,
@@ -781,7 +782,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self.__options = options = ClientOptions(username, password, dbase, opts)
 
         self.__default_database_name = dbase
-        self.__lock = threading.Lock()
+        self.__lock = MongoClientLock()
         self.__kill_cursors_queue: List = []
 
         self._event_listeners = options.pool_options._event_listeners
@@ -847,9 +848,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def _after_fork(self):
         """
-        Resets lock in a child after successfully forking.
+        Resets topology in a child after successfully forking.
         """
-        self.__lock = threading.Lock()
+        self._topology = Topology(self._topology_settings)
 
     def _duplicate(self, **kwargs):
         args = self.__init_kwargs.copy()

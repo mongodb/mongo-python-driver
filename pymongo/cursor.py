@@ -37,7 +37,7 @@ from typing import (
 from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.son import SON
-from pymongo import helpers
+from pymongo import MongoClientLock, helpers
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import (
     validate_boolean,
@@ -133,7 +133,7 @@ class _SocketManager(object):
         self.sock = sock
         self.more_to_come = more_to_come
         self.closed = False
-        self.lock = threading.Lock()
+        self.lock = MongoClientLock()
 
     def update_exhaust(self, more_to_come):
         self.more_to_come = more_to_come

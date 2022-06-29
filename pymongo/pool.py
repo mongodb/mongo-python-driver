@@ -27,7 +27,7 @@ from typing import Any, NoReturn, Optional
 
 from bson import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
-from pymongo import __version__, _csot, auth, helpers
+from pymongo import MongoClientLock, __version__, _csot, auth, helpers
 from pymongo.client_session import _validate_session_write_concern
 from pymongo.common import (
     MAX_BSON_SIZE,
@@ -1151,7 +1151,7 @@ class Pool:
         # and returned to pool from the left side. Stale sockets removed
         # from the right side.
         self.sockets: collections.deque = collections.deque()
-        self.lock = threading.Lock()
+        self.lock = MongoClientLock()
         self.active_sockets = 0
         # Monotonically increasing connection ID required for CMAP Events.
         self.next_connection_id = 1

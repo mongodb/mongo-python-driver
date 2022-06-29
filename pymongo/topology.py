@@ -23,7 +23,7 @@ import warnings
 import weakref
 from typing import Any
 
-from pymongo import _csot, common, helpers, periodic_executor
+from pymongo import MongoClientLock, _csot, common, helpers, periodic_executor
 from pymongo.client_session import _ServerSessionPool
 from pymongo.errors import (
     ConfigurationError,
@@ -127,7 +127,7 @@ class Topology(object):
         self._seed_addresses = list(topology_description.server_descriptions())
         self._opened = False
         self._closed = False
-        self._lock = threading.Lock()
+        self._lock = MongoClientLock()
         self._condition = self._settings.condition_class(self._lock)
         self._servers = {}
         self._pid = None

@@ -33,7 +33,13 @@ from test import client_context, db_pwd, db_user
 from bson import json_util
 from bson.objectid import ObjectId
 from bson.son import SON
-from pymongo import MongoClient, monitoring, operations, read_preferences
+from pymongo import (
+    MongoClient,
+    MongoClientLock,
+    monitoring,
+    operations,
+    read_preferences,
+)
 from pymongo.collection import ReturnDocument
 from pymongo.cursor import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
@@ -264,7 +270,7 @@ class MockSocketInfo(object):
 class MockPool(object):
     def __init__(self, address, options, handshake=True):
         self.gen = _PoolGeneration()
-        self._lock = threading.Lock()
+        self._lock = MongoClientLock()
         self.opts = options
         self.operation_count = 0
 
