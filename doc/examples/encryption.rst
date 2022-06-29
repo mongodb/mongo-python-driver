@@ -517,7 +517,7 @@ using an ``encrypted_fields`` mapping, as demonstrated by the following example:
         unindexed_val = "encrypted unindexed value"
         insert_payload_indexed = client_encryption.encrypt(val, Algorithm.INDEXED, indexed_key_id, contention_factor=1)
         insert_payload_unindexed = client_encryption.encrypt(unindexed_val, Algorithm.UNINDEXED,
-        unindexed_key_id, index_key_id=indexed_key_id)
+        unindexed_key_id)
 
         # Insert the payloads.
         coll.insert_one({
