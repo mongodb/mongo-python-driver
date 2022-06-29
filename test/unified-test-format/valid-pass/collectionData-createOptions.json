@@ -3,7 +3,8 @@
   "schemaVersion": "1.9",
   "runOnRequirements": [
     {
-      "minServerVersion": "3.6"
+      "minServerVersion": "3.6",
+      "serverless": "forbid"
     }
   ],
   "createEntities": [
