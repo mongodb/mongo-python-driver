@@ -662,7 +662,9 @@ class ClientEncryption(object):
           - `query_type` (str): **(BETA)** The query type to execute. See
             :class:`QueryType` for valid options.
           - `contention_factor` (int): **(BETA)** The contention factor to use
-            when the algorithm is :attr:`Algorithm.INDEXED`.
+            when the algorithm is :attr:`Algorithm.INDEXED`.  An integer value
+            *must* be given when the :attr:`Algorithm.INDEXED` algorithm is
+            used.
 
         .. note:: `index_key_id`, `query_type`, and `contention_factor` are part of the
            Queryable Encryption beta. Backwards-breaking changes may be made before the

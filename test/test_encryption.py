@@ -2126,13 +2126,15 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
 
     def test_01_insert_encrypted_indexed_and_find(self):
         val = "encrypted indexed value"
-        insert_payload = self.client_encryption.encrypt(val, Algorithm.INDEXED, self.key1_id)
+        insert_payload = self.client_encryption.encrypt(
+            val, Algorithm.INDEXED, self.key1_id, contention_factor=0
+        )
         self.encrypted_client[self.db.name].explicit_encryption.insert_one(
             {"encryptedIndexed": insert_payload}
         )
 
         find_payload = self.client_encryption.encrypt(
-            val, Algorithm.INDEXED, self.key1_id, query_type=QueryType.EQUALITY
+            val, Algorithm.INDEXED, self.key1_id, query_type=QueryType.EQUALITY, contention_factor=0
         )
         docs = list(
             self.encrypted_client[self.db.name].explicit_encryption.find(
@@ -2153,9 +2155,8 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
                 {"encryptedIndexed": insert_payload}
             )
 
-        # Find without contention_factor non-deterministically returns 0-9 documents.
         find_payload = self.client_encryption.encrypt(
-            val, Algorithm.INDEXED, self.key1_id, query_type=QueryType.EQUALITY
+            val, Algorithm.INDEXED, self.key1_id, query_type=QueryType.EQUALITY, contention_factor=0
         )
         docs = list(
             self.encrypted_client[self.db.name].explicit_encryption.find(
@@ -2196,7 +2197,9 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
 
     def test_04_roundtrip_encrypted_indexed(self):
         val = "encrypted indexed value"
-        payload = self.client_encryption.encrypt(val, Algorithm.INDEXED, self.key1_id)
+        payload = self.client_encryption.encrypt(
+            val, Algorithm.INDEXED, self.key1_id, contention_factor=0
+        )
         decrypted = self.client_encryption.decrypt(payload)
         self.assertEqual(decrypted, val)
 
