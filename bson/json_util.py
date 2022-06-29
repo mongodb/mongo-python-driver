@@ -819,8 +819,11 @@ def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
             return {"$date": millis}
         return {"$date": {"$numberLong": str(millis)}}
     if isinstance(obj, DatetimeMS):
-        if json_options.datetime_representation == DatetimeRepresentation.ISO8601:
-            raise NotImplementedError()
+        if (
+            json_options.datetime_representation == DatetimeRepresentation.ISO8601
+            and 0 <= int(obj) <= bson._max_datetime_ms()
+        ):
+            return default(obj.to_datetime(), json_options)
         elif json_options.datetime_representation == DatetimeRepresentation.LEGACY:
             return {"$date": int(obj)}
         return {"$date": {"$numberLong": int(obj)}}

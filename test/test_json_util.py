@@ -25,7 +25,7 @@ sys.path[0:0] = [""]
 
 from test import IntegrationTest, unittest
 
-from bson import EPOCH_AWARE, EPOCH_NAIVE, SON, json_util
+from bson import EPOCH_AWARE, EPOCH_NAIVE, SON, DatetimeMS, _max_datetime_ms, json_util
 from bson.binary import (
     ALL_UUID_REPRESENTATIONS,
     MD5_SUBTYPE,
@@ -240,6 +240,34 @@ class TestJsonUtil(unittest.TestCase):
                 tzinfo=pacific,
             ),
         )
+
+    def test_datetime_ms(self):
+        # Test ISO8601 in-range
+        dat_min = {"x": DatetimeMS(0)}
+        dat_max = {"x": DatetimeMS(_max_datetime_ms())}
+        opts = JSONOptions(datetime_representation=DatetimeRepresentation.ISO8601)
+
+        self.assertEqual(
+            dat_min["x"].to_datetime(tz_aware=False, tzinfo=None),
+            json_util.loads(json_util.dumps(dat_min))["x"],
+        )
+        self.assertEqual(
+            dat_max["x"].to_datetime(tz_aware=False, tzinfo=None),
+            json_util.loads(json_util.dumps(dat_max))["x"],
+        )
+
+        # Test ISO8601 out-of-range
+        dat_min = {"x": DatetimeMS(-1)}
+        dat_max = {"x": DatetimeMS(_max_datetime_ms() + 1)}
+
+        self.assertEqual("""{"x": {"$date": {"$numberLong": -1}}}""", json_util.dumps(dat_min))
+        self.assertEqual(
+            """{"x": {"$date": {"$numberLong": """ + str(int(dat_max["x"])) + """}}}""",
+            json_util.dumps(dat_max),
+        )
+        # Test legacy.
+
+        # Test regular.
 
     def test_regex_object_hook(self):
         # Extended JSON format regular expression.
