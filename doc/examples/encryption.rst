@@ -510,12 +510,12 @@ using an ``encrypted_fields`` mapping, as demonstrated by the following example:
         db = encrypted_client.test
 
         # Create the collection with encrypted fields.
-        coll = db.create_collection("coll", encrypted_fields=encrypted_fields)
+        coll = db.create_collection("coll", encryptedFields=encrypted_fields)
 
         # Create and encrypt an indexed and unindexed value.
         val = "encrypted indexed value"
         unindexed_val = "encrypted unindexed value"
-        insert_payload_indexed = client_encryption.encrypt(val, Algorithm.INDEXED, indexed_key_id)
+        insert_payload_indexed = client_encryption.encrypt(val, Algorithm.INDEXED, indexed_key_id, contention_factor=1)
         insert_payload_unindexed = client_encryption.encrypt(unindexed_val, Algorithm.UNINDEXED,
         unindexed_key_id)
 
@@ -529,7 +529,7 @@ using an ``encrypted_fields`` mapping, as demonstrated by the following example:
         # The value of "data_key_id" must be the same as used to encrypt the values
         # above.
         find_payload = client_encryption.encrypt(
-            val, Algorithm.INDEXED, indexed_key_id, query_type=QueryType.EQUALITY
+            val, Algorithm.INDEXED, indexed_key_id, query_type=QueryType.EQUALITY, contention_factor=1
         )
 
         # Find the document we inserted using the encrypted payload.
