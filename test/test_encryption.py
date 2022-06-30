@@ -456,13 +456,6 @@ class TestExplicitSimple(EncryptionIntegrationTest):
         with self.assertRaisesRegex(TypeError, msg):
             client_encryption.encrypt("str", algo, key_id=Binary(b"123"))
 
-        msg = "index_key_id must be a bson.binary.Binary with subtype 4"
-        algo = Algorithm.INDEXED
-        with self.assertRaisesRegex(TypeError, msg):
-            client_encryption.encrypt("str", algo, index_key_id=uid)  # type: ignore[arg-type]
-        with self.assertRaisesRegex(TypeError, msg):
-            client_encryption.encrypt("str", algo, index_key_id=Binary(b"123"))
-
     def test_bson_errors(self):
         client_encryption = ClientEncryption(
             KMS_PROVIDERS, "keyvault.datakeys", client_context.client, OPTS
