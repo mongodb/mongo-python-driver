@@ -598,7 +598,6 @@ class ClientEncryption(object):
         algorithm: str,
         key_id: Optional[Binary] = None,
         key_alt_name: Optional[str] = None,
-        index_key_id: Optional[Binary] = None,
         query_type: Optional[str] = None,
         contention_factor: Optional[int] = None,
     ) -> Binary:
@@ -615,14 +614,12 @@ class ClientEncryption(object):
             :class:`~bson.binary.Binary` with subtype 4 (
             :attr:`~bson.binary.UUID_SUBTYPE`).
           - `key_alt_name`: Identifies a key vault document by 'keyAltName'.
-          - `index_key_id`: **(BETA)** The index key id to use for Queryable Encryption. Must be
-            a :class:`~bson.binary.Binary` with subtype 4 (:attr:`~bson.binary.UUID_SUBTYPE`).
           - `query_type` (str): **(BETA)** The query type to execute. See
             :class:`QueryType` for valid options.
           - `contention_factor` (int): **(BETA)** The contention factor to use
             when the algorithm is :attr:`Algorithm.INDEXED`.
 
-        .. note:: `index_key_id`, `query_type`, and `contention_factor` are part of the
+        .. note:: `query_type` and `contention_factor` are part of the
            Queryable Encryption beta. Backwards-breaking changes may be made before the
            final release.
 
@@ -630,7 +627,8 @@ class ClientEncryption(object):
           The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
 
         .. versionchanged:: 4.2
-           Added the `index_key_id`, `query_type`, and `contention_factor` parameters.
+           Added the `query_type` and `contention_factor` parameters.
+
         """
         self._check_closed()
         if key_id is not None and not (
@@ -649,7 +647,6 @@ class ClientEncryption(object):
                 algorithm,
                 key_id=key_id,
                 key_alt_name=key_alt_name,
-                index_key_id=index_key_id,
                 query_type=query_type,
                 contention_factor=contention_factor,
             )
