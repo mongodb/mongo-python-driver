@@ -21,13 +21,13 @@ import calendar
 import datetime
 import os
 import struct
+import threading
 import time
 from random import SystemRandom
 from typing import Any, NoReturn, Optional, Type, Union
 
 from bson.errors import InvalidId
 from bson.tz_util import utc
-from pymongo.lock import MongoClientLock
 
 _MAX_COUNTER_VALUE = 0xFFFFFF
 
@@ -50,7 +50,7 @@ class ObjectId(object):
     _pid = os.getpid()
 
     _inc = SystemRandom().randint(0, _MAX_COUNTER_VALUE)
-    _inc_lock = MongoClientLock()
+    _inc_lock = threading.Lock()
 
     __random = _random_bytes()
 
@@ -291,4 +291,4 @@ class ObjectId(object):
         """
         Reinitializes _inc_lock after a process fork.
         """
-        cls._inc_lock = MongoClientLock()
+        cls._inc_lock = threading.Lock()

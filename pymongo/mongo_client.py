@@ -54,6 +54,7 @@ from typing import (
 )
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
+from bson.objectid import ObjectId
 from bson.son import SON
 from bson.timestamp import Timestamp
 from pymongo import (
@@ -2150,6 +2151,9 @@ def _after_fork():
 
     # Reinitialize locks
     MongoClientLock._reset_locks()
+
+    # These can't use MongoClientLock due to circular imports.
+    ObjectId._after_fork()
 
 
 if hasattr(os, "register_at_fork"):
