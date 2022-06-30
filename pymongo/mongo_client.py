@@ -126,7 +126,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     # Define order to retrieve options from ClientOptions for __repr__.
     # No host/port; these are retrieved from TopologySettings.
     _constructor_args = ("document_class", "tz_aware", "connect")
-
     _clients: weakref.WeakSet = weakref.WeakSet()
 
     def __init__(
@@ -833,6 +832,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self_ref: Any = weakref.ref(self, executor.close)
         self._kill_cursors_executor = executor
 
+        # Add this client to the list of weakly referenced items.
+        # This will be used later if we fork.
+        MongoClient._clients.add(self)
+
         if connect:
             self._get_topology()
 
@@ -841,10 +844,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             from pymongo.encryption import _Encrypter
 
             self._encrypter = _Encrypter(self, self.__options.auto_encryption_opts)
-
-        # Add this client to the list of weakly referenced items.
-        # This will be used later if we fork.
-        MongoClient._clients.add(self)
 
     def _after_fork(self):
         """
@@ -2138,3 +2137,23 @@ class _MongoClientErrorHandler(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         return self.handle(exc_type, exc_val)
+
+
+import os
+
+
+def _after_fork():
+    """
+    Reinitialiazes the locks in child process and resets the
+    topologies in all MongoClients.
+    """
+    # Perform cleanup in clients (i.e. get rid of topology)
+    for client in MongoClient._clients:
+        client._after_fork()
+
+    # Reinitialize locks
+    MongoClientLock._reset_locks()
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_after_fork)

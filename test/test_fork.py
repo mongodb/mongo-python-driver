@@ -15,13 +15,16 @@
 """Test that pymongo is fork safe."""
 
 import os
+import platform
 import sys
 import threading
+from multiprocessing import Pipe
 from test import IntegrationTest, client_context
 from unittest import skipIf
 from unittest.mock import patch
 
 from bson.objectid import ObjectId
+from pymongo import MongoClient
 
 
 @client_context.require_connection
@@ -102,3 +105,27 @@ class TestFork(IntegrationTest):
                 self.assertEqual(ex.exception.code, 0)
             else:  # Parent
                 self.assertEqual(0, os.waitpid(lock_pid, 0)[1] >> 8)
+
+    @skipIf(
+        platform.python_implementation() != "CPython", "Depends on CPython implementation of id"
+    )
+    def test_topology_reset(self):
+        """
+        Tests that topologies are different from each other.
+        Since memory is copy-on-write, in __id__ shouldn't be the same
+        after forking and resetting. This is tested by
+        """
+        parent_conn, child_conn = Pipe()
+        cl_test = MongoClient()
+        init_id = id(cl_test._topology)
+        lock_pid: int = os.fork()
+
+        if lock_pid == 0:  # Child
+            child_conn.send(id(cl_test._topology))
+            with self.assertRaises(SystemExit) as ex:
+                sys.exit(0)
+            self.assertEqual(ex.exception.code, 0)
+        else:  # Parent
+            self.assertEqual(id(cl_test._topology), init_id)
+            child_id = parent_conn.recv()
+            self.assertNotEqual(child_id, init_id)
