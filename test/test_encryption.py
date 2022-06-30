@@ -31,14 +31,20 @@ from pymongo.collection import Collection
 sys.path[0:0] = [""]
 
 from test import (
+    AWS_CREDS,
+    AZURE_CREDS,
     CA_PEM,
     CLIENT_PEM,
+    GCP_CREDS,
+    KMIP_CREDS,
+    LOCAL_MASTER_KEY,
     IntegrationTest,
     PyMongoTestCase,
     client_context,
     unittest,
 )
 from test.test_bulk import BulkTestBase
+from test.unified_format import generate_test_classes
 from test.utils import (
     AllowListEventListener,
     OvertCommandListener,
@@ -64,6 +70,7 @@ from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
     ConfigurationError,
+    DuplicateKeyError,
     EncryptionError,
     InvalidOperation,
     OperationFailure,
@@ -74,12 +81,11 @@ from pymongo.mongo_client import MongoClient
 from pymongo.operations import InsertOne, ReplaceOne, UpdateOne
 from pymongo.write_concern import WriteConcern
 
+KMS_PROVIDERS = {"local": {"key": b"\x00" * 96}}
+
 
 def get_client_opts(client):
     return client._MongoClient__options
-
-
-KMS_PROVIDERS = {"local": {"key": b"\x00" * 96}}
 
 
 class TestAutoEncryptionOpts(PyMongoTestCase):
@@ -211,7 +217,7 @@ class EncryptionIntegrationTest(IntegrationTest):
 
 # Location of JSON test files.
 BASE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "client-side-encryption")
-SPEC_PATH = os.path.join(BASE, "spec", "legacy")
+SPEC_PATH = os.path.join(BASE, "spec")
 
 OPTS = CodecOptions()
 
@@ -547,11 +553,6 @@ class TestExplicitSimple(EncryptionIntegrationTest):
 
 
 # Spec tests
-AWS_CREDS = {
-    "accessKeyId": os.environ.get("FLE_AWS_KEY", ""),
-    "secretAccessKey": os.environ.get("FLE_AWS_SECRET", ""),
-}
-
 AWS_TEMP_CREDS = {
     "accessKeyId": os.environ.get("CSFLE_AWS_TEMP_ACCESS_KEY_ID", ""),
     "secretAccessKey": os.environ.get("CSFLE_AWS_TEMP_SECRET_ACCESS_KEY", ""),
@@ -562,19 +563,6 @@ AWS_TEMP_NO_SESSION_CREDS = {
     "accessKeyId": os.environ.get("CSFLE_AWS_TEMP_ACCESS_KEY_ID", ""),
     "secretAccessKey": os.environ.get("CSFLE_AWS_TEMP_SECRET_ACCESS_KEY", ""),
 }
-
-AZURE_CREDS = {
-    "tenantId": os.environ.get("FLE_AZURE_TENANTID", ""),
-    "clientId": os.environ.get("FLE_AZURE_CLIENTID", ""),
-    "clientSecret": os.environ.get("FLE_AZURE_CLIENTSECRET", ""),
-}
-
-GCP_CREDS = {
-    "email": os.environ.get("FLE_GCP_EMAIL", ""),
-    "privateKey": os.environ.get("FLE_GCP_PRIVATEKEY", ""),
-}
-
-KMIP = {"endpoint": os.environ.get("FLE_KMIP_ENDPOINT", "localhost:5698")}
 KMS_TLS_OPTS = {"kmip": {"tlsCAFile": CA_PEM, "tlsCertificateKeyFile": CLIENT_PEM}}
 
 
@@ -611,7 +599,7 @@ class TestSpec(SpecRunner):
             if not any(AZURE_CREDS.values()):
                 self.skipTest("GCP environment credentials are not set")
         if "kmip" in kms_providers:
-            kms_providers["kmip"] = KMIP
+            kms_providers["kmip"] = KMIP_CREDS
             opts["kms_tls_options"] = KMS_TLS_OPTS
         if "key_vault_namespace" not in opts:
             opts["key_vault_namespace"] = "keyvault.datakeys"
@@ -685,21 +673,24 @@ def create_test(scenario_def, test, name):
     return run_scenario
 
 
-test_creator = TestCreator(create_test, TestSpec, SPEC_PATH)
+test_creator = TestCreator(create_test, TestSpec, os.path.join(SPEC_PATH, "legacy"))
 test_creator.create_tests()
 
 
-# Prose Tests
-LOCAL_MASTER_KEY = base64.b64decode(
-    b"Mng0NCt4ZHVUYUJCa1kxNkVyNUR1QURhZ2h2UzR2d2RrZzh0cFBwM3R6NmdWMDFBMUN3YkQ"
-    b"5aXRRMkhGRGdQV09wOGVNYUMxT2k3NjZKelhaQmRCZGJkTXVyZG9uSjFk"
-)
+if _HAVE_PYMONGOCRYPT:
+    globals().update(
+        generate_test_classes(
+            os.path.join(SPEC_PATH, "unified"),
+            module=__name__,
+        )
+    )
 
+# Prose Tests
 ALL_KMS_PROVIDERS = {
     "aws": AWS_CREDS,
     "azure": AZURE_CREDS,
     "gcp": GCP_CREDS,
-    "kmip": KMIP,
+    "kmip": KMIP_CREDS,
     "local": {"key": LOCAL_MASTER_KEY},
 }
 
@@ -1232,7 +1223,12 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
         super(TestCustomEndpoint, cls).setUpClass()
 
     def setUp(self):
-        kms_providers = {"aws": AWS_CREDS, "azure": AZURE_CREDS, "gcp": GCP_CREDS, "kmip": KMIP}
+        kms_providers = {
+            "aws": AWS_CREDS,
+            "azure": AZURE_CREDS,
+            "gcp": GCP_CREDS,
+            "kmip": KMIP_CREDS,
+        }
         self.client_encryption = ClientEncryption(
             kms_providers=kms_providers,
             key_vault_namespace="keyvault.datakeys",
@@ -1409,7 +1405,7 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             self.client_encryption_invalid.create_data_key("kmip", key)
 
     def test_11_kmip_master_key_endpoint(self):
-        key = {"keyId": "1", "endpoint": KMIP["endpoint"]}
+        key = {"keyId": "1", "endpoint": KMIP_CREDS["endpoint"]}
         self.run_test_expected_success("kmip", key)
         # Override invalid endpoint:
         data_key_id = self.client_encryption_invalid.create_data_key("kmip", master_key=key)
@@ -2064,6 +2060,38 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
             EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch"
         ):
             self.client_encryption_invalid_hostname.create_data_key("kmip")
+
+
+# https://github.com/mongodb/specifications/blob/50e26fe/source/client-side-encryption/tests/README.rst#unique-index-on-keyaltnames
+class TestUniqueIndexOnKeyAltNamesProse(EncryptionIntegrationTest):
+    def setUp(self):
+        self.client = client_context.client
+        self.client.keyvault.drop_collection("datakeys")
+        self.client.keyvault.datakeys.create_index(
+            "keyAltNames", unique=True, partialFilterExpression={"keyAltNames": {"$exists": True}}
+        )
+        kms_providers_map = {"local": {"key": LOCAL_MASTER_KEY}}
+        self.client_encryption = ClientEncryption(
+            kms_providers_map, "keyvault.datakeys", self.client, CodecOptions()
+        )
+        self.def_key_id = self.client_encryption.create_data_key("local", key_alt_names=["def"])
+
+    def test_01_create_key(self):
+        self.client_encryption.create_data_key("local", key_alt_names=["abc"])
+        with self.assertRaisesRegex(EncryptionError, "E11000 duplicate key error collection"):
+            self.client_encryption.create_data_key("local", key_alt_names=["abc"])
+        with self.assertRaisesRegex(EncryptionError, "E11000 duplicate key error collection"):
+            self.client_encryption.create_data_key("local", key_alt_names=["def"])
+
+    def test_02_add_key_alt_name(self):
+        key_id = self.client_encryption.create_data_key("local")
+        self.client_encryption.add_key_alt_name(key_id, "abc")
+        key_doc = self.client_encryption.add_key_alt_name(key_id, "abc")
+        assert key_doc["keyAltNames"] == ["abc"]
+        with self.assertRaisesRegex(DuplicateKeyError, "E11000 duplicate key error collection"):
+            self.client_encryption.add_key_alt_name(key_id, "def")
+        key_doc = self.client_encryption.add_key_alt_name(self.def_key_id, "def")
+        assert key_doc["keyAltNames"] == ["def"]
 
 
 # https://github.com/mongodb/specifications/blob/d4c9432/source/client-side-encryption/tests/README.rst#explicit-encryption
