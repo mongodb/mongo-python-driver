@@ -20,16 +20,15 @@ import unittest
 
 sys.path[0:0] = [""]
 
-from test import PyMongoTestCase
+from test import fail_point
 from test.utils import get_pool
 
-from bson.son import SON
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure
 from pymongo.uri_parser import parse_uri
 
 
-class TestAuthAWS(PyMongoTestCase):
+class TestAuthAWS(unittest.TestCase):
     uri: str
 
     @classmethod
@@ -66,7 +65,7 @@ class TestAuthAWS(PyMongoTestCase):
         pool.reset()
         # Poison the cache with invalid creds. The first auth attempt should
         # fail and clear the cache.
-        fail_point = {
+        fail_point_cmd = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 1},
             "data": {
@@ -74,8 +73,7 @@ class TestAuthAWS(PyMongoTestCase):
                 "errorCode": 10107,
             },
         }
-
-        with self.fail_point(fail_point):
+        with fail_point(client, fail_point_cmd):
             with self.assertRaises(OperationFailure):
                 client.get_database().test.find_one()
 

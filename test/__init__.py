@@ -947,6 +947,17 @@ def sanitize_reply(reply):
     return cp
 
 
+@contextmanager
+def fail_point(client, command_args):
+    cmd_on = SON([("configureFailPoint", "failCommand")])
+    cmd_on.update(command_args)
+    client.admin.command(cmd_on)
+    try:
+        yield
+    finally:
+        client.admin.command("configureFailPoint", cmd_on["configureFailPoint"], mode="off")
+
+
 class PyMongoTestCase(unittest.TestCase):
     def assertEqualCommand(self, expected, actual, msg=None):
         self.assertEqual(sanitize_cmd(expected), sanitize_cmd(actual), msg)
@@ -956,15 +967,7 @@ class PyMongoTestCase(unittest.TestCase):
 
     @contextmanager
     def fail_point(self, command_args):
-        cmd_on = SON([("configureFailPoint", "failCommand")])
-        cmd_on.update(command_args)
-        client_context.client.admin.command(cmd_on)
-        try:
-            yield
-        finally:
-            client_context.client.admin.command(
-                "configureFailPoint", cmd_on["configureFailPoint"], mode="off"
-            )
+        yield fail_point(client_context.client, command_args)
 
 
 class IntegrationTest(PyMongoTestCase):
