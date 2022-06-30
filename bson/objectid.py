@@ -21,7 +21,6 @@ import calendar
 import datetime
 import os
 import struct
-import threading
 import time
 from random import SystemRandom
 from typing import Any, NoReturn, Optional, Type, Union

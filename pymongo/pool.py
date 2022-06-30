@@ -27,7 +27,7 @@ from typing import Any, NoReturn, Optional
 
 from bson import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
-from pymongo import MongoClientLock, __version__, _csot, auth, helpers
+from pymongo import __version__, _csot, auth, helpers
 from pymongo.client_session import _validate_session_write_concern
 from pymongo.common import (
     MAX_BSON_SIZE,
@@ -55,6 +55,7 @@ from pymongo.errors import (
     _CertificateError,
 )
 from pymongo.hello import Hello, HelloCompat
+from pymongo.lock import MongoClientLock
 from pymongo.monitoring import ConnectionCheckOutFailedReason, ConnectionClosedReason
 from pymongo.network import command, receive_message
 from pymongo.read_preferences import ReadPreference
@@ -1176,7 +1177,7 @@ class Pool:
         # The first portion of the wait queue.
         # Enforces: maxPoolSize
         # Also used for: clearing the wait queue
-        self.size_cond = threading.Condition(self.lock)
+        self.size_cond = threading.Condition(self.lock.__lock)
         self.requests = 0
         self.max_pool_size = self.opts.max_pool_size
         if not self.max_pool_size:
@@ -1184,7 +1185,7 @@ class Pool:
         # The second portion of the wait queue.
         # Enforces: maxConnecting
         # Also used for: clearing the wait queue
-        self._max_connecting_cond = threading.Condition(self.lock)
+        self._max_connecting_cond = threading.Condition(self.lock.__lock)
         self._max_connecting = self.opts.max_connecting
         self._pending = 0
         if self.enabled_for_cmap:

@@ -32,7 +32,7 @@ access:
 """
 
 import contextlib
-import threading
+import os
 import weakref
 from collections import defaultdict
 from typing import (
@@ -57,7 +57,6 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.son import SON
 from bson.timestamp import Timestamp
 from pymongo import (
-    MongoClientLock,
     _csot,
     client_session,
     common,
@@ -82,6 +81,7 @@ from pymongo.errors import (
     PyMongoError,
     ServerSelectionTimeoutError,
 )
+from pymongo.lock import MongoClientLock
 from pymongo.pool import ConnectionClosedReason
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_selectors import writable_server_selector
@@ -2137,9 +2137,6 @@ class _MongoClientErrorHandler(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         return self.handle(exc_type, exc_val)
-
-
-import os
 
 
 def _after_fork():

@@ -7,7 +7,7 @@ class MongoClientLock:
     Represents a lock that can be tracked with a single instance of
     """
 
-    _locks = weakref.WeakSet()  # References to instances of MongoClientLock
+    _locks: weakref.WeakSet = weakref.WeakSet()  # References to instances of MongoClientLock
 
     def __init__(self):
         self.__lock = threading.Lock()

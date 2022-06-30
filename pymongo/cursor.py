@@ -14,7 +14,6 @@
 
 """Cursor class to iterate over Mongo query results."""
 import copy
-import threading
 import warnings
 from collections import deque
 from typing import (

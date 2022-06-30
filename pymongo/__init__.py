@@ -15,8 +15,6 @@
 """Python driver for MongoDB."""
 from typing import ContextManager, Optional, Tuple, Union
 
-from pymongo.lock import MongoClientLock
-
 ASCENDING = 1
 """Ascending sort order."""
 DESCENDING = -1

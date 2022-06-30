@@ -17,13 +17,12 @@
 import os
 import queue
 import random
-import threading
 import time
 import warnings
 import weakref
 from typing import Any
 
-from pymongo import MongoClientLock, _csot, common, helpers, periodic_executor
+from pymongo import _csot, common, helpers, periodic_executor
 from pymongo.client_session import _ServerSessionPool
 from pymongo.errors import (
     ConfigurationError,
@@ -37,6 +36,7 @@ from pymongo.errors import (
     WriteError,
 )
 from pymongo.hello import Hello
+from pymongo.lock import MongoClientLock
 from pymongo.monitor import SrvMonitor
 from pymongo.pool import PoolOptions
 from pymongo.server import Server

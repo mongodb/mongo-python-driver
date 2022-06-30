@@ -16,7 +16,8 @@
 
 from collections import namedtuple
 from datetime import datetime as _datetime
-from threading import Lock
+
+from pymongo.lock import MongoClientLock
 
 
 class _OCSPCache(object):
@@ -30,7 +31,7 @@ class _OCSPCache(object):
     def __init__(self):
         self._data = {}
         # Hold this lock when accessing _data.
-        self._lock = Lock()
+        self._lock = MongoClientLock()
 
     def _get_cache_key(self, ocsp_request):
         return self.CACHE_KEY_TYPE(
