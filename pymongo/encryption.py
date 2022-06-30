@@ -17,7 +17,6 @@
 import contextlib
 import enum
 import socket
-import uuid
 import weakref
 from typing import Any, Mapping, Optional, Sequence
 
@@ -40,6 +39,7 @@ from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from bson.son import SON
 from pymongo import _csot
+from pymongo.cursor import Cursor
 from pymongo.daemon import _spawn_daemon
 from pymongo.encryption_options import AutoEncryptionOpts
 from pymongo.errors import (
@@ -50,8 +50,10 @@ from pymongo.errors import (
 )
 from pymongo.mongo_client import MongoClient
 from pymongo.network import BLOCKING_IO_ERRORS
+from pymongo.operations import UpdateOne
 from pymongo.pool import PoolOptions, _configured_socket
 from pymongo.read_concern import ReadConcern
+from pymongo.results import BulkWriteResult, DeleteResult
 from pymongo.ssl_support import get_ssl_context
 from pymongo.uri_parser import parse_host
 from pymongo.write_concern import WriteConcern
@@ -60,10 +62,11 @@ _HTTPS_PORT = 443
 _KMS_CONNECT_TIMEOUT = 10  # TODO: CDRIVER-3262 will define this value.
 _MONGOCRYPTD_TIMEOUT_MS = 10000
 
+
 _DATA_KEY_OPTS: CodecOptions = CodecOptions(document_class=SON, uuid_representation=STANDARD)
 # Use RawBSONDocument codec options to avoid needlessly decoding
 # documents from the key vault.
-_KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument, uuid_representation=STANDARD)
+_KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument)
 
 
 @contextlib.contextmanager
@@ -225,11 +228,11 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         """
         raw_doc = RawBSONDocument(data_key, _KEY_VAULT_OPTS)
         data_key_id = raw_doc.get("_id")
-        if not isinstance(data_key_id, uuid.UUID):
-            raise TypeError("data_key _id must be a UUID")
+        if not isinstance(data_key_id, Binary) or data_key_id.subtype != UUID_SUBTYPE:
+            raise TypeError("data_key _id must be Binary with a UUID subtype")
 
         self.key_vault_coll.insert_one(raw_doc)
-        return Binary(data_key_id.bytes, subtype=UUID_SUBTYPE)
+        return data_key_id
 
     def bson_encode(self, doc):
         """Encode a document to BSON.
@@ -254,6 +257,30 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         if self.mongocryptd_client:
             self.mongocryptd_client.close()
             self.mongocryptd_client = None
+
+
+class RewrapManyDataKeyResult(object):
+    def __init__(self, bulk_write_result: Optional[BulkWriteResult] = None) -> None:
+        """Result object returned by a ``rewrap_many_data_key`` operation.
+
+        :Parameters:
+          - `bulk_write_result`: The result of the bulk write operation used to
+          update the key vault collection with one or more rewrapped data keys.
+          If ``rewrap_many_data_key()`` does not find any matching keys to
+          rewrap, no bulk write operation will be executed and this field will
+          be ``None``.
+        """
+        self._bulk_write_result = bulk_write_result
+
+    @property
+    def bulk_write_result(self) -> Optional[BulkWriteResult]:
+        """The result of the bulk write operation used to update the key vault
+        collection with one or more rewrapped data keys. If
+        ``rewrap_many_data_key()`` does not find any matching keys to rewrap,
+        no bulk write operation will be executed and this field will be
+        ``None``.
+        """
+        return self._bulk_write_result
 
 
 class _Encrypter(object):
@@ -514,12 +541,15 @@ class ClientEncryption(object):
         self._encryption = ExplicitEncrypter(
             self._io_callbacks, MongoCryptOptions(kms_providers, None)
         )
+        # Use the same key vault collection as the callback.
+        self._key_vault_coll = self._io_callbacks.key_vault_coll
 
     def create_data_key(
         self,
         kms_provider: str,
         master_key: Optional[Mapping[str, Any]] = None,
         key_alt_names: Optional[Sequence[str]] = None,
+        key_material: Optional[bytes] = None,
     ) -> Binary:
         """Create and insert a new data key into the key vault collection.
 
@@ -580,16 +610,24 @@ class ClientEncryption(object):
               # reference the key with the alternate name
               client_encryption.encrypt("457-55-5462", keyAltName="name1",
                                         algorithm=Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Random)
+          - `key_material` (optional): Sets the custom key material to be used
+            by the data key for encryption and decryption.
 
         :Returns:
           The ``_id`` of the created data key document as a
           :class:`~bson.binary.Binary` with subtype
           :data:`~bson.binary.UUID_SUBTYPE`.
+
+        .. versionchanged:: 4.2
+           Added the `key_material` parameter.
         """
         self._check_closed()
         with _wrap_encryption_errors():
             return self._encryption.create_data_key(
-                kms_provider, master_key=master_key, key_alt_names=key_alt_names
+                kms_provider,
+                master_key=master_key,
+                key_alt_names=key_alt_names,
+                key_material=key_material,
             )
 
     def encrypt(
@@ -617,7 +655,9 @@ class ClientEncryption(object):
           - `query_type` (str): **(BETA)** The query type to execute. See
             :class:`QueryType` for valid options.
           - `contention_factor` (int): **(BETA)** The contention factor to use
-            when the algorithm is :attr:`Algorithm.INDEXED`.
+            when the algorithm is :attr:`Algorithm.INDEXED`.  An integer value
+            *must* be given when the :attr:`Algorithm.INDEXED` algorithm is
+            used.
 
         .. note:: `query_type` and `contention_factor` are part of the
            Queryable Encryption beta. Backwards-breaking changes may be made before the
@@ -666,6 +706,145 @@ class ClientEncryption(object):
             doc = encode({"v": value})
             decrypted_doc = self._encryption.decrypt(doc)
             return decode(decrypted_doc, codec_options=self._codec_options)["v"]
+
+    def get_key(self, id: Binary) -> Optional[RawBSONDocument]:
+        """Get a data key by id.
+
+        :Parameters:
+          - `id` (Binary): The UUID of a key a which must be a
+            :class:`~bson.binary.Binary` with subtype 4 (
+            :attr:`~bson.binary.UUID_SUBTYPE`).
+
+        :Returns:
+          The key document.
+        """
+        self._check_closed()
+        return self._key_vault_coll.find_one({"_id": id})
+
+    def get_keys(self) -> Cursor[RawBSONDocument]:
+        """Get all of the data keys.
+
+        :Returns:
+          An instance of :class:`~pymongo.cursor.Cursor` over the data key
+          documents.
+        """
+        self._check_closed()
+        return self._key_vault_coll.find({})
+
+    def delete_key(self, id: Binary) -> DeleteResult:
+        """Delete a key document in the key vault collection that has the given ``key_id``.
+
+        :Parameters:
+          - `id` (Binary): The UUID of a key a which must be a
+            :class:`~bson.binary.Binary` with subtype 4 (
+            :attr:`~bson.binary.UUID_SUBTYPE`).
+
+        :Returns:
+          The delete result.
+        """
+        self._check_closed()
+        return self._key_vault_coll.delete_one({"_id": id})
+
+    def add_key_alt_name(self, id: Binary, key_alt_name: str) -> Any:
+        """Add ``key_alt_name`` to the set of alternate names in the key document with UUID ``key_id``.
+
+        :Parameters:
+          - ``id``: The UUID of a key a which must be a
+            :class:`~bson.binary.Binary` with subtype 4 (
+            :attr:`~bson.binary.UUID_SUBTYPE`).
+          - ``key_alt_name``: The key alternate name to add.
+
+        :Returns:
+          The previous version of the key document.
+        """
+        self._check_closed()
+        update = {"$addToSet": {"keyAltNames": key_alt_name}}
+        return self._key_vault_coll.find_one_and_update({"_id": id}, update)
+
+    def get_key_by_alt_name(self, key_alt_name: str) -> Optional[RawBSONDocument]:
+        """Get a key document in the key vault collection that has the given ``key_alt_name``.
+
+        :Parameters:
+          - `key_alt_name`: (str): The key alternate name of the key to get.
+
+        :Returns:
+          The key document.
+        """
+        self._check_closed()
+        return self._key_vault_coll.find_one({"keyAltNames": key_alt_name})
+
+    def remove_key_alt_name(self, id: Binary, key_alt_name: str) -> Optional[RawBSONDocument]:
+        """Remove ``key_alt_name`` from the set of keyAltNames in the key document with UUID ``id``.
+
+        Also removes the ``keyAltNames`` field from the key document if it would otherwise be empty.
+
+        :Parameters:
+          - ``id``: The UUID of a key a which must be a
+            :class:`~bson.binary.Binary` with subtype 4 (
+            :attr:`~bson.binary.UUID_SUBTYPE`).
+          - ``key_alt_name``: The key alternate name to remove.
+
+        :Returns:
+          Returns the previous version of the key document.
+        """
+        self._check_closed()
+        pipeline = [
+            {
+                "$set": {
+                    "keyAltNames": {
+                        "$cond": [
+                            {"$eq": ["$keyAltNames", [key_alt_name]]},
+                            "$$REMOVE",
+                            {
+                                "$filter": {
+                                    "input": "$keyAltNames",
+                                    "cond": {"$ne": ["$$this", key_alt_name]},
+                                }
+                            },
+                        ]
+                    }
+                }
+            }
+        ]
+        return self._key_vault_coll.find_one_and_update({"_id": id}, pipeline)
+
+    def rewrap_many_data_key(
+        self,
+        filter: Mapping[str, Any],
+        provider: Optional[str] = None,
+        master_key: Optional[Mapping[str, Any]] = None,
+    ) -> RewrapManyDataKeyResult:
+        """Decrypts and encrypts all matching data keys in the key vault with a possibly new `master_key` value.
+
+        :Parameters:
+          - `filter`: A document used to filter the data keys.
+          - `provider`: The new KMS provider to use to encrypt the data keys,
+            or ``None`` to use the current KMS provider(s).
+          - ``master_key``: The master key fields corresponding to the new KMS
+            provider when ``provider`` is not ``None``.
+
+        :Returns:
+          A :class:`RewrapManyDataKeyResult`.
+        """
+        self._check_closed()
+        with _wrap_encryption_errors():
+            raw_result = self._encryption.rewrap_many_data_key(filter, provider, master_key)
+            if raw_result is None:
+                return RewrapManyDataKeyResult()
+
+        raw_doc = RawBSONDocument(raw_result, DEFAULT_RAW_BSON_OPTIONS)
+        replacements = []
+        for key in raw_doc["v"]:
+            update_model = {
+                "$set": {"keyMaterial": key["keyMaterial"], "masterKey": key["masterKey"]},
+                "$currentDate": {"updateDate": True},
+            }
+            op = UpdateOne({"_id": key["_id"]}, update_model)
+            replacements.append(op)
+        if not replacements:
+            return RewrapManyDataKeyResult()
+        result = self._key_vault_coll.bulk_write(replacements)
+        return RewrapManyDataKeyResult(result)
 
     def __enter__(self) -> "ClientEncryption":
         return self
