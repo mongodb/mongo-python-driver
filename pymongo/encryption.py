@@ -234,9 +234,12 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
                 raise TypeError("data_key _id must have a UUID subtype")
         elif not isinstance(data_key_id, uuid.UUID):
             raise TypeError("data_key _id must be a UUID")
+        else:
+            # Convert the UUID to a Binary id.
+            data_key_id = Binary(data_key_id.bytes, subtype=UUID_SUBTYPE)
 
         self.key_vault_coll.insert_one(raw_doc)
-        return Binary(data_key_id.bytes, subtype=UUID_SUBTYPE)
+        return data_key_id
 
     def bson_encode(self, doc):
         """Encode a document to BSON.
