@@ -66,5 +66,37 @@ class TestAuthAWS(unittest.TestCase):
                 client.get_database().test.find_one()
 
 
+class TestAWSLambdaExamples(unittest.TestCase):
+    def test_shared_client(self):
+        # Start AWS Lambda Example 1
+        import os
+
+        from pymongo import MongoClient
+
+        client = MongoClient(host=os.environ["MONGODB_URI"])
+
+        def lambda_handler(event, context):
+            return client.db.command("ping")
+
+        # End AWS Lambda Example 1
+
+    def test_IAM_auth(self):
+        # Start AWS Lambda Example 2
+        import os
+
+        from pymongo import MongoClient
+
+        client = MongoClient(
+            host=os.environ["MONGODB_URI"],
+            authSource="$external",
+            authMechanism="MONGODB-AWS",
+        )
+
+        def lambda_handler(event, context):
+            return client.db.command("ping")
+
+        # End AWS Lambda Example 2
+
+
 if __name__ == "__main__":
     unittest.main()
