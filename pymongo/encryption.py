@@ -635,10 +635,6 @@ class ClientEncryption(object):
             isinstance(key_id, Binary) and key_id.subtype == UUID_SUBTYPE
         ):
             raise TypeError("key_id must be a bson.binary.Binary with subtype 4")
-        if index_key_id is not None and not (
-            isinstance(index_key_id, Binary) and index_key_id.subtype == UUID_SUBTYPE
-        ):
-            raise TypeError("index_key_id must be a bson.binary.Binary with subtype 4")
 
         doc = encode({"v": value}, codec_options=self._codec_options)
         with _wrap_encryption_errors():
