@@ -36,7 +36,7 @@ from typing import (
 from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.son import SON
-from pymongo import MongoClientLock, helpers
+from pymongo import helpers
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import (
     validate_boolean,
@@ -44,6 +44,7 @@ from pymongo.common import (
     validate_is_mapping,
 )
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
+from pymongo.lock import MongoClientLock
 from pymongo.message import (
     _CursorAddress,
     _GetMore,

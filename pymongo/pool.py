@@ -1177,7 +1177,7 @@ class Pool:
         # The first portion of the wait queue.
         # Enforces: maxPoolSize
         # Also used for: clearing the wait queue
-        self.size_cond = threading.Condition(self.lock.__lock)
+        self.size_cond = threading.Condition(self.lock._lock)
         self.requests = 0
         self.max_pool_size = self.opts.max_pool_size
         if not self.max_pool_size:
@@ -1185,7 +1185,7 @@ class Pool:
         # The second portion of the wait queue.
         # Enforces: maxConnecting
         # Also used for: clearing the wait queue
-        self._max_connecting_cond = threading.Condition(self.lock.__lock)
+        self._max_connecting_cond = threading.Condition(self.lock._lock)
         self._max_connecting = self.opts.max_connecting
         self._pending = 0
         if self.enabled_for_cmap:

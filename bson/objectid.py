@@ -27,7 +27,7 @@ from typing import Any, NoReturn, Optional, Type, Union
 
 from bson.errors import InvalidId
 from bson.tz_util import utc
-from pymongo import MongoClientLock
+from pymongo.lock import MongoClientLock
 
 _MAX_COUNTER_VALUE = 0xFFFFFF
 

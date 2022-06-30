@@ -19,7 +19,7 @@ import time
 import weakref
 from typing import Any, Optional
 
-from pymongo import MongoClientLock
+from pymongo.lock import MongoClientLock
 
 
 class PeriodicExecutor(object):
