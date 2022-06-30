@@ -15,6 +15,7 @@
 """Test suite for pymongo, bson, and gridfs.
 """
 
+import base64
 import gc
 import os
 import socket
@@ -114,6 +115,27 @@ elif TEST_SERVERLESS:
     TLS_OPTIONS = {"tls": True}
     # Spec says serverless tests must be run with compression.
     COMPRESSORS = COMPRESSORS or "zlib"
+
+
+# Shared KMS data.
+LOCAL_MASTER_KEY = base64.b64decode(
+    b"Mng0NCt4ZHVUYUJCa1kxNkVyNUR1QURhZ2h2UzR2d2RrZzh0cFBwM3R6NmdWMDFBMUN3YkQ"
+    b"5aXRRMkhGRGdQV09wOGVNYUMxT2k3NjZKelhaQmRCZGJkTXVyZG9uSjFk"
+)
+AWS_CREDS = {
+    "accessKeyId": os.environ.get("FLE_AWS_KEY", ""),
+    "secretAccessKey": os.environ.get("FLE_AWS_SECRET", ""),
+}
+AZURE_CREDS = {
+    "tenantId": os.environ.get("FLE_AZURE_TENANTID", ""),
+    "clientId": os.environ.get("FLE_AZURE_CLIENTID", ""),
+    "clientSecret": os.environ.get("FLE_AZURE_CLIENTSECRET", ""),
+}
+GCP_CREDS = {
+    "email": os.environ.get("FLE_GCP_EMAIL", ""),
+    "privateKey": os.environ.get("FLE_GCP_PRIVATEKEY", ""),
+}
+KMIP_CREDS = {"endpoint": os.environ.get("FLE_KMIP_ENDPOINT", "localhost:5698")}
 
 
 def is_server_resolvable():
