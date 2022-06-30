@@ -20,9 +20,9 @@ import unittest
 
 sys.path[0:0] = [""]
 
-from test import fail_point
 from test.utils import get_pool
 
+from bson.son import SON
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure
 from pymongo.uri_parser import parse_uri
@@ -73,9 +73,14 @@ class TestAuthAWS(unittest.TestCase):
                 "errorCode": 10107,
             },
         }
-        with fail_point(client, fail_point_cmd):
-            with self.assertRaises(OperationFailure):
-                client.get_database().test.find_one()
+        cmd_on = SON([("configureFailPoint", "failCommand")])
+        cmd_on.update(fail_point_cmd)
+        client.admin.command(cmd_on)
+
+        with self.assertRaises(OperationFailure):
+            client.get_database().test.find_one()
+
+        client.admin.command("configureFailPoint", cmd_on["configureFailPoint"], mode="off")
 
         # The next attempt should generate a new cred and succeed.
         client.get_database().test.find_one()
