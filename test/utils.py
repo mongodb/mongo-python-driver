@@ -33,17 +33,12 @@ from test import client_context, db_pwd, db_user
 from bson import json_util
 from bson.objectid import ObjectId
 from bson.son import SON
-from pymongo import (
-    MongoClient,
-    MongoClientLock,
-    monitoring,
-    operations,
-    read_preferences,
-)
+from pymongo import MongoClient, monitoring, operations, read_preferences
 from pymongo.collection import ReturnDocument
 from pymongo.cursor import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
+from pymongo.lock import MongoClientLock
 from pymongo.monitoring import _SENSITIVE_COMMANDS
 from pymongo.pool import _CancellationContext, _PoolGeneration
 from pymongo.read_concern import ReadConcern
