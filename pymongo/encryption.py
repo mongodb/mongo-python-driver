@@ -229,14 +229,8 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         """
         raw_doc = RawBSONDocument(data_key, _KEY_VAULT_OPTS)
         data_key_id = raw_doc.get("_id")
-        if isinstance(data_key_id, Binary):
-            if data_key_id.subtype != UUID_SUBTYPE:
-                raise TypeError("data_key _id must have a UUID subtype")
-        elif not isinstance(data_key_id, uuid.UUID):
-            raise TypeError("data_key _id must be a UUID")
-        else:
-            # Convert the UUID to a Binary id.
-            data_key_id = Binary(data_key_id.bytes, subtype=UUID_SUBTYPE)
+        if not isinstance(data_key_id, Binary) or data_key_id.subtype != UUID_SUBTYPE:
+            raise TypeError("data_key _id must be Binary with a UUID subtype")
 
         self.key_vault_coll.insert_one(raw_doc)
         return data_key_id
