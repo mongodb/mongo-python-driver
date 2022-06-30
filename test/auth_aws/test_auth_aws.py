@@ -17,12 +17,11 @@
 import os
 import sys
 import unittest
-from unittest import mock
 
 sys.path[0:0] = [""]
 
 from test import PyMongoTestCase
-from test.utils import EventListener, get_pool
+from test.utils import get_pool
 
 from bson.son import SON
 from pymongo import MongoClient
@@ -59,29 +58,29 @@ class TestAuthAWS(PyMongoTestCase):
             client.get_database().test.find_one()
 
     def test_cache_credentials(self):
-        listener = EventListener()
-        client = MongoClient(self.uri, event_listeners=[listener])
-        # client.get_database().test.find_one()
-        # pool = get_pool(client)
-        # pool.reset()
+        client = MongoClient(self.uri)
+        self.addCleanup(client.close)
+        # The first attempt should cache credentials.
+        client.get_database().test.find_one()
+        pool = get_pool(client)
+        pool.reset()
+        # Poison the cache with invalid creds. The first auth attempt should
+        # fail and clear the cache.
         fail_point = {
             "configureFailPoint": "failCommand",
-            "mode": {"times": 10},
+            "mode": {"times": 1},
             "data": {
                 "failCommands": ["saslStart"],
-                "closeConnection": True,
                 "errorCode": 10107,
-                "appName": "failingSaslTest",
             },
         }
+
         with self.fail_point(fail_point):
-            pool = get_pool(client)
-            pool.reset()
-            client.get_database().test.find_one()
-            pool.reset()
-            client.get_database().test.find_one()
+            with self.assertRaises(OperationFailure):
+                client.get_database().test.find_one()
+
+        # The next attempt should generate a new cred and succeed.
         client.get_database().test.find_one()
-        client.close()
 
 
 class TestAWSLambdaExamples(unittest.TestCase):
