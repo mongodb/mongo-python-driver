@@ -17,7 +17,6 @@
 import contextlib
 import enum
 import socket
-import uuid
 import weakref
 from typing import Any, Mapping, Optional, Sequence
 
