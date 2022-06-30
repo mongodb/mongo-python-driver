@@ -67,7 +67,7 @@ _MONGOCRYPTD_TIMEOUT_MS = 10000
 _DATA_KEY_OPTS: CodecOptions = CodecOptions(document_class=SON, uuid_representation=STANDARD)
 # Use RawBSONDocument codec options to avoid needlessly decoding
 # documents from the key vault.
-_KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument, uuid_representation=STANDARD)
+_KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument)
 
 
 @contextlib.contextmanager
@@ -229,7 +229,10 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         """
         raw_doc = RawBSONDocument(data_key, _KEY_VAULT_OPTS)
         data_key_id = raw_doc.get("_id")
-        if not isinstance(data_key_id, uuid.UUID):
+        if isinstance(data_key_id, Binary):
+            if data_key_id.subtype != UUID_SUBTYPE:
+                raise TypeError("data_key _id must have a UUID subtype")
+        elif not isinstance(data_key_id, uuid.UUID):
             raise TypeError("data_key _id must be a UUID")
 
         self.key_vault_coll.insert_one(raw_doc)
@@ -542,11 +545,8 @@ class ClientEncryption(object):
         self._encryption = ExplicitEncrypter(
             self._io_callbacks, MongoCryptOptions(kms_providers, None)
         )
-        # Create a version of the key vault collection that returns Binary
-        # objects instead of UUIDs.
-        self._key_vault_coll = self._io_callbacks.key_vault_coll.with_options(
-            codec_options=DEFAULT_RAW_BSON_OPTIONS,
-        )
+        # Use the same key vault collection as the callback.
+        self._key_vault_coll = self._io_callbacks.key_vault_coll
 
     def create_data_key(
         self,
