@@ -16,15 +16,16 @@
 
 import os
 import platform
-import sys
 import threading
 from multiprocessing import Pipe
 from test import IntegrationTest, client_context
+from typing import Any
 from unittest import skipIf
 from unittest.mock import patch
 
 from bson.objectid import ObjectId
 from pymongo import MongoClient
+from pymongo.lock import MongoClientLock
 
 
 @client_context.require_connection
@@ -41,8 +42,8 @@ class TestFork(IntegrationTest):
         self.db = self.client.pymongo_test
 
     class LockWrapper:
-        def __init__(self, _after_enter=None):
-            self.__lock = threading.Lock()
+        def __init__(self, _lock_type: Any = MongoClientLock, _after_enter=None):
+            self.__lock = _lock_type()
             self._after_enter = _after_enter
 
         def __enter__(self):
@@ -75,9 +76,7 @@ class TestFork(IntegrationTest):
             self.db.client._get_topology()
 
             if lock_pid == 0:  # Child
-                with self.assertRaises(SystemExit) as ex:
-                    sys.exit(0 if not self.db.client._MongoClient__lock.locked() else 1)
-                self.assertEqual(ex.exception.code, 0)
+                os._exit(0 if not self.db.client._MongoClient__lock.locked() else 1)
             else:  # Parent
                 self.assertEqual(0, os.waitpid(lock_pid, 0)[1] >> 8)
 
@@ -87,6 +86,7 @@ class TestFork(IntegrationTest):
         Will fork upon __enter__, waits for child to return.
         Parent => _inc_lock should remain locked.
         Child => _inc_lock should be unlocked.
+        Must use threading.Lock as ObjectId uses this.
         """
 
         lock_pid: int = -1
@@ -95,14 +95,16 @@ class TestFork(IntegrationTest):
             nonlocal lock_pid
             lock_pid = os.fork()
 
-        with patch.object(ObjectId, "_inc_lock", TestFork.LockWrapper(_after_enter=_fork)):
+        with patch.object(
+            ObjectId,
+            "_inc_lock",
+            TestFork.LockWrapper(_lock_type=threading.Lock, _after_enter=_fork),
+        ):
             # Generate the ObjectId, will fork upon __enter__ing
             # the with region.
             ObjectId()
             if lock_pid == 0:  # Child
-                with self.assertRaises(SystemExit) as ex:
-                    sys.exit(0 if not ObjectId._inc_lock.locked() else 1)
-                self.assertEqual(ex.exception.code, 0)
+                os._exit(0 if not ObjectId._inc_lock.locked() else 1)
             else:  # Parent
                 self.assertEqual(0, os.waitpid(lock_pid, 0)[1] >> 8)
 
@@ -112,20 +114,20 @@ class TestFork(IntegrationTest):
     def test_topology_reset(self):
         """
         Tests that topologies are different from each other.
-        Since memory is copy-on-write, in __id__ shouldn't be the same
-        after forking and resetting. This is tested by
+        Cannot use ID because virtual memory addresses may be the same.
+        Cannot reinstantiate ObjectId in the topology settings.
+        Relies on difference in PID when opened again.
         """
         parent_conn, child_conn = Pipe()
         cl_test = MongoClient()
-        init_id = id(cl_test._topology)
+        init_id = cl_test._topology._pid
         lock_pid: int = os.fork()
 
         if lock_pid == 0:  # Child
-            child_conn.send(id(cl_test._topology))
-            with self.assertRaises(SystemExit) as ex:
-                sys.exit(0)
-            self.assertEqual(ex.exception.code, 0)
+            cl_test._topology.open()
+            child_conn.send(cl_test._topology._pid)
+            os._exit(0)
         else:  # Parent
-            self.assertEqual(id(cl_test._topology), init_id)
+            self.assertEqual(cl_test._topology._pid, init_id)
             child_id = parent_conn.recv()
             self.assertNotEqual(child_id, init_id)
