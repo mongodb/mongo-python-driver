@@ -17,10 +17,13 @@
 import os
 import sys
 import unittest
+from datetime import datetime, timedelta
 
 sys.path[0:0] = [""]
 
 from test.utils import get_pool
+
+from pymongo_auth_aws import auth
 
 from bson.son import SON
 from pymongo import MongoClient
@@ -57,33 +60,46 @@ class TestAuthAWS(unittest.TestCase):
             client.get_database().test.find_one()
 
     def test_cache_credentials(self):
+        self.assertEqual(auth._get_credentials(), None)
         client = MongoClient(self.uri)
         self.addCleanup(client.close)
+
         # The first attempt should cache credentials.
         client.get_database().test.find_one()
+        creds = auth._get_credentials()
+        assert creds is not None
+
+        # Force a re-auth and make sure the cache is used.
         pool = get_pool(client)
         pool.reset()
-        # Poison the cache with invalid creds. The first auth attempt should
-        # fail and clear the cache.
-        fail_point_cmd = {
-            "configureFailPoint": "failCommand",
-            "mode": {"times": 1},
-            "data": {
-                "failCommands": ["saslStart"],
-                "errorCode": 10107,
-            },
-        }
-        cmd_on = SON([("configureFailPoint", "failCommand")])
-        cmd_on.update(fail_point_cmd)
-        client.admin.command(cmd_on)
+        client.get_database().test.find_one()
+        self.assertEqual(creds, auth._get_credentials())
 
+        # Make the creds about to expire.
+        soon = datetime.now(auth.utc) + timedelta(minutes=1)
+        creds = auth.AwsCredential(creds.username, creds.password, creds.token, soon)
+        auth._set_credentials(creds)
+
+        # Force a re-auth and make sure the cache is updated.
+        pool = get_pool(client)
+        pool.reset()
+        client.get_database().test.find_one()
+        new_creds = auth._get_credentials()
+        self.assertNotEqual(creds, new_creds)
+
+        # Poison the creds with invalid password.
+        creds = auth.AwsCredential(creds.username, "a" * 24, creds.token, creds.expiration)
+
+        # Force a re-auth and make sure the cache is cleared.
+        pool = get_pool(client)
+        pool.reset()
         with self.assertRaises(OperationFailure):
             client.get_database().test.find_one()
-
-        client.admin.command("configureFailPoint", cmd_on["configureFailPoint"], mode="off")
+        self.assertEqual(auth._get_credentials(), None)
 
         # The next attempt should generate a new cred and succeed.
         client.get_database().test.find_one()
+        self.assertNotEqual(auth._get_credentials(), None)
 
 
 class TestAWSLambdaExamples(unittest.TestCase):
