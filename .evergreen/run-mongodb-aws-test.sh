@@ -68,7 +68,7 @@ authtest () {
         git checkout DRIVERS-2333-2
         popd
     fi
-    pip install pymongo-auth-aws
+    pip install ./pymongo-auth-aws
     python test/auth_aws/test_auth_aws.py
     deactivate
     rm -rf venvaws
