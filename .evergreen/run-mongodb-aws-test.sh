@@ -65,6 +65,7 @@ authtest () {
     pushd pymongo-auth-aws
     git fetch origin DRIVERS-2333-2
     git checkout DRIVERS-2333-2
+    pip install .
     popd
     python test/auth_aws/test_auth_aws.py
     deactivate
