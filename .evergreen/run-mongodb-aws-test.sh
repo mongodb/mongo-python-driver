@@ -62,6 +62,7 @@ authtest () {
     fi
     python -m pip install '.[aws]'
     git clone https://github.com/blink1073/pymongo-auth-aws.git
+    cd pymongo-auth-aws
     git fetch origin DRIVERS-2333-2
     git checkout DRIVERS-2333-2
     python test/auth_aws/test_auth_aws.py
