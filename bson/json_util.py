@@ -659,9 +659,10 @@ def _parse_canonical_datetime(
                 return DatetimeMS(aware)
             return aware
         else:
+            aware_tzinfo_none = aware.replace(tzinfo=None)
             if json_options.datetime_conversion == DatetimeConversionOpts.DATETIME_MS:
-                return DatetimeMS(aware.replace(tzinfo=None))
-            return aware.replace(tzinfo=None)
+                return DatetimeMS(aware_tzinfo_none)
+            return aware_tzinfo_none
     return bson._millis_to_datetime(int(dtm), json_options)
 
 
@@ -829,8 +830,8 @@ def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
         ):
             return default(obj.to_datetime(), json_options)
         elif json_options.datetime_representation == DatetimeRepresentation.LEGACY:
-            return {"$date": int(obj)}
-        return {"$date": {"$numberLong": int(obj)}}
+            return {"$date": str(int(obj))}
+        return {"$date": {"$numberLong": str(int(obj))}}
     if json_options.strict_number_long and isinstance(obj, Int64):
         return {"$numberLong": str(obj)}
     if isinstance(obj, (RE_TYPE, Regex)):

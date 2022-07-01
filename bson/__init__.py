@@ -368,8 +368,6 @@ class DatetimeMS:
         if isinstance(value, int):
             self._value = value
         elif isinstance(value, datetime.datetime):
-            if value.utcoffset() is not None:
-                value = value - value.utcoffset()  # type: ignore
             self._value = _datetime_to_millis(value)
         else:
             raise TypeError(f"{type(value)} is not a valid type for DatetimeMS")
@@ -385,31 +383,36 @@ class DatetimeMS:
     # Avoids using functools.total_ordering for speed.
 
     def __lt__(self, other: "DatetimeMS") -> bool:
-        return self._value.__lt__(other._value)
+        return self._value < other._value
 
     def __le__(self, other: "DatetimeMS") -> bool:
-        return self._value.__le__(other._value)
+        return self._value <= other._value
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, DatetimeMS):
-            return self._value.__eq__(other._value)
+            return self._value == other._value
         return False
 
     def __ne__(self, other: Any) -> bool:
         if isinstance(other, DatetimeMS):
-            return self._value.__ne__(other._value)
+            return self._value != other._value
         return True
 
     def __gt__(self, other: "DatetimeMS") -> bool:
-        return self._value.__gt__(other._value)
+        return self._value > other._value
 
     def __ge__(self, other: "DatetimeMS") -> bool:
-        return self._value.__ge__(other._value)
+        return self._value >= other._value
 
     _type_marker = 9
 
     def to_datetime(
-        self, tz_aware: bool = True, tzinfo: datetime.timezone = datetime.timezone.utc
+        self,
+        codec_options=CodecOptions(
+            tz_aware=True,
+            tzinfo=datetime.timezone.utc,
+            datetime_conversion=DatetimeConversionOpts.DATETIME_CLAMP,
+        ),
     ) -> datetime.datetime:
         """
         Converts this ``DatetimeMS`` into a :class:`~datetime.datetime`
@@ -417,21 +420,7 @@ class DatetimeMS:
         :class:`~bson.CodecOptions` with `tz_aware = True` and
         `tzinfo = datetime.timezone.utc`.
         """
-        return cast(
-            datetime.datetime,
-            _millis_to_datetime(
-                self._value,
-                CodecOptions(
-                    tz_aware=tz_aware,
-                    tzinfo=tzinfo,
-                    datetime_conversion=DatetimeConversionOpts.DATETIME,
-                )
-                if tz_aware
-                else CodecOptions(
-                    tz_aware=False, datetime_conversion=DatetimeConversionOpts.DATETIME
-                ),
-            ),
-        )
+        return cast(datetime.datetime, _millis_to_datetime(self._value, codec_options))
 
     def __int__(self) -> int:
         return int(self._value)

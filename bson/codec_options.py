@@ -346,11 +346,6 @@ class CodecOptions(_BaseCodecOptions):
         if not isinstance(type_registry, TypeRegistry):
             raise TypeError("type_registry must be an instance of TypeRegistry")
 
-        if not isinstance(datetime_conversion, str):
-            raise TypeError("datetime_conversion must be a string")
-        if datetime_conversion not in DatetimeConversionOpts.__members__.values():
-            raise ValueError(f"{datetime_conversion} is not a valid option for datetime_conversion")
-
         return tuple.__new__(
             cls,
             (

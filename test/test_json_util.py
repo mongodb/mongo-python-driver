@@ -21,7 +21,7 @@ import sys
 import uuid
 from typing import Any, List, MutableMapping
 
-from bson.codec_options import DatetimeConversionOpts
+from bson.codec_options import CodecOptions, DatetimeConversionOpts
 
 sys.path[0:0] = [""]
 
@@ -250,11 +250,11 @@ class TestJsonUtil(unittest.TestCase):
         opts = JSONOptions(datetime_representation=DatetimeRepresentation.ISO8601)
 
         self.assertEqual(
-            dat_min["x"].to_datetime(tz_aware=False),
+            dat_min["x"].to_datetime(CodecOptions(tz_aware=False)),
             json_util.loads(json_util.dumps(dat_min))["x"],
         )
         self.assertEqual(
-            dat_max["x"].to_datetime(tz_aware=False),
+            dat_max["x"].to_datetime(CodecOptions(tz_aware=False)),
             json_util.loads(json_util.dumps(dat_max))["x"],
         )
 
@@ -262,18 +262,18 @@ class TestJsonUtil(unittest.TestCase):
         dat_min = {"x": DatetimeMS(-1)}
         dat_max = {"x": DatetimeMS(_max_datetime_ms() + 1)}
 
-        self.assertEqual("""{"x": {"$date": {"$numberLong": -1}}}""", json_util.dumps(dat_min))
+        self.assertEqual('{"x": {"$date": {"$numberLong": "-1"}}}', json_util.dumps(dat_min))
         self.assertEqual(
-            """{"x": {"$date": {"$numberLong": """ + str(int(dat_max["x"])) + """}}}""",
+            '{"x": {"$date": {"$numberLong": "' + str(int(dat_max["x"])) + '"}}}',
             json_util.dumps(dat_max),
         )
         # Test legacy.
         opts = JSONOptions(
             datetime_representation=DatetimeRepresentation.LEGACY, json_mode=JSONMode.LEGACY
         )
-        self.assertEqual("""{"x": {"$date": -1}}""", json_util.dumps(dat_min, json_options=opts))
+        self.assertEqual('{"x": {"$date": "-1"}}', json_util.dumps(dat_min, json_options=opts))
         self.assertEqual(
-            """{"x": {"$date": """ + str(int(dat_max["x"])) + """}}""",
+            '{"x": {"$date": "' + str(int(dat_max["x"])) + '"}}',
             json_util.dumps(dat_max, json_options=opts),
         )
 
@@ -282,16 +282,16 @@ class TestJsonUtil(unittest.TestCase):
             datetime_representation=DatetimeRepresentation.NUMBERLONG, json_mode=JSONMode.LEGACY
         )
         self.assertEqual(
-            """{"x": {"$date": {"$numberLong": -1}}}""", json_util.dumps(dat_min, json_options=opts)
+            '{"x": {"$date": {"$numberLong": "-1"}}}', json_util.dumps(dat_min, json_options=opts)
         )
         self.assertEqual(
-            """{"x": {"$date": {"$numberLong": """ + str(int(dat_max["x"])) + """}}}""",
+            '{"x": {"$date": {"$numberLong": "' + str(int(dat_max["x"])) + '"}}}',
             json_util.dumps(dat_max, json_options=opts),
         )
 
         # Test decode from datetime.datetime to DatetimeMS
         dat_min = {"x": datetime.datetime.min}
-        dat_max = {"x": DatetimeMS(_max_datetime_ms()).to_datetime(tz_aware=False)}
+        dat_max = {"x": DatetimeMS(_max_datetime_ms()).to_datetime(CodecOptions(tz_aware=False))}
         opts = JSONOptions(
             datetime_representation=DatetimeRepresentation.ISO8601,
             datetime_conversion=DatetimeConversionOpts.DATETIME_MS,
