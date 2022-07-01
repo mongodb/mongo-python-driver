@@ -68,7 +68,7 @@ authtest () {
     pip install .
     popd
     rm -rf pymongo-auth-aws
-    python test/auth_aws/test_auth_aws.py
+    python test/auth_aws/test_auth_aws.py -v
     deactivate
     rm -rf venvaws
 }
