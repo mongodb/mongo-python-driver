@@ -63,19 +63,16 @@ class TestAuthAWS(unittest.TestCase):
         client = MongoClient(self.uri)
         self.addCleanup(client.close)
 
-        # Check if caching is not being used.
-        access_key = os.environ.get("AWS_ACCESS_KEY_ID")
-        secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
-        if access_key and secret_key:
-            self.skipTest("No caching is used")
-
         # Ensure cleared credentials.
         auth._set_cached_credentials(None)
         self.assertEqual(auth._get_cached_credentials(), None)
 
-        # The first attempt should cache credentials if caching is being used.
+        # The first attempt should cache credentials.
         client.get_database().test.find_one()
         creds = auth._get_cached_credentials()
+
+        if creds is None:
+            self.skipTest("No caching is being used")
 
         # Force a re-auth and make sure the cache is used.
         pool = get_pool(client)
