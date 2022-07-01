@@ -61,7 +61,7 @@ authtest () {
       . venvaws/bin/activate
     fi
     python -m pip install '.[aws]'
-    if [[ !-f pymongo-auth-aws ]]; then
+    if [[ ! -f pymongo-auth-aws ]]; then
         git clone https://github.com/blink1073/pymongo-auth-aws.git
         pushd pymongo-auth-aws
         git fetch origin DRIVERS-2333-2
