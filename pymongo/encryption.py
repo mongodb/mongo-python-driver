@@ -636,7 +636,6 @@ class ClientEncryption(object):
         algorithm: str,
         key_id: Optional[Binary] = None,
         key_alt_name: Optional[str] = None,
-        index_key_id: Optional[Binary] = None,
         query_type: Optional[str] = None,
         contention_factor: Optional[int] = None,
     ) -> Binary:
@@ -653,8 +652,6 @@ class ClientEncryption(object):
             :class:`~bson.binary.Binary` with subtype 4 (
             :attr:`~bson.binary.UUID_SUBTYPE`).
           - `key_alt_name`: Identifies a key vault document by 'keyAltName'.
-          - `index_key_id`: **(BETA)** The index key id to use for Queryable Encryption. Must be
-            a :class:`~bson.binary.Binary` with subtype 4 (:attr:`~bson.binary.UUID_SUBTYPE`).
           - `query_type` (str): **(BETA)** The query type to execute. See
             :class:`QueryType` for valid options.
           - `contention_factor` (int): **(BETA)** The contention factor to use
@@ -662,7 +659,7 @@ class ClientEncryption(object):
             *must* be given when the :attr:`Algorithm.INDEXED` algorithm is
             used.
 
-        .. note:: `index_key_id`, `query_type`, and `contention_factor` are part of the
+        .. note:: `query_type` and `contention_factor` are part of the
            Queryable Encryption beta. Backwards-breaking changes may be made before the
            final release.
 
@@ -670,17 +667,14 @@ class ClientEncryption(object):
           The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
 
         .. versionchanged:: 4.2
-           Added the `index_key_id`, `query_type`, and `contention_factor` parameters.
+           Added the `query_type` and `contention_factor` parameters.
+
         """
         self._check_closed()
         if key_id is not None and not (
             isinstance(key_id, Binary) and key_id.subtype == UUID_SUBTYPE
         ):
             raise TypeError("key_id must be a bson.binary.Binary with subtype 4")
-        if index_key_id is not None and not (
-            isinstance(index_key_id, Binary) and index_key_id.subtype == UUID_SUBTYPE
-        ):
-            raise TypeError("index_key_id must be a bson.binary.Binary with subtype 4")
 
         doc = encode({"v": value}, codec_options=self._codec_options)
         with _wrap_encryption_errors():
@@ -689,7 +683,6 @@ class ClientEncryption(object):
                 algorithm,
                 key_id=key_id,
                 key_alt_name=key_alt_name,
-                index_key_id=index_key_id,
                 query_type=query_type,
                 contention_factor=contention_factor,
             )
