@@ -882,7 +882,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if "csot" in class_name:
             if client_context.storage_engine == "mmapv1":
                 self.skipTest(
-                    "MMAPv1 does not support retryable writes which is required for " "CSOT tests"
+                    "MMAPv1 does not support retryable writes which is required for CSOT tests"
                 )
             if "change" in description or "change" in class_name:
                 self.skipTest("CSOT not implemented for watch()")
