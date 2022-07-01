@@ -60,9 +60,12 @@ class TestAuthAWS(unittest.TestCase):
             client.get_database().test.find_one()
 
     def test_cache_credentials(self):
-        self.assertEqual(auth._get_cached_credentials(), None)
         client = MongoClient(self.uri)
         self.addCleanup(client.close)
+
+        # Ensure cleared credentials.
+        auth._set_cached_credentials(None)
+        self.assertEqual(auth._get_cached_credentials(), None)
 
         # The first attempt should cache credentials.
         client.get_database().test.find_one()
