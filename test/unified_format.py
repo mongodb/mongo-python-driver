@@ -880,6 +880,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
         if "csot" in class_name:
+            if client_context.storage_engine == "mmapv1":
+                self.skipTest(
+                    "MMAPv1 does not support retryable writes which is required for " "CSOT tests"
+                )
             if "change" in description or "change" in class_name:
                 self.skipTest("CSOT not implemented for watch()")
             if "cursors" in class_name:
