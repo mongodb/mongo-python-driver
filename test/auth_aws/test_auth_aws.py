@@ -60,31 +60,31 @@ class TestAuthAWS(unittest.TestCase):
             client.get_database().test.find_one()
 
     def test_cache_credentials(self):
-        self.assertEqual(auth._get_credentials(), None)
+        self.assertEqual(auth._get_cached_credentials(), None)
         client = MongoClient(self.uri)
         self.addCleanup(client.close)
 
         # The first attempt should cache credentials.
         client.get_database().test.find_one()
-        creds = auth._get_credentials()
+        creds = auth._get_cached_credentials()
         assert creds is not None
 
         # Force a re-auth and make sure the cache is used.
         pool = get_pool(client)
         pool.reset()
         client.get_database().test.find_one()
-        self.assertEqual(creds, auth._get_credentials())
+        self.assertEqual(creds, auth._get_cached_credentials())
 
         # Make the creds about to expire.
         soon = datetime.now(auth.utc) + timedelta(minutes=1)
         creds = auth.AwsCredential(creds.username, creds.password, creds.token, soon)
-        auth._set_credentials(creds)
+        auth._set_cached_credentials(creds)
 
         # Force a re-auth and make sure the cache is updated.
         pool = get_pool(client)
         pool.reset()
         client.get_database().test.find_one()
-        new_creds = auth._get_credentials()
+        new_creds = auth._get_cached_credentials()
         self.assertNotEqual(creds, new_creds)
 
         # Poison the creds with invalid password.
@@ -95,11 +95,11 @@ class TestAuthAWS(unittest.TestCase):
         pool.reset()
         with self.assertRaises(OperationFailure):
             client.get_database().test.find_one()
-        self.assertEqual(auth._get_credentials(), None)
+        self.assertEqual(auth._get_cached_credentials(), None)
 
         # The next attempt should generate a new cred and succeed.
         client.get_database().test.find_one()
-        self.assertNotEqual(auth._get_credentials(), None)
+        self.assertNotEqual(auth._get_cached_credentials(), None)
 
 
 class TestAWSLambdaExamples(unittest.TestCase):
