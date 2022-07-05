@@ -701,7 +701,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         codec_options: Optional[CodecOptions[_CodecDocumentType]] = None,
         session: Optional["ClientSession"] = None,
-        comment: Optional[Any] = None,
+        comment: Any = None,
         **kwargs: Any,
     ) -> _CodecDocumentType:
         """Issue a MongoDB command.
