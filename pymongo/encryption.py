@@ -260,8 +260,13 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
 
 
 class RewrapManyDataKeyResult(object):
+    """Result object returned by a ``rewrap_many_data_key`` operation.
+
+    .. versionadded:: 4.2
+    """
+
     def __init__(self, bulk_write_result: Optional[BulkWriteResult] = None) -> None:
-        """Result object returned by a ``rewrap_many_data_key`` operation.
+        """Create a ``RewrapManyDataKeyResult`` for a `rewrap_many_data_key`` operation.
 
         :Parameters:
           - `bulk_write_result`: The result of the bulk write operation used to
@@ -717,6 +722,8 @@ class ClientEncryption(object):
 
         :Returns:
           The key document.
+
+        .. versionadded:: 4.2
         """
         self._check_closed()
         return self._key_vault_coll.find_one({"_id": id})
@@ -727,6 +734,8 @@ class ClientEncryption(object):
         :Returns:
           An instance of :class:`~pymongo.cursor.Cursor` over the data key
           documents.
+
+        .. versionadded:: 4.2
         """
         self._check_closed()
         return self._key_vault_coll.find({})
@@ -741,6 +750,8 @@ class ClientEncryption(object):
 
         :Returns:
           The delete result.
+
+        .. versionadded:: 4.2
         """
         self._check_closed()
         return self._key_vault_coll.delete_one({"_id": id})
@@ -756,6 +767,8 @@ class ClientEncryption(object):
 
         :Returns:
           The previous version of the key document.
+
+        .. versionadded:: 4.2
         """
         self._check_closed()
         update = {"$addToSet": {"keyAltNames": key_alt_name}}
@@ -769,6 +782,8 @@ class ClientEncryption(object):
 
         :Returns:
           The key document.
+
+        .. versionadded:: 4.2
         """
         self._check_closed()
         return self._key_vault_coll.find_one({"keyAltNames": key_alt_name})
@@ -786,6 +801,8 @@ class ClientEncryption(object):
 
         :Returns:
           Returns the previous version of the key document.
+
+        .. versionadded:: 4.2
         """
         self._check_closed()
         pipeline = [
@@ -825,6 +842,8 @@ class ClientEncryption(object):
 
         :Returns:
           A :class:`RewrapManyDataKeyResult`.
+
+        .. versionadded:: 4.2
         """
         self._check_closed()
         with _wrap_encryption_errors():
