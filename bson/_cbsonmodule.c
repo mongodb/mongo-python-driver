@@ -52,6 +52,7 @@ struct module_state {
     PyObject* BSONInt64;
     PyObject* Decimal128;
     PyObject* Mapping;
+    PyTypeObject* DatetimeMSType;
 };
 
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
@@ -328,6 +329,7 @@ static int _load_python_objects(PyObject* module) {
     PyObject* empty_string = NULL;
     PyObject* re_compile = NULL;
     PyObject* compiled = NULL;
+    PyObject* datetime = NULL;
     struct module_state *state = GETSTATE(module);
 
     if (_load_object(&state->Binary, "bson.binary", "Binary") ||
@@ -342,7 +344,8 @@ static int _load_python_objects(PyObject* module) {
         _load_object(&state->BSONInt64, "bson.int64", "Int64") ||
         _load_object(&state->Decimal128, "bson.decimal128", "Decimal128") ||
         _load_object(&state->UUID, "uuid", "UUID") ||
-        _load_object(&state->Mapping, "collections.abc", "Mapping")) {
+        _load_object(&state->Mapping, "collections.abc", "Mapping") ||
+        _load_object(&state->DatetimeMSType, "bson", "DatetimeMS")) {
         return 1;
     }
     /* Reload our REType hack too. */
@@ -369,6 +372,13 @@ static int _load_python_objects(PyObject* module) {
     state->REType = Py_TYPE(compiled);
     Py_DECREF(empty_string);
     Py_DECREF(compiled);
+
+    // Load DatetimeMS
+    datetime = _load_object(&datetime, "bson", "DatetimeMS");
+    state->DatetimeMSType = Py_TYPE(datetime);
+    Py_INCREF(state->DatetimeMSType);
+    Py_DECREF(datetime);
+
     return 0;
 }
 
@@ -505,6 +515,47 @@ void destroy_codec_options(codec_options_t* options) {
     Py_CLEAR(options->type_registry.encoder_map);
     Py_CLEAR(options->type_registry.decoder_map);
     Py_CLEAR(options->type_registry.fallback_encoder);
+}
+
+
+/* Extended-range datetime, returns a DatetimeMS object with millis */
+static PyObject* datetime_ms_from_millis(long long millis){
+    // Allocate a new DatetimeMS object.
+    PyObject* dt;
+    PyObject* ll_millis;
+    dt = state->DatetimeMSType->tp_new(state->DatetimeMSType, NULL, NULL);
+    // Set _value.
+    if (!(ll_millis = PyLong_FromLongLong(millis))){
+        Py_DECREF(dt);
+        return NULL;
+    }
+    if (PyObject_SetAttrString(dt, "_value", ll_millis)){
+        Py_DECREF(dt);
+        Py_DECREF(ll_millis);
+        return NULL;
+    }
+    // Return
+    return dt;
+}
+
+/* Extended-range datetime, takes a DatetimeMS object and extracts the long long value. */
+static long long millis_from_datetime_ms(PyObject* dt){
+    PyObject* ll_millis;
+    long long millis;
+
+    if (!(ll_millis = PyObject_GetAttrString(dt, "_value"))){
+        return NULL;
+    }
+
+    if ((millis = PyLong_AsLongLong()) == -1){
+        PyObject* OverflowError = _error("OverflowError");
+        if (OverflowError) {
+            PyErr_SetString(OverflowError,
+                            "Unable to represent this DatetimeMS internally as a long long.");
+            Py_DECREF(OverflowError);
+        }
+    }
+    return millis;
 }
 
 static int write_element_to_buffer(PyObject* self, buffer_t buffer,
