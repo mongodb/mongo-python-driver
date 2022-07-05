@@ -19,7 +19,7 @@ import platform
 import threading
 from multiprocessing import Pipe
 from test import IntegrationTest, client_context
-from typing import Any
+from typing import Any, Callable
 from unittest import skipIf
 from unittest.mock import patch
 
@@ -42,7 +42,7 @@ class TestFork(IntegrationTest):
         self.db = self.client.pymongo_test
 
     class LockWrapper:
-        def __init__(self, _lock_type: Any = MongoClientLock, _after_enter=None):
+        def __init__(self, _lock_type: Any = MongoClientLock, _after_enter: Callable = None):
             self.__lock = _lock_type()
             self._after_enter = _after_enter
 
