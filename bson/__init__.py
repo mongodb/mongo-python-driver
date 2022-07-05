@@ -381,12 +381,12 @@ class DatetimeMS:
     __str__ = __repr__
 
     # Avoids using functools.total_ordering for speed.
-
+    # Second argument not using the _value works for typechecking some of these.
     def __lt__(self, other: "DatetimeMS") -> bool:
-        return self._value < other._value
+        return self._value < other
 
     def __le__(self, other: "DatetimeMS") -> bool:
-        return self._value <= other._value
+        return self._value <= other
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, DatetimeMS):
@@ -399,21 +399,14 @@ class DatetimeMS:
         return True
 
     def __gt__(self, other: "DatetimeMS") -> bool:
-        return self._value > other._value
+        return self._value > other
 
     def __ge__(self, other: "DatetimeMS") -> bool:
-        return self._value >= other._value
+        return self._value >= other
 
     _type_marker = 9
 
-    def to_datetime(
-        self,
-        codec_options=CodecOptions(
-            tz_aware=True,
-            tzinfo=datetime.timezone.utc,
-            datetime_conversion=DatetimeConversionOpts.DATETIME_CLAMP,
-        ),
-    ) -> datetime.datetime:
+    def to_datetime(self, codec_options=DEFAULT_CODEC_OPTIONS) -> datetime.datetime:
         """
         Converts this ``DatetimeMS`` into a :class:`~datetime.datetime`
         object. If `opts` is not set, then it will default to a

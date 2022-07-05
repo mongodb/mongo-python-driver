@@ -1166,7 +1166,7 @@ class TestDatetimeConversion(unittest.TestCase):
         dt1 = dtr1.to_datetime()
         self.assertEqual(dtr1, DatetimeMS(dt1))
 
-        dt2 = datetime.datetime(1969, 1, 1, tzinfo=datetime.timezone.utc)
+        dt2 = datetime.datetime(1969, 1, 1)
         dtr2 = DatetimeMS(dt2)
         self.assertEqual(dtr2.to_datetime(), dt2)
 
