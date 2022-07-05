@@ -43,9 +43,8 @@ from test.utils import rs_or_single_client
 from bson import CodecOptions, decode, decode_all, decode_file_iter, decode_iter, encode
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
-from pymongo import ASCENDING
+from pymongo import ASCENDING, MongoClient
 from pymongo.collection import Collection
-from pymongo.mongo_client import MongoClient
 from pymongo.operations import InsertOne
 
 TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "mypy_fails")
