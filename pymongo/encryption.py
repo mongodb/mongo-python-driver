@@ -266,7 +266,7 @@ class RewrapManyDataKeyResult(object):
     """
 
     def __init__(self, bulk_write_result: Optional[BulkWriteResult] = None) -> None:
-        """Create a ``RewrapManyDataKeyResult`` for a `rewrap_many_data_key`` operation.
+        """Create a ``RewrapManyDataKeyResult`` for a ``rewrap_many_data_key`` operation.
 
         :Parameters:
           - `bulk_write_result`: The result of the bulk write operation used to
