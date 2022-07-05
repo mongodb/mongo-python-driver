@@ -383,10 +383,10 @@ class DatetimeMS:
     # Avoids using functools.total_ordering for speed.
     # Second argument not using the _value works for typechecking some of these.
     def __lt__(self, other: "DatetimeMS") -> bool:
-        return self._value < other
+        return self._value < int(other)
 
     def __le__(self, other: "DatetimeMS") -> bool:
-        return self._value <= other
+        return self._value <= int(other)
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, DatetimeMS):
@@ -399,10 +399,10 @@ class DatetimeMS:
         return True
 
     def __gt__(self, other: "DatetimeMS") -> bool:
-        return self._value > other
+        return self._value > int(other)
 
     def __ge__(self, other: "DatetimeMS") -> bool:
-        return self._value >= other
+        return self._value >= int(other)
 
     _type_marker = 9
 
@@ -981,10 +981,14 @@ def _millis_to_datetime(millis: int, opts: CodecOptions) -> Union[datetime.datet
     if (
         opts.datetime_conversion == DatetimeConversionOpts.DATETIME
         or opts.datetime_conversion == DatetimeConversionOpts.DATETIME_CLAMP
+        or opts.datetime_conversion == DatetimeConversionOpts.DATETIME_AUTO
     ):
+        tz = opts.tzinfo or datetime.timezone.utc
         if opts.datetime_conversion == DatetimeConversionOpts.DATETIME_CLAMP:
-            tz = opts.tzinfo or datetime.timezone.utc
             millis = max(_min_datetime_ms(tz), min(millis, _max_datetime_ms(tz)))
+        elif opts.datetime_conversion == DatetimeConversionOpts.DATETIME_AUTO:
+            if not (_min_datetime_ms(tz) <= millis <= _max_datetime_ms(tz)):
+                return DatetimeMS(millis)
 
         diff = ((millis % 1000) + 1000) % 1000
         seconds = (millis - diff) // 1000
@@ -993,7 +997,7 @@ def _millis_to_datetime(millis: int, opts: CodecOptions) -> Union[datetime.datet
         if opts.tz_aware:
             dt = EPOCH_AWARE + datetime.timedelta(seconds=seconds, microseconds=micros)
             if opts.tzinfo:
-                dt = dt.astimezone(opts.tzinfo)
+                dt = dt.astimezone(tz)
             return dt
         else:
             return EPOCH_NAIVE + datetime.timedelta(seconds=seconds, microseconds=micros)

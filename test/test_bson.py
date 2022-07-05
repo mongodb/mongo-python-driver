@@ -1240,6 +1240,51 @@ class TestDatetimeConversion(unittest.TestCase):
             datetime.datetime.max.replace(tzinfo=datetime.timezone.utc, microsecond=999000),
         )
 
+    def test_datetime_auto(self):
+        # Naive auto, in range.
+        opts1 = CodecOptions(datetime_conversion="datetime_auto")
+        inr = encode({"x": datetime.datetime(1970, 1, 1)}, opts1)
+        dec_inr = decode(inr)
+        self.assertEqual(dec_inr["x"], datetime.datetime(1970, 1, 1))
+
+        # Naive auto, below range.
+        below = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 24 * 60 * 60)})
+        dec_below = decode(below, opts1)
+        self.assertEqual(
+            dec_below["x"], DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 24 * 60 * 60)
+        )
+
+        # Naive auto, above range.
+        above = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 24 * 60 * 60)})
+        dec_above = decode(above, opts1)
+        self.assertEqual(
+            dec_above["x"],
+            DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 24 * 60 * 60),
+        )
+
+        # Aware auto, in range.
+        opts2 = CodecOptions(
+            datetime_conversion="datetime_auto", tz_aware=True, tzinfo=datetime.timezone.utc
+        )
+        inr = encode({"x": datetime.datetime(1970, 1, 1)}, opts2)
+        dec_inr = decode(inr)
+        self.assertEqual(dec_inr["x"], datetime.datetime(1970, 1, 1))
+
+        # Aware auto, below range.
+        below = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 24 * 60 * 60)})
+        dec_below = decode(below, opts2)
+        self.assertEqual(
+            dec_below["x"], DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 24 * 60 * 60)
+        )
+
+        # Aware auto, above range.
+        above = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 24 * 60 * 60)})
+        dec_above = decode(above, opts2)
+        self.assertEqual(
+            dec_above["x"],
+            DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 24 * 60 * 60),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

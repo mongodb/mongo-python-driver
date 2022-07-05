@@ -203,6 +203,7 @@ class DatetimeConversionOpts(str, enum.Enum):
     DATETIME = "datetime"
     DATETIME_CLAMP = "datetime_clamp"
     DATETIME_MS = "datetime_ms"
+    DATETIME_AUTO = "datetime_auto"
 
     def __str__(self):
         return f"'{self.value}'"
