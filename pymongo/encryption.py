@@ -260,8 +260,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
 
 
 class RewrapManyDataKeyResult(object):
-    """Result object returned by a ``rewrap_many_data_key`` operation.
-
+    """Result object returned by a rewrap_many_data_key operation.
 
     .. versionadded:: 4.2
     """
