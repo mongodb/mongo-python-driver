@@ -699,7 +699,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         check: bool = True,
         allowable_errors: Optional[Sequence[Union[str, int]]] = None,
         read_preference: Optional[_ServerMode] = None,
-        codec_options: "Optional[CodecOptions[_CodecDocumentType]]" = None,
+        codec_options: Optional[CodecOptions[_CodecDocumentType]] = None,
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
@@ -764,7 +764,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         .. note:: :meth:`command` does **not** obey this Database's
            :attr:`read_preference` or :attr:`codec_options`. You must use the
-           `read_preference` and `codec_options` parameters instead.
+           ``read_preference`` and ``codec_options`` parameters instead.
 
         .. note:: :meth:`command` does **not** apply any custom TypeDecoders
            when decoding the command response.
@@ -785,7 +785,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
            regular expressions as :class:`~bson.regex.Regex` objects. Use
            :meth:`~bson.regex.Regex.try_compile` to attempt to convert from a
            BSON regular expression to a Python regular expression object.
-           Added the `codec_options` parameter.
+           Added the ``codec_options`` parameter.
 
         .. seealso:: The MongoDB documentation on `commands <https://dochub.mongodb.org/core/commands>`_.
         """
