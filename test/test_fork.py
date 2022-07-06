@@ -78,7 +78,7 @@ class TestFork(IntegrationTest):
             self.db.client._get_topology()
 
             if lock_pid == 0:  # Child
-                os._exit(0 if not self.db.client._MongoClient__lock.locked() else 1)
+                os._exit(0 if not getattr(self.db.client, lock_name).locked() else 1)
             else:  # Parent
                 self.assertEqual(0, os.waitpid(lock_pid, 0)[1] >> 8)
 
