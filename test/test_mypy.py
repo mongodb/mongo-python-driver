@@ -47,6 +47,7 @@ from pymongo import ASCENDING
 from pymongo.collection import Collection
 from pymongo.mongo_client import MongoClient
 from pymongo.operations import InsertOne
+from pymongo.read_preferences import ReadPreference
 
 TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "mypy_fails")
 
@@ -162,6 +163,15 @@ class TestPymongo(IntegrationTest):
             ]
         )
         self.assertTrue(len(list(result)))
+
+    def test_with_transaction(self) -> None:
+        def execute_transaction(session):
+            pass
+
+        with self.client.start_session() as session:
+            return session.with_transaction(
+                execute_transaction, read_preference=ReadPreference.PRIMARY
+            )
 
 
 class TestDecode(unittest.TestCase):
