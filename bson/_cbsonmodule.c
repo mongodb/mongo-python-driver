@@ -53,6 +53,8 @@ struct module_state {
     PyObject* Decimal128;
     PyObject* Mapping;
     PyTypeObject* DatetimeMSType;
+    PyObject* _min_datetime_ms;
+    PyObject* _max_datetime_ms;
 };
 
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
@@ -345,7 +347,9 @@ static int _load_python_objects(PyObject* module) {
         _load_object(&state->Decimal128, "bson.decimal128", "Decimal128") ||
         _load_object(&state->UUID, "uuid", "UUID") ||
         _load_object(&state->Mapping, "collections.abc", "Mapping") ||
-        _load_object(&state->DatetimeMSType, "bson", "DatetimeMS")) {
+        _load_object(&state->DatetimeMSType, "bson", "DatetimeMS") ||
+        _load_object(&state->_min_datetime_ms, "bson", "_min_datetime_ms") ||
+        _load_object(&state->_max_datetime_ms, "bson", "_max_datetime_ms")) {
         return 1;
     }
     /* Reload our REType hack too. */
@@ -1100,6 +1104,10 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         } else {
             millis = millis_from_datetime(value);
         }
+        *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x09;
+        return buffer_write_int64(buffer, (int64_t)millis);
+    } else if (PyObject_TypeCheck(value, state->DatetimeMSType)) {
+        long long millis = millis_from_datetime_ms(value);
         *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x09;
         return buffer_write_int64(buffer, (int64_t)millis);
     } else if (PyObject_TypeCheck(value, state->REType)) {
@@ -1907,8 +1915,49 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             }
             memcpy(&millis, buffer + *position, 8);
             millis = (int64_t)BSON_UINT64_FROM_LE(millis);
-            naive = datetime_from_millis(millis);
             *position += 8;
+
+            // DatetimeConversionOpts.DATETIME_MS
+            // TODO: Cache string enums and faster comparisons.
+            if (strcmp(options->datetime_conversion, "datetime_ms")){
+                value = datetime_ms_from_millis(millis);
+                break;
+            }
+
+            int dt_clamp = strcmp(options->datetime_conversion, "datetime_clamp");
+            int dt_auto = strcmp(options->datetime_conversion, "datetime_auto");
+
+
+            if (dt_clamp || dt_auto){
+                PyObject *min_millis_fn = _get_object(state->_min_datetime_ms, "bson", "_min_datetime_ms");
+                PyObject *max_millis_fn = _get_object(state->_max_datetime_ms, "bson", "_max_datetime_ms");
+                int64_t min_millis;
+                int64_t max_millis;
+
+                if (options->tz_aware){
+                    if (options->tzinfo == Py_None) {
+                        goto invalid;
+                    }
+                    min_millis = PyLong_AsLongLong(PyObject_CallOneArg(min_millis_fn, options->tzinfo));
+                    max_millis = PyLong_AsLongLong(PyObject_CallOneArg(max_millis_fn, options->tzinfo));
+                } else {
+                    min_millis = PyLong_AsLongLong(PyObject_CallOneArg(min_millis_fn));
+                    max_millis = PyLong_AsLongLong(PyObject_CallOneArg(max_millis_fn));
+                }
+
+                if (dt_clamp) {
+                    if (millis < min_millis) millis = min_millis;
+                    else if (millis > max_millis) millis = max_millis;
+                    // Continues from here to return a datetime.
+                } else if (dt_auto) {
+                    if (millis < min_millis || millis > max_millis){
+                        value = datetime_ms_from_millis(millis);
+                        break; // Out-of-range so done.
+                    }
+                }
+            }
+
+            naive = datetime_from_millis(millis);
             if (!options->tz_aware) { /* In the naive case, we're done here. */
                 value = naive;
                 break;
