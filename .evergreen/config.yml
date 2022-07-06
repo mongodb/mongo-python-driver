@@ -469,7 +469,7 @@ functions:
             export TEST_SERVERLESS=1
             export SERVERLESS_ATLAS_USER="${SERVERLESS_ATLAS_USER}"
             export SERVERLESS_ATLAS_PASSWORD="${SERVERLESS_ATLAS_PASSWORD}"
-            export MONGODB_URI="mongodb+srv://${SERVERLESS_ATLAS_USER}:${SERVERLESS_ATLAS_PASSWORD}@${SERVERLESS_URI:14}"
+            export MONGODB_URI="${SERVERLESS_URI}"
             export SINGLE_MONGOS_LB_URI="${MONGODB_URI}"
             export MULTI_MONGOS_LB_URI="${MONGODB_URI}"
           fi
