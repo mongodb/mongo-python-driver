@@ -260,21 +260,12 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
 
 
 class RewrapManyDataKeyResult(object):
-    """Result object returned by a ``rewrap_many_data_key`` operation.
+    """Result object returned by a :meth:`rewrap_many_data_key` operation.
 
     .. versionadded:: 4.2
     """
 
     def __init__(self, bulk_write_result: Optional[BulkWriteResult] = None) -> None:
-        """Create a ``RewrapManyDataKeyResult`` for a ``rewrap_many_data_key`` operation.
-
-        :Parameters:
-          - `bulk_write_result`: The result of the bulk write operation used to
-            update the key vault collection with one or more rewrapped data keys.
-            If ``rewrap_many_data_key()`` does not find any matching keys to
-            rewrap, no bulk write operation will be executed and this field will
-            be ``None``.
-        """
         self._bulk_write_result = bulk_write_result
 
     @property
