@@ -33,6 +33,22 @@ def setUpModule():
     pass
 
 
+class LockWrapper:
+    def __init__(self, _lock_type: Any = MongoClientLock, _after_enter: Callable = None):
+        self.__lock = _lock_type()
+        self._after_enter = _after_enter
+
+    def __enter__(self):
+        self.__lock.__enter__()
+        self._after_enter()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.__lock.__exit__(exc_type, exc_value, traceback)
+
+    def __getattr__(self, item):
+        return getattr(self.__lock, item)
+
+
 # Not available for versions of Python without "register_at_fork"
 @skipIf(
     not hasattr(os, "register_at_fork"), "register_at_fork not available in this version of Python"
@@ -40,21 +56,6 @@ def setUpModule():
 class TestFork(IntegrationTest):
     def setUp(self):
         self.db = self.client.pymongo_test
-
-    class LockWrapper:
-        def __init__(self, _lock_type: Any = MongoClientLock, _after_enter: Callable = None):
-            self.__lock = _lock_type()
-            self._after_enter = _after_enter
-
-        def __enter__(self):
-            self.__lock.__enter__()
-            self._after_enter()
-
-        def __exit__(self, exc_type, exc_value, traceback):
-            self.__lock.__exit__(exc_type, exc_value, traceback)
-
-        def __getattr__(self, item):
-            return getattr(self.__lock, item)
 
     def test_lock_client(self):
         """
@@ -68,9 +69,10 @@ class TestFork(IntegrationTest):
             nonlocal lock_pid
             lock_pid = os.fork()
 
-        with patch.object(
-            self.db.client, "_MongoClient__lock", TestFork.LockWrapper(_after_enter=_fork)
-        ):
+        # Avoids directly referencing the mangled name.
+        lock_name: str = next(filter(lambda y: "__lock" in y, dir(self.db.client)))
+
+        with patch.object(self.db.client, lock_name, LockWrapper(_after_enter=_fork)):
             # Call _get_topology, will fork upon __enter__ing
             # the with region.
             self.db.client._get_topology()
@@ -98,7 +100,7 @@ class TestFork(IntegrationTest):
         with patch.object(
             ObjectId,
             "_inc_lock",
-            TestFork.LockWrapper(_lock_type=threading.Lock, _after_enter=_fork),
+            LockWrapper(_lock_type=threading.Lock, _after_enter=_fork),
         ):
             # Generate the ObjectId, will fork upon __enter__ing
             # the with region.

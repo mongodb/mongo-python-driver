@@ -287,7 +287,7 @@ class ObjectId(object):
         return hash(self.__id)
 
     @classmethod
-    def _after_fork(cls):
+    def _reset_lock(cls):
         """
         Reinitializes _inc_lock after a process fork.
         """

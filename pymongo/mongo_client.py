@@ -2153,7 +2153,7 @@ def _after_fork():
     MongoClientLock._reset_locks()
 
     # These can't use MongoClientLock due to circular imports.
-    ObjectId._after_fork()
+    ObjectId._reset_lock()
 
 
 if hasattr(os, "register_at_fork"):

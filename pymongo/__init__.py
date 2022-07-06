@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Python driver for MongoDB."""
+
 from typing import ContextManager, Optional, Tuple, Union
 
 ASCENDING = 1
