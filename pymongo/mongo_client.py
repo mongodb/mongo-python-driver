@@ -1251,7 +1251,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         with self._get_socket(server, session) as sock_info:
             if single:
-                if sock_info.is_repl:
+                if sock_info.is_repl and not (session and session.in_transaction):
                     # Use primary preferred to ensure any repl set member
                     # can handle the request.
                     read_preference = ReadPreference.PRIMARY_PREFERRED
