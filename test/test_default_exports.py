@@ -42,7 +42,7 @@ class TestDefaultExports(unittest.TestCase):
         names.remove("__all__")
         for name in mod.__all__:
             if name not in names and name not in ignores:
-                raise ValueError(name)
+                self.fail(f"{name} was included in {mod}.__all__ but is not a valid symbol")
 
         for name in names:
             if name not in mod.__all__ and name not in ignores:
@@ -54,7 +54,7 @@ class TestDefaultExports(unittest.TestCase):
                 if getattr(value, "__module__", None) == "typing":
                     continue
                 if not name.startswith("_"):
-                    raise ValueError(name)
+                    self.fail(f"{name} was not included in {mod}.__all__")
 
     def test_pymongo(self):
         self.check_module(pymongo, PYMONGO_IGNORE)
