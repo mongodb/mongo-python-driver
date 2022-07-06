@@ -467,11 +467,11 @@ functions:
           fi
           if [ -n "${test_serverless}" ]; then
             export TEST_SERVERLESS=1
-            export MONGODB_URI="${SINGLE_ATLASPROXY_SERVERLESS_URI}"
             export SERVERLESS_ATLAS_USER="${SERVERLESS_ATLAS_USER}"
             export SERVERLESS_ATLAS_PASSWORD="${SERVERLESS_ATLAS_PASSWORD}"
-            export SINGLE_MONGOS_LB_URI="${SINGLE_ATLASPROXY_SERVERLESS_URI}"
-            export MULTI_MONGOS_LB_URI="${MULTI_ATLASPROXY_SERVERLESS_URI}"
+            export MONGODB_URI="${SERVERLESS_URI}"
+            export SINGLE_MONGOS_LB_URI="${MONGODB_URI}"
+            export MULTI_MONGOS_LB_URI="${MONGODB_URI}"
           fi
 
           PYTHON_BINARY=${PYTHON_BINARY} \
