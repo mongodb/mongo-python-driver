@@ -260,23 +260,19 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
 
 
 class RewrapManyDataKeyResult(object):
-    def __init__(self, bulk_write_result: Optional[BulkWriteResult] = None) -> None:
-        """Result object returned by a ``rewrap_many_data_key`` operation.
+    """Result object returned by a :meth:`~ClientEncryption.rewrap_many_data_key` operation.
 
-        :Parameters:
-          - `bulk_write_result`: The result of the bulk write operation used to
-          update the key vault collection with one or more rewrapped data keys.
-          If ``rewrap_many_data_key()`` does not find any matching keys to
-          rewrap, no bulk write operation will be executed and this field will
-          be ``None``.
-        """
+    .. versionadded:: 4.2
+    """
+
+    def __init__(self, bulk_write_result: Optional[BulkWriteResult] = None) -> None:
         self._bulk_write_result = bulk_write_result
 
     @property
     def bulk_write_result(self) -> Optional[BulkWriteResult]:
         """The result of the bulk write operation used to update the key vault
         collection with one or more rewrapped data keys. If
-        ``rewrap_many_data_key()`` does not find any matching keys to rewrap,
+        :meth:`~ClientEncryption.rewrap_many_data_key` does not find any matching keys to rewrap,
         no bulk write operation will be executed and this field will be
         ``None``.
         """
@@ -717,6 +713,8 @@ class ClientEncryption(object):
 
         :Returns:
           The key document.
+
+        .. versionadded:: 4.2
         """
         self._check_closed()
         return self._key_vault_coll.find_one({"_id": id})
@@ -727,6 +725,8 @@ class ClientEncryption(object):
         :Returns:
           An instance of :class:`~pymongo.cursor.Cursor` over the data key
           documents.
+
+        .. versionadded:: 4.2
         """
         self._check_closed()
         return self._key_vault_coll.find({})
@@ -741,6 +741,8 @@ class ClientEncryption(object):
 
         :Returns:
           The delete result.
+
+        .. versionadded:: 4.2
         """
         self._check_closed()
         return self._key_vault_coll.delete_one({"_id": id})
@@ -756,6 +758,8 @@ class ClientEncryption(object):
 
         :Returns:
           The previous version of the key document.
+
+        .. versionadded:: 4.2
         """
         self._check_closed()
         update = {"$addToSet": {"keyAltNames": key_alt_name}}
@@ -769,6 +773,8 @@ class ClientEncryption(object):
 
         :Returns:
           The key document.
+
+        .. versionadded:: 4.2
         """
         self._check_closed()
         return self._key_vault_coll.find_one({"keyAltNames": key_alt_name})
@@ -786,6 +792,8 @@ class ClientEncryption(object):
 
         :Returns:
           Returns the previous version of the key document.
+
+        .. versionadded:: 4.2
         """
         self._check_closed()
         pipeline = [
@@ -825,6 +833,8 @@ class ClientEncryption(object):
 
         :Returns:
           A :class:`RewrapManyDataKeyResult`.
+
+        .. versionadded:: 4.2
         """
         self._check_closed()
         with _wrap_encryption_errors():
