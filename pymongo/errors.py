@@ -61,6 +61,15 @@ class ConnectionFailure(PyMongoError):
     """Raised when a connection to the database cannot be made or is lost."""
 
 
+class WaitQueueTimeoutError(ConnectionFailure):
+    """Raised when we time out due to the query wait time.
+
+    Subclass of :exc:`~pymongo.errors.ConnectionFailure`.
+
+    .. versionadded:: 4.2
+    """
+
+
 class AutoReconnect(ConnectionFailure):
     """Raised when a connection to the database is lost and an attempt to
     auto-reconnect will be made.

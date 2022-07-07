@@ -80,6 +80,7 @@ from pymongo.errors import (
     OperationFailure,
     PyMongoError,
     ServerSelectionTimeoutError,
+    WaitQueueTimeoutError,
 )
 from pymongo.pool import ConnectionClosedReason
 from pymongo.read_preferences import ReadPreference, _ServerMode
@@ -2054,9 +2055,11 @@ def _add_retryable_write_error(exc, max_wire_version):
             if code in helpers._RETRYABLE_ERROR_CODES:
                 exc._add_error_label("RetryableWriteError")
 
-    # Connection errors are always retryable except NotPrimaryError which is
+    # Connection errors are always retryable except NotPrimaryError and WaitQueueTimeoutError which is
     # handled above.
-    if isinstance(exc, ConnectionFailure) and not isinstance(exc, NotPrimaryError):
+    if isinstance(exc, ConnectionFailure) and not isinstance(
+        exc, (NotPrimaryError, WaitQueueTimeoutError)
+    ):
         exc._add_error_label("RetryableWriteError")
 
 
