@@ -559,6 +559,7 @@ class SocketInfo(object):
         self.pinned_cursor = False
         self.active = False
         self.last_timeout = self.opts.socket_timeout
+        self.connect_rtt = 0
 
     def set_socket_timeout(self, timeout):
         """Cache last timeout to avoid duplicate calls to sock.settimeout."""
@@ -580,6 +581,8 @@ class SocketInfo(object):
             return None
         # RTT validation.
         rtt = _csot.get_rtt()
+        if rtt is None:
+            rtt = self.connect_rtt
         max_time_ms = timeout - rtt
         if max_time_ms < 0:
             # CSOT: raise an error without running the command since we know it will time out.
@@ -655,7 +658,11 @@ class SocketInfo(object):
         else:
             auth_ctx = None
 
+        if performing_handshake:
+            start = time.monotonic()
         doc = self.command("admin", cmd, publish_events=False, exhaust_allowed=awaitable)
+        if performing_handshake:
+            self.connect_rtt = time.monotonic() - start
         hello = Hello(doc, awaitable=awaitable)
         self.is_writable = hello.is_writable
         self.max_wire_version = hello.max_wire_version
