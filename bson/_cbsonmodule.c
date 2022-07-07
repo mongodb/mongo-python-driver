@@ -52,7 +52,7 @@ struct module_state {
     PyObject* BSONInt64;
     PyObject* Decimal128;
     PyObject* Mapping;
-    PyTypeObject* DatetimeMSType;
+    PyObject* DatetimeMSType;
     PyObject* _min_datetime_ms;
     PyObject* _max_datetime_ms;
 };
@@ -74,6 +74,12 @@ struct module_state {
 #define BSON_MAX_SIZE 2147483647
 /* The smallest possible BSON document, i.e. "{}" */
 #define BSON_MIN_SIZE 5
+
+/* Datetime codec options */
+#define DATETIME_CONVERSION_OPTS_DATETIME 1
+#define DATETIME_CONVERSION_OPTS_DATETIME_CLAMP 2
+#define DATETIME_CONVERSION_OPTS_DATETIME_MS 3
+#define DATETIME_CONVERSION_OPTS_DATETIME_AUTO 4
 
 /* Get an error class from the bson.errors module.
  *
@@ -331,7 +337,6 @@ static int _load_python_objects(PyObject* module) {
     PyObject* empty_string = NULL;
     PyObject* re_compile = NULL;
     PyObject* compiled = NULL;
-    PyObject* datetime = NULL;
     struct module_state *state = GETSTATE(module);
 
     if (_load_object(&state->Binary, "bson.binary", "Binary") ||
@@ -376,12 +381,6 @@ static int _load_python_objects(PyObject* module) {
     state->REType = Py_TYPE(compiled);
     Py_DECREF(empty_string);
     Py_DECREF(compiled);
-
-    // Load DatetimeMS
-    datetime = _load_object(&datetime, "bson.datetime_ms", "DatetimeMS");
-    state->DatetimeMSType = Py_TYPE(datetime);
-    Py_INCREF(state->DatetimeMSType);
-    Py_DECREF(datetime);
 
     return 0;
 }
@@ -481,7 +480,7 @@ int convert_codec_options(PyObject* options_obj, void* p) {
     options->unicode_decode_error_handler = NULL;
     options->datetime_conversion = NULL;
 
-    if (!PyArg_ParseTuple(options_obj, "ObbzOOz",
+    if (!PyArg_ParseTuple(options_obj, "ObbzOOb",
                           &options->document_class,
                           &options->tz_aware,
                           &options->uuid_rep,
@@ -529,14 +528,13 @@ static PyObject* datetime_ms_from_millis(PyObject* self, long long millis){
 
     PyObject* dt;
     PyObject* ll_millis;
-    dt = state->DatetimeMSType->tp_new(state->DatetimeMSType, NULL, NULL);
+
     // Set _value.
     if (!(ll_millis = PyLong_FromLongLong(millis))){
-        Py_DECREF(dt);
         return NULL;
     }
-    if (PyObject_SetAttrString(dt, "_value", ll_millis)){
-        Py_DECREF(dt);
+    dt = PyObject_CallFunctionObjArgs(state->DatetimeMSType, ll_millis, NULL);
+    if (dt == NULL){
         Py_DECREF(ll_millis);
         return NULL;
     }
@@ -1108,7 +1106,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         }
         *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x09;
         return buffer_write_int64(buffer, (int64_t)millis);
-    } else if (PyObject_TypeCheck(value, state->DatetimeMSType)) {
+    } else if (PyObject_TypeCheck(value, (PyTypeObject *) state->DatetimeMSType)) {
         long long millis = millis_from_datetime_ms(value);
         *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x09;
         return buffer_write_int64(buffer, (int64_t)millis);
@@ -1919,15 +1917,13 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             millis = (int64_t)BSON_UINT64_FROM_LE(millis);
             *position += 8;
 
-            // DatetimeConversionOpts.DATETIME_MS
-            // TODO: Cache string enums and faster comparisons.
-            if (strcmp(options->datetime_conversion, "datetime_ms")){
-                value = datetime_ms_from_millis(state->DatetimeMSType, millis);
+            if (options->datetime_conversion == DATETIME_CONVERSION_OPTS_DATETIME_MS){
+                value = datetime_ms_from_millis(self, millis);
                 break;
             }
 
-            int dt_clamp = strcmp(options->datetime_conversion, "datetime_clamp");
-            int dt_auto = strcmp(options->datetime_conversion, "datetime_auto");
+            int dt_clamp = options->datetime_conversion == DATETIME_CONVERSION_OPTS_DATETIME_CLAMP;
+            int dt_auto = options->datetime_conversion == DATETIME_CONVERSION_OPTS_DATETIME_AUTO;
 
 
             if (dt_clamp || dt_auto){
@@ -1938,10 +1934,12 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
 
                 if (options->tz_aware){
                     if (options->tzinfo == Py_None) {
-                        goto invalid;
+                        // Default to UTC.
+                        utc_type = _get_object(state->UTC, "bson.tz_util", "utc");
+                        if (options->tzinfo = utc_type) goto invalid;
                     }
-                    min_millis = PyLong_AsLongLong(PyObject_CallFunctionObjArgs(min_millis_fn, options->tzinfo));
-                    max_millis = PyLong_AsLongLong(PyObject_CallFunctionObjArgs(max_millis_fn, options->tzinfo));
+                    min_millis = PyLong_AsLongLong(PyObject_CallFunctionObjArgs(min_millis_fn, options->tzinfo, NULL));
+                    max_millis = PyLong_AsLongLong(PyObject_CallFunctionObjArgs(max_millis_fn, options->tzinfo, NULL));
                 } else {
                     min_millis = PyLong_AsLongLong(PyObject_CallObject(min_millis_fn, NULL));
                     max_millis = PyLong_AsLongLong(PyObject_CallObject(max_millis_fn, NULL));

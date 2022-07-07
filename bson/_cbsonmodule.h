@@ -62,7 +62,7 @@ typedef struct codec_options_t {
     char* unicode_decode_error_handler;
     PyObject* tzinfo;
     type_registry_t type_registry;
-    char* datetime_conversion;
+    unsigned char datetime_conversion;
     PyObject* options_obj;
     unsigned char is_raw_bson;
 } codec_options_t;

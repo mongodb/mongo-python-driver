@@ -199,11 +199,11 @@ class TypeRegistry(object):
         )
 
 
-class DatetimeConversionOpts(str, enum.Enum):
-    DATETIME = "datetime"
-    DATETIME_CLAMP = "datetime_clamp"
-    DATETIME_MS = "datetime_ms"
-    DATETIME_AUTO = "datetime_auto"
+class DatetimeConversionOpts(int, enum.Enum):
+    DATETIME = 1
+    DATETIME_CLAMP = 2
+    DATETIME_MS = 3
+    DATETIME_AUTO = 4
 
     def __str__(self):
         return f"'{self.value}'"

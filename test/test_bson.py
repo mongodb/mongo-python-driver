@@ -50,7 +50,7 @@ from bson import (
 )
 from bson.binary import Binary, UuidRepresentation
 from bson.code import Code
-from bson.codec_options import CodecOptions
+from bson.codec_options import CodecOptions, DatetimeConversionOpts
 from bson.dbref import DBRef
 from bson.errors import InvalidBSON, InvalidDocument
 from bson.int64 import Int64
@@ -979,7 +979,7 @@ class TestCodecOptions(unittest.TestCase):
             "uuid_representation=UuidRepresentation.UNSPECIFIED, "
             "unicode_decode_error_handler='strict', "
             "tzinfo=None, type_registry=TypeRegistry(type_codecs=[], "
-            "fallback_encoder=None), datetime_conversion='datetime')"
+            "fallback_encoder=None), datetime_conversion='1')"
         )
         self.assertEqual(r, repr(CodecOptions()))
 
@@ -1144,7 +1144,6 @@ class TestCodecOptions(unittest.TestCase):
         self.assertTrue(decoded["_id"].generation_time)
 
 
-@unittest.skipIf(bson.has_c(), "C extension not implemented yet")  # Temporary
 class TestDatetimeConversion(unittest.TestCase):
     def test_comps(self):
         # Tests other timestamp formats.
@@ -1178,14 +1177,14 @@ class TestDatetimeConversion(unittest.TestCase):
         self.assertNotEqual(type(dtr1), type(dec1["x"]))
 
         # Test encode and decode with codec options. Expect: UTCDateimteRaw => DatetimeMS
-        opts1 = CodecOptions(datetime_conversion="datetime_ms")
+        opts1 = CodecOptions(datetime_conversion=DatetimeConversionOpts.DATETIME_MS)
         enc1 = encode({"x": dtr1})
         dec1 = decode(enc1, opts1)
         self.assertEqual(type(dtr1), type(dec1["x"]))
         self.assertEqual(dtr1, dec1["x"])
 
         # Expect: datetime => DatetimeMS
-        opts1 = CodecOptions(datetime_conversion="datetime_ms")
+        opts1 = CodecOptions(datetime_conversion=DatetimeConversionOpts.DATETIME_MS)
         dt1 = datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
         enc1 = encode({"x": dt1})
         dec1 = decode(enc1, opts1)
@@ -1195,7 +1194,9 @@ class TestDatetimeConversion(unittest.TestCase):
     def test_clamping(self):
         # Test clamping from below and above.
         opts1 = CodecOptions(
-            datetime_conversion="datetime_clamp", tz_aware=True, tzinfo=datetime.timezone.utc
+            datetime_conversion=DatetimeConversionOpts.DATETIME_CLAMP,
+            tz_aware=True,
+            tzinfo=datetime.timezone.utc,
         )
         below = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 1)})
         dec_below = decode(below, opts1)
@@ -1212,7 +1213,9 @@ class TestDatetimeConversion(unittest.TestCase):
 
     def test_tz_clamping(self):
         # Naive clamping to local tz.
-        opts1 = CodecOptions(datetime_conversion="datetime_clamp", tz_aware=False)
+        opts1 = CodecOptions(
+            datetime_conversion=DatetimeConversionOpts.DATETIME_CLAMP, tz_aware=False
+        )
         below = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 24 * 60 * 60)})
 
         dec_below = decode(below, opts1)
@@ -1226,7 +1229,9 @@ class TestDatetimeConversion(unittest.TestCase):
         )
 
         # Aware clamping.
-        opts2 = CodecOptions(datetime_conversion="datetime_clamp", tz_aware=True)
+        opts2 = CodecOptions(
+            datetime_conversion=DatetimeConversionOpts.DATETIME_CLAMP, tz_aware=True
+        )
         below = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 24 * 60 * 60)})
         dec_below = decode(below, opts2)
         self.assertEqual(
@@ -1242,8 +1247,8 @@ class TestDatetimeConversion(unittest.TestCase):
 
     def test_datetime_auto(self):
         # Naive auto, in range.
-        opts1 = CodecOptions(datetime_conversion="datetime_auto")
-        inr = encode({"x": datetime.datetime(1970, 1, 1)}, opts1)
+        opts1 = CodecOptions(datetime_conversion=DatetimeConversionOpts.DATETIME_AUTO)
+        inr = encode({"x": datetime.datetime(1970, 1, 1)}, codec_options=opts1)
         dec_inr = decode(inr)
         self.assertEqual(dec_inr["x"], datetime.datetime(1970, 1, 1))
 
@@ -1264,9 +1269,11 @@ class TestDatetimeConversion(unittest.TestCase):
 
         # Aware auto, in range.
         opts2 = CodecOptions(
-            datetime_conversion="datetime_auto", tz_aware=True, tzinfo=datetime.timezone.utc
+            datetime_conversion=DatetimeConversionOpts.DATETIME_AUTO,
+            tz_aware=True,
+            tzinfo=datetime.timezone.utc,
         )
-        inr = encode({"x": datetime.datetime(1970, 1, 1)}, opts2)
+        inr = encode({"x": datetime.datetime(1970, 1, 1)}, codec_options=opts2)
         dec_inr = decode(inr)
         self.assertEqual(dec_inr["x"], datetime.datetime(1970, 1, 1))
 

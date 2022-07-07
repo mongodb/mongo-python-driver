@@ -94,12 +94,16 @@ import re
 import uuid
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Type, Union, cast
 
-import bson
-import bson.datetime_ms
-from bson import EPOCH_AWARE, DatetimeMS
 from bson.binary import ALL_UUID_SUBTYPES, UUID_SUBTYPE, Binary, UuidRepresentation
 from bson.code import Code
 from bson.codec_options import CodecOptions, DatetimeConversionOpts
+from bson.datetime_ms import (
+    EPOCH_AWARE,
+    DatetimeMS,
+    _datetime_to_millis,
+    _max_datetime_ms,
+    _millis_to_datetime,
+)
 from bson.dbref import DBRef
 from bson.decimal128 import Decimal128
 from bson.int64 import Int64
@@ -664,7 +668,7 @@ def _parse_canonical_datetime(
             if json_options.datetime_conversion == DatetimeConversionOpts.DATETIME_MS:
                 return DatetimeMS(aware_tzinfo_none)
             return aware_tzinfo_none
-    return bson.datetime._millis_to_datetime(int(dtm), json_options)
+    return _millis_to_datetime(int(dtm), json_options)
 
 
 def _parse_canonical_oid(doc: Any) -> ObjectId:
@@ -820,14 +824,14 @@ def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
                     "$date": "%s%s%s" % (obj.strftime("%Y-%m-%dT%H:%M:%S"), fracsecs, tz_string)
                 }
 
-        millis = bson.datetime._datetime_to_millis(obj)
+        millis = _datetime_to_millis(obj)
         if json_options.datetime_representation == DatetimeRepresentation.LEGACY:
             return {"$date": millis}
         return {"$date": {"$numberLong": str(millis)}}
     if isinstance(obj, DatetimeMS):
         if (
             json_options.datetime_representation == DatetimeRepresentation.ISO8601
-            and 0 <= int(obj) <= bson.datetime._max_datetime_ms()
+            and 0 <= int(obj) <= _max_datetime_ms()
         ):
             return default(obj.to_datetime(), json_options)
         elif json_options.datetime_representation == DatetimeRepresentation.LEGACY:

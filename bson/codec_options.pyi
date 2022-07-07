@@ -55,7 +55,7 @@ class TypeRegistry:
 
 _DocumentType = TypeVar("_DocumentType", bound=Mapping[str, Any])
 
-class DatetimeConversionOpts(str, enum.Enum):
+class DatetimeConversionOpts(int, enum.Enum):
     DATETIME = ...
     DATETIME_CLAMP = ...
     DATETIME_MS = ...
@@ -78,7 +78,7 @@ class CodecOptions(Tuple, Generic[_DocumentType]):
         unicode_decode_error_handler: Optional[str] = ...,
         tzinfo: Optional[datetime.tzinfo] = ...,
         type_registry: Optional[TypeRegistry] = ...,
-        datetime_conversion: Optional[str] = ...,
+        datetime_conversion: Optional[int] = ...,
     ) -> CodecOptions[_DocumentType]: ...
 
     # CodecOptions API
