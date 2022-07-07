@@ -347,9 +347,9 @@ static int _load_python_objects(PyObject* module) {
         _load_object(&state->Decimal128, "bson.decimal128", "Decimal128") ||
         _load_object(&state->UUID, "uuid", "UUID") ||
         _load_object(&state->Mapping, "collections.abc", "Mapping") ||
-        _load_object(&state->DatetimeMSType, "bson", "DatetimeMS") ||
-        _load_object(&state->_min_datetime_ms, "bson", "_min_datetime_ms") ||
-        _load_object(&state->_max_datetime_ms, "bson", "_max_datetime_ms")) {
+        _load_object(&state->DatetimeMSType, "bson.datetime_ms", "DatetimeMS") ||
+        _load_object(&state->_min_datetime_ms, "bson.datetime_ms", "_min_datetime_ms") ||
+        _load_object(&state->_max_datetime_ms, "bson.datetime_ms", "_max_datetime_ms")) {
         return 1;
     }
     /* Reload our REType hack too. */
@@ -378,7 +378,7 @@ static int _load_python_objects(PyObject* module) {
     Py_DECREF(compiled);
 
     // Load DatetimeMS
-    datetime = _load_object(&datetime, "bson", "DatetimeMS");
+    datetime = _load_object(&datetime, "bson.datetime_ms", "DatetimeMS");
     state->DatetimeMSType = Py_TYPE(datetime);
     Py_INCREF(state->DatetimeMSType);
     Py_DECREF(datetime);
@@ -523,8 +523,10 @@ void destroy_codec_options(codec_options_t* options) {
 
 
 /* Extended-range datetime, returns a DatetimeMS object with millis */
-static PyObject* datetime_ms_from_millis(long long millis){
+static PyObject* datetime_ms_from_millis(PyObject* self, long long millis){
     // Allocate a new DatetimeMS object.
+    struct module_state *state = GETSTATE(self);
+
     PyObject* dt;
     PyObject* ll_millis;
     dt = state->DatetimeMSType->tp_new(state->DatetimeMSType, NULL, NULL);
@@ -551,7 +553,7 @@ static long long millis_from_datetime_ms(PyObject* dt){
         return NULL;
     }
 
-    if ((millis = PyLong_AsLongLong()) == -1){
+    if ((millis = PyLong_AsLongLong(ll_millis)) == -1){
         PyObject* OverflowError = _error("OverflowError");
         if (OverflowError) {
             PyErr_SetString(OverflowError,
@@ -1920,7 +1922,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             // DatetimeConversionOpts.DATETIME_MS
             // TODO: Cache string enums and faster comparisons.
             if (strcmp(options->datetime_conversion, "datetime_ms")){
-                value = datetime_ms_from_millis(millis);
+                value = datetime_ms_from_millis(state->DatetimeMSType, millis);
                 break;
             }
 
@@ -1929,8 +1931,8 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
 
 
             if (dt_clamp || dt_auto){
-                PyObject *min_millis_fn = _get_object(state->_min_datetime_ms, "bson", "_min_datetime_ms");
-                PyObject *max_millis_fn = _get_object(state->_max_datetime_ms, "bson", "_max_datetime_ms");
+                PyObject *min_millis_fn = _get_object(state->_min_datetime_ms, "bson.datetime_ms", "_min_datetime_ms");
+                PyObject *max_millis_fn = _get_object(state->_max_datetime_ms, "bson.datetime_ms", "_max_datetime_ms");
                 int64_t min_millis;
                 int64_t max_millis;
 
@@ -1938,11 +1940,11 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                     if (options->tzinfo == Py_None) {
                         goto invalid;
                     }
-                    min_millis = PyLong_AsLongLong(PyObject_CallOneArg(min_millis_fn, options->tzinfo));
-                    max_millis = PyLong_AsLongLong(PyObject_CallOneArg(max_millis_fn, options->tzinfo));
+                    min_millis = PyLong_AsLongLong(PyObject_CallFunctionObjArgs(min_millis_fn, options->tzinfo));
+                    max_millis = PyLong_AsLongLong(PyObject_CallFunctionObjArgs(max_millis_fn, options->tzinfo));
                 } else {
-                    min_millis = PyLong_AsLongLong(PyObject_CallOneArg(min_millis_fn));
-                    max_millis = PyLong_AsLongLong(PyObject_CallOneArg(max_millis_fn));
+                    min_millis = PyLong_AsLongLong(PyObject_CallObject(min_millis_fn, NULL));
+                    max_millis = PyLong_AsLongLong(PyObject_CallObject(max_millis_fn, NULL));
                 }
 
                 if (dt_clamp) {
@@ -1951,7 +1953,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                     // Continues from here to return a datetime.
                 } else if (dt_auto) {
                     if (millis < min_millis || millis > max_millis){
-                        value = datetime_ms_from_millis(millis);
+                        value = datetime_ms_from_millis(self, millis);
                         break; // Out-of-range so done.
                     }
                 }

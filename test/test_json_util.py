@@ -27,7 +27,7 @@ sys.path[0:0] = [""]
 
 from test import IntegrationTest, unittest
 
-from bson import EPOCH_AWARE, EPOCH_NAIVE, SON, DatetimeMS, _max_datetime_ms, json_util
+from bson import EPOCH_AWARE, EPOCH_NAIVE, SON, DatetimeMS, json_util
 from bson.binary import (
     ALL_UUID_REPRESENTATIONS,
     MD5_SUBTYPE,
@@ -37,6 +37,7 @@ from bson.binary import (
     UuidRepresentation,
 )
 from bson.code import Code
+from bson.datetime_ms import _max_datetime_ms
 from bson.dbref import DBRef
 from bson.int64 import Int64
 from bson.json_util import (
