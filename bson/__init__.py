@@ -109,6 +109,7 @@ from bson.datetime_ms import (
     DatetimeMS,
     _datetime_to_millis,
     _millis_to_datetime,
+    utc,
 )
 from bson.dbref import DBRef
 from bson.decimal128 import Decimal128
@@ -191,6 +192,8 @@ __all__ = [
     "is_valid",
     "BSON",
     "has_c",
+    "DatetimeConversionOpts",
+    "DatetimeMS",
 ]
 
 BSONNUM = b"\x01"  # Floating point

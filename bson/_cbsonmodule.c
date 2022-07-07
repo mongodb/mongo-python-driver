@@ -478,7 +478,6 @@ int convert_codec_options(PyObject* options_obj, void* p) {
     long type_marker;
 
     options->unicode_decode_error_handler = NULL;
-    options->datetime_conversion = NULL;
 
     if (!PyArg_ParseTuple(options_obj, "ObbzOOb",
                           &options->document_class,
@@ -548,15 +547,24 @@ static long long millis_from_datetime_ms(PyObject* dt){
     long long millis;
 
     if (!(ll_millis = PyObject_GetAttrString(dt, "_value"))){
-        return NULL;
+        if (PyErr_Occurred()) {
+            PyObject *InvalidBSON = _error("InvalidBSON");
+            if (InvalidBSON) {
+                PyErr_SetString(InvalidBSON, "Not a valid DatetimeMS object");
+                Py_DECREF(InvalidBSON);
+            }
+            return -1;
+        }
     }
 
     if ((millis = PyLong_AsLongLong(ll_millis)) == -1){
-        PyObject* OverflowError = _error("OverflowError");
-        if (OverflowError) {
-            PyErr_SetString(OverflowError,
-                            "Unable to represent this DatetimeMS internally as a long long.");
-            Py_DECREF(OverflowError);
+        if (PyErr_Occurred()) {
+            PyObject* OverflowError = _error("OverflowError");
+            if (OverflowError) {
+                PyErr_SetString(OverflowError,
+                                "Unable to represent this DatetimeMS internally as a long long.");
+                Py_DECREF(OverflowError);
+            }
         }
     }
     return millis;
@@ -1933,13 +1941,14 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                 int64_t max_millis;
 
                 if (options->tz_aware){
-                    if (options->tzinfo == Py_None) {
+                    PyObject* tzinfo = options->tzinfo;
+                    if (tzinfo == Py_None) {
                         // Default to UTC.
                         utc_type = _get_object(state->UTC, "bson.tz_util", "utc");
-                        if (options->tzinfo = utc_type) goto invalid;
+                        tzinfo = utc_type;
                     }
-                    min_millis = PyLong_AsLongLong(PyObject_CallFunctionObjArgs(min_millis_fn, options->tzinfo, NULL));
-                    max_millis = PyLong_AsLongLong(PyObject_CallFunctionObjArgs(max_millis_fn, options->tzinfo, NULL));
+                    min_millis = PyLong_AsLongLong(PyObject_CallFunctionObjArgs(min_millis_fn, tzinfo, NULL));
+                    max_millis = PyLong_AsLongLong(PyObject_CallFunctionObjArgs(max_millis_fn, tzinfo, NULL));
                 } else {
                     min_millis = PyLong_AsLongLong(PyObject_CallObject(min_millis_fn, NULL));
                     max_millis = PyLong_AsLongLong(PyObject_CallObject(max_millis_fn, NULL));
