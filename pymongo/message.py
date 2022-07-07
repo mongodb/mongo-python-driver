@@ -367,6 +367,8 @@ class _Query(object):
 
     def get_message(self, read_preference, sock_info, use_cmd=False):
         """Get a query message, possibly setting the secondaryOk bit."""
+        # Use the read_preference decided by _socket_from_server.
+        self.read_preference = read_preference
         if read_preference.mode:
             # Set the secondaryOk bit.
             flags = self.flags | 4

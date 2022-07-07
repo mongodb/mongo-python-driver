@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tools for working with MongoDB `ObjectIds
-<http://dochub.mongodb.org/core/objectids>`_.
+"""Tools for working with MongoDB ObjectIds.
 """
 
 import binascii
@@ -88,7 +87,7 @@ class ObjectId(object):
         :Parameters:
           - `oid` (optional): a valid ObjectId.
 
-        .. seealso:: The MongoDB documentation on `ObjectIds`_.
+        .. seealso:: The MongoDB documentation on  `ObjectIds <http://dochub.mongodb.org/core/objectids>`_.
 
         .. versionchanged:: 3.8
            :class:`~bson.objectid.ObjectId` now implements the `ObjectID

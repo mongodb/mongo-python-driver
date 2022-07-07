@@ -34,7 +34,7 @@
       "databaseName": "database0",
       "createOptions": {
         "capped": true,
-        "size": 512
+        "size": 4096
       },
       "documents": [
         {
@@ -60,7 +60,7 @@
           },
           "expectResult": {
             "capped": true,
-            "maxSize": 512
+            "maxSize": 4096
           }
         }
       ]
