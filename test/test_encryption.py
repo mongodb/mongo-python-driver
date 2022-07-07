@@ -1786,7 +1786,7 @@ class TestDecryptProse(EncryptionIntegrationTest):
             key_vault_namespace="keyvault.datakeys", kms_providers=kms_providers_map
         )
         self.listener = AllowListEventListener("aggregate")
-        self.encrypted_client = MongoClient(
+        self.encrypted_client = rs_or_single_client(
             auto_encryption_opts=opts, retryReads=False, event_listeners=[self.listener]
         )
         self.addCleanup(self.encrypted_client.close)
