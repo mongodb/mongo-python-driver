@@ -559,7 +559,7 @@ class SocketInfo(object):
         self.pinned_cursor = False
         self.active = False
         self.last_timeout = self.opts.socket_timeout
-        self.connect_rtt = 0
+        self.connect_rtt = 0.0
 
     def set_socket_timeout(self, timeout):
         """Cache last timeout to avoid duplicate calls to sock.settimeout."""
