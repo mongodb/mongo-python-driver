@@ -13,6 +13,8 @@ PyMongo 4.2 brings a number of improvements including:
   changes may be made before the final release.  See :ref:`automatic-queryable-client-side-encryption` for example usage.
 - Provisional (beta) support for :func:`pymongo.timeout` to apply a single timeout
   to an entire block of pymongo operations.
+- Added the :attr:`pymongo.errors.PyMongoError.timeout` property which is ``True`` when
+  the error was caused by a timeout.
 
 Bug fixes
 .........
