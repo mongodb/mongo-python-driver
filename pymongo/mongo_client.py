@@ -1339,6 +1339,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             if is_retrying():
                 remaining = _csot.remaining()
                 if remaining is not None and remaining <= 0:
+                    assert last_error is not None
                     raise last_error
             try:
                 server = self._select_server(writable_server_selector, session)
@@ -1401,6 +1402,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             if retrying:
                 remaining = _csot.remaining()
                 if remaining is not None and remaining <= 0:
+                    assert last_error is not None
                     raise last_error
             try:
                 server = self._select_server(read_pref, session, address=address)
