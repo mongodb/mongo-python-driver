@@ -877,7 +877,6 @@ class SocketInfo(object):
             self.ready = True
             if self.enabled_for_cmap:
                 self.listeners.publish_connection_ready(self.address, self.id)
-        self.completed_handshake = True
 
     def validate_session(self, client, session):
         """Validate this session before use with client.
