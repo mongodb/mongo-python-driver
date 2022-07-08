@@ -79,61 +79,64 @@ class BaseListener(object):
         wait_until(lambda: self.event_count(event) >= count, "find %s %s event(s)" % (count, event))
 
 
-def log_func_call(func):
-    def inner(self, *args):
-        self.func_calls.append(func.__name__)
-        func(self, *args)
-
-    return inner
+from pymongo.monitoring import (
+    ConnectionCheckedInEvent,
+    ConnectionCheckedOutEvent,
+    ConnectionCheckOutFailedEvent,
+    ConnectionCheckOutStartedEvent,
+    ConnectionClosedEvent,
+    ConnectionCreatedEvent,
+    ConnectionReadyEvent,
+    PoolClearedEvent,
+    PoolClosedEvent,
+    PoolCreatedEvent,
+    PoolReadyEvent,
+)
 
 
 class CMAPListener(BaseListener, monitoring.ConnectionPoolListener):
-    def __init__(self, *args, **kwargs):
-        self.func_calls = []
-        super().__init__(*args, **kwargs)
-
-    @log_func_call
     def connection_created(self, event):
+        assert isinstance(event, ConnectionCreatedEvent)
         self.add_event(event)
 
-    @log_func_call
     def connection_ready(self, event):
+        assert isinstance(event, ConnectionReadyEvent)
         self.add_event(event)
 
-    @log_func_call
     def connection_closed(self, event):
+        assert isinstance(event, ConnectionClosedEvent)
         self.add_event(event)
 
-    @log_func_call
     def connection_check_out_started(self, event):
+        assert isinstance(event, ConnectionCheckOutStartedEvent)
         self.add_event(event)
 
-    @log_func_call
     def connection_check_out_failed(self, event):
+        assert isinstance(event, ConnectionCheckOutFailedEvent)
         self.add_event(event)
 
-    @log_func_call
     def connection_checked_out(self, event):
+        assert isinstance(event, ConnectionCheckedOutEvent)
         self.add_event(event)
 
-    @log_func_call
     def connection_checked_in(self, event):
+        assert isinstance(event, ConnectionCheckedInEvent)
         self.add_event(event)
 
-    @log_func_call
     def pool_created(self, event):
+        assert isinstance(event, PoolCreatedEvent)
         self.add_event(event)
 
-    @log_func_call
     def pool_ready(self, event):
+        assert isinstance(event, PoolReadyEvent)
         self.add_event(event)
 
-    @log_func_call
     def pool_cleared(self, event):
+        assert isinstance(event, PoolClearedEvent)
         self.add_event(event)
 
-    @log_func_call
     def pool_closed(self, event):
+        assert isinstance(event, PoolClosedEvent)
         self.add_event(event)
 
 

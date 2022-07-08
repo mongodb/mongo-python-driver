@@ -447,62 +447,6 @@ class TestCMAP(IntegrationTest):
         with pool.get_socket():
             pass
 
-    def test_proper_methods_called(self):
-        listener = CMAPListener()
-        client = single_client(event_listeners=[listener])
-        self.addCleanup(client.close)
-        self.assertEqual(listener.event_count(PoolCreatedEvent), 1)
-
-        # Creates a new connection.
-        client.admin.command("ping")
-
-        # Uses the existing connection.
-        client.admin.command("ping")
-
-        client.close()
-
-        expected = [
-            "pool_created",
-            "pool_ready",
-            "connection_check_out_started",
-            "connection_created",
-            "connection_ready",
-            "connection_checked_out",
-            "connection_checked_in",
-            "connection_check_out_started",
-            "connection_checked_out",
-            "connection_checked_in",
-            "connection_check_out_started",
-            "connection_checked_out",
-            "connection_checked_in",
-            "pool_cleared",
-            "connection_closed",
-        ]
-
-        self.assertEqual(listener.func_calls, expected)
-
-    def test_proper_methods_called_on_error(self):
-        listener = CMAPListener()
-        client = single_client_noauth(
-            username="notauser", password="fail", event_listeners=[listener]
-        )
-        self.addCleanup(client.close)
-
-        # Attempt to create a new connection.
-        with self.assertRaisesRegex(OperationFailure, "failed"):
-            client.admin.command("ping")
-
-        expected = [
-            "pool_created",
-            "pool_ready",
-            "connection_check_out_started",
-            "connection_created",
-            "connection_closed",
-            "connection_check_out_failed",
-            "pool_cleared",
-        ]
-        self.assertEqual(listener.func_calls, expected)
-
 
 def create_test(scenario_def, test, name):
     def run_scenario(self):
