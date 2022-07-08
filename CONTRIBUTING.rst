@@ -75,9 +75,9 @@ Running Tests Locally
 - Ensure you have started the appropriate Mongo Server(s).
 - Run ``python setup.py test`` to run all of the tests.
 - Run ``python setup.py test -s test.<mod_name>.<class_name>.<test_name>`` to
-run specific tests.  You can omit the ``<test_name>`` to test a full class
-and the ``<class_name>`` to test a full module.  For example:
-``python setup.py test -s test.test_change_stream.TestUnifiedChangeStreamsErrors.test_change_stream_errors_on_ElectionInProgress``.
+  run specific tests.  You can omit the ``<test_name>`` to test a full class
+  and the ``<class_name>`` to test a full module.  For example:
+  ``python setup.py test -s test.test_change_stream.TestUnifiedChangeStreamsErrors.test_change_stream_errors_on_ElectionInProgress``.
 
 Running Load Balancer Tests Locally
 -----------------------------------
