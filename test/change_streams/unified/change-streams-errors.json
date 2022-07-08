@@ -187,7 +187,7 @@
       "description": "change stream errors on ElectionInProgress",
       "runOnRequirements": [
         {
-          "minServerVersion": "4.4",
+          "minServerVersion": "4.2",
           "topologies": [
             "replicaset",
             "sharded-replicaset",
