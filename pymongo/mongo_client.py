@@ -2067,12 +2067,12 @@ class _MongoClientErrorHandler(object):
 
     __slots__ = (
         "client",
+        "completed_handshake",
         "server_address",
         "session",
         "max_wire_version",
         "sock_generation",
         "service_id",
-        "sock_info",
         "handled",
     )
 
@@ -2087,7 +2087,7 @@ class _MongoClientErrorHandler(object):
         # of the pool at the time the connection attempt was started."
         self.sock_generation = server.pool.gen.get_overall()
         self.service_id = None
-        self.sock_info = None
+        self.completed_handshake = False
         self.handled = False
 
     def contribute_socket(self, sock_info):
@@ -2095,7 +2095,7 @@ class _MongoClientErrorHandler(object):
         self.max_wire_version = sock_info.max_wire_version
         self.sock_generation = sock_info.generation
         self.service_id = sock_info.service_id
-        self.sock_info = sock_info
+        self.completed_handshake = True
 
     def handle(self, exc_type, exc_val):
         if self.handled or exc_type is None:
@@ -2112,13 +2112,11 @@ class _MongoClientErrorHandler(object):
                     "RetryableWriteError"
                 ):
                     self.session._unpin()
-
-        completed_handshake = self.sock_info and self.sock_info.completed_handshake
         err_ctx = _ErrorContext(
             exc_val,
             self.max_wire_version,
             self.sock_generation,
-            completed_handshake,
+            self.completed_handshake,
             self.service_id,
         )
         self.client._topology.handle_error(self.server_address, err_ctx)
