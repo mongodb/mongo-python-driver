@@ -124,7 +124,8 @@ from bson.timestamp import Timestamp
 
 # Import some modules for type-checking only.
 if TYPE_CHECKING:
-    pass
+    from array import array
+    from mmap import mmap
 
 try:
     from bson import _cbson  # type: ignore[attr-defined]

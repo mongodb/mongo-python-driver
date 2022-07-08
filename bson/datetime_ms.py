@@ -67,7 +67,7 @@ class DatetimeMS:
 
     _type_marker = 9
 
-    def to_datetime(self, codec_options=DEFAULT_CODEC_OPTIONS) -> datetime.datetime:
+    def to_datetime(self, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> datetime.datetime:
         """
         Converts this ``DatetimeMS`` into a :class:`~datetime.datetime`
         object. If `opts` is not set, then it will default to a
