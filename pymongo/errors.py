@@ -62,7 +62,7 @@ class ConnectionFailure(PyMongoError):
 
 
 class WaitQueueTimeoutError(ConnectionFailure):
-    """Raised when we time out due to the query wait time.
+    """Raised when an operation times out waiting to checkout a connection from the pool.
 
     Subclass of :exc:`~pymongo.errors.ConnectionFailure`.
 

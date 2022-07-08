@@ -82,7 +82,7 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
     WaitQueueTimeoutError,
 )
-from pymongo.pool import ConnectionClosedReason
+from pymongo.pool import ConnectionClosedReason, PoolState
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
@@ -2111,7 +2111,7 @@ class _MongoClientErrorHandler(object):
                 ):
                     self.session._unpin()
 
-        completed_handshake = self.server.pool.handshake
+        completed_handshake = self.server.pool.state == PoolState.READY
         err_ctx = _ErrorContext(
             exc_val,
             self.max_wire_version,
