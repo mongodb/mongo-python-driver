@@ -79,37 +79,58 @@ class BaseListener(object):
         wait_until(lambda: self.event_count(event) >= count, "find %s %s event(s)" % (count, event))
 
 
+def log_func_call(func):
+    def inner(self, *args):
+        self.func_calls.append(func.__name__)
+        func(self, *args)
+
+    return inner
+
+
 class CMAPListener(BaseListener, monitoring.ConnectionPoolListener):
+    func_calls = []
+
+    @log_func_call
     def connection_created(self, event):
         self.add_event(event)
 
+    @log_func_call
     def connection_ready(self, event):
         self.add_event(event)
 
+    @log_func_call
     def connection_closed(self, event):
         self.add_event(event)
 
+    @log_func_call
     def connection_check_out_started(self, event):
         self.add_event(event)
 
+    @log_func_call
     def connection_check_out_failed(self, event):
         self.add_event(event)
 
+    @log_func_call
     def connection_checked_out(self, event):
         self.add_event(event)
 
+    @log_func_call
     def connection_checked_in(self, event):
         self.add_event(event)
 
+    @log_func_call
     def pool_created(self, event):
         self.add_event(event)
 
+    @log_func_call
     def pool_ready(self, event):
         self.add_event(event)
 
+    @log_func_call
     def pool_cleared(self, event):
         self.add_event(event)
 
+    @log_func_call
     def pool_closed(self, event):
         self.add_event(event)
 
