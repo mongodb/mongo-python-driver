@@ -82,7 +82,7 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
     WaitQueueTimeoutError,
 )
-from pymongo.pool import ConnectionClosedReason, PoolState
+from pymongo.pool import ConnectionClosedReason
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
@@ -1183,6 +1183,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         with _MongoClientErrorHandler(self, server, session) as err_handler:
             # Reuse the pinned connection, if it exists.
             if in_txn and session._pinned_connection:
+                err_handler.contribute_socket(session._pinned_connection)
                 yield session._pinned_connection
                 return
             with server.get_socket(handler=err_handler) as sock_info:
@@ -1192,7 +1193,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     SERVER_TYPE.LoadBalancer,
                 ):
                     session._pin(server, sock_info)
-                err_handler.contribute_socket(sock_info)
                 if (
                     self._encrypter
                     and not self._encrypter._bypass_auto_encryption
@@ -1283,7 +1283,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             server = self._select_server(
                 operation.read_preference, operation.session, address=address
             )
-
             with operation.sock_mgr.lock:
                 with _MongoClientErrorHandler(self, server, operation.session) as err_handler:
                     err_handler.contribute_socket(operation.sock_mgr.sock)
@@ -2068,17 +2067,18 @@ class _MongoClientErrorHandler(object):
 
     __slots__ = (
         "client",
+        "server_address",
         "session",
         "max_wire_version",
         "sock_generation",
         "service_id",
+        "sock_info",
         "handled",
-        "server",
     )
 
     def __init__(self, client, server, session):
         self.client = client
-        self.server = server
+        self.server_address = server.description.address
         self.session = session
         self.max_wire_version = common.MIN_WIRE_VERSION
         # XXX: When get_socket fails, this generation could be out of date:
@@ -2087,6 +2087,7 @@ class _MongoClientErrorHandler(object):
         # of the pool at the time the connection attempt was started."
         self.sock_generation = server.pool.gen.get_overall()
         self.service_id = None
+        self.sock_info = None
         self.handled = False
 
     def contribute_socket(self, sock_info):
@@ -2094,6 +2095,7 @@ class _MongoClientErrorHandler(object):
         self.max_wire_version = sock_info.max_wire_version
         self.sock_generation = sock_info.generation
         self.service_id = sock_info.service_id
+        self.sock_info = sock_info
 
     def handle(self, exc_type, exc_val):
         if self.handled or exc_type is None:
@@ -2111,7 +2113,7 @@ class _MongoClientErrorHandler(object):
                 ):
                     self.session._unpin()
 
-        completed_handshake = self.server.pool.state == PoolState.READY
+        completed_handshake = self.sock_info and self.sock_info.completed_handshake
         err_ctx = _ErrorContext(
             exc_val,
             self.max_wire_version,
@@ -2119,8 +2121,7 @@ class _MongoClientErrorHandler(object):
             completed_handshake,
             self.service_id,
         )
-        server_address = self.server.description.address
-        self.client._topology.handle_error(server_address, err_ctx)
+        self.client._topology.handle_error(self.server_address, err_ctx)
 
     def __enter__(self):
         return self
