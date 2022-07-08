@@ -38,7 +38,20 @@ from pymongo.collection import ReturnDocument
 from pymongo.cursor import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
-from pymongo.monitoring import _SENSITIVE_COMMANDS
+from pymongo.monitoring import (
+    _SENSITIVE_COMMANDS,
+    ConnectionCheckedInEvent,
+    ConnectionCheckedOutEvent,
+    ConnectionCheckOutFailedEvent,
+    ConnectionCheckOutStartedEvent,
+    ConnectionClosedEvent,
+    ConnectionCreatedEvent,
+    ConnectionReadyEvent,
+    PoolClearedEvent,
+    PoolClosedEvent,
+    PoolCreatedEvent,
+    PoolReadyEvent,
+)
 from pymongo.pool import _CancellationContext, _PoolGeneration
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
@@ -77,21 +90,6 @@ class BaseListener(object):
     def wait_for_event(self, event, count):
         """Wait for a number of events to be published, or fail."""
         wait_until(lambda: self.event_count(event) >= count, "find %s %s event(s)" % (count, event))
-
-
-from pymongo.monitoring import (
-    ConnectionCheckedInEvent,
-    ConnectionCheckedOutEvent,
-    ConnectionCheckOutFailedEvent,
-    ConnectionCheckOutStartedEvent,
-    ConnectionClosedEvent,
-    ConnectionCreatedEvent,
-    ConnectionReadyEvent,
-    PoolClearedEvent,
-    PoolClosedEvent,
-    PoolCreatedEvent,
-    PoolReadyEvent,
-)
 
 
 class CMAPListener(BaseListener, monitoring.ConnectionPoolListener):
