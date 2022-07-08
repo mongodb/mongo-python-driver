@@ -65,7 +65,12 @@ from test.utils import (
 
 import pymongo
 from bson import encode
-from bson.codec_options import CodecOptions, TypeEncoder, TypeRegistry
+from bson.codec_options import (
+    CodecOptions,
+    DatetimeConversionOpts,
+    TypeEncoder,
+    TypeRegistry,
+)
 from bson.son import SON
 from bson.tz_util import utc
 from pymongo import event_loggers, message, monitoring
@@ -386,14 +391,17 @@ class ClientUnitTest(unittest.TestCase):
         # Ensure codec options are passed in correctly
         uuid_representation_label = "javaLegacy"
         unicode_decode_error_handler = "ignore"
+        datetime_conversion = "DATETIME_CLAMP"
         uri = (
             "mongodb://%s:%d/foo?tz_aware=true&uuidrepresentation="
             "%s&unicode_decode_error_handler=%s"
+            "&datetime_conversion=%s"
             % (
                 client_context.host,
                 client_context.port,
                 uuid_representation_label,
                 unicode_decode_error_handler,
+                datetime_conversion,
             )
         )
         c = MongoClient(uri, connect=False)
@@ -403,6 +411,19 @@ class ClientUnitTest(unittest.TestCase):
             c.codec_options.uuid_representation, _UUID_REPRESENTATIONS[uuid_representation_label]
         )
         self.assertEqual(c.codec_options.unicode_decode_error_handler, unicode_decode_error_handler)
+        self.assertEqual(
+            c.codec_options.datetime_conversion, DatetimeConversionOpts[datetime_conversion]
+        )
+
+        # Change the passed datetime_conversion to a number and re-assert.
+        uri = uri.replace(
+            datetime_conversion, f"{int(DatetimeConversionOpts[datetime_conversion])}"
+        )
+        c = MongoClient(uri, connect=False)
+
+        self.assertEqual(
+            c.codec_options.datetime_conversion, DatetimeConversionOpts[datetime_conversion]
+        )
 
     def test_uri_option_precedence(self):
         # Ensure kwarg options override connection string options.

@@ -199,14 +199,14 @@ class TypeRegistry(object):
         )
 
 
-class DatetimeConversionOpts(int, enum.Enum):
+class DatetimeConversionOpts(enum.IntEnum):
     DATETIME = 1
     DATETIME_CLAMP = 2
     DATETIME_MS = 3
     DATETIME_AUTO = 4
 
     def __str__(self):
-        return f"'{self.value}'"
+        return f"{self.value}"
 
     __repr__ = __str__
 
@@ -433,6 +433,11 @@ def _parse_codec_options(options: Any) -> CodecOptions:
     }:
         if k == "uuidrepresentation":
             kwargs["uuid_representation"] = options[k]
+        elif k == "datetime_conversion":
+            if isinstance(options[k], str):
+                kwargs["datetime_conversion"] = DatetimeConversionOpts[options[k]]
+            else:
+                kwargs["datetime_conversion"] = DatetimeConversionOpts(options[k])
         else:
             kwargs[k] = options[k]
     return CodecOptions(**kwargs)
