@@ -2068,18 +2068,17 @@ class _MongoClientErrorHandler(object):
 
     __slots__ = (
         "client",
-        "server_address",
         "session",
         "max_wire_version",
         "sock_generation",
-        "completed_handshake",
         "service_id",
         "handled",
+        "server",
     )
 
     def __init__(self, client, server, session):
         self.client = client
-        self.server_address = server.description.address
+        self.server = server
         self.session = session
         self.max_wire_version = common.MIN_WIRE_VERSION
         # XXX: When get_socket fails, this generation could be out of date:
@@ -2087,7 +2086,6 @@ class _MongoClientErrorHandler(object):
         # completes then the error's generation number is the generation
         # of the pool at the time the connection attempt was started."
         self.sock_generation = server.pool.gen.get_overall()
-        self.completed_handshake = False
         self.service_id = None
         self.handled = False
 
@@ -2096,7 +2094,6 @@ class _MongoClientErrorHandler(object):
         self.max_wire_version = sock_info.max_wire_version
         self.sock_generation = sock_info.generation
         self.service_id = sock_info.service_id
-        self.completed_handshake = True
 
     def handle(self, exc_type, exc_val):
         if self.handled or exc_type is None:
@@ -2114,14 +2111,16 @@ class _MongoClientErrorHandler(object):
                 ):
                     self.session._unpin()
 
+        completed_handshake = self.server.pool.handshake
         err_ctx = _ErrorContext(
             exc_val,
             self.max_wire_version,
             self.sock_generation,
-            self.completed_handshake,
+            completed_handshake,
             self.service_id,
         )
-        self.client._topology.handle_error(self.server_address, err_ctx)
+        server_address = self.server.description.address
+        self.client._topology.handle_error(server_address, err_ctx)
 
     def __enter__(self):
         return self
