@@ -88,7 +88,9 @@ def log_func_call(func):
 
 
 class CMAPListener(BaseListener, monitoring.ConnectionPoolListener):
-    func_calls = []
+    def __init__(self, *args, **kwargs):
+        self.func_calls = []
+        super().__init__(*args, **kwargs)
 
     @log_func_call
     def connection_created(self, event):
