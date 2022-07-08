@@ -540,7 +540,6 @@ class SocketInfo(object):
         # Support for mechanism negotiation on the initial handshake.
         self.negotiated_mechs = None
         self.auth_ctx = None
-        self.completed_handshake = False
 
         # The pool's generation changes with each reset() so we can close
         # sockets created before the last reset.
@@ -1411,8 +1410,6 @@ class Pool:
             listeners.publish_connection_check_out_started(self.address)
 
         sock_info = self._get_socket()
-        if handler:
-            handler.contribute_socket(sock_info)
         if self.enabled_for_cmap:
             listeners.publish_connection_checked_out(self.address, sock_info.id)
         try:

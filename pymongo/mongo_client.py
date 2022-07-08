@@ -1193,6 +1193,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     SERVER_TYPE.LoadBalancer,
                 ):
                     session._pin(server, sock_info)
+                err_handler.contribute_socket(sock_info)
                 if (
                     self._encrypter
                     and not self._encrypter._bypass_auto_encryption
@@ -1283,6 +1284,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             server = self._select_server(
                 operation.read_preference, operation.session, address=address
             )
+
             with operation.sock_mgr.lock:
                 with _MongoClientErrorHandler(self, server, operation.session) as err_handler:
                     err_handler.contribute_socket(operation.sock_mgr.sock)
@@ -2077,11 +2079,11 @@ class _MongoClientErrorHandler(object):
 
     __slots__ = (
         "client",
-        "completed_handshake",
         "server_address",
         "session",
         "max_wire_version",
         "sock_generation",
+        "completed_handshake",
         "service_id",
         "handled",
     )
@@ -2096,8 +2098,8 @@ class _MongoClientErrorHandler(object):
         # completes then the error's generation number is the generation
         # of the pool at the time the connection attempt was started."
         self.sock_generation = server.pool.gen.get_overall()
-        self.service_id = None
         self.completed_handshake = False
+        self.service_id = None
         self.handled = False
 
     def contribute_socket(self, sock_info):
@@ -2122,6 +2124,7 @@ class _MongoClientErrorHandler(object):
                     "RetryableWriteError"
                 ):
                     self.session._unpin()
+
         err_ctx = _ErrorContext(
             exc_val,
             self.max_wire_version,

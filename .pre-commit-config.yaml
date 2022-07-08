@@ -56,7 +56,7 @@ repos:
   rev: 0.11.1
   hooks:
     - id: doc8
-      args: ["--ignore=D001"]
+      args: ["--ignore=D001"]  # ignore line length
       stages: [manual]
 
 - repo: https://github.com/sirosen/check-jsonschema
