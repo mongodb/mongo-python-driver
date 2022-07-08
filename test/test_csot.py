@@ -33,6 +33,9 @@ globals().update(generate_test_classes(TEST_PATH, module=__name__))
 
 
 class TestCSOT(IntegrationTest):
+    RUN_ON_SERVERLESS = True
+    RUN_ON_LOAD_BALANCER = True
+
     def test_timeout_nested(self):
         coll = self.db.coll
         self.assertEqual(_csot.get_timeout(), None)

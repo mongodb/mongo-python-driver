@@ -1336,6 +1336,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 bulk.started_retryable_write = True
 
         while True:
+            if is_retrying():
+                remaining = _csot.remaining()
+                if remaining is not None and remaining <= 0:
+                    assert last_error is not None
+                    raise last_error
             try:
                 server = self._select_server(writable_server_selector, session)
                 supports_session = (
@@ -1394,6 +1399,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         multiple_retries = _csot.get_timeout() is not None
 
         while True:
+            if retrying:
+                remaining = _csot.remaining()
+                if remaining is not None and remaining <= 0:
+                    assert last_error is not None
+                    raise last_error
             try:
                 server = self._select_server(read_pref, session, address=address)
                 with self._socket_from_server(read_pref, server, session) as (sock_info, read_pref):
