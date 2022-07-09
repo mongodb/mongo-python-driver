@@ -52,6 +52,7 @@ from pymongo.errors import (
     NotPrimaryError,
     OperationFailure,
     PyMongoError,
+    WaitQueueTimeoutError,
     _CertificateError,
 )
 from pymongo.hello import Hello, HelloCompat
@@ -1637,7 +1638,7 @@ class Pool:
         timeout = _csot.get_timeout() or self.opts.wait_queue_timeout
         if self.opts.load_balanced:
             other_ops = self.active_sockets - self.ncursors - self.ntxns
-            raise ConnectionFailure(
+            raise WaitQueueTimeoutError(
                 "Timeout waiting for connection from the connection pool. "
                 "maxPoolSize: %s, connections in use by cursors: %s, "
                 "connections in use by transactions: %s, connections in use "
@@ -1650,7 +1651,7 @@ class Pool:
                     timeout,
                 )
             )
-        raise ConnectionFailure(
+        raise WaitQueueTimeoutError(
             "Timed out while checking out a connection from connection pool. "
             "maxPoolSize: %s, timeout: %s" % (self.opts.max_pool_size, timeout)
         )
