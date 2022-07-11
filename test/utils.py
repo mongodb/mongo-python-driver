@@ -38,7 +38,20 @@ from pymongo.collection import ReturnDocument
 from pymongo.cursor import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
-from pymongo.monitoring import _SENSITIVE_COMMANDS
+from pymongo.monitoring import (
+    _SENSITIVE_COMMANDS,
+    ConnectionCheckedInEvent,
+    ConnectionCheckedOutEvent,
+    ConnectionCheckOutFailedEvent,
+    ConnectionCheckOutStartedEvent,
+    ConnectionClosedEvent,
+    ConnectionCreatedEvent,
+    ConnectionReadyEvent,
+    PoolClearedEvent,
+    PoolClosedEvent,
+    PoolCreatedEvent,
+    PoolReadyEvent,
+)
 from pymongo.pool import _CancellationContext, _PoolGeneration
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
@@ -81,36 +94,47 @@ class BaseListener(object):
 
 class CMAPListener(BaseListener, monitoring.ConnectionPoolListener):
     def connection_created(self, event):
+        assert isinstance(event, ConnectionCreatedEvent)
         self.add_event(event)
 
     def connection_ready(self, event):
+        assert isinstance(event, ConnectionReadyEvent)
         self.add_event(event)
 
     def connection_closed(self, event):
+        assert isinstance(event, ConnectionClosedEvent)
         self.add_event(event)
 
     def connection_check_out_started(self, event):
+        assert isinstance(event, ConnectionCheckOutStartedEvent)
         self.add_event(event)
 
     def connection_check_out_failed(self, event):
+        assert isinstance(event, ConnectionCheckOutFailedEvent)
         self.add_event(event)
 
     def connection_checked_out(self, event):
+        assert isinstance(event, ConnectionCheckedOutEvent)
         self.add_event(event)
 
     def connection_checked_in(self, event):
+        assert isinstance(event, ConnectionCheckedInEvent)
         self.add_event(event)
 
     def pool_created(self, event):
+        assert isinstance(event, PoolCreatedEvent)
         self.add_event(event)
 
     def pool_ready(self, event):
+        assert isinstance(event, PoolReadyEvent)
         self.add_event(event)
 
     def pool_cleared(self, event):
+        assert isinstance(event, PoolClearedEvent)
         self.add_event(event)
 
     def pool_closed(self, event):
+        assert isinstance(event, PoolClosedEvent)
         self.add_event(event)
 
 

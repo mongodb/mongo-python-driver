@@ -42,6 +42,16 @@ from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import _ServerMode
 from pymongo.write_concern import WriteConcern
 
+__all__ = [
+    "GridFS",
+    "GridFSBucket",
+    "NoFile",
+    "DEFAULT_CHUNK_SIZE",
+    "GridIn",
+    "GridOut",
+    "GridOutCursor",
+]
+
 
 class GridFS(object):
     """An instance of GridFS on top of a single Database."""

@@ -26,7 +26,18 @@ import sys
 import time
 import types
 from collections import abc
-from test import IntegrationTest, client_context, unittest
+from test import (
+    AWS_CREDS,
+    AZURE_CREDS,
+    CA_PEM,
+    CLIENT_PEM,
+    GCP_CREDS,
+    KMIP_CREDS,
+    LOCAL_MASTER_KEY,
+    IntegrationTest,
+    client_context,
+    unittest,
+)
 from test.utils import (
     CMAPListener,
     camel_to_snake,
@@ -45,6 +56,7 @@ from typing import Any
 import pymongo
 from bson import SON, Code, DBRef, Decimal128, Int64, MaxKey, MinKey, json_util
 from bson.binary import Binary
+from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.objectid import ObjectId
 from bson.regex import RE_TYPE, Regex
 from gridfs import GridFSBucket
@@ -53,10 +65,13 @@ from pymongo.change_stream import ChangeStream
 from pymongo.client_session import ClientSession, TransactionOptions, _TxnState
 from pymongo.collection import Collection
 from pymongo.database import Database
+from pymongo.encryption import ClientEncryption
+from pymongo.encryption_options import _HAVE_PYMONGOCRYPT
 from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
     ConnectionFailure,
+    EncryptionError,
     ExecutionTimeout,
     InvalidOperation,
     NetworkTimeout,
@@ -92,6 +107,27 @@ from pymongo.write_concern import WriteConcern
 JSON_OPTS = json_util.JSONOptions(tz_aware=False)
 
 IS_INTERRUPTED = False
+
+KMS_TLS_OPTS = {
+    "kmip": {
+        "tlsCAFile": CA_PEM,
+        "tlsCertificateKeyFile": CLIENT_PEM,
+    }
+}
+
+
+# Build up a placeholder map.
+PLACEHOLDER_MAP = dict()
+for (provider_name, provider_data) in [
+    ("local", {"key": LOCAL_MASTER_KEY}),
+    ("aws", AWS_CREDS),
+    ("azure", AZURE_CREDS),
+    ("gcp", GCP_CREDS),
+    ("kmip", KMIP_CREDS),
+]:
+    for (key, value) in provider_data.items():
+        placeholder = f"/clientEncryptionOpts/kmsProviders/{provider_name}/{key}"
+        PLACEHOLDER_MAP[placeholder] = value
 
 
 def interrupt_loop():
@@ -169,6 +205,12 @@ def is_run_on_requirement_satisfied(requirement):
         else:
             auth_satisfied = not client_context.auth_enabled
 
+    csfle_satisfied = True
+    req_csfle = requirement.get("csfle")
+    if req_csfle is True:
+        min_version_satisfied = Version.from_string("4.2") <= server_version
+        csfle_satisfied = _HAVE_PYMONGOCRYPT and min_version_satisfied
+
     return (
         topology_satisfied
         and min_version_satisfied
@@ -176,6 +218,7 @@ def is_run_on_requirement_satisfied(requirement):
         and serverless_satisfied
         and params_satisfied
         and auth_satisfied
+        and csfle_satisfied
     )
 
 
@@ -328,6 +371,19 @@ class EntityMapUtil(object):
 
         self._entities[key] = value
 
+    def _handle_placeholders(self, spec: dict, current: dict, path: str) -> Any:
+        if "$$placeholder" in current:
+            if path not in PLACEHOLDER_MAP:
+                raise ValueError(f"Could not find a placeholder value for {path}")
+            return PLACEHOLDER_MAP[path]
+
+        for key in list(current):
+            value = current[key]
+            if isinstance(value, dict):
+                subpath = f"{path}/{key}"
+                current[key] = self._handle_placeholders(spec, value, subpath)
+        return current
+
     def _create_entity(self, entity_spec, uri=None):
         if len(entity_spec) != 1:
             self.test.fail(
@@ -335,6 +391,7 @@ class EntityMapUtil(object):
             )
 
         entity_type, spec = next(iter(entity_spec.items()))
+        spec = self._handle_placeholders(spec, spec, "")
         if entity_type == "client":
             kwargs: dict = {}
             observe_events = spec.get("observeEvents", [])
@@ -410,6 +467,19 @@ class EntityMapUtil(object):
         elif entity_type == "bucket":
             # TODO: implement the 'bucket' entity type
             self.test.skipTest("GridFS is not currently supported (PYTHON-2459)")
+        elif entity_type == "clientEncryption":
+            opts = camel_to_snake_args(spec["clientEncryptionOpts"].copy())
+            if isinstance(opts["key_vault_client"], str):
+                opts["key_vault_client"] = self[opts["key_vault_client"]]
+            self[spec["id"]] = ClientEncryption(
+                opts["kms_providers"],
+                opts["key_vault_namespace"],
+                opts["key_vault_client"],
+                DEFAULT_CODEC_OPTIONS,
+                opts.get("kms_tls_options", KMS_TLS_OPTS),
+            )
+            return
+
         self.test.fail("Unable to create entity of unknown type %s" % (entity_type,))
 
     def create_entities_from_spec(self, entity_spec, uri=None):
@@ -810,6 +880,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
         if "csot" in class_name:
+            if client_context.storage_engine == "mmapv1":
+                self.skipTest(
+                    "MMAPv1 does not support retryable writes which is required for CSOT tests"
+                )
             if "change" in description or "change" in class_name:
                 self.skipTest("CSOT not implemented for watch()")
             if "cursors" in class_name:
@@ -872,7 +946,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             # Connection errors are considered client errors.
             if isinstance(exception, ConnectionFailure):
                 self.assertNotIsInstance(exception, NotPrimaryError)
-            elif isinstance(exception, (InvalidOperation, ConfigurationError)):
+            elif isinstance(exception, (InvalidOperation, ConfigurationError, EncryptionError)):
                 pass
             else:
                 self.assertNotIsInstance(exception, PyMongoError)
@@ -1033,6 +1107,33 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self.__raise_if_unsupported("close", target, NonLazyCursor)
         return target.close()
 
+    def _clientEncryptionOperation_createDataKey(self, target, *args, **kwargs):
+        if "opts" in kwargs:
+            opts = kwargs.pop("opts")
+            kwargs["master_key"] = opts.get("masterKey")
+            kwargs["key_alt_names"] = opts.get("keyAltNames")
+            kwargs["key_material"] = opts.get("keyMaterial")
+        return target.create_data_key(*args, **kwargs)
+
+    def _clientEncryptionOperation_getKeys(self, target, *args, **kwargs):
+        return list(target.get_keys(*args, **kwargs))
+
+    def _clientEncryptionOperation_deleteKey(self, target, *args, **kwargs):
+        result = target.delete_key(*args, **kwargs)
+        response = result.raw_result
+        response["deletedCount"] = result.deleted_count
+        return response
+
+    def _clientEncryptionOperation_rewrapManyDataKey(self, target, *args, **kwargs):
+        if "opts" in kwargs:
+            opts = kwargs.pop("opts")
+            kwargs["provider"] = opts.get("provider")
+            kwargs["master_key"] = opts.get("masterKey")
+        data = target.rewrap_many_data_key(*args, **kwargs)
+        if data.bulk_write_result:
+            return dict(bulkWriteResult=parse_bulk_write_result(data.bulk_write_result))
+        return dict()
+
     def run_entity_operation(self, spec):
         target = self.entity_map[spec["object"]]
         client = target
@@ -1075,6 +1176,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             client = target._client
         elif isinstance(target, GridFSBucket):
             raise NotImplementedError
+        elif isinstance(target, ClientEncryption):
+            method_name = "_clientEncryptionOperation_%s" % (opname,)
         else:
             method_name = "doesNotExist"
 

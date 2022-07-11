@@ -80,6 +80,7 @@ from pymongo.errors import (
     OperationFailure,
     PyMongoError,
     ServerSelectionTimeoutError,
+    WaitQueueTimeoutError,
 )
 from pymongo.pool import ConnectionClosedReason
 from pymongo.read_preferences import ReadPreference, _ServerMode
@@ -1182,6 +1183,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         with _MongoClientErrorHandler(self, server, session) as err_handler:
             # Reuse the pinned connection, if it exists.
             if in_txn and session._pinned_connection:
+                err_handler.contribute_socket(session._pinned_connection)
                 yield session._pinned_connection
                 return
             with server.get_socket(handler=err_handler) as sock_info:
@@ -1251,7 +1253,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         with self._get_socket(server, session) as sock_info:
             if single:
-                if sock_info.is_repl:
+                if sock_info.is_repl and not (session and session.in_transaction):
                     # Use primary preferred to ensure any repl set member
                     # can handle the request.
                     read_preference = ReadPreference.PRIMARY_PREFERRED
@@ -1336,6 +1338,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 bulk.started_retryable_write = True
 
         while True:
+            if is_retrying():
+                remaining = _csot.remaining()
+                if remaining is not None and remaining <= 0:
+                    assert last_error is not None
+                    raise last_error
             try:
                 server = self._select_server(writable_server_selector, session)
                 supports_session = (
@@ -1394,6 +1401,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         multiple_retries = _csot.get_timeout() is not None
 
         while True:
+            if retrying:
+                remaining = _csot.remaining()
+                if remaining is not None and remaining <= 0:
+                    assert last_error is not None
+                    raise last_error
             try:
                 server = self._select_server(read_pref, session, address=address)
                 with self._socket_from_server(read_pref, server, session) as (sock_info, read_pref):
@@ -2054,9 +2066,11 @@ def _add_retryable_write_error(exc, max_wire_version):
             if code in helpers._RETRYABLE_ERROR_CODES:
                 exc._add_error_label("RetryableWriteError")
 
-    # Connection errors are always retryable except NotPrimaryError which is
+    # Connection errors are always retryable except NotPrimaryError and WaitQueueTimeoutError which is
     # handled above.
-    if isinstance(exc, ConnectionFailure) and not isinstance(exc, NotPrimaryError):
+    if isinstance(exc, ConnectionFailure) and not isinstance(
+        exc, (NotPrimaryError, WaitQueueTimeoutError)
+    ):
         exc._add_error_label("RetryableWriteError")
 
 
