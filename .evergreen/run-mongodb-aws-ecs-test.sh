@@ -30,7 +30,14 @@ authtest () {
     $PYTHON -m pip install --upgrade wheel setuptools pip
     cd src
     $PYTHON -m pip install '.[aws]'
-    $PYTHON test/auth_aws/test_auth_aws.py
+    git clone https://github.com/blink1073/pymongo-auth-aws.git
+    pushd pymongo-auth-aws
+    git fetch origin DRIVERS-2333-2
+    git checkout DRIVERS-2333-2
+    pip install .
+    popd
+    rm -rf pymongo-auth-aws
+    TEST_CACHED_AWS_CREDS=1 $PYTHON test/auth_aws/test_auth_aws.py -v
     cd -
 }
 
