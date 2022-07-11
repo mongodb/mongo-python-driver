@@ -73,6 +73,7 @@ class TestAuthAWS(unittest.TestCase):
         # The first attempt should cache credentials.
         client.get_database().test.find_one()
         creds = auth._get_cached_credentials()
+        assert creds is not None
 
         # Force a re-auth and make sure the cache is used.
         pool = get_pool(client)
