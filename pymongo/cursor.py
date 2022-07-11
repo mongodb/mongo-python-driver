@@ -44,7 +44,7 @@ from pymongo.common import (
     validate_is_mapping,
 )
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
-from pymongo.lock import MongoClientLock
+from pymongo.lock import _ForkLock
 from pymongo.message import (
     _CursorAddress,
     _GetMore,
@@ -133,7 +133,7 @@ class _SocketManager(object):
         self.sock = sock
         self.more_to_come = more_to_come
         self.closed = False
-        self.lock = MongoClientLock()
+        self.lock = _ForkLock()
 
     def update_exhaust(self, more_to_come):
         self.more_to_come = more_to_come

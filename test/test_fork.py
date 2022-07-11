@@ -25,7 +25,7 @@ from unittest.mock import patch
 
 from bson.objectid import ObjectId
 from pymongo import MongoClient
-from pymongo.lock import MongoClientLock
+from pymongo.lock import _ForkLock
 
 
 @client_context.require_connection
@@ -33,14 +33,26 @@ def setUpModule():
     pass
 
 
+class ForkThread(threading.Thread):
+    def __init__(self, group=None, target=None, name=None, args=(), kwargs={}, *, daemon=None):
+        super().__init__()
+        self.pid = os.getpid()
+
+    def run(self):
+        self.pid = os.fork()
+
+
 class LockWrapper:
-    def __init__(self, _lock_type: Any = MongoClientLock, _after_enter: Callable = None):
+    def __init__(self, _lock_type: Any = _ForkLock):
         self.__lock = _lock_type()
-        self._after_enter = _after_enter
+        self.fork_thread = ForkThread()
 
     def __enter__(self):
+        import sys
+        import traceback
+
         self.__lock.__enter__()
-        self._after_enter()
+        self.fork_thread.start()
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.__lock.__exit__(exc_type, exc_value, traceback)
@@ -63,22 +75,15 @@ class TestFork(IntegrationTest):
         Parent => All locks should be as before the fork.
         Child => All locks should be reset.
         """
-        lock_pid: int = -1
 
-        def _fork():
-            nonlocal lock_pid
-            lock_pid = os.fork()
-
-        # Avoids directly referencing the mangled name.
-        lock_name: str = next(filter(lambda y: "__lock" in y, dir(self.db.client)))
-
-        with patch.object(self.db.client, lock_name, LockWrapper(_after_enter=_fork)):
-            # Call _get_topology, will fork upon __enter__ing
+        with patch.object(self.db.client, "_MongoClient__lock", LockWrapper()):
+            # Call _get_topology, will launch a thread to fork upon __enter__ing
             # the with region.
             self.db.client._get_topology()
+            lock_pid = self.db.client._MongoClient__lock.fork_thread.pid
 
             if lock_pid == 0:  # Child
-                os._exit(0 if not getattr(self.db.client, lock_name).locked() else 1)
+                os._exit(0 if not self.db.client._MongoClient__lock.locked() else 1)
             else:  # Parent
                 self.assertEqual(0, os.waitpid(lock_pid, 0)[1] >> 8)
 
@@ -91,28 +96,23 @@ class TestFork(IntegrationTest):
         Must use threading.Lock as ObjectId uses this.
         """
 
-        lock_pid: int = -1
-
-        def _fork():
-            nonlocal lock_pid
-            lock_pid = os.fork()
-
         with patch.object(
             ObjectId,
             "_inc_lock",
-            LockWrapper(_lock_type=threading.Lock, _after_enter=_fork),
+            LockWrapper(_lock_type=threading.Lock),
         ):
-            # Generate the ObjectId, will fork upon __enter__ing
-            # the with region.
+            # Generate the ObjectId, will generate a thread to fork
+            # upon __enter__ing the with region.
+
             ObjectId()
+            ObjectId._inc_lock.fork_thread.join()
+            lock_pid = ObjectId._inc_lock.fork_thread.pid
+
             if lock_pid == 0:  # Child
                 os._exit(0 if not ObjectId._inc_lock.locked() else 1)
             else:  # Parent
                 self.assertEqual(0, os.waitpid(lock_pid, 0)[1] >> 8)
 
-    @skipIf(
-        platform.python_implementation() != "CPython", "Depends on CPython implementation of id"
-    )
     def test_topology_reset(self):
         """
         Tests that topologies are different from each other.

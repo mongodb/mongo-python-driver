@@ -36,7 +36,7 @@ from pymongo.errors import (
     WriteError,
 )
 from pymongo.hello import Hello
-from pymongo.lock import MongoClientLock
+from pymongo.lock import _ForkLock
 from pymongo.monitor import SrvMonitor
 from pymongo.pool import PoolOptions
 from pymongo.server import Server
@@ -127,7 +127,7 @@ class Topology(object):
         self._seed_addresses = list(topology_description.server_descriptions())
         self._opened = False
         self._closed = False
-        self._lock = MongoClientLock()
+        self._lock = _ForkLock()
         self._condition = self._settings.condition_class(self._lock)
         self._servers = {}
         self._pid = None

@@ -38,7 +38,7 @@ from pymongo.collection import ReturnDocument
 from pymongo.cursor import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
-from pymongo.lock import MongoClientLock
+from pymongo.lock import _ForkLock
 from pymongo.monitoring import _SENSITIVE_COMMANDS
 from pymongo.pool import _CancellationContext, _PoolGeneration
 from pymongo.read_concern import ReadConcern
@@ -265,7 +265,7 @@ class MockSocketInfo(object):
 class MockPool(object):
     def __init__(self, address, options, handshake=True):
         self.gen = _PoolGeneration()
-        self._lock = MongoClientLock()
+        self._lock = _ForkLock()
         self.opts = options
         self.operation_count = 0
 

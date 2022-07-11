@@ -55,7 +55,7 @@ from pymongo.errors import (
     _CertificateError,
 )
 from pymongo.hello import Hello, HelloCompat
-from pymongo.lock import MongoClientLock
+from pymongo.lock import _ForkLock
 from pymongo.monitoring import ConnectionCheckOutFailedReason, ConnectionClosedReason
 from pymongo.network import command, receive_message
 from pymongo.read_preferences import ReadPreference
@@ -1159,7 +1159,7 @@ class Pool:
         # and returned to pool from the left side. Stale sockets removed
         # from the right side.
         self.sockets: collections.deque = collections.deque()
-        self.lock = MongoClientLock()
+        self.lock = _ForkLock()
         self.active_sockets = 0
         # Monotonically increasing connection ID required for CMAP Events.
         self.next_connection_id = 1

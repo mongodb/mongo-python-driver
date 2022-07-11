@@ -22,7 +22,7 @@ from typing import Any, Mapping, cast
 from pymongo import common, periodic_executor
 from pymongo.errors import NotPrimaryError, OperationFailure, _OperationCancelled
 from pymongo.hello import Hello
-from pymongo.lock import MongoClientLock
+from pymongo.lock import _ForkLock
 from pymongo.periodic_executor import _shutdown_executors
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
@@ -350,7 +350,7 @@ class _RttMonitor(MonitorBase):
 
         self._pool = pool
         self._moving_average = MovingAverage()
-        self._lock = MongoClientLock()
+        self._lock = _ForkLock()
 
     def close(self):
         self.gc_safe_close()
