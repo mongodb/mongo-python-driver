@@ -60,7 +60,7 @@ class TestAuthAWS(unittest.TestCase):
             client.get_database().test.find_one()
 
     def test_cache_credentials(self):
-        if not os.environ.get("TEST_CACHED_AWS", None):
+        if not os.environ.get("TEST_CACHED_AWS_CREDS", None):
             self.skipTest("Not testing cached credentials")
 
         client = MongoClient(self.uri)
