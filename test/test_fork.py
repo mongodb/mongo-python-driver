@@ -18,7 +18,7 @@ import os
 import threading
 from multiprocessing import Pipe
 from test import IntegrationTest, client_context
-from typing import Any
+from typing import Any, Callable
 from unittest import skipIf
 from unittest.mock import patch
 
@@ -33,22 +33,30 @@ def setUpModule():
 
 
 class ForkThread(threading.Thread):
-    def __init__(self):
+    def __init__(self, exit_cond: Callable[[], int] = lambda: 0):
         super().__init__()
         self.pid: int = -1
+        self.exit_cond = exit_cond
 
     def run(self):
-        self.pid = os.fork()
+        if self.pid < 0:
+            self.pid = os.fork()
+            if self.pid == 0:
+                # We need to check here if all memory is unlocked is done
+                # after the fork, as the POSIX standard states only the
+                # calling thread is replicated.
+                os._exit(self.exit_cond())
 
 
 class LockWrapper:
-    def __init__(self, _lock_type: Any = _ForkLock):
-        self.__lock = _lock_type()
-        self.fork_thread = ForkThread()
+    def __init__(self, fork_thread: ForkThread, lock_type: Any = _ForkLock):
+        self.__lock = lock_type()
+        self.fork_thread = fork_thread
 
     def __enter__(self):
         self.__lock.__enter__()
-        self.fork_thread.start()
+        if self.fork_thread.pid < 0:
+            self.fork_thread.start()
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.__lock.__exit__(exc_type, exc_value, traceback)
@@ -64,6 +72,7 @@ class LockWrapper:
 class TestFork(IntegrationTest):
     def setUp(self):
         self.db = self.client.pymongo_test
+        self.fork_thread = ForkThread()
 
     def test_lock_client(self):
         """
@@ -71,17 +80,22 @@ class TestFork(IntegrationTest):
         Parent => All locks should be as before the fork.
         Child => All locks should be reset.
         """
-
-        with patch.object(self.db.client, "_MongoClient__lock", LockWrapper()):
+        self.fork_thread.exit_cond = (
+            lambda: 1 if (True in [l.locked() for l in _ForkLock._locks]) else 0
+        )
+        with patch.object(
+            self.db.client, "_MongoClient__lock", LockWrapper(fork_thread=self.fork_thread)
+        ):
             # Call _get_topology, will launch a thread to fork upon __enter__ing
             # the with region.
             self.db.client._get_topology()
+            self.db.client._MongoClient__lock.fork_thread.join()
             lock_pid: int = self.db.client._MongoClient__lock.fork_thread.pid
-
-            if lock_pid == 0:  # Child
-                os._exit(0 if not self.db.client._MongoClient__lock.locked() else 1)
-            else:  # Parent
-                self.assertEqual(0, os.waitpid(lock_pid, 0)[1] >> 8)
+            # The POSIX standard states only the forking thread is cloned.
+            # In the parent, it'll return here.
+            # In the child, it'll end with the calling thread.
+            self.assertNotEqual(lock_pid, 0)
+            self.assertEqual(0, os.waitpid(lock_pid, 0)[1] >> 8)
 
     def test_lock_object_id(self):
         """
@@ -91,11 +105,11 @@ class TestFork(IntegrationTest):
         Child => _inc_lock should be unlocked.
         Must use threading.Lock as ObjectId uses this.
         """
-
+        self.fork_thread.exit_cond = lambda: 0 if not ObjectId._inc_lock.locked() else 1
         with patch.object(
             ObjectId,
             "_inc_lock",
-            LockWrapper(_lock_type=threading.Lock),
+            LockWrapper(fork_thread=self.fork_thread, lock_type=threading.Lock),
         ):
             # Generate the ObjectId, will generate a thread to fork
             # upon __enter__ing the with region.
@@ -104,10 +118,8 @@ class TestFork(IntegrationTest):
             ObjectId._inc_lock.fork_thread.join()
             lock_pid: int = ObjectId._inc_lock.fork_thread.pid
 
-            if lock_pid == 0:  # Child
-                os._exit(0 if not ObjectId._inc_lock.locked() else 1)
-            else:  # Parent
-                self.assertEqual(0, os.waitpid(lock_pid, 0)[1] >> 8)
+            self.assertNotEqual(lock_pid, 0)
+            self.assertEqual(0, os.waitpid(lock_pid, 0)[1] >> 8)
 
     def test_topology_reset(self):
         """

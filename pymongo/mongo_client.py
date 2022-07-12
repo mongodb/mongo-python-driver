@@ -2177,21 +2177,33 @@ class _MongoClientErrorHandler(object):
         return self.handle(exc_type, exc_val)
 
 
-def _after_fork():
+def _before_fork():
+    # Ensure that we aren't in any critical region.
+    _ForkLock._acquire_locks()
+
+
+def _after_fork_child():
     """
-    Reinitialiazes the locks in child process and resets the
+    Releases the locks in child process and resets the
     topologies in all MongoClients.
     """
+    # Reinitialize locks
+    _ForkLock._release_locks()
+
     # Perform cleanup in clients (i.e. get rid of topology)
     for client in MongoClient._clients:
         client._after_fork()
 
-    # Reinitialize locks
-    _ForkLock._reset_locks()
+
+def _after_fork_parent():
+    # Only unlock locs
+    _ForkLock._release_locks()
 
 
 if hasattr(os, "register_at_fork"):
     # This will run in the same thread as the fork was called.
     # If we fork in a critical region on the same thread, it should break.
     # This is fine since we would never call fork directly from a critical region.
-    os.register_at_fork(after_in_child=_after_fork)
+    os.register_at_fork(
+        before=_before_fork, after_in_child=_after_fork_child, after_in_parent=_after_fork_parent
+    )
