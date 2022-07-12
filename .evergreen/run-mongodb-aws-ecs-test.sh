@@ -37,7 +37,7 @@ authtest () {
     pip install .
     popd
     rm -rf pymongo-auth-aws
-    TEST_CACHED_AWS_CREDS=1 $PYTHON test/auth_aws/test_auth_aws.py -v
+    $PYTHON test/auth_aws/test_auth_aws.py -v
     cd -
 }
 
