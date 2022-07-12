@@ -66,6 +66,10 @@ class TestAuthAWS(unittest.TestCase):
         client = MongoClient(self.uri)
         self.addCleanup(client.close)
 
+        # Force a re-auth and make sure we fetch credentials.
+        pool = get_pool(client)
+        pool.reset()
+
         # Ensure cleared credentials.
         auth._set_cached_credentials(None)
         self.assertEqual(auth._get_cached_credentials(), None)
