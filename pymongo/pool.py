@@ -1387,7 +1387,7 @@ class Pool:
             sock_info.authenticate()
         except BaseException as e:
             sock_info.close_socket(ConnectionClosedReason.ERROR)
-            setattr(e, "authentication_failure", True)
+            setattr(e, "authentication_failure", True)  # noqa
             raise
 
         return sock_info
