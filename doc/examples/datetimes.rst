@@ -102,3 +102,54 @@ out of MongoDB in US/Pacific time:
    >>> result = aware_times.find_one()
    datetime.datetime(2002, 10, 27, 6, 0,  # doctest: +NORMALIZE_WHITESPACE
                      tzinfo=<DstTzInfo 'US/Pacific' PST-1 day, 16:00:00 STD>)
+
+Extended Usage
+--------------
+
+Python can only represent datetimes within the range allowed by
+:attr:`~datetime.datetime.min` and :attr:`~datetime.datetime.max`, whereas
+the range of datetimes allowed in BSON can represent any 64-bit number
+of milliseconds from the Unix epoch. To deal with this, we can use the
+:class:`bson.datetime_ms.DatetimeMS` object, which is a wrapper for the
+:class:`int` built-in.
+
+To decode UTC datetime values as :class:`~bson.datetime_ms.DatetimeMS`,
+:class:`~bson.codec_options.CodecOptions` should have its
+``datetime_conversion`` parameter set to one of the options available in
+:class:`bson.datetime_ms.DatetimeConversionOpts`. These include
+:attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME`,
+:attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME_MS`,
+:attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME_AUTO`,
+:attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME_CLAMP`.
+:attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME` is the default
+option and has the behavior of raising an exception upon attempting to
+decode an out-of-range date.
+:attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME_MS` will only return
+:class:`~bson.datetime_ms.DatetimeMS` objects, regardless of whether the
+represented datetime is in- or out-of-range.
+:attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME_AUTO` will return
+:class:`~datetime.datetime` if the underlying UTC datetime is within range,
+or :class:`~bson.datetime_ms.DatetimeMS` if the underlying datetime
+cannot be represented using the builtin Python :class:`~datetime.datetime`.
+:attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME_CLAMP` will clamp
+resulting :class:`~datetime.datetime` objects to be within
+:attr:`~datetime.datetime.min` and :attr:`~datetime.datetime.max`
+(trimmed to `999000`microseconds).
+
+An example of encoding and decoding using `DATETIME_MS` is as follows:
+
+.. doctest::
+    >>> from datetime import datetime
+    >>> from bson import encode, decode
+    >>> from bson.datetime_ms import DatetimeMS
+    >>> from bson.codec_options import CodecOptions,DatetimeConversionOpts
+    >>> x = encode({"x": datetime(1970, 1, 1)})
+    >>> x
+    b'\x10\x00\x00\x00\tx\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+    >>> decode(x, codec_options=CodecOptions(datetime_conversion=DatetimeConversionOpts.DATETIME_MS))
+    {'x': DatetimeMS(0)}
+
+:class:`~bson.datetime_ms.DatetimeMS` objects have support for rich comparison
+methods against other instances of :class:`~bson.datetime_ms.DatetimeMS`.
+They can also be converted to :class:`~datetime.datetime` objects with
+:meth:`~bson.datetime_ms.DatetimeMS.to_datetime()`.

@@ -22,7 +22,7 @@ class DatetimeMS:
     :class:`~datetime.datetime` class when encoding/decoding BSON.
     To decode UTC datetimes as a ``DatetimeMS``,
     `datetime_conversion` in :class:`~bson.CodecOptions` must be set
-    to 'datetime_ms'.
+    to 'datetime_ms' or 'datetime_auto'.
     """
 
     def __init__(self, value: Union[int, datetime.datetime]):
