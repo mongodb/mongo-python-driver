@@ -54,7 +54,6 @@ from typing import (
 )
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
-from bson.objectid import ObjectId
 from bson.son import SON
 from bson.timestamp import Timestamp
 from pymongo import (

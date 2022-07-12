@@ -15,11 +15,10 @@
 """Test that pymongo is fork safe."""
 
 import os
-import platform
 import threading
 from multiprocessing import Pipe
 from test import IntegrationTest, client_context
-from typing import Any, Callable
+from typing import Any
 from unittest import skipIf
 from unittest.mock import patch
 
@@ -34,9 +33,9 @@ def setUpModule():
 
 
 class ForkThread(threading.Thread):
-    def __init__(self, group=None, target=None, name=None, args=(), kwargs={}, *, daemon=None):
+    def __init__(self):
         super().__init__()
-        self.pid = os.getpid()
+        self.pid = None
 
     def run(self):
         self.pid = os.fork()
@@ -48,9 +47,6 @@ class LockWrapper:
         self.fork_thread = ForkThread()
 
     def __enter__(self):
-        import sys
-        import traceback
-
         self.__lock.__enter__()
         self.fork_thread.start()
 
