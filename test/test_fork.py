@@ -35,7 +35,7 @@ def setUpModule():
 class ForkThread(threading.Thread):
     def __init__(self):
         super().__init__()
-        self.pid = None
+        self.pid: int = -1
 
     def run(self):
         self.pid = os.fork()
@@ -76,7 +76,7 @@ class TestFork(IntegrationTest):
             # Call _get_topology, will launch a thread to fork upon __enter__ing
             # the with region.
             self.db.client._get_topology()
-            lock_pid = self.db.client._MongoClient__lock.fork_thread.pid
+            lock_pid: int = self.db.client._MongoClient__lock.fork_thread.pid
 
             if lock_pid == 0:  # Child
                 os._exit(0 if not self.db.client._MongoClient__lock.locked() else 1)
@@ -102,7 +102,7 @@ class TestFork(IntegrationTest):
 
             ObjectId()
             ObjectId._inc_lock.fork_thread.join()
-            lock_pid = ObjectId._inc_lock.fork_thread.pid
+            lock_pid: int = ObjectId._inc_lock.fork_thread.pid
 
             if lock_pid == 0:  # Child
                 os._exit(0 if not ObjectId._inc_lock.locked() else 1)
