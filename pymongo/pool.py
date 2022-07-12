@@ -1379,9 +1379,15 @@ class Pool:
                 sock_info.hello()
                 self.is_writable = sock_info.is_writable
 
-            sock_info.authenticate()
         except BaseException:
             sock_info.close_socket(ConnectionClosedReason.ERROR)
+            raise
+
+        try:
+            sock_info.authenticate()
+        except BaseException as e:
+            sock_info.close_socket(ConnectionClosedReason.ERROR)
+            setattr(e, "authentication_failure", True)
             raise
 
         return sock_info
