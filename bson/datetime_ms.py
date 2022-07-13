@@ -71,12 +71,10 @@ class DatetimeMS:
         Create a Python :class:`~datetime.datetime` from this DatetimeMS object.
 
         :Parameters:
-        - `codec_options`: A CodecOptions instance for specifying how the
-        resulting DatetimeMS object will be formatted using
-        :param:`tz_aware` and :param:`tz_info`.
-
-        Defaults to :const:`~bson.codec_options.DEFAULT_CODEC_OPTIONS`
-        with `tz_aware = True` and `tzinfo = datetime.timezone.utc`.
+          - `codec_options`: A CodecOptions instance for specifying how the
+          resulting DatetimeMS object will be formatted using
+          ``tz_aware`` and ``tz_info``. Defaults to
+          :const:`~bson.codec_options.DEFAULT_CODEC_OPTIONS`.
 
         .. versionadded 4.3
         """
