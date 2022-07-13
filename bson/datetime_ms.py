@@ -71,9 +71,9 @@ class DatetimeMS:
 
         :Parameters:
           - `codec_options`: A CodecOptions instance for specifying how the
-          resulting DatetimeMS object will be formatted using
-          ``tz_aware`` and ``tz_info``. Defaults to
-          :const:`~bson.codec_options.DEFAULT_CODEC_OPTIONS`.
+            resulting DatetimeMS object will be formatted using ``tz_aware``
+            and ``tz_info``. Defaults to
+            :const:`~bson.codec_options.DEFAULT_CODEC_OPTIONS`.
 
         .. versionadded:: 4.3
         """
