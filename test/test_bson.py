@@ -1162,12 +1162,12 @@ class TestDatetimeConversion(unittest.TestCase):
     def test_class_conversions(self):
         # Test class conversions.
         dtr1 = DatetimeMS(1234)
-        dt1 = dtr1.to_datetime()
+        dt1 = dtr1.as_datetime()
         self.assertEqual(dtr1, DatetimeMS(dt1))
 
         dt2 = datetime.datetime(1969, 1, 1)
         dtr2 = DatetimeMS(dt2)
-        self.assertEqual(dtr2.to_datetime(), dt2)
+        self.assertEqual(dtr2.as_datetime(), dt2)
 
         # Test encode and decode without codec options. Expect: DatetimeMS => datetime
         dtr1 = DatetimeMS(0)

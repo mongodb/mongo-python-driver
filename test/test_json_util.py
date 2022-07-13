@@ -251,11 +251,11 @@ class TestJsonUtil(unittest.TestCase):
         opts = JSONOptions(datetime_representation=DatetimeRepresentation.ISO8601)
 
         self.assertEqual(
-            dat_min["x"].to_datetime(CodecOptions(tz_aware=False)),
+            dat_min["x"].as_datetime(CodecOptions(tz_aware=False)),
             json_util.loads(json_util.dumps(dat_min))["x"],
         )
         self.assertEqual(
-            dat_max["x"].to_datetime(CodecOptions(tz_aware=False)),
+            dat_max["x"].as_datetime(CodecOptions(tz_aware=False)),
             json_util.loads(json_util.dumps(dat_max))["x"],
         )
 
@@ -292,7 +292,7 @@ class TestJsonUtil(unittest.TestCase):
 
         # Test decode from datetime.datetime to DatetimeMS
         dat_min = {"x": datetime.datetime.min}
-        dat_max = {"x": DatetimeMS(_max_datetime_ms()).to_datetime(CodecOptions(tz_aware=False))}
+        dat_max = {"x": DatetimeMS(_max_datetime_ms()).as_datetime(CodecOptions(tz_aware=False))}
         opts = JSONOptions(
             datetime_representation=DatetimeRepresentation.ISO8601,
             datetime_conversion=DatetimeConversionOpts.DATETIME_MS,

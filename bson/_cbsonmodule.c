@@ -76,10 +76,10 @@ struct module_state {
 #define BSON_MIN_SIZE 5
 
 /* Datetime codec options */
-#define DATETIME_CONVERSION_OPTS_DATETIME 1
-#define DATETIME_CONVERSION_OPTS_DATETIME_CLAMP 2
-#define DATETIME_CONVERSION_OPTS_DATETIME_MS 3
-#define DATETIME_CONVERSION_OPTS_DATETIME_AUTO 4
+#define DATETIME 1
+#define DATETIME_CLAMP 2
+#define DATETIME_MS 3
+#define DATETIME_AUTO 4
 
 /* Get an error class from the bson.errors module.
  *
@@ -185,6 +185,58 @@ static long long millis_from_datetime(PyObject* datetime) {
 
     millis = cbson_timegm64(&timeinfo) * 1000;
     millis += PyDateTime_DATE_GET_MICROSECOND(datetime) / 1000;
+    return millis;
+}
+
+/* Extended-range datetime, returns a DatetimeMS object with millis */
+static PyObject* datetime_ms_from_millis(PyObject* self, long long millis){
+    // Allocate a new DatetimeMS object.
+    struct module_state *state = GETSTATE(self);
+
+    PyObject* dt;
+    PyObject* ll_millis;
+
+    // Set _value.
+    if (!(ll_millis = PyLong_FromLongLong(millis))){
+        return NULL;
+    }
+    dt = PyObject_CallFunctionObjArgs(state->DatetimeMSType, ll_millis, NULL);
+    Py_DECREF(ll_millis);
+    if (dt == NULL) {
+        return NULL;
+    }
+    return dt;
+}
+
+/* Extended-range datetime, takes a DatetimeMS object and extracts the long long value. */
+static long long millis_from_datetime_ms(PyObject* dt){
+    PyObject* ll_millis;
+    long long millis;
+
+    if (!(ll_millis = PyNumber_Long(dt))){
+        if (PyErr_Occurred()) {
+            PyObject *InvalidBSON = _error("InvalidBSON");
+            if (InvalidBSON) {
+                PyErr_SetString(InvalidBSON, "Not a valid DatetimeMS object");
+                Py_DECREF(InvalidBSON);
+            }
+            Py_DECREF(ll_millis);
+            return -1;
+        }
+    }
+
+    if ((millis = PyLong_AsLongLong(ll_millis)) == -1){
+        if (PyErr_Occurred()) {
+            PyObject* OverflowError = _error("OverflowError");
+            if (OverflowError) {
+                PyErr_SetString(OverflowError,
+                                "Unable to represent this DatetimeMS internally as a long long.");
+                Py_DECREF(OverflowError);
+            }
+        }
+    }
+    Py_DECREF(ll_millis);
+
     return millis;
 }
 
@@ -517,57 +569,6 @@ void destroy_codec_options(codec_options_t* options) {
     Py_CLEAR(options->type_registry.encoder_map);
     Py_CLEAR(options->type_registry.decoder_map);
     Py_CLEAR(options->type_registry.fallback_encoder);
-}
-
-
-/* Extended-range datetime, returns a DatetimeMS object with millis */
-static PyObject* datetime_ms_from_millis(PyObject* self, long long millis){
-    // Allocate a new DatetimeMS object.
-    struct module_state *state = GETSTATE(self);
-
-    PyObject* dt;
-    PyObject* ll_millis;
-
-    // Set _value.
-    if (!(ll_millis = PyLong_FromLongLong(millis))){
-        return NULL;
-    }
-    dt = PyObject_CallFunctionObjArgs(state->DatetimeMSType, ll_millis, NULL);
-    if (dt == NULL){
-        Py_DECREF(ll_millis);
-        return NULL;
-    }
-    // Return
-    return dt;
-}
-
-/* Extended-range datetime, takes a DatetimeMS object and extracts the long long value. */
-static long long millis_from_datetime_ms(PyObject* dt){
-    PyObject* ll_millis;
-    long long millis;
-
-    if (!(ll_millis = PyObject_GetAttrString(dt, "_value"))){
-        if (PyErr_Occurred()) {
-            PyObject *InvalidBSON = _error("InvalidBSON");
-            if (InvalidBSON) {
-                PyErr_SetString(InvalidBSON, "Not a valid DatetimeMS object");
-                Py_DECREF(InvalidBSON);
-            }
-            return -1;
-        }
-    }
-
-    if ((millis = PyLong_AsLongLong(ll_millis)) == -1){
-        if (PyErr_Occurred()) {
-            PyObject* OverflowError = _error("OverflowError");
-            if (OverflowError) {
-                PyErr_SetString(OverflowError,
-                                "Unable to represent this DatetimeMS internally as a long long.");
-                Py_DECREF(OverflowError);
-            }
-        }
-    }
-    return millis;
 }
 
 static int write_element_to_buffer(PyObject* self, buffer_t buffer,
@@ -1925,13 +1926,13 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             millis = (int64_t)BSON_UINT64_FROM_LE(millis);
             *position += 8;
 
-            if (options->datetime_conversion == DATETIME_CONVERSION_OPTS_DATETIME_MS){
+            if (options->datetime_conversion == DATETIME_MS){
                 value = datetime_ms_from_millis(self, millis);
                 break;
             }
 
-            int dt_clamp = options->datetime_conversion == DATETIME_CONVERSION_OPTS_DATETIME_CLAMP;
-            int dt_auto = options->datetime_conversion == DATETIME_CONVERSION_OPTS_DATETIME_AUTO;
+            int dt_clamp = options->datetime_conversion == DATETIME_CLAMP;
+            int dt_auto = options->datetime_conversion == DATETIME_AUTO;
 
 
             if (dt_clamp || dt_auto){
@@ -1939,6 +1940,10 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                 PyObject *max_millis_fn = _get_object(state->_max_datetime_ms, "bson.datetime_ms", "_max_datetime_ms");
                 int64_t min_millis;
                 int64_t max_millis;
+
+                if (min_millis_fn == NULL || max_millis_fn == NULL) {
+                    goto invalid;
+                }
 
                 if (options->tz_aware){
                     PyObject* tzinfo = options->tzinfo;
@@ -1955,8 +1960,11 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                 }
 
                 if (dt_clamp) {
-                    if (millis < min_millis) millis = min_millis;
-                    else if (millis > max_millis) millis = max_millis;
+                    if (millis < min_millis) {
+                        millis = min_millis;
+                    } else if (millis > max_millis) {
+                        millis = max_millis;
+                    }
                     // Continues from here to return a datetime.
                 } else if (dt_auto) {
                     if (millis < min_millis || millis > max_millis){

@@ -834,7 +834,7 @@ def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
             json_options.datetime_representation == DatetimeRepresentation.ISO8601
             and 0 <= int(obj) <= _max_datetime_ms()
         ):
-            return default(obj.to_datetime(), json_options)
+            return default(obj.as_datetime(), json_options)
         elif json_options.datetime_representation == DatetimeRepresentation.LEGACY:
             return {"$date": str(int(obj))}
         return {"$date": {"$numberLong": str(int(obj))}}

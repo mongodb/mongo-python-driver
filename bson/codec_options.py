@@ -205,10 +205,8 @@ class DatetimeConversionOpts(enum.IntEnum):
     DATETIME_MS = 3
     DATETIME_AUTO = 4
 
-    def __str__(self):
+    def __repr__(self):
         return f"{self.value}"
-
-    __repr__ = __str__
 
 
 class _BaseCodecOptions(NamedTuple):

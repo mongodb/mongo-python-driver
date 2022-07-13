@@ -16,13 +16,16 @@ EPOCH_NAIVE = datetime.datetime.utcfromtimestamp(0)
 
 class DatetimeMS:
     """
-    Represents a BSON UTC datetime, which is defined as an int64 of
-    milliseconds since the Unix epoch. Principal use is to represent
-    datetimes outside the range of the Python builtin
-    :class:`~datetime.datetime` class when encoding/decoding BSON.
-    To decode UTC datetimes as a ``DatetimeMS``,
-    `datetime_conversion` in :class:`~bson.CodecOptions` must be set
-    to 'datetime_ms' or 'datetime_auto'.
+    Represents a BSON UTC datetime.
+
+    BSON UTC datetimes are defined as an int64 of milliseconds since the Unix
+    epoch. The principal use of DatetimeMS is to represent datetimes outside
+    the range of the Python builtin :class:`~datetime.datetime` class when
+    encoding/decoding BSON.
+
+    To decode UTC datetimes as a ``DatetimeMS``,`datetime_conversion` in
+    :class:`~bson.CodecOptions` must be set to 'datetime_ms' or
+    'datetime_auto'.
     """
 
     def __init__(self, value: Union[int, datetime.datetime]):
@@ -39,15 +42,11 @@ class DatetimeMS:
     def __repr__(self) -> str:
         return type(self).__name__ + "(" + str(self._value) + ")"
 
-    __str__ = __repr__
-
-    # Avoids using functools.total_ordering for speed.
-    # Second argument not using the _value works for typechecking some of these.
     def __lt__(self, other: "DatetimeMS") -> bool:
-        return self._value < int(other)
+        return self._value < other
 
     def __le__(self, other: "DatetimeMS") -> bool:
-        return self._value <= int(other)
+        return self._value <= other
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, DatetimeMS):
@@ -60,19 +59,26 @@ class DatetimeMS:
         return True
 
     def __gt__(self, other: "DatetimeMS") -> bool:
-        return self._value > int(other)
+        return self._value > other
 
     def __ge__(self, other: "DatetimeMS") -> bool:
-        return self._value >= int(other)
+        return self._value >= other
 
     _type_marker = 9
 
-    def to_datetime(self, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> datetime.datetime:
+    def as_datetime(self, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> datetime.datetime:
         """
-        Converts this ``DatetimeMS`` into a :class:`~datetime.datetime`
-        object. If `opts` is not set, then it will default to a
-        :class:`~bson.CodecOptions` with `tz_aware = True` and
-        `tzinfo = datetime.timezone.utc`.
+        Create a Python :class:`~datetime.datetime` from this DatetimeMS object.
+
+        :Parameters:
+        - `codec_options`: A CodecOptions instance for specifying how the
+        resulting DatetimeMS object will be formatted using
+        :param:`tz_aware` and :param:`tz_info`.
+
+        Defaults to :const:`~bson.codec_options.DEFAULT_CODEC_OPTIONS`
+        with `tz_aware = True` and `tzinfo = datetime.timezone.utc`.
+
+        .. versionadded 4.3
         """
         return cast(datetime.datetime, _millis_to_datetime(self._value, codec_options))
 
