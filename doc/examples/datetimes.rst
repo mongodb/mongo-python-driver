@@ -134,7 +134,7 @@ cannot be represented using the builtin Python :class:`~datetime.datetime`.
 :attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME_CLAMP` will clamp
 resulting :class:`~datetime.datetime` objects to be within
 :attr:`~datetime.datetime.min` and :attr:`~datetime.datetime.max`
-(trimmed to `999000`microseconds).
+(trimmed to `999000` microseconds).
 
 An example of encoding and decoding using `DATETIME_MS` is as follows:
 

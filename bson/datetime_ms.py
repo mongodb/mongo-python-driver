@@ -42,10 +42,10 @@ class DatetimeMS:
     def __repr__(self) -> str:
         return type(self).__name__ + "(" + str(self._value) + ")"
 
-    def __lt__(self, other: "DatetimeMS") -> bool:
+    def __lt__(self, other: Union["DatetimeMS", int]) -> bool:
         return self._value < other
 
-    def __le__(self, other: "DatetimeMS") -> bool:
+    def __le__(self, other: Union["DatetimeMS", int]) -> bool:
         return self._value <= other
 
     def __eq__(self, other: Any) -> bool:
@@ -58,10 +58,10 @@ class DatetimeMS:
             return self._value != other._value
         return True
 
-    def __gt__(self, other: "DatetimeMS") -> bool:
+    def __gt__(self, other: Union["DatetimeMS", int]) -> bool:
         return self._value > other
 
-    def __ge__(self, other: "DatetimeMS") -> bool:
+    def __ge__(self, other: Union["DatetimeMS", int]) -> bool:
         return self._value >= other
 
     _type_marker = 9
