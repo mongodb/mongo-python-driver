@@ -67,8 +67,7 @@ class DatetimeMS:
     _type_marker = 9
 
     def as_datetime(self, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> datetime.datetime:
-        """
-        Create a Python :class:`~datetime.datetime` from this DatetimeMS object.
+        """Create a Python :class:`~datetime.datetime` from this DatetimeMS object.
 
         :Parameters:
           - `codec_options`: A CodecOptions instance for specifying how the
@@ -76,7 +75,7 @@ class DatetimeMS:
           ``tz_aware`` and ``tz_info``. Defaults to
           :const:`~bson.codec_options.DEFAULT_CODEC_OPTIONS`.
 
-        .. versionadded 4.3
+        .. versionadded:: 4.3
         """
         return cast(datetime.datetime, _millis_to_datetime(self._value, codec_options))
 
