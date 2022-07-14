@@ -2105,6 +2105,7 @@ class _MongoClientErrorHandler(object):
         self.completed_handshake = False
         self.service_id = None
         self.handled = False
+        self.sock_info = None
 
     def contribute_socket(self, sock_info):
         """Provide socket information to the error handler."""
