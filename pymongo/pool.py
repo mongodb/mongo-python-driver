@@ -1344,7 +1344,7 @@ class Pool:
                     self.requests -= 1
                     self.size_cond.notify()
 
-    def connect(self):
+    def connect(self, error_handler=None):
         """Connect to Mongo and return a new SocketInfo.
 
         Can raise ConnectionFailure.
@@ -1374,6 +1374,8 @@ class Pool:
             raise
 
         sock_info = SocketInfo(sock, self, self.address, conn_id)
+        if error_handler:
+            error_handler.contribute_socket(sock_info)
         try:
             if self.handshake:
                 sock_info.hello()
@@ -1449,7 +1451,7 @@ class Pool:
                 )
             _raise_connection_failure(self.address, AutoReconnect("connection pool paused"))
 
-    def _get_socket(self):
+    def _get_socket(self, error_handler=None):
         """Get or create a SocketInfo. Can raise ConnectionFailure."""
         # We use the pid here to avoid issues with fork / multiprocessing.
         # See test.test_client:TestClient.test_fork for an example of
@@ -1523,7 +1525,7 @@ class Pool:
                         continue
                 else:  # We need to create a new connection
                     try:
-                        sock_info = self.connect()
+                        sock_info = self.connect(error_handler=error_handler)
                     finally:
                         with self._max_connecting_cond:
                             self._pending -= 1
