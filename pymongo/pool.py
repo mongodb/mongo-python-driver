@@ -1410,7 +1410,7 @@ class Pool:
         if self.enabled_for_cmap:
             listeners.publish_connection_check_out_started(self.address)
 
-        sock_info = self._get_socket()
+        sock_info = self._get_socket(error_handler=handler)
         if handler:
             handler.contribute_socket(sock_info)
 
