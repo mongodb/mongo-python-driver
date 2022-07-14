@@ -2089,6 +2089,7 @@ class _MongoClientErrorHandler(object):
         "completed_handshake",
         "service_id",
         "handled",
+        "sock_info",
     )
 
     def __init__(self, client, server, session):
@@ -2107,14 +2108,18 @@ class _MongoClientErrorHandler(object):
 
     def contribute_socket(self, sock_info):
         """Provide socket information to the error handler."""
-        self.max_wire_version = sock_info.max_wire_version
-        self.sock_generation = sock_info.generation
-        self.service_id = sock_info.service_id
+        self.sock_info = sock_info
 
     def handle(self, exc_type, exc_val):
         if self.handled or exc_type is None:
             return
         self.handled = True
+
+        if self.sock_info:
+            self.max_wire_version = self.sock_info.max_wire_version
+            self.sock_generation = self.sock_info.generation
+            self.service_id = self.sock_info.service_id
+
         if self.session:
             if issubclass(exc_type, ConnectionFailure):
                 if self.session.in_transaction:
