@@ -772,7 +772,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         .. note:: If this client has been configured to use MongoDB Stable
            API (see :ref:`versioned-api-ref`), then :meth:`command` will
-           automactically add API versioning options to the given command.
+           automatically add API versioning options to the given command.
            Explicitly adding API versioning options in the command and
            declaring an API version on the client is not supported.
 

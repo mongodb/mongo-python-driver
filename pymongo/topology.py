@@ -644,6 +644,14 @@ class Topology(object):
         error = err_ctx.error
         exc_type = type(error)
         service_id = err_ctx.service_id
+
+        # Ignore a handshake error if the server is behind a load balancer but
+        # the service ID is unknown. This indicates that the error happened
+        # when dialing the connection or during the MongoDB  handshake, so we
+        # don't know the service ID to use for clearing the pool.
+        if self._settings.load_balanced and not service_id and not err_ctx.completed_handshake:
+            return
+
         if issubclass(exc_type, NetworkTimeout) and err_ctx.completed_handshake:
             # The socket has been closed. Don't reset the server.
             # Server Discovery And Monitoring Spec: "When an application

@@ -83,9 +83,9 @@ Running Load Balancer Tests Locally
 -----------------------------------
 - Install ``haproxy`` (available as ``brew install haproxy`` on macOS).
 - Clone ``drivers-evergreen-tools``: ``git clone git@github.com:mongodb-labs/drivers-evergreen-tools.git``.
-- Start the servers using ``LOAD_BALANCER=true TOPOLOGY=sharded_cluster AUTH=noauth SSL=nossl MONGODB_VERSION=6.0 DRIVERS_TOOLS=./drivers-evergreen-tools MONGO_ORCHESTRATION_HOME=./drivers-evergreen-tools/.evergreen/orchestration ./drivers-evergreen-tools/.evergreen/run-orchestration.sh``.
-- Start the load balancer using: ``MONGODB_URI='mongodb://localhost:27017,localhost:27018/' .evergreen/run-load-balancer.sh start``.
-- Run the tests using: ``LOADBALANCER=1 TEST_LOADBALANCER=1 SINGLE_MONGOS_LB_URI='mongodb://127.0.0.1:8000/?loadBalanced=true' MULTI_MONGOS_LB_URI='mongodb://127.0.0.1:8001/?loadBalanced=true' MONGODB_URI='mongodb://localhost:27017,localhost:27018/' python setup.py test -s test.test_load_balancer``.
+- Start the servers using ``LOAD_BALANCER=true TOPOLOGY=sharded_cluster AUTH=noauth SSL=nossl MONGODB_VERSION=6.0 DRIVERS_TOOLS=$PWD/drivers-evergreen-tools MONGO_ORCHESTRATION_HOME=$PWD/drivers-evergreen-tools/.evergreen/orchestration $PWD/drivers-evergreen-tools/.evergreen/run-orchestration.sh``.
+- Start the load balancer using: ``MONGODB_URI='mongodb://localhost:27017,localhost:27018/' $PWD/drivers-evergreen-tools/.evergreen/run-load-balancer.sh start``.
+- Run the tests from the ``pymongo`` checkout directory using: ``LOADBALANCER=1 TEST_LOADBALANCER=1 SINGLE_MONGOS_LB_URI='mongodb://127.0.0.1:8000/?loadBalanced=true' MULTI_MONGOS_LB_URI='mongodb://127.0.0.1:8001/?loadBalanced=true' MONGODB_URI='mongodb://localhost:27017,localhost:27018/' python setup.py test -s test.test_load_balancer``.
 
 Re-sync Spec Tests
 ------------------
