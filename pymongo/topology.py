@@ -649,14 +649,7 @@ class Topology(object):
         # the service ID is unknown. This indicates that the error happened
         # when dialing the connection or during the MongoDB  handshake, so we
         # don't know the service ID to use for clearing the pool.
-        # If the error happened during authentication, then we still want
-        # to clear the pool.
-        if (
-            self._settings.load_balanced
-            and not service_id
-            and not err_ctx.completed_handshake
-            and not getattr(error, "authentication_failure", None)
-        ):
+        if self._settings.load_balanced and not service_id and not err_ctx.completed_handshake:
             return
 
         if issubclass(exc_type, NetworkTimeout) and err_ctx.completed_handshake:

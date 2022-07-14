@@ -1379,15 +1379,9 @@ class Pool:
                 sock_info.hello()
                 self.is_writable = sock_info.is_writable
 
+            sock_info.authenticate()
         except BaseException:
             sock_info.close_socket(ConnectionClosedReason.ERROR)
-            raise
-
-        try:
-            sock_info.authenticate()
-        except BaseException as e:
-            sock_info.close_socket(ConnectionClosedReason.ERROR)
-            setattr(e, "authentication_failure", True)  # noqa
             raise
 
         return sock_info
@@ -1415,6 +1409,9 @@ class Pool:
             listeners.publish_connection_check_out_started(self.address)
 
         sock_info = self._get_socket()
+        if handler:
+            handler.contribute_socket(sock_info)
+
         if self.enabled_for_cmap:
             listeners.publish_connection_checked_out(self.address, sock_info.id)
         try:

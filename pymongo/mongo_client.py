@@ -1184,6 +1184,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             # Reuse the pinned connection, if it exists.
             if in_txn and session._pinned_connection:
                 err_handler.contribute_socket(session._pinned_connection)
+                err_handler.completed_handshake = True
                 yield session._pinned_connection
                 return
             with server.get_socket(handler=err_handler) as sock_info:
@@ -1194,6 +1195,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 ):
                     session._pin(server, sock_info)
                 err_handler.contribute_socket(sock_info)
+                err_handler.completed_handshake = True
                 if (
                     self._encrypter
                     and not self._encrypter._bypass_auto_encryption
@@ -1288,6 +1290,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             with operation.sock_mgr.lock:
                 with _MongoClientErrorHandler(self, server, operation.session) as err_handler:
                     err_handler.contribute_socket(operation.sock_mgr.sock)
+                    err_handler.completed_handshake = True
                     return server.run_operation(
                         operation.sock_mgr.sock, operation, True, self._event_listeners, unpack_res
                     )
@@ -2107,7 +2110,6 @@ class _MongoClientErrorHandler(object):
         self.max_wire_version = sock_info.max_wire_version
         self.sock_generation = sock_info.generation
         self.service_id = sock_info.service_id
-        self.completed_handshake = True
 
     def handle(self, exc_type, exc_val):
         if self.handled or exc_type is None:
