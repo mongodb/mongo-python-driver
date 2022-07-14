@@ -15,6 +15,7 @@
 """Test that pymongo is fork safe."""
 
 import os
+import platform
 import threading
 from multiprocessing import Pipe
 from test import IntegrationTest, client_context
@@ -68,6 +69,10 @@ class LockWrapper:
 # Not available for versions of Python without "register_at_fork"
 @skipIf(
     not hasattr(os, "register_at_fork"), "register_at_fork not available in this version of Python"
+)
+@skipIf(
+    platform.python_implementation() != "CPython",
+    "Lock sanitization mechanism only available on CPython",
 )
 class TestFork(IntegrationTest):
     def setUp(self):
