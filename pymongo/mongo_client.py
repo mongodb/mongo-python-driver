@@ -1184,7 +1184,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             # Reuse the pinned connection, if it exists.
             if in_txn and session._pinned_connection:
                 err_handler.contribute_socket(session._pinned_connection)
-                err_handler.completed_handshake = True
                 yield session._pinned_connection
                 return
             with server.get_socket(handler=err_handler) as sock_info:
@@ -1195,7 +1194,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 ):
                     session._pin(server, sock_info)
                 err_handler.contribute_socket(sock_info)
-                err_handler.completed_handshake = True
                 if (
                     self._encrypter
                     and not self._encrypter._bypass_auto_encryption
@@ -1290,7 +1288,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             with operation.sock_mgr.lock:
                 with _MongoClientErrorHandler(self, server, operation.session) as err_handler:
                     err_handler.contribute_socket(operation.sock_mgr.sock)
-                    err_handler.completed_handshake = True
                     return server.run_operation(
                         operation.sock_mgr.sock, operation, True, self._event_listeners, unpack_res
                     )
@@ -2089,7 +2086,6 @@ class _MongoClientErrorHandler(object):
         "completed_handshake",
         "service_id",
         "handled",
-        "sock_info",
     )
 
     def __init__(self, client, server, session):
@@ -2105,22 +2101,18 @@ class _MongoClientErrorHandler(object):
         self.completed_handshake = False
         self.service_id = None
         self.handled = False
-        self.sock_info = None
 
-    def contribute_socket(self, sock_info):
+    def contribute_socket(self, sock_info, completed_handshake=True):
         """Provide socket information to the error handler."""
-        self.sock_info = sock_info
+        self.max_wire_version = sock_info.max_wire_version
+        self.sock_generation = sock_info.generation
+        self.service_id = sock_info.service_id
+        self.completed_handshake = completed_handshake
 
     def handle(self, exc_type, exc_val):
         if self.handled or exc_type is None:
             return
         self.handled = True
-
-        if self.sock_info:
-            self.max_wire_version = self.sock_info.max_wire_version
-            self.sock_generation = self.sock_info.generation
-            self.service_id = self.sock_info.service_id
-
         if self.session:
             if issubclass(exc_type, ConnectionFailure):
                 if self.session.in_transaction:
