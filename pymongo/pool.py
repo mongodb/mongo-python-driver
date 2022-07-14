@@ -1379,7 +1379,7 @@ class Pool:
                 sock_info.hello()
                 self.is_writable = sock_info.is_writable
             if handler:
-                handler.contribute_socket(sock_info, handshake_completed=False)
+                handler.contribute_socket(sock_info, completed_handshake=False)
 
             sock_info.authenticate()
         except BaseException:
