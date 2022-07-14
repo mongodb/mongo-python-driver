@@ -1,5 +1,3 @@
-import inspect
-import os
 import threading
 import weakref
 
@@ -51,9 +49,12 @@ class _ForkLock:
     _atomic_counter = 0
     _atomic_counter_lock = threading.Lock()
 
+    _insertion_lock = threading.Lock()
+
     def __init__(self):
         self._lock = threading.Lock()
-        _ForkLock._locks.add(self)
+        with _ForkLock._insertion_lock:
+            _ForkLock._locks.add(self)
 
     def __getattr__(self, item):
         return getattr(self._lock, item)
