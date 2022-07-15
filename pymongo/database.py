@@ -305,6 +305,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         read_concern: Optional["ReadConcern"] = None,
         session: Optional["ClientSession"] = None,
         timeout: Optional[float] = None,
+        check_exists: Optional[bool] = True,
         **kwargs: Any,
     ) -> Collection[_DocumentType]:
         """Create a new :class:`~pymongo.collection.Collection` in this
@@ -336,14 +337,14 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.collation.Collation`.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - ``check_exists`` (optional): if True (the default), send a listCollections command to
+            check if the collection already exists before creation.
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the `create collection command`_
 
         All optional `create collection command`_ parameters should be passed
         as keyword arguments to this method. Valid options include, but are not
         limited to:
-          - ``checkExists`` (bool): if True (the default) , send a listCollections command to check
-            if the collection already exists before creation.
           - ``size`` (int): desired initial size for the collection (in
             bytes). For capped collections this size is the max
             size of the collection.
@@ -403,7 +404,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             enabling pre- and post-images.
 
         .. versionchanged:: 4.2
-           Added the ``checkExists``, ``clusteredIndex``, and  ``encryptedFields`` parameters.
+           Added the ``check_exists``, ``clusteredIndex``, and  ``encryptedFields`` parameters.
 
         .. versionchanged:: 3.11
            This method is now supported inside multi-document transactions
@@ -422,6 +423,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             https://mongodb.com/docs/manual/reference/command/create
         """
         encrypted_fields = kwargs.get("encryptedFields")
+
         if (
             not encrypted_fields
             and self.client.options.auto_encryption_opts
@@ -438,13 +440,12 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         clustered_index = kwargs.get("clusteredIndex")
         if clustered_index:
             common.validate_is_mapping("clusteredIndex", clustered_index)
-        check_exists = kwargs.pop("checkExists", True)
         with self.__client._tmp_session(session) as s:
             # Skip this check in a transaction where listCollections is not
             # supported.
             if (
-                (not s or not s.in_transaction)
-                and check_exists
+                check_exists
+                and (not s or not s.in_transaction)
                 and name in self.list_collection_names(filter={"name": name}, session=s)
             ):
                 raise CollectionInvalid("collection %s already exists" % name)

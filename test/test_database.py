@@ -16,6 +16,7 @@
 
 import re
 import sys
+import unittest.mock as mock
 from typing import Any, Iterable, List, Mapping
 
 sys.path[0:0] = [""]
@@ -219,6 +220,18 @@ class TestDatabase(IntegrationTest):
             command = results["started"][0].command
             self.assertIn("nameOnly", command)
             self.assertTrue(command["nameOnly"])
+
+    def test_check_exists(self):
+        client = rs_or_single_client()
+        db = client[self.db.name]
+        with mock.patch.object(db, "list_collections") as m:
+            db.drop_collection("unique")
+            db.create_collection("unique", check_exists=True)
+            m.assert_called()
+            m.reset_mock()
+            db.drop_collection("unique")
+            db.create_collection("unique", check_exists=False)
+            m.assert_not_called()
 
     def test_list_collections(self):
         self.client.drop_database("pymongo_test")

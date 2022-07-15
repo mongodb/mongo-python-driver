@@ -13,6 +13,9 @@ PyMongo 4.2 brings a number of improvements including:
   changes may be made before the final release.  See :ref:`automatic-queryable-client-side-encryption` for example usage.
 - Provisional (beta) support for :func:`pymongo.timeout` to apply a single timeout
   to an entire block of pymongo operations.
+- Added ``check_exists`` option to :meth:`~pymongo.database.Database.create_collection`
+  that when True (the default)  runs an additional ``listCollections`` command to verify that the
+  collection does not exist already.
 
 Bug fixes
 .........
