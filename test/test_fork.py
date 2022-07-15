@@ -15,7 +15,6 @@
 """Test that pymongo is fork safe."""
 
 import os
-import platform
 import threading
 from multiprocessing import Pipe
 from test import IntegrationTest, client_context
