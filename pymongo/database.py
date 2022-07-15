@@ -345,6 +345,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         All optional `create collection command`_ parameters should be passed
         as keyword arguments to this method. Valid options include, but are not
         limited to:
+
           - ``size`` (int): desired initial size for the collection (in
             bytes). For capped collections this size is the max
             size of the collection.
