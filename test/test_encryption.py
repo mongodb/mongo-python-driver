@@ -1777,10 +1777,9 @@ class TestDecryptProse(EncryptionIntegrationTest):
         self.cipher_text = self.client_encryption.encrypt(
             "hello", key_id=keyID, algorithm=Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic
         )
-        if self.cipher_text[-1] == 0:
-            self.malformed_cipher_text = self.cipher_text[:-1] + b"1"
-        else:
-            self.malformed_cipher_text = self.cipher_text[:-1] + b"0"
+        self.malformed_cipher_text = self.cipher_text[:-1] + (self.cipher_text[-1] ^ 1).to_bytes(
+            1, "big"
+        )
         self.malformed_cipher_text = Binary(self.malformed_cipher_text, 6)
         opts = AutoEncryptionOpts(
             key_vault_namespace="keyvault.datakeys", kms_providers=kms_providers_map

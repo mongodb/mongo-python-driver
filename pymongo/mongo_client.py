@@ -2138,12 +2138,12 @@ class _MongoClientErrorHandler(object):
         self.service_id = None
         self.handled = False
 
-    def contribute_socket(self, sock_info):
+    def contribute_socket(self, sock_info, completed_handshake=True):
         """Provide socket information to the error handler."""
         self.max_wire_version = sock_info.max_wire_version
         self.sock_generation = sock_info.generation
         self.service_id = sock_info.service_id
-        self.completed_handshake = True
+        self.completed_handshake = completed_handshake
 
     def handle(self, exc_type, exc_val):
         if self.handled or exc_type is None:

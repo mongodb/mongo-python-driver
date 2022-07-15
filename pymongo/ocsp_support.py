@@ -217,7 +217,7 @@ def _verify_response(issuer, response):
     if not res:
         return 0
 
-    # Note that we are not using a "tolerence period" as discussed in
+    # Note that we are not using a "tolerance period" as discussed in
     # https://tools.ietf.org/rfc/rfc5019.txt?
     now = _datetime.utcnow()
     # RFC6960, Section 3.2, Number 5
