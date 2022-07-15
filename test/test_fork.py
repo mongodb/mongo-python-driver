@@ -70,10 +70,6 @@ class LockWrapper:
 @skipIf(
     not hasattr(os, "register_at_fork"), "register_at_fork not available in this version of Python"
 )
-@skipIf(
-    platform.python_implementation() != "CPython",
-    "Lock sanitization mechanism only available on CPython",
-)
 class TestFork(IntegrationTest):
     def setUp(self):
         self.db = self.client.pymongo_test
@@ -86,7 +82,7 @@ class TestFork(IntegrationTest):
         Child => All locks should be reset.
         """
         self.fork_thread.exit_cond = (
-            lambda: 1 if (True in [l.locked() for l in _ForkLock._locks.copy()]) else 0
+            lambda: 1 if (True in [l.locked() for l in _ForkLock._locks]) else 0
         )
         with patch.object(
             self.db.client, "_MongoClient__lock", LockWrapper(fork_thread=self.fork_thread)
