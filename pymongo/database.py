@@ -342,7 +342,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         All optional `create collection command`_ parameters should be passed
         as keyword arguments to this method. Valid options include, but are not
         limited to:
-
+          - ``checkExists`` (bool): if True (the default) , send a listCollections command to check
+            if the collection already exists before creation.
           - ``size`` (int): desired initial size for the collection (in
             bytes). For capped collections this size is the max
             size of the collection.
@@ -402,7 +403,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             enabling pre- and post-images.
 
         .. versionchanged:: 4.2
-           Added the ``clusteredIndex`` and ``encryptedFields`` parameters.
+           Added the ``checkExists``, ``clusteredIndex``, and  ``encryptedFields`` parameters.
 
         .. versionchanged:: 3.11
            This method is now supported inside multi-document transactions
@@ -437,12 +438,14 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         clustered_index = kwargs.get("clusteredIndex")
         if clustered_index:
             common.validate_is_mapping("clusteredIndex", clustered_index)
-
+        check_exists = kwargs.pop("checkExists", True)
         with self.__client._tmp_session(session) as s:
             # Skip this check in a transaction where listCollections is not
             # supported.
-            if (not s or not s.in_transaction) and name in self.list_collection_names(
-                filter={"name": name}, session=s
+            if (
+                (not s or not s.in_transaction)
+                and check_exists
+                and name in self.list_collection_names(filter={"name": name}, session=s)
             ):
                 raise CollectionInvalid("collection %s already exists" % name)
             return Collection(
