@@ -36,7 +36,7 @@ def setUpModule():
 class ForkThread(threading.Thread):
     def __init__(self, exit_cond: Callable[[], int] = lambda: 0):
         super().__init__()
-        self.pid: int = -1
+        self.pid: int = -1  # Indicate we haven't started.
         self.exit_cond = exit_cond
 
     def run(self):
@@ -86,7 +86,7 @@ class TestFork(IntegrationTest):
         Child => All locks should be reset.
         """
         self.fork_thread.exit_cond = (
-            lambda: 1 if (True in [l.locked() for l in _ForkLock._locks]) else 0
+            lambda: 1 if (True in [l.locked() for l in _ForkLock._locks.copy()]) else 0
         )
         with patch.object(
             self.db.client, "_MongoClient__lock", LockWrapper(fork_thread=self.fork_thread)
