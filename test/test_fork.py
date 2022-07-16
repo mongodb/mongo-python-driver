@@ -80,9 +80,7 @@ class TestFork(IntegrationTest):
         Parent => All locks should be as before the fork.
         Child => All locks should be reset.
         """
-        self.fork_thread.exit_cond = (
-            lambda: 1 if (True in [l.locked() for l in _ForkLock._locks]) else 0
-        )
+        self.fork_thread.exit_cond = lambda: sum([int(l.locked()) for l in _ForkLock._locks])
         with patch.object(
             self.db.client, "_MongoClient__lock", LockWrapper(fork_thread=self.fork_thread)
         ):

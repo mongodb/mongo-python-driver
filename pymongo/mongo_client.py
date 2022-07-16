@@ -2196,7 +2196,7 @@ def _after_fork_child():
 
 
 def _after_fork_parent():
-    # Only unlock locs
+    # Only unlock locks
     _ForkLock._release_locks(False)
 
 
