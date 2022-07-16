@@ -41,7 +41,7 @@ class _ForkLock:
         self._lock.__exit__(exc_type, exc_val, exc_tb)
 
     @classmethod
-    def _release_locks(cls, child: bool):
+    def _release_locks(cls, child: bool) -> None:
         # Completed the fork, reset all the locks in the child.
         if child:
             for lock in _ForkLock._locks:
