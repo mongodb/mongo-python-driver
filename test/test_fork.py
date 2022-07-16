@@ -55,7 +55,7 @@ class LockWrapper:
 
     def __enter__(self):
         self.__lock.__enter__()
-        if self.fork_thread.pid < 0:
+        if not self.fork_thread.is_alive():
             self.fork_thread.start()
 
     def __exit__(self, exc_type, exc_value, traceback):
