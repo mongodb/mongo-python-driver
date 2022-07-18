@@ -1105,6 +1105,7 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callbac
         elif opname == "create_collection":
             if arg_name == "collection":
                 arguments["name"] = arguments.pop(arg_name)
+            arguments["check_exists"] = False
             # Any other arguments to create_collection are passed through
             # **kwargs.
         elif opname == "create_index" and arg_name == "keys":
