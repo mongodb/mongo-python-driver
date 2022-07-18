@@ -276,9 +276,7 @@ if sys.platform in ("win32", "darwin"):
     pyopenssl_reqs.append("certifi")
 
 extras_require = {
-    "encryption": [
-        "pymongocrypt@git+ssh://git@github.com/mongodb/libmongocrypt.git@161dbc8ae#subdirectory=bindings/python"
-    ],
+    "encryption": ["pymongocrypt>=1.3.0,<2.0.0"],
     "ocsp": pyopenssl_reqs,
     "snappy": ["python-snappy"],
     "zstd": ["zstandard"],
