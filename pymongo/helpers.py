@@ -30,6 +30,7 @@ from pymongo.errors import (
     WriteConcernError,
     WriteError,
     WTimeoutError,
+    _wtimeout_error,
 )
 from pymongo.hello import HelloCompat
 
@@ -190,7 +191,7 @@ def _raise_last_write_error(write_errors: List[Any]) -> NoReturn:
 
 
 def _raise_write_concern_error(error: Any) -> NoReturn:
-    if "errInfo" in error and error["errInfo"].get("wtimeout"):
+    if _wtimeout_error(error):
         # Make sure we raise WTimeoutError
         raise WTimeoutError(error.get("errmsg"), error.get("code"), error)
     raise WriteConcernError(error.get("errmsg"), error.get("code"), error)
