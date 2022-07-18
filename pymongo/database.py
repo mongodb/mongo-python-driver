@@ -298,6 +298,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
         session: Optional["ClientSession"] = None,
+        check_exists: Optional[bool] = True,
         **kwargs: Any,
     ) -> Collection[_DocumentType]:
         """Create a new :class:`~pymongo.collection.Collection` in this
@@ -329,6 +330,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.collation.Collation`.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - ``check_exists`` (optional): if True (the default), send a listCollections command to
+            check if the collection already exists before creation.
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the `create collection command`_
 
@@ -395,7 +398,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             enabling pre- and post-images.
 
         .. versionchanged:: 4.2
-           Added the ``clusteredIndex`` and ``encryptedFields`` parameters.
+           Added the ``check_exists``, ``clusteredIndex``, and  ``encryptedFields`` parameters.
 
         .. versionchanged:: 3.11
            This method is now supported inside multi-document transactions
@@ -434,8 +437,10 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         with self.__client._tmp_session(session) as s:
             # Skip this check in a transaction where listCollections is not
             # supported.
-            if (not s or not s.in_transaction) and name in self.list_collection_names(
-                filter={"name": name}, session=s
+            if (
+                check_exists
+                and (not s or not s.in_transaction)
+                and name in self.list_collection_names(filter={"name": name}, session=s)
             ):
                 raise CollectionInvalid("collection %s already exists" % name)
             return Collection(

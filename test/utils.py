@@ -202,23 +202,14 @@ class OvertCommandListener(EventListener):
     ignore_list_collections = False
 
     def started(self, event):
-        if self.ignore_list_collections and event.command_name.lower() == "listcollections":
-            self.ignore_list_collections = False
-            return
         if event.command_name.lower() not in _SENSITIVE_COMMANDS:
             super(OvertCommandListener, self).started(event)
 
     def succeeded(self, event):
-        if self.ignore_list_collections and event.command_name.lower() == "listcollections":
-            self.ignore_list_collections = False
-            return
         if event.command_name.lower() not in _SENSITIVE_COMMANDS:
             super(OvertCommandListener, self).succeeded(event)
 
     def failed(self, event):
-        if self.ignore_list_collections and event.command_name.lower() == "listcollections":
-            self.ignore_list_collections = False
-            return
         if event.command_name.lower() not in _SENSITIVE_COMMANDS:
             super(OvertCommandListener, self).failed(event)
 
@@ -1114,6 +1105,7 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callbac
         elif opname == "create_collection":
             if arg_name == "collection":
                 arguments["name"] = arguments.pop(arg_name)
+            arguments["check_exists"] = False
             # Any other arguments to create_collection are passed through
             # **kwargs.
         elif opname == "create_index" and arg_name == "keys":
