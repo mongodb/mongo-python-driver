@@ -1028,7 +1028,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def _databaseOperation_createCollection(self, target, *args, **kwargs):
         # PYTHON-1936 Ignore the listCollections event from create_collection.
-        ret = target.create_collection(*args, check_exists=False, **kwargs)
+        kwargs["check_exists"] = False
+        ret = target.create_collection(*args, **kwargs)
         return ret
 
     def __entityOperation_aggregate(self, target, *args, **kwargs):
