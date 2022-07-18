@@ -265,7 +265,7 @@ class ClientOptions(object):
 
     @property
     def timeout(self) -> Optional[float]:
-        """The timeout.
+        """The configured timeoutMS converted to seconds, or None.
 
         ..versionadded: 4.2
         """

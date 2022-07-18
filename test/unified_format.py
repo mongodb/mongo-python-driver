@@ -1193,7 +1193,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
         try:
             # TODO: PYTHON-3289 apply inherited timeout by default.
-            inherit_timeout = getattr(target, "timeout", None)
+            inherit_timeout = client.options.timeout
             # CSOT: Translate the spec test "timeout" arg into pymongo's context timeout API.
             if "timeout" in arguments or inherit_timeout is not None:
                 timeout = arguments.pop("timeout", None)

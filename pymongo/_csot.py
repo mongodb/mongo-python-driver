@@ -58,7 +58,7 @@ class _TimeoutContext(object):
 
     Use :func:`pymongo.timeout` instead::
 
-      with client.timeout(0.5):
+      with pymongo.timeout(0.5):
           client.test.test.insert_one({})
     """
 
