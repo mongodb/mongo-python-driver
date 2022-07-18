@@ -16,7 +16,6 @@
 
 import re
 import sys
-import unittest.mock as mock
 from typing import Any, Iterable, List, Mapping
 
 sys.path[0:0] = [""]
