@@ -41,11 +41,17 @@ class ForkThread(threading.Thread):
     def run(self):
         if self.pid < 0:
             self.pid = os.fork()
-            if self.pid == 0:
-                # We need to check here if all memory is unlocked is done
-                # after the fork, as the POSIX standard states only the
-                # calling thread is replicated.
-                os._exit(self.exit_cond())
+            try:
+                if self.pid == 0:
+                    # We need to check here if all memory is unlocked is done
+                    # after the fork, as the POSIX standard states only the
+                    # calling thread is replicated.\
+                    os._exit(self.exit_cond())
+            except Exception as e:
+                import traceback
+
+                print(f"Exit cond on {self.pid}: {self.exit_cond()}")
+                traceback.print_exc()
 
 
 class LockWrapper:
