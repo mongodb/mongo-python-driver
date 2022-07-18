@@ -220,6 +220,21 @@ class TestDatabase(IntegrationTest):
             self.assertIn("nameOnly", command)
             self.assertTrue(command["nameOnly"])
 
+    def test_check_exists(self):
+        listener = OvertCommandListener()
+        results = listener.results
+        client = rs_or_single_client(event_listeners=[listener])
+        self.addCleanup(client.close)
+        db = client[self.db.name]
+        db.drop_collection("unique")
+        db.create_collection("unique", check_exists=True)
+        self.assertIn("listCollections", listener.started_command_names())
+        listener.reset()
+        db.drop_collection("unique")
+        db.create_collection("unique", check_exists=False)
+        self.assertTrue(len(results["started"]) > 0)
+        self.assertNotIn("listCollections", listener.started_command_names())
+
     def test_list_collections(self):
         self.client.drop_database("pymongo_test")
         db = Database(self.client, "pymongo_test")
