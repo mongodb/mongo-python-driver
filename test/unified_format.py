@@ -1178,6 +1178,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             raise NotImplementedError
         elif isinstance(target, ClientEncryption):
             method_name = "_clientEncryptionOperation_%s" % (opname,)
+            client = target._key_vault_client
         else:
             method_name = "doesNotExist"
 
