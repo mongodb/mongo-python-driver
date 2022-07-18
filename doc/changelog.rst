@@ -25,6 +25,8 @@ Bug fixes
 Unavoidable breaking changes
 ............................
 
+- pymongocrypt 1.3.0 or later is now required for client side field level
+  encryption support.
 - :meth:`~pymongo.collection.Collection.estimated_document_count` now always uses
   the `count`_ command. Due to an oversight in versions 5.0.0-5.0.8 of MongoDB,
   the count command was not included in V1 of the :ref:`versioned-api-ref`.
@@ -317,7 +319,7 @@ Breaking Changes in 4.0
   :attr:`~pymongo.mongo_client.MongoClient.address` which can change.
 - Removed the `disable_md5` parameter for :class:`~gridfs.GridFSBucket` and
   :class:`~gridfs.GridFS`. See :ref:`removed-gridfs-checksum` for details.
-- PyMongoCrypt 1.2.0 or later is now required for client side field level
+- pymongocrypt 1.2.0 or later is now required for client side field level
   encryption support.
 
 Notable improvements
@@ -356,7 +358,7 @@ Changes in Version 3.12.0
 .. warning:: PyMongo now allows insertion of documents with keys that include
    dots ('.') or start with dollar signs ('$').
 
-- PyMongoCrypt 1.1.0 or later is now required for client side field level
+- pymongocrypt 1.1.0 or later is now required for client side field level
   encryption support.
 - Iterating over :class:`gridfs.grid_file.GridOut` now moves through
   the file line by line instead of chunk by chunk, and does not
