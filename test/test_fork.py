@@ -16,7 +16,6 @@
 
 import os
 import threading
-from copy import deepcopy
 from multiprocessing import Pipe
 from test import IntegrationTest, client_context
 from typing import Any, Callable
