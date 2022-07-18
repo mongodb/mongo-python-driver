@@ -16,6 +16,7 @@
 
 import os
 import threading
+from copy import deepcopy
 from multiprocessing import Pipe
 from test import IntegrationTest, client_context
 from typing import Any, Callable
@@ -41,17 +42,8 @@ class ForkThread(threading.Thread):
     def run(self):
         if self.pid < 0:
             self.pid = os.fork()
-            try:
-                if self.pid == 0:
-                    # We need to check here if all memory is unlocked is done
-                    # after the fork, as the POSIX standard states only the
-                    # calling thread is replicated.\
-                    os._exit(self.exit_cond())
-            except Exception as e:
-                import traceback
-
-                print(f"Exit cond on {self.pid}: {self.exit_cond()}")
-                traceback.print_exc()
+            if self.pid == 0:
+                os._exit(self.exit_cond())
 
 
 class LockWrapper:
@@ -88,9 +80,12 @@ class TestFork(IntegrationTest):
         """
 
         def exit_cond():
-            with _ForkLock._insertion_lock:  # Prev
-                s = sum(int(l.locked()) for l in _ForkLock._locks)
-            return s
+            # Checking all the locks after forking this way is highly
+            # probabilistic as more locking behavior may ensue. Instead we
+            # check that we can acquire _insertion_lock, meaning we have
+            # successfully completed.
+            with _ForkLock._insertion_lock:
+                return 0  # success
 
         self.fork_thread.exit_cond = exit_cond
         with patch.object(
