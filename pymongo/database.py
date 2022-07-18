@@ -434,7 +434,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 "%s.%s" % (self.name, name)
             )
             kwargs["encryptedFields"] = encrypted_fields
-
         if encrypted_fields:
             common.validate_is_mapping("encryptedFields", encrypted_fields)
 

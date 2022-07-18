@@ -222,16 +222,19 @@ class TestDatabase(IntegrationTest):
             self.assertTrue(command["nameOnly"])
 
     def test_check_exists(self):
-        client = rs_or_single_client()
+        listener = OvertCommandListener()
+        results = listener.results
+        client = rs_or_single_client(event_listeners=[listener])
+        self.addCleanup(client.close)
         db = client[self.db.name]
-        with mock.patch.object(db, "list_collections") as m:
-            db.drop_collection("unique")
-            db.create_collection("unique", check_exists=True)
-            m.assert_called()
-            m.reset_mock()
-            db.drop_collection("unique")
-            db.create_collection("unique", check_exists=False)
-            m.assert_not_called()
+        db.drop_collection("unique")
+        db.create_collection("unique", check_exists=True)
+        self.assertIn("listCollections", [next(iter(x.command)) for x in results["started"]])
+        results.clear()
+        db.drop_collection("unique")
+        db.create_collection("unique", check_exists=False)
+        self.assertTrue(len(results["started"]) > 0)
+        self.assertNotIn("listCollections", [next(iter(x.command)) for x in results["started"]])
 
     def test_list_collections(self):
         self.client.drop_database("pymongo_test")
