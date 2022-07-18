@@ -424,7 +424,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             https://mongodb.com/docs/manual/reference/command/create
         """
         encrypted_fields = kwargs.get("encryptedFields")
-
         if (
             not encrypted_fields
             and self.client.options.auto_encryption_opts
@@ -434,12 +433,14 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 "%s.%s" % (self.name, name)
             )
             kwargs["encryptedFields"] = encrypted_fields
+
         if encrypted_fields:
             common.validate_is_mapping("encryptedFields", encrypted_fields)
 
         clustered_index = kwargs.get("clusteredIndex")
         if clustered_index:
             common.validate_is_mapping("clusteredIndex", clustered_index)
+
         with self.__client._tmp_session(session) as s:
             # Skip this check in a transaction where listCollections is not
             # supported.
