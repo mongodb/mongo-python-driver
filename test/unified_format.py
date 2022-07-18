@@ -1140,27 +1140,20 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
         if isinstance(target, MongoClient):
             method_name = "_clientOperation_%s" % (opname,)
-            client = target
         elif isinstance(target, Database):
             method_name = "_databaseOperation_%s" % (opname,)
-            client = target.client
         elif isinstance(target, Collection):
             method_name = "_collectionOperation_%s" % (opname,)
-            client = target.database.client
         elif isinstance(target, ChangeStream):
             method_name = "_changeStreamOperation_%s" % (opname,)
-            client = target._client
         elif isinstance(target, NonLazyCursor):
             method_name = "_cursor_%s" % (opname,)
-            client = target.client
         elif isinstance(target, ClientSession):
             method_name = "_sessionOperation_%s" % (opname,)
-            client = target._client
         elif isinstance(target, GridFSBucket):
             raise NotImplementedError
         elif isinstance(target, ClientEncryption):
             method_name = "_clientEncryptionOperation_%s" % (opname,)
-            client = target._key_vault_client
         else:
             method_name = "doesNotExist"
 
@@ -1175,13 +1168,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             cmd = functools.partial(method, target)
 
         try:
-            # TODO: PYTHON-3289 apply inherited timeout by default.
-            inherit_timeout = client.options.timeout
             # CSOT: Translate the spec test "timeout" arg into pymongo's context timeout API.
-            if "timeout" in arguments or inherit_timeout is not None:
-                timeout = arguments.pop("timeout", None)
-                if timeout is None:
-                    timeout = inherit_timeout
+            if "timeout" in arguments:
+                timeout = arguments.pop("timeout")
                 with pymongo.timeout(timeout):
                     result = cmd(**dict(arguments))
             else:

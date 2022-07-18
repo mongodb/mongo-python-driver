@@ -14,6 +14,7 @@
 
 """Internal helpers for CSOT."""
 
+import functools
 import time
 from contextvars import ContextVar, Token
 from typing import Optional, Tuple
@@ -83,3 +84,18 @@ class _TimeoutContext(object):
             TIMEOUT.reset(timeout_token)
             DEADLINE.reset(deadline_token)
             RTT.reset(rtt_token)
+
+
+def apply(func):
+    """Apply the client's timeoutMS to this operation."""
+
+    @functools.wraps(func)
+    def csot_wrapper(self, *args, **kwargs):
+        if get_timeout() is None:
+            timeout = self._timeout
+            if timeout is not None:
+                with _TimeoutContext(timeout):
+                    return func(self, *args, **kwargs)
+        return func(self, *args, **kwargs)
+
+    return csot_wrapper
