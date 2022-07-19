@@ -83,17 +83,22 @@ class TestCSOT(IntegrationTest):
                 with self.assertRaises(PyMongoError) as ctx:
                     stream.try_next()
                 self.assertTrue(ctx.exception.timeout)
+                self.assertTrue(stream.alive)
                 with self.assertRaises(PyMongoError) as ctx:
                     stream.try_next()
                 self.assertTrue(ctx.exception.timeout)
+                self.assertTrue(stream.alive)
             coll.insert_one({})
-            with pymongo.timeout(0.5):
-                self.assertTrue(stream.try_next())
+            with pymongo.timeout(2):
+                self.assertTrue(stream.next())
+            self.assertTrue(stream.alive)
             # Timeout applies to entire next() call, not only individual commands.
             with pymongo.timeout(0.5):
                 with self.assertRaises(PyMongoError) as ctx:
                     stream.next()
                 self.assertTrue(ctx.exception.timeout)
+            self.assertTrue(stream.alive)
+        self.assertFalse(stream.alive)
 
 
 if __name__ == "__main__":

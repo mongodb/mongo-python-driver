@@ -302,7 +302,7 @@ class ChangeStream(Generic[_DocumentType]):
 
         .. versionadded:: 3.8
         """
-        return self._cursor.alive
+        return not self._closed
 
     @_csot.apply
     def try_next(self) -> Optional[_DocumentType]:
@@ -357,6 +357,10 @@ class ChangeStream(Generic[_DocumentType]):
                 raise
             self._resume()
             change = self._cursor._try_next(False)
+
+        # Check if the cursor was invalidated.
+        if not self._cursor.alive:
+            self.close()
 
         # If no changes are available.
         if change is None:
