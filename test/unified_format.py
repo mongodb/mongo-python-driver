@@ -52,7 +52,7 @@ from test.utils import (
     snake_to_camel,
 )
 from test.version import Version
-from typing import Any
+from typing import Any, List
 
 import pymongo
 from bson import SON, Code, DBRef, Decimal128, Int64, MaxKey, MinKey, json_util
@@ -60,7 +60,7 @@ from bson.binary import Binary
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.objectid import ObjectId
 from bson.regex import RE_TYPE, Regex
-from gridfs import GridFSBucket
+from gridfs import GridFSBucket, GridOut
 from pymongo import ASCENDING, MongoClient
 from pymongo.change_stream import ChangeStream
 from pymongo.client_session import ClientSession, TransactionOptions, _TxnState
@@ -871,8 +871,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 or "Dirty implicit session is discarded" in spec["description"]
             ):
                 self.skipTest("MMAPv1 does not support retryWrites=True")
-        elif "Client side error in command starting transaction" in spec["description"]:
+        if "Client side error in command starting transaction" in spec["description"]:
             self.skipTest("Implement PYTHON-1894")
+        if "timeoutMS applied to entire download" in spec["description"]:
+            self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
+
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
         if "csot" in class_name:
@@ -1138,6 +1141,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         # PyMongo does not support GridFSBucket.drop(), emulate it.
         target._files.drop(*args, **kwargs)
         target._chunks.drop(*args, **kwargs)
+
+    def _bucketOperation_find(
+        self, target: GridFSBucket, *args: Any, **kwargs: Any
+    ) -> List[GridOut]:
+        return list(target.find(*args, **kwargs))
 
     def run_entity_operation(self, spec):
         target = self.entity_map[spec["object"]]
