@@ -35,7 +35,7 @@ from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from bson.timestamp import Timestamp
-from pymongo import ASCENDING, common, helpers, message
+from pymongo import ASCENDING, _csot, common, helpers, message
 from pymongo.aggregation import (
     _CollectionAggregationCommand,
     _CollectionRawAggregationCommand,
@@ -217,6 +217,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self.__database: Database[_DocumentType] = database
         self.__name = name
         self.__full_name = "%s.%s" % (self.__database.name, self.__name)
+        self.__write_response_codec_options = self.codec_options._replace(
+            unicode_decode_error_handler="replace", document_class=dict
+        )
+        self._timeout = database.client.options.timeout
         encrypted_fields = kwargs.pop("encryptedFields", None)
         if create or kwargs or collation:
             if encrypted_fields:
@@ -229,10 +233,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 self.create_index([("__safeContent__", ASCENDING)], session)
             else:
                 self.__create(name, kwargs, collation, session)
-
-        self.__write_response_codec_options = self.codec_options._replace(
-            unicode_decode_error_handler="replace", document_class=dict
-        )
 
     def _socket_for_reads(self, session):
         return self.__database.client._socket_for_reads(self._read_preference_for(session), session)
@@ -433,6 +433,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             read_concern or self.read_concern,
         )
 
+    @_csot.apply
     def bulk_write(
         self,
         requests: Sequence[_WriteOp],
@@ -631,6 +632,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             write_concern.acknowledged,
         )
 
+    @_csot.apply
     def insert_many(
         self,
         documents: Iterable[_DocumentIn],
@@ -1892,6 +1894,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             kwargs["comment"] = comment
         return self.__create_indexes(indexes, session, **kwargs)
 
+    @_csot.apply
     def __create_indexes(self, indexes, session, **kwargs):
         """Internal createIndexes helper.
 
@@ -2088,6 +2091,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             kwargs["comment"] = comment
         self.drop_index("*", session=session, **kwargs)
 
+    @_csot.apply
     def drop_index(
         self,
         index_or_name: _IndexKeyHint,
@@ -2311,6 +2315,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         return options
 
+    @_csot.apply
     def _aggregate(
         self,
         aggregation_command,
@@ -2618,6 +2623,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             full_document_before_change,
         )
 
+    @_csot.apply
     def rename(
         self,
         new_name: str,

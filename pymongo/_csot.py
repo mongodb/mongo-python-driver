@@ -14,9 +14,10 @@
 
 """Internal helpers for CSOT."""
 
+import functools
 import time
 from contextvars import ContextVar, Token
-from typing import Optional, Tuple
+from typing import Any, Callable, Optional, Tuple, TypeVar, cast
 
 TIMEOUT: ContextVar[Optional[float]] = ContextVar("TIMEOUT", default=None)
 RTT: ContextVar[float] = ContextVar("RTT", default=0.0)
@@ -83,3 +84,22 @@ class _TimeoutContext(object):
             TIMEOUT.reset(timeout_token)
             DEADLINE.reset(deadline_token)
             RTT.reset(rtt_token)
+
+
+# See https://mypy.readthedocs.io/en/stable/generics.html?#decorator-factories
+F = TypeVar("F", bound=Callable[..., Any])
+
+
+def apply(func: F) -> F:
+    """Apply the client's timeoutMS to this operation."""
+
+    @functools.wraps(func)
+    def csot_wrapper(self, *args, **kwargs):
+        if get_timeout() is None:
+            timeout = self._timeout
+            if timeout is not None:
+                with _TimeoutContext(timeout):
+                    return func(self, *args, **kwargs)
+        return func(self, *args, **kwargs)
+
+    return cast(F, csot_wrapper)

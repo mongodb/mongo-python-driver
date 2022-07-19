@@ -33,7 +33,7 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
 from bson.son import SON
 from bson.timestamp import Timestamp
-from pymongo import common
+from pymongo import _csot, common
 from pymongo.aggregation import _DatabaseAggregationCommand
 from pymongo.change_stream import DatabaseChangeStream
 from pymongo.collection import Collection
@@ -138,6 +138,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         self.__name = name
         self.__client: MongoClient[_DocumentType] = client
+        self._timeout = client.options.timeout
 
     @property
     def client(self) -> "MongoClient[_DocumentType]":
@@ -290,6 +291,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             read_concern,
         )
 
+    @_csot.apply
     def create_collection(
         self,
         name: str,
@@ -690,6 +692,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 client=self.__client,
             )
 
+    @_csot.apply
     def command(
         self,
         command: Union[str, MutableMapping[str, Any]],
@@ -964,6 +967,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
+    @_csot.apply
     def drop_collection(
         self,
         name_or_collection: Union[str, Collection],
