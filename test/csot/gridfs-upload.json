@@ -81,7 +81,7 @@
                   "find"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 55
+                "blockTimeMS": 75
               }
             }
           }
@@ -117,7 +117,7 @@
                   "find"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 55
+                "blockTimeMS": 75
               }
             }
           }
@@ -155,7 +155,7 @@
                   "listIndexes"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 55
+                "blockTimeMS": 75
               }
             }
           }
@@ -193,7 +193,7 @@
                   "createIndexes"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 55
+                "blockTimeMS": 75
               }
             }
           }
@@ -231,7 +231,7 @@
                   "listIndexes"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 55
+                "blockTimeMS": 75
               }
             }
           }
@@ -269,7 +269,7 @@
                   "createIndexes"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 55
+                "blockTimeMS": 75
               }
             }
           }
@@ -307,7 +307,7 @@
                   "insert"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 55
+                "blockTimeMS": 75
               }
             }
           }
@@ -345,7 +345,7 @@
                   "insert"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 55
+                "blockTimeMS": 75
               }
             }
           }

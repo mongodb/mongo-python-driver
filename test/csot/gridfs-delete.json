@@ -130,7 +130,7 @@
                   "delete"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 55
+                "blockTimeMS": 75
               }
             }
           }
@@ -165,7 +165,7 @@
                   "delete"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 55
+                "blockTimeMS": 75
               }
             }
           }
@@ -224,7 +224,7 @@
                   "delete"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 55
+                "blockTimeMS": 75
               }
             }
           }
