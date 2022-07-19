@@ -217,6 +217,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self.__database: Database[_DocumentType] = database
         self.__name = name
         self.__full_name = "%s.%s" % (self.__database.name, self.__name)
+        self.__write_response_codec_options = self.codec_options._replace(
+            unicode_decode_error_handler="replace", document_class=dict
+        )
+        self._timeout = database.client.options.timeout
         encrypted_fields = kwargs.pop("encryptedFields", None)
         if create or kwargs or collation:
             if encrypted_fields:
@@ -229,11 +233,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 self.create_index([("__safeContent__", ASCENDING)], session)
             else:
                 self.__create(name, kwargs, collation, session)
-
-        self.__write_response_codec_options = self.codec_options._replace(
-            unicode_decode_error_handler="replace", document_class=dict
-        )
-        self._timeout = database.client.options.timeout
 
     def _socket_for_reads(self, session):
         return self.__database.client._socket_for_reads(self._read_preference_for(session), session)
