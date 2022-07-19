@@ -84,7 +84,7 @@
                   "find"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 75
+                "blockTimeMS": 100
               }
             }
           }
@@ -139,7 +139,7 @@
                   "find"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 75
+                "blockTimeMS": 100
               }
             }
           }

@@ -130,7 +130,7 @@
                   "update"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 75
+                "blockTimeMS": 100
               }
             }
           }
@@ -188,7 +188,7 @@
                   "update"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 75
+                "blockTimeMS": 100
               }
             }
           }
@@ -248,7 +248,7 @@
                   "drop"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 75
+                "blockTimeMS": 100
               }
             }
           }
@@ -280,7 +280,7 @@
                   "drop"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 75
+                "blockTimeMS": 100
               }
             }
           }
@@ -334,7 +334,7 @@
                   "drop"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 75
+                "blockTimeMS": 100
               }
             }
           }
