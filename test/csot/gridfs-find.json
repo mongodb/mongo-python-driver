@@ -94,7 +94,7 @@
           "object": "bucket",
           "arguments": {
             "filter": {},
-            "timeoutMS": 100
+            "timeoutMS": 1000
           }
         }
       ],
