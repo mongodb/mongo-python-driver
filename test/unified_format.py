@@ -16,6 +16,7 @@
 
 https://github.com/mongodb/specifications/blob/master/source/unified-test-format/unified-test-format.rst
 """
+import binascii
 import collections
 import copy
 import datetime
@@ -457,8 +458,10 @@ class EntityMapUtil(object):
             self.test.addCleanup(session.end_session)
             return
         elif entity_type == "bucket":
-            # TODO: implement the 'bucket' entity type
-            self.test.skipTest("GridFS is not currently supported (PYTHON-2459)")
+            db = self[spec["database"]]
+            kwargs = parse_spec_options(spec.get("bucketOptions", {}).copy())
+            self[spec["id"]] = GridFSBucket(db, **kwargs)
+            return
         elif entity_type == "clientEncryption":
             opts = camel_to_snake_args(spec["clientEncryptionOpts"].copy())
             if isinstance(opts["key_vault_client"], str):
@@ -575,11 +578,12 @@ class MatchEvaluatorUtil(object):
 
     def _operation_matchesEntity(self, spec, actual, key_to_compare):
         expected_entity = self.test.entity_map[spec]
-        self.test.assertIsInstance(expected_entity, abc.Mapping)
         self.test.assertEqual(expected_entity, actual[key_to_compare])
 
     def _operation_matchesHexBytes(self, spec, actual, key_to_compare):
-        raise NotImplementedError
+        expected = binascii.unhexlify(spec)
+        value = actual[key_to_compare] if key_to_compare else actual
+        self.test.assertEqual(value, expected)
 
     def _operation_unsetOrMatches(self, spec, actual, key_to_compare):
         if key_to_compare is None and not actual:
@@ -906,12 +910,15 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if not client_context.test_commands_enabled:
                 if name == "failPoint" or name == "targetedFailPoint":
                     self.skipTest("Test commands must be enabled to use fail points")
-            if "timeoutMode" in op.get("arguments", {}):
-                self.skipTest("PyMongo does not support timeoutMode")
-            if name == "createEntities":
-                self.maybe_skip_entity(op.get("arguments", {}).get("entities", []))
             if name == "modifyCollection":
                 self.skipTest("PyMongo does not support modifyCollection")
+            if "timeoutMode" in op.get("arguments", {}):
+                self.skipTest("PyMongo does not support timeoutMode")
+            if "csot" in class_name:
+                if "bucket" in op["object"]:
+                    self.skipTest("CSOT not implemented for GridFS")
+                if name == "createEntities":
+                    self.maybe_skip_entity(op.get("arguments", {}).get("entities", []))
 
     def maybe_skip_entity(self, entities):
         for entity in entities:
@@ -1116,9 +1123,35 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             return dict(bulkWriteResult=parse_bulk_write_result(data.bulk_write_result))
         return dict()
 
+    def _bucketOperation_download(self, target: GridFSBucket, *args: Any, **kwargs: Any) -> bytes:
+        with target.open_download_stream(*args, **kwargs) as gout:
+            return gout.read()
+
+    def _bucketOperation_downloadByName(
+        self, target: GridFSBucket, *args: Any, **kwargs: Any
+    ) -> bytes:
+        with target.open_download_stream_by_name(*args, **kwargs) as gout:
+            return gout.read()
+
+    def _bucketOperation_upload(self, target: GridFSBucket, *args: Any, **kwargs: Any) -> ObjectId:
+        kwargs["source"] = binascii.unhexlify(kwargs.pop("source")["$$hexBytes"])
+        if "content_type" in kwargs:
+            kwargs.setdefault("metadata", {})["contentType"] = kwargs.pop("content_type")
+        return target.upload_from_stream(*args, **kwargs)
+
+    def _bucketOperation_uploadWithId(self, target: GridFSBucket, *args: Any, **kwargs: Any) -> Any:
+        kwargs["source"] = binascii.unhexlify(kwargs.pop("source")["$$hexBytes"])
+        if "content_type" in kwargs:
+            kwargs.setdefault("metadata", {})["contentType"] = kwargs.pop("content_type")
+        return target.upload_from_stream_with_id(*args, **kwargs)
+
+    def _bucketOperation_drop(self, target: GridFSBucket, *args: Any, **kwargs: Any) -> None:
+        # PyMongo does not support GridFSBucket.drop(), emulate it.
+        target._files.drop(*args, **kwargs)
+        target._chunks.drop(*args, **kwargs)
+
     def run_entity_operation(self, spec):
         target = self.entity_map[spec["object"]]
-        client = target
         opname = spec["name"]
         opargs = spec.get("arguments")
         expect_error = spec.get("expectError")
@@ -1144,6 +1177,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             method_name = "_databaseOperation_%s" % (opname,)
         elif isinstance(target, Collection):
             method_name = "_collectionOperation_%s" % (opname,)
+            # contentType is always stored in metadata in pymongo.
+            if target.name.endswith(".files") and opname == "find":
+                for doc in spec.get("expectResult", []):
+                    if "contentType" in doc:
+                        doc.setdefault("metadata", {})["contentType"] = doc.pop("contentType")
         elif isinstance(target, ChangeStream):
             method_name = "_changeStreamOperation_%s" % (opname,)
         elif isinstance(target, NonLazyCursor):
@@ -1151,7 +1189,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         elif isinstance(target, ClientSession):
             method_name = "_sessionOperation_%s" % (opname,)
         elif isinstance(target, GridFSBucket):
-            raise NotImplementedError
+            method_name = "_bucketOperation_%s" % (opname,)
+            if "id" in arguments:
+                arguments["file_id"] = arguments.pop("id")
+            # MD5 is always disabled in pymongo.
+            arguments.pop("disable_md5", None)
         elif isinstance(target, ClientEncryption):
             method_name = "_clientEncryptionOperation_%s" % (opname,)
         else:

@@ -1087,7 +1087,7 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callbac
             arguments["session"] = entity_map[arguments["session"]]
         elif opname == "open_download_stream" and arg_name == "id":
             arguments["file_id"] = arguments.pop(arg_name)
-        elif opname != "find" and c2s == "max_time_ms":
+        elif opname not in ("find", "find_one") and c2s == "max_time_ms":
             # find is the only method that accepts snake_case max_time_ms.
             # All other methods take kwargs which must use the server's
             # camelCase maxTimeMS. See PYTHON-1855.
