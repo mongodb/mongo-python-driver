@@ -17,7 +17,9 @@
 import functools
 import time
 from contextvars import ContextVar, Token
-from typing import Any, Callable, Optional, Tuple, TypeVar, cast
+from typing import Any, Callable, MutableMapping, Optional, Tuple, TypeVar, cast
+
+from pymongo.write_concern import WriteConcern
 
 TIMEOUT: ContextVar[Optional[float]] = ContextVar("TIMEOUT", default=None)
 RTT: ContextVar[float] = ContextVar("RTT", default=0.0)
@@ -103,3 +105,14 @@ def apply(func: F) -> F:
         return func(self, *args, **kwargs)
 
     return cast(F, csot_wrapper)
+
+
+def apply_write_concern(cmd: MutableMapping, write_concern: Optional[WriteConcern]) -> None:
+    """Apply the given write concern to a command."""
+    if not write_concern or write_concern.is_server_default:
+        return
+    wc = write_concern.document
+    if get_timeout() is not None:
+        wc.pop("wtimeout", None)
+    if wc:
+        cmd["writeConcern"] = wc

@@ -542,8 +542,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         command = SON([("insert", self.name), ("ordered", ordered), ("documents", [doc])])
         if comment is not None:
             command["comment"] = comment
-        if not write_concern.is_server_default:
-            command["writeConcern"] = write_concern.document
 
         def _insert_command(session, sock_info, retryable_write):
             if bypass_doc_val:
@@ -756,8 +754,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if let is not None:
             common.validate_is_mapping("let", let)
             command["let"] = let
-        if not write_concern.is_server_default:
-            command["writeConcern"] = write_concern.document
 
         if comment is not None:
             command["comment"] = comment
@@ -1232,8 +1228,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 hint = helpers._index_document(hint)
             delete_doc["hint"] = hint
         command = SON([("delete", self.name), ("ordered", ordered), ("deletes", [delete_doc])])
-        if not write_concern.is_server_default:
-            command["writeConcern"] = write_concern.document
 
         if let is not None:
             common.validate_is_document_type("let", let)
@@ -2820,8 +2814,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                         "Must be connected to MongoDB 4.4+ to use hint on unacknowledged find and modify commands."
                     )
                 cmd["hint"] = hint
-            if not write_concern.is_server_default:
-                cmd["writeConcern"] = write_concern.document
             out = self._command(
                 sock_info,
                 cmd,

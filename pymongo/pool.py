@@ -569,16 +569,13 @@ class SocketInfo(object):
         self.last_timeout = timeout
         self.sock.settimeout(timeout)
 
-    def apply_timeout(self, client, cmd, write_concern=None):
+    def apply_timeout(self, client, cmd):
         # CSOT: use remaining timeout when set.
         timeout = _csot.remaining()
         if timeout is None:
             # Reset the socket timeout unless we're performing a streaming monitor check.
             if not self.more_to_come:
                 self.set_socket_timeout(self.opts.socket_timeout)
-
-            if cmd and write_concern and not write_concern.is_server_default:
-                cmd["writeConcern"] = write_concern.document
             return None
         # RTT validation.
         rtt = _csot.get_rtt()
@@ -593,10 +590,6 @@ class SocketInfo(object):
             )
         if cmd is not None:
             cmd["maxTimeMS"] = int(max_time_ms * 1000)
-            wc = write_concern.document if write_concern else {}
-            wc.pop("wtimeout", None)
-            if wc:
-                cmd["writeConcern"] = wc
         self.set_socket_timeout(timeout)
         return timeout
 

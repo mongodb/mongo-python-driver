@@ -914,17 +914,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.skipTest("PyMongo does not support modifyCollection")
             if "timeoutMode" in op.get("arguments", {}):
                 self.skipTest("PyMongo does not support timeoutMode")
-            if "csot" in class_name:
-                if "bucket" in op["object"]:
-                    self.skipTest("CSOT not implemented for GridFS")
-                if name == "createEntities":
-                    self.maybe_skip_entity(op.get("arguments", {}).get("entities", []))
-
-    def maybe_skip_entity(self, entities):
-        for entity in entities:
-            entity_type = next(iter(entity))
-            if entity_type == "bucket":
-                self.skipTest("GridFS is not currently supported (PYTHON-2459)")
 
     def process_error(self, exception, spec):
         is_error = spec.get("isError")
