@@ -17,7 +17,7 @@
 import functools
 import time
 from contextvars import ContextVar, Token
-from typing import Optional, Tuple
+from typing import Any, Callable, Optional, Tuple, TypeVar, cast
 
 TIMEOUT: ContextVar[Optional[float]] = ContextVar("TIMEOUT", default=None)
 RTT: ContextVar[float] = ContextVar("RTT", default=0.0)
@@ -86,7 +86,11 @@ class _TimeoutContext(object):
             RTT.reset(rtt_token)
 
 
-def apply(func):
+# See https://mypy.readthedocs.io/en/stable/generics.html?#decorator-factories
+F = TypeVar("F", bound=Callable[..., Any])
+
+
+def apply(func: F) -> F:
     """Apply the client's timeoutMS to this operation."""
 
     @functools.wraps(func)
@@ -98,4 +102,4 @@ def apply(func):
                     return func(self, *args, **kwargs)
         return func(self, *args, **kwargs)
 
-    return csot_wrapper
+    return cast(F, csot_wrapper)
