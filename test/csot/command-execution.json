@@ -61,7 +61,8 @@
                   "useMultipleMongoses": false,
                   "uriOptions": {
                     "appName": "reduceMaxTimeMSTest",
-                    "w": 1
+                    "w": 1,
+                    "timeoutMS": 500
                   },
                   "observeEvents": [
                     "commandStartedEvent"
@@ -77,31 +78,12 @@
               },
               {
                 "collection": {
-                  "id": "regularCollection",
-                  "database": "database",
-                  "collectionName": "coll"
-                }
-              },
-              {
-                "collection": {
                   "id": "timeoutCollection",
                   "database": "database",
-                  "collectionName": "timeoutColl",
-                  "collectionOptions": {
-                    "timeoutMS": 60
-                  }
+                  "collectionName": "timeoutColl"
                 }
               }
             ]
-          }
-        },
-        {
-          "name": "insertOne",
-          "object": "regularCollection",
-          "arguments": {
-            "document": {
-              "_id": 1
-            }
           }
         },
         {
@@ -123,21 +105,9 @@
                 "commandName": "insert",
                 "databaseName": "test",
                 "command": {
-                  "insert": "coll",
-                  "maxTimeMS": {
-                    "$$exists": false
-                  }
-                }
-              }
-            },
-            {
-              "commandStartedEvent": {
-                "commandName": "insert",
-                "databaseName": "test",
-                "command": {
                   "insert": "timeoutColl",
                   "maxTimeMS": {
-                    "$$lte": 60
+                    "$$lte": 500
                   }
                 }
               }
@@ -180,7 +150,8 @@
                   "useMultipleMongoses": false,
                   "uriOptions": {
                     "appName": "rttTooHighTest",
-                    "w": 1
+                    "w": 1,
+                    "timeoutMS": 10
                   },
                   "observeEvents": [
                     "commandStartedEvent"
@@ -196,19 +167,9 @@
               },
               {
                 "collection": {
-                  "id": "regularCollection",
-                  "database": "database",
-                  "collectionName": "coll"
-                }
-              },
-              {
-                "collection": {
                   "id": "timeoutCollection",
                   "database": "database",
-                  "collectionName": "timeoutColl",
-                  "collectionOptions": {
-                    "timeoutMS": 2
-                  }
+                  "collectionName": "timeoutColl"
                 }
               }
             ]
@@ -216,11 +177,38 @@
         },
         {
           "name": "insertOne",
-          "object": "regularCollection",
+          "object": "timeoutCollection",
           "arguments": {
             "document": {
-              "_id": 1
+              "_id": 2
             }
+          },
+          "expectError": {
+            "isTimeoutError": true
+          }
+        },
+        {
+          "name": "insertOne",
+          "object": "timeoutCollection",
+          "arguments": {
+            "document": {
+              "_id": 2
+            }
+          },
+          "expectError": {
+            "isTimeoutError": true
+          }
+        },
+        {
+          "name": "insertOne",
+          "object": "timeoutCollection",
+          "arguments": {
+            "document": {
+              "_id": 2
+            }
+          },
+          "expectError": {
+            "isTimeoutError": true
           }
         },
         {
@@ -239,20 +227,7 @@
       "expectEvents": [
         {
           "client": "client",
-          "events": [
-            {
-              "commandStartedEvent": {
-                "commandName": "insert",
-                "databaseName": "test",
-                "command": {
-                  "insert": "coll",
-                  "maxTimeMS": {
-                    "$$exists": false
-                  }
-                }
-              }
-            }
-          ]
+          "events": []
         }
       ]
     }
