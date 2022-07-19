@@ -61,7 +61,7 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.objectid import ObjectId
 from bson.regex import RE_TYPE, Regex
 from gridfs import GridFSBucket, GridOut
-from pymongo import ASCENDING, MongoClient
+from pymongo import ASCENDING, MongoClient, _csot
 from pymongo.change_stream import ChangeStream
 from pymongo.client_session import ClientSession, TransactionOptions, _TxnState
 from pymongo.collection import Collection
@@ -460,7 +460,17 @@ class EntityMapUtil(object):
         elif entity_type == "bucket":
             db = self[spec["database"]]
             kwargs = parse_spec_options(spec.get("bucketOptions", {}).copy())
-            self[spec["id"]] = GridFSBucket(db, **kwargs)
+            bucket = GridFSBucket(db, **kwargs)
+
+            # PyMongo does not support GridFSBucket.drop(), emulate it.
+            @_csot.apply
+            def drop(self, *args: Any, **kwargs: Any) -> None:
+                self._files.drop(*args, **kwargs)
+                self._chunks.drop(*args, **kwargs)
+
+            if not hasattr(bucket, "drop"):
+                bucket.drop = drop.__get__(bucket)
+            self[spec["id"]] = bucket
             return
         elif entity_type == "clientEncryption":
             opts = camel_to_snake_args(spec["clientEncryptionOpts"].copy())
@@ -1136,11 +1146,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if "content_type" in kwargs:
             kwargs.setdefault("metadata", {})["contentType"] = kwargs.pop("content_type")
         return target.upload_from_stream_with_id(*args, **kwargs)
-
-    def _bucketOperation_drop(self, target: GridFSBucket, *args: Any, **kwargs: Any) -> None:
-        # PyMongo does not support GridFSBucket.drop(), emulate it.
-        target._files.drop(*args, **kwargs)
-        target._chunks.drop(*args, **kwargs)
 
     def _bucketOperation_find(
         self, target: GridFSBucket, *args: Any, **kwargs: Any
