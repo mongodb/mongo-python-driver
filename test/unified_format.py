@@ -464,7 +464,7 @@ class EntityMapUtil(object):
 
             # PyMongo does not support GridFSBucket.drop(), emulate it.
             @_csot.apply
-            def drop(self, *args: Any, **kwargs: Any) -> None:
+            def drop(self: GridFSBucket, *args: Any, **kwargs: Any) -> None:
                 self._files.drop(*args, **kwargs)
                 self._chunks.drop(*args, **kwargs)
 
