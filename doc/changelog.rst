@@ -16,9 +16,23 @@ PyMongo 4.2 brings a number of improvements including:
 - Added the ``timeoutMS`` URI and :class:`~pymongo.mongo_client.MongoClient` keyword argument.
 - Added the :attr:`pymongo.errors.PyMongoError.timeout` property which is ``True`` when
   the error was caused by a timeout.
-- Added ``check_exists`` option to :meth:`~pymongo.database.Database.create_collection`
+- Added the ``check_exists`` argument to :meth:`~pymongo.database.Database.create_collection`
   that when True (the default)  runs an additional ``listCollections`` command to verify that the
   collection does not exist already.
+- Added the following key management APIs to :class:`~pymongo.encryption.ClientEncryption`:
+
+  - :meth:`~pymongo.encryption.ClientEncryption.get_key`
+  - :meth:`~pymongo.encryption.ClientEncryption.get_keys`
+  - :meth:`~pymongo.encryption.ClientEncryption.delete_key`
+  - :meth:`~pymongo.encryption.ClientEncryption.add_key_alt_name`
+  - :meth:`~pymongo.encryption.ClientEncryption.get_key_by_alt_name`
+  - :meth:`~pymongo.encryption.ClientEncryption.remove_key_alt_name`
+  - :meth:`~pymongo.encryption.ClientEncryption.rewrap_many_data_key`
+  - :class:`~pymongo.encryption.RewrapManyDataKeyResult`
+
+- Support for the ``crypt_shared`` library to replace ``mongocryptd`` using the new
+  ``crypt_shared_lib_path`` and ``crypt_shared_lib_required`` arguments to
+  :class:`~pymongo.encryption_options.AutoEncryptionOpts`.
 
 Bug fixes
 .........
