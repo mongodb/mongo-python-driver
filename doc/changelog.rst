@@ -13,7 +13,7 @@ PyMongo 4.2 brings a number of improvements including:
   changes may be made before the final release.  See :ref:`automatic-queryable-client-side-encryption` for example usage.
 - Provisional (beta) support for :func:`pymongo.timeout` to apply a single timeout
   to an entire block of pymongo operations.
-- Added the ``timeoutMS`` URI and :class:`~pymongo.mongo_client.MongoClient` keyword argument.
+- Added the ``timeoutMS`` URI and keyword argument to :class:`~pymongo.mongo_client.MongoClient`.
 - Added the :attr:`pymongo.errors.PyMongoError.timeout` property which is ``True`` when
   the error was caused by a timeout.
 - Added the ``check_exists`` argument to :meth:`~pymongo.database.Database.create_collection`
@@ -41,7 +41,8 @@ Bug fixes
   would fail with a "CommandNotSupportedOnView" error on views (`PYTHON-2885`_).
 - Fixed a bug where invalid UTF-8 strings could be passed as patterns for :class:`~bson.regex.Regex`
   objects. :func:`bson.encode` now correctly raises :class:`bson.errors.InvalidStringData` (`PYTHON-3048`_).
-- Fixed a bug that caused "connection pool paused" errors in the child process after fork (`PYTHON-3257`_).
+- Fixed a bug that caused ``AutoReconnect("connection pool paused")`` errors in the child
+  process after fork (`PYTHON-3257`_).
 - Fixed a bug where  :meth:`~pymongo.collection.Collection.count_documents` and
   :meth:`~pymongo.collection.Collection.distinct` would fail in a transaction with
   ``directConnection=True`` (`PYTHON-3333`_).
@@ -64,7 +65,7 @@ Unavoidable breaking changes
   their server version to 5.0.9+ or set :attr:`pymongo.server_api.ServerApi.strict`
   to ``False`` to avoid encountering errors (`PYTHON-3167`_).
 - Removed generic typing from :class:`~pymongo.client_session.ClientSession` to improve
-  support for pyright (`PYTHON-3283`_).
+  support for Pyright (`PYTHON-3283`_).
 - Added ``__all__`` to the bson, pymongo, and gridfs packages. This could be a breaking
   change for apps that relied on ``from bson import *`` to import APIs not present in
   ``__all__`` (`PYTHON-3311`_).
