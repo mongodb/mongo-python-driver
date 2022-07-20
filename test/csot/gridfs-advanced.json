@@ -366,7 +366,7 @@
                   "drop"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 30
+                "blockTimeMS": 50
               }
             }
           }
