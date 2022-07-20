@@ -13,6 +13,7 @@ PyMongo 4.2 brings a number of improvements including:
   changes may be made before the final release.  See :ref:`automatic-queryable-client-side-encryption` for example usage.
 - Provisional (beta) support for :func:`pymongo.timeout` to apply a single timeout
   to an entire block of pymongo operations.
+- Added the ``timeoutMS`` URI and :class:`~pymongo.mongo_client.MongoClient` keyword argument.
 - Added the :attr:`pymongo.errors.PyMongoError.timeout` property which is ``True`` when
   the error was caused by a timeout.
 - Added ``check_exists`` option to :meth:`~pymongo.database.Database.create_collection`
@@ -25,7 +26,17 @@ Bug fixes
 - Fixed a bug where :meth:`~pymongo.collection.Collection.estimated_document_count`
   would fail with a "CommandNotSupportedOnView" error on views (`PYTHON-2885`_).
 - Fixed a bug where invalid UTF-8 strings could be passed as patterns for :class:`~bson.regex.Regex`
-  objects (`PYTHON-3048`_). :func:`bson.encode` now correctly raises :class:`bson.errors.InvalidStringData`.
+  objects. :func:`bson.encode` now correctly raises :class:`bson.errors.InvalidStringData` (`PYTHON-3048`_).
+- Fixed a bug that caused "connection pool paused" errors in the child process after fork (`PYTHON-3257`_).
+- Fixed a bug where  :meth:`~pymongo.collection.Collection.count_documents` and
+  :meth:`~pymongo.collection.Collection.distinct` would fail in a transaction with
+  ``directConnection=True`` (`PYTHON-3333`_).
+- GridFS no longer uploads an incomplete files collection document after encountering an
+  error in the middle of an upload fork. This results in fewer
+  :class:`~gridfs.errors.CorruptGridFile` errors (`PYTHON-1552`_).
+- Renamed PyMongo's internal C extension methods to avoid crashing due to name conflicts
+  with mpi4py and other shared libraries (`PYTHON-2110`_).
+- Fixed tight CPU loop for network I/O when using PyOpenSSL (`PYTHON-3187`_).
 
 Unavoidable breaking changes
 ............................
@@ -38,6 +49,11 @@ Unavoidable breaking changes
   Users of the Stable API with estimated_document_count are recommended to upgrade
   their server version to 5.0.9+ or set :attr:`pymongo.server_api.ServerApi.strict`
   to ``False`` to avoid encountering errors (`PYTHON-3167`_).
+- Removed generic typing from :class:`~pymongo.client_session.ClientSession` to improve
+  support for pyright (`PYTHON-3283`_).
+- Added ``__all__`` to the bson, pymongo, and gridfs packages. This could be a breaking
+  change for apps that relied on ``from bson import *`` to import APIs not present in
+  ``__all__`` (`PYTHON-3311`_).
 
 .. _count: https://mongodb.com/docs/manual/reference/command/count/
 
@@ -50,6 +66,13 @@ in this release.
 .. _PYTHON-3048: https://jira.mongodb.org/browse/PYTHON-3048
 .. _PYTHON-2885: https://jira.mongodb.org/browse/PYTHON-2885
 .. _PYTHON-3167: https://jira.mongodb.org/browse/PYTHON-3167
+.. _PYTHON-3257: https://jira.mongodb.org/browse/PYTHON-3257
+.. _PYTHON-3333: https://jira.mongodb.org/browse/PYTHON-3333
+.. _PYTHON-1552: https://jira.mongodb.org/browse/PYTHON-1552
+.. _PYTHON-2110: https://jira.mongodb.org/browse/PYTHON-2110
+.. _PYTHON-3283: https://jira.mongodb.org/browse/PYTHON-3283
+.. _PYTHON-3311: https://jira.mongodb.org/browse/PYTHON-3311
+.. _PYTHON-3187: https://jira.mongodb.org/browse/PYTHON-3187
 .. _PyMongo 4.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=33196
 .. _Queryable Encryption: automatic-queryable-client-side-encryption
 
