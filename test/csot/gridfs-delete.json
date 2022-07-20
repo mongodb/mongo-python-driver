@@ -17,7 +17,7 @@
       "client": {
         "id": "client",
         "uriOptions": {
-          "timeoutMS": 50
+          "timeoutMS": 75
         },
         "useMultipleMongoses": false,
         "observeEvents": [
@@ -261,7 +261,7 @@
                   "delete"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 30
+                "blockTimeMS": 50
               }
             }
           }
