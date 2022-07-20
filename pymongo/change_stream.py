@@ -360,7 +360,7 @@ class ChangeStream(Generic[_DocumentType]):
 
         # Check if the cursor was invalidated.
         if not self._cursor.alive:
-            self.close()
+            self._closed = True
 
         # If no changes are available.
         if change is None:
