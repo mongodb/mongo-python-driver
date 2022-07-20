@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Any, Dict, Generic, Mapping, Optional, Union
 from bson import _bson_to_dict
 from bson.raw_bson import RawBSONDocument
 from bson.timestamp import Timestamp
-from pymongo import common
+from pymongo import _csot, common
 from pymongo.aggregation import (
     _CollectionAggregationCommand,
     _DatabaseAggregationCommand,
@@ -128,6 +128,8 @@ class ChangeStream(Generic[_DocumentType]):
         self._start_at_operation_time = start_at_operation_time
         self._session = session
         self._comment = comment
+        self._closed = False
+        self._timeout = self._target._timeout
         # Initialize cursor.
         self._cursor = self._create_cursor()
 
@@ -234,6 +236,7 @@ class ChangeStream(Generic[_DocumentType]):
 
     def close(self) -> None:
         """Close this ChangeStream."""
+        self._closed = True
         self._cursor.close()
 
     def __iter__(self) -> "ChangeStream[_DocumentType]":
@@ -248,6 +251,7 @@ class ChangeStream(Generic[_DocumentType]):
         """
         return copy.deepcopy(self._resume_token)
 
+    @_csot.apply
     def next(self) -> _DocumentType:
         """Advance the cursor.
 
@@ -298,8 +302,9 @@ class ChangeStream(Generic[_DocumentType]):
 
         .. versionadded:: 3.8
         """
-        return self._cursor.alive
+        return not self._closed
 
+    @_csot.apply
     def try_next(self) -> Optional[_DocumentType]:
         """Advance the cursor without blocking indefinitely.
 
@@ -332,6 +337,9 @@ class ChangeStream(Generic[_DocumentType]):
 
         .. versionadded:: 3.8
         """
+        if not self._closed and not self._cursor.alive:
+            self._resume()
+
         # Attempt to get the next change with at most one getMore and at most
         # one resume attempt.
         try:
@@ -349,6 +357,10 @@ class ChangeStream(Generic[_DocumentType]):
                 raise
             self._resume()
             change = self._cursor._try_next(False)
+
+        # Check if the cursor was invalidated.
+        if not self._cursor.alive:
+            self._closed = True
 
         # If no changes are available.
         if change is None:

@@ -1078,10 +1078,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self.__raise_if_unsupported("startTransaction", target, ClientSession)
         return target.start_transaction(*args, **kwargs)
 
-    def _cursor_iterateOnce(self, target, *args, **kwargs):
-        self.__raise_if_unsupported("iterateOnce", target, NonLazyCursor, ChangeStream)
-        return target.try_next()
-
     def _changeStreamOperation_iterateUntilDocumentOrError(self, target, *args, **kwargs):
         self.__raise_if_unsupported("iterateUntilDocumentOrError", target, ChangeStream)
         return next(target)
@@ -1204,8 +1200,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         try:
             method = getattr(self, method_name)
         except AttributeError:
+            target_opname = camel_to_snake(opname)
+            if target_opname == "iterate_once":
+                target_opname = "try_next"
             try:
-                cmd = getattr(target, camel_to_snake(opname))
+                cmd = getattr(target, target_opname)
             except AttributeError:
                 self.fail("Unsupported operation %s on entity %s" % (opname, target))
         else:

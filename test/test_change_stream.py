@@ -486,7 +486,7 @@ class ProseSpecTestsMixin(object):
         return response["cursor"]["postBatchResumeToken"]
 
     @no_type_check
-    def _test_raises_error_on_missing_id(self, expected_exception):
+    def _test_raises_error_on_missing_id(self, expected_exception, expected_exception2):
         """ChangeStream will raise an exception if the server response is
         missing the resume token.
         """
@@ -494,8 +494,7 @@ class ProseSpecTestsMixin(object):
             self.watched_collection().insert_one({})
             with self.assertRaises(expected_exception):
                 next(change_stream)
-            # The cursor should now be closed.
-            with self.assertRaises(StopIteration):
+            with self.assertRaises(expected_exception2):
                 next(change_stream)
 
     @no_type_check
@@ -525,17 +524,16 @@ class ProseSpecTestsMixin(object):
         self._test_update_resume_token(self._get_expected_resume_token_legacy)
 
     # Prose test no. 2
-    @client_context.require_version_max(4, 3, 3)  # PYTHON-2120
     @client_context.require_version_min(4, 1, 8)
     def test_raises_error_on_missing_id_418plus(self):
-        # Server returns an error on 4.1.8+
-        self._test_raises_error_on_missing_id(OperationFailure)
+        # Server returns an error on 4.1.8+, subsequent next() resumes and gets the same error.
+        self._test_raises_error_on_missing_id(OperationFailure, OperationFailure)
 
     # Prose test no. 2
     @client_context.require_version_max(4, 1, 8)
     def test_raises_error_on_missing_id_418minus(self):
-        # PyMongo raises an error
-        self._test_raises_error_on_missing_id(InvalidOperation)
+        # PyMongo raises an error, closes the cursor, subsequent next() raises StopIteration.
+        self._test_raises_error_on_missing_id(InvalidOperation, StopIteration)
 
     # Prose test no. 3
     @no_type_check
