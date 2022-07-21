@@ -1133,6 +1133,7 @@
     {
       "description": "change stream resumes after StaleShardVersion",
       "minServerVersion": "4.3.1",
+      "maxServerVersion": "6.0.99",
       "failPoint": {
         "configureFailPoint": "failGetMoreAfterCursorCheckout",
         "mode": {
