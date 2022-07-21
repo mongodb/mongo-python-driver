@@ -52,7 +52,7 @@ struct module_state {
     PyObject* BSONInt64;
     PyObject* Decimal128;
     PyObject* Mapping;
-    PyObject* DatetimeMSType;
+    PyObject* DatetimeMS;
     PyObject* _min_datetime_ms;
     PyObject* _max_datetime_ms;
 };
@@ -196,15 +196,11 @@ static PyObject* datetime_ms_from_millis(PyObject* self, long long millis){
     PyObject* dt;
     PyObject* ll_millis;
 
-    // Set _value.
     if (!(ll_millis = PyLong_FromLongLong(millis))){
         return NULL;
     }
-    dt = PyObject_CallFunctionObjArgs(state->DatetimeMSType, ll_millis, NULL);
+    dt = PyObject_CallFunctionObjArgs(state->DatetimeMS, ll_millis, NULL);
     Py_DECREF(ll_millis);
-    if (dt == NULL) {
-        return NULL;
-    }
     return dt;
 }
 
@@ -215,24 +211,16 @@ static long long millis_from_datetime_ms(PyObject* dt){
 
     if (!(ll_millis = PyNumber_Long(dt))){
         if (PyErr_Occurred()) {
-            PyObject *InvalidBSON = _error("InvalidBSON");
-            if (InvalidBSON) {
-                PyErr_SetString(InvalidBSON, "Not a valid DatetimeMS object");
-                Py_DECREF(InvalidBSON);
-            }
-            Py_DECREF(ll_millis);
+            PyErr_SetString(PyExc_TypeError,
+                            "MongoDB datetimes must be int types.");
             return -1;
         }
     }
 
     if ((millis = PyLong_AsLongLong(ll_millis)) == -1){
-        if (PyErr_Occurred()) {
-            PyObject* OverflowError = _error("OverflowError");
-            if (OverflowError) {
-                PyErr_SetString(OverflowError,
-                                "Unable to represent this DatetimeMS internally as a long long.");
-                Py_DECREF(OverflowError);
-            }
+        if (PyErr_Occurred()) { /* Overflow */
+            PyErr_SetString(PyExc_OverflowError,
+                            "MongoDB datetimes can only handle up to 8-byte ints.");
         }
     }
     Py_DECREF(ll_millis);
@@ -404,7 +392,7 @@ static int _load_python_objects(PyObject* module) {
         _load_object(&state->Decimal128, "bson.decimal128", "Decimal128") ||
         _load_object(&state->UUID, "uuid", "UUID") ||
         _load_object(&state->Mapping, "collections.abc", "Mapping") ||
-        _load_object(&state->DatetimeMSType, "bson.datetime_ms", "DatetimeMS") ||
+        _load_object(&state->DatetimeMS, "bson.datetime_ms", "DatetimeMS") ||
         _load_object(&state->_min_datetime_ms, "bson.datetime_ms", "_min_datetime_ms") ||
         _load_object(&state->_max_datetime_ms, "bson.datetime_ms", "_max_datetime_ms")) {
         return 1;
@@ -433,7 +421,6 @@ static int _load_python_objects(PyObject* module) {
     state->REType = Py_TYPE(compiled);
     Py_DECREF(empty_string);
     Py_DECREF(compiled);
-
     return 0;
 }
 
@@ -1115,7 +1102,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         }
         *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x09;
         return buffer_write_int64(buffer, (int64_t)millis);
-    } else if (PyObject_TypeCheck(value, (PyTypeObject *) state->DatetimeMSType)) {
+    } else if (PyObject_TypeCheck(value, (PyTypeObject *) state->DatetimeMS)) {
         long long millis = millis_from_datetime_ms(value);
         *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x09;
         return buffer_write_int64(buffer, (int64_t)millis);
@@ -1938,6 +1925,8 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             if (dt_clamp || dt_auto){
                 PyObject *min_millis_fn = _get_object(state->_min_datetime_ms, "bson.datetime_ms", "_min_datetime_ms");
                 PyObject *max_millis_fn = _get_object(state->_max_datetime_ms, "bson.datetime_ms", "_max_datetime_ms");
+                PyObject *min_millis_fn_res;
+                PyObject *max_millis_fn_res;
                 int64_t min_millis;
                 int64_t max_millis;
 
@@ -1952,12 +1941,28 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                         utc_type = _get_object(state->UTC, "bson.tz_util", "utc");
                         tzinfo = utc_type;
                     }
-                    min_millis = PyLong_AsLongLong(PyObject_CallFunctionObjArgs(min_millis_fn, tzinfo, NULL));
-                    max_millis = PyLong_AsLongLong(PyObject_CallFunctionObjArgs(max_millis_fn, tzinfo, NULL));
+                    min_millis_fn_res = PyObject_CallFunctionObjArgs(min_millis_fn, tzinfo, NULL);
+                    max_millis_fn_res = PyObject_CallFunctionObjArgs(max_millis_fn, tzinfo, NULL);
                 } else {
-                    min_millis = PyLong_AsLongLong(PyObject_CallObject(min_millis_fn, NULL));
-                    max_millis = PyLong_AsLongLong(PyObject_CallObject(max_millis_fn, NULL));
+                    min_millis_fn_res = PyObject_CallObject(min_millis_fn, NULL);
+                    max_millis_fn_res = PyObject_CallObject(max_millis_fn, NULL);
                 }
+
+                if (!min_millis_fn_res || !max_millis_fn_res){
+                    Py_DECREF(min_millis_fn);
+                    Py_DECREF(max_millis_fn);
+                    Py_DECREF(min_millis_fn_res);
+                    Py_DECREF(max_millis_fn_res);
+                    goto invalid;
+                }
+
+                min_millis = PyLong_AsLongLong(min_millis_fn_res);
+                max_millis = PyLong_AsLongLong(max_millis_fn_res);
+
+                Py_DECREF(min_millis_fn);
+                Py_DECREF(max_millis_fn);
+                Py_DECREF(min_millis_fn_res);
+                Py_DECREF(max_millis_fn_res);
 
                 if (dt_clamp) {
                     if (millis < min_millis) {

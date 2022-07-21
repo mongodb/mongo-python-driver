@@ -1292,6 +1292,21 @@ class TestDatetimeConversion(unittest.TestCase):
             DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 24 * 60 * 60),
         )
 
+    @unittest.skipIf(not bson.has_c(), "Requires C extensions")
+    def test_c_millis_from_datetime_ms(self):
+        # Test 65+ bit integer conversion, expect OverflowError.
+        big_ms = 2**65
+        with self.assertRaises(OverflowError):
+            encode({"x": DatetimeMS(big_ms)})
+        # Subclass of DatetimeMS w/ __int__ override, expect an Error.
+        class DatetimeMSOverride(DatetimeMS):
+            def __int__(self):
+                return float(self._value)
+
+        float_ms = DatetimeMSOverride(2)
+        with self.assertRaises(TypeError):
+            encode({"x": float_ms})
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -103,10 +103,13 @@ out of MongoDB in US/Pacific time:
    datetime.datetime(2002, 10, 27, 6, 0,  # doctest: +NORMALIZE_WHITESPACE
                      tzinfo=<DstTzInfo 'US/Pacific' PST-1 day, 16:00:00 STD>)
 
-Extended Usage
---------------
+.. _handling-out-of-range-datetimes:
 
-Python can only represent datetimes within the range allowed by
+Handling out of range datetimes
+-------------------------------
+
+Python's :class:`~datetime.datetime` can only represent datetimes within the
+range allowed by
 :attr:`~datetime.datetime.min` and :attr:`~datetime.datetime.max`, whereas
 the range of datetimes allowed in BSON can represent any 64-bit number
 of milliseconds from the Unix epoch. To deal with this, we can use the

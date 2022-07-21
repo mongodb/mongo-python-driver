@@ -127,6 +127,7 @@ if TYPE_CHECKING:
     from array import array
     from mmap import mmap
 
+
 try:
     from bson import _cbson  # type: ignore[attr-defined]
 
