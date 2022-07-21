@@ -1298,6 +1298,7 @@ class TestDatetimeConversion(unittest.TestCase):
         big_ms = 2**65
         with self.assertRaises(OverflowError):
             encode({"x": DatetimeMS(big_ms)})
+
         # Subclass of DatetimeMS w/ __int__ override, expect an Error.
         class DatetimeMSOverride(DatetimeMS):
             def __int__(self):
