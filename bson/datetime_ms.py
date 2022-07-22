@@ -51,6 +51,8 @@ class DatetimeMS:
         .. versionadded:: 4.3
         """
         if isinstance(value, int):
+            if not (-(2**63) <= value <= 2**63 - 1):
+                raise OverflowError("Must be a 64-bit integer of milliseconds")
             self._value = value
         elif isinstance(value, datetime.datetime):
             self._value = _datetime_to_millis(value)
