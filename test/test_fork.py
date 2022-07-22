@@ -23,7 +23,6 @@ from unittest import skipIf
 from unittest.mock import patch
 
 from bson.objectid import ObjectId
-from pymongo import MongoClient
 from pymongo.lock import _create_lock, _insertion_lock
 
 
