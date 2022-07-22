@@ -1308,7 +1308,7 @@ class BSON(bytes):
         """
         return cls(encode(document, check_keys, codec_options))
 
-    def decode(self, codec_options: CodecOptions[_DocumentType] = DEFAULT_CODEC_OPTIONS) -> _DocumentType:  # type: ignore[override,assignment]
+    def decode(self, codec_options: "CodecOptions[_DocumentType]" = DEFAULT_CODEC_OPTIONS) -> _DocumentType:  # type: ignore[override,assignment]
         """Decode this BSON data.
 
         By default, returns a BSON document represented as a Python
