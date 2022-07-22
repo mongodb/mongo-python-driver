@@ -290,6 +290,8 @@ if sys.platform == "win32":
 else:
     extras_require["gssapi"] = ["pykerberos"]
 
+extras_require["all"] = [dep for deps in extras_require.values() for dep in deps]
+
 extra_opts = {}
 
 if "--no_ext" in sys.argv:
