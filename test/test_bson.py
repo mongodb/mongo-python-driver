@@ -1292,8 +1292,7 @@ class TestDatetimeConversion(unittest.TestCase):
             DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 24 * 60 * 60),
         )
 
-    @unittest.skipIf(not bson.has_c(), "Requires C extensions")
-    def test_c_millis_from_datetime_ms(self):
+    def test_millis_from_datetime_ms(self):
         # Test 65+ bit integer conversion, expect OverflowError.
         big_ms = 2**65
         with self.assertRaises(OverflowError):

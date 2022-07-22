@@ -239,7 +239,8 @@ class JSONOptions(CodecOptions):
         raising a ValueError for out-of-range values, 'datetime_auto' to
         return DatetimeMS objects when the underlying datetime is
         out-of-range and 'datetime_clamp' to clamp to the minimum and
-        maximum possible datetimes. Defaults to 'datetime'.
+        maximum possible datetimes. Defaults to 'datetime'. See
+        :ref:`handling-out-of-range-datetimes` for details.
       - `args`: arguments to :class:`~bson.codec_options.CodecOptions`
       - `kwargs`: arguments to :class:`~bson.codec_options.CodecOptions`
 

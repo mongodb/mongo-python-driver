@@ -238,6 +238,14 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
           - `type_registry` (optional): instance of
             :class:`~bson.codec_options.TypeRegistry` to enable encoding
             and decoding of custom types.
+          - `datetime_conversion`: Specifies how UTC datetimes should be decoded
+            within BSON. Valid options include 'datetime_ms' to return as a
+            DatetimeMS, 'datetime' to return as a datetime.datetime and
+            raising a ValueError for out-of-range values, 'datetime_auto' to
+            return DatetimeMS objects when the underlying datetime is
+            out-of-range and 'datetime_clamp' to clamp to the minimum and
+            maximum possible datetimes. Defaults to 'datetime'. See
+            :ref:`handling-out-of-range-datetimes` for details.
 
           | **Other optional parameters can be passed as keyword arguments:**
 

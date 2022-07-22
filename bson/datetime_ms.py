@@ -1,3 +1,19 @@
+# Copyright 2022-present MongoDB, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you
+# may not use this file except in compliance with the License.  You
+# may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied.  See the License for the specific language governing
+# permissions and limitations under the License.
+
+"""Tools for representing the BSON datetime type."""
+
 import calendar
 import datetime
 import functools
@@ -15,26 +31,33 @@ EPOCH_NAIVE = datetime.datetime.utcfromtimestamp(0)
 
 
 class DatetimeMS:
-    """
-    Represents a BSON UTC datetime.
-
-    BSON UTC datetimes are defined as an int64 of milliseconds since the Unix
-    epoch. The principal use of DatetimeMS is to represent datetimes outside
-    the range of the Python builtin :class:`~datetime.datetime` class when
-    encoding/decoding BSON.
-
-    To decode UTC datetimes as a ``DatetimeMS``,`datetime_conversion` in
-    :class:`~bson.CodecOptions` must be set to 'datetime_ms' or
-    'datetime_auto'.
-    """
-
     def __init__(self, value: Union[int, datetime.datetime]):
+        """Represents a BSON UTC datetime.
+
+        BSON UTC datetimes are defined as an int64 of milliseconds since the Unix
+        epoch. The principal use of DatetimeMS is to represent datetimes outside
+        the range of the Python builtin :class:`~datetime.datetime` class when
+        encoding/decoding BSON.
+
+        To decode UTC datetimes as a ``DatetimeMS``,`datetime_conversion` in
+        :class:`~bson.CodecOptions` must be set to 'datetime_ms' or
+        'datetime_auto'. See :ref:`handling-out-of-range-datetimes` for details.
+
+        :Parameters:
+          - `value`: An instance of :class:`datetime.datetime` to be
+          represented as milliseconds since the Unix epoch, or int of
+          milliseconds since the Unix epoch.
+
+        .. versionadded:: 4.3
+        """
         if isinstance(value, int):
             self._value = value
         elif isinstance(value, datetime.datetime):
             self._value = _datetime_to_millis(value)
         else:
             raise TypeError(f"{type(value)} is not a valid type for DatetimeMS")
+
+    __slots__ = ("_value",)
 
     def __hash__(self) -> int:
         return hash(self._value)
@@ -74,13 +97,11 @@ class DatetimeMS:
             resulting DatetimeMS object will be formatted using ``tz_aware``
             and ``tz_info``. Defaults to
             :const:`~bson.codec_options.DEFAULT_CODEC_OPTIONS`.
-
-        .. versionadded:: 4.3
         """
         return cast(datetime.datetime, _millis_to_datetime(self._value, codec_options))
 
     def __int__(self) -> int:
-        return int(self._value)
+        return self._value
 
 
 # Inclusive and exclusive min and max for timezones.

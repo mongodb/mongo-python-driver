@@ -210,9 +210,7 @@ static long long millis_from_datetime_ms(PyObject* dt){
     long long millis;
 
     if (!(ll_millis = PyNumber_Long(dt))){
-        if (PyErr_Occurred()) {
-            PyErr_SetString(PyExc_TypeError,
-                            "MongoDB datetimes must be int types.");
+        if (PyErr_Occurred()) { // TypeError
             return -1;
         }
     }
@@ -220,7 +218,8 @@ static long long millis_from_datetime_ms(PyObject* dt){
     if ((millis = PyLong_AsLongLong(ll_millis)) == -1){
         if (PyErr_Occurred()) { /* Overflow */
             PyErr_SetString(PyExc_OverflowError,
-                            "MongoDB datetimes can only handle up to 8-byte ints.");
+                            "MongoDB datetimes can only handle up to 8-byte ints");
+            return -1;
         }
     }
     Py_DECREF(ll_millis);
@@ -1948,21 +1947,21 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                     max_millis_fn_res = PyObject_CallObject(max_millis_fn, NULL);
                 }
 
+                Py_DECREF(min_millis_fn);
+                Py_DECREF(max_millis_fn);
+
                 if (!min_millis_fn_res || !max_millis_fn_res){
-                    Py_DECREF(min_millis_fn);
-                    Py_DECREF(max_millis_fn);
-                    Py_DECREF(min_millis_fn_res);
-                    Py_DECREF(max_millis_fn_res);
+                    Py_XDECREF(min_millis_fn_res);
+                    Py_XDECREF(max_millis_fn_res);
                     goto invalid;
                 }
 
                 min_millis = PyLong_AsLongLong(min_millis_fn_res);
                 max_millis = PyLong_AsLongLong(max_millis_fn_res);
 
-                Py_DECREF(min_millis_fn);
-                Py_DECREF(max_millis_fn);
-                Py_DECREF(min_millis_fn_res);
-                Py_DECREF(max_millis_fn_res);
+                if (PyErr_Occurred()){ // min/max_millis check
+                    goto invalid;
+                }
 
                 if (dt_clamp) {
                     if (millis < min_millis) {
