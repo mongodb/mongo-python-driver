@@ -86,7 +86,10 @@
             "session": "session0"
           },
           "expectError": {
-            "isError": true
+            "isError": true,
+            "errorLabelsContain": [
+              "TransientTransactionError"
+            ]
           }
         }
       ],
