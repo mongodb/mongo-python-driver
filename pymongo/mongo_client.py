@@ -82,7 +82,7 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
     WaitQueueTimeoutError,
 )
-from pymongo.lock import _ForkLock
+from pymongo.lock import _acquire_locks, _create_lock, _release_locks
 from pymongo.pool import ConnectionClosedReason
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_selectors import writable_server_selector
@@ -128,7 +128,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     # No host/port; these are retrieved from TopologySettings.
     _constructor_args = ("document_class", "tz_aware", "connect")
     _clients: weakref.WeakSet = weakref.WeakSet()
-    _clients_lock = _ForkLock()
+    _clients_lock = _create_lock()
 
     def __init__(
         self,
@@ -783,7 +783,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self.__options = options = ClientOptions(username, password, dbase, opts)
 
         self.__default_database_name = dbase
-        self.__lock = _ForkLock()
+        self.__lock = _create_lock()
         self.__kill_cursors_queue: List = []
 
         self._event_listeners = options.pool_options._event_listeners
@@ -2179,7 +2179,7 @@ class _MongoClientErrorHandler(object):
 
 def _before_fork():
     # Ensure that we aren't in any critical region.
-    _ForkLock._acquire_locks()
+    _acquire_locks()
 
 
 def _after_fork_child():
@@ -2188,7 +2188,7 @@ def _after_fork_child():
     topologies in all MongoClients.
     """
     # Reinitialize locks
-    _ForkLock._release_locks(True)
+    _release_locks(True)
 
     # Perform cleanup in clients (i.e. get rid of topology)
     for client in MongoClient._clients:
@@ -2197,7 +2197,7 @@ def _after_fork_child():
 
 def _after_fork_parent():
     # Only unlock locks
-    _ForkLock._release_locks(False)
+    _release_locks(False)
 
 
 if hasattr(os, "register_at_fork"):

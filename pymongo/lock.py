@@ -12,43 +12,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import threading
 import weakref
 
+HAS_REGISTER_AT_FORK = hasattr(os, "register_at_fork")
 
-class _ForkLock:
+_forkable_locks: weakref.WeakSet = weakref.WeakSet()  # References to instances
+# of _create_lock
+
+_insertion_lock = threading.Lock()
+
+# Cmd+R this later
+def _create_lock():
     """
     Represents a lock that is tracked upon instantiation using a WeakSet and
     reset by pymongo upon forking.
     """
+    lock = threading.Lock()
+    if HAS_REGISTER_AT_FORK:
+        with _insertion_lock:
+            _forkable_locks.add(lock)
+    return lock
 
-    _locks: weakref.WeakSet = weakref.WeakSet()  # References to instances of _ForkLock
 
-    _insertion_lock = threading.Lock()
-
-    def __init__(self):
-        self._lock = threading.Lock()
-        with _ForkLock._insertion_lock:
-            _ForkLock._locks.add(self)
-
-    def __getattr__(self, item):
-        return getattr(self._lock, item)
-
-    def __enter__(self):
-        self._lock.__enter__()
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self._lock.__exit__(exc_type, exc_val, exc_tb)
-
-    @classmethod
-    def _release_locks(cls, child: bool) -> None:
-        # Completed the fork, reset all the locks in the child.
+def _release_locks(child: bool) -> None:
+    # Completed the fork, reset all the locks in the child.
+    try:
         if child:
-            for lock in _ForkLock._locks:
-                if lock._lock.locked():
-                    lock._lock.release()
-        _ForkLock._insertion_lock.release()
+            for lock in _forkable_locks:
+                if lock.locked():
+                    lock.release()
+    finally:
+        _insertion_lock.release()
 
-    @classmethod
-    def _acquire_locks(cls):
-        _ForkLock._insertion_lock.acquire()
+
+def _acquire_locks():
+    _insertion_lock.acquire()

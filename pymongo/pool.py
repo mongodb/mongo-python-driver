@@ -56,7 +56,7 @@ from pymongo.errors import (
     _CertificateError,
 )
 from pymongo.hello import Hello, HelloCompat
-from pymongo.lock import _ForkLock
+from pymongo.lock import _create_lock
 from pymongo.monitoring import ConnectionCheckOutFailedReason, ConnectionClosedReason
 from pymongo.network import command, receive_message
 from pymongo.read_preferences import ReadPreference
@@ -1160,7 +1160,7 @@ class Pool:
         # and returned to pool from the left side. Stale sockets removed
         # from the right side.
         self.sockets: collections.deque = collections.deque()
-        self.lock = _ForkLock()
+        self.lock = _create_lock()
         self.active_sockets = 0
         # Monotonically increasing connection ID required for CMAP Events.
         self.next_connection_id = 1
@@ -1185,7 +1185,7 @@ class Pool:
         # The first portion of the wait queue.
         # Enforces: maxPoolSize
         # Also used for: clearing the wait queue
-        self.size_cond = threading.Condition(self.lock._lock)
+        self.size_cond = threading.Condition(self.lock)
         self.requests = 0
         self.max_pool_size = self.opts.max_pool_size
         if not self.max_pool_size:
@@ -1193,7 +1193,7 @@ class Pool:
         # The second portion of the wait queue.
         # Enforces: maxConnecting
         # Also used for: clearing the wait queue
-        self._max_connecting_cond = threading.Condition(self.lock._lock)
+        self._max_connecting_cond = threading.Condition(self.lock)
         self._max_connecting = self.opts.max_connecting
         self._pending = 0
         if self.enabled_for_cmap:

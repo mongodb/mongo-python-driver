@@ -24,7 +24,7 @@ from unittest.mock import patch
 
 from bson.objectid import ObjectId
 from pymongo import MongoClient
-from pymongo.lock import _ForkLock
+from pymongo.lock import _create_lock, _insertion_lock
 
 
 @client_context.require_connection
@@ -46,7 +46,7 @@ class ForkThread(threading.Thread):
 
 
 class LockWrapper:
-    def __init__(self, fork_thread: ForkThread, lock_type: Any = _ForkLock):
+    def __init__(self, fork_thread: ForkThread, lock_type: Any = _create_lock):
         self.__lock = lock_type()
         self.fork_thread = fork_thread
 
@@ -56,6 +56,7 @@ class LockWrapper:
             self.fork_thread.start()
 
     def __exit__(self, exc_type, exc_value, traceback):
+        self.fork_thread.join()
         self.__lock.__exit__(exc_type, exc_value, traceback)
 
     def __getattr__(self, item):
@@ -67,10 +68,6 @@ class LockWrapper:
     not hasattr(os, "register_at_fork"), "register_at_fork not available in this version of Python"
 )
 class TestFork(IntegrationTest):
-    def setUp(self):
-        self.db = self.client.pymongo_test
-        self.fork_thread = ForkThread()
-
     def test_lock_client(self):
         """
         Forks the client with some items locked.
@@ -83,17 +80,17 @@ class TestFork(IntegrationTest):
             # probabilistic as more locking behavior may ensue. Instead we
             # check that we can acquire _insertion_lock, meaning we have
             # successfully completed.
-            with _ForkLock._insertion_lock:
+            with _insertion_lock:
                 return 0  # success
 
-        self.fork_thread.exit_cond = exit_cond
+        fork_thread = ForkThread()
+        fork_thread.exit_cond = exit_cond
         with patch.object(
-            self.db.client, "_MongoClient__lock", LockWrapper(fork_thread=self.fork_thread)
+            self.db.client, "_MongoClient__lock", LockWrapper(fork_thread=fork_thread)
         ):
             # Call _get_topology, will launch a thread to fork upon __enter__ing
             # the with region.
             self.db.client._get_topology()
-            self.db.client._MongoClient__lock.fork_thread.join()
             lock_pid: int = self.db.client._MongoClient__lock.fork_thread.pid
             # The POSIX standard states only the forking thread is cloned.
             # In the parent, it'll return here.
@@ -109,17 +106,17 @@ class TestFork(IntegrationTest):
         Child => _inc_lock should be unlocked.
         Must use threading.Lock as ObjectId uses this.
         """
-        self.fork_thread.exit_cond = lambda: 0 if not ObjectId._inc_lock.locked() else 1
+        fork_thread = ForkThread()
+        fork_thread.exit_cond = lambda: 0 if not ObjectId._inc_lock.locked() else 1
         with patch.object(
             ObjectId,
             "_inc_lock",
-            LockWrapper(fork_thread=self.fork_thread, lock_type=threading.Lock),
+            LockWrapper(fork_thread=fork_thread, lock_type=threading.Lock),
         ):
             # Generate the ObjectId, will generate a thread to fork
             # upon __enter__ing the with region.
 
             ObjectId()
-            ObjectId._inc_lock.fork_thread.join()
             lock_pid: int = ObjectId._inc_lock.fork_thread.pid
 
             self.assertNotEqual(lock_pid, 0)
@@ -133,15 +130,14 @@ class TestFork(IntegrationTest):
         Relies on difference in PID when opened again.
         """
         parent_conn, child_conn = Pipe()
-        cl_test = MongoClient()
-        init_id = cl_test._topology._pid
+        init_id = self.client._topology._pid
         lock_pid: int = os.fork()
 
         if lock_pid == 0:  # Child
-            cl_test._topology.open()
-            child_conn.send(cl_test._topology._pid)
+            self.client.admin.command("ping")
+            child_conn.send(self.client._topology._pid)
             os._exit(0)
         else:  # Parent
-            self.assertEqual(cl_test._topology._pid, init_id)
+            self.assertEqual(self.client._topology._pid, init_id)
             child_id = parent_conn.recv()
             self.assertNotEqual(child_id, init_id)
