@@ -60,7 +60,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install -U pip mypy
-          pip install -e ".[zstd, srv, encryption]"
+          pip install -e ".[zstd, srv, encryption, ocsp]"
       - name: Run mypy
         run: |
           mypy --install-types --non-interactive bson gridfs tools pymongo
