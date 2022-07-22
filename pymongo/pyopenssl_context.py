@@ -192,7 +192,7 @@ class SSLContext(object):
         # side configuration and wrap_socket tries to support both client and
         # server side sockets.
         self._callback_data.check_ocsp_endpoint = True
-        self._ctx.set_ocsp_client_callback(callback=_ocsp_callback, data=self._callback_data)
+        self._ctx.set_ocsp_client_callback(callback=_ocsp_callback, data=self._callback_data)  # type: ignore[arg-type]
 
     @property
     def protocol(self):
