@@ -136,7 +136,7 @@ Client-Side Field Level Encryption requires `pymongocrypt
 You can install all dependencies automatically with the following
 command::
 
-  $ python -m pip install "pymongo[all]"
+  $ python -m pip install "pymongo[gssapi,aws,ocsp,snappy,srv,tls,zstd,encryption]"
 
 Additional dependencies are:
 
