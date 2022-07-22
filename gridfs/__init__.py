@@ -33,7 +33,7 @@ from gridfs.grid_file import (
     _clear_entity_type_registry,
     _disallow_transactions,
 )
-from pymongo import ASCENDING, DESCENDING
+from pymongo import ASCENDING, DESCENDING, _csot
 from pymongo.client_session import ClientSession
 from pymongo.collection import Collection
 from pymongo.common import validate_string
@@ -514,6 +514,7 @@ class GridFSBucket(object):
         )
 
         self._chunk_size_bytes = chunk_size_bytes
+        self._timeout = db.client.options.timeout
 
     def open_upload_stream(
         self,
@@ -631,6 +632,7 @@ class GridFSBucket(object):
 
         return GridIn(self._collection, session=session, **opts)
 
+    @_csot.apply
     def upload_from_stream(
         self,
         filename: str,
@@ -679,6 +681,7 @@ class GridFSBucket(object):
 
         return cast(ObjectId, gin._id)
 
+    @_csot.apply
     def upload_from_stream_with_id(
         self,
         file_id: Any,
@@ -762,6 +765,7 @@ class GridFSBucket(object):
         gout._ensure_file()
         return gout
 
+    @_csot.apply
     def download_to_stream(
         self, file_id: Any, destination: Any, session: Optional[ClientSession] = None
     ) -> None:
@@ -795,6 +799,7 @@ class GridFSBucket(object):
             for chunk in gout:
                 destination.write(chunk)
 
+    @_csot.apply
     def delete(self, file_id: Any, session: Optional[ClientSession] = None) -> None:
         """Given an file_id, delete this stored file's files collection document
         and associated chunks from a GridFS bucket.
@@ -926,6 +931,7 @@ class GridFSBucket(object):
         except StopIteration:
             raise NoFile("no version %d for filename %r" % (revision, filename))
 
+    @_csot.apply
     def download_to_stream_by_name(
         self,
         filename: str,

@@ -792,7 +792,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             options.read_preference,
             options.write_concern,
             options.read_concern,
-            options.timeout,
         )
 
         self._topology_settings = TopologySettings(
@@ -842,6 +841,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             from pymongo.encryption import _Encrypter
 
             self._encrypter = _Encrypter(self, self.__options.auto_encryption_opts)
+        self._timeout = options.timeout
 
         # Add this client to the list of weakly referenced items.
         # This will be used later if we fork.
@@ -1307,6 +1307,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def _should_pin_cursor(self, session):
         return self.__options.load_balanced and not (session and session.in_transaction)
 
+    @_csot.apply
     def _run_operation(self, operation, unpack_res, address=None):
         """Run a _Query/_GetMore operation and return a Response.
 
@@ -1355,6 +1356,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         )
         return self._retry_internal(retryable, func, session, bulk)
 
+    @_csot.apply
     def _retry_internal(self, retryable, func, session, bulk):
         """Internal retryable write helper."""
         max_wire_version = 0
@@ -1421,6 +1423,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     retrying = True
                 last_error = exc
 
+    @_csot.apply
     def _retryable_read(self, func, read_pref, session, address=None, retryable=True):
         """Execute an operation with at most one consecutive retries
 
@@ -1871,6 +1874,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         return [doc["name"] for doc in self.list_databases(session, nameOnly=True, comment=comment)]
 
+    @_csot.apply
     def drop_database(
         self,
         name_or_database: Union[str, database.Database],
@@ -1991,7 +1995,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional["ReadConcern"] = None,
-        timeout: Optional[float] = None,
     ) -> database.Database[_DocumentType]:
         """Get a :class:`~pymongo.database.Database` with the given name and
         options.
@@ -2042,7 +2045,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             name = self.__default_database_name
 
         return database.Database(
-            self, name, codec_options, read_preference, write_concern, read_concern, timeout
+            self, name, codec_options, read_preference, write_concern, read_concern
         )
 
     def _database_default_options(self, name):
