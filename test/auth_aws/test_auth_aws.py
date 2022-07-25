@@ -103,8 +103,7 @@ class TestAuthAWS(unittest.TestCase):
         # Force a re-auth and make sure the cache is cleared.
         pool = get_pool(client)
         pool.reset()
-        with self.assertRaises(OperationFailure):
-            client.get_database().test.find_one()
+        client.get_database().test.find_one()
         self.assertEqual(auth._get_cached_credentials(), None)
 
         # The next attempt should generate a new cred and succeed.
