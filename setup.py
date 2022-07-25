@@ -283,7 +283,7 @@ extras_require = {
     "snappy": ["python-snappy"],
     "zstd": ["zstandard"],
     "aws": [
-        "pymongo-auth-aws@git+ssh://git@github.com/blink1073/pymongo-auth-aws.git@DRIVERS-2333-2"
+        "pymongo-auth-aws@git+https://git@github.com/blink1073/pymongo-auth-aws.git@DRIVERS-2333-2"
     ],
     "srv": ["dnspython>=1.16.0,<3.0.0"],
 }
