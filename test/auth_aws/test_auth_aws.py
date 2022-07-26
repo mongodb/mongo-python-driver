@@ -108,18 +108,20 @@ class TestAuthAWS(unittest.TestCase):
 
         client0 = MongoClient(self.uri)
         client0.get_database().test.find_one()
+        creds = auth._get_cached_credentials()
         client0.close()
 
         client1 = MongoClient(self.uri)
         self.addCleanup(client1.close)
 
-        creds = auth._get_cached_credentials()
-
         # Poison the creds with invalid password.
         creds = auth.AwsCredential(creds.username, "b" * 24, "c" * 24, creds.expiration)
         auth._set_cached_credentials(creds)
 
-        client1.get_database().test.find_one()
+        with self.assertRaises(OperationFailure):
+            client1.get_database().test.find_one()
+
+        # Make sure the cache was cleared.
         self.assertEqual(auth._get_cached_credentials(), None)
 
         # The next attempt should generate a new cred and succeed.
