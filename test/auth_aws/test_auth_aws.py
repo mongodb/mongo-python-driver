@@ -117,6 +117,7 @@ class TestAuthAWS(unittest.TestCase):
 
         # Poison the creds with invalid password.
         creds = auth.AwsCredential(creds.username, "b" * 24, "c" * 24, creds.expiration)
+        auth._set_cached_credentials(creds)
 
         client1.get_database().test.find_one()
         self.assertEqual(auth._get_cached_credentials(), None)
