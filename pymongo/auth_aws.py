@@ -96,6 +96,8 @@ def _authenticate_aws(credentials, sock_info):
                 # SASL complete.
                 break
     except PyMongoAuthAwsError as exc:
+        # Clear the cached credentials if we hit a failure in auth.
+        _set_cached_credentials(None)
         # Convert to OperationFailure and include pymongo-auth-aws version.
         raise OperationFailure(
             "%s (pymongo-auth-aws version %s)" % (exc, pymongo_auth_aws.__version__)
