@@ -16,7 +16,12 @@
 
 try:
     import pymongo_auth_aws
-    from pymongo_auth_aws import AwsCredential, AwsSaslContext, PyMongoAuthAwsError
+    from pymongo_auth_aws import (
+        AwsCredential,
+        AwsSaslContext,
+        PyMongoAuthAwsError,
+        _set_cached_credentials,
+    )
 
     _HAVE_MONGODB_AWS = True
 except ImportError:
@@ -92,3 +97,6 @@ def _authenticate_aws(credentials, sock_info):
         raise OperationFailure(
             "%s (pymongo-auth-aws version %s)" % (exc, pymongo_auth_aws.__version__)
         )
+    except BaseException as e:
+        # Clear the cached credentials if we hit a failure in auth.
+        _set_cached_credentials(None)
