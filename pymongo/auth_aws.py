@@ -100,3 +100,4 @@ def _authenticate_aws(credentials, sock_info):
     except BaseException as e:
         # Clear the cached credentials if we hit a failure in auth.
         _set_cached_credentials(None)
+        raise
