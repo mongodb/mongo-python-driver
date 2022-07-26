@@ -62,8 +62,8 @@ import re
 import struct
 import sys
 import uuid
-from codecs import utf_8_decode as _utf_8_decode  # type: ignore[attr-defined]
-from codecs import utf_8_encode as _utf_8_encode  # type: ignore[attr-defined]
+from codecs import utf_8_decode as _utf_8_decode
+from codecs import utf_8_encode as _utf_8_encode
 from collections import abc as _abc
 from typing import (
     IO,
@@ -622,7 +622,7 @@ def _make_c_string_check(string: Union[str, bytes]) -> bytes:
     else:
         if "\x00" in string:
             raise InvalidDocument("BSON keys / regex patterns must not contain a NUL character")
-        return cast(bytes, _utf_8_encode(string)[0]) + b"\x00"
+        return _utf_8_encode(string)[0] + b"\x00"
 
 
 def _make_c_string(string: Union[str, bytes]) -> bytes:
@@ -634,7 +634,7 @@ def _make_c_string(string: Union[str, bytes]) -> bytes:
         except UnicodeError:
             raise InvalidStringData("strings in documents must be valid UTF-8: %r" % string)
     else:
-        return cast(bytes, _utf_8_encode(string)[0]) + b"\x00"
+        return _utf_8_encode(string)[0] + b"\x00"
 
 
 def _make_name(string: str) -> bytes:
@@ -642,7 +642,7 @@ def _make_name(string: str) -> bytes:
     # Keys can only be text in python 3.
     if "\x00" in string:
         raise InvalidDocument("BSON keys / regex patterns must not contain a NUL character")
-    return cast(bytes, _utf_8_encode(string)[0]) + b"\x00"
+    return _utf_8_encode(string)[0] + b"\x00"
 
 
 def _encode_float(name: bytes, value: float, dummy0: Any, dummy1: Any) -> bytes:
@@ -1309,7 +1309,7 @@ class BSON(bytes):
         """
         return cls(encode(document, check_keys, codec_options))
 
-    def decode(self, codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS) -> _DocumentType:  # type: ignore[override]
+    def decode(self, codec_options: "CodecOptions[_DocumentType]" = DEFAULT_CODEC_OPTIONS) -> _DocumentType:  # type: ignore[override,assignment]
         """Decode this BSON data.
 
         By default, returns a BSON document represented as a Python

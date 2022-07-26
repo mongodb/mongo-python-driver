@@ -59,8 +59,8 @@ jobs:
           cache-dependency-path: 'setup.py'
       - name: Install dependencies
         run: |
-          python -m pip install -U pip mypy==0.942
-          pip install -e ".[zstd, srv]"
+          python -m pip install -U pip mypy
+          pip install -e ".[zstd, srv, encryption, ocsp]"
       - name: Run mypy
         run: |
           mypy --install-types --non-interactive bson gridfs tools pymongo

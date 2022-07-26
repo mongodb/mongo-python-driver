@@ -1372,9 +1372,9 @@ class TestSnapshotQueryExamples(IntegrationTest):
         """
         with self.client.start_session(snapshot=True) as s:
             try:
-                with collection.aggregate([], session=s):
-                    pass
-                return True
+                if collection.find_one(session=s):
+                    return True
+                return False
             except OperationFailure as e:
                 # Retry them as the server demands...
                 if e.code == 246:  # SnapshotUnavailable
