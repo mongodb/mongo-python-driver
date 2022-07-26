@@ -15,6 +15,7 @@
 """Test that pymongo is fork safe."""
 
 import os
+import platform
 import threading
 from multiprocessing import Pipe
 from test import IntegrationTest, client_context
@@ -135,13 +136,8 @@ class TestFork(IntegrationTest):
         if lock_pid == 0:  # Child
             self.client.admin.command("ping")
             child_conn.send(self.client._topology._pid)
-            child_conn.send(self.client._kill_cursors_executor._thread.ident)
             os._exit(0)
         else:  # Parent
             self.assertEqual(self.client._topology._pid, init_id)
             child_id = parent_conn.recv()
-            kill_child_thread_id = parent_conn.recv()
             self.assertNotEqual(child_id, init_id)
-            self.assertNotEqual(
-                self.client._kill_cursors_executor._thread.ident, kill_child_thread_id
-            )
