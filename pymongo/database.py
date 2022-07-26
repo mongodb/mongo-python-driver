@@ -33,7 +33,7 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
 from bson.son import SON
 from bson.timestamp import Timestamp
-from pymongo import common
+from pymongo import _csot, common
 from pymongo.aggregation import _DatabaseAggregationCommand
 from pymongo.change_stream import DatabaseChangeStream
 from pymongo.collection import Collection
@@ -76,7 +76,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
-        timeout: Optional[float] = None,
     ) -> None:
         """Get a database by client and name.
 
@@ -129,7 +128,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             read_preference or client.read_preference,
             write_concern or client.write_concern,
             read_concern or client.read_concern,
-            timeout if timeout is not None else client.timeout,
         )
 
         if not isinstance(name, str):
@@ -140,6 +138,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         self.__name = name
         self.__client: MongoClient[_DocumentType] = client
+        self._timeout = client.options.timeout
 
     @property
     def client(self) -> "MongoClient[_DocumentType]":
@@ -157,7 +156,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
-        timeout: Optional[float] = None,
     ) -> "Database[_DocumentType]":
         """Get a clone of this database changing the specified settings.
 
@@ -197,7 +195,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             read_preference or self.read_preference,
             write_concern or self.write_concern,
             read_concern or self.read_concern,
-            timeout if timeout is not None else self.timeout,
         )
 
     def __eq__(self, other: Any) -> bool:
@@ -246,7 +243,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
-        timeout: Optional[float] = None,
     ) -> Collection[_DocumentType]:
         """Get a :class:`~pymongo.collection.Collection` with the given name
         and options.
@@ -293,9 +289,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             read_preference,
             write_concern,
             read_concern,
-            timeout=timeout,
         )
 
+    @_csot.apply
     def create_collection(
         self,
         name: str,
@@ -304,7 +300,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
         session: Optional["ClientSession"] = None,
-        timeout: Optional[float] = None,
+        check_exists: Optional[bool] = True,
         **kwargs: Any,
     ) -> Collection[_DocumentType]:
         """Create a new :class:`~pymongo.collection.Collection` in this
@@ -336,6 +332,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.collation.Collation`.
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
+          - ``check_exists`` (optional): if True (the default), send a listCollections command to
+            check if the collection already exists before creation.
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the `create collection command`_
 
@@ -402,7 +400,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             enabling pre- and post-images.
 
         .. versionchanged:: 4.2
-           Added the ``clusteredIndex`` and ``encryptedFields`` parameters.
+           Added the ``check_exists``, ``clusteredIndex``, and  ``encryptedFields`` parameters.
 
         .. versionchanged:: 3.11
            This method is now supported inside multi-document transactions
@@ -441,8 +439,10 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         with self.__client._tmp_session(session) as s:
             # Skip this check in a transaction where listCollections is not
             # supported.
-            if (not s or not s.in_transaction) and name in self.list_collection_names(
-                filter={"name": name}, session=s
+            if (
+                check_exists
+                and (not s or not s.in_transaction)
+                and name in self.list_collection_names(filter={"name": name}, session=s)
             ):
                 raise CollectionInvalid("collection %s already exists" % name)
             return Collection(
@@ -454,7 +454,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 write_concern,
                 read_concern,
                 session=s,
-                timeout=timeout,
                 **kwargs,
             )
 
@@ -693,6 +692,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 client=self.__client,
             )
 
+    @_csot.apply
     def command(
         self,
         command: Union[str, MutableMapping[str, Any]],
@@ -967,6 +967,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
+    @_csot.apply
     def drop_collection(
         self,
         name_or_collection: Union[str, Collection],

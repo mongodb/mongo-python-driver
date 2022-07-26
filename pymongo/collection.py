@@ -35,7 +35,7 @@ from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from bson.timestamp import Timestamp
-from pymongo import ASCENDING, common, helpers, message
+from pymongo import ASCENDING, _csot, common, helpers, message
 from pymongo.aggregation import (
     _CollectionAggregationCommand,
     _CollectionRawAggregationCommand,
@@ -116,7 +116,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional["ReadConcern"] = None,
         session: Optional["ClientSession"] = None,
-        timeout: Optional[float] = None,
         **kwargs: Any,
     ) -> None:
         """Get / create a Mongo collection.
@@ -201,7 +200,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             read_preference or database.read_preference,
             write_concern or database.write_concern,
             read_concern or database.read_concern,
-            timeout if timeout is not None else database.timeout,
         )
         if not isinstance(name, str):
             raise TypeError("name must be an instance of str")
@@ -219,6 +217,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self.__database: Database[_DocumentType] = database
         self.__name = name
         self.__full_name = "%s.%s" % (self.__database.name, self.__name)
+        self.__write_response_codec_options = self.codec_options._replace(
+            unicode_decode_error_handler="replace", document_class=dict
+        )
+        self._timeout = database.client.options.timeout
         encrypted_fields = kwargs.pop("encryptedFields", None)
         if create or kwargs or collation:
             if encrypted_fields:
@@ -231,10 +233,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 self.create_index([("__safeContent__", ASCENDING)], session)
             else:
                 self.__create(name, kwargs, collation, session)
-
-        self.__write_response_codec_options = self.codec_options._replace(
-            unicode_decode_error_handler="replace", document_class=dict
-        )
 
     def _socket_for_reads(self, session):
         return self.__database.client._socket_for_reads(self._read_preference_for(session), session)
@@ -395,7 +393,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional["ReadConcern"] = None,
-        timeout: Optional[float] = None,
     ) -> "Collection[_DocumentType]":
         """Get a clone of this collection changing the specified settings.
 
@@ -434,9 +431,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             read_preference or self.read_preference,
             write_concern or self.write_concern,
             read_concern or self.read_concern,
-            timeout=timeout if timeout is not None else self.timeout,
         )
 
+    @_csot.apply
     def bulk_write(
         self,
         requests: Sequence[_WriteOp],
@@ -545,8 +542,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         command = SON([("insert", self.name), ("ordered", ordered), ("documents", [doc])])
         if comment is not None:
             command["comment"] = comment
-        if not write_concern.is_server_default:
-            command["writeConcern"] = write_concern.document
 
         def _insert_command(session, sock_info, retryable_write):
             if bypass_doc_val:
@@ -635,6 +630,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             write_concern.acknowledged,
         )
 
+    @_csot.apply
     def insert_many(
         self,
         documents: Iterable[_DocumentIn],
@@ -758,8 +754,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if let is not None:
             common.validate_is_mapping("let", let)
             command["let"] = let
-        if not write_concern.is_server_default:
-            command["writeConcern"] = write_concern.document
 
         if comment is not None:
             command["comment"] = comment
@@ -1234,8 +1228,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 hint = helpers._index_document(hint)
             delete_doc["hint"] = hint
         command = SON([("delete", self.name), ("ordered", ordered), ("deletes", [delete_doc])])
-        if not write_concern.is_server_default:
-            command["writeConcern"] = write_concern.document
 
         if let is not None:
             common.validate_is_document_type("let", let)
@@ -1896,6 +1888,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             kwargs["comment"] = comment
         return self.__create_indexes(indexes, session, **kwargs)
 
+    @_csot.apply
     def __create_indexes(self, indexes, session, **kwargs):
         """Internal createIndexes helper.
 
@@ -2092,6 +2085,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             kwargs["comment"] = comment
         self.drop_index("*", session=session, **kwargs)
 
+    @_csot.apply
     def drop_index(
         self,
         index_or_name: _IndexKeyHint,
@@ -2315,6 +2309,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         return options
 
+    @_csot.apply
     def _aggregate(
         self,
         aggregation_command,
@@ -2622,6 +2617,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             full_document_before_change,
         )
 
+    @_csot.apply
     def rename(
         self,
         new_name: str,
@@ -2818,8 +2814,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                         "Must be connected to MongoDB 4.4+ to use hint on unacknowledged find and modify commands."
                     )
                 cmd["hint"] = hint
-            if not write_concern.is_server_default:
-                cmd["writeConcern"] = write_concern.document
             out = self._command(
                 sock_info,
                 cmd,

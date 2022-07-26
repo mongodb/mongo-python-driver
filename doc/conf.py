@@ -192,6 +192,6 @@ latex_documents = [
 
 
 intersphinx_mapping = {
-    "gevent": ("http://www.gevent.org/", None),
+    "gevent": ("https://www.gevent.org/", None),
     "py": ("https://docs.python.org/3/", None),
 }

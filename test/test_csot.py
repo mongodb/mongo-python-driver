@@ -19,11 +19,12 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, unittest
+from test import IntegrationTest, client_context, unittest
 from test.unified_format import generate_test_classes
 
 import pymongo
 from pymongo import _csot
+from pymongo.errors import PyMongoError
 
 # Location of JSON test specifications.
 TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "csot")
@@ -71,6 +72,36 @@ class TestCSOT(IntegrationTest):
         self.assertEqual(_csot.get_timeout(), None)
         self.assertEqual(_csot.get_deadline(), float("inf"))
         self.assertEqual(_csot.get_rtt(), 0.0)
+
+    @client_context.require_version_min(3, 6)
+    @client_context.require_no_mmap
+    @client_context.require_no_standalone
+    def test_change_stream_can_resume_after_timeouts(self):
+        coll = self.db.test
+        with coll.watch(max_await_time_ms=150) as stream:
+            with pymongo.timeout(0.1):
+                with self.assertRaises(PyMongoError) as ctx:
+                    stream.try_next()
+                self.assertTrue(ctx.exception.timeout)
+                self.assertTrue(stream.alive)
+                with self.assertRaises(PyMongoError) as ctx:
+                    stream.try_next()
+                self.assertTrue(ctx.exception.timeout)
+                self.assertTrue(stream.alive)
+            # Resume before the insert on 3.6 because 4.0 is required to avoid skipping documents
+            if client_context.version < (4, 0):
+                stream.try_next()
+            coll.insert_one({})
+            with pymongo.timeout(10):
+                self.assertTrue(stream.next())
+            self.assertTrue(stream.alive)
+            # Timeout applies to entire next() call, not only individual commands.
+            with pymongo.timeout(0.5):
+                with self.assertRaises(PyMongoError) as ctx:
+                    stream.next()
+                self.assertTrue(ctx.exception.timeout)
+            self.assertTrue(stream.alive)
+        self.assertFalse(stream.alive)
 
 
 if __name__ == "__main__":

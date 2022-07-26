@@ -17,7 +17,7 @@
       "client": {
         "id": "client",
         "uriOptions": {
-          "timeoutMS": 50
+          "timeoutMS": 75
         },
         "useMultipleMongoses": false,
         "observeEvents": [
@@ -84,7 +84,7 @@
                   "find"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 55
+                "blockTimeMS": 100
               }
             }
           }
@@ -94,7 +94,7 @@
           "object": "bucket",
           "arguments": {
             "filter": {},
-            "timeoutMS": 100
+            "timeoutMS": 1000
           }
         }
       ],
@@ -139,7 +139,7 @@
                   "find"
                 ],
                 "blockConnection": true,
-                "blockTimeMS": 55
+                "blockTimeMS": 100
               }
             }
           }

@@ -831,7 +831,6 @@ class BaseObject(object):
         read_preference: _ServerMode,
         write_concern: WriteConcern,
         read_concern: ReadConcern,
-        timeout: Optional[float],
     ) -> None:
         if not isinstance(codec_options, CodecOptions):
             raise TypeError("codec_options must be an instance of bson.codec_options.CodecOptions")
@@ -854,12 +853,6 @@ class BaseObject(object):
         if not isinstance(read_concern, ReadConcern):
             raise TypeError("read_concern must be an instance of pymongo.read_concern.ReadConcern")
         self.__read_concern = read_concern
-
-        if not isinstance(timeout, (int, float, type(None))):
-            raise TypeError("timeout must be None, an int, or a float")
-        if timeout and timeout < 0:
-            raise TypeError("timeout cannot be negative")
-        self.__timeout = float(timeout) if timeout else None
 
     @property
     def codec_options(self) -> CodecOptions:
@@ -909,14 +902,6 @@ class BaseObject(object):
         .. versionadded:: 3.2
         """
         return self.__read_concern
-
-    @property
-    def timeout(self) -> Optional[float]:
-        """Read only access to the timeout of this instance.
-
-        .. versionadded:: 4.2
-        """
-        return self.__timeout
 
 
 class _CaseInsensitiveDictionary(abc.MutableMapping):
