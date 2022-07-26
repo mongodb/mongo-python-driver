@@ -28,7 +28,7 @@ except ImportError:
     _HAVE_MONGODB_AWS = False
 
 try:
-    from pymongo_auth_aws import _set_cached_credentials
+    from pymongo_auth_aws.auth import _set_cached_credentials
 except ImportError:
 
     def _set_cached_credentials(creds):
