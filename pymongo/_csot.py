@@ -14,9 +14,12 @@
 
 """Internal helpers for CSOT."""
 
+import functools
 import time
 from contextvars import ContextVar, Token
-from typing import Optional, Tuple
+from typing import Any, Callable, MutableMapping, Optional, Tuple, TypeVar, cast
+
+from pymongo.write_concern import WriteConcern
 
 TIMEOUT: ContextVar[Optional[float]] = ContextVar("TIMEOUT", default=None)
 RTT: ContextVar[float] = ContextVar("RTT", default=0.0)
@@ -58,7 +61,7 @@ class _TimeoutContext(object):
 
     Use :func:`pymongo.timeout` instead::
 
-      with client.timeout(0.5):
+      with pymongo.timeout(0.5):
           client.test.test.insert_one({})
     """
 
@@ -83,3 +86,33 @@ class _TimeoutContext(object):
             TIMEOUT.reset(timeout_token)
             DEADLINE.reset(deadline_token)
             RTT.reset(rtt_token)
+
+
+# See https://mypy.readthedocs.io/en/stable/generics.html?#decorator-factories
+F = TypeVar("F", bound=Callable[..., Any])
+
+
+def apply(func: F) -> F:
+    """Apply the client's timeoutMS to this operation."""
+
+    @functools.wraps(func)
+    def csot_wrapper(self, *args, **kwargs):
+        if get_timeout() is None:
+            timeout = self._timeout
+            if timeout is not None:
+                with _TimeoutContext(timeout):
+                    return func(self, *args, **kwargs)
+        return func(self, *args, **kwargs)
+
+    return cast(F, csot_wrapper)
+
+
+def apply_write_concern(cmd: MutableMapping, write_concern: Optional[WriteConcern]) -> None:
+    """Apply the given write concern to a command."""
+    if not write_concern or write_concern.is_server_default:
+        return
+    wc = write_concern.document
+    if get_timeout() is not None:
+        wc.pop("wtimeout", None)
+    if wc:
+        cmd["writeConcern"] = wc

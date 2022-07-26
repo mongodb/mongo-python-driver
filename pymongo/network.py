@@ -118,9 +118,8 @@ def command(
 
     # Support CSOT
     if client:
-        sock_info.apply_timeout(client, spec, write_concern)
-    elif write_concern and not write_concern.is_server_default:
-        spec["writeConcern"] = write_concern.document
+        sock_info.apply_timeout(client, spec)
+    _csot.apply_write_concern(spec, write_concern)
 
     if use_op_msg:
         flags = _OpMsg.MORE_TO_COME if unacknowledged else 0

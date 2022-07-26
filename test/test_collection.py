@@ -19,7 +19,7 @@
 import contextlib
 import re
 import sys
-from codecs import utf_8_decode  # type: ignore
+from codecs import utf_8_decode
 from collections import defaultdict
 from typing import Iterable, no_type_check
 

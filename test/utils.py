@@ -38,7 +38,20 @@ from pymongo.collection import ReturnDocument
 from pymongo.cursor import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
-from pymongo.monitoring import _SENSITIVE_COMMANDS
+from pymongo.monitoring import (
+    _SENSITIVE_COMMANDS,
+    ConnectionCheckedInEvent,
+    ConnectionCheckedOutEvent,
+    ConnectionCheckOutFailedEvent,
+    ConnectionCheckOutStartedEvent,
+    ConnectionClosedEvent,
+    ConnectionCreatedEvent,
+    ConnectionReadyEvent,
+    PoolClearedEvent,
+    PoolClosedEvent,
+    PoolCreatedEvent,
+    PoolReadyEvent,
+)
 from pymongo.pool import _CancellationContext, _PoolGeneration
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
@@ -81,36 +94,47 @@ class BaseListener(object):
 
 class CMAPListener(BaseListener, monitoring.ConnectionPoolListener):
     def connection_created(self, event):
+        assert isinstance(event, ConnectionCreatedEvent)
         self.add_event(event)
 
     def connection_ready(self, event):
+        assert isinstance(event, ConnectionReadyEvent)
         self.add_event(event)
 
     def connection_closed(self, event):
+        assert isinstance(event, ConnectionClosedEvent)
         self.add_event(event)
 
     def connection_check_out_started(self, event):
+        assert isinstance(event, ConnectionCheckOutStartedEvent)
         self.add_event(event)
 
     def connection_check_out_failed(self, event):
+        assert isinstance(event, ConnectionCheckOutFailedEvent)
         self.add_event(event)
 
     def connection_checked_out(self, event):
+        assert isinstance(event, ConnectionCheckedOutEvent)
         self.add_event(event)
 
     def connection_checked_in(self, event):
+        assert isinstance(event, ConnectionCheckedInEvent)
         self.add_event(event)
 
     def pool_created(self, event):
+        assert isinstance(event, PoolCreatedEvent)
         self.add_event(event)
 
     def pool_ready(self, event):
+        assert isinstance(event, PoolReadyEvent)
         self.add_event(event)
 
     def pool_cleared(self, event):
+        assert isinstance(event, PoolClearedEvent)
         self.add_event(event)
 
     def pool_closed(self, event):
+        assert isinstance(event, PoolClosedEvent)
         self.add_event(event)
 
 
@@ -178,23 +202,14 @@ class OvertCommandListener(EventListener):
     ignore_list_collections = False
 
     def started(self, event):
-        if self.ignore_list_collections and event.command_name.lower() == "listcollections":
-            self.ignore_list_collections = False
-            return
         if event.command_name.lower() not in _SENSITIVE_COMMANDS:
             super(OvertCommandListener, self).started(event)
 
     def succeeded(self, event):
-        if self.ignore_list_collections and event.command_name.lower() == "listcollections":
-            self.ignore_list_collections = False
-            return
         if event.command_name.lower() not in _SENSITIVE_COMMANDS:
             super(OvertCommandListener, self).succeeded(event)
 
     def failed(self, event):
-        if self.ignore_list_collections and event.command_name.lower() == "listcollections":
-            self.ignore_list_collections = False
-            return
         if event.command_name.lower() not in _SENSITIVE_COMMANDS:
             super(OvertCommandListener, self).failed(event)
 
@@ -1072,7 +1087,7 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callbac
             arguments["session"] = entity_map[arguments["session"]]
         elif opname == "open_download_stream" and arg_name == "id":
             arguments["file_id"] = arguments.pop(arg_name)
-        elif opname != "find" and c2s == "max_time_ms":
+        elif opname not in ("find", "find_one") and c2s == "max_time_ms":
             # find is the only method that accepts snake_case max_time_ms.
             # All other methods take kwargs which must use the server's
             # camelCase maxTimeMS. See PYTHON-1855.
@@ -1090,6 +1105,7 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callbac
         elif opname == "create_collection":
             if arg_name == "collection":
                 arguments["name"] = arguments.pop(arg_name)
+            arguments["check_exists"] = False
             # Any other arguments to create_collection are passed through
             # **kwargs.
         elif opname == "create_index" and arg_name == "keys":

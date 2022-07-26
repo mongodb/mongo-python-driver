@@ -38,7 +38,12 @@ from test.utils_spec_runner import SpecRunnerThread
 
 from bson.objectid import ObjectId
 from bson.son import SON
-from pymongo.errors import ConnectionFailure, OperationFailure, PyMongoError
+from pymongo.errors import (
+    ConnectionFailure,
+    OperationFailure,
+    PyMongoError,
+    WaitQueueTimeoutError,
+)
 from pymongo.monitoring import (
     ConnectionCheckedInEvent,
     ConnectionCheckedOutEvent,
@@ -73,7 +78,7 @@ OBJECT_TYPES = {
     "ConnectionPoolClosed": PoolClosedEvent,
     # Error types.
     "PoolClosedError": _PoolClosedError,
-    "WaitQueueTimeoutError": ConnectionFailure,
+    "WaitQueueTimeoutError": WaitQueueTimeoutError,
 }
 
 

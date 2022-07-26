@@ -52,6 +52,7 @@ from pymongo.errors import (
     NotPrimaryError,
     OperationFailure,
     PyMongoError,
+    WaitQueueTimeoutError,
     _CertificateError,
 )
 from pymongo.hello import Hello, HelloCompat
@@ -559,6 +560,7 @@ class SocketInfo(object):
         self.pinned_cursor = False
         self.active = False
         self.last_timeout = self.opts.socket_timeout
+        self.connect_rtt = 0.0
 
     def set_socket_timeout(self, timeout):
         """Cache last timeout to avoid duplicate calls to sock.settimeout."""
@@ -567,19 +569,18 @@ class SocketInfo(object):
         self.last_timeout = timeout
         self.sock.settimeout(timeout)
 
-    def apply_timeout(self, client, cmd, write_concern=None):
+    def apply_timeout(self, client, cmd):
         # CSOT: use remaining timeout when set.
         timeout = _csot.remaining()
         if timeout is None:
             # Reset the socket timeout unless we're performing a streaming monitor check.
             if not self.more_to_come:
                 self.set_socket_timeout(self.opts.socket_timeout)
-
-            if cmd and write_concern and not write_concern.is_server_default:
-                cmd["writeConcern"] = write_concern.document
             return None
         # RTT validation.
         rtt = _csot.get_rtt()
+        if rtt is None:
+            rtt = self.connect_rtt
         max_time_ms = timeout - rtt
         if max_time_ms < 0:
             # CSOT: raise an error without running the command since we know it will time out.
@@ -589,10 +590,6 @@ class SocketInfo(object):
             )
         if cmd is not None:
             cmd["maxTimeMS"] = int(max_time_ms * 1000)
-            wc = write_concern.document if write_concern else {}
-            wc.pop("wtimeout", None)
-            if wc:
-                cmd["writeConcern"] = wc
         self.set_socket_timeout(timeout)
         return timeout
 
@@ -655,7 +652,11 @@ class SocketInfo(object):
         else:
             auth_ctx = None
 
+        if performing_handshake:
+            start = time.monotonic()
         doc = self.command("admin", cmd, publish_events=False, exhaust_allowed=awaitable)
+        if performing_handshake:
+            self.connect_rtt = time.monotonic() - start
         hello = Hello(doc, awaitable=awaitable)
         self.is_writable = hello.is_writable
         self.max_wire_version = hello.max_wire_version
@@ -1336,7 +1337,7 @@ class Pool:
                     self.requests -= 1
                     self.size_cond.notify()
 
-    def connect(self):
+    def connect(self, handler=None):
         """Connect to Mongo and return a new SocketInfo.
 
         Can raise ConnectionFailure.
@@ -1370,6 +1371,8 @@ class Pool:
             if self.handshake:
                 sock_info.hello()
                 self.is_writable = sock_info.is_writable
+            if handler:
+                handler.contribute_socket(sock_info, completed_handshake=False)
 
             sock_info.authenticate()
         except BaseException:
@@ -1400,7 +1403,8 @@ class Pool:
         if self.enabled_for_cmap:
             listeners.publish_connection_check_out_started(self.address)
 
-        sock_info = self._get_socket()
+        sock_info = self._get_socket(handler=handler)
+
         if self.enabled_for_cmap:
             listeners.publish_connection_checked_out(self.address, sock_info.id)
         try:
@@ -1438,7 +1442,7 @@ class Pool:
                 )
             _raise_connection_failure(self.address, AutoReconnect("connection pool paused"))
 
-    def _get_socket(self):
+    def _get_socket(self, handler=None):
         """Get or create a SocketInfo. Can raise ConnectionFailure."""
         # We use the pid here to avoid issues with fork / multiprocessing.
         # See test.test_client:TestClient.test_fork for an example of
@@ -1512,7 +1516,7 @@ class Pool:
                         continue
                 else:  # We need to create a new connection
                     try:
-                        sock_info = self.connect()
+                        sock_info = self.connect(handler=handler)
                     finally:
                         with self._max_connecting_cond:
                             self._pending -= 1
@@ -1630,7 +1634,7 @@ class Pool:
         timeout = _csot.get_timeout() or self.opts.wait_queue_timeout
         if self.opts.load_balanced:
             other_ops = self.active_sockets - self.ncursors - self.ntxns
-            raise ConnectionFailure(
+            raise WaitQueueTimeoutError(
                 "Timeout waiting for connection from the connection pool. "
                 "maxPoolSize: %s, connections in use by cursors: %s, "
                 "connections in use by transactions: %s, connections in use "
@@ -1643,7 +1647,7 @@ class Pool:
                     timeout,
                 )
             )
-        raise ConnectionFailure(
+        raise WaitQueueTimeoutError(
             "Timed out while checking out a connection from connection pool. "
             "maxPoolSize: %s, timeout: %s" % (self.opts.max_pool_size, timeout)
         )

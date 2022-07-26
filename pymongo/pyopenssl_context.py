@@ -135,7 +135,7 @@ class _sslConn(_SSL.Connection):
 
     def recv_into(self, *args, **kwargs):
         try:
-            return self._call(super(_sslConn, self).recv_into, *args, **kwargs)  # type: ignore
+            return self._call(super(_sslConn, self).recv_into, *args, **kwargs)
         except _SSL.SysCallError as exc:
             # Suppress ragged EOFs to match the stdlib.
             if self.suppress_ragged_eofs and _ragged_eof(exc):
@@ -146,12 +146,9 @@ class _sslConn(_SSL.Connection):
         view = memoryview(buf)
         total_length = len(buf)
         total_sent = 0
-        sent = 0
         while total_sent < total_length:
             try:
-                sent = self._call(
-                    super(_sslConn, self).send, view[total_sent:], flags  # type: ignore
-                )
+                sent = self._call(super(_sslConn, self).send, view[total_sent:], flags)
             # XXX: It's not clear if this can actually happen. PyOpenSSL
             # doesn't appear to have any interrupt handling, nor any interrupt
             # errors for OpenSSL connections.
@@ -162,7 +159,7 @@ class _sslConn(_SSL.Connection):
             # https://github.com/pyca/pyopenssl/blob/19.1.0/src/OpenSSL/SSL.py#L1756
             # https://www.openssl.org/docs/man1.0.2/man3/SSL_write.html
             if sent <= 0:
-                raise Exception("Connection closed")
+                raise OSError("connection closed")
             total_sent += sent
 
 

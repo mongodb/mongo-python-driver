@@ -80,6 +80,7 @@ from pymongo.errors import (
     OperationFailure,
     PyMongoError,
     ServerSelectionTimeoutError,
+    WaitQueueTimeoutError,
 )
 from pymongo.pool import ConnectionClosedReason
 from pymongo.read_preferences import ReadPreference, _ServerMode
@@ -796,7 +797,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             options.read_preference,
             options.write_concern,
             options.read_concern,
-            options.timeout,
         )
 
         self._topology_settings = TopologySettings(
@@ -846,6 +846,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             from pymongo.encryption import _Encrypter
 
             self._encrypter = _Encrypter(self, self.__options.auto_encryption_opts)
+        self._timeout = options.timeout
 
     def _duplicate(self, **kwargs):
         args = self.__init_kwargs.copy()
@@ -1190,6 +1191,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         with _MongoClientErrorHandler(self, server, session) as err_handler:
             # Reuse the pinned connection, if it exists.
             if in_txn and session._pinned_connection:
+                err_handler.contribute_socket(session._pinned_connection)
                 yield session._pinned_connection
                 return
             with server.get_socket(handler=err_handler) as sock_info:
@@ -1277,6 +1279,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def _should_pin_cursor(self, session):
         return self.__options.load_balanced and not (session and session.in_transaction)
 
+    @_csot.apply
     def _run_operation(self, operation, unpack_res, address=None):
         """Run a _Query/_GetMore operation and return a Response.
 
@@ -1325,6 +1328,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         )
         return self._retry_internal(retryable, func, session, bulk)
 
+    @_csot.apply
     def _retry_internal(self, retryable, func, session, bulk):
         """Internal retryable write helper."""
         max_wire_version = 0
@@ -1344,6 +1348,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 bulk.started_retryable_write = True
 
         while True:
+            if is_retrying():
+                remaining = _csot.remaining()
+                if remaining is not None and remaining <= 0:
+                    assert last_error is not None
+                    raise last_error
             try:
                 server = self._select_server(writable_server_selector, session)
                 supports_session = (
@@ -1386,6 +1395,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     retrying = True
                 last_error = exc
 
+    @_csot.apply
     def _retryable_read(self, func, read_pref, session, address=None, retryable=True):
         """Execute an operation with at most one consecutive retries
 
@@ -1402,6 +1412,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         multiple_retries = _csot.get_timeout() is not None
 
         while True:
+            if retrying:
+                remaining = _csot.remaining()
+                if remaining is not None and remaining <= 0:
+                    assert last_error is not None
+                    raise last_error
             try:
                 server = self._select_server(read_pref, session, address=address)
                 with self._socket_from_server(read_pref, server, session) as (sock_info, read_pref):
@@ -1831,6 +1846,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         return [doc["name"] for doc in self.list_databases(session, nameOnly=True, comment=comment)]
 
+    @_csot.apply
     def drop_database(
         self,
         name_or_database: Union[str, database.Database],
@@ -1951,7 +1967,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional["ReadConcern"] = None,
-        timeout: Optional[float] = None,
     ) -> database.Database[_DocumentType]:
         """Get a :class:`~pymongo.database.Database` with the given name and
         options.
@@ -2002,7 +2017,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             name = self.__default_database_name
 
         return database.Database(
-            self, name, codec_options, read_preference, write_concern, read_concern, timeout
+            self, name, codec_options, read_preference, write_concern, read_concern
         )
 
     def _database_default_options(self, name):
@@ -2062,9 +2077,11 @@ def _add_retryable_write_error(exc, max_wire_version):
             if code in helpers._RETRYABLE_ERROR_CODES:
                 exc._add_error_label("RetryableWriteError")
 
-    # Connection errors are always retryable except NotPrimaryError which is
+    # Connection errors are always retryable except NotPrimaryError and WaitQueueTimeoutError which is
     # handled above.
-    if isinstance(exc, ConnectionFailure) and not isinstance(exc, NotPrimaryError):
+    if isinstance(exc, ConnectionFailure) and not isinstance(
+        exc, (NotPrimaryError, WaitQueueTimeoutError)
+    ):
         exc._add_error_label("RetryableWriteError")
 
 
@@ -2096,12 +2113,12 @@ class _MongoClientErrorHandler(object):
         self.service_id = None
         self.handled = False
 
-    def contribute_socket(self, sock_info):
+    def contribute_socket(self, sock_info, completed_handshake=True):
         """Provide socket information to the error handler."""
         self.max_wire_version = sock_info.max_wire_version
         self.sock_generation = sock_info.generation
         self.service_id = sock_info.service_id
-        self.completed_handshake = True
+        self.completed_handshake = completed_handshake
 
     def handle(self, exc_type, exc_val):
         if self.handled or exc_type is None:

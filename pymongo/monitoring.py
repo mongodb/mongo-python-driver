@@ -1774,7 +1774,7 @@ class _EventListeners(object):
         event = ConnectionCheckOutFailedEvent(address, reason)
         for subscriber in self.__cmap_listeners:
             try:
-                subscriber.connection_check_out_started(event)
+                subscriber.connection_check_out_failed(event)
             except Exception:
                 _handle_exception()
 

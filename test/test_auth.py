@@ -329,8 +329,8 @@ class TestSASLPlain(unittest.TestCase):
         bad_user = MongoClient(auth_string("not-user", SASL_PASS))
         bad_pwd = MongoClient(auth_string(SASL_USER, "not-pwd"))
         # OperationFailure raised upon connecting.
-        self.assertRaises(OperationFailure, bad_user.admin.command, "ping")
-        self.assertRaises(OperationFailure, bad_pwd.admin.command, "ping")
+        self.assertRaises(OperationFailure, bad_user.admin.command, "ping")  # type: ignore[arg-type]
+        self.assertRaises(OperationFailure, bad_pwd.admin.command, "ping")  # type: ignore[arg-type]
 
 
 class TestSCRAMSHA1(IntegrationTest):

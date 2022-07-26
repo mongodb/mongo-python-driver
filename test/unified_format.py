@@ -16,6 +16,7 @@
 
 https://github.com/mongodb/specifications/blob/master/source/unified-test-format/unified-test-format.rst
 """
+import binascii
 import collections
 import copy
 import datetime
@@ -51,7 +52,7 @@ from test.utils import (
     snake_to_camel,
 )
 from test.version import Version
-from typing import Any
+from typing import Any, List
 
 import pymongo
 from bson import SON, Code, DBRef, Decimal128, Int64, MaxKey, MinKey, json_util
@@ -59,8 +60,8 @@ from bson.binary import Binary
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.objectid import ObjectId
 from bson.regex import RE_TYPE, Regex
-from gridfs import GridFSBucket
-from pymongo import ASCENDING, MongoClient
+from gridfs import GridFSBucket, GridOut
+from pymongo import ASCENDING, MongoClient, _csot
 from pymongo.change_stream import ChangeStream
 from pymongo.client_session import ClientSession, TransactionOptions, _TxnState
 from pymongo.collection import Collection
@@ -72,13 +73,9 @@ from pymongo.errors import (
     ConfigurationError,
     ConnectionFailure,
     EncryptionError,
-    ExecutionTimeout,
     InvalidOperation,
-    NetworkTimeout,
     NotPrimaryError,
     PyMongoError,
-    ServerSelectionTimeoutError,
-    WriteConcernError,
 )
 from pymongo.monitoring import (
     _SENSITIVE_COMMANDS,
@@ -283,7 +280,6 @@ class EventListenerUtil(CMAPListener, CommandListener):
             self._observe_sensitive_commands = False
             self._ignore_commands = _SENSITIVE_COMMANDS | set(ignore_commands)
             self._ignore_commands.add("configurefailpoint")
-        self.ignore_list_collections = False
         self._event_mapping = collections.defaultdict(list)
         self.entity_map = entity_map
         if store_events:
@@ -314,10 +310,7 @@ class EventListenerUtil(CMAPListener, CommandListener):
             )
 
     def _command_event(self, event):
-        if not (
-            event.command_name.lower() in self._ignore_commands
-            or (self.ignore_list_collections and event.command_name == "listCollections")
-        ):
+        if not event.command_name.lower() in self._ignore_commands:
             self.add_event(event)
 
     def started(self, event):
@@ -465,8 +458,20 @@ class EntityMapUtil(object):
             self.test.addCleanup(session.end_session)
             return
         elif entity_type == "bucket":
-            # TODO: implement the 'bucket' entity type
-            self.test.skipTest("GridFS is not currently supported (PYTHON-2459)")
+            db = self[spec["database"]]
+            kwargs = parse_spec_options(spec.get("bucketOptions", {}).copy())
+            bucket = GridFSBucket(db, **kwargs)
+
+            # PyMongo does not support GridFSBucket.drop(), emulate it.
+            @_csot.apply
+            def drop(self: GridFSBucket, *args: Any, **kwargs: Any) -> None:
+                self._files.drop(*args, **kwargs)
+                self._chunks.drop(*args, **kwargs)
+
+            if not hasattr(bucket, "drop"):
+                bucket.drop = drop.__get__(bucket)
+            self[spec["id"]] = bucket
+            return
         elif entity_type == "clientEncryption":
             opts = camel_to_snake_args(spec["clientEncryptionOpts"].copy())
             if isinstance(opts["key_vault_client"], str):
@@ -583,11 +588,12 @@ class MatchEvaluatorUtil(object):
 
     def _operation_matchesEntity(self, spec, actual, key_to_compare):
         expected_entity = self.test.entity_map[spec]
-        self.test.assertIsInstance(expected_entity, abc.Mapping)
         self.test.assertEqual(expected_entity, actual[key_to_compare])
 
     def _operation_matchesHexBytes(self, spec, actual, key_to_compare):
-        raise NotImplementedError
+        expected = binascii.unhexlify(spec)
+        value = actual[key_to_compare] if key_to_compare else actual
+        self.test.assertEqual(value, expected)
 
     def _operation_unsetOrMatches(self, spec, actual, key_to_compare):
         if key_to_compare is None and not actual:
@@ -875,8 +881,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 or "Dirty implicit session is discarded" in spec["description"]
             ):
                 self.skipTest("MMAPv1 does not support retryWrites=True")
-        elif "Client side error in command starting transaction" in spec["description"]:
+        if "Client side error in command starting transaction" in spec["description"]:
             self.skipTest("Implement PYTHON-1894")
+        if "timeoutMS applied to entire download" in spec["description"]:
+            self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
+
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
         if "csot" in class_name:
@@ -914,18 +923,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if not client_context.test_commands_enabled:
                 if name == "failPoint" or name == "targetedFailPoint":
                     self.skipTest("Test commands must be enabled to use fail points")
-            if "timeoutMode" in op.get("arguments", {}):
-                self.skipTest("PyMongo does not support timeoutMode")
-            if name == "createEntities":
-                self.maybe_skip_entity(op.get("arguments", {}).get("entities", []))
             if name == "modifyCollection":
                 self.skipTest("PyMongo does not support modifyCollection")
-
-    def maybe_skip_entity(self, entities):
-        for entity in entities:
-            entity_type = next(iter(entity))
-            if entity_type == "bucket":
-                self.skipTest("GridFS is not currently supported (PYTHON-2459)")
+            if "timeoutMode" in op.get("arguments", {}):
+                self.skipTest("PyMongo does not support timeoutMode")
 
     def process_error(self, exception, spec):
         is_error = spec.get("isError")
@@ -952,13 +953,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.assertNotIsInstance(exception, PyMongoError)
 
         if is_timeout_error:
-            # TODO: PYTHON-3291 Implement error transformation.
-            if isinstance(exception, WriteConcernError):
-                self.assertEqual(exception.code, 50)
-            else:
-                self.assertIsInstance(
-                    exception, (NetworkTimeout, ExecutionTimeout, ServerSelectionTimeoutError)
-                )
+            self.assertIsInstance(exception, PyMongoError)
+            self.assertTrue(exception.timeout, msg=exception)
 
         if error_contains:
             if isinstance(exception, BulkWriteError):
@@ -1032,13 +1028,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def _databaseOperation_createCollection(self, target, *args, **kwargs):
         # PYTHON-1936 Ignore the listCollections event from create_collection.
-        for listener in target.client.options.event_listeners:
-            if isinstance(listener, EventListenerUtil):
-                listener.ignore_list_collections = True
+        kwargs["check_exists"] = False
         ret = target.create_collection(*args, **kwargs)
-        for listener in target.client.options.event_listeners:
-            if isinstance(listener, EventListenerUtil):
-                listener.ignore_list_collections = False
         return ret
 
     def __entityOperation_aggregate(self, target, *args, **kwargs):
@@ -1087,10 +1078,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self.__raise_if_unsupported("startTransaction", target, ClientSession)
         return target.start_transaction(*args, **kwargs)
 
-    def _cursor_iterateOnce(self, target, *args, **kwargs):
-        self.__raise_if_unsupported("iterateOnce", target, NonLazyCursor, ChangeStream)
-        return target.try_next()
-
     def _changeStreamOperation_iterateUntilDocumentOrError(self, target, *args, **kwargs):
         self.__raise_if_unsupported("iterateUntilDocumentOrError", target, ChangeStream)
         return next(target)
@@ -1134,9 +1121,35 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             return dict(bulkWriteResult=parse_bulk_write_result(data.bulk_write_result))
         return dict()
 
+    def _bucketOperation_download(self, target: GridFSBucket, *args: Any, **kwargs: Any) -> bytes:
+        with target.open_download_stream(*args, **kwargs) as gout:
+            return gout.read()
+
+    def _bucketOperation_downloadByName(
+        self, target: GridFSBucket, *args: Any, **kwargs: Any
+    ) -> bytes:
+        with target.open_download_stream_by_name(*args, **kwargs) as gout:
+            return gout.read()
+
+    def _bucketOperation_upload(self, target: GridFSBucket, *args: Any, **kwargs: Any) -> ObjectId:
+        kwargs["source"] = binascii.unhexlify(kwargs.pop("source")["$$hexBytes"])
+        if "content_type" in kwargs:
+            kwargs.setdefault("metadata", {})["contentType"] = kwargs.pop("content_type")
+        return target.upload_from_stream(*args, **kwargs)
+
+    def _bucketOperation_uploadWithId(self, target: GridFSBucket, *args: Any, **kwargs: Any) -> Any:
+        kwargs["source"] = binascii.unhexlify(kwargs.pop("source")["$$hexBytes"])
+        if "content_type" in kwargs:
+            kwargs.setdefault("metadata", {})["contentType"] = kwargs.pop("content_type")
+        return target.upload_from_stream_with_id(*args, **kwargs)
+
+    def _bucketOperation_find(
+        self, target: GridFSBucket, *args: Any, **kwargs: Any
+    ) -> List[GridOut]:
+        return list(target.find(*args, **kwargs))
+
     def run_entity_operation(self, spec):
         target = self.entity_map[spec["object"]]
-        client = target
         opname = spec["name"]
         opargs = spec.get("arguments")
         expect_error = spec.get("expectError")
@@ -1158,24 +1171,27 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
         if isinstance(target, MongoClient):
             method_name = "_clientOperation_%s" % (opname,)
-            client = target
         elif isinstance(target, Database):
             method_name = "_databaseOperation_%s" % (opname,)
-            client = target.client
         elif isinstance(target, Collection):
             method_name = "_collectionOperation_%s" % (opname,)
-            client = target.database.client
+            # contentType is always stored in metadata in pymongo.
+            if target.name.endswith(".files") and opname == "find":
+                for doc in spec.get("expectResult", []):
+                    if "contentType" in doc:
+                        doc.setdefault("metadata", {})["contentType"] = doc.pop("contentType")
         elif isinstance(target, ChangeStream):
             method_name = "_changeStreamOperation_%s" % (opname,)
-            client = target._client
         elif isinstance(target, NonLazyCursor):
             method_name = "_cursor_%s" % (opname,)
-            client = target.client
         elif isinstance(target, ClientSession):
             method_name = "_sessionOperation_%s" % (opname,)
-            client = target._client
         elif isinstance(target, GridFSBucket):
-            raise NotImplementedError
+            method_name = "_bucketOperation_%s" % (opname,)
+            if "id" in arguments:
+                arguments["file_id"] = arguments.pop("id")
+            # MD5 is always disabled in pymongo.
+            arguments.pop("disable_md5", None)
         elif isinstance(target, ClientEncryption):
             method_name = "_clientEncryptionOperation_%s" % (opname,)
         else:
@@ -1184,21 +1200,20 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         try:
             method = getattr(self, method_name)
         except AttributeError:
+            target_opname = camel_to_snake(opname)
+            if target_opname == "iterate_once":
+                target_opname = "try_next"
             try:
-                cmd = getattr(target, camel_to_snake(opname))
+                cmd = getattr(target, target_opname)
             except AttributeError:
                 self.fail("Unsupported operation %s on entity %s" % (opname, target))
         else:
             cmd = functools.partial(method, target)
 
         try:
-            # TODO: PYTHON-3289 apply inherited timeout by default.
-            inherit_timeout = getattr(target, "timeout", None)
             # CSOT: Translate the spec test "timeout" arg into pymongo's context timeout API.
-            if "timeout" in arguments or inherit_timeout is not None:
-                timeout = arguments.pop("timeout", None)
-                if timeout is None:
-                    timeout = inherit_timeout
+            if "timeout" in arguments:
+                timeout = arguments.pop("timeout")
                 with pymongo.timeout(timeout):
                     result = cmd(**dict(arguments))
             else:

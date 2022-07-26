@@ -84,7 +84,7 @@ TEXT = "text"
 .. _text index: http://mongodb.com/docs/manual/core/index-text/
 """
 
-version_tuple: Tuple[Union[int, str], ...] = (4, 2, 0, ".dev2")
+version_tuple: Tuple[Union[int, str], ...] = (4, 2, 1, ".dev0")
 
 
 def get_version_string() -> str:
@@ -149,9 +149,11 @@ def timeout(seconds: Optional[float]) -> ContextManager:
               # The deadline has now expired, the next operation will raise
               # a timeout exception.
               client.db.coll2.insert_one({})
-      except (ServerSelectionTimeoutError, ExecutionTimeout, WTimeoutError,
-              NetworkTimeout) as exc:
-          print(f"block timed out: {exc!r}")
+      except PyMongoError as exc:
+          if exc.timeout:
+              print(f"block timed out: {exc!r}")
+          else:
+              print(f"failed with non-timeout error: {exc!r}")
 
     When nesting :func:`~pymongo.timeout`, the newly computed deadline is capped to at most
     the existing deadline. The deadline can only be shortened, not extended.

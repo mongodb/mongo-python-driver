@@ -23,7 +23,7 @@ from typing import Any, NoReturn
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
-from pymongo import common
+from pymongo import _csot, common
 from pymongo.client_session import _validate_session_write_concern
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import (
@@ -315,8 +315,7 @@ class _Bulk(object):
                 cmd = SON([(cmd_name, self.collection.name), ("ordered", self.ordered)])
                 if self.comment:
                     cmd["comment"] = self.comment
-                if not write_concern.is_server_default:
-                    cmd["writeConcern"] = write_concern.document
+                _csot.apply_write_concern(cmd, write_concern)
                 if self.bypass_doc_val:
                     cmd["bypassDocumentValidation"] = True
                 if self.let is not None and run.op_type in (_DELETE, _UPDATE):
