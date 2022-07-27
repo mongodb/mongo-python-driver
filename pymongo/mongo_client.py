@@ -33,6 +33,7 @@ access:
 
 import contextlib
 import os
+import time
 import weakref
 from collections import defaultdict
 from typing import (
@@ -127,7 +128,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     # Define order to retrieve options from ClientOptions for __repr__.
     # No host/port; these are retrieved from TopologySettings.
     _constructor_args = ("document_class", "tz_aware", "connect")
-    _clients: weakref.WeakSet = weakref.WeakSet()
+    _clients: weakref.WeakValueDictionary = weakref.WeakValueDictionary()
     _clients_lock = _create_lock()
 
     def __init__(
@@ -846,7 +847,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         # Add this client to the list of weakly referenced items.
         # This will be used later if we fork.
         with MongoClient._clients_lock:
-            MongoClient._clients.add(self)
+            MongoClient._clients[time.time()] = self
 
     def _after_fork(self):
         """
@@ -2194,7 +2195,7 @@ def _after_fork_child():
     _release_locks(True)
 
     # Perform cleanup in clients (i.e. get rid of topology)
-    for client in MongoClient._clients:
+    for k, client in MongoClient._clients.items():
         client._after_fork()
 
 

@@ -55,7 +55,6 @@ class LockWrapper:
             self.fork_thread.start()
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.fork_thread.join()
         self.__lock.__exit__(exc_type, exc_value, traceback)
 
     def __getattr__(self, item):
@@ -90,6 +89,7 @@ class TestFork(IntegrationTest):
             # Call _get_topology, will launch a thread to fork upon __enter__ing
             # the with region.
             self.db.client._get_topology()
+            self.db.client._MongoClient__lock.fork_thread.join()
             lock_pid: int = self.db.client._MongoClient__lock.fork_thread.pid
             # The POSIX standard states only the forking thread is cloned.
             # In the parent, it'll return here.
@@ -116,6 +116,7 @@ class TestFork(IntegrationTest):
             # upon __enter__ing the with region.
 
             ObjectId()
+            fork_thread.join()
             lock_pid: int = ObjectId._inc_lock.fork_thread.pid
 
             self.assertNotEqual(lock_pid, 0)
@@ -130,13 +131,23 @@ class TestFork(IntegrationTest):
         """
         parent_conn, child_conn = Pipe()
         init_id = self.client._topology._pid
+        parent_cursor_exc = self.client._kill_cursors_executor
         lock_pid: int = os.fork()
 
         if lock_pid == 0:  # Child
             self.client.admin.command("ping")
             child_conn.send(self.client._topology._pid)
+            child_conn.send(
+                (
+                    parent_cursor_exc != self.client._kill_cursors_executor,
+                    "client._kill_cursors_executor was not reinitialized",
+                )
+            )
             os._exit(0)
         else:  # Parent
+            self.assertEqual(0, os.waitpid(lock_pid, 0)[1] >> 8)
             self.assertEqual(self.client._topology._pid, init_id)
             child_id = parent_conn.recv()
             self.assertNotEqual(child_id, init_id)
+            passed, msg = parent_conn.recv()
+            self.assertTrue(passed, msg)

@@ -47,7 +47,6 @@ class PeriodicExecutor(object):
         self._thread: Optional[threading.Thread] = None
         self._name = name
         self._skip_sleep = False
-
         self._thread_will_exit = False
         self._lock = _create_lock()
 
