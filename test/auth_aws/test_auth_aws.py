@@ -23,7 +23,6 @@ sys.path[0:0] = [""]
 
 from pymongo_auth_aws import auth
 
-from bson.son import SON
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure
 from pymongo.uri_parser import parse_uri
@@ -57,36 +56,26 @@ class TestAuthAWS(unittest.TestCase):
         with MongoClient(self.uri) as client:
             client.get_database().test.find_one()
 
-    def test_cache_credentials(self):
+    def setup_cache(self):
         if os.environ.get("AWS_ACCESS_KEY_ID", None) or "@" in self.uri:
             self.skipTest("Not testing cached credentials")
-
-        client = MongoClient(self.uri)
-        self.addCleanup(client.close)
-
         # Ensure cleared credentials.
         auth.set_cached_credentials(None)
         self.assertEqual(auth.get_cached_credentials(), None)
 
-        # The first attempt should cache credentials.
+        client = MongoClient(self.uri)
         client.get_database().test.find_one()
-        creds = auth.get_cached_credentials()
+        client.close()
+        return auth.get_cached_credentials()
+
+    def test_cache_credentials(self):
+        creds = self.setup_cache()
         assert creds is not None
 
     def test_cache_about_to_expire(self):
-        if os.environ.get("AWS_ACCESS_KEY_ID", None) or "@" in self.uri:
-            self.skipTest("Not testing cached credentials")
-
-        # Ensure cleared credentials.
-        auth.set_cached_credentials(None)
-        self.assertEqual(auth.get_cached_credentials(), None)
-
-        client0 = MongoClient(self.uri)
-        client0.get_database().test.find_one()
-        client0.close()
-
-        client1 = MongoClient(self.uri)
-        self.addCleanup(client1.close)
+        creds = self.setup_cache()
+        client = MongoClient(self.uri)
+        self.addCleanup(client.close)
 
         # Make the creds about to expire.
         soon = datetime.now(auth.utc) + timedelta(minutes=1)
@@ -94,38 +83,28 @@ class TestAuthAWS(unittest.TestCase):
         creds = auth.AwsCredential(creds.username, creds.password, creds.token, soon)
         auth.set_cached_credentials(creds)
 
-        client1.get_database().test.find_one()
+        client.get_database().test.find_one()
         new_creds = auth.get_cached_credentials()
         self.assertNotEqual(creds, new_creds)
 
     def test_poisoned_cache(self):
-        if os.environ.get("AWS_ACCESS_KEY_ID", None) or "@" in self.uri:
-            self.skipTest("Not testing cached credentials")
+        creds = self.setup_cache()
 
-        # Ensure cleared credentials.
-        auth.set_cached_credentials(None)
-        self.assertEqual(auth.get_cached_credentials(), None)
-
-        client0 = MongoClient(self.uri)
-        client0.get_database().test.find_one()
-        creds = auth.get_cached_credentials()
-        client0.close()
-
-        client1 = MongoClient(self.uri)
-        self.addCleanup(client1.close)
+        client = MongoClient(self.uri)
+        self.addCleanup(client.close)
 
         # Poison the creds with invalid password.
         creds = auth.AwsCredential(creds.username, "b" * 24, "c" * 24, creds.expiration)
         auth.set_cached_credentials(creds)
 
         with self.assertRaises(OperationFailure):
-            client1.get_database().test.find_one()
+            client.get_database().test.find_one()
 
         # Make sure the cache was cleared.
         self.assertEqual(auth.get_cached_credentials(), None)
 
         # The next attempt should generate a new cred and succeed.
-        client1.get_database().test.find_one()
+        client.get_database().test.find_one()
         self.assertNotEqual(auth.get_cached_credentials(), None)
 
 

@@ -31,7 +31,7 @@ try:
     from pymongo_auth_aws.auth import set_cached_credentials
 except ImportError:
 
-    def _set_cached_credentials(creds):
+    def set_cached_credentials(creds):
         pass
 
 
@@ -102,7 +102,7 @@ def _authenticate_aws(credentials, sock_info):
         raise OperationFailure(
             "%s (pymongo-auth-aws version %s)" % (exc, pymongo_auth_aws.__version__)
         )
-    except BaseException as e:
+    except BaseException:
         # Clear the cached credentials if we hit a failure in auth.
         set_cached_credentials(None)
         raise
