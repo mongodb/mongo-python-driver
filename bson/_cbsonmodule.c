@@ -211,7 +211,7 @@ static int millis_from_datetime_ms(PyObject* dt, long long* out){
 
     if (!(ll_millis = PyNumber_Long(dt))){
         if (PyErr_Occurred()) { // TypeError
-            return -1;
+            return 0;
         }
     }
 
@@ -219,12 +219,12 @@ static int millis_from_datetime_ms(PyObject* dt, long long* out){
         if (PyErr_Occurred()) { /* Overflow */
             PyErr_SetString(PyExc_OverflowError,
                             "MongoDB datetimes can only handle up to 8-byte ints");
-            return -1;
+            return 0;
         }
     }
     Py_DECREF(ll_millis);
     *out = millis;
-    return 0;
+    return 1;
 }
 
 /* Just make this compatible w/ the old API. */
@@ -1103,7 +1103,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         return buffer_write_int64(buffer, (int64_t)millis);
     } else if (PyObject_TypeCheck(value, (PyTypeObject *) state->DatetimeMS)) {
         long long millis;
-        if (millis_from_datetime_ms(value, &millis)) {
+        if (!millis_from_datetime_ms(value, &millis)) {
             return 0;
         }
         *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x09;
