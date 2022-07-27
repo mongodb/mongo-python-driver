@@ -94,11 +94,16 @@ import re
 import uuid
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Type, Union, cast
 
-import bson
-from bson import EPOCH_AWARE
 from bson.binary import ALL_UUID_SUBTYPES, UUID_SUBTYPE, Binary, UuidRepresentation
 from bson.code import Code
-from bson.codec_options import CodecOptions
+from bson.codec_options import CodecOptions, DatetimeConversionOpts
+from bson.datetime_ms import (
+    EPOCH_AWARE,
+    DatetimeMS,
+    _datetime_to_millis,
+    _max_datetime_ms,
+    _millis_to_datetime,
+)
 from bson.dbref import DBRef
 from bson.decimal128 import Decimal128
 from bson.int64 import Int64
@@ -228,6 +233,14 @@ class JSONOptions(CodecOptions):
       - `tzinfo`: A :class:`datetime.tzinfo` subclass that specifies the
         timezone from which :class:`~datetime.datetime` objects should be
         decoded. Defaults to :const:`~bson.tz_util.utc`.
+      - `datetime_conversion`: Specifies how UTC datetimes should be decoded
+        within BSON. Valid options include 'datetime_ms' to return as a
+        DatetimeMS, 'datetime' to return as a datetime.datetime and
+        raising a ValueError for out-of-range values, 'datetime_auto' to
+        return DatetimeMS objects when the underlying datetime is
+        out-of-range and 'datetime_clamp' to clamp to the minimum and
+        maximum possible datetimes. Defaults to 'datetime'. See
+        :ref:`handling-out-of-range-datetimes` for details.
       - `args`: arguments to :class:`~bson.codec_options.CodecOptions`
       - `kwargs`: arguments to :class:`~bson.codec_options.CodecOptions`
 
@@ -594,7 +607,9 @@ def _parse_canonical_binary(doc: Any, json_options: JSONOptions) -> Union[Binary
     return _binary_or_uuid(data, int(subtype, 16), json_options)
 
 
-def _parse_canonical_datetime(doc: Any, json_options: JSONOptions) -> datetime.datetime:
+def _parse_canonical_datetime(
+    doc: Any, json_options: JSONOptions
+) -> Union[datetime.datetime, DatetimeMS]:
     """Decode a JSON datetime to python datetime.datetime."""
     dtm = doc["$date"]
     if len(doc) != 1:
@@ -647,10 +662,15 @@ def _parse_canonical_datetime(doc: Any, json_options: JSONOptions) -> datetime.d
         if json_options.tz_aware:
             if json_options.tzinfo:
                 aware = aware.astimezone(json_options.tzinfo)
+            if json_options.datetime_conversion == DatetimeConversionOpts.DATETIME_MS:
+                return DatetimeMS(aware)
             return aware
         else:
-            return aware.replace(tzinfo=None)
-    return bson._millis_to_datetime(int(dtm), json_options)
+            aware_tzinfo_none = aware.replace(tzinfo=None)
+            if json_options.datetime_conversion == DatetimeConversionOpts.DATETIME_MS:
+                return DatetimeMS(aware_tzinfo_none)
+            return aware_tzinfo_none
+    return _millis_to_datetime(int(dtm), json_options)
 
 
 def _parse_canonical_oid(doc: Any) -> ObjectId:
@@ -806,10 +826,19 @@ def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
                     "$date": "%s%s%s" % (obj.strftime("%Y-%m-%dT%H:%M:%S"), fracsecs, tz_string)
                 }
 
-        millis = bson._datetime_to_millis(obj)
+        millis = _datetime_to_millis(obj)
         if json_options.datetime_representation == DatetimeRepresentation.LEGACY:
             return {"$date": millis}
         return {"$date": {"$numberLong": str(millis)}}
+    if isinstance(obj, DatetimeMS):
+        if (
+            json_options.datetime_representation == DatetimeRepresentation.ISO8601
+            and 0 <= int(obj) <= _max_datetime_ms()
+        ):
+            return default(obj.as_datetime(), json_options)
+        elif json_options.datetime_representation == DatetimeRepresentation.LEGACY:
+            return {"$date": str(int(obj))}
+        return {"$date": {"$numberLong": str(int(obj))}}
     if json_options.strict_number_long and isinstance(obj, Int64):
         return {"$numberLong": str(obj)}
     if isinstance(obj, (RE_TYPE, Regex)):

@@ -16,6 +16,7 @@
 
 import abc
 import datetime
+import enum
 from collections.abc import MutableMapping as _MutableMapping
 from typing import (
     Any,
@@ -198,6 +199,16 @@ class TypeRegistry(object):
         )
 
 
+class DatetimeConversionOpts(enum.IntEnum):
+    DATETIME = 1
+    DATETIME_CLAMP = 2
+    DATETIME_MS = 3
+    DATETIME_AUTO = 4
+
+    def __repr__(self):
+        return f"{self.value}"
+
+
 class _BaseCodecOptions(NamedTuple):
     document_class: Type[Mapping[str, Any]]
     tz_aware: bool
@@ -205,6 +216,7 @@ class _BaseCodecOptions(NamedTuple):
     unicode_decode_error_handler: str
     tzinfo: Optional[datetime.tzinfo]
     type_registry: TypeRegistry
+    datetime_conversion: Optional[DatetimeConversionOpts]
 
 
 class CodecOptions(_BaseCodecOptions):
@@ -268,7 +280,13 @@ class CodecOptions(_BaseCodecOptions):
         encoded/decoded.
       - `type_registry`: Instance of :class:`TypeRegistry` used to customize
         encoding and decoding behavior.
-
+      - `datetime_conversion`: Specifies how UTC datetimes should be decoded
+        within BSON. Valid options include 'datetime_ms' to return as a
+        DatetimeMS, 'datetime' to return as a datetime.datetime and
+        raising a ValueError for out-of-range values, 'datetime_auto' to
+        return DatetimeMS objects when the underlying datetime is
+        out-of-range and 'datetime_clamp' to clamp to the minimum and
+        maximum possible datetimes. Defaults to 'datetime'.
     .. versionchanged:: 4.0
        The default for `uuid_representation` was changed from
        :const:`~bson.binary.UuidRepresentation.PYTHON_LEGACY` to
@@ -292,6 +310,7 @@ class CodecOptions(_BaseCodecOptions):
         unicode_decode_error_handler: str = "strict",
         tzinfo: Optional[datetime.tzinfo] = None,
         type_registry: Optional[TypeRegistry] = None,
+        datetime_conversion: Optional[DatetimeConversionOpts] = DatetimeConversionOpts.DATETIME,
     ) -> "CodecOptions":
         doc_class = document_class or dict
         # issubclass can raise TypeError for generic aliases like SON[str, Any].
@@ -336,6 +355,7 @@ class CodecOptions(_BaseCodecOptions):
                 unicode_decode_error_handler,
                 tzinfo,
                 type_registry,
+                datetime_conversion,
             ),
         )
 
@@ -350,7 +370,7 @@ class CodecOptions(_BaseCodecOptions):
         return (
             "document_class=%s, tz_aware=%r, uuid_representation=%s, "
             "unicode_decode_error_handler=%r, tzinfo=%r, "
-            "type_registry=%r"
+            "type_registry=%r, datetime_conversion=%r"
             % (
                 document_class_repr,
                 self.tz_aware,
@@ -358,6 +378,7 @@ class CodecOptions(_BaseCodecOptions):
                 self.unicode_decode_error_handler,
                 self.tzinfo,
                 self.type_registry,
+                self.datetime_conversion,
             )
         )
 
@@ -371,6 +392,7 @@ class CodecOptions(_BaseCodecOptions):
             "unicode_decode_error_handler": self.unicode_decode_error_handler,
             "tzinfo": self.tzinfo,
             "type_registry": self.type_registry,
+            "datetime_conversion": self.datetime_conversion,
         }
 
     def __repr__(self):
@@ -406,6 +428,7 @@ def _parse_codec_options(options: Any) -> CodecOptions:
         "unicode_decode_error_handler",
         "tzinfo",
         "type_registry",
+        "datetime_conversion",
     }:
         if k == "uuidrepresentation":
             kwargs["uuid_representation"] = options[k]

@@ -38,7 +38,9 @@ import bson
 from bson import (
     BSON,
     EPOCH_AWARE,
+    DatetimeMS,
     Regex,
+    _datetime_to_millis,
     decode,
     decode_all,
     decode_file_iter,
@@ -48,7 +50,7 @@ from bson import (
 )
 from bson.binary import Binary, UuidRepresentation
 from bson.code import Code
-from bson.codec_options import CodecOptions
+from bson.codec_options import CodecOptions, DatetimeConversionOpts
 from bson.dbref import DBRef
 from bson.errors import InvalidBSON, InvalidDocument
 from bson.int64 import Int64
@@ -978,7 +980,7 @@ class TestCodecOptions(unittest.TestCase):
             "uuid_representation=UuidRepresentation.UNSPECIFIED, "
             "unicode_decode_error_handler='strict', "
             "tzinfo=None, type_registry=TypeRegistry(type_codecs=[], "
-            "fallback_encoder=None))"
+            "fallback_encoder=None), datetime_conversion=1)"
         )
         self.assertEqual(r, repr(CodecOptions()))
 
@@ -1151,6 +1153,170 @@ class TestCodecOptions(unittest.TestCase):
         # Documents returned from decode are mutable.
         decoded["new_field"] = 1
         self.assertTrue(decoded["_id"].generation_time)
+
+
+class TestDatetimeConversion(unittest.TestCase):
+    def test_comps(self):
+        # Tests other timestamp formats.
+        # Test each of the rich comparison methods.
+        pairs = [
+            (DatetimeMS(-1), DatetimeMS(1)),
+            (DatetimeMS(0), DatetimeMS(0)),
+            (DatetimeMS(1), DatetimeMS(-1)),
+        ]
+
+        comp_ops = ["__lt__", "__le__", "__eq__", "__ne__", "__gt__", "__ge__"]
+        for lh, rh in pairs:
+            for op in comp_ops:
+                self.assertEqual(getattr(lh, op)(rh), getattr(lh._value, op)(rh._value))
+
+    def test_class_conversions(self):
+        # Test class conversions.
+        dtr1 = DatetimeMS(1234)
+        dt1 = dtr1.as_datetime()
+        self.assertEqual(dtr1, DatetimeMS(dt1))
+
+        dt2 = datetime.datetime(1969, 1, 1)
+        dtr2 = DatetimeMS(dt2)
+        self.assertEqual(dtr2.as_datetime(), dt2)
+
+        # Test encode and decode without codec options. Expect: DatetimeMS => datetime
+        dtr1 = DatetimeMS(0)
+        enc1 = encode({"x": dtr1})
+        dec1 = decode(enc1)
+        self.assertEqual(dec1["x"], datetime.datetime(1970, 1, 1))
+        self.assertNotEqual(type(dtr1), type(dec1["x"]))
+
+        # Test encode and decode with codec options. Expect: UTCDateimteRaw => DatetimeMS
+        opts1 = CodecOptions(datetime_conversion=DatetimeConversionOpts.DATETIME_MS)
+        enc1 = encode({"x": dtr1})
+        dec1 = decode(enc1, opts1)
+        self.assertEqual(type(dtr1), type(dec1["x"]))
+        self.assertEqual(dtr1, dec1["x"])
+
+        # Expect: datetime => DatetimeMS
+        opts1 = CodecOptions(datetime_conversion=DatetimeConversionOpts.DATETIME_MS)
+        dt1 = datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
+        enc1 = encode({"x": dt1})
+        dec1 = decode(enc1, opts1)
+        self.assertEqual(dec1["x"], DatetimeMS(0))
+        self.assertNotEqual(dt1, type(dec1["x"]))
+
+    def test_clamping(self):
+        # Test clamping from below and above.
+        opts1 = CodecOptions(
+            datetime_conversion=DatetimeConversionOpts.DATETIME_CLAMP,
+            tz_aware=True,
+            tzinfo=datetime.timezone.utc,
+        )
+        below = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 1)})
+        dec_below = decode(below, opts1)
+        self.assertEqual(
+            dec_below["x"], datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
+        )
+
+        above = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 1)})
+        dec_above = decode(above, opts1)
+        self.assertEqual(
+            dec_above["x"],
+            datetime.datetime.max.replace(tzinfo=datetime.timezone.utc, microsecond=999000),
+        )
+
+    def test_tz_clamping(self):
+        # Naive clamping to local tz.
+        opts1 = CodecOptions(
+            datetime_conversion=DatetimeConversionOpts.DATETIME_CLAMP, tz_aware=False
+        )
+        below = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 24 * 60 * 60)})
+
+        dec_below = decode(below, opts1)
+        self.assertEqual(dec_below["x"], datetime.datetime.min)
+
+        above = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 24 * 60 * 60)})
+        dec_above = decode(above, opts1)
+        self.assertEqual(
+            dec_above["x"],
+            datetime.datetime.max.replace(microsecond=999000),
+        )
+
+        # Aware clamping.
+        opts2 = CodecOptions(
+            datetime_conversion=DatetimeConversionOpts.DATETIME_CLAMP, tz_aware=True
+        )
+        below = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 24 * 60 * 60)})
+        dec_below = decode(below, opts2)
+        self.assertEqual(
+            dec_below["x"], datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
+        )
+
+        above = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 24 * 60 * 60)})
+        dec_above = decode(above, opts2)
+        self.assertEqual(
+            dec_above["x"],
+            datetime.datetime.max.replace(tzinfo=datetime.timezone.utc, microsecond=999000),
+        )
+
+    def test_datetime_auto(self):
+        # Naive auto, in range.
+        opts1 = CodecOptions(datetime_conversion=DatetimeConversionOpts.DATETIME_AUTO)
+        inr = encode({"x": datetime.datetime(1970, 1, 1)}, codec_options=opts1)
+        dec_inr = decode(inr)
+        self.assertEqual(dec_inr["x"], datetime.datetime(1970, 1, 1))
+
+        # Naive auto, below range.
+        below = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 24 * 60 * 60)})
+        dec_below = decode(below, opts1)
+        self.assertEqual(
+            dec_below["x"], DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 24 * 60 * 60)
+        )
+
+        # Naive auto, above range.
+        above = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 24 * 60 * 60)})
+        dec_above = decode(above, opts1)
+        self.assertEqual(
+            dec_above["x"],
+            DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 24 * 60 * 60),
+        )
+
+        # Aware auto, in range.
+        opts2 = CodecOptions(
+            datetime_conversion=DatetimeConversionOpts.DATETIME_AUTO,
+            tz_aware=True,
+            tzinfo=datetime.timezone.utc,
+        )
+        inr = encode({"x": datetime.datetime(1970, 1, 1)}, codec_options=opts2)
+        dec_inr = decode(inr)
+        self.assertEqual(dec_inr["x"], datetime.datetime(1970, 1, 1))
+
+        # Aware auto, below range.
+        below = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 24 * 60 * 60)})
+        dec_below = decode(below, opts2)
+        self.assertEqual(
+            dec_below["x"], DatetimeMS(_datetime_to_millis(datetime.datetime.min) - 24 * 60 * 60)
+        )
+
+        # Aware auto, above range.
+        above = encode({"x": DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 24 * 60 * 60)})
+        dec_above = decode(above, opts2)
+        self.assertEqual(
+            dec_above["x"],
+            DatetimeMS(_datetime_to_millis(datetime.datetime.max) + 24 * 60 * 60),
+        )
+
+    def test_millis_from_datetime_ms(self):
+        # Test 65+ bit integer conversion, expect OverflowError.
+        big_ms = 2**65
+        with self.assertRaises(OverflowError):
+            encode({"x": DatetimeMS(big_ms)})
+
+        # Subclass of DatetimeMS w/ __int__ override, expect an Error.
+        class DatetimeMSOverride(DatetimeMS):
+            def __int__(self):
+                return float(self._value)
+
+        float_ms = DatetimeMSOverride(2)
+        with self.assertRaises(TypeError):
+            encode({"x": float_ms})
 
 
 if __name__ == "__main__":
