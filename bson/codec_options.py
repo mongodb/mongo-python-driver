@@ -432,11 +432,6 @@ def _parse_codec_options(options: Any) -> CodecOptions:
     }:
         if k == "uuidrepresentation":
             kwargs["uuid_representation"] = options[k]
-        elif k == "datetime_conversion":
-            if isinstance(options[k], str):
-                kwargs["datetime_conversion"] = DatetimeConversionOpts[options[k]]
-            else:
-                kwargs["datetime_conversion"] = DatetimeConversionOpts(options[k])
         else:
             kwargs[k] = options[k]
     return CodecOptions(**kwargs)

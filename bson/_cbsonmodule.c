@@ -205,7 +205,7 @@ static PyObject* datetime_ms_from_millis(PyObject* self, long long millis){
 }
 
 /* Extended-range datetime, takes a DatetimeMS object and extracts the long long value. */
-static long long millis_from_datetime_ms(PyObject* dt){
+static int millis_from_datetime_ms(PyObject* dt, long long* out){
     PyObject* ll_millis;
     long long millis;
 
@@ -223,8 +223,8 @@ static long long millis_from_datetime_ms(PyObject* dt){
         }
     }
     Py_DECREF(ll_millis);
-
-    return millis;
+    *out = millis;
+    return 0;
 }
 
 /* Just make this compatible w/ the old API. */
@@ -1102,7 +1102,10 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x09;
         return buffer_write_int64(buffer, (int64_t)millis);
     } else if (PyObject_TypeCheck(value, (PyTypeObject *) state->DatetimeMS)) {
-        long long millis = millis_from_datetime_ms(value);
+        long long millis;
+        if (millis_from_datetime_ms(value, &millis)) {
+            return 0;
+        }
         *(pymongo_buffer_get_buffer(buffer) + type_byte) = 0x09;
         return buffer_write_int64(buffer, (int64_t)millis);
     } else if (PyObject_TypeCheck(value, state->REType)) {
@@ -1930,6 +1933,8 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                 int64_t max_millis;
 
                 if (min_millis_fn == NULL || max_millis_fn == NULL) {
+                    Py_XDECREF(min_millis_fn);
+                    Py_XDECREF(max_millis_fn);
                     goto invalid;
                 }
 
@@ -1959,7 +1964,9 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                 min_millis = PyLong_AsLongLong(min_millis_fn_res);
                 max_millis = PyLong_AsLongLong(max_millis_fn_res);
 
-                if (PyErr_Occurred()){ // min/max_millis check
+                if ((min_millis == -1 || max_millis == -1) && PyErr_Occurred())
+                {
+                    // min/max_millis check
                     goto invalid;
                 }
 

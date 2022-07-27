@@ -31,6 +31,8 @@ EPOCH_NAIVE = datetime.datetime.utcfromtimestamp(0)
 
 
 class DatetimeMS:
+    __slots__ = ("_value",)
+
     def __init__(self, value: Union[int, datetime.datetime]):
         """Represents a BSON UTC datetime.
 
@@ -58,8 +60,6 @@ class DatetimeMS:
             self._value = _datetime_to_millis(value)
         else:
             raise TypeError(f"{type(value)} is not a valid type for DatetimeMS")
-
-    __slots__ = ("_value",)
 
     def __hash__(self) -> int:
         return hash(self._value)
