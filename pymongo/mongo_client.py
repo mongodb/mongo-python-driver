@@ -2195,7 +2195,7 @@ def _after_fork_child():
     _release_locks(True)
 
     # Perform cleanup in clients (i.e. get rid of topology)
-    for k, client in MongoClient._clients.items():
+    for _, client in MongoClient._clients.items():
         client._after_fork()
 
 
