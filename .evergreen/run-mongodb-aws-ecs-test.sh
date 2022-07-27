@@ -29,7 +29,7 @@ authtest () {
     $PYTHON --version
     $PYTHON -m pip install --upgrade wheel setuptools pip
     cd src
-    apt-get update
+    apt-get update || true
     apt-get install -y git || true
     $PYTHON -m pip install '.[aws]'
     $PYTHON test/auth_aws/test_auth_aws.py -v

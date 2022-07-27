@@ -60,7 +60,7 @@ authtest () {
     else
       . venvaws/bin/activate
     fi
-    sudo apt-get update
+    sudo apt-get update || true
     sudo apt-get install -y git || true
     python -m pip install '.[aws]'
     python test/auth_aws/test_auth_aws.py -v
