@@ -367,7 +367,7 @@ class CodecOptions(_BaseCodecOptions):
         return (
             "document_class=%s, tz_aware=%r, uuid_representation=%s, "
             "unicode_decode_error_handler=%r, tzinfo=%r, "
-            "type_registry=%r, datetime_conversion=%r"
+            "type_registry=%r, datetime_conversion=%s"
             % (
                 document_class_repr,
                 self.tz_aware,
