@@ -205,9 +205,6 @@ class DatetimeConversionOpts(enum.IntEnum):
     DATETIME_MS = 3
     DATETIME_AUTO = 4
 
-    def __repr__(self):
-        return f"{self.value}"
-
 
 class _BaseCodecOptions(NamedTuple):
     document_class: Type[Mapping[str, Any]]

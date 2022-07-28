@@ -980,7 +980,8 @@ class TestCodecOptions(unittest.TestCase):
             "uuid_representation=UuidRepresentation.UNSPECIFIED, "
             "unicode_decode_error_handler='strict', "
             "tzinfo=None, type_registry=TypeRegistry(type_codecs=[], "
-            "fallback_encoder=None), datetime_conversion=1)"
+            "fallback_encoder=None), "
+            "datetime_conversion=<DatetimeConversionOpts.DATETIME: 1>)"
         )
         self.assertEqual(r, repr(CodecOptions()))
 
