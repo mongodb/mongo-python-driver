@@ -489,9 +489,35 @@ limited to years between :data:`datetime.MINYEAR` (usually 1) and
 driver) can store BSON datetimes with year values far outside those supported
 by :class:`datetime.datetime`.
 
-There are a few ways to work around this issue. One option is to filter
-out documents with values outside of the range supported by
-:class:`datetime.datetime`::
+There are a few ways to work around this issue. Starting with PyMongo 4.3,
+:func:`bson.decode` can decode BSON datetimes in one of four ways, and can
+be specified using the ``datetime_conversion`` parameter of
+:class:`~bson.codec_options.CodecOptions`.
+
+The default option is
+:attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME`, which will
+attempt to decode as a :class:`datetime.datetime`, allowing
+:class:`~builtin.OverflowError`s to occur upon out-of-range dates. If
+information loss is acceptable,
+:attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME_CLAMP` will clamp
+resulting :class:`~datetime.datetime` objects to be within
+:attr:`~datetime.datetime.min` and :attr:`~datetime.datetime.max`
+(trimmed to `999000` microseconds).
+
+Two other options involve decoding as a :class:`~bson.datetime_ms.DatetimeMS`
+object, which simply contains the milliseconds of the decoded UTC datetime.
+:attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME_MS` will decode all
+BSON datetimes as this object.
+:attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME_AUTO` is a blend of
+the default behavior and
+:attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME_MS`, returning
+:class:`~datetime.datetime`s when possible, and
+:class:`~bson.datetime_ms.DatetimeMS` when representations are out-of-range.
+
+If we need to use the default decoding behavior with datetimes not supported by
+:class:`datetime.datetime`, another option is to filter out documents with
+values outside of the range supported by
+:class:`~datetime.datetime`::
 
   >>> from datetime import datetime
   >>> coll = client.test.dates
@@ -501,6 +527,7 @@ Another option, assuming you don't need the datetime field, is to filter out
 just that field::
 
   >>> cur = coll.find({}, projection={'dt': False})
+
 
 .. _multiprocessing:
 

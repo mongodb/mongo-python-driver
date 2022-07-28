@@ -125,8 +125,8 @@ To decode UTC datetime values as :class:`~bson.datetime_ms.DatetimeMS`,
 :attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME_AUTO`,
 :attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME_CLAMP`.
 :attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME` is the default
-option and has the behavior of raising an exception upon attempting to
-decode an out-of-range date.
+option and has the behavior of raising an :class:`~builtin.OverflowError` upon
+attempting to decode an out-of-range date.
 :attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME_MS` will only return
 :class:`~bson.datetime_ms.DatetimeMS` objects, regardless of whether the
 represented datetime is in- or out-of-range.
