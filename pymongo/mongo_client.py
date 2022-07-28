@@ -33,7 +33,6 @@ access:
 
 import contextlib
 import os
-import time
 import weakref
 from collections import defaultdict
 from typing import (
