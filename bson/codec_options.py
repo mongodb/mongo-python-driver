@@ -205,9 +205,6 @@ class DatetimeConversionOpts(enum.IntEnum):
     DATETIME_MS = 3
     DATETIME_AUTO = 4
 
-    def __repr__(self):
-        return f"{self.value}"
-
 
 class _BaseCodecOptions(NamedTuple):
     document_class: Type[Mapping[str, Any]]
@@ -370,7 +367,7 @@ class CodecOptions(_BaseCodecOptions):
         return (
             "document_class=%s, tz_aware=%r, uuid_representation=%s, "
             "unicode_decode_error_handler=%r, tzinfo=%r, "
-            "type_registry=%r, datetime_conversion=%r"
+            "type_registry=%r, datetime_conversion=%s"
             % (
                 document_class_repr,
                 self.tz_aware,
