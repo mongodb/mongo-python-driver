@@ -847,7 +847,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         # Add this client to the list of weakly referenced items.
         # This will be used later if we fork.
         with MongoClient._clients_lock:
-            MongoClient._clients[time.time()] = self
+            MongoClient._clients[self._topology._topology_id] = self
 
     def _after_fork(self):
         """
@@ -2200,7 +2200,7 @@ def _after_fork_child():
 
 
 def _after_fork_parent():
-    # Only unlock locks
+    # Only unlock locks in child.
     _release_locks(False)
 
 
