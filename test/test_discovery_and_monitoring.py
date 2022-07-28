@@ -23,6 +23,7 @@ sys.path[0:0] = [""]
 
 from test import IntegrationTest, unittest
 from test.pymongo_mocks import DummyMonitor
+from test.unified_format import generate_test_classes
 from test.utils import (
     CMAPListener,
     HeartbeatEventListener,
@@ -55,7 +56,7 @@ from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.uri_parser import parse_uri
 
 # Location of JSON test specifications.
-_TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "discovery_and_monitoring")
+SDAM_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "discovery_and_monitoring")
 
 
 def create_mock_topology(uri, monitor_class=DummyMonitor):
@@ -216,8 +217,11 @@ def create_test(scenario_def):
 
 
 def create_tests():
-    for dirpath, _, filenames in os.walk(_TEST_PATH):
+    for dirpath, _, filenames in os.walk(SDAM_PATH):
         dirname = os.path.split(dirpath)[-1]
+        # SDAM unified tests are handled separately.
+        if dirname == "unified":
+            continue
 
         for filename in filenames:
             if os.path.splitext(filename)[1] != ".json":
@@ -340,107 +344,8 @@ class TestPoolManagement(IntegrationTest):
             listener.wait_for_event(monitoring.PoolReadyEvent, 1)
 
 
-class TestIntegration(SpecRunner):
-    # Location of JSON test specifications.
-    TEST_PATH = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), "discovery_and_monitoring_integration"
-    )
-
-    def _event_count(self, event):
-        if event == "ServerMarkedUnknownEvent":
-
-            def marked_unknown(e):
-                return (
-                    isinstance(e, monitoring.ServerDescriptionChangedEvent)
-                    and not e.new_description.is_server_type_known
-                )
-
-            assert self.server_listener is not None
-            return len(self.server_listener.matching(marked_unknown))
-        # Only support CMAP events for now.
-        self.assertTrue(event.startswith("Pool") or event.startswith("Conn"))
-        event_type = getattr(monitoring, event)
-        assert self.pool_listener is not None
-        return self.pool_listener.event_count(event_type)
-
-    def assert_event_count(self, event, count):
-        """Run the assertEventCount test operation.
-
-        Assert the given event was published exactly `count` times.
-        """
-        self.assertEqual(self._event_count(event), count, "expected %s not %r" % (count, event))
-
-    def wait_for_event(self, event, count):
-        """Run the waitForEvent test operation.
-
-        Wait for a number of events to be published, or fail.
-        """
-        wait_until(
-            lambda: self._event_count(event) >= count, "find %s %s event(s)" % (count, event)
-        )
-
-    def configure_fail_point(self, fail_point):
-        """Run the configureFailPoint test operation."""
-        self.set_fail_point(fail_point)
-        self.addCleanup(
-            self.set_fail_point,
-            {"configureFailPoint": fail_point["configureFailPoint"], "mode": "off"},
-        )
-
-    def run_admin_command(self, command, **kwargs):
-        """Run the runAdminCommand test operation."""
-        self.client.admin.command(command, **kwargs)
-
-    def record_primary(self):
-        """Run the recordPrimary test operation."""
-        self._previous_primary = self.scenario_client.primary
-
-    def wait_for_primary_change(self, timeout):
-        """Run the waitForPrimaryChange test operation."""
-
-        def primary_changed():
-            primary = self.scenario_client.primary
-            if primary is None:
-                return False
-            return primary != self._previous_primary
-
-        wait_until(primary_changed, "change primary", timeout=timeout)
-
-    def wait(self, ms):
-        """Run the "wait" test operation."""
-        time.sleep(ms / 1000.0)
-
-    def start_thread(self, name):
-        """Run the 'startThread' thread operation."""
-        thread = SpecRunnerThread(name)
-        thread.start()
-        self.targets[name] = thread
-
-    def run_on_thread(self, sessions, collection, name, operation):
-        """Run the 'runOnThread' operation."""
-        thread = self.targets[name]
-        thread.schedule(lambda: self._run_op(sessions, collection, operation, False))
-
-    def wait_for_thread(self, name):
-        """Run the 'waitForThread' operation."""
-        thread = self.targets[name]
-        thread.stop()
-        thread.join(60)
-        if thread.exc:
-            raise thread.exc
-        self.assertFalse(thread.is_alive(), "Thread %s is still running" % (name,))
-
-
-def create_spec_test(scenario_def, test, name):
-    @client_context.require_test_commands
-    def run_scenario(self):
-        self.run_scenario(scenario_def, test)
-
-    return run_scenario
-
-
-test_creator = TestCreator(create_spec_test, TestIntegration, TestIntegration.TEST_PATH)
-test_creator.create_tests()
+# Generate unified tests.
+globals().update(generate_test_classes(os.path.join(SDAM_PATH, "unified"), module=__name__))
 
 
 if __name__ == "__main__":
