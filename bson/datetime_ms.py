@@ -31,6 +31,20 @@ EPOCH_NAIVE = datetime.datetime.utcfromtimestamp(0)
 
 
 class DatetimeMS:
+    """Represents a BSON UTC datetime.
+
+    BSON UTC datetimes are defined as an int64 of milliseconds since the Unix
+    epoch. The principal use of DatetimeMS is to represent datetimes outside
+    the range of the Python builtin :class:`~datetime.datetime` class when
+    encoding/decoding BSON.
+
+    To decode UTC datetimes as a ``DatetimeMS``,`datetime_conversion` in
+    :class:`~bson.CodecOptions` must be set to 'datetime_ms' or
+    'datetime_auto'. See :ref:`handling-out-of-range-datetimes` for details.
+
+    .. versionadded:: 4.3
+    """
+
     __slots__ = ("_value",)
 
     def __init__(self, value: Union[int, datetime.datetime]):
