@@ -205,6 +205,7 @@ class DatetimeConversionOpts(enum.IntEnum):
 
     BSON UTC datetimes that cannot be represented as a
     :class:`~datetime.datetime` will raise an :class:`~builtins.OverflowError`
+    or a :class:`~builtins.ValueError`
     .. versionadded 4.3
     """
 
