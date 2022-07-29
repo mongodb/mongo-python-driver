@@ -41,8 +41,6 @@ class DatetimeMS:
     To decode UTC datetimes as a ``DatetimeMS``,`datetime_conversion` in
     :class:`~bson.CodecOptions` must be set to 'datetime_ms' or
     'datetime_auto'. See :ref:`handling-out-of-range-datetimes` for details.
-
-    .. versionadded:: 4.3
     """
 
     __slots__ = ("_value",)
