@@ -12,7 +12,10 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 
-"""Tools for representing the BSON datetime type."""
+"""Tools for representing the BSON datetime type.
+
+.. versionadded:: 4.3
+"""
 
 import calendar
 import datetime
@@ -31,38 +34,28 @@ EPOCH_NAIVE = datetime.datetime.utcfromtimestamp(0)
 
 
 class DatetimeMS:
-    """Represents a BSON UTC datetime.
-
-    BSON UTC datetimes are defined as an int64 of milliseconds since the Unix
-    epoch. The principal use of DatetimeMS is to represent datetimes outside
-    the range of the Python builtin :class:`~datetime.datetime` class when
-    encoding/decoding BSON.
-
-    To decode UTC datetimes as a ``DatetimeMS``,`datetime_conversion` in
-    :class:`~bson.CodecOptions` must be set to 'datetime_ms' or
-    'datetime_auto'. See :ref:`handling-out-of-range-datetimes` for details.
-    """
+    """Represents a BSON UTC datetime."""
 
     __slots__ = ("_value",)
 
     def __init__(self, value: Union[int, datetime.datetime]):
         """Represents a BSON UTC datetime.
 
-        BSON UTC datetimes are defined as an int64 of milliseconds since the Unix
-        epoch. The principal use of DatetimeMS is to represent datetimes outside
-        the range of the Python builtin :class:`~datetime.datetime` class when
+        BSON UTC datetimes are defined as an int64 of milliseconds since the
+        Unix epoch. The principal use of DatetimeMS is to represent
+        datetimes outside the range of the Python builtin
+        :class:`~datetime.datetime` class when
         encoding/decoding BSON.
 
-        To decode UTC datetimes as a ``DatetimeMS``,`datetime_conversion` in
+        To decode UTC datetimes as a ``DatetimeMS``, `datetime_conversion` in
         :class:`~bson.CodecOptions` must be set to 'datetime_ms' or
-        'datetime_auto'. See :ref:`handling-out-of-range-datetimes` for details.
+        'datetime_auto'. See :ref:`handling-out-of-range-datetimes` for
+        details.
 
         :Parameters:
           - `value`: An instance of :class:`datetime.datetime` to be
-          represented as milliseconds since the Unix epoch, or int of
-          milliseconds since the Unix epoch.
-
-        .. versionadded:: 4.3
+            represented as milliseconds since the Unix epoch, or int of
+            milliseconds since the Unix epoch.
         """
         if isinstance(value, int):
             if not (-(2**63) <= value <= 2**63 - 1):
