@@ -200,10 +200,38 @@ class TypeRegistry(object):
 
 
 class DatetimeConversionOpts(enum.IntEnum):
+    """Options for decoding BSON datetimes."""
+
     DATETIME = 1
+    """Decode a BSON UTC datetime as a :class:`datetime.datetime`.
+
+    BSON UTC datetimes that cannot be represented as a
+    :class:`~datetime.datetime` will raise an :class:`OverflowError`
+    or a :class:`ValueError`.
+
+    .. versionadded 4.3
+    """
+
     DATETIME_CLAMP = 2
+    """Decode a BSON UTC datetime as a :class:`datetime.datetime`, clamping
+    to :attr:`~datetime.datetime.min` and :attr:`~datetime.datetime.max`.
+
+    .. versionadded 4.3
+    """
+
     DATETIME_MS = 3
+    """Decode a BSON UTC datetime as a :class:`~bson.datetime_ms.DatetimeMS`
+    object.
+
+    .. versionadded 4.3
+    """
+
     DATETIME_AUTO = 4
+    """Decode a BSON UTC datetime as a :class:`datetime.datetime` if possible,
+    and a :class:`~bson.datetime_ms.DatetimeMS` if not.
+
+    .. versionadded 4.3
+    """
 
 
 class _BaseCodecOptions(NamedTuple):
