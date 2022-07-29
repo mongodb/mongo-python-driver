@@ -200,12 +200,15 @@ class TypeRegistry(object):
 
 
 class DatetimeConversionOpts(enum.IntEnum):
+    """Options for decoding BSON datetimes."""
+
     DATETIME = 1
     """Decode a BSON UTC datetime as a :class:`datetime.datetime`.
 
     BSON UTC datetimes that cannot be represented as a
-    :class:`~datetime.datetime` will raise an :class:`~builtins.OverflowError`
-    or a :class:`~builtins.ValueError`
+    :class:`~datetime.datetime` will raise an :class:`OverflowError`
+    or a :class:`ValueError`.
+
     .. versionadded 4.3
     """
 
