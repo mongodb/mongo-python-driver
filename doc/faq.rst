@@ -506,16 +506,18 @@ objects as before:
 .. doctest::
 
     >>> from datetime import datetime
-    >>> from bson import encode, decode
     >>> from bson.datetime_ms import DatetimeMS
-    >>> from bson.codec_options import CodecOptions, DatetimeConversionOpts
-    >>> dt_codec = CodecOptions(datetime_conversion=DatetimeConversionOpts.DATETIME_AUTO)
-    >>> inr = encode({"x": datetime(1970, 1, 1)})
-    >>> decode(inr, dt_codec)
-    {'x': datetime.datetime(1970, 1, 1, 0, 0)}
-    >>> outr = encode({"x": DatetimeMS(2**62)})
-    >>> decode(outr, dt_codec)
-    {'x': DatetimeMS(4611686018427387904)}
+    >>> from bson.codec_options import DatetimeConversionOpts
+    >>> from pymongo import MongoClient
+    >>> client = MongoClient('localhost', 27017, datetime_conversion=DatetimeConversionOpts.DATETIME_AUTO)
+    >>> client.db.collection.insert_one({"x": datetime(1970, 1, 1)})
+    <pymongo.results.InsertOneResult object at 0x1032cf880>
+    >>> client.db.collection.insert_one({"x": DatetimeMS(2**62)})
+    <pymongo.results.InsertOneResult object at 0x1032cf880>
+    >>> for x in client.db.collection.find():
+    ...     print(x)
+    {'_id': ObjectId('62e45f36e7a1bacf393dbf60'), 'x': datetime.datetime(1970, 1, 1, 0, 0)}
+    {'_id': ObjectId('62e45f36e7a1bacf393dbf61'), 'x': DatetimeMS(4611686018427387904)}
 
 For other options, please refer to
 :class:`~bson.codec_options.DatetimeConversionOpts`.
