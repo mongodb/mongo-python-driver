@@ -495,29 +495,19 @@ be specified using the ``datetime_conversion`` parameter of
 :class:`~bson.codec_options.CodecOptions`.
 
 The default option is
-:attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME`, which will
+:attr:`~bson.codec_options.DatetimeConversionOpts.DATETIME`, which will
 attempt to decode as a :class:`datetime.datetime`, allowing
-:class:`~builtin.OverflowError`s to occur upon out-of-range dates. If
-information loss is acceptable,
-:attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME_CLAMP` will clamp
-resulting :class:`~datetime.datetime` objects to be within
-:attr:`~datetime.datetime.min` and :attr:`~datetime.datetime.max`
-(trimmed to `999000` microseconds).
-
-Two other options involve decoding as a :class:`~bson.datetime_ms.DatetimeMS`
-object, which simply contains the milliseconds of the decoded UTC datetime.
-:attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME_MS` will decode all
-BSON datetimes as this object.
-:attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME_AUTO` is a blend of
-the default behavior and
-:attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME_MS`, returning
-:class:`~datetime.datetime`s when possible, and
-:class:`~bson.datetime_ms.DatetimeMS` when representations are out-of-range.
+:class:`~builtin.OverflowError` to occur upon out-of-range dates.
+:attr:`~bson.codec_options.DatetimeConversionOpts.DATETIME_AUTO` alters
+this behavior to instead return :class:`~bson.datetime_ms.DatetimeMS` when
+representations are out-of-range, while returning :class:`~datetime.datetime`
+objects as before. For other options, please refer to
+:class:`~bson.codec_options.DatetimeConversionOpts`.
 
 If we need to use the default decoding behavior with datetimes not supported by
 :class:`datetime.datetime`, another option is to filter out documents with
 values outside of the range supported by
-:class:`~datetime.datetime`::
+:class:`~datetime.datetime`:
 
   >>> from datetime import datetime
   >>> coll = client.test.dates
