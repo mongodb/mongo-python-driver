@@ -21,11 +21,13 @@ import sys
 import uuid
 from typing import Any, List, MutableMapping
 
+from bson.codec_options import CodecOptions, DatetimeConversionOpts
+
 sys.path[0:0] = [""]
 
 from test import IntegrationTest, unittest
 
-from bson import EPOCH_AWARE, EPOCH_NAIVE, SON, json_util
+from bson import EPOCH_AWARE, EPOCH_NAIVE, SON, DatetimeMS, json_util
 from bson.binary import (
     ALL_UUID_REPRESENTATIONS,
     MD5_SUBTYPE,
@@ -35,6 +37,7 @@ from bson.binary import (
     UuidRepresentation,
 )
 from bson.code import Code
+from bson.datetime_ms import _max_datetime_ms
 from bson.dbref import DBRef
 from bson.int64 import Int64
 from bson.json_util import (
@@ -239,6 +242,69 @@ class TestJsonUtil(unittest.TestCase):
                 tz_aware=True,
                 tzinfo=pacific,
             ),
+        )
+
+    def test_datetime_ms(self):
+        # Test ISO8601 in-range
+        dat_min = {"x": DatetimeMS(0)}
+        dat_max = {"x": DatetimeMS(_max_datetime_ms())}
+        opts = JSONOptions(datetime_representation=DatetimeRepresentation.ISO8601)
+
+        self.assertEqual(
+            dat_min["x"].as_datetime(CodecOptions(tz_aware=False)),
+            json_util.loads(json_util.dumps(dat_min))["x"],
+        )
+        self.assertEqual(
+            dat_max["x"].as_datetime(CodecOptions(tz_aware=False)),
+            json_util.loads(json_util.dumps(dat_max))["x"],
+        )
+
+        # Test ISO8601 out-of-range
+        dat_min = {"x": DatetimeMS(-1)}
+        dat_max = {"x": DatetimeMS(_max_datetime_ms() + 1)}
+
+        self.assertEqual('{"x": {"$date": {"$numberLong": "-1"}}}', json_util.dumps(dat_min))
+        self.assertEqual(
+            '{"x": {"$date": {"$numberLong": "' + str(int(dat_max["x"])) + '"}}}',
+            json_util.dumps(dat_max),
+        )
+        # Test legacy.
+        opts = JSONOptions(
+            datetime_representation=DatetimeRepresentation.LEGACY, json_mode=JSONMode.LEGACY
+        )
+        self.assertEqual('{"x": {"$date": "-1"}}', json_util.dumps(dat_min, json_options=opts))
+        self.assertEqual(
+            '{"x": {"$date": "' + str(int(dat_max["x"])) + '"}}',
+            json_util.dumps(dat_max, json_options=opts),
+        )
+
+        # Test regular.
+        opts = JSONOptions(
+            datetime_representation=DatetimeRepresentation.NUMBERLONG, json_mode=JSONMode.LEGACY
+        )
+        self.assertEqual(
+            '{"x": {"$date": {"$numberLong": "-1"}}}', json_util.dumps(dat_min, json_options=opts)
+        )
+        self.assertEqual(
+            '{"x": {"$date": {"$numberLong": "' + str(int(dat_max["x"])) + '"}}}',
+            json_util.dumps(dat_max, json_options=opts),
+        )
+
+        # Test decode from datetime.datetime to DatetimeMS
+        dat_min = {"x": datetime.datetime.min}
+        dat_max = {"x": DatetimeMS(_max_datetime_ms()).as_datetime(CodecOptions(tz_aware=False))}
+        opts = JSONOptions(
+            datetime_representation=DatetimeRepresentation.ISO8601,
+            datetime_conversion=DatetimeConversionOpts.DATETIME_MS,
+        )
+
+        self.assertEqual(
+            DatetimeMS(dat_min["x"]),
+            json_util.loads(json_util.dumps(dat_min), json_options=opts)["x"],
+        )
+        self.assertEqual(
+            DatetimeMS(dat_max["x"]),
+            json_util.loads(json_util.dumps(dat_max), json_options=opts)["x"],
         )
 
     def test_regex_object_hook(self):

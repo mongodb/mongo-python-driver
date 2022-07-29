@@ -13,6 +13,7 @@ Sub-modules:
    binary
    code
    codec_options
+   datetime_ms
    dbref
    decimal128
    errors

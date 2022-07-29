@@ -36,7 +36,7 @@ from urllib.parse import unquote_plus
 
 from bson import SON
 from bson.binary import UuidRepresentation
-from bson.codec_options import CodecOptions, TypeRegistry
+from bson.codec_options import CodecOptions, DatetimeConversionOpts, TypeRegistry
 from bson.raw_bson import RawBSONDocument
 from pymongo.auth import MECHANISMS
 from pymongo.compression_support import (
@@ -620,6 +620,21 @@ def validate_auto_encryption_opts_or_none(option: Any, value: Any) -> Optional[A
     return value
 
 
+def validate_datetime_conversion(option: Any, value: Any) -> Optional[DatetimeConversionOpts]:
+    """Validate a DatetimeConversionOpts string."""
+    if value is None:
+        return DatetimeConversionOpts.DATETIME
+
+    if isinstance(value, str):
+        if value.isdigit():
+            return DatetimeConversionOpts(int(value))
+        return DatetimeConversionOpts[value]
+    elif isinstance(value, int):
+        return DatetimeConversionOpts(value)
+
+    raise TypeError("%s must be a str or int representing DatetimeConversionOpts" % (option,))
+
+
 # Dictionary where keys are the names of public URI options, and values
 # are lists of aliases for that option.
 URI_OPTIONS_ALIAS_MAP: Dict[str, List[str]] = {
@@ -684,6 +699,7 @@ NONSPEC_OPTIONS_VALIDATOR_MAP: Dict[str, Callable[[Any, Any], Any]] = {
     "uuidrepresentation": validate_uuid_representation,
     "waitqueuemultiple": validate_non_negative_integer_or_none,
     "waitqueuetimeoutms": validate_timeout_or_none,
+    "datetime_conversion": validate_datetime_conversion,
 }
 
 # Dictionary where keys are the names of keyword-only options for the
