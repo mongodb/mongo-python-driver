@@ -501,7 +501,23 @@ attempt to decode as a :class:`datetime.datetime`, allowing
 :attr:`~bson.codec_options.DatetimeConversionOpts.DATETIME_AUTO` alters
 this behavior to instead return :class:`~bson.datetime_ms.DatetimeMS` when
 representations are out-of-range, while returning :class:`~datetime.datetime`
-objects as before. For other options, please refer to
+objects as before:
+
+.. doctest::
+
+    >>> from datetime import datetime
+    >>> from bson import encode, decode
+    >>> from bson.datetime_ms import DatetimeMS
+    >>> from bson.codec_options import CodecOptions, DatetimeConversionOpts
+    >>> dt_codec = CodecOptions(datetime_conversion=DatetimeConversionOpts.DATETIME_AUTO)
+    >>> inr = encode({"x": datetime(1970, 1, 1)})
+    >>> decode(inr, dt_codec)
+    {'x': datetime.datetime(1970, 1, 1, 0, 0)}
+    >>> outr = encode({"x": DatetimeMS(2**62)})
+    >>> decode(outr, dt_codec)
+    {'x': DatetimeMS(4611686018427387904)}
+
+For other options, please refer to
 :class:`~bson.codec_options.DatetimeConversionOpts`.
 
 If we need to use the default decoding behavior with datetimes not supported by
@@ -517,7 +533,6 @@ Another option, assuming you don't need the datetime field, is to filter out
 just that field::
 
   >>> cur = coll.find({}, projection={'dt': False})
-
 
 .. _multiprocessing:
 

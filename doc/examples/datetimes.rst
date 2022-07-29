@@ -142,10 +142,11 @@ resulting :class:`~datetime.datetime` objects to be within
 An example of encoding and decoding using `DATETIME_MS` is as follows:
 
 .. doctest::
+
     >>> from datetime import datetime
     >>> from bson import encode, decode
     >>> from bson.datetime_ms import DatetimeMS
-    >>> from bson.codec_options import CodecOptions,DatetimeConversionOpts
+    >>> from bson.codec_options import CodecOptions, DatetimeConversionOpts
     >>> x = encode({"x": datetime(1970, 1, 1)})
     >>> x
     b'\x10\x00\x00\x00\tx\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
