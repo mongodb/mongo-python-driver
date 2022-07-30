@@ -17,7 +17,6 @@
 import os
 import sys
 import threading
-import time
 
 sys.path[0:0] = [""]
 
@@ -27,7 +26,6 @@ from test.unified_format import generate_test_classes
 from test.utils import (
     CMAPListener,
     HeartbeatEventListener,
-    TestCreator,
     assertion_context,
     client_context,
     get_pool,
@@ -36,7 +34,6 @@ from test.utils import (
     single_client,
     wait_until,
 )
-from test.utils_spec_runner import SpecRunner, SpecRunnerThread
 
 from bson import Timestamp, json_util
 from pymongo import common, monitoring
