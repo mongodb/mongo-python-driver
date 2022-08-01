@@ -54,7 +54,7 @@ from test.utils import (
 )
 from test.utils_spec_runner import SpecRunnerThread
 from test.version import Version
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Mapping, Optional
 
 import pymongo
 from bson import SON, Code, DBRef, Decimal128, Int64, MaxKey, MinKey, json_util
@@ -367,10 +367,10 @@ class EntityMapUtil(object):
     test format specification."""
 
     def __init__(self, test_class):
-        self._entities = {}
-        self._listeners = {}
-        self._session_lsids = {}
-        self.test = test_class
+        self._entities: Dict[str, Any] = {}
+        self._listeners: Dict[str, EventListenerUtil] = {}
+        self._session_lsids: Dict[str, Mapping[str, Any]] = {}
+        self.test: UnifiedSpecTestMixinV1 = test_class
 
     def __contains__(self, item):
         return item in self._entities
