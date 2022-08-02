@@ -54,7 +54,6 @@ bytes [#bytes]_                          binary         both
    subtype 0. It will be decoded back to bytes.
 """
 
-import calendar
 import datetime
 import itertools
 import re
@@ -100,8 +99,17 @@ from bson.code import Code
 from bson.codec_options import (
     DEFAULT_CODEC_OPTIONS,
     CodecOptions,
+    DatetimeConversionOpts,
     _DocumentType,
     _raw_document_class,
+)
+from bson.datetime_ms import (
+    EPOCH_AWARE,
+    EPOCH_NAIVE,
+    DatetimeMS,
+    _datetime_to_millis,
+    _millis_to_datetime,
+    utc,
 )
 from bson.dbref import DBRef
 from bson.decimal128 import Decimal128
@@ -113,7 +121,6 @@ from bson.objectid import ObjectId
 from bson.regex import Regex
 from bson.son import RE_TYPE, SON
 from bson.timestamp import Timestamp
-from bson.tz_util import utc
 
 # Import some modules for type-checking only.
 if TYPE_CHECKING:
@@ -187,11 +194,9 @@ __all__ = [
     "is_valid",
     "BSON",
     "has_c",
+    "DatetimeConversionOpts",
+    "DatetimeMS",
 ]
-
-EPOCH_AWARE = datetime.datetime.fromtimestamp(0, utc)
-EPOCH_NAIVE = datetime.datetime.utcfromtimestamp(0)
-
 
 BSONNUM = b"\x01"  # Floating point
 BSONSTR = b"\x02"  # UTF-8 string
@@ -413,7 +418,7 @@ def _get_boolean(
 
 def _get_date(
     data: Any, view: Any, position: int, dummy0: int, opts: CodecOptions, dummy1: Any
-) -> Tuple[datetime.datetime, int]:
+) -> Tuple[Union[datetime.datetime, DatetimeMS], int]:
     """Decode a BSON datetime to python datetime.datetime."""
     return _millis_to_datetime(_UNPACK_LONG_FROM(data, position)[0], opts), position + 8
 
@@ -724,6 +729,12 @@ def _encode_datetime(name: bytes, value: datetime.datetime, dummy0: Any, dummy1:
     return b"\x09" + name + _PACK_LONG(millis)
 
 
+def _encode_datetime_ms(name: bytes, value: DatetimeMS, dummy0: Any, dummy1: Any) -> bytes:
+    """Encode datetime.datetime."""
+    millis = int(value)
+    return b"\x09" + name + _PACK_LONG(millis)
+
+
 def _encode_none(name: bytes, dummy0: Any, dummy1: Any, dummy2: Any) -> bytes:
     """Encode python None."""
     return b"\x0A" + name
@@ -814,6 +825,7 @@ _ENCODERS = {
     bool: _encode_bool,
     bytes: _encode_bytes,
     datetime.datetime: _encode_datetime,
+    DatetimeMS: _encode_datetime_ms,
     dict: _encode_mapping,
     float: _encode_float,
     int: _encode_int,
@@ -946,27 +958,6 @@ def _dict_to_bson(doc: Any, check_keys: bool, opts: CodecOptions, top_level: boo
 
 if _USE_C:
     _dict_to_bson = _cbson._dict_to_bson  # noqa: F811
-
-
-def _millis_to_datetime(millis: int, opts: CodecOptions) -> datetime.datetime:
-    """Convert milliseconds since epoch UTC to datetime."""
-    diff = ((millis % 1000) + 1000) % 1000
-    seconds = (millis - diff) // 1000
-    micros = diff * 1000
-    if opts.tz_aware:
-        dt = EPOCH_AWARE + datetime.timedelta(seconds=seconds, microseconds=micros)
-        if opts.tzinfo:
-            dt = dt.astimezone(opts.tzinfo)
-        return dt
-    else:
-        return EPOCH_NAIVE + datetime.timedelta(seconds=seconds, microseconds=micros)
-
-
-def _datetime_to_millis(dtm: datetime.datetime) -> int:
-    """Convert datetime to milliseconds since epoch UTC."""
-    if dtm.utcoffset() is not None:
-        dtm = dtm - dtm.utcoffset()  # type: ignore
-    return int(calendar.timegm(dtm.timetuple()) * 1000 + dtm.microsecond // 1000)
 
 
 _CODEC_OPTIONS_TYPE_ERROR = TypeError("codec_options must be an instance of CodecOptions")
