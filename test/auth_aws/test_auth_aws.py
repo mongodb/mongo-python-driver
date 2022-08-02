@@ -59,6 +59,9 @@ class TestAuthAWS(unittest.TestCase):
     def setup_cache(self):
         if os.environ.get("AWS_ACCESS_KEY_ID", None) or "@" in self.uri:
             self.skipTest("Not testing cached credentials")
+        if not hasattr(auth, "set_cached_credentials"):
+            self.skipTest("Cached credentials not available")
+
         # Ensure cleared credentials.
         auth.set_cached_credentials(None)
         self.assertEqual(auth.get_cached_credentials(), None)
@@ -70,7 +73,7 @@ class TestAuthAWS(unittest.TestCase):
 
     def test_cache_credentials(self):
         creds = self.setup_cache()
-        assert creds is not None
+        self.assertIsNotNone(creds)
 
     def test_cache_about_to_expire(self):
         creds = self.setup_cache()

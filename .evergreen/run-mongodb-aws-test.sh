@@ -60,9 +60,8 @@ authtest () {
     else
       . venvaws/bin/activate
     fi
-    sudo apt-get update || true
-    sudo apt-get install -y git || true
-    python -m pip install '.[aws]'
+    python -m pip install '.'
+    python -m pip install https://github.com/blink1073/pymongo-auth-aws/archive/refs/heads/DRIVERS-2333-2.zip
     python test/auth_aws/test_auth_aws.py -v
     deactivate
     rm -rf venvaws
