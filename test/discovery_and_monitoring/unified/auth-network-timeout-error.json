@@ -4,13 +4,20 @@
   "runOnRequirements": [
     {
       "minServerVersion": "4.4",
-      "auth": true
+      "auth": true,
+      "serverless": "forbid",
+      "topologies": [
+        "single",
+        "replicaset",
+        "sharded"
+      ]
     }
   ],
   "createEntities": [
     {
       "client": {
-        "id": "setupClient"
+        "id": "setupClient",
+        "useMultipleMongoses": false
       }
     }
   ],
@@ -61,6 +68,7 @@
               {
                 "client": {
                   "id": "client",
+                  "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent",
                     "serverDescriptionChangedEvent",

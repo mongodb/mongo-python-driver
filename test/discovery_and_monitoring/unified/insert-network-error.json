@@ -3,13 +3,20 @@
   "schemaVersion": "1.10",
   "runOnRequirements": [
     {
-      "minServerVersion": "4.4"
+      "minServerVersion": "4.4",
+      "serverless": "forbid",
+      "topologies": [
+        "single",
+        "replicaset",
+        "sharded"
+      ]
     }
   ],
   "createEntities": [
     {
       "client": {
-        "id": "setupClient"
+        "id": "setupClient",
+        "useMultipleMongoses": false
       }
     }
   ],
@@ -67,7 +74,8 @@
                   "uriOptions": {
                     "retryWrites": false,
                     "appname": "insertNetworkErrorTest"
-                  }
+                  },
+                  "useMultipleMongoses": false
                 }
               },
               {

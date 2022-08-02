@@ -3,13 +3,20 @@
   "schemaVersion": "1.10",
   "runOnRequirements": [
     {
-      "minServerVersion": "4.9"
+      "minServerVersion": "4.9",
+      "serverless": "forbid",
+      "topologies": [
+        "single",
+        "replicaset",
+        "sharded"
+      ]
     }
   ],
   "createEntities": [
     {
       "client": {
-        "id": "setupClient"
+        "id": "setupClient",
+        "useMultipleMongoses": false
       }
     }
   ],
@@ -53,6 +60,7 @@
               {
                 "client": {
                   "id": "client",
+                  "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent",
                     "serverDescriptionChangedEvent",
@@ -164,6 +172,7 @@
               {
                 "client": {
                   "id": "client",
+                  "useMultipleMongoses": false,
                   "observeEvents": [
                     "commandStartedEvent",
                     "serverDescriptionChangedEvent",
