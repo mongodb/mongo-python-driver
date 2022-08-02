@@ -44,10 +44,6 @@ class TestFork(IntegrationTest):
         """
 
         def exit_cond():
-            # Checking all the locks after forking this way is highly
-            # probabilistic as more locking behavior may ensue. Instead we
-            # check that we can acquire _insertion_lock, meaning we have
-            # successfully completed.
             with _insertion_lock:
                 return 0  # success
 
@@ -66,10 +62,8 @@ class TestFork(IntegrationTest):
     def test_lock_object_id(self):
         """
         Forks the client with ObjectId's _inc_lock locked.
-        Will fork upon __enter__, waits for child to return.
         Parent => _inc_lock should remain locked.
         Child => _inc_lock should be unlocked.
-        Must use threading.Lock as ObjectId uses this.
         """
         with ObjectId._inc_lock:
             lock_pid: int = os.fork()
