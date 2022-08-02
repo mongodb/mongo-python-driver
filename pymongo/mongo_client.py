@@ -820,6 +820,14 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             srv_max_hosts=srv_max_hosts,
         )
 
+        self._init_deadlockables(connect)
+
+        # Add this client to the list of weakly referenced items.
+        # This will be used later if we fork.
+        with MongoClient._clients_lock:
+            MongoClient._clients[self._topology._topology_id] = self
+
+    def _init_deadlockables(self, connect):
         self._topology = Topology(self._topology_settings)
 
         def target():
@@ -835,7 +843,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             target=target,
             name="pymongo_kill_cursors_thread",
         )
-
         # We strongly reference the executor and it weakly references us via
         # this closure. When the client is freed, stop the executor soon.
         self_ref: Any = weakref.ref(self, executor.close)
@@ -849,40 +856,13 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             from pymongo.encryption import _Encrypter
 
             self._encrypter = _Encrypter(self, self.__options.auto_encryption_opts)
-        self._timeout = options.timeout
-
-        # Add this client to the list of weakly referenced items.
-        # This will be used later if we fork.
-        with MongoClient._clients_lock:
-            MongoClient._clients[self._topology._topology_id] = self
+        self._timeout = self.__options.timeout
 
     def _after_fork(self):
         """
         Resets topology in a child after successfully forking.
         """
-        self._topology = Topology(self._topology_settings)
-
-        def target():
-            client = self_ref()
-            if client is None:
-                return False  # Stop the executor.
-            MongoClient._process_periodic_tasks(client)
-            return True
-
-        executor = periodic_executor.PeriodicExecutor(
-            interval=common.KILL_CURSOR_FREQUENCY,
-            min_interval=common.MIN_HEARTBEAT_INTERVAL,
-            target=target,
-            name="pymongo_kill_cursors_thread",
-        )
-
-        # We strongly reference the executor and it weakly references us via
-        # this closure. When the client is freed, stop the executor soon.
-        self_ref: Any = weakref.ref(self, executor.close)
-        self._kill_cursors_executor = executor
-
-        # Connects
-        self._get_topology()
+        self._init_deadlockables(False)
 
     def _duplicate(self, **kwargs):
         args = self.__init_kwargs.copy()
@@ -2190,6 +2170,7 @@ class _MongoClientErrorHandler(object):
 
 def _before_fork():
     # Ensure that we aren't in any critical region.
+    MongoClient._clients_lock.acquire()
     _acquire_locks()
 
 
@@ -2205,10 +2186,13 @@ def _after_fork_child():
     for _, client in MongoClient._clients.items():
         client._after_fork()
 
+    MongoClient._clients_lock.release()
+
 
 def _after_fork_parent():
     # Only unlock locks in child.
     _release_locks(False)
+    MongoClient._clients_lock.release()
 
 
 if hasattr(os, "register_at_fork"):

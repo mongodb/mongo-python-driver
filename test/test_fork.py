@@ -81,8 +81,7 @@ class TestFork(IntegrationTest):
             with _insertion_lock:
                 return 0  # success
 
-        fork_thread = ForkThread()
-        fork_thread.exit_cond = exit_cond
+        fork_thread = ForkThread(exit_cond)
         with patch.object(
             self.db.client, "_MongoClient__lock", LockWrapper(fork_thread=fork_thread)
         ):
@@ -105,8 +104,7 @@ class TestFork(IntegrationTest):
         Child => _inc_lock should be unlocked.
         Must use threading.Lock as ObjectId uses this.
         """
-        fork_thread = ForkThread()
-        fork_thread.exit_cond = lambda: 0 if not ObjectId._inc_lock.locked() else 1
+        fork_thread = ForkThread(lambda: 0 if not ObjectId._inc_lock.locked() else 1)
         with patch.object(
             ObjectId,
             "_inc_lock",
@@ -117,7 +115,7 @@ class TestFork(IntegrationTest):
 
             ObjectId()
             fork_thread.join()
-            lock_pid: int = ObjectId._inc_lock.fork_thread.pid
+            lock_pid: int = fork_thread.pid
 
             self.assertNotEqual(lock_pid, 0)
             self.assertEqual(0, os.waitpid(lock_pid, 0)[1] >> 8)

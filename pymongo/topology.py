@@ -36,7 +36,7 @@ from pymongo.errors import (
     WriteError,
 )
 from pymongo.hello import Hello
-from pymongo.lock import HAS_REGISTER_AT_FORK, _create_lock
+from pymongo.lock import _HAS_REGISTER_AT_FORK, _create_lock
 from pymongo.monitor import SrvMonitor
 from pymongo.pool import PoolOptions
 from pymongo.server import Server
@@ -174,7 +174,7 @@ class Topology(object):
             self._pid = pid
         elif pid != self._pid:
             self._pid = pid
-            if not HAS_REGISTER_AT_FORK:
+            if not _HAS_REGISTER_AT_FORK:
                 warnings.warn(
                     "MongoClient opened before fork. May not be entirely fork-safe, "
                     "proceed with caution. See PyMongo's documentation for details: "

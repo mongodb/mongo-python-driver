@@ -16,22 +16,20 @@ import os
 import threading
 import weakref
 
-HAS_REGISTER_AT_FORK = hasattr(os, "register_at_fork")
+_HAS_REGISTER_AT_FORK = hasattr(os, "register_at_fork")
 
-_forkable_locks: weakref.WeakSet = weakref.WeakSet()  # References to instances
-# of _create_lock
+# References to instances of _create_lock
+_forkable_locks: weakref.WeakSet = weakref.WeakSet()
 
 _insertion_lock = threading.Lock()
 
 
-# Cmd+R this later
 def _create_lock():
-    """
-    Represents a lock that is tracked upon instantiation using a WeakSet and
+    """Represents a lock that is tracked upon instantiation using a WeakSet and
     reset by pymongo upon forking.
     """
     lock = threading.Lock()
-    if HAS_REGISTER_AT_FORK:
+    if _HAS_REGISTER_AT_FORK:
         with _insertion_lock:
             _forkable_locks.add(lock)
     return lock
