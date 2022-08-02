@@ -15,15 +15,12 @@
 """Test that pymongo is fork safe."""
 
 import os
-import threading
 from multiprocessing import Pipe
 from test import IntegrationTest, client_context
-from typing import Any, Callable
 from unittest import skipIf
-from unittest.mock import patch
 
 from bson.objectid import ObjectId
-from pymongo.lock import _create_lock, _insertion_lock
+from pymongo.lock import _insertion_lock
 
 
 @client_context.require_connection
