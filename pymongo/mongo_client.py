@@ -2170,7 +2170,6 @@ class _MongoClientErrorHandler(object):
 
 def _before_fork():
     # Ensure that we aren't in any critical region.
-    MongoClient._clients_lock.acquire()
     _acquire_locks()
 
 
@@ -2186,13 +2185,10 @@ def _after_fork_child():
     for _, client in MongoClient._clients.items():
         client._after_fork()
 
-    MongoClient._clients_lock.release()
-
 
 def _after_fork_parent():
     # Only unlock locks in child.
     _release_locks(False)
-    MongoClient._clients_lock.release()
 
 
 if hasattr(os, "register_at_fork"):

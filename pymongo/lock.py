@@ -43,7 +43,8 @@ def _release_locks(child: bool) -> None:
                 if lock.locked():
                     lock.release()
     finally:
-        _insertion_lock.release()
+        if _insertion_lock.locked():
+            _insertion_lock.release()
 
 
 def _acquire_locks():

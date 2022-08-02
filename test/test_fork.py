@@ -31,36 +31,6 @@ def setUpModule():
     pass
 
 
-class ForkThread(threading.Thread):
-    def __init__(self, exit_cond: Callable[[], int] = lambda: 0):
-        super().__init__()
-        self.pid: int = -1  # Indicate we haven't started.
-        self.exit_cond = exit_cond
-
-    def run(self):
-        if self.pid < 0:
-            self.pid = os.fork()
-            if self.pid == 0:
-                os._exit(self.exit_cond())
-
-
-class LockWrapper:
-    def __init__(self, fork_thread: ForkThread, lock_type: Any = _create_lock):
-        self.__lock = lock_type()
-        self.fork_thread = fork_thread
-
-    def __enter__(self):
-        self.__lock.__enter__()
-        if not self.fork_thread.is_alive():
-            self.fork_thread.start()
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.__lock.__exit__(exc_type, exc_value, traceback)
-
-    def __getattr__(self, item):
-        return getattr(self.__lock, item)
-
-
 # Not available for versions of Python without "register_at_fork"
 @skipIf(
     not hasattr(os, "register_at_fork"), "register_at_fork not available in this version of Python"
@@ -81,20 +51,17 @@ class TestFork(IntegrationTest):
             with _insertion_lock:
                 return 0  # success
 
-        fork_thread = ForkThread(exit_cond)
-        with patch.object(
-            self.db.client, "_MongoClient__lock", LockWrapper(fork_thread=fork_thread)
-        ):
+        with self.client._MongoClient__lock:
             # Call _get_topology, will launch a thread to fork upon __enter__ing
             # the with region.
-            self.db.client._get_topology()
-            self.db.client._MongoClient__lock.fork_thread.join()
-            lock_pid: int = self.db.client._MongoClient__lock.fork_thread.pid
+            lock_pid = os.fork()
             # The POSIX standard states only the forking thread is cloned.
             # In the parent, it'll return here.
             # In the child, it'll end with the calling thread.
-            self.assertNotEqual(lock_pid, 0)
-            self.assertEqual(0, os.waitpid(lock_pid, 0)[1] >> 8)
+            if lock_pid == 0:
+                os._exit(exit_cond())
+            else:
+                self.assertEqual(0, os.waitpid(lock_pid, 0)[1] >> 8)
 
     def test_lock_object_id(self):
         """
@@ -104,21 +71,13 @@ class TestFork(IntegrationTest):
         Child => _inc_lock should be unlocked.
         Must use threading.Lock as ObjectId uses this.
         """
-        fork_thread = ForkThread(lambda: 0 if not ObjectId._inc_lock.locked() else 1)
-        with patch.object(
-            ObjectId,
-            "_inc_lock",
-            LockWrapper(fork_thread=fork_thread, lock_type=threading.Lock),
-        ):
-            # Generate the ObjectId, will generate a thread to fork
-            # upon __enter__ing the with region.
+        with ObjectId._inc_lock:
+            lock_pid: int = os.fork()
 
-            ObjectId()
-            fork_thread.join()
-            lock_pid: int = fork_thread.pid
-
-            self.assertNotEqual(lock_pid, 0)
-            self.assertEqual(0, os.waitpid(lock_pid, 0)[1] >> 8)
+            if lock_pid == 0:
+                os._exit(int(ObjectId._inc_lock.locked()))
+            else:
+                self.assertEqual(0, os.waitpid(lock_pid, 0)[1] >> 8)
 
     def test_topology_reset(self):
         """
