@@ -430,8 +430,7 @@ class APITestsMixin(object):
             self.assertEqual(change["fullDocument"], {"_id": 3})
 
     @no_type_check
-    @client_context.require_no_mongos  # Remove after SERVER-41196
-    @client_context.require_version_min(4, 1, 1)
+    @client_context.require_version_min(4, 2)
     def test_start_after_resume_process_without_changes(self):
         resume_token = self.get_resume_token(invalidate=True)
 
@@ -767,8 +766,7 @@ class TestClusterChangeStream(TestChangeStreamBase, APITestsMixin):
 
     @classmethod
     @client_context.require_version_min(4, 0, 0, -1)
-    @client_context.require_no_mmap
-    @client_context.require_no_standalone
+    @client_context.require_change_streams
     def setUpClass(cls):
         super(TestClusterChangeStream, cls).setUpClass()
         cls.dbs = [cls.db, cls.client.pymongo_test_2]
@@ -829,8 +827,7 @@ class TestClusterChangeStream(TestChangeStreamBase, APITestsMixin):
 class TestDatabaseChangeStream(TestChangeStreamBase, APITestsMixin):
     @classmethod
     @client_context.require_version_min(4, 0, 0, -1)
-    @client_context.require_no_mmap
-    @client_context.require_no_standalone
+    @client_context.require_change_streams
     def setUpClass(cls):
         super(TestDatabaseChangeStream, cls).setUpClass()
 
@@ -915,9 +912,7 @@ class TestDatabaseChangeStream(TestChangeStreamBase, APITestsMixin):
 
 class TestCollectionChangeStream(TestChangeStreamBase, APITestsMixin, ProseSpecTestsMixin):
     @classmethod
-    @client_context.require_version_min(3, 5, 11)
-    @client_context.require_no_mmap
-    @client_context.require_no_standalone
+    @client_context.require_change_streams
     def setUpClass(cls):
         super(TestCollectionChangeStream, cls).setUpClass()
 
