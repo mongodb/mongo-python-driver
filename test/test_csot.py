@@ -73,9 +73,7 @@ class TestCSOT(IntegrationTest):
         self.assertEqual(_csot.get_deadline(), float("inf"))
         self.assertEqual(_csot.get_rtt(), 0.0)
 
-    @client_context.require_version_min(3, 6)
-    @client_context.require_no_mmap
-    @client_context.require_no_standalone
+    @client_context.require_change_streams
     def test_change_stream_can_resume_after_timeouts(self):
         coll = self.db.test
         with coll.watch(max_await_time_ms=150) as stream:

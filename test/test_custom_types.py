@@ -896,8 +896,7 @@ class ChangeStreamsWCustomTypesTestMixin(object):
 
 class TestCollectionChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCustomTypesTestMixin):
     @classmethod
-    @client_context.require_no_mmap
-    @client_context.require_no_standalone
+    @client_context.require_change_streams
     def setUpClass(cls):
         super(TestCollectionChangeStreamsWCustomTypes, cls).setUpClass()
         cls.db.test.delete_many({})
@@ -916,8 +915,7 @@ class TestCollectionChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCus
 class TestDatabaseChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCustomTypesTestMixin):
     @classmethod
     @client_context.require_version_min(4, 0, 0)
-    @client_context.require_no_mmap
-    @client_context.require_no_standalone
+    @client_context.require_change_streams
     def setUpClass(cls):
         super(TestDatabaseChangeStreamsWCustomTypes, cls).setUpClass()
         cls.db.test.delete_many({})
@@ -936,8 +934,7 @@ class TestDatabaseChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCusto
 class TestClusterChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCustomTypesTestMixin):
     @classmethod
     @client_context.require_version_min(4, 0, 0)
-    @client_context.require_no_mmap
-    @client_context.require_no_standalone
+    @client_context.require_change_streams
     def setUpClass(cls):
         super(TestClusterChangeStreamsWCustomTypes, cls).setUpClass()
         cls.db.test.delete_many({})
