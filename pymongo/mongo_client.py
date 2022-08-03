@@ -33,6 +33,7 @@ access:
 
 import contextlib
 import os
+import threading
 import weakref
 from collections import defaultdict
 from typing import (
@@ -128,7 +129,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     # No host/port; these are retrieved from TopologySettings.
     _constructor_args = ("document_class", "tz_aware", "connect")
     _clients: weakref.WeakValueDictionary = weakref.WeakValueDictionary()
-    _clients_lock = _create_lock()
+    _clients_lock = threading.Lock()  # Normal lock for resetting later.
 
     def __init__(
         self,
@@ -859,9 +860,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self._timeout = self.__options.timeout
 
     def _after_fork(self):
-        """
-        Resets topology in a child after successfully forking.
-        """
+        """Resets topology in a child after successfully forking."""
         self._init_deadlockables(False)
 
     def _duplicate(self, **kwargs):
@@ -2170,12 +2169,12 @@ class _MongoClientErrorHandler(object):
 
 def _before_fork():
     # Ensure that we aren't in any critical region.
+    MongoClient._clients_lock.acquire()
     _acquire_locks()
 
 
 def _after_fork_child():
-    """
-    Releases the locks in child process and resets the
+    """Releases the locks in child process and resets the
     topologies in all MongoClients.
     """
     # Reinitialize locks
@@ -2185,10 +2184,13 @@ def _after_fork_child():
     for _, client in MongoClient._clients.items():
         client._after_fork()
 
+    MongoClient._clients_lock.release()
+
 
 def _after_fork_parent():
     # Only unlock locks in child.
     _release_locks(False)
+    MongoClient._clients_lock.release()
 
 
 if hasattr(os, "register_at_fork"):
