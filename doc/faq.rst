@@ -504,7 +504,6 @@ representations are out-of-range, while returning :class:`~datetime.datetime`
 objects as before:
 
 .. doctest::
-   :options: +ELLIPSIS
 
     >>> from datetime import datetime
     >>> from bson.datetime_ms import DatetimeMS
