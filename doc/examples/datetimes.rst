@@ -154,7 +154,7 @@ cannot be represented using the builtin Python :class:`~datetime.datetime`:
     >>> codec_auto = CodecOptions(datetime_conversion=DatetimeConversionOpts.DATETIME_AUTO)
     >>> decode(x, codec_options=codec_auto)
     {'x': datetime.datetime(1970, 1, 1, 0, 0)}
-    >>> decode(x, codec_options=codec_auto)
+    >>> decode(y, codec_options=codec_auto)
     {'x': DatetimeMS(-2**62)}
 
 :attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME_CLAMP` will clamp
@@ -168,9 +168,9 @@ resulting :class:`~datetime.datetime` objects to be within
     >>> y = encode({"x": DatetimeMS(-2**62)})
     >>> codec_clamp = CodecOptions(datetime_conversion=DatetimeConversionOpts.DATETIME_CLAMP)
     >>> decode(x, codec_options=codec_clamp)
-    {'x': datetime.datetime(1970, 1, 1, 0, 0)}
-    >>> decode(x, codec_options=codec_clamp)
-    {'x': DatetimeMS(-2**62)}
+    {'x': datetime.datetime(9999, 12, 31, 23, 59, 59, 999000)}
+    >>> decode(y, codec_options=codec_clamp)
+    {'x': datetime.datetime(1, 1, 1, 0, 0)}
 
 :class:`~bson.datetime_ms.DatetimeMS` objects have support for rich comparison
 methods against other instances of :class:`~bson.datetime_ms.DatetimeMS`.

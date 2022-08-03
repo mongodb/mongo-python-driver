@@ -509,7 +509,7 @@ objects as before:
     >>> from bson.datetime_ms import DatetimeMS
     >>> from bson.codec_options import DatetimeConversionOpts
     >>> from pymongo import MongoClient
-    >>> client = MongoClient('localhost', 27017, datetime_conversion=DatetimeConversionOpts.DATETIME_AUTO)
+    >>> client = MongoClient(datetime_conversion=DatetimeConversionOpts.DATETIME_AUTO)
     >>> client.db.collection.insert_one({"x": datetime(1970, 1, 1)})
     <pymongo.results.InsertOneResult object at 0x1032cf880>
     >>> client.db.collection.insert_one({"x": DatetimeMS(2**62)})
@@ -522,9 +522,8 @@ objects as before:
 For other options, please refer to
 :class:`~bson.codec_options.DatetimeConversionOpts`.
 
-If we need to use the default decoding behavior with datetimes not supported by
-:class:`datetime.datetime`, another option is to filter out documents with
-values outside of the range supported by
+Another option that does not involve setting `datetime_conversion` is to to
+filter out documents values outside of the range supported by
 :class:`~datetime.datetime`:
 
   >>> from datetime import datetime
