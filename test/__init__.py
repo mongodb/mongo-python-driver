@@ -759,6 +759,16 @@ class ClientContext(object):
             lambda: not self.load_balancer, "Must not be connected to a load balancer", func=func
         )
 
+    def require_no_serverless(self, func):
+        """Run a test only if the client is not connected to serverless."""
+        return self._require(
+            lambda: not self.serverless, "Must not be connected to serverless", func=func
+        )
+
+    def require_change_streams(self, func):
+        """Run a test only if the server supports change streams."""
+        return self.require_no_mmap(self.require_no_standalone(self.require_no_serverless(func)))
+
     def is_topology_type(self, topologies):
         unknown = set(topologies) - {
             "single",
