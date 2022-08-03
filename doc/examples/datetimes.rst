@@ -149,13 +149,13 @@ cannot be represented using the builtin Python :class:`~datetime.datetime`:
 
 .. doctest::
 
-    >>> x = encode({"x": datetime.datetime(1970, 1, 1)})
+    >>> x = encode({"x": datetime(1970, 1, 1)})
     >>> y = encode({"x": DatetimeMS(-2**62)})
     >>> codec_auto = CodecOptions(datetime_conversion=DatetimeConversionOpts.DATETIME_AUTO)
     >>> decode(x, codec_options=codec_auto)
     {'x': datetime.datetime(1970, 1, 1, 0, 0)}
     >>> decode(y, codec_options=codec_auto)
-    {'x': DatetimeMS(-2**62)}
+    {'x': DatetimeMS(-4611686018427387904)}
 
 :attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME_CLAMP` will clamp
 resulting :class:`~datetime.datetime` objects to be within

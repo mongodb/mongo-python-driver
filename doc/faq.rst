@@ -504,6 +504,7 @@ representations are out-of-range, while returning :class:`~datetime.datetime`
 objects as before:
 
 .. doctest::
+   :options: +ELLIPSIS
 
     >>> from datetime import datetime
     >>> from bson.datetime_ms import DatetimeMS
@@ -511,13 +512,13 @@ objects as before:
     >>> from pymongo import MongoClient
     >>> client = MongoClient(datetime_conversion=DatetimeConversionOpts.DATETIME_AUTO)
     >>> client.db.collection.insert_one({"x": datetime(1970, 1, 1)})
-    <pymongo.results.InsertOneResult object at 0x1032cf880>
+    <pymongo.results.InsertOneResult object at 0x...>
     >>> client.db.collection.insert_one({"x": DatetimeMS(2**62)})
-    <pymongo.results.InsertOneResult object at 0x1032cf880>
+    <pymongo.results.InsertOneResult object at 0x...>
     >>> for x in client.db.collection.find():
     ...     print(x)
-    {'_id': ObjectId('62e45f36e7a1bacf393dbf60'), 'x': datetime.datetime(1970, 1, 1, 0, 0)}
-    {'_id': ObjectId('62e45f36e7a1bacf393dbf61'), 'x': DatetimeMS(4611686018427387904)}
+    {'_id': ObjectId('...'), 'x': datetime.datetime(1970, 1, 1, 0, 0)}
+    {'_id': ObjectId('...'), 'x': DatetimeMS(4611686018427387904)}
 
 For other options, please refer to
 :class:`~bson.codec_options.DatetimeConversionOpts`.
