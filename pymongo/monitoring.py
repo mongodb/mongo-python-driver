@@ -914,13 +914,12 @@ class ConnectionCheckOutFailedReason(object):
 
 
 class _ConnectionEvent(object):
-    """Private base class for some connection events."""
+    """Private base class for connection events."""
 
-    __slots__ = ("__address", "__connection_id")
+    __slots__ = ("__address",)
 
-    def __init__(self, address: _Address, connection_id: int) -> None:
+    def __init__(self, address: _Address) -> None:
         self.__address = address
-        self.__connection_id = connection_id
 
     @property
     def address(self) -> _Address:
@@ -929,16 +928,29 @@ class _ConnectionEvent(object):
         """
         return self.__address
 
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.__address)
+
+
+class _ConnectionIdEvent(_ConnectionEvent):
+    """Private base class for connection events with an id."""
+
+    __slots__ = ("__connection_id",)
+
+    def __init__(self, address: _Address, connection_id: int) -> None:
+        super().__init__(address)
+        self.__connection_id = connection_id
+
     @property
     def connection_id(self) -> int:
         """The ID of the Connection."""
         return self.__connection_id
 
     def __repr__(self):
-        return "%s(%r, %r)" % (self.__class__.__name__, self.__address, self.__connection_id)
+        return "%s(%r, %r)" % (self.__class__.__name__, self.address, self.__connection_id)
 
 
-class ConnectionCreatedEvent(_ConnectionEvent):
+class ConnectionCreatedEvent(_ConnectionIdEvent):
     """Published when a Connection Pool creates a Connection object.
 
     NOTE: This connection is not ready for use until the
@@ -955,7 +967,7 @@ class ConnectionCreatedEvent(_ConnectionEvent):
     __slots__ = ()
 
 
-class ConnectionReadyEvent(_ConnectionEvent):
+class ConnectionReadyEvent(_ConnectionIdEvent):
     """Published when a Connection has finished its setup, and is ready to use.
 
     :Parameters:
@@ -969,7 +981,7 @@ class ConnectionReadyEvent(_ConnectionEvent):
     __slots__ = ()
 
 
-class ConnectionClosedEvent(_ConnectionEvent):
+class ConnectionClosedEvent(_ConnectionIdEvent):
     """Published when a Connection is closed.
 
     :Parameters:
@@ -1005,7 +1017,7 @@ class ConnectionClosedEvent(_ConnectionEvent):
         )
 
 
-class ConnectionCheckOutStartedEvent(object):
+class ConnectionCheckOutStartedEvent(_ConnectionEvent):
     """Published when the driver starts attempting to check out a connection.
 
     :Parameters:
@@ -1015,23 +1027,10 @@ class ConnectionCheckOutStartedEvent(object):
     .. versionadded:: 3.9
     """
 
-    __slots__ = ("__address",)
-
-    def __init__(self, address):
-        self.__address = address
-
-    @property
-    def address(self):
-        """The address (host, port) pair of the server this connection is
-        attempting to connect to.
-        """
-        return self.__address
-
-    def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.__address)
+    __slots__ = ()
 
 
-class ConnectionCheckOutFailedEvent(object):
+class ConnectionCheckOutFailedEvent(_ConnectionEvent):
     """Published when the driver's attempt to check out a connection fails.
 
     :Parameters:
@@ -1042,18 +1041,11 @@ class ConnectionCheckOutFailedEvent(object):
     .. versionadded:: 3.9
     """
 
-    __slots__ = ("__address", "__reason")
+    __slots__ = ("__reason",)
 
     def __init__(self, address: _Address, reason: str) -> None:
-        self.__address = address
+        super().__init__(address)
         self.__reason = reason
-
-    @property
-    def address(self) -> _Address:
-        """The address (host, port) pair of the server this connection is
-        attempting to connect to.
-        """
-        return self.__address
 
     @property
     def reason(self) -> str:
@@ -1065,10 +1057,10 @@ class ConnectionCheckOutFailedEvent(object):
         return self.__reason
 
     def __repr__(self):
-        return "%s(%r, %r)" % (self.__class__.__name__, self.__address, self.__reason)
+        return "%s(%r, %r)" % (self.__class__.__name__, self.address, self.__reason)
 
 
-class ConnectionCheckedOutEvent(_ConnectionEvent):
+class ConnectionCheckedOutEvent(_ConnectionIdEvent):
     """Published when the driver successfully checks out a Connection.
 
     :Parameters:
@@ -1082,7 +1074,7 @@ class ConnectionCheckedOutEvent(_ConnectionEvent):
     __slots__ = ()
 
 
-class ConnectionCheckedInEvent(_ConnectionEvent):
+class ConnectionCheckedInEvent(_ConnectionIdEvent):
     """Published when the driver checks in a Connection into the Pool.
 
     :Parameters:
