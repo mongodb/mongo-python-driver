@@ -1,25 +1,72 @@
 {
-  "runOn": [
+  "description": "pool-cleared-error",
+  "schemaVersion": "1.10",
+  "runOnRequirements": [
     {
       "minServerVersion": "4.9",
-      "topology": [
+      "serverless": "forbid",
+      "topologies": [
         "replicaset",
         "sharded"
       ]
     }
   ],
-  "database_name": "sdam-tests",
-  "collection_name": "pool-cleared-error",
-  "data": [],
+  "createEntities": [
+    {
+      "client": {
+        "id": "setupClient",
+        "useMultipleMongoses": false
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "pool-cleared-error",
+      "databaseName": "sdam-tests",
+      "documents": []
+    }
+  ],
   "tests": [
     {
       "description": "PoolClearedError does not mark server unknown",
-      "clientOptions": {
-        "retryWrites": true,
-        "maxPoolSize": 1,
-        "appname": "poolClearedErrorTest"
-      },
       "operations": [
+        {
+          "name": "createEntities",
+          "object": "testRunner",
+          "arguments": {
+            "entities": [
+              {
+                "client": {
+                  "id": "client",
+                  "useMultipleMongoses": false,
+                  "observeEvents": [
+                    "serverDescriptionChangedEvent",
+                    "poolClearedEvent"
+                  ],
+                  "uriOptions": {
+                    "retryWrites": true,
+                    "maxPoolSize": 1,
+                    "appname": "poolClearedErrorTest"
+                  }
+                }
+              },
+              {
+                "database": {
+                  "id": "database",
+                  "client": "client",
+                  "databaseName": "sdam-tests"
+                }
+              },
+              {
+                "collection": {
+                  "id": "collection",
+                  "database": "database",
+                  "collectionName": "pool-cleared-error"
+                }
+              }
+            ]
+          }
+        },
         {
           "name": "insertOne",
           "object": "collection",
@@ -30,7 +77,7 @@
           }
         },
         {
-          "name": "configureFailPoint",
+          "name": "failPoint",
           "object": "testRunner",
           "arguments": {
             "failPoint": {
@@ -47,56 +94,53 @@
                 "closeConnection": true,
                 "appName": "poolClearedErrorTest"
               }
-            }
+            },
+            "client": "setupClient"
           }
         },
         {
-          "name": "startThread",
+          "name": "createEntities",
           "object": "testRunner",
           "arguments": {
-            "name": "thread1"
-          }
-        },
-        {
-          "name": "startThread",
-          "object": "testRunner",
-          "arguments": {
-            "name": "thread2"
-          }
-        },
-        {
-          "name": "startThread",
-          "object": "testRunner",
-          "arguments": {
-            "name": "thread3"
-          }
-        },
-        {
-          "name": "startThread",
-          "object": "testRunner",
-          "arguments": {
-            "name": "thread4"
-          }
-        },
-        {
-          "name": "startThread",
-          "object": "testRunner",
-          "arguments": {
-            "name": "thread5"
-          }
-        },
-        {
-          "name": "startThread",
-          "object": "testRunner",
-          "arguments": {
-            "name": "thread6"
+            "entities": [
+              {
+                "thread": {
+                  "id": "thread0"
+                }
+              },
+              {
+                "thread": {
+                  "id": "thread1"
+                }
+              },
+              {
+                "thread": {
+                  "id": "thread2"
+                }
+              },
+              {
+                "thread": {
+                  "id": "thread3"
+                }
+              },
+              {
+                "thread": {
+                  "id": "thread4"
+                }
+              },
+              {
+                "thread": {
+                  "id": "thread5"
+                }
+              }
+            ]
           }
         },
         {
           "name": "runOnThread",
           "object": "testRunner",
           "arguments": {
-            "name": "thread1",
+            "thread": "thread0",
             "operation": {
               "name": "insertOne",
               "object": "collection",
@@ -112,7 +156,7 @@
           "name": "runOnThread",
           "object": "testRunner",
           "arguments": {
-            "name": "thread2",
+            "thread": "thread1",
             "operation": {
               "name": "insertOne",
               "object": "collection",
@@ -128,7 +172,7 @@
           "name": "runOnThread",
           "object": "testRunner",
           "arguments": {
-            "name": "thread3",
+            "thread": "thread2",
             "operation": {
               "name": "insertOne",
               "object": "collection",
@@ -144,7 +188,7 @@
           "name": "runOnThread",
           "object": "testRunner",
           "arguments": {
-            "name": "thread4",
+            "thread": "thread3",
             "operation": {
               "name": "insertOne",
               "object": "collection",
@@ -160,7 +204,7 @@
           "name": "runOnThread",
           "object": "testRunner",
           "arguments": {
-            "name": "thread5",
+            "thread": "thread4",
             "operation": {
               "name": "insertOne",
               "object": "collection",
@@ -176,7 +220,7 @@
           "name": "runOnThread",
           "object": "testRunner",
           "arguments": {
-            "name": "thread6",
+            "thread": "thread5",
             "operation": {
               "name": "insertOne",
               "object": "collection",
@@ -192,49 +236,56 @@
           "name": "waitForThread",
           "object": "testRunner",
           "arguments": {
-            "name": "thread1"
+            "thread": "thread0"
           }
         },
         {
           "name": "waitForThread",
           "object": "testRunner",
           "arguments": {
-            "name": "thread2"
+            "thread": "thread1"
           }
         },
         {
           "name": "waitForThread",
           "object": "testRunner",
           "arguments": {
-            "name": "thread3"
+            "thread": "thread2"
           }
         },
         {
           "name": "waitForThread",
           "object": "testRunner",
           "arguments": {
-            "name": "thread4"
+            "thread": "thread3"
           }
         },
         {
           "name": "waitForThread",
           "object": "testRunner",
           "arguments": {
-            "name": "thread5"
+            "thread": "thread4"
           }
         },
         {
           "name": "waitForThread",
           "object": "testRunner",
           "arguments": {
-            "name": "thread6"
+            "thread": "thread5"
           }
         },
         {
           "name": "waitForEvent",
           "object": "testRunner",
           "arguments": {
-            "event": "ServerMarkedUnknownEvent",
+            "client": "client",
+            "event": {
+              "serverDescriptionChangedEvent": {
+                "newDescription": {
+                  "type": "Unknown"
+                }
+              }
+            },
             "count": 1
           }
         },
@@ -242,7 +293,10 @@
           "name": "waitForEvent",
           "object": "testRunner",
           "arguments": {
-            "event": "PoolClearedEvent",
+            "client": "client",
+            "event": {
+              "poolClearedEvent": {}
+            },
             "count": 1
           }
         },
@@ -259,7 +313,14 @@
           "name": "assertEventCount",
           "object": "testRunner",
           "arguments": {
-            "event": "ServerMarkedUnknownEvent",
+            "client": "client",
+            "event": {
+              "serverDescriptionChangedEvent": {
+                "newDescription": {
+                  "type": "Unknown"
+                }
+              }
+            },
             "count": 1
           }
         },
@@ -267,14 +328,19 @@
           "name": "assertEventCount",
           "object": "testRunner",
           "arguments": {
-            "event": "PoolClearedEvent",
+            "client": "client",
+            "event": {
+              "poolClearedEvent": {}
+            },
             "count": 1
           }
         }
       ],
-      "outcome": {
-        "collection": {
-          "data": [
+      "outcome": [
+        {
+          "collectionName": "pool-cleared-error",
+          "databaseName": "sdam-tests",
+          "documents": [
             {
               "_id": 1
             },
@@ -301,7 +367,7 @@
             }
           ]
         }
-      }
+      ]
     }
   ]
 }

@@ -68,6 +68,19 @@ if TYPE_CHECKING:
     from pymongo.mongo_client import MongoClient
 
 
+def _resumable(exc: PyMongoError) -> bool:
+    """Return True if given a resumable change stream error."""
+    if isinstance(exc, (ConnectionFailure, CursorNotFound)):
+        return True
+    if isinstance(exc, OperationFailure):
+        if exc._max_wire_version is None:
+            return False
+        return (
+            exc._max_wire_version >= 9 and exc.has_error_label("ResumableChangeStreamError")
+        ) or (exc._max_wire_version < 9 and exc.code in _RESUMABLE_GETMORE_ERRORS)
+    return False
+
+
 class ChangeStream(Generic[_DocumentType]):
     """The internal abstract base class for change stream cursors.
 
@@ -343,20 +356,21 @@ class ChangeStream(Generic[_DocumentType]):
         # Attempt to get the next change with at most one getMore and at most
         # one resume attempt.
         try:
-            change = self._cursor._try_next(True)
-        except (ConnectionFailure, CursorNotFound):
-            self._resume()
-            change = self._cursor._try_next(False)
-        except OperationFailure as exc:
-            if exc._max_wire_version is None:
-                raise
-            is_resumable = (
-                exc._max_wire_version >= 9 and exc.has_error_label("ResumableChangeStreamError")
-            ) or (exc._max_wire_version < 9 and exc.code in _RESUMABLE_GETMORE_ERRORS)
-            if not is_resumable:
-                raise
-            self._resume()
-            change = self._cursor._try_next(False)
+            try:
+                change = self._cursor._try_next(True)
+            except PyMongoError as exc:
+                if not _resumable(exc):
+                    raise
+                self._resume()
+                change = self._cursor._try_next(False)
+        except PyMongoError as exc:
+            # Close the stream after a fatal error.
+            if not _resumable(exc) and not exc.timeout:
+                self.close()
+            raise
+        except Exception:
+            self.close()
+            raise
 
         # Check if the cursor was invalidated.
         if not self._cursor.alive:
