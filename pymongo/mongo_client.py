@@ -33,7 +33,6 @@ access:
 
 import contextlib
 import os
-import threading
 import weakref
 from collections import defaultdict
 from typing import (
@@ -2187,4 +2186,4 @@ if hasattr(os, "register_at_fork"):
     # This will run in the same thread as the fork was called.
     # If we fork in a critical region on the same thread, it should break.
     # This is fine since we would never call fork directly from a critical region.
-    os.register_at_fork(after_in_child=_after_fork_child, after_in_parent=_after_fork_parent)
+    os.register_at_fork(after_in_child=_after_fork_child)

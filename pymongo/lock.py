@@ -32,9 +32,8 @@ def _create_lock():
     return lock
 
 
-def _release_locks(child: bool) -> None:
+def _release_locks() -> None:
     # Completed the fork, reset all the locks in the child.
-    if child:
-        for lock in _forkable_locks:
-            if lock.locked():
-                lock.release()
+    for lock in _forkable_locks:
+        if lock.locked():
+            lock.release()
