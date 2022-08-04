@@ -2170,16 +2170,11 @@ def _after_fork_child():
     topologies in all MongoClients.
     """
     # Reinitialize locks
-    _release_locks(True)
+    _release_locks()
 
     # Perform cleanup in clients (i.e. get rid of topology)
     for _, client in MongoClient._clients.items():
         client._after_fork()
-
-
-def _after_fork_parent():
-    # Only unlock locks in child.
-    _release_locks(False)
 
 
 if hasattr(os, "register_at_fork"):
