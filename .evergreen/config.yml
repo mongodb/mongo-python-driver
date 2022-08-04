@@ -97,7 +97,7 @@ functions:
             # If this was a patch build, doing a fresh clone would not actually test the patch
             cp -R ${PROJECT_DIRECTORY}/ $DRIVERS_TOOLS
           else
-            git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $DRIVERS_TOOLS
+            git clone -b DRIVERS-1746 https://github.com/blink1073/drivers-evergreen-tools.git $DRIVERS_TOOLS
           fi
           echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
 
@@ -553,6 +553,11 @@ functions:
               "iam_auth_ec2_instance_account" : "${iam_auth_ec2_instance_account}",
               "iam_auth_ec2_instance_secret_access_key" : "${iam_auth_ec2_instance_secret_access_key}",
               "iam_auth_ec2_instance_profile" : "${iam_auth_ec2_instance_profile}"
+
+              "iam_auth_assume_web_role_name": "$iam_auth_assume_web_role_name",
+              "iam_web_identity_issuer": "${iam_web_identity_issuer}",
+              "iam_web_identity_jwks_uri": "${iam_web_identity_jwks_uri}",
+              "iam_web_identity_token_file": "${iam_web_identity_jwks_uri}",
           }
           EOF
 
@@ -642,6 +647,36 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
+          rm "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
+          PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
+
+  "run aws auth test with aws web identity credentials":
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        script: |
+          ${PREPARE_SHELL}
+          if [ "${skip_EC2_auth_test}" = "true" ]; then
+             echo "This platform does not support the web identity auth test, skipping..."
+             exit 0
+          fi
+          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
+          . ./activate_venv.sh
+          mongo aws_e2e_web_identity.js
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        script: |
+          ${PREPARE_SHELL}
+
+          export AWS_ROLE_ARN=${iam_auth_assume_web_role_name}
+          export IDP_ISSUER=${iam_web_identity_issuer}
+          export IDP_JWKS_URI=${iam_web_identity_jwks_uri}
+          export AWS_WEB_IDENTITY_TOKEN_FILE=${iam_web_identity_token_file}
+
+          rm "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
           PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
 
   "run aws auth test with aws credentials as environment variables":
@@ -1705,6 +1740,7 @@ tasks:
         - func: "run aws auth test with aws credentials as environment variables"
         - func: "run aws auth test with aws credentials and session token as environment variables"
         - func: "run aws auth test with aws EC2 credentials"
+        - func: "run aws auth test with aws web identity credentials"
         - func: "run aws ECS auth test"
 
     - name: "aws-auth-test-5.0"
@@ -1721,6 +1757,7 @@ tasks:
         - func: "run aws auth test with aws credentials as environment variables"
         - func: "run aws auth test with aws credentials and session token as environment variables"
         - func: "run aws auth test with aws EC2 credentials"
+        - func: "run aws auth test with aws web identity credentials"
         - func: "run aws ECS auth test"
 
     - name: "aws-auth-test-6.0"
@@ -1737,6 +1774,7 @@ tasks:
         - func: "run aws auth test with aws credentials as environment variables"
         - func: "run aws auth test with aws credentials and session token as environment variables"
         - func: "run aws auth test with aws EC2 credentials"
+        - func: "run aws auth test with aws web identity credentials"
         - func: "run aws ECS auth test"
 
     - name: "aws-auth-test-latest"
@@ -1753,6 +1791,7 @@ tasks:
         - func: "run aws auth test with aws credentials as environment variables"
         - func: "run aws auth test with aws credentials and session token as environment variables"
         - func: "run aws auth test with aws EC2 credentials"
+        - func: "run aws auth test with aws web identity credentials"
         - func: "run aws ECS auth test"
     - name: "aws-auth-test-rapid"
       commands:
@@ -1768,6 +1807,7 @@ tasks:
         - func: "run aws auth test with aws credentials as environment variables"
         - func: "run aws auth test with aws credentials and session token as environment variables"
         - func: "run aws auth test with aws EC2 credentials"
+        - func: "run aws auth test with aws web identity credentials"
         - func: "run aws ECS auth test"
 
     - name: load-balancer-test
