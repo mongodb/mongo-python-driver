@@ -557,7 +557,7 @@ functions:
               "iam_auth_assume_web_role_name": "${iam_auth_assume_web_role_name}",
               "iam_web_identity_issuer": "${iam_web_identity_issuer}",
               "iam_web_identity_jwks_uri": "${iam_web_identity_jwks_uri}",
-              "iam_web_identity_token_file": "${iam_web_identity_token_file}",
+              "iam_web_identity_token_file": "${iam_web_identity_token_file}"
           }
           EOF
 
