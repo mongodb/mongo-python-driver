@@ -15,7 +15,6 @@
 """Class to monitor a MongoDB server on a background thread."""
 
 import atexit
-import threading
 import time
 import weakref
 from typing import Any, Mapping, cast
@@ -23,6 +22,7 @@ from typing import Any, Mapping, cast
 from pymongo import common, periodic_executor
 from pymongo.errors import NotPrimaryError, OperationFailure, _OperationCancelled
 from pymongo.hello import Hello
+from pymongo.lock import _create_lock
 from pymongo.periodic_executor import _shutdown_executors
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
@@ -350,7 +350,7 @@ class _RttMonitor(MonitorBase):
 
         self._pool = pool
         self._moving_average = MovingAverage()
-        self._lock = threading.Lock()
+        self._lock = _create_lock()
 
     def close(self):
         self.gc_safe_close()

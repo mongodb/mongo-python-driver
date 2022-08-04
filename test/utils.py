@@ -38,6 +38,7 @@ from pymongo.collection import ReturnDocument
 from pymongo.cursor import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
+from pymongo.lock import _create_lock
 from pymongo.monitoring import (
     _SENSITIVE_COMMANDS,
     ConnectionCheckedInEvent,
@@ -279,7 +280,7 @@ class MockSocketInfo(object):
 class MockPool(object):
     def __init__(self, address, options, handshake=True):
         self.gen = _PoolGeneration()
-        self._lock = threading.Lock()
+        self._lock = _create_lock()
         self.opts = options
         self.operation_count = 0
 

@@ -56,6 +56,7 @@ bytes [#bytes]_                          binary         both
 
 import datetime
 import itertools
+import os
 import re
 import struct
 import sys
@@ -1336,3 +1337,16 @@ class BSON(bytes):
 def has_c() -> bool:
     """Is the C extension installed?"""
     return _USE_C
+
+
+def _after_fork():
+    """Releases the ObjectID lock child."""
+    if ObjectId._inc_lock.locked():
+        ObjectId._inc_lock.release()
+
+
+if hasattr(os, "register_at_fork"):
+    # This will run in the same thread as the fork was called.
+    # If we fork in a critical region on the same thread, it should break.
+    # This is fine since we would never call fork directly from a critical region.
+    os.register_at_fork(after_in_child=_after_fork)
