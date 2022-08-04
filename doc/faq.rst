@@ -264,7 +264,7 @@ collection, configured to use :class:`~bson.son.SON` instead of dict:
   >>> from bson import CodecOptions, SON
   >>> opts = CodecOptions(document_class=SON)
   >>> opts
-  CodecOptions(document_class=...SON..., tz_aware=False, uuid_representation=UuidRepresentation.UNSPECIFIED, unicode_decode_error_handler='strict', tzinfo=None, type_registry=TypeRegistry(type_codecs=[], fallback_encoder=None), datetime_conversion=DatetimeConversionOpts.DATETIME)
+  CodecOptions(document_class=...SON..., tz_aware=False, uuid_representation=UuidRepresentation.UNSPECIFIED, unicode_decode_error_handler='strict', tzinfo=None, type_registry=TypeRegistry(type_codecs=[], fallback_encoder=None), datetime_conversion=DatetimeConversion.DATETIME)
   >>> collection_son = collection.with_options(codec_options=opts)
 
 Now, documents and subdocuments in query results are represented with
@@ -495,10 +495,10 @@ be specified using the ``datetime_conversion`` parameter of
 :class:`~bson.codec_options.CodecOptions`.
 
 The default option is
-:attr:`~bson.codec_options.DatetimeConversionOpts.DATETIME`, which will
+:attr:`~bson.codec_options.DatetimeConversion.DATETIME`, which will
 attempt to decode as a :class:`datetime.datetime`, allowing
 :class:`~builtin.OverflowError` to occur upon out-of-range dates.
-:attr:`~bson.codec_options.DatetimeConversionOpts.DATETIME_AUTO` alters
+:attr:`~bson.codec_options.DatetimeConversion.DATETIME_AUTO` alters
 this behavior to instead return :class:`~bson.datetime_ms.DatetimeMS` when
 representations are out-of-range, while returning :class:`~datetime.datetime`
 objects as before:
@@ -507,9 +507,9 @@ objects as before:
 
     >>> from datetime import datetime
     >>> from bson.datetime_ms import DatetimeMS
-    >>> from bson.codec_options import DatetimeConversionOpts
+    >>> from bson.codec_options import DatetimeConversion
     >>> from pymongo import MongoClient
-    >>> client = MongoClient(datetime_conversion=DatetimeConversionOpts.DATETIME_AUTO)
+    >>> client = MongoClient(datetime_conversion=DatetimeConversion.DATETIME_AUTO)
     >>> client.db.collection.insert_one({"x": datetime(1970, 1, 1)})
     <pymongo.results.InsertOneResult object at 0x...>
     >>> client.db.collection.insert_one({"x": DatetimeMS(2**62)})
@@ -520,7 +520,7 @@ objects as before:
     {'_id': ObjectId('...'), 'x': DatetimeMS(4611686018427387904)}
 
 For other options, please refer to
-:class:`~bson.codec_options.DatetimeConversionOpts`.
+:class:`~bson.codec_options.DatetimeConversion`.
 
 Another option that does not involve setting `datetime_conversion` is to to
 filter out documents values outside of the range supported by
