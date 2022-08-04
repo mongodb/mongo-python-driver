@@ -119,15 +119,15 @@ of milliseconds from the Unix epoch. To deal with this, we can use the
 To decode UTC datetime values as :class:`~bson.datetime_ms.DatetimeMS`,
 :class:`~bson.codec_options.CodecOptions` should have its
 ``datetime_conversion`` parameter set to one of the options available in
-:class:`bson.datetime_ms.DatetimeConversionOpts`. These include
-:attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME`,
-:attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME_MS`,
-:attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME_AUTO`,
-:attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME_CLAMP`.
-:attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME` is the default
+:class:`bson.datetime_ms.DatetimeConversion`. These include
+:attr:`~bson.datetime_ms.DatetimeConversion.DATETIME`,
+:attr:`~bson.datetime_ms.DatetimeConversion.DATETIME_MS`,
+:attr:`~bson.datetime_ms.DatetimeConversion.DATETIME_AUTO`,
+:attr:`~bson.datetime_ms.DatetimeConversion.DATETIME_CLAMP`.
+:attr:`~bson.datetime_ms.DatetimeConversion.DATETIME` is the default
 option and has the behavior of raising an :class:`~builtin.OverflowError` upon
 attempting to decode an out-of-range date.
-:attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME_MS` will only return
+:attr:`~bson.datetime_ms.DatetimeConversion.DATETIME_MS` will only return
 :class:`~bson.datetime_ms.DatetimeMS` objects, regardless of whether the
 represented datetime is in- or out-of-range:
 
@@ -136,13 +136,13 @@ represented datetime is in- or out-of-range:
     >>> from datetime import datetime
     >>> from bson import encode, decode
     >>> from bson.datetime_ms import DatetimeMS
-    >>> from bson.codec_options import CodecOptions, DatetimeConversionOpts
+    >>> from bson.codec_options import CodecOptions, DatetimeConversion
     >>> x = encode({"x": datetime(1970, 1, 1)})
-    >>> codec_ms = CodecOptions(datetime_conversion=DatetimeConversionOpts.DATETIME_MS)
+    >>> codec_ms = CodecOptions(datetime_conversion=DatetimeConversion.DATETIME_MS)
     >>> decode(x, codec_options=codec_ms)
     {'x': DatetimeMS(0)}
 
-:attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME_AUTO` will return
+:attr:`~bson.datetime_ms.DatetimeConversion.DATETIME_AUTO` will return
 :class:`~datetime.datetime` if the underlying UTC datetime is within range,
 or :class:`~bson.datetime_ms.DatetimeMS` if the underlying datetime
 cannot be represented using the builtin Python :class:`~datetime.datetime`:
@@ -151,13 +151,13 @@ cannot be represented using the builtin Python :class:`~datetime.datetime`:
 
     >>> x = encode({"x": datetime(1970, 1, 1)})
     >>> y = encode({"x": DatetimeMS(-2**62)})
-    >>> codec_auto = CodecOptions(datetime_conversion=DatetimeConversionOpts.DATETIME_AUTO)
+    >>> codec_auto = CodecOptions(datetime_conversion=DatetimeConversion.DATETIME_AUTO)
     >>> decode(x, codec_options=codec_auto)
     {'x': datetime.datetime(1970, 1, 1, 0, 0)}
     >>> decode(y, codec_options=codec_auto)
     {'x': DatetimeMS(-4611686018427387904)}
 
-:attr:`~bson.datetime_ms.DatetimeConversionOpts.DATETIME_CLAMP` will clamp
+:attr:`~bson.datetime_ms.DatetimeConversion.DATETIME_CLAMP` will clamp
 resulting :class:`~datetime.datetime` objects to be within
 :attr:`~datetime.datetime.min` and :attr:`~datetime.datetime.max`
 (trimmed to `999000` microseconds):
@@ -166,7 +166,7 @@ resulting :class:`~datetime.datetime` objects to be within
 
     >>> x = encode({"x": DatetimeMS(2**62)})
     >>> y = encode({"x": DatetimeMS(-2**62)})
-    >>> codec_clamp = CodecOptions(datetime_conversion=DatetimeConversionOpts.DATETIME_CLAMP)
+    >>> codec_clamp = CodecOptions(datetime_conversion=DatetimeConversion.DATETIME_CLAMP)
     >>> decode(x, codec_options=codec_clamp)
     {'x': datetime.datetime(9999, 12, 31, 23, 59, 59, 999000)}
     >>> decode(y, codec_options=codec_clamp)

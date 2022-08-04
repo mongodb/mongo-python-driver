@@ -99,7 +99,7 @@ from bson.code import Code
 from bson.codec_options import (
     DEFAULT_CODEC_OPTIONS,
     CodecOptions,
-    DatetimeConversionOpts,
+    DatetimeConversion,
     _DocumentType,
     _raw_document_class,
 )
@@ -194,7 +194,7 @@ __all__ = [
     "is_valid",
     "BSON",
     "has_c",
-    "DatetimeConversionOpts",
+    "DatetimeConversion",
     "DatetimeMS",
 ]
 
