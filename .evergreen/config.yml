@@ -672,8 +672,8 @@ functions:
         script: |
           # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
           cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
-            AWS_ROLE_ARN=${iam_auth_assume_web_role_name}
-            AWS_WEB_IDENTITY_TOKEN_FILE=${iam_web_identity_token_file}
+            AWS_ROLE_ARN="${iam_auth_assume_web_role_name}"
+            AWS_WEB_IDENTITY_TOKEN_FILE="${iam_web_identity_token_file}"
           EOF
     - command: shell.exec
       type: test
@@ -681,7 +681,9 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
+          cat "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
           PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
+          exit 1  # should remove the cat above
 
   "run aws auth test with aws credentials as environment variables":
     - command: shell.exec
