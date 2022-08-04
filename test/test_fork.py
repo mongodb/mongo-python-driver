@@ -20,7 +20,6 @@ from test import IntegrationTest, client_context
 from unittest import skipIf
 
 from bson.objectid import ObjectId
-from pymongo.lock import _insertion_lock
 
 
 @client_context.require_connection
@@ -41,8 +40,8 @@ class TestFork(IntegrationTest):
         """
 
         def exit_cond():
-            with _insertion_lock:
-                return 0  # success
+            self.client.admin.command("ping")
+            return 0
 
         with self.client._MongoClient__lock:
             # Call _get_topology, will launch a thread to fork upon __enter__ing

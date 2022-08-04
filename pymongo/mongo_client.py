@@ -83,7 +83,7 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
     WaitQueueTimeoutError,
 )
-from pymongo.lock import _acquire_locks, _create_lock, _release_locks
+from pymongo.lock import _create_lock, _release_locks
 from pymongo.pool import ConnectionClosedReason
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_selectors import writable_server_selector
@@ -129,7 +129,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     # No host/port; these are retrieved from TopologySettings.
     _constructor_args = ("document_class", "tz_aware", "connect")
     _clients: weakref.WeakValueDictionary = weakref.WeakValueDictionary()
-    _clients_lock = threading.Lock()  # Normal lock for resetting later.
 
     def __init__(
         self,
@@ -821,14 +820,23 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             srv_max_hosts=srv_max_hosts,
         )
 
-        self._init_deadlockables(connect)
+        self._init_background()
+
+        if connect:
+            self._get_topology()
+
+        self._encrypter = None
+        if self.__options.auto_encryption_opts:
+            from pymongo.encryption import _Encrypter
+
+            self._encrypter = _Encrypter(self, self.__options.auto_encryption_opts)
+        self._timeout = self.__options.timeout
 
         # Add this client to the list of weakly referenced items.
         # This will be used later if we fork.
-        with MongoClient._clients_lock:
-            MongoClient._clients[self._topology._topology_id] = self
+        MongoClient._clients[self._topology._topology_id] = self
 
-    def _init_deadlockables(self, connect):
+    def _init_background(self):
         self._topology = Topology(self._topology_settings)
 
         def target():
@@ -844,24 +852,15 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             target=target,
             name="pymongo_kill_cursors_thread",
         )
+
         # We strongly reference the executor and it weakly references us via
         # this closure. When the client is freed, stop the executor soon.
         self_ref: Any = weakref.ref(self, executor.close)
         self._kill_cursors_executor = executor
 
-        if connect:
-            self._get_topology()
-
-        self._encrypter = None
-        if self.__options.auto_encryption_opts:
-            from pymongo.encryption import _Encrypter
-
-            self._encrypter = _Encrypter(self, self.__options.auto_encryption_opts)
-        self._timeout = self.__options.timeout
-
     def _after_fork(self):
         """Resets topology in a child after successfully forking."""
-        self._init_deadlockables(False)
+        self._init_background()
 
     def _duplicate(self, **kwargs):
         args = self.__init_kwargs.copy()
@@ -2167,12 +2166,6 @@ class _MongoClientErrorHandler(object):
         return self.handle(exc_type, exc_val)
 
 
-def _before_fork():
-    # Ensure that we aren't in any critical region.
-    MongoClient._clients_lock.acquire()
-    _acquire_locks()
-
-
 def _after_fork_child():
     """Releases the locks in child process and resets the
     topologies in all MongoClients.
@@ -2184,19 +2177,14 @@ def _after_fork_child():
     for _, client in MongoClient._clients.items():
         client._after_fork()
 
-    MongoClient._clients_lock.release()
-
 
 def _after_fork_parent():
     # Only unlock locks in child.
     _release_locks(False)
-    MongoClient._clients_lock.release()
 
 
 if hasattr(os, "register_at_fork"):
     # This will run in the same thread as the fork was called.
     # If we fork in a critical region on the same thread, it should break.
     # This is fine since we would never call fork directly from a critical region.
-    os.register_at_fork(
-        before=_before_fork, after_in_child=_after_fork_child, after_in_parent=_after_fork_parent
-    )
+    os.register_at_fork(after_in_child=_after_fork_child, after_in_parent=_after_fork_parent)

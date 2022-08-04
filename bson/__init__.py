@@ -1340,7 +1340,7 @@ def has_c() -> bool:
 
 
 def _after_fork():
-    """Releases the ObjectID lock in parent and child."""
+    """Releases the ObjectID lock child."""
     if ObjectId._inc_lock.locked():
         ObjectId._inc_lock.release()
 

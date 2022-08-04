@@ -21,8 +21,6 @@ _HAS_REGISTER_AT_FORK = hasattr(os, "register_at_fork")
 # References to instances of _create_lock
 _forkable_locks: weakref.WeakSet = weakref.WeakSet()
 
-_insertion_lock = threading.Lock()
-
 
 def _create_lock():
     """Represents a lock that is tracked upon instantiation using a WeakSet and
@@ -30,21 +28,13 @@ def _create_lock():
     """
     lock = threading.Lock()
     if _HAS_REGISTER_AT_FORK:
-        with _insertion_lock:
-            _forkable_locks.add(lock)
+        _forkable_locks.add(lock)
     return lock
 
 
 def _release_locks(child: bool) -> None:
     # Completed the fork, reset all the locks in the child.
-    try:
-        if child:
-            for lock in _forkable_locks:
-                if lock.locked():
-                    lock.release()
-    finally:
-        _insertion_lock.release()
-
-
-def _acquire_locks():
-    _insertion_lock.acquire()
+    if child:
+        for lock in _forkable_locks:
+            if lock.locked():
+                lock.release()
