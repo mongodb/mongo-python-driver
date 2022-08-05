@@ -151,12 +151,15 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     . $DRIVERS_TOOLS/.evergreen/csfle/set-temp-creds.sh
 
     if [ -n "$TEST_CRYPT_SHARED" ]; then
-        echo "Testing CSFLE with crypt_shared lib"
-        $PYTHON $DRIVERS_TOOLS/.evergreen/mongodl.py --component crypt_shared \
-            --version latest --out ../crypt_shared/
-        export DYLD_FALLBACK_LIBRARY_PATH=../crypt_shared/lib/:$DYLD_FALLBACK_LIBRARY_PATH
-        export LD_LIBRARY_PATH=../crypt_shared/lib:$LD_LIBRARY_PATH
-        export PATH=../crypt_shared/bin:$PATH
+        if [ $(mongod --version | head -n1 | cut -d. -f1 | cut -dv -f3) -ge "6" ]; then
+          echo "Testing CSFLE with crypt_shared lib"
+          $PYTHON $DRIVERS_TOOLS/.evergreen/mongodl.py --component crypt_shared \
+              --version  $(mongod --version | head -n1 | cut -d v -f3) \
+               --out ../crypt_shared/
+          export DYLD_FALLBACK_LIBRARY_PATH=../crypt_shared/lib/:$DYLD_FALLBACK_LIBRARY_PATH
+          export LD_LIBRARY_PATH=../crypt_shared/lib:$LD_LIBRARY_PATH
+          export PATH=../crypt_shared/bin:$PATH
+        fi
     fi
     # Only run the encryption tests.
     TEST_ARGS="-s test.test_encryption"
