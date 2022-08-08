@@ -102,7 +102,7 @@ def _authenticate_aws(credentials, sock_info):
         raise OperationFailure(
             "%s (pymongo-auth-aws version %s)" % (exc, pymongo_auth_aws.__version__)
         )
-    except BaseException:
+    except Exception:
         # Clear the cached credentials if we hit a failure in auth.
         set_cached_credentials(None)
         raise
