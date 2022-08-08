@@ -1813,7 +1813,7 @@ tasks:
         - func: "run aws auth test with aws credentials and session token as environment variables"
         - func: "run aws auth test with aws EC2 credentials"
         - func: "run aws auth test with aws web identity credentials"
-        # - func: "run aws ECS auth test"
+        - func: "run aws ECS auth test"
 
     - name: load-balancer-test
       commands:
