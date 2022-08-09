@@ -282,7 +282,6 @@ functions:
                 ulimit -c unlimited
               fi
           fi
-
           ${PREPARE_SHELL}
           MONGODB_VERSION=${VERSION} \
             TOPOLOGY=${TOPOLOGY} \
@@ -474,7 +473,8 @@ functions:
             export MULTI_MONGOS_LB_URI="${MONGODB_URI}"
           fi
 
-          PYTHON_BINARY=${PYTHON_BINARY} \
+          MONGODB_VERSION=${VERSION} \
+            PYTHON_BINARY=${PYTHON_BINARY} \
             GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
             C_EXTENSIONS=${C_EXTENSIONS} \
             COVERAGE=${COVERAGE} \
