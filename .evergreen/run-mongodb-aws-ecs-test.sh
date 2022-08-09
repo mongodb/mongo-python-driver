@@ -30,7 +30,7 @@ authtest () {
     $PYTHON -m pip install --upgrade wheel setuptools pip
     cd src
     $PYTHON -m pip install '.'
-    $PYTHON -m pip install https://github.com/blink1073/pymongo-auth-aws/archive/refs/heads/DRIVERS-2333-2.zip
+    $PYTHON -m pip install https://github.com/mongodb/pymongo-auth-aws/archive/refs/heads/master.zip
     $PYTHON test/auth_aws/test_auth_aws.py -v
     cd -
 }
