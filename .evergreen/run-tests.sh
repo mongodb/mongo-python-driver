@@ -152,7 +152,7 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     . $DRIVERS_TOOLS/.evergreen/csfle/set-temp-creds.sh
 
     if [ -n "$TEST_CRYPT_SHARED" ]; then
-        REAL_VERSION=`echo -n $(mongod --version | head -n1 | cut -d v -f3 | cut -d - -f1-2 )`
+        REAL_VERSION=$(mongod --version | head -n1 | cut -d v -f3)
         if [ "$MONGODB_VERSION" = "latest" ]; then
           REAL_VERSION="latest"
         fi
