@@ -282,6 +282,7 @@ functions:
                 ulimit -c unlimited
               fi
           fi
+
           ${PREPARE_SHELL}
           MONGODB_VERSION=${VERSION} \
             TOPOLOGY=${TOPOLOGY} \
