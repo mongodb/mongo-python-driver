@@ -50,6 +50,7 @@ class AutoEncryptionOpts(object):
         crypt_shared_lib_required: bool = False,
         bypass_query_analysis: bool = False,
         encrypted_fields_map: Optional[Mapping] = None,
+        use_need_kms_credentials_state: bool = True,
     ) -> None:
         """Options to configure automatic client-side field level encryption.
 
@@ -175,10 +176,15 @@ class AutoEncryptionOpts(object):
                       ]
                   }
                 }
+          - `use_need_kms_credentials_state`: whether to provide on-demand kms
+            credentials.
 
         .. note:: `bypass_query_analysis` and `encrypted_fields_map` are part of the
            Queryable Encryption beta. Backwards-breaking changes may be made before the
            final release.
+
+        .. versionchanged:: 4.3
+           Added `use_need_kms_credentials_state` parameter.
 
         .. versionchanged:: 4.2
            Added `encrypted_fields_map` `crypt_shared_lib_path`, `crypt_shared_lib_required`,
@@ -219,3 +225,4 @@ class AutoEncryptionOpts(object):
         # Maps KMS provider name to a SSLContext.
         self._kms_ssl_contexts = _parse_kms_tls_options(kms_tls_options)
         self._bypass_query_analysis = bypass_query_analysis
+        self._use_need_kms_credentials_state = use_need_kms_credentials_state

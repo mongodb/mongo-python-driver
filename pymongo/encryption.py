@@ -32,6 +32,14 @@ except ImportError:
     _HAVE_PYMONGOCRYPT = False
     MongoCryptCallback = object
 
+
+try:
+    from pymongo_auth_aws.auth import _aws_temp_credentials
+
+    _HAVE_AUTH_AWS = True
+except ImportError:
+    _HAVE_AUTH_AWS = False
+
 from bson import _dict_to_bson, decode, encode
 from bson.binary import STANDARD, UUID_SUBTYPE, Binary
 from bson.codec_options import CodecOptions
@@ -247,6 +255,16 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         """
         return encode(doc)
 
+    def ask_for_kms_credentials(self):
+        """Return on-demand kms credentials.
+
+        :Returns:
+        Map of KMS provider options.
+        """
+        if _HAVE_AUTH_AWS:
+            return {"aws": _aws_temp_credentials()}
+        return {}
+
     def close(self):
         """Release resources.
 
@@ -343,6 +361,7 @@ class _Encrypter(object):
                 bypass_encryption=opts._bypass_auto_encryption,
                 encrypted_fields_map=encrypted_fields_map,
                 bypass_query_analysis=opts._bypass_query_analysis,
+                use_need_kms_credentials_state=opts._use_need_kms_credentials_state,
             ),
         )
         self._closed = False
