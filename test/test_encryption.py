@@ -2231,7 +2231,7 @@ class TestRewrapWithSeparateClientEncryption(EncryptionIntegrationTest):
 
     def run_test(self, src_provider, dst_provider):
         # Step 1. Drop the collection ``keyvault.datakeys``.
-        self.db.drop_collection("keyvault.datakeys")
+        self.client.keyvault.drop_collection("datakeys")
 
         # Step 2. Create a ``ClientEncryption`` object named ``client_encryption1``
         client_encryption1 = ClientEncryption(
