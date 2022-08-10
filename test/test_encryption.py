@@ -2223,11 +2223,6 @@ class TestRewrapWithSeparateClientEncryption(EncryptionIntegrationTest):
         "kmip": {},
     }
 
-    @client_context.require_no_standalone
-    @client_context.require_version_min(6, 0, -1)
-    def setUp(self):
-        super().setUp()
-
     def test_rewrap(self):
         for src_provider in ALL_KMS_PROVIDERS:
             for dst_provider in ALL_KMS_PROVIDERS:
