@@ -24,7 +24,7 @@ import sys
 import textwrap
 import traceback
 import uuid
-from typing import Any, Dict
+from typing import Any, Dict, Mapping
 
 from pymongo.collection import Collection
 
@@ -2205,7 +2205,7 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
 # https://github.com/mongodb/specifications/blob/072601/source/client-side-encryption/tests/README.rst#rewrap
 class TestRewrapWithSeparateClientEncryption(EncryptionIntegrationTest):
 
-    MASTER_KEYS = {
+    MASTER_KEYS: Mapping[str, Mapping[str, Any]] = {
         "aws": {
             "region": "us-east-1",
             "key": "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
@@ -2229,9 +2229,10 @@ class TestRewrapWithSeparateClientEncryption(EncryptionIntegrationTest):
         super().setUp()
 
     def test_rewrap(self):
-        for src_provider in ALL_KMS_PROVIDERS.keys():
-            for dst_provider in ALL_KMS_PROVIDERS.keys():
-                self.run_test(src_provider, dst_provider)
+        for src_provider in ALL_KMS_PROVIDERS:
+            for dst_provider in ALL_KMS_PROVIDERS:
+                with self.subTest(src_provider=src_provider, dst_provider=dst_provider):
+                    self.run_test(src_provider, dst_provider)
 
     def run_test(self, src_provider, dst_provider):
         # Step 1. Drop the collection ``keyvault.datakeys``.
@@ -2244,6 +2245,7 @@ class TestRewrapWithSeparateClientEncryption(EncryptionIntegrationTest):
             kms_providers=ALL_KMS_PROVIDERS,
             codec_options=OPTS,
         )
+        self.addCleanup(client_encryption1.close)
 
         # Step 3. Call ``client_encryption1.create_data_key`` with ``src_provider``.
         key_id = client_encryption1.create_data_key(
@@ -2252,7 +2254,7 @@ class TestRewrapWithSeparateClientEncryption(EncryptionIntegrationTest):
 
         # Step 4. Call ``client_encryption1.encrypt`` with the value "test"
         cipher_text = client_encryption1.encrypt(
-            "test", key_id=key_id, algorithm="AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic"
+            "test", key_id=key_id, algorithm=Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic
         )
 
         # Step 5. Create a ``ClientEncryption`` object named ``client_encryption2``
@@ -2264,13 +2266,14 @@ class TestRewrapWithSeparateClientEncryption(EncryptionIntegrationTest):
             kms_providers=ALL_KMS_PROVIDERS,
             codec_options=OPTS,
         )
+        self.addCleanup(client_encryption1.close)
 
         # Step 6. Call ``client_encryption2.rewrap_many_data_key`` with an empty ``filter``.
         rewrap_many_data_key_result = client_encryption2.rewrap_many_data_key(
             {}, provider=dst_provider, master_key=self.MASTER_KEYS[dst_provider]
         )
 
-        self.assertEqual(rewrap_many_data_key_result.bulk_write_result.modified_count, 1)  # type: ignore[attr]
+        self.assertEqual(rewrap_many_data_key_result.bulk_write_result.modified_count, 1)
 
         # 7. Call ``client_encryption1.decrypt`` with the ``cipher_text``. Assert the return value is "test".
         decrypt_result1 = client_encryption1.decrypt(cipher_text)
