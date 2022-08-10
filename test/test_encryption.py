@@ -693,6 +693,25 @@ AZURE_KEY_ID = Binary(base64.b64decode(b"AZUREAAAAAAAAAAAAAAAAA=="), UUID_SUBTYP
 GCP_KEY_ID = Binary(base64.b64decode(b"GCPAAAAAAAAAAAAAAAAAAA=="), UUID_SUBTYPE)
 KMIP_KEY_ID = Binary(base64.b64decode(b"KMIPAAAAAAAAAAAAAAAAAA=="), UUID_SUBTYPE)
 
+MASTER_KEYS = {
+    "aws": {
+        "region": "us-east-1",
+        "key": "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
+    },
+    "azure": {
+        "keyVaultEndpoint": "key-vault-csfle.vault.azure.net",
+        "keyName": "key-name-csfle",
+    },
+    "gcp": {
+        "projectId": "devprod-drivers",
+        "location": "global",
+        "keyRing": "key-ring-csfle",
+        "keyName": "key-name-csfle",
+    },
+    "kmip": {},
+    "local": None,
+}
+
 
 def create_with_schema(coll, json_schema):
     """Create and return a Collection with a jsonSchema."""
@@ -718,25 +737,6 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
     vault: Any
 
     KMS_PROVIDERS = ALL_KMS_PROVIDERS
-
-    MASTER_KEYS = {
-        "aws": {
-            "region": "us-east-1",
-            "key": "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
-        },
-        "azure": {
-            "keyVaultEndpoint": "key-vault-csfle.vault.azure.net",
-            "keyName": "key-name-csfle",
-        },
-        "gcp": {
-            "projectId": "devprod-drivers",
-            "location": "global",
-            "keyRing": "key-ring-csfle",
-            "keyName": "key-name-csfle",
-        },
-        "kmip": {},
-        "local": None,
-    }
 
     @classmethod
     @unittest.skipUnless(
@@ -787,7 +787,7 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
 
     def run_test(self, provider_name):
         # Create data key.
-        master_key: Any = self.MASTER_KEYS[provider_name]
+        master_key: Any = MASTER_KEYS[provider_name]
         datakey_id = self.client_encryption.create_data_key(
             provider_name, master_key=master_key, key_alt_names=["%s_altname" % (provider_name,)]
         )
@@ -2200,6 +2200,66 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
         payload = self.client_encryption.encrypt(val, Algorithm.UNINDEXED, self.key1_id)
         decrypted = self.client_encryption.decrypt(payload)
         self.assertEqual(decrypted, val)
+
+
+# https://github.com/mongodb/specifications/blob/072601/source/client-side-encryption/tests/README.rst#rewrap
+class TestRewrapWithSeparateClientEncryption(EncryptionIntegrationTest):
+    @client_context.require_no_standalone
+    @client_context.require_version_min(6, 0, -1)
+    def setUp(self):
+        super().setUp()
+
+    def test_rewrap(self):
+        for src_provider in ALL_KMS_PROVIDERS.keys():
+            for dst_provider in ALL_KMS_PROVIDERS.keys():
+                self.run_test(src_provider, dst_provider)
+
+    def run_test(self, src_provider, dst_provider):
+        # Step 1. Drop the collection ``keyvault.datakeys``.
+        self.db.drop_collection("keyvault.datakeys")
+
+        # Step 2. Create a ``ClientEncryption`` object named ``client_encryption1``
+        client_encryption1 = ClientEncryption(
+            key_vault_client=self.client,
+            key_vault_namespace="keyvault.datakeys",
+            kms_providers=ALL_KMS_PROVIDERS,
+            codec_options=OPTS,
+        )
+
+        # Step 3. Call ``client_encryption1.create_data_key`` with ``src_provider``.
+        key_id = client_encryption1.create_data_key(
+            master_key=MASTER_KEYS[src_provider], kms_provider=src_provider
+        )
+
+        # Step 4. Call ``client_encryption1.encrypt`` with the value "test"
+        cipher_text = client_encryption1.encrypt(
+            "test", key_id=key_id, algorithm="AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic"
+        )
+
+        # Step 5. Create a ``ClientEncryption`` object named ``client_encryption2``
+        client2 = MongoClient()
+        self.addCleanup(client2.close)
+        client_encryption2 = ClientEncryption(
+            key_vault_client=client2,
+            key_vault_namespace="keyvault.datakeys",
+            kms_providers=ALL_KMS_PROVIDERS,
+            codec_options=OPTS,
+        )
+
+        # Step 6. Call ``client_encryption2.rewrap_many_data_key`` with an empty ``filter``.
+        rewrap_many_data_key_result = client_encryption2.rewrap_many_data_key(
+            {}, provider=dst_provider, master_key=MASTER_KEYS[dst_provider]
+        )
+
+        self.assertEqual(rewrap_many_data_key_result.bulk_write_result.modified_count, 1)  # type: ignore[attr]
+
+        # 7. Call ``client_encryption1.decrypt`` with the ``cipher_text``. Assert the return value is "test".
+        decrypt_result1 = client_encryption1.decrypt(cipher_text)
+        self.assertEqual(decrypt_result1, "test")
+
+        # 8. Call ``client_encryption2.decrypt`` with the ``cipher_text``. Assert the return value is "test".
+        decrypt_result2 = client_encryption2.decrypt(cipher_text)
+        self.assertEqual(decrypt_result2, "test")
 
 
 class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):
