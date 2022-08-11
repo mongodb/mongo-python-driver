@@ -2224,8 +2224,8 @@ class TestRewrapWithSeparateClientEncryption(EncryptionIntegrationTest):
     }
 
     def test_rewrap(self):
-        for src_provider in ALL_KMS_PROVIDERS:
-            for dst_provider in ALL_KMS_PROVIDERS:
+        for src_provider in self.MASTER_KEYS:
+            for dst_provider in self.MASTER_KEYS:
                 with self.subTest(src_provider=src_provider, dst_provider=dst_provider):
                     self.run_test(src_provider, dst_provider)
 
