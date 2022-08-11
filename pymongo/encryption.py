@@ -459,7 +459,7 @@ class ClientEncryption(object):
         key_vault_client: MongoClient,
         codec_options: CodecOptions,
         kms_tls_options: Optional[Mapping[str, Any]] = None,
-        use_need_kms_credentials_state=True,
+        use_need_kms_credentials_state: bool = True,
     ) -> None:
         """Explicit client-side field level encryption.
 

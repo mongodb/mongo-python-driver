@@ -139,8 +139,7 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     export PYMONGOCRYPT_LIB
 
     # TODO: Test with 'pip install pymongocrypt'
-    git clone
- https://github.com/blink1073/libmongocrypt.git libmongocrypt_git
+    git clone https://github.com/blink1073/libmongocrypt.git libmongocrypt_git
     pushd libmongocrypt_git
     git fetch origin PYTHON-3256
     git checkout PYTHON-3256
