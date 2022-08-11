@@ -2221,6 +2221,7 @@ class TestRewrapWithSeparateClientEncryption(EncryptionIntegrationTest):
             "keyName": "key-name-csfle",
         },
         "kmip": {},
+        "local": {},
     }
 
     def test_rewrap(self):
