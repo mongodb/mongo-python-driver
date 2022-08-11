@@ -2206,6 +2206,10 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
 class TestOnDemandAWSCredentials(EncryptionIntegrationTest):
     def setUp(self):
         super(TestOnDemandAWSCredentials, self).setUp()
+        self.master_key = {
+            "region": "us-east-1",
+            "key": ("arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0"),
+        }
 
     @unittest.skipIf(any(AWS_CREDS.values()), "AWS environment credentials are set")
     def test_01_failure(self):
@@ -2215,7 +2219,8 @@ class TestOnDemandAWSCredentials(EncryptionIntegrationTest):
             key_vault_client=client_context.client,
             codec_options=OPTS,
         )
-        self.client_encryption.create_data_key("aws")
+        with self.assertRaises(EncryptionError) as ctx:
+            self.client_encryption.create_data_key("aws", self.master_key)
 
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
     def test_02_success(self):
@@ -2225,7 +2230,7 @@ class TestOnDemandAWSCredentials(EncryptionIntegrationTest):
             key_vault_client=client_context.client,
             codec_options=OPTS,
         )
-        self.client_encryption.create_data_key("aws")
+        self.client_encryption.create_data_key("aws", self.master_key)
 
 
 class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):

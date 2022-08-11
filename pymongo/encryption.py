@@ -459,6 +459,7 @@ class ClientEncryption(object):
         key_vault_client: MongoClient,
         codec_options: CodecOptions,
         kms_tls_options: Optional[Mapping[str, Any]] = None,
+        use_need_kms_credentials_state=True,
     ) -> None:
         """Explicit client-side field level encryption.
 
@@ -523,6 +524,11 @@ class ClientEncryption(object):
             Or to supply a client certificate::
 
               kms_tls_options={'kmip': {'tlsCertificateKeyFile': 'client.pem'}}
+          - `use_need_kms_credentials_state`: Whether to enable on-demand KMS
+            credentials.
+
+        .. versionchanged:: 4.3
+           Added the `use_need_kms_credentials_state` parameter.
 
         .. versionchanged:: 4.0
            Added the `kms_tls_options` parameter and the "kmip" KMS provider.
@@ -554,7 +560,10 @@ class ClientEncryption(object):
             None, key_vault_coll, None, opts
         )
         self._encryption = ExplicitEncrypter(
-            self._io_callbacks, MongoCryptOptions(kms_providers, None)
+            self._io_callbacks,
+            MongoCryptOptions(
+                kms_providers, None, use_need_kms_credentials_state=use_need_kms_credentials_state
+            ),
         )
         # Use the same key vault collection as the callback.
         self._key_vault_coll = self._io_callbacks.key_vault_coll
