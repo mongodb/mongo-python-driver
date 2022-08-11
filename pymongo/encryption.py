@@ -34,7 +34,7 @@ except ImportError:
 
 
 try:
-    from pymongo_auth_aws.auth import _aws_temp_credentials
+    from pymongo.auth_aws import _get_kms_credentials
 
     _HAVE_AUTH_AWS = True
 except ImportError:
@@ -262,7 +262,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         Map of KMS provider options.
         """
         if _HAVE_AUTH_AWS:
-            return {"aws": _aws_temp_credentials()}
+            return {"aws": _get_kms_credentials()}
         return {}
 
     def close(self):
