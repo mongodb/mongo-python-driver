@@ -2202,6 +2202,32 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
         self.assertEqual(decrypted, val)
 
 
+# https://github.com/mongodb/specifications/blob/5cf3ed/source/client-side-encryption/tests/README.rst#on-demand-aws-credentials
+class TestOnDemandAWSCredentials(EncryptionIntegrationTest):
+    def setUp(self):
+        super(TestOnDemandAWSCredentials, self).setUp()
+
+    @unittest.skipIf(any(AWS_CREDS.values()), "AWS environment credentials are set")
+    def test_01_failure(self):
+        self.client_encryption = ClientEncryption(
+            kms_providers={"aws": {}},
+            key_vault_namespace="keyvault.datakeys",
+            key_vault_client=client_context.client,
+            codec_options=OPTS,
+        )
+        self.client_encryption.create_data_key("aws")
+
+    @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
+    def test_02_success(self):
+        self.client_encryption = ClientEncryption(
+            kms_providers={"aws": {}},
+            key_vault_namespace="keyvault.datakeys",
+            key_vault_client=client_context.client,
+            codec_options=OPTS,
+        )
+        self.client_encryption.create_data_key("aws")
+
+
 class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):
     # Queryable Encryption is not supported on Standalone topology.
     @client_context.require_no_standalone

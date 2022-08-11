@@ -139,7 +139,8 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     export PYMONGOCRYPT_LIB
 
     # TODO: Test with 'pip install pymongocrypt'
-    git clone https://github.com/mongodb/libmongocrypt.git libmongocrypt_git
+    git clone -b PYTHON-3256
+ https://github.com/blink1073/libmongocrypt.git libmongocrypt_git
     python -m pip install --prefer-binary -r .evergreen/test-encryption-requirements.txt
     python -m pip install ./libmongocrypt_git/bindings/python
     python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
