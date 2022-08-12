@@ -2224,13 +2224,6 @@ class TestRewrapWithSeparateClientEncryption(EncryptionIntegrationTest):
         "local": {},
     }
 
-    KMS_TLS_OPTS = {
-        "aws": {"tlsCAFile": CA_PEM},
-        "azure": {"tlsCAFile": CA_PEM},
-        "gcp": {"tlsCAFile": CA_PEM},
-        "kmip": {"tlsCAFile": CA_PEM},
-    }
-
     def test_rewrap(self):
         for src_provider in self.MASTER_KEYS:
             for dst_provider in self.MASTER_KEYS:
