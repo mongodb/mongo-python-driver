@@ -53,7 +53,7 @@ class TestFork(IntegrationTest):
             if lock_pid == 0:
                 os._exit(exit_cond())
             else:
-                self.assertEqual(0, os.waitpid(lock_pid, 0)[1] >> 8)
+                self.assertEqual(0, os.waitpid(lock_pid, 0)[1])
 
     def test_lock_object_id(self):
         """
@@ -67,7 +67,7 @@ class TestFork(IntegrationTest):
             if lock_pid == 0:
                 os._exit(int(ObjectId._inc_lock.locked()))
             else:
-                self.assertEqual(0, os.waitpid(lock_pid, 0)[1] >> 8)
+                self.assertEqual(0, os.waitpid(lock_pid, 0)[1])
 
     def test_topology_reset(self):
         """
@@ -92,7 +92,7 @@ class TestFork(IntegrationTest):
             )
             os._exit(0)
         else:  # Parent
-            self.assertEqual(0, os.waitpid(lock_pid, 0)[1] >> 8)
+            self.assertEqual(0, os.waitpid(lock_pid, 0)[1])
             self.assertEqual(self.client._topology._pid, init_id)
             child_id = parent_conn.recv()
             self.assertNotEqual(child_id, init_id)

@@ -329,6 +329,11 @@ class TestClientSimple(EncryptionIntegrationTest):
         with self.assertRaisesRegex(InvalidOperation, "Cannot use MongoClient after close"):
             client.admin.command("ping")
 
+    # Not available for versions of Python without "register_at_fork"
+    @unittest.skipIf(
+        not hasattr(os, "register_at_fork"),
+        "register_at_fork not available in this version of Python",
+    )
     def test_fork(self):
         opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
         client = rs_or_single_client(auto_encryption_opts=opts)
@@ -339,7 +344,7 @@ class TestClientSimple(EncryptionIntegrationTest):
             client.close()
             os._exit(0)
         else:
-            self.assertEqual(0, os.waitpid(lock_pid, 0)[1] >> 8)
+            self.assertEqual(0, os.waitpid(lock_pid, 0)[1])
             client.admin.command("ping")
             client.close()
 
