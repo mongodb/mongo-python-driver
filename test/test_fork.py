@@ -15,11 +15,13 @@
 """Test that pymongo is fork safe."""
 
 import os
+import threading
 from multiprocessing import Pipe
 from test import IntegrationTest, client_context
 from unittest import skipIf
 
 from bson.objectid import ObjectId
+from pymongo import MongoClient
 
 
 @client_context.require_connection
@@ -98,3 +100,48 @@ class TestFork(IntegrationTest):
             self.assertNotEqual(child_id, init_id)
             passed, msg = parent_conn.recv()
             self.assertTrue(passed, msg)
+
+    def test_many_threaded(self):
+        class MultipleThreads(threading.Thread):
+            def __init__(self, runner):
+                self.runner = runner
+                super().__init__()
+
+            def run(self) -> None:
+                clients = []
+                for _ in range(10):
+                    clients.append(MongoClient())
+
+                # The sequence of actions should be somewhat reproducible.
+                # If truly random, there is a chance we never actually fork.
+                # The scheduling is somewhat random, so rely upon that.
+                def action(client):
+                    client.admin.command("ping")
+
+                def exit_cond(client):
+                    client.admin.command("ping")
+                    return 0
+
+                for i in range(200):
+                    # Pick a random client.
+                    rc = clients[i % len(clients)]
+                    if i % 50 == 0:
+                        # Fork
+                        pid = os.fork()
+                        if pid == 0:  # Child => Can we use it?
+                            os._exit(exit_cond(rc))
+                        else:  # Parent => Child work?
+                            self.runner.assertEqual(0, os.waitpid(pid, 0)[1] >> 8)
+                    action(rc)
+
+                for c in clients:
+                    c.close()
+
+        threads = [MultipleThreads(self) for _ in range(10)]
+        for t in threads:
+            t.start()
+
+        for t in threads:
+            t.join()
+
+        # Fork randomly while doing operations.
