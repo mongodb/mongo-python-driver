@@ -102,7 +102,8 @@ class TestFork(IntegrationTest):
             self.assertTrue(passed, msg)
 
     def test_many_threaded(self):
-        class MultipleThreads(threading.Thread):
+        # Fork randomly while doing operations.
+        class ForkThread(threading.Thread):
             def __init__(self, runner):
                 self.runner = runner
                 super().__init__()
@@ -117,9 +118,6 @@ class TestFork(IntegrationTest):
                 # The scheduling is somewhat random, so rely upon that.
                 def action(client):
                     client.admin.command("ping")
-
-                def exit_cond(client):
-                    client.admin.command("ping")
                     return 0
 
                 for i in range(200):
@@ -129,7 +127,7 @@ class TestFork(IntegrationTest):
                         # Fork
                         pid = os.fork()
                         if pid == 0:  # Child => Can we use it?
-                            os._exit(exit_cond(rc))
+                            os._exit(action(rc))
                         else:  # Parent => Child work?
                             self.runner.assertEqual(0, os.waitpid(pid, 0)[1] >> 8)
                     action(rc)
@@ -137,11 +135,9 @@ class TestFork(IntegrationTest):
                 for c in clients:
                     c.close()
 
-        threads = [MultipleThreads(self) for _ in range(10)]
+        threads = [ForkThread(self) for _ in range(10)]
         for t in threads:
             t.start()
 
         for t in threads:
             t.join()
-
-        # Fork randomly while doing operations.
