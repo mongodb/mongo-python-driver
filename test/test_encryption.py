@@ -2219,7 +2219,7 @@ class TestOnDemandAWSCredentials(EncryptionIntegrationTest):
             key_vault_client=client_context.client,
             codec_options=OPTS,
         )
-        with self.assertRaises(EncryptionError) as ctx:
+        with self.assertRaises(EncryptionError):
             self.client_encryption.create_data_key("aws", self.master_key)
 
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
