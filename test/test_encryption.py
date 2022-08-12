@@ -2246,7 +2246,7 @@ class TestRewrapWithSeparateClientEncryption(EncryptionIntegrationTest):
             key_vault_client=self.client,
             key_vault_namespace="keyvault.datakeys",
             kms_providers=ALL_KMS_PROVIDERS,
-            kms_tls_options=self.KMS_TLS_OPTS,
+            kms_tls_options=KMS_TLS_OPTS,
             codec_options=OPTS,
         )
         self.addCleanup(client_encryption1.close)
@@ -2268,7 +2268,7 @@ class TestRewrapWithSeparateClientEncryption(EncryptionIntegrationTest):
             key_vault_client=client2,
             key_vault_namespace="keyvault.datakeys",
             kms_providers=ALL_KMS_PROVIDERS,
-            kms_tls_options=self.KMS_TLS_OPTS,
+            kms_tls_options=KMS_TLS_OPTS,
             codec_options=OPTS,
         )
         self.addCleanup(client_encryption1.close)
