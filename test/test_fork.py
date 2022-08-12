@@ -132,9 +132,6 @@ class TestFork(IntegrationTest):
                             self.runner.assertEqual(0, os.waitpid(pid, 0)[1] >> 8)
                     action(rc)
 
-                for c in clients:
-                    c.close()
-
         threads = [ForkThread(self) for _ in range(10)]
         for t in threads:
             t.start()
