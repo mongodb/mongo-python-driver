@@ -329,6 +329,20 @@ class TestClientSimple(EncryptionIntegrationTest):
         with self.assertRaisesRegex(InvalidOperation, "Cannot use MongoClient after close"):
             client.admin.command("ping")
 
+    def test_fork(self):
+        opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
+        client = rs_or_single_client(auto_encryption_opts=opts)
+
+        lock_pid = os.fork()
+        if lock_pid == 0:
+            client.admin.command("ping")
+            client.close()
+            os._exit(0)
+        else:
+            self.assertEqual(0, os.waitpid(lock_pid, 0)[1] >> 8)
+            client.admin.command("ping")
+            client.close()
+
 
 class TestEncryptedBulkWrite(BulkTestBase, EncryptionIntegrationTest):
     def test_upsert_uuid_standard_encrypt(self):
