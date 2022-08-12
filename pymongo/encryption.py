@@ -32,14 +32,6 @@ except ImportError:
     _HAVE_PYMONGOCRYPT = False
     MongoCryptCallback = object
 
-
-try:
-    from pymongo.auth_aws import _get_kms_credentials
-
-    _HAVE_AUTH_AWS = True
-except ImportError:
-    _HAVE_AUTH_AWS = False
-
 from bson import _dict_to_bson, decode, encode
 from bson.binary import STANDARD, UUID_SUBTYPE, Binary
 from bson.codec_options import CodecOptions
@@ -47,6 +39,7 @@ from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from bson.son import SON
 from pymongo import _csot
+from pymongo.auth_aws import _get_kms_credentials
 from pymongo.cursor import Cursor
 from pymongo.daemon import _spawn_daemon
 from pymongo.encryption_options import AutoEncryptionOpts
@@ -261,9 +254,11 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         :Returns:
         Map of KMS provider options.
         """
-        if _HAVE_AUTH_AWS:
-            return {"aws": _get_kms_credentials()}
-        return {}
+        kms_map = self.opts._kms_providers
+        creds = {}
+        if "aws" in kms_map and not len(kms_map["aws"]):
+            creds["aws"] = _get_kms_credentials()
+        return creds
 
     def close(self):
         """Release resources.

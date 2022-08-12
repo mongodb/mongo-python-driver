@@ -37,6 +37,11 @@ from pymongo.errors import ConfigurationError, OperationFailure
 
 def _get_kms_credentials() -> Dict[str, str]:
     """Fetch On-Demand KMS credentials."""
+    if not _HAVE_MONGODB_AWS:
+        raise ConfigurationError(
+            "MONGODB-AWS authentication requires pymongo-auth-aws: "
+            "install with: python -m pip install 'pymongo[aws]'"
+        )
     creds = _aws_temp_credentials()
     creds_dict = {"accessKeyId": creds.username, "secretAccessKey": creds.password}
     if creds.token:
