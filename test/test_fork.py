@@ -127,9 +127,10 @@ class TestFork(IntegrationTest):
                         # Fork
                         pid = os.fork()
                         if pid == 0:  # Child => Can we use it?
-                            os._exit(action(rc))
+                            code = action(rc)
+                            os._exit(code)
                         else:  # Parent => Child work?
-                            self.runner.assertEqual(0, os.waitpid(pid, 0)[1] >> 8)
+                            self.runner.assertEqual(0, os.waitpid(pid, 0)[1])
                     action(rc)
 
         threads = [ForkThread(self) for _ in range(10)]
