@@ -102,16 +102,21 @@ class TestFork(IntegrationTest):
 
     def test_many_threaded(self):
         # Fork randomly while doing operations.
+        from watchpoints import watch
+
+        clients = []
+        for _ in range(10):
+            clients.append(rs_or_single_client())
+
         class ForkThread(ExceptionCatchingThread):
-            def __init__(self, runner):
+            def __init__(self, runner, clients):
                 self.runner = runner
-                super().__init__()
+                self.clients = clients
+                self.fork = False
 
-            def run(self) -> None:
-                clients = []
-                for _ in range(10):
-                    clients.append(rs_or_single_client())
+                super().__init__(target=self.fork_behavior)
 
+            def fork_behavior(self) -> None:
                 # The sequence of actions should be somewhat reproducible.
                 # If truly random, there is a chance we never actually fork.
                 # The scheduling is somewhat random, so rely upon that.
@@ -121,8 +126,8 @@ class TestFork(IntegrationTest):
 
                 for i in range(200):
                     # Pick a random client.
-                    rc = clients[i % len(clients)]
-                    if i % 50 == 0:
+                    rc = self.clients[i % len(self.clients)]
+                    if i % 50 == 0 and self.fork:
                         # Fork
                         pid = os.fork()
                         if pid == 0:  # Child => Can we use it?
@@ -135,12 +140,13 @@ class TestFork(IntegrationTest):
                             self.runner.assertEqual(0, os.waitpid(pid, 0)[1])
                     action(rc)
 
-                for c in clients:
-                    c.close()
-
-        threads = [ForkThread(self) for _ in range(10)]
+        threads = [ForkThread(self, clients) for _ in range(10)]
+        threads[-1].fork = True
         for t in threads:
             t.start()
 
         for t in threads:
             t.join()
+
+        for c in clients:
+            c.close()
