@@ -18,6 +18,7 @@ import os
 import threading
 from multiprocessing import Pipe
 from test import IntegrationTest, client_context
+from test.utils import ExceptionCatchingThread
 from unittest import skipIf
 
 from bson.objectid import ObjectId
@@ -103,7 +104,7 @@ class TestFork(IntegrationTest):
 
     def test_many_threaded(self):
         # Fork randomly while doing operations.
-        class ForkThread(threading.Thread):
+        class ForkThread(ExceptionCatchingThread):
             def __init__(self, runner):
                 self.runner = runner
                 super().__init__()
@@ -127,8 +128,11 @@ class TestFork(IntegrationTest):
                         # Fork
                         pid = os.fork()
                         if pid == 0:  # Child => Can we use it?
-                            code = action(rc)
-                            os._exit(code)
+                            code = -1
+                            try:
+                                code = action(rc)
+                            finally:
+                                os._exit(code)
                         else:  # Parent => Child work?
                             self.runner.assertEqual(0, os.waitpid(pid, 0)[1])
                     action(rc)
