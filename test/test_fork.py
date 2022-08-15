@@ -52,7 +52,11 @@ class TestFork(IntegrationTest):
             # In the parent, it'll return here.
             # In the child, it'll end with the calling thread.
             if lock_pid == 0:
-                os._exit(exit_cond())
+                code = 0
+                try:
+                    code = exit_cond()
+                finally:
+                    os._exit(code)
             else:
                 self.assertEqual(0, os.waitpid(lock_pid, 0)[1])
 
@@ -66,7 +70,11 @@ class TestFork(IntegrationTest):
             lock_pid: int = os.fork()
 
             if lock_pid == 0:
-                os._exit(int(ObjectId._inc_lock.locked()))
+                code = 0
+                try:
+                    code = int(ObjectId._inc_lock.locked())
+                finally:
+                    os._exit(code)
             else:
                 self.assertEqual(0, os.waitpid(lock_pid, 0)[1])
 
