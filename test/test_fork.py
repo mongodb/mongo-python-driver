@@ -21,7 +21,6 @@ from test.utils import ExceptionCatchingThread, rs_or_single_client
 from unittest import skipIf
 
 from bson.objectid import ObjectId
-from pymongo import MongoClient
 
 
 @client_context.require_connection
