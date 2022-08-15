@@ -17,7 +17,7 @@
 import os
 from multiprocessing import Pipe
 from test import IntegrationTest, client_context
-from test.utils import ExceptionCatchingThread
+from test.utils import ExceptionCatchingThread, rs_or_single_client
 from unittest import skipIf
 
 from bson.objectid import ObjectId
@@ -111,7 +111,7 @@ class TestFork(IntegrationTest):
             def run(self) -> None:
                 clients = []
                 for _ in range(10):
-                    clients.append(MongoClient())
+                    clients.append(rs_or_single_client())
 
                 # The sequence of actions should be somewhat reproducible.
                 # If truly random, there is a chance we never actually fork.
