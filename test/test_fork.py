@@ -102,7 +102,6 @@ class TestFork(IntegrationTest):
 
     def test_many_threaded(self):
         # Fork randomly while doing operations.
-        from watchpoints import watch
 
         clients = []
         for _ in range(10):
