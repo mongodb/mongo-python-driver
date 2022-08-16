@@ -52,7 +52,7 @@ class TestFork(IntegrationTest):
             # In the parent, it'll return here.
             # In the child, it'll end with the calling thread.
             if lock_pid == 0:
-                code = 0
+                code = -1
                 try:
                     code = exit_cond()
                 finally:
@@ -70,7 +70,7 @@ class TestFork(IntegrationTest):
             lock_pid: int = os.fork()
 
             if lock_pid == 0:
-                code = 0
+                code = -1
                 try:
                     code = int(ObjectId._inc_lock.locked())
                 finally:
@@ -113,7 +113,9 @@ class TestFork(IntegrationTest):
 
         clients = []
         for _ in range(10):
-            clients.append(rs_or_single_client())
+            c = rs_or_single_client()
+            clients.append(c)
+            self.addCleanup(c.close)
 
         class ForkThread(ExceptionCatchingThread):
             def __init__(self, runner, clients):
@@ -124,9 +126,6 @@ class TestFork(IntegrationTest):
                 super().__init__(target=self.fork_behavior)
 
             def fork_behavior(self) -> None:
-                # The sequence of actions should be somewhat reproducible.
-                # If truly random, there is a chance we never actually fork.
-                # The scheduling is somewhat random, so rely upon that.
                 def action(client):
                     client.admin.command("ping")
                     return 0
@@ -137,13 +136,15 @@ class TestFork(IntegrationTest):
                     if i % 50 == 0 and self.fork:
                         # Fork
                         pid = os.fork()
-                        if pid == 0:  # Child => Can we use it?
+                        if pid == 0:
                             code = -1
                             try:
-                                code = action(rc)
+                                for c in self.clients:
+                                    action(c)
+                                code = 0
                             finally:
                                 os._exit(code)
-                        else:  # Parent => Child work?
+                        else:
                             self.runner.assertEqual(0, os.waitpid(pid, 0)[1])
                     action(rc)
 
