@@ -474,7 +474,8 @@ functions:
             export MULTI_MONGOS_LB_URI="${MONGODB_URI}"
           fi
 
-          PYTHON_BINARY=${PYTHON_BINARY} \
+          MONGODB_VERSION=${VERSION} \
+            PYTHON_BINARY=${PYTHON_BINARY} \
             GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
             C_EXTENSIONS=${C_EXTENSIONS} \
             COVERAGE=${COVERAGE} \
@@ -2316,6 +2317,7 @@ buildvariants:
         encryption: [ "encryption_crypt_shared" ]
       then:
         remove_tasks:
+          - ".rapid"
           - ".5.0"
           - ".4.4"
           - ".4.2"
@@ -2410,6 +2412,7 @@ buildvariants:
         encryption: [ "encryption_crypt_shared" ]
       then:
         remove_tasks:
+          - ".rapid"
           - ".5.0"
           - ".4.4"
           - ".4.2"
@@ -2519,6 +2522,7 @@ buildvariants:
         encryption: [ "encryption_crypt_shared" ]
       then:
         remove_tasks:
+          - ".rapid"
           - ".5.0"
           - ".4.4"
           - ".4.2"
