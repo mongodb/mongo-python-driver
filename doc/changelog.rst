@@ -1,6 +1,22 @@
 Changelog
 =========
 
+Changes in Version 4.3
+----------------------
+
+PyMongo 4.1 brings a number of improvements including:
+
+
+
+Bug fixes
+.........
+
+Unavoidable breaking changes
+............................
+
+Issues Resolved
+...............
+
 Changes in Version 4.2
 ----------------------
 
