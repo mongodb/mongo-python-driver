@@ -7,18 +7,18 @@ Changes in Version 4.3
 PyMongo 4.3 brings a number of improvements including:
 
 - Improved support for documents with BSON datetimes outside of the range
-supported by Python. See :ref:`handling-out-of-range-datetimes` for examples.
+  supported by Python. See :ref:`handling-out-of-range-datetimes` for examples.
 - Improved support for avoiding deadlocking when a ``fork()`` occurs with an
-:class:`~pymongo.mongo_client.MongoClient`.
+  :class:`~pymongo.mongo_client.MongoClient`.
 - Refactored several underlying classes in :mod:`pymongo.monitoring` for
-connection events.
+  connection events.
 
 Bug fixes
 .........
 
 - Updated :class:`~pymongo.change_stream.ChangeStream` so that it will
-close after non-resumable non-timeout errors, and will resume its connection
-otherwise.
+  close after non-resumable non-timeout errors, and will resume its connection
+  otherwise.
 
 Issues Resolved
 ...............
@@ -29,7 +29,7 @@ in this release.
 .. _PYTHON-1824: https://jira.mongodb.org/browse/PYTHON-1824
 .. _PYTHON-2484: https://jira.mongodb.org/browse/PYTHON-2484
 .. _PYTHON-3312: https://jira.mongodb.org/browse/PYTHON-3312
-
+.. _PyMongo 4.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=33425
 
 Changes in Version 4.2
 ----------------------
