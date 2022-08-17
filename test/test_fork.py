@@ -15,6 +15,7 @@
 """Test that pymongo is fork safe."""
 
 import os
+import sys
 from multiprocessing import Pipe
 from test import IntegrationTest, client_context
 from test.utils import ExceptionCatchingThread, rs_or_single_client
@@ -31,6 +32,10 @@ def setUpModule():
 # Not available for versions of Python without "register_at_fork"
 @skipIf(
     not hasattr(os, "register_at_fork"), "register_at_fork not available in this version of Python"
+)
+@skipIf(
+    "gevent" in sys.modules.keys() or "eventlet" in sys.modules.keys(),
+    "gevent and eventlet do not support POSIX-style forking.",
 )
 class TestFork(IntegrationTest):
     def test_lock_client(self):
@@ -155,6 +160,9 @@ class TestFork(IntegrationTest):
 
         for t in threads:
             t.join()
+
+        for t in threads:
+            self.assertIsNone(t.exc)
 
         for c in clients:
             c.close()
