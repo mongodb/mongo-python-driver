@@ -114,6 +114,7 @@ from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import Selection, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.topology_description import TopologyDescription
+from pymongo.typings import _Address
 from pymongo.write_concern import WriteConcern
 
 JSON_OPTS = json_util.JSONOptions(tz_aware=False)
@@ -1442,21 +1443,21 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self.assertIsInstance(description, TopologyDescription)
         self.assertEqual(description.topology_type_name, spec["topologyType"])
 
-    def _testOperation_waitForPrimaryChange(self, spec):
+    def _testOperation_waitForPrimaryChange(self, spec: dict) -> None:
         """Run the waitForPrimaryChange test operation."""
         client = self.entity_map[spec["client"]]
         old_description: TopologyDescription = self.entity_map[spec["priorTopologyDescription"]]
         timeout = spec["timeoutMS"] / 1000.0
 
-        def get_primary(td: TopologyDescription) -> Optional[ServerDescription]:
+        def get_primary(td: TopologyDescription) -> Optional[_Address]:
             servers = writable_server_selector(Selection.from_topology_description(td))
             if servers and servers[0].server_type == SERVER_TYPE.RSPrimary:
-                return servers[0]
+                return servers[0].address
             return None
 
         old_primary = get_primary(old_description)
 
-        def primary_changed():
+        def primary_changed() -> bool:
             primary = client.primary
             if primary is None:
                 return False
