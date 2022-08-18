@@ -14,7 +14,7 @@ PyMongo 4.3 brings a number of improvements including:
   :class:`bson.codec_options.CodecOptions`'s ``datetime_conversion``
   parameter for more details (`PYTHON-1824`_).
 - Added support for using a :class:`~pymongo.mongo_client.MongoClient` after
-  a ``fork()`` (`PYTHON-2484`_).
+  an :py:func:`os.fork` (`PYTHON-2484`_).
 
 Bug fixes
 .........
