@@ -22,7 +22,7 @@ replaced with identical settings. This feature is only available on
 interpreters where :meth:`os.register_at_fork` is available, such as CPython
 3.7+ on Unix.
 
-Earlier versions of PyMongo are not fork-safe. Care must be taken when using
+Python  Care must be taken when using
 instances of :class:`~pymongo.mongo_client.MongoClient` with ``fork()``.
 Specifically, instances of MongoClient must not be copied from a parent
 process to a child process. Instead, the parent process and each child
