@@ -7,12 +7,12 @@ Changes in Version 4.3
 PyMongo 4.3 brings a number of improvements including:
 
 - Added support for decoding BSON datetimes outside of the range supported
-  by Python's :class:`~datetime.datetime` See
+  by Python's :class:`~datetime.datetime` builtin. See
   :ref:`handling-out-of-range-datetimes` for examples, as well as
-  :class:`pymongo.datetime_ms.DatetimeMS`,
-  :attr:`pymongo.codec_options.CodecOptions.datetime_conversion`,
-  :class:`pymongo.datetime_ms.DatetimeConversion` for more details
-  (`PYTHON-1824`_).
+  :class:`bson.datetime_ms.DatetimeMS`,
+  :class:`bson.codec_options.DatetimeConversion`, and
+  :class:`bson.codec_options.CodecOptions`'s ``datetime_conversion``
+  parameter for more details (`PYTHON-1824`_).
 - Added support for using a :class:`~pymongo.mongo_client.MongoClient` after
   a ``fork()`` (`PYTHON-2484`_).
 
