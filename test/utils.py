@@ -605,7 +605,7 @@ def ensure_all_connected(client: MongoClient) -> None:
     if "setName" not in hello:
         raise ConfigurationError("cluster is not a replica set")
 
-    target_host_list = set(hello["hosts"] + hello["passives"])
+    target_host_list = set(hello["hosts"] + hello.get("passives", []))
     connected_host_list = set([hello["me"]])
 
     # Run hello until we have connected to each host at least once.
