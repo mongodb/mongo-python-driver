@@ -623,7 +623,7 @@ def ensure_all_connected(client: MongoClient) -> None:
         wait_until(lambda: target_host_list == discover(), "connected to all hosts")
     except AssertionError as exc:
         raise AssertionError(
-            f"{exc}, {connected_host_list} != {target_host_list}, " f"{client.topology_description}"
+            f"{exc}, {connected_host_list} != {target_host_list}, {client.topology_description}"
         )
 
 
