@@ -6,19 +6,22 @@ Changes in Version 4.3
 
 PyMongo 4.3 brings a number of improvements including:
 
-- Improved support for documents with BSON datetimes outside of the range
-  supported by Python. See :ref:`handling-out-of-range-datetimes` for examples.
-- Improved support for avoiding deadlocking when a ``fork()`` occurs with an
-  :class:`~pymongo.mongo_client.MongoClient`.
-- Refactored several underlying classes in :mod:`pymongo.monitoring` for
-  connection events.
+- Added support for decoding BSON datetimes outside of the range supported
+  by Python's :class:`~datetime.datetime` See
+  :ref:`handling-out-of-range-datetimes` for examples, as well as
+  :class:`pymongo.datetime_ms.DatetimeMS`,
+  :attr:`pymongo.codec_options.CodecOptions.datetime_conversion`,
+  :class:`pymongo.datetime_ms.DatetimeConversion` for more details
+  (`PYTHON-1824`_).
+- Added support for using a :class:`~pymongo.mongo_client.MongoClient` after
+  a ``fork()`` (`PYTHON-2484`_).
 
 Bug fixes
 .........
 
-- Updated :class:`~pymongo.change_stream.ChangeStream` so that it will
-  close after non-resumable non-timeout errors, and will resume its connection
-  otherwise.
+- Fixed a bug where  :class:`~pymongo.change_stream.ChangeStream`
+  would allow an app to retry calling ``next()`` or ``try_next()`` even
+  after non-resumable errors (`PYTHON-3389`_).
 
 Issues Resolved
 ...............
@@ -28,7 +31,7 @@ in this release.
 
 .. _PYTHON-1824: https://jira.mongodb.org/browse/PYTHON-1824
 .. _PYTHON-2484: https://jira.mongodb.org/browse/PYTHON-2484
-.. _PYTHON-3312: https://jira.mongodb.org/browse/PYTHON-3312
+.. _PYTHON-3389: https://jira.mongodb.org/browse/PYTHON-3389
 .. _PyMongo 4.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=33425
 
 Changes in Version 4.2
