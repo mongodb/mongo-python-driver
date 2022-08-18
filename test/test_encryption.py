@@ -2279,7 +2279,7 @@ class TestRewrapWithSeparateClientEncryption(EncryptionIntegrationTest):
         )
 
         # Step 5. Create a ``ClientEncryption`` object named ``client_encryption2``
-        client2 = MongoClient()
+        client2 = rs_or_single_client()
         self.addCleanup(client2.close)
         client_encryption2 = ClientEncryption(
             key_vault_client=client2,
