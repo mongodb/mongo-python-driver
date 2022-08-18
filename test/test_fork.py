@@ -18,7 +18,11 @@ import os
 import sys
 from multiprocessing import Pipe
 from test import IntegrationTest, client_context
-from test.utils import ExceptionCatchingThread, rs_or_single_client
+from test.utils import (
+    ExceptionCatchingThread,
+    is_greenthread_patched,
+    rs_or_single_client,
+)
 from unittest import skipIf
 
 from bson.objectid import ObjectId
@@ -34,7 +38,7 @@ def setUpModule():
     not hasattr(os, "register_at_fork"), "register_at_fork not available in this version of Python"
 )
 @skipIf(
-    "gevent" in sys.modules.keys() or "eventlet" in sys.modules.keys(),
+    is_greenthread_patched(),
     "gevent and eventlet do not support POSIX-style forking.",
 )
 class TestFork(IntegrationTest):
