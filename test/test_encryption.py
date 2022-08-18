@@ -51,6 +51,7 @@ from test.utils import (
     TestCreator,
     TopologyEventListener,
     camel_to_snake_args,
+    is_greenthread_patched,
     rs_or_single_client,
     wait_until,
 )
@@ -333,6 +334,10 @@ class TestClientSimple(EncryptionIntegrationTest):
     @unittest.skipIf(
         not hasattr(os, "register_at_fork"),
         "register_at_fork not available in this version of Python",
+    )
+    @unittest.skipIf(
+        is_greenthread_patched(),
+        "gevent and eventlet do not support POSIX-style forking.",
     )
     def test_fork(self):
         opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
