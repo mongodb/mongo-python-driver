@@ -64,22 +64,23 @@ class TestFork(IntegrationTest):
         parent_conn, child_conn = Pipe()
         init_id = self.client._topology._pid
         parent_cursor_exc = self.client._kill_cursors_executor
-        with self.fork() as pid:
-            if pid == 0:  # Child
-                self.client.admin.command("ping")
-                child_conn.send(self.client._topology._pid)
-                child_conn.send(
-                    (
-                        parent_cursor_exc != self.client._kill_cursors_executor,
-                        "client._kill_cursors_executor was not reinitialized",
-                    )
+        pid = os.fork()
+        if pid == 0:  # Child
+            self.client.admin.command("ping")
+            child_conn.send(self.client._topology._pid)
+            child_conn.send(
+                (
+                    parent_cursor_exc != self.client._kill_cursors_executor,
+                    "client._kill_cursors_executor was not reinitialized",
                 )
-            else:  # Parent
-                self.assertEqual(self.client._topology._pid, init_id)
-                child_id = parent_conn.recv()
-                self.assertNotEqual(child_id, init_id)
-                passed, msg = parent_conn.recv()
-                self.assertTrue(passed, msg)
+            )
+            os._exit(0)
+        else:  # Parent
+            self.assertEqual(self.client._topology._pid, init_id)
+            child_id = parent_conn.recv()
+            self.assertNotEqual(child_id, init_id)
+            passed, msg = parent_conn.recv()
+            self.assertTrue(passed, msg)
 
     def test_many_threaded(self):
         # Fork randomly while doing operations.
@@ -108,27 +109,12 @@ class TestFork(IntegrationTest):
                     if i % 50 == 0 and self.fork:
                         # Fork
                         def target():
-                            for c in self.clients:
-                                action(c)
+                            for c_ in self.clients:
+                                action(c_)
+                                c_.close()
 
-                        import multiprocessing
-
-                        ctx = multiprocessing.get_context("fork")
-                        proc = ctx.Process(target=target)
-                        proc.start()
-                        # Wait 60s.
-                        proc.join(60)
-                        pid = proc.pid or -1  # mypy
-                        if proc.exitcode is None:
-                            # If it failed, SIGINT to get traceback and wait
-                            # 10s.
-                            os.kill(pid, signal.SIGINT)
-                            proc.join(10)
-                            if proc.exitcode is None:
-                                # If that also failed, SIGKILL and resume after.
-                                os.kill(pid, signal.SIGKILL)
-                            self.runner.fail("deadlock")
-                        self.runner.assertEqual(proc.exitcode, 0)
+                        with self.runner.fork(target=target) as proc:
+                            self.runner.assertTrue(proc.pid)
                     action(rc)
 
         threads = [ForkThread(self, clients) for _ in range(10)]

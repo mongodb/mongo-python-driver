@@ -999,7 +999,7 @@ class PyMongoTestCase(unittest.TestCase):
             )
 
     @contextmanager
-    def fork(self) -> Generator[int, None, None]:
+    def fork(self, target=None) -> Generator[int, None, None]:
         """Helper for tests that use os.fork()
 
         Use in a with statement:
@@ -1010,20 +1010,28 @@ class PyMongoTestCase(unittest.TestCase):
                 else:  # Parent
                     pass
         """
-        pid = os.fork()
-        in_child = pid == 0
-        try:
-            yield pid
-        except:
-            if in_child:
-                traceback.print_exc()
-                os._exit(1)
-            raise
-        finally:
-            if in_child:
-                os._exit(0)
-            # In parent, assert child succeeded.
-            self.assertEqual(0, os.waitpid(pid, 0)[1])
+        import multiprocessing
+        import signal
+
+        ctx = multiprocessing.get_context("fork")
+        proc = ctx.Process(target=target)
+        proc.start()
+        yield proc
+
+        # Wait 60s.
+        proc.join(60)
+        pid = proc.pid or -1  # mypy
+        if proc.exitcode is None:
+            # If it failed, SIGINT to get traceback and wait
+            # 10s.
+            os.kill(pid, signal.SIGINT)
+            proc.join(10)
+            if proc.exitcode is None:
+                # If that also failed, SIGKILL and resume after.
+                os.kill(pid, signal.SIGKILL)
+            proc.join(10)
+            self.fail("deadlock")
+        self.assertEqual(proc.exitcode, 0)
 
 
 class IntegrationTest(PyMongoTestCase):
