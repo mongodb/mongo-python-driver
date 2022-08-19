@@ -43,7 +43,7 @@ except ImportError:
 from contextlib import contextmanager
 from functools import wraps
 from test.version import Version
-from typing import Dict, no_type_check
+from typing import Dict, Generator, no_type_check
 from unittest import SkipTest
 from urllib.parse import quote_plus
 
@@ -997,6 +997,33 @@ class PyMongoTestCase(unittest.TestCase):
             client_context.client.admin.command(
                 "configureFailPoint", cmd_on["configureFailPoint"], mode="off"
             )
+
+    @contextmanager
+    def fork(self) -> Generator[int, None, None]:
+        """Helper for tests that use os.fork()
+
+        Use in a with statement:
+
+            with self.fork() as pid:
+                if pid == 0:  # Child
+                    pass
+                else:  # Parent
+                    pass
+        """
+        pid = os.fork()
+        in_child = pid == 0
+        try:
+            yield pid
+        except:
+            if in_child:
+                traceback.print_exc()
+                os._exit(1)
+            raise
+        finally:
+            if in_child:
+                os._exit(0)
+            # In parent, assert child succeeded.
+            self.assertEqual(0, os.waitpid(pid, 0)[1])
 
 
 class IntegrationTest(PyMongoTestCase):
