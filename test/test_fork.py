@@ -126,7 +126,7 @@ class TestFork(IntegrationTest):
                             proc.join(10)
                             if proc.exitcode is None:
                                 # If that also failed, SIGKILL and resume after.
-                                os.kill(ipid, signal.SIGKILL)
+                                os.kill(pid, signal.SIGKILL)
                             self.runner.fail("deadlock")
                         self.runner.assertEqual(proc.exitcode, 0)
                     action(rc)
