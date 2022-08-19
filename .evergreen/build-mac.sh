@@ -13,11 +13,9 @@ for VERSION in 3.7 3.8 3.9 3.10; do
     rm -rf build
 
     createvirtualenv $PYTHON releasevenv
-    WHEELPYTHON=python
     python -m pip install --upgrade wheel
     python -m pip install --force-reinstall setuptools==63.2.0
-
-    $WHEELPYTHON setup.py bdist_wheel
+    python setup.py bdist_wheel
     deactivate || true
     rm -rf releasevenv
 
