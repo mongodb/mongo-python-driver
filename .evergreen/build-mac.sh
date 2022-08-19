@@ -12,14 +12,10 @@ for VERSION in 3.7 3.8 3.9 3.10; do
     PYTHON=/Library/Frameworks/Python.framework/Versions/$VERSION/bin/python3
     rm -rf build
 
-    # Install wheel if not already there.
-    if ! $PYTHON -m wheel version; then
-        createvirtualenv $PYTHON releasevenv
-        WHEELPYTHON=python
-        python -m pip install --upgrade wheel
-    else
-        WHEELPYTHON=$PYTHON
-    fi
+    createvirtualenv $PYTHON releasevenv
+    WHEELPYTHON=python
+    python -m pip install --upgrade wheel
+    python -m pip install --force-reinstall setuptools==63.2.0
 
     $WHEELPYTHON setup.py bdist_wheel
     deactivate || true
