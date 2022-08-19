@@ -121,12 +121,11 @@ class TestFork(IntegrationTest):
                         if proc.exitcode is None:
                             # If it failed, SIGINT to get traceback and wait
                             # 10s.
-                            signal.pidfd_send_signal(proc.pid, signal.SIGINT)
+                            os.kill(proc.pid, signal.SIGINT)
                             proc.join(10)
                             if proc.exitcode is None:
                                 # If that also failed, SIGKILL and resume after.
-                                signal.pidfd_send_signal(proc.pid, signal.SIGKILL)
-                        if proc.exitcode is None:
+                                os.kill(proc.pid, signal.SIGKILL)
                             self.runner.fail("deadlock")
                         self.runner.assertEqual(proc.exitcode, 0)
                     action(rc)
