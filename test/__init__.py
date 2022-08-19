@@ -1011,7 +1011,6 @@ class PyMongoTestCase(unittest.TestCase):
                     pass
         """
         import multiprocessing
-        import signal
 
         ctx = multiprocessing.get_context("fork")
         proc = ctx.Process(target=target)
@@ -1024,6 +1023,8 @@ class PyMongoTestCase(unittest.TestCase):
         if proc.exitcode is None:
             # If it failed, SIGINT to get traceback and wait
             # 10s.
+            import signal
+
             os.kill(pid, signal.SIGINT)
             proc.join(10)
             if proc.exitcode is None:
