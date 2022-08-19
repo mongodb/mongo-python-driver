@@ -15,6 +15,7 @@
 """Test that pymongo is fork safe."""
 
 import os
+import signal
 from multiprocessing import Pipe
 from test import IntegrationTest
 from test.utils import (
@@ -106,10 +107,28 @@ class TestFork(IntegrationTest):
                     rc = self.clients[i % len(self.clients)]
                     if i % 50 == 0 and self.fork:
                         # Fork
-                        with self.runner.fork() as pid:
-                            if pid == 0:  # Child
-                                for c in self.clients:
-                                    action(c)
+                        def target():
+                            for c in self.clients:
+                                action(c)
+
+                        import multiprocessing
+
+                        ctx = multiprocessing.get_context("fork")
+                        proc = ctx.Process(target=target)
+                        proc.start()
+                        # Wait 60s.
+                        proc.join(60)
+                        if proc.exitcode is None:
+                            # If it failed, SIGINT to get traceback and wait
+                            # 10s.
+                            signal.pidfd_send_signal(proc.pid, signal.SIGINT)
+                            proc.join(10)
+                            if proc.exitcode is None:
+                                # If that also failed, SIGKILL and resume after.
+                                signal.pidfd_send_signal(proc.pid, signal.SIGKILL)
+                        if proc.exitcode is None:
+                            self.runner.fail("deadlock")
+                        self.runner.assertEqual(proc.exitcode, 0)
                     action(rc)
 
         threads = [ForkThread(self, clients) for _ in range(10)]
