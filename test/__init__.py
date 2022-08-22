@@ -1001,7 +1001,9 @@ class PyMongoTestCase(unittest.TestCase):
             )
 
     @contextmanager
-    def fork(self, target: Callable) -> Generator[multiprocessing.Process, None, None]:
+    def fork(
+        self, target: Callable, timeout: float = 60
+    ) -> Generator[multiprocessing.Process, None, None]:
         """Helper for tests that use os.fork()
 
         Use in a with statement:
@@ -1015,20 +1017,16 @@ class PyMongoTestCase(unittest.TestCase):
         try:
             yield proc  # type: ignore
         finally:
-            # Wait 60s.
-            proc.join(60)
+            proc.join(timeout)
             pid = proc.pid
             assert pid
             if proc.exitcode is None:
-                # If it failed, SIGINT to get traceback and wait
-                # 10s.
+                # If it failed, SIGINT to get traceback and wait 10s.
                 os.kill(pid, signal.SIGINT)
                 proc.join(10)
-                if proc.exitcode is None:
-                    # If that also failed, SIGKILL and resume after.
-                    os.kill(pid, signal.SIGKILL)
-                proc.join(10)
-                self.fail("deadlock")
+                proc.kill()
+                proc.join(1)
+                self.fail(f"child timed out after {timeout}s (see traceback in logs): deadlock?")
             self.assertEqual(proc.exitcode, 0)
 
 
