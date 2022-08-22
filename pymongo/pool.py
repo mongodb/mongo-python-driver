@@ -1375,8 +1375,7 @@ class Pool:
             if handler:
                 handler.contribute_socket(sock_info, completed_handshake=False)
 
-            with self.lock:
-                sock_info.authenticate()
+            sock_info.authenticate()
         except BaseException:
             sock_info.close_socket(ConnectionClosedReason.ERROR)
             raise
