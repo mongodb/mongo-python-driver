@@ -1086,15 +1086,35 @@ class Cursor(Generic[_DocumentType]):
         if response.from_command:
             if cmd_name != "explain":
                 cursor = docs[0]["cursor"]
-                self.__id = cursor["id"]
+                opts = self.__collection.codec_options
+                inflate_response = getattr(self, "_RawBatchCursor__inflate_response", True)
+                from bson import _decode_single_element
+
+                if not inflate_response:
+                    self.__id = _decode_single_element(cursor.raw, "id", opts)
+                else:
+                    self.__id = cursor["id"]
                 if cmd_name == "find":
-                    documents = cursor["firstBatch"]
+                    if inflate_response:
+                        documents = cursor["firstBatch"]
+                    else:
+                        documents = [cursor.raw]
                     # Update the namespace used for future getMore commands.
-                    ns = cursor.get("ns")
+                    if inflate_response:
+                        ns = cursor.get("ns")
+                    else:
+                        ns = None
+                        try:
+                            ns = _decode_single_element(cursor.raw, "ns", opts)
+                        except ValueError:
+                            pass
                     if ns:
                         self.__dbname, self.__collname = ns.split(".", 1)
-                else:
+                elif inflate_response:
                     documents = cursor["nextBatch"]
+                else:
+                    documents = [cursor.raw]
+
                 self.__data = deque(documents)
                 self.__retrieved += len(documents)
             else:
@@ -1321,13 +1341,19 @@ class RawBatchCursor(Cursor, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
         """
+        self.__inflate_response = kwargs.pop("inflate_response", False)
         super(RawBatchCursor, self).__init__(collection, *args, **kwargs)
 
     def _unpack_response(
         self, response, cursor_id, codec_options, user_fields=None, legacy_response=False
     ):
+        inflate_response = self.__inflate_response
+        # if not inflate_response:
+        #     from bson.raw_bson import RawBSONDocument
+        #     raw_response = [RawBSONDocument(response.payload_document)]
+        # else:
         raw_response = response.raw_response(cursor_id, user_fields=user_fields)
-        if not legacy_response:
+        if not legacy_response and inflate_response:
             # OP_MSG returns firstBatch/nextBatch documents as a BSON array
             # Re-assemble the array of documents into a document stream
             _convert_raw_document_lists_to_streams(raw_response[0])

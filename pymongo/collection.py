@@ -43,7 +43,11 @@ from pymongo.aggregation import (
 from pymongo.bulk import _Bulk
 from pymongo.change_stream import CollectionChangeStream
 from pymongo.collation import validate_collation_or_none
-from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
+from pymongo.command_cursor import (
+    CommandCursor,
+    RawBatchCommandCursor,
+    RawRawBatchCommandCursor,
+)
 from pymongo.common import _ecc_coll_name, _ecoc_coll_name, _esc_coll_name
 from pymongo.cursor import Cursor, RawBatchCursor
 from pymongo.errors import (
@@ -2472,11 +2476,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             raise InvalidOperation("aggregate_raw_batches does not support auto encryption")
         if comment is not None:
             kwargs["comment"] = comment
+        if kwargs.pop("inflate_response", True):
+            cursor_class = RawBatchCommandCursor
+        else:
+            cursor_class = RawRawBatchCommandCursor
         with self.__database.client._tmp_session(session, close=False) as s:
             return self._aggregate(
                 _CollectionRawAggregationCommand,
                 pipeline,
-                RawBatchCommandCursor,
+                cursor_class,
                 session=s,
                 explicit_session=session is not None,
                 **kwargs,

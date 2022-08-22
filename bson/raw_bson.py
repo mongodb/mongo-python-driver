@@ -156,6 +156,10 @@ class RawBSONDocument(Mapping[str, Any]):
         return "RawBSONDocument(%r, codec_options=%r)" % (self.raw, self.__codec_options)
 
 
+# Need a function that extracts a single key from a bson document
+# used to extract top level keys as needed
+
+
 def _inflate_bson(bson_bytes: bytes, codec_options: CodecOptions) -> Mapping[Any, Any]:
     """Inflates the top level fields of a BSON document.
 

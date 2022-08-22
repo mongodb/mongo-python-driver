@@ -517,7 +517,7 @@ _ELEMENT_GETTER: Dict[int, Callable[..., Tuple[Any, int]]] = {
 }
 
 
-if _USE_C:
+if False:  # _USE_C:
 
     def _element_to_dict(
         data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions
@@ -1117,6 +1117,21 @@ def _decode_selective(rawdoc: Any, fields: Any, codec_options: Any) -> Mapping[A
         else:
             doc[key] = value
     return doc
+
+
+def _decode_single_element(data: Any, key: str, opts: CodecOptions):
+    """Decode a single key from a document."""
+    data, view = get_data_and_view(data)
+    _, obj_end = _get_object_size(data, 0, len(data))
+    position = 4
+    while position < obj_end - 1:
+        obj_size = _UNPACK_INT_FROM(data, position)[0]
+        element_name, _ = _get_c_string(data, view, position + 1, opts)
+        print(element_name)
+        if element_name == key:
+            return _element_to_dict(data, view, position, obj_end, opts)
+        position += obj_size
+    raise ValueError(f"{key} not found in object")
 
 
 def _convert_raw_document_lists_to_streams(document: Any) -> None:
