@@ -26,6 +26,7 @@ GREEN_FRAMEWORK=${GREEN_FRAMEWORK:-}
 C_EXTENSIONS=${C_EXTENSIONS:-}
 COVERAGE=${COVERAGE:-}
 COMPRESSORS=${COMPRESSORS:-}
+MONGODB_VERSION=${MONGODB_VERSION:-}
 MONGODB_API_VERSION=${MONGODB_API_VERSION:-}
 TEST_ENCRYPTION=${TEST_ENCRYPTION:-}
 TEST_CRYPT_SHARED=${TEST_CRYPT_SHARED:-}
@@ -151,9 +152,14 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     . $DRIVERS_TOOLS/.evergreen/csfle/set-temp-creds.sh
 
     if [ -n "$TEST_CRYPT_SHARED" ]; then
+        REAL_VERSION=$(mongod --version | head -n1 | cut -d v -f3 | tr -d "\r")
+        if [ "$MONGODB_VERSION" = "latest" ]; then
+          REAL_VERSION="latest"
+        fi
         echo "Testing CSFLE with crypt_shared lib"
         $PYTHON $DRIVERS_TOOLS/.evergreen/mongodl.py --component crypt_shared \
-            --version latest --out ../crypt_shared/
+            --version "$REAL_VERSION" \
+            --out ../crypt_shared/
         export DYLD_FALLBACK_LIBRARY_PATH=../crypt_shared/lib/:$DYLD_FALLBACK_LIBRARY_PATH
         export LD_LIBRARY_PATH=../crypt_shared/lib:$LD_LIBRARY_PATH
         export PATH=../crypt_shared/bin:$PATH

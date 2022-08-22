@@ -1,6 +1,39 @@
 Changelog
 =========
 
+Changes in Version 4.3
+----------------------
+
+PyMongo 4.3 brings a number of improvements including:
+
+- Added support for decoding BSON datetimes outside of the range supported
+  by Python's :class:`~datetime.datetime` builtin. See
+  :ref:`handling-out-of-range-datetimes` for examples, as well as
+  :class:`bson.datetime_ms.DatetimeMS`,
+  :class:`bson.codec_options.DatetimeConversion`, and
+  :class:`bson.codec_options.CodecOptions`'s ``datetime_conversion``
+  parameter for more details (`PYTHON-1824`_).
+- Added support for using a :class:`~pymongo.mongo_client.MongoClient` after
+  an :py:func:`os.fork` (`PYTHON-2484`_).
+
+Bug fixes
+.........
+
+- Fixed a bug where  :class:`~pymongo.change_stream.ChangeStream`
+  would allow an app to retry calling ``next()`` or ``try_next()`` even
+  after non-resumable errors (`PYTHON-3389`_).
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.3 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PYTHON-1824: https://jira.mongodb.org/browse/PYTHON-1824
+.. _PYTHON-2484: https://jira.mongodb.org/browse/PYTHON-2484
+.. _PYTHON-3389: https://jira.mongodb.org/browse/PYTHON-3389
+.. _PyMongo 4.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=33425
+
 Changes in Version 4.2
 ----------------------
 
