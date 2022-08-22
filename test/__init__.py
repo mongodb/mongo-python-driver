@@ -1001,7 +1001,7 @@ class PyMongoTestCase(unittest.TestCase):
             )
 
     @contextmanager
-    def fork(self, target: Callable) -> Generator[int, None, None]:
+    def fork(self, target: Callable) -> Generator[multiprocessing.Process, None, None]:
         """Helper for tests that use os.fork()
 
         Use in a with statement:
@@ -1013,7 +1013,7 @@ class PyMongoTestCase(unittest.TestCase):
         proc = ctx.Process(target=target)
         proc.start()
         try:
-            yield proc
+            yield proc  # type: ignore
         finally:
             # Wait 60s.
             proc.join(60)

@@ -15,23 +15,26 @@
 """Test that pymongo is fork safe."""
 
 import os
-import signal
+import sys
+import unittest
 from multiprocessing import Pipe
+
+from bson.objectid import ObjectId
+
+sys.path[0:0] = [""]
+
 from test import IntegrationTest
 from test.utils import (
     ExceptionCatchingThread,
     is_greenthread_patched,
     rs_or_single_client,
 )
-from unittest import skipIf
-
-from bson.objectid import ObjectId
 
 
-@skipIf(
+@unittest.skipIf(
     not hasattr(os, "register_at_fork"), "register_at_fork not available in this version of Python"
 )
-@skipIf(
+@unittest.skipIf(
     is_greenthread_patched(),
     "gevent and eventlet do not support POSIX-style forking.",
 )
@@ -41,9 +44,12 @@ class TestFork(IntegrationTest):
         # Parent => All locks should be as before the fork.
         # Child => All locks should be reset.
         with self.client._MongoClient__lock:
-            with self.fork() as pid:
-                if pid == 0:  # Child
-                    self.client.admin.command("ping")
+
+            def target():
+                self.client.admin.command("ping")
+
+            with self.fork(target):
+                pass
         self.client.admin.command("ping")
 
     def test_lock_object_id(self):
@@ -51,10 +57,13 @@ class TestFork(IntegrationTest):
         # Parent => _inc_lock should remain locked.
         # Child => _inc_lock should be unlocked.
         with ObjectId._inc_lock:
-            with self.fork() as pid:
-                if pid == 0:  # Child
-                    self.assertFalse(ObjectId._inc_lock.locked())
-                    self.assertTrue(ObjectId())
+
+            def target():
+                self.assertFalse(ObjectId._inc_lock.locked())
+                self.assertTrue(ObjectId())
+
+            with self.fork(target):
+                pass
 
     def test_topology_reset(self):
         # Tests that topologies are different from each other.
@@ -64,8 +73,8 @@ class TestFork(IntegrationTest):
         parent_conn, child_conn = Pipe()
         init_id = self.client._topology._pid
         parent_cursor_exc = self.client._kill_cursors_executor
-        pid = os.fork()
-        if pid == 0:  # Child
+
+        def target():
             self.client.admin.command("ping")
             child_conn.send(self.client._topology._pid)
             child_conn.send(
@@ -74,8 +83,8 @@ class TestFork(IntegrationTest):
                     "client._kill_cursors_executor was not reinitialized",
                 )
             )
-            os._exit(0)
-        else:  # Parent
+
+        with self.fork(target):
             self.assertEqual(self.client._topology._pid, init_id)
             child_id = parent_conn.recv()
             self.assertNotEqual(child_id, init_id)
@@ -130,3 +139,7 @@ class TestFork(IntegrationTest):
 
         for c in clients:
             c.close()
+
+
+if __name__ == "__main__":
+    unittest.main()
