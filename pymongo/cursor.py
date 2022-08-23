@@ -1087,27 +1087,17 @@ class Cursor(Generic[_DocumentType]):
             if cmd_name != "explain":
                 cursor = docs[0]["cursor"]
                 opts = self.__collection.codec_options
+                if hasattr(cursor, "raw"):
+                    cursor = opts.document_class(cursor.raw)
                 inflate_response = getattr(self, "_RawBatchCursor__inflate_response", True)
-                from bson import _decode_single_element
-
-                if not inflate_response:
-                    self.__id = _decode_single_element(cursor.raw, "id", opts)
-                else:
-                    self.__id = cursor["id"]
+                self.__id = cursor["id"]
                 if cmd_name == "find":
                     if inflate_response:
                         documents = cursor["firstBatch"]
                     else:
                         documents = [cursor.raw]
                     # Update the namespace used for future getMore commands.
-                    if inflate_response:
-                        ns = cursor.get("ns")
-                    else:
-                        ns = None
-                        try:
-                            ns = _decode_single_element(cursor.raw, "ns", opts)
-                        except ValueError:
-                            pass
+                    ns = cursor.get("ns")
                     if ns:
                         self.__dbname, self.__collname = ns.split(".", 1)
                 elif inflate_response:
