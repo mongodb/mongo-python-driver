@@ -81,7 +81,7 @@ class TestAuthAWS(unittest.TestCase):
         self.addCleanup(client.close)
 
         # Make the creds about to expire.
-        soon = datetime.now(auth.utc) + timedelta(minutes=1)
+        soon = datetime.now(auth.utc) + timedelta(seconds=30)
         creds = auth.get_cached_credentials()
         creds = auth.AwsCredential(creds.username, creds.password, creds.token, soon)
         auth.set_cached_credentials(creds)
