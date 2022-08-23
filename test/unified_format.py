@@ -1591,7 +1591,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                     if i < attempts - 1:
                         print(
                             f"Retrying after attempt {i+1} of {self.id()} failed with:\n"
-                            f"{traceback.format_exc()}"
+                            f"{traceback.format_exc()}",
+                            file=sys.stderr,
                         )
                         self.setUp()
                         continue

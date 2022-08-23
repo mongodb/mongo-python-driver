@@ -1011,8 +1011,22 @@ class PyMongoTestCase(unittest.TestCase):
             with self.fork(target=lambda: print('in child')) as proc:
                 self.assertTrue(proc.pid)  # Child process was started
         """
+
+        def print_threads(*args: object) -> None:
+            for thread_id, frame in sys._current_frames().items():
+                sys.stderr.write(f"\n--- Stack for thread {thread_id} ---")
+                traceback.print_stack(frame, file=sys.stderr)
+
+        def _target() -> None:
+            signal.signal(signal.SIGUSR1, print_threads)
+            try:
+                target()
+            except Exception:
+                print_threads()
+                raise
+
         ctx = multiprocessing.get_context("fork")
-        proc = ctx.Process(target=target)
+        proc = ctx.Process(target=_target)
         proc.start()
         try:
             yield proc  # type: ignore
@@ -1021,9 +1035,13 @@ class PyMongoTestCase(unittest.TestCase):
             pid = proc.pid
             assert pid
             if proc.exitcode is None:
-                # If it failed, SIGINT to get traceback and wait 10s.
+                # If it failed, SIGUSR1 to get thread tracebacks.
+                os.kill(pid, signal.SIGUSR1)
+                proc.join(5)
+                # SIGINT to get main thread traceback in case SIGUSR1 didn't work.
                 os.kill(pid, signal.SIGINT)
-                proc.join(10)
+                proc.join(5)
+                # SIGKILL in case SIGINT didn't work.
                 proc.kill()
                 proc.join(1)
                 self.fail(f"child timed out after {timeout}s (see traceback in logs): deadlock?")

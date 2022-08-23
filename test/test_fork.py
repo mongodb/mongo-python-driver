@@ -95,7 +95,7 @@ class TestFork(IntegrationTest):
         # Fork randomly while doing operations.
         clients = []
         for _ in range(10):
-            c = rs_or_single_client()
+            c = rs_or_single_client(serverSelectionTimeoutMS=45000)
             clients.append(c)
             self.addCleanup(c.close)
 
