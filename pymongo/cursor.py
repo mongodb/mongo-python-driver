@@ -1321,17 +1321,13 @@ class RawBatchCursor(Cursor, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
         """
-        self.__inflator = kwargs.pop("inflator", None)
         super(RawBatchCursor, self).__init__(collection, *args, **kwargs)
 
     def _unpack_response(
         self, response, cursor_id, codec_options, user_fields=None, legacy_response=False
     ):
-        inflator = self.__inflator
         raw_response = response.raw_response(cursor_id, user_fields=user_fields)
-        if inflator:
-            raw_response = inflator(raw_response)
-        elif not legacy_response:
+        if not legacy_response:
             # OP_MSG returns firstBatch/nextBatch documents as a BSON array
             # Re-assemble the array of documents into a document stream
             _convert_raw_document_lists_to_streams(raw_response[0])
