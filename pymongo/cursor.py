@@ -1095,7 +1095,6 @@ class Cursor(Generic[_DocumentType]):
                         self.__dbname, self.__collname = ns.split(".", 1)
                 else:
                     documents = cursor["nextBatch"]
-
                 self.__data = deque(documents)
                 self.__retrieved += len(documents)
             else:
@@ -1336,7 +1335,6 @@ class RawBatchCursor(Cursor, Generic[_DocumentType]):
             # OP_MSG returns firstBatch/nextBatch documents as a BSON array
             # Re-assemble the array of documents into a document stream
             _convert_raw_document_lists_to_streams(raw_response[0])
-
         return raw_response
 
     def explain(self) -> _DocumentType:

@@ -1378,7 +1378,6 @@ class _OpMsg(object):
         cursor_id is ignored
         user_fields is used to determine which fields must not be decoded
         """
-        user_fields = {"firstBatch": 1, "nextBatch": 1}
         inflated_response = _decode_selective(
             RawBSONDocument(self.payload_document), user_fields, DEFAULT_RAW_BSON_OPTIONS
         )
@@ -1400,7 +1399,6 @@ class _OpMsg(object):
         """
         # If _OpMsg is in-use, this cannot be a legacy response.
         assert not legacy_response
-        user_fields = {"firstBatch": 1, "nextBatch": 1}
         return bson._decode_all_selective(self.payload_document, codec_options, user_fields)
 
     def command_response(self, codec_options):
