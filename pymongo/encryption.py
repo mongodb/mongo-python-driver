@@ -39,7 +39,6 @@ from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from bson.son import SON
 from pymongo import _csot
-from pymongo.auth_aws import _get_kms_credentials
 from pymongo.cursor import Cursor
 from pymongo.daemon import _spawn_daemon
 from pymongo.encryption_options import AutoEncryptionOpts
@@ -248,18 +247,6 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         """
         return encode(doc)
 
-    def ask_for_kms_credentials(self):
-        """Return on-demand kms credentials.
-
-        :Returns:
-        Map of KMS provider options.
-        """
-        kms_map = self.opts._kms_providers
-        creds = {}
-        if "aws" in kms_map and not len(kms_map["aws"]):
-            creds["aws"] = _get_kms_credentials()
-        return creds
-
     def close(self):
         """Release resources.
 
@@ -356,7 +343,6 @@ class _Encrypter(object):
                 bypass_encryption=opts._bypass_auto_encryption,
                 encrypted_fields_map=encrypted_fields_map,
                 bypass_query_analysis=opts._bypass_query_analysis,
-                use_need_kms_credentials_state=opts._use_need_kms_credentials_state,
             ),
         )
         self._closed = False
@@ -454,7 +440,6 @@ class ClientEncryption(object):
         key_vault_client: MongoClient,
         codec_options: CodecOptions,
         kms_tls_options: Optional[Mapping[str, Any]] = None,
-        use_need_kms_credentials_state: bool = True,
     ) -> None:
         """Explicit client-side field level encryption.
 
@@ -519,11 +504,6 @@ class ClientEncryption(object):
             Or to supply a client certificate::
 
               kms_tls_options={'kmip': {'tlsCertificateKeyFile': 'client.pem'}}
-          - `use_need_kms_credentials_state`: Whether to enable on-demand KMS
-            credentials.
-
-        .. versionchanged:: 4.3
-           Added the `use_need_kms_credentials_state` parameter.
 
         .. versionchanged:: 4.0
            Added the `kms_tls_options` parameter and the "kmip" KMS provider.
@@ -555,10 +535,7 @@ class ClientEncryption(object):
             None, key_vault_coll, None, opts
         )
         self._encryption = ExplicitEncrypter(
-            self._io_callbacks,
-            MongoCryptOptions(
-                kms_providers, None, use_need_kms_credentials_state=use_need_kms_credentials_state
-            ),
+            self._io_callbacks, MongoCryptOptions(kms_providers, None)
         )
         # Use the same key vault collection as the callback.
         self._key_vault_coll = self._io_callbacks.key_vault_coll

@@ -13,12 +13,10 @@
 # limitations under the License.
 
 """MONGODB-AWS Authentication helpers."""
-from typing import Dict
 
 try:
     import pymongo_auth_aws
     from pymongo_auth_aws import AwsCredential, AwsSaslContext, PyMongoAuthAwsError
-    from pymongo_auth_aws.auth import _aws_temp_credentials
 
     _HAVE_MONGODB_AWS = True
 except ImportError:
@@ -33,20 +31,6 @@ import bson
 from bson.binary import Binary
 from bson.son import SON
 from pymongo.errors import ConfigurationError, OperationFailure
-
-
-def _get_kms_credentials() -> Dict[str, str]:
-    """Fetch On-Demand KMS credentials."""
-    if not _HAVE_MONGODB_AWS:
-        raise ConfigurationError(
-            "MONGODB-AWS authentication requires pymongo-auth-aws: "
-            "install with: python -m pip install 'pymongo[aws]'"
-        )
-    creds = _aws_temp_credentials()
-    creds_dict = {"accessKeyId": creds.username, "secretAccessKey": creds.password}
-    if creds.token:
-        creds_dict["sessionToken"] = creds.token
-    return creds_dict
 
 
 class _AwsSaslContext(AwsSaslContext):  # type: ignore
