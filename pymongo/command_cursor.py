@@ -33,7 +33,6 @@ class CommandCursor(Generic[_DocumentType]):
     """A cursor / iterator over command cursors."""
 
     _getmore_class = _GetMore
-    _inflate_response = True
 
     def __init__(
         self,
@@ -185,10 +184,7 @@ class CommandCursor(Generic[_DocumentType]):
                 self.__sock_mgr = _SocketManager(response.socket_info, response.more_to_come)
         if response.from_command:
             cursor = response.docs[0]["cursor"]
-            if self._inflate_response:
-                documents = cursor["nextBatch"]
-            else:
-                documents = [cursor.raw]
+            documents = cursor["nextBatch"]
             self.__postbatchresumetoken = cursor.get("postBatchResumeToken")
             self.__id = cursor["id"]
         else:
@@ -355,13 +351,3 @@ class RawBatchCommandCursor(CommandCursor, Generic[_DocumentType]):
 
     def __getitem__(self, index: int) -> NoReturn:
         raise InvalidOperation("Cannot call __getitem__ on RawBatchCursor")
-
-
-class RawRawBatchCommandCursor(RawBatchCommandCursor):
-    _inflate_response = False
-
-    def _unpack_response(
-        self, response, cursor_id, codec_options, user_fields=None, legacy_response=False
-    ):
-        raw_response = response.raw_response(cursor_id, user_fields=user_fields)
-        return raw_response

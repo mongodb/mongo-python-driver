@@ -1086,24 +1086,15 @@ class Cursor(Generic[_DocumentType]):
         if response.from_command:
             if cmd_name != "explain":
                 cursor = docs[0]["cursor"]
-                opts = self.__collection.codec_options
-                if hasattr(cursor, "raw"):
-                    cursor = opts.document_class(cursor.raw)
-                inflate_response = getattr(self, "_RawBatchCursor__inflate_response", True)
                 self.__id = cursor["id"]
                 if cmd_name == "find":
-                    if inflate_response:
-                        documents = cursor["firstBatch"]
-                    else:
-                        documents = [cursor.raw]
+                    documents = cursor["firstBatch"]
                     # Update the namespace used for future getMore commands.
                     ns = cursor.get("ns")
                     if ns:
                         self.__dbname, self.__collname = ns.split(".", 1)
-                elif inflate_response:
-                    documents = cursor["nextBatch"]
                 else:
-                    documents = [cursor.raw]
+                    documents = cursor["nextBatch"]
 
                 self.__data = deque(documents)
                 self.__retrieved += len(documents)
@@ -1331,22 +1322,21 @@ class RawBatchCursor(Cursor, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
         """
-        self.__inflate_response = kwargs.pop("inflate_response", False)
+        self.__inflator = kwargs.pop("inflator", None)
         super(RawBatchCursor, self).__init__(collection, *args, **kwargs)
 
     def _unpack_response(
         self, response, cursor_id, codec_options, user_fields=None, legacy_response=False
     ):
-        inflate_response = self.__inflate_response
-        # if not inflate_response:
-        #     from bson.raw_bson import RawBSONDocument
-        #     raw_response = [RawBSONDocument(response.payload_document)]
-        # else:
+        inflator = self.__inflator
         raw_response = response.raw_response(cursor_id, user_fields=user_fields)
-        if not legacy_response and inflate_response:
+        if inflator:
+            raw_response = inflator(raw_response)
+        elif not legacy_response:
             # OP_MSG returns firstBatch/nextBatch documents as a BSON array
             # Re-assemble the array of documents into a document stream
             _convert_raw_document_lists_to_streams(raw_response[0])
+
         return raw_response
 
     def explain(self) -> _DocumentType:
