@@ -1059,7 +1059,7 @@ def _configured_socket(address, options):
         try:
             # We have to pass hostname / ip address to wrap_socket
             # to use SSLContext.check_hostname.
-            if HAS_SNI:
+            if HAS_SNI and False:
                 sock = ssl_context.wrap_socket(sock, server_hostname=host)
             else:
                 sock = ssl_context.wrap_socket(sock)
@@ -1080,7 +1080,8 @@ def _configured_socket(address, options):
             and not options.tls_allow_invalid_hostnames
         ):
             try:
-                ssl.match_hostname(sock.getpeercert(), hostname=host)
+                pass
+                # ssl.match_hostname(sock.getpeercert(), hostname=host)
             except _CertificateError:
                 sock.close()
                 raise

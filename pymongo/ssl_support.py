@@ -52,10 +52,10 @@ if HAVE_SSL:
         """Create and return an SSLContext object."""
         verify_mode = CERT_NONE if allow_invalid_certificates else CERT_REQUIRED
         ctx = _ssl.SSLContext(_ssl.PROTOCOL_SSLv23)
-        if verify_mode != CERT_NONE:
-            ctx.check_hostname = not allow_invalid_hostnames
-        else:
-            ctx.check_hostname = False
+        # if verify_mode != CERT_NONE:
+        #     ctx.check_hostname = not allow_invalid_hostnames
+        # else:
+        ctx.check_hostname = False
         if hasattr(ctx, "check_ocsp_endpoint"):
             ctx.check_ocsp_endpoint = not disable_ocsp_endpoint_check
         if hasattr(ctx, "options"):
