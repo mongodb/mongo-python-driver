@@ -23,6 +23,7 @@ import signal
 import socket
 import sys
 import threading
+import time
 import traceback
 import unittest
 import warnings
@@ -44,6 +45,7 @@ except ImportError:
 
 from contextlib import contextmanager
 from functools import wraps
+from subprocess import PIPE, STDOUT, Popen
 from test.version import Version
 from typing import Callable, Dict, Generator, no_type_check
 from unittest import SkipTest
@@ -1013,16 +1015,24 @@ class PyMongoTestCase(unittest.TestCase):
         """
 
         def print_threads(*args: object) -> None:
+            if print_threads.ran:
+                return
+            print_threads.ran = True
             for thread_id, frame in sys._current_frames().items():
-                sys.stderr.write(f"\n--- Stack for thread {thread_id} ---")
+                sys.stderr.write(f"\n--- Stack for thread {thread_id} ---\n")
                 traceback.print_stack(frame, file=sys.stderr)
+
+        print_threads.ran = False
 
         def _target() -> None:
             signal.signal(signal.SIGUSR1, print_threads)
             try:
                 target()
-            except Exception:
+            except Exception as exc:
+                sys.stderr.write(f"Child process failed with: {exc}\n")
                 print_threads()
+                # Sleep for a while to let the parent attach via GDB.
+                time.sleep(2 * timeout)
                 raise
 
         ctx = multiprocessing.get_context("fork")
@@ -1035,17 +1045,27 @@ class PyMongoTestCase(unittest.TestCase):
             pid = proc.pid
             assert pid
             if proc.exitcode is None:
+                # gdb to get C-level tracebacks
+                gdb(pid)
                 # If it failed, SIGUSR1 to get thread tracebacks.
                 os.kill(pid, signal.SIGUSR1)
                 proc.join(5)
-                # SIGINT to get main thread traceback in case SIGUSR1 didn't work.
-                os.kill(pid, signal.SIGINT)
-                proc.join(5)
-                # SIGKILL in case SIGINT didn't work.
-                proc.kill()
-                proc.join(1)
+                if proc.exitcode is None:
+                    # SIGINT to get main thread traceback in case SIGUSR1 didn't work.
+                    os.kill(pid, signal.SIGINT)
+                    proc.join(5)
+                if proc.exitcode is None:
+                    # SIGKILL in case SIGINT didn't work.
+                    proc.kill()
+                    proc.join(1)
                 self.fail(f"child timed out after {timeout}s (see traceback in logs): deadlock?")
             self.assertEqual(proc.exitcode, 0)
+
+
+def gdb(pid: int) -> None:
+    p = Popen(["gdb"], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+    stdout = p.communicate(input=f"attach {pid}\nthread apply all bt\nquit\n".encode("utf-8"))[0]
+    sys.stderr.write(stdout.decode("utf-8"))
 
 
 class IntegrationTest(PyMongoTestCase):
