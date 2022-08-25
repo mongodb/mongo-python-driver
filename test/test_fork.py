@@ -19,16 +19,17 @@ import sys
 import unittest
 from multiprocessing import Pipe
 
-from bson.objectid import ObjectId
-
 sys.path[0:0] = [""]
 
 from test import IntegrationTest
 from test.utils import (
     ExceptionCatchingThread,
+    get_pool,
     is_greenthread_patched,
     rs_or_single_client,
 )
+
+from bson.objectid import ObjectId
 
 
 @unittest.skipIf(
@@ -93,52 +94,41 @@ class TestFork(IntegrationTest):
 
     def test_many_threaded(self):
         # Fork randomly while doing operations.
-        clients = []
-        for _ in range(10):
-            c = rs_or_single_client()
-            clients.append(c)
+        clients = [rs_or_single_client() for _ in range(5)]
+        for c in clients:
             self.addCleanup(c.close)
 
         class ForkThread(ExceptionCatchingThread):
-            def __init__(self, runner, clients):
-                self.runner = runner
-                self.clients = clients
-                self.fork = False
+            def __init__(self):
+                self.stop = False
+                super().__init__(target=self.run_internal)
 
-                super().__init__(target=self.fork_behavior)
+            def run_internal(self) -> None:
+                while not self.stop:
+                    for c in clients:
+                        c.admin.command("ping")
+                        get_pool(c).reset_without_pause()
 
-            def fork_behavior(self) -> None:
-                def action(client):
-                    client.admin.command("ping")
-                    return 0
-
-                for i in range(200):
-                    # Pick a random client.
-                    rc = self.clients[i % len(self.clients)]
-                    if i % 50 == 0 and self.fork:
-                        # Fork
-                        def target():
-                            for c_ in self.clients:
-                                action(c_)
-                                c_.close()
-
-                        with self.runner.fork(target=target) as proc:
-                            self.runner.assertTrue(proc.pid)
-                    action(rc)
-
-        threads = [ForkThread(self, clients) for _ in range(10)]
-        threads[-1].fork = True
+        threads = [ForkThread() for _ in range(5)]
         for t in threads:
             t.start()
 
-        for t in threads:
-            t.join()
+        def child_callback():
+            for c in clients:
+                c.admin.command("ping")
+                c.close()
 
-        for t in threads:
-            self.assertIsNone(t.exc)
-
-        for c in clients:
-            c.close()
+        try:
+            for _ in range(100):
+                with self.fork(child_callback) as proc:
+                    self.assertTrue(proc.pid)
+        finally:
+            for t in threads:
+                t.stop = True
+            for t in threads:
+                t.join()
+            for t in threads:
+                self.assertIsNone(t.exc)
 
 
 if __name__ == "__main__":
