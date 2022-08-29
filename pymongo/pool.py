@@ -451,6 +451,10 @@ class PoolOptions(object):
         """An SSLContext instance or None."""
         return self.__ssl_context
 
+    def _set_ssl_context(self, ctx):
+        """Set the SSLContext instance."""
+        self.__ssl_context = ctx
+
     @property
     def tls_allow_invalid_hostnames(self):
         """If True skip ssl.match_hostname."""

@@ -119,7 +119,7 @@ class TestFork(IntegrationTest):
                 c.close()
 
         try:
-            for _ in range(100):
+            for _ in range(20):
                 with self.fork(child_callback) as proc:
                     self.assertTrue(proc.pid)
         finally:

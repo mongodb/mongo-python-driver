@@ -787,6 +787,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         # Username and password passed as kwargs override user info in URI.
         username = opts.get("username", username)
         password = opts.get("password", password)
+        self.__raw_opts = opts
         self.__options = options = ClientOptions(username, password, dbase, opts)
 
         self.__default_database_name = dbase
@@ -859,6 +860,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def _after_fork(self):
         """Resets topology in a child after successfully forking."""
+        # Reset the SSLContext.
+        opts = ClientOptions(None, None, "admin", self.__raw_opts)
+        self._topology_settings.pool_options._set_ssl_context(opts.pool_options._ssl_context)
         self._init_background()
 
     def _duplicate(self, **kwargs):
