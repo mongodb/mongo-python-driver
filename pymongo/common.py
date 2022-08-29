@@ -36,7 +36,7 @@ from urllib.parse import unquote_plus
 
 from bson import SON
 from bson.binary import UuidRepresentation
-from bson.codec_options import CodecOptions, DatetimeConversionOpts, TypeRegistry
+from bson.codec_options import CodecOptions, DatetimeConversion, TypeRegistry
 from bson.raw_bson import RawBSONDocument
 from pymongo.auth import MECHANISMS
 from pymongo.compression_support import (
@@ -620,19 +620,19 @@ def validate_auto_encryption_opts_or_none(option: Any, value: Any) -> Optional[A
     return value
 
 
-def validate_datetime_conversion(option: Any, value: Any) -> Optional[DatetimeConversionOpts]:
-    """Validate a DatetimeConversionOpts string."""
+def validate_datetime_conversion(option: Any, value: Any) -> Optional[DatetimeConversion]:
+    """Validate a DatetimeConversion string."""
     if value is None:
-        return DatetimeConversionOpts.DATETIME
+        return DatetimeConversion.DATETIME
 
     if isinstance(value, str):
         if value.isdigit():
-            return DatetimeConversionOpts(int(value))
-        return DatetimeConversionOpts[value]
+            return DatetimeConversion(int(value))
+        return DatetimeConversion[value]
     elif isinstance(value, int):
-        return DatetimeConversionOpts(value)
+        return DatetimeConversion(value)
 
-    raise TypeError("%s must be a str or int representing DatetimeConversionOpts" % (option,))
+    raise TypeError("%s must be a str or int representing DatetimeConversion" % (option,))
 
 
 # Dictionary where keys are the names of public URI options, and values

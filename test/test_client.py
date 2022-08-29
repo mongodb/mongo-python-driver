@@ -67,7 +67,7 @@ import pymongo
 from bson import encode
 from bson.codec_options import (
     CodecOptions,
-    DatetimeConversionOpts,
+    DatetimeConversion,
     TypeEncoder,
     TypeRegistry,
 )
@@ -412,17 +412,15 @@ class ClientUnitTest(unittest.TestCase):
         )
         self.assertEqual(c.codec_options.unicode_decode_error_handler, unicode_decode_error_handler)
         self.assertEqual(
-            c.codec_options.datetime_conversion, DatetimeConversionOpts[datetime_conversion]
+            c.codec_options.datetime_conversion, DatetimeConversion[datetime_conversion]
         )
 
         # Change the passed datetime_conversion to a number and re-assert.
-        uri = uri.replace(
-            datetime_conversion, f"{int(DatetimeConversionOpts[datetime_conversion])}"
-        )
+        uri = uri.replace(datetime_conversion, f"{int(DatetimeConversion[datetime_conversion])}")
         c = MongoClient(uri, connect=False)
 
         self.assertEqual(
-            c.codec_options.datetime_conversion, DatetimeConversionOpts[datetime_conversion]
+            c.codec_options.datetime_conversion, DatetimeConversion[datetime_conversion]
         )
 
     def test_uri_option_precedence(self):

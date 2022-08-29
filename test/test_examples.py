@@ -740,8 +740,7 @@ class TestSampleShellCommands(IntegrationTest):
 
         self.assertEqual(db.inventory.count_documents({}), 0)
 
-    @client_context.require_replica_set
-    @client_context.require_no_mmap
+    @client_context.require_change_streams
     def test_change_streams(self):
         db = self.db
         done = False

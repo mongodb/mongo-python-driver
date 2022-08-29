@@ -25,6 +25,7 @@ import os
 import re
 import sys
 import time
+import traceback
 import types
 from collections import abc
 from test import (
@@ -50,9 +51,11 @@ from test.utils import (
     rs_or_single_client,
     single_client,
     snake_to_camel,
+    wait_until,
 )
+from test.utils_spec_runner import SpecRunnerThread
 from test.version import Version
-from typing import Any, List
+from typing import Any, Dict, List, Mapping, Optional
 
 import pymongo
 from bson import SON, Code, DBRef, Decimal128, Int64, MaxKey, MinKey, json_util
@@ -94,11 +97,25 @@ from pymongo.monitoring import (
     PoolClosedEvent,
     PoolCreatedEvent,
     PoolReadyEvent,
+    ServerClosedEvent,
+    ServerDescriptionChangedEvent,
+    ServerListener,
+    ServerOpeningEvent,
+    TopologyEvent,
+    _CommandEvent,
+    _ConnectionEvent,
+    _PoolEvent,
+    _ServerEvent,
 )
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import BulkWriteResult
 from pymongo.server_api import ServerApi
+from pymongo.server_description import ServerDescription
+from pymongo.server_selectors import Selection, writable_server_selector
+from pymongo.server_type import SERVER_TYPE
+from pymongo.topology_description import TopologyDescription
+from pymongo.typings import _Address
 from pymongo.write_concern import WriteConcern
 
 JSON_OPTS = json_util.JSONOptions(tz_aware=False)
@@ -268,7 +285,7 @@ class NonLazyCursor(object):
         self.client = None
 
 
-class EventListenerUtil(CMAPListener, CommandListener):
+class EventListenerUtil(CMAPListener, CommandListener, ServerListener):
     def __init__(
         self, observe_events, ignore_commands, observe_sensitive_commands, store_events, entity_map
     ):
@@ -292,9 +309,14 @@ class EventListenerUtil(CMAPListener, CommandListener):
         super(EventListenerUtil, self).__init__()
 
     def get_events(self, event_type):
+        assert event_type in ("command", "cmap", "sdam", "all"), event_type
+        if event_type == "all":
+            return list(self.events)
         if event_type == "command":
-            return [e for e in self.events if "Command" in type(e).__name__]
-        return [e for e in self.events if "Command" not in type(e).__name__]
+            return [e for e in self.events if isinstance(e, _CommandEvent)]
+        if event_type == "cmap":
+            return [e for e in self.events if isinstance(e, (_ConnectionEvent, _PoolEvent))]
+        return [e for e in self.events if isinstance(e, (_ServerEvent, TopologyEvent))]
 
     def add_event(self, event):
         event_name = type(event).__name__.lower()
@@ -332,16 +354,25 @@ class EventListenerUtil(CMAPListener, CommandListener):
     def failed(self, event):
         self._command_event(event)
 
+    def opened(self, event: ServerOpeningEvent) -> None:
+        self.add_event(event)
+
+    def description_changed(self, event: ServerDescriptionChangedEvent) -> None:
+        self.add_event(event)
+
+    def closed(self, event: ServerClosedEvent) -> None:
+        self.add_event(event)
+
 
 class EntityMapUtil(object):
     """Utility class that implements an entity map as per the unified
     test format specification."""
 
     def __init__(self, test_class):
-        self._entities = {}
-        self._listeners = {}
-        self._session_lsids = {}
-        self.test = test_class
+        self._entities: Dict[str, Any] = {}
+        self._listeners: Dict[str, EventListenerUtil] = {}
+        self._session_lsids: Dict[str, Mapping[str, Any]] = {}
+        self.test: UnifiedSpecTestMixinV1 = test_class
 
     def __contains__(self, item):
         return item in self._entities
@@ -484,6 +515,12 @@ class EntityMapUtil(object):
                 opts.get("kms_tls_options", KMS_TLS_OPTS),
             )
             return
+        elif entity_type == "thread":
+            name = spec["id"]
+            thread = SpecRunnerThread(name)
+            thread.start()
+            self[name] = thread
+            return
 
         self.test.fail("Unable to create entity of unknown type %s" % (entity_type,))
 
@@ -491,7 +528,7 @@ class EntityMapUtil(object):
         for spec in entity_spec:
             self._create_entity(spec, uri=uri)
 
-    def get_listener_for_client(self, client_name):
+    def get_listener_for_client(self, client_name: str) -> EventListenerUtil:
         client = self[client_name]
         if not isinstance(client, MongoClient):
             self.test.fail(
@@ -710,6 +747,18 @@ class MatchEvaluatorUtil(object):
             else:
                 self.test.assertIsNone(actual.service_id)
 
+    def match_server_description(self, actual: ServerDescription, spec: dict) -> None:
+        if "type" in spec:
+            self.test.assertEqual(actual.server_type_name, spec["type"])
+        if "error" in spec:
+            self.test.process_error(actual.error, spec["error"])
+        if "minWireVersion" in spec:
+            self.test.assertEqual(actual.min_wire_version, spec["minWireVersion"])
+        if "maxWireVersion" in spec:
+            self.test.assertEqual(actual.max_wire_version, spec["maxWireVersion"])
+        if "topologyVersion" in spec:
+            self.test.assertEqual(actual.topology_version, spec["topologyVersion"])
+
     def match_event(self, event_type, expectation, actual):
         name, spec = next(iter(expectation.items()))
 
@@ -770,8 +819,16 @@ class MatchEvaluatorUtil(object):
             self.test.assertIsInstance(actual, ConnectionCheckedOutEvent)
         elif name == "connectionCheckedInEvent":
             self.test.assertIsInstance(actual, ConnectionCheckedInEvent)
+        elif name == "serverDescriptionChangedEvent":
+            self.test.assertIsInstance(actual, ServerDescriptionChangedEvent)
+            if "previousDescription" in spec:
+                self.match_server_description(
+                    actual.previous_description, spec["previousDescription"]
+                )
+            if "newDescription" in spec:
+                self.match_server_description(actual.new_description, spec["newDescription"])
         else:
-            self.test.fail("Unsupported event type %s" % (name,))
+            raise Exception("Unsupported event type %s" % (name,))
 
 
 def coerce_result(opname, result):
@@ -805,7 +862,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     a class attribute ``TEST_SPEC``.
     """
 
-    SCHEMA_VERSION = Version.from_string("1.9")
+    SCHEMA_VERSION = Version.from_string("1.10")
     RUN_ON_LOAD_BALANCER = True
     RUN_ON_SERVERLESS = True
     TEST_SPEC: Any
@@ -1339,6 +1396,90 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         pool = get_pool(client)
         self.assertEqual(spec["connections"], pool.active_sockets)
 
+    def _event_count(self, client_name, event):
+        listener = self.entity_map.get_listener_for_client(client_name)
+        actual_events = listener.get_events("all")
+        count = 0
+        for actual in actual_events:
+            try:
+                self.match_evaluator.match_event("all", event, actual)
+            except AssertionError:
+                continue
+            else:
+                count += 1
+        return count
+
+    def _testOperation_assertEventCount(self, spec):
+        """Run the assertEventCount test operation.
+
+        Assert the given event was published exactly `count` times.
+        """
+        client, event, count = spec["client"], spec["event"], spec["count"]
+        self.assertEqual(
+            self._event_count(client, event), count, "expected %s not %r" % (count, event)
+        )
+
+    def _testOperation_waitForEvent(self, spec):
+        """Run the waitForEvent test operation.
+
+        Wait for a number of events to be published, or fail.
+        """
+        client, event, count = spec["client"], spec["event"], spec["count"]
+        wait_until(
+            lambda: self._event_count(client, event) >= count,
+            "find %s %s event(s)" % (count, event),
+        )
+
+    def _testOperation_wait(self, spec):
+        """Run the "wait" test operation."""
+        time.sleep(spec["ms"] / 1000.0)
+
+    def _testOperation_recordTopologyDescription(self, spec):
+        """Run the recordTopologyDescription test operation."""
+        self.entity_map[spec["id"]] = self.entity_map[spec["client"]].topology_description
+
+    def _testOperation_assertTopologyType(self, spec):
+        """Run the assertTopologyType test operation."""
+        description = self.entity_map[spec["topologyDescription"]]
+        self.assertIsInstance(description, TopologyDescription)
+        self.assertEqual(description.topology_type_name, spec["topologyType"])
+
+    def _testOperation_waitForPrimaryChange(self, spec: dict) -> None:
+        """Run the waitForPrimaryChange test operation."""
+        client = self.entity_map[spec["client"]]
+        old_description: TopologyDescription = self.entity_map[spec["priorTopologyDescription"]]
+        timeout = spec["timeoutMS"] / 1000.0
+
+        def get_primary(td: TopologyDescription) -> Optional[_Address]:
+            servers = writable_server_selector(Selection.from_topology_description(td))
+            if servers and servers[0].server_type == SERVER_TYPE.RSPrimary:
+                return servers[0].address
+            return None
+
+        old_primary = get_primary(old_description)
+
+        def primary_changed() -> bool:
+            primary = client.primary
+            if primary is None:
+                return False
+            return primary != old_primary
+
+        wait_until(primary_changed, "change primary", timeout=timeout)
+
+    def _testOperation_runOnThread(self, spec):
+        """Run the 'runOnThread' operation."""
+        thread = self.entity_map[spec["thread"]]
+        thread.schedule(lambda: self.run_entity_operation(spec["operation"]))
+
+    def _testOperation_waitForThread(self, spec):
+        """Run the 'waitForThread' operation."""
+        thread = self.entity_map[spec["thread"]]
+        thread.stop()
+        thread.join(10)
+        if thread.exc:
+            raise thread.exc
+        self.assertFalse(thread.is_alive(), "Thread %s is still running" % (spec["thread"],))
+
     def _testOperation_loop(self, spec):
         failure_key = spec.get("storeFailuresAsEntity")
         error_key = spec.get("storeErrorsAsEntity")
@@ -1398,14 +1539,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         for event_spec in spec:
             client_name = event_spec["client"]
             events = event_spec["events"]
-            # Valid types: 'command', 'cmap'
             event_type = event_spec.get("eventType", "command")
             ignore_extra_events = event_spec.get("ignoreExtraEvents", False)
             server_connection_id = event_spec.get("serverConnectionId")
             has_server_connection_id = event_spec.get("hasServerConnectionId", False)
-
-            assert event_type in ("command", "cmap")
-
             listener = self.entity_map.get_listener_for_client(client_name)
             actual_events = listener.get_events(event_type)
             if ignore_extra_events:
@@ -1444,6 +1581,25 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.assertListEqual(sorted_expected_documents, actual_documents)
 
     def run_scenario(self, spec, uri=None):
+        if "csot" in self.id().lower():
+            # Retry CSOT tests up to 2 times to deal with flakey tests.
+            attempts = 3
+            for i in range(attempts):
+                try:
+                    return self._run_scenario(spec, uri)
+                except AssertionError:
+                    if i < attempts - 1:
+                        print(
+                            f"Retrying after attempt {i+1} of {self.id()} failed with:\n"
+                            f"{traceback.format_exc()}"
+                        )
+                        self.setUp()
+                        continue
+                    raise
+        else:
+            self._run_scenario(spec, uri)
+
+    def _run_scenario(self, spec, uri=None):
         # maybe skip test manually
         self.maybe_skip_test(spec)
 

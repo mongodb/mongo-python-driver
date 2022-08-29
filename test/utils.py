@@ -38,6 +38,7 @@ from pymongo.collection import ReturnDocument
 from pymongo.cursor import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
+from pymongo.lock import _create_lock
 from pymongo.monitoring import (
     _SENSITIVE_COMMANDS,
     ConnectionCheckedInEvent,
@@ -279,7 +280,7 @@ class MockSocketInfo(object):
 class MockPool(object):
     def __init__(self, address, options, handshake=True):
         self.gen = _PoolGeneration()
-        self._lock = threading.Lock()
+        self._lock = _create_lock()
         self.opts = options
         self.operation_count = 0
 
@@ -592,7 +593,7 @@ def rs_or_single_client(h=None, p=None, **kwargs):
     return _mongo_client(h, p, **kwargs)
 
 
-def ensure_all_connected(client):
+def ensure_all_connected(client: MongoClient) -> None:
     """Ensure that the client's connection pool has socket connections to all
     members of a replica set. Raises ConfigurationError when called with a
     non-replica set client.
@@ -604,14 +605,26 @@ def ensure_all_connected(client):
     if "setName" not in hello:
         raise ConfigurationError("cluster is not a replica set")
 
-    target_host_list = set(hello["hosts"])
+    target_host_list = set(hello["hosts"] + hello.get("passives", []))
     connected_host_list = set([hello["me"]])
-    admindb = client.get_database("admin")
 
     # Run hello until we have connected to each host at least once.
-    while connected_host_list != target_host_list:
-        hello = admindb.command(HelloCompat.LEGACY_CMD, read_preference=ReadPreference.SECONDARY)
-        connected_host_list.update([hello["me"]])
+    def discover():
+        i = 0
+        while i < 100 and connected_host_list != target_host_list:
+            hello = client.admin.command(
+                HelloCompat.LEGACY_CMD, read_preference=ReadPreference.SECONDARY
+            )
+            connected_host_list.update([hello["me"]])
+            i += 1
+        return connected_host_list
+
+    try:
+        wait_until(lambda: target_host_list == discover(), "connected to all hosts")
+    except AssertionError as exc:
+        raise AssertionError(
+            f"{exc}, {connected_host_list} != {target_host_list}, {client.topology_description}"
+        )
 
 
 def one(s):

@@ -17,7 +17,6 @@
 import os
 import queue
 import random
-import threading
 import time
 import warnings
 import weakref
@@ -37,6 +36,7 @@ from pymongo.errors import (
     WriteError,
 )
 from pymongo.hello import Hello
+from pymongo.lock import _HAS_REGISTER_AT_FORK, _create_lock
 from pymongo.monitor import SrvMonitor
 from pymongo.pool import PoolOptions
 from pymongo.server import Server
@@ -127,7 +127,7 @@ class Topology(object):
         self._seed_addresses = list(topology_description.server_descriptions())
         self._opened = False
         self._closed = False
-        self._lock = threading.Lock()
+        self._lock = _create_lock()
         self._condition = self._settings.condition_class(self._lock)
         self._servers = {}
         self._pid = None
@@ -174,12 +174,13 @@ class Topology(object):
             self._pid = pid
         elif pid != self._pid:
             self._pid = pid
-            warnings.warn(
-                "MongoClient opened before fork. Create MongoClient only "
-                "after forking. See PyMongo's documentation for details: "
-                "https://pymongo.readthedocs.io/en/stable/faq.html#"
-                "is-pymongo-fork-safe"
-            )
+            if not _HAS_REGISTER_AT_FORK:
+                warnings.warn(
+                    "MongoClient opened before fork. May not be entirely fork-safe, "
+                    "proceed with caution. See PyMongo's documentation for details: "
+                    "https://pymongo.readthedocs.io/en/stable/faq.html#"
+                    "is-pymongo-fork-safe"
+                )
             with self._lock:
                 # Close servers and clear the pools.
                 for server in self._servers.values():

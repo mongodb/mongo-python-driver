@@ -199,7 +199,7 @@ class TypeRegistry(object):
         )
 
 
-class DatetimeConversionOpts(enum.IntEnum):
+class DatetimeConversion(enum.IntEnum):
     """Options for decoding BSON datetimes."""
 
     DATETIME = 1
@@ -241,7 +241,7 @@ class _BaseCodecOptions(NamedTuple):
     unicode_decode_error_handler: str
     tzinfo: Optional[datetime.tzinfo]
     type_registry: TypeRegistry
-    datetime_conversion: Optional[DatetimeConversionOpts]
+    datetime_conversion: Optional[DatetimeConversion]
 
 
 class CodecOptions(_BaseCodecOptions):
@@ -335,7 +335,7 @@ class CodecOptions(_BaseCodecOptions):
         unicode_decode_error_handler: str = "strict",
         tzinfo: Optional[datetime.tzinfo] = None,
         type_registry: Optional[TypeRegistry] = None,
-        datetime_conversion: Optional[DatetimeConversionOpts] = DatetimeConversionOpts.DATETIME,
+        datetime_conversion: Optional[DatetimeConversion] = DatetimeConversion.DATETIME,
     ) -> "CodecOptions":
         doc_class = document_class or dict
         # issubclass can raise TypeError for generic aliases like SON[str, Any].

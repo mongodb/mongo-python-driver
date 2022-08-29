@@ -430,8 +430,7 @@ class APITestsMixin(object):
             self.assertEqual(change["fullDocument"], {"_id": 3})
 
     @no_type_check
-    @client_context.require_no_mongos  # Remove after SERVER-41196
-    @client_context.require_version_min(4, 1, 1)
+    @client_context.require_version_min(4, 2)
     def test_start_after_resume_process_without_changes(self):
         resume_token = self.get_resume_token(invalidate=True)
 
@@ -486,7 +485,7 @@ class ProseSpecTestsMixin(object):
         return response["cursor"]["postBatchResumeToken"]
 
     @no_type_check
-    def _test_raises_error_on_missing_id(self, expected_exception, expected_exception2):
+    def _test_raises_error_on_missing_id(self, expected_exception):
         """ChangeStream will raise an exception if the server response is
         missing the resume token.
         """
@@ -494,7 +493,8 @@ class ProseSpecTestsMixin(object):
             self.watched_collection().insert_one({})
             with self.assertRaises(expected_exception):
                 next(change_stream)
-            with self.assertRaises(expected_exception2):
+            # The cursor should now be closed.
+            with self.assertRaises(StopIteration):
                 next(change_stream)
 
     @no_type_check
@@ -526,14 +526,14 @@ class ProseSpecTestsMixin(object):
     # Prose test no. 2
     @client_context.require_version_min(4, 1, 8)
     def test_raises_error_on_missing_id_418plus(self):
-        # Server returns an error on 4.1.8+, subsequent next() resumes and gets the same error.
-        self._test_raises_error_on_missing_id(OperationFailure, OperationFailure)
+        # Server returns an error on 4.1.8+
+        self._test_raises_error_on_missing_id(OperationFailure)
 
     # Prose test no. 2
     @client_context.require_version_max(4, 1, 8)
     def test_raises_error_on_missing_id_418minus(self):
-        # PyMongo raises an error, closes the cursor, subsequent next() raises StopIteration.
-        self._test_raises_error_on_missing_id(InvalidOperation, StopIteration)
+        # PyMongo raises an error
+        self._test_raises_error_on_missing_id(InvalidOperation)
 
     # Prose test no. 3
     @no_type_check
@@ -766,8 +766,7 @@ class TestClusterChangeStream(TestChangeStreamBase, APITestsMixin):
 
     @classmethod
     @client_context.require_version_min(4, 0, 0, -1)
-    @client_context.require_no_mmap
-    @client_context.require_no_standalone
+    @client_context.require_change_streams
     def setUpClass(cls):
         super(TestClusterChangeStream, cls).setUpClass()
         cls.dbs = [cls.db, cls.client.pymongo_test_2]
@@ -828,8 +827,7 @@ class TestClusterChangeStream(TestChangeStreamBase, APITestsMixin):
 class TestDatabaseChangeStream(TestChangeStreamBase, APITestsMixin):
     @classmethod
     @client_context.require_version_min(4, 0, 0, -1)
-    @client_context.require_no_mmap
-    @client_context.require_no_standalone
+    @client_context.require_change_streams
     def setUpClass(cls):
         super(TestDatabaseChangeStream, cls).setUpClass()
 
@@ -914,9 +912,7 @@ class TestDatabaseChangeStream(TestChangeStreamBase, APITestsMixin):
 
 class TestCollectionChangeStream(TestChangeStreamBase, APITestsMixin, ProseSpecTestsMixin):
     @classmethod
-    @client_context.require_version_min(3, 5, 11)
-    @client_context.require_no_mmap
-    @client_context.require_no_standalone
+    @client_context.require_change_streams
     def setUpClass(cls):
         super(TestCollectionChangeStream, cls).setUpClass()
 

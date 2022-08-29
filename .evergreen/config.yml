@@ -474,7 +474,8 @@ functions:
             export MULTI_MONGOS_LB_URI="${MONGODB_URI}"
           fi
 
-          PYTHON_BINARY=${PYTHON_BINARY} \
+          MONGODB_VERSION=${VERSION} \
+            PYTHON_BINARY=${PYTHON_BINARY} \
             GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
             C_EXTENSIONS=${C_EXTENSIONS} \
             COVERAGE=${COVERAGE} \
@@ -648,6 +649,12 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
+          if [ "${skip_EC2_auth_test}" = "true" ]; then
+             echo "This platform does not support the EC2 auth test, skipping..."
+             exit 0
+          fi
+          # Write an empty prepare_mongodb_aws so no auth environment variables
+          # are set.
           rm "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh" || true
           PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
 
@@ -695,13 +702,6 @@ functions:
             export AWS_WEB_IDENTITY_TOKEN_FILE="${iam_web_identity_token_file}"
             export AWS_ROLE_SESSION_NAME="test"
           EOF
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
-          PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
 
   "run aws auth test with aws credentials as environment variables":
     - command: shell.exec
@@ -2380,6 +2380,7 @@ buildvariants:
         encryption: [ "encryption_crypt_shared" ]
       then:
         remove_tasks:
+          - ".rapid"
           - ".5.0"
           - ".4.4"
           - ".4.2"
@@ -2474,6 +2475,7 @@ buildvariants:
         encryption: [ "encryption_crypt_shared" ]
       then:
         remove_tasks:
+          - ".rapid"
           - ".5.0"
           - ".4.4"
           - ".4.2"
@@ -2583,6 +2585,7 @@ buildvariants:
         encryption: [ "encryption_crypt_shared" ]
       then:
         remove_tasks:
+          - ".rapid"
           - ".5.0"
           - ".4.4"
           - ".4.2"

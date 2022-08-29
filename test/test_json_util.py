@@ -21,7 +21,7 @@ import sys
 import uuid
 from typing import Any, List, MutableMapping
 
-from bson.codec_options import CodecOptions, DatetimeConversionOpts
+from bson.codec_options import CodecOptions, DatetimeConversion
 
 sys.path[0:0] = [""]
 
@@ -295,7 +295,7 @@ class TestJsonUtil(unittest.TestCase):
         dat_max = {"x": DatetimeMS(_max_datetime_ms()).as_datetime(CodecOptions(tz_aware=False))}
         opts = JSONOptions(
             datetime_representation=DatetimeRepresentation.ISO8601,
-            datetime_conversion=DatetimeConversionOpts.DATETIME_MS,
+            datetime_conversion=DatetimeConversion.DATETIME_MS,
         )
 
         self.assertEqual(

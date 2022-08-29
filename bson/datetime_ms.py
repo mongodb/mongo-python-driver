@@ -22,11 +22,7 @@ import datetime
 import functools
 from typing import Any, Union, cast
 
-from bson.codec_options import (
-    DEFAULT_CODEC_OPTIONS,
-    CodecOptions,
-    DatetimeConversionOpts,
-)
+from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, DatetimeConversion
 from bson.tz_util import utc
 
 EPOCH_AWARE = datetime.datetime.fromtimestamp(0, utc)
@@ -127,14 +123,14 @@ def _max_datetime_ms(tz=datetime.timezone.utc):
 def _millis_to_datetime(millis: int, opts: CodecOptions) -> Union[datetime.datetime, DatetimeMS]:
     """Convert milliseconds since epoch UTC to datetime."""
     if (
-        opts.datetime_conversion == DatetimeConversionOpts.DATETIME
-        or opts.datetime_conversion == DatetimeConversionOpts.DATETIME_CLAMP
-        or opts.datetime_conversion == DatetimeConversionOpts.DATETIME_AUTO
+        opts.datetime_conversion == DatetimeConversion.DATETIME
+        or opts.datetime_conversion == DatetimeConversion.DATETIME_CLAMP
+        or opts.datetime_conversion == DatetimeConversion.DATETIME_AUTO
     ):
         tz = opts.tzinfo or datetime.timezone.utc
-        if opts.datetime_conversion == DatetimeConversionOpts.DATETIME_CLAMP:
+        if opts.datetime_conversion == DatetimeConversion.DATETIME_CLAMP:
             millis = max(_min_datetime_ms(tz), min(millis, _max_datetime_ms(tz)))
-        elif opts.datetime_conversion == DatetimeConversionOpts.DATETIME_AUTO:
+        elif opts.datetime_conversion == DatetimeConversion.DATETIME_AUTO:
             if not (_min_datetime_ms(tz) <= millis <= _max_datetime_ms(tz)):
                 return DatetimeMS(millis)
 
@@ -149,10 +145,10 @@ def _millis_to_datetime(millis: int, opts: CodecOptions) -> Union[datetime.datet
             return dt
         else:
             return EPOCH_NAIVE + datetime.timedelta(seconds=seconds, microseconds=micros)
-    elif opts.datetime_conversion == DatetimeConversionOpts.DATETIME_MS:
+    elif opts.datetime_conversion == DatetimeConversion.DATETIME_MS:
         return DatetimeMS(millis)
     else:
-        raise ValueError("datetime_conversion must be an element of DatetimeConversionOpts")
+        raise ValueError("datetime_conversion must be an element of DatetimeConversion")
 
 
 def _datetime_to_millis(dtm: datetime.datetime) -> int:

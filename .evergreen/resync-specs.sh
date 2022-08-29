@@ -132,8 +132,8 @@ do
       discovery_and_monitoring/sharded
       cpjson server-discovery-and-monitoring/tests/single \
       discovery_and_monitoring/single
-      cpjson server-discovery-and-monitoring/tests/integration \
-      discovery_and_monitoring_integration
+      cpjson server-discovery-and-monitoring/tests/unified \
+      discovery_and_monitoring/unified
       cpjson server-discovery-and-monitoring/tests/load-balanced \
       discovery_and_monitoring/load-balanced
       ;;
