@@ -2242,8 +2242,8 @@ buildvariants:
 - matrix_name: "tests-all"
   matrix_spec:
     platform:
-      # OSes that support versions of MongoDB>=2.6 with SSL.
-      - awslinux
+      # OSes that support versions of MongoDB>=3.6 with SSL.
+      - ubuntu-18.04
     auth-ssl: "*"
   display_name: "${platform} ${auth-ssl}"
   tasks:
