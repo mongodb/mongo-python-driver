@@ -983,8 +983,8 @@ def _create_connection(address, options):
     This is a modified version of create_connection from CPython >= 2.7.
     """
     host, port = address
-    # Avoid the getaddrinfo fork() deadlock described in PYTHON-3406.
-    host = host.encode("utf-8")
+    # Avoid the getaddrinfo importlib deadlock on fork() described in PYTHON-3406.
+    host = host.encode("idna")
 
     # Check if dealing with a unix domain socket
     if host.endswith(b".sock"):
