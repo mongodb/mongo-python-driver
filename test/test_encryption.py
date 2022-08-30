@@ -341,9 +341,13 @@ class TestClientSimple(EncryptionIntegrationTest):
     def test_fork(self):
         opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
         client = rs_or_single_client(auto_encryption_opts=opts)
-        with self.fork():
+        self.addCleanup(client.close)
+
+        def target():
             client.admin.command("ping")
-            client.close()
+
+        with self.fork(target):
+            target()
 
 
 class TestEncryptedBulkWrite(BulkTestBase, EncryptionIntegrationTest):

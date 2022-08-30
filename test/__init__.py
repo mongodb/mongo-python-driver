@@ -17,7 +17,9 @@
 
 import base64
 import gc
+import multiprocessing
 import os
+import signal
 import socket
 import sys
 import threading
@@ -43,7 +45,7 @@ except ImportError:
 from contextlib import contextmanager
 from functools import wraps
 from test.version import Version
-from typing import Dict, Generator, no_type_check
+from typing import Callable, Dict, Generator, no_type_check
 from unittest import SkipTest
 from urllib.parse import quote_plus
 
@@ -999,31 +1001,33 @@ class PyMongoTestCase(unittest.TestCase):
             )
 
     @contextmanager
-    def fork(self) -> Generator[int, None, None]:
+    def fork(
+        self, target: Callable, timeout: float = 60
+    ) -> Generator[multiprocessing.Process, None, None]:
         """Helper for tests that use os.fork()
 
         Use in a with statement:
 
-            with self.fork() as pid:
-                if pid == 0:  # Child
-                    pass
-                else:  # Parent
-                    pass
+            with self.fork(target=lambda: print('in child')) as proc:
+                self.assertTrue(proc.pid)  # Child process was started
         """
-        pid = os.fork()
-        in_child = pid == 0
+        ctx = multiprocessing.get_context("fork")
+        proc = ctx.Process(target=target)
+        proc.start()
         try:
-            yield pid
-        except:
-            if in_child:
-                traceback.print_exc()
-                os._exit(1)
-            raise
+            yield proc  # type: ignore
         finally:
-            if in_child:
-                os._exit(0)
-            # In parent, assert child succeeded.
-            self.assertEqual(0, os.waitpid(pid, 0)[1])
+            proc.join(timeout)
+            pid = proc.pid
+            assert pid
+            if proc.exitcode is None:
+                # If it failed, SIGINT to get traceback and wait 10s.
+                os.kill(pid, signal.SIGINT)
+                proc.join(10)
+                proc.kill()
+                proc.join(1)
+                self.fail(f"child timed out after {timeout}s (see traceback in logs): deadlock?")
+            self.assertEqual(proc.exitcode, 0)
 
 
 class IntegrationTest(PyMongoTestCase):

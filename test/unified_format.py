@@ -25,6 +25,7 @@ import os
 import re
 import sys
 import time
+import traceback
 import types
 from collections import abc
 from test import (
@@ -1580,6 +1581,25 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.assertListEqual(sorted_expected_documents, actual_documents)
 
     def run_scenario(self, spec, uri=None):
+        if "csot" in self.id().lower():
+            # Retry CSOT tests up to 2 times to deal with flakey tests.
+            attempts = 3
+            for i in range(attempts):
+                try:
+                    return self._run_scenario(spec, uri)
+                except AssertionError:
+                    if i < attempts - 1:
+                        print(
+                            f"Retrying after attempt {i+1} of {self.id()} failed with:\n"
+                            f"{traceback.format_exc()}"
+                        )
+                        self.setUp()
+                        continue
+                    raise
+        else:
+            self._run_scenario(spec, uri)
+
+    def _run_scenario(self, spec, uri=None):
         # maybe skip test manually
         self.maybe_skip_test(spec)
 
