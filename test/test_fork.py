@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test that pymongo is fork safe."""
+"""Test that pymongo resets its own locks after a fork."""
 
 import os
 import sys
@@ -22,12 +22,7 @@ from multiprocessing import Pipe
 sys.path[0:0] = [""]
 
 from test import IntegrationTest
-from test.utils import (
-    ExceptionCatchingThread,
-    get_pool,
-    is_greenthread_patched,
-    rs_or_single_client,
-)
+from test.utils import is_greenthread_patched
 
 from bson.objectid import ObjectId
 
@@ -91,44 +86,6 @@ class TestFork(IntegrationTest):
             self.assertNotEqual(child_id, init_id)
             passed, msg = parent_conn.recv()
             self.assertTrue(passed, msg)
-
-    def test_many_threaded(self):
-        # Fork randomly while doing operations.
-        clients = [rs_or_single_client() for _ in range(5)]
-        for c in clients:
-            self.addCleanup(c.close)
-
-        class ForkThread(ExceptionCatchingThread):
-            def __init__(self):
-                self.stop = False
-                super().__init__(target=self.run_internal)
-
-            def run_internal(self) -> None:
-                while not self.stop:
-                    for c in clients:
-                        c.admin.command("ping")
-                        get_pool(c).reset_without_pause()
-
-        threads = [ForkThread() for _ in range(5)]
-        for t in threads:
-            t.start()
-
-        def child_callback():
-            for c in clients:
-                c.admin.command("ping")
-                c.close()
-
-        try:
-            for _ in range(100):
-                with self.fork(child_callback) as proc:
-                    self.assertTrue(proc.pid)
-        finally:
-            for t in threads:
-                t.stop = True
-            for t in threads:
-                t.join()
-            for t in threads:
-                self.assertIsNone(t.exc)
 
 
 if __name__ == "__main__":
