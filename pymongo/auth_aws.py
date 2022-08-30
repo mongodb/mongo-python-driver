@@ -67,6 +67,15 @@ def _authenticate_aws(credentials, sock_info):
                 credentials.mechanism_properties.aws_session_token,
             )
         )
+        import boto3
+        session = boto3.Session()
+        if not credentials.username:
+            credentials = session.get_credentials()
+            ctx._credentials = AwsCredential(
+                credentials.access_key,
+                credentials.secret_key,
+                credentials.session_token
+            )
         client_payload = ctx.step(None)
         client_first = SON(
             [("saslStart", 1), ("mechanism", "MONGODB-AWS"), ("payload", client_payload)]
