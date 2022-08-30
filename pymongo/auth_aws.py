@@ -68,9 +68,10 @@ def _authenticate_aws(credentials, sock_info):
             )
         )
         import boto3
-        session = boto3.Session()
         if not credentials.username:
+            session = boto3.Session()
             credentials = session.get_credentials()
+            assert credentials.username is not None
             ctx._credentials = AwsCredential(
                 credentials.access_key,
                 credentials.secret_key,
