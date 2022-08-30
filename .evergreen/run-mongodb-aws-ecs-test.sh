@@ -29,7 +29,7 @@ authtest () {
     $PYTHON --version
     $PYTHON -m pip install --upgrade wheel setuptools pip
     cd src
-    $PYTHON -m pip install '.[aws]'
+    $PYTHON -m pip install '.[aws]' boto3
     $PYTHON test/auth_aws/test_auth_aws.py
     cd -
 }

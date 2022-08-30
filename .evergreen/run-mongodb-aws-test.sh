@@ -60,7 +60,7 @@ authtest () {
     else
       . venvaws/bin/activate
     fi
-    python -m pip install '.[aws]'
+    python -m pip install '.[aws]' boto3
     # python -m pip install https://github.com/mongodb/pymongo-auth-aws/archive/refs/heads/master.zip
     python test/auth_aws/test_auth_aws.py
     deactivate
