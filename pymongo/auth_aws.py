@@ -28,7 +28,7 @@ except ImportError:
     _HAVE_MONGODB_AWS = False
 
 try:
-    from pymongo_auth_aws.auth import set_cached_credentials
+    from pymongo_auth_aws.auth import set_cached_credentials, set_use_cached_credentials
 except ImportError:
 
     def set_cached_credentials(creds):
@@ -68,6 +68,9 @@ def _authenticate_aws(credentials, sock_info):
         raise ConfigurationError("MONGODB-AWS authentication requires MongoDB version 4.4 or later")
 
     try:
+        # Enable credential caching.
+        set_use_cached_credentials(True)
+
         ctx = _AwsSaslContext(
             AwsCredential(
                 credentials.username,
