@@ -60,23 +60,27 @@ def _authenticate_aws(credentials, sock_info):
         raise ConfigurationError("MONGODB-AWS authentication requires MongoDB version 4.4 or later")
 
     try:
-        ctx = _AwsSaslContext(
-            AwsCredential(
-                credentials.username,
-                credentials.password,
-                credentials.mechanism_properties.aws_session_token,
-            )
-        )
         import boto3
         if not credentials.username:
             session = boto3.Session()
             credentials = session.get_credentials()
             assert credentials.access_key is not None
-            ctx._credentials = AwsCredential(
-                credentials.access_key,
-                credentials.secret_key,
-                credentials.token
+            ctx = _AwsSaslContext(
+                AwsCredential(
+                    credentials.access_key,
+                    credentials.secret_key,
+                    credentials.token,
+                )
             )
+        else:
+            ctx = _AwsSaslContext(
+                AwsCredential(
+                    credentials.username,
+                    credentials.password,
+                    credentials.mechanism_properties.aws_session_token,
+                )
+            )
+
         client_payload = ctx.step(None)
         client_first = SON(
             [("saslStart", 1), ("mechanism", "MONGODB-AWS"), ("payload", client_payload)]
