@@ -74,7 +74,7 @@ def _authenticate_aws(credentials, sock_info):
             ctx._credentials = AwsCredential(
                 credentials.access_key,
                 credentials.secret_key,
-                credentials.session_token
+                credentials.token
             )
         client_payload = ctx.step(None)
         client_first = SON(
