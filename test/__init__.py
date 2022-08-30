@@ -21,6 +21,7 @@ import multiprocessing
 import os
 import signal
 import socket
+import subprocess
 import sys
 import threading
 import time
@@ -45,7 +46,6 @@ except ImportError:
 
 from contextlib import contextmanager
 from functools import wraps
-from subprocess import PIPE, STDOUT, Popen
 from test.version import Version
 from typing import Callable, Dict, Generator, no_type_check
 from unittest import SkipTest
@@ -1014,23 +1014,21 @@ class PyMongoTestCase(unittest.TestCase):
                 self.assertTrue(proc.pid)  # Child process was started
         """
 
-        def print_threads(*args: object) -> None:
-            if print_threads.ran:
+        def _print_threads(*args: object) -> None:
+            if _print_threads.called:
                 return
-            print_threads.ran = True
-            for thread_id, frame in sys._current_frames().items():
-                sys.stderr.write(f"\n--- Stack for thread {thread_id} ---\n")
-                traceback.print_stack(frame, file=sys.stderr)
+            _print_threads.called = True
+            print_thread_tracebacks()
 
-        print_threads.ran = False
+        _print_threads.called = False
 
         def _target() -> None:
-            signal.signal(signal.SIGUSR1, print_threads)
+            signal.signal(signal.SIGUSR1, _print_threads)
             try:
                 target()
             except Exception as exc:
                 sys.stderr.write(f"Child process failed with: {exc}\n")
-                print_threads()
+                _print_threads()
                 # Sleep for a while to let the parent attach via GDB.
                 time.sleep(2 * timeout)
                 raise
@@ -1046,7 +1044,7 @@ class PyMongoTestCase(unittest.TestCase):
             assert pid
             if proc.exitcode is None:
                 # gdb to get C-level tracebacks
-                gdb(pid)
+                print_thread_stacks(pid)
                 # If it failed, SIGUSR1 to get thread tracebacks.
                 os.kill(pid, signal.SIGUSR1)
                 proc.join(5)
@@ -1062,10 +1060,26 @@ class PyMongoTestCase(unittest.TestCase):
             self.assertEqual(proc.exitcode, 0)
 
 
-def gdb(pid: int) -> None:
-    p = Popen(["gdb"], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
-    stdout = p.communicate(input=f"attach {pid}\nthread apply all bt\nquit\n".encode("utf-8"))[0]
-    sys.stderr.write(stdout.decode("utf-8"))
+def print_thread_tracebacks() -> None:
+    """Print all Python thread tracebacks."""
+    for thread_id, frame in sys._current_frames().items():
+        sys.stderr.write(f"\n--- Traceback for thread {thread_id} ---\n")
+        traceback.print_stack(frame, file=sys.stderr)
+
+
+def print_thread_stacks(pid: int) -> None:
+    """Print all C-level thread stacks for a given process id."""
+    try:
+        res = subprocess.run(
+            ["gdb", f"--pid={pid}", "--batch", '--eval-command="thread apply all bt"'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            encoding="utf-8",
+        )
+    except Exception as exc:
+        sys.stderr.write(f"Could not print C-level thread stacks because gdb failed: {exc}")
+    else:
+        sys.stderr.write(res.stdout)
 
 
 class IntegrationTest(PyMongoTestCase):
