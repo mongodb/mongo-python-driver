@@ -14,21 +14,15 @@ for threaded applications.
 Is PyMongo fork-safe?
 ---------------------
 
-Starting in PyMongo 4.3, forking on a compatible Python interpreter while
-using a client will result in all locks held by :class:`~bson.objectid
-.ObjectId` and :class:`~pymongo.mongo_client.MongoClient` being released in
-the child, as well as state shared between child and parent processes being
-reset.
-
-If greenlet has been imported (usually with a library like gevent or
-Eventlet), care must be taken when using instances of :class:`~pymongo
-.mongo_client.MongoClient` with ``fork()``. Specifically, instances of
-MongoClient must not be copied from a parent process to a child process.
-Instead, the parent process and each child process must create their own
-instances of MongoClient. Instances of MongoClient copied from the parent
-process have a high probability of deadlock in the child process due to the
-inherent incompatibilities between ``fork()``, threads, and locks described
-:ref:`below<pymongo-fork-safe-details>`.
+PyMongo is not fork-safe. Care must be taken when using instances of
+:class:`~pymongo.mongo_client.MongoClient` with ``fork()``. Specifically,
+instances of MongoClient must not be copied from a parent process to
+a child process. Instead, the parent process and each child process must
+create their own instances of MongoClient. Instances of MongoClient copied from
+the parent process have a high probability of deadlock in the child process due
+to the inherent incompatibilities between ``fork()``, threads, and locks
+described :ref:`below <pymongo-fork-safe-details>`. PyMongo will attempt to
+issue a warning if there is a chance of this deadlock occurring.
 
 .. _pymongo-fork-safe-details:
 

@@ -13,8 +13,10 @@ PyMongo 4.3 brings a number of improvements including:
   :class:`bson.codec_options.DatetimeConversion`, and
   :class:`bson.codec_options.CodecOptions`'s ``datetime_conversion``
   parameter for more details (`PYTHON-1824`_).
-- Added support for using a :class:`~pymongo.mongo_client.MongoClient` after
-  an :py:func:`os.fork` (`PYTHON-2484`_).
+- PyMongo now resets its locks and other shared state in the child process
+  after a :py:func:`os.fork` to reduce the frequency of deadlocks. Note that
+  deadlocks are still possible and PyMongo is still not fork() safe
+  (`PYTHON-2484`_).
 
 Bug fixes
 .........
