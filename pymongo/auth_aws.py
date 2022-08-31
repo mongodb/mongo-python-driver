@@ -29,6 +29,7 @@ except ImportError:
 
 try:
     from pymongo_auth_aws.auth import set_cached_credentials, set_use_cached_credentials
+
     # Enable credential caching.
     set_use_cached_credentials(True)
 except ImportError:
