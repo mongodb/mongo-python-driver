@@ -518,6 +518,8 @@ _ELEMENT_GETTER: Dict[int, Callable[..., Tuple[Any, int]]] = {
 
 
 class LazyValue:
+    """A BSON sub-document or array that can be lazily loaded."""
+
     def __init__(self, view, is_array, codec_options):
         self.__inflated = None
         self.__view = view
@@ -542,7 +544,6 @@ if _USE_C:
     def _element_to_dict(
         data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions, lazy: bool = False
     ) -> Any:
-        # TODO: implement lazy handling in C extension.
         key, value, position, dtype = _cbson._element_to_dict(data, position, obj_end, opts, lazy)
         if lazy:
             if dtype == ord(BSONOBJ):
@@ -1161,22 +1162,27 @@ def _decode_selective(rawdoc: Any, fields: Any, codec_options: Any) -> Mapping[A
 
 def _convert_raw_document_lists_to_streams(document: Any) -> None:
     cursor = document.get("cursor")
-    if cursor:
-        for key in ("firstBatch", "nextBatch"):
-            batch = cursor.get(key)
-            if batch:
-                stream = b"".join(doc.raw for doc in batch.value)
-                cursor[key] = [stream]
+    if not cursor:
+        return
+    for key in ("firstBatch", "nextBatch"):
+        batch = cursor.get(key)
+        if not batch:
+            continue
 
-
-def _extract_raw_command(document: Any) -> None:
-    # Use raw bytes for the batches.
-    cursor = document.get("cursor")
-    if cursor:
-        for key in ("firstBatch", "nextBatch"):
-            batch = cursor.get(key)
-            if batch:
-                cursor[key] = [batch.raw]
+        # Extract the raw bytes of each document.
+        data, view = get_data_and_view(batch.raw)
+        position = 0
+        _, end = _get_object_size(data, position, len(data))
+        position += 4
+        buffers = []
+        while position < end:
+            _, position = _get_c_string(data, view, position, DEFAULT_CODEC_OPTIONS)
+            obj_size, _ = _get_object_size(data, position, end)
+            buffers.append(data[position : position + obj_size])
+            position += obj_size
+        if position != end:
+            raise InvalidBSON("bad object or element length")
+        cursor[key] = [b"".join(buffers)]
 
 
 def _decode_all_selective(data: Any, codec_options: CodecOptions, fields: Any) -> List[Any]:

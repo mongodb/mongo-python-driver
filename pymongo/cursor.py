@@ -33,7 +33,7 @@ from typing import (
     overload,
 )
 
-from bson import RE_TYPE, _convert_raw_document_lists_to_streams, _extract_raw_command
+from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.son import SON
 from pymongo import helpers
@@ -1321,7 +1321,6 @@ class RawBatchCursor(Cursor, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
         """
-        self.__raw_command = kwargs.pop("raw_command", False)
         super(RawBatchCursor, self).__init__(collection, *args, **kwargs)
 
     def _unpack_response(
@@ -1331,11 +1330,7 @@ class RawBatchCursor(Cursor, Generic[_DocumentType]):
         if not legacy_response:
             # OP_MSG returns firstBatch/nextBatch documents as a BSON array
             # Re-assemble the array of documents into a document stream
-            if not self.__raw_command:
-                _convert_raw_document_lists_to_streams(raw_response[0])
-            else:
-                _extract_raw_command(raw_response[0])
-
+            _convert_raw_document_lists_to_streams(raw_response[0])
         return raw_response
 
     def explain(self) -> _DocumentType:
