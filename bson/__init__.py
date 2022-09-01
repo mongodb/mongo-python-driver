@@ -1170,18 +1170,18 @@ def _convert_raw_document_lists_to_streams(document: Any) -> None:
             continue
 
         # Extract the raw bytes of each document.
-        data, _ = get_data_and_view(batch.raw)
+        _, view = get_data_and_view(batch.raw)
         position = 0
-        _, end = _get_object_size(data, position, len(data))
+        _, end = _get_object_size(view, position, len(view))
         position += 4
         buffers = []
-        index = data.index
+        index = view.index
         append = buffers.append
         while position < end:
             # Just skip the keys.
             position = index(b"\x00", position) + 1
-            obj_size, _ = _get_object_size(data, position, end)
-            append(data[position : position + obj_size])
+            obj_size, _ = _get_object_size(view, position, end)
+            append(view[position : position + obj_size])
             position += obj_size
         if position != end:
             raise InvalidBSON("bad object or element length")
