@@ -29,7 +29,12 @@ from typing import Any, Dict, NoReturn
 import bson
 from bson import CodecOptions, _decode_selective, _dict_to_bson, _make_c_string, encode
 from bson.int64 import Int64
-from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
+from bson.raw_bson import (
+    DEFAULT_RAW_BSON_OPTIONS,
+    LAZY_RAW_BSON_OPTIONS,
+    RawBSONDocument,
+    _inflate_bson,
+)
 from bson.son import SON
 
 try:
@@ -1379,7 +1384,7 @@ class _OpMsg(object):
         user_fields is used to determine which fields must not be decoded
         """
         inflated_response = _decode_selective(
-            RawBSONDocument(self.payload_document), user_fields, DEFAULT_RAW_BSON_OPTIONS
+            RawBSONDocument(self.payload_document), user_fields, LAZY_RAW_BSON_OPTIONS
         )
         return [inflated_response]
 

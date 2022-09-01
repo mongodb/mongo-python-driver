@@ -517,22 +517,47 @@ _ELEMENT_GETTER: Dict[int, Callable[..., Tuple[Any, int]]] = {
 }
 
 
-if _USE_C:
+class LazyValue:
+    def __init__(self, view, codec_options):
+        self.__inflated = None
+        self.__view = view
+        self.__codec_options = codec_options
+
+    @property
+    def raw(self):
+        return memoryview(self.__view)
+
+    @property
+    def value(self):
+        if not self.__inflated:
+            self.__inflated = decode(self.__view, self.__codec_options)
+        return self.__inflated
+
+
+if False:  # _USE_C:
 
     def _element_to_dict(
-        data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions
+        data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions, lazy: bool = False
     ) -> Any:
-        return _cbson._element_to_dict(data, position, obj_end, opts)
+        # TODO: implement lazy handling in C extension.
+        item = _cbson._element_to_dict(data, position, obj_end, opts, lazy)
+        if lazy:
+            item = LazyValue(item, opts)
+        return item
 
 else:
 
     def _element_to_dict(
-        data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions
+        data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions, lazy: bool = False
     ) -> Any:
         """Decode a single key, value pair."""
         element_type = data[position]
         position += 1
         element_name, position = _get_c_string(data, view, position, opts)
+        if lazy and element_type in [ord(BSONOBJ), ord(BSONARR)]:
+            _, end = _get_object_size(data, position, len(data))
+            value = LazyValue(view[position : end + 1], opts)
+            return element_name, value, end + 1
         try:
             value, position = _ELEMENT_GETTER[element_type](
                 data, view, position, obj_end, opts, element_name
@@ -551,20 +576,28 @@ else:
 _T = TypeVar("_T", bound=MutableMapping[Any, Any])
 
 
-def _raw_to_dict(data: Any, position: int, obj_end: int, opts: CodecOptions, result: _T) -> _T:
+def _raw_to_dict(
+    data: Any, position: int, obj_end: int, opts: CodecOptions, result: _T, lazy=False
+) -> _T:
     data, view = get_data_and_view(data)
-    return _elements_to_dict(data, view, position, obj_end, opts, result)
+    return _elements_to_dict(data, view, position, obj_end, opts, result, lazy=lazy)
 
 
 def _elements_to_dict(
-    data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions, result: Any = None
+    data: Any,
+    view: Any,
+    position: int,
+    obj_end: int,
+    opts: CodecOptions,
+    result: Any = None,
+    lazy: bool = False,
 ) -> Any:
     """Decode a BSON document into result."""
     if result is None:
         result = opts.document_class()
     end = obj_end - 1
     while position < end:
-        key, value, position = _element_to_dict(data, view, position, obj_end, opts)
+        key, value, position = _element_to_dict(data, view, position, obj_end, opts, lazy=lazy)
         result[key] = value
     if position != obj_end:
         raise InvalidBSON("bad object or element length")

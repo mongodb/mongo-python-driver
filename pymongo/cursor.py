@@ -1321,6 +1321,7 @@ class RawBatchCursor(Cursor, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
         """
+        self.__raw_command = kwargs.pop("raw_command", False)
         super(RawBatchCursor, self).__init__(collection, *args, **kwargs)
 
     def _unpack_response(
