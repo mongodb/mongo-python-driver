@@ -1615,7 +1615,7 @@ invalid:
 
 static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                            unsigned* position, unsigned char type,
-                           unsigned max, const codec_options_t* options) {
+                           unsigned max, const codec_options_t* options, int lazy) {
     struct module_state *state = GETSTATE(self);
     PyObject* value = NULL;
     switch (type) {
@@ -1674,6 +1674,13 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                 goto invalid;
             }
 
+            if (lazy != 0) {
+                // Treat it as a binary buffer.
+                value = PyBytes_FromStringAndSize(buffer + *position, size);
+                *position += size;
+                break;
+            }
+
             if (options->is_raw_bson) {
                 value = PyObject_CallFunction(
                     options->document_class, "y#O",
@@ -1712,6 +1719,14 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             if (size < BSON_MIN_SIZE || max < size) {
                 goto invalid;
             }
+
+            if (lazy != 0) {
+                // Treat it as a binary buffer.
+                value = PyBytes_FromStringAndSize(buffer + *position, size);
+                *position += size;
+                break;
+            }
+
             end = *position + size - 1;
             /* Check for bad eoo */
             if (buffer[end]) {
@@ -1740,7 +1755,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                     goto invalid;
                 }
                 to_append = get_value(self, name, buffer, position, bson_type,
-                                      max - (unsigned)key_size, options);
+                                      max - (unsigned)key_size, options, lazy);
                 Py_LeaveRecursiveCall();
                 if (!to_append) {
                     Py_DECREF(value);
@@ -2464,6 +2479,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
 static int _element_to_dict(PyObject* self, const char* string,
                             unsigned position, unsigned max,
                             const codec_options_t* options,
+                            int lazy,
                             PyObject** name, PyObject** value) {
     unsigned char type = (unsigned char)string[position++];
     size_t name_length = strlen(string + position);
@@ -2504,7 +2520,7 @@ static int _element_to_dict(PyObject* self, const char* string,
     }
     position += (unsigned)name_length + 1;
     *value = get_value(self, *name, string, &position, type,
-                       max - position, options);
+                           max - position, options, lazy);
     if (!*value) {
         Py_DECREF(*name);
         return -1;
@@ -2520,12 +2536,14 @@ static PyObject* _cbson_element_to_dict(PyObject* self, PyObject* args) {
     unsigned position;
     unsigned max;
     int new_position;
+    int lazy = 0;
+    unsigned char type;
     PyObject* name;
     PyObject* value;
     PyObject* result_tuple;
 
-    if (!PyArg_ParseTuple(args, "OIIO&", &bson, &position, &max,
-                          convert_codec_options, &options)) {
+    if (!PyArg_ParseTuple(args, "OIIO&p", &bson, &position, &max,
+                          convert_codec_options, &options, &lazy)) {
         return NULL;
     }
 
@@ -2535,13 +2553,13 @@ static PyObject* _cbson_element_to_dict(PyObject* self, PyObject* args) {
     }
     string = PyBytes_AS_STRING(bson);
 
-    new_position = _element_to_dict(self, string, position, max, &options,
-                                    &name, &value);
+    type = (unsigned char)string[position];
+    new_position = _element_to_dict(self, string, position, max, &options, lazy, &name, &value);
     if (new_position < 0) {
         return NULL;
     }
 
-    result_tuple = Py_BuildValue("NNi", name, value, new_position);
+    result_tuple = Py_BuildValue("NNiB", name, value, new_position, type);
     if (!result_tuple) {
         Py_DECREF(name);
         Py_DECREF(value);
@@ -2560,13 +2578,14 @@ static PyObject* _elements_to_dict(PyObject* self, const char* string,
     if (!dict) {
         return NULL;
     }
+    int lazy = 0;
     while (position < max) {
         PyObject* name = NULL;
         PyObject* value = NULL;
         int new_position;
 
         new_position = _element_to_dict(
-            self, string, position, max, options, &name, &value);
+            self, string, position, max, options, lazy, &name, &value);
         if (new_position < 0) {
             Py_DECREF(dict);
             return NULL;

@@ -17,7 +17,7 @@
 from collections import deque
 from typing import TYPE_CHECKING, Any, Generic, Iterator, Mapping, NoReturn, Optional
 
-from bson import _convert_raw_document_lists_to_streams
+from bson import _convert_raw_document_lists_to_streams, _extract_raw_command
 from pymongo.cursor import _CURSOR_CLOSED_ERRORS, _SocketManager
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 from pymongo.message import _CursorAddress, _GetMore, _RawBatchGetMore
@@ -44,6 +44,7 @@ class CommandCursor(Generic[_DocumentType]):
         session: Optional["ClientSession"] = None,
         explicit_session: bool = False,
         comment: Any = None,
+        **kwargs: Any  # Extra kwargs meant for subclasses
     ) -> None:
         """Create a new command cursor."""
         self.__sock_mgr: Any = None
@@ -318,6 +319,7 @@ class RawBatchCommandCursor(CommandCursor, Generic[_DocumentType]):
         session: Optional["ClientSession"] = None,
         explicit_session: bool = False,
         comment: Any = None,
+        raw_command: bool = False,
     ) -> None:
         """Create a new cursor / iterator over raw batches of BSON data.
 
@@ -328,6 +330,7 @@ class RawBatchCommandCursor(CommandCursor, Generic[_DocumentType]):
         .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
         """
         assert not cursor_info.get("firstBatch")
+        self.__raw_command = raw_command
         super(RawBatchCommandCursor, self).__init__(
             collection,
             cursor_info,
@@ -346,7 +349,10 @@ class RawBatchCommandCursor(CommandCursor, Generic[_DocumentType]):
         if not legacy_response:
             # OP_MSG returns firstBatch/nextBatch documents as a BSON array
             # Re-assemble the array of documents into a document stream
-            _convert_raw_document_lists_to_streams(raw_response[0])
+            if not self.__raw_command:
+                _convert_raw_document_lists_to_streams(raw_response[0])
+            else:
+                _extract_raw_command(raw_response[0])
         return raw_response
 
     def __getitem__(self, index: int) -> NoReturn:

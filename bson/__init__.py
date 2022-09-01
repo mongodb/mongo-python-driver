@@ -518,9 +518,10 @@ _ELEMENT_GETTER: Dict[int, Callable[..., Tuple[Any, int]]] = {
 
 
 class LazyValue:
-    def __init__(self, view, codec_options):
+    def __init__(self, view, is_array, codec_options):
         self.__inflated = None
         self.__view = view
+        self.__is_array = is_array
         self.__codec_options = codec_options
 
     @property
@@ -531,19 +532,24 @@ class LazyValue:
     def value(self):
         if not self.__inflated:
             self.__inflated = decode(self.__view, self.__codec_options)
+            if self.__is_array:
+                self.__inflated = [a for a in self.__inflated.values()]
         return self.__inflated
 
 
-if False:  # _USE_C:
+if _USE_C:
 
     def _element_to_dict(
         data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions, lazy: bool = False
     ) -> Any:
         # TODO: implement lazy handling in C extension.
-        item = _cbson._element_to_dict(data, position, obj_end, opts, lazy)
+        key, value, position, dtype = _cbson._element_to_dict(data, position, obj_end, opts, lazy)
         if lazy:
-            item = LazyValue(item, opts)
-        return item
+            if dtype == ord(BSONOBJ):
+                value = LazyValue(value, False, opts)
+            elif dtype == ord(BSONARR):
+                value = LazyValue(value, True, opts)
+        return key, value, position
 
 else:
 
@@ -556,7 +562,8 @@ else:
         element_name, position = _get_c_string(data, view, position, opts)
         if lazy and element_type in [ord(BSONOBJ), ord(BSONARR)]:
             _, end = _get_object_size(data, position, len(data))
-            value = LazyValue(view[position : end + 1], opts)
+            is_array = element_type == ord(BSONARR)
+            value = LazyValue(view[position : end + 1], is_array, opts)
             return element_name, value, end + 1
         try:
             value, position = _ELEMENT_GETTER[element_type](
@@ -1158,8 +1165,18 @@ def _convert_raw_document_lists_to_streams(document: Any) -> None:
         for key in ("firstBatch", "nextBatch"):
             batch = cursor.get(key)
             if batch:
-                stream = b"".join(doc.raw for doc in batch)
+                stream = b"".join(doc.raw for doc in batch.value)
                 cursor[key] = [stream]
+
+
+def _extract_raw_command(document: Any) -> None:
+    # Use raw bytes for the batches.
+    cursor = document.get("cursor")
+    if cursor:
+        for key in ("firstBatch", "nextBatch"):
+            batch = cursor.get(key)
+            if batch:
+                cursor[key] = [batch.raw]
 
 
 def _decode_all_selective(data: Any, codec_options: CodecOptions, fields: Any) -> List[Any]:

@@ -2472,12 +2472,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             raise InvalidOperation("aggregate_raw_batches does not support auto encryption")
         if comment is not None:
             kwargs["comment"] = comment
-        cursor_class = kwargs.pop("cursor_class", RawBatchCommandCursor)
         with self.__database.client._tmp_session(session, close=False) as s:
             return self._aggregate(
                 _CollectionRawAggregationCommand,
                 pipeline,
-                cursor_class,
+                RawBatchCommandCursor,
                 session=s,
                 explicit_session=session is not None,
                 **kwargs,

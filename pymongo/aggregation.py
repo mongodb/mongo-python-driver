@@ -175,6 +175,7 @@ class _AggregationCommand(object):
             session=session,
             explicit_session=self._explicit_session,
             comment=self._options.get("comment"),
+            raw_command=self._options.get("raw_command", False),
         )
         cmd_cursor._maybe_pin_connection(sock_info)
         return cmd_cursor
@@ -200,6 +201,7 @@ class _CollectionAggregationCommand(_AggregationCommand):
 
 class _CollectionRawAggregationCommand(_CollectionAggregationCommand):
     def __init__(self, *args, **kwargs):
+        self.__raw_command = kwargs.pop("raw_command", False)
         super(_CollectionRawAggregationCommand, self).__init__(*args, **kwargs)
 
         # For raw-batches, we set the initial batchSize for the cursor to 0.
