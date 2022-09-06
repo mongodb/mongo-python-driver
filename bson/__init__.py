@@ -1161,6 +1161,7 @@ def _decode_selective(rawdoc: Any, fields: Any, codec_options: Any) -> Mapping[A
 
 
 def _convert_raw_document_lists_to_streams(document: Any) -> None:
+    """Convert raw array of documents to a stream of BSON documents."""
     cursor = document.get("cursor")
     if not cursor:
         return
@@ -1170,22 +1171,26 @@ def _convert_raw_document_lists_to_streams(document: Any) -> None:
             continue
 
         # Extract the raw bytes of each document.
-        _, view = get_data_and_view(batch.raw)
+        data, _ = get_data_and_view(batch.raw)
         position = 0
-        _, end = _get_object_size(view, position, len(view))
+        _, end = _get_object_size(data, position, len(data))
         position += 4
         buffers = []
-        index = view.index
+        index = data.index
         append = buffers.append
         while position < end:
             # Just skip the keys.
             position = index(b"\x00", position) + 1
-            obj_size, _ = _get_object_size(view, position, end)
-            append(view[position : position + obj_size])
+            obj_size, _ = _get_object_size(data, position, end)
+            append(data[position : position + obj_size])
             position += obj_size
         if position != end:
             raise InvalidBSON("bad object or element length")
         cursor[key] = [b"".join(buffers)]
+
+
+# if _USE_C:
+#     _convert_raw_document_lists_to_streams = _cbson._convert_raw_document_lists_to_streams  # noqa: F811
 
 
 def _decode_all_selective(data: Any, codec_options: CodecOptions, fields: Any) -> List[Any]:

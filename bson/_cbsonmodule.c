@@ -2816,6 +2816,102 @@ done:
     return result;
 }
 
+
+static PyObject* _cbson_convert_raw_document_lists_to_streams(PyObject* self, PyObject* args) {
+    int32_t size;
+    int32_t obj_size;
+    int32_t position = 0;
+    uint8_t is_next_batch = 0;
+    int32_t total_size = 0;
+    buffer_t buffer;
+    const char* string;
+    PyObject* document;
+    PyObject* cursor;
+    PyObject* batch;
+    PyObject* raw;
+    PyObject* result = NULL;
+    Py_buffer view = {0};
+
+    if (!PyArg_ParseTuple(args, "O", &document)) {
+        return NULL;
+    }
+
+    cursor = PyObject_GetAttrString(document, "cursor");
+    Py_DECREF(document);
+    if (cursor == NULL) {
+        return NULL;
+    }
+
+    batch = PyObject_GetAttrString(cursor, "firstBatch");
+    if (batch == NULL) {
+        batch = PyObject_GetAttrString(cursor, "nextBatch");
+        is_next_batch = 1;
+    }
+
+    if (batch == NULL) {
+        Py_DECREF(cursor);
+        return NULL;
+    }
+    raw = PyObject_GetAttrString(batch, "raw");
+    Py_DECREF(batch);
+
+    if (!_get_buffer(raw, &view)) {
+        Py_DECREF(cursor);
+        Py_DECREF(raw);
+        return NULL;
+    }
+
+    Py_DECREF(raw);
+    string = (char*)view.buf;
+    memcpy(&size, string, 4);
+    size = (int32_t)BSON_UINT32_FROM_LE(size);
+    buffer = pymongo_buffer_new();
+    if (pymongo_buffer_save_space(buffer, size) == -1) {
+        return NULL;
+    }
+    position += 4;
+
+    while (position < total_size) {
+        // Just skip the keys.
+        while (string[position] != 0) {
+            position++;
+        }
+        memcpy(&obj_size, string + position, 4);
+        obj_size = (int32_t)BSON_UINT32_FROM_LE(size);
+        memcpy(&buffer, string + position, obj_size);
+        position += obj_size;
+        total_size += obj_size;
+    }
+
+    /* Check validity */
+    if (position != total_size) {
+        PyObject* InvalidBSON = _error("InvalidBSON");
+        if (InvalidBSON) {
+            PyErr_SetString(InvalidBSON, "bad object or element length");
+            Py_DECREF(InvalidBSON);
+        }
+        goto fail;
+    }
+
+    /* objectify buffer */
+    result = Py_BuildValue("y#", pymongo_buffer_get_buffer(buffer),
+                           total_size);
+    pymongo_buffer_free(buffer);
+
+    if (is_next_batch == 1) {
+        PyObject_SetAttrString(cursor, "nextBatch", result);
+    } else {
+        PyObject_SetAttrString(cursor, "firstBatch", result);
+    }
+    goto done;
+fail:
+    result = NULL;
+done:
+    PyBuffer_Release(&view);
+    return result;
+}
+
+
 static PyMethodDef _CBSONMethods[] = {
     {"_dict_to_bson", _cbson_dict_to_bson, METH_VARARGS,
      "convert a dictionary to a string containing its BSON representation."},
@@ -2825,6 +2921,7 @@ static PyMethodDef _CBSONMethods[] = {
      "convert binary data to a sequence of documents."},
     {"_element_to_dict", _cbson_element_to_dict, METH_VARARGS,
      "Decode a single key, value pair."},
+    {"_convert_raw_document_lists_to_streams", _cbson_convert_raw_document_lists_to_streams, METH_VARARGS, "Convert raw array of documents to a stream of BSON documents"},
     {NULL, NULL, 0, NULL}
 };
 

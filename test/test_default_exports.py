@@ -20,7 +20,7 @@ import bson
 import gridfs
 import pymongo
 
-BSON_IGNORE = []
+BSON_IGNORE = ["LazyValue"]
 GRIDFS_IGNORE = [
     "ASCENDING",
     "DESCENDING",
