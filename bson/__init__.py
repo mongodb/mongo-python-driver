@@ -534,6 +534,7 @@ class LazyValue:
         if not self.__inflated:
             self.__inflated = decode(self.__view, self.__codec_options)
             if self.__is_array:
+                assert self.__inflated is not None
                 self.__inflated = [a for a in self.__inflated.values()]
         return self.__inflated
 
@@ -584,7 +585,7 @@ _T = TypeVar("_T", bound=MutableMapping[Any, Any])
 
 
 def _raw_to_dict(
-    data: Any, position: int, obj_end: int, opts: CodecOptions, result: _T, lazy=False
+    data: Any, position: int, obj_end: int, opts: CodecOptions, result: _T, lazy: bool = False
 ) -> _T:
     data, view = get_data_and_view(data)
     return _elements_to_dict(data, view, position, obj_end, opts, result, lazy=lazy)
@@ -1165,7 +1166,7 @@ def _array_of_documents_to_buffer(arr: bytes) -> bytes:
     position = 0
     _, end = _get_object_size(data, position, len(data))
     position += 4
-    buffers = []
+    buffers: List[bytes] = []
     index = data.index
     append = buffers.append
     while position < end:
