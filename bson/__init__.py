@@ -128,7 +128,6 @@ if TYPE_CHECKING:
     from array import array
     from mmap import mmap
 
-
 try:
     from bson import _cbson  # type: ignore[attr-defined]
 
@@ -1160,6 +1159,30 @@ def _decode_selective(rawdoc: Any, fields: Any, codec_options: Any) -> Mapping[A
     return doc
 
 
+def _array_of_documents_to_buffer(arr: bytes) -> bytes:
+    # Extract the raw bytes of each document.
+    data, _ = get_data_and_view(arr)
+    position = 0
+    _, end = _get_object_size(data, position, len(data))
+    position += 4
+    buffers = []
+    index = data.index
+    append = buffers.append
+    while position < end:
+        # Just skip the keys.
+        position = index(b"\x00", position) + 1
+        obj_size, _ = _get_object_size(data, position, end)
+        append(data[position : position + obj_size])
+        position += obj_size
+    if position != end:
+        raise InvalidBSON("bad object or element length")
+    return b"".join(buffers)
+
+
+if _USE_C:
+    _array_of_documents_to_buffer = _cbson._array_of_documents_to_buffer  # noqa: F811
+
+
 def _convert_raw_document_lists_to_streams(document: Any) -> None:
     """Convert raw array of documents to a stream of BSON documents."""
     cursor = document.get("cursor")
@@ -1169,28 +1192,11 @@ def _convert_raw_document_lists_to_streams(document: Any) -> None:
         batch = cursor.get(key)
         if not batch:
             continue
-
-        # Extract the raw bytes of each document.
-        data, _ = get_data_and_view(batch.raw)
-        position = 0
-        _, end = _get_object_size(data, position, len(data))
-        position += 4
-        buffers = []
-        index = data.index
-        append = buffers.append
-        while position < end:
-            # Just skip the keys.
-            position = index(b"\x00", position) + 1
-            obj_size, _ = _get_object_size(data, position, end)
-            append(data[position : position + obj_size])
-            position += obj_size
-        if position != end:
-            raise InvalidBSON("bad object or element length")
-        cursor[key] = [b"".join(buffers)]
-
-
-# if _USE_C:
-#     _convert_raw_document_lists_to_streams = _cbson._convert_raw_document_lists_to_streams  # noqa: F811
+        data = _array_of_documents_to_buffer(batch.raw.tobytes())
+        if data:
+            cursor[key] = [data]
+        else:
+            cursor[key] = []
 
 
 def _decode_all_selective(data: Any, codec_options: CodecOptions, fields: Any) -> List[Any]:
