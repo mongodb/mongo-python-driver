@@ -974,12 +974,10 @@ functions:
     - command: shell.exec
       params:
         shell: "bash"
+        working_dir: "src"
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
-          ls
-          pwd
-          ls .evergreen
           .evergreen/test-mac-arm64.sh
 
 pre:
