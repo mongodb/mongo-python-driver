@@ -962,6 +962,23 @@ functions:
         content_type: ${content_type|application/gzip}
         display_name: Release files all
 
+  "test release on macos m1":
+    - command: s3.get
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: release-files-all.tgz
+        remote_file: ${UPLOAD_BUCKET}/release-all/${revision}/${task_id}-${execution}-release-files-all.tar.gz
+        bucket: mciuploads
+    - command: shell.exec
+      params:
+        shell: "bash"
+        script: |
+          set -o xtrace
+          ${PREPARE_SHELL}
+          tar -xfz release-files-all.tgz
+          bash .evergreen/test-mac-m1.sh
+
 pre:
   - func: "fetch source"
   - func: "prepare resources"
@@ -1046,11 +1063,28 @@ tasks:
                genhtml --version || true
                valgrind --version || true
 
-    - name: "release-mac"
+    - name: "release-mac-1100"
       tags: ["release_tag"]
       run_on: macos-1100
       commands:
         - func: "build release"
+          vars:
+              VERSION: "3.10"
+        - func: "build release"
+          vars:
+              VERSION: "3.9"
+        - func: "upload release"
+
+    - name: "release-mac-1014"
+      tags: ["release_tag"]
+      run_on: macos-1014
+      commands:
+        - func: "build release"
+          vars:
+              VERSION: "3.7"
+        - func: "build release"
+          vars:
+              VERSION: "3.8"
         - func: "upload release"
 
     - name: "release-windows"
@@ -1092,6 +1126,13 @@ tasks:
           patch_optional: true
       commands:
         - func: "download and merge releases"
+
+    - name: "release-test-m1"
+      runs_on: macos-1100-arm64
+      depends_on:
+        - name: "release-combine"
+      commands:
+        -func: "test release on macos m1"
 
 # Standard test tasks {{{
 
