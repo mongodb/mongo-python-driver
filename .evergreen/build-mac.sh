@@ -15,8 +15,10 @@ for VERSION in 3.7 3.8 3.9 3.10; do
     # Set the arch flags appropriately for the target platform.
     PLATFORM=$($PYTHON -c "import sysconfig;print(sysconfig.get_platform())")
     if [[ $PLATFORM =~ "universal2" ]]; then
+        _PYTHON_HOST_PLATFORM=macosx-10.9-universal2
         ARCHFLAGS="-arch arm64 -arch x86_64"
     else
+        unset _PYTHON_HOST_PLATFORM
         ARCHFLAGS="-arch x86_64"
     fi
 
