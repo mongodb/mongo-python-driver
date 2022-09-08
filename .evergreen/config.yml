@@ -893,6 +893,16 @@ functions:
           ${PREPARE_SHELL}
           .evergreen/release.sh
 
+  "build source dist":
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        script: |
+          set -o xtrace
+          ${PREPARE_SHELL}
+          /opt/python/3.7/bin/python3 setup.py sdist
+
   "upload release":
     - command: archive.targz_pack
       params:
@@ -941,9 +951,6 @@ functions:
           for REL in release/*; do
             tar zxvf $REL -C releases/
           done
-          # Build source distribution.
-          cd src/
-          /opt/python/3.7/bin/python3 setup.py sdist
           cp dist/* ../releases
     - command: archive.targz_pack
       params:
@@ -1111,6 +1118,7 @@ tasks:
       exec_timeout_secs: 216000  # 60 minutes (manylinux task is slow).
       commands:
         - func: "build release"
+        - func: "build source dist"
         - func: "upload release"
 
     - name: "release-old-manylinux"
