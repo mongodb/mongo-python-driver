@@ -1069,15 +1069,17 @@ def print_thread_tracebacks() -> None:
 
 def print_thread_stacks(pid: int) -> None:
     """Print all C-level thread stacks for a given process id."""
+    if sys.platform == "darwin":
+        cmd = ["lldb", "--attach-pid", f"{pid}", "--batch", "--one-line", '"thread backtrace all"']
+    else:
+        cmd = ["gdb", f"--pid={pid}", "--batch", '--eval-command="thread apply all bt"']
+
     try:
         res = subprocess.run(
-            ["gdb", f"--pid={pid}", "--batch", '--eval-command="thread apply all bt"'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            encoding="utf-8",
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="utf-8"
         )
     except Exception as exc:
-        sys.stderr.write(f"Could not print C-level thread stacks because gdb failed: {exc}")
+        sys.stderr.write(f"Could not print C-level thread stacks because {cmd[0]} failed: {exc}")
     else:
         sys.stderr.write(res.stdout)
 
