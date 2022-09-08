@@ -951,6 +951,8 @@ functions:
         source_dir: "releases/"
         include:
           - "*"
+
+  "upload all releases":
     - command: s3.put
       params:
         aws_key: ${aws_key}
@@ -1075,6 +1077,14 @@ tasks:
               VERSION: "3.9"
         - func: "upload release"
 
+    - name: "release-test-m1"
+      run_on: macos-1100-arm64
+      depends_on:
+        - name: "release-mac-1100"
+      commands:
+        - func: "download and merge releases"
+        - func: "test release on macos m1"
+
     - name: "release-mac-1014"
       tags: ["release_tag"]
       run_on: macos-1014
@@ -1126,13 +1136,7 @@ tasks:
           patch_optional: true
       commands:
         - func: "download and merge releases"
-
-    - name: "release-test-m1"
-      run_on: macos-1100-arm64
-      depends_on:
-        - name: "release-combine"
-      commands:
-        - func: "test release on macos m1"
+        - func: "upload all releases"
 
 # Standard test tasks {{{
 
