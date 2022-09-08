@@ -977,6 +977,9 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
+          ls
+          pwd
+          ls .evergreen
           .evergreen/test-mac-arm64.sh
 
 pre:
