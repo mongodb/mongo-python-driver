@@ -977,7 +977,6 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
-          tar -xfz release-files-all.tgz
           bash .evergreen/test-mac-m1.sh
 
 pre:
