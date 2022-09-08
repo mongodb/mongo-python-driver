@@ -1078,6 +1078,7 @@ tasks:
         - func: "upload release"
 
     - name: "release-test-m1"
+      tags: ["release_tag"]
       run_on: macos-1100-arm64
       depends_on:
         - name: "release-mac-1100"
