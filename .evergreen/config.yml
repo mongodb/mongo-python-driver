@@ -1128,11 +1128,11 @@ tasks:
         - func: "download and merge releases"
 
     - name: "release-test-m1"
-      runs_on: macos-1100-arm64
+      run_on: macos-1100-arm64
       depends_on:
         - name: "release-combine"
       commands:
-        -func: "test release on macos m1"
+        - func: "test release on macos m1"
 
 # Standard test tasks {{{
 
