@@ -951,8 +951,6 @@ functions:
           for REL in release/*; do
             tar zxvf $REL -C releases/
           done
-          cd src/
-          cp dist/* ../releases
     - command: archive.targz_pack
       params:
         target: "release-files-all.tgz"
