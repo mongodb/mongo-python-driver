@@ -1048,7 +1048,7 @@ tasks:
 
     - name: "release-mac"
       tags: ["release_tag"]
-      run_on: macos-1014
+      run_on: macos-1100
       commands:
         - func: "build release"
         - func: "upload release"
