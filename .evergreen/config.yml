@@ -970,14 +970,14 @@ functions:
         content_type: ${content_type|application/gzip}
         display_name: Release files all
 
-  "test release on macos m1":
+  "test release on macos arm64":
     - command: shell.exec
       params:
         shell: "bash"
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
-          bash .evergreen/test-mac-m1.sh
+          .evergreen/test-mac-arm64.sh
 
 pre:
   - func: "fetch source"
@@ -1075,14 +1075,14 @@ tasks:
               VERSION: "3.9"
         - func: "upload release"
 
-    - name: "release-test-m1"
+    - name: "release-test-mac-arm64"
       tags: ["release_tag"]
       run_on: macos-1100-arm64
       depends_on:
         - name: "release-mac-1100"
       commands:
         - func: "download and merge releases"
-        - func: "test release on macos m1"
+        - func: "test release on macos arm64"
 
     - name: "release-mac-1014"
       tags: ["release_tag"]
