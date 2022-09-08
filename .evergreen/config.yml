@@ -971,13 +971,6 @@ functions:
         display_name: Release files all
 
   "test release on macos m1":
-    - command: s3.get
-      params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        local_file: release-files-all.tgz
-        remote_file: ${UPLOAD_BUCKET}/release-all/${revision}/${task_id}-${execution}-release-files-all.tar.gz
-        bucket: mciuploads
     - command: shell.exec
       params:
         shell: "bash"
