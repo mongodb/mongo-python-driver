@@ -616,6 +616,8 @@ class TestSpec(SpecRunner):
             opts["kms_tls_options"] = KMS_TLS_OPTS
         if "key_vault_namespace" not in opts:
             opts["key_vault_namespace"] = "keyvault.datakeys"
+        if "extra_options" in opts:
+            opts.update(camel_to_snake_args(opts.pop("extra_options")))
 
         opts = dict(opts)
         return AutoEncryptionOpts(**opts)
