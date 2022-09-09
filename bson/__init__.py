@@ -1160,20 +1160,20 @@ def _decode_selective(rawdoc: Any, fields: Any, codec_options: Any) -> Mapping[A
     return doc
 
 
-def _array_of_documents_to_buffer(arr: bytes) -> bytes:
+def _array_of_documents_to_buffer(view: memoryview) -> bytes:
     # Extract the raw bytes of each document.
-    data, _ = get_data_and_view(arr)
     position = 0
-    _, end = _get_object_size(data, position, len(data))
+    _, end = _get_object_size(view, position, len(view))
     position += 4
     buffers: List[bytes] = []
-    index = data.index
     append = buffers.append
-    while position < end:
+    while position < end - 1:
         # Just skip the keys.
-        position = index(b"\x00", position) + 1
-        obj_size, _ = _get_object_size(data, position, end)
-        append(data[position : position + obj_size])
+        while view[position] != 0:
+            position += 1
+        position += 1
+        obj_size, _ = _get_object_size(view, position, end)
+        append(view[position : position + obj_size])
         position += obj_size
     if position != end:
         raise InvalidBSON("bad object or element length")
@@ -1193,7 +1193,7 @@ def _convert_raw_document_lists_to_streams(document: Any) -> None:
         batch = cursor.get(key)
         if not batch:
             continue
-        data = _array_of_documents_to_buffer(batch.raw.tobytes())
+        data = _array_of_documents_to_buffer(batch.raw)
         if data:
             cursor[key] = [data]
         else:
