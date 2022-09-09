@@ -32,6 +32,7 @@ createvirtualenv () {
     python -m pip install --upgrade setuptools wheel
 }
 
+
 # Usage:
 # testinstall /path/to/python /path/to/.whl ["no-virtualenv"]
 # * param1: Python binary to test
@@ -49,7 +50,7 @@ testinstall () {
 
     $PYTHON -m pip install --upgrade $RELEASE
     cd tools
-    $PYTHON fail_if_no_c.py
+    $PYTHON fail_if_no_c.py $RELEASE
     $PYTHON -m pip uninstall -y pymongo
     cd ..
 

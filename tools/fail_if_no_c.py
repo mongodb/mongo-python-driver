@@ -17,6 +17,9 @@
 Only really intended to be used by internal build scripts.
 """
 
+import glob
+import os
+import subprocess
 import sys
 
 sys.path[0:0] = [""]
@@ -26,3 +29,13 @@ import pymongo  # noqa: E402
 
 if not pymongo.has_c() or not bson.has_c():
     sys.exit("could not load C extensions")
+
+if sys.platform == "darwin":
+    wheel_file = sys.argv[-1]
+    if ".whl" in wheel_file and "universal2" in wheel_file:
+        parent_dir = os.path.dirname(pymongo.__path__[0])
+        for so_file in glob.glob(f"{parent_dir}/**/*.so"):
+            print(f"Checking {so_file}...")
+            output = subprocess.check_output(["file", so_file])
+            if "arm64" not in output.decode("utf-8"):
+                sys.exit("Universal wheel was not compiled with arm64 support")

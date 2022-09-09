@@ -893,16 +893,6 @@ functions:
           ${PREPARE_SHELL}
           .evergreen/release.sh
 
-  "build source dist":
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          set -o xtrace
-          ${PREPARE_SHELL}
-          /opt/python/3.7/bin/python3 setup.py sdist
-
   "upload release":
     - command: archive.targz_pack
       params:
@@ -951,14 +941,16 @@ functions:
           for REL in release/*; do
             tar zxvf $REL -C releases/
           done
+          # Build source distribution.
+          cd src/
+          /opt/python/3.7/bin/python3 setup.py sdist
+          cp dist/* ../releases
     - command: archive.targz_pack
       params:
         target: "release-files-all.tgz"
         source_dir: "releases/"
         include:
           - "*"
-
-  "upload all releases":
     - command: s3.put
       params:
         aws_key: ${aws_key}
@@ -969,16 +961,6 @@ functions:
         permissions: public-read
         content_type: ${content_type|application/gzip}
         display_name: Release files all
-
-  "test release on macos arm64":
-    - command: shell.exec
-      params:
-        shell: "bash"
-        working_dir: "src"
-        script: |
-          set -o xtrace
-          ${PREPARE_SHELL}
-          .evergreen/test-mac-arm64.sh
 
 pre:
   - func: "fetch source"
@@ -1076,15 +1058,6 @@ tasks:
               VERSION: "3.9"
         - func: "upload release"
 
-    - name: "release-test-mac-arm64"
-      tags: ["release_tag"]
-      run_on: macos-1100-arm64
-      depends_on:
-        - name: "release-mac-1100"
-      commands:
-        - func: "download and merge releases"
-        - func: "test release on macos arm64"
-
     - name: "release-mac-1014"
       tags: ["release_tag"]
       run_on: macos-1014
@@ -1109,7 +1082,6 @@ tasks:
       run_on: ubuntu2004-large
       exec_timeout_secs: 216000  # 60 minutes (manylinux task is slow).
       commands:
-        - func: "build source dist"
         - func: "build release"
         - func: "upload release"
 
@@ -1137,7 +1109,6 @@ tasks:
           patch_optional: true
       commands:
         - func: "download and merge releases"
-        - func: "upload all releases"
 
 # Standard test tasks {{{
 
