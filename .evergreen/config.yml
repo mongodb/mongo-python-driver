@@ -891,6 +891,7 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
+          VERSION=${VERSION}
           .evergreen/release.sh
 
   "upload release":
