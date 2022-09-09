@@ -39,3 +39,5 @@ if sys.platform == "darwin":
             output = subprocess.check_output(["file", so_file])
             if "arm64" not in output.decode("utf-8"):
                 sys.exit("Universal wheel was not compiled with arm64 support")
+            if "x86_64" not in output.decode("utf-8"):
+                sys.exit("Universal wheel was not compiled with arm64 support")
