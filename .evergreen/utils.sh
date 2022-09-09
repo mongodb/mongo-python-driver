@@ -32,7 +32,6 @@ createvirtualenv () {
     python -m pip install --upgrade setuptools wheel
 }
 
-
 # Usage:
 # testinstall /path/to/python /path/to/.whl ["no-virtualenv"]
 # * param1: Python binary to test
