@@ -24,7 +24,7 @@ for release in dist/*; do
     if [[ "$release" = "*universal2*'" ]]; then
         export ENSURE_UNIVERSAL2="1"
     fi
-    testinstall $PYTHON
+    testinstall $PYTHON $release
     mv $release validdist/
 done
 

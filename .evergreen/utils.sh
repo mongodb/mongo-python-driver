@@ -49,7 +49,7 @@ testinstall () {
 
     $PYTHON -m pip install --upgrade $RELEASE
     cd tools
-    $PYTHON fail_if_no_c.py $RELEASE
+    $PYTHON fail_if_no_c.py
     $PYTHON -m pip uninstall -y pymongo
     cd ..
 
