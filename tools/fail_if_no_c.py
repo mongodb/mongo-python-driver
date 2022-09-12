@@ -30,7 +30,7 @@ import pymongo  # noqa: E402
 if not pymongo.has_c() or not bson.has_c():
     sys.exit("could not load C extensions")
 
-if "--ensure-universal2" in sys.argv:
+if "ENSURE_UNIVERSAL2" in os.environ:
     parent_dir = os.path.dirname(pymongo.__path__[0])
     for so_file in glob.glob(f"{parent_dir}/**/*.so"):
         print(f"Checking {so_file}...")
