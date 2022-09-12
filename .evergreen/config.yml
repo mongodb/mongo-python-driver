@@ -1993,6 +1993,7 @@ axes:
         batchtime: 10080  # 7 days
         variables:
           skip_ECS_auth_test: true
+          skip_EC2_auth_test: true
           skip_web_identity_auth_test: true
           python3_binary: "C:/python/Python38/python.exe"
           venv_bin_dir: "Scripts"
