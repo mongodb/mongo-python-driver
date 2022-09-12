@@ -689,7 +689,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          if [ "${skip_EC2_auth_test}" = "true" ]; then
+          if [ "${skip_web_identity_auth_test}" = "true" ]; then
              echo "This platform does not support the web identity auth test, skipping..."
              exit 0
           fi
@@ -712,7 +712,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          if [ "${skip_EC2_auth_test}" = "true" ]; then
+          if [ "${skip_web_identity_auth_test}" = "true" ]; then
              echo "This platform does not support the web identity auth test, skipping..."
              exit 0
           fi
@@ -1920,6 +1920,7 @@ axes:
         variables:
           skip_EC2_auth_test: true
           skip_ECS_auth_test: true
+          skip_web_identity_auth_test: true
           python3_binary: /Library/Frameworks/Python.framework/Versions/3.8/bin/python3
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
       - id: macos-1100
@@ -1928,6 +1929,7 @@ axes:
         variables:
           skip_EC2_auth_test: true
           skip_ECS_auth_test: true
+          skip_web_identity_auth_test: true
           python3_binary: /Library/Frameworks/Python.framework/Versions/3.8/bin/python3
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
       - id: rhel62
@@ -1991,6 +1993,7 @@ axes:
         batchtime: 10080  # 7 days
         variables:
           skip_ECS_auth_test: true
+          skip_web_identity_auth_test: true
           python3_binary: "C:/python/Python38/python.exe"
           venv_bin_dir: "Scripts"
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/windows-test/master/latest/libmongocrypt.tar.gz
