@@ -21,7 +21,11 @@ rm -rf releasevenv
 
 # Test that each wheel is installable.
 for release in dist/*; do
-    testinstall $PYTHON $release
+    if [[ "$release" ~= "*universal2*'" ]]; then
+        testinstall $PYTHON --ensure-universal2
+    else
+        testinstall $PYTHON
+    fi
     mv $release validdist/
 done
 
