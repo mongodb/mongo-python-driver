@@ -29,7 +29,6 @@ else
 fi
 
 $WHEELPYTHON setup.py bdist_wheel
-
 deactivate || true
 rm -rf releasevenv
 
