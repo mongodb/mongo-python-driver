@@ -891,7 +891,7 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
-          .evergreen/release.sh
+          VERSION=${VERSION} ENSURE_UNIVERSAL2=${ENSURE_UNIVERSAL2} .evergreen/release.sh
 
   "upload release":
     - command: archive.targz_pack
@@ -1046,11 +1046,30 @@ tasks:
                genhtml --version || true
                valgrind --version || true
 
-    - name: "release-mac"
+    - name: "release-mac-1100"
+      tags: ["release_tag"]
+      run_on: macos-1100
+      commands:
+        - func: "build release"
+          vars:
+              VERSION: "3.10"
+              ENSURE_UNIVERSAL2: "1"
+        - func: "build release"
+          vars:
+              VERSION: "3.9"
+              ENSURE_UNIVERSAL2: "1"
+        - func: "upload release"
+
+    - name: "release-mac-1014"
       tags: ["release_tag"]
       run_on: macos-1014
       commands:
         - func: "build release"
+          vars:
+              VERSION: "3.7"
+        - func: "build release"
+          vars:
+              VERSION: "3.8"
         - func: "upload release"
 
     - name: "release-windows"
