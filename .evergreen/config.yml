@@ -1022,6 +1022,15 @@ tasks:
       commands:
         - func: "build release"
           vars:
+              VERSION: "2.7"
+        - func: "build release"
+          vars:
+              VERSION: "3.5"
+        - func: "build release"
+          vars:
+              VERSION: "3.6"
+        - func: "build release"
+          vars:
               VERSION: "3.7"
         - func: "build release"
           vars:
