@@ -33,7 +33,7 @@ if not pymongo.has_c() or not bson.has_c():
 if os.environ.get("ENSURE_UNIVERSAL2") == "1":
     parent_dir = os.path.dirname(pymongo.__path__[0])
     for so_file in glob.glob("%s/**/*.so" % parent_dir):
-        print(f"Checking universal2 compatibility in {so_file}...")
+        print("Checking universal2 compatibility in %s..." % so_file)
         output = subprocess.check_output(["file", so_file])
         if "arm64" not in output.decode("utf-8"):
             sys.exit("Universal wheel was not compiled with arm64 support")
