@@ -12,23 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test that pymongo is fork safe."""
+"""Test that pymongo resets its own locks after a fork."""
 
 import os
 import sys
 import unittest
 from multiprocessing import Pipe
 
-from bson.objectid import ObjectId
-
 sys.path[0:0] = [""]
 
 from test import IntegrationTest
-from test.utils import (
-    ExceptionCatchingThread,
-    is_greenthread_patched,
-    rs_or_single_client,
-)
+from test.utils import is_greenthread_patched
+
+from bson.objectid import ObjectId
 
 
 @unittest.skipIf(
@@ -90,55 +86,6 @@ class TestFork(IntegrationTest):
             self.assertNotEqual(child_id, init_id)
             passed, msg = parent_conn.recv()
             self.assertTrue(passed, msg)
-
-    def test_many_threaded(self):
-        # Fork randomly while doing operations.
-        clients = []
-        for _ in range(10):
-            c = rs_or_single_client()
-            clients.append(c)
-            self.addCleanup(c.close)
-
-        class ForkThread(ExceptionCatchingThread):
-            def __init__(self, runner, clients):
-                self.runner = runner
-                self.clients = clients
-                self.fork = False
-
-                super().__init__(target=self.fork_behavior)
-
-            def fork_behavior(self) -> None:
-                def action(client):
-                    client.admin.command("ping")
-                    return 0
-
-                for i in range(200):
-                    # Pick a random client.
-                    rc = self.clients[i % len(self.clients)]
-                    if i % 50 == 0 and self.fork:
-                        # Fork
-                        def target():
-                            for c_ in self.clients:
-                                action(c_)
-                                c_.close()
-
-                        with self.runner.fork(target=target) as proc:
-                            self.runner.assertTrue(proc.pid)
-                    action(rc)
-
-        threads = [ForkThread(self, clients) for _ in range(10)]
-        threads[-1].fork = True
-        for t in threads:
-            t.start()
-
-        for t in threads:
-            t.join()
-
-        for t in threads:
-            self.assertIsNone(t.exc)
-
-        for c in clients:
-            c.close()
 
 
 if __name__ == "__main__":
