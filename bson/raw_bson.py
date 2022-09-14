@@ -51,7 +51,7 @@ blobs to disk, using raw BSON documents provides better speed and avoids the
 overhead of decoding or encoding BSON.
 """
 
-from typing import Any, ItemsView, Iterator, Mapping, Optional
+from typing import Any, Dict, ItemsView, Iterator, Mapping, Optional
 
 from bson import _get_object_size, _raw_to_dict
 from bson.codec_options import _RAW_BSON_DOCUMENT_MARKER
@@ -61,7 +61,7 @@ from bson.son import SON
 
 
 def _inflate_bson(
-    bson_bytes: bytes, codec_options: CodecOptions, lazy: bool = False
+    bson_bytes: bytes, codec_options: CodecOptions, user_fields: Optional[Dict] = None
 ) -> Mapping[Any, Any]:
     """Inflates the top level fields of a BSON document.
 
@@ -72,7 +72,9 @@ def _inflate_bson(
         must be :class:`RawBSONDocument`.
     """
     # Use SON to preserve ordering of elements.
-    return _raw_to_dict(bson_bytes, 4, len(bson_bytes) - 1, codec_options, SON(), lazy=lazy)
+    return _raw_to_dict(
+        bson_bytes, 4, len(bson_bytes) - 1, codec_options, SON(), user_fields=user_fields
+    )
 
 
 class RawBSONDocument(Mapping[str, Any]):
@@ -83,10 +85,15 @@ class RawBSONDocument(Mapping[str, Any]):
     RawBSONDocument decode its bytes.
     """
 
-    __slots__ = ("__raw", "__inflated_doc", "__codec_options")
+    __slots__ = ("__raw", "__inflated_doc", "__codec_options", "__user_fields")
     _type_marker = _RAW_BSON_DOCUMENT_MARKER
 
-    def __init__(self, bson_bytes: bytes, codec_options: Optional[CodecOptions] = None) -> None:
+    def __init__(
+        self,
+        bson_bytes: bytes,
+        codec_options: Optional[CodecOptions] = None,
+        user_fields: Optional[Dict] = None,
+    ) -> None:
         """Create a new :class:`RawBSONDocument`
 
         :class:`RawBSONDocument` is a representation of a BSON document that
@@ -122,11 +129,12 @@ class RawBSONDocument(Mapping[str, Any]):
         """
         self.__raw = bson_bytes
         self.__inflated_doc: Optional[Mapping[str, Any]] = None
+        self.__user_fields = user_fields
         # Can't default codec_options to DEFAULT_RAW_BSON_OPTIONS in signature,
         # it refers to this class RawBSONDocument.
         if codec_options is None:
             codec_options = DEFAULT_RAW_BSON_OPTIONS
-        elif codec_options.document_class not in [RawBSONDocument, LazyRawBSONDocument]:
+        elif codec_options.document_class != RawBSONDocument:
             raise TypeError(
                 "RawBSONDocument cannot use CodecOptions with document "
                 "class %s" % (codec_options.document_class,)
@@ -150,12 +158,10 @@ class RawBSONDocument(Mapping[str, Any]):
             # We already validated the object's size when this document was
             # created, so no need to do that again.
             # Use SON to preserve ordering of elements.
-            self.__inflated_doc = self._inflate_bson(self.__raw, self.__codec_options)
+            self.__inflated_doc = _inflate_bson(
+                self.__raw, self.__codec_options, self.__user_fields
+            )
         return self.__inflated_doc
-
-    @staticmethod
-    def _inflate_bson(bson_bytes: bytes, codec_options: CodecOptions) -> Mapping[Any, Any]:
-        return _inflate_bson(bson_bytes, codec_options)
 
     def __getitem__(self, item: str) -> Any:
         return self.__inflated[item]
@@ -179,16 +185,7 @@ class RawBSONDocument(Mapping[str, Any]):
         )
 
 
-class LazyRawBSONDocument(RawBSONDocument):
-    """A RawBSONDocument that only expands sub-documents and arrays when accessed."""
-
-    @staticmethod
-    def _inflate_bson(bson_bytes: bytes, codec_options: CodecOptions) -> Mapping[Any, Any]:
-        return _inflate_bson(bson_bytes, codec_options, lazy=True)
-
-
 DEFAULT_RAW_BSON_OPTIONS: CodecOptions = DEFAULT.with_options(document_class=RawBSONDocument)
-LAZY_RAW_BSON_OPTIONS: CodecOptions = DEFAULT.with_options(document_class=LazyRawBSONDocument)
 """The default :class:`~bson.codec_options.CodecOptions` for
 :class:`RawBSONDocument`.
 """
