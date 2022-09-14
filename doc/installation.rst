@@ -30,6 +30,12 @@ Dependencies
 
 PyMongo supports CPython 3.7+ and PyPy3.7+.
 
+Required dependencies:
+
+Support for mongodb+srv:// URIs requires `dnspython
+<https://pypi.python.org/pypi/dnspython>`_
+
+
 Optional dependencies:
 
 GSSAPI authentication requires `pykerberos
@@ -44,10 +50,7 @@ dependency can be installed automatically along with PyMongo::
 
   $ python3 -m pip install "pymongo[aws]"
 
-Support for mongodb+srv:// URIs requires `dnspython
-<https://pypi.python.org/pypi/dnspython>`_::
 
-  $ python3 -m pip install "pymongo[srv]"
 
 :ref:`OCSP` requires `PyOpenSSL
 <https://pypi.org/project/pyOpenSSL/>`_, `requests
