@@ -2558,7 +2558,6 @@ buildvariants:
 - matrix_name: "tests-python-version-rhel-test-encryption"
   matrix_spec:
     platform: rhel70
-    # RHEL 6.2 does not support Python 3.7.x and later.
     python-version: ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9"]
     auth-ssl: noauth-nossl
 # TODO: dependency error for 'coverage-report' task:
