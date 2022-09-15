@@ -2360,7 +2360,6 @@ buildvariants:
   matrix_spec:
     platform:
       # OSes that support versions of MongoDB>=2.6 with SSL.
-      - awslinux
       - rhel70
     auth-ssl: "*"
     encryption: "*"
