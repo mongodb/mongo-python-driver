@@ -61,7 +61,7 @@ from bson.son import SON
 
 
 def _inflate_bson(
-    bson_bytes: bytes, codec_options: CodecOptions, lazy: bool = False
+    bson_bytes: bytes, codec_options: CodecOptions, raw_array: bool = False
 ) -> Mapping[Any, Any]:
     """Inflates the top level fields of a BSON document.
 
@@ -72,7 +72,9 @@ def _inflate_bson(
         must be :class:`RawBSONDocument`.
     """
     # Use SON to preserve ordering of elements.
-    return _raw_to_dict(bson_bytes, 4, len(bson_bytes) - 1, codec_options, SON(), lazy=lazy)
+    return _raw_to_dict(
+        bson_bytes, 4, len(bson_bytes) - 1, codec_options, SON(), raw_array=raw_array
+    )
 
 
 class RawBSONDocument(Mapping[str, Any]):
@@ -126,7 +128,9 @@ class RawBSONDocument(Mapping[str, Any]):
         # it refers to this class RawBSONDocument.
         if codec_options is None:
             codec_options = DEFAULT_RAW_BSON_OPTIONS
-        elif codec_options.document_class not in [RawBSONDocument, LazyRawBSONDocument]:
+        elif codec_options.document_class is not RawBSONDocument and not issubclass(
+            codec_options.document_class, RawBSONDocument
+        ):
             raise TypeError(
                 "RawBSONDocument cannot use CodecOptions with document "
                 "class %s" % (codec_options.document_class,)
@@ -179,16 +183,16 @@ class RawBSONDocument(Mapping[str, Any]):
         )
 
 
-class LazyRawBSONDocument(RawBSONDocument):
+class _RawArrayBSONDocument(RawBSONDocument):
     """A RawBSONDocument that only expands sub-documents and arrays when accessed."""
 
     @staticmethod
     def _inflate_bson(bson_bytes: bytes, codec_options: CodecOptions) -> Mapping[Any, Any]:
-        return _inflate_bson(bson_bytes, codec_options, lazy=True)
+        return _inflate_bson(bson_bytes, codec_options, raw_array=True)
 
 
 DEFAULT_RAW_BSON_OPTIONS: CodecOptions = DEFAULT.with_options(document_class=RawBSONDocument)
-LAZY_RAW_BSON_OPTIONS: CodecOptions = DEFAULT.with_options(document_class=LazyRawBSONDocument)
+_RAW_ARRAY_BSON_OPTIONS: CodecOptions = DEFAULT.with_options(document_class=_RawArrayBSONDocument)
 """The default :class:`~bson.codec_options.CodecOptions` for
 :class:`RawBSONDocument`.
 """

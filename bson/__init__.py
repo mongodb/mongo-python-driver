@@ -516,56 +516,35 @@ _ELEMENT_GETTER: Dict[int, Callable[..., Tuple[Any, int]]] = {
 }
 
 
-class LazyValue:
-    """A BSON sub-document or array that can be lazily loaded."""
-
-    def __init__(self, view, is_array, codec_options):
-        self.__inflated = None
-        self.__view = view
-        self.__is_array = is_array
-        self.__codec_options = codec_options
-
-    @property
-    def raw(self):
-        return memoryview(self.__view)
-
-    @property
-    def value(self):
-        if not self.__inflated:
-            self.__inflated = decode(self.__view, self.__codec_options)
-            if self.__is_array:
-                assert self.__inflated is not None
-                self.__inflated = [a for a in self.__inflated.values()]
-        return self.__inflated
-
-
 if _USE_C:
 
     def _element_to_dict(
-        data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions, lazy: bool = False
+        data: Any,
+        view: Any,
+        position: int,
+        obj_end: int,
+        opts: CodecOptions,
+        raw_array: bool = False,
     ) -> Any:
-        key, value, position, dtype = _cbson._element_to_dict(data, position, obj_end, opts, lazy)
-        if lazy:
-            if dtype == ord(BSONOBJ):
-                value = LazyValue(value, False, opts)
-            elif dtype == ord(BSONARR):
-                value = LazyValue(value, True, opts)
-        return key, value, position
+        return _cbson._element_to_dict(data, position, obj_end, opts, raw_array)
 
 else:
 
     def _element_to_dict(
-        data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions, lazy: bool = False
+        data: Any,
+        view: Any,
+        position: int,
+        obj_end: int,
+        opts: CodecOptions,
+        raw_array: bool = False,
     ) -> Any:
         """Decode a single key, value pair."""
         element_type = data[position]
         position += 1
         element_name, position = _get_c_string(data, view, position, opts)
-        if lazy and element_type in [ord(BSONOBJ), ord(BSONARR)]:
+        if raw_array and element_type == ord(BSONARR):
             _, end = _get_object_size(data, position, len(data))
-            is_array = element_type == ord(BSONARR)
-            value = LazyValue(view[position : end + 1], is_array, opts)
-            return element_name, value, end + 1
+            return element_name, view[position : end + 1], end + 1
         try:
             value, position = _ELEMENT_GETTER[element_type](
                 data, view, position, obj_end, opts, element_name
@@ -585,10 +564,10 @@ _T = TypeVar("_T", bound=MutableMapping[Any, Any])
 
 
 def _raw_to_dict(
-    data: Any, position: int, obj_end: int, opts: CodecOptions, result: _T, lazy: bool = False
+    data: Any, position: int, obj_end: int, opts: CodecOptions, result: _T, raw_array: bool = False
 ) -> _T:
     data, view = get_data_and_view(data)
-    return _elements_to_dict(data, view, position, obj_end, opts, result, lazy=lazy)
+    return _elements_to_dict(data, view, position, obj_end, opts, result, raw_array=raw_array)
 
 
 def _elements_to_dict(
@@ -598,14 +577,16 @@ def _elements_to_dict(
     obj_end: int,
     opts: CodecOptions,
     result: Any = None,
-    lazy: bool = False,
+    raw_array: bool = False,
 ) -> Any:
     """Decode a BSON document into result."""
     if result is None:
         result = opts.document_class()
     end = obj_end - 1
     while position < end:
-        key, value, position = _element_to_dict(data, view, position, obj_end, opts, lazy=lazy)
+        key, value, position = _element_to_dict(
+            data, view, position, obj_end, opts, raw_array=raw_array
+        )
         result[key] = value
     if position != obj_end:
         raise InvalidBSON("bad object or element length")
@@ -1193,7 +1174,7 @@ def _convert_raw_document_lists_to_streams(document: Any) -> None:
         batch = cursor.get(key)
         if not batch:
             continue
-        data = _array_of_documents_to_buffer(batch.raw)
+        data = _array_of_documents_to_buffer(batch)
         if data:
             cursor[key] = [data]
         else:
