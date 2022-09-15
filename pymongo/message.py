@@ -24,12 +24,17 @@ import datetime
 import random
 import struct
 from io import BytesIO as _BytesIO
-from typing import Any, Dict, Mapping, NoReturn
+from typing import Any, Dict, NoReturn
 
 import bson
-from bson import CodecOptions, _dict_to_bson, _make_c_string, encode
+from bson import CodecOptions, _decode_selective, _dict_to_bson, _make_c_string, encode
 from bson.int64 import Int64
-from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
+from bson.raw_bson import (
+    DEFAULT_RAW_BSON_OPTIONS,
+    LAZY_RAW_BSON_OPTIONS,
+    RawBSONDocument,
+    _inflate_bson,
+)
 from bson.son import SON
 
 try:
@@ -1378,8 +1383,10 @@ class _OpMsg(object):
         cursor_id is ignored
         user_fields is used to determine which fields must not be decoded
         """
-        doc = RawBSONDocument(self.payload_document, user_fields=user_fields)
-        return [self._to_dict(doc)]
+        inflated_response = _decode_selective(
+            RawBSONDocument(self.payload_document), user_fields, LAZY_RAW_BSON_OPTIONS
+        )
+        return [inflated_response]
 
     def unpack_response(
         self,
@@ -1430,15 +1437,6 @@ class _OpMsg(object):
 
         payload_document = msg[5:]
         return cls(flags, payload_document)
-
-    def _to_dict(self, rawdoc: RawBSONDocument) -> Mapping[Any, Any]:
-        doc = {}
-        for key, value in rawdoc.items():
-            if isinstance(value, RawBSONDocument):
-                doc[key] = self._to_dict(value)
-            else:
-                doc[key] = value
-        return doc
 
 
 _UNPACK_REPLY = {

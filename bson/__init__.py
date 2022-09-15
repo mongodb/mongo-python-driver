@@ -244,26 +244,28 @@ def _raise_unknown_type(element_type: int, element_name: str) -> NoReturn:
     )
 
 
-def _get_int(data: Any, view: Any, position: int, *args: Any) -> Tuple[int, int]:
+def _get_int(
+    data: Any, view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
+) -> Tuple[int, int]:
     """Decode a BSON int32 to python int."""
     return _UNPACK_INT_FROM(data, position)[0], position + 4
 
 
-def _get_c_string(
-    data: Any, view: Any, position: int, opts: CodecOptions, *args: Any
-) -> Tuple[str, int]:
+def _get_c_string(data: Any, view: Any, position: int, opts: CodecOptions) -> Tuple[str, int]:
     """Decode a BSON 'C' string to python str."""
     end = data.index(b"\x00", position)
     return _utf_8_decode(view[position:end], opts.unicode_decode_error_handler, True)[0], end + 1
 
 
-def _get_float(data: Any, view: Any, position: int, *args: Any) -> Tuple[float, int]:
+def _get_float(
+    data: Any, view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
+) -> Tuple[float, int]:
     """Decode a BSON double to python float."""
     return _UNPACK_FLOAT_FROM(data, position)[0], position + 8
 
 
 def _get_string(
-    data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions, *args: Any
+    data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions, dummy: Any
 ) -> Tuple[str, int]:
     """Decode a BSON string to python str."""
     length = _UNPACK_INT_FROM(data, position)[0]
@@ -294,23 +296,14 @@ def _get_object_size(data: Any, position: int, obj_end: int) -> Tuple[int, int]:
 
 
 def _get_object(
-    data: Any,
-    view: Any,
-    position: int,
-    obj_end: int,
-    opts: CodecOptions,
-    dummy: Any,
-    user_fields: Optional[Dict] = None,
+    data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions, dummy: Any
 ) -> Tuple[Any, int]:
     """Decode a BSON subdocument to opts.document_class or bson.dbref.DBRef."""
     obj_size, end = _get_object_size(data, position, obj_end)
     if _raw_document_class(opts.document_class):
-        return (
-            opts.document_class(data[position : end + 1], opts, user_fields=user_fields),
-            position + obj_size,
-        )
+        return (opts.document_class(data[position : end + 1], opts), position + obj_size)
 
-    obj = _elements_to_dict(data, view, position + 4, end, opts, user_fields)
+    obj = _elements_to_dict(data, view, position + 4, end, opts)
 
     position += obj_size
     # If DBRef validation fails, return a normal doc.
@@ -324,13 +317,7 @@ def _get_object(
 
 
 def _get_array(
-    data: Any,
-    view: Any,
-    position: int,
-    obj_end: int,
-    opts: CodecOptions,
-    element_name: str,
-    *args: Any
+    data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions, element_name: str
 ) -> Tuple[Any, int]:
     """Decode a BSON array to python list."""
     size = _UNPACK_INT_FROM(data, position)[0]
@@ -372,7 +359,7 @@ def _get_array(
 
 
 def _get_binary(
-    data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions, *args: Any
+    data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions, dummy1: Any
 ) -> Tuple[Union[Binary, uuid.UUID], int]:
     """Decode a BSON binary to bson.binary.Binary or python UUID."""
     length, subtype = _UNPACK_LENGTH_SUBTYPE_FROM(data, position)
@@ -408,13 +395,17 @@ def _get_binary(
     return value, end
 
 
-def _get_oid(data: Any, view: Any, position: int, *args: Any) -> Tuple[ObjectId, int]:
+def _get_oid(
+    data: Any, view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
+) -> Tuple[ObjectId, int]:
     """Decode a BSON ObjectId to bson.objectid.ObjectId."""
     end = position + 12
     return ObjectId(data[position:end]), end
 
 
-def _get_boolean(data: Any, view: Any, position: int, *args: Any) -> Tuple[bool, int]:
+def _get_boolean(
+    data: Any, view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
+) -> Tuple[bool, int]:
     """Decode a BSON true/false to python True/False."""
     end = position + 1
     boolean_byte = data[position:end]
@@ -426,20 +417,14 @@ def _get_boolean(data: Any, view: Any, position: int, *args: Any) -> Tuple[bool,
 
 
 def _get_date(
-    data: Any, view: Any, position: int, dummy0: int, opts: CodecOptions, *args: Any
+    data: Any, view: Any, position: int, dummy0: int, opts: CodecOptions, dummy1: Any
 ) -> Tuple[Union[datetime.datetime, DatetimeMS], int]:
     """Decode a BSON datetime to python datetime.datetime."""
     return _millis_to_datetime(_UNPACK_LONG_FROM(data, position)[0], opts), position + 8
 
 
 def _get_code(
-    data: Any,
-    view: Any,
-    position: int,
-    obj_end: int,
-    opts: CodecOptions,
-    element_name: str,
-    *args: Any
+    data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions, element_name: str
 ) -> Tuple[Code, int]:
     """Decode a BSON code to bson.code.Code."""
     code, position = _get_string(data, view, position, obj_end, opts, element_name)
@@ -447,13 +432,7 @@ def _get_code(
 
 
 def _get_code_w_scope(
-    data: Any,
-    view: Any,
-    position: int,
-    obj_end: int,
-    opts: CodecOptions,
-    element_name: str,
-    *args: Any
+    data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions, element_name: str
 ) -> Tuple[Code, int]:
     """Decode a BSON code_w_scope to bson.code.Code."""
     code_end = position + _UNPACK_INT_FROM(data, position)[0]
@@ -465,7 +444,7 @@ def _get_code_w_scope(
 
 
 def _get_regex(
-    data: Any, view: Any, position: int, dummy0: Any, opts: CodecOptions, *args: Any
+    data: Any, view: Any, position: int, dummy0: Any, opts: CodecOptions, dummy1: Any
 ) -> Tuple[Regex, int]:
     """Decode a BSON regex to bson.regex.Regex or a python pattern object."""
     pattern, position = _get_c_string(data, view, position, opts)
@@ -475,13 +454,7 @@ def _get_regex(
 
 
 def _get_ref(
-    data: Any,
-    view: Any,
-    position: int,
-    obj_end: int,
-    opts: CodecOptions,
-    element_name: str,
-    *args: Any
+    data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions, element_name: str
 ) -> Tuple[DBRef, int]:
     """Decode (deprecated) BSON DBPointer to bson.dbref.DBRef."""
     collection, position = _get_string(data, view, position, obj_end, opts, element_name)
@@ -489,18 +462,24 @@ def _get_ref(
     return DBRef(collection, oid), position
 
 
-def _get_timestamp(data: Any, view: Any, position: int, *args: Any) -> Tuple[Timestamp, int]:
+def _get_timestamp(
+    data: Any, view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
+) -> Tuple[Timestamp, int]:
     """Decode a BSON timestamp to bson.timestamp.Timestamp."""
     inc, timestamp = _UNPACK_TIMESTAMP_FROM(data, position)
     return Timestamp(timestamp, inc), position + 8
 
 
-def _get_int64(data: Any, view: Any, position: int, *args: Any) -> Tuple[Int64, int]:
+def _get_int64(
+    data: Any, view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
+) -> Tuple[Int64, int]:
     """Decode a BSON int64 to bson.int64.Int64."""
     return Int64(_UNPACK_LONG_FROM(data, position)[0]), position + 8
 
 
-def _get_decimal128(data: Any, view: Any, position: int, *args: Any) -> Tuple[Decimal128, int]:
+def _get_decimal128(
+    data: Any, view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
+) -> Tuple[Decimal128, int]:
     """Decode a BSON decimal128 to bson.decimal128.Decimal128."""
     end = position + 16
     return Decimal128.from_bid(data[position:end]), end
@@ -537,42 +516,59 @@ _ELEMENT_GETTER: Dict[int, Callable[..., Tuple[Any, int]]] = {
 }
 
 
-if False:  # _USE_C:
+class LazyValue:
+    """A BSON sub-document or array that can be lazily loaded."""
+
+    def __init__(self, view, is_array, codec_options):
+        self.__inflated = None
+        self.__view = view
+        self.__is_array = is_array
+        self.__codec_options = codec_options
+
+    @property
+    def raw(self):
+        return memoryview(self.__view)
+
+    @property
+    def value(self):
+        if not self.__inflated:
+            self.__inflated = decode(self.__view, self.__codec_options)
+            if self.__is_array:
+                assert self.__inflated is not None
+                self.__inflated = [a for a in self.__inflated.values()]
+        return self.__inflated
+
+
+if _USE_C:
 
     def _element_to_dict(
-        data: Any,
-        view: Any,
-        position: int,
-        obj_end: int,
-        opts: CodecOptions,
-        user_fields: Optional[Dict] = None,
+        data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions, lazy: bool = False
     ) -> Any:
-        return _cbson._element_to_dict(data, position, obj_end, opts, user_fields)
+        key, value, position, dtype = _cbson._element_to_dict(data, position, obj_end, opts, lazy)
+        if lazy:
+            if dtype == ord(BSONOBJ):
+                value = LazyValue(value, False, opts)
+            elif dtype == ord(BSONARR):
+                value = LazyValue(value, True, opts)
+        return key, value, position
 
 else:
 
     def _element_to_dict(
-        data: Any,
-        view: Any,
-        position: int,
-        obj_end: int,
-        opts: CodecOptions,
-        user_fields: Optional[Dict] = None,
+        data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions, lazy: bool = False
     ) -> Any:
         """Decode a single key, value pair."""
         element_type = data[position]
         position += 1
         element_name, position = _get_c_string(data, view, position, opts)
-        if user_fields and user_fields.get(element_name) == 1:
+        if lazy and element_type in [ord(BSONOBJ), ord(BSONARR)]:
             _, end = _get_object_size(data, position, len(data))
-            value = view[position : end + 1]
+            is_array = element_type == ord(BSONARR)
+            value = LazyValue(view[position : end + 1], is_array, opts)
             return element_name, value, end + 1
         try:
-            sub_user_fields = None
-            if user_fields:
-                sub_user_fields = user_fields.get(element_name)
             value, position = _ELEMENT_GETTER[element_type](
-                data, view, position, obj_end, opts, element_name, sub_user_fields
+                data, view, position, obj_end, opts, element_name
             )
         except KeyError:
             _raise_unknown_type(element_type, element_name)
@@ -589,15 +585,10 @@ _T = TypeVar("_T", bound=MutableMapping[Any, Any])
 
 
 def _raw_to_dict(
-    data: Any,
-    position: int,
-    obj_end: int,
-    opts: CodecOptions,
-    result: _T,
-    user_fields: Optional[Dict] = None,
+    data: Any, position: int, obj_end: int, opts: CodecOptions, result: _T, lazy: bool = False
 ) -> _T:
     data, view = get_data_and_view(data)
-    return _elements_to_dict(data, view, position, obj_end, opts, result, user_fields=user_fields)
+    return _elements_to_dict(data, view, position, obj_end, opts, result, lazy=lazy)
 
 
 def _elements_to_dict(
@@ -607,16 +598,14 @@ def _elements_to_dict(
     obj_end: int,
     opts: CodecOptions,
     result: Any = None,
-    user_fields: Optional[Dict] = None,
+    lazy: bool = False,
 ) -> Any:
     """Decode a BSON document into result."""
     if result is None:
         result = opts.document_class()
     end = obj_end - 1
     while position < end:
-        key, value, position = _element_to_dict(
-            data, view, position, obj_end, opts, user_fields=user_fields
-        )
+        key, value, position = _element_to_dict(data, view, position, obj_end, opts, lazy=lazy)
         result[key] = value
     if position != obj_end:
         raise InvalidBSON("bad object or element length")
@@ -1204,7 +1193,7 @@ def _convert_raw_document_lists_to_streams(document: Any) -> None:
         batch = cursor.get(key)
         if not batch:
             continue
-        data = _array_of_documents_to_buffer(batch)
+        data = _array_of_documents_to_buffer(batch.raw)
         if data:
             cursor[key] = [data]
         else:
