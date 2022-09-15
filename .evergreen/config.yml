@@ -1859,13 +1859,6 @@ axes:
   - id: platform
     display_name: OS
     values:
-      - id: awslinux
-        display_name: "Amazon Linux 2018 (Enterprise)"
-        run_on: amazon1-2018-test
-        batchtime: 10080  # 7 days
-        variables:
-          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/linux-64-amazon-ami/master/latest/libmongocrypt.tar.gz
-          python3_binary: "/opt/python/3.8/bin/python3"
       - id: archlinux-test
         display_name: "Archlinux"
         run_on: archlinux-test
@@ -2457,26 +2450,26 @@ buildvariants:
   tasks:
     - ".5.0"
 
-- matrix_name: "tests-python-version-amazon1-test-ssl"
+- matrix_name: "tests-python-version-rhel-test-ssl"
   matrix_spec:
-    platform: awslinux
+    platform: rhel70
     # RHEL 6.2 does not support Python 3.7.x and later.
-    python-version: &amazon1-pythons ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy", "pypy3.5", "pypy3.6", "pypy3.7", "jython2.7"]
+    python-version: &rhel-pythons ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy", "pypy3.5", "pypy3.6", "pypy3.7", "jython2.7"]
     auth: "*"
     ssl: "*"
     coverage: "*"
   exclude_spec:
-    - platform: awslinux
+    - platform: rhel70
       python-version: "*"
       auth: "noauth"
       ssl: "ssl"
       coverage: "*"
-    - platform: awslinux
+    - platform: rhel70
       python-version: "!jython2.7" # Test Jython with Auth/NoSSL
       auth: "auth"
       ssl: "nossl"
       coverage: "*"
-    - platform: awslinux
+    - platform: rhel70
       # PYTHON-498: disable Jython SSL tests
       python-version: "jython2.7"
       # EVG-1410: exlcude_spec must specifiy values for all axes
@@ -2499,14 +2492,14 @@ buildvariants:
 
 - matrix_name: "tests-pyopenssl"
   matrix_spec:
-    platform: awslinux
+    platform: rhel70
     python-version: ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9"]
     auth: "*"
     ssl: "ssl"
     pyopenssl: "*"
   # Only test "noauth" with Python 3.7.
   exclude_spec:
-    platform: awslinux
+    platform: rhel70
     python-version: ["2.7", "3.5", "3.6", "3.8", "3.9"]
     auth: "noauth"
     ssl: "ssl"
@@ -2563,9 +2556,9 @@ buildvariants:
   tasks:
     - '.replica_set'
 
-- matrix_name: "tests-python-version-amazon1-test-encryption"
+- matrix_name: "tests-python-version-rhel-test-encryption"
   matrix_spec:
-    platform: awslinux
+    platform: rhel70
     # RHEL 6.2 does not support Python 3.7.x and later.
     python-version: ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9"]
     auth-ssl: noauth-nossl
@@ -2585,16 +2578,16 @@ buildvariants:
   display_name: "Encryption ${python-version} ${platform} ${auth-ssl}"
   tasks: *encryption-server-versions
 
-- matrix_name: "tests-python-version-amazon1-without-c-extensions"
+- matrix_name: "tests-python-version-rhel-without-c-extensions"
   matrix_spec:
-    platform: awslinux
-    python-version: *amazon1-pythons
+    platform: rhel70
+    python-version: *rhel-pythons
     c-extensions: without-c-extensions
     auth-ssl: noauth-nossl
     coverage: "*"
   exclude_spec:
    # These interpreters are always tested without extensions.
-   - platform: awslinux
+   - platform: rhel70
      python-version: ["pypy", "pypy3.5", "pypy3.6", "pypy3.7", "jython2.7"]
      c-extensions: "*"
      auth-ssl: "*"
@@ -2604,7 +2597,7 @@ buildvariants:
 
 - matrix_name: "tests-python-version-compression"
   matrix_spec:
-    platform: [awslinux]
+    platform: [rhel70]
     python-version: ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy", "pypy3.5", "pypy3.6", "pypy3.7", "jython2.7"]
     c-extensions: "*"
     compression: "*"
@@ -2642,15 +2635,15 @@ buildvariants:
           - "test-4.0-standalone"
           - "test-3.6-standalone"
 
-- matrix_name: "tests-python-version-green-framework-amazon1"
+- matrix_name: "tests-python-version-green-framework-rhel"
   matrix_spec:
-    platform: awslinux
-    python-version: *amazon1-pythons
+    platform: rhel70
+    python-version: *rhel-pythons
     green-framework: "*"
     auth-ssl: "*"
   exclude_spec:
    # Don't test green frameworks on these Python versions.
-   - platform: awslinux
+   - platform: rhel70
      python-version: ["pypy", "pypy3.5", "pypy3.6", "pypy3.7", "jython2.7"]
      green-framework: "*"
      auth-ssl: "*"
@@ -2726,7 +2719,7 @@ buildvariants:
 - matrix_name: "tests-python-version-supports-openssl-110-test-ssl"
   matrix_spec:
     platform: debian92
-    python-version: *amazon1-pythons
+    python-version: *rhel-pythons
     auth-ssl: "auth-ssl"
   exclude_spec:
    - platform: debian92
@@ -2755,16 +2748,16 @@ buildvariants:
         remove_tasks:
           - ".2.6"
 
-# Storage engine tests on Amazon1 (x86_64) with Python 2.7.
+# Storage engine tests on RHEL7.0 (x86_64) with Python 2.7.
 - matrix_name: "tests-storage-engines"
   matrix_spec:
-    platform: awslinux
+    platform: rhel70
     storage-engine: "*"
     python-version: 2.7
   display_name: "Storage ${storage-engine} ${python-version} ${platform}"
   rules:
     - if:
-        platform: awslinux
+        platform: rhel70
         storage-engine: ["inmemory"]
         python-version: "*"
       then:
@@ -2778,7 +2771,7 @@ buildvariants:
           - "test-3.2-standalone"
     - if:
         # MongoDB 4.2 drops support for MMAPv1
-        platform: awslinux
+        platform: rhel70
         storage-engine: ["mmapv1"]
         python-version: "*"
       then:
@@ -2791,7 +2784,7 @@ buildvariants:
           - "test-3.2-standalone"
     - if:
         # No need to test this on later server versions as it becomes the default
-        platform: awslinux
+        platform: rhel70
         storage-engine: ["wiredtiger"]
         python-version: "*"
       then:
@@ -2801,7 +2794,7 @@ buildvariants:
 # enableTestCommands=0 tests on RHEL 6.2 (x86_64) with Python 2.7.
 - matrix_name: "test-disableTestCommands"
   matrix_spec:
-    platform: awslinux
+    platform: rhel70
     disableTestCommands: "*"
     python-version: "2.7"
   display_name: "Disable test commands ${python-version} ${platform}"
@@ -2811,7 +2804,7 @@ buildvariants:
 # setdefaultencoding tests on RHEL 6.2 (x86_64) with Python 2.7.
 - matrix_name: "test-setdefaultencoding"
   matrix_spec:
-    platform: awslinux
+    platform: rhel70
     setdefaultencoding: "*"
     python-version: "2.7"
   display_name: "setdefaultencoding ${python-version} ${platform}"
@@ -2820,8 +2813,8 @@ buildvariants:
 
 - matrix_name: "test-linux-enterprise-auth"
   matrix_spec:
-    platform: awslinux
-    python-version: *amazon1-pythons
+    platform: rhel70
+    python-version: *rhel-pythons
     auth: "auth"
   display_name: "Enterprise ${auth} ${platform} ${python-version}"
   tasks:
@@ -2838,12 +2831,12 @@ buildvariants:
 
 - matrix_name: "tests-mod-wsgi"
   matrix_spec:
-    platform: awslinux
+    platform: rhel70
     python-version: ["2.7", "3.6", "3.7", "3.8", "3.9"]
     mod-wsgi-version: "*"
   exclude_spec:
    # mod-wsgi 3.5 won't build against CPython 3.8+
-   - platform: awslinux
+   - platform: rhel70
      python-version: ["3.8", "3.9"]
      mod-wsgi-version: "3"
   display_name: "${mod-wsgi-version} ${python-version} ${platform}"
@@ -2853,7 +2846,7 @@ buildvariants:
 
 - matrix_name: "mockupdb-tests"
   matrix_spec:
-    platform: awslinux
+    platform: rhel70
     python-version: 2.7
   display_name: "MockupDB Tests"
   tasks:
@@ -2861,7 +2854,7 @@ buildvariants:
 
 - matrix_name: "tests-doctests"
   matrix_spec:
-    platform: awslinux
+    platform: rhel70
     python-version: ["2.7", "3.5"]
   display_name: "Doctests ${python-version} ${platform}"
   tasks:
@@ -2869,7 +2862,7 @@ buildvariants:
 
 - matrix_name: "cdecimal"
   matrix_spec:
-    platform: awslinux
+    platform: rhel70
     python-version: 2.7
   display_name: "cdecimal ${python-version} ${platform}"
   tasks:
@@ -2878,7 +2871,7 @@ buildvariants:
 - name: "no-server"
   display_name: "No server test"
   run_on:
-    - amazon1-2018-test
+    - ubuntu1804-test
   tasks:
     - name: "no-server"
   expansions:
@@ -2902,20 +2895,20 @@ buildvariants:
 
 - matrix_name: "atlas-connect"
   matrix_spec:
-    platform: awslinux
-    python-version: *amazon1-pythons
+    platform: rhel70
+    python-version: *rhel-pythons
   display_name: "Atlas connect ${python-version} ${platform}"
   tasks:
     - name: "atlas-connect"
 
 - matrix_name: "serverless"
   matrix_spec:
-    platform: awslinux
-    python-version: *amazon1-pythons
+    platform: rhel70
+    python-version: *rhel-pythons
     auth-ssl: auth-ssl
     serverless: "*"
   exclude_spec:
-    platform: awslinux
+    platform: rhel70
     python-version: "jython2.7"
     auth-ssl: auth-ssl
     serverless: "*"
@@ -2935,7 +2928,7 @@ buildvariants:
 
 - matrix_name: "versioned-api-tests"
   matrix_spec:
-    platform: awslinux
+    platform: rhel70
     python-version: ["2.7", "3.9"]
     auth: "auth"
     versionedApi: "*"
@@ -2948,7 +2941,7 @@ buildvariants:
 
 - matrix_name: "ocsp-test"
   matrix_spec:
-    platform: awslinux
+    platform: rhel70
     python-version: ["2.7", "pypy3.5", "pypy3.6", "pypy3.7", "3.8", "3.9"]
     mongodb-version: ["4.4", "5.0", "latest"]
     auth: "noauth"
@@ -3018,7 +3011,7 @@ buildvariants:
 
 - matrix_name: "load-balancer"
   matrix_spec:
-    platform: awslinux
+    platform: rhel70
     mongodb-version: ["rapid", "latest"]
     auth-ssl: "*"
     python-version: ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy", "pypy3.5", "pypy3.7"]
