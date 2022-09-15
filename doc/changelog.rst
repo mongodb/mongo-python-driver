@@ -4,6 +4,8 @@ Changelog
 Changes in Version 4.3
 ----------------------
 
+PyMongo 4.3 introduces the first required dependency: `dnspython <https://pypi.python.org/pypi/dnspython>`_.
+
 PyMongo 4.3 brings a number of improvements including:
 
 - Added support for decoding BSON datetimes outside of the range supported

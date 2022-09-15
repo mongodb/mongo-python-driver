@@ -281,6 +281,7 @@ extras_require = {
     "snappy": ["python-snappy"],
     "zstd": ["zstandard"],
     "aws": ["pymongo-auth-aws<2.0.0"],
+    "srv": [""],
 }
 
 # GSSAPI extras
