@@ -1137,6 +1137,7 @@ class TestSessionsMultiAuth(IntegrationTest):
         self.addCleanup(client_context.drop_user, "pymongo_test", "second-user")
 
     @ignore_deprecations
+    @client_context.require_version_max(5, 99, 99)
     def test_session_authenticate_multiple(self):
         listener = SessionTestListener()
         # Logged in as root.

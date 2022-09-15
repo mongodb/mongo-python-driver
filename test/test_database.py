@@ -691,6 +691,8 @@ class TestDatabase(IntegrationTest):
         self.assertEqual(amalia_user["user"], "amalia")
         self.assertEqual(amalia_user["customData"], {"secret": "koalas"})
 
+
+    @client_context.require_version_max(5, 99, 99)
     @client_context.require_auth
     @ignore_deprecations
     def test_authenticate_multiple(self):
