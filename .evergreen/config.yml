@@ -2366,7 +2366,7 @@ buildvariants:
   display_name: "Encryption ${platform} ${auth-ssl}"
   tasks: &encryption-server-versions
     - ".latest"
-    - ".6.0"
+    - ".rapid"
     - ".5.0"
     - ".4.4"
     - ".4.2"
