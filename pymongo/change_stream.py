@@ -109,6 +109,7 @@ class ChangeStream(Generic[_DocumentType]):
         start_after: Optional[Mapping[str, Any]],
         comment: Optional[Any] = None,
         full_document_before_change: Optional[str] = None,
+        show_expanded_events: Optional[bool] = None,
     ) -> None:
         if pipeline is None:
             pipeline = []
@@ -143,6 +144,7 @@ class ChangeStream(Generic[_DocumentType]):
         self._comment = comment
         self._closed = False
         self._timeout = self._target._timeout
+        self.__show_expanded_events = show_expanded_events
         # Initialize cursor.
         self._cursor = self._create_cursor()
 
@@ -230,6 +232,7 @@ class ChangeStream(Generic[_DocumentType]):
             explicit_session,
             result_processor=self._process_result,
             comment=self._comment,
+            show_expanded_events=self.__show_expanded_events,
         )
         return self._client._retryable_read(
             cmd.get_cursor, self._target._read_preference_for(session), session

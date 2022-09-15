@@ -2495,6 +2495,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         start_after: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         full_document_before_change: Optional[str] = None,
+        show_expanded_events: Optional[bool] = None,
     ) -> CollectionChangeStream[_DocumentType]:
         """Watch changes on this collection.
 
@@ -2615,6 +2616,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             start_after,
             comment,
             full_document_before_change,
+            show_expanded_events,
         )
 
     @_csot.apply

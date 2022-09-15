@@ -40,6 +40,7 @@ class _AggregationCommand(object):
         user_fields=None,
         result_processor=None,
         comment=None,
+        show_expanded_events=None,
     ):
         if "explain" in options:
             raise ConfigurationError(
@@ -60,6 +61,9 @@ class _AggregationCommand(object):
             options["let"] = let
         if comment is not None:
             options["comment"] = comment
+        if show_expanded_events is not None:
+            options["showExpandedEvents"] = True
+
         self._options = options
 
         # This is the batchSize that will be used for setting the initial
