@@ -128,9 +128,7 @@ class RawBSONDocument(Mapping[str, Any]):
         # it refers to this class RawBSONDocument.
         if codec_options is None:
             codec_options = DEFAULT_RAW_BSON_OPTIONS
-        elif codec_options.document_class is not RawBSONDocument and not issubclass(
-            codec_options.document_class, RawBSONDocument
-        ):
+        elif not issubclass(codec_options.document_class, RawBSONDocument):
             raise TypeError(
                 "RawBSONDocument cannot use CodecOptions with document "
                 "class %s" % (codec_options.document_class,)

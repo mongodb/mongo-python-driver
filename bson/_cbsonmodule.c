@@ -1713,6 +1713,12 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                 goto invalid;
             }
 
+            end = *position + size - 1;
+            /* Check for bad eoo */
+            if (buffer[end]) {
+                goto invalid;
+            }
+
             if (raw_array != 0) {
                 // Treat it as a binary buffer.
                 value = PyBytes_FromStringAndSize(buffer + *position, size);
@@ -1720,11 +1726,6 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                 break;
             }
 
-            end = *position + size - 1;
-            /* Check for bad eoo */
-            if (buffer[end]) {
-                goto invalid;
-            }
             *position += 4;
 
             value = PyList_New(0);
@@ -2659,7 +2660,6 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
     }
 
     string = (char*)view.buf;
-
     memcpy(&size, string, 4);
     size = (int32_t)BSON_UINT32_FROM_LE(size);
     if (size < BSON_MIN_SIZE) {
@@ -2823,14 +2823,17 @@ static PyObject* _cbson_array_of_documents_to_buffer(PyObject* self, PyObject* a
         return NULL;
     }
 
-    buffer = pymongo_buffer_new();
-
-
     if (!_get_buffer(arr, &view)) {
+        return NULL;
+    }
+
+    buffer = pymongo_buffer_new();
+    if (!buffer) {
         goto fail;
     }
 
     string = (char*)view.buf;
+
     memcpy(&size, string, 4);
     size = BSON_UINT32_FROM_LE(size);
     /* save space for length */
@@ -2851,24 +2854,38 @@ static PyObject* _cbson_array_of_documents_to_buffer(PyObject* self, PyObject* a
     position += 4;
     while (position < size - 1) {
         // Just skip the keys.
-        while (string[position] != '\0') {
-            position++;
-        }
-        position++;
+        position = position + strlen(string + position) + 1;
 
         memcpy(&value_length, string + position, 4);
         value_length = BSON_UINT32_FROM_LE(value_length);
-        /* Encoded string length + string */
-        if (!value_length || size < value_length || size < 4 + value_length) {
+        if (value_length < BSON_MIN_SIZE) {
+            PyObject* InvalidBSON = _error("InvalidBSON");
+            if (InvalidBSON) {
+                PyErr_SetString(InvalidBSON, "invalid message size");
+                Py_DECREF(InvalidBSON);
+            }
+            goto fail;
+         }
+
+        if (view.len < size) {
+            PyObject* InvalidBSON = _error("InvalidBSON");
+            if (InvalidBSON) {
+                PyErr_SetString(InvalidBSON, "objsize too large");
+                Py_DECREF(InvalidBSON);
+            }
+            goto fail;
+        }
+
+        if (string[size - 1]) {
+            PyObject* InvalidBSON = _error("InvalidBSON");
+            if (InvalidBSON) {
+                PyErr_SetString(InvalidBSON, "bad eoo");
+                Py_DECREF(InvalidBSON);
+            }
             goto fail;
         }
 
         if (pymongo_buffer_write(buffer, string + position, value_length) == 1) {
-            PyObject* InvalidBSON = _error("InvalidBSON");
-            if (InvalidBSON) {
-                PyErr_SetString(InvalidBSON, "could not read from object");
-                Py_DECREF(InvalidBSON);
-            }
             goto fail;
         }
         position += value_length;
