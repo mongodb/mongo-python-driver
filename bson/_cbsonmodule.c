@@ -2513,7 +2513,7 @@ static int _element_to_dict(PyObject* self, const char* string,
     }
     position += (unsigned)name_length + 1;
     *value = get_value(self, *name, string, &position, type,
-                           max - position, options, raw_array);
+                       max - position, options, raw_array);
     if (!*value) {
         Py_DECREF(*name);
         return -1;
