@@ -281,8 +281,12 @@ def _get_string(
 
 def _get_object_size(data: Any, position: int, obj_end: int) -> Tuple[int, int]:
     """Validate and return a BSON document's size."""
+    if isinstance(data, memoryview):
+        buf = data[position : position + 4].tobytes()
+    else:
+        buf = data
     try:
-        obj_size = _UNPACK_INT_FROM(data, position)[0]
+        obj_size = _UNPACK_INT_FROM(buf, position)[0]
     except struct.error as exc:
         raise InvalidBSON(str(exc))
     end = position + obj_size - 1

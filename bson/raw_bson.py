@@ -68,7 +68,7 @@ class RawBSONDocument(Mapping[str, Any]):
     RawBSONDocument decode its bytes.
     """
 
-    __slots__ = ("__raw", "__inflated_doc", "__codec_options")
+    # __slots__ = ("__raw", "__inflated_doc", "__codec_options")
     _type_marker = _RAW_BSON_DOCUMENT_MARKER
 
     def __init__(self, bson_bytes: bytes, codec_options: Optional[CodecOptions] = None) -> None:
@@ -105,7 +105,10 @@ class RawBSONDocument(Mapping[str, Any]):
           If a :class:`~bson.codec_options.CodecOptions` is passed in, its
           `document_class` must be :class:`RawBSONDocument`.
         """
-        self.__raw = memoryview(bson_bytes)
+        if isinstance(bson_bytes, memoryview):
+            self.__raw = bson_bytes
+        else:
+            self.__raw = memoryview(bson_bytes)
         self.__inflated_doc: Optional[Mapping[str, Any]] = None
         # Can't default codec_options to DEFAULT_RAW_BSON_OPTIONS in signature,
         # it refers to this class RawBSONDocument.
