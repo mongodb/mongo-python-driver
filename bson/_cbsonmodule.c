@@ -111,7 +111,7 @@ _downcast_and_check(Py_ssize_t size, uint8_t extra) {
     return (int)size + extra;
 }
 
-static PyObject* elements_to_dict(PyObject* self, const char* string,
+static PyObject* elements_to_dict(PyObject* self, PyObject* bson,
                                   unsigned max,
                                   const codec_options_t* options);
 
@@ -1613,11 +1613,13 @@ invalid:
     return ret;
 }
 
-static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
+static PyObject* get_value(PyObject* self, PyObject* name, PyObject* bson,
                            unsigned* position, unsigned char type,
                            unsigned max, const codec_options_t* options) {
     struct module_state *state = GETSTATE(self);
     PyObject* value = NULL;
+    Py_buffer* buffer_obj = PyMemoryView_GET_BUFFER(bson);
+    char* buffer = buffer_obj->buf;
     switch (type) {
     case 1:
         {
@@ -1660,6 +1662,9 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
     case 3:
         {
             uint32_t size;
+            PyObject *builtins = PyEval_GetBuiltins();
+            PyObject *slice = PyDict_GetItemString(builtins , "slice");
+
 
             if (max < 4) {
                 goto invalid;
@@ -1674,19 +1679,25 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                 goto invalid;
             }
 
+            PyObject *slice_obj = PyObject_CallFunction(slice, "ii", *position, size + *position);
+            PyObject *view = PyObject_CallMethod(bson, "__getitem__", "O", slice_obj);
+
             if (options->is_raw_bson) {
                 value = PyObject_CallFunction(
-                    options->document_class, "y#O",
-                    buffer + *position, (Py_ssize_t)size, options->options_obj);
+                    options->document_class, "OO",
+                    view, options->options_obj);
+                Py_DECREF(slice_obj);
                 if (!value) {
                     goto invalid;
                 }
                 *position += size;
+                PyBuffer_Release(buffer_obj);
+                Py_DECREF(view);
                 break;
             }
 
-            value = elements_to_dict(self, buffer + *position + 4,
-                                     size - 5, options);
+            //value = elements_to_dict(self, buffer + *position + 4,
+             //                        size - 5, options);
             if (!value) {
                 goto invalid;
             }
@@ -1739,7 +1750,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                     Py_DECREF(value);
                     goto invalid;
                 }
-                to_append = get_value(self, name, buffer, position, bson_type,
+                to_append = get_value(self, name, bson, position, bson_type,
                                       max - (unsigned)key_size, options);
                 Py_LeaveRecursiveCall();
                 if (!to_append) {
@@ -2188,7 +2199,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             uint32_t code_size;
             uint32_t scope_size;
             PyObject* code;
-            PyObject* scope;
+            //PyObject* scope;
             PyObject* code_type;
 
             if (max < 8) {
@@ -2238,20 +2249,20 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             if (buffer[*position + scope_size - 1]) {
                 goto invalid;
             }
-            scope = elements_to_dict(self, buffer + *position + 4,
-                                     scope_size - 5, options);
-            if (!scope) {
-                Py_DECREF(code);
-                goto invalid;
-            }
+            //scope = elements_to_dict(self, buffer + *position + 4,
+            //                         scope_size - 5, options);
+            // if (!scope) {
+            //     Py_DECREF(code);
+            //     goto invalid;
+            // }
             *position += scope_size;
 
             if ((code_type = _get_object(state->Code, "bson.code", "Code"))) {
-                value = PyObject_CallFunctionObjArgs(code_type, code, scope, NULL);
+                value = PyObject_CallFunctionObjArgs(code_type, code, NULL, NULL);
                 Py_DECREF(code_type);
             }
             Py_DECREF(code);
-            Py_DECREF(scope);
+            //Py_DECREF(scope);
             break;
         }
     case 16:
@@ -2461,10 +2472,12 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
  *
  * Returns the position of the next element in the document, or -1 on error.
  */
-static int _element_to_dict(PyObject* self, const char* string,
+static int _element_to_dict(PyObject* self, PyObject* bson,
                             unsigned position, unsigned max,
                             const codec_options_t* options,
                             PyObject** name, PyObject** value) {
+    const Py_buffer* buffer = PyMemoryView_GET_BUFFER(bson);
+    const char* string = buffer->buf;
     unsigned char type = (unsigned char)string[position++];
     size_t name_length = strlen(string + position);
     if (name_length > BSON_MAX_SIZE || position + name_length >= max) {
@@ -2503,8 +2516,9 @@ static int _element_to_dict(PyObject* self, const char* string,
         return -1;
     }
     position += (unsigned)name_length + 1;
-    *value = get_value(self, *name, string, &position, type,
+    *value = get_value(self, *name, bson, &position, type,
                        max - position, options);
+    PyBuffer_Release(buffer);
     if (!*value) {
         Py_DECREF(*name);
         return -1;
@@ -2514,7 +2528,7 @@ static int _element_to_dict(PyObject* self, const char* string,
 
 static PyObject* _cbson_element_to_dict(PyObject* self, PyObject* args) {
     /* TODO: Support buffer protocol */
-    char* string;
+    //char* string;
     PyObject* bson;
     codec_options_t options;
     unsigned position;
@@ -2529,13 +2543,12 @@ static PyObject* _cbson_element_to_dict(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    if (!PyBytes_Check(bson)) {
-        PyErr_SetString(PyExc_TypeError, "argument to _element_to_dict must be a bytes object");
+    if (!PyMemoryView_Check(bson)) {
+        PyErr_SetString(PyExc_TypeError, "argument to _element_to_dict must be a memoryview object");
         return NULL;
     }
-    string = PyBytes_AS_STRING(bson);
 
-    new_position = _element_to_dict(self, string, position, max, &options,
+    new_position = _element_to_dict(self, bson, position, max, &options,
                                     &name, &value);
     if (new_position < 0) {
         return NULL;
@@ -2552,7 +2565,7 @@ static PyObject* _cbson_element_to_dict(PyObject* self, PyObject* args) {
     return result_tuple;
 }
 
-static PyObject* _elements_to_dict(PyObject* self, const char* string,
+static PyObject* _elements_to_dict(PyObject* self, PyObject* bson,
                                    unsigned max,
                                    const codec_options_t* options) {
     unsigned position = 0;
@@ -2566,7 +2579,7 @@ static PyObject* _elements_to_dict(PyObject* self, const char* string,
         int new_position;
 
         new_position = _element_to_dict(
-            self, string, position, max, options, &name, &value);
+            self, bson, position, max, options, &name, &value);
         if (new_position < 0) {
             Py_DECREF(dict);
             return NULL;
@@ -2581,13 +2594,13 @@ static PyObject* _elements_to_dict(PyObject* self, const char* string,
     return dict;
 }
 
-static PyObject* elements_to_dict(PyObject* self, const char* string,
+static PyObject* elements_to_dict(PyObject* self, PyObject* bson,
                                   unsigned max,
                                   const codec_options_t* options) {
     PyObject* result;
     if (Py_EnterRecursiveCall(" while decoding a BSON document"))
         return NULL;
-    result = _elements_to_dict(self, string, max, options);
+    result = _elements_to_dict(self, bson, max, options);
     Py_LeaveRecursiveCall();
     return result;
 }
@@ -2686,7 +2699,7 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
             options_obj);
     }
     else {
-        result = elements_to_dict(self, string + 4, (unsigned)size - 5, &options);
+        //result = elements_to_dict(self, string + 4, (unsigned)size - 5, &options);
     }
 done:
     PyBuffer_Release(&view);
@@ -2773,7 +2786,7 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
                 options.document_class, "y#O", string, (Py_ssize_t)size,
                 options_obj);
         } else {
-            dict = elements_to_dict(self, string + 4, (unsigned)size - 5, &options);
+            //dict = elements_to_dict(self, string + 4, (unsigned)size - 5, &options);
         }
         if (!dict) {
             Py_DECREF(result);

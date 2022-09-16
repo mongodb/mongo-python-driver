@@ -105,7 +105,7 @@ class RawBSONDocument(Mapping[str, Any]):
           If a :class:`~bson.codec_options.CodecOptions` is passed in, its
           `document_class` must be :class:`RawBSONDocument`.
         """
-        self.__raw = bson_bytes
+        self.__raw = memoryview(bson_bytes)
         self.__inflated_doc: Optional[Mapping[str, Any]] = None
         # Can't default codec_options to DEFAULT_RAW_BSON_OPTIONS in signature,
         # it refers to this class RawBSONDocument.

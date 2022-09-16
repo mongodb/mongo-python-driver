@@ -234,7 +234,7 @@ def get_data_and_view(data: Any) -> Tuple[Any, memoryview]:
     if isinstance(data, (bytes, bytearray)):
         return data, memoryview(data)
     view = memoryview(data)
-    return view.tobytes(), view
+    return view, view
 
 
 def _raise_unknown_type(element_type: int, element_name: str) -> NoReturn:
@@ -957,8 +957,8 @@ def _dict_to_bson(doc: Any, check_keys: bool, opts: CodecOptions, top_level: boo
     return _PACK_INT(len(encoded) + 5) + encoded + b"\x00"
 
 
-if _USE_C:
-    _dict_to_bson = _cbson._dict_to_bson  # noqa: F811
+# if _USE_C:
+#     _dict_to_bson = _cbson._dict_to_bson  # noqa: F811
 
 
 _CODEC_OPTIONS_TYPE_ERROR = TypeError("codec_options must be an instance of CodecOptions")
