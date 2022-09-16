@@ -1146,7 +1146,7 @@ def _array_of_documents_to_buffer(view: memoryview) -> bytes:
     position = 0
     _, end = _get_object_size(view, position, len(view))
     position += 4
-    buffers: List[bytes] = []
+    buffers: List[memoryview] = []
     append = buffers.append
     while position < end - 1:
         # Just skip the keys.
