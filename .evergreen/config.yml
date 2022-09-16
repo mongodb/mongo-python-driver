@@ -2517,7 +2517,16 @@ buildvariants:
       ssl: "ssl"
       coverage: "*"
   display_name: "${python-version} ${platform} ${auth} ${ssl} ${coverage}"
-  tasks: *all-server-versions
+  tasks:
+    - ".5.0"
+    - ".4.4"
+    - ".4.2"
+    - ".4.0"
+    - ".3.6"
+    - ".3.4"
+    - ".3.2"
+    - ".3.0"
+    - ".2.6"
 
 - matrix_name: "tests-python-version-ubuntu20-ssl"
   matrix_spec:
