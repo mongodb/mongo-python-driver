@@ -2812,7 +2812,6 @@ static PyObject* _cbson_array_of_documents_to_buffer(PyObject* self, PyObject* a
     uint32_t size;
     uint32_t value_length;
     uint32_t position = 0;
-    int32_t initial_position;
     buffer_t buffer;
     const char* string;
     PyObject* arr;
@@ -2850,7 +2849,7 @@ static PyObject* _cbson_array_of_documents_to_buffer(PyObject* self, PyObject* a
     if (pymongo_buffer_save_space(buffer, size) == -1) {
         goto fail;
     }
-    initial_position = pymongo_buffer_get_position(buffer);
+    pymongo_buffer_update_position(buffer, 0);
 
     position += 4;
     while (position < size - 1) {
@@ -2901,8 +2900,8 @@ static PyObject* _cbson_array_of_documents_to_buffer(PyObject* self, PyObject* a
     }
 
     /* objectify buffer */
-    result = Py_BuildValue("y#", pymongo_buffer_get_buffer(buffer) + initial_position,
-                               (Py_ssize_t)pymongo_buffer_get_position(buffer) - initial_position);
+    result = Py_BuildValue("y#", pymongo_buffer_get_buffer(buffer),
+                           (Py_ssize_t)pymongo_buffer_get_position(buffer));
     goto done;
 fail:
     result = NULL;
