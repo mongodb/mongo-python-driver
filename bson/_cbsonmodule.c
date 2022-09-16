@@ -2812,6 +2812,7 @@ static PyObject* _cbson_array_of_documents_to_buffer(PyObject* self, PyObject* a
     uint32_t size;
     uint32_t value_length;
     uint32_t position = 0;
+    int32_t initial_position;
     buffer_t buffer;
     const char* string;
     PyObject* arr;
@@ -2824,6 +2825,7 @@ static PyObject* _cbson_array_of_documents_to_buffer(PyObject* self, PyObject* a
 
     buffer = pymongo_buffer_new();
 
+
     if (!_get_buffer(arr, &view)) {
         goto fail;
     }
@@ -2831,8 +2833,13 @@ static PyObject* _cbson_array_of_documents_to_buffer(PyObject* self, PyObject* a
     string = (char*)view.buf;
     memcpy(&size, string, 4);
     size = BSON_UINT32_FROM_LE(size);
+    /* save space for length */
+    if (pymongo_buffer_save_space(buffer, size) == -1) {
+        goto fail;
+    }
+    initial_position = pymongo_buffer_get_position(buffer);
 
-    if (view.len < size || view.len > BSON_MAX_SIZE) {
+    if (view.len < size || size > BSON_MAX_SIZE) {
         PyObject* InvalidBSON = _error("InvalidBSON");
         if (InvalidBSON) {
             PyErr_SetString(InvalidBSON, "objsize too large");
@@ -2851,6 +2858,10 @@ static PyObject* _cbson_array_of_documents_to_buffer(PyObject* self, PyObject* a
 
         memcpy(&value_length, string + position, 4);
         value_length = BSON_UINT32_FROM_LE(value_length);
+        /* Encoded string length + string */
+        if (!value_length || size < value_length || size < 4 + value_length) {
+            goto fail;
+        }
 
         if (pymongo_buffer_write(buffer, string + position, value_length) == 1) {
             PyObject* InvalidBSON = _error("InvalidBSON");
@@ -2863,19 +2874,9 @@ static PyObject* _cbson_array_of_documents_to_buffer(PyObject* self, PyObject* a
         position += value_length;
     }
 
-    /* Check validity */
-    if (position != size - 1) {
-        PyObject* InvalidBSON = _error("InvalidBSON");
-        if (InvalidBSON) {
-            PyErr_SetString(InvalidBSON, "invalid bson object");
-            Py_DECREF(InvalidBSON);
-        }
-        goto fail;
-    }
-
     /* objectify buffer */
-    result = Py_BuildValue("y#", pymongo_buffer_get_buffer(buffer),
-                               (Py_ssize_t)pymongo_buffer_get_position(buffer));
+    result = Py_BuildValue("y#", pymongo_buffer_get_buffer(buffer) + initial_position,
+                               (Py_ssize_t)pymongo_buffer_get_position(buffer) - initial_position);
     goto done;
 fail:
     result = NULL;
