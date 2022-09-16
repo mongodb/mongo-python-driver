@@ -1336,6 +1336,33 @@ tasks:
             TOPOLOGY: "sharded_cluster"
         - func: "run tests"
 
+    - name: "test-6.0-standalone"
+      tags: ["6.0", "standalone"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "6.0"
+            TOPOLOGY: "server"
+        - func: "run tests"
+
+    - name: "test-6.0-replica_set"
+      tags: ["6.0", "replica_set"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "6.0"
+            TOPOLOGY: "replica_set"
+        - func: "run tests"
+
+    - name: "test-6.0-sharded_cluster"
+      tags: ["6.0", "sharded_cluster"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "6.0"
+            TOPOLOGY: "sharded_cluster"
+        - func: "run tests"
+
     - name: "test-latest-standalone"
       tags: ["latest", "standalone"]
       commands:
@@ -2053,6 +2080,10 @@ axes:
         display_name: "MongoDB 5.0"
         variables:
           VERSION: "5.0"
+      - id: "6.0"
+        display_name: "MongoDB 6.0"
+        variables:
+          VERSION: "6.0"
       - id: "rapid"
         display_name: "MongoDB rapid"
         variables:
@@ -2628,7 +2659,6 @@ buildvariants:
      compression: ["snappy"]
   display_name: "${compression} ${c-extensions} ${python-version} ${platform}"
   tasks:
-    - "test-latest-standalone"
     - "test-5.0-standalone"
     - "test-4.4-standalone"
     - "test-4.2-standalone"
@@ -2771,7 +2801,7 @@ buildvariants:
         python-version: "*"
       then:
         add_tasks:
-          - "test-latest-standalone"
+          - "test-5.0-standalone"
           - "test-4.4-standalone"
           - "test-4.2-standalone"
           - "test-4.0-standalone"
@@ -2803,7 +2833,7 @@ buildvariants:
 # enableTestCommands=0 tests on RHEL 6.2 (x86_64) with Python 2.7.
 - matrix_name: "test-disableTestCommands"
   matrix_spec:
-    platform: awslinux
+    platform: rhel62
     disableTestCommands: "*"
     python-version: "2.7"
   display_name: "Disable test commands ${python-version} ${platform}"
@@ -2813,7 +2843,7 @@ buildvariants:
 # setdefaultencoding tests on RHEL 6.2 (x86_64) with Python 2.7.
 - matrix_name: "test-setdefaultencoding"
   matrix_spec:
-    platform: awslinux
+    platform: rhel62
     setdefaultencoding: "*"
     python-version: "2.7"
   display_name: "setdefaultencoding ${python-version} ${platform}"
@@ -2937,8 +2967,8 @@ buildvariants:
 
 - matrix_name: "versioned-api-tests"
   matrix_spec:
-    platform: awslinux
-    python-version: ["2.7", "3.9"]
+    platform: rhel62
+    python-version: ["2.7", "3.6"]
     auth: "auth"
     versionedApi: "*"
   display_name: "Versioned API ${versionedApi} ${python-version}"
@@ -2952,7 +2982,7 @@ buildvariants:
   matrix_spec:
     platform: awslinux
     python-version: ["2.7", "pypy3.5", "pypy3.6", "pypy3.7", "3.8", "3.9"]
-    mongodb-version: ["4.4", "5.0", "latest"]
+    mongodb-version: ["4.4", "5.0"]
     auth: "noauth"
     ssl: "ssl"
   display_name: "OCSP test ${platform} ${python-version} ${mongodb-version}"
@@ -3020,10 +3050,10 @@ buildvariants:
 
 - matrix_name: "load-balancer"
   matrix_spec:
-    platform: awslinux
+    platform: ubuntu-18.04
     mongodb-version: ["rapid", "latest"]
     auth-ssl: "*"
-    python-version: ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy", "pypy3.5", "pypy3.7"]
+    python-version: ["3.6", "3.7", "3.8", "3.9", "3.10", "pypy3.6", "pypy3.7"]
     loadbalancer: "*"
   display_name: "Load Balancer ${platform} ${python-version} ${mongodb-version} ${auth-ssl}"
   tasks:
