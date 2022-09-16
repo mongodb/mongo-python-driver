@@ -2340,13 +2340,13 @@ buildvariants:
   matrix_spec:
     platform:
       # OSes that support versions of MongoDB>=2.6 with SSL.
-      - awslinux
       - rhel70
     auth-ssl: "*"
   display_name: "${platform} ${auth-ssl}"
   tasks: &all-server-versions
     - ".rapid"
     - ".latest"
+    - ".6.0"
     - ".5.0"
     - ".4.4"
     - ".4.2"
@@ -2361,13 +2361,14 @@ buildvariants:
   matrix_spec:
     platform:
       # OSes that support versions of MongoDB>=2.6 with SSL.
-      - awslinux
       - rhel70
     auth-ssl: "*"
     encryption: "*"
   display_name: "Encryption ${platform} ${auth-ssl}"
   tasks: &encryption-server-versions
+    - ".rapid"
     - ".latest"
+    - ".6.0"
     - ".5.0"
     - ".4.4"
     - ".4.2"
