@@ -2828,6 +2828,7 @@ static PyObject* _cbson_array_of_documents_to_buffer(PyObject* self, PyObject* a
 
     buffer = pymongo_buffer_new();
     if (!buffer) {
+        PyBuffer_Release(&view);
         return NULL;
     }
 
@@ -2840,7 +2841,7 @@ static PyObject* _cbson_array_of_documents_to_buffer(PyObject* self, PyObject* a
                             "not enough data for a BSON document");
             Py_DECREF(InvalidBSON);
         }
-        goto done;;
+        goto done;
     }
 
     memcpy(&size, string, 4);
@@ -2853,9 +2854,21 @@ static PyObject* _cbson_array_of_documents_to_buffer(PyObject* self, PyObject* a
 
     position += 4;
     while (position < size - 1) {
+        // Verify the value is an object.
+        unsigned char type = (unsigned char)string[position];
+        if (type != 3) {
+            PyObject* InvalidBSON = _error("InvalidBSON");
+            if (InvalidBSON) {
+                PyErr_SetString(InvalidBSON, "array element was not an object");
+                Py_DECREF(InvalidBSON);
+            }
+            goto fail;
+        }
+
         // Just skip the keys.
         position = position + strlen(string + position) + 1;
-        if (position >= size + 1) {
+
+        if (position >= size || (size - position) < BSON_MIN_SIZE) {
             PyObject* InvalidBSON = _error("InvalidBSON");
             if (InvalidBSON) {
                 PyErr_SetString(InvalidBSON, "invalid array content");
