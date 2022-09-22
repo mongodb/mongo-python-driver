@@ -128,7 +128,6 @@ if TYPE_CHECKING:
     from array import array
     from mmap import mmap
 
-
 try:
     from bson import _cbson  # type: ignore[attr-defined]
 
@@ -520,19 +519,32 @@ _ELEMENT_GETTER: Dict[int, Callable[..., Tuple[Any, int]]] = {
 if _USE_C:
 
     def _element_to_dict(
-        data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions
+        data: Any,
+        view: Any,
+        position: int,
+        obj_end: int,
+        opts: CodecOptions,
+        raw_array: bool = False,
     ) -> Any:
-        return _cbson._element_to_dict(data, position, obj_end, opts)
+        return _cbson._element_to_dict(data, position, obj_end, opts, raw_array)
 
 else:
 
     def _element_to_dict(
-        data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions
+        data: Any,
+        view: Any,
+        position: int,
+        obj_end: int,
+        opts: CodecOptions,
+        raw_array: bool = False,
     ) -> Any:
         """Decode a single key, value pair."""
         element_type = data[position]
         position += 1
         element_name, position = _get_c_string(data, view, position, opts)
+        if raw_array and element_type == ord(BSONARR):
+            _, end = _get_object_size(data, position, len(data))
+            return element_name, view[position : end + 1], end + 1
         try:
             value, position = _ELEMENT_GETTER[element_type](
                 data, view, position, obj_end, opts, element_name
@@ -551,20 +563,30 @@ else:
 _T = TypeVar("_T", bound=MutableMapping[Any, Any])
 
 
-def _raw_to_dict(data: Any, position: int, obj_end: int, opts: CodecOptions, result: _T) -> _T:
+def _raw_to_dict(
+    data: Any, position: int, obj_end: int, opts: CodecOptions, result: _T, raw_array: bool = False
+) -> _T:
     data, view = get_data_and_view(data)
-    return _elements_to_dict(data, view, position, obj_end, opts, result)
+    return _elements_to_dict(data, view, position, obj_end, opts, result, raw_array=raw_array)
 
 
 def _elements_to_dict(
-    data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions, result: Any = None
+    data: Any,
+    view: Any,
+    position: int,
+    obj_end: int,
+    opts: CodecOptions,
+    result: Any = None,
+    raw_array: bool = False,
 ) -> Any:
     """Decode a BSON document into result."""
     if result is None:
         result = opts.document_class()
     end = obj_end - 1
     while position < end:
-        key, value, position = _element_to_dict(data, view, position, obj_end, opts)
+        key, value, position = _element_to_dict(
+            data, view, position, obj_end, opts, raw_array=raw_array
+        )
         result[key] = value
     if position != obj_end:
         raise InvalidBSON("bad object or element length")
@@ -1119,14 +1141,44 @@ def _decode_selective(rawdoc: Any, fields: Any, codec_options: Any) -> Mapping[A
     return doc
 
 
+def _array_of_documents_to_buffer(view: memoryview) -> bytes:
+    # Extract the raw bytes of each document.
+    position = 0
+    _, end = _get_object_size(view, position, len(view))
+    position += 4
+    buffers: List[memoryview] = []
+    append = buffers.append
+    while position < end - 1:
+        # Just skip the keys.
+        while view[position] != 0:
+            position += 1
+        position += 1
+        obj_size, _ = _get_object_size(view, position, end)
+        append(view[position : position + obj_size])
+        position += obj_size
+    if position != end:
+        raise InvalidBSON("bad object or element length")
+    return b"".join(buffers)
+
+
+if _USE_C:
+    _array_of_documents_to_buffer = _cbson._array_of_documents_to_buffer  # noqa: F811
+
+
 def _convert_raw_document_lists_to_streams(document: Any) -> None:
+    """Convert raw array of documents to a stream of BSON documents."""
     cursor = document.get("cursor")
-    if cursor:
-        for key in ("firstBatch", "nextBatch"):
-            batch = cursor.get(key)
-            if batch:
-                stream = b"".join(doc.raw for doc in batch)
-                cursor[key] = [stream]
+    if not cursor:
+        return
+    for key in ("firstBatch", "nextBatch"):
+        batch = cursor.get(key)
+        if not batch:
+            continue
+        data = _array_of_documents_to_buffer(batch)
+        if data:
+            cursor[key] = [data]
+        else:
+            cursor[key] = []
 
 
 def _decode_all_selective(data: Any, codec_options: CodecOptions, fields: Any) -> List[Any]:
