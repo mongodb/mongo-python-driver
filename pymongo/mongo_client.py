@@ -895,6 +895,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         start_after: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         full_document_before_change: Optional[str] = None,
+        show_expanded_events: Optional[bool] = None,
     ) -> ChangeStream[_DocumentType]:
         """Watch changes on this cluster.
 
@@ -1005,6 +1006,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             start_after,
             comment,
             full_document_before_change,
+            show_expanded_events=show_expanded_events,
         )
 
     @property
