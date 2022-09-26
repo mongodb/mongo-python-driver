@@ -2580,12 +2580,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             This option and `resume_after` are mutually exclusive.
           - `comment` (optional): A user-provided comment to attach to this
             command.
+          - `show_expanded_events` (optional): Include expanded events such as DDL events like `dropIndexes`.
 
         :Returns:
           A :class:`~pymongo.change_stream.CollectionChangeStream` cursor.
 
+        .. versionchanged:: 4.3
+           Added `show_expanded_events` parameter.
+
         .. versionchanged:: 4.2
-            Added ``full_document_before_change`` parameter.
+           Added ``full_document_before_change`` parameter.
 
         .. versionchanged:: 4.1
            Added ``comment`` parameter.
