@@ -604,14 +604,13 @@ class TestDatabase(IntegrationTest):
         try:
             db = self.client.pymongo_test
             db.command("count", "test")
-            # Remove type ignore after: https://github.com/python/mypy/issues/13220
-            self.assertRaises(ExecutionTimeout, db.command, "count", "test", maxTimeMS=1)  # type: ignore[arg-type]
+            self.assertRaises(ExecutionTimeout, db.command, "count", "test", maxTimeMS=1)
             pipeline = [{"$project": {"name": 1, "count": 1}}]
             # Database command helper.
             db.command("aggregate", "test", pipeline=pipeline, cursor={})
             self.assertRaises(
                 ExecutionTimeout,
-                db.command,  # type: ignore[arg-type]
+                db.command,
                 "aggregate",
                 "test",
                 pipeline=pipeline,
