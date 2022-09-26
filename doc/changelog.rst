@@ -4,6 +4,10 @@ Changelog
 Changes in Version 4.3
 ----------------------
 
+`dnspython <https://pypi.python.org/pypi/dnspython>`_ is now a required
+dependency. This change makes PyMongo easier to install for use with "mongodb+srv://"
+connection strings and `MongoDB Atlas <https://www.mongodb.com/cloud>`_.
+
 PyMongo 4.3 brings a number of improvements including:
 
 - Added support for decoding BSON datetimes outside of the range supported
