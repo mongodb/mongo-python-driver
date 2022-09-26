@@ -61,8 +61,6 @@ class _AggregationCommand(object):
             options["let"] = let
         if comment is not None:
             options["comment"] = comment
-        if show_expanded_events is not None:
-            options["showExpandedEvents"] = True
 
         self._options = options
 

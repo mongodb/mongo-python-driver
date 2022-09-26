@@ -144,7 +144,7 @@ class ChangeStream(Generic[_DocumentType]):
         self._comment = comment
         self._closed = False
         self._timeout = self._target._timeout
-        self.__show_expanded_events = show_expanded_events
+        self._show_expanded_events = show_expanded_events
         # Initialize cursor.
         self._cursor = self._create_cursor()
 
@@ -177,6 +177,10 @@ class ChangeStream(Generic[_DocumentType]):
 
         if self._start_at_operation_time is not None:
             options["startAtOperationTime"] = self._start_at_operation_time
+
+        if self._show_expanded_events is True:
+            options["showExpandedEvents"] = self._show_expanded_events
+
         return options
 
     def _command_options(self):
@@ -232,7 +236,7 @@ class ChangeStream(Generic[_DocumentType]):
             explicit_session,
             result_processor=self._process_result,
             comment=self._comment,
-            show_expanded_events=self.__show_expanded_events,
+            show_expanded_events=self._show_expanded_events,
         )
         return self._client._retryable_read(
             cmd.get_cursor, self._target._read_preference_for(session), session
