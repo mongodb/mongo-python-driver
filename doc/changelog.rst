@@ -22,6 +22,10 @@ PyMongo 4.3 brings a number of improvements including:
   deadlocks are still possible because libraries that PyMongo depends like
   OpenSSL cannot be made fork() safe in multithreaded applications.
   (`PYTHON-2484`_). For more info see :ref:`pymongo-fork-safe`.
+- When used with MongoDB 6.0+, :class:`~pymongo.change_stream.ChangeStream` s
+  now allow for new types of events (such as DDL and C2C replication events)
+  to be recorded with the new parameter ``show_expanded_events``
+  that can be passed to methods such as :meth:`~pymongo.collection.Collection.watch`.
 
 Bug fixes
 .........
