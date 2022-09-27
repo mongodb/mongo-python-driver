@@ -547,6 +547,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         start_after: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         full_document_before_change: Optional[str] = None,
+        show_expanded_events: Optional[bool] = None,
     ) -> DatabaseChangeStream[_DocumentType]:
         """Watch changes on this database.
 
@@ -624,9 +625,13 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             This option and `resume_after` are mutually exclusive.
           - `comment` (optional): A user-provided comment to attach to this
             command.
+          - `show_expanded_events` (optional): Include expanded events such as DDL events like `dropIndexes`.
 
         :Returns:
           A :class:`~pymongo.change_stream.DatabaseChangeStream` cursor.
+
+        .. versionchanged:: 4.3
+           Added `show_expanded_events` parameter.
 
         .. versionchanged:: 4.2
             Added ``full_document_before_change`` parameter.
@@ -657,6 +662,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             start_after,
             comment,
             full_document_before_change,
+            show_expanded_events=show_expanded_events,
         )
 
     def _command(
