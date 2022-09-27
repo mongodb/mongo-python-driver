@@ -2304,6 +2304,38 @@ class TestRewrapWithSeparateClientEncryption(EncryptionIntegrationTest):
         self.assertEqual(decrypt_result2, "test")
 
 
+class TestonDemandGCPCredentials(EncryptionIntegrationTest):
+    def setUp(self):
+        super(TestonDemandGCPCredentials, self).setUp()
+        self.master_key = {
+            "projectId": "devprod-drivers",
+            "location": "global",
+            "keyRing": "key-ring-csfle",
+            "keyName": "key-name-csfle",
+        }
+
+    @unittest.skipIf(any(GCP_CREDS.values()), "GCP environment credentials are set")
+    def test_01_failure(self):
+        self.client_encryption = ClientEncryption(
+            kms_providers={"gcp": {}},
+            key_vault_namespace="keyvault.datakeys",
+            key_vault_client=client_context.client,
+            codec_options=OPTS,
+        )
+        with self.assertRaises(EncryptionError):
+            self.client_encryption.create_data_key("gcp", self.master_key)
+
+    @unittest.skipUnless(any(GCP_CREDS.values()), "GCP environment credentials are not set")
+    def test_02_success(self):
+        self.client_encryption = ClientEncryption(
+            kms_providers={"gcp": {}},
+            key_vault_namespace="keyvault.datakeys",
+            key_vault_client=client_context.client,
+            codec_options=OPTS,
+        )
+        self.client_encryption.create_data_key("gcp", self.master_key)
+
+
 class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):
     # Queryable Encryption is not supported on Standalone topology.
     @client_context.require_no_standalone
