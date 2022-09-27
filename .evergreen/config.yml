@@ -1906,7 +1906,7 @@ tasks:
               export GCPKMS_PROJECT=${GCPKMS_PROJECT}
               export GCPKMS_ZONE=${GCPKMS_ZONE}
               export GCPKMS_INSTANCENAME=${GCPKMS_INSTANCENAME}
-              GCPKMS_CMD="MONGODB_URI='mongodb://localhost:27017' SUCCESS=true ./.evergreen/run-mongodb-fle-gcp-auto.sh" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
+              GCPKMS_CMD="SUCCESS=true ./.evergreen/run-mongodb-fle-gcp-auto.sh mongodb://localhost:27017" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
 
     - name: "testgcpkms-fail-task"
       # testgcpkms-fail-task runs in a non-GCE environment.
@@ -1919,7 +1919,7 @@ tasks:
             shell: "bash"
             script: |
               ${PREPARE_SHELL}
-              MONGODB_URI='mongodb://localhost:27017' SUCCESS=false ./.evergreen/run-mongodb-fle-gcp-auto.sh
+              SUCCESS=false ./.evergreen/run-mongodb-fle-gcp-auto.sh mongodb://localhost:27017
 
 axes:
   # Choice of distro

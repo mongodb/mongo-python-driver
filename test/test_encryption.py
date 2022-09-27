@@ -2314,8 +2314,10 @@ class TestonDemandGCPCredentials(EncryptionIntegrationTest):
             "keyName": "key-name-csfle",
         }
 
-    @unittest.skipIf(any(GCP_CREDS.values()), "GCP environment credentials are set")
+    @unittest.skipIf(not os.getenv("TEST_FLE_GCP_AUTO"), "Not testing FLE GCP auto")
     def test_01_failure(self):
+        if os.getenv("SUCCESS"):
+            self.skipTest("Expecting success")
         self.client_encryption = ClientEncryption(
             kms_providers={"gcp": {}},
             key_vault_namespace="keyvault.datakeys",
@@ -2325,8 +2327,10 @@ class TestonDemandGCPCredentials(EncryptionIntegrationTest):
         with self.assertRaises(EncryptionError):
             self.client_encryption.create_data_key("gcp", self.master_key)
 
-    @unittest.skipUnless(any(GCP_CREDS.values()), "GCP environment credentials are not set")
+    @unittest.skipIf(not os.getenv("TEST_FLE_GCP_AUTO"), "Not testing FLE GCP auto")
     def test_02_success(self):
+        if not os.getenv("SUCCESS"):
+            self.skipTest("Expecting failure")
         self.client_encryption = ClientEncryption(
             kms_providers={"gcp": {}},
             key_vault_namespace="keyvault.datakeys",

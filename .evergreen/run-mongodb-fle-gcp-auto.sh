@@ -33,7 +33,7 @@ authtest () {
     $PYTHON -m pip install --upgrade wheel setuptools pip
     cd src
     $PYTHON -m pip install '.[encryption]'
-    $PYTHON test/test_encryption.py
+    TEST_FLE_GCP_AUTO=1 $PYTHON test/test_encryption.py
     cd -
 }
 
