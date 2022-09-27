@@ -178,7 +178,7 @@ class ChangeStream(Generic[_DocumentType]):
         if self._start_at_operation_time is not None:
             options["startAtOperationTime"] = self._start_at_operation_time
 
-        if self._show_expanded_events is True:
+        if self._show_expanded_events:
             options["showExpandedEvents"] = self._show_expanded_events
 
         return options
