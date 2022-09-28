@@ -23,9 +23,9 @@ fi
 # Now we can safely enable xtrace
 set -o xtrace
 
-# Install python3.7 with pip.
-apt-get update
-apt install python3.7 python3-pip -y
+# Install python3.7 with pip
+apt-get update; true
+apt install python3.7 python3-pip -y; true
 
 authtest () {
     echo "Running GCP Credential Acquisition Test with $PYTHON"
