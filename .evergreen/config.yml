@@ -2061,6 +2061,10 @@ axes:
         display_name: "Python 3.10"
         variables:
           PYTHON_BINARY: "/opt/python/3.10/bin/python3"
+      - id: "3.11"
+        display_name: "Python 3.11"
+        variables:
+          PYTHON_BINARY: "/opt/python/3.11/bin/python3"
       - id: "pypy3.7"
         display_name: "PyPy 3.7"
         variables:
@@ -2097,6 +2101,10 @@ axes:
         display_name: "Python 3.10"
         variables:
           PYTHON_BINARY: "C:/python/Python310/python.exe"
+      - id: "3.11"
+        display_name: "Python 3.11"
+        variables:
+          PYTHON_BINARY: "C:/python/Python311/python.exe"
 
   - id: python-version-windows-32
     display_name: "Python"
@@ -2117,6 +2125,10 @@ axes:
         display_name: "32-bit Python 3.10"
         variables:
           PYTHON_BINARY: "C:/python/32/Python310/python.exe"
+      - id: "3.11"
+        display_name: "32-bit Python 3.11"
+        variables:
+          PYTHON_BINARY: "C:/python/32/Python311/python.exe"
 
   # Choice of mod_wsgi version
   - id: mod-wsgi-version
