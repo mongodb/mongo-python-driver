@@ -27,10 +27,10 @@ authtest () {
     echo "Running GCP Credential Acquisition Test with $PYTHON"
     $PYTHON --version
     $PYTHON -m pip install --upgrade wheel setuptools pip
-    cd src
+    pushd src
     $PYTHON -m pip install '.[encryption]'
     TEST_FLE_GCP_AUTO=1 $PYTHON test/test_encryption.py
-    cd -
+    popd
 }
 
 PYTHON="python3" authtest
