@@ -77,7 +77,7 @@ Wire protocol compression with zstandard requires `zstandard
 You can install all dependencies automatically with the following
 command::
 
-  $ python3 -m pip install "pymongo[gssapi,aws,ocsp,snappy,srv,zstd,encryption]"
+  $ python3 -m pip install "pymongo[gssapi,aws,ocsp,snappy,zstd,encryption]"
 
 Installing from source
 ----------------------
