@@ -1893,7 +1893,7 @@ tasks:
               GCPKMS_SRC=/tmp/mongo-python-driver.tgz GCPKMS_DST=$GCPKMS_INSTANCENAME: $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/copy-file.sh
               echo "Copying files ... end"
               echo "Untarring file ... begin"
-              GCPKMS_CMD="tar xf mongo-java-driver.tgz" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
+              GCPKMS_CMD="tar xf mongo-python-driver.tgz" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
               echo "Untarring file ... end"
         - command: shell.exec
           type: test
