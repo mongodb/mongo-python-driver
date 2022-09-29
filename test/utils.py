@@ -1004,10 +1004,7 @@ def assertion_context(msg):
     try:
         yield
     except AssertionError as exc:
-        msg = "%s (%s)" % (exc, msg)
-        exc_type, exc_val, exc_tb = sys.exc_info()
-        assert exc_type is not None
-        raise exc_type(exc_val).with_traceback(exc_tb)
+        raise AssertionError(f"{msg}: {exc}")
 
 
 def parse_spec_options(opts):
