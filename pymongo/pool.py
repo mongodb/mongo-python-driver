@@ -979,11 +979,9 @@ def _create_connection(address, options):
     This is a modified version of create_connection from CPython >= 2.7.
     """
     host, port = address
-    # Avoid the getaddrinfo importlib deadlock on fork() described in PYTHON-3406.
-    host = host.encode("idna")
 
     # Check if dealing with a unix domain socket
-    if host.endswith(b".sock"):
+    if host.endswith(".sock"):
         if not hasattr(socket, "AF_UNIX"):
             raise ConnectionFailure("UNIX-sockets are not supported on this system")
         sock = socket.socket(socket.AF_UNIX)
@@ -1000,7 +998,7 @@ def _create_connection(address, options):
     # is 'localhost' (::1 is fine). Avoids slow connect issues
     # like PYTHON-356.
     family = socket.AF_INET
-    if socket.has_ipv6 and host != b"localhost":
+    if socket.has_ipv6 and host != "localhost":
         family = socket.AF_UNSPEC
 
     err = None
