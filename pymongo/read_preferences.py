@@ -153,9 +153,12 @@ class _ServerMode(object):
         until it finds a set of tags with at least one matching member.
         For example, to only send a query to an analytic node::
 
-           Nearest(tag_sets=[
-              {"node":"analytics"}
-           ])
+           Nearest(tag_sets=[{"node":"analytics"}])
+
+        This can also be done using SecondaryPreferred to ensure that
+        the queries are sent to secondary nodes::
+
+           SecondaryPreferred(tag_sets=[{"node":"analytics"}])
 
            .. seealso:: `Data-Center Awareness
                <https://www.mongodb.com/docs/manual/data-center-awareness/>`_
@@ -523,7 +526,8 @@ _MODES = (
 
 
 class ReadPreference(object):
-    """An enum that defines some commonly used read preference modes supported by PyMongo.
+    """An enum that defines some commonly used read preference modes.
+
     Apps can also create a custom read preference, for example::
 
        Nearest(tag_sets=[{"node":"analytics"}])
