@@ -2746,7 +2746,19 @@ buildvariants:
     python-version-windows: "*"
     auth-ssl: "*"
   display_name: "${platform} ${python-version-windows} ${auth-ssl}"
-  tasks: *all-server-versions
+  tasks: &all-server-versions
+    - ".latest"
+    - ".rapid"
+    - ".6.0"
+    - ".5.0"
+    - ".4.4"
+    - ".4.2"
+    - ".4.0"
+    - ".3.6"
+    - ".3.4"
+    - ".3.2"
+    - ".3.0"
+    - ".2.6"
   rules:
     # Python 3.10+ and MongoDB <= 3.4 don't have any TLS ciphers in common.
     - if:
