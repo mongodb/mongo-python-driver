@@ -2746,7 +2746,7 @@ buildvariants:
     python-version-windows: "*"
     auth-ssl: "*"
   display_name: "${platform} ${python-version-windows} ${auth-ssl}"
-  tasks: *rhel-server-versions
+  tasks: *all-server-versions
   rules:
     # Python 3.10+ and MongoDB <= 3.4 don't have any TLS ciphers in common.
     - if:
@@ -2779,7 +2779,7 @@ buildvariants:
     python-version-windows-32: "*"
     auth-ssl: "*"
   display_name: "${platform} ${python-version-windows-32} ${auth-ssl}"
-  tasks: *rhel-server-versions
+  tasks: *all-server-versions
   rules:
     # Python 3.10+ and MongoDB <= 3.4 don't have any TLS ciphers in common.
     - if:
