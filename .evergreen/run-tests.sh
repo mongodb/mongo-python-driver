@@ -34,9 +34,6 @@ LIBMONGOCRYPT_URL=${LIBMONGOCRYPT_URL:-}
 DATA_LAKE=${DATA_LAKE:-}
 TEST_ARGS=""
 
-echo "HI HI HI"
-ls /opt/python
-
 if [ -n "$COMPRESSORS" ]; then
     export COMPRESSORS=$COMPRESSORS
 fi
