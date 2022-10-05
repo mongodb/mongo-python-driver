@@ -3109,8 +3109,6 @@ class Collection(common.BaseObject):
 
            - https://docs.mongodb.com/manual/reference/map-reduce-to-aggregation-pipeline/
            - https://docs.mongodb.com/manual/reference/aggregation-commands-comparison/
-
-           .. _mapReduce command: https://docs.mongodb.com/manual/reference/command/mapReduce/
         .. versionchanged:: 3.4
            Added the `collation` option.
         .. versionchanged:: 2.2
@@ -3119,7 +3117,6 @@ class Collection(common.BaseObject):
         .. _map reduce command: http://docs.mongodb.org/manual/reference/command/mapReduce/
 
         .. seealso:: The MongoDB documentation on `mapreduce <https://dochub.mongodb.org/core/mapreduce>`_.
-
         """
         warnings.warn(
             'map_reduce is deprecated, use aggregate instead',
@@ -3183,7 +3180,7 @@ class Collection(common.BaseObject):
         .. versionchanged:: 3.4
            Added the `collation` option.
 
-        .. _mapReduce command: https://docs.mongodb.com/manual/reference/command/mapReduce/
+        .. _map reduce command: http://docs.mongodb.org/manual/reference/command/mapReduce/
         """
         warnings.warn(
             'inline_map_reduce is deprecated, use aggregate instead',

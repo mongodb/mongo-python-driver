@@ -1,5 +1,5 @@
 {
-  "description": "Secondary ignored when ok is zero",
+  "description": "New primary",
   "uri": "mongodb://a,b/?replicaSet=rs",
   "phases": [
     {
