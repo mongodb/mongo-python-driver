@@ -2392,15 +2392,6 @@ buildvariants:
     - ".rapid"
     - ".latest"
     - ".6.0"
-    - ".5.0"
-    - ".4.4"
-    - ".4.2"
-    - ".4.0"
-    - ".3.6"
-    - ".3.4"
-    - ".3.2"
-    - ".3.0"
-    - ".2.6"
 
 - matrix_name: "tests-all-encryption"
   matrix_spec:
@@ -2551,7 +2542,7 @@ buildvariants:
 - matrix_name: "tests-python-version-rhel70-test-ssl"
   matrix_spec:
     platform: rhel70
-    # RHEL 6.2 does not support Python 3.7.x and later.
+    # RHEL 7.0 does not support Python 3.7.x and later.
     python-version: &rhel70-pythons ["2.7", "3.5", "3.6"]
     auth: "*"
     ssl: "*"
