@@ -43,7 +43,7 @@ class TestonDemandGCPCredentials(IntegrationTest):
 
     @unittest.skipIf(not os.getenv("TEST_FLE_GCP_AUTO"), "Not testing FLE GCP auto")
     def test_01_failure(self):
-        if os.getenv("SUCCESS"):
+        if os.getenv("SUCCESS", "").lower() == "true":
             self.skipTest("Expecting success")
         self.client_encryption = ClientEncryption(
             kms_providers={"gcp": {}},
@@ -56,7 +56,7 @@ class TestonDemandGCPCredentials(IntegrationTest):
 
     @unittest.skipIf(not os.getenv("TEST_FLE_GCP_AUTO"), "Not testing FLE GCP auto")
     def test_02_success(self):
-        if not os.getenv("SUCCESS"):
+        if os.getenv("SUCCESS", "").lower() == "false":
             self.skipTest("Expecting failure")
         self.client_encryption = ClientEncryption(
             kms_providers={"gcp": {}},
