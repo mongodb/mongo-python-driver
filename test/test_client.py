@@ -1641,8 +1641,7 @@ class TestClient(IntegrationTest):
             # If a bug like PYTHON-2433 is reintroduced then too many
             # ServerDescriptions will be kept alive and this test will fail:
             # AssertionError: 19 != 46 within 15 delta (27 difference)
-            # On Python 3.11 we seem to get more of a delta.
-            self.assertAlmostEqual(initial_count, final_count, delta=20)
+            self.assertAlmostEqual(initial_count, final_count, delta=15)
 
     @client_context.require_failCommand_fail_point
     def test_network_error_message(self):
