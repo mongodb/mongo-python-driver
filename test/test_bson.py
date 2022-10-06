@@ -982,6 +982,10 @@ class TestCodecOptions(unittest.TestCase):
             "fallback_encoder=None), "
             "datetime_conversion=DatetimeConversion.DATETIME)"
         )
+        # The repr() of an enum changed in Python 3.11.
+        if sys.version_info >= (3, 11):
+            r = r.replace("DatetimeConversion.DATETIME", str(DatetimeConversion.DATETIME))
+
         self.assertEqual(r, repr(CodecOptions()))
 
     def test_decode_all_defaults(self):
