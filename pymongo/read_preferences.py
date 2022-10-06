@@ -155,8 +155,7 @@ class _ServerMode(object):
 
            Nearest(tag_sets=[{"node":"analytics"}])
 
-        This can also be done using SecondaryPreferred to ensure that
-        the queries are sent to secondary nodes::
+        Or using :class:`SecondaryPreferred`::
 
            SecondaryPreferred(tag_sets=[{"node":"analytics"}])
 
