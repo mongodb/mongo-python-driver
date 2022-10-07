@@ -25,7 +25,7 @@ For issues with, questions about, or feedback for PyMongo, please look into
 our `support channels <https://support.mongodb.com/welcome>`_. Please
 do not email any of the PyMongo developers directly with issues or
 questions - you're more likely to get an answer on the `MongoDB Community
-Forums <https://developer.mongodb.com/community/forums/tag/python-driver>`_.
+Forums <https://www.mongodb.com/community/forums/tag/python>`_.
 
 Bugs / Feature Requests
 =======================
