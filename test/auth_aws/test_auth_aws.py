@@ -21,8 +21,7 @@ from datetime import datetime, timedelta
 
 sys.path[0:0] = [""]
 
-from botocore.credentials import Credentials
-from pymongo_auth_aws import auth
+from pymongo_auth_aws import AwsCredential, auth
 
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure
@@ -91,8 +90,7 @@ class TestAuthAWS(unittest.TestCase):
         # Make the creds about to expire.
         creds = auth.get_cached_credentials()
         assert creds is not None
-        creds = TestCredentials(creds.access_key, creds.secret_key, creds.token)
-        creds._refresh_needed = True
+        creds = AwsCredential(creds.username, creds.password, creds.token, lambda: True)
         auth.set_cached_credentials(creds)
 
         client.get_database().test.find_one()
@@ -107,7 +105,7 @@ class TestAuthAWS(unittest.TestCase):
 
         # Poison the creds with invalid password.
         assert creds is not None
-        creds = TestCredentials("a" * 24, "b" * 24, "c" * 24)
+        creds = AwsCredential("a" * 24, "b" * 24, "c" * 24)
         auth.set_cached_credentials(creds)
 
         with self.assertRaises(OperationFailure):
