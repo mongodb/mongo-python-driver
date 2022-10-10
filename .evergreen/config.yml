@@ -2506,7 +2506,7 @@ buildvariants:
 
 - matrix_name: "tests-python-version-green-framework-ubuntu18"
   matrix_spec:
-    platform: ubuntu-18.04
+    platform: ubuntu-20.04
     python-version: "*"
     green-framework: "*"
     auth-ssl: "*"
