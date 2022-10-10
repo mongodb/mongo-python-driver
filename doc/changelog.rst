@@ -4,6 +4,10 @@ Changelog
 Changes in Version 4.3
 ----------------------
 
+`dnspython <https://pypi.python.org/pypi/dnspython>`_ is now a required
+dependency. This change makes PyMongo easier to install for use with "mongodb+srv://"
+connection strings and `MongoDB Atlas <https://www.mongodb.com/cloud>`_.
+
 PyMongo 4.3 brings a number of improvements including:
 
 - Added support for decoding BSON datetimes outside of the range supported
@@ -13,8 +17,15 @@ PyMongo 4.3 brings a number of improvements including:
   :class:`bson.codec_options.DatetimeConversion`, and
   :class:`bson.codec_options.CodecOptions`'s ``datetime_conversion``
   parameter for more details (`PYTHON-1824`_).
-- Added support for using a :class:`~pymongo.mongo_client.MongoClient` after
-  an :py:func:`os.fork` (`PYTHON-2484`_).
+- PyMongo now resets its locks and other shared state in the child process
+  after a :py:func:`os.fork` to reduce the frequency of deadlocks. Note that
+  deadlocks are still possible because libraries that PyMongo depends like
+  OpenSSL cannot be made fork() safe in multithreaded applications.
+  (`PYTHON-2484`_). For more info see :ref:`pymongo-fork-safe`.
+- When used with MongoDB 6.0+, :class:`~pymongo.change_stream.ChangeStream` s
+  now allow for new types of events (such as DDL and C2C replication events)
+  to be recorded with the new parameter ``show_expanded_events``
+  that can be passed to methods such as :meth:`~pymongo.collection.Collection.watch`.
 
 Bug fixes
 .........
@@ -22,6 +33,8 @@ Bug fixes
 - Fixed a bug where  :class:`~pymongo.change_stream.ChangeStream`
   would allow an app to retry calling ``next()`` or ``try_next()`` even
   after non-resumable errors (`PYTHON-3389`_).
+- Fixed a bug where the client could be unable to discover the new primary
+  after a simultaneous replica set election and reconfig (`PYTHON-2970`_).
 
 Issues Resolved
 ...............
@@ -31,6 +44,7 @@ in this release.
 
 .. _PYTHON-1824: https://jira.mongodb.org/browse/PYTHON-1824
 .. _PYTHON-2484: https://jira.mongodb.org/browse/PYTHON-2484
+.. _PYTHON-2970: https://jira.mongodb.org/browse/PYTHON-2970
 .. _PYTHON-3389: https://jira.mongodb.org/browse/PYTHON-3389
 .. _PyMongo 4.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=33425
 

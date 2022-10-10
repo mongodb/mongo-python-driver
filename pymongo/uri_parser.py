@@ -469,8 +469,8 @@ def parse_uri(
             raise ConfigurationError(
                 'The "dnspython" module must be '
                 "installed to use mongodb+srv:// URIs. "
-                "To fix this error install pymongo with the srv extra:\n "
-                '%s -m pip install "pymongo[srv]"' % (python_path)
+                "To fix this error install pymongo again:\n "
+                "%s -m pip install pymongo>=4.3" % (python_path)
             )
         is_srv = True
         scheme_free = uri[SRV_SCHEME_LEN:]

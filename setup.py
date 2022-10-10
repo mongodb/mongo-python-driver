@@ -281,7 +281,8 @@ extras_require = {
     "snappy": ["python-snappy"],
     "zstd": ["zstandard"],
     "aws": ["pymongo-auth-aws<2.0.0"],
-    "srv": ["dnspython>=1.16.0,<3.0.0"],
+    "srv": [],  # PYTHON-3423 Removed in 4.3 but kept here to avoid pip warnings.
+    "tls": [],  # PYTHON-2133 Removed in 4.0 but kept here to avoid pip warnings.
 }
 
 # GSSAPI extras
@@ -314,7 +315,7 @@ setup(
     author="The MongoDB Python Team",
     url="http://github.com/mongodb/mongo-python-driver",
     keywords=["mongo", "mongodb", "pymongo", "gridfs", "bson"],
-    install_requires=[],
+    install_requires=["dnspython>=1.16.0,<3.0.0"],
     license="Apache License, Version 2.0",
     python_requires=">=3.7",
     classifiers=[

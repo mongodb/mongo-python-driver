@@ -82,7 +82,7 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
     WaitQueueTimeoutError,
 )
-from pymongo.lock import _create_lock, _release_locks
+from pymongo.lock import _HAS_REGISTER_AT_FORK, _create_lock, _release_locks
 from pymongo.pool import ConnectionClosedReason
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_selectors import writable_server_selector
@@ -831,9 +831,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             self._encrypter = _Encrypter(self, self.__options.auto_encryption_opts)
         self._timeout = self.__options.timeout
 
-        # Add this client to the list of weakly referenced items.
-        # This will be used later if we fork.
-        MongoClient._clients[self._topology._topology_id] = self
+        if _HAS_REGISTER_AT_FORK:
+            # Add this client to the list of weakly referenced items.
+            # This will be used later if we fork.
+            MongoClient._clients[self._topology._topology_id] = self
 
     def _init_background(self):
         self._topology = Topology(self._topology_settings)
@@ -894,6 +895,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         start_after: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,
         full_document_before_change: Optional[str] = None,
+        show_expanded_events: Optional[bool] = None,
     ) -> ChangeStream[_DocumentType]:
         """Watch changes on this cluster.
 
@@ -971,9 +973,13 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             This option and `resume_after` are mutually exclusive.
           - `comment` (optional): A user-provided comment to attach to this
             command.
+          - `show_expanded_events` (optional): Include expanded events such as DDL events like `dropIndexes`.
 
         :Returns:
           A :class:`~pymongo.change_stream.ClusterChangeStream` cursor.
+
+        .. versionchanged:: 4.3
+           Added `show_expanded_events` parameter.
 
         .. versionchanged:: 4.2
             Added ``full_document_before_change`` parameter.
@@ -1004,6 +1010,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             start_after,
             comment,
             full_document_before_change,
+            show_expanded_events=show_expanded_events,
         )
 
     @property
@@ -2177,7 +2184,7 @@ def _after_fork_child():
         client._after_fork()
 
 
-if hasattr(os, "register_at_fork"):
+if _HAS_REGISTER_AT_FORK:
     # This will run in the same thread as the fork was called.
     # If we fork in a critical region on the same thread, it should break.
     # This is fine since we would never call fork directly from a critical region.

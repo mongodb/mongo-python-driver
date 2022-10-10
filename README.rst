@@ -25,7 +25,7 @@ For issues with, questions about, or feedback for PyMongo, please look into
 our `support channels <https://support.mongodb.com/welcome>`_. Please
 do not email any of the PyMongo developers directly with issues or
 questions - you're more likely to get an answer on the `MongoDB Community
-Forums <https://developer.mongodb.com/community/forums/tag/python-driver>`_.
+Forums <https://www.mongodb.com/community/forums/tag/python>`_.
 
 Bugs / Feature Requests
 =======================
@@ -90,6 +90,11 @@ Dependencies
 
 PyMongo supports CPython 3.7+ and PyPy3.7+.
 
+Required dependencies:
+
+Support for mongodb+srv:// URIs requires `dnspython
+<https://pypi.python.org/pypi/dnspython>`_
+
 Optional dependencies:
 
 GSSAPI authentication requires `pykerberos
@@ -104,10 +109,6 @@ MONGODB-AWS authentication requires `pymongo-auth-aws
 
   $ python -m pip install "pymongo[aws]"
 
-Support for mongodb+srv:// URIs requires `dnspython
-<https://pypi.python.org/pypi/dnspython>`_::
-
-  $ python -m pip install "pymongo[srv]"
 
 OCSP (Online Certificate Status Protocol) requires `PyOpenSSL
 <https://pypi.org/project/pyOpenSSL/>`_, `requests
@@ -136,7 +137,7 @@ Client-Side Field Level Encryption requires `pymongocrypt
 You can install all dependencies automatically with the following
 command::
 
-  $ python -m pip install "pymongo[gssapi,aws,ocsp,snappy,srv,tls,zstd,encryption]"
+  $ python -m pip install "pymongo[gssapi,aws,ocsp,snappy,zstd,encryption]"
 
 Additional dependencies are:
 

@@ -1080,9 +1080,8 @@ class TestAllLegacyScenarios(IntegrationTest):
         fail_cmd = SON([("configureFailPoint", "failCommand")])
         fail_cmd.update(fail_point)
         client_context.client.admin.command(fail_cmd)
-        # Remove type ignore after: https://github.com/python/mypy/issues/13220
         self.addCleanup(
-            client_context.client.admin.command,  # type: ignore[arg-type]
+            client_context.client.admin.command,
             "configureFailPoint",
             fail_cmd["configureFailPoint"],
             mode="off",
