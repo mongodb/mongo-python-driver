@@ -17,7 +17,6 @@
 import os
 import sys
 import unittest
-from datetime import datetime, timedelta
 
 sys.path[0:0] = [""]
 
