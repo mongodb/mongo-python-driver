@@ -28,13 +28,6 @@ from pymongo.errors import OperationFailure
 from pymongo.uri_parser import parse_uri
 
 
-class TestCredentials(Credentials):
-    _refresh_needed = False
-
-    def refresh_needed(self, *args, **kwargs):
-        return self._refresh_needed
-
-
 class TestAuthAWS(unittest.TestCase):
     uri: str
 
