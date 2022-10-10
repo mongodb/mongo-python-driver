@@ -83,7 +83,8 @@ class TestAuthAWS(unittest.TestCase):
         # Make the creds about to expire.
         creds = auth.get_cached_credentials()
         assert creds is not None
-        creds = AwsCredential(creds.username, creds.password, creds.token, lambda: True)
+
+        creds = AwsCredential(creds.username, creds.password, creds.token, lambda x: True)
         auth.set_cached_credentials(creds)
 
         client.get_database().test.find_one()
