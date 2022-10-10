@@ -29,6 +29,13 @@ from pymongo.errors import OperationFailure
 from pymongo.uri_parser import parse_uri
 
 
+class TestCredentials(Credentials):
+    _refresh_needed = False
+
+    def refresh_needed(self, *args, **kwargs):
+        return self._refresh_needed
+
+
 class TestAuthAWS(unittest.TestCase):
     uri: str
 
@@ -84,7 +91,8 @@ class TestAuthAWS(unittest.TestCase):
         # Make the creds about to expire.
         creds = auth.get_cached_credentials()
         assert creds is not None
-        creds.refresh_needed = lambda: True
+        creds = TestCredentials(creds.access_key, creds.secret_key, creds.token)
+        creds._refresh_needed = True
         auth.set_cached_credentials(creds)
 
         client.get_database().test.find_one()
@@ -99,7 +107,7 @@ class TestAuthAWS(unittest.TestCase):
 
         # Poison the creds with invalid password.
         assert creds is not None
-        creds = Credentials("a" * 24, "b" * 24, "c" * 24)
+        creds = TestCredentials("a" * 24, "b" * 24, "c" * 24)
         auth.set_cached_credentials(creds)
 
         with self.assertRaises(OperationFailure):
