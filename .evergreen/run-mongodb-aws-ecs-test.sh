@@ -29,8 +29,7 @@ authtest () {
     $PYTHON --version
     $PYTHON -m pip install --upgrade wheel setuptools pip
     cd src
-    $PYTHON -m pip install '.'
-    $PYTHON -m pip install https://github.com/mongodb/pymongo-auth-aws/archive/refs/heads/master.zip
+    $PYTHON -m pip install '.[aws]'
     $PYTHON test/auth_aws/test_auth_aws.py -v
     cd -
 }
