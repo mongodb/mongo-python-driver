@@ -26,6 +26,9 @@ PyMongo 4.3 brings a number of improvements including:
   now allow for new types of events (such as DDL and C2C replication events)
   to be recorded with the new parameter ``show_expanded_events``
   that can be passed to methods such as :meth:`~pymongo.collection.Collection.watch`.
+- PyMongo now internally caches AWS credentials that it fetches from AWS
+  endpoints, to avoid rate limitations.  The cache is cleared when the
+  credentials expire or an error is encountered.
 
 Bug fixes
 .........
