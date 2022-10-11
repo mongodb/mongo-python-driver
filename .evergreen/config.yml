@@ -1052,6 +1052,10 @@ tasks:
       commands:
         - func: "build release"
           vars:
+              VERSION: "3.11"
+              ENSURE_UNIVERSAL2: "1"
+        - func: "build release"
+          vars:
               VERSION: "3.10"
               ENSURE_UNIVERSAL2: "1"
         - func: "build release"
