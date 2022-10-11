@@ -566,7 +566,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def insert_one(
         self,
-        document: _DocumentIn,
+        document: Union[_DocumentType, RawBSONDocument],
         bypass_document_validation: bool = False,
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
@@ -614,7 +614,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """
         common.validate_is_document_type("document", document)
         if not (isinstance(document, RawBSONDocument) or "_id" in document):
-            document["_id"] = ObjectId()
+            document["_id"] = ObjectId()  # type: ignore[index]
 
         write_concern = self._write_concern_for(session)
         return InsertOneResult(
@@ -633,7 +633,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     @_csot.apply
     def insert_many(
         self,
-        documents: Iterable[_DocumentIn],
+        documents: Iterable[Union[_DocumentType, RawBSONDocument]],
         ordered: bool = True,
         bypass_document_validation: bool = False,
         session: Optional["ClientSession"] = None,
@@ -697,7 +697,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 common.validate_is_document_type("document", document)
                 if not isinstance(document, RawBSONDocument):
                     if "_id" not in document:
-                        document["_id"] = ObjectId()
+                        document["_id"] = ObjectId()  # type: ignore[index]
                     inserted_ids.append(document["_id"])
                 yield (message._INSERT, document)
 
