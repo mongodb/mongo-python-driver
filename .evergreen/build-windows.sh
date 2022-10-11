@@ -8,6 +8,8 @@ rm -rf validdist
 mkdir -p validdist
 mv dist/* validdist || true
 
+ls C:/Python/
+
 for VERSION in 37 38 39 310; do
     _pythons=("C:/Python/Python${VERSION}/python.exe" \
               "C:/Python/32/Python${VERSION}/python.exe")
