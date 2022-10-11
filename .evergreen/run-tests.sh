@@ -222,7 +222,7 @@ else
     # --no_ext has to come before "test" so there is no way to toggle extensions here.
     # Install the framework from pip.
     # Use the same flags as the ones used by gevent, in case we have to build the wheel.
-    pip install cython>=3.0a9 greenlet>=1.0a1,<2
+    $PYTHON -m pip install cython>=3.0a9 greenlet>=1.0a1,<2
     CFLAGS="-O3 -pipe -Wno-strict-aliasing -Wno-comment" CPPFLAGS="-DEV_VERIFY=1" $PYTHON -m pip install $GREEN_FRAMEWORK
     $PYTHON green_framework_test.py $GREEN_FRAMEWORK $OUTPUT
 fi
