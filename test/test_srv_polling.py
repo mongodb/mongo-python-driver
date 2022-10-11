@@ -130,7 +130,12 @@ class TestSrvPolling(unittest.TestCase):
         (WAIT_TIME * 10) seconds. Also check that the resolver is called at
         least once.
         """
-        sleep(WAIT_TIME * 10)
+
+        def predicate():
+            return set(expected_nodelist) == set(self.get_nodelist(client))
+
+        wait_until(predicate, "Node list equals expected nodelist", timeout=100 * WAIT_TIME)
+
         nodelist = self.get_nodelist(client)
         if set(expected_nodelist) != set(nodelist):
             msg = "Client nodelist %s changed unexpectedly (expected %s)"
