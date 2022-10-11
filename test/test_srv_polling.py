@@ -132,7 +132,9 @@ class TestSrvPolling(unittest.TestCase):
         """
 
         def predicate():
-            return set(expected_nodelist) == set(self.get_nodelist(client))
+            if set(expected_nodelist) == set(self.get_nodelist(client)):
+                return pymongo.srv_resolver._SrvResolver.get_hosts_and_min_ttl.call_count >= 1
+            return False
 
         wait_until(predicate, "Node list equals expected nodelist", timeout=100 * WAIT_TIME)
 
