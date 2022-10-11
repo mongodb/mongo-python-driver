@@ -162,7 +162,12 @@ class Database(common.BaseObject, Generic[_DocumentType]):
           >>> db1.read_preference
           Primary()
           >>> from pymongo import ReadPreference
-          >>> db2 = db1.with_options(read_preference=ReadPreference.SECONDARY)
+          >>> db2 = db1.with_options(
+                                     codec_options=CodecOptions(tz_aware=False),
+                                     read_preference=ReadPreference.SECONDARY,
+                                     write_concern=WriteConcern(w=0),
+                                     read_concern=ReadConcern(level="majority"),
+                                    )
           >>> db1.read_preference
           Primary()
           >>> db2.read_preference
