@@ -27,6 +27,17 @@ except ImportError:
 
     _HAVE_MONGODB_AWS = False
 
+try:
+    from pymongo_auth_aws.auth import set_cached_credentials, set_use_cached_credentials
+
+    # Enable credential caching.
+    set_use_cached_credentials(True)
+except ImportError:
+
+    def set_cached_credentials(creds):
+        pass
+
+
 import bson
 from bson.binary import Binary
 from bson.son import SON
@@ -88,7 +99,13 @@ def _authenticate_aws(credentials, sock_info):
                 # SASL complete.
                 break
     except PyMongoAuthAwsError as exc:
+        # Clear the cached credentials if we hit a failure in auth.
+        set_cached_credentials(None)
         # Convert to OperationFailure and include pymongo-auth-aws version.
         raise OperationFailure(
             "%s (pymongo-auth-aws version %s)" % (exc, pymongo_auth_aws.__version__)
         )
+    except Exception:
+        # Clear the cached credentials if we hit a failure in auth.
+        set_cached_credentials(None)
+        raise

@@ -20,6 +20,8 @@ import unittest
 
 sys.path[0:0] = [""]
 
+from pymongo_auth_aws import AwsCredential, auth
+
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure
 from pymongo.uri_parser import parse_uri
@@ -52,6 +54,62 @@ class TestAuthAWS(unittest.TestCase):
     def test_connect_uri(self):
         with MongoClient(self.uri) as client:
             client.get_database().test.find_one()
+
+    def setup_cache(self):
+        if os.environ.get("AWS_ACCESS_KEY_ID", None) or "@" in self.uri:
+            self.skipTest("Not testing cached credentials")
+        if not hasattr(auth, "set_cached_credentials"):
+            self.skipTest("Cached credentials not available")
+
+        # Ensure cleared credentials.
+        auth.set_cached_credentials(None)
+        self.assertEqual(auth.get_cached_credentials(), None)
+
+        client = MongoClient(self.uri)
+        client.get_database().test.find_one()
+        client.close()
+        return auth.get_cached_credentials()
+
+    def test_cache_credentials(self):
+        creds = self.setup_cache()
+        self.assertIsNotNone(creds)
+
+    def test_cache_about_to_expire(self):
+        creds = self.setup_cache()
+        client = MongoClient(self.uri)
+        self.addCleanup(client.close)
+
+        # Make the creds about to expire.
+        creds = auth.get_cached_credentials()
+        assert creds is not None
+
+        creds = AwsCredential(creds.username, creds.password, creds.token, lambda x: True)
+        auth.set_cached_credentials(creds)
+
+        client.get_database().test.find_one()
+        new_creds = auth.get_cached_credentials()
+        self.assertNotEqual(creds, new_creds)
+
+    def test_poisoned_cache(self):
+        creds = self.setup_cache()
+
+        client = MongoClient(self.uri)
+        self.addCleanup(client.close)
+
+        # Poison the creds with invalid password.
+        assert creds is not None
+        creds = AwsCredential("a" * 24, "b" * 24, "c" * 24)
+        auth.set_cached_credentials(creds)
+
+        with self.assertRaises(OperationFailure):
+            client.get_database().test.find_one()
+
+        # Make sure the cache was cleared.
+        self.assertEqual(auth.get_cached_credentials(), None)
+
+        # The next attempt should generate a new cred and succeed.
+        client.get_database().test.find_one()
+        self.assertNotEqual(auth.get_cached_credentials(), None)
 
 
 class TestAWSLambdaExamples(unittest.TestCase):
