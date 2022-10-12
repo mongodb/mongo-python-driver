@@ -162,11 +162,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
           >>> db1.read_preference
           Primary()
           >>> from pymongo import ReadPreference
-          >>> db2 = db1.with_options(
-                                     read_preference=Secondary([{'node': 'analytics'}]),
-                                     write_concern=WriteConcern(w="majority"),
-                                     read_concern=ReadConcern(level="majority"),
-                                    )
+          >>> db2 = db1.with_options(read_preference=Secondary([{'node': 'analytics'}]))
           >>> db1.read_preference
           Primary()
           >>> db2.read_preference
