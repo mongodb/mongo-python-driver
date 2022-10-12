@@ -220,9 +220,5 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
     $PYTHON $COVERAGE_ARGS setup.py $C_EXTENSIONS test $TEST_ARGS $OUTPUT
 else
     # --no_ext has to come before "test" so there is no way to toggle extensions here.
-    # Install the framework from pip.
-    # Use the same flags as the ones used by gevent, in case we have to build the wheel.
-    $PYTHON -m pip install --pre pip setuptools
-    $PYTHON -m pip install -v $GREEN_FRAMEWORK
     $PYTHON green_framework_test.py $GREEN_FRAMEWORK $OUTPUT
 fi
