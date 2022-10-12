@@ -162,11 +162,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
           >>> db1.read_preference
           Primary()
           >>> from pymongo import ReadPreference
-          >>> db2 = db1.with_options(read_preference=ReadPreference.SECONDARY)
+          >>> db2 = db1.with_options(read_preference=Secondary([{'node': 'analytics'}]))
           >>> db1.read_preference
           Primary()
           >>> db2.read_preference
-          Secondary(tag_sets=None)
+          Secondary(tag_sets=[{'node': 'analytics'}], max_staleness=-1, hedge=None)
 
         :Parameters:
           - `codec_options` (optional): An instance of
