@@ -1004,10 +1004,7 @@ def assertion_context(msg):
     try:
         yield
     except AssertionError as exc:
-        msg = "%s (%s)" % (exc, msg)
-        exc_type, exc_val, exc_tb = sys.exc_info()
-        assert exc_type is not None
-        raise exc_type(exc_val).with_traceback(exc_tb)
+        raise AssertionError(f"{msg}: {exc}")
 
 
 def parse_spec_options(opts):
@@ -1127,6 +1124,8 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callbac
             arguments["index_or_name"] = arguments.pop(arg_name)
         elif opname == "rename" and arg_name == "to":
             arguments["new_name"] = arguments.pop(arg_name)
+        elif opname == "rename" and arg_name == "dropTarget":
+            arguments["dropTarget"] = arguments.pop(arg_name)
         elif arg_name == "cursorType":
             cursor_type = arguments.pop(arg_name)
             if cursor_type == "tailable":

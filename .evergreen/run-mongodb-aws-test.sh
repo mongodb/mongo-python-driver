@@ -60,11 +60,8 @@ authtest () {
     else
       . venvaws/bin/activate
     fi
-    python -m pip install --upgrade wheel
-    python -m pip install '.'
-    # python -m pip install https://github.com/mongodb/pymongo-auth-aws/archive/refs/heads/master.zip
-    python -m pip install https://github.com/blink1073/pymongo-auth-aws/archive/refs/heads/PYTHON-3418.zip
-    python test/auth_aws/test_auth_aws.py
+    python -m pip install '.[aws]'
+    python test/auth_aws/test_auth_aws.py -v
     deactivate
     rm -rf venvaws
 }

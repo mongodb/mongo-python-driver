@@ -14,21 +14,15 @@ for threaded applications.
 Is PyMongo fork-safe?
 ---------------------
 
-Starting in PyMongo 4.3, forking on a compatible Python interpreter while
-using a client will result in all locks held by :class:`~bson.objectid
-.ObjectId` and :class:`~pymongo.mongo_client.MongoClient` being released in
-the child, as well as state shared between child and parent processes being
-reset.
-
-If greenlet has been imported (usually with a library like gevent or
-Eventlet), care must be taken when using instances of :class:`~pymongo
-.mongo_client.MongoClient` with ``fork()``. Specifically, instances of
-MongoClient must not be copied from a parent process to a child process.
-Instead, the parent process and each child process must create their own
-instances of MongoClient. Instances of MongoClient copied from the parent
-process have a high probability of deadlock in the child process due to the
-inherent incompatibilities between ``fork()``, threads, and locks described
-:ref:`below<pymongo-fork-safe-details>`.
+PyMongo is not fork-safe. Care must be taken when using instances of
+:class:`~pymongo.mongo_client.MongoClient` with ``fork()``. Specifically,
+instances of MongoClient must not be copied from a parent process to
+a child process. Instead, the parent process and each child process must
+create their own instances of MongoClient. Instances of MongoClient copied from
+the parent process have a high probability of deadlock in the child process due
+to the inherent incompatibilities between ``fork()``, threads, and locks
+described :ref:`below <pymongo-fork-safe-details>`. PyMongo will attempt to
+issue a warning if there is a chance of this deadlock occurring.
 
 .. _pymongo-fork-safe-details:
 
@@ -44,10 +38,33 @@ created by ``fork()`` only has one thread, so any locks that were taken out by
 other threads in the parent will never be released in the child. The next time
 the child process attempts to acquire one of these locks, deadlock occurs.
 
+Starting in version 4.3, PyMongo utilizes :py:func:`os.register_at_fork` to
+reset its locks and other shared state in the child process after a
+:py:func:`os.fork` to reduce the frequency of deadlocks. However deadlocks
+are still possible because libraries that PyMongo depends on, like `OpenSSL`_
+and `getaddrinfo(3)`_ (on some platforms), are not fork() safe in a
+multithreaded application. Linux also imposes the restriction that:
+
+    After a `fork()`_ in a multithreaded program, the child can
+    safely call only async-signal-safe functions (see
+    `signal-safety(7)`_) until such time as it calls `execve(2)`_.
+
+PyMongo relies on functions that are *not* `async-signal-safe`_ and hence the
+child process can experience deadlocks or crashes when attempting to call
+a non `async-signal-safe`_ function. For examples of deadlocks or crashes
+that could occur see `PYTHON-3406`_.
+
 For a long but interesting read about the problems of Python locks in
 multithreaded contexts with ``fork()``, see http://bugs.python.org/issue6721.
 
 .. _not fork-safe: http://bugs.python.org/issue6721
+.. _OpenSSL: https://github.com/openssl/openssl/issues/19066
+.. _fork(): https://man7.org/linux/man-pages/man2/fork.2.html
+.. _signal-safety(7): https://man7.org/linux/man-pages/man7/signal-safety.7.html
+.. _async-signal-safe: https://man7.org/linux/man-pages/man7/signal-safety.7.html
+.. _execve(2): https://man7.org/linux/man-pages/man2/execve.2.html
+.. _getaddrinfo(3): https://man7.org/linux/man-pages/man3/gai_strerror.3.html
+.. _PYTHON-3406: https://jira.mongodb.org/browse/PYTHON-3406
 
 .. _connection-pooling:
 

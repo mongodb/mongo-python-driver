@@ -60,6 +60,23 @@ from bson.codec_options import CodecOptions
 from bson.son import SON
 
 
+def _inflate_bson(
+    bson_bytes: bytes, codec_options: CodecOptions, raw_array: bool = False
+) -> Mapping[Any, Any]:
+    """Inflates the top level fields of a BSON document.
+
+    :Parameters:
+      - `bson_bytes`: the BSON bytes that compose this document
+      - `codec_options`: An instance of
+        :class:`~bson.codec_options.CodecOptions` whose ``document_class``
+        must be :class:`RawBSONDocument`.
+    """
+    # Use SON to preserve ordering of elements.
+    return _raw_to_dict(
+        bson_bytes, 4, len(bson_bytes) - 1, codec_options, SON(), raw_array=raw_array
+    )
+
+
 class RawBSONDocument(Mapping[str, Any]):
     """Representation for a MongoDB document that provides access to the raw
     BSON bytes that compose it.
@@ -111,7 +128,7 @@ class RawBSONDocument(Mapping[str, Any]):
         # it refers to this class RawBSONDocument.
         if codec_options is None:
             codec_options = DEFAULT_RAW_BSON_OPTIONS
-        elif codec_options.document_class is not RawBSONDocument:
+        elif not issubclass(codec_options.document_class, RawBSONDocument):
             raise TypeError(
                 "RawBSONDocument cannot use CodecOptions with document "
                 "class %s" % (codec_options.document_class,)
@@ -135,8 +152,12 @@ class RawBSONDocument(Mapping[str, Any]):
             # We already validated the object's size when this document was
             # created, so no need to do that again.
             # Use SON to preserve ordering of elements.
-            self.__inflated_doc = _inflate_bson(self.__raw, self.__codec_options)
+            self.__inflated_doc = self._inflate_bson(self.__raw, self.__codec_options)
         return self.__inflated_doc
+
+    @staticmethod
+    def _inflate_bson(bson_bytes: bytes, codec_options: CodecOptions) -> Mapping[Any, Any]:
+        return _inflate_bson(bson_bytes, codec_options)
 
     def __getitem__(self, item: str) -> Any:
         return self.__inflated[item]
@@ -153,23 +174,23 @@ class RawBSONDocument(Mapping[str, Any]):
         return NotImplemented
 
     def __repr__(self):
-        return "RawBSONDocument(%r, codec_options=%r)" % (self.raw, self.__codec_options)
+        return "%s(%r, codec_options=%r)" % (
+            self.__class__.__name__,
+            self.raw,
+            self.__codec_options,
+        )
 
 
-def _inflate_bson(bson_bytes: bytes, codec_options: CodecOptions) -> Mapping[Any, Any]:
-    """Inflates the top level fields of a BSON document.
+class _RawArrayBSONDocument(RawBSONDocument):
+    """A RawBSONDocument that only expands sub-documents and arrays when accessed."""
 
-    :Parameters:
-      - `bson_bytes`: the BSON bytes that compose this document
-      - `codec_options`: An instance of
-        :class:`~bson.codec_options.CodecOptions` whose ``document_class``
-        must be :class:`RawBSONDocument`.
-    """
-    # Use SON to preserve ordering of elements.
-    return _raw_to_dict(bson_bytes, 4, len(bson_bytes) - 1, codec_options, SON())
+    @staticmethod
+    def _inflate_bson(bson_bytes: bytes, codec_options: CodecOptions) -> Mapping[Any, Any]:
+        return _inflate_bson(bson_bytes, codec_options, raw_array=True)
 
 
 DEFAULT_RAW_BSON_OPTIONS: CodecOptions = DEFAULT.with_options(document_class=RawBSONDocument)
+_RAW_ARRAY_BSON_OPTIONS: CodecOptions = DEFAULT.with_options(document_class=_RawArrayBSONDocument)
 """The default :class:`~bson.codec_options.CodecOptions` for
 :class:`RawBSONDocument`.
 """

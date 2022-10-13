@@ -17,6 +17,7 @@
 from random import sample
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple
 
+from bson.min_key import MinKey
 from bson.objectid import ObjectId
 from pymongo import common
 from pymongo.errors import ConfigurationError
@@ -494,7 +495,7 @@ def _updated_topology_description_srv_polling(topology_description, seedlist):
         new_hosts = set(seedlist) - set(sds.keys())
         n_to_add = topology_description.srv_max_hosts - len(sds)
         if n_to_add > 0:
-            seedlist = sample(new_hosts, min(n_to_add, len(new_hosts)))
+            seedlist = sample(sorted(new_hosts), min(n_to_add, len(new_hosts)))
         else:
             seedlist = []
     # Add SDs corresponding to servers recently added to the SRV record.
@@ -530,26 +531,34 @@ def _update_rs_from_primary(
         # We found a primary but it doesn't have the replica_set_name
         # provided by the user.
         sds.pop(server_description.address)
-        return (_check_has_primary(sds), replica_set_name, max_set_version, max_election_id)
+        return _check_has_primary(sds), replica_set_name, max_set_version, max_election_id
 
-    max_election_tuple = max_set_version, max_election_id
-    if None not in server_description.election_tuple:
-        if (
-            None not in max_election_tuple
-            and max_election_tuple > server_description.election_tuple
+    if server_description.max_wire_version is None or server_description.max_wire_version < 17:
+        new_election_tuple = server_description.set_version, server_description.election_id
+        max_election_tuple = max_set_version, max_election_id
+        if None not in new_election_tuple:
+            if None not in max_election_tuple and new_election_tuple < max_election_tuple:
+                # Stale primary, set to type Unknown.
+                sds[server_description.address] = server_description.to_unknown()
+                return _check_has_primary(sds), replica_set_name, max_set_version, max_election_id
+            max_election_id = server_description.election_id
+
+        if server_description.set_version is not None and (
+            max_set_version is None or server_description.set_version > max_set_version
         ):
-
+            max_set_version = server_description.set_version
+    else:
+        new_election_tuple = server_description.election_id, server_description.set_version
+        max_election_tuple = max_election_id, max_set_version
+        new_election_safe = tuple(MinKey() if i is None else i for i in new_election_tuple)
+        max_election_safe = tuple(MinKey() if i is None else i for i in max_election_tuple)
+        if new_election_safe < max_election_safe:
             # Stale primary, set to type Unknown.
             sds[server_description.address] = server_description.to_unknown()
-            return (_check_has_primary(sds), replica_set_name, max_set_version, max_election_id)
-
-        max_election_id = server_description.election_id
-
-    if server_description.set_version is not None and (
-        max_set_version is None or server_description.set_version > max_set_version
-    ):
-
-        max_set_version = server_description.set_version
+            return _check_has_primary(sds), replica_set_name, max_set_version, max_election_id
+        else:
+            max_election_id = server_description.election_id
+            max_set_version = server_description.set_version
 
     # We've heard from the primary. Is it the same primary as before?
     for server in sds.values():

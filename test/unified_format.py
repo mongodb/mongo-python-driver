@@ -936,6 +936,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if (
                 "Dirty explicit session is discarded" in spec["description"]
                 or "Dirty implicit session is discarded" in spec["description"]
+                or "Cancel server check" in spec["description"]
             ):
                 self.skipTest("MMAPv1 does not support retryWrites=True")
         if "Client side error in command starting transaction" in spec["description"]:
@@ -1591,7 +1592,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                     if i < attempts - 1:
                         print(
                             f"Retrying after attempt {i+1} of {self.id()} failed with:\n"
-                            f"{traceback.format_exc()}"
+                            f"{traceback.format_exc()}",
+                            file=sys.stderr,
                         )
                         self.setUp()
                         continue

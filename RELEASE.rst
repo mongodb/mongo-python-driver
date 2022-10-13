@@ -84,7 +84,7 @@ Doing a Release
 13. Publish the release version in Jira.
 
 14. Announce the release on:
-    https://developer.mongodb.com/community/forums/c/community/release-notes/
+    https://www.mongodb.com/community/forums/c/announcements/driver-releases/110
 
 15. File a ticket for DOCSP highlighting changes in server version and Python
     version compatibility or the lack thereof, for example:

@@ -125,6 +125,9 @@ Connection monitoring and pooling events are also available. For example::
         def pool_created(self, event):
             logging.info("[pool {0.address}] pool created".format(event))
 
+        def pool_ready(self, event):
+            logging.info("[pool {0.address}] pool is ready".format(event))
+
         def pool_cleared(self, event):
             logging.info("[pool {0.address}] pool cleared".format(event))
 

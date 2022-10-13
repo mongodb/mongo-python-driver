@@ -119,8 +119,7 @@ class DSTAwareTimezone(datetime.tzinfo):
 
 class TestBSON(unittest.TestCase):
     def assertInvalid(self, data):
-        # Remove type ignore after: https://github.com/python/mypy/issues/13220
-        self.assertRaises(InvalidBSON, decode, data)  # type: ignore[arg-type]
+        self.assertRaises(InvalidBSON, decode, data)
 
     def check_encode_then_decode(self, doc_class=dict, decoder=decode, encoder=encode):
 
@@ -1029,17 +1028,14 @@ class TestCodecOptions(unittest.TestCase):
 
         # Ensure that strict mode raises an error.
         for invalid in [invalid_key, invalid_val, invalid_both]:
-            # Remove type ignore after: https://github.com/python/mypy/issues/13220
             self.assertRaises(
                 InvalidBSON,
-                decode,  # type: ignore[arg-type]
+                decode,
                 invalid,
                 CodecOptions(unicode_decode_error_handler="strict"),
             )
-            self.assertRaises(
-                InvalidBSON, decode, invalid, CodecOptions()  # type: ignore[arg-type]
-            )
-            self.assertRaises(InvalidBSON, decode, invalid)  # type: ignore[arg-type]
+            self.assertRaises(InvalidBSON, decode, invalid, CodecOptions())
+            self.assertRaises(InvalidBSON, decode, invalid)
 
         # Test all other error handlers.
         for handler in ["replace", "backslashreplace", "surrogateescape", "ignore"]:
@@ -1056,10 +1052,9 @@ class TestCodecOptions(unittest.TestCase):
         dec = decode(enc, CodecOptions(unicode_decode_error_handler="junk"))
         self.assertEqual(dec, {"keystr": "foobar"})
 
-        # Remove type ignore after: https://github.com/python/mypy/issues/13220
         self.assertRaises(
             InvalidBSON,
-            decode,  # type: ignore[arg-type]
+            decode,
             invalid_both,
             CodecOptions(unicode_decode_error_handler="junk"),
         )

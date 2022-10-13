@@ -151,6 +151,13 @@ class _ServerMode(object):
         set, ``{}``, means "read from any member that matches the mode,
         ignoring tags." MongoClient tries each set of tags in turn
         until it finds a set of tags with at least one matching member.
+        For example, to only send a query to an analytic node::
+
+           Nearest(tag_sets=[{"node":"analytics"}])
+
+        Or using :class:`SecondaryPreferred`::
+
+           SecondaryPreferred(tag_sets=[{"node":"analytics"}])
 
            .. seealso:: `Data-Center Awareness
                <https://www.mongodb.com/docs/manual/data-center-awareness/>`_
@@ -518,7 +525,11 @@ _MODES = (
 
 
 class ReadPreference(object):
-    """An enum that defines the read preference modes supported by PyMongo.
+    """An enum that defines some commonly used read preference modes.
+
+    Apps can also create a custom read preference, for example::
+
+       Nearest(tag_sets=[{"node":"analytics"}])
 
     See :doc:`/examples/high_availability` for code examples.
 
