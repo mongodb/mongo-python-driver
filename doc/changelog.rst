@@ -29,6 +29,10 @@ PyMongo 4.3 brings a number of improvements including:
 - PyMongo now internally caches AWS credentials that it fetches from AWS
   endpoints, to avoid rate limitations.  The cache is cleared when the
   credentials expire or an error is encountered.
+- When using the ``MONGODB-AWS`` authentication mechanism with the
+  ``aws`` extra, the behavior of credential fetching has changed with
+  ``pymongo_auth_aws>=1.1.0``.  Please see :doc:`examples/authentication` for
+  more information.
 
 Bug fixes
 .........
