@@ -494,14 +494,14 @@ functions:
         working_dir: "src"
         script: |
           cat <<EOT > prepare_enterprise_auth.sh
-          export SASL_HOST="${sasl_host}"
-          export SASL_PORT="${sasl_port}"
-          export SASL_USER="${sasl_user}"
-          export SASL_PASS="${sasl_pass}"
-          export SASL_DB="${sasl_db}"
-          export PRINCIPAL="${principal}"
-          export GSSAPI_DB="${gssapi_db}"
-          export KEYTAB_BASE64="${keytab_base64}"
+          export SASL_HOST='${sasl_host}'
+          export SASL_PORT='${sasl_port}'
+          export SASL_USER='${sasl_user}'
+          export SASL_PASS='${sasl_pass}'
+          export SASL_DB='${sasl_db}'
+          export PRINCIPAL='${principal}'
+          export GSSAPI_DB='${gssapi_db}'
+          export KEYTAB_BASE64='${keytab_base64}'
           EOT
     - command: shell.exec
       type: test
