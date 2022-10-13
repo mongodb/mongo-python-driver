@@ -494,7 +494,7 @@ functions:
         working_dir: "src"
         script: |
           cat <<EOT > prepare_enterprise_auth.sh
-          export SASL_HOST="${sasl_host}""
+          export SASL_HOST="${sasl_host}"
           export SASL_PORT="${sasl_port}"
           export SASL_USER="${sasl_user}"
           export SASL_PASS="${sasl_pass}"
