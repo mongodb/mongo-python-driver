@@ -106,6 +106,7 @@ if [ -n "$GREEN_FRAMEWORK" ]; then
     trap "deactivate; rm -rf greentest" EXIT HUP
     PYTHON=python
 
+    python -m pip install --pre cython
     python -m pip install $GREEN_FRAMEWORK
 fi
 
