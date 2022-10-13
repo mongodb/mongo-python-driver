@@ -173,6 +173,7 @@ class TypeRegistry(object):
         )
 
 
+
 _options_base = namedtuple(
     "CodecOptions",
     (
