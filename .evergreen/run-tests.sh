@@ -101,6 +101,14 @@ if [ -n "$TEST_PYOPENSSL" ]; then
     python -m pip install --prefer-binary pyopenssl requests service_identity
 fi
 
+if [ -n "$GREEN_FRAMEWORK" ]; then
+    createvirtualenv $PYTHON_BINARY greentest
+    trap "deactivate; rm -rf greentest" EXIT HUP
+    PYTHON=python
+
+    python -m pip install $GREEN_FRAMEWORK
+fi
+
 if [ -n "$TEST_ENCRYPTION" ]; then
     createvirtualenv $PYTHON venv-encryption
     trap "deactivate; rm -rf venv-encryption" EXIT HUP
