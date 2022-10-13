@@ -264,15 +264,22 @@ security (or session) token.
 
 Credentials can be configured through the MongoDB URI, environment variables,
 or the local EC2 or ECS endpoint. The order in which the client searches for
-credentials is:
+`credentials`_ is the same as the one used by the AWS ``boto3`` library
+when using ``pymongo_auth_aws>=1.1.0``.
 
-#. Credentials passed through the URI
-#. Environment variables
-#. ECS endpoint if and only if ``AWS_CONTAINER_CREDENTIALS_RELATIVE_URI`` is set.
-#. EC2 endpoint
+Because we are now using ``boto3`` to handle credentials, the order and
+locations of credentials are slightly different from previous versions.
+Particularly, if you have a shared AWS credentials or config file,
+then those credentials will be used by default if AWS auth environment
+variables are not set.  To override this behavior, set ``AWS_PROFILE=""`` in
+your shell or add ``os.environ["AWS_PROFILE"] = ""`` to your script or
+application.  Alternatively, you can create an AWS profile specifically for
+your MongoDB credentials and set ``AWS_PROFILE`` to that profile name.
 
 MONGODB-AWS authenticates against the "$external" virtual database, so none of
 the URIs in this section need to include the ``authSource`` URI option.
+
+.. _credentials: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html
 
 AWS IAM credentials
 ~~~~~~~~~~~~~~~~~~~
