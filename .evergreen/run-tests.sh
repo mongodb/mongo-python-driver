@@ -105,7 +105,7 @@ if [ -n "$GREEN_FRAMEWORK" ]; then
     createvirtualenv $PYTHON_BINARY greentest
     trap "deactivate; rm -rf greentest" EXIT HUP
     PYTHON=python
-    rm -rf /opt/python/3.11/include/python3.11/greenlet
+    $PYTHON_BINARY -m pip uninstall -y greenlet
     python -m pip install -v $GREEN_FRAMEWORK
 fi
 
