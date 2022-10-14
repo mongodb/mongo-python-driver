@@ -105,6 +105,8 @@ if [ -n "$GREEN_FRAMEWORK" ]; then
     createvirtualenv $PYTHON_BINARY greentest
     trap "deactivate; rm -rf greentest" EXIT HUP
     PYTHON=python
+    # Explicitly remove greenlet installed by toolchain
+    # to avoid conflicting with the header file used by gevent.
     $PYTHON_BINARY -m pip uninstall -y greenlet
     python -m pip install -v $GREEN_FRAMEWORK
 fi
