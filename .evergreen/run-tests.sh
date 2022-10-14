@@ -106,7 +106,7 @@ if [ -n "$GREEN_FRAMEWORK" ]; then
     trap "deactivate; rm -rf greentest" EXIT HUP
     PYTHON=python
 
-    CFLAGS="-Wsign-compare -Wunreachable-code -fno-common -dynamic -DNDEBUG -g -fwrapv -O3 -Wall -Wno-strict-aliasing -Wno-comment -Wno-parentheses-equality" CPPFLAGS="-DEV_VERIFY=1" python -m pip install $GREEN_FRAMEWORK
+    CFLAGS="-Wsign-compare -Wunreachable-code -fno-common -dynamic -DNDEBUG -g -fwrapv -O3 -Wall -Wno-strict-aliasing -Wno-comment -Wno-parentheses-equality" CPPFLAGS="-DEV_VERIFY=1" python -m pip install -v $GREEN_FRAMEWORK
 fi
 
 if [ -n "$TEST_ENCRYPTION" ]; then
