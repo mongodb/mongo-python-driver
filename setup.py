@@ -34,7 +34,10 @@ except ImportError:
     except ImportError:
         _HAVE_SPHINX = False
 
-version = "4.3.1"
+version_ns = {}
+with open("pymongo/_version.py") as fp:
+    exec(fp.read(), version_ns)
+version = version_ns["__version__"]
 
 f = open("README.rst")
 try:

@@ -14,7 +14,7 @@
 
 """Python driver for MongoDB."""
 
-from typing import ContextManager, Optional, Tuple, Union
+from typing import ContextManager, Optional
 
 __all__ = [
     "ASCENDING",
@@ -84,21 +84,8 @@ TEXT = "text"
 .. _text index: http://mongodb.com/docs/manual/core/index-text/
 """
 
-version_tuple: Tuple[Union[int, str], ...] = (4, 3, 1)
-
-
-def get_version_string() -> str:
-    if isinstance(version_tuple[-1], str):
-        return ".".join(map(str, version_tuple[:-1])) + version_tuple[-1]
-    return ".".join(map(str, version_tuple))
-
-
-__version__: str = get_version_string()
-version = __version__
-
-"""Current version of PyMongo."""
-
 from pymongo import _csot
+from pymongo._version import __version__, get_version_string, version, version_tuple
 from pymongo.collection import ReturnDocument
 from pymongo.common import MAX_SUPPORTED_WIRE_VERSION, MIN_SUPPORTED_WIRE_VERSION
 from pymongo.cursor import CursorType
