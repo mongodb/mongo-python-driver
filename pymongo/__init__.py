@@ -14,7 +14,7 @@
 
 """Python driver for MongoDB."""
 
-from typing import ContextManager, Optional, Tuple, Union
+from typing import ContextManager, Optional
 
 __all__ = [
     "ASCENDING",
@@ -85,7 +85,7 @@ TEXT = "text"
 """
 
 from pymongo import _csot
-from pymongo._version import __version__, get_version_string, version
+from pymongo._version import __version__, get_version_string, version, version_tuple
 from pymongo.collection import ReturnDocument
 from pymongo.common import MAX_SUPPORTED_WIRE_VERSION, MIN_SUPPORTED_WIRE_VERSION
 from pymongo.cursor import CursorType
