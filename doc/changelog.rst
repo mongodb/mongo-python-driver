@@ -4,6 +4,9 @@ Changelog
 Changes in Version 4.3
 ----------------------
 
+Note: We withheld uploading tags 4.3.0 and 4.3.1 to PyPI due to a
+version handling error and a necessary documentation update.
+
 `dnspython <https://pypi.python.org/pypi/dnspython>`_ is now a required
 dependency. This change makes PyMongo easier to install for use with "mongodb+srv://"
 connection strings and `MongoDB Atlas <https://www.mongodb.com/cloud>`_.
