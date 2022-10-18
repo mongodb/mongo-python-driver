@@ -34,7 +34,10 @@ except ImportError:
     except ImportError:
         _HAVE_SPHINX = False
 
-version = "4.2.1.dev0"
+version_ns = {}
+with open("pymongo/_version.py") as fp:
+    exec(fp.read(), version_ns)
+version = version_ns["__version__"]
 
 f = open("README.rst")
 try:
@@ -281,7 +284,8 @@ extras_require = {
     "snappy": ["python-snappy"],
     "zstd": ["zstandard"],
     "aws": ["pymongo-auth-aws<2.0.0"],
-    "srv": [],
+    "srv": [],  # PYTHON-3423 Removed in 4.3 but kept here to avoid pip warnings.
+    "tls": [],  # PYTHON-2133 Removed in 4.0 but kept here to avoid pip warnings.
 }
 
 # GSSAPI extras
@@ -330,6 +334,7 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: Implementation :: CPython",
         "Programming Language :: Python :: Implementation :: PyPy",
         "Topic :: Database",

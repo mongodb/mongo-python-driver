@@ -199,7 +199,7 @@ class TypeRegistry(object):
         )
 
 
-class DatetimeConversion(enum.IntEnum):
+class DatetimeConversion(int, enum.Enum):
     """Options for decoding BSON datetimes."""
 
     DATETIME = 1
