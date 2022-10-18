@@ -785,7 +785,7 @@ class TestCollection(IntegrationTest):
             db.test.insert_many(1)  # type: ignore[arg-type]
 
         with self.assertRaisesRegex(TypeError, "documents must be a non-empty list"):
-            db.test.insert_many(RawBSONDocument(encode({"_id": 2})))  # type: ignore[arg-type]
+            db.test.insert_many(RawBSONDocument(encode({"_id": 2})))
 
     def test_delete_one(self):
         self.db.test.drop()

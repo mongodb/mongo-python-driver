@@ -93,8 +93,8 @@ Typed Collection
 ----------------
 
 You can use :py:class:`~typing.TypedDict` (Python 3.8+) when using a well-defined schema for the data in a :class:`~pymongo.collection.Collection`.
-Note that all `schema_validation`_ for inserts and updates is done on the server. Do not rely on type hints for schema validation, only for providing
-a more ergonomic interface:
+Note that all `schema_validation`_ for inserts and updates is done on the server. This is due to the fact that these methods automatically add
+an "_id" field. Do not rely on TypedDicts for schema validation, only for providing a more ergonomic interface:
 
 .. doctest::
 
