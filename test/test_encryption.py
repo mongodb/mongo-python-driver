@@ -82,6 +82,8 @@ from pymongo.mongo_client import MongoClient
 from pymongo.operations import InsertOne, ReplaceOne, UpdateOne
 from pymongo.write_concern import WriteConcern
 
+KMS_PROVIDERS = {"local": {"key": b"\x00" * 96}}
+
 
 def get_client_opts(client):
     return client._MongoClient__options
