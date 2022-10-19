@@ -79,13 +79,11 @@ class TestCSOT(IntegrationTest):
         with coll.watch() as stream:
             with pymongo.timeout(0.1):
                 with self.assertRaises(PyMongoError) as ctx:
-                    while stream.try_next() is not None:
-                        pass
+                    stream.next()
                 self.assertTrue(ctx.exception.timeout)
                 self.assertTrue(stream.alive)
                 with self.assertRaises(PyMongoError) as ctx:
-                    while stream.try_next() is not None:
-                        pass
+                    stream.try_next()
                 self.assertTrue(ctx.exception.timeout)
                 self.assertTrue(stream.alive)
             # Resume before the insert on 3.6 because 4.0 is required to avoid skipping documents
