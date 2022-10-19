@@ -76,14 +76,16 @@ class TestCSOT(IntegrationTest):
     @client_context.require_change_streams
     def test_change_stream_can_resume_after_timeouts(self):
         coll = self.db.test
-        with coll.watch(max_await_time_ms=150) as stream:
+        with coll.watch() as stream:
             with pymongo.timeout(0.1):
                 with self.assertRaises(PyMongoError) as ctx:
-                    stream.try_next()
+                    while stream.try_next() is not None:
+                        pass
                 self.assertTrue(ctx.exception.timeout)
                 self.assertTrue(stream.alive)
                 with self.assertRaises(PyMongoError) as ctx:
-                    stream.try_next()
+                    while stream.try_next() is not None:
+                        pass
                 self.assertTrue(ctx.exception.timeout)
                 self.assertTrue(stream.alive)
             # Resume before the insert on 3.6 because 4.0 is required to avoid skipping documents
