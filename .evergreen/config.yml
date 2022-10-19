@@ -2123,7 +2123,7 @@ axes:
       - id: "pypy"
         display_name: "PyPy"
         variables:
-           PYTHON_BINARY: "/opt/python/pypy/bin/pypy2.7"
+           PYTHON_BINARY: "/opt/python/pypy2.7/bin/pypy"
       - id: "pypy3.5"
         display_name: "PyPy 3.5"
         variables:
