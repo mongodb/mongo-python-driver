@@ -43,11 +43,10 @@ try:
     HAVE_IPADDRESS = True
 except ImportError:
     HAVE_IPADDRESS = False
-
 from contextlib import contextmanager
 from functools import wraps
 from test.version import Version
-from typing import Callable, Dict, Generator, no_type_check
+from typing import Any, Callable, Dict, Generator, no_type_check
 from unittest import SkipTest
 from urllib.parse import quote_plus
 
@@ -331,7 +330,9 @@ class ClientContext(object):
 
     def _connect(self, host, port, **kwargs):
         kwargs.update(self.default_client_options)
-        client = pymongo.MongoClient(host, port, serverSelectionTimeoutMS=5000, **kwargs)
+        client: MongoClient = pymongo.MongoClient(
+            host, port, serverSelectionTimeoutMS=5000, **kwargs
+        )
         try:
             try:
                 client.admin.command(HelloCompat.LEGACY_CMD)  # Can we connect?
@@ -356,7 +357,7 @@ class ClientContext(object):
         if self.client is not None:
             # Return early when connected to dataLake as mongohoused does not
             # support the getCmdLineOpts command and is tested without TLS.
-            build_info = self.client.admin.command("buildInfo")
+            build_info: Any = self.client.admin.command("buildInfo")
             if "dataLake" in build_info:
                 self.is_data_lake = True
                 self.auth_enabled = True
@@ -521,14 +522,16 @@ class ClientContext(object):
     @property
     def storage_engine(self):
         try:
-            return self.server_status.get("storageEngine", {}).get("name")
+            return self.server_status.get("storageEngine", {}).get(
+                "name"
+            )  # type:ignore[union-attr]
         except AttributeError:
             # Raised if self.server_status is None.
             return None
 
     def _check_user_provided(self):
         """Return True if db_user/db_password is already an admin user."""
-        client = pymongo.MongoClient(
+        client: MongoClient = pymongo.MongoClient(
             host,
             port,
             username=db_user,
@@ -694,7 +697,7 @@ class ClientContext(object):
         if self.has_secondaries:
             return True
         if self.is_mongos:
-            shard = self.client.config.shards.find_one()["host"]
+            shard = self.client.config.shards.find_one()["host"]  # type:ignore[index]
             num_members = shard.count(",") + 1
             return num_members > 1
         return False
@@ -1015,12 +1018,12 @@ class PyMongoTestCase(unittest.TestCase):
         """
 
         def _print_threads(*args: object) -> None:
-            if _print_threads.called:
+            if _print_threads.called:  # type:ignore[attr-defined]
                 return
-            _print_threads.called = True
+            _print_threads.called = True  # type:ignore[attr-defined]
             print_thread_tracebacks()
 
-        _print_threads.called = False
+        _print_threads.called = False  # type:ignore[attr-defined]
 
         def _target() -> None:
             signal.signal(signal.SIGUSR1, _print_threads)

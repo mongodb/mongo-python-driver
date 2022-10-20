@@ -435,7 +435,7 @@ def _max_time_expired_error(exc):
 
 # From the transactions spec, all the retryable writes errors plus
 # WriteConcernFailed.
-_UNKNOWN_COMMIT_ERROR_CODES = _RETRYABLE_ERROR_CODES | frozenset(
+_UNKNOWN_COMMIT_ERROR_CODES: frozenset = _RETRYABLE_ERROR_CODES | frozenset(
     [
         64,  # WriteConcernFailed
         50,  # MaxTimeMSExpired

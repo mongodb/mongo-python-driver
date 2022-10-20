@@ -528,7 +528,7 @@ def register(listener: _EventListener) -> None:
 # Note - to avoid bugs from forgetting which if these is all lowercase and
 # which are camelCase, and at the same time avoid having to add a test for
 # every command, use all lowercase here and test against command_name.lower().
-_SENSITIVE_COMMANDS = set(
+_SENSITIVE_COMMANDS: set = set(
     [
         "authenticate",
         "saslstart",

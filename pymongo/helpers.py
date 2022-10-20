@@ -44,7 +44,7 @@ _SHUTDOWN_CODES = frozenset(
 # From the SDAM spec, the "not primary" error codes are combined with the
 # "node is recovering" error codes (of which the "node is shutting down"
 # errors are a subset).
-_NOT_PRIMARY_CODES = (
+_NOT_PRIMARY_CODES: frozenset = (
     frozenset(
         [
             10058,  # LegacyNotPrimary <=3.2 "not primary" error code
@@ -58,7 +58,7 @@ _NOT_PRIMARY_CODES = (
     | _SHUTDOWN_CODES
 )
 # From the retryable writes spec.
-_RETRYABLE_ERROR_CODES = _NOT_PRIMARY_CODES | frozenset(
+_RETRYABLE_ERROR_CODES: frozenset = _NOT_PRIMARY_CODES | frozenset(
     [
         7,  # HostNotFound
         6,  # HostUnreachable
