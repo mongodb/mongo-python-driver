@@ -19,7 +19,10 @@
         "useMultipleMongoses": false,
         "observeEvents": [
           "commandStartedEvent"
-        ]
+        ],
+        "uriOptions": {
+          "w": 1
+        }
       }
     },
     {
@@ -49,6 +52,13 @@
       "description": "timeoutMS applied to entire bulkWrite, not individual commands",
       "operations": [
         {
+          "name": "insertOne",
+          "object": "collection",
+          "arguments": {
+            "document": {}
+          }
+        },
+        {
           "name": "failPoint",
           "object": "testRunner",
           "arguments": {
@@ -66,15 +76,6 @@
                 "blockConnection": true,
                 "blockTimeMS": 120
               }
-            }
-          }
-        },
-        {
-          "name": "find",
-          "object": "collection",
-          "arguments": {
-            "filter": {
-              "_id": 1
             }
           }
         },
@@ -114,10 +115,10 @@
           "events": [
             {
               "commandStartedEvent": {
-                "commandName": "find",
+                "commandName": "insert",
                 "databaseName": "test",
                 "command": {
-                  "find": "coll"
+                  "insert": "coll"
                 }
               }
             },
