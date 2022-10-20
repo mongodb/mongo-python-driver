@@ -59,7 +59,7 @@ jobs:
           cache-dependency-path: 'setup.py'
       - name: Install dependencies
         run: |
-          python -m pip install -U pip mypy
+          python -m pip install -U pip mypy typing_extensions
           pip install -e ".[zstd, encryption, ocsp]"
       - name: Run mypy
         run: |

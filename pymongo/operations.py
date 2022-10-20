@@ -19,7 +19,7 @@ from pymongo import helpers
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import validate_boolean, validate_is_mapping, validate_list
 from pymongo.helpers import _gen_index_name, _index_document, _index_list
-from pymongo.typings import _CollationIn, _DocumentIn, _Pipeline
+from pymongo.typings import _CollationIn, _DocumentIn, _DocumentType, _Pipeline
 
 
 class InsertOne(object):
@@ -27,7 +27,7 @@ class InsertOne(object):
 
     __slots__ = ("_doc",)
 
-    def __init__(self, document: _DocumentIn) -> None:
+    def __init__(self, document: Union[_DocumentIn, _DocumentType]) -> None:
         """Create an InsertOne instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
