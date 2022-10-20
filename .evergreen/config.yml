@@ -2967,7 +2967,7 @@ buildvariants:
 - matrix_name: "tests-mod-wsgi-rhel70"
   matrix_spec:
     platform: rhel70
-    python-version: &rhel70-pythons
+    python-version: *rhel70-pythons
     mod-wsgi-version: "*"
   display_name: "${mod-wsgi-version} ${python-version} ${platform}"
   tasks:
@@ -3153,9 +3153,9 @@ buildvariants:
 - matrix_name: "load-balancer-rhel70"
   matrix_spec:
     platform: rhel70
-    mongodb-version: ["latest", "rapid", "6.0"]
+    mongodb-version: ["latest", "rapid"]
     auth-ssl: "*"
-    python-version: &rhel70-pythons
+    python-version: *rhel70-pythons
     loadbalancer: "*"
   display_name: "Load Balancer ${platform} ${python-version} ${mongodb-version} ${auth-ssl}"
   tasks:
