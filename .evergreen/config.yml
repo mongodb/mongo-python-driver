@@ -1436,11 +1436,29 @@ tasks:
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
-            VERSION: "latest"
+            VERSION: "5.0"
             TOPOLOGY: "server"
         - func: "run mod_wsgi tests"
 
     - name: "mod-wsgi-replica-set"
+      tags: ["mod_wsgi"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "5.0"
+            TOPOLOGY: "replica_set"
+        - func: "run mod_wsgi tests"
+
+    - name: "mod-wsgi-standalone-latest"
+      tags: ["mod_wsgi"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "latest"
+            TOPOLOGY: "server"
+        - func: "run mod_wsgi tests"
+
+    - name: "mod-wsgi-replica-set-latest"
       tags: ["mod_wsgi"]
       commands:
         - func: "bootstrap mongo-orchestration"
@@ -2931,7 +2949,7 @@ buildvariants:
   tasks:
      - name: "test-enterprise-auth"
 
-- matrix_name: "tests-mod-wsgi"
+- matrix_name: "tests-mod-wsgi-aws"
   matrix_spec:
     platform: awslinux
     python-version: ["2.7", "3.6", "3.7", "3.8", "3.9"]
@@ -2945,6 +2963,16 @@ buildvariants:
   tasks:
      - name: "mod-wsgi-standalone"
      - name: "mod-wsgi-replica-set"
+
+- matrix_name: "tests-mod-wsgi-rhel70"
+  matrix_spec:
+    platform: rhel70
+    python-version: &rhel70-pythons
+    mod-wsgi-version: "*"
+  display_name: "${mod-wsgi-version} ${python-version} ${platform}"
+  tasks:
+     - name: "mod-wsgi-standalone-latest"
+     - name: "mod-wsgi-replica-set-latest"
 
 - matrix_name: "mockupdb-tests"
   matrix_spec:
@@ -3111,12 +3139,23 @@ buildvariants:
     - name: "aws-auth-test-5.0"
     - name: "aws-auth-test-latest"
 
-- matrix_name: "load-balancer"
+- matrix_name: "load-balancer-awslinux"
   matrix_spec:
     platform: awslinux
-    mongodb-version: ["rapid", "latest"]
+    mongodb-version: ["5.0"]
     auth-ssl: "*"
     python-version: ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy", "pypy3.5", "pypy3.7"]
+    loadbalancer: "*"
+  display_name: "Load Balancer ${platform} ${python-version} ${mongodb-version} ${auth-ssl}"
+  tasks:
+    - name: "load-balancer-test"
+
+- matrix_name: "load-balancer-rhel70"
+  matrix_spec:
+    platform: rhel70
+    mongodb-version: ["latest", "rapid", "6.0"]
+    auth-ssl: "*"
+    python-version: &rhel70-pythons
     loadbalancer: "*"
   display_name: "Load Balancer ${platform} ${python-version} ${mongodb-version} ${auth-ssl}"
   tasks:
