@@ -21,6 +21,9 @@ import unittest
 
 sys.path[0:0] = [""]
 
+# Enable support for OpenSSL 1.0.2 for testing.
+os.environ["CRYPTOGRAPHY_ALLOW_OPENSSL_102"] = "1"
+
 import pymongo
 from pymongo.errors import ServerSelectionTimeoutError
 
