@@ -3069,7 +3069,7 @@ buildvariants:
 - matrix_name: "ocsp-test-windows"
   matrix_spec:
     platform: windows-64-vsMulti-small
-    python-version-windows: ["2.7", "3.5", "3.9"]
+    python-version-windows: ["2.7", "3.5", "3.9", "3.10"]
     mongodb-version: ["4.4", "5.0", "latest"]
     auth: "noauth"
     ssl: "ssl"
