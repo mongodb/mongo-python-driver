@@ -2964,10 +2964,10 @@ buildvariants:
      - name: "mod-wsgi-standalone"
      - name: "mod-wsgi-replica-set"
 
-- matrix_name: "tests-mod-wsgi-rhel70"
+- matrix_name: "tests-mod-wsgi-ubuntu18"
   matrix_spec:
-    platform: rhel70
-    python-version: *rhel70-pythons
+    platform: ubuntu1804-small
+    python-version: ["3.8", "3.9"]
     mod-wsgi-version: "*"
   display_name: "${mod-wsgi-version} ${python-version} ${platform}"
   tasks:
