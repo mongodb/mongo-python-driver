@@ -2931,7 +2931,7 @@ buildvariants:
   tasks:
      - name: "test-enterprise-auth"
 
-- matrix_name: "tests-mod-wsgi-aws"
+- matrix_name: "tests-mod-wsgi"
   matrix_spec:
     platform: awslinux
     python-version: ["2.7", "3.6", "3.7", "3.8", "3.9"]
@@ -3111,7 +3111,7 @@ buildvariants:
     - name: "aws-auth-test-5.0"
     - name: "aws-auth-test-latest"
 
-- matrix_name: "load-balancer-awslinux"
+- matrix_name: "load-balancer"
   matrix_spec:
     platform: awslinux
     mongodb-version: ["5.0"]
