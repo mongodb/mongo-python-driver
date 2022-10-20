@@ -19,7 +19,7 @@ encrypted data.
 .. seealso:: The MongoDB documentation on `Client Side Field Level Encryption <https://dochub.mongodb.org/core/client-side-field-level-encryption>`_.
 
 Dependencies
-------------
+~~~~~~~~~~~~
 
 To get started using client-side field level encryption in your project,
 you will need to install the
@@ -34,8 +34,30 @@ support. For more information about installing pymongocrypt see
 `the installation instructions on the project's PyPI page
 <https://pypi.org/project/pymongocrypt/>`_.
 
+Additionally, either `crypt_shared`_ or `mongocryptd`_ are required in order
+to use *automatic* client-side encryption.
+
+crypt_shared
+````````````
+
+The Automatic Encryption Shared Library (crypt_shared) provides the same
+functionality as `mongocryptd`_, but does not require you to spawn another
+process to perform automatic encryption.
+
+By default, pymongo attempts to load crypt_shared from the system and if
+found uses it automatically. To load crypt_shared from another location,
+use the ``crypt_shared_lib_path`` argument to
+:class:`~pymongo.encryption_options.AutoEncryptionOpts`.
+If pymongo cannot load crypt_shared it will attempt to fallback to using
+`mongocryptd`_ by default. Set ``crypt_shared_lib_required=True`` to make
+the app always use crypt_shared and fail if it could not be loaded.
+
+For detailed installation instructions see
+`the MongoDB documentation on Automatic Encryption Shared Library
+<https://www.mongodb.com/docs/manual/core/queryable-encryption/reference/shared-library>`_.
+
 mongocryptd
------------
+```````````
 
 The ``mongocryptd`` binary is required for automatic client-side encryption
 and is included as a component in the `MongoDB Enterprise Server package
@@ -341,19 +363,13 @@ data key and create a collection with the
 Automatic Queryable Encryption (Beta)
 `````````````````````````````````````
 
-PyMongo 4.2 brings beta support for Queryable Encryption with MongoDB 6.0.
+PyMongo 4.2 brings beta support for Queryable Encryption with MongoDB >=6.0.
 
 Queryable Encryption is the second version of Client-Side Field Level Encryption.
 Data is encrypted client-side. Queryable Encryption supports indexed encrypted fields,
 which are further processed server-side.
 
-You must have MongoDB 6.0rc8+ Enterprise to preview the capability.
-
-Until PyMongo 4.2 release is finalized, it can be installed using::
-
-  pip install "pymongo@git+ssh://git@github.com/mongodb/mongo-python-driver.git@4.2.0b0#egg=pymongo[encryption]"
-
-Additionally, ``libmongocrypt`` must be installed from `source <https://github.com/mongodb/libmongocrypt/blob/master/bindings/python/README.rst#installing-from-source>`_.
+You must have MongoDB 6.0 Enterprise to preview the capability.
 
 Automatic encryption in Queryable Encryption is configured with an ``encrypted_fields`` mapping, as demonstrated by the following example::
 
@@ -412,19 +428,11 @@ automatically encrypted and decrypted.
 Explicit Queryable Encryption (Beta)
 ````````````````````````````````````
 
-PyMongo 4.2 brings beta support for Queryable Encryption with MongoDB 6.0.
+PyMongo 4.2 brings beta support for Queryable Encryption with MongoDB >=6.0.
 
 Queryable Encryption is the second version of Client-Side Field Level Encryption.
 Data is encrypted client-side. Queryable Encryption supports indexed encrypted fields,
 which are further processed server-side.
-
-You must have MongoDB 6.0rc8+ to preview the capability.
-
-Until PyMongo 4.2 release is finalized, it can be installed using::
-
-  pip install "pymongo@git+ssh://git@github.com/mongodb/mongo-python-driver.git@4.2.0b0#egg=pymongo[encryption]"
-
-Additionally, ``libmongocrypt`` must be installed from `source <https://github.com/mongodb/libmongocrypt/blob/master/bindings/python/README.rst#installing-from-source>`_.
 
 Explicit encryption in Queryable Encryption is performed using the ``encrypt`` and ``decrypt``
 methods. Automatic encryption (to allow the ``find_one`` to automatically decrypt) is configured
