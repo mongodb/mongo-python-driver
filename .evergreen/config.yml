@@ -2964,9 +2964,9 @@ buildvariants:
      - name: "mod-wsgi-standalone"
      - name: "mod-wsgi-replica-set"
 
-- matrix_name: "tests-mod-wsgi-ubuntu18"
+- matrix_name: "tests-mod-wsgi-ubuntu20"
   matrix_spec:
-    platform: ubuntu-18.04
+    platform: ubuntu-20.04
     python-version: ["3.8", "3.9"]
     mod-wsgi-version: "*"
   display_name: "${mod-wsgi-version} ${python-version} ${platform}"
