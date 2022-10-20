@@ -94,9 +94,10 @@ Typed Collection
 
 You can use :py:class:`~typing_extensions.TypedDict` (Python 3.8+) when using a well-defined schema for the data in a :class:`~pymongo.collection.Collection`.
 Note that all `schema_validation`_ for inserts and updates is done on the server. This is due to the fact that these methods automatically add
-an "_id" field. The "_id" field is decorated by :py:class:`~typing_extensions.NotRequired` decorator to allow it to be accessed when reading
-from `result` (albeit without type-checking for that specific field, hence why it should not be used for schema validation).
-Another option would be to generate the "_id" field yourself, and make it a required field, which would give the expected behavior.
+an "_id" field. In the example below the "_id" field is marked by the :py:class:`~typing_extensions.NotRequired` notation to allow it to be accessed when reading
+from `result`. If it is simply not included in the definition, then it will be automatically added, but it will raise a type-checking error if you attempt to access it.
+Another option would be to generate the "_id" field yourself, and make it a required field. This would give the expected behavior, but would then also prevent you from
+relying on PyMongo to insert the "_id" field.
 
 .. doctest::
 
@@ -111,12 +112,14 @@ Another option would be to generate the "_id" field yourself, and make it a requ
   ...
   >>> client: MongoClient = MongoClient()
   >>> collection: Collection[Movie] = client.test.test
-  >>> inserted = collection.insert_one({"name": "Jurassic Park", "year": 1993 })
+  >>> # If NotRequired was not specified above, then you would be required to specify _id
+  >>> # when you construct the Movie object.
+  >>> inserted = collection.insert_one(Movie(name="Jurassic Park", year=1993))
   >>> result = collection.find_one({"name": "Jurassic Park"})
   >>> assert result is not None
   >>> assert result["year"] == 1993
-  >>> # Mypy will not check this because it is NotRequired
-  >>> assert result["_id"] == tuple()
+  >>> # This will be type checked, despite being not originally present
+  >>> assert type(result["_id"]) == ObjectId
 
 Typed Database
 --------------
