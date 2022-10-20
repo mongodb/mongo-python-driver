@@ -92,16 +92,20 @@ Note that when using :class:`~bson.son.SON`, the key and value types must be giv
 Typed Collection
 ----------------
 
-You can use :py:class:`~typing.TypedDict` (Python 3.8+) when using a well-defined schema for the data in a :class:`~pymongo.collection.Collection`.
+You can use :py:class:`~typing_extensions.TypedDict` (Python 3.8+) when using a well-defined schema for the data in a :class:`~pymongo.collection.Collection`.
 Note that all `schema_validation`_ for inserts and updates is done on the server. This is due to the fact that these methods automatically add
-an "_id" field. Do not rely on TypedDicts for schema validation, only for providing a more ergonomic interface:
+an "_id" field. The "_id" field is decorated by :py:class:`~typing_extensions.NotRequired` decorator to allow it to be accessed when reading
+from `result` (albeit without type-checking for that specific field, hence why it should not be used for schema validation).
+Another option would be to generate the "_id" field yourself, and make it a required field, which would give the expected behavior.
 
 .. doctest::
 
-  >>> from typing import TypedDict
+  >>> from typing_extensions import TypedDict, NotRequired
   >>> from pymongo import MongoClient
   >>> from pymongo.collection import Collection
+  >>> from bson import ObjectId
   >>> class Movie(TypedDict):
+  ...       _id: NotRequired[ObjectId]
   ...       name: str
   ...       year: int
   ...
@@ -111,6 +115,8 @@ an "_id" field. Do not rely on TypedDicts for schema validation, only for provid
   >>> result = collection.find_one({"name": "Jurassic Park"})
   >>> assert result is not None
   >>> assert result["year"] == 1993
+  >>> # Mypy will not check this because it is NotRequired
+  >>> assert result["_id"] == tuple()
 
 Typed Database
 --------------

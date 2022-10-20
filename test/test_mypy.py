@@ -21,10 +21,14 @@ import unittest
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List, Optional
 
 try:
-    from typing import TypedDict  # type: ignore[attr-defined]
+    from typing_extensions import NotRequired, TypedDict
+
+    from bson import ObjectId
 
     # Not available in Python 3.7
     class Movie(TypedDict):  # type: ignore[misc]
+        _id: ObjectId
+        idiot: ObjectId
         name: str
         year: int
 
@@ -312,16 +316,18 @@ class TestDocumentType(unittest.TestCase):
         assert retreived["year"] == 1
         assert retreived["name"] == "a"
 
+    # TODO: mypy --install-types --non-interactive test/test_mypy.py
+    # run just this file in CI
     @only_type_check
     def test_typeddict_document_type_insertion(self) -> None:
         client: MongoClient[Movie] = MongoClient()
         coll: Collection[Movie] = client.test.test
-        insert = coll.insert_one(Movie(name="THX-1138", year=1971))
-        out: Optional[Movie] = coll.find_one({"name": "THX-1138"})
+        insert = coll.insert_one(Movie(_id=ObjectId(), name="THX-1138", year=1971))
+        out = coll.find_one({"name": "THX-1138"})
         assert out is not None
-        assert out.name == "THX-1138"
-        assert out.year == "1971"
-        assert out.id == ObjectId()
+        # This should fail because the output is a Movie.
+        assert out["foo"]  # type:ignore[typeddict-item]
+        assert type(out["_id"]) == ObjectId
 
     @only_type_check
     def test_raw_bson_document_type(self) -> None:
