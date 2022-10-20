@@ -2966,7 +2966,7 @@ buildvariants:
 
 - matrix_name: "tests-mod-wsgi-ubuntu18"
   matrix_spec:
-    platform: ubuntu1804-small
+    platform: ubuntu-18.04
     python-version: ["3.8", "3.9"]
     mod-wsgi-version: "*"
   display_name: "${mod-wsgi-version} ${python-version} ${platform}"
