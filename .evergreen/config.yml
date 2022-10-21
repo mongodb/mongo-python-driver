@@ -1436,7 +1436,7 @@ tasks:
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
-            VERSION: "latest"
+            VERSION: "5.0"
             TOPOLOGY: "server"
         - func: "run mod_wsgi tests"
 
@@ -1445,7 +1445,7 @@ tasks:
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
-            VERSION: "latest"
+            VERSION: "5.0"
             TOPOLOGY: "replica_set"
         - func: "run mod_wsgi tests"
 
@@ -3126,9 +3126,20 @@ buildvariants:
 - matrix_name: "load-balancer"
   matrix_spec:
     platform: awslinux
-    mongodb-version: ["rapid", "latest"]
+    mongodb-version: ["5.0"]
     auth-ssl: "*"
     python-version: ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9", "pypy", "pypy3.5", "pypy3.7"]
+    loadbalancer: "*"
+  display_name: "Load Balancer ${platform} ${python-version} ${mongodb-version} ${auth-ssl}"
+  tasks:
+    - name: "load-balancer-test"
+
+- matrix_name: "load-balancer-rhel70"
+  matrix_spec:
+    platform: rhel70
+    mongodb-version: ["latest", "rapid"]
+    auth-ssl: "*"
+    python-version: *rhel70-pythons
     loadbalancer: "*"
   display_name: "Load Balancer ${platform} ${python-version} ${mongodb-version} ${auth-ssl}"
   tasks:
