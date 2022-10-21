@@ -17,10 +17,14 @@
 
 import base64
 import gc
+import multiprocessing
 import os
+import signal
 import socket
+import subprocess
 import sys
 import threading
+import time
 import traceback
 import unittest
 import warnings
@@ -43,7 +47,7 @@ except ImportError:
 from contextlib import contextmanager
 from functools import wraps
 from test.version import Version
-from typing import Dict, no_type_check
+from typing import Callable, Dict, Generator, no_type_check
 from unittest import SkipTest
 from urllib.parse import quote_plus
 
@@ -997,6 +1001,87 @@ class PyMongoTestCase(unittest.TestCase):
             client_context.client.admin.command(
                 "configureFailPoint", cmd_on["configureFailPoint"], mode="off"
             )
+
+    @contextmanager
+    def fork(
+        self, target: Callable, timeout: float = 60
+    ) -> Generator[multiprocessing.Process, None, None]:
+        """Helper for tests that use os.fork()
+
+        Use in a with statement:
+
+            with self.fork(target=lambda: print('in child')) as proc:
+                self.assertTrue(proc.pid)  # Child process was started
+        """
+
+        def _print_threads(*args: object) -> None:
+            if _print_threads.called:
+                return
+            _print_threads.called = True
+            print_thread_tracebacks()
+
+        _print_threads.called = False
+
+        def _target() -> None:
+            signal.signal(signal.SIGUSR1, _print_threads)
+            try:
+                target()
+            except Exception as exc:
+                sys.stderr.write(f"Child process failed with: {exc}\n")
+                _print_threads()
+                # Sleep for a while to let the parent attach via GDB.
+                time.sleep(2 * timeout)
+                raise
+
+        ctx = multiprocessing.get_context("fork")
+        proc = ctx.Process(target=_target)
+        proc.start()
+        try:
+            yield proc  # type: ignore
+        finally:
+            proc.join(timeout)
+            pid = proc.pid
+            assert pid
+            if proc.exitcode is None:
+                # gdb to get C-level tracebacks
+                print_thread_stacks(pid)
+                # If it failed, SIGUSR1 to get thread tracebacks.
+                os.kill(pid, signal.SIGUSR1)
+                proc.join(5)
+                if proc.exitcode is None:
+                    # SIGINT to get main thread traceback in case SIGUSR1 didn't work.
+                    os.kill(pid, signal.SIGINT)
+                    proc.join(5)
+                if proc.exitcode is None:
+                    # SIGKILL in case SIGINT didn't work.
+                    proc.kill()
+                    proc.join(1)
+                self.fail(f"child timed out after {timeout}s (see traceback in logs): deadlock?")
+            self.assertEqual(proc.exitcode, 0)
+
+
+def print_thread_tracebacks() -> None:
+    """Print all Python thread tracebacks."""
+    for thread_id, frame in sys._current_frames().items():
+        sys.stderr.write(f"\n--- Traceback for thread {thread_id} ---\n")
+        traceback.print_stack(frame, file=sys.stderr)
+
+
+def print_thread_stacks(pid: int) -> None:
+    """Print all C-level thread stacks for a given process id."""
+    if sys.platform == "darwin":
+        cmd = ["lldb", "--attach-pid", f"{pid}", "--batch", "--one-line", '"thread backtrace all"']
+    else:
+        cmd = ["gdb", f"--pid={pid}", "--batch", '--eval-command="thread apply all bt"']
+
+    try:
+        res = subprocess.run(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="utf-8"
+        )
+    except Exception as exc:
+        sys.stderr.write(f"Could not print C-level thread stacks because {cmd[0]} failed: {exc}")
+    else:
+        sys.stderr.write(res.stdout)
 
 
 class IntegrationTest(PyMongoTestCase):

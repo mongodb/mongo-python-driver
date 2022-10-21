@@ -471,6 +471,7 @@ class TestWriteConcernError(IntegrationTest):
     def test_RetryableWriteError_error_label(self):
         listener = OvertCommandListener()
         client = rs_or_single_client(retryWrites=True, event_listeners=[listener])
+        self.addCleanup(client.close)
 
         # Ensure collection exists.
         client.pymongo_test.testcoll.insert_one({})

@@ -8,28 +8,22 @@ rm -rf validdist
 mkdir -p validdist
 mv dist/* validdist || true
 
-for VERSION in 3.7 3.8 3.9 3.10; do
-    PYTHON=/Library/Frameworks/Python.framework/Versions/$VERSION/bin/python3
-    rm -rf build
+VERSION=${VERSION:-3.10}
 
-    # Install wheel if not already there.
-    if ! $PYTHON -m wheel version; then
-        createvirtualenv $PYTHON releasevenv
-        WHEELPYTHON=python
-        python -m pip install --upgrade wheel
-    else
-        WHEELPYTHON=$PYTHON
-    fi
+PYTHON=/Library/Frameworks/Python.framework/Versions/$VERSION/bin/python3
+rm -rf build
 
-    $WHEELPYTHON setup.py bdist_wheel
-    deactivate || true
-    rm -rf releasevenv
+createvirtualenv $PYTHON releasevenv
+python -m pip install --upgrade wheel
+python -m pip install setuptools==63.2.0
+python setup.py bdist_wheel
+deactivate || true
+rm -rf releasevenv
 
-    # Test that each wheel is installable.
-    for release in dist/*; do
-        testinstall $PYTHON $release
-        mv $release validdist/
-    done
+# Test that each wheel is installable.
+for release in dist/*; do
+    testinstall $PYTHON $release
+    mv $release validdist/
 done
 
 mv validdist/* dist

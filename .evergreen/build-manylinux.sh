@@ -37,7 +37,8 @@ unexpected=$(find dist \! \( -iname dist -or \
                              -iname '*cp37*' -or \
                              -iname '*cp38*' -or \
                              -iname '*cp39*' -or \
-                             -iname '*cp310*' \))
+                             -iname '*cp310*' -or \
+                             -iname '*cp311*' \))
 if [ -n "$unexpected" ]; then
   echo "Unexpected files:" $unexpected
   exit 1

@@ -25,6 +25,7 @@ import os
 import re
 import sys
 import time
+import traceback
 import types
 from collections import abc
 from test import (
@@ -114,6 +115,7 @@ from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import Selection, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.topology_description import TopologyDescription
+from pymongo.typings import _Address
 from pymongo.write_concern import WriteConcern
 
 JSON_OPTS = json_util.JSONOptions(tz_aware=False)
@@ -934,6 +936,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             if (
                 "Dirty explicit session is discarded" in spec["description"]
                 or "Dirty implicit session is discarded" in spec["description"]
+                or "Cancel server check" in spec["description"]
             ):
                 self.skipTest("MMAPv1 does not support retryWrites=True")
         if "Client side error in command starting transaction" in spec["description"]:
@@ -960,8 +963,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.skipTest("CSOT not implemented for with_transaction")
             if "transaction" in class_name or "transaction" in description:
                 self.skipTest("CSOT not implemented for transactions")
-            if "socket timeout" in description:
-                self.skipTest("CSOT not implemented for socket timeouts")
 
         # Some tests need to be skipped based on the operations they try to run.
         for op in spec["operations"]:
@@ -1442,21 +1443,21 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self.assertIsInstance(description, TopologyDescription)
         self.assertEqual(description.topology_type_name, spec["topologyType"])
 
-    def _testOperation_waitForPrimaryChange(self, spec):
+    def _testOperation_waitForPrimaryChange(self, spec: dict) -> None:
         """Run the waitForPrimaryChange test operation."""
         client = self.entity_map[spec["client"]]
         old_description: TopologyDescription = self.entity_map[spec["priorTopologyDescription"]]
         timeout = spec["timeoutMS"] / 1000.0
 
-        def get_primary(td: TopologyDescription) -> Optional[ServerDescription]:
+        def get_primary(td: TopologyDescription) -> Optional[_Address]:
             servers = writable_server_selector(Selection.from_topology_description(td))
             if servers and servers[0].server_type == SERVER_TYPE.RSPrimary:
-                return servers[0]
+                return servers[0].address
             return None
 
         old_primary = get_primary(old_description)
 
-        def primary_changed():
+        def primary_changed() -> bool:
             primary = client.primary
             if primary is None:
                 return False
@@ -1579,6 +1580,26 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.assertListEqual(sorted_expected_documents, actual_documents)
 
     def run_scenario(self, spec, uri=None):
+        if "csot" in self.id().lower():
+            # Retry CSOT tests up to 2 times to deal with flakey tests.
+            attempts = 3
+            for i in range(attempts):
+                try:
+                    return self._run_scenario(spec, uri)
+                except AssertionError:
+                    if i < attempts - 1:
+                        print(
+                            f"Retrying after attempt {i+1} of {self.id()} failed with:\n"
+                            f"{traceback.format_exc()}",
+                            file=sys.stderr,
+                        )
+                        self.setUp()
+                        continue
+                    raise
+        else:
+            self._run_scenario(spec, uri)
+
+    def _run_scenario(self, spec, uri=None):
         # maybe skip test manually
         self.maybe_skip_test(spec)
 

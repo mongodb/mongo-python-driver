@@ -1,6 +1,63 @@
 Changelog
 =========
 
+Changes in Version 4.3 (4.3.2)
+------------------------------
+
+Note: We withheld uploading tags 4.3.0 and 4.3.1 to PyPI due to a
+version handling error and a necessary documentation update.
+
+`dnspython <https://pypi.python.org/pypi/dnspython>`_ is now a required
+dependency. This change makes PyMongo easier to install for use with "mongodb+srv://"
+connection strings and `MongoDB Atlas <https://www.mongodb.com/cloud>`_.
+
+PyMongo 4.3 brings a number of improvements including:
+
+- Added support for decoding BSON datetimes outside of the range supported
+  by Python's :class:`~datetime.datetime` builtin. See
+  :ref:`handling-out-of-range-datetimes` for examples, as well as
+  :class:`bson.datetime_ms.DatetimeMS`,
+  :class:`bson.codec_options.DatetimeConversion`, and
+  :class:`bson.codec_options.CodecOptions`'s ``datetime_conversion``
+  parameter for more details (`PYTHON-1824`_).
+- PyMongo now resets its locks and other shared state in the child process
+  after a :py:func:`os.fork` to reduce the frequency of deadlocks. Note that
+  deadlocks are still possible because libraries that PyMongo depends like
+  OpenSSL cannot be made fork() safe in multithreaded applications.
+  (`PYTHON-2484`_). For more info see :ref:`pymongo-fork-safe`.
+- When used with MongoDB 6.0+, :class:`~pymongo.change_stream.ChangeStream` s
+  now allow for new types of events (such as DDL and C2C replication events)
+  to be recorded with the new parameter ``show_expanded_events``
+  that can be passed to methods such as :meth:`~pymongo.collection.Collection.watch`.
+- PyMongo now internally caches AWS credentials that it fetches from AWS
+  endpoints, to avoid rate limitations.  The cache is cleared when the
+  credentials expire or an error is encountered.
+- When using the ``MONGODB-AWS`` authentication mechanism with the
+  ``aws`` extra, the behavior of credential fetching has changed with
+  ``pymongo_auth_aws>=1.1.0``.  Please see :doc:`examples/authentication` for
+  more information.
+
+Bug fixes
+.........
+
+- Fixed a bug where  :class:`~pymongo.change_stream.ChangeStream`
+  would allow an app to retry calling ``next()`` or ``try_next()`` even
+  after non-resumable errors (`PYTHON-3389`_).
+- Fixed a bug where the client could be unable to discover the new primary
+  after a simultaneous replica set election and reconfig (`PYTHON-2970`_).
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.3 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PYTHON-1824: https://jira.mongodb.org/browse/PYTHON-1824
+.. _PYTHON-2484: https://jira.mongodb.org/browse/PYTHON-2484
+.. _PYTHON-2970: https://jira.mongodb.org/browse/PYTHON-2970
+.. _PYTHON-3389: https://jira.mongodb.org/browse/PYTHON-3389
+.. _PyMongo 4.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=33425
+
 Changes in Version 4.2
 ----------------------
 

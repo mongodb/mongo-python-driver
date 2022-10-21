@@ -474,7 +474,8 @@ functions:
             export MULTI_MONGOS_LB_URI="${MONGODB_URI}"
           fi
 
-          PYTHON_BINARY=${PYTHON_BINARY} \
+          MONGODB_VERSION=${VERSION} \
+            PYTHON_BINARY=${PYTHON_BINARY} \
             GREEN_FRAMEWORK=${GREEN_FRAMEWORK} \
             C_EXTENSIONS=${C_EXTENSIONS} \
             COVERAGE=${COVERAGE} \
@@ -492,8 +493,27 @@ functions:
         silent: true
         working_dir: "src"
         script: |
-          # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
-          PYTHON_BINARY=${PYTHON_BINARY} SASL_HOST=${sasl_host} SASL_PORT=${sasl_port} SASL_USER=${sasl_user} SASL_PASS=${sasl_pass} SASL_DB=${sasl_db} PRINCIPAL=${principal} GSSAPI_DB=${gssapi_db} KEYTAB_BASE64=${keytab_base64} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} bash ${PROJECT_DIRECTORY}/.evergreen/run-enterprise-auth-tests.sh
+          cat <<EOT > prepare_enterprise_auth.sh
+          export SASL_HOST='${sasl_host}'
+          export SASL_PORT='${sasl_port}'
+          export SASL_USER='${sasl_user}'
+          export SASL_PASS='${sasl_pass}'
+          export SASL_DB='${sasl_db}'
+          export PRINCIPAL='${principal}'
+          export GSSAPI_DB='${gssapi_db}'
+          export KEYTAB_BASE64='${keytab_base64}'
+          EOT
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        script: |
+          # Disable xtrace (just in case it was accidentally set).
+          set +x
+          . ./prepare_enterprise_auth.sh
+          rm -f ./prepare_enterprise_auth.sh
+
+          PYTHON_BINARY=${PYTHON_BINARY} PROJECT_DIRECTORY=${PROJECT_DIRECTORY} bash ${PROJECT_DIRECTORY}/.evergreen/run-enterprise-auth-tests.sh
 
   "run atlas tests":
     - command: shell.exec
@@ -642,6 +662,13 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
+          if [ "${skip_EC2_auth_test}" = "true" ]; then
+             echo "This platform does not support the EC2 auth test, skipping..."
+             exit 0
+          fi
+          # Write an empty prepare_mongodb_aws so no auth environment variables
+          # are set.
+          echo "" > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
           PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
 
   "run aws auth test with aws credentials as environment variables":
@@ -883,7 +910,7 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
-          .evergreen/release.sh
+          VERSION=${VERSION} ENSURE_UNIVERSAL2=${ENSURE_UNIVERSAL2} .evergreen/release.sh
 
   "upload release":
     - command: archive.targz_pack
@@ -1008,6 +1035,43 @@ task_groups:
     tasks:
       - ".serverless"
 
+  - name: testgcpkms_task_group
+    setup_group_can_fail_task: true
+    setup_group_timeout_secs: 1800 # 30 minutes
+    setup_group:
+      - func: fetch source
+      - func: prepare resources
+      - func: fix absolute paths
+      - func: make files executable
+      - command: shell.exec
+        params:
+          shell: "bash"
+          script: |
+            ${PREPARE_SHELL}
+            echo '${testgcpkms_key_file}' > /tmp/testgcpkms_key_file.json
+            export GCPKMS_KEYFILE=/tmp/testgcpkms_key_file.json
+            export GCPKMS_DRIVERS_TOOLS=$DRIVERS_TOOLS
+            export GCPKMS_SERVICEACCOUNT="${testgcpkms_service_account}"
+            export GCPKMS_MACHINETYPE="e2-standard-4"
+            $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/create-and-setup-instance.sh
+      # Load the GCPKMS_GCLOUD, GCPKMS_INSTANCE, GCPKMS_REGION, and GCPKMS_ZONE expansions.
+      - command: expansions.update
+        params:
+          file: testgcpkms-expansions.yml
+    teardown_group:
+      - command: shell.exec
+        params:
+          shell: "bash"
+          script: |
+            ${PREPARE_SHELL}
+            export GCPKMS_GCLOUD=${GCPKMS_GCLOUD}
+            export GCPKMS_PROJECT=${GCPKMS_PROJECT}
+            export GCPKMS_ZONE=${GCPKMS_ZONE}
+            export GCPKMS_INSTANCENAME=${GCPKMS_INSTANCENAME}
+            $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/delete-instance.sh
+    tasks:
+      - testgcpkms-task
+
 tasks:
     # Wildcard task. Do you need to find out what tools are available and where?
     # Throw it here, and execute this task on all buildvariants
@@ -1038,11 +1102,30 @@ tasks:
                genhtml --version || true
                valgrind --version || true
 
-    - name: "release-mac"
+    - name: "release-mac-1100"
+      tags: ["release_tag"]
+      run_on: macos-1100
+      commands:
+        - func: "build release"
+          vars:
+              VERSION: "3.10"
+              ENSURE_UNIVERSAL2: "1"
+        - func: "build release"
+          vars:
+              VERSION: "3.9"
+              ENSURE_UNIVERSAL2: "1"
+        - func: "upload release"
+
+    - name: "release-mac-1014"
       tags: ["release_tag"]
       run_on: macos-1014
       commands:
         - func: "build release"
+          vars:
+              VERSION: "3.7"
+        - func: "build release"
+          vars:
+              VERSION: "3.8"
         - func: "upload release"
 
     - name: "release-windows"
@@ -1811,6 +1894,51 @@ tasks:
       commands:
         - func: "download and merge coverage"
 
+    - name: "testgcpkms-task"
+      commands:
+        - command: shell.exec
+          type: setup
+          params:
+            working_dir: "src"
+            shell: "bash"
+            script: |
+              ${PREPARE_SHELL}
+              echo "Copying files ... begin"
+              export GCPKMS_GCLOUD=${GCPKMS_GCLOUD}
+              export GCPKMS_PROJECT=${GCPKMS_PROJECT}
+              export GCPKMS_ZONE=${GCPKMS_ZONE}
+              export GCPKMS_INSTANCENAME=${GCPKMS_INSTANCENAME}
+              tar czf /tmp/mongo-python-driver.tgz .
+              GCPKMS_SRC=/tmp/mongo-python-driver.tgz GCPKMS_DST=$GCPKMS_INSTANCENAME: $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/copy-file.sh
+              echo "Copying files ... end"
+              echo "Untarring file ... begin"
+              GCPKMS_CMD="tar xf mongo-python-driver.tgz" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
+              echo "Untarring file ... end"
+        - command: shell.exec
+          type: test
+          params:
+            working_dir: "src"
+            shell: "bash"
+            script: |
+              ${PREPARE_SHELL}
+              export GCPKMS_GCLOUD=${GCPKMS_GCLOUD}
+              export GCPKMS_PROJECT=${GCPKMS_PROJECT}
+              export GCPKMS_ZONE=${GCPKMS_ZONE}
+              export GCPKMS_INSTANCENAME=${GCPKMS_INSTANCENAME}
+              GCPKMS_CMD="SUCCESS=true ./.evergreen/run-mongodb-fle-gcp-auto.sh mongodb://localhost:27017" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
+
+    - name: "testgcpkms-fail-task"
+      # testgcpkms-fail-task runs in a non-GCE environment.
+      # It is expected to fail to obtain GCE credentials.
+      commands:
+        - command: shell.exec
+          type: test
+          params:
+            working_dir: "src"
+            shell: "bash"
+            script: |
+              ${PREPARE_SHELL}
+              SUCCESS=false ./.evergreen/run-mongodb-fle-gcp-auto.sh mongodb://localhost:27017
 
 axes:
   # Choice of distro
@@ -1911,6 +2039,7 @@ axes:
         run_on: windows-64-vsMulti-small
         batchtime: 10080  # 7 days
         variables:
+          skip_EC2_auth_test: true
           skip_ECS_auth_test: true
           python3_binary: "C:/python/Python38/python.exe"
           venv_bin_dir: "Scripts"
@@ -2033,6 +2162,10 @@ axes:
         display_name: "Python 3.10"
         variables:
           PYTHON_BINARY: "/opt/python/3.10/bin/python3"
+      - id: "3.11"
+        display_name: "Python 3.11"
+        variables:
+          PYTHON_BINARY: "/opt/python/3.11/bin/python3"
       - id: "pypy3.7"
         display_name: "PyPy 3.7"
         variables:
@@ -2069,6 +2202,10 @@ axes:
         display_name: "Python 3.10"
         variables:
           PYTHON_BINARY: "C:/python/Python310/python.exe"
+      - id: "3.11"
+        display_name: "Python 3.11"
+        variables:
+          PYTHON_BINARY: "C:/python/Python311/python.exe"
 
   - id: python-version-windows-32
     display_name: "Python"
@@ -2089,6 +2226,10 @@ axes:
         display_name: "32-bit Python 3.10"
         variables:
           PYTHON_BINARY: "C:/python/32/Python310/python.exe"
+      - id: "3.11"
+        display_name: "32-bit Python 3.11"
+        variables:
+          PYTHON_BINARY: "C:/python/32/Python311/python.exe"
 
   # Choice of mod_wsgi version
   - id: mod-wsgi-version
@@ -2234,8 +2375,8 @@ buildvariants:
 - matrix_name: "tests-all"
   matrix_spec:
     platform:
-      # OSes that support versions of MongoDB>=2.6 with SSL.
-      - awslinux
+      # OSes that support versions of MongoDB>=3.6 with SSL.
+      - ubuntu-18.04
     auth-ssl: "*"
   display_name: "${platform} ${auth-ssl}"
   tasks:
@@ -2316,6 +2457,7 @@ buildvariants:
         encryption: [ "encryption_crypt_shared" ]
       then:
         remove_tasks:
+          - ".rapid"
           - ".5.0"
           - ".4.4"
           - ".4.2"
@@ -2410,6 +2552,7 @@ buildvariants:
         encryption: [ "encryption_crypt_shared" ]
       then:
         remove_tasks:
+          - ".rapid"
           - ".5.0"
           - ".4.4"
           - ".4.2"
@@ -2519,6 +2662,7 @@ buildvariants:
         encryption: [ "encryption_crypt_shared" ]
       then:
         remove_tasks:
+          - ".rapid"
           - ".5.0"
           - ".4.4"
           - ".4.2"
@@ -2758,6 +2902,15 @@ buildvariants:
   display_name: "Load Balancer ${platform} ${python-version} ${mongodb-version} ${auth-ssl}"
   tasks:
     - name: "load-balancer-test"
+
+- name: testgcpkms-variant
+  display_name: "GCP KMS"
+  run_on:
+    - debian11-small
+  tasks:
+    - name: testgcpkms_task_group
+      batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
+    - testgcpkms-fail-task
 
 - name: Release
   display_name: Release

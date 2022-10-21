@@ -1615,7 +1615,7 @@ invalid:
 
 static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                            unsigned* position, unsigned char type,
-                           unsigned max, const codec_options_t* options) {
+                           unsigned max, const codec_options_t* options, int raw_array) {
     struct module_state *state = GETSTATE(self);
     PyObject* value = NULL;
     switch (type) {
@@ -1712,11 +1712,20 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             if (size < BSON_MIN_SIZE || max < size) {
                 goto invalid;
             }
+
             end = *position + size - 1;
             /* Check for bad eoo */
             if (buffer[end]) {
                 goto invalid;
             }
+
+            if (raw_array != 0) {
+                // Treat it as a binary buffer.
+                value = PyBytes_FromStringAndSize(buffer + *position, size);
+                *position += size;
+                break;
+            }
+
             *position += 4;
 
             value = PyList_New(0);
@@ -1740,7 +1749,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                     goto invalid;
                 }
                 to_append = get_value(self, name, buffer, position, bson_type,
-                                      max - (unsigned)key_size, options);
+                                      max - (unsigned)key_size, options, raw_array);
                 Py_LeaveRecursiveCall();
                 if (!to_append) {
                     Py_DECREF(value);
@@ -2464,6 +2473,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
 static int _element_to_dict(PyObject* self, const char* string,
                             unsigned position, unsigned max,
                             const codec_options_t* options,
+                            int raw_array,
                             PyObject** name, PyObject** value) {
     unsigned char type = (unsigned char)string[position++];
     size_t name_length = strlen(string + position);
@@ -2504,7 +2514,7 @@ static int _element_to_dict(PyObject* self, const char* string,
     }
     position += (unsigned)name_length + 1;
     *value = get_value(self, *name, string, &position, type,
-                       max - position, options);
+                       max - position, options, raw_array);
     if (!*value) {
         Py_DECREF(*name);
         return -1;
@@ -2520,12 +2530,13 @@ static PyObject* _cbson_element_to_dict(PyObject* self, PyObject* args) {
     unsigned position;
     unsigned max;
     int new_position;
+    int raw_array = 0;
     PyObject* name;
     PyObject* value;
     PyObject* result_tuple;
 
-    if (!PyArg_ParseTuple(args, "OIIO&", &bson, &position, &max,
-                          convert_codec_options, &options)) {
+    if (!PyArg_ParseTuple(args, "OIIO&p", &bson, &position, &max,
+                          convert_codec_options, &options, &raw_array)) {
         return NULL;
     }
 
@@ -2535,8 +2546,7 @@ static PyObject* _cbson_element_to_dict(PyObject* self, PyObject* args) {
     }
     string = PyBytes_AS_STRING(bson);
 
-    new_position = _element_to_dict(self, string, position, max, &options,
-                                    &name, &value);
+    new_position = _element_to_dict(self, string, position, max, &options, raw_array, &name, &value);
     if (new_position < 0) {
         return NULL;
     }
@@ -2560,13 +2570,14 @@ static PyObject* _elements_to_dict(PyObject* self, const char* string,
     if (!dict) {
         return NULL;
     }
+    int raw_array = 0;
     while (position < max) {
         PyObject* name = NULL;
         PyObject* value = NULL;
         int new_position;
 
         new_position = _element_to_dict(
-            self, string, position, max, options, &name, &value);
+            self, string, position, max, options, raw_array, &name, &value);
         if (new_position < 0) {
             Py_DECREF(dict);
             return NULL;
@@ -2649,7 +2660,6 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
     }
 
     string = (char*)view.buf;
-
     memcpy(&size, string, 4);
     size = (int32_t)BSON_UINT32_FROM_LE(size);
     if (size < BSON_MIN_SIZE) {
@@ -2797,6 +2807,124 @@ done:
     return result;
 }
 
+
+static PyObject* _cbson_array_of_documents_to_buffer(PyObject* self, PyObject* args) {
+    uint32_t size;
+    uint32_t value_length;
+    uint32_t position = 0;
+    buffer_t buffer;
+    const char* string;
+    PyObject* arr;
+    PyObject* result = NULL;
+    Py_buffer view = {0};
+
+    if (!PyArg_ParseTuple(args, "O", &arr)) {
+        return NULL;
+    }
+
+    if (!_get_buffer(arr, &view)) {
+        return NULL;
+    }
+
+    buffer = pymongo_buffer_new();
+    if (!buffer) {
+        PyBuffer_Release(&view);
+        return NULL;
+    }
+
+    string = (char*)view.buf;
+
+    if (view.len < BSON_MIN_SIZE) {
+        PyObject* InvalidBSON = _error("InvalidBSON");
+        if (InvalidBSON) {
+            PyErr_SetString(InvalidBSON,
+                            "not enough data for a BSON document");
+            Py_DECREF(InvalidBSON);
+        }
+        goto done;
+    }
+
+    memcpy(&size, string, 4);
+    size = BSON_UINT32_FROM_LE(size);
+    /* save space for length */
+    if (pymongo_buffer_save_space(buffer, size) == -1) {
+        goto fail;
+    }
+    pymongo_buffer_update_position(buffer, 0);
+
+    position += 4;
+    while (position < size - 1) {
+        // Verify the value is an object.
+        unsigned char type = (unsigned char)string[position];
+        if (type != 3) {
+            PyObject* InvalidBSON = _error("InvalidBSON");
+            if (InvalidBSON) {
+                PyErr_SetString(InvalidBSON, "array element was not an object");
+                Py_DECREF(InvalidBSON);
+            }
+            goto fail;
+        }
+
+        // Just skip the keys.
+        position = position + strlen(string + position) + 1;
+
+        if (position >= size || (size - position) < BSON_MIN_SIZE) {
+            PyObject* InvalidBSON = _error("InvalidBSON");
+            if (InvalidBSON) {
+                PyErr_SetString(InvalidBSON, "invalid array content");
+                Py_DECREF(InvalidBSON);
+            }
+            goto fail;
+         }
+
+        memcpy(&value_length, string + position, 4);
+        value_length = BSON_UINT32_FROM_LE(value_length);
+        if (value_length < BSON_MIN_SIZE) {
+            PyObject* InvalidBSON = _error("InvalidBSON");
+            if (InvalidBSON) {
+                PyErr_SetString(InvalidBSON, "invalid message size");
+                Py_DECREF(InvalidBSON);
+            }
+            goto fail;
+         }
+
+        if (view.len < size) {
+            PyObject* InvalidBSON = _error("InvalidBSON");
+            if (InvalidBSON) {
+                PyErr_SetString(InvalidBSON, "objsize too large");
+                Py_DECREF(InvalidBSON);
+            }
+            goto fail;
+        }
+
+        if (string[size - 1]) {
+            PyObject* InvalidBSON = _error("InvalidBSON");
+            if (InvalidBSON) {
+                PyErr_SetString(InvalidBSON, "bad eoo");
+                Py_DECREF(InvalidBSON);
+            }
+            goto fail;
+        }
+
+        if (pymongo_buffer_write(buffer, string + position, value_length) == 1) {
+            goto fail;
+        }
+        position += value_length;
+    }
+
+    /* objectify buffer */
+    result = Py_BuildValue("y#", pymongo_buffer_get_buffer(buffer),
+                           (Py_ssize_t)pymongo_buffer_get_position(buffer));
+    goto done;
+fail:
+    result = NULL;
+done:
+    PyBuffer_Release(&view);
+    pymongo_buffer_free(buffer);
+    return result;
+}
+
+
 static PyMethodDef _CBSONMethods[] = {
     {"_dict_to_bson", _cbson_dict_to_bson, METH_VARARGS,
      "convert a dictionary to a string containing its BSON representation."},
@@ -2806,6 +2934,7 @@ static PyMethodDef _CBSONMethods[] = {
      "convert binary data to a sequence of documents."},
     {"_element_to_dict", _cbson_element_to_dict, METH_VARARGS,
      "Decode a single key, value pair."},
+    {"_array_of_documents_to_buffer", _cbson_array_of_documents_to_buffer, METH_VARARGS, "Convert raw array of documents to a stream of BSON documents"},
     {NULL, NULL, 0, NULL}
 };
 
