@@ -285,7 +285,7 @@ extras_require = {
     "ocsp": pyopenssl_reqs,
     "snappy": ["python-snappy"],
     "zstd": ["zstandard"],
-    "aws": ["pymongo-auth-aws<2.0.0"],
+    "aws": aws_reqs,
     "srv": [],  # PYTHON-3423 Removed in 4.3 but kept here to avoid pip warnings.
     "tls": [],  # PYTHON-2133 Removed in 4.0 but kept here to avoid pip warnings.
 }
