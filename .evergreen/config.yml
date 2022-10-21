@@ -1035,6 +1035,43 @@ task_groups:
     tasks:
       - ".serverless"
 
+  - name: testgcpkms_task_group
+    setup_group_can_fail_task: true
+    setup_group_timeout_secs: 1800 # 30 minutes
+    setup_group:
+      - func: fetch source
+      - func: prepare resources
+      - func: fix absolute paths
+      - func: make files executable
+      - command: shell.exec
+        params:
+          shell: "bash"
+          script: |
+            ${PREPARE_SHELL}
+            echo '${testgcpkms_key_file}' > /tmp/testgcpkms_key_file.json
+            export GCPKMS_KEYFILE=/tmp/testgcpkms_key_file.json
+            export GCPKMS_DRIVERS_TOOLS=$DRIVERS_TOOLS
+            export GCPKMS_SERVICEACCOUNT="${testgcpkms_service_account}"
+            export GCPKMS_MACHINETYPE="e2-standard-4"
+            $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/create-and-setup-instance.sh
+      # Load the GCPKMS_GCLOUD, GCPKMS_INSTANCE, GCPKMS_REGION, and GCPKMS_ZONE expansions.
+      - command: expansions.update
+        params:
+          file: testgcpkms-expansions.yml
+    teardown_group:
+      - command: shell.exec
+        params:
+          shell: "bash"
+          script: |
+            ${PREPARE_SHELL}
+            export GCPKMS_GCLOUD=${GCPKMS_GCLOUD}
+            export GCPKMS_PROJECT=${GCPKMS_PROJECT}
+            export GCPKMS_ZONE=${GCPKMS_ZONE}
+            export GCPKMS_INSTANCENAME=${GCPKMS_INSTANCENAME}
+            $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/delete-instance.sh
+    tasks:
+      - testgcpkms-task
+
 tasks:
     # Wildcard task. Do you need to find out what tools are available and where?
     # Throw it here, and execute this task on all buildvariants
@@ -1857,6 +1894,51 @@ tasks:
       commands:
         - func: "download and merge coverage"
 
+    - name: "testgcpkms-task"
+      commands:
+        - command: shell.exec
+          type: setup
+          params:
+            working_dir: "src"
+            shell: "bash"
+            script: |
+              ${PREPARE_SHELL}
+              echo "Copying files ... begin"
+              export GCPKMS_GCLOUD=${GCPKMS_GCLOUD}
+              export GCPKMS_PROJECT=${GCPKMS_PROJECT}
+              export GCPKMS_ZONE=${GCPKMS_ZONE}
+              export GCPKMS_INSTANCENAME=${GCPKMS_INSTANCENAME}
+              tar czf /tmp/mongo-python-driver.tgz .
+              GCPKMS_SRC=/tmp/mongo-python-driver.tgz GCPKMS_DST=$GCPKMS_INSTANCENAME: $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/copy-file.sh
+              echo "Copying files ... end"
+              echo "Untarring file ... begin"
+              GCPKMS_CMD="tar xf mongo-python-driver.tgz" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
+              echo "Untarring file ... end"
+        - command: shell.exec
+          type: test
+          params:
+            working_dir: "src"
+            shell: "bash"
+            script: |
+              ${PREPARE_SHELL}
+              export GCPKMS_GCLOUD=${GCPKMS_GCLOUD}
+              export GCPKMS_PROJECT=${GCPKMS_PROJECT}
+              export GCPKMS_ZONE=${GCPKMS_ZONE}
+              export GCPKMS_INSTANCENAME=${GCPKMS_INSTANCENAME}
+              GCPKMS_CMD="SUCCESS=true ./.evergreen/run-mongodb-fle-gcp-auto.sh mongodb://localhost:27017" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
+
+    - name: "testgcpkms-fail-task"
+      # testgcpkms-fail-task runs in a non-GCE environment.
+      # It is expected to fail to obtain GCE credentials.
+      commands:
+        - command: shell.exec
+          type: test
+          params:
+            working_dir: "src"
+            shell: "bash"
+            script: |
+              ${PREPARE_SHELL}
+              SUCCESS=false ./.evergreen/run-mongodb-fle-gcp-auto.sh mongodb://localhost:27017
 
 axes:
   # Choice of distro
@@ -2820,6 +2902,15 @@ buildvariants:
   display_name: "Load Balancer ${platform} ${python-version} ${mongodb-version} ${auth-ssl}"
   tasks:
     - name: "load-balancer-test"
+
+- name: testgcpkms-variant
+  display_name: "GCP KMS"
+  run_on:
+    - debian11-small
+  tasks:
+    - name: testgcpkms_task_group
+      batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
+    - testgcpkms-fail-task
 
 - name: Release
   display_name: Release
