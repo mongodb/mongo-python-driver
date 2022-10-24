@@ -23,9 +23,10 @@ Dependencies
 
 To get started using client-side field level encryption in your project,
 you will need to install the
-`pymongocrypt <https://pypi.org/project/pymongocrypt/>`_ library
+`pymongocrypt <https://pypi.org/project/pymongocrypt/>`_ and
+`pymongo-auth-aws <https://pypi.org/project/pymongo-auth-aws/>`_ libraries
 as well as the driver itself. Install both the driver and a compatible
-version of pymongocrypt like this::
+version of the dependencies like this::
 
   $ python -m pip install 'pymongo[encryption]'
 
