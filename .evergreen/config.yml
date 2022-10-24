@@ -2627,7 +2627,12 @@ buildvariants:
     green-framework: "*"
     auth-ssl: "*"
   display_name: "${green-framework} ${python-version} ${platform} ${auth-ssl}"
-  tasks: *all-server-versions
+  tasks:
+    - ".rapid"
+    - ".latest"
+    - ".6.0"
+    - ".5.0"
+    - ".4.4"
 
 - matrix_name: "tests-windows-python-version"
   matrix_spec:
