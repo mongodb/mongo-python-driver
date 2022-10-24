@@ -2304,6 +2304,37 @@ class TestRewrapWithSeparateClientEncryption(EncryptionIntegrationTest):
         self.assertEqual(decrypt_result2, "test")
 
 
+# https://github.com/mongodb/specifications/blob/5cf3ed/source/client-side-encryption/tests/README.rst#on-demand-aws-credentials
+class TestOnDemandAWSCredentials(EncryptionIntegrationTest):
+    def setUp(self):
+        super(TestOnDemandAWSCredentials, self).setUp()
+        self.master_key = {
+            "region": "us-east-1",
+            "key": ("arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0"),
+        }
+
+    @unittest.skipIf(any(AWS_CREDS.values()), "AWS environment credentials are set")
+    def test_01_failure(self):
+        self.client_encryption = ClientEncryption(
+            kms_providers={"aws": {}},
+            key_vault_namespace="keyvault.datakeys",
+            key_vault_client=client_context.client,
+            codec_options=OPTS,
+        )
+        with self.assertRaises(EncryptionError):
+            self.client_encryption.create_data_key("aws", self.master_key)
+
+    @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
+    def test_02_success(self):
+        self.client_encryption = ClientEncryption(
+            kms_providers={"aws": {}},
+            key_vault_namespace="keyvault.datakeys",
+            key_vault_client=client_context.client,
+            codec_options=OPTS,
+        )
+        self.client_encryption.create_data_key("aws", self.master_key)
+
+
 class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):
     # Queryable Encryption is not supported on Standalone topology.
     @client_context.require_no_standalone

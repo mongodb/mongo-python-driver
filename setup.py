@@ -278,12 +278,14 @@ if sys.platform in ("win32", "darwin"):
     # https://www.pyopenssl.org/en/stable/api/ssl.html#OpenSSL.SSL.Context.set_default_verify_paths
     pyopenssl_reqs.append("certifi")
 
+aws_reqs = ["pymongo-auth-aws<2.0.0"]
+
 extras_require = {
-    "encryption": ["pymongocrypt>=1.3.0,<2.0.0"],
+    "encryption": ["pymongocrypt>=1.3.0,<2.0.0"] + aws_reqs,
     "ocsp": pyopenssl_reqs,
     "snappy": ["python-snappy"],
     "zstd": ["zstandard"],
-    "aws": ["pymongo-auth-aws<2.0.0"],
+    "aws": aws_reqs,
     "srv": [],  # PYTHON-3423 Removed in 4.3 but kept here to avoid pip warnings.
     "tls": [],  # PYTHON-2133 Removed in 4.0 but kept here to avoid pip warnings.
 }
