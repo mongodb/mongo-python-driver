@@ -2927,8 +2927,8 @@ buildvariants:
 
 - matrix_name: "test-linux-enterprise-auth"
   matrix_spec:
-    platform: awslinux
-    python-version: *amazon1-pythons
+    platform: ubuntu-18.04
+    python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "pypy3.7"]
     auth: "auth"
   display_name: "Enterprise ${auth} ${platform} ${python-version}"
   tasks:
