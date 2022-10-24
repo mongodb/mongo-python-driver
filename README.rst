@@ -130,8 +130,8 @@ Wire protocol compression with zstandard requires `zstandard
   $ python -m pip install "pymongo[zstd]"
 
 Client-Side Field Level Encryption requires `pymongocrypt
-<https://pypi.org/project/pymongocrypt/>`_ and `pymongo-auth-aws
-<https://pypi.org/project/pymongo-auth-aws/>`_::
+<https://pypi.org/project/pymongocrypt/>`_ and
+`pymongo-auth-aws <https://pypi.org/project/pymongo-auth-aws/>`_::
 
   $ python -m pip install "pymongo[encryption]"
 
