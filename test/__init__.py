@@ -220,6 +220,7 @@ class ClientContext(object):
         """Create a client and grab essential information from the server."""
         self.connection_attempts = []
         self.connected = False
+        self._hello = None
         self.w = None
         self.nodes = set()
         self.replica_set_name = None
