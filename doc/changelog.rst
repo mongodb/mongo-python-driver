@@ -4,6 +4,10 @@ Changelog
 Changes in Version 3.13.0
 -------------------------
 
+Notable improvements
+....................
+- Added :attr:`pymongo.mongo_client.MongoClient.options` for read-only access
+  to a client's configuration options.
 
 
 Issues Resolved
@@ -57,11 +61,6 @@ can be changed to this::
     max_write_batch_size = doc['maxWriteBatchSize']
 
 .. _hello command: https://docs.mongodb.com/manual/reference/command/hello/
-
-Notable improvements
-....................
-- Added :attr:`pymongo.mongo_client.MongoClient.options` for read-only access
-  to a client's configuration options.
 
 See the `PyMongo 3.13.0 release notes in JIRA`_ for the list of resolved issues
 in this release.
