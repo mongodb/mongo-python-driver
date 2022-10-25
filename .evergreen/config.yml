@@ -1089,7 +1089,7 @@ tasks:
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
-            VERSION: "latest"
+            VERSION: "5.0"
             TOPOLOGY: "server"
         - func: "run doctests"
 
@@ -1454,7 +1454,7 @@ tasks:
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
-            VERSION: "latest"
+            VERSION: "5.0"
             TOPOLOGY: "server"
         - func: "run cdecimal tests"
 
@@ -2589,7 +2589,7 @@ buildvariants:
     pyopenssl: "*"
   display_name: "PyOpenSSL ${platform} ${python-version} ${auth}"
   tasks:
-    - '.replica_set !.2.6 !.3.0'
+    - '.replica_set !.2.6 !.3.0 !.latest !.rapid !.6.0'
     # Test standalone and sharded only on 5.0.
     - '.5.0'
 
@@ -2602,7 +2602,7 @@ buildvariants:
     pyopenssl: "*"
   display_name: "PyOpenSSL ${platform} ${python-version} ${auth}"
   tasks:
-    - '.replica_set !.2.6 !.3.0 !.3.2 !.3.4'
+    - '.replica_set !.2.6 !.3.0 !.3.2 !.3.4 !.latest !.rapid !.6.0'
     # Test standalone and sharded only on 5.0.
     - '.5.0'
 
@@ -2659,7 +2659,8 @@ buildvariants:
     auth-ssl: noauth-nossl
     encryption: "*"
   display_name: "Encryption ${python-version} ${platform} ${auth-ssl}"
-  tasks: *rhel-encryption-server-versions
+  tasks:
+    - *aws-server-versions
 
 - matrix_name: "tests-python-version-amazon1-without-c-extensions"
   matrix_spec:
@@ -2712,7 +2713,6 @@ buildvariants:
      compression: ["snappy"]
   display_name: "${compression} ${c-extensions} ${python-version} ${platform}"
   tasks:
-    - "test-latest-standalone"
     - "test-5.0-standalone"
     - "test-4.4-standalone"
     - "test-4.2-standalone"
@@ -2876,7 +2876,7 @@ buildvariants:
         python-version: "*"
       then:
         add_tasks:
-          - "test-latest-standalone"
+          - "test-5.0-standalone"
           - "test-4.4-standalone"
           - "test-4.2-standalone"
           - "test-4.0-standalone"
@@ -2913,7 +2913,7 @@ buildvariants:
     python-version: "2.7"
   display_name: "Disable test commands ${python-version} ${platform}"
   tasks:
-     - ".latest"
+     - ".5.0"
 
 # setdefaultencoding tests on RHEL 6.2 (x86_64) with Python 2.7.
 - matrix_name: "test-setdefaultencoding"
@@ -2923,7 +2923,7 @@ buildvariants:
     python-version: "2.7"
   display_name: "setdefaultencoding ${python-version} ${platform}"
   tasks:
-     - "test-latest-standalone"
+     - "test-5.0-standalone"
 
 - matrix_name: "test-linux-enterprise-auth"
   matrix_spec:
@@ -3051,7 +3051,6 @@ buildvariants:
   tasks:
     # Versioned API was introduced in MongoDB 4.7
     - "test-5.0-standalone"
-    - "test-latest-standalone"
 
 - matrix_name: "ocsp-test"
   matrix_spec:
