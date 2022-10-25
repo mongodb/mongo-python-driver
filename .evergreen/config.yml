@@ -2659,8 +2659,7 @@ buildvariants:
     auth-ssl: noauth-nossl
     encryption: "*"
   display_name: "Encryption ${python-version} ${platform} ${auth-ssl}"
-  tasks:
-    - *aws-server-versions
+  tasks: *aws-server-versions
 
 - matrix_name: "tests-python-version-amazon1-without-c-extensions"
   matrix_spec:
