@@ -24,11 +24,6 @@ Deprecations
 - Deprecated :meth:`~pymongo.collection.Collection.map_reduce` and
   :meth:`~pymongo.collection.Collection.inline_map_reduce`.
   Use :meth:`~pymongo.collection.Collection.aggregate` instead.
-<<<<<<< HEAD
-- Deprecated :attr:`pymongo.mongo_client.MongoClient.max_bson_size`.
-- Deprecated :attr:`pymongo.mongo_client.MongoClient.max_message_size`.
-- Deprecated :attr:`pymongo.mongo_client.MongoClient.max_write_batch_size`.
-=======
 - Deprecated :attr:`pymongo.mongo_client.MongoClient.event_listeners`.
   Use :attr:`~pymongo.mongo_client.options.event_listeners` instead.
 - Deprecated :attr:`pymongo.mongo_client.MongoClient.max_pool_size`.
