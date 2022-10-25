@@ -17,8 +17,20 @@ sample client code that uses PyMongo typings."""
 
 import os
 import tempfile
+import typing
 import unittest
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List, Optional
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+)
 
 try:
     from typing_extensions import NotRequired, TypedDict
@@ -67,6 +79,7 @@ from pymongo import ASCENDING, MongoClient
 from pymongo.collection import Collection
 from pymongo.operations import InsertOne
 from pymongo.read_preferences import ReadPreference
+from pymongo.results import BulkWriteResult, InsertManyResult, InsertOneResult
 
 TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "mypy_fails")
 
@@ -326,59 +339,11 @@ class TestDocumentType(unittest.TestCase):
 
     @only_type_check
     def test_typeddict_document_type_insertion(self) -> None:
-        client: MongoClient[Movie] = MongoClient()
-        coll: Collection[Movie] = client.test.test
-        mov = Movie(_id=ObjectId(), name="THX-1138", year=1971)
-        for meth, arg in [
-            (coll.insert_many, [mov]),
-            (coll.insert_one, mov),
-            (coll.bulk_write, [InsertOne(mov)]),
-        ]:
-            meth(arg)  # type:ignore[operator]
-            out = coll.find_one({"name": "THX-1138"})
-            assert out is not None
-            # This should fail because the output is a Movie.
-            assert out["foo"]  # type:ignore[typeddict-item]
-            assert type(out["_id"]) == ObjectId
-            coll.drop()
-
-    # This should work the same as the test above, but this time using NotRequired to allow
-    # automatic insertion of the _id field by insert_one.
-    @only_type_check
-    def test_typeddict_document_type_not_required(self) -> None:
-        client: MongoClient[ImplicitMovie] = MongoClient()
-        coll: Collection[ImplicitMovie] = client.test.test
-        mov = ImplicitMovie(name="THX-1138", year=1971)
-        for meth, arg in [
-            (coll.insert_many, [mov]),
-            (coll.insert_one, mov),
-            (coll.bulk_write, [InsertOne(mov)]),
-        ]:
-            meth(arg)  # type:ignore[operator]
-            out = coll.find_one({"name": "THX-1138"})
-            assert out is not None
-            # This should fail because the output is a Movie.
-            assert out["foo"]  # type:ignore[typeddict-item]
-            assert type(out["_id"]) == ObjectId
-            coll.drop()
-
-    @only_type_check
-    def test_typeddict_document_type_empty(self) -> None:
-        client: MongoClient[MovieWithoutId] = MongoClient()
-        coll: Collection[MovieWithoutId] = client.test.test
-        mov = MovieWithoutId(name="THX-1138", year=1971)
-        for meth, arg in [
-            (coll.insert_many, [mov]),
-            (coll.insert_one, mov),
-            (coll.bulk_write, [InsertOne(mov)]),
-        ]:
-            meth(arg)  # type:ignore[operator]
-            out = coll.find_one({"name": "THX-1138"})
-            assert out is not None
-            # This should fail because the output is a Movie.
-            assert out["foo"]  # type:ignore[typeddict-item]
-            # This should fail because _id is not included in our TypedDict definition.
-            assert type(out["_id"]) == ObjectId  # type:ignore[typeddict-item]
+        coll: Collection[Movie] = self.db.test
+        mov = Movie(name="THX-1138", year=1971)
+        coll.insert_one(mov)
+        coll.insert_many([mov])
+        coll.bulk_write([InsertOne(mov)])
 
     @only_type_check
     def test_raw_bson_document_type(self) -> None:
