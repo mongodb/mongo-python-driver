@@ -175,7 +175,7 @@ class _TestPoolingBase(IntegrationTest):
     def create_pool(self, pair=(client_context.host, client_context.port), *args, **kwargs):
         # Start the pool with the correct ssl options.
         pool_options = client_context.client._topology_settings.pool_options
-        kwargs["ssl_context"] = pool_options.ssl_context
+        kwargs["ssl_context"] = pool_options._ssl_context
         kwargs["ssl_match_hostname"] = pool_options.ssl_match_hostname
         kwargs["server_api"] = pool_options.server_api
         return Pool(pair, PoolOptions(*args, **kwargs))
@@ -189,7 +189,7 @@ class TestPooling(_TestPoolingBase):
         self.assertRaises(ValueError, MongoClient, host=host, port=port, maxPoolSize="foo")
 
         c = MongoClient(host=host, port=port, maxPoolSize=100, connect=False)
-        self.assertEqual(c.max_pool_size, 100)
+        self.assertEqual(c.options.pool_options.max_pool_size, 100)
 
     def test_no_disconnect(self):
         run_cases(self.c, [NonUnique, Unique, InsertOneAndFind])

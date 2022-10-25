@@ -4,9 +4,46 @@ Changelog
 Changes in Version 3.13.0
 -------------------------
 
-MongoClient.max_bson_size/max_message_size/max_write_batch_size are deprecated.
 
-Deprecated :attr:`pymongo.mongo_client.MongoClient.max_bson_size`,
+
+Issues Resolved
+...............
+
+PyMongo 3.13 drops support for Python 3.4.
+
+Bug fixes
+.........
+
+- Fixed a memory leak bug when calling :func:`~bson.decode_all` without a
+  ``codec_options`` argument (`PYTHON-3222`_).
+- Fixed a bug where :func:`~bson.decode_all` did not accept ``codec_options``
+  as a keyword argument (`PYTHON-3222`_).
+
+Deprecations
+............
+- Deprecated :meth:`~pymongo.collection.Collection.map_reduce` and
+  :meth:`~pymongo.collection.Collection.inline_map_reduce`.
+  Use :meth:`~pymongo.collection.Collection.aggregate` instead.
+<<<<<<< HEAD
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.max_bson_size`.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.max_message_size`.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.max_write_batch_size`.
+=======
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.event_listeners`.
+  Use :attr:`~pymongo.mongo_client.options.event_listeners` instead.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.max_pool_size`.
+  Use :attr:`~pymongo.mongo_client.options.pool_options.max_pool_size` instead.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.max_idle_time_ms`.
+  Use :attr:`~pymongo.mongo_client.options.pool_options.max_idle_time_seconds` instead.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.local_threshold_ms`.
+  Use :attr:`~pymongo.mongo_client.options.local_threshold_ms` instead.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.server_selection_timeout`.
+  Use :attr:`~pymongo.mongo_client.options.server_selection_timeout` instead.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.retry_writes`.
+  Use :attr:`~pymongo.mongo_client.options.retry_writes` instead.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.retry_reads`.
+  Use :attr:`~pymongo.mongo_client.options.retry_reads` instead.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.max_bson_size`,
 :attr:`pymongo.mongo_client.MongoClient.max_message_size`, and
 :attr:`pymongo.mongo_client.MongoClient.max_write_batch_size`. These helpers
 were incorrect when in ``loadBalanced=true mode`` and ambiguous in clusters
@@ -26,28 +63,10 @@ can be changed to this::
 
 .. _hello command: https://docs.mongodb.com/manual/reference/command/hello/
 
-Issues Resolved
-...............
-
-PyMongo 3.13 drops support for Python 3.4.
-
-Bug fixes
-.........
-
-- Fixed a memory leak bug when calling :func:`~bson.decode_all` without a
-  ``codec_options`` argument (`PYTHON-3222`_).
-- Fixed a bug where :func:`~bson.decode_all` did not accept ``codec_options``
-  as a keyword argument (`PYTHON-3222`_).
-
-Deprecations
-............
-
-- Deprecated :meth:`~pymongo.collection.Collection.map_reduce` and
-  :meth:`~pymongo.collection.Collection.inline_map_reduce`.
-  Use :meth:`~pymongo.collection.Collection.aggregate` instead.
-- Deprecated :attr:`pymongo.mongo_client.MongoClient.max_bson_size`.
-- Deprecated :attr:`pymongo.mongo_client.MongoClient.max_message_size`.
-- Deprecated :attr:`pymongo.mongo_client.MongoClient.max_write_batch_size`.
+Notable improvements
+....................
+- Added :attr:`pymongo.mongo_client.MongoClient.options` for read-only access
+  to a client's configuration options.
 
 See the `PyMongo 3.13.0 release notes in JIRA`_ for the list of resolved issues
 in this release.

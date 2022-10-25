@@ -90,7 +90,7 @@ from pymongo.hello_compat import HelloCompat
 from pymongo.mongo_client import MongoClient
 from pymongo.monitoring import ServerHeartbeatListener, ServerHeartbeatStartedEvent
 from pymongo.monotonic import time as monotonic_time
-from pymongo.pool import _METADATA, SocketInfo
+from pymongo.pool import _METADATA, SocketInfo, PoolOptions
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import readable_server_selector, writable_server_selector
@@ -139,10 +139,10 @@ class ClientUnitTest(unittest.TestCase):
         self.assertEqual(None, pool_opts.wait_queue_timeout)
         self.assertEqual(None, pool_opts.wait_queue_multiple)
         self.assertTrue(pool_opts.socket_keepalive)
-        self.assertEqual(None, pool_opts.ssl_context)
+        self.assertEqual(None, pool_opts._ssl_context)
         self.assertEqual(None, options.replica_set_name)
         self.assertEqual(ReadPreference.PRIMARY, client.read_preference)
-        self.assertAlmostEqual(12, client.server_selection_timeout)
+        self.assertAlmostEqual(12, client.options.server_selection_timeout)
 
     def test_connect_timeout(self):
         client = MongoClient(connect=False, connectTimeoutMS=None, socketTimeoutMS=None)
@@ -1441,7 +1441,7 @@ class TestClient(IntegrationTest):
     def test_compression(self):
         def compression_settings(client):
             pool_options = client._MongoClient__options.pool_options
-            return pool_options.compression_settings
+            return pool_options._compression_settings
 
         uri = "mongodb://localhost:27017/?compressors=zlib"
         client = MongoClient(uri, connect=False)

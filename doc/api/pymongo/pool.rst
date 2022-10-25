@@ -2,5 +2,6 @@
 ==============================================================
 
 .. automodule:: pymongo.pool
-   :synopsis: Pool module for use with a MongoDB client.
-   :members:
+
+   .. autoclass:: pymongo.pool.PoolOptions()
+      :members:
