@@ -4,6 +4,12 @@ Changelog
 Changes in Version 3.13.0
 -------------------------
 
+Notable improvements
+....................
+- Added :attr:`pymongo.mongo_client.MongoClient.options` for read-only access
+  to a client's configuration options.
+
+
 Issues Resolved
 ...............
 
@@ -19,10 +25,13 @@ Bug fixes
 
 Deprecations
 ............
-
 - Deprecated :meth:`~pymongo.collection.Collection.map_reduce` and
   :meth:`~pymongo.collection.Collection.inline_map_reduce`.
   Use :meth:`~pymongo.collection.Collection.aggregate` instead.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.event_listeners`.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.max_pool_size`.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.max_idle_time_ms`.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.local_threshold_ms`.
 
 See the `PyMongo 3.13.0 release notes in JIRA`_ for the list of resolved issues
 in this release.

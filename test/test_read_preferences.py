@@ -204,13 +204,13 @@ class TestReadPreferences(TestReadPreferencesBase):
         self.assertRaises(TypeError, Secondary, tag_sets=["foo"])
 
     def test_threshold_validation(self):
-        self.assertEqual(17, rs_client(localThresholdMS=17).local_threshold_ms)
+        self.assertEqual(17, rs_client(localThresholdMS=17).options.local_threshold_ms)
 
-        self.assertEqual(42, rs_client(localThresholdMS=42).local_threshold_ms)
+        self.assertEqual(42, rs_client(localThresholdMS=42).options.local_threshold_ms)
 
-        self.assertEqual(666, rs_client(localthresholdms=666).local_threshold_ms)
+        self.assertEqual(666, rs_client(localthresholdms=666).options.local_threshold_ms)
 
-        self.assertEqual(0, rs_client(localthresholdms=0).local_threshold_ms)
+        self.assertEqual(0, rs_client(localthresholdms=0).options.local_threshold_ms)
 
         self.assertRaises(ValueError, rs_client, localthresholdms=-1)
 

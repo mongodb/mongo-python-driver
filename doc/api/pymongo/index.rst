@@ -33,6 +33,7 @@ Sub-modules:
 
    bulk
    change_stream
+   client_options
    client_session
    collation
    collection
