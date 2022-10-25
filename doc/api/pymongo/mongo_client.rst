@@ -29,7 +29,6 @@
       .. autoattribute:: read_preference
       .. autoattribute:: write_concern
       .. autoattribute:: read_concern
-      .. autoattribute:: options
       .. automethod:: start_session
       .. automethod:: list_databases
       .. automethod:: list_database_names
@@ -45,3 +44,9 @@
       .. autoattribute:: is_locked
       .. automethod:: fsync
       .. automethod:: unlock
+      .. autoattribute:: event_listeners
+      .. autoattribute:: max_pool_size
+      .. autoattribute:: min_pool_size
+      .. autoattribute:: max_idle_time_ms
+      .. autoattribute:: local_threshold_ms
+      .. autoattribute:: server_selection_timeout

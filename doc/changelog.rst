@@ -29,12 +29,19 @@ Deprecations
   :meth:`~pymongo.collection.Collection.inline_map_reduce`.
   Use :meth:`~pymongo.collection.Collection.aggregate` instead.
 - Deprecated :attr:`pymongo.mongo_client.MongoClient.event_listeners`.
+  Use :attr:`~pymongo.mongo_client.options.event_listeners` instead.
 - Deprecated :attr:`pymongo.mongo_client.MongoClient.max_pool_size`.
+  Use :attr:`~pymongo.mongo_client.options.pool_options.max_pool_size` instead.
 - Deprecated :attr:`pymongo.mongo_client.MongoClient.max_idle_time_ms`.
+  Use :attr:`~pymongo.mongo_client.options.pool_options.max_idle_time_seconds` instead.
 - Deprecated :attr:`pymongo.mongo_client.MongoClient.local_threshold_ms`.
+  Use :attr:`~pymongo.mongo_client.options.local_threshold_ms` instead.
 - Deprecated :attr:`pymongo.mongo_client.MongoClient.server_selection_timeout`.
+  Use :attr:`~pymongo.mongo_client.options.server_selection_timeout` instead.
 - Deprecated :attr:`pymongo.mongo_client.MongoClient.retry_writes`.
+  Use :attr:`~pymongo.mongo_client.options.retry_writes` instead.
 - Deprecated :attr:`pymongo.mongo_client.MongoClient.retry_reads`.
+  Use :attr:`~pymongo.mongo_client.options.retry_reads` instead.
 
 See the `PyMongo 3.13.0 release notes in JIRA`_ for the list of resolved issues
 in this release.

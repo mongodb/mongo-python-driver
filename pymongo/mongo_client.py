@@ -1024,7 +1024,7 @@ class MongoClient(common.BaseObject):
         .. versionchanged:: 3.13
            Deprecated.  Use ``client.options.event_listeners`` instead.
         """
-        warnings.warn("event_listeners is Deprecated", DeprecationWarning, stacklevel=2)
+        warnings.warn("event_listeners is deprecated.  Use ``client.options.event_listeners`` instead.", DeprecationWarning, stacklevel=2)
         return self._event_listeners.event_listeners
 
     @property
@@ -1150,7 +1150,7 @@ class MongoClient(common.BaseObject):
         .. versionchanged:: 3.13
            Deprecated.  Use ``client.options.pool_options.max_pool_size`` instead.
         """
-        warnings.warn("max_pool_size is Deprecated", DeprecationWarning, stacklevel=2)
+        warnings.warn("max_pool_size is deprecated.  Use ``client.options.pool_options.max_pool_size`` instead.", DeprecationWarning, stacklevel=2)
         return self.__options.pool_options.max_pool_size
 
     @property
@@ -1158,9 +1158,9 @@ class MongoClient(common.BaseObject):
         """**DEPRECATED**: The minimum required number of concurrent connections that the pool
         will maintain to each connected server. Default is 0.
         .. versionchanged:: 3.13
-           Deprecated.  Use ``client.options.pool_options.min_pool_size`` instead.
+           Deprecated.
         """
-        warnings.warn("min_pool_size is Deprecated", DeprecationWarning, stacklevel=2)
+        warnings.warn("min_pool_size is deprecated.  Use ``client.options.pool_options.min_pool_size`` instead.", DeprecationWarning, stacklevel=2)
         return self.__options.pool_options.min_pool_size
 
     @property
@@ -1172,7 +1172,7 @@ class MongoClient(common.BaseObject):
         .. versionchanged:: 3.13
            Deprecated.  Use ``client.options.pool_options.max_idle_time_seconds`` instead.
         """
-        warnings.warn("max_idle_time_ms is Deprecated", DeprecationWarning, stacklevel=2)
+        warnings.warn("max_idle_time_ms is deprecated. Use ``client.options.pool_options.max_idle_time_seconds`` instead.", DeprecationWarning, stacklevel=2)
         seconds = self.__options.pool_options.max_idle_time_seconds
         if seconds is None:
             return None
@@ -1243,7 +1243,7 @@ class MongoClient(common.BaseObject):
         .. versionchanged:: 3.13
            Deprecated.  Use ``client.options.local_threshold_ms`` instead.
         """
-        warnings.warn("local_threshold_ms is Deprecated", DeprecationWarning, stacklevel=2)
+        warnings.warn("local_threshold_ms is deprecated.  Use ``client.options.local_threshold_ms`` instead.", DeprecationWarning, stacklevel=2)
         return self.__options.local_threshold_ms
 
     @property
@@ -1253,7 +1253,7 @@ class MongoClient(common.BaseObject):
         .. versionchanged:: 3.13
            Deprecated.  Use ``client.options.server_selection_timeout`` instead.
         """
-        warnings.warn("server_selection_timeout is Deprecated", DeprecationWarning, stacklevel=2)
+        warnings.warn("server_selection_timeout is deprecated.  Use ``client.options.server_selection_timeout`` instead.", DeprecationWarning, stacklevel=2)
         return self.__options.server_selection_timeout
 
     @property
@@ -1263,7 +1263,7 @@ class MongoClient(common.BaseObject):
         .. versionchanged:: 3.13
            Deprecated.  Use ``client.options.retry_writes`` instead.
         """
-        warnings.warn("retry_writes is Deprecated", DeprecationWarning, stacklevel=2)
+        warnings.warn("retry_writes is deprecated.  Use ``client.options.retry_writes`` instead.", DeprecationWarning, stacklevel=2)
         return self.__options.retry_writes
 
     @property
@@ -1273,7 +1273,7 @@ class MongoClient(common.BaseObject):
         .. versionchanged:: 3.13
            Deprecated.  Use ``client.options.retry_reads`` instead.
         """
-        warnings.warn("retry_reads is Deprecated", DeprecationWarning, stacklevel=2)
+        warnings.warn("retry_reads is deprecated.  Use ``client.options.retry_reads`` instead.", DeprecationWarning, stacklevel=2)
         return self.__options.retry_reads
 
     def _is_writable(self):
