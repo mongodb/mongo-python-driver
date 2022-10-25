@@ -854,7 +854,7 @@ class TestCollection(IntegrationTest):
         wait_until(lambda: 0 == db.test.count_documents({}), "delete 2 documents")
 
     def test_command_document_too_large(self):
-        large = "*" * (self.client.max_bson_size + _COMMAND_OVERHEAD)
+        large = "*" * (client_context.max_bson_size + _COMMAND_OVERHEAD)
         coll = self.db.test
         self.assertRaises(DocumentTooLarge, coll.insert_one, {"data": large})
         # update_one and update_many are the same

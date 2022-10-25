@@ -1179,27 +1179,35 @@ class MongoClient(common.BaseObject):
 
     @property
     def max_bson_size(self):
-        """The largest BSON object the connected server accepts in bytes.
+        """**DEPRECATED**: The largest BSON object the connected server accepts in bytes.
 
         If the client is not connected, this will block until a connection is
         established or raise ServerSelectionTimeoutError if no server is
         available.
+
+        .. versionchanged:: 3.13
+           Deprecated.
         """
+        warnings.warn("max_bson_size is Deprecated", DeprecationWarning, stacklevel=2)
         return self._server_property("max_bson_size")
 
     @property
     def max_message_size(self):
-        """The largest message the connected server accepts in bytes.
+        """**DEPRECATED**: The largest message the connected server accepts in bytes.
 
         If the client is not connected, this will block until a connection is
         established or raise ServerSelectionTimeoutError if no server is
         available.
+
+        .. versionchanged:: 3.13
+           Deprecated.
         """
+        warnings.warn("max_message_size is Deprecated", DeprecationWarning, stacklevel=2)
         return self._server_property("max_message_size")
 
     @property
     def max_write_batch_size(self):
-        """The maxWriteBatchSize reported by the server.
+        """**DEPRECATED**: The maxWriteBatchSize reported by the server.
 
         If the client is not connected, this will block until a connection is
         established or raise ServerSelectionTimeoutError if no server is
@@ -1207,7 +1215,11 @@ class MongoClient(common.BaseObject):
 
         Returns a default value when connected to server versions prior to
         MongoDB 2.6.
+
+        .. versionchanged:: 3.13
+           Deprecated.
         """
+        warnings.warn("max_write_batch_size is Deprecated", DeprecationWarning, stacklevel=2)
         return self._server_property("max_write_batch_size")
 
     @property

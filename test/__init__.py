@@ -253,7 +253,9 @@ class ClientContext(object):
 
     @property
     def hello(self):
-        return self.client.admin.command(HelloCompat.LEGACY_CMD)
+        if not self._hello:
+            self._hello = self.client.admin.command(HelloCompat.LEGACY_CMD)
+        return self._hello
 
     def _connect(self, host, port, **kwargs):
         # Jython takes a long time to connect.
@@ -369,6 +371,7 @@ class ClientContext(object):
                     )
 
                 # Get the authoritative hello result from the primary.
+                self._hello = None
                 hello = self.hello
                 nodes = [partition_node(node.lower()) for node in hello.get("hosts", [])]
                 nodes.extend([partition_node(node.lower()) for node in hello.get("passives", [])])
@@ -844,6 +847,14 @@ class ClientContext(object):
         """Does the server require a hint with min/max queries."""
         # Changed in SERVER-39567.
         return self.version.at_least(4, 1, 10)
+
+    @property
+    def max_bson_size(self):
+        return self.hello['maxBsonObjectSize']
+
+    @property
+    def max_write_batch_size(self):
+        return self.hello['maxWriteBatchSize']
 
 
 # Reusable client context

@@ -26,9 +26,6 @@
       .. autoattribute:: min_pool_size
       .. autoattribute:: max_idle_time_ms
       .. autoattribute:: nodes
-      .. autoattribute:: max_bson_size
-      .. autoattribute:: max_message_size
-      .. autoattribute:: max_write_batch_size
       .. autoattribute:: local_threshold_ms
       .. autoattribute:: server_selection_timeout
       .. autoattribute:: codec_options
