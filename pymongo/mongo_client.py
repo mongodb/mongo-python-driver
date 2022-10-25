@@ -735,7 +735,7 @@ class MongoClient(common.BaseObject):
         self.__cursor_manager = None
         self.__kill_cursors_queue = []
 
-        self._event_listeners = options.event_listeners
+        self._event_listeners = options.pool_options._event_listeners
 
         # Cache of existing indexes used by ensure_index ops.
         self.__index_cache = {}
