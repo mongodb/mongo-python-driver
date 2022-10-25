@@ -67,6 +67,8 @@ def parse_userinfo(userinfo):
     # No password is expected with GSSAPI authentication.
     if not user:
         raise InvalidURI("The empty string is not valid username.")
+    if '+' in user or '+' in passwd:
+        warnings.warn("Starting in 4.0 PyMongo will no longer decode plus signs in user names or passwords to spaces", stacklevel=2)
     return unquote_plus(user), unquote_plus(passwd)
 
 

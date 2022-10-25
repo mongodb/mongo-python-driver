@@ -11,17 +11,17 @@ Percent-Escaping Username and Password
 --------------------------------------
 
 Username and password must be percent-escaped with
-:meth:`urllib.parse.quote_plus` in Python 3, or :meth:`urllib.quote_plus` in
+:meth:`urllib.parse.quote` in Python 3, or :meth:`urllib.quote` in
 Python 2, to be used in a MongoDB URI. For example, in Python 3::
 
   >>> from pymongo import MongoClient
   >>> import urllib.parse
-  >>> username = urllib.parse.quote_plus('user')
+  >>> username = urllib.parse.quote('user')
   >>> username
   'user'
-  >>> password = urllib.parse.quote_plus('pass/word')
+  >>> password = urllib.parse.quote('pass*word')
   >>> password
-  'pass%2Fword'
+  'pass%2Aword'
   >>> MongoClient('mongodb://%s:%s@127.0.0.1' % (username, password))
   ...
 

@@ -23,6 +23,9 @@ Deprecations
 - Deprecated :meth:`~pymongo.collection.Collection.map_reduce` and
   :meth:`~pymongo.collection.Collection.inline_map_reduce`.
   Use :meth:`~pymongo.collection.Collection.aggregate` instead.
+- Deprecated the use of a plus sign '+' in user name or password.
+  Starting in 4.0 PyMongo will no longer decode plus signs in user names or passwords to spaces.  Users are recommended to use :meth:`~urllib.parse.quote`
+  when creating a URI from a username and password.
 
 See the `PyMongo 3.13.0 release notes in JIRA`_ for the list of resolved issues
 in this release.
