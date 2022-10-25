@@ -14,7 +14,6 @@
 
 """Test that each file in mypy_fails/ actually fails mypy, and test some
 sample client code that uses PyMongo typings."""
-
 import os
 import tempfile
 import typing
@@ -30,6 +29,7 @@ from typing import (
     Optional,
     Sequence,
     Tuple,
+    Union,
 )
 
 try:
@@ -39,16 +39,6 @@ try:
 
     # Not available in Python 3.7
     class Movie(TypedDict):  # type: ignore[misc]
-        _id: ObjectId
-        name: str
-        year: int
-
-    class ImplicitMovie(TypedDict):  # type: ignore[misc]
-        _id: NotRequired[ObjectId]
-        name: str
-        year: int
-
-    class MovieWithoutId(TypedDict):  # type: ignore[misc]
         name: str
         year: int
 
@@ -339,11 +329,20 @@ class TestDocumentType(unittest.TestCase):
 
     @only_type_check
     def test_typeddict_document_type_insertion(self) -> None:
-        coll: Collection[Movie] = self.db.test
-        mov = Movie(name="THX-1138", year=1971)
+        client: MongoClient[Movie] = MongoClient()
+        coll = client.test.test
+        mov = {"name": "THX-1138", "year": 1971}
+        movie = Movie(name="THX-1138", year=1971)
         coll.insert_one(mov)
+        coll.insert_one(movie)
         coll.insert_many([mov])
-        coll.bulk_write([InsertOne(mov)])
+        coll.insert_many([movie])
+        bad_mov = {"name": "THX-1138", "year": "WRONG TYPE"}  # type:ignore[typeddict-item]
+        bad_movie = Movie(name="THX-1138", year="WRONG TYPE")  # type:ignore[typeddict-item]
+        coll.insert_one(bad_mov)
+        coll.insert_one(bad_movie)
+        coll.insert_many([bad_mov])
+        coll.insert_many([bad_movie])
 
     @only_type_check
     def test_raw_bson_document_type(self) -> None:
