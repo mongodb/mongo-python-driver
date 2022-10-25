@@ -1443,7 +1443,7 @@ class TestClient(IntegrationTest):
     def test_compression(self):
         def compression_settings(client):
             pool_options = client._MongoClient__options.pool_options
-            return pool_options.compression_settings
+            return pool_options._compression_settings
 
         uri = "mongodb://localhost:27017/?compressors=zlib"
         client = MongoClient(uri, connect=False)
