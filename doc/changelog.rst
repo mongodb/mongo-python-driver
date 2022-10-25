@@ -32,6 +32,9 @@ Deprecations
 - Deprecated :attr:`pymongo.mongo_client.MongoClient.max_pool_size`.
 - Deprecated :attr:`pymongo.mongo_client.MongoClient.max_idle_time_ms`.
 - Deprecated :attr:`pymongo.mongo_client.MongoClient.local_threshold_ms`.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.server_selection_timeout`.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.retry_writes`.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.retry_reads`.
 
 See the `PyMongo 3.13.0 release notes in JIRA`_ for the list of resolved issues
 in this release.
