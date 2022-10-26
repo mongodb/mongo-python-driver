@@ -64,7 +64,6 @@ can be changed to this::
     max_write_batch_size = doc['maxWriteBatchSize']
 
 .. _hello command: https://docs.mongodb.com/manual/reference/command/hello/
->>>>>>> 39eacd078ef3106b60cecb4f2df5b1b0de34061f
 
 See the `PyMongo 3.13.0 release notes in JIRA`_ for the list of resolved issues
 in this release.
