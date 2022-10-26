@@ -22,9 +22,6 @@
       .. autoattribute:: is_primary
       .. autoattribute:: is_mongos
       .. autoattribute:: nodes
-      .. autoattribute:: max_bson_size
-      .. autoattribute:: max_message_size
-      .. autoattribute:: max_write_batch_size
       .. autoattribute:: codec_options
       .. autoattribute:: read_preference
       .. autoattribute:: write_concern
@@ -50,3 +47,6 @@
       .. autoattribute:: max_idle_time_ms
       .. autoattribute:: local_threshold_ms
       .. autoattribute:: server_selection_timeout
+      .. autoattribute:: max_bson_size
+      .. autoattribute:: max_message_size
+      .. autoattribute:: max_write_batch_size
