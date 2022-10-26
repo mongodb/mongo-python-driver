@@ -735,7 +735,7 @@ class MongoClient(common.BaseObject):
         self.__cursor_manager = None
         self.__kill_cursors_queue = []
 
-        self._event_listeners = options.pool_options.event_listeners
+        self._event_listeners = options.pool_options._event_listeners
 
         # Cache of existing indexes used by ensure_index ops.
         self.__index_cache = {}
@@ -749,7 +749,7 @@ class MongoClient(common.BaseObject):
         )
 
         self.__all_credentials = {}
-        creds = options.credentials
+        creds = options._credentials
         if creds:
             self._cache_credentials(creds.source, creds)
 
@@ -1017,10 +1017,14 @@ class MongoClient(common.BaseObject):
 
     @property
     def event_listeners(self):
-        """The event listeners registered for this client.
+        """**DEPRECATED**: The event listeners registered for this client.
 
         See :mod:`~pymongo.monitoring` for details.
+
+        .. versionchanged:: 3.13
+           Deprecated.  Use ``client.options.event_listeners`` instead.
         """
+        warnings.warn("event_listeners is deprecated.  Use ``client.options.event_listeners`` instead.", DeprecationWarning, stacklevel=2)
         return self._event_listeners.event_listeners
 
     @property
@@ -1132,7 +1136,7 @@ class MongoClient(common.BaseObject):
 
     @property
     def max_pool_size(self):
-        """The maximum allowable number of concurrent connections to each
+        """**DEPRECATED**: The maximum allowable number of concurrent connections to each
         connected server. Requests to a server will block if there are
         `maxPoolSize` outstanding connections to the requested server.
         Defaults to 100. Cannot be 0.
@@ -1142,22 +1146,33 @@ class MongoClient(common.BaseObject):
         ``waitQueueTimeoutMS`` is set, a blocked operation will raise
         :exc:`~pymongo.errors.ConnectionFailure` after a timeout.
         By default ``waitQueueTimeoutMS`` is not set.
+
+        .. versionchanged:: 3.13
+           Deprecated.  Use ``client.options.pool_options.max_pool_size`` instead.
         """
+        warnings.warn("max_pool_size is deprecated.  Use ``client.options.pool_options.max_pool_size`` instead.", DeprecationWarning, stacklevel=2)
         return self.__options.pool_options.max_pool_size
 
     @property
     def min_pool_size(self):
-        """The minimum required number of concurrent connections that the pool
+        """**DEPRECATED**: The minimum required number of concurrent connections that the pool
         will maintain to each connected server. Default is 0.
+        .. versionchanged:: 3.13
+           Deprecated.
         """
+        warnings.warn("min_pool_size is deprecated.  Use ``client.options.pool_options.min_pool_size`` instead.", DeprecationWarning, stacklevel=2)
         return self.__options.pool_options.min_pool_size
 
     @property
     def max_idle_time_ms(self):
-        """The maximum number of milliseconds that a connection can remain
+        """**DEPRECATED**: The maximum number of milliseconds that a connection can remain
         idle in the pool before being removed and replaced. Defaults to
         `None` (no limit).
+
+        .. versionchanged:: 3.13
+           Deprecated.  Use ``client.options.pool_options.max_idle_time_seconds`` instead.
         """
+        warnings.warn("max_idle_time_ms is deprecated. Use ``client.options.pool_options.max_idle_time_seconds`` instead.", DeprecationWarning, stacklevel=2)
         seconds = self.__options.pool_options.max_idle_time_seconds
         if seconds is None:
             return None
@@ -1178,28 +1193,47 @@ class MongoClient(common.BaseObject):
         return frozenset(s.address for s in description.known_servers)
 
     @property
+    def options(self):
+        """The configuration options for this client.
+
+        :Returns:
+          An instance of :class:`~pymongo.client_options.ClientOptions`.
+
+        .. versionadded:: 3.13
+        """
+        return self.__options
+
+    @property
     def max_bson_size(self):
-        """The largest BSON object the connected server accepts in bytes.
+        """**DEPRECATED**: The largest BSON object the connected server accepts in bytes.
 
         If the client is not connected, this will block until a connection is
         established or raise ServerSelectionTimeoutError if no server is
         available.
+
+        .. versionchanged:: 3.13
+           Deprecated.
         """
+        warnings.warn("max_bson_size is Deprecated", DeprecationWarning, stacklevel=2)
         return self._server_property("max_bson_size")
 
     @property
     def max_message_size(self):
-        """The largest message the connected server accepts in bytes.
+        """**DEPRECATED**: The largest message the connected server accepts in bytes.
 
         If the client is not connected, this will block until a connection is
         established or raise ServerSelectionTimeoutError if no server is
         available.
+
+        .. versionchanged:: 3.13
+           Deprecated.
         """
+        warnings.warn("max_message_size is Deprecated", DeprecationWarning, stacklevel=2)
         return self._server_property("max_message_size")
 
     @property
     def max_write_batch_size(self):
-        """The maxWriteBatchSize reported by the server.
+        """**DEPRECATED**: The maxWriteBatchSize reported by the server.
 
         If the client is not connected, this will block until a connection is
         established or raise ServerSelectionTimeoutError if no server is
@@ -1207,27 +1241,51 @@ class MongoClient(common.BaseObject):
 
         Returns a default value when connected to server versions prior to
         MongoDB 2.6.
+
+        .. versionchanged:: 3.13
+           Deprecated.
         """
+        warnings.warn("max_write_batch_size is Deprecated", DeprecationWarning, stacklevel=2)
         return self._server_property("max_write_batch_size")
 
     @property
     def local_threshold_ms(self):
-        """The local threshold for this instance."""
+        """**DEPRECATED**: The local threshold for this instance.
+
+        .. versionchanged:: 3.13
+           Deprecated.  Use ``client.options.local_threshold_ms`` instead.
+        """
+        warnings.warn("local_threshold_ms is deprecated.  Use ``client.options.local_threshold_ms`` instead.", DeprecationWarning, stacklevel=2)
         return self.__options.local_threshold_ms
 
     @property
     def server_selection_timeout(self):
-        """The server selection timeout for this instance in seconds."""
+        """**DEPRECATED**: The server selection timeout for this instance in seconds.
+
+        .. versionchanged:: 3.13
+           Deprecated.  Use ``client.options.server_selection_timeout`` instead.
+        """
+        warnings.warn("server_selection_timeout is deprecated.  Use ``client.options.server_selection_timeout`` instead.", DeprecationWarning, stacklevel=2)
         return self.__options.server_selection_timeout
 
     @property
     def retry_writes(self):
-        """If this instance should retry supported write operations."""
+        """**DEPRECATED**: If this instance should retry supported write operations.
+
+        .. versionchanged:: 3.13
+           Deprecated.  Use ``client.options.retry_writes`` instead.
+        """
+        warnings.warn("retry_writes is deprecated.  Use ``client.options.retry_writes`` instead.", DeprecationWarning, stacklevel=2)
         return self.__options.retry_writes
 
     @property
     def retry_reads(self):
-        """If this instance should retry supported write operations."""
+        """**DEPRECATED**: If this instance should retry supported write operations.
+
+        .. versionchanged:: 3.13
+           Deprecated.  Use ``client.options.retry_reads`` instead.
+        """
+        warnings.warn("retry_reads is deprecated.  Use ``client.options.retry_reads`` instead.", DeprecationWarning, stacklevel=2)
         return self.__options.retry_reads
 
     def _is_writable(self):
@@ -1469,7 +1527,7 @@ class MongoClient(common.BaseObject):
 
         Re-raises any exception thrown by func().
         """
-        retryable = retryable and self.retry_writes and session and not session.in_transaction
+        retryable = retryable and self.options.retry_writes and session and not session.in_transaction
         return self._retry_internal(retryable, func, session, bulk)
 
     def _retry_internal(self, retryable, func, session, bulk):
@@ -1538,7 +1596,7 @@ class MongoClient(common.BaseObject):
 
         Re-raises any exception thrown by func().
         """
-        retryable = retryable and self.retry_reads and not (session and session.in_transaction)
+        retryable = retryable and self.options.retry_reads and not (session and session.in_transaction)
         last_error = None
         retrying = False
 

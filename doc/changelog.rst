@@ -4,6 +4,12 @@ Changelog
 Changes in Version 3.13.0
 -------------------------
 
+Notable improvements
+....................
+- Added :attr:`pymongo.mongo_client.MongoClient.options` for read-only access
+  to a client's configuration options.
+
+
 Issues Resolved
 ...............
 
@@ -19,13 +25,46 @@ Bug fixes
 
 Deprecations
 ............
-
 - Deprecated :meth:`~pymongo.collection.Collection.map_reduce` and
   :meth:`~pymongo.collection.Collection.inline_map_reduce`.
   Use :meth:`~pymongo.collection.Collection.aggregate` instead.
 - Deprecated the use of a plus sign '+' in user name or password.
-  Starting in 4.0 PyMongo will no longer decode plus signs in user names or passwords to spaces.  Users are recommended to use :meth:`~urllib.parse.quote`
+  Starting in 4.0 PyMongo will no longer decode plus signs in usernames or passwords to spaces.  Users are recommended to use :meth:`~urllib.parse.quote`
   when creating a URI from a username and password.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.event_listeners`.
+  Use :attr:`~pymongo.mongo_client.options.event_listeners` instead.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.max_pool_size`.
+  Use :attr:`~pymongo.mongo_client.options.pool_options.max_pool_size` instead.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.max_idle_time_ms`.
+  Use :attr:`~pymongo.mongo_client.options.pool_options.max_idle_time_seconds` instead.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.local_threshold_ms`.
+  Use :attr:`~pymongo.mongo_client.options.local_threshold_ms` instead.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.server_selection_timeout`.
+  Use :attr:`~pymongo.mongo_client.options.server_selection_timeout` instead.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.retry_writes`.
+  Use :attr:`~pymongo.mongo_client.options.retry_writes` instead.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.retry_reads`.
+  Use :attr:`~pymongo.mongo_client.options.retry_reads` instead.
+- Deprecated :attr:`pymongo.mongo_client.MongoClient.max_bson_size`,
+:attr:`pymongo.mongo_client.MongoClient.max_message_size`, and
+:attr:`pymongo.mongo_client.MongoClient.max_write_batch_size`. These helpers
+were incorrect when in ``loadBalanced=true mode`` and ambiguous in clusters
+with mixed versions. Use the `hello command`_ to get the authoritative
+value from the remote server instead. Code like this::
+
+    max_bson_size = client.max_bson_size
+    max_message_size = client.max_message_size
+    max_write_batch_size = client.max_write_batch_size
+
+can be changed to this::
+
+    doc = client.admin.command('hello')
+    max_bson_size = doc['maxBsonObjectSize']
+    max_message_size = doc['maxMessageSizeBytes']
+    max_write_batch_size = doc['maxWriteBatchSize']
+
+.. _hello command: https://docs.mongodb.com/manual/reference/command/hello/
+>>>>>>> 39eacd078ef3106b60cecb4f2df5b1b0de34061f
 
 See the `PyMongo 3.13.0 release notes in JIRA`_ for the list of resolved issues
 in this release.
