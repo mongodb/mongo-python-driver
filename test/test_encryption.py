@@ -537,6 +537,9 @@ class TestSpec(SpecRunner):
                 self.skipTest("GCP environment credentials are not set")
         if "key_vault_namespace" not in opts:
             opts["key_vault_namespace"] = "keyvault.datakeys"
+        if "extra_options" in opts:
+            opts.update(camel_to_snake_args(opts.pop("extra_options")))
+
         opts = dict(opts)
         return AutoEncryptionOpts(**opts)
 
