@@ -137,7 +137,7 @@
           "name": "insertOne",
           "object": "collection",
           "arguments": {
-            "timeoutMS": 500,
+            "timeoutMS": 1000,
             "document": {
               "x": 1
             }
@@ -356,7 +356,7 @@
           "name": "insertMany",
           "object": "collection",
           "arguments": {
-            "timeoutMS": 500,
+            "timeoutMS": 1000,
             "documents": [
               {
                 "x": 1
@@ -575,7 +575,7 @@
           "name": "deleteOne",
           "object": "collection",
           "arguments": {
-            "timeoutMS": 500,
+            "timeoutMS": 1000,
             "filter": {}
           }
         }
@@ -789,7 +789,7 @@
           "name": "replaceOne",
           "object": "collection",
           "arguments": {
-            "timeoutMS": 500,
+            "timeoutMS": 1000,
             "filter": {},
             "replacement": {
               "x": 1
@@ -1011,7 +1011,7 @@
           "name": "updateOne",
           "object": "collection",
           "arguments": {
-            "timeoutMS": 500,
+            "timeoutMS": 1000,
             "filter": {},
             "update": {
               "$set": {
@@ -1232,7 +1232,7 @@
           "name": "findOneAndDelete",
           "object": "collection",
           "arguments": {
-            "timeoutMS": 500,
+            "timeoutMS": 1000,
             "filter": {}
           }
         }
@@ -1446,7 +1446,7 @@
           "name": "findOneAndReplace",
           "object": "collection",
           "arguments": {
-            "timeoutMS": 500,
+            "timeoutMS": 1000,
             "filter": {},
             "replacement": {
               "x": 1
@@ -1668,7 +1668,7 @@
           "name": "findOneAndUpdate",
           "object": "collection",
           "arguments": {
-            "timeoutMS": 500,
+            "timeoutMS": 1000,
             "filter": {},
             "update": {
               "$set": {
@@ -1897,7 +1897,7 @@
           "name": "bulkWrite",
           "object": "collection",
           "arguments": {
-            "timeoutMS": 500,
+            "timeoutMS": 1000,
             "requests": [
               {
                 "insertOne": {
@@ -2124,7 +2124,7 @@
           "name": "listDatabases",
           "object": "client",
           "arguments": {
-            "timeoutMS": 500,
+            "timeoutMS": 1000,
             "filter": {}
           }
         }
@@ -2332,7 +2332,7 @@
           "name": "listDatabaseNames",
           "object": "client",
           "arguments": {
-            "timeoutMS": 500
+            "timeoutMS": 1000
           }
         }
       ],
@@ -2541,7 +2541,7 @@
           "name": "createChangeStream",
           "object": "client",
           "arguments": {
-            "timeoutMS": 500,
+            "timeoutMS": 1000,
             "pipeline": []
           }
         }
@@ -2759,7 +2759,7 @@
           "name": "aggregate",
           "object": "database",
           "arguments": {
-            "timeoutMS": 500,
+            "timeoutMS": 1000,
             "pipeline": [
               {
                 "$listLocalSessions": {}
@@ -2984,7 +2984,7 @@
           "name": "listCollections",
           "object": "database",
           "arguments": {
-            "timeoutMS": 500,
+            "timeoutMS": 1000,
             "filter": {}
           }
         }
@@ -3195,7 +3195,7 @@
           "name": "listCollectionNames",
           "object": "database",
           "arguments": {
-            "timeoutMS": 500,
+            "timeoutMS": 1000,
             "filter": {}
           }
         }
@@ -3406,7 +3406,7 @@
           "name": "createChangeStream",
           "object": "database",
           "arguments": {
-            "timeoutMS": 500,
+            "timeoutMS": 1000,
             "pipeline": []
           }
         }
@@ -3617,7 +3617,7 @@
           "name": "aggregate",
           "object": "collection",
           "arguments": {
-            "timeoutMS": 500,
+            "timeoutMS": 1000,
             "pipeline": []
           }
         }
@@ -3828,7 +3828,7 @@
           "name": "count",
           "object": "collection",
           "arguments": {
-            "timeoutMS": 500,
+            "timeoutMS": 1000,
             "filter": {}
           }
         }
@@ -4039,7 +4039,7 @@
           "name": "countDocuments",
           "object": "collection",
           "arguments": {
-            "timeoutMS": 500,
+            "timeoutMS": 1000,
             "filter": {}
           }
         }
@@ -4247,7 +4247,7 @@
           "name": "estimatedDocumentCount",
           "object": "collection",
           "arguments": {
-            "timeoutMS": 500
+            "timeoutMS": 1000
           }
         }
       ],
@@ -4457,7 +4457,7 @@
           "name": "distinct",
           "object": "collection",
           "arguments": {
-            "timeoutMS": 500,
+            "timeoutMS": 1000,
             "fieldName": "x",
             "filter": {}
           }
@@ -4670,7 +4670,7 @@
           "name": "find",
           "object": "collection",
           "arguments": {
-            "timeoutMS": 500,
+            "timeoutMS": 1000,
             "filter": {}
           }
         }
@@ -4881,7 +4881,7 @@
           "name": "findOne",
           "object": "collection",
           "arguments": {
-            "timeoutMS": 500,
+            "timeoutMS": 1000,
             "filter": {}
           }
         }
@@ -5089,7 +5089,7 @@
           "name": "listIndexes",
           "object": "collection",
           "arguments": {
-            "timeoutMS": 500
+            "timeoutMS": 1000
           }
         }
       ],
@@ -5298,7 +5298,7 @@
           "name": "createChangeStream",
           "object": "collection",
           "arguments": {
-            "timeoutMS": 500,
+            "timeoutMS": 1000,
             "pipeline": []
           }
         }

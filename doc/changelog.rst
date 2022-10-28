@@ -1,8 +1,11 @@
 Changelog
 =========
 
-Changes in Version 4.3
-----------------------
+Changes in Version 4.3 (4.3.2)
+------------------------------
+
+Note: We withheld uploading tags 4.3.0 and 4.3.1 to PyPI due to a
+version handling error and a necessary documentation update.
 
 `dnspython <https://pypi.python.org/pypi/dnspython>`_ is now a required
 dependency. This change makes PyMongo easier to install for use with "mongodb+srv://"
@@ -29,6 +32,10 @@ PyMongo 4.3 brings a number of improvements including:
 - PyMongo now internally caches AWS credentials that it fetches from AWS
   endpoints, to avoid rate limitations.  The cache is cleared when the
   credentials expire or an error is encountered.
+- When using the ``MONGODB-AWS`` authentication mechanism with the
+  ``aws`` extra, the behavior of credential fetching has changed with
+  ``pymongo_auth_aws>=1.1.0``.  Please see :doc:`examples/authentication` for
+  more information.
 
 Bug fixes
 .........

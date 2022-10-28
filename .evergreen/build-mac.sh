@@ -9,6 +9,7 @@ mkdir -p validdist
 mv dist/* validdist || true
 
 VERSION=${VERSION:-3.10}
+
 PYTHON=/Library/Frameworks/Python.framework/Versions/$VERSION/bin/python3
 rm -rf build
 

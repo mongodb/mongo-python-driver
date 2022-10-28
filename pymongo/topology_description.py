@@ -495,7 +495,7 @@ def _updated_topology_description_srv_polling(topology_description, seedlist):
         new_hosts = set(seedlist) - set(sds.keys())
         n_to_add = topology_description.srv_max_hosts - len(sds)
         if n_to_add > 0:
-            seedlist = sample(new_hosts, min(n_to_add, len(new_hosts)))
+            seedlist = sample(sorted(new_hosts), min(n_to_add, len(new_hosts)))
         else:
             seedlist = []
     # Add SDs corresponding to servers recently added to the SRV record.

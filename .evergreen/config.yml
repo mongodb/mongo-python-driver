@@ -494,14 +494,14 @@ functions:
         working_dir: "src"
         script: |
           cat <<EOT > prepare_enterprise_auth.sh
-          export SASL_HOST=${sasl_host}
-          export SASL_PORT=${sasl_port}
-          export SASL_USER=${sasl_user}
-          export SASL_PASS=${sasl_pass}
-          export SASL_DB=${sasl_db}
-          export PRINCIPAL=${principal}
-          export GSSAPI_DB=${gssapi_db}
-          export KEYTAB_BASE64=${keytab_base64}
+          export SASL_HOST='${sasl_host}'
+          export SASL_PORT='${sasl_port}'
+          export SASL_USER='${sasl_user}'
+          export SASL_PASS='${sasl_pass}'
+          export SASL_DB='${sasl_db}'
+          export PRINCIPAL='${principal}'
+          export GSSAPI_DB='${gssapi_db}'
+          export KEYTAB_BASE64='${keytab_base64}'
           EOT
     - command: shell.exec
       type: test
@@ -1034,6 +1034,43 @@ task_groups:
               bash ${DRIVERS_TOOLS}/.evergreen/serverless/delete-instance.sh
     tasks:
       - ".serverless"
+
+  - name: testgcpkms_task_group
+    setup_group_can_fail_task: true
+    setup_group_timeout_secs: 1800 # 30 minutes
+    setup_group:
+      - func: fetch source
+      - func: prepare resources
+      - func: fix absolute paths
+      - func: make files executable
+      - command: shell.exec
+        params:
+          shell: "bash"
+          script: |
+            ${PREPARE_SHELL}
+            echo '${testgcpkms_key_file}' > /tmp/testgcpkms_key_file.json
+            export GCPKMS_KEYFILE=/tmp/testgcpkms_key_file.json
+            export GCPKMS_DRIVERS_TOOLS=$DRIVERS_TOOLS
+            export GCPKMS_SERVICEACCOUNT="${testgcpkms_service_account}"
+            export GCPKMS_MACHINETYPE="e2-standard-4"
+            $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/create-and-setup-instance.sh
+      # Load the GCPKMS_GCLOUD, GCPKMS_INSTANCE, GCPKMS_REGION, and GCPKMS_ZONE expansions.
+      - command: expansions.update
+        params:
+          file: testgcpkms-expansions.yml
+    teardown_group:
+      - command: shell.exec
+        params:
+          shell: "bash"
+          script: |
+            ${PREPARE_SHELL}
+            export GCPKMS_GCLOUD=${GCPKMS_GCLOUD}
+            export GCPKMS_PROJECT=${GCPKMS_PROJECT}
+            export GCPKMS_ZONE=${GCPKMS_ZONE}
+            export GCPKMS_INSTANCENAME=${GCPKMS_INSTANCENAME}
+            $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/delete-instance.sh
+    tasks:
+      - testgcpkms-task
 
 tasks:
     # Wildcard task. Do you need to find out what tools are available and where?
@@ -1857,6 +1894,51 @@ tasks:
       commands:
         - func: "download and merge coverage"
 
+    - name: "testgcpkms-task"
+      commands:
+        - command: shell.exec
+          type: setup
+          params:
+            working_dir: "src"
+            shell: "bash"
+            script: |
+              ${PREPARE_SHELL}
+              echo "Copying files ... begin"
+              export GCPKMS_GCLOUD=${GCPKMS_GCLOUD}
+              export GCPKMS_PROJECT=${GCPKMS_PROJECT}
+              export GCPKMS_ZONE=${GCPKMS_ZONE}
+              export GCPKMS_INSTANCENAME=${GCPKMS_INSTANCENAME}
+              tar czf /tmp/mongo-python-driver.tgz .
+              GCPKMS_SRC=/tmp/mongo-python-driver.tgz GCPKMS_DST=$GCPKMS_INSTANCENAME: $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/copy-file.sh
+              echo "Copying files ... end"
+              echo "Untarring file ... begin"
+              GCPKMS_CMD="tar xf mongo-python-driver.tgz" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
+              echo "Untarring file ... end"
+        - command: shell.exec
+          type: test
+          params:
+            working_dir: "src"
+            shell: "bash"
+            script: |
+              ${PREPARE_SHELL}
+              export GCPKMS_GCLOUD=${GCPKMS_GCLOUD}
+              export GCPKMS_PROJECT=${GCPKMS_PROJECT}
+              export GCPKMS_ZONE=${GCPKMS_ZONE}
+              export GCPKMS_INSTANCENAME=${GCPKMS_INSTANCENAME}
+              GCPKMS_CMD="SUCCESS=true ./.evergreen/run-mongodb-fle-gcp-auto.sh mongodb://localhost:27017" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
+
+    - name: "testgcpkms-fail-task"
+      # testgcpkms-fail-task runs in a non-GCE environment.
+      # It is expected to fail to obtain GCE credentials.
+      commands:
+        - command: shell.exec
+          type: test
+          params:
+            working_dir: "src"
+            shell: "bash"
+            script: |
+              ${PREPARE_SHELL}
+              SUCCESS=false ./.evergreen/run-mongodb-fle-gcp-auto.sh mongodb://localhost:27017
 
 axes:
   # Choice of distro
@@ -2080,6 +2162,10 @@ axes:
         display_name: "Python 3.10"
         variables:
           PYTHON_BINARY: "/opt/python/3.10/bin/python3"
+      - id: "3.11"
+        display_name: "Python 3.11"
+        variables:
+          PYTHON_BINARY: "/opt/python/3.11/bin/python3"
       - id: "pypy3.7"
         display_name: "PyPy 3.7"
         variables:
@@ -2116,6 +2202,10 @@ axes:
         display_name: "Python 3.10"
         variables:
           PYTHON_BINARY: "C:/python/Python310/python.exe"
+      - id: "3.11"
+        display_name: "Python 3.11"
+        variables:
+          PYTHON_BINARY: "C:/python/Python311/python.exe"
 
   - id: python-version-windows-32
     display_name: "Python"
@@ -2136,6 +2226,10 @@ axes:
         display_name: "32-bit Python 3.10"
         variables:
           PYTHON_BINARY: "C:/python/32/Python310/python.exe"
+      - id: "3.11"
+        display_name: "32-bit Python 3.11"
+        variables:
+          PYTHON_BINARY: "C:/python/32/Python311/python.exe"
 
   # Choice of mod_wsgi version
   - id: mod-wsgi-version
@@ -2520,11 +2614,25 @@ buildvariants:
   exclude_spec:
    # Don't test green frameworks on these Python versions.
    - platform: ubuntu-18.04
-     python-version: ["pypy3.7", "pypy3.8"]
+     python-version: ["pypy3.7", "pypy3.8", "3.11"]
      green-framework: "*"
      auth-ssl: "*"
   display_name: "${green-framework} ${python-version} ${platform} ${auth-ssl}"
   tasks: *all-server-versions
+
+- matrix_name: "tests-python-version-green-framework-ubuntu20"
+  matrix_spec:
+    platform: ubuntu-20.04
+    python-version: ["3.11"]
+    green-framework: "*"
+    auth-ssl: "*"
+  display_name: "${green-framework} ${python-version} ${platform} ${auth-ssl}"
+  tasks:
+    - ".rapid"
+    - ".latest"
+    - ".6.0"
+    - ".5.0"
+    - ".4.4"
 
 - matrix_name: "tests-windows-python-version"
   matrix_spec:
@@ -2808,6 +2916,15 @@ buildvariants:
   display_name: "Load Balancer ${platform} ${python-version} ${mongodb-version} ${auth-ssl}"
   tasks:
     - name: "load-balancer-test"
+
+- name: testgcpkms-variant
+  display_name: "GCP KMS"
+  run_on:
+    - debian11-small
+  tasks:
+    - name: testgcpkms_task_group
+      batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
+    - testgcpkms-fail-task
 
 - name: Release
   display_name: Release
