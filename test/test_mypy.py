@@ -333,15 +333,20 @@ class TestDocumentType(unittest.TestCase):
         coll = client.test.test
         mov = {"name": "THX-1138", "year": 1971}
         movie = Movie(name="THX-1138", year=1971)
-        coll.insert_one(mov)
+        coll.insert_one(mov)  # type:ignore[arg-type]
+        coll.insert_one({"name": "THX-1138", "year": 1971})  # This will work because it is in-line.
         coll.insert_one(movie)
-        coll.insert_many([mov])
+        coll.insert_many([mov])  # type:ignore[list-item]
         coll.insert_many([movie])
-        bad_mov = {"name": "THX-1138", "year": "WRONG TYPE"}  # type:ignore[typeddict-item]
+        bad_mov = {"name": "THX-1138", "year": "WRONG TYPE"}
         bad_movie = Movie(name="THX-1138", year="WRONG TYPE")  # type:ignore[typeddict-item]
-        coll.insert_one(bad_mov)
+        coll.insert_one(bad_mov)  # type:ignore[arg-type]
+        coll.insert_one({"name": "THX-1138", "year": "WRONG TYPE"})  # type:ignore[typeddict-item]
         coll.insert_one(bad_movie)
-        coll.insert_many([bad_mov])
+        coll.insert_many([bad_mov])  # type:ignore[list-item]
+        coll.insert_many(
+            [{"name": "THX-1138", "year": "WRONG TYPE"}]
+        )  # type:ignore[typeddict-item]
         coll.insert_many([bad_movie])
 
     @only_type_check
