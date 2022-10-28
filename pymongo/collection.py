@@ -71,7 +71,7 @@ from pymongo.results import (
     InsertOneResult,
     UpdateResult,
 )
-from pymongo.typings import _CollationIn, _DocumentIn, _DocumentType, _Pipeline
+from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
 from pymongo.write_concern import WriteConcern
 
 _FIND_AND_MODIFY_DOC_FIELDS = {"value": 1}

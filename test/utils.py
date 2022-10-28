@@ -29,7 +29,6 @@ import warnings
 from collections import abc, defaultdict
 from functools import partial
 from test import client_context, db_pwd, db_user
-from typing import Any
 
 from bson import json_util
 from bson.objectid import ObjectId

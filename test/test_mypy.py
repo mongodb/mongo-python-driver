@@ -16,24 +16,11 @@
 sample client code that uses PyMongo typings."""
 import os
 import tempfile
-import typing
 import unittest
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List
 
 try:
-    from typing_extensions import NotRequired, TypedDict
+    from typing_extensions import TypedDict
 
     from bson import ObjectId
 
@@ -43,7 +30,7 @@ try:
         year: int
 
 except ImportError:
-    TypeDict = None
+    TypedDict = None
 
 
 try:
@@ -54,22 +41,13 @@ except ImportError:
 from test import IntegrationTest
 from test.utils import rs_or_single_client
 
-from bson import (
-    CodecOptions,
-    ObjectId,
-    decode,
-    decode_all,
-    decode_file_iter,
-    decode_iter,
-    encode,
-)
+from bson import CodecOptions, decode, decode_all, decode_file_iter, decode_iter, encode
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo import ASCENDING, MongoClient
 from pymongo.collection import Collection
 from pymongo.operations import InsertOne
 from pymongo.read_preferences import ReadPreference
-from pymongo.results import BulkWriteResult, InsertManyResult, InsertOneResult
 
 TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "mypy_fails")
 
