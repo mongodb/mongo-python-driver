@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List
 
 try:
     # Not available in Python 3.7
-    from typing_extensions import TypedDict
+    from typing import TypedDict
 
     class Movie(TypedDict):  # type: ignore[misc]
         name: str

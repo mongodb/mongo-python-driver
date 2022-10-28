@@ -27,7 +27,7 @@ class InsertOne(object):
 
     __slots__ = ("_doc",)
 
-    def __init__(self, document: Union[_DocumentIn, _DocumentType]) -> None:
+    def __init__(self, document: _DocumentIn) -> None:
         """Create an InsertOne instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
