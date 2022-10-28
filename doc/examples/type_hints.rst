@@ -92,7 +92,7 @@ Note that when using :class:`~bson.son.SON`, the key and value types must be giv
 Typed Collection
 ----------------
 
-You can use :py:class:`~typing_extensions.TypedDict` (Python 3.8+) when using a well-defined schema for the data in a
+You can use :py:class:`~typing.TypedDict` (Python 3.8+) when using a well-defined schema for the data in a
 :class:`~pymongo.collection.Collection`. Note that all `schema validation`_ for inserts and updates is done on the server.
 These methods automatically add an "_id" field.
 
