@@ -19,7 +19,7 @@ from pymongo import helpers
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import validate_boolean, validate_is_mapping, validate_list
 from pymongo.helpers import _gen_index_name, _index_document, _index_list
-from pymongo.typings import _CollationIn, _DocumentIn, _DocumentType, _Pipeline
+from pymongo.typings import _CollationIn, _DocumentIn, _Pipeline
 
 
 class InsertOne(object):
