@@ -98,7 +98,7 @@ These methods automatically add an "_id" field.
 
 .. doctest::
 
-  >>> from typing_extensions import TypedDict
+  >>> from typing import TypedDict
   >>> from pymongo import MongoClient
   >>> from pymongo.collection import Collection
   >>> class Movie(TypedDict):
