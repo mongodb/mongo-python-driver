@@ -2774,7 +2774,7 @@ buildvariants:
     # Python 3.10+ and MongoDB <= 3.4 don't have any TLS ciphers in common.
     - if:
         platform: "*"
-        python-version-windows: "3.10"
+        python-version-windows: ["3.10", "3.11"]
         auth-ssl: "auth-ssl"
       then:
         remove_tasks:
@@ -2807,7 +2807,7 @@ buildvariants:
     # Python 3.10+ and MongoDB <= 3.4 don't have any TLS ciphers in common.
     - if:
         platform: "*"
-        python-version-windows-32: "3.10"
+        python-version-windows-32: ["3.10", "3.11"]
         auth-ssl: "auth-ssl"
       then:
         remove_tasks:
@@ -2854,7 +2854,7 @@ buildvariants:
     # Python 3.10+ and MongoDB <= 3.4 don't have any TLS ciphers in common.
     - if:
         platform: "*"
-        python-version-windows: "3.10"
+        python-version-windows: ["3.10", "3.11"]
         auth-ssl: "auth-ssl"
         encryption: "*"
       then:
