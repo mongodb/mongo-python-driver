@@ -20,11 +20,9 @@ import unittest
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List
 
 try:
+    # Not available in Python 3.7
     from typing_extensions import TypedDict
 
-    from bson import ObjectId
-
-    # Not available in Python 3.7
     class Movie(TypedDict):  # type: ignore[misc]
         name: str
         year: int
