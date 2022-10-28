@@ -345,8 +345,8 @@ class TestDocumentType(unittest.TestCase):
         coll.insert_one(bad_movie)
         coll.insert_many([bad_mov])  # type:ignore[list-item]
         coll.insert_many(
-            [{"name": "THX-1138", "year": "WRONG TYPE"}]
-        )  # type:ignore[typeddict-item]
+            [{"name": "THX-1138", "year": "WRONG TYPE"}]  # type:ignore[typeddict-item]
+        )
         coll.insert_many([bad_movie])
 
     @only_type_check
