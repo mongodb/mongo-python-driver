@@ -1157,6 +1157,7 @@ class MongoClient(common.BaseObject):
     def min_pool_size(self):
         """**DEPRECATED**: The minimum required number of concurrent connections that the pool
         will maintain to each connected server. Default is 0.
+
         .. versionchanged:: 3.13
            Deprecated.
         """
