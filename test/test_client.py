@@ -1637,7 +1637,7 @@ class TestClient(IntegrationTest):
         gc.collect()
         with client_knobs(min_heartbeat_interval=0.003):
             client = MongoClient(
-                "invalid:27017", heartbeatFrequencyMS=3, serverSelectionTimeoutMS=100
+                "invalid:27017", heartbeatFrequencyMS=3, serverSelectionTimeoutMS=150
             )
             initial_count = server_description_count()
             self.addCleanup(client.close)
