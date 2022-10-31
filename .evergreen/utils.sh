@@ -17,7 +17,8 @@ createvirtualenv () {
         echo "Cannot test without virtualenv"
         exit 1
     fi
-    $VIRTUALENV $VENVPATH
+    # Workaround for bug in older versions of virtualenv.
+    $VIRTUALENV $VENVPATH || $PYTHON -m venv $VENVPATH
     if [ "Windows_NT" = "$OS" ]; then
         . $VENVPATH/Scripts/activate
     else
