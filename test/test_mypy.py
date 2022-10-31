@@ -19,12 +19,15 @@ import tempfile
 import unittest
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List
 
-from typing_extensions import TypedDict
+try:
+    from typing_extensions import TypedDict
 
+    class Movie(TypedDict):  # type: ignore[misc]
+        name: str
+        year: int
 
-class Movie(TypedDict):  # type: ignore[misc]
-    name: str
-    year: int
+except ImportError:
+    TypedDict = None
 
 
 try:
