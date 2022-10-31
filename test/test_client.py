@@ -1621,6 +1621,7 @@ class TestClient(IntegrationTest):
         with self.assertRaises(ConfigurationError):
             MongoClient(["host1", "host2"], directConnection=True)
 
+    @unittest.skipIf(sys.platform.startswith("java"), "Jython does not support gc.get_objects")
     @unittest.skipIf("PyPy" in sys.version, "PYTHON-2927 fails often on PyPy")
     def test_continuous_network_errors(self):
         def server_description_count():
@@ -1649,6 +1650,11 @@ class TestClient(IntegrationTest):
             # AssertionError: 19 != 46 within 15 delta (27 difference)
             # On Python 3.11 we seem to get more of a delta.
             self.assertAlmostEqual(initial_count, final_count, delta=20)
+
+    @unittest.skipIf(_HAVE_DNSPYTHON, "dnspython must not be installed")
+    def test_srv_no_dnspython_error(self):
+        with self.assertRaisesRegex(ConfigurationError, 'The "dnspython" module must be'):
+            MongoClient("mongodb+srv://test1.test.build.10gen.cc/")
 
 
 class TestExhaustCursor(IntegrationTest):
