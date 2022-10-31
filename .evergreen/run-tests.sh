@@ -72,35 +72,28 @@ fi
 . .evergreen/utils.sh
 
 if [ -z "$PYTHON_BINARY" ]; then
-    VIRTUALENV=$(command -v virtualenv) || true
-    if [ -z "$VIRTUALENV" ]; then
-        PYTHON=$(command -v python || command -v python3) || true
-        if [ -z "$PYTHON" ]; then
-            echo "Cannot test without python or python3 installed!"
-            exit 1
-        fi
-    else
-        $VIRTUALENV --never-download pymongotestvenv
-        . pymongotestvenv/bin/activate
-        PYTHON=python
-        trap "deactivate; rm -rf pymongotestvenv" EXIT HUP
+    PYTHON=$(command -v python || command -v python3) || true
+    if [ -z "$PYTHON" ]; then
+        echo "Cannot test without python or python3 installed!"
+        exit 1
     fi
+    createvirtualenv $PYTHON pymongotestvenv
+    PYTHON=python
+    trap "deactivate; rm -rf pymongotestvenv" EXIT HUP
+
 elif [ "$COMPRESSORS" = "snappy" ]; then
-    $PYTHON_BINARY -m virtualenv --system-site-packages --never-download snappytest
-    . snappytest/bin/activate
+    createvirtualenv $PYTHON_BINARY snappytest
     trap "deactivate; rm -rf snappytest" EXIT HUP
     # 0.5.2 has issues in pypy3(.5)
     pip install python-snappy==0.5.1
     PYTHON=python
 elif [ "$COMPRESSORS" = "zstd" ]; then
-    $PYTHON_BINARY -m virtualenv --system-site-packages --never-download zstdtest
-    . zstdtest/bin/activate
+    createvirtualenv $PYTHON_BINARY zstdtest
     trap "deactivate; rm -rf zstdtest" EXIT HUP
     pip install zstandard
     PYTHON=python
 elif [ -n "$SETDEFAULTENCODING" ]; then
-    $PYTHON_BINARY -m virtualenv --system-site-packages --never-download encodingtest
-    . encodingtest/bin/activate
+    createvirtualenv $PYTHON_BINARY encodingtest
     trap "deactivate; rm -rf encodingtest" EXIT HUP
     mkdir test-sitecustomize
     cat <<EOT > test-sitecustomize/sitecustomize.py
