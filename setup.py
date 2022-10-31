@@ -200,7 +200,7 @@ class doc(Command):
             except:
                 pass
 
-        sphinx_args = ["-E", "-b", mode, "doc", path]
+        sphinx_args = ["-E", "-b", mode, "doc", path, "-W"]
 
         # sphinx.main calls sys.exit when sphinx.build_main exists.
         # Call build_main directly so we can check status and print

@@ -4,6 +4,11 @@ Changelog
 Changes in Version 3.13.0
 -------------------------
 
+Version 3.13 provides an upgrade path to PyMongo 4.x. Most of the API changes
+from PyMongo 4.0 have been backported in a backward compatible way, allowing
+applications to be written against PyMongo >= 3.13, rather then PyMongo 3.x or
+PyMongo 4.x. See the `PyMongo 4 Migration Guide`_ for detailed examples.
+
 Notable improvements
 ....................
 - Added :attr:`pymongo.mongo_client.MongoClient.options` for read-only access
@@ -43,11 +48,11 @@ Deprecations
 - Deprecated :attr:`pymongo.mongo_client.MongoClient.retry_reads`.
   Use :attr:`~pymongo.mongo_client.options.retry_reads` instead.
 - Deprecated :attr:`pymongo.mongo_client.MongoClient.max_bson_size`,
-:attr:`pymongo.mongo_client.MongoClient.max_message_size`, and
-:attr:`pymongo.mongo_client.MongoClient.max_write_batch_size`. These helpers
-were incorrect when in ``loadBalanced=true mode`` and ambiguous in clusters
-with mixed versions. Use the `hello command`_ to get the authoritative
-value from the remote server instead. Code like this::
+  :attr:`pymongo.mongo_client.MongoClient.max_message_size`, and
+  :attr:`pymongo.mongo_client.MongoClient.max_write_batch_size`. These helpers
+  were incorrect when in ``loadBalanced=true mode`` and ambiguous in clusters
+  with mixed versions. Use the `hello command`_ to get the authoritative
+  value from the remote server instead. Code like this::
 
     max_bson_size = client.max_bson_size
     max_message_size = client.max_message_size
@@ -65,6 +70,7 @@ can be changed to this::
 See the `PyMongo 3.13.0 release notes in JIRA`_ for the list of resolved issues
 in this release.
 
+.. _PyMongo 4 Migration Guide: https://pymongo.readthedocs.io/en/stable/migrate-to-pymongo4.html
 .. _PYTHON-3222: https://jira.mongodb.org/browse/PYTHON-3222
 .. _PyMongo 3.13.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=31570
 

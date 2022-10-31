@@ -2053,8 +2053,6 @@ class Collection(common.BaseObject):
 
         .. _$expr: https://docs.mongodb.com/manual/reference/operator/query/expr/
         .. _$geoWithin: https://docs.mongodb.com/manual/reference/operator/query/geoWithin/
-        .. _$center: https://docs.mongodb.com/manual/reference/operator/query/center/#op._S_center
-        .. _$centerSphere: https://docs.mongodb.com/manual/reference/operator/query/centerSphere/#op._S_centerSphere
         """
         warnings.warn(
             "count is deprecated. Use estimated_document_count or "
