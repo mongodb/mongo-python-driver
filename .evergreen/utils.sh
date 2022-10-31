@@ -18,7 +18,7 @@ createvirtualenv () {
         exit 1
     fi
     # Workaround for bug in older versions of virtualenv.
-    $VIRTUALENV $VENVPATH || PYTHON -m venv $VENVPATH
+    $VIRTUALENV $VENVPATH || $PYTHON -m venv $VENVPATH
     if [ "Windows_NT" = "$OS" ]; then
         . $VENVPATH/Scripts/activate
     else
