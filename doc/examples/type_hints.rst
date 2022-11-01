@@ -94,24 +94,33 @@ Typed Collection
 
 You can use :py:class:`~typing.TypedDict` (Python 3.8+) when using a well-defined schema for the data in a
 :class:`~pymongo.collection.Collection`. Note that all `schema validation`_ for inserts and updates is done on the server.
-These methods automatically add an "_id" field.
+These methods automatically add an "_id" field. In the example below the "_id" field is
+marked by the :py:class:`~typing_extensions.NotRequired` notation to allow it to be accessed when reading from
+``result``. If it is simply not included in the definition, then it will be automatically added, but it will raise a
+type-checking error if you attempt to access it. Another option would be to generate the "_id" field yourself, and make
+it a required field. This would give the expected behavior, but would then also prevent you from relying on PyMongo to
+insert the "_id" field.
 
 .. doctest::
 
-  >>> from typing import TypedDict
+  >>> from typing_extensions import TypedDict, NotRequired
   >>> from pymongo import MongoClient
   >>> from pymongo.collection import Collection
+  >>> from bson import ObjectId
   >>> class Movie(TypedDict):
+  ...       _id: NotRequired[ObjectId]
   ...       name: str
   ...       year: int
   ...
   >>> client: MongoClient = MongoClient()
   >>> collection: Collection[Movie] = client.test.test
+  >>> # If NotRequired was not specified above, then you would be required to specify _id
+  >>> # when you construct the Movie object.
   >>> inserted = collection.insert_one(Movie(name="Jurassic Park", year=1993))
   >>> result = collection.find_one({"name": "Jurassic Park"})
   >>> assert result is not None
   >>> assert result["year"] == 1993
-  >>> # This will not be type checked, despite being present, because it is added by PyMongo.
+  >>> # This will be type checked, despite being not originally present
   >>> assert type(result["_id"]) == ObjectId
 
 Typed Database

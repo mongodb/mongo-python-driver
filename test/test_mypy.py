@@ -20,9 +20,21 @@ import unittest
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List
 
 try:
-    from typing_extensions import TypedDict
+    from typing_extensions import NotRequired, TypedDict
+
+    from bson import ObjectId
 
     class Movie(TypedDict):  # type: ignore[misc]
+        name: str
+        year: int
+
+    class ImplicitMovie(TypedDict):  # type: ignore[misc]
+        _id: NotRequired[ObjectId]
+        name: str
+        year: int
+
+    class MovieWithId(TypedDict):  # type: ignore[misc]
+        _id: ObjectId
         name: str
         year: int
 
@@ -323,6 +335,33 @@ class TestDocumentType(unittest.TestCase):
             [{"name": "THX-1138", "year": "WRONG TYPE"}]  # type: ignore[typeddict-item]
         )
         coll.insert_many([bad_movie])
+
+    @only_type_check
+    def test_typeddict_explicit_document_type(self) -> None:
+        out = MovieWithId(_id=ObjectId(), name="THX-1138", year=1971)
+        assert out is not None
+        # This should fail because the output is a Movie.
+        assert out["foo"]  # type:ignore[typeddict-item]
+        assert type(out["_id"]) == ObjectId
+
+    # This should work the same as the test above, but this time using NotRequired to allow
+    # automatic insertion of the _id field by insert_one.
+    @only_type_check
+    def test_typeddict_not_required_document_type(self) -> None:
+        out = ImplicitMovie(name="THX-1138", year=1971)
+        assert out is not None
+        # This should fail because the output is a Movie.
+        assert out["foo"]  # type:ignore[typeddict-item]
+        assert type(out["_id"]) == ObjectId
+
+    @only_type_check
+    def test_typeddict_empty_document_type(self) -> None:
+        out = Movie(name="THX-1138", year=1971)
+        assert out is not None
+        # This should fail because the output is a Movie.
+        assert out["foo"]  # type:ignore[typeddict-item]
+        # This should fail because _id is not included in our TypedDict definition.
+        assert type(out["_id"]) == ObjectId  # type:ignore[typeddict-item]
 
     @only_type_check
     def test_raw_bson_document_type(self) -> None:
