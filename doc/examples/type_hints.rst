@@ -103,6 +103,7 @@ insert the "_id" field.
 
 .. doctest::
 
+  >>> # The typing_extensions package must be installed unless using Python 3.11+.
   >>> from typing_extensions import TypedDict, NotRequired
   >>> from pymongo import MongoClient
   >>> from pymongo.collection import Collection
