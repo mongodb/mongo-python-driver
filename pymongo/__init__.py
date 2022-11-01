@@ -99,7 +99,7 @@ See https://docs.mongodb.com/manual/tutorial/manage-the-database-profiler
    Deprecated
 """
 
-version_tuple = (3, 13, 0, ".dev0")
+version_tuple = (3, 13, 0)
 
 
 def get_version_string():
