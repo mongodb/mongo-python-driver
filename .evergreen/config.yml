@@ -1074,6 +1074,7 @@ task_groups:
 
   - name: testazurekms_task_group
     setup_group:
+    - func: prepare resources
     - command: shell.exec
       params:
         shell: bash
@@ -1102,8 +1103,7 @@ task_groups:
         shell: bash
         script: |-
           set -o errexit
-          DRIVERS_TOOLS=$(pwd)/drivers-evergreen-tools
-              export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
+          export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
               export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
               $DRIVERS_TOOLS/.evergreen/csfle/azurekms/delete-vm.sh
     setup_group_can_fail_task: true
