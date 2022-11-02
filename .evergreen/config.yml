@@ -1074,6 +1074,7 @@ task_groups:
 
   - name: testazurekms_task_group
     setup_group:
+    - func: fetch source
     - func: prepare resources
     - command: shell.exec
       params:
@@ -1981,7 +1982,6 @@ tasks:
 
     - name: testazurekms-task
       commands:
-      - func: fetch source
       - command: shell.exec
         params:
           shell: bash
