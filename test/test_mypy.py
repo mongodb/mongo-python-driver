@@ -368,7 +368,8 @@ class TestDocumentType(unittest.TestCase):
         coll = client.test.test
         coll.insert_one(ImplicitMovie(name="THX-1138", year=1971))
         out = coll.find_one({})
-        assert type(out["_id"]) == ObjectId
+        if out is not None:
+            assert type(out["_id"]) == ObjectId
 
     @only_type_check
     def test_raw_bson_document_type(self) -> None:
