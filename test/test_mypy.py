@@ -363,6 +363,13 @@ class TestDocumentType(unittest.TestCase):
         # This should fail because _id is not included in our TypedDict definition.
         assert type(out["_id"]) == ObjectId  # type:ignore[typeddict-item]
 
+    def test_typeddict_find_notrequired(self):
+        client: MongoClient[ImplicitMovie] = rs_or_single_client()
+        coll = client.test.test
+        coll.insert_one(ImplicitMovie(name="THX-1138", year=1971))
+        out = coll.find_one({})
+        assert type(out["_id"]) == ObjectId
+
     @only_type_check
     def test_raw_bson_document_type(self) -> None:
         client = MongoClient(document_class=RawBSONDocument)
