@@ -3016,6 +3016,14 @@ buildvariants:
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
     - testgcpkms-fail-task
 
+- name: testazurekms-variant
+  display_name: "Azure KMS"
+  run_on: debian11-small
+  tasks:
+    - name: testazurekms_task_group
+      batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
+    - testazurekms-fail-task
+
 - name: Release
   display_name: Release
   batchtime: 20160 # 14 days
