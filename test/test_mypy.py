@@ -24,21 +24,21 @@ try:
 
     from bson import ObjectId
 
-    class Movie(TypedDict):  # type: ignore[misc]
+    class Movie(TypedDict):
         name: str
         year: int
 
-    class ImplicitMovie(TypedDict):  # type: ignore[misc]
+    class ImplicitMovie(TypedDict):
         _id: NotRequired[ObjectId]
         name: str
         year: int
 
-    class MovieWithId(TypedDict):  # type: ignore[misc]
+    class MovieWithId(TypedDict):
         _id: ObjectId
         name: str
         year: int
 
-except ImportError:
+except ImportError as exc:
     TypedDict = None
 
 

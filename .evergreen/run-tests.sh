@@ -195,6 +195,7 @@ $PYTHON -c 'import sys; print(sys.version)'
 
 # Run the tests with coverage if requested and coverage is installed.
 # Only cover CPython. PyPy reports suspiciously low coverage.
+$PYTHON -m pip install typing_extensions
 PYTHON_IMPL=$($PYTHON -c "import platform; print(platform.python_implementation())")
 COVERAGE_ARGS=""
 if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
