@@ -18,7 +18,7 @@
 """
 import copy
 from itertools import islice
-from typing import Any, NoReturn
+from typing import Any, Generic, NoReturn
 
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
@@ -47,6 +47,7 @@ from pymongo.message import (
     _randint,
 )
 from pymongo.read_preferences import ReadPreference
+from pymongo.typings import _DocumentType
 from pymongo.write_concern import WriteConcern
 
 _DELETE_ALL = 0
@@ -136,7 +137,7 @@ def _raise_bulk_write_error(full_result: Any) -> NoReturn:
     raise BulkWriteError(full_result)
 
 
-class _Bulk(object):
+class _Bulk(object, Generic[_DocumentType]):
     """The private guts of the bulk write API."""
 
     def __init__(self, collection, ordered, bypass_document_validation, comment=None, let=None):

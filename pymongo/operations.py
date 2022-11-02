@@ -13,21 +13,21 @@
 # limitations under the License.
 
 """Operation class definitions."""
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Generic, List, Mapping, Optional, Sequence, Tuple, Union
 
 from pymongo import helpers
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import validate_boolean, validate_is_mapping, validate_list
 from pymongo.helpers import _gen_index_name, _index_document, _index_list
-from pymongo.typings import _CollationIn, _DocumentIn, _Pipeline
+from pymongo.typings import RawBSONDocument, _CollationIn, _DocumentType, _Pipeline
 
 
-class InsertOne(object):
+class InsertOne(Generic[_DocumentType]):
     """Represents an insert_one operation."""
 
     __slots__ = ("_doc",)
 
-    def __init__(self, document: _DocumentIn) -> None:
+    def __init__(self, document: Union[_DocumentType, RawBSONDocument]) -> None:
         """Create an InsertOne instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -58,7 +58,7 @@ _IndexList = Sequence[Tuple[str, Union[int, str, Mapping[str, Any]]]]
 _IndexKeyHint = Union[str, _IndexList]
 
 
-class DeleteOne(object):
+class DeleteOne(object, Generic[_DocumentType]):
     """Represents a delete_one operation."""
 
     __slots__ = ("_filter", "_collation", "_hint")
@@ -114,7 +114,7 @@ class DeleteOne(object):
         return not self == other
 
 
-class DeleteMany(object):
+class DeleteMany(object, Generic[_DocumentType]):
     """Represents a delete_many operation."""
 
     __slots__ = ("_filter", "_collation", "_hint")
@@ -170,7 +170,7 @@ class DeleteMany(object):
         return not self == other
 
 
-class ReplaceOne(object):
+class ReplaceOne(object, Generic[_DocumentType]):
     """Represents a replace_one operation."""
 
     __slots__ = ("_filter", "_doc", "_upsert", "_collation", "_hint")
@@ -178,7 +178,7 @@ class ReplaceOne(object):
     def __init__(
         self,
         filter: Mapping[str, Any],
-        replacement: Mapping[str, Any],
+        replacement: Union[_DocumentType, RawBSONDocument],
         upsert: bool = False,
         collation: Optional[_CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,
@@ -308,7 +308,7 @@ class _UpdateOp(object):
         )
 
 
-class UpdateOne(_UpdateOp):
+class UpdateOne(_UpdateOp, Generic[_DocumentType]):
     """Represents an update_one operation."""
 
     __slots__ = ()
@@ -316,7 +316,7 @@ class UpdateOne(_UpdateOp):
     def __init__(
         self,
         filter: Mapping[str, Any],
-        update: Union[Mapping[str, Any], _Pipeline],
+        update: Union[_DocumentType, RawBSONDocument, _Pipeline],
         upsert: bool = False,
         collation: Optional[_CollationIn] = None,
         array_filters: Optional[List[Mapping[str, Any]]] = None,
@@ -366,7 +366,7 @@ class UpdateOne(_UpdateOp):
         )
 
 
-class UpdateMany(_UpdateOp):
+class UpdateMany(_UpdateOp, Generic[_DocumentType]):
     """Represents an update_many operation."""
 
     __slots__ = ()
@@ -374,7 +374,7 @@ class UpdateMany(_UpdateOp):
     def __init__(
         self,
         filter: Mapping[str, Any],
-        update: Union[Mapping[str, Any], _Pipeline],
+        update: Union[_DocumentType, RawBSONDocument, _Pipeline],
         upsert: bool = False,
         collation: Optional[_CollationIn] = None,
         array_filters: Optional[List[Mapping[str, Any]]] = None,
@@ -424,7 +424,7 @@ class UpdateMany(_UpdateOp):
         )
 
 
-class IndexModel(object):
+class IndexModel(object, Generic[_DocumentType]):
     """Represents an index to create."""
 
     __slots__ = ("__document",)

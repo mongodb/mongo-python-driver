@@ -18,7 +18,7 @@ import contextlib
 import enum
 import socket
 import weakref
-from typing import Any, Mapping, Optional, Sequence
+from typing import Any, Generic, Mapping, Optional, Sequence
 
 try:
     from pymongocrypt.auto_encrypter import AutoEncrypter
@@ -39,6 +39,7 @@ from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from bson.son import SON
 from pymongo import _csot
+from pymongo.bulk import _DocumentType
 from pymongo.cursor import Cursor
 from pymongo.daemon import _spawn_daemon
 from pymongo.encryption_options import AutoEncryptionOpts
@@ -430,7 +431,7 @@ class QueryType(str, enum.Enum):
     """Used to encrypt a value for an equality query."""
 
 
-class ClientEncryption(object):
+class ClientEncryption(object, Generic[_DocumentType]):
     """Explicit client-side field level encryption."""
 
     def __init__(

@@ -22,7 +22,14 @@ from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List
 try:
     from typing_extensions import TypedDict
 
+    from bson import ObjectId
+
     class Movie(TypedDict):  # type: ignore[misc]
+        name: str
+        year: int
+
+    class MovieWithId(TypedDict):  # type: ignore[misc]
+        _id: ObjectId
         name: str
         year: int
 
@@ -45,6 +52,7 @@ from pymongo import ASCENDING, MongoClient
 from pymongo.collection import Collection
 from pymongo.operations import InsertOne
 from pymongo.read_preferences import ReadPreference
+from pymongo.typings import _DocumentType
 
 TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "mypy_fails")
 
@@ -110,8 +118,9 @@ class TestPymongo(IntegrationTest):
 
     def test_bulk_write(self) -> None:
         self.coll.insert_one({})
-        requests = [InsertOne({})]
-        result = self.coll.bulk_write(requests)
+        coll: Collection[Movie] = self.coll
+        requests: List[InsertOne[Movie]] = [InsertOne(Movie(name="American Graffiti", year=1973))]
+        result = coll.bulk_write(requests)
         self.assertTrue(result.acknowledged)
 
     def test_command(self) -> None:
@@ -323,6 +332,14 @@ class TestDocumentType(unittest.TestCase):
             [{"name": "THX-1138", "year": "WRONG TYPE"}]  # type: ignore[typeddict-item]
         )
         coll.insert_many([bad_movie])
+
+    @only_type_check
+    def test_bulk_write_document_type_insertion(self):
+        client: MongoClient[MovieWithId] = MongoClient()
+        coll: Collection[MovieWithId] = client.test.test
+        coll.bulk_write(
+            [InsertOne(Movie({"name": "THX-1138", "year": 1971}))]  # type:ignore[arg-type]
+        )
 
     @only_type_check
     def test_raw_bson_document_type(self) -> None:
