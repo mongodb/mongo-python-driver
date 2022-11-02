@@ -1072,6 +1072,45 @@ task_groups:
     tasks:
       - testgcpkms-task
 
+  - name: testazurekms_task_group
+    setup_group:
+    - command: shell.exec
+      params:
+        shell: bash
+        script: |-
+          set -o errexit
+          echo '${testazurekms_publickey}' > /tmp/testazurekms_publickey
+          echo '${testazurekms_privatekey}' > /tmp/testazurekms_privatekey
+          # Set 600 permissions on private key file. Otherwise ssh / scp may error with permissions "are too open".
+          chmod 600 /tmp/testazurekms_privatekey
+          export AZUREKMS_CLIENTID=${testazurekms_clientid}
+          export AZUREKMS_TENANTID=${testazurekms_tenantid}
+          export AZUREKMS_SECRET=${testazurekms_secret}
+          export AZUREKMS_DRIVERS_TOOLS=$DRIVERS_TOOLS
+          export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
+          export AZUREKMS_PUBLICKEYPATH=/tmp/testazurekms_publickey
+          export AZUREKMS_PRIVATEKEYPATH=/tmp/testazurekms_privatekey
+          export AZUREKMS_SCOPE=${testazurekms_scope}
+          export AZUREKMS_VMNAME_PREFIX=CDRIVER
+          $DRIVERS_TOOLS/.evergreen/csfle/azurekms/create-and-setup-vm.sh
+    - command: expansions.update
+      params:
+        file: testazurekms-expansions.yml
+    teardown_group:
+    - command: shell.exec
+      params:
+        shell: bash
+        script: |-
+          set -o errexit
+          DRIVERS_TOOLS=$(pwd)/drivers-evergreen-tools
+              export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
+              export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
+              $DRIVERS_TOOLS/.evergreen/csfle/azurekms/delete-vm.sh
+    setup_group_can_fail_task: true
+    setup_group_timeout_secs: 1800
+    tasks:
+    - testazurekms-task
+
 tasks:
     # Wildcard task. Do you need to find out what tools are available and where?
     # Throw it here, and execute this task on all buildvariants
@@ -1939,6 +1978,57 @@ tasks:
             script: |
               ${PREPARE_SHELL}
               SUCCESS=false ./.evergreen/run-mongodb-fle-gcp-auto.sh mongodb://localhost:27017
+
+    - name: testazurekms-task
+      commands:
+      - func: fetch source
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |-
+            set -o errexit
+            echo "Copying files ... begin"
+            export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
+            export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
+            export AZUREKMS_PRIVATEKEYPATH=/tmp/testazurekms_privatekey
+            mkdir testazurekms
+            cp . testazurekms
+            tar czf testazurekms.tgz testazurekms/*
+            AZUREKMS_SRC="testazurekms.tgz" \
+            AZUREKMS_DST="~/" \
+              $DRIVERS_TOOLS/.evergreen/csfle/azurekms/copy-file.sh
+            echo "Copying files ... end"
+            echo "Untarring file ... begin"
+            AZUREKMS_CMD="tar xf testazurekms.tgz" \
+              $DRIVERS_TOOLS/.evergreen/csfle/azurekms/run-command.sh
+            echo "Untarring file ... end"
+      - command: shell.exec
+        type: test
+        params:
+          shell: bash
+          script: |-
+            set -o errexit
+            export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
+            export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
+            export AZUREKMS_PRIVATEKEYPATH=/tmp/testazurekms_privatekey
+            AZUREKMS_CMD="LD_LIBRARY_PATH=./testazurekms MONGODB_URI='mongodb://localhost:27017' KEY_NAME='${testazurekms_keyname}' KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}'
+              SUCCESS=false
+              ./.evergreen/run-mongodb-fle-azure-auto.sh" \
+              $DRIVERS_TOOLS/.evergreen/csfle/azurekms/run-command.sh
+    - name: testazurekms-fail-task
+      commands:
+      - func: fetch source
+      - command: shell.exec
+        type: test
+        params:
+          shell: bash
+          script: |-
+            set -o errexit
+            LD_LIBRARY_PATH=./install \
+            MONGODB_URI='mongodb://localhost:27017' \
+            KEY_NAME='${testazurekms_keyname}' \
+            KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}' \
+            SUCCESS=false
 
 axes:
   # Choice of distro
