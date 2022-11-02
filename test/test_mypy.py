@@ -24,11 +24,11 @@ try:
 
     from bson import ObjectId
 
-    class Movie(TypedDict):  # type: ignore[misc]
+    class Movie(TypedDict):
         name: str
         year: int
 
-    class MovieWithId(TypedDict):  # type: ignore[misc]
+    class MovieWithId(TypedDict):
         _id: ObjectId
         name: str
         year: int
@@ -50,9 +50,8 @@ from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo import ASCENDING, MongoClient
 from pymongo.collection import Collection
-from pymongo.operations import InsertOne
+from pymongo.operations import InsertOne, ReplaceOne
 from pymongo.read_preferences import ReadPreference
-from pymongo.typings import _DocumentType
 
 TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "mypy_fails")
 
@@ -339,6 +338,32 @@ class TestDocumentType(unittest.TestCase):
         coll: Collection[MovieWithId] = client.test.test
         coll.bulk_write(
             [InsertOne(Movie({"name": "THX-1138", "year": 1971}))]  # type:ignore[arg-type]
+        )
+        mov_dict = {"_id": ObjectId(), "name": "THX-1138", "year": 1971}
+        coll.bulk_write(
+            [InsertOne(mov_dict)]  # type:ignore[arg-type]
+        )
+        coll.bulk_write(
+            [
+                InsertOne({"_id": ObjectId(), "name": "THX-1138", "year": 1971})
+            ]  # No error because it is in-line.
+        )
+
+    @only_type_check
+    def test_bulk_write_document_type_replacement(self):
+        client: MongoClient[MovieWithId] = MongoClient()
+        coll: Collection[MovieWithId] = client.test.test
+        coll.bulk_write(
+            [ReplaceOne({}, Movie({"name": "THX-1138", "year": 1971}))]  # type:ignore[arg-type]
+        )
+        mov_dict = {"_id": ObjectId(), "name": "THX-1138", "year": 1971}
+        coll.bulk_write(
+            [ReplaceOne({}, mov_dict)]  # type:ignore[arg-type]
+        )
+        coll.bulk_write(
+            [
+                ReplaceOne({}, {"_id": ObjectId(), "name": "THX-1138", "year": 1971})
+            ]  # No error because it is in-line.
         )
 
     @only_type_check

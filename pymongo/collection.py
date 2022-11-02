@@ -79,11 +79,11 @@ _FIND_AND_MODIFY_DOC_FIELDS = {"value": 1}
 
 _WriteOp = Union[
     InsertOne[_DocumentType],
-    DeleteOne[_DocumentType],
-    DeleteMany[_DocumentType],
+    DeleteOne,
+    DeleteMany,
     ReplaceOne[_DocumentType],
-    UpdateOne[_DocumentType],
-    UpdateMany[_DocumentType],
+    UpdateOne,
+    UpdateMany,
 ]
 # Hint supports index name, "myIndex", or list of index pairs: [('x', 1), ('y', -1)]
 _IndexList = Sequence[Tuple[str, Union[int, str, Mapping[str, Any]]]]
@@ -527,9 +527,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """
         common.validate_list("requests", requests)
 
-        blk: _Bulk[_DocumentType] = _Bulk(
-            self, ordered, bypass_document_validation, comment=comment, let=let
-        )
+        blk = _Bulk(self, ordered, bypass_document_validation, comment=comment, let=let)
         for request in requests:
             try:
                 request._add_to_bulk(blk)
@@ -711,9 +709,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 yield (message._INSERT, document)
 
         write_concern = self._write_concern_for(session)
-        blk: _Bulk[_DocumentType] = _Bulk(
-            self, ordered, bypass_document_validation, comment=comment
-        )
+        blk = _Bulk(self, ordered, bypass_document_validation, comment=comment)
         blk.ops = [doc for doc in gen()]
         blk.execute(write_concern, session=session)
         return InsertManyResult(inserted_ids, write_concern.acknowledged)

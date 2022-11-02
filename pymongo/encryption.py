@@ -39,7 +39,6 @@ from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from bson.son import SON
 from pymongo import _csot
-from pymongo.bulk import _DocumentType
 from pymongo.cursor import Cursor
 from pymongo.daemon import _spawn_daemon
 from pymongo.encryption_options import AutoEncryptionOpts
@@ -56,6 +55,7 @@ from pymongo.pool import PoolOptions, _configured_socket
 from pymongo.read_concern import ReadConcern
 from pymongo.results import BulkWriteResult, DeleteResult
 from pymongo.ssl_support import get_ssl_context
+from pymongo.typings import _DocumentType
 from pymongo.uri_parser import parse_host
 from pymongo.write_concern import WriteConcern
 

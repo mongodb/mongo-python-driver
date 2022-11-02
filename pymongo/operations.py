@@ -114,7 +114,7 @@ class DeleteOne(object, Generic[_DocumentType]):
         return not self == other
 
 
-class DeleteMany(object, Generic[_DocumentType]):
+class DeleteMany(object):
     """Represents a delete_many operation."""
 
     __slots__ = ("_filter", "_collation", "_hint")
