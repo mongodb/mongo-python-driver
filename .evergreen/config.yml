@@ -1076,11 +1076,13 @@ task_groups:
     setup_group:
     - func: fetch source
     - func: prepare resources
+    - func: fix absolute paths
+    - func: make files executable
     - command: shell.exec
       params:
         shell: bash
         script: |-
-          set -o errexit
+          ${PREPARE_SHELL}
           echo '${testazurekms_publickey}' > /tmp/testazurekms_publickey
           echo '${testazurekms_privatekey}' > /tmp/testazurekms_privatekey
           # Set 600 permissions on private key file. Otherwise ssh / scp may error with permissions "are too open".
@@ -1103,7 +1105,7 @@ task_groups:
       params:
         shell: bash
         script: |-
-          set -o errexit
+          ${PREPARE_SHELL}
           export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
               export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
               $DRIVERS_TOOLS/.evergreen/csfle/azurekms/delete-vm.sh
