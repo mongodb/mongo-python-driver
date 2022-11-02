@@ -105,3 +105,7 @@ class TestonDemandAzureCredentials(IntegrationTest):
             codec_options=CodecOptions(),
         )
         self.client_encryption.create_data_key("azure", self.master_key)
+
+
+if __name__ == "__main__":
+    unittest.main()
