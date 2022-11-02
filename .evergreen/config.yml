@@ -1082,11 +1082,13 @@ task_groups:
       params:
         shell: bash
         script: |-
+          set -o errexit
           ${PREPARE_SHELL}
           echo '${testazurekms_publickey}' > /tmp/testazurekms_publickey
           echo '${testazurekms_privatekey}' > /tmp/testazurekms_privatekey
           # Set 600 permissions on private key file. Otherwise ssh / scp may error with permissions "are too open".
           chmod 600 /tmp/testazurekms_privatekey
+          echo "Setting env variables..."
           export AZUREKMS_CLIENTID="${testazurekms_clientid}"
           export AZUREKMS_TENANTID="${testazurekms_tenantid}"
           export AZUREKMS_SECRET="${testazurekms_secret}"
@@ -1096,6 +1098,7 @@ task_groups:
           export AZUREKMS_PRIVATEKEYPATH="/tmp/testazurekms_privatekey"
           export AZUREKMS_SCOPE="${testazurekms_scope}"
           export AZUREKMS_VMNAME_PREFIX="PYTHON_DRIVER"
+          echo "Set env variables..."
           echo "hello ${AZUREKMS_VMNAME_PREFIX} there"
           echo "hello ${AZUREKMS_VMNAME_PREFIX:-} there"
           if [ -z "${AZUREKMS_VMNAME_PREFIX:-}" ]; then
