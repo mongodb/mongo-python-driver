@@ -77,10 +77,8 @@ class TestonDemandAzureCredentials(IntegrationTest):
     def setUp(self):
         super(TestonDemandAzureCredentials, self).setUp()
         self.master_key = {
-            "projectId": "devprod-drivers",
-            "location": "global",
-            "keyRing": "key-ring-csfle",
-            "keyName": "key-name-csfle",
+            "keyVaultEndpoint": "https://keyvault-drivers-2411.vault.azure.net/keys/",
+            "keyName": "KEY-NAME",
         }
 
     @unittest.skipIf(not os.getenv("TEST_FLE_AZURE_AUTO"), "Not testing FLE Azure auto")
