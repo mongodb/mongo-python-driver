@@ -1097,7 +1097,7 @@ task_groups:
           export AZUREKMS_PRIVATEKEYPATH="/tmp/testazurekms_privatekey"
           export AZUREKMS_SCOPE="${testazurekms_scope}"
           export AZUREKMS_VMNAME_PREFIX="PYTHON_DRIVER"
-          src/check_stuff.sh
+          ./src/.evergreen/check_stuff.sh
           $DRIVERS_TOOLS/.evergreen/csfle/azurekms/create-and-setup-vm.sh
     - command: expansions.update
       params:
@@ -2030,9 +2030,10 @@ tasks:
           shell: bash
           script: |-
             set -o errexit
+            cd src
             KEY_NAME='${testazurekms_keyname}' \
             KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}' \
-            SUCCESS=false ./src/.evergreen/run-mongodb-fle-azure-auto.sh \
+            SUCCESS=false ./.evergreen/run-mongodb-fle-azure-auto.sh \
             mongodb://localhost:27017
 
 axes:
