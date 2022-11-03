@@ -111,6 +111,67 @@ class TestAuthAWS(unittest.TestCase):
         client.get_database().test.find_one()
         self.assertNotEqual(auth.get_cached_credentials(), None)
 
+    def test_environment_variables_ignored(self):
+        creds = self.setup_cache()
+        self.assertIsNotNone(creds)
+        prev = os.environ.copy()
+
+        client = MongoClient(self.uri)
+        self.addCleanup(client.close)
+
+        client.get_database().test.find_one()
+
+        self.assertIsNotNone(auth.get_cached_credentials())
+
+        os.environ["AWS_ACCESS_KEY_ID"] = "foo"
+        os.environ["AWS_ACCESS_KEY_ID"] = "bar"
+        os.environ["AWS_SECRET_KEY"] = "baz"
+
+        client.get_database().test.find_one()
+
+        auth.set_cached_credentials(None)
+
+        client2 = MongoClient(self.uri)
+        self.addCleanup(client2.close)
+        with self.assertRaises(OperationFailure):
+            client2.get_database().test.find_one()
+
+        for key in ["AWS_ACCESS_KEY_ID", "AWS_SESSION_TOKEN", "AWS_SECRET_KEY"]:
+            if key not in prev:
+                del os.environ[key]
+            else:
+                os.environ[key] = prev[key]
+
+    def test_no_cache_environment_variables(self):
+        creds = self.setup_cache()
+        self.assertIsNotNone(creds)
+        prev = os.environ.copy()
+        os.environ["AWS_ACCESS_KEY_ID"] = creds.username
+        os.environ["AWS_SECRET_KEY"] = creds.password
+        if creds.token:
+            os.environ["AWS_SESSION_TOKEN"] = creds.token
+        auth.set_cached_credentials(None)
+
+        client = MongoClient(self.uri)
+        self.addCleanup(client.close)
+
+        client.get_database().test.find_one()
+
+        self.assertIsNone(auth.get_cached_credentials())
+
+        os.environ["AWS_ACCESS_KEY_ID"] = "foo"
+
+        client2 = MongoClient(self.uri)
+        self.addCleanup(client2.close)
+        with self.assertRaises(OperationFailure):
+            client2.get_database().test.find_one()
+
+        for key in ["AWS_ACCESS_KEY_ID", "AWS_SESSION_TOKEN", "AWS_SECRET_KEY"]:
+            if key not in prev:
+                del os.environ[key]
+            else:
+                os.environ[key] = prev[key]
+
 
 class TestAWSLambdaExamples(unittest.TestCase):
     def test_shared_client(self):
