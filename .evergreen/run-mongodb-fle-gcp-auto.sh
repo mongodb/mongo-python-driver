@@ -20,8 +20,6 @@ if echo "$MONGODB_URI" | grep -q "@"; then
   echo "MONGODB_URI unexpectedly contains user credentials in FLE GCP test!";
   exit 1
 fi
-# Now we can safely enable xtrace
-set -o xtrace
 
 authtest () {
     echo "Running GCP Credential Acquisition Test with $PYTHON"

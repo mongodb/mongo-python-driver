@@ -2016,12 +2016,12 @@ tasks:
           shell: bash
           script: |-
             set -o errexit
+            ${PREPARE_SHELL}
             export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
             export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
             export AZUREKMS_PRIVATEKEYPATH=/tmp/testazurekms_privatekey
-            export DRIVERS_TOOLS=$(pwd)/drivers-evergreen-tools
-            AZUREKMS_CMD="LD_LIBRARY_PATH=./testazurekms MONGODB_URI='mongodb://localhost:27017' KEY_NAME='${testazurekms_keyname}' KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}'
-              SUCCESS=false
+            AZUREKMS_CMD="MONGODB_URI='mongodb://localhost:27017' KEY_NAME='${testazurekms_keyname}' KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}'
+              SUCCESS=true
               ./.evergreen/run-mongodb-fle-azure-auto.sh" \
               $DRIVERS_TOOLS/.evergreen/csfle/azurekms/run-command.sh
     - name: testazurekms-fail-task
@@ -2039,10 +2039,10 @@ tasks:
           script: |-
             set -o errexit
             cd src
+            MONGODB_URI="mongodb://localhost:27017" \
             KEY_NAME='${testazurekms_keyname}' \
             KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}' \
-            SUCCESS=false ./.evergreen/run-mongodb-fle-azure-auto.sh \
-            mongodb://localhost:27017
+            SUCCESS=false ./.evergreen/run-mongodb-fle-azure-auto.sh
 
 axes:
   # Choice of distro

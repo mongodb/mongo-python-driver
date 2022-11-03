@@ -10,18 +10,15 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #            Main Program                  #
 ############################################
 
-if [[ -z "$1" ]]; then
-    echo "usage: $0 <MONGODB_URI>"
+if [[ -z "$MONGODB_URI" ]]; then
+    echo "Must define MONGODB_URI"
     exit 1
 fi
-export MONGODB_URI="$1"
 
 if echo "$MONGODB_URI" | grep -q "@"; then
   echo "MONGODB_URI unexpectedly contains user credentials in FLE Azure test!";
   exit 1
 fi
-# Now we can safely enable xtrace
-set -o xtrace
 
 authtest () {
     echo "Running Azure Credential Acquisition Test with $PYTHON"
