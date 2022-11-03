@@ -86,8 +86,10 @@ class TestCustomServerSelectorFunction(IntegrationTest):
 
         wait_until(all_hosts_started, "receive heartbeat from all hosts")
         expected_port = max(
-            [n.address[1] for n in client._topology._description.readable_servers]
-        )  # type:ignore[type-var]
+            [
+                n.address[1] for n in client._topology._description.readable_servers
+            ]  # type:ignore[type-var]
+        )
 
         # Insert 1 record and access it 10 times.
         coll.insert_one({"name": "John Doe"})
