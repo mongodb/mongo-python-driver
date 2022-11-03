@@ -2000,15 +2000,13 @@ tasks:
             export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
             export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
             export AZUREKMS_PRIVATEKEYPATH=/tmp/testazurekms_privatekey
-            mkdir /tmp/testazurekms
-            cp -r . /tmp/testazurekms
-            tar czfv testazurekms.tgz /tmp/testazurekms/*
-            AZUREKMS_SRC="testazurekms.tgz" \
+            tar czf /tmp/mongo-python-driver.tgz .
+            AZUREKMS_SRC="/tmp/mongo-python-driver.tgz" \
             AZUREKMS_DST="~/" \
               $DRIVERS_TOOLS/.evergreen/csfle/azurekms/copy-file.sh
             echo "Copying files ... end"
             echo "Untarring file ... begin"
-            AZUREKMS_CMD="tar xf testazurekms.tgz" \
+            AZUREKMS_CMD="tar xf mongo-python-driver.tgz" \
               $DRIVERS_TOOLS/.evergreen/csfle/azurekms/run-command.sh
             echo "Untarring file ... end"
       - command: shell.exec
