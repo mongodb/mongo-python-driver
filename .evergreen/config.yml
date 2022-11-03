@@ -1994,6 +1994,7 @@ tasks:
           shell: bash
           script: |-
             set -o errexit
+            ${PREPARE_SHELL}
             echo "Copying files ... begin"
             export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
             export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
