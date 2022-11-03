@@ -58,7 +58,7 @@ _IndexList = Sequence[Tuple[str, Union[int, str, Mapping[str, Any]]]]
 _IndexKeyHint = Union[str, _IndexList]
 
 
-class DeleteOne(object, Generic[_DocumentType]):
+class DeleteOne(object):
     """Represents a delete_one operation."""
 
     __slots__ = ("_filter", "_collation", "_hint")
@@ -308,7 +308,7 @@ class _UpdateOp(object):
         )
 
 
-class UpdateOne(_UpdateOp, Generic[_DocumentType]):
+class UpdateOne(_UpdateOp):
     """Represents an update_one operation."""
 
     __slots__ = ()
@@ -366,7 +366,7 @@ class UpdateOne(_UpdateOp, Generic[_DocumentType]):
         )
 
 
-class UpdateMany(_UpdateOp, Generic[_DocumentType]):
+class UpdateMany(_UpdateOp):
     """Represents an update_many operation."""
 
     __slots__ = ()
@@ -424,7 +424,7 @@ class UpdateMany(_UpdateOp, Generic[_DocumentType]):
         )
 
 
-class IndexModel(object, Generic[_DocumentType]):
+class IndexModel(object):
     """Represents an index to create."""
 
     __slots__ = ("__document",)
