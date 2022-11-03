@@ -186,7 +186,7 @@ Typed Database
 --------------
 
 While less common, you could specify that the documents in an entire database
-match a well-defined shema using :py:class:`~typing.TypedDict` (Python 3.8+).
+match a well-defined schema using :py:class:`~typing.TypedDict` (Python 3.8+).
 
 
 .. doctest::

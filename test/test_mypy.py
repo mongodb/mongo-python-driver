@@ -20,7 +20,7 @@ import unittest
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List
 
 try:
-    from typing_extensions import NotRequired, TypedDict
+    from typing import NotRequired, TypedDict
 
     from bson import ObjectId
 
