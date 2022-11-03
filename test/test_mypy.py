@@ -38,7 +38,7 @@ try:
         name: str
         year: int
 
-except ImportError as exc:
+except ImportError:
     TypedDict = None
     ImplicitMovie = None
 
@@ -407,9 +407,6 @@ class TestDocumentType(unittest.TestCase):
 
 
 class TestCommandDocumentType(unittest.TestCase):
-    def setUp(obj) -> None:
-        super().setUpClass()
-
     @only_type_check
     def test_default(self) -> None:
         client: MongoClient = MongoClient()
