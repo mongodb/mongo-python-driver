@@ -20,16 +20,11 @@ import unittest
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List
 
 try:
-    from typing import NotRequired, TypedDict
+    from typing import TypedDict
 
     from bson import ObjectId
 
     class Movie(TypedDict):
-        name: str
-        year: int
-
-    class ImplicitMovie(TypedDict):
-        _id: NotRequired[ObjectId]
         name: str
         year: int
 
@@ -41,6 +36,16 @@ try:
 except ImportError:
     TypedDict = None
 
+try:
+    from typing import NotRequired  # type:ignore[attr-defined]
+
+    class ImplicitMovie(TypedDict):
+        _id: NotRequired[ObjectId]
+        name: str
+        year: int
+
+except ImportError:
+    NotRequired = None  # type: ignore[assignment]
 
 try:
     from mypy import api
@@ -81,7 +86,9 @@ class TestMypyFails(unittest.TestCase):
         if api is None:
             raise unittest.SkipTest("Mypy is not installed")
         if TypedDict is None:
-            raise unittest.SkipTest("typing_extensions is not installed")
+            raise unittest.SkipTest("TypedDict is supported on Python 3.8+ only")
+        if TypedDict is None:
+            raise unittest.SkipTest("TypedDict is supported on Python 3.8+ only")
         stdout, stderr, exit_status = api.run([filename])
         self.assertTrue(exit_status, msg=stdout)
 
@@ -294,6 +301,8 @@ class TestDocumentType(unittest.TestCase):
     def setUp(self) -> None:
         if TypedDict is None:
             raise unittest.SkipTest("typing_extensions is not installed")
+        if NotRequired is None:
+            raise unittest.SkipTest("Python 3.11+ is required to use NotRequired.")
 
     @only_type_check
     def test_default(self) -> None:
