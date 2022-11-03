@@ -107,6 +107,7 @@ insert the "_id" field.
   >>> from typing_extensions import TypedDict
   >>> from pymongo import MongoClient
   >>> from pymongo.collection import Collection
+  >>> from bson import ObjectId
   >>> class Movie(TypedDict):
   ...       name: str
   ...       year: int
@@ -157,7 +158,6 @@ There are three approaches to this:
   ...
   >>> client: MongoClient = MongoClient()
   >>> collection: Collection[Movie] = client.test.test
->>>>>>> Stashed changes
   >>> inserted = collection.insert_one(Movie(name="Jurassic Park", year=1993))
   >>> result = collection.find_one({})
   >>> assert result is not None
