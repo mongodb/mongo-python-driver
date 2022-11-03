@@ -30,7 +30,7 @@ authtest () {
     $PYTHON -m pip install https://github.com/blink1073/libmongocrypt/archive/refs/heads/PYTHON-3396.zip#subdirectory=bindings/python
     curl -O https://s3.amazonaws.com/mciuploads/libmongocrypt/all/master/latest/libmongocrypt-all.tar.gz
     mkdir libmongocrypt-all && tar xzf libmongocrypt-all.tar.gz -C libmongocrypt-all
-    export PYMONGOCRYPT_LIB=$(pwd)/libmongocrypt-all/debian10/nocrypto/lib64/libmongocrypt.so
+    export PYMONGOCRYPT_LIB=$(pwd)/libmongocrypt-all/debian10/nocrypto/lib/libmongocrypt.so
     $PYTHON -m pip install '.'
     TEST_FLE_AZURE_AUTO=1 $PYTHON test/test_on_demand_csfle.py
 }
