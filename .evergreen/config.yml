@@ -1995,13 +1995,14 @@ tasks:
           script: |-
             set -o errexit
             ${PREPARE_SHELL}
+            cd src
             echo "Copying files ... begin"
             export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
             export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
             export AZUREKMS_PRIVATEKEYPATH=/tmp/testazurekms_privatekey
             mkdir /tmp/testazurekms
             cp -r . /tmp/testazurekms
-            tar czf testazurekms.tgz /tmp/testazurekms/*
+            tar czfv testazurekms.tgz /tmp/testazurekms/*
             AZUREKMS_SRC="testazurekms.tgz" \
             AZUREKMS_DST="~/" \
               $DRIVERS_TOOLS/.evergreen/csfle/azurekms/copy-file.sh
