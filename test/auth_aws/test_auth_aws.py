@@ -125,7 +125,7 @@ class TestAuthAWS(unittest.TestCase):
 
         os.environ["AWS_ACCESS_KEY_ID"] = "foo"
         os.environ["AWS_ACCESS_KEY_ID"] = "bar"
-        os.environ["AWS_SECRET_KEY"] = "baz"
+        os.environ["AWS_SESSION_TOKEN"] = "baz"
 
         client.get_database().test.find_one()
 
@@ -167,7 +167,7 @@ class TestAuthAWS(unittest.TestCase):
             client2.get_database().test.find_one()
 
         for key in ["AWS_ACCESS_KEY_ID", "AWS_SESSION_TOKEN", "AWS_SECRET_KEY"]:
-            if key not in prev:
+            if key not in prev and key in os.environ:
                 del os.environ[key]
             else:
                 os.environ[key] = prev[key]
