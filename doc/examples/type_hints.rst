@@ -92,7 +92,7 @@ Note that when using :class:`~bson.son.SON`, the key and value types must be giv
 Typed Collection
 ----------------
 
-You can use :py:class:`~typing.TypedDict` (Python 3.8+) when using a well-defined schema for the data in a
+You can use :py:class:`~typing_extensions.TypedDict` (Python 3.8+) when using a well-defined schema for the data in a
 :class:`~pymongo.collection.Collection`. Note that all `schema validation`_ for inserts and updates is done on the server.
 These methods automatically add an "_id" field. In the example below the "_id" field is
 marked by the :py:class:`~typing_extensions.NotRequired` notation to allow it to be accessed when reading from
@@ -103,8 +103,12 @@ insert the "_id" field.
 
 .. doctest::
 
+<<<<<<< Updated upstream
   >>> # The typing_extensions package must be installed unless using Python 3.11+.
   >>> from typing_extensions import TypedDict, NotRequired
+=======
+  >>> from typing_extensions import TypedDict
+>>>>>>> Stashed changes
   >>> from pymongo import MongoClient
   >>> from pymongo.collection import Collection
   >>> from bson import ObjectId
@@ -115,15 +119,87 @@ insert the "_id" field.
   ...
   >>> client: MongoClient = MongoClient()
   >>> collection: Collection[Movie] = client.test.test
+<<<<<<< Updated upstream
   >>> # If NotRequired was not specified above, then you would be required to specify _id
   >>> # when you construct the Movie object.
+=======
+  >>> collection.drop()
   >>> inserted = collection.insert_one(Movie(name="Jurassic Park", year=1993))
-  >>> result = collection.find_one({"name": "Jurassic Park"})
+  >>> result = collection.find_one({})
   >>> assert result is not None
   >>> assert result["year"] == 1993
-  >>> # This will be type checked, despite being not originally present
+  >>> # This will not be type checked, despite being present, because it is added by PyMongo.
   >>> assert type(result["_id"]) == ObjectId
 
+Modeling Document Types with TypedDict
+--------------------------------------
+
+You can use :py:class:`~typing_extensions.TypedDict` (Python 3.8+) to model structured data.
+As noted above, PyMongo will automatically add an `_id` field if it is not present. This also applies to TypedDict.
+There are three approaches to this:
+
+  1. Do not specify `_id` at all. It will be inserted automatically, and can be retrieved at run-time, but cannot be type-checked.
+
+  2. Specify `_id` explicitly. This will mean that every instance of your custom TypedDict class will have to passed a value for `_id`.
+
+  3. Make use of :py:class:`~typing_extensions.NotRequired`. This has the flexibility of 1, but with the ability to type-check.
+
+
+.. doctest::
+
+  >>> from typing_extensions import TypedDict, NotRequired
+  >>> from pymongo import MongoClient
+  >>> from pymongo.collection import Collection
+  >>> from bson import ObjectId
+  >>> class Movie(TypedDict):
+  ...       name: str
+  ...       year: int
+  ...
+  >>> class ExplicitMovie(TypedDict):
+  ...       _id: ObjectId
+  ...       name: str
+  ...       year: int
+  ...
+  >>> class NotRequiredMovie(TypedDict):
+  ...       _id: NotRequired[ObjectId]
+  ...       name: str
+  ...       year: int
+  ...
+  >>> client: MongoClient = MongoClient()
+  >>> collection: Collection[Movie] = client.test.test
+>>>>>>> Stashed changes
+  >>> inserted = collection.insert_one(Movie(name="Jurassic Park", year=1993))
+  >>> result = collection.find_one({})
+  >>> assert result is not None
+<<<<<<< Updated upstream
+  >>> assert result["year"] == 1993
+  >>> # This will be type checked, despite being not originally present
+=======
+  >>> # This will not be type checked, despite being present, because it is added by PyMongo.
+>>>>>>> Stashed changes
+  >>> assert type(result["_id"]) == ObjectId
+  >>> collection: Collection[ExplicitMovie] = client.test.test
+  >>> # Note that the _id keyword argument must be supplied
+  >>> inserted = collection.insert_one(ExplicitMovie(_id=ObjectId(), name="Jurassic Park", year=1993))
+  >>> result = collection.find_one({})
+  >>> assert result is not None
+  >>> # This will be type checked.
+  >>> assert type(result["_id"]) == ObjectId
+  >>> collection: Collection[NotRequiredMovie] = client.test.test
+  >>> # Note the lack of _id, similar to the first example
+  >>> inserted = collection.insert_one(NotRequiredMovie(name="Jurassic Park", year=1993))
+  >>> result = collection.find_one({})
+  >>> assert result is not None
+  >>> # This will be type checked, despite not being provided explicitly.
+  >>> assert type(result["_id"]) == ObjectId
+
+<<<<<<< Updated upstream
+=======
+This same typing scheme works for all of the insert methods (`insert_one`, `insert_many`, and `bulk_write`). For `bulk_write`,
+both `InsertOne/Many` and `ReplaceOne/Many` operators are generic.
+
+
+>>>>>>> Stashed changes
 Typed Database
 --------------
 
