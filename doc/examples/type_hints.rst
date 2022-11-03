@@ -114,6 +114,29 @@ These methods automatically add an "_id" field.
   >>> # This will not be type checked, despite being present, because it is added by PyMongo.
   >>> assert type(result["_id"]) == ObjectId
 
+This same typing scheme works for all of the insert methods (`insert_one`, `insert_many`, and `bulk_write`). For `bulk_write`,
+both `InsertOne/Many` and `ReplaceOne/Many` operators are generic.
+
+.. doctest::
+
+  >>> from typing import TypedDict
+  >>> from pymongo import MongoClient
+  >>> from pymongo.operations import InsertOne
+  >>> from pymongo.collection import Collection
+  >>> class Movie(TypedDict):
+  ...       name: str
+  ...       year: int
+  ...
+  >>> client: MongoClient = MongoClient()
+  >>> collection: Collection[Movie] = client.test.test
+  >>> inserted = collection.bulk_write([InsertOne(Movie(name="Jurassic Park", year=1993))])
+  >>> result = collection.find_one({"name": "Jurassic Park"})
+  >>> assert result is not None
+  >>> assert result["year"] == 1993
+  >>> # This will not be type checked, despite being present, because it is added by PyMongo.
+  >>> assert type(result["_id"]) == ObjectId
+
+
 Typed Database
 --------------
 

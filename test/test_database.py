@@ -201,7 +201,7 @@ class TestDatabase(IntegrationTest):
         db.capped.insert_one({})
         db.non_capped.insert_one({})
         self.addCleanup(client.drop_database, db.name)
-
+        filter: dict
         # Should not send nameOnly.
         for filter in ({"options.capped": True}, {"options.capped": True, "name": "capped"}):
             results.clear()

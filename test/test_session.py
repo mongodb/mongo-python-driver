@@ -898,7 +898,9 @@ class TestCausalConsistency(unittest.TestCase):
 
     @client_context.require_no_standalone
     def test_writes(self):
-        self._test_writes(lambda coll, session: coll.bulk_write([InsertOne({})], session=session))
+        self._test_writes(
+            lambda coll, session: coll.bulk_write([InsertOne[dict]({})], session=session)
+        )
         self._test_writes(lambda coll, session: coll.insert_one({}, session=session))
         self._test_writes(lambda coll, session: coll.insert_many([{}], session=session))
         self._test_writes(
@@ -944,7 +946,7 @@ class TestCausalConsistency(unittest.TestCase):
     @client_context.require_no_standalone
     def test_writes_do_not_include_read_concern(self):
         self._test_no_read_concern(
-            lambda coll, session: coll.bulk_write([InsertOne({})], session=session)
+            lambda coll, session: coll.bulk_write([InsertOne[dict]({})], session=session)
         )
         self._test_no_read_concern(lambda coll, session: coll.insert_one({}, session=session))
         self._test_no_read_concern(lambda coll, session: coll.insert_many([{}], session=session))
@@ -1077,7 +1079,9 @@ class TestClusterTime(IntegrationTest):
     def test_cluster_time(self):
         listener = SessionTestListener()
         # Prevent heartbeats from updating $clusterTime between operations.
-        client = rs_or_single_client(event_listeners=[listener], heartbeatFrequencyMS=999999)
+        client: MongoClient[dict] = rs_or_single_client(
+            event_listeners=[listener], heartbeatFrequencyMS=999999
+        )
         self.addCleanup(client.close)
         collection = client.pymongo_test.collection
         # Prepare for tests of find() and aggregate().

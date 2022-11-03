@@ -296,7 +296,7 @@ class TestBulk(BulkTestBase):
     def test_numerous_inserts(self):
         # Ensure we don't exceed server's maxWriteBatchSize size limit.
         n_docs = client_context.max_write_batch_size + 100
-        requests = [InsertOne({}) for _ in range(n_docs)]
+        requests = [InsertOne[dict]({}) for _ in range(n_docs)]
         result = self.coll.bulk_write(requests, ordered=False)
         self.assertEqual(n_docs, result.inserted_count)
         self.assertEqual(n_docs, self.coll.count_documents({}))
@@ -347,7 +347,7 @@ class TestBulk(BulkTestBase):
 
     def test_bulk_write_invalid_arguments(self):
         # The requests argument must be a list.
-        generator = (InsertOne({}) for _ in range(10))
+        generator = (InsertOne[dict]({}) for _ in range(10))
         with self.assertRaises(TypeError):
             self.coll.bulk_write(generator)  # type: ignore[arg-type]
 

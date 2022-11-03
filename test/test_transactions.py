@@ -363,7 +363,7 @@ class TestTransactions(TransactionsBase):
         coll.insert_one({})
         self.assertEqual(client.topology_description.topology_type_name, "Single")
         ops = [
-            (coll.bulk_write, [[InsertOne({})]]),
+            (coll.bulk_write, [[InsertOne[dict]({})]]),
             (coll.insert_one, [{}]),
             (coll.insert_many, [[{}, {}]]),
             (coll.replace_one, [{}, {}]),
@@ -385,7 +385,7 @@ class TestTransactions(TransactionsBase):
         ]
         for f, args in ops:
             with client.start_session() as s, s.start_transaction():
-                res = f(*args, session=s)
+                res = f(*args, session=s)  # type:ignore[operator]
                 if isinstance(res, (CommandCursor, Cursor)):
                     list(res)
 
