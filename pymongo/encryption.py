@@ -431,7 +431,7 @@ class QueryType(str, enum.Enum):
     """Used to encrypt a value for an equality query."""
 
 
-class ClientEncryption(object, Generic[_DocumentType]):
+class ClientEncryption(Generic[_DocumentType]):
     """Explicit client-side field level encryption."""
 
     def __init__(
