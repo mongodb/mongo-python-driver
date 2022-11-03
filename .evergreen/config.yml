@@ -1097,8 +1097,6 @@ task_groups:
           export AZUREKMS_PRIVATEKEYPATH="/tmp/testazurekms_privatekey"
           export AZUREKMS_SCOPE="${testazurekms_scope}"
           export AZUREKMS_VMNAME_PREFIX="PYTHON_DRIVER"
-          echo "client id: ${testazurekms_clientid}"
-          ./src/.evergreen/check_stuff.sh
           $DRIVERS_TOOLS/.evergreen/csfle/azurekms/create-and-setup-vm.sh
     - command: expansions.update
       params:

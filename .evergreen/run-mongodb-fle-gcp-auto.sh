@@ -27,8 +27,8 @@ authtest () {
     echo "Running GCP Credential Acquisition Test with $PYTHON"
     $PYTHON --version
     $PYTHON -m pip install --upgrade wheel setuptools pip
-    $PYTHON -m pip install '.[encryption]'
     $PYTHON -m pip install https://github.com/mongodb/libmongocrypt/archive/refs/heads/master.zip#subdirectory=bindings/python
+    $PYTHON -m pip install '.[encryption]'
     TEST_FLE_GCP_AUTO=1 $PYTHON test/test_on_demand_csfle.py
 }
 
