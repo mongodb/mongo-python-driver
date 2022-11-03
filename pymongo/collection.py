@@ -2051,7 +2051,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             cmd_options["maxTimeMS"] = kwargs.pop("maxTimeMS")
         if comment is not None:
             cmd_options["comment"] = comment
-        index: IndexModel[_DocumentType] = IndexModel(keys, **kwargs)
+        index = IndexModel(keys, **kwargs)
         return self.__create_indexes([index], session, **cmd_options)[0]
 
     def drop_indexes(

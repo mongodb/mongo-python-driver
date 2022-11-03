@@ -15,11 +15,12 @@
 """Operation class definitions."""
 from typing import Any, Dict, Generic, List, Mapping, Optional, Sequence, Tuple, Union
 
+from bson.raw_bson import RawBSONDocument
 from pymongo import helpers
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import validate_boolean, validate_is_mapping, validate_list
 from pymongo.helpers import _gen_index_name, _index_document, _index_list
-from pymongo.typings import RawBSONDocument, _CollationIn, _DocumentType, _Pipeline
+from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
 
 
 class InsertOne(Generic[_DocumentType]):
@@ -170,7 +171,7 @@ class DeleteMany(object):
         return not self == other
 
 
-class ReplaceOne(object, Generic[_DocumentType]):
+class ReplaceOne(Generic[_DocumentType]):
     """Represents a replace_one operation."""
 
     __slots__ = ("_filter", "_doc", "_upsert", "_collation", "_hint")
