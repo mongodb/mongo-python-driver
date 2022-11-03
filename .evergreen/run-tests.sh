@@ -195,7 +195,6 @@ $PYTHON -c 'import sys; print(sys.version)'
 
 # Run the tests with coverage if requested and coverage is installed.
 # Only cover CPython. PyPy reports suspiciously low coverage.
-$PYTHON -m pip install typing_extensions
 PYTHON_IMPL=$($PYTHON -c "import platform; print(platform.python_implementation())")
 COVERAGE_ARGS=""
 if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
@@ -222,6 +221,9 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
     fi
 
     $PYTHON $COVERAGE_ARGS setup.py $C_EXTENSIONS test $TEST_ARGS $OUTPUT
+    $PYTHON -m pip install typing_extensions
+    $PYTHON setup.py test -s test.test_mypy
+
 else
     # --no_ext has to come before "test" so there is no way to toggle extensions here.
     $PYTHON green_framework_test.py $GREEN_FRAMEWORK $OUTPUT

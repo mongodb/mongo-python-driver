@@ -40,6 +40,7 @@ try:
 
 except ImportError as exc:
     TypedDict = None
+    ImplicitMovie = None
 
 
 try:
@@ -80,6 +81,8 @@ class TestMypyFails(unittest.TestCase):
     def ensure_mypy_fails(self, filename: str) -> None:
         if api is None:
             raise unittest.SkipTest("Mypy is not installed")
+        if TypedDict is None:
+            raise unittest.SkipTest("typing_extensions is not installed")
         stdout, stderr, exit_status = api.run([filename])
         self.assertTrue(exit_status, msg=stdout)
 
@@ -289,6 +292,10 @@ class TestDecode(unittest.TestCase):
 
 
 class TestDocumentType(unittest.TestCase):
+    def setUp(self) -> None:
+        if TypedDict is None:
+            raise unittest.SkipTest("typing_extensions is not installed")
+
     @only_type_check
     def test_default(self) -> None:
         client: MongoClient = MongoClient()
@@ -400,6 +407,9 @@ class TestDocumentType(unittest.TestCase):
 
 
 class TestCommandDocumentType(unittest.TestCase):
+    def setUp(obj) -> None:
+        super().setUpClass()
+
     @only_type_check
     def test_default(self) -> None:
         client: MongoClient = MongoClient()
