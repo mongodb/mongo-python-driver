@@ -103,26 +103,16 @@ insert the "_id" field.
 
 .. doctest::
 
-<<<<<<< Updated upstream
   >>> # The typing_extensions package must be installed unless using Python 3.11+.
-  >>> from typing_extensions import TypedDict, NotRequired
-=======
   >>> from typing_extensions import TypedDict
->>>>>>> Stashed changes
   >>> from pymongo import MongoClient
   >>> from pymongo.collection import Collection
-  >>> from bson import ObjectId
   >>> class Movie(TypedDict):
-  ...       _id: NotRequired[ObjectId]
   ...       name: str
   ...       year: int
   ...
   >>> client: MongoClient = MongoClient()
   >>> collection: Collection[Movie] = client.test.test
-<<<<<<< Updated upstream
-  >>> # If NotRequired was not specified above, then you would be required to specify _id
-  >>> # when you construct the Movie object.
-=======
   >>> collection.drop()
   >>> inserted = collection.insert_one(Movie(name="Jurassic Park", year=1993))
   >>> result = collection.find_one({})
@@ -171,12 +161,7 @@ There are three approaches to this:
   >>> inserted = collection.insert_one(Movie(name="Jurassic Park", year=1993))
   >>> result = collection.find_one({})
   >>> assert result is not None
-<<<<<<< Updated upstream
-  >>> assert result["year"] == 1993
-  >>> # This will be type checked, despite being not originally present
-=======
   >>> # This will not be type checked, despite being present, because it is added by PyMongo.
->>>>>>> Stashed changes
   >>> assert type(result["_id"]) == ObjectId
   >>> collection: Collection[ExplicitMovie] = client.test.test
   >>> # Note that the _id keyword argument must be supplied
@@ -193,13 +178,10 @@ There are three approaches to this:
   >>> # This will be type checked, despite not being provided explicitly.
   >>> assert type(result["_id"]) == ObjectId
 
-<<<<<<< Updated upstream
-=======
 This same typing scheme works for all of the insert methods (`insert_one`, `insert_many`, and `bulk_write`). For `bulk_write`,
 both `InsertOne/Many` and `ReplaceOne/Many` operators are generic.
 
 
->>>>>>> Stashed changes
 Typed Database
 --------------
 
