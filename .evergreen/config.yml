@@ -1995,7 +1995,7 @@ tasks:
             export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
             export AZUREKMS_PRIVATEKEYPATH=/tmp/testazurekms_privatekey
             mkdir testazurekms
-            cp . testazurekms
+            cp -r . testazurekms
             tar czf testazurekms.tgz testazurekms/*
             AZUREKMS_SRC="testazurekms.tgz" \
             AZUREKMS_DST="~/" \
@@ -3015,7 +3015,7 @@ buildvariants:
 - name: testgcpkms-variant
   display_name: "GCP KMS"
   run_on:
-    - debian11-small
+    - debian10-small
   tasks:
     - name: testgcpkms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
@@ -3023,7 +3023,7 @@ buildvariants:
 
 - name: testazurekms-variant
   display_name: "Azure KMS"
-  run_on: debian11-small
+  run_on: debian10-small
   tasks:
     - name: testazurekms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
