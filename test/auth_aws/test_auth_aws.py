@@ -124,7 +124,7 @@ class TestAuthAWS(unittest.TestCase):
         self.assertIsNotNone(auth.get_cached_credentials())
 
         os.environ["AWS_ACCESS_KEY_ID"] = "foo"
-        os.environ["AWS_SECRET_KEY"] = "bar"
+        os.environ["AWS_SECRET_ACCESS_KEY"] = "bar"
         os.environ["AWS_SESSION_TOKEN"] = "baz"
 
         client.get_database().test.find_one()
@@ -136,7 +136,7 @@ class TestAuthAWS(unittest.TestCase):
         with self.assertRaises(OperationFailure):
             client2.get_database().test.find_one()
 
-        for key in ["AWS_ACCESS_KEY_ID", "AWS_SESSION_TOKEN", "AWS_SECRET_KEY"]:
+        for key in ["AWS_ACCESS_KEY_ID", "AWS_SESSION_TOKEN", "AWS_SECRET_ACCESS_KEY"]:
             if key not in prev and key in os.environ:
                 del os.environ[key]
             else:
@@ -147,7 +147,7 @@ class TestAuthAWS(unittest.TestCase):
         self.assertIsNotNone(creds)
         prev = os.environ.copy()
         os.environ["AWS_ACCESS_KEY_ID"] = creds.username
-        os.environ["AWS_SECRET_KEY"] = creds.password
+        os.environ["AWS_SECRET_ACCESS_KEY"] = creds.password
         if creds.token:
             os.environ["AWS_SESSION_TOKEN"] = creds.token
         auth.set_cached_credentials(None)
@@ -166,7 +166,7 @@ class TestAuthAWS(unittest.TestCase):
         with self.assertRaises(OperationFailure):
             client2.get_database().test.find_one()
 
-        for key in ["AWS_ACCESS_KEY_ID", "AWS_SESSION_TOKEN", "AWS_SECRET_KEY"]:
+        for key in ["AWS_ACCESS_KEY_ID", "AWS_SESSION_TOKEN", "AWS_SECRET_ACCESS_KEY"]:
             if key not in prev and key in os.environ:
                 del os.environ[key]
             else:
