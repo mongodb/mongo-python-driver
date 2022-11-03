@@ -1974,6 +1974,10 @@ tasks:
       # testgcpkms-fail-task runs in a non-GCE environment.
       # It is expected to fail to obtain GCE credentials.
       commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "latest"
+            TOPOLOGY: "server"
         - command: shell.exec
           type: test
           params:
@@ -2023,6 +2027,10 @@ tasks:
       commands:
       - func: fetch source
       - func: make files executable
+      - func: "bootstrap mongo-orchestration"
+        vars:
+          VERSION: "latest"
+          TOPOLOGY: "server"
       - command: shell.exec
         type: test
         params:
