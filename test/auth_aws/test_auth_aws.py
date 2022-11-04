@@ -136,8 +136,11 @@ class TestAuthAWS(unittest.TestCase):
 
         client2 = MongoClient(self.uri)
         self.addCleanup(client2.close)
-        with self.assertRaises(OperationFailure):
-            client2.get_database().test.find_one()
+
+        with patch.dict("os.environ", mock_env):
+            self.assertEqual(os.environ["AWS_ACCESS_KEY_ID"], "foo")
+            with self.assertRaises(OperationFailure):
+                client2.get_database().test.find_one()
 
     def test_no_cache_environment_variables(self):
         creds = self.setup_cache()
