@@ -1,6 +1,14 @@
 Changelog
 =========
 
+Changes in Version 4.3.3
+------------------------
+
+- Fixed a performance regression in :meth:`~gridfs.GridOut.download_to_stream`
+  and :meth:`~gridfs.GridOut.download_to_stream_by_name` by reading in chunks
+  instead of line by line.
+
+
 Changes in Version 4.3 (4.3.2)
 ------------------------------
 
