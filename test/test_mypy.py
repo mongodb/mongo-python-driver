@@ -53,7 +53,7 @@ try:
 
 except ImportError:
     TypedDict = None
-    ImplicitMovie = None
+    ImplicitMovie = None  # type: ignore[assignment,misc]
 
 
 try:
