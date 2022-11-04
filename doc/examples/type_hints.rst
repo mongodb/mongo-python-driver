@@ -131,9 +131,10 @@ There are three approaches to this:
   3. Make use of :py:class:`~typing_extensions.NotRequired`. This has the flexibility of 1, but with the ability to type-check.
 
 
-.. doctest::
+.. doctest:: typed-dict-example
+  :pyversion: >= 3.11
 
-  >>> from typing_extensions import TypedDict, NotRequired
+  >>> from typing import TypedDict, NotRequired
   >>> from pymongo import MongoClient
   >>> from pymongo.collection import Collection
   >>> from bson import ObjectId

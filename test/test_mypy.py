@@ -53,6 +53,7 @@ try:
 
 except ImportError:
     TypedDict = None
+    ImplicitMovie = None
 
 
 try:
