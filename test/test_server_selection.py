@@ -87,8 +87,8 @@ class TestCustomServerSelectorFunction(IntegrationTest):
         wait_until(all_hosts_started, "receive heartbeat from all hosts")
         expected_port = max(
             [
-                n.address[1]
-                for n in client._topology._description.readable_servers  # type:ignore[type-var]
+                n.address[1]  # type:ignore[type-var]
+                for n in client._topology._description.readable_servers
             ]
         )
 
