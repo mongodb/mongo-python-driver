@@ -160,8 +160,9 @@ class TestAuthAWS(unittest.TestCase):
         client2 = MongoClient(self.uri)
         self.addCleanup(client2.close)
 
-        with patch.dict(os.environ, mock_env), self.assertRaises(OperationFailure):
-            client2.get_database().test.find_one()
+        with patch.dict(os.environ, mock_env):
+            with self.assertRaises(OperationFailure):
+                client2.get_database().test.find_one()
 
 
 class TestAWSLambdaExamples(unittest.TestCase):
