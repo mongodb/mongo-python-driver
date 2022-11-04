@@ -20,8 +20,10 @@ import unittest
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List
 
 try:
-    from typing import TypedDict
-
+    if TYPE_CHECKING:
+        from typing_extensions import TypedDict
+    else:
+        from typing import TypedDict
     from bson import ObjectId
 
     class Movie(TypedDict):
@@ -33,19 +35,25 @@ try:
         name: str
         year: int
 
+    try:
+
+        if TYPE_CHECKING:
+            from typing_extensions import NotRequired
+        else:
+            from typing import NotRequired  # type:ignore[attr-defined]
+
+        class ImplicitMovie(TypedDict):
+            _id: NotRequired[ObjectId]
+            name: str
+            year: int
+
+    except ImportError:
+        NotRequired = None  # type: ignore[assignment]
+        ImplicitMovie = None  # type: ignore[assignment,misc]
+
 except ImportError:
     TypedDict = None
 
-try:
-    from typing import NotRequired  # type:ignore[attr-defined]
-
-    class ImplicitMovie(TypedDict):
-        _id: NotRequired[ObjectId]
-        name: str
-        year: int
-
-except ImportError:
-    NotRequired = None  # type: ignore[assignment]
 
 try:
     from mypy import api
@@ -85,8 +93,6 @@ class TestMypyFails(unittest.TestCase):
     def ensure_mypy_fails(self, filename: str) -> None:
         if api is None:
             raise unittest.SkipTest("Mypy is not installed")
-        if TypedDict is None:
-            raise unittest.SkipTest("TypedDict is supported on Python 3.8+ only")
         if TypedDict is None:
             raise unittest.SkipTest("TypedDict is supported on Python 3.8+ only")
         stdout, stderr, exit_status = api.run([filename])
@@ -301,8 +307,6 @@ class TestDocumentType(unittest.TestCase):
     def setUp(self) -> None:
         if TypedDict is None:
             raise unittest.SkipTest("typing_extensions is not installed")
-        if NotRequired is None:
-            raise unittest.SkipTest("Python 3.11+ is required to use NotRequired.")
 
     @only_type_check
     def test_default(self) -> None:
@@ -363,6 +367,8 @@ class TestDocumentType(unittest.TestCase):
     # automatic insertion of the _id field by insert_one.
     @only_type_check
     def test_typeddict_not_required_document_type(self) -> None:
+        if NotRequired is None or ImplicitMovie is None:
+            raise unittest.SkipTest("Python 3.11+ is required to use NotRequired.")
         out = ImplicitMovie(name="THX-1138", year=1971)
         assert out is not None
         # This should fail because the output is a Movie.
@@ -379,6 +385,8 @@ class TestDocumentType(unittest.TestCase):
         assert type(out["_id"]) == ObjectId  # type:ignore[typeddict-item]
 
     def test_typeddict_find_notrequired(self):
+        if NotRequired is None or ImplicitMovie is None:
+            raise unittest.SkipTest("Python 3.11+ is required to use NotRequired.")
         client: MongoClient[ImplicitMovie] = rs_or_single_client()
         coll = client.test.test
         coll.insert_one(ImplicitMovie(name="THX-1138", year=1971))
