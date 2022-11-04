@@ -221,8 +221,6 @@ if [ -z "$GREEN_FRAMEWORK" ]; then
     fi
 
     $PYTHON $COVERAGE_ARGS setup.py $C_EXTENSIONS test $TEST_ARGS $OUTPUT
-    $PYTHON -m pip install typing_extensions
-    $PYTHON setup.py test -s test.test_mypy
 
 else
     # --no_ext has to come before "test" so there is no way to toggle extensions here.
