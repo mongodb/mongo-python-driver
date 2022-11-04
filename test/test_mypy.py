@@ -306,7 +306,7 @@ class TestDecode(unittest.TestCase):
 class TestDocumentType(unittest.TestCase):
     def setUp(self) -> None:
         if TypedDict is None:
-            raise unittest.SkipTest("typing_extensions is not installed")
+            raise unittest.SkipTest("Python 3.8+ is required to use TypedDict.")
 
     @only_type_check
     def test_default(self) -> None:
