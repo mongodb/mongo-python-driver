@@ -17,6 +17,7 @@
 import os
 import sys
 import unittest
+from unittest.mock import patch
 
 sys.path[0:0] = [""]
 
@@ -123,11 +124,12 @@ class TestAuthAWS(unittest.TestCase):
 
         self.assertIsNotNone(auth.get_cached_credentials())
 
-        os.environ["AWS_ACCESS_KEY_ID"] = "foo"
-        os.environ["AWS_SECRET_ACCESS_KEY"] = "bar"
-        os.environ["AWS_SESSION_TOKEN"] = "baz"
+        mock_env = dict(
+            AWS_ACCESS_KEY_ID="foo", AWS_SECRET_ACCESS_KEY="bar", AWS_SESSION_TOKEN="baz"
+        )
 
-        client.get_database().test.find_one()
+        with patch.dict(os.environ, mock_env):
+            client.get_database().test.find_one()
 
         auth.set_cached_credentials(None)
 
@@ -135,42 +137,31 @@ class TestAuthAWS(unittest.TestCase):
         self.addCleanup(client2.close)
         with self.assertRaises(OperationFailure):
             client2.get_database().test.find_one()
-
-        for key in ["AWS_ACCESS_KEY_ID", "AWS_SESSION_TOKEN", "AWS_SECRET_ACCESS_KEY"]:
-            if key not in prev and key in os.environ:
-                del os.environ[key]
-            else:
-                os.environ[key] = prev[key]
 
     def test_no_cache_environment_variables(self):
         creds = self.setup_cache()
         self.assertIsNotNone(creds)
-        prev = os.environ.copy()
-        os.environ["AWS_ACCESS_KEY_ID"] = creds.username
-        os.environ["AWS_SECRET_ACCESS_KEY"] = creds.password
-        if creds.token:
-            os.environ["AWS_SESSION_TOKEN"] = creds.token
         auth.set_cached_credentials(None)
+
+        mock_env = dict(AWS_ACCESS_KEY_ID=creds.username, AWS_SECRET_ACCESS_KEY=creds.password)
+        if creds.token:
+            mock_env["AWS_SESSION_TOKEN"] = creds.token
 
         client = MongoClient(self.uri)
         self.addCleanup(client.close)
 
-        client.get_database().test.find_one()
+        with patch.dict(os.environ, mock_env):
+            client.get_database().test.find_one()
 
         self.assertIsNone(auth.get_cached_credentials())
 
-        os.environ["AWS_ACCESS_KEY_ID"] = "foo"
+        mock_env["AWS_ACCESS_KEY_ID"] = "foo"
 
         client2 = MongoClient(self.uri)
         self.addCleanup(client2.close)
-        with self.assertRaises(OperationFailure):
-            client2.get_database().test.find_one()
 
-        for key in ["AWS_ACCESS_KEY_ID", "AWS_SESSION_TOKEN", "AWS_SECRET_ACCESS_KEY"]:
-            if key not in prev and key in os.environ:
-                del os.environ[key]
-            else:
-                os.environ[key] = prev[key]
+        with patch.dict(os.environ, mock_env), self.assertRaises(OperationFailure):
+            client2.get_database().test.find_one()
 
 
 class TestAWSLambdaExamples(unittest.TestCase):
