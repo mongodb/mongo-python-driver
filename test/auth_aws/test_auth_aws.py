@@ -128,7 +128,8 @@ class TestAuthAWS(unittest.TestCase):
             AWS_ACCESS_KEY_ID="foo", AWS_SECRET_ACCESS_KEY="bar", AWS_SESSION_TOKEN="baz"
         )
 
-        with patch.dict(os.environ, mock_env):
+        with patch.dict("os.environ", mock_env):
+            self.assertEqual(os.environ["AWS_ACCESS_KEY_ID"], "foo")
             client.get_database().test.find_one()
 
         auth.set_cached_credentials(None)
@@ -151,6 +152,7 @@ class TestAuthAWS(unittest.TestCase):
         self.addCleanup(client.close)
 
         with patch.dict(os.environ, mock_env):
+            self.assertEqual(os.environ["AWS_ACCESS_KEY_ID"], creds.username)
             client.get_database().test.find_one()
 
         self.assertIsNone(auth.get_cached_credentials())
@@ -160,9 +162,9 @@ class TestAuthAWS(unittest.TestCase):
         client2 = MongoClient(self.uri)
         self.addCleanup(client2.close)
 
-        with patch.dict(os.environ, mock_env):
-            with self.assertRaises(OperationFailure):
-                client2.get_database().test.find_one()
+        with patch.dict("os.environ", mock_env), self.assertRaises(OperationFailure):
+            self.assertEqual(os.environ["AWS_ACCESS_KEY_ID"], "foo")
+            client2.get_database().test.find_one()
 
 
 class TestAWSLambdaExamples(unittest.TestCase):
