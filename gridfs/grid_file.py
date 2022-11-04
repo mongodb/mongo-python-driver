@@ -560,8 +560,9 @@ class GridOut(io.IOBase):
                 self.__buffer_pos = 0
                 self.__position += len(chunk_data)
             else:
-                buf = chunk_data = self.readchunk()
+                buf = self.readchunk()
                 chunk_start = 0
+                chunk_data = memoryview(buf)
             if line:
                 pos = buf.find(NEWLN, chunk_start, chunk_start + needed) - chunk_start
                 if pos >= 0:
