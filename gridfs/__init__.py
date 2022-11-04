@@ -796,7 +796,10 @@ class GridFSBucket(object):
            Added ``session`` parameter.
         """
         with self.open_download_stream(file_id, session=session) as gout:
-            for chunk in gout:
+            while True:
+                chunk = gout.readchunk()
+                if not len(chunk):
+                    break
                 destination.write(chunk)
 
     @_csot.apply
@@ -977,7 +980,10 @@ class GridFSBucket(object):
            Added ``session`` parameter.
         """
         with self.open_download_stream_by_name(filename, revision, session=session) as gout:
-            for chunk in gout:
+            while True:
+                chunk = gout.readchunk()
+                if not len(chunk):
+                    break
                 destination.write(chunk)
 
     def rename(
