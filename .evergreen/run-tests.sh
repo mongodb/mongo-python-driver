@@ -171,6 +171,20 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     TEST_ARGS="-s test.test_encryption"
 fi
 
+if [ -n "$TEST_FLE_AZURE_AUTO" || -n "$TEST_FLE_AZURE_AUTO" ]; then
+    if [[ -z "$SUCCESS" ]]; then
+        echo "Must define SUCCESS"
+        exit 1
+    fi
+
+    if echo "$MONGODB_URI" | grep -q "@"; then
+      echo "MONGODB_URI unexpectedly contains user credentials in FLE test!";
+      exit 1
+    fi
+
+    TEST_ARGS="-s test.test_on_demand_csfle"
+fi
+
 if [ -n "$DATA_LAKE" ]; then
     TEST_ARGS="-s test.test_data_lake"
 fi
