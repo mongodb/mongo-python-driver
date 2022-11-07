@@ -33,8 +33,20 @@ try:
         name: str
         year: int
 
-except ImportError:
-    TypedDict = None
+except ImportError as exc:
+    # Evergreen needs to be able to run test_bulk_write without type_extensions.
+    if not TYPE_CHECKING:
+        try:
+            from typing import TypedDict
+
+            class Movie(TypedDict):
+                name: str
+                year: int
+
+        except ImportError:
+            TypedDict = None
+    else:
+        TypedDict = None
 
 
 try:
