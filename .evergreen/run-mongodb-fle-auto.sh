@@ -10,8 +10,10 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #            Main Program                  #
 ############################################
 
-if [[ -z "$MONGODB_URI" ]]; then
-    echo "Must define MONGODB_URI"
+MONGODB_URI=${MONGODB_URI:-mongodb://localhost:27017}
+
+if [[ -z "$SUCCESS" ]]; then
+    echo "Must define SUCCESS"
     exit 1
 fi
 
