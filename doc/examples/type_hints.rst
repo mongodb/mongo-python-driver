@@ -97,9 +97,9 @@ You can use :py:class:`~typing.TypedDict` (Python 3.8+) when using a well-define
 These methods automatically add an "_id" field.
 
 .. doctest::
+  :pyversion: >= 3.8
 
-  >>> # The typing_extensions package must be installed unless using Python 3.11+.
-  >>> from typing_extensions import TypedDict
+  >>> from typing import TypedDict
   >>> from pymongo import MongoClient
   >>> from pymongo.collection import Collection
   >>> from bson import ObjectId
