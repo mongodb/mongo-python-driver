@@ -1080,8 +1080,9 @@ task_groups:
     - func: make files executable
     - command: shell.exec
       params:
+        silent: true
         shell: bash
-        script: |-
+        script: |
           set -o errexit
           ${PREPARE_SHELL}
           echo '${testazurekms_publickey}' > /tmp/testazurekms_publickey
@@ -1968,7 +1969,7 @@ tasks:
               export GCPKMS_PROJECT=${GCPKMS_PROJECT}
               export GCPKMS_ZONE=${GCPKMS_ZONE}
               export GCPKMS_INSTANCENAME=${GCPKMS_INSTANCENAME}
-              GCPKMS_CMD="SUCCESS=true ./.evergreen/run-mongodb-fle-gcp-auto.sh mongodb://localhost:27017" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
+              GCPKMS_CMD="SUCCESS=true TEST_FLE_GCP_AUTO=1 ./.evergreen/run-mongodb-fle-auto.sh mongodb://localhost:27017" $DRIVERS_TOOLS/.evergreen/csfle/gcpkms/run-command.sh
 
     - name: "testgcpkms-fail-task"
       # testgcpkms-fail-task runs in a non-GCE environment.
@@ -1985,7 +1986,7 @@ tasks:
             shell: "bash"
             script: |
               ${PREPARE_SHELL}
-              SUCCESS=false ./.evergreen/run-mongodb-fle-gcp-auto.sh mongodb://localhost:27017
+              SUCCESS=false TEST_FLE_GCP_AUTO=1 ./.evergreen/run-mongodb-fle-auto.sh mongodb://localhost:27017
 
     - name: testazurekms-task
       commands:
@@ -2019,7 +2020,7 @@ tasks:
             export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
             export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
             export AZUREKMS_PRIVATEKEYPATH=/tmp/testazurekms_privatekey
-            AZUREKMS_CMD="MONGODB_URI='mongodb://localhost:27017' KEY_NAME='${testazurekms_keyname}' KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}' SUCCESS=true ./.evergreen/run-mongodb-fle-azure-auto.sh" \
+            AZUREKMS_CMD="MONGODB_URI='mongodb://localhost:27017' KEY_NAME='${testazurekms_keyname}' KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}' SUCCESS=true TEST_FLE_AZURE_AUTO=1 ./.evergreen/run-mongodb-fle-auto.sh" \
               $DRIVERS_TOOLS/.evergreen/csfle/azurekms/run-command.sh
     - name: testazurekms-fail-task
       commands:
@@ -2039,7 +2040,7 @@ tasks:
             MONGODB_URI="mongodb://localhost:27017" \
             KEY_NAME='${testazurekms_keyname}' \
             KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}' \
-            SUCCESS=false ./.evergreen/run-mongodb-fle-azure-auto.sh
+            SUCCESS=false TEST_FLE_AZURE_AUTO=1 ./.evergreen/run-mongodb-fle-auto.sh
 
 axes:
   # Choice of distro
