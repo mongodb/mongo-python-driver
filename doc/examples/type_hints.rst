@@ -92,7 +92,9 @@ Note that when using :class:`~bson.son.SON`, the key and value types must be giv
 Typed Collection
 ----------------
 
-You can use :py:class:`~typing.TypedDict` (Python 3.8+) when using a well-defined schema for the data in a :class:`~pymongo.collection.Collection`:
+You can use :py:class:`~typing.TypedDict` (Python 3.8+) when using a well-defined schema for the data in a
+:class:`~pymongo.collection.Collection`. Note that all `schema validation`_ for inserts and updates is done on the server.
+These methods automatically add an "_id" field.
 
 .. doctest::
 
@@ -105,10 +107,12 @@ You can use :py:class:`~typing.TypedDict` (Python 3.8+) when using a well-define
   ...
   >>> client: MongoClient = MongoClient()
   >>> collection: Collection[Movie] = client.test.test
-  >>> inserted = collection.insert_one({"name": "Jurassic Park", "year": 1993 })
+  >>> inserted = collection.insert_one(Movie(name="Jurassic Park", year=1993))
   >>> result = collection.find_one({"name": "Jurassic Park"})
   >>> assert result is not None
   >>> assert result["year"] == 1993
+  >>> # This will not be type checked, despite being present, because it is added by PyMongo.
+  >>> assert type(result["_id"]) == ObjectId
 
 Typed Database
 --------------
@@ -243,3 +247,4 @@ Another example is trying to set a value on a :class:`~bson.raw_bson.RawBSONDocu
 .. _limitations in mypy: https://github.com/python/mypy/issues/3737
 .. _mypy config: https://mypy.readthedocs.io/en/stable/config_file.html
 .. _test_mypy module: https://github.com/mongodb/mongo-python-driver/blob/master/test/test_mypy.py
+.. _schema validation: https://www.mongodb.com/docs/manual/core/schema-validation/#when-to-use-schema-validation

@@ -14,22 +14,20 @@
 
 """Test that each file in mypy_fails/ actually fails mypy, and test some
 sample client code that uses PyMongo typings."""
-
 import os
 import tempfile
 import unittest
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List
 
 try:
-    from typing import TypedDict  # type: ignore[attr-defined]
+    from typing_extensions import TypedDict
 
-    # Not available in Python 3.7
     class Movie(TypedDict):  # type: ignore[misc]
         name: str
         year: int
 
 except ImportError:
-    TypeDict = None
+    TypedDict = None
 
 
 try:
@@ -303,6 +301,28 @@ class TestDocumentType(unittest.TestCase):
         assert retreived is not None
         assert retreived["year"] == 1
         assert retreived["name"] == "a"
+
+    @only_type_check
+    def test_typeddict_document_type_insertion(self) -> None:
+        client: MongoClient[Movie] = MongoClient()
+        coll = client.test.test
+        mov = {"name": "THX-1138", "year": 1971}
+        movie = Movie(name="THX-1138", year=1971)
+        coll.insert_one(mov)  # type: ignore[arg-type]
+        coll.insert_one({"name": "THX-1138", "year": 1971})  # This will work because it is in-line.
+        coll.insert_one(movie)
+        coll.insert_many([mov])  # type: ignore[list-item]
+        coll.insert_many([movie])
+        bad_mov = {"name": "THX-1138", "year": "WRONG TYPE"}
+        bad_movie = Movie(name="THX-1138", year="WRONG TYPE")  # type: ignore[typeddict-item]
+        coll.insert_one(bad_mov)  # type:ignore[arg-type]
+        coll.insert_one({"name": "THX-1138", "year": "WRONG TYPE"})  # type: ignore[typeddict-item]
+        coll.insert_one(bad_movie)
+        coll.insert_many([bad_mov])  # type: ignore[list-item]
+        coll.insert_many(
+            [{"name": "THX-1138", "year": "WRONG TYPE"}]  # type: ignore[typeddict-item]
+        )
+        coll.insert_many([bad_movie])
 
     @only_type_check
     def test_raw_bson_document_type(self) -> None:

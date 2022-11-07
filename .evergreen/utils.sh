@@ -18,7 +18,8 @@ createvirtualenv () {
         echo "Cannot test without virtualenv"
         exit 1
     fi
-    $VIRTUALENV $VENVPATH
+    # Workaround for bug in older versions of virtualenv.
+    $VIRTUALENV $VENVPATH || $PYTHON -m venv $VENVPATH
     if [ "Windows_NT" = "$OS" ]; then
         # Workaround https://bugs.python.org/issue32451:
         # mongovenv/Scripts/activate: line 3: $'\r': command not found

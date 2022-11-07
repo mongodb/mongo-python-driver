@@ -1,6 +1,27 @@
 Changelog
 =========
 
+Changes in Version 4.3.3
+------------------------
+
+Version 4.3.3 fixes a number of bugs:
+
+- Fixed a performance regression in :meth:`~gridfs.GridFSBucket.download_to_stream`
+  and :meth:`~gridfs.GridFSBucket.download_to_stream_by_name` by reading in chunks
+  instead of line by line (`PYTHON-3502`_).
+- Improved performance of :meth:`gridfs.grid_file.GridOut.read` and
+  :meth:`gridfs.grid_file.GridOut.readline` (`PYTHON-3508`_).
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.3.3 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PYTHON-3502: https://jira.mongodb.org/browse/PYTHON-3502
+.. _PYTHON-3508: https://jira.mongodb.org/browse/PYTHON-3508
+.. _PyMongo 4.3.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=34709
+
 Changes in Version 4.3 (4.3.2)
 ------------------------------
 
