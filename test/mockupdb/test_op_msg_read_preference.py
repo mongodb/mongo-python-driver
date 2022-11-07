@@ -18,7 +18,6 @@ import unittest
 from typing import Any
 
 from mockupdb import CommandBase, MockupDB, going
-from operations import operations
 
 from pymongo import MongoClient, ReadPreference
 from pymongo.read_preferences import (
@@ -26,6 +25,8 @@ from pymongo.read_preferences import (
     make_read_preference,
     read_pref_mode_from_name,
 )
+
+from .operations import operations
 
 
 class OpMsgReadPrefBase(unittest.TestCase):

@@ -23,10 +23,11 @@ import unittest
 from queue import Queue
 
 from mockupdb import MockupDB, going
-from operations import operations
 
 from pymongo import MongoClient
 from pymongo.read_preferences import make_read_preference, read_pref_mode_from_name
+
+from .operations import operations
 
 
 class TestSlaveOkaySharded(unittest.TestCase):
