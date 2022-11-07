@@ -16,7 +16,6 @@ import itertools
 import unittest
 
 from mockupdb import MockupDB, OpMsg, going
-from operations import operations
 
 from pymongo import MongoClient, ReadPreference
 from pymongo.read_preferences import (
@@ -24,6 +23,8 @@ from pymongo.read_preferences import (
     make_read_preference,
     read_pref_mode_from_name,
 )
+
+from .operations import operations
 
 
 class TestMongosCommandReadMode(unittest.TestCase):
