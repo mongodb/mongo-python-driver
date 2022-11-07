@@ -171,7 +171,7 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     TEST_ARGS="-s test.test_encryption"
 fi
 
-if [ -n "$TEST_FLE_AZURE_AUTO" || -n "$TEST_FLE_AZURE_AUTO" ]; then
+if [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_AZURE_AUTO" ]; then
     if [[ -z "$SUCCESS" ]]; then
         echo "Must define SUCCESS"
         exit 1
