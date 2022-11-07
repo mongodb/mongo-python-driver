@@ -120,7 +120,7 @@ These methods automatically add an "_id" field.
 Modeling Document Types with TypedDict
 --------------------------------------
 
-You can use :py:class:`~typing_extensions.TypedDict` (Python 3.8+) to model structured data.
+You can use :py:class:`~typing.TypedDict` (Python 3.8+) to model structured data.
 As noted above, PyMongo will automatically add an `_id` field if it is not present. This also applies to TypedDict.
 There are three approaches to this:
 
@@ -128,8 +128,9 @@ There are three approaches to this:
 
   2. Specify `_id` explicitly. This will mean that every instance of your custom TypedDict class will have to passed a value for `_id`.
 
-  3. Make use of :py:class:`~typing_extensions.NotRequired`. This has the flexibility of 1, but with the ability to type-check.
+  3. Make use of :py:class:`~typing.NotRequired`. This has the flexibility of 1, but with the ability to type-check.
 
+Note: to use :py:class:`~typing.TypedDict` in earlier versions of Python (<3.8, <3.11, use the `typing_extensions` package.
 
 .. doctest:: typed-dict-example
   :pyversion: >= 3.11
