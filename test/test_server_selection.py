@@ -16,6 +16,7 @@
 
 import os
 import sys
+import typing
 
 from pymongo import MongoClient, ReadPreference
 from pymongo.errors import ServerSelectionTimeoutError
