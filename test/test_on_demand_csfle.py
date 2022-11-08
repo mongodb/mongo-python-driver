@@ -65,3 +65,47 @@ class TestonDemandGCPCredentials(IntegrationTest):
             codec_options=CodecOptions(),
         )
         self.client_encryption.create_data_key("gcp", self.master_key)
+
+
+class TestonDemandAzureCredentials(IntegrationTest):
+    @classmethod
+    @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
+    @client_context.require_version_min(4, 2, -1)
+    def setUpClass(cls):
+        super(TestonDemandAzureCredentials, cls).setUpClass()
+
+    def setUp(self):
+        super(TestonDemandAzureCredentials, self).setUp()
+        self.master_key = {
+            "keyVaultEndpoint": "https://keyvault-drivers-2411.vault.azure.net/keys/",
+            "keyName": "KEY-NAME",
+        }
+
+    @unittest.skipIf(not os.getenv("TEST_FLE_AZURE_AUTO"), "Not testing FLE Azure auto")
+    def test_01_failure(self):
+        if os.environ["SUCCESS"].lower() == "true":
+            self.skipTest("Expecting success")
+        self.client_encryption = ClientEncryption(
+            kms_providers={"azure": {}},
+            key_vault_namespace="keyvault.datakeys",
+            key_vault_client=client_context.client,
+            codec_options=CodecOptions(),
+        )
+        with self.assertRaises(EncryptionError):
+            self.client_encryption.create_data_key("azure", self.master_key)
+
+    @unittest.skipIf(not os.getenv("TEST_FLE_AZURE_AUTO"), "Not testing FLE Azure auto")
+    def test_02_success(self):
+        if os.environ["SUCCESS"].lower() == "false":
+            self.skipTest("Expecting failure")
+        self.client_encryption = ClientEncryption(
+            kms_providers={"azure": {}},
+            key_vault_namespace="keyvault.datakeys",
+            key_vault_client=client_context.client,
+            codec_options=CodecOptions(),
+        )
+        self.client_encryption.create_data_key("azure", self.master_key)
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
