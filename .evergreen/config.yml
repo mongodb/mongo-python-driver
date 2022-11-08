@@ -1082,7 +1082,7 @@ task_groups:
       params:
         silent: true
         shell: bash
-        script: |
+        script: |-
           set -o errexit
           ${PREPARE_SHELL}
           echo '${testazurekms_publickey}' > /tmp/testazurekms_publickey
@@ -1109,8 +1109,8 @@ task_groups:
         script: |-
           ${PREPARE_SHELL}
           export AZUREKMS_VMNAME=${AZUREKMS_VMNAME}
-              export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
-              $DRIVERS_TOOLS/.evergreen/csfle/azurekms/delete-vm.sh
+          export AZUREKMS_RESOURCEGROUP=${testazurekms_resourcegroup}
+          $DRIVERS_TOOLS/.evergreen/csfle/azurekms/delete-vm.sh
     setup_group_can_fail_task: true
     setup_group_timeout_secs: 1800
     tasks:
