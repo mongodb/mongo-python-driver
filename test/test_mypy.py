@@ -17,7 +17,7 @@ sample client code that uses PyMongo typings."""
 import os
 import tempfile
 import unittest
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List, Union
 
 try:
     from typing_extensions import TypedDict
@@ -34,19 +34,7 @@ try:
         year: int
 
 except ImportError as exc:
-    # Evergreen needs to be able to run test_bulk_write without type_extensions.
-    if not TYPE_CHECKING:
-        try:
-            from typing import TypedDict
-
-            class Movie(TypedDict):
-                name: str
-                year: int
-
-        except ImportError:
-            TypedDict = None
-    else:
-        TypedDict = None
+    Movie = dict  #  type:ignore[misc,assignment]
 
 
 try:
@@ -62,7 +50,7 @@ from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo import ASCENDING, MongoClient
 from pymongo.collection import Collection
-from pymongo.operations import InsertOne, ReplaceOne
+from pymongo.operations import DeleteOne, InsertOne, ReplaceOne
 from pymongo.read_preferences import ReadPreference
 
 TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "mypy_fails")
@@ -127,12 +115,40 @@ class TestPymongo(IntegrationTest):
         docs = to_list(cursor)
         self.assertTrue(docs)
 
+    @only_type_check
     def test_bulk_write(self) -> None:
         self.coll.insert_one({})
         coll: Collection[Movie] = self.coll
         requests: List[InsertOne[Movie]] = [InsertOne(Movie(name="American Graffiti", year=1973))]
-        result = coll.bulk_write(requests)
-        self.assertTrue(result.acknowledged)
+        self.assertTrue(coll.bulk_write(requests).acknowledged)
+        new_requests: List[Union[InsertOne[Movie], ReplaceOne[Movie]]]
+        input_list: List[Union[InsertOne[Movie], ReplaceOne[Movie]]] = [
+            InsertOne(Movie(name="American Graffiti", year=1973)),
+            ReplaceOne({}, Movie(name="American Graffiti", year=1973)),
+        ]
+        for i in input_list:
+            new_requests.append(i)
+        self.assertTrue(coll.bulk_write(new_requests).acknowledged)
+
+    # Because ReplaceOne is not generic, type checking is not enforced for ReplaceOne in the first example.
+    @only_type_check
+    def test_bulk_write_heterogeneous(self):
+        coll: Collection[Movie] = self.coll
+        requests: List[Union[InsertOne[Movie], ReplaceOne, DeleteOne]] = [
+            InsertOne(Movie(name="American Graffiti", year=1973)),
+            ReplaceOne({}, {"name": "American Graffiti", "year": "WRONG_TYPE"}),
+            DeleteOne({}),
+        ]
+        self.assertTrue(coll.bulk_write(requests).acknowledged)
+        requests_two: List[Union[InsertOne[Movie], ReplaceOne[Movie], DeleteOne]] = [
+            InsertOne(Movie(name="American Graffiti", year=1973)),
+            ReplaceOne(
+                {},
+                {"name": "American Graffiti", "year": "WRONG_TYPE"},  # type:ignore[typeddict-item]
+            ),
+            DeleteOne({}),
+        ]
+        self.assertTrue(coll.bulk_write(requests_two).acknowledged)
 
     def test_command(self) -> None:
         result: Dict = self.client.admin.command("ping")
