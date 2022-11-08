@@ -112,7 +112,7 @@ pymongo.timeout is asyncio safe
 -------------------------------
 
 :meth:`~pymongo.timeout` is asyncio safe; the timeout only applies to current
-Task and multiple Tasks can configure different timeouts in parallel.
+Task and multiple Tasks can configure different timeouts concurrently.
 :meth:`~pymongo.timeout` can be used identically in
 `Motor <https://github.com/mongodb/motor>`_, for example::
 
