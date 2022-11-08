@@ -30,8 +30,8 @@ within 10 seconds total, or raise a timeout error::
       coll.insert_one({"name": "Nunu"})
       coll.find_one({"name": "Nunu"})
 
-When nesting :func:`~pymongo.timeout`, the newly computed deadline is capped to at most
-the existing deadline. The deadline can only be shortened, not extended.
+When nesting :func:`~pymongo.timeout`, the nested deadline is capped by the outer
+deadline. The deadline can only be shortened, not extended.
 When exiting the block, the previous deadline is restored::
 
   with pymongo.timeout(5):
@@ -130,32 +130,33 @@ There are many timeout errors that can be raised depending on when the timeout
 expires. In code, these can be identified with the :attr:`pymongo.errors.PyMongoError.timeout`
 property. Some specific timeout errors examples are described below.
 
-The following error means that the client was unable to find an available server
-to run the operation within the given timeout::
+When the client was unable to find an available server to run the operation
+within the given timeout::
 
   pymongo.errors.ServerSelectionTimeoutError: No servers found yet, Timeout: -0.00202266700216569s, Topology Description: <TopologyDescription id: 63698e87cebfd22ab1bd2ae0, topology_type: Unknown, servers: [<ServerDescription ('localhost', 27017) server_type: Unknown, rtt: None>]>
 
-The following error means either the client was unable to establish a connection
-within the given timeout, or the operation was sent but the server was not able
-to respond in time::
+When either the client was unable to establish a connection within the given
+timeout or the operation was sent but the server was not able to respond in time::
 
   pymongo.errors.NetworkTimeout: localhost:27017: timed out
 
-The following error means the server cancelled the operation because it
-exceeded the given timeout. Note that the operation may have partially
-completed on the server (depending on the operation)::
+When the server cancelled the operation because it exceeded the given timeout.
+Note that the operation may have partially completed on the server (depending
+on the operation)::
 
   pymongo.errors.ExecutionTimeout: operation exceeded time limit, full error: {'ok': 0.0, 'errmsg': 'operation exceeded time limit', 'code': 50, 'codeName': 'MaxTimeMSExpired'}
 
-The following error means the client cancelled the operation early because it
-was not possible to complete within the given timeout::
+When the client cancelled the operation because it was not possible to complete
+within the given timeout::
 
   pymongo.errors.ExecutionTimeout: operation would exceed time limit, remaining timeout:0.00196 <= network round trip time:0.00427
 
-The following errors mean the client attempted a write operation but the server
-could not replicate that write (according to the configured write concern) within
-the given timeout::
+When the client attempted a write operation but the server could not replicate
+that write (according to the configured write concern) within the given timeout::
 
   pymongo.errors.WTimeoutError: operation exceeded time limit, full error: {'code': 50, 'codeName': 'MaxTimeMSExpired', 'errmsg': 'operation exceeded time limit', 'errInfo': {'writeConcern': {'w': 1, 'wtimeout': 0}}}
+
+The same error as above but for :meth:`~pymongo.collection.Collection.insert_many`
+or :meth:`~pymongo.collection.Collection.bulk_write`::
 
   pymongo.errors.BulkWriteError: batch op errors occurred, full error: {'writeErrors': [], 'writeConcernErrors': [{'code': 50, 'codeName': 'MaxTimeMSExpired', 'errmsg': 'operation exceeded time limit', 'errInfo': {'writeConcern': {'w': 1, 'wtimeout': 0}}}], 'nInserted': 2, 'nUpserted': 0, 'nMatched': 0, 'nModified': 0, 'nRemoved': 0, 'upserted': []}
