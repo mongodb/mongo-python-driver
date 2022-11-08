@@ -34,7 +34,7 @@ try:
         year: int
 
 except ImportError as exc:
-    Movie = dict  #  type:ignore[misc,assignment]
+    Movie = dict  # type:ignore[misc,assignment]
 
 
 try:
@@ -121,7 +121,7 @@ class TestPymongo(IntegrationTest):
         coll: Collection[Movie] = self.coll
         requests: List[InsertOne[Movie]] = [InsertOne(Movie(name="American Graffiti", year=1973))]
         self.assertTrue(coll.bulk_write(requests).acknowledged)
-        new_requests: List[Union[InsertOne[Movie], ReplaceOne[Movie]]]
+        new_requests: List[Union[InsertOne[Movie], ReplaceOne[Movie]]] = []
         input_list: List[Union[InsertOne[Movie], ReplaceOne[Movie]]] = [
             InsertOne(Movie(name="American Graffiti", year=1973)),
             ReplaceOne({}, Movie(name="American Graffiti", year=1973)),
