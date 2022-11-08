@@ -111,8 +111,8 @@ These methods automatically add an "_id" field.
   >>> result = collection.find_one({"name": "Jurassic Park"})
   >>> assert result is not None
   >>> assert result["year"] == 1993
-  >>> # This will not be type checked, despite being present, because it is added by PyMongo.
-  >>> assert type(result["_id"]) == ObjectId
+  >>> # This will raise a type-checking error, despite being present, because it is added by PyMongo.
+  >>> assert result["_id"]
 
 This same typing scheme works for all of the insert methods (`insert_one`, `insert_many`, and `bulk_write`). For `bulk_write`,
 both `InsertOne/Many` and `ReplaceOne/Many` operators are generic.
