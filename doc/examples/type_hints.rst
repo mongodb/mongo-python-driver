@@ -2,7 +2,7 @@
 .. _type_hints-example:
 
 Type Hints
-===========
+==========
 
 As of version 4.1, PyMongo ships with `type hints`_. With type hints, Python
 type checkers can easily find bugs before they reveal themselves in your code.

@@ -161,6 +161,8 @@ def timeout(seconds: Optional[float]) -> ContextManager:
     :Raises:
       - :py:class:`ValueError`: When `seconds` is negative.
 
+    See :ref:`timeout-example` for more examples.
+
     .. versionadded:: 4.2
     """
     if not isinstance(seconds, (int, float, type(None))):

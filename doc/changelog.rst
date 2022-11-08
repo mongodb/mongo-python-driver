@@ -11,6 +11,8 @@ Version 4.3.3 fixes a number of bugs:
   instead of line by line (`PYTHON-3502`_).
 - Improved performance of :meth:`gridfs.grid_file.GridOut.read` and
   :meth:`gridfs.grid_file.GridOut.readline` (`PYTHON-3508`_).
+- Added the :ref:`timeout-example` example page to improve the documentation
+  for :func:`pymongo.timeout`.
 
 Issues Resolved
 ...............
@@ -90,7 +92,7 @@ PyMongo 4.2 brings a number of improvements including:
 - Support for the Queryable Encryption beta with MongoDB 6.0. Note that backwards-breaking
   changes may be made before the final release.  See :ref:`automatic-queryable-client-side-encryption` for example usage.
 - Provisional (beta) support for :func:`pymongo.timeout` to apply a single timeout
-  to an entire block of pymongo operations.
+  to an entire block of pymongo operations. See :ref:`timeout-example` for examples.
 - Added the ``timeoutMS`` URI and keyword argument to :class:`~pymongo.mongo_client.MongoClient`.
 - Added the :attr:`pymongo.errors.PyMongoError.timeout` property which is ``True`` when
   the error was caused by a timeout.
