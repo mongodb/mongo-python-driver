@@ -20,10 +20,8 @@ import unittest
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List
 
 try:
-    if TYPE_CHECKING:
-        from typing_extensions import TypedDict
-    else:
-        from typing import TypedDict
+    from typing_extensions import NotRequired, TypedDict
+
     from bson import ObjectId
 
     class Movie(TypedDict):
@@ -35,25 +33,15 @@ try:
         name: str
         year: int
 
-    try:
+    class ImplicitMovie(TypedDict):
+        _id: NotRequired[ObjectId]
+        name: str
+        year: int
 
-        if TYPE_CHECKING:
-            from typing_extensions import NotRequired
-        else:
-            from typing import NotRequired  # type:ignore[attr-defined]
-
-        class ImplicitMovie(TypedDict):
-            _id: NotRequired[ObjectId]
-            name: str
-            year: int
-
-    except ImportError:
-        NotRequired = None  # type: ignore[assignment]
-        ImplicitMovie = None  # type: ignore[assignment,misc]
-
-except ImportError:
-    TypedDict = None
-    ImplicitMovie = None  # type: ignore[assignment,misc]
+except ImportError as exc:
+    Movie = dict  # type:ignore[misc,assignment]
+    ImplicitMovie = dict  # type: ignore[assignment,misc]
+    MovieWithId = dict  # type: ignore[assignment,misc]
 
 
 try:
