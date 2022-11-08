@@ -101,7 +101,7 @@ if [ -n "$TEST_PYOPENSSL" ]; then
     python -m pip install --prefer-binary pyopenssl requests service_identity
 fi
 
-if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_AZURE_AUTO" ]; then
+if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
 
     createvirtualenv $PYTHON venv-encryption
     trap "deactivate; rm -rf venv-encryption" EXIT HUP
