@@ -11,6 +11,8 @@ Version 4.3.3 fixes a number of bugs:
   instead of line by line (`PYTHON-3502`_).
 - Improved performance of :meth:`gridfs.grid_file.GridOut.read` and
   :meth:`gridfs.grid_file.GridOut.readline` (`PYTHON-3508`_).
+- Added the :ref:`timeout-example` example page to improve the documentation
+  for :func:`pymongo.timeout`.
 
 Issues Resolved
 ...............
