@@ -42,6 +42,8 @@ except ImportError as exc:
     Movie = dict  # type:ignore[misc,assignment]
     ImplicitMovie = dict  # type: ignore[assignment,misc]
     MovieWithId = dict  # type: ignore[assignment,misc]
+    TypedDict = None  # type: ignore[assignment]
+    NotRequired = None  # type: ignore[assignment]
 
 
 try:
