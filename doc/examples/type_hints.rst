@@ -126,7 +126,7 @@ There are three approaches to this:
 
   1. Do not specify `_id` at all. It will be inserted automatically, and can be retrieved at run-time, but will yield a type-checking error unless explicitly ignored.
 
-  2. Specify `_id` explicitly. This will mean that every instance of your custom TypedDict class will have to passed a value for `_id`.
+  2. Specify `_id` explicitly. This will mean that every instance of your custom TypedDict class will have to pass a value for `_id`.
 
   3. Make use of :py:class:`~typing.NotRequired`. This has the flexibility of option 1, but with the ability to access the `_id` field without causing a type-checking error.
 
