@@ -124,13 +124,13 @@ You can use :py:class:`~typing.TypedDict` (Python 3.8+) to model structured data
 As noted above, PyMongo will automatically add an `_id` field if it is not present. This also applies to TypedDict.
 There are three approaches to this:
 
-  1. Do not specify `_id` at all. It will be inserted automatically, and can be retrieved at run-time, but cannot be type-checked.
+  1. Do not specify `_id` at all. It will be inserted automatically, and can be retrieved at run-time, but will yield a type-checking error.
 
   2. Specify `_id` explicitly. This will mean that every instance of your custom TypedDict class will have to passed a value for `_id`.
 
-  3. Make use of :py:class:`~typing.NotRequired`. This has the flexibility of 1, but with the ability to type-check.
+  3. Make use of :py:class:`~typing.NotRequired`. This has the flexibility of 1, but with the ability to access the `_id` field without causing a type-checking error.
 
-Note: to use :py:class:`~typing.TypedDict` in earlier versions of Python (<3.8, <3.11, use the `typing_extensions` package.
+Note: to use :py:class:`~typing.TypedDict` and :py:class:`~typing.NotRequired` in earlier versions of Python (<3.8, <3.11), use the `typing_extensions` package.
 
 .. doctest:: typed-dict-example
   :pyversion: >= 3.11
@@ -158,22 +158,22 @@ Note: to use :py:class:`~typing.TypedDict` in earlier versions of Python (<3.8, 
   >>> inserted = collection.insert_one(Movie(name="Jurassic Park", year=1993))
   >>> result = collection.find_one({})
   >>> assert result is not None
-  >>> # This will not be type checked, despite being present, because it is added by PyMongo.
-  >>> assert type(result["_id"]) == ObjectId
+  >>> # This will yield a type-checking error, despite being present, because it is added by PyMongo.
+  >>> assert result["_id"]  # type:ignore[typeddict-item]
   >>> collection: Collection[ExplicitMovie] = client.test.test
   >>> # Note that the _id keyword argument must be supplied
   >>> inserted = collection.insert_one(ExplicitMovie(_id=ObjectId(), name="Jurassic Park", year=1993))
   >>> result = collection.find_one({})
   >>> assert result is not None
-  >>> # This will be type checked.
-  >>> assert type(result["_id"]) == ObjectId
+  >>> # This will not raise a type-checking error.
+  >>> assert result["_id"]
   >>> collection: Collection[NotRequiredMovie] = client.test.test
   >>> # Note the lack of _id, similar to the first example
   >>> inserted = collection.insert_one(NotRequiredMovie(name="Jurassic Park", year=1993))
   >>> result = collection.find_one({})
   >>> assert result is not None
-  >>> # This will be type checked, despite not being provided explicitly.
-  >>> assert type(result["_id"]) == ObjectId
+  >>> # This will not raise a type-checking error, despite not being provided explicitly.
+  >>> assert result["_id"]
 
 
 Typed Database

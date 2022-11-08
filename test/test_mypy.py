@@ -362,19 +362,17 @@ class TestDocumentType(unittest.TestCase):
         assert out is not None
         # This should fail because the output is a Movie.
         assert out["foo"]  # type:ignore[typeddict-item]
-        assert type(out["_id"]) == ObjectId
+        assert out["_id"]
 
     # This should work the same as the test above, but this time using NotRequired to allow
     # automatic insertion of the _id field by insert_one.
     @only_type_check
     def test_typeddict_not_required_document_type(self) -> None:
-        if NotRequired is None or ImplicitMovie is None:
-            raise unittest.SkipTest("Python 3.11+ is required to use NotRequired.")
         out = ImplicitMovie(name="THX-1138", year=1971)
         assert out is not None
         # This should fail because the output is a Movie.
         assert out["foo"]  # type:ignore[typeddict-item]
-        assert type(out["_id"]) == ObjectId
+        assert out["_id"]
 
     @only_type_check
     def test_typeddict_empty_document_type(self) -> None:
@@ -383,7 +381,7 @@ class TestDocumentType(unittest.TestCase):
         # This should fail because the output is a Movie.
         assert out["foo"]  # type:ignore[typeddict-item]
         # This should fail because _id is not included in our TypedDict definition.
-        assert type(out["_id"]) == ObjectId  # type:ignore[typeddict-item]
+        assert out["_id"]  # type:ignore[typeddict-item]
 
     def test_typeddict_find_notrequired(self):
         if NotRequired is None or ImplicitMovie is None:
