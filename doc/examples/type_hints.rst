@@ -109,7 +109,7 @@ These methods automatically add an "_id" field.
   >>> client: MongoClient = MongoClient()
   >>> collection: Collection[Movie] = client.test.test
   >>> inserted = collection.insert_one(Movie(name="Jurassic Park", year=1993))
-  >>> result = collection.find_one({})
+  >>> result = collection.find_one({"name": "Jurassic Park"})
   >>> assert result is not None
   >>> assert result["year"] == 1993
   >>> # This will raise a type-checking error, despite being present, because it is added by PyMongo.
@@ -161,14 +161,14 @@ Note: to use :py:class:`~typing.TypedDict` and :py:class:`~typing.NotRequired` i
   >>> collection: Collection[ExplicitMovie] = client.test.test
   >>> # Note that the _id keyword argument must be supplied
   >>> inserted = collection.insert_one(ExplicitMovie(_id=ObjectId(), name="Jurassic Park", year=1993))
-  >>> result = collection.find_one({})
+  >>> result = collection.find_one({"name": "Jurassic Park"})
   >>> assert result is not None
   >>> # This will not raise a type-checking error.
   >>> assert result["_id"]
   >>> collection: Collection[NotRequiredMovie] = client.test.test
   >>> # Note the lack of _id, similar to the first example
   >>> inserted = collection.insert_one(NotRequiredMovie(name="Jurassic Park", year=1993))
-  >>> result = collection.find_one({})
+  >>> result = collection.find_one({"name": "Jurassic Park"})
   >>> assert result is not None
   >>> # This will not raise a type-checking error, despite not being provided explicitly.
   >>> assert result["_id"]

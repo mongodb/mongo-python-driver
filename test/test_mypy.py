@@ -84,8 +84,6 @@ class TestMypyFails(unittest.TestCase):
     def ensure_mypy_fails(self, filename: str) -> None:
         if api is None:
             raise unittest.SkipTest("Mypy is not installed")
-        if TypedDict is None:
-            raise unittest.SkipTest("TypedDict is supported on Python 3.8+ only")
         stdout, stderr, exit_status = api.run([filename])
         self.assertTrue(exit_status, msg=stdout)
 
@@ -295,10 +293,6 @@ class TestDecode(unittest.TestCase):
 
 
 class TestDocumentType(unittest.TestCase):
-    def setUp(self) -> None:
-        if TypedDict is None:
-            raise unittest.SkipTest("Python 3.8+ is required to use TypedDict.")
-
     @only_type_check
     def test_default(self) -> None:
         client: MongoClient = MongoClient()
