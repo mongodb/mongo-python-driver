@@ -102,7 +102,6 @@ These methods automatically add an "_id" field.
   >>> from typing import TypedDict
   >>> from pymongo import MongoClient
   >>> from pymongo.collection import Collection
-  >>> from bson import ObjectId
   >>> class Movie(TypedDict):
   ...       name: str
   ...       year: int
