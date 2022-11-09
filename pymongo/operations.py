@@ -317,7 +317,7 @@ class UpdateOne(_UpdateOp):
     def __init__(
         self,
         filter: Mapping[str, Any],
-        update: Union[_DocumentType, RawBSONDocument, _Pipeline],
+        update: Union[Mapping[str, Any], _Pipeline],
         upsert: bool = False,
         collation: Optional[_CollationIn] = None,
         array_filters: Optional[List[Mapping[str, Any]]] = None,
@@ -375,7 +375,7 @@ class UpdateMany(_UpdateOp):
     def __init__(
         self,
         filter: Mapping[str, Any],
-        update: Union[_DocumentType, RawBSONDocument, _Pipeline],
+        update: Union[Mapping[str, Any], _Pipeline],
         upsert: bool = False,
         collation: Optional[_CollationIn] = None,
         array_filters: Optional[List[Mapping[str, Any]]] = None,
