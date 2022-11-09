@@ -114,8 +114,8 @@ These methods automatically add an "_id" field.
   >>> # This will raise a type-checking error, despite being present, because it is added by PyMongo.
   >>> assert result["_id"]
 
-This same typing scheme works for all of the insert methods (`insert_one`, `insert_many`, and `bulk_write`). For `bulk_write`,
-both `InsertOne/Many` and `ReplaceOne/Many` operators are generic.
+This same typing scheme works for all of the insert methods (:meth:`~pymongo.collection.Collection.insert_one`, :meth:`~pymongo.collection.Collection.insert_many`, and :meth:`~pymongo.collection.Collection.bulk_write`). For `bulk_write`,
+both :py:class:`~pymongo.operations.InsertOne` and :py:class:`~pymongo.operations.ReplaceOne` operators are generic.
 
 .. doctest::
 
