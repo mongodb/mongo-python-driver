@@ -116,8 +116,7 @@ These methods automatically add an "_id" field.
 
 This same typing scheme works for all of the insert methods (:meth:`~pymongo.collection.Collection.insert_one`,
 :meth:`~pymongo.collection.Collection.insert_many`, and :meth:`~pymongo.collection.Collection.bulk_write`).
-For `bulk_write`, :class:`~pymongo.operations.InsertOne`, :class:`~pymongo.operations.ReplaceOne`, and
-:class:`~pymongo.operations.UpdateMany` operators are generic.
+For `bulk_write` both :class:`~pymongo.operations.InsertOne` and :class:`~pymongo.operations.ReplaceOne` operators are generic.
 
 .. doctest::
 
