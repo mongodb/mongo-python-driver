@@ -101,7 +101,8 @@ if [ -n "$TEST_PYOPENSSL" ]; then
     python -m pip install --prefer-binary pyopenssl requests service_identity
 fi
 
-if [ -n "$TEST_ENCRYPTION" ]; then
+if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
+
     createvirtualenv $PYTHON venv-encryption
     trap "deactivate; rm -rf venv-encryption" EXIT HUP
     PYTHON=python
@@ -146,7 +147,9 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     python -c "import pymongocrypt; print('pymongocrypt version: '+pymongocrypt.__version__)"
     python -c "import pymongocrypt; print('libmongocrypt version: '+pymongocrypt.libmongocrypt_version())"
     # PATH is updated by PREPARE_SHELL for access to mongocryptd.
+fi
 
+if [ -n "$TEST_ENCRYPTION" ]; then
     # Need aws dependency for On-Demand KMS Credentials.
     python -m pip install '.[aws]'
 
@@ -169,6 +172,20 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     fi
     # Only run the encryption tests.
     TEST_ARGS="-s test.test_encryption"
+fi
+
+if [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE_GCP_AUTO" ]; then
+    if [[ -z "$SUCCESS" ]]; then
+        echo "Must define SUCCESS"
+        exit 1
+    fi
+
+    if echo "$MONGODB_URI" | grep -q "@"; then
+      echo "MONGODB_URI unexpectedly contains user credentials in FLE test!";
+      exit 1
+    fi
+
+    TEST_ARGS="-s test.test_on_demand_csfle"
 fi
 
 if [ -n "$DATA_LAKE" ]; then

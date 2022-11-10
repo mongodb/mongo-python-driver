@@ -19,9 +19,10 @@ import unittest
 from queue import Queue
 
 from mockupdb import MockupDB, go
-from operations import upgrades
 
 from pymongo import MongoClient
+
+from .operations import upgrades
 
 
 class TestMixedVersionSharded(unittest.TestCase):

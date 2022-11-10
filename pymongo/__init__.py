@@ -142,8 +142,8 @@ def timeout(seconds: Optional[float]) -> ContextManager:
           else:
               print(f"failed with non-timeout error: {exc!r}")
 
-    When nesting :func:`~pymongo.timeout`, the newly computed deadline is capped to at most
-    the existing deadline. The deadline can only be shortened, not extended.
+    When nesting :func:`~pymongo.timeout`, the nested deadline is capped by
+    the outer deadline. The deadline can only be shortened, not extended.
     When exiting the block, the previous deadline is restored::
 
       with pymongo.timeout(5):
@@ -160,6 +160,8 @@ def timeout(seconds: Optional[float]) -> ContextManager:
 
     :Raises:
       - :py:class:`ValueError`: When `seconds` is negative.
+
+    See :ref:`timeout-example` for more examples.
 
     .. versionadded:: 4.2
     """

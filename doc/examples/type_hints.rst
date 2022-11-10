@@ -2,7 +2,7 @@
 .. _type_hints-example:
 
 Type Hints
-===========
+==========
 
 As of version 4.1, PyMongo ships with `type hints`_. With type hints, Python
 type checkers can easily find bugs before they reveal themselves in your code.
@@ -97,6 +97,7 @@ You can use :py:class:`~typing.TypedDict` (Python 3.8+) when using a well-define
 These methods automatically add an "_id" field.
 
 .. doctest::
+  :pyversion: >= 3.8
 
   >>> from typing import TypedDict
   >>> from pymongo import MongoClient
@@ -124,10 +125,6 @@ For `bulk_write` both :class:`~pymongo.operations.InsertOne` and :class:`~pymong
   >>> from pymongo import MongoClient
   >>> from pymongo.operations import InsertOne
   >>> from pymongo.collection import Collection
-  >>> class Movie(TypedDict):
-  ...       name: str
-  ...       year: int
-  ...
   >>> client: MongoClient = MongoClient()
   >>> collection: Collection[Movie] = client.test.test
   >>> inserted = collection.bulk_write([InsertOne(Movie(name="Jurassic Park", year=1993))])
@@ -135,6 +132,64 @@ For `bulk_write` both :class:`~pymongo.operations.InsertOne` and :class:`~pymong
   >>> assert result is not None
   >>> assert result["year"] == 1993
   >>> # This will raise a type-checking error, despite being present, because it is added by PyMongo.
+  >>> assert result["_id"]  # type:ignore[typeddict-item]
+
+Modeling Document Types with TypedDict
+--------------------------------------
+
+You can use :py:class:`~typing.TypedDict` (Python 3.8+) to model structured data.
+As noted above, PyMongo will automatically add an `_id` field if it is not present. This also applies to TypedDict.
+There are three approaches to this:
+
+  1. Do not specify `_id` at all. It will be inserted automatically, and can be retrieved at run-time, but will yield a type-checking error unless explicitly ignored.
+
+  2. Specify `_id` explicitly. This will mean that every instance of your custom TypedDict class will have to pass a value for `_id`.
+
+  3. Make use of :py:class:`~typing.NotRequired`. This has the flexibility of option 1, but with the ability to access the `_id` field without causing a type-checking error.
+
+Note: to use :py:class:`~typing.TypedDict` and :py:class:`~typing.NotRequired` in earlier versions of Python (<3.8, <3.11), use the `typing_extensions` package.
+
+.. doctest:: typed-dict-example
+  :pyversion: >= 3.11
+
+  >>> from typing import TypedDict, NotRequired
+  >>> from pymongo import MongoClient
+  >>> from pymongo.collection import Collection
+  >>> from bson import ObjectId
+  >>> class Movie(TypedDict):
+  ...       name: str
+  ...       year: int
+  ...
+  >>> class ExplicitMovie(TypedDict):
+  ...       _id: ObjectId
+  ...       name: str
+  ...       year: int
+  ...
+  >>> class NotRequiredMovie(TypedDict):
+  ...       _id: NotRequired[ObjectId]
+  ...       name: str
+  ...       year: int
+  ...
+  >>> client: MongoClient = MongoClient()
+  >>> collection: Collection[Movie] = client.test.test
+  >>> inserted = collection.insert_one(Movie(name="Jurassic Park", year=1993))
+  >>> result = collection.find_one({"name": "Jurassic Park"})
+  >>> assert result is not None
+  >>> # This will yield a type-checking error, despite being present, because it is added by PyMongo.
+  >>> assert result["_id"]  # type:ignore[typeddict-item]
+  >>> collection: Collection[ExplicitMovie] = client.test.test
+  >>> # Note that the _id keyword argument must be supplied
+  >>> inserted = collection.insert_one(ExplicitMovie(_id=ObjectId(), name="Jurassic Park", year=1993))
+  >>> result = collection.find_one({"name": "Jurassic Park"})
+  >>> assert result is not None
+  >>> # This will not raise a type-checking error.
+  >>> assert result["_id"]
+  >>> collection: Collection[NotRequiredMovie] = client.test.test
+  >>> # Note the lack of _id, similar to the first example
+  >>> inserted = collection.insert_one(NotRequiredMovie(name="Jurassic Park", year=1993))
+  >>> result = collection.find_one({"name": "Jurassic Park"})
+  >>> assert result is not None
+  >>> # This will not raise a type-checking error, despite not being provided explicitly.
   >>> assert result["_id"]
 
 
@@ -142,7 +197,7 @@ Typed Database
 --------------
 
 While less common, you could specify that the documents in an entire database
-match a well-defined shema using :py:class:`~typing.TypedDict` (Python 3.8+).
+match a well-defined schema using :py:class:`~typing.TypedDict` (Python 3.8+).
 
 
 .. doctest::

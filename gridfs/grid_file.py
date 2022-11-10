@@ -463,7 +463,10 @@ class GridOut(io.IOBase):
         self.__files = root_collection.files
         self.__file_id = file_id
         self.__buffer = EMPTY
+        # Start position within the current buffered chunk.
+        self.__buffer_pos = 0
         self.__chunk_iter = None
+        # Position within the total file.
         self.__position = 0
         self._file = file_document
         self._session = session
@@ -510,12 +513,12 @@ class GridOut(io.IOBase):
         """Reads a chunk at a time. If the current position is within a
         chunk the remainder of the chunk is returned.
         """
-        received = len(self.__buffer)
+        received = len(self.__buffer) - self.__buffer_pos
         chunk_data = EMPTY
         chunk_size = int(self.chunk_size)
 
         if received > 0:
-            chunk_data = self.__buffer
+            chunk_data = self.__buffer[self.__buffer_pos :]
         elif self.__position < int(self.length):
             chunk_number = int((received + self.__position) / chunk_size)
             if self.__chunk_iter is None:
@@ -531,7 +534,59 @@ class GridOut(io.IOBase):
 
         self.__position += len(chunk_data)
         self.__buffer = EMPTY
+        self.__buffer_pos = 0
         return chunk_data
+
+    def _read_size_or_line(self, size: int = -1, line: bool = False) -> bytes:
+        """Internal read() and readline() helper."""
+        self._ensure_file()
+        remainder = int(self.length) - self.__position
+        if size < 0 or size > remainder:
+            size = remainder
+
+        if size == 0:
+            return EMPTY
+
+        received = 0
+        data = []
+        while received < size:
+            needed = size - received
+            if self.__buffer:
+                # Optimization: Read the buffer with zero byte copies.
+                buf = self.__buffer
+                chunk_start = self.__buffer_pos
+                chunk_data = memoryview(buf)[self.__buffer_pos :]
+                self.__buffer = EMPTY
+                self.__buffer_pos = 0
+                self.__position += len(chunk_data)
+            else:
+                buf = self.readchunk()
+                chunk_start = 0
+                chunk_data = memoryview(buf)
+            if line:
+                pos = buf.find(NEWLN, chunk_start, chunk_start + needed) - chunk_start
+                if pos >= 0:
+                    # Decrease size to exit the loop.
+                    size = received + pos + 1
+                    needed = pos + 1
+            if len(chunk_data) > needed:
+                data.append(chunk_data[:needed])
+                # Optimization: Save the buffer with zero byte copies.
+                self.__buffer = buf
+                self.__buffer_pos = chunk_start + needed
+                self.__position -= len(self.__buffer) - self.__buffer_pos
+            else:
+                data.append(chunk_data)
+            received += len(chunk_data)
+
+        # Detect extra chunks after reading the entire file.
+        if size == remainder and self.__chunk_iter:
+            try:
+                self.__chunk_iter.next()
+            except StopIteration:
+                pass
+
+        return b"".join(data)
 
     def read(self, size: int = -1) -> bytes:
         """Read at most `size` bytes from the file (less if there
@@ -548,36 +603,7 @@ class GridOut(io.IOBase):
            entire file. Previously, this method would check for extra chunks
            on every call.
         """
-        self._ensure_file()
-
-        remainder = int(self.length) - self.__position
-        if size < 0 or size > remainder:
-            size = remainder
-
-        if size == 0:
-            return EMPTY
-
-        received = 0
-        data = io.BytesIO()
-        while received < size:
-            chunk_data = self.readchunk()
-            received += len(chunk_data)
-            data.write(chunk_data)
-
-        # Detect extra chunks after reading the entire file.
-        if size == remainder and self.__chunk_iter:
-            try:
-                self.__chunk_iter.next()
-            except StopIteration:
-                pass
-
-        self.__position -= received - size
-
-        # Return 'size' bytes and store the rest.
-        data.seek(size)
-        self.__buffer = data.read()
-        data.seek(0)
-        return data.read(size)
+        return self._read_size_or_line(size=size)
 
     def readline(self, size: int = -1) -> bytes:  # type: ignore[override]
         """Read one line or up to `size` bytes from the file.
@@ -585,33 +611,7 @@ class GridOut(io.IOBase):
         :Parameters:
          - `size` (optional): the maximum number of bytes to read
         """
-        remainder = int(self.length) - self.__position
-        if size < 0 or size > remainder:
-            size = remainder
-
-        if size == 0:
-            return EMPTY
-
-        received = 0
-        data = io.BytesIO()
-        while received < size:
-            chunk_data = self.readchunk()
-            pos = chunk_data.find(NEWLN, 0, size)
-            if pos != -1:
-                size = received + pos + 1
-
-            received += len(chunk_data)
-            data.write(chunk_data)
-            if pos != -1:
-                break
-
-        self.__position -= received - size
-
-        # Return 'size' bytes and store the rest.
-        data.seek(size)
-        self.__buffer = data.read()
-        data.seek(0)
-        return data.read(size)
+        return self._read_size_or_line(size=size, line=True)
 
     def tell(self) -> int:
         """Return the current position of this file."""
@@ -651,6 +651,7 @@ class GridOut(io.IOBase):
 
         self.__position = new_pos
         self.__buffer = EMPTY
+        self.__buffer_pos = 0
         if self.__chunk_iter:
             self.__chunk_iter.close()
             self.__chunk_iter = None
