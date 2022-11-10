@@ -586,7 +586,7 @@ def rs_or_single_client_noauth(h: Any = None, p: Any = None, **kwargs: Any) -> M
     return _mongo_client(h, p, authenticate=False, **kwargs)
 
 
-def rs_or_single_client(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[dict]:
+def rs_or_single_client(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[Any]:
     """Connect to the replica set if there is one, otherwise the standalone.
 
     Authenticates if necessary.

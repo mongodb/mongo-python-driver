@@ -430,10 +430,10 @@ def _shutdown_monitors():
 def _shutdown_resources():
     # _shutdown_monitors/_shutdown_executors may already be GC'd at shutdown.
     shutdown = _shutdown_monitors
-    if shutdown:  # type:ignore[truthy-function]
+    if shutdown:
         shutdown()
     shutdown = _shutdown_executors
-    if shutdown:  # type:ignore[truthy-function]
+    if shutdown:
         shutdown()
 
 

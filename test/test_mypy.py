@@ -19,10 +19,10 @@ import tempfile
 import unittest
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List, Union
 
+from bson import ObjectId
+
 try:
     from typing_extensions import NotRequired, TypedDict
-
-    from bson import ObjectId
 
     class Movie(TypedDict):
         name: str
@@ -42,7 +42,7 @@ except ImportError as exc:
     Movie = dict  # type:ignore[misc,assignment]
     ImplicitMovie = dict  # type: ignore[assignment,misc]
     MovieWithId = dict  # type: ignore[assignment,misc]
-    TypedDict = None  # type: ignore[assignment]
+    TypedDict = None
     NotRequired = None  # type: ignore[assignment]
 
 
@@ -402,6 +402,7 @@ class TestDocumentType(unittest.TestCase):
                 ReplaceOne({}, {"_id": ObjectId(), "name": "THX-1138", "year": 1971})
             ]  # No error because it is in-line.
         )
+
     def test_typeddict_explicit_document_type(self) -> None:
         out = MovieWithId(_id=ObjectId(), name="THX-1138", year=1971)
         assert out is not None
