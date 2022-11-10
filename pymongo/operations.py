@@ -13,21 +13,22 @@
 # limitations under the License.
 
 """Operation class definitions."""
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Generic, List, Mapping, Optional, Sequence, Tuple, Union
 
+from bson.raw_bson import RawBSONDocument
 from pymongo import helpers
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import validate_boolean, validate_is_mapping, validate_list
 from pymongo.helpers import _gen_index_name, _index_document, _index_list
-from pymongo.typings import _CollationIn, _DocumentIn, _Pipeline
+from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
 
 
-class InsertOne(object):
+class InsertOne(Generic[_DocumentType]):
     """Represents an insert_one operation."""
 
     __slots__ = ("_doc",)
 
-    def __init__(self, document: _DocumentIn) -> None:
+    def __init__(self, document: Union[_DocumentType, RawBSONDocument]) -> None:
         """Create an InsertOne instance.
 
         For use with :meth:`~pymongo.collection.Collection.bulk_write`.
@@ -170,7 +171,7 @@ class DeleteMany(object):
         return not self == other
 
 
-class ReplaceOne(object):
+class ReplaceOne(Generic[_DocumentType]):
     """Represents a replace_one operation."""
 
     __slots__ = ("_filter", "_doc", "_upsert", "_collation", "_hint")
@@ -178,7 +179,7 @@ class ReplaceOne(object):
     def __init__(
         self,
         filter: Mapping[str, Any],
-        replacement: Mapping[str, Any],
+        replacement: Union[_DocumentType, RawBSONDocument],
         upsert: bool = False,
         collation: Optional[_CollationIn] = None,
         hint: Optional[_IndexKeyHint] = None,

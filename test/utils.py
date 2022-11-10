@@ -29,6 +29,7 @@ import warnings
 from collections import abc, defaultdict
 from functools import partial
 from test import client_context, db_pwd, db_user
+from typing import Any
 
 from bson import json_util
 from bson.objectid import ObjectId
@@ -557,27 +558,27 @@ def _mongo_client(host, port, authenticate=True, directConnection=None, **kwargs
     return MongoClient(uri, port, **client_options)
 
 
-def single_client_noauth(h=None, p=None, **kwargs):
+def single_client_noauth(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[dict]:
     """Make a direct connection. Don't authenticate."""
     return _mongo_client(h, p, authenticate=False, directConnection=True, **kwargs)
 
 
-def single_client(h=None, p=None, **kwargs):
+def single_client(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[dict]:
     """Make a direct connection, and authenticate if necessary."""
     return _mongo_client(h, p, directConnection=True, **kwargs)
 
 
-def rs_client_noauth(h=None, p=None, **kwargs):
+def rs_client_noauth(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[dict]:
     """Connect to the replica set. Don't authenticate."""
     return _mongo_client(h, p, authenticate=False, **kwargs)
 
 
-def rs_client(h=None, p=None, **kwargs):
+def rs_client(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[dict]:
     """Connect to the replica set and authenticate if necessary."""
     return _mongo_client(h, p, **kwargs)
 
 
-def rs_or_single_client_noauth(h=None, p=None, **kwargs):
+def rs_or_single_client_noauth(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[dict]:
     """Connect to the replica set if there is one, otherwise the standalone.
 
     Like rs_or_single_client, but does not authenticate.
@@ -585,7 +586,7 @@ def rs_or_single_client_noauth(h=None, p=None, **kwargs):
     return _mongo_client(h, p, authenticate=False, **kwargs)
 
 
-def rs_or_single_client(h=None, p=None, **kwargs):
+def rs_or_single_client(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[Any]:
     """Connect to the replica set if there is one, otherwise the standalone.
 
     Authenticates if necessary.

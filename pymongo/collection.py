@@ -77,7 +77,14 @@ from pymongo.write_concern import WriteConcern
 _FIND_AND_MODIFY_DOC_FIELDS = {"value": 1}
 
 
-_WriteOp = Union[InsertOne, DeleteOne, DeleteMany, ReplaceOne, UpdateOne, UpdateMany]
+_WriteOp = Union[
+    InsertOne[_DocumentType],
+    DeleteOne,
+    DeleteMany,
+    ReplaceOne[_DocumentType],
+    UpdateOne,
+    UpdateMany,
+]
 # Hint supports index name, "myIndex", or list of index pairs: [('x', 1), ('y', -1)]
 _IndexList = Sequence[Tuple[str, Union[int, str, Mapping[str, Any]]]]
 _IndexKeyHint = Union[str, _IndexList]
@@ -436,7 +443,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     @_csot.apply
     def bulk_write(
         self,
-        requests: Sequence[_WriteOp],
+        requests: Sequence[_WriteOp[_DocumentType]],
         ordered: bool = True,
         bypass_document_validation: bool = False,
         session: Optional["ClientSession"] = None,

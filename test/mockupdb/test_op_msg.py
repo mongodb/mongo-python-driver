@@ -137,14 +137,14 @@ operations = [
     # Legacy methods
     Operation(
         "bulk_write_insert",
-        lambda coll: coll.bulk_write([InsertOne({}), InsertOne({})]),
+        lambda coll: coll.bulk_write([InsertOne[dict]({}), InsertOne[dict]({})]),
         request=OpMsg({"insert": "coll"}, flags=0),
         reply={"ok": 1, "n": 2},
     ),
     Operation(
         "bulk_write_insert-w0",
         lambda coll: coll.with_options(write_concern=WriteConcern(w=0)).bulk_write(
-            [InsertOne({}), InsertOne({})]
+            [InsertOne[dict]({}), InsertOne[dict]({})]
         ),
         request=OpMsg({"insert": "coll"}, flags=0),
         reply={"ok": 1, "n": 2},
@@ -152,7 +152,7 @@ operations = [
     Operation(
         "bulk_write_insert-w0-unordered",
         lambda coll: coll.with_options(write_concern=WriteConcern(w=0)).bulk_write(
-            [InsertOne({}), InsertOne({})], ordered=False
+            [InsertOne[dict]({}), InsertOne[dict]({})], ordered=False
         ),
         request=OpMsg({"insert": "coll"}, flags=OP_MSG_FLAGS["moreToCome"]),
         reply=None,

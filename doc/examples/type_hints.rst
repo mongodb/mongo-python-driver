@@ -113,6 +113,26 @@ These methods automatically add an "_id" field.
   >>> assert result is not None
   >>> assert result["year"] == 1993
   >>> # This will raise a type-checking error, despite being present, because it is added by PyMongo.
+  >>> assert result["_id"] # type:ignore[typeddict-item]
+
+This same typing scheme works for all of the insert methods (:meth:`~pymongo.collection.Collection.insert_one`,
+:meth:`~pymongo.collection.Collection.insert_many`, and :meth:`~pymongo.collection.Collection.bulk_write`).
+For `bulk_write` both :class:`~pymongo.operations.InsertOne` and :class:`~pymongo.operations.ReplaceOne` operators are generic.
+
+.. doctest::
+  :pyversion: >= 3.8
+
+  >>> from typing import TypedDict
+  >>> from pymongo import MongoClient
+  >>> from pymongo.operations import InsertOne
+  >>> from pymongo.collection import Collection
+  >>> client: MongoClient = MongoClient()
+  >>> collection: Collection[Movie] = client.test.test
+  >>> inserted = collection.bulk_write([InsertOne(Movie(name="Jurassic Park", year=1993))])
+  >>> result = collection.find_one({"name": "Jurassic Park"})
+  >>> assert result is not None
+  >>> assert result["year"] == 1993
+  >>> # This will raise a type-checking error, despite being present, because it is added by PyMongo.
   >>> assert result["_id"]  # type:ignore[typeddict-item]
 
 Modeling Document Types with TypedDict
