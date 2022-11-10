@@ -19,10 +19,10 @@ import tempfile
 import unittest
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List, Union
 
-from bson import ObjectId
-
 try:
     from typing_extensions import NotRequired, TypedDict
+
+    from bson import ObjectId
 
     class Movie(TypedDict):
         name: str
@@ -403,6 +403,7 @@ class TestDocumentType(unittest.TestCase):
             ]  # No error because it is in-line.
         )
 
+    @only_type_check
     def test_typeddict_explicit_document_type(self) -> None:
         out = MovieWithId(_id=ObjectId(), name="THX-1138", year=1971)
         assert out is not None
