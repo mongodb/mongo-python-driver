@@ -20,14 +20,30 @@ import unittest
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List
 
 try:
-    from typing_extensions import TypedDict
+    from typing_extensions import NotRequired, TypedDict
 
-    class Movie(TypedDict):  # type: ignore[misc]
+    from bson import ObjectId
+
+    class Movie(TypedDict):
         name: str
         year: int
 
-except ImportError:
-    TypedDict = None
+    class MovieWithId(TypedDict):
+        _id: ObjectId
+        name: str
+        year: int
+
+    class ImplicitMovie(TypedDict):
+        _id: NotRequired[ObjectId]
+        name: str
+        year: int
+
+except ImportError as exc:
+    Movie = dict  # type:ignore[misc,assignment]
+    ImplicitMovie = dict  # type: ignore[assignment,misc]
+    MovieWithId = dict  # type: ignore[assignment,misc]
+    TypedDict = None  # type: ignore[assignment]
+    NotRequired = None  # type: ignore[assignment]
 
 
 try:
@@ -323,6 +339,43 @@ class TestDocumentType(unittest.TestCase):
             [{"name": "THX-1138", "year": "WRONG TYPE"}]  # type: ignore[typeddict-item]
         )
         coll.insert_many([bad_movie])
+
+    @only_type_check
+    def test_typeddict_explicit_document_type(self) -> None:
+        out = MovieWithId(_id=ObjectId(), name="THX-1138", year=1971)
+        assert out is not None
+        # This should fail because the output is a Movie.
+        assert out["foo"]  # type:ignore[typeddict-item]
+        assert out["_id"]
+
+    # This should work the same as the test above, but this time using NotRequired to allow
+    # automatic insertion of the _id field by insert_one.
+    @only_type_check
+    def test_typeddict_not_required_document_type(self) -> None:
+        out = ImplicitMovie(name="THX-1138", year=1971)
+        assert out is not None
+        # This should fail because the output is a Movie.
+        assert out["foo"]  # type:ignore[typeddict-item]
+        assert out["_id"]
+
+    @only_type_check
+    def test_typeddict_empty_document_type(self) -> None:
+        out = Movie(name="THX-1138", year=1971)
+        assert out is not None
+        # This should fail because the output is a Movie.
+        assert out["foo"]  # type:ignore[typeddict-item]
+        # This should fail because _id is not included in our TypedDict definition.
+        assert out["_id"]  # type:ignore[typeddict-item]
+
+    def test_typeddict_find_notrequired(self):
+        if NotRequired is None or ImplicitMovie is None:
+            raise unittest.SkipTest("Python 3.11+ is required to use NotRequired.")
+        client: MongoClient[ImplicitMovie] = rs_or_single_client()
+        coll = client.test.test
+        coll.insert_one(ImplicitMovie(name="THX-1138", year=1971))
+        out = coll.find_one({})
+        assert out is not None
+        assert out["_id"]
 
     @only_type_check
     def test_raw_bson_document_type(self) -> None:
