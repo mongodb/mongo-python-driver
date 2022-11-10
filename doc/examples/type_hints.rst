@@ -113,7 +113,7 @@ These methods automatically add an "_id" field.
   >>> assert result is not None
   >>> assert result["year"] == 1993
   >>> # This will raise a type-checking error, despite being present, because it is added by PyMongo.
-  >>> assert result["_id"]
+  >>> assert result["_id"] # type:ignore[typeddict-item]
 
 This same typing scheme works for all of the insert methods (:meth:`~pymongo.collection.Collection.insert_one`,
 :meth:`~pymongo.collection.Collection.insert_many`, and :meth:`~pymongo.collection.Collection.bulk_write`).
