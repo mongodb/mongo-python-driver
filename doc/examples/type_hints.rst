@@ -120,6 +120,7 @@ This same typing scheme works for all of the insert methods (:meth:`~pymongo.col
 For `bulk_write` both :class:`~pymongo.operations.InsertOne` and :class:`~pymongo.operations.ReplaceOne` operators are generic.
 
 .. doctest::
+  :pyversion: >= 3.8
 
   >>> from typing import TypedDict
   >>> from pymongo import MongoClient
