@@ -26,9 +26,11 @@ from test import IntegrationTest, SkipTest, client_context, client_knobs, unitte
 from test.utils import (
     CMAPListener,
     DeprecationFilter,
+    EventListener,
     OvertCommandListener,
     TestCreator,
     rs_or_single_client,
+    wait_until,
 )
 from test.utils_spec_runner import SpecRunner
 from test.version import Version
@@ -45,6 +47,7 @@ from pymongo.errors import (
 )
 from pymongo.mongo_client import MongoClient
 from pymongo.monitoring import (
+    CommandFailedEvent,
     ConnectionCheckedOutEvent,
     ConnectionCheckOutFailedEvent,
     ConnectionCheckOutFailedReason,
@@ -62,6 +65,22 @@ from pymongo.write_concern import WriteConcern
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "retryable_writes", "legacy")
+
+
+class RetryFailureListener(EventListener):
+    def __init__(self):
+        super().__init__()
+        self._exc = []
+
+    def failed(self, event):
+        print(event)
+        if self._exc and type(self._exc[-1]) == CommandFailedEvent:
+            try:
+                client_context.client.test.test.insert_one({"id": 1})
+            except OperationFailure as exc:
+                self._exc.append(exc)
+        else:
+            self._exc.append(event.failure)
 
 
 class TestAllScenarios(SpecRunner):
@@ -583,8 +602,45 @@ class TestPoolPausedError(IntegrationTest):
         failed = cmd_listener.results["failed"]
         self.assertEqual(1, len(failed), msg)
 
+    @client_context.require_failCommand_fail_point
+    @client_context.require_replica_set
+    @client_knobs(heartbeat_frequency=0.05, min_heartbeat_interval=0.05)
+    def test_returns_original_error_code(
+        self,
+    ):  # TODO: Make this a real integration test where we stepdown the primary.
+        cmd_listener = RetryFailureListener()
+        client = rs_or_single_client(retryWrites=True, event_listeners=[cmd_listener])
+        client.test.test.drop()
+        self.addCleanup(client.close)
+        failpoint = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {
+                "writeConcernError": {
+                    "code": 91,
+                    "errorLabels": ["RetryableWriteError"],
+                },
+                "failCommands": ["insert"],
+            },
+        }
 
-# TODO: Make this a real integration test where we stepdown the primary.
+        with self.fail_point(failpoint):
+            client.test.test.insert_one({"_id": 1})
+        wait_until(lambda: len(cmd_listener._exc) > 0, "waited for events")
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {
+                    "errorCode": 10107,
+                    "errorLabels": ["RetryableWriteError", "NoWritesPerformed"],
+                    "failCommands": ["insert"],
+                },
+            }
+        ):
+            self.assertIsInstance(cmd_listener._exc[-2], CommandFailedEvent)
+            self.assertIsInstance(cmd_listener._exc[-1].code, 91)
+
+
 class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
     @client_context.require_replica_set
     @client_context.require_no_mmap

@@ -139,17 +139,21 @@ class CMAPListener(BaseListener, monitoring.ConnectionPoolListener):
         self.add_event(event)
 
 
-class EventListener(monitoring.CommandListener):
+class EventListener(BaseListener, monitoring.CommandListener):
     def __init__(self):
+        super().__init__()
         self.results = defaultdict(list)
 
     def started(self, event):
+        self.add_event(event)
         self.results["started"].append(event)
 
     def succeeded(self, event):
+        self.add_event(event)
         self.results["succeeded"].append(event)
 
     def failed(self, event):
+        self.add_event(event)
         self.results["failed"].append(event)
 
     def started_command_names(self):
@@ -158,6 +162,7 @@ class EventListener(monitoring.CommandListener):
 
     def reset(self):
         """Reset the state of this listener."""
+        super().reset()
         self.results.clear()
 
 
