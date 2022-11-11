@@ -4,7 +4,7 @@ Changelog
 Changes in Version 4.3.3
 ------------------------
 
-Version 4.3.3 fixes a number of bugs:
+Version 4.3.3 documents support for :ref:`CSFLE on-demand credentials` for cloud KMS providers, and fixes the following bugs:
 
 - Fixed a performance regression in :meth:`~gridfs.GridFSBucket.download_to_stream`
   and :meth:`~gridfs.GridFSBucket.download_to_stream_by_name` by reading in chunks

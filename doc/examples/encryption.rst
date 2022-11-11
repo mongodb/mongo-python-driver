@@ -713,6 +713,77 @@ To configure automatic *decryption* without automatic *encryption* set
       client_encryption.close()
       client.close()
 
-
   if __name__ == "__main__":
       main()
+
+
+.. _CSFLE on-demand credentials:
+
+
+CSFLE on-demand credentials
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``pymongocrypt`` 1.4 adds support for fetching on-demand KMS credentials for
+AWS, GCP, and Azure cloud environments.
+
+To enable the driver's behavior to obtain credentials from the environment, add the appropriate key ("aws", "gcp", or "azure") with an empty map to
+"kms_providers" in either :class:`~pymongo.encryption_options.AutoEncryptionOpts` or :class:`~pymongo.encryption.ClientEncryption` options.
+
+An application using AWS credentials would look like::
+
+    from pymongo import MongoClient
+    from pymongo.encryption import ClientEncryption
+    client = MongoClient()
+    client_encryption = ClientEncryption(
+          # The empty dictionary enables on-demand credentials.
+          kms_providers={"aws": {}},
+          key_vault_namespace="keyvault.datakeys",
+          key_vault_client=client,
+          codec_options=client.codec_options,
+    )
+    master_key = {
+          "region": "us-east-1",
+          "key": ("arn:aws:kms:us-east-1:123456789:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0"),
+    }
+    client_encryption.create_data_key("aws", master_key)
+
+The above will enable the same behavior of obtaining AWS credentials from the environment as is used for :ref:`MONGODB-AWS` authentication, including the
+caching to avoid rate limiting.
+
+An application using GCP credentials would look like::
+
+    from pymongo import MongoClient
+    from pymongo.encryption import ClientEncryption
+    client = MongoClient()
+    client_encryption = ClientEncryption(
+          # The empty dictionary enables on-demand credentials.
+          kms_providers={"gcp": {}},
+          key_vault_namespace="keyvault.datakeys",
+          key_vault_client=client,
+          codec_options=client.codec_options,
+    )
+    master_key = {
+        "projectId": "my-project",
+        "location": "global",
+        "keyRing": "key-ring-csfle",
+        "keyName": "key-name-csfle",
+    }
+    client_encryption.create_data_key("gcp", master_key)
+
+The driver will query the `VM instance metadata <https://cloud.google.com/compute/docs/metadata/default-metadata-values>`_ to obtain credentials.
+
+An application using Azure credentials would look like, this time using
+:class:`~pymongo.encryption_options.AutoEncryptionOpts`::
+
+    from pymongo import MongoClient
+    from pymongo.encryption_options import AutoEncryptionOpts
+    # The empty dictionary enables on-demand credentials.
+    kms_providers={"azure": {}},
+    key_vault_namespace="keyvault.datakeys"
+    auto_encryption_opts = AutoEncryptionOpts(
+          kms_providers, key_vault_namespace)
+    client = MongoClient(auto_encryption_opts=auto_encryption_opts)
+    coll = client.test.coll
+    coll.insert_one({"encryptedField": "123456789"})
+
+The driver will `acquire an access token <https://learn.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/how-to-use-vm-token>`_ from the Azure VM.
