@@ -1,27 +1,10 @@
 Changelog
 =========
 
-Changes in Version 4.4
-----------------------
-
-Version 4.4 brings a number of improvements including:
-
-- Added support for :ref:`CSFLE on-demand credentials` for cloud KMS providers.
-
-
-Issues Resolved
-...............
-
-See the `PyMongo 4.4 release notes in JIRA`_ for the list of resolved issues
-in this release.
-
-.. _PyMongo 4.4 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=34354
-
-
 Changes in Version 4.3.3
 ------------------------
 
-Version 4.3.3 fixes a number of bugs:
+Version 4.3.3 documents supportfor :ref:`CSFLE on-demand credentials` for cloud KMS providers, and fixes the following bugs:
 
 - Fixed a performance regression in :meth:`~gridfs.GridFSBucket.download_to_stream`
   and :meth:`~gridfs.GridFSBucket.download_to_stream_by_name` by reading in chunks

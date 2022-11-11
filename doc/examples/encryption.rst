@@ -723,8 +723,8 @@ To configure automatic *decryption* without automatic *encryption* set
 CSFLE on-demand credentials
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-PyMongo 4.4 adds support for fetching on-demand KMS credentials for AWS,
-GCP, and Azure cloud environments.
+``pymongocrypt`` 1.4 adds support for fetching on-demand KMS credentials for
+AWS, GCP, and Azure cloud environments.
 
 To enable the driver's behavior to obtain credentials from the environment, add the appropriate key ("aws", "gcp", or "azure") with an empty map to
 "kms_providers" in either :class:`~pymongo.encryption_options.AutoEncryptionOpts` or :class:`~pymongo.encryption.ClientEncryption` options.
