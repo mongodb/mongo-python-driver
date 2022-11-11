@@ -733,9 +733,9 @@ An application using AWS credentials would look like::
 
     from pymongo import MongoClient
     from pymongo.encryption import ClientEncryption
-    from pymongo.encryption_options import AutoEncryptionOpts
     client = MongoClient()
     client_encryption = ClientEncryption(
+          # The empty dictionary enables on-demand credentials.
           kms_providers={"aws": {}},
           key_vault_namespace="keyvault.datakeys",
           key_vault_client=client,
@@ -754,9 +754,9 @@ An application using GCP credentials would look like::
 
     from pymongo import MongoClient
     from pymongo.encryption import ClientEncryption
-    from pymongo.encryption_options import AutoEncryptionOpts
     client = MongoClient()
     client_encryption = ClientEncryption(
+          # The empty dictionary enables on-demand credentials.
           kms_providers={"gcp": {}},
           key_vault_namespace="keyvault.datakeys",
           key_vault_client=client,
@@ -772,22 +772,18 @@ An application using GCP credentials would look like::
 
 The driver will query the `VM instance metadata <https://cloud.google.com/compute/docs/metadata/default-metadata-values>`_ to obtain credentials.
 
-An application using Azure credentials would look like::
+An application using Azure credentials would look like, this time using
+:class:`~pymongo.encryption_options.AutoEncryptionOpts`::
 
     from pymongo import MongoClient
-    from pymongo.encryption import ClientEncryption
     from pymongo.encryption_options import AutoEncryptionOpts
-    client = MongoClient()
-    client_encryption = ClientEncryption(
-          kms_providers={"azure": {}},
-          key_vault_namespace="keyvault.datakeys",
-          key_vault_client=client,
-          codec_options=client.codec_options,
-    )
-    master_key = {
-        "keyVaultEndpoint": "https://my-keyvault-address.vault.azure.net/keys/",
-        "keyName": "MY-KEY-NAME",
-    }
-    client_encryption.create_data_key("azure", master_key)
+    # The empty dictionary enables on-demand credentials.
+    kms_providers={"azure": {}},
+    key_vault_namespace="keyvault.datakeys"
+    auto_encryption_opts = AutoEncryptionOpts(
+          kms_providers, key_vault_namespace)
+    client = MongoClient(auto_encryption_opts=auto_encryption_opts)
+    coll = client.test.coll
+    coll.insert_one({"encryptedField": "123456789"})
 
 The driver will `acquire an access token <https://learn.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/how-to-use-vm-token>`_ from the Azure VM.
