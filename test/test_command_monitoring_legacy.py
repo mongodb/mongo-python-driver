@@ -57,16 +57,6 @@ class TestAllScenarios(unittest.TestCase):
         self.listener.reset()
 
 
-def format_actual_results(results):
-    started = listener.started_events
-    succeeded = listener.succeeded_events
-    failed = listener.failed_events
-    msg = "\nStarted:   %r" % (started[0].command if len(started) else None,)
-    msg += "\nSucceeded: %r" % (succeeded[0].reply if len(succeeded) else None,)
-    msg += "\nFailed:    %r" % (failed[0].failure if len(failed) else None,)
-    return msg
-
-
 def create_test(scenario_def, test):
     def run_scenario(self):
         dbname = scenario_def["database_name"]
@@ -186,11 +176,11 @@ def create_test(scenario_def, test):
                 event_name = event_type.split("_")[1]
                 self.fail(
                     "Expected %s event for %s command. Actual "
-                    "results:%s"
+                    "results:\n%s"
                     % (
                         event_name,
                         expectation[event_type]["command_name"],
-                        format_actual_results(self.listener.events),
+                        "\n".join(str(e) for e in self.listener.events),
                     )
                 )
 
