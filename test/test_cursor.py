@@ -223,74 +223,74 @@ class TestCursor(IntegrationTest):
         # Tailable_await defaults.
         list(coll.find(cursor_type=CursorType.TAILABLE_AWAIT))
         # find
-        self.assertFalse("maxTimeMS" in results["started"][0].command)
+        self.assertFalse("maxTimeMS" in listener.started_events[0].command)
         # getMore
-        self.assertFalse("maxTimeMS" in results["started"][1].command)
+        self.assertFalse("maxTimeMS" in listener.started_events[1].command)
         results.clear()
 
         # Tailable_await with max_await_time_ms set.
         list(coll.find(cursor_type=CursorType.TAILABLE_AWAIT).max_await_time_ms(99))
         # find
-        self.assertEqual("find", results["started"][0].command_name)
-        self.assertFalse("maxTimeMS" in results["started"][0].command)
+        self.assertEqual("find", listener.started_events[0].command_name)
+        self.assertFalse("maxTimeMS" in listener.started_events[0].command)
         # getMore
-        self.assertEqual("getMore", results["started"][1].command_name)
-        self.assertTrue("maxTimeMS" in results["started"][1].command)
-        self.assertEqual(99, results["started"][1].command["maxTimeMS"])
+        self.assertEqual("getMore", listener.started_events[1].command_name)
+        self.assertTrue("maxTimeMS" in listener.started_events[1].command)
+        self.assertEqual(99, listener.started_events[1].command["maxTimeMS"])
         results.clear()
 
         # Tailable_await with max_time_ms
         list(coll.find(cursor_type=CursorType.TAILABLE_AWAIT).max_time_ms(99))
         # find
-        self.assertEqual("find", results["started"][0].command_name)
-        self.assertTrue("maxTimeMS" in results["started"][0].command)
-        self.assertEqual(99, results["started"][0].command["maxTimeMS"])
+        self.assertEqual("find", listener.started_events[0].command_name)
+        self.assertTrue("maxTimeMS" in listener.started_events[0].command)
+        self.assertEqual(99, listener.started_events[0].command["maxTimeMS"])
         # getMore
-        self.assertEqual("getMore", results["started"][1].command_name)
-        self.assertFalse("maxTimeMS" in results["started"][1].command)
+        self.assertEqual("getMore", listener.started_events[1].command_name)
+        self.assertFalse("maxTimeMS" in listener.started_events[1].command)
         results.clear()
 
         # Tailable_await with both max_time_ms and max_await_time_ms
         list(coll.find(cursor_type=CursorType.TAILABLE_AWAIT).max_time_ms(99).max_await_time_ms(99))
         # find
-        self.assertEqual("find", results["started"][0].command_name)
-        self.assertTrue("maxTimeMS" in results["started"][0].command)
-        self.assertEqual(99, results["started"][0].command["maxTimeMS"])
+        self.assertEqual("find", listener.started_events[0].command_name)
+        self.assertTrue("maxTimeMS" in listener.started_events[0].command)
+        self.assertEqual(99, listener.started_events[0].command["maxTimeMS"])
         # getMore
-        self.assertEqual("getMore", results["started"][1].command_name)
-        self.assertTrue("maxTimeMS" in results["started"][1].command)
-        self.assertEqual(99, results["started"][1].command["maxTimeMS"])
+        self.assertEqual("getMore", listener.started_events[1].command_name)
+        self.assertTrue("maxTimeMS" in listener.started_events[1].command)
+        self.assertEqual(99, listener.started_events[1].command["maxTimeMS"])
         results.clear()
 
         # Non tailable_await with max_await_time_ms
         list(coll.find(batch_size=1).max_await_time_ms(99))
         # find
-        self.assertEqual("find", results["started"][0].command_name)
-        self.assertFalse("maxTimeMS" in results["started"][0].command)
+        self.assertEqual("find", listener.started_events[0].command_name)
+        self.assertFalse("maxTimeMS" in listener.started_events[0].command)
         # getMore
-        self.assertEqual("getMore", results["started"][1].command_name)
-        self.assertFalse("maxTimeMS" in results["started"][1].command)
+        self.assertEqual("getMore", listener.started_events[1].command_name)
+        self.assertFalse("maxTimeMS" in listener.started_events[1].command)
         results.clear()
 
         # Non tailable_await with max_time_ms
         list(coll.find(batch_size=1).max_time_ms(99))
         # find
-        self.assertEqual("find", results["started"][0].command_name)
-        self.assertTrue("maxTimeMS" in results["started"][0].command)
-        self.assertEqual(99, results["started"][0].command["maxTimeMS"])
+        self.assertEqual("find", listener.started_events[0].command_name)
+        self.assertTrue("maxTimeMS" in listener.started_events[0].command)
+        self.assertEqual(99, listener.started_events[0].command["maxTimeMS"])
         # getMore
-        self.assertEqual("getMore", results["started"][1].command_name)
-        self.assertFalse("maxTimeMS" in results["started"][1].command)
+        self.assertEqual("getMore", listener.started_events[1].command_name)
+        self.assertFalse("maxTimeMS" in listener.started_events[1].command)
 
         # Non tailable_await with both max_time_ms and max_await_time_ms
         list(coll.find(batch_size=1).max_time_ms(99).max_await_time_ms(88))
         # find
-        self.assertEqual("find", results["started"][0].command_name)
-        self.assertTrue("maxTimeMS" in results["started"][0].command)
-        self.assertEqual(99, results["started"][0].command["maxTimeMS"])
+        self.assertEqual("find", listener.started_events[0].command_name)
+        self.assertTrue("maxTimeMS" in listener.started_events[0].command)
+        self.assertEqual(99, listener.started_events[0].command["maxTimeMS"])
         # getMore
-        self.assertEqual("getMore", results["started"][1].command_name)
-        self.assertFalse("maxTimeMS" in results["started"][1].command)
+        self.assertEqual("getMore", listener.started_events[1].command_name)
+        self.assertFalse("maxTimeMS" in listener.started_events[1].command)
 
     @client_context.require_test_commands
     @client_context.require_no_mongos
@@ -1187,10 +1187,10 @@ class TestCursor(IntegrationTest):
         cursor.close()
 
         def assertCursorKilled():
-            self.assertEqual(1, len(results["started"]))
-            self.assertEqual("killCursors", results["started"][0].command_name)
-            self.assertEqual(1, len(results["succeeded"]))
-            self.assertEqual("killCursors", results["succeeded"][0].command_name)
+            self.assertEqual(1, len(listener.started_events))
+            self.assertEqual("killCursors", listener.started_events[0].command_name)
+            self.assertEqual(1, len(listener.succeeded_events))
+            self.assertEqual("killCursors", listener.succeeded_events[0].command_name)
 
         assertCursorKilled()
         results.clear()
@@ -1204,7 +1204,7 @@ class TestCursor(IntegrationTest):
         if cursor.cursor_id:
             assertCursorKilled()
         else:
-            self.assertEqual(0, len(results["started"]))
+            self.assertEqual(0, len(listener.started_events))
 
     def test_delete_not_initialized(self):
         # Creating a cursor with invalid arguments will not run __init__
@@ -1397,9 +1397,9 @@ class TestRawBatchCursor(IntegrationTest):
         next(cursor)
         try:
             results = listener.results
-            started = results["started"][0]
-            succeeded = results["succeeded"][0]
-            self.assertEqual(0, len(results["failed"]))
+            started = listener.started_events[0]
+            succeeded = listener.succeeded_events[0]
+            self.assertEqual(0, len(listener.failed_events))
             self.assertEqual("getMore", started.command_name)
             self.assertEqual("pymongo_test", started.database_name)
             self.assertEqual("getMore", succeeded.command_name)
@@ -1557,9 +1557,9 @@ class TestRawBatchCommandCursor(IntegrationTest):
         n = 0
         for batch in cursor:
             results = listener.results
-            started = results["started"][0]
-            succeeded = results["succeeded"][0]
-            self.assertEqual(0, len(results["failed"]))
+            started = listener.started_events[0]
+            succeeded = listener.succeeded_events[0]
+            self.assertEqual(0, len(listener.failed_events))
             self.assertEqual("getMore", started.command_name)
             self.assertEqual("pymongo_test", started.database_name)
             self.assertEqual("getMore", succeeded.command_name)

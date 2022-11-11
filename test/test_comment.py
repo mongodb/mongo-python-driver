@@ -77,7 +77,7 @@ class TestComment(IntegrationTest):
                     tested = False
                     # For some reason collection.list_indexes creates two commands and the first
                     # one doesn't contain 'comment'.
-                    for i in results["started"]:
+                    for i in listener.started_events:
                         if cc == i.command.get("comment", ""):
                             self.assertEqual(cc, i.command["comment"])
                             tested = True

@@ -259,8 +259,8 @@ class APITestsMixin(object):
         with self.change_stream_with_client(client, [{"$project": {"foo": 0}}]) as _:
             pass
 
-        self.assertEqual(1, len(results["started"]))
-        command = results["started"][0]
+        self.assertEqual(1, len(listener.started_events))
+        command = listener.started_events[0]
         self.assertEqual("aggregate", command.command_name)
         self.assertEqual(
             [{"$changeStream": expected_cs_stage}, {"$project": {"foo": 0}}],

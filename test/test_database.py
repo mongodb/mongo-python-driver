@@ -215,7 +215,7 @@ class TestDatabase(IntegrationTest):
             names = db.list_collection_names(filter=filter)
             self.assertIn("capped", names)
             self.assertIn("non_capped", names)
-            command = results["started"][0].command
+            command = listener.started_events[0].command
             self.assertIn("nameOnly", command)
             self.assertTrue(command["nameOnly"])
 
@@ -231,7 +231,7 @@ class TestDatabase(IntegrationTest):
         listener.reset()
         db.drop_collection("unique")
         db.create_collection("unique", check_exists=False)
-        self.assertTrue(len(results["started"]) > 0)
+        self.assertTrue(len(listener.started_events) > 0)
         self.assertNotIn("listCollections", listener.started_command_names())
 
     def test_list_collections(self):

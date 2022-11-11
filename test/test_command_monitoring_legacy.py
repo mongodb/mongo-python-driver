@@ -58,9 +58,9 @@ class TestAllScenarios(unittest.TestCase):
 
 
 def format_actual_results(results):
-    started = results["started"]
-    succeeded = results["succeeded"]
-    failed = results["failed"]
+    started = listener.started_events
+    succeeded = listener.succeeded_events
+    failed = listener.failed_events
     msg = "\nStarted:   %r" % (started[0].command if len(started) else None,)
     msg += "\nSucceeded: %r" % (succeeded[0].reply if len(succeeded) else None,)
     msg += "\nFailed:    %r" % (failed[0].failure if len(failed) else None,)

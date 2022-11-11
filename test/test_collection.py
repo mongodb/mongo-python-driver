@@ -1991,15 +1991,15 @@ class TestCollection(IntegrationTest):
         db.command("ping")
         results.clear()
         c_w0.find_one_and_update({"_id": 1}, {"$set": {"foo": "bar"}})
-        self.assertEqual({"w": 0}, results["started"][0].command["writeConcern"])
+        self.assertEqual({"w": 0}, listener.started_events[0].command["writeConcern"])
         results.clear()
 
         c_w0.find_one_and_replace({"_id": 1}, {"foo": "bar"})
-        self.assertEqual({"w": 0}, results["started"][0].command["writeConcern"])
+        self.assertEqual({"w": 0}, listener.started_events[0].command["writeConcern"])
         results.clear()
 
         c_w0.find_one_and_delete({"_id": 1})
-        self.assertEqual({"w": 0}, results["started"][0].command["writeConcern"])
+        self.assertEqual({"w": 0}, listener.started_events[0].command["writeConcern"])
         results.clear()
 
         # Test write concern errors.
@@ -2017,26 +2017,26 @@ class TestCollection(IntegrationTest):
                 WriteConcernError,
                 c_wc_error.find_one_and_replace,
                 {"w": 0},
-                results["started"][0].command["writeConcern"],
+                listener.started_events[0].command["writeConcern"],
             )
             self.assertRaises(
                 WriteConcernError,
                 c_wc_error.find_one_and_delete,
                 {"w": 0},
-                results["started"][0].command["writeConcern"],
+                listener.started_events[0].command["writeConcern"],
             )
             results.clear()
 
         c_default.find_one_and_update({"_id": 1}, {"$set": {"foo": "bar"}})
-        self.assertNotIn("writeConcern", results["started"][0].command)
+        self.assertNotIn("writeConcern", listener.started_events[0].command)
         results.clear()
 
         c_default.find_one_and_replace({"_id": 1}, {"foo": "bar"})
-        self.assertNotIn("writeConcern", results["started"][0].command)
+        self.assertNotIn("writeConcern", listener.started_events[0].command)
         results.clear()
 
         c_default.find_one_and_delete({"_id": 1})
-        self.assertNotIn("writeConcern", results["started"][0].command)
+        self.assertNotIn("writeConcern", listener.started_events[0].command)
         results.clear()
 
     def test_find_with_nested(self):
