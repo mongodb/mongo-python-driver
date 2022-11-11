@@ -193,7 +193,6 @@ class TestDatabase(IntegrationTest):
 
     def test_list_collection_names_filter(self):
         listener = OvertCommandListener()
-        results = listener.results
         client = rs_or_single_client(event_listeners=[listener])
         db = client[self.db.name]
         db.capped.drop()
@@ -204,14 +203,14 @@ class TestDatabase(IntegrationTest):
         filter: Union[None, dict]
         # Should not send nameOnly.
         for filter in ({"options.capped": True}, {"options.capped": True, "name": "capped"}):
-            results.clear()
+            listener.reset()
             names = db.list_collection_names(filter=filter)
             self.assertEqual(names, ["capped"])
             self.assertNotIn("nameOnly", listener.started_events[0].command)
 
         # Should send nameOnly (except on 2.6).
         for filter in (None, {}, {"name": {"$in": ["capped", "non_capped"]}}):
-            results.clear()
+            listener.reset()
             names = db.list_collection_names(filter=filter)
             self.assertIn("capped", names)
             self.assertIn("non_capped", names)
@@ -221,7 +220,6 @@ class TestDatabase(IntegrationTest):
 
     def test_check_exists(self):
         listener = OvertCommandListener()
-        results = listener.results
         client = rs_or_single_client(event_listeners=[listener])
         self.addCleanup(client.close)
         db = client[self.db.name]

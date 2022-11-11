@@ -255,7 +255,6 @@ class APITestsMixin(object):
     @no_type_check
     def _test_full_pipeline(self, expected_cs_stage):
         client, listener = self.client_with_listener("aggregate")
-        results = listener.results
         with self.change_stream_with_client(client, [{"$project": {"foo": 0}}]) as _:
             pass
 

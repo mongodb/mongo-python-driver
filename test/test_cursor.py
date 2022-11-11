@@ -218,7 +218,6 @@ class TestCursor(IntegrationTest):
 
         listener = AllowListEventListener("find", "getMore")
         coll = rs_or_single_client(event_listeners=[listener])[self.db.name].pymongo_test
-        results = listener.results
 
         # Tailable_await defaults.
         list(coll.find(cursor_type=CursorType.TAILABLE_AWAIT))
@@ -226,7 +225,7 @@ class TestCursor(IntegrationTest):
         self.assertFalse("maxTimeMS" in listener.started_events[0].command)
         # getMore
         self.assertFalse("maxTimeMS" in listener.started_events[1].command)
-        results.clear()
+        listener.reset()
 
         # Tailable_await with max_await_time_ms set.
         list(coll.find(cursor_type=CursorType.TAILABLE_AWAIT).max_await_time_ms(99))
@@ -237,7 +236,7 @@ class TestCursor(IntegrationTest):
         self.assertEqual("getMore", listener.started_events[1].command_name)
         self.assertTrue("maxTimeMS" in listener.started_events[1].command)
         self.assertEqual(99, listener.started_events[1].command["maxTimeMS"])
-        results.clear()
+        listener.reset()
 
         # Tailable_await with max_time_ms
         list(coll.find(cursor_type=CursorType.TAILABLE_AWAIT).max_time_ms(99))
@@ -248,7 +247,7 @@ class TestCursor(IntegrationTest):
         # getMore
         self.assertEqual("getMore", listener.started_events[1].command_name)
         self.assertFalse("maxTimeMS" in listener.started_events[1].command)
-        results.clear()
+        listener.reset()
 
         # Tailable_await with both max_time_ms and max_await_time_ms
         list(coll.find(cursor_type=CursorType.TAILABLE_AWAIT).max_time_ms(99).max_await_time_ms(99))
@@ -260,7 +259,7 @@ class TestCursor(IntegrationTest):
         self.assertEqual("getMore", listener.started_events[1].command_name)
         self.assertTrue("maxTimeMS" in listener.started_events[1].command)
         self.assertEqual(99, listener.started_events[1].command["maxTimeMS"])
-        results.clear()
+        listener.reset()
 
         # Non tailable_await with max_await_time_ms
         list(coll.find(batch_size=1).max_await_time_ms(99))
@@ -270,7 +269,7 @@ class TestCursor(IntegrationTest):
         # getMore
         self.assertEqual("getMore", listener.started_events[1].command_name)
         self.assertFalse("maxTimeMS" in listener.started_events[1].command)
-        results.clear()
+        listener.reset()
 
         # Non tailable_await with max_time_ms
         list(coll.find(batch_size=1).max_time_ms(99))
@@ -1169,7 +1168,6 @@ class TestCursor(IntegrationTest):
         self.client._process_periodic_tasks()
 
         listener = AllowListEventListener("killCursors")
-        results = listener.results
         client = rs_or_single_client(event_listeners=[listener])
         self.addCleanup(client.close)
         coll = client[self.db.name].test_close_kills_cursors
@@ -1178,7 +1176,7 @@ class TestCursor(IntegrationTest):
         docs_inserted = 1000
         coll.insert_many([{"i": i} for i in range(docs_inserted)])
 
-        results.clear()
+        listener.reset()
 
         # Close a cursor while it's still open on the server.
         cursor = coll.find().batch_size(10)
@@ -1193,7 +1191,7 @@ class TestCursor(IntegrationTest):
             self.assertEqual("killCursors", listener.succeeded_events[0].command_name)
 
         assertCursorKilled()
-        results.clear()
+        listener.reset()
 
         # Close a command cursor while it's still open on the server.
         cursor = coll.aggregate([], batchSize=10)
@@ -1396,7 +1394,6 @@ class TestRawBatchCursor(IntegrationTest):
         # Next raw batch of 4 documents.
         next(cursor)
         try:
-            results = listener.results
             started = listener.started_events[0]
             succeeded = listener.succeeded_events[0]
             self.assertEqual(0, len(listener.failed_events))
@@ -1556,7 +1553,6 @@ class TestRawBatchCommandCursor(IntegrationTest):
         # Batches of 4 documents.
         n = 0
         for batch in cursor:
-            results = listener.results
             started = listener.started_events[0]
             succeeded = listener.succeeded_events[0]
             self.assertEqual(0, len(listener.failed_events))

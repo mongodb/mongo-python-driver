@@ -127,11 +127,13 @@ def create_test(scenario_def, test):
             except OperationFailure:
                 pass
 
-        res = self.listener.results
+        started_events = self.listener.started_events
+        succeeded_events = self.listener.succeeded_events
+        failed_events = self.listener.failed_events
         for expectation in test["expectations"]:
             event_type = next(iter(expectation))
             if event_type == "command_started_event":
-                event = res["started"][0] if len(res["started"]) else None
+                event = started_events[0] if len(started_events) else None
                 if event is not None:
                     # The tests substitute 42 for any number other than 0.
                     if event.command_name == "getMore" and event.command["getMore"]:
@@ -147,7 +149,7 @@ def create_test(scenario_def, test):
                             update.setdefault("upsert", False)
                             update.setdefault("multi", False)
             elif event_type == "command_succeeded_event":
-                event = res["succeeded"].pop(0) if len(res["succeeded"]) else None
+                event = succeeded_events.pop(0) if len(succeeded_events) else None
                 if event is not None:
                     reply = event.reply
                     # The tests substitute 42 for any number other than 0,
@@ -171,12 +173,12 @@ def create_test(scenario_def, test):
                             reply.pop("cursorsKilled")
                         reply["cursorsUnknown"] = [42]
                     # Found succeeded event. Pop related started event.
-                    res["started"].pop(0)
+                    started_events.pop(0)
             elif event_type == "command_failed_event":
-                event = res["failed"].pop(0) if len(res["failed"]) else None
+                event = failed_events.pop(0) if len(failed_events) else None
                 if event is not None:
                     # Found failed event. Pop related started event.
-                    res["started"].pop(0)
+                    started_events.pop(0)
             else:
                 self.fail("Unknown event type")
 
@@ -188,7 +190,7 @@ def create_test(scenario_def, test):
                     % (
                         event_name,
                         expectation[event_type]["command_name"],
-                        format_actual_results(res),
+                        format_actual_results(self.listener.events),
                     )
                 )
 

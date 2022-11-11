@@ -43,12 +43,11 @@ class TestComment(IntegrationTest):
     def _test_ops(
         self, helpers, already_supported, listener, db=Empty(), coll=Empty()  # noqa: B008
     ):
-        results = listener.results
         for h, args in helpers:
             c = "testing comment with " + h.__name__
             with self.subTest("collection-" + h.__name__ + "-comment"):
                 for cc in [c, {"key": c}, ["any", 1]]:
-                    results.clear()
+                    listener.reset()
                     kwargs = {"comment": cc}
                     if h == coll.rename:
                         _ = db.get_collection("temp_temp_temp").drop()
@@ -98,7 +97,7 @@ class TestComment(IntegrationTest):
                                 h.__doc__,
                             )
 
-        results.clear()
+        listener.reset()
 
     @client_context.require_version_min(4, 7, -1)
     @client_context.require_replica_set
