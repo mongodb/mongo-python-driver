@@ -49,7 +49,7 @@ class TestCommandMonitoring(IntegrationTest):
         super(TestCommandMonitoring, cls).tearDownClass()
 
     def tearDown(self):
-        self.listener.results.clear()
+        self.listener.reset()
         super(TestCommandMonitoring, self).tearDown()
 
     def test_started_simple(self):
@@ -117,7 +117,7 @@ class TestCommandMonitoring(IntegrationTest):
     def test_find_and_get_more(self):
         self.client.pymongo_test.test.drop()
         self.client.pymongo_test.test.insert_many([{} for _ in range(10)])
-        self.listener.results.clear()
+        self.listener.reset()
         cursor = self.client.pymongo_test.test.find(projection={"_id": False}, batch_size=4)
         for _ in range(4):
             next(cursor)
@@ -147,7 +147,7 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertEqual(csr["ns"], "pymongo_test.test")
         self.assertEqual(csr["firstBatch"], [{} for _ in range(4)])
 
-        self.listener.results.clear()
+        self.listener.reset()
         # Next batch. Exhausting the cursor could cause a getMore
         # that returns id of 0 and no results.
         next(cursor)
@@ -182,7 +182,7 @@ class TestCommandMonitoring(IntegrationTest):
         cmd = SON([("explain", SON([("find", "test"), ("filter", {})]))])
         self.client.pymongo_test.test.drop()
         self.client.pymongo_test.test.insert_one({})
-        self.listener.results.clear()
+        self.listener.reset()
         coll = self.client.pymongo_test.test
         # Test that we publish the unwrapped command.
         if self.client.is_mongos:
@@ -212,7 +212,7 @@ class TestCommandMonitoring(IntegrationTest):
         coll.insert_many([{"x": i} for i in range(5)])
 
         # Test that we publish the unwrapped command.
-        self.listener.results.clear()
+        self.listener.reset()
         if self.client.is_mongos:
             coll = coll.with_options(read_preference=ReadPreference.PRIMARY_PREFERRED)
 
@@ -293,7 +293,7 @@ class TestCommandMonitoring(IntegrationTest):
     def test_command_and_get_more(self):
         self.client.pymongo_test.test.drop()
         self.client.pymongo_test.test.insert_many([{"x": 1} for _ in range(10)])
-        self.listener.results.clear()
+        self.listener.reset()
         coll = self.client.pymongo_test.test
         # Test that we publish the unwrapped command.
         if self.client.is_mongos:
@@ -333,7 +333,7 @@ class TestCommandMonitoring(IntegrationTest):
         }
         self.assertEqualCommand(expected_cursor, succeeded.reply.get("cursor"))
 
-        self.listener.results.clear()
+        self.listener.reset()
         next(cursor)
         try:
             results = self.listener.results
@@ -403,7 +403,7 @@ class TestCommandMonitoring(IntegrationTest):
         client = single_client(*address, event_listeners=[self.listener])
         # Clear authentication command results from the listener.
         client.admin.command("ping")
-        self.listener.results.clear()
+        self.listener.reset()
         error = None
         try:
             client.pymongo_test.test.find_one_and_delete({})
@@ -426,7 +426,7 @@ class TestCommandMonitoring(IntegrationTest):
     def test_exhaust(self):
         self.client.pymongo_test.test.drop()
         self.client.pymongo_test.test.insert_many([{} for _ in range(11)])
-        self.listener.results.clear()
+        self.listener.reset()
         cursor = self.client.pymongo_test.test.find(
             projection={"_id": False}, batch_size=5, cursor_type=CursorType.EXHAUST
         )
@@ -462,7 +462,7 @@ class TestCommandMonitoring(IntegrationTest):
         }
         self.assertEqualReply(expected_result, succeeded.reply)
 
-        self.listener.results.clear()
+        self.listener.reset()
         tuple(cursor)
         results = self.listener.results
         self.assertEqual(0, len(results["failed"]))
@@ -492,7 +492,7 @@ class TestCommandMonitoring(IntegrationTest):
             cursor = self.client.pymongo_test.test.find().batch_size(5)
             next(cursor)
             cursor_id = cursor.cursor_id
-            self.listener.results.clear()
+            self.listener.reset()
             cursor.close()
             time.sleep(2)
             results = self.listener.results
@@ -524,7 +524,7 @@ class TestCommandMonitoring(IntegrationTest):
     def test_non_bulk_writes(self):
         coll = self.client.pymongo_test.test
         coll.drop()
-        self.listener.results.clear()
+        self.listener.reset()
 
         # Implied write concern insert_one
         res = coll.insert_one({"x": 1})
@@ -555,7 +555,7 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertEqual(1, reply.get("n"))
 
         # Unacknowledged insert_one
-        self.listener.results.clear()
+        self.listener.reset()
         coll = coll.with_options(write_concern=WriteConcern(w=0))
         res = coll.insert_one({"x": 1})
         results = self.listener.results
@@ -584,7 +584,7 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertEqualReply(succeeded.reply, {"ok": 1})
 
         # Explicit write concern insert_one
-        self.listener.results.clear()
+        self.listener.reset()
         coll = coll.with_options(write_concern=WriteConcern(w=1))
         res = coll.insert_one({"x": 1})
         results = self.listener.results
@@ -615,7 +615,7 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertEqual(1, reply.get("n"))
 
         # delete_many
-        self.listener.results.clear()
+        self.listener.reset()
         res = coll.delete_many({"x": 1})
         results = self.listener.results
         started = results["started"][0]
@@ -645,7 +645,7 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertEqual(res.deleted_count, reply.get("n"))
 
         # replace_one
-        self.listener.results.clear()
+        self.listener.reset()
         oid = ObjectId()
         res = coll.replace_one({"_id": oid}, {"_id": oid, "x": 1}, upsert=True)
         results = self.listener.results
@@ -689,7 +689,7 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertEqual([{"index": 0, "_id": oid}], reply.get("upserted"))
 
         # update_one
-        self.listener.results.clear()
+        self.listener.reset()
         res = coll.update_one({"x": 1}, {"$inc": {"x": 1}})
         results = self.listener.results
         started = results["started"][0]
@@ -731,7 +731,7 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertEqual(1, reply.get("n"))
 
         # update_many
-        self.listener.results.clear()
+        self.listener.reset()
         res = coll.update_many({"x": 2}, {"$inc": {"x": 1}})
         results = self.listener.results
         started = results["started"][0]
@@ -773,7 +773,7 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertEqual(1, reply.get("n"))
 
         # delete_one
-        self.listener.results.clear()
+        self.listener.reset()
         _ = coll.delete_one({"x": 3})
         results = self.listener.results
         started = results["started"][0]
@@ -807,7 +807,7 @@ class TestCommandMonitoring(IntegrationTest):
         # write errors
         coll.insert_one({"_id": 1})
         try:
-            self.listener.results.clear()
+            self.listener.reset()
             coll.insert_one({"_id": 1})
         except OperationFailure:
             pass
@@ -848,7 +848,7 @@ class TestCommandMonitoring(IntegrationTest):
         # This always uses the bulk API.
         coll = self.client.pymongo_test.test
         coll.drop()
-        self.listener.results.clear()
+        self.listener.reset()
 
         big = "x" * (1024 * 1024 * 4)
         docs = [{"_id": i, "big": big} for i in range(6)]
@@ -889,7 +889,7 @@ class TestCommandMonitoring(IntegrationTest):
         coll = self.client.pymongo_test.test
         coll.drop()
         unack_coll = coll.with_options(write_concern=WriteConcern(w=0))
-        self.listener.results.clear()
+        self.listener.reset()
 
         # Force two batches on legacy servers.
         big = "x" * (1024 * 1024 * 12)
@@ -928,7 +928,7 @@ class TestCommandMonitoring(IntegrationTest):
     def test_bulk_write(self):
         coll = self.client.pymongo_test.test
         coll.drop()
-        self.listener.results.clear()
+        self.listener.reset()
 
         coll.bulk_write(
             [
@@ -991,7 +991,7 @@ class TestCommandMonitoring(IntegrationTest):
     @client_context.require_failCommand_fail_point
     def test_bulk_write_command_network_error(self):
         coll = self.client.pymongo_test.test
-        self.listener.results.clear()
+        self.listener.reset()
 
         insert_network_error = {
             "configureFailPoint": "failCommand",
@@ -1004,7 +1004,7 @@ class TestCommandMonitoring(IntegrationTest):
         with self.fail_point(insert_network_error):
             with self.assertRaises(AutoReconnect):
                 coll.bulk_write([InsertOne({"_id": 1})])
-        failed = self.listener.results["failed"]
+        failed = self.listener.failed_events
         self.assertEqual(1, len(failed))
         event = failed[0]
         self.assertEqual(event.command_name, "insert")
@@ -1015,7 +1015,7 @@ class TestCommandMonitoring(IntegrationTest):
     @client_context.require_failCommand_fail_point
     def test_bulk_write_command_error(self):
         coll = self.client.pymongo_test.test
-        self.listener.results.clear()
+        self.listener.reset()
 
         insert_command_error = {
             "configureFailPoint": "failCommand",
@@ -1029,7 +1029,7 @@ class TestCommandMonitoring(IntegrationTest):
         with self.fail_point(insert_command_error):
             with self.assertRaises(NotPrimaryError):
                 coll.bulk_write([InsertOne({"_id": 1})])
-        failed = self.listener.results["failed"]
+        failed = self.listener.failed_events
         self.assertEqual(1, len(failed))
         event = failed[0]
         self.assertEqual(event.command_name, "insert")
@@ -1040,7 +1040,7 @@ class TestCommandMonitoring(IntegrationTest):
     def test_write_errors(self):
         coll = self.client.pymongo_test.test
         coll.drop()
-        self.listener.results.clear()
+        self.listener.reset()
 
         try:
             coll.bulk_write(
@@ -1084,7 +1084,7 @@ class TestCommandMonitoring(IntegrationTest):
     def test_first_batch_helper(self):
         # Regardless of server version and use of helpers._first_batch
         # this test should still pass.
-        self.listener.results.clear()
+        self.listener.reset()
         tuple(self.client.pymongo_test.test.list_indexes())
         results = self.listener.results
         started = results["started"][0]
@@ -1105,12 +1105,12 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertTrue("cursor" in succeeded.reply)
         self.assertTrue("ok" in succeeded.reply)
 
-        self.listener.results.clear()
+        self.listener.reset()
 
     def test_sensitive_commands(self):
         listeners = self.client._event_listeners
 
-        self.listener.results.clear()
+        self.listener.reset()
         cmd = SON([("getnonce", 1)])
         listeners.publish_command_start(cmd, "pymongo_test", 12345, self.client.address)
         delta = datetime.timedelta(milliseconds=100)
@@ -1159,7 +1159,7 @@ class TestGlobalListener(IntegrationTest):
 
     def setUp(self):
         super(TestGlobalListener, self).setUp()
-        self.listener.results.clear()
+        self.listener.reset()
 
     def test_simple(self):
         self.client.pymongo_test.command("ping")

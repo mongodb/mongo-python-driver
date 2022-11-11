@@ -54,7 +54,7 @@ class TestAllScenarios(unittest.TestCase):
         cls.client.close()
 
     def tearDown(self):
-        self.listener.results.clear()
+        self.listener.reset()
 
 
 def format_actual_results(results):
@@ -75,7 +75,7 @@ def create_test(scenario_def, test):
         coll = self.client[dbname][collname]
         coll.drop()
         coll.insert_many(scenario_def["data"])
-        self.listener.results.clear()
+        self.listener.reset()
         name = camel_to_snake(test["operation"]["name"])
         if "read_preference" in test["operation"]:
             coll = coll.with_options(

@@ -97,7 +97,7 @@ class TestCustomServerSelectorFunction(IntegrationTest):
             coll.find_one({"name": "John Doe"})
 
         # Confirm all find commands are run against appropriate host.
-        for command in listener.results["started"]:
+        for command in listener.started_events:
             if command.command_name == "find":
                 self.assertEqual(command.connection_id[1], expected_port)
 

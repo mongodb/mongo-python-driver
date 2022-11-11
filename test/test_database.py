@@ -207,7 +207,7 @@ class TestDatabase(IntegrationTest):
             results.clear()
             names = db.list_collection_names(filter=filter)
             self.assertEqual(names, ["capped"])
-            self.assertNotIn("nameOnly", results["started"][0].command)
+            self.assertNotIn("nameOnly", listener.started_events[0].command)
 
         # Should send nameOnly (except on 2.6).
         for filter in (None, {}, {"name": {"$in": ["capped", "non_capped"]}}):

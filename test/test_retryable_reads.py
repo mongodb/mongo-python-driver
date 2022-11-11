@@ -208,12 +208,12 @@ class TestPoolPausedError(IntegrationTest):
         # Connection check out failures are not reflected in command
         # monitoring because we only publish command events _after_ checking
         # out a connection.
-        started = cmd_listener.results["started"]
+        started = cmd_listener.started_events
         msg = pprint.pformat(cmd_listener.results)
         self.assertEqual(3, len(started), msg)
-        succeeded = cmd_listener.results["succeeded"]
+        succeeded = cmd_listener.succeeded_events
         self.assertEqual(2, len(succeeded), msg)
-        failed = cmd_listener.results["failed"]
+        failed = cmd_listener.failed_events
         self.assertEqual(1, len(failed), msg)
 
 

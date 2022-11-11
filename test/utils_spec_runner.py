@@ -371,16 +371,16 @@ class SpecRunner(IntegrationTest):
 
     # TODO: factor with test_command_monitoring.py
     def check_events(self, test, listener, session_ids):
-        res = listener.results
+        events = listener.started_events
         if not len(test["expectations"]):
             return
 
         # Give a nicer message when there are missing or extra events
-        cmds = decode_raw([event.command for event in res["started"]])
-        self.assertEqual(len(res["started"]), len(test["expectations"]), cmds)
+        cmds = decode_raw([event.command for event in events])
+        self.assertEqual(len(events), len(test["expectations"]), cmds)
         for i, expectation in enumerate(test["expectations"]):
             event_type = next(iter(expectation))
-            event = res["started"][i]
+            event = events[i]
 
             # The tests substitute 42 for any number other than 0.
             if event.command_name == "getMore" and event.command["getMore"]:
