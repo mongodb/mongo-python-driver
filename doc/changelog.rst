@@ -8,6 +8,8 @@ Version 4.3.3 documents support for the following:
 
 - :ref:`CSFLE on-demand credentials` for cloud KMS providers.
 - Authentication support for :ref:`EKS Clusters`.
+- Added the :ref:`timeout-example` example page to improve the documentation
+  for :func:`pymongo.timeout`.
 
 Bug Fixes
 .........
@@ -16,8 +18,6 @@ Bug Fixes
   instead of line by line (`PYTHON-3502`_).
 - Improved performance of :meth:`gridfs.grid_file.GridOut.read` and
   :meth:`gridfs.grid_file.GridOut.readline` (`PYTHON-3508`_).
-- Added the :ref:`timeout-example` example page to improve the documentation
-  for :func:`pymongo.timeout`.
 
 Issues Resolved
 ...............
