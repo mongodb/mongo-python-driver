@@ -606,9 +606,7 @@ class TestPoolPausedError(IntegrationTest):
         }
 
         with self.fail_point(failpoint):
-            with self.assertRaises(WriteConcernError) as exc:
-                client.test.test.insert_one({"_id": 2})
-            self.assertEqual(exc.exception.code, 91)
+            client.test.test.insert_one({"_id": 2})
         cmd_listener.wait_for_event(CommandSucceededEvent, 1)
         with self.fail_point(
             {
