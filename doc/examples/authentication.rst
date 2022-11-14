@@ -312,9 +312,6 @@ A sample URI would be::
           the URI MUST be `percent escaped`_.
 
 
-.. _percent escaped:
-
-
 AWS Lambda (Environment Variables)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
