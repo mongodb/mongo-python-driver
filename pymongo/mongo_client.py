@@ -837,7 +837,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             # This will be used later if we fork.
             MongoClient._clients[self._topology._topology_id] = self
 
-        self._indefinite_error = None
+        self._indefinite_error: Optional[WriteConcernError] = None
 
     def _init_background(self):
         self._topology = Topology(self._topology_settings)
