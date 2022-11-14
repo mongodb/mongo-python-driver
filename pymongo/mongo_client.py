@@ -81,6 +81,7 @@ from pymongo.errors import (
     PyMongoError,
     ServerSelectionTimeoutError,
     WaitQueueTimeoutError,
+    WriteConcernError,
 )
 from pymongo.lock import _HAS_REGISTER_AT_FORK, _create_lock, _release_locks
 from pymongo.pool import ConnectionClosedReason
@@ -836,6 +837,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             # This will be used later if we fork.
             MongoClient._clients[self._topology._topology_id] = self
 
+        self._indefinite_error = None
+
     def _init_background(self):
         self._topology = Topology(self._topology_settings)
 
@@ -1405,6 +1408,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 # Add the RetryableWriteError label, if applicable.
                 _add_retryable_write_error(exc, max_wire_version)
                 retryable_error = exc.has_error_label("RetryableWriteError")
+                if self._indefinite_error:
+                    raise self._indefinite_error from exc
+                if retryable_error and isinstance(exc, WriteConcernError):
+                    self._indefinite_error = exc
+                    raise exc
                 if retryable_error:
                     session._unpin()
                 if not retryable_error or (is_retrying() and not multiple_retries):

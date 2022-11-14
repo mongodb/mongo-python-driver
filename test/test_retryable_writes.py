@@ -30,7 +30,6 @@ from test.utils import (
     OvertCommandListener,
     TestCreator,
     rs_or_single_client,
-    wait_until,
 )
 from test.utils_spec_runner import SpecRunner
 from test.version import Version
@@ -47,7 +46,7 @@ from pymongo.errors import (
 )
 from pymongo.mongo_client import MongoClient
 from pymongo.monitoring import (
-    CommandFailedEvent,
+    CommandSucceededEvent,
     ConnectionCheckedOutEvent,
     ConnectionCheckOutFailedEvent,
     ConnectionCheckOutFailedReason,
@@ -73,8 +72,7 @@ class RetryFailureListener(EventListener):
         self._exc = []
 
     def failed(self, event):
-        print(event)
-        if self._exc and type(self._exc[-1]) == CommandFailedEvent:
+        if self._exc:
             try:
                 client_context.client.test.test.insert_one({"id": 1})
             except OperationFailure as exc:
@@ -608,12 +606,12 @@ class TestPoolPausedError(IntegrationTest):
     def test_returns_original_error_code(
         self,
     ):  # TODO: Make this a real integration test where we stepdown the primary.
-        cmd_listener = RetryFailureListener()
+        cmd_listener = EventListener()
         client = rs_or_single_client(retryWrites=True, event_listeners=[cmd_listener])
         client.test.test.drop()
+        client.test.another_coll.drop()
         self.addCleanup(client.close)
         failpoint = {
-            "configureFailPoint": "failCommand",
             "mode": {"times": 1},
             "data": {
                 "writeConcernError": {
@@ -625,8 +623,10 @@ class TestPoolPausedError(IntegrationTest):
         }
 
         with self.fail_point(failpoint):
-            client.test.test.insert_one({"_id": 1})
-        wait_until(lambda: len(cmd_listener._exc) > 0, "waited for events")
+            with self.assertRaises(WriteConcernError) as exc:
+                client.test.test.insert_one({"_id": 2})
+            self.assertEqual(exc.exception.code, 91)
+        cmd_listener.wait_for_event(CommandSucceededEvent, 1)
         with self.fail_point(
             {
                 "mode": {"times": 1},
@@ -637,8 +637,9 @@ class TestPoolPausedError(IntegrationTest):
                 },
             }
         ):
-            self.assertIsInstance(cmd_listener._exc[-2], CommandFailedEvent)
-            self.assertIsInstance(cmd_listener._exc[-1].code, 91)
+            with self.assertRaises(WriteConcernError) as exc:
+                client.test.another_coll.insert_one({"_id": 2})
+            self.assertEqual(exc.exception.code, 91)
 
 
 class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
