@@ -14,6 +14,11 @@
 
 """Test the read_concern module."""
 
+import sys
+import unittest
+
+sys.path[0:0] = [""]
+
 from test import IntegrationTest, client_context
 from test.utils import OvertCommandListener, rs_or_single_client, single_client
 
@@ -41,7 +46,7 @@ class TestReadConcern(IntegrationTest):
         super(TestReadConcern, cls).tearDownClass()
 
     def tearDown(self):
-        self.listener.results.clear()
+        self.listener.reset()
         super(TestReadConcern, self).tearDown()
 
     def test_read_concern(self):
@@ -74,9 +79,9 @@ class TestReadConcern(IntegrationTest):
         # readConcern not sent in command if not specified.
         coll = self.db.coll
         tuple(coll.find({"field": "value"}))
-        self.assertNotIn("readConcern", self.listener.results["started"][0].command)
+        self.assertNotIn("readConcern", self.listener.started_events[0].command)
 
-        self.listener.results.clear()
+        self.listener.reset()
 
         # Explicitly set readConcern to 'local'.
         coll = self.db.get_collection("coll", read_concern=ReadConcern("local"))
@@ -89,23 +94,21 @@ class TestReadConcern(IntegrationTest):
                     ("readConcern", {"level": "local"}),
                 ]
             ),
-            self.listener.results["started"][0].command,
+            self.listener.started_events[0].command,
         )
 
     def test_command_cursor(self):
         # readConcern not sent in command if not specified.
         coll = self.db.coll
         tuple(coll.aggregate([{"$match": {"field": "value"}}]))
-        self.assertNotIn("readConcern", self.listener.results["started"][0].command)
+        self.assertNotIn("readConcern", self.listener.started_events[0].command)
 
-        self.listener.results.clear()
+        self.listener.reset()
 
         # Explicitly set readConcern to 'local'.
         coll = self.db.get_collection("coll", read_concern=ReadConcern("local"))
         tuple(coll.aggregate([{"$match": {"field": "value"}}]))
-        self.assertEqual(
-            {"level": "local"}, self.listener.results["started"][0].command["readConcern"]
-        )
+        self.assertEqual({"level": "local"}, self.listener.started_events[0].command["readConcern"])
 
     def test_aggregate_out(self):
         coll = self.db.get_collection("coll", read_concern=ReadConcern("local"))
@@ -113,6 +116,10 @@ class TestReadConcern(IntegrationTest):
 
         # Aggregate with $out supports readConcern MongoDB 4.2 onwards.
         if client_context.version >= (4, 1):
-            self.assertIn("readConcern", self.listener.results["started"][0].command)
+            self.assertIn("readConcern", self.listener.started_events[0].command)
         else:
-            self.assertNotIn("readConcern", self.listener.results["started"][0].command)
+            self.assertNotIn("readConcern", self.listener.started_events[0].command)
+
+
+if __name__ == "__main__":
+    unittest.main()

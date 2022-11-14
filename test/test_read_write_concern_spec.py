@@ -85,11 +85,11 @@ class TestReadWriteConcernSpec(IntegrationTest):
         ]
 
         for name, f in ops:
-            listener.results.clear()
+            listener.reset()
             f()
 
-            self.assertGreaterEqual(len(listener.results["started"]), 1)
-            for i, event in enumerate(listener.results["started"]):
+            self.assertGreaterEqual(len(listener.started_events), 1)
+            for i, event in enumerate(listener.started_events):
                 self.assertNotIn(
                     "readConcern",
                     event.command,
@@ -221,7 +221,7 @@ class TestReadWriteConcernSpec(IntegrationTest):
         self.assertIsNotNone(ctx.exception.details)
         assert ctx.exception.details is not None
         self.assertIsNotNone(ctx.exception.details.get("errInfo"))
-        for event in listener.results["succeeded"]:
+        for event in listener.succeeded_events:
             if event.command_name == "insert":
                 self.assertEqual(event.reply["writeErrors"][0], ctx.exception.details)
                 break

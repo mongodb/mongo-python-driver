@@ -167,7 +167,7 @@ class APITestsMixin(object):
         client = rs_or_single_client(event_listeners=[listener])
         # Connect to the cluster.
         client.admin.command("ping")
-        listener.results.clear()
+        listener.reset()
         # ChangeStreams only read majority committed data so use w:majority.
         coll = self.watched_collection().with_options(write_concern=WriteConcern("majority"))
         coll.drop()
@@ -177,25 +177,25 @@ class APITestsMixin(object):
         self.addCleanup(coll.drop)
         with self.change_stream_with_client(client, max_await_time_ms=250) as stream:
             self.assertEqual(listener.started_command_names(), ["aggregate"])
-            listener.results.clear()
+            listener.reset()
 
             # Confirm that only a single getMore is run even when no documents
             # are returned.
             self.assertIsNone(stream.try_next())
             self.assertEqual(listener.started_command_names(), ["getMore"])
-            listener.results.clear()
+            listener.reset()
             self.assertIsNone(stream.try_next())
             self.assertEqual(listener.started_command_names(), ["getMore"])
-            listener.results.clear()
+            listener.reset()
 
             # Get at least one change before resuming.
             coll.insert_one({"_id": 2})
             wait_until(lambda: stream.try_next() is not None, "get change from try_next")
-            listener.results.clear()
+            listener.reset()
 
             # Cause the next request to initiate the resume process.
             self.kill_change_stream_cursor(stream)
-            listener.results.clear()
+            listener.reset()
 
             # The sequence should be:
             # - getMore, fail
@@ -203,7 +203,7 @@ class APITestsMixin(object):
             # - no results, return immediately without another getMore
             self.assertIsNone(stream.try_next())
             self.assertEqual(listener.started_command_names(), ["getMore", "aggregate"])
-            listener.results.clear()
+            listener.reset()
 
             # Stream still works after a resume.
             coll.insert_one({"_id": 3})
@@ -217,7 +217,7 @@ class APITestsMixin(object):
         client = rs_or_single_client(event_listeners=[listener])
         # Connect to the cluster.
         client.admin.command("ping")
-        listener.results.clear()
+        listener.reset()
         # ChangeStreams only read majority committed data so use w:majority.
         coll = self.watched_collection().with_options(write_concern=WriteConcern("majority"))
         coll.drop()
@@ -229,12 +229,12 @@ class APITestsMixin(object):
         expected = {"batchSize": 23}
         with self.change_stream_with_client(client, max_await_time_ms=250, batch_size=23) as stream:
             # Confirm that batchSize is honored for initial batch.
-            cmd = listener.results["started"][0].command
+            cmd = listener.started_events[0].command
             self.assertEqual(cmd["cursor"], expected)
-            listener.results.clear()
+            listener.reset()
             # Confirm that batchSize is honored by getMores.
             self.assertIsNone(stream.try_next())
-            cmd = listener.results["started"][0].command
+            cmd = listener.started_events[0].command
             key = next(iter(expected))
             self.assertEqual(expected[key], cmd[key])
 
@@ -255,12 +255,11 @@ class APITestsMixin(object):
     @no_type_check
     def _test_full_pipeline(self, expected_cs_stage):
         client, listener = self.client_with_listener("aggregate")
-        results = listener.results
         with self.change_stream_with_client(client, [{"$project": {"foo": 0}}]) as _:
             pass
 
-        self.assertEqual(1, len(results["started"]))
-        command = results["started"][0]
+        self.assertEqual(1, len(listener.started_events))
+        command = listener.started_events[0]
         self.assertEqual("aggregate", command.command_name)
         self.assertEqual(
             [{"$changeStream": expected_cs_stage}, {"$project": {"foo": 0}}],
@@ -464,7 +463,7 @@ class ProseSpecTestsMixin(object):
         versions that don't support postBatchResumeToken. Assumes the stream
         has never returned any changes if previous_change is None."""
         if previous_change is None:
-            agg_cmd = listener.results["started"][0]
+            agg_cmd = listener.started_events[0]
             stage = agg_cmd.command["pipeline"][0]["$changeStream"]
             return stage.get("resumeAfter") or stage.get("startAfter")
 
@@ -481,7 +480,7 @@ class ProseSpecTestsMixin(object):
             if token is not None:
                 return token
 
-        response = listener.results["succeeded"][-1].reply
+        response = listener.succeeded_events[-1].reply
         return response["cursor"]["postBatchResumeToken"]
 
     @no_type_check
@@ -558,8 +557,8 @@ class ProseSpecTestsMixin(object):
                 pass
 
         # Driver should have attempted aggregate command only once.
-        self.assertEqual(len(listener.results["started"]), 1)
-        self.assertEqual(listener.results["started"][0].command_name, "aggregate")
+        self.assertEqual(len(listener.started_events), 1)
+        self.assertEqual(listener.started_events[0].command_name, "aggregate")
 
     # Prose test no. 5 - REMOVED
     # Prose test no. 6 - SKIPPED
@@ -603,20 +602,20 @@ class ProseSpecTestsMixin(object):
         with self.change_stream_with_client(client) as cs:
             self.kill_change_stream_cursor(cs)
             cs.try_next()
-        cmd = listener.results["started"][-1].command
+        cmd = listener.started_events[-1].command
         self.assertIsNotNone(cmd["pipeline"][0]["$changeStream"].get("startAtOperationTime"))
 
         # Case 2: change stream started with startAtOperationTime
-        listener.results.clear()
+        listener.reset()
         optime = self.get_start_at_operation_time()
         with self.change_stream_with_client(client, start_at_operation_time=optime) as cs:
             self.kill_change_stream_cursor(cs)
             cs.try_next()
-        cmd = listener.results["started"][-1].command
+        cmd = listener.started_events[-1].command
         self.assertEqual(
             cmd["pipeline"][0]["$changeStream"].get("startAtOperationTime"),
             optime,
-            str([k.command for k in listener.results["started"]]),
+            str([k.command for k in listener.started_events]),
         )
 
     # Prose test no. 10 - SKIPPED
@@ -631,7 +630,7 @@ class ProseSpecTestsMixin(object):
             self.assertIsNone(change_stream.try_next())
             resume_token = change_stream.resume_token
 
-        response = listener.results["succeeded"][0].reply
+        response = listener.succeeded_events[0].reply
         self.assertEqual(resume_token, response["cursor"]["postBatchResumeToken"])
 
     # Prose test no. 11
@@ -643,7 +642,7 @@ class ProseSpecTestsMixin(object):
             self._populate_and_exhaust_change_stream(change_stream)
             resume_token = change_stream.resume_token
 
-        response = listener.results["succeeded"][-1].reply
+        response = listener.succeeded_events[-1].reply
         self.assertEqual(resume_token, response["cursor"]["postBatchResumeToken"])
 
     # Prose test no. 12
@@ -737,7 +736,7 @@ class ProseSpecTestsMixin(object):
             self.kill_change_stream_cursor(change_stream)
             change_stream.try_next()  # Resume attempt
 
-        response = listener.results["started"][-1]
+        response = listener.started_events[-1]
         self.assertIsNone(response.command["pipeline"][0]["$changeStream"].get("resumeAfter"))
         self.assertIsNotNone(response.command["pipeline"][0]["$changeStream"].get("startAfter"))
 
@@ -756,7 +755,7 @@ class ProseSpecTestsMixin(object):
             self.kill_change_stream_cursor(change_stream)
             change_stream.try_next()  # Resume attempt
 
-        response = listener.results["started"][-1]
+        response = listener.started_events[-1]
         self.assertIsNotNone(response.command["pipeline"][0]["$changeStream"].get("resumeAfter"))
         self.assertIsNone(response.command["pipeline"][0]["$changeStream"].get("startAfter"))
 
@@ -1056,7 +1055,7 @@ class TestAllLegacyScenarios(IntegrationTest):
 
     def setUp(self):
         super(TestAllLegacyScenarios, self).setUp()
-        self.listener.results.clear()
+        self.listener.reset()
 
     def setUpCluster(self, scenario_dict):
         assets = [
@@ -1128,7 +1127,7 @@ class TestAllLegacyScenarios(IntegrationTest):
                 self.assertEqual(getattr(event, key), value)
 
     def tearDown(self):
-        self.listener.results.clear()
+        self.listener.reset()
 
 
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "change_streams")

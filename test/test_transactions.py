@@ -343,11 +343,11 @@ class TestTransactions(TransactionsBase):
         self.assertEqual(
             ["insert", "insert", "commitTransaction"], listener.started_command_names()
         )
-        first_cmd = listener.results["started"][0].command
+        first_cmd = listener.started_events[0].command
         self.assertTrue(first_cmd["startTransaction"])
         lsid = first_cmd["lsid"]
         txn_number = first_cmd["txnNumber"]
-        for event in listener.results["started"][1:]:
+        for event in listener.started_events[1:]:
             self.assertNotIn("startTransaction", event.command)
             self.assertEqual(lsid, event.command["lsid"])
             self.assertEqual(txn_number, event.command["txnNumber"])
@@ -459,7 +459,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
 
         # Create the collection.
         coll.insert_one({})
-        listener.results.clear()
+        listener.reset()
         with client.start_session() as s:
             with PatchSessionTimeout(0):
                 with self.assertRaises(OperationFailure):
@@ -491,7 +491,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
             }
         )
         self.addCleanup(self.set_fail_point, {"configureFailPoint": "failCommand", "mode": "off"})
-        listener.results.clear()
+        listener.reset()
 
         with client.start_session() as s:
             with PatchSessionTimeout(0):
@@ -521,7 +521,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
             }
         )
         self.addCleanup(self.set_fail_point, {"configureFailPoint": "failCommand", "mode": "off"})
-        listener.results.clear()
+        listener.reset()
 
         with client.start_session() as s:
             with PatchSessionTimeout(0):

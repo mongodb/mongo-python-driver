@@ -62,16 +62,16 @@ class TestDataLakeProse(IntegrationTest):
         next(cursor)
 
         # find command assertions
-        find_cmd = listener.results["succeeded"][-1]
+        find_cmd = listener.succeeded_events[-1]
         self.assertEqual(find_cmd.command_name, "find")
         cursor_id = find_cmd.reply["cursor"]["id"]
         cursor_ns = find_cmd.reply["cursor"]["ns"]
 
         # killCursors command assertions
         cursor.close()
-        started = listener.results["started"][-1]
+        started = listener.started_events[-1]
         self.assertEqual(started.command_name, "killCursors")
-        succeeded = listener.results["succeeded"][-1]
+        succeeded = listener.succeeded_events[-1]
         self.assertEqual(succeeded.command_name, "killCursors")
 
         self.assertIn(cursor_id, started.command["cursors"])

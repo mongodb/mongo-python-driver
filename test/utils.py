@@ -29,7 +29,7 @@ import warnings
 from collections import abc, defaultdict
 from functools import partial
 from test import client_context, db_pwd, db_user
-from typing import Any
+from typing import Any, List
 
 from bson import json_util
 from bson.objectid import ObjectId
@@ -140,26 +140,43 @@ class CMAPListener(BaseListener, monitoring.ConnectionPoolListener):
         self.add_event(event)
 
 
-class EventListener(monitoring.CommandListener):
+class EventListener(BaseListener, monitoring.CommandListener):
     def __init__(self):
+        super(EventListener, self).__init__()
         self.results = defaultdict(list)
 
-    def started(self, event):
-        self.results["started"].append(event)
+    @property
+    def started_events(self) -> List[monitoring.CommandStartedEvent]:
+        return self.results["started"]
 
-    def succeeded(self, event):
-        self.results["succeeded"].append(event)
+    @property
+    def succeeded_events(self) -> List[monitoring.CommandSucceededEvent]:
+        return self.results["succeeded"]
 
-    def failed(self, event):
-        self.results["failed"].append(event)
+    @property
+    def failed_events(self) -> List[monitoring.CommandFailedEvent]:
+        return self.results["failed"]
 
-    def started_command_names(self):
+    def started(self, event: monitoring.CommandStartedEvent) -> None:
+        self.started_events.append(event)
+        self.add_event(event)
+
+    def succeeded(self, event: monitoring.CommandSucceededEvent) -> None:
+        self.succeeded_events.append(event)
+        self.add_event(event)
+
+    def failed(self, event: monitoring.CommandFailedEvent) -> None:
+        self.failed_events.append(event)
+        self.add_event(event)
+
+    def started_command_names(self) -> List[str]:
         """Return list of command names started."""
-        return [event.command_name for event in self.results["started"]]
+        return [event.command_name for event in self.started_events]
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset the state of this listener."""
         self.results.clear()
+        super(EventListener, self).reset()
 
 
 class TopologyEventListener(monitoring.TopologyListener):

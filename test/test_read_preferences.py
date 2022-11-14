@@ -541,7 +541,7 @@ class TestMongosAndReadPreference(IntegrationTest):
             coll = client.test.get_collection("test", read_preference=pref)
             listener.reset()
             coll.find_one()
-            started = listener.results["started"]
+            started = listener.started_events
             self.assertEqual(len(started), 1, started)
             cmd = started[0].command
             if client_context.is_rs or client_context.is_mongos:
