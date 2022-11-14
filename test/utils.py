@@ -29,6 +29,7 @@ import warnings
 from collections import abc, defaultdict
 from functools import partial
 from test import client_context, db_pwd, db_user
+from typing import Any, List
 
 from bson import json_util
 from bson.objectid import ObjectId
@@ -141,29 +142,41 @@ class CMAPListener(BaseListener, monitoring.ConnectionPoolListener):
 
 class EventListener(BaseListener, monitoring.CommandListener):
     def __init__(self):
-        super().__init__()
+        super(EventListener, self).__init__()
         self.results = defaultdict(list)
 
-    def started(self, event):
-        self.add_event(event)
-        self.results["started"].append(event)
+    @property
+    def started_events(self) -> List[monitoring.CommandStartedEvent]:
+        return self.results["started"]
 
-    def succeeded(self, event):
-        self.add_event(event)
-        self.results["succeeded"].append(event)
+    @property
+    def succeeded_events(self) -> List[monitoring.CommandSucceededEvent]:
+        return self.results["succeeded"]
 
-    def failed(self, event):
-        self.add_event(event)
-        self.results["failed"].append(event)
+    @property
+    def failed_events(self) -> List[monitoring.CommandFailedEvent]:
+        return self.results["failed"]
 
-    def started_command_names(self):
+    def started(self, event: monitoring.CommandStartedEvent) -> None:
+        self.started_events.append(event)
+        self.add_event(event)
+
+    def succeeded(self, event: monitoring.CommandSucceededEvent) -> None:
+        self.succeeded_events.append(event)
+        self.add_event(event)
+
+    def failed(self, event: monitoring.CommandFailedEvent) -> None:
+        self.failed_events.append(event)
+        self.add_event(event)
+
+    def started_command_names(self) -> List[str]:
         """Return list of command names started."""
-        return [event.command_name for event in self.results["started"]]
+        return [event.command_name for event in self.started_events]
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset the state of this listener."""
-        super().reset()
         self.results.clear()
+        super(EventListener, self).reset()
 
 
 class TopologyEventListener(monitoring.TopologyListener):
@@ -562,27 +575,27 @@ def _mongo_client(host, port, authenticate=True, directConnection=None, **kwargs
     return MongoClient(uri, port, **client_options)
 
 
-def single_client_noauth(h=None, p=None, **kwargs):
+def single_client_noauth(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[dict]:
     """Make a direct connection. Don't authenticate."""
     return _mongo_client(h, p, authenticate=False, directConnection=True, **kwargs)
 
 
-def single_client(h=None, p=None, **kwargs):
+def single_client(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[dict]:
     """Make a direct connection, and authenticate if necessary."""
     return _mongo_client(h, p, directConnection=True, **kwargs)
 
 
-def rs_client_noauth(h=None, p=None, **kwargs):
+def rs_client_noauth(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[dict]:
     """Connect to the replica set. Don't authenticate."""
     return _mongo_client(h, p, authenticate=False, **kwargs)
 
 
-def rs_client(h=None, p=None, **kwargs):
+def rs_client(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[dict]:
     """Connect to the replica set and authenticate if necessary."""
     return _mongo_client(h, p, **kwargs)
 
 
-def rs_or_single_client_noauth(h=None, p=None, **kwargs):
+def rs_or_single_client_noauth(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[dict]:
     """Connect to the replica set if there is one, otherwise the standalone.
 
     Like rs_or_single_client, but does not authenticate.
@@ -590,7 +603,7 @@ def rs_or_single_client_noauth(h=None, p=None, **kwargs):
     return _mongo_client(h, p, authenticate=False, **kwargs)
 
 
-def rs_or_single_client(h=None, p=None, **kwargs):
+def rs_or_single_client(h: Any = None, p: Any = None, **kwargs: Any) -> MongoClient[Any]:
     """Connect to the replica set if there is one, otherwise the standalone.
 
     Authenticates if necessary.

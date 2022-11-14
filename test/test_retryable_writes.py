@@ -66,21 +66,6 @@ from pymongo.write_concern import WriteConcern
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "retryable_writes", "legacy")
 
 
-class RetryFailureListener(EventListener):
-    def __init__(self):
-        super().__init__()
-        self._exc = []
-
-    def failed(self, event):
-        if self._exc:
-            try:
-                client_context.client.test.test.insert_one({"id": 1})
-            except OperationFailure as exc:
-                self._exc.append(exc)
-        else:
-            self._exc.append(event.failure)
-
-
 class TestAllScenarios(SpecRunner):
     RUN_ON_LOAD_BALANCER = True
     RUN_ON_SERVERLESS = True
