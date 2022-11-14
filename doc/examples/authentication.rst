@@ -311,6 +311,7 @@ A sample URI would be::
 .. note:: The access_key_id, secret_access_key, and session_token passed into
           the URI MUST be `percent escaped`_.
 
+
 AWS Lambda (Environment Variables)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -330,6 +331,23 @@ for the access key ID, secret access key, and session token, respectively::
 .. note:: No username, password, or session token is passed into the URI.
           PyMongo will use credentials set via the environment variables.
           These environment variables MUST NOT be `percent escaped`_.
+
+
+.. _EKS Clusters:
+
+EKS Clusters
+~~~~~~~~~~~~
+
+Applications using the `Authenticating users for your cluster from an OpenID Connect identity provider <https://docs.aws.amazon.com/eks/latest/userguide/authenticate-oidc-identity-provider.html>`_ capability on EKS can now
+use the provided credentials, by giving the associated IAM User
+`sts:AssumeRoleWithWebIdentity <https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRoleWithWebIdentity.html>`_
+permission.
+
+When the username and password are not provided, the MONGODB-AWS mechanism
+is set, and ``AWS_WEB_IDENTITY_TOKEN_FILE``, ``AWS_ROLE_ARN``, and
+optional ``AWS_ROLE_SESSION_NAME`` are available, the driver will use
+an ``AssumeRoleWithWebIdentity`` call to retrieve temporary credentials.
+The application must be using ``pymongo_auth_aws`` >= 1.1.0 for EKS support.
 
 ECS Container
 ~~~~~~~~~~~~~
