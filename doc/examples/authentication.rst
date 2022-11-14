@@ -340,7 +340,8 @@ EKS Clusters
 
 Applications using the `Authenticating users for your cluster from an OpenID Connect identity provider <https://docs.aws.amazon.com/eks/latest/userguide/authenticate-oidc-identity-provider.html>`_ capability on EKS can now
 use the provided credentials, by giving the associated IAM User
- `sts:AssumeRoleWithWebIdentity <https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRoleWithWebIdentity.html>`_ permission.
+`sts:AssumeRoleWithWebIdentity <https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRoleWithWebIdentity.html>`_
+permission.
 
 When the username and password are not provided, the MONGODB-AWS mechanism
 is set, and ``AWS_WEB_IDENTITY_TOKEN_FILE``, ``AWS_ROLE_ARN``, and
