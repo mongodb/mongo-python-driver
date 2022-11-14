@@ -17,7 +17,7 @@ sample client code that uses PyMongo typings."""
 import os
 import tempfile
 import unittest
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List, Union
 
 try:
     from typing_extensions import NotRequired, TypedDict
@@ -42,7 +42,7 @@ except ImportError as exc:
     Movie = dict  # type:ignore[misc,assignment]
     ImplicitMovie = dict  # type: ignore[assignment,misc]
     MovieWithId = dict  # type: ignore[assignment,misc]
-    TypedDict = None  # type: ignore[assignment]
+    TypedDict = None
     NotRequired = None  # type: ignore[assignment]
 
 
@@ -59,7 +59,7 @@ from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo import ASCENDING, MongoClient
 from pymongo.collection import Collection
-from pymongo.operations import InsertOne
+from pymongo.operations import DeleteOne, InsertOne, ReplaceOne
 from pymongo.read_preferences import ReadPreference
 
 TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "mypy_fails")
@@ -124,11 +124,40 @@ class TestPymongo(IntegrationTest):
         docs = to_list(cursor)
         self.assertTrue(docs)
 
+    @only_type_check
     def test_bulk_write(self) -> None:
         self.coll.insert_one({})
-        requests = [InsertOne({})]
-        result = self.coll.bulk_write(requests)
-        self.assertTrue(result.acknowledged)
+        coll: Collection[Movie] = self.coll
+        requests: List[InsertOne[Movie]] = [InsertOne(Movie(name="American Graffiti", year=1973))]
+        self.assertTrue(coll.bulk_write(requests).acknowledged)
+        new_requests: List[Union[InsertOne[Movie], ReplaceOne[Movie]]] = []
+        input_list: List[Union[InsertOne[Movie], ReplaceOne[Movie]]] = [
+            InsertOne(Movie(name="American Graffiti", year=1973)),
+            ReplaceOne({}, Movie(name="American Graffiti", year=1973)),
+        ]
+        for i in input_list:
+            new_requests.append(i)
+        self.assertTrue(coll.bulk_write(new_requests).acknowledged)
+
+    # Because ReplaceOne is not generic, type checking is not enforced for ReplaceOne in the first example.
+    @only_type_check
+    def test_bulk_write_heterogeneous(self):
+        coll: Collection[Movie] = self.coll
+        requests: List[Union[InsertOne[Movie], ReplaceOne, DeleteOne]] = [
+            InsertOne(Movie(name="American Graffiti", year=1973)),
+            ReplaceOne({}, {"name": "American Graffiti", "year": "WRONG_TYPE"}),
+            DeleteOne({}),
+        ]
+        self.assertTrue(coll.bulk_write(requests).acknowledged)
+        requests_two: List[Union[InsertOne[Movie], ReplaceOne[Movie], DeleteOne]] = [
+            InsertOne(Movie(name="American Graffiti", year=1973)),
+            ReplaceOne(
+                {},
+                {"name": "American Graffiti", "year": "WRONG_TYPE"},  # type:ignore[typeddict-item]
+            ),
+            DeleteOne({}),
+        ]
+        self.assertTrue(coll.bulk_write(requests_two).acknowledged)
 
     def test_command(self) -> None:
         result: Dict = self.client.admin.command("ping")
@@ -339,6 +368,40 @@ class TestDocumentType(unittest.TestCase):
             [{"name": "THX-1138", "year": "WRONG TYPE"}]  # type: ignore[typeddict-item]
         )
         coll.insert_many([bad_movie])
+
+    @only_type_check
+    def test_bulk_write_document_type_insertion(self):
+        client: MongoClient[MovieWithId] = MongoClient()
+        coll: Collection[MovieWithId] = client.test.test
+        coll.bulk_write(
+            [InsertOne(Movie({"name": "THX-1138", "year": 1971}))]  # type:ignore[arg-type]
+        )
+        mov_dict = {"_id": ObjectId(), "name": "THX-1138", "year": 1971}
+        coll.bulk_write(
+            [InsertOne(mov_dict)]  # type:ignore[arg-type]
+        )
+        coll.bulk_write(
+            [
+                InsertOne({"_id": ObjectId(), "name": "THX-1138", "year": 1971})
+            ]  # No error because it is in-line.
+        )
+
+    @only_type_check
+    def test_bulk_write_document_type_replacement(self):
+        client: MongoClient[MovieWithId] = MongoClient()
+        coll: Collection[MovieWithId] = client.test.test
+        coll.bulk_write(
+            [ReplaceOne({}, Movie({"name": "THX-1138", "year": 1971}))]  # type:ignore[arg-type]
+        )
+        mov_dict = {"_id": ObjectId(), "name": "THX-1138", "year": 1971}
+        coll.bulk_write(
+            [ReplaceOne({}, mov_dict)]  # type:ignore[arg-type]
+        )
+        coll.bulk_write(
+            [
+                ReplaceOne({}, {"_id": ObjectId(), "name": "THX-1138", "year": 1971})
+            ]  # No error because it is in-line.
+        )
 
     @only_type_check
     def test_typeddict_explicit_document_type(self) -> None:

@@ -1090,7 +1090,7 @@ def print_thread_stacks(pid: int) -> None:
 class IntegrationTest(PyMongoTestCase):
     """Base class for TestCases that need a connection to MongoDB to pass."""
 
-    client: MongoClient
+    client: MongoClient[dict]
     db: Database
     credentials: Dict[str, str]
 

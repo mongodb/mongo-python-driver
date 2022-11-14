@@ -572,7 +572,13 @@ functions:
 
               "iam_auth_ec2_instance_account" : "${iam_auth_ec2_instance_account}",
               "iam_auth_ec2_instance_secret_access_key" : "${iam_auth_ec2_instance_secret_access_key}",
-              "iam_auth_ec2_instance_profile" : "${iam_auth_ec2_instance_profile}"
+              "iam_auth_ec2_instance_profile" : "${iam_auth_ec2_instance_profile}",
+
+              "iam_auth_assume_web_role_name": "${iam_auth_assume_web_role_name}",
+              "iam_web_identity_issuer": "${iam_web_identity_issuer}",
+              "iam_web_identity_rsa_key": "${iam_web_identity_rsa_key}",
+              "iam_web_identity_jwks_uri": "${iam_web_identity_jwks_uri}",
+              "iam_web_identity_token_file": "${iam_web_identity_token_file}"
           }
           EOF
 
@@ -668,7 +674,67 @@ functions:
           fi
           # Write an empty prepare_mongodb_aws so no auth environment variables
           # are set.
-          echo "" > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
+          rm "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh" || true
+          PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
+
+  "run aws auth test with aws web identity credentials":
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        script: |
+          ${PREPARE_SHELL}
+          if [ "${skip_EC2_auth_test}" = "true" ]; then
+             echo "This platform does not support the web identity auth test, skipping..."
+             exit 0
+          fi
+          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
+          . ./activate_venv.sh
+          mongo aws_e2e_web_identity.js
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        silent: true
+        script: |
+          # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
+          cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
+            export AWS_ROLE_ARN="${iam_auth_assume_web_role_name}"
+            export AWS_WEB_IDENTITY_TOKEN_FILE="${iam_web_identity_token_file}"
+          EOF
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        script: |
+          ${PREPARE_SHELL}
+          if [ "${skip_web_identity_auth_test}" = "true" ]; then
+             echo "This platform does not support the web identity auth test, skipping..."
+             exit 0
+          fi
+          PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        silent: true
+        script: |
+          # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
+          cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
+            export AWS_ROLE_ARN="${iam_auth_assume_web_role_name}"
+            export AWS_WEB_IDENTITY_TOKEN_FILE="${iam_web_identity_token_file}"
+            export AWS_ROLE_SESSION_NAME="test"
+          EOF
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        script: |
+          ${PREPARE_SHELL}
+          if [ "${skip_web_identity_auth_test}" = "true" ]; then
+             echo "This platform does not support the web identity auth test, skipping..."
+             exit 0
+          fi
           PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
 
   "run aws auth test with aws credentials as environment variables":
@@ -1832,6 +1898,7 @@ tasks:
         - func: "run aws auth test with aws credentials as environment variables"
         - func: "run aws auth test with aws credentials and session token as environment variables"
         - func: "run aws auth test with aws EC2 credentials"
+        - func: "run aws auth test with aws web identity credentials"
         - func: "run aws ECS auth test"
 
     - name: "aws-auth-test-5.0"
@@ -1848,6 +1915,7 @@ tasks:
         - func: "run aws auth test with aws credentials as environment variables"
         - func: "run aws auth test with aws credentials and session token as environment variables"
         - func: "run aws auth test with aws EC2 credentials"
+        - func: "run aws auth test with aws web identity credentials"
         - func: "run aws ECS auth test"
 
     - name: "aws-auth-test-6.0"
@@ -1864,6 +1932,7 @@ tasks:
         - func: "run aws auth test with aws credentials as environment variables"
         - func: "run aws auth test with aws credentials and session token as environment variables"
         - func: "run aws auth test with aws EC2 credentials"
+        - func: "run aws auth test with aws web identity credentials"
         - func: "run aws ECS auth test"
 
     - name: "aws-auth-test-latest"
@@ -1880,6 +1949,7 @@ tasks:
         - func: "run aws auth test with aws credentials as environment variables"
         - func: "run aws auth test with aws credentials and session token as environment variables"
         - func: "run aws auth test with aws EC2 credentials"
+        - func: "run aws auth test with aws web identity credentials"
         - func: "run aws ECS auth test"
     - name: "aws-auth-test-rapid"
       commands:
@@ -1895,6 +1965,7 @@ tasks:
         - func: "run aws auth test with aws credentials as environment variables"
         - func: "run aws auth test with aws credentials and session token as environment variables"
         - func: "run aws auth test with aws EC2 credentials"
+        - func: "run aws auth test with aws web identity credentials"
         - func: "run aws ECS auth test"
 
     - name: load-balancer-test
@@ -2076,6 +2147,7 @@ axes:
         variables:
           skip_EC2_auth_test: true
           skip_ECS_auth_test: true
+          skip_web_identity_auth_test: true
           python3_binary: /Library/Frameworks/Python.framework/Versions/3.8/bin/python3
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
       - id: macos-1100
@@ -2084,6 +2156,7 @@ axes:
         variables:
           skip_EC2_auth_test: true
           skip_ECS_auth_test: true
+          skip_web_identity_auth_test: true
           python3_binary: /Library/Frameworks/Python.framework/Versions/3.8/bin/python3
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
       - id: rhel62
@@ -2146,8 +2219,9 @@ axes:
         run_on: windows-64-vsMulti-small
         batchtime: 10080  # 7 days
         variables:
-          skip_EC2_auth_test: true
           skip_ECS_auth_test: true
+          skip_EC2_auth_test: true
+          skip_web_identity_auth_test: true
           python3_binary: "C:/python/Python38/python.exe"
           venv_bin_dir: "Scripts"
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/windows-test/master/latest/libmongocrypt.tar.gz

@@ -16,7 +16,7 @@
 
 import re
 import sys
-from typing import Any, Iterable, List, Mapping
+from typing import Any, Iterable, List, Mapping, Union
 
 sys.path[0:0] = [""]
 
@@ -193,7 +193,6 @@ class TestDatabase(IntegrationTest):
 
     def test_list_collection_names_filter(self):
         listener = OvertCommandListener()
-        results = listener.results
         client = rs_or_single_client(event_listeners=[listener])
         db = client[self.db.name]
         db.capped.drop()
@@ -201,28 +200,26 @@ class TestDatabase(IntegrationTest):
         db.capped.insert_one({})
         db.non_capped.insert_one({})
         self.addCleanup(client.drop_database, db.name)
-
+        filter: Union[None, dict]
         # Should not send nameOnly.
         for filter in ({"options.capped": True}, {"options.capped": True, "name": "capped"}):
-            results.clear()
+            listener.reset()
             names = db.list_collection_names(filter=filter)
             self.assertEqual(names, ["capped"])
-            self.assertNotIn("nameOnly", results["started"][0].command)
+            self.assertNotIn("nameOnly", listener.started_events[0].command)
 
         # Should send nameOnly (except on 2.6).
-        filter: Any
         for filter in (None, {}, {"name": {"$in": ["capped", "non_capped"]}}):
-            results.clear()
+            listener.reset()
             names = db.list_collection_names(filter=filter)
             self.assertIn("capped", names)
             self.assertIn("non_capped", names)
-            command = results["started"][0].command
+            command = listener.started_events[0].command
             self.assertIn("nameOnly", command)
             self.assertTrue(command["nameOnly"])
 
     def test_check_exists(self):
         listener = OvertCommandListener()
-        results = listener.results
         client = rs_or_single_client(event_listeners=[listener])
         self.addCleanup(client.close)
         db = client[self.db.name]
@@ -232,7 +229,7 @@ class TestDatabase(IntegrationTest):
         listener.reset()
         db.drop_collection("unique")
         db.create_collection("unique", check_exists=False)
-        self.assertTrue(len(results["started"]) > 0)
+        self.assertTrue(len(listener.started_events) > 0)
         self.assertNotIn("listCollections", listener.started_command_names())
 
     def test_list_collections(self):

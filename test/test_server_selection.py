@@ -23,6 +23,7 @@ from pymongo.hello import HelloCompat
 from pymongo.server_selectors import writable_server_selector
 from pymongo.settings import TopologySettings
 from pymongo.topology import Topology
+from pymongo.typings import strip_optional
 
 sys.path[0:0] = [""]
 
@@ -85,7 +86,10 @@ class TestCustomServerSelectorFunction(IntegrationTest):
             )
 
         wait_until(all_hosts_started, "receive heartbeat from all hosts")
-        expected_port = max([n.address[1] for n in client._topology._description.readable_servers])
+
+        expected_port = max(
+            [strip_optional(n.address[1]) for n in client._topology._description.readable_servers]
+        )
 
         # Insert 1 record and access it 10 times.
         coll.insert_one({"name": "John Doe"})
@@ -93,7 +97,7 @@ class TestCustomServerSelectorFunction(IntegrationTest):
             coll.find_one({"name": "John Doe"})
 
         # Confirm all find commands are run against appropriate host.
-        for command in listener.results["started"]:
+        for command in listener.started_events:
             if command.command_name == "find":
                 self.assertEqual(command.connection_id[1], expected_port)
 

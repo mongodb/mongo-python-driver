@@ -814,7 +814,7 @@ class TestDataKeyDoubleEncryption(EncryptionIntegrationTest):
             provider_name, master_key=master_key, key_alt_names=["%s_altname" % (provider_name,)]
         )
         self.assertBinaryUUID(datakey_id)
-        cmd = self.listener.results["started"][-1]
+        cmd = self.listener.started_events[-1]
         self.assertEqual("insert", cmd.command_name)
         self.assertEqual({"w": "majority"}, cmd.command.get("writeConcern"))
         docs = list(self.vault.find({"_id": datakey_id}))
@@ -1489,7 +1489,7 @@ class AzureGCPEncryptionTestMixin(object):
         expected_document = json_util.loads(expectation_extjson, json_options=JSON_OPTS)
 
         coll.insert_one(payload)
-        event = insert_listener.results["started"][0]
+        event = insert_listener.started_events[0]
         inserted_doc = event.command["documents"][0]
 
         for key, value in expected_document.items():
@@ -1622,7 +1622,7 @@ class TestDeadlockProse(EncryptionIntegrationTest):
             ),
         )
 
-        cev = self.client_listener.results["started"]
+        cev = self.client_listener.started_events
         self.assertEqual(len(cev), 4)
         self.assertEqual(cev[0].command_name, "listCollections")
         self.assertEqual(cev[0].database_name, "db")
@@ -1643,7 +1643,7 @@ class TestDeadlockProse(EncryptionIntegrationTest):
             ),
         )
 
-        cev = self.client_listener.results["started"]
+        cev = self.client_listener.started_events
         self.assertEqual(len(cev), 3)
         self.assertEqual(cev[0].command_name, "listCollections")
         self.assertEqual(cev[0].database_name, "db")
@@ -1652,7 +1652,7 @@ class TestDeadlockProse(EncryptionIntegrationTest):
         self.assertEqual(cev[2].command_name, "find")
         self.assertEqual(cev[2].database_name, "db")
 
-        cev = self.client_keyvault_listener.results["started"]
+        cev = self.client_keyvault_listener.started_events
         self.assertEqual(len(cev), 1)
         self.assertEqual(cev[0].command_name, "find")
         self.assertEqual(cev[0].database_name, "keyvault")
@@ -1667,7 +1667,7 @@ class TestDeadlockProse(EncryptionIntegrationTest):
             ),
         )
 
-        cev = self.client_listener.results["started"]
+        cev = self.client_listener.started_events
         self.assertEqual(len(cev), 2)
         self.assertEqual(cev[0].command_name, "find")
         self.assertEqual(cev[0].database_name, "db")
@@ -1684,12 +1684,12 @@ class TestDeadlockProse(EncryptionIntegrationTest):
             ),
         )
 
-        cev = self.client_listener.results["started"]
+        cev = self.client_listener.started_events
         self.assertEqual(len(cev), 1)
         self.assertEqual(cev[0].command_name, "find")
         self.assertEqual(cev[0].database_name, "db")
 
-        cev = self.client_keyvault_listener.results["started"]
+        cev = self.client_keyvault_listener.started_events
         self.assertEqual(len(cev), 1)
         self.assertEqual(cev[0].command_name, "find")
         self.assertEqual(cev[0].database_name, "keyvault")
@@ -1704,7 +1704,7 @@ class TestDeadlockProse(EncryptionIntegrationTest):
             ),
         )
 
-        cev = self.client_listener.results["started"]
+        cev = self.client_listener.started_events
         self.assertEqual(len(cev), 5)
         self.assertEqual(cev[0].command_name, "listCollections")
         self.assertEqual(cev[0].database_name, "db")
@@ -1727,7 +1727,7 @@ class TestDeadlockProse(EncryptionIntegrationTest):
             ),
         )
 
-        cev = self.client_listener.results["started"]
+        cev = self.client_listener.started_events
         self.assertEqual(len(cev), 3)
         self.assertEqual(cev[0].command_name, "listCollections")
         self.assertEqual(cev[0].database_name, "db")
@@ -1736,7 +1736,7 @@ class TestDeadlockProse(EncryptionIntegrationTest):
         self.assertEqual(cev[2].command_name, "find")
         self.assertEqual(cev[2].database_name, "db")
 
-        cev = self.client_keyvault_listener.results["started"]
+        cev = self.client_keyvault_listener.started_events
         self.assertEqual(len(cev), 1)
         self.assertEqual(cev[0].command_name, "find")
         self.assertEqual(cev[0].database_name, "keyvault")
@@ -1751,7 +1751,7 @@ class TestDeadlockProse(EncryptionIntegrationTest):
             ),
         )
 
-        cev = self.client_listener.results["started"]
+        cev = self.client_listener.started_events
         self.assertEqual(len(cev), 2)
         self.assertEqual(cev[0].command_name, "find")
         self.assertEqual(cev[0].database_name, "db")
@@ -1768,12 +1768,12 @@ class TestDeadlockProse(EncryptionIntegrationTest):
             ),
         )
 
-        cev = self.client_listener.results["started"]
+        cev = self.client_listener.started_events
         self.assertEqual(len(cev), 1)
         self.assertEqual(cev[0].command_name, "find")
         self.assertEqual(cev[0].database_name, "db")
 
-        cev = self.client_keyvault_listener.results["started"]
+        cev = self.client_keyvault_listener.started_events
         self.assertEqual(len(cev), 1)
         self.assertEqual(cev[0].command_name, "find")
         self.assertEqual(cev[0].database_name, "keyvault")
@@ -1821,8 +1821,8 @@ class TestDecryptProse(EncryptionIntegrationTest):
         ):
             with self.assertRaises(OperationFailure):
                 self.encrypted_client.db.decryption_events.aggregate([])
-        self.assertEqual(len(self.listener.results["failed"]), 1)
-        for event in self.listener.results["failed"]:
+        self.assertEqual(len(self.listener.failed_events), 1)
+        for event in self.listener.failed_events:
             self.assertEqual(event.failure["code"], 123)
 
     def test_02_network_error(self):
@@ -1834,8 +1834,8 @@ class TestDecryptProse(EncryptionIntegrationTest):
         ):
             with self.assertRaises(AutoReconnect):
                 self.encrypted_client.db.decryption_events.aggregate([])
-        self.assertEqual(len(self.listener.results["failed"]), 1)
-        self.assertEqual(self.listener.results["failed"][0].command_name, "aggregate")
+        self.assertEqual(len(self.listener.failed_events), 1)
+        self.assertEqual(self.listener.failed_events[0].command_name, "aggregate")
 
     def test_03_decrypt_error(self):
         self.encrypted_client.db.decryption_events.insert_one(
@@ -1843,8 +1843,8 @@ class TestDecryptProse(EncryptionIntegrationTest):
         )
         with self.assertRaises(EncryptionError):
             next(self.encrypted_client.db.decryption_events.aggregate([]))
-        event = self.listener.results["succeeded"][0]
-        self.assertEqual(len(self.listener.results["failed"]), 0)
+        event = self.listener.succeeded_events[0]
+        self.assertEqual(len(self.listener.failed_events), 0)
         self.assertEqual(
             event.reply["cursor"]["firstBatch"][0]["encrypted"], self.malformed_cipher_text
         )
@@ -1852,8 +1852,8 @@ class TestDecryptProse(EncryptionIntegrationTest):
     def test_04_decrypt_success(self):
         self.encrypted_client.db.decryption_events.insert_one({"encrypted": self.cipher_text})
         next(self.encrypted_client.db.decryption_events.aggregate([]))
-        event = self.listener.results["succeeded"][0]
-        self.assertEqual(len(self.listener.results["failed"]), 0)
+        event = self.listener.succeeded_events[0]
+        self.assertEqual(len(self.listener.failed_events), 0)
         self.assertEqual(event.reply["cursor"]["firstBatch"][0]["encrypted"], self.cipher_text)
 
 

@@ -218,79 +218,78 @@ class TestCursor(IntegrationTest):
 
         listener = AllowListEventListener("find", "getMore")
         coll = rs_or_single_client(event_listeners=[listener])[self.db.name].pymongo_test
-        results = listener.results
 
         # Tailable_await defaults.
         list(coll.find(cursor_type=CursorType.TAILABLE_AWAIT))
         # find
-        self.assertFalse("maxTimeMS" in results["started"][0].command)
+        self.assertFalse("maxTimeMS" in listener.started_events[0].command)
         # getMore
-        self.assertFalse("maxTimeMS" in results["started"][1].command)
-        results.clear()
+        self.assertFalse("maxTimeMS" in listener.started_events[1].command)
+        listener.reset()
 
         # Tailable_await with max_await_time_ms set.
         list(coll.find(cursor_type=CursorType.TAILABLE_AWAIT).max_await_time_ms(99))
         # find
-        self.assertEqual("find", results["started"][0].command_name)
-        self.assertFalse("maxTimeMS" in results["started"][0].command)
+        self.assertEqual("find", listener.started_events[0].command_name)
+        self.assertFalse("maxTimeMS" in listener.started_events[0].command)
         # getMore
-        self.assertEqual("getMore", results["started"][1].command_name)
-        self.assertTrue("maxTimeMS" in results["started"][1].command)
-        self.assertEqual(99, results["started"][1].command["maxTimeMS"])
-        results.clear()
+        self.assertEqual("getMore", listener.started_events[1].command_name)
+        self.assertTrue("maxTimeMS" in listener.started_events[1].command)
+        self.assertEqual(99, listener.started_events[1].command["maxTimeMS"])
+        listener.reset()
 
         # Tailable_await with max_time_ms
         list(coll.find(cursor_type=CursorType.TAILABLE_AWAIT).max_time_ms(99))
         # find
-        self.assertEqual("find", results["started"][0].command_name)
-        self.assertTrue("maxTimeMS" in results["started"][0].command)
-        self.assertEqual(99, results["started"][0].command["maxTimeMS"])
+        self.assertEqual("find", listener.started_events[0].command_name)
+        self.assertTrue("maxTimeMS" in listener.started_events[0].command)
+        self.assertEqual(99, listener.started_events[0].command["maxTimeMS"])
         # getMore
-        self.assertEqual("getMore", results["started"][1].command_name)
-        self.assertFalse("maxTimeMS" in results["started"][1].command)
-        results.clear()
+        self.assertEqual("getMore", listener.started_events[1].command_name)
+        self.assertFalse("maxTimeMS" in listener.started_events[1].command)
+        listener.reset()
 
         # Tailable_await with both max_time_ms and max_await_time_ms
         list(coll.find(cursor_type=CursorType.TAILABLE_AWAIT).max_time_ms(99).max_await_time_ms(99))
         # find
-        self.assertEqual("find", results["started"][0].command_name)
-        self.assertTrue("maxTimeMS" in results["started"][0].command)
-        self.assertEqual(99, results["started"][0].command["maxTimeMS"])
+        self.assertEqual("find", listener.started_events[0].command_name)
+        self.assertTrue("maxTimeMS" in listener.started_events[0].command)
+        self.assertEqual(99, listener.started_events[0].command["maxTimeMS"])
         # getMore
-        self.assertEqual("getMore", results["started"][1].command_name)
-        self.assertTrue("maxTimeMS" in results["started"][1].command)
-        self.assertEqual(99, results["started"][1].command["maxTimeMS"])
-        results.clear()
+        self.assertEqual("getMore", listener.started_events[1].command_name)
+        self.assertTrue("maxTimeMS" in listener.started_events[1].command)
+        self.assertEqual(99, listener.started_events[1].command["maxTimeMS"])
+        listener.reset()
 
         # Non tailable_await with max_await_time_ms
         list(coll.find(batch_size=1).max_await_time_ms(99))
         # find
-        self.assertEqual("find", results["started"][0].command_name)
-        self.assertFalse("maxTimeMS" in results["started"][0].command)
+        self.assertEqual("find", listener.started_events[0].command_name)
+        self.assertFalse("maxTimeMS" in listener.started_events[0].command)
         # getMore
-        self.assertEqual("getMore", results["started"][1].command_name)
-        self.assertFalse("maxTimeMS" in results["started"][1].command)
-        results.clear()
+        self.assertEqual("getMore", listener.started_events[1].command_name)
+        self.assertFalse("maxTimeMS" in listener.started_events[1].command)
+        listener.reset()
 
         # Non tailable_await with max_time_ms
         list(coll.find(batch_size=1).max_time_ms(99))
         # find
-        self.assertEqual("find", results["started"][0].command_name)
-        self.assertTrue("maxTimeMS" in results["started"][0].command)
-        self.assertEqual(99, results["started"][0].command["maxTimeMS"])
+        self.assertEqual("find", listener.started_events[0].command_name)
+        self.assertTrue("maxTimeMS" in listener.started_events[0].command)
+        self.assertEqual(99, listener.started_events[0].command["maxTimeMS"])
         # getMore
-        self.assertEqual("getMore", results["started"][1].command_name)
-        self.assertFalse("maxTimeMS" in results["started"][1].command)
+        self.assertEqual("getMore", listener.started_events[1].command_name)
+        self.assertFalse("maxTimeMS" in listener.started_events[1].command)
 
         # Non tailable_await with both max_time_ms and max_await_time_ms
         list(coll.find(batch_size=1).max_time_ms(99).max_await_time_ms(88))
         # find
-        self.assertEqual("find", results["started"][0].command_name)
-        self.assertTrue("maxTimeMS" in results["started"][0].command)
-        self.assertEqual(99, results["started"][0].command["maxTimeMS"])
+        self.assertEqual("find", listener.started_events[0].command_name)
+        self.assertTrue("maxTimeMS" in listener.started_events[0].command)
+        self.assertEqual(99, listener.started_events[0].command["maxTimeMS"])
         # getMore
-        self.assertEqual("getMore", results["started"][1].command_name)
-        self.assertFalse("maxTimeMS" in results["started"][1].command)
+        self.assertEqual("getMore", listener.started_events[1].command_name)
+        self.assertFalse("maxTimeMS" in listener.started_events[1].command)
 
     @client_context.require_test_commands
     @client_context.require_no_mongos
@@ -329,7 +328,7 @@ class TestCursor(IntegrationTest):
         self.addCleanup(client.close)
         coll = client.pymongo_test.test.with_options(read_concern=ReadConcern(level="local"))
         self.assertTrue(coll.find().explain())
-        started = listener.results["started"]
+        started = listener.started_events
         self.assertEqual(len(started), 1)
         self.assertNotIn("readConcern", started[0].command)
 
@@ -1169,7 +1168,6 @@ class TestCursor(IntegrationTest):
         self.client._process_periodic_tasks()
 
         listener = AllowListEventListener("killCursors")
-        results = listener.results
         client = rs_or_single_client(event_listeners=[listener])
         self.addCleanup(client.close)
         coll = client[self.db.name].test_close_kills_cursors
@@ -1178,7 +1176,7 @@ class TestCursor(IntegrationTest):
         docs_inserted = 1000
         coll.insert_many([{"i": i} for i in range(docs_inserted)])
 
-        results.clear()
+        listener.reset()
 
         # Close a cursor while it's still open on the server.
         cursor = coll.find().batch_size(10)
@@ -1187,13 +1185,13 @@ class TestCursor(IntegrationTest):
         cursor.close()
 
         def assertCursorKilled():
-            self.assertEqual(1, len(results["started"]))
-            self.assertEqual("killCursors", results["started"][0].command_name)
-            self.assertEqual(1, len(results["succeeded"]))
-            self.assertEqual("killCursors", results["succeeded"][0].command_name)
+            self.assertEqual(1, len(listener.started_events))
+            self.assertEqual("killCursors", listener.started_events[0].command_name)
+            self.assertEqual(1, len(listener.succeeded_events))
+            self.assertEqual("killCursors", listener.succeeded_events[0].command_name)
 
         assertCursorKilled()
-        results.clear()
+        listener.reset()
 
         # Close a command cursor while it's still open on the server.
         cursor = coll.aggregate([], batchSize=10)
@@ -1204,7 +1202,7 @@ class TestCursor(IntegrationTest):
         if cursor.cursor_id:
             assertCursorKilled()
         else:
-            self.assertEqual(0, len(results["started"]))
+            self.assertEqual(0, len(listener.started_events))
 
     def test_delete_not_initialized(self):
         # Creating a cursor with invalid arguments will not run __init__
@@ -1226,7 +1224,7 @@ class TestCursor(IntegrationTest):
         self.addCleanup(coll.drop)
 
         list(coll.find(batch_size=3))
-        started = listener.results["started"]
+        started = listener.started_events
         self.assertEqual(2, len(started))
         self.assertEqual("find", started[0].command_name)
         if client_context.is_rs or client_context.is_mongos:
@@ -1261,13 +1259,13 @@ class TestRawBatchCursor(IntegrationTest):
                 batches = list(
                     client[self.db.name].test.find_raw_batches(session=session).sort("_id")
                 )
-                cmd = listener.results["started"][0]
+                cmd = listener.started_events[0]
                 self.assertEqual(cmd.command_name, "find")
                 self.assertIn("$clusterTime", cmd.command)
                 self.assertEqual(cmd.command["startTransaction"], True)
                 self.assertEqual(cmd.command["txnNumber"], 1)
                 # Ensure we update $clusterTime from the command response.
-                last_cmd = listener.results["succeeded"][-1]
+                last_cmd = listener.succeeded_events[-1]
                 self.assertEqual(
                     last_cmd.reply["$clusterTime"]["clusterTime"],
                     session.cluster_time["clusterTime"],
@@ -1293,8 +1291,8 @@ class TestRawBatchCursor(IntegrationTest):
 
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
-        self.assertEqual(len(listener.results["started"]), 2)
-        for cmd in listener.results["started"]:
+        self.assertEqual(len(listener.started_events), 2)
+        for cmd in listener.started_events:
             self.assertEqual(cmd.command_name, "find")
 
     @client_context.require_version_min(5, 0, 0)
@@ -1314,7 +1312,7 @@ class TestRawBatchCursor(IntegrationTest):
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
 
-        find_cmd = listener.results["started"][1].command
+        find_cmd = listener.started_events[1].command
         self.assertEqual(find_cmd["readConcern"]["level"], "snapshot")
         self.assertIsNotNone(find_cmd["readConcern"]["atClusterTime"])
 
@@ -1372,15 +1370,15 @@ class TestRawBatchCursor(IntegrationTest):
         c.drop()
         c.insert_many([{"_id": i} for i in range(10)])
 
-        listener.results.clear()
+        listener.reset()
         cursor = c.find_raw_batches(batch_size=4)
 
         # First raw batch of 4 documents.
         next(cursor)
 
-        started = listener.results["started"][0]
-        succeeded = listener.results["succeeded"][0]
-        self.assertEqual(0, len(listener.results["failed"]))
+        started = listener.started_events[0]
+        succeeded = listener.succeeded_events[0]
+        self.assertEqual(0, len(listener.failed_events))
         self.assertEqual("find", started.command_name)
         self.assertEqual("pymongo_test", started.database_name)
         self.assertEqual("find", succeeded.command_name)
@@ -1391,15 +1389,14 @@ class TestRawBatchCursor(IntegrationTest):
         self.assertEqual(len(csr["firstBatch"]), 1)
         self.assertEqual(decode_all(csr["firstBatch"][0]), [{"_id": i} for i in range(0, 4)])
 
-        listener.results.clear()
+        listener.reset()
 
         # Next raw batch of 4 documents.
         next(cursor)
         try:
-            results = listener.results
-            started = results["started"][0]
-            succeeded = results["succeeded"][0]
-            self.assertEqual(0, len(results["failed"]))
+            started = listener.started_events[0]
+            succeeded = listener.succeeded_events[0]
+            self.assertEqual(0, len(listener.failed_events))
             self.assertEqual("getMore", started.command_name)
             self.assertEqual("pymongo_test", started.database_name)
             self.assertEqual("getMore", succeeded.command_name)
@@ -1442,13 +1439,13 @@ class TestRawBatchCommandCursor(IntegrationTest):
                         [{"$sort": {"_id": 1}}], session=session
                     )
                 )
-                cmd = listener.results["started"][0]
+                cmd = listener.started_events[0]
                 self.assertEqual(cmd.command_name, "aggregate")
                 self.assertIn("$clusterTime", cmd.command)
                 self.assertEqual(cmd.command["startTransaction"], True)
                 self.assertEqual(cmd.command["txnNumber"], 1)
                 # Ensure we update $clusterTime from the command response.
-                last_cmd = listener.results["succeeded"][-1]
+                last_cmd = listener.succeeded_events[-1]
                 self.assertEqual(
                     last_cmd.reply["$clusterTime"]["clusterTime"],
                     session.cluster_time["clusterTime"],
@@ -1473,8 +1470,8 @@ class TestRawBatchCommandCursor(IntegrationTest):
 
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
-        self.assertEqual(len(listener.results["started"]), 3)
-        cmds = listener.results["started"]
+        self.assertEqual(len(listener.started_events), 3)
+        cmds = listener.started_events
         self.assertEqual(cmds[0].command_name, "aggregate")
         self.assertEqual(cmds[1].command_name, "aggregate")
 
@@ -1495,7 +1492,7 @@ class TestRawBatchCommandCursor(IntegrationTest):
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
 
-        find_cmd = listener.results["started"][1].command
+        find_cmd = listener.started_events[1].command
         self.assertEqual(find_cmd["readConcern"]["level"], "snapshot")
         self.assertIsNotNone(find_cmd["readConcern"]["atClusterTime"])
 
@@ -1536,13 +1533,13 @@ class TestRawBatchCommandCursor(IntegrationTest):
         c.drop()
         c.insert_many([{"_id": i} for i in range(10)])
 
-        listener.results.clear()
+        listener.reset()
         cursor = c.aggregate_raw_batches([{"$sort": {"_id": 1}}], batchSize=4)
 
         # Start cursor, no initial batch.
-        started = listener.results["started"][0]
-        succeeded = listener.results["succeeded"][0]
-        self.assertEqual(0, len(listener.results["failed"]))
+        started = listener.started_events[0]
+        succeeded = listener.succeeded_events[0]
+        self.assertEqual(0, len(listener.failed_events))
         self.assertEqual("aggregate", started.command_name)
         self.assertEqual("pymongo_test", started.database_name)
         self.assertEqual("aggregate", succeeded.command_name)
@@ -1551,15 +1548,14 @@ class TestRawBatchCommandCursor(IntegrationTest):
 
         # First batch is empty.
         self.assertEqual(len(csr["firstBatch"]), 0)
-        listener.results.clear()
+        listener.reset()
 
         # Batches of 4 documents.
         n = 0
         for batch in cursor:
-            results = listener.results
-            started = results["started"][0]
-            succeeded = results["succeeded"][0]
-            self.assertEqual(0, len(results["failed"]))
+            started = listener.started_events[0]
+            succeeded = listener.succeeded_events[0]
+            self.assertEqual(0, len(listener.failed_events))
             self.assertEqual("getMore", started.command_name)
             self.assertEqual("pymongo_test", started.database_name)
             self.assertEqual("getMore", succeeded.command_name)
@@ -1570,7 +1566,7 @@ class TestRawBatchCommandCursor(IntegrationTest):
             self.assertEqual(decode_all(batch), [{"_id": i} for i in range(n, min(n + 4, 10))])
 
             n += 4
-            listener.results.clear()
+            listener.reset()
 
 
 if __name__ == "__main__":

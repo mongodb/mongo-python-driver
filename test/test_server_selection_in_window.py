@@ -115,7 +115,7 @@ class TestProse(IntegrationTest):
         for thread in threads:
             self.assertTrue(thread.passed)
 
-        events = listener.results["started"]
+        events = listener.started_events
         self.assertEqual(len(events), n_finds * N_THREADS)
         nodes = client.nodes
         self.assertEqual(len(nodes), 2)

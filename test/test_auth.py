@@ -392,7 +392,7 @@ class TestSCRAM(IntegrationTest):
 
         if client_context.version < (4, 4, -1):
             # Assert we sent the skipEmptyExchange option.
-            first_event = listener.results["started"][0]
+            first_event = listener.started_events[0]
             self.assertEqual(first_event.command_name, "saslStart")
             self.assertEqual(first_event.command["options"], {"skipEmptyExchange": True})
 
@@ -449,7 +449,7 @@ class TestSCRAM(IntegrationTest):
         )
         client.testscram.command("dbstats")
 
-        self.listener.results.clear()
+        self.listener.reset()
         client = rs_or_single_client_noauth(
             username="both", password="pwd", authSource="testscram", event_listeners=[self.listener]
         )
@@ -457,9 +457,9 @@ class TestSCRAM(IntegrationTest):
         if client_context.version.at_least(4, 4, -1):
             # Speculative authentication in 4.4+ sends saslStart with the
             # handshake.
-            self.assertEqual(self.listener.results["started"], [])
+            self.assertEqual(self.listener.started_events, [])
         else:
-            started = self.listener.results["started"][0]
+            started = self.listener.started_events[0]
             self.assertEqual(started.command.get("mechanism"), "SCRAM-SHA-256")
 
         # Step 3: verify auth failure conditions

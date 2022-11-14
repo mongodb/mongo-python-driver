@@ -60,7 +60,7 @@ class TestClusterTime(unittest.TestCase):
         self.cluster_time_conversation(callback, [{"ok": 1}] * 2)
 
     def test_bulk(self):
-        def callback(client):
+        def callback(client: MongoClient[dict]) -> None:
             client.db.collection.bulk_write(
                 [InsertOne({}), InsertOne({}), UpdateOne({}, {"$inc": {"x": 1}}), DeleteMany({})]
             )

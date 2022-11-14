@@ -1986,21 +1986,20 @@ class TestCollection(IntegrationTest):
         c_w0 = db.get_collection("test", write_concern=WriteConcern(w=0))
         # default WriteConcern.
         c_default = db.get_collection("test", write_concern=WriteConcern())
-        results = listener.results
         # Authenticate the client and throw out auth commands from the listener.
         db.command("ping")
-        results.clear()
+        listener.reset()
         c_w0.find_one_and_update({"_id": 1}, {"$set": {"foo": "bar"}})
-        self.assertEqual({"w": 0}, results["started"][0].command["writeConcern"])
-        results.clear()
+        self.assertEqual({"w": 0}, listener.started_events[0].command["writeConcern"])
+        listener.reset()
 
         c_w0.find_one_and_replace({"_id": 1}, {"foo": "bar"})
-        self.assertEqual({"w": 0}, results["started"][0].command["writeConcern"])
-        results.clear()
+        self.assertEqual({"w": 0}, listener.started_events[0].command["writeConcern"])
+        listener.reset()
 
         c_w0.find_one_and_delete({"_id": 1})
-        self.assertEqual({"w": 0}, results["started"][0].command["writeConcern"])
-        results.clear()
+        self.assertEqual({"w": 0}, listener.started_events[0].command["writeConcern"])
+        listener.reset()
 
         # Test write concern errors.
         if client_context.is_rs:
@@ -2017,27 +2016,27 @@ class TestCollection(IntegrationTest):
                 WriteConcernError,
                 c_wc_error.find_one_and_replace,
                 {"w": 0},
-                results["started"][0].command["writeConcern"],
+                listener.started_events[0].command["writeConcern"],
             )
             self.assertRaises(
                 WriteConcernError,
                 c_wc_error.find_one_and_delete,
                 {"w": 0},
-                results["started"][0].command["writeConcern"],
+                listener.started_events[0].command["writeConcern"],
             )
-            results.clear()
+            listener.reset()
 
         c_default.find_one_and_update({"_id": 1}, {"$set": {"foo": "bar"}})
-        self.assertNotIn("writeConcern", results["started"][0].command)
-        results.clear()
+        self.assertNotIn("writeConcern", listener.started_events[0].command)
+        listener.reset()
 
         c_default.find_one_and_replace({"_id": 1}, {"foo": "bar"})
-        self.assertNotIn("writeConcern", results["started"][0].command)
-        results.clear()
+        self.assertNotIn("writeConcern", listener.started_events[0].command)
+        listener.reset()
 
         c_default.find_one_and_delete({"_id": 1})
-        self.assertNotIn("writeConcern", results["started"][0].command)
-        results.clear()
+        self.assertNotIn("writeConcern", listener.started_events[0].command)
+        listener.reset()
 
     def test_find_with_nested(self):
         c = self.db.test

@@ -83,7 +83,7 @@ class TestServerApi(IntegrationTest):
         self.addCleanup(coll.delete_many, {})
         list(coll.find(batch_size=25))
         client.admin.command("ping")
-        self.assertServerApiInAllCommands(listener.results["started"])
+        self.assertServerApiInAllCommands(listener.started_events)
 
     @client_context.require_version_min(4, 7)
     @client_context.require_transactions
@@ -100,7 +100,7 @@ class TestServerApi(IntegrationTest):
             coll.insert_many([{} for _ in range(100)], session=s)
             list(coll.find(batch_size=25, session=s))
             client.test.command("find", "test", session=s)
-            self.assertServerApiInAllCommands(listener.results["started"])
+            self.assertServerApiInAllCommands(listener.started_events)
 
 
 if __name__ == "__main__":
