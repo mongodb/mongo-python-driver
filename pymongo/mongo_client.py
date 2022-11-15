@@ -1410,8 +1410,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 retryable_error = exc.has_error_label("RetryableWriteError")
                 if self._indefinite_error:
                     raise self._indefinite_error from exc
-                if retryable_error and isinstance(exc, WriteConcernError):
+                if isinstance(exc, WriteConcernError):
                     self._indefinite_error = exc
+                    raise
                 if retryable_error:
                     session._unpin()
                 if not retryable_error or (is_retrying() and not multiple_retries):

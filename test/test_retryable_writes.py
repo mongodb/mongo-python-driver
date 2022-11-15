@@ -41,6 +41,7 @@ from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo.errors import (
     ConnectionFailure,
+    NotPrimaryError,
     OperationFailure,
     ServerSelectionTimeoutError,
     WriteConcernError,
@@ -71,16 +72,22 @@ class ClientEventListener(EventListener):
     def __init__(self, client):
         self._client = client
         self._retryed = False
+        self._done = False
         super().__init__()
 
+    def reset(self) -> None:
+        self._retryed = False
+        self._done = False
+        super().reset()
+
     def succeeded(self, event: CommandSucceededEvent):
-        if self._retryed:
-            return
-        else:
-            client_context.client.admin.command(
+        if event.command_name == "insert" and event.reply["writeConcernError"]["code"] == 91:
+            self._retryed = True
+            self._client.test.test.drop()
+            self._client.admin.command(
                 {
                     "configureFailPoint": "failCommand",
-                    "mode": {"times": 1},
+                    "mode": {"times": 10},
                     "data": {
                         "errorCode": 10107,
                         "errorLabels": ["RetryableWriteError", "NoWritesPerformed"],
@@ -89,10 +96,18 @@ class ClientEventListener(EventListener):
                 }
             )
             try:
-                self._client.test.another_coll.insert_one({"_id": 1})
-            except WriteConcernError as exc:
-                assert exc.exception.code == 91
-            self._retryed = True
+                self._client.test.test.insert_one({"_id": 1})
+            except NotPrimaryError as exc:
+                print(exc.details)
+                assert exc.details["code"] == 91
+                self._done = True
+            finally:
+                self._client.admin.command(
+                    {
+                        "configureFailPoint": "failCommand",
+                        "mode": "off",
+                    }
+                )
 
 
 class TestAllScenarios(SpecRunner):
@@ -635,8 +650,9 @@ class TestPoolPausedError(IntegrationTest):
         }
 
         with self.fail_point(failpoint):
-            client.test.test.insert_one({"_id": 2})
-        wait_until(lambda: cmd_listener._retryed, "listener passed successfully")
+            with self.assertRaises(WriteConcernError):
+                client.test.test.insert_one({"_id": 1})
+        wait_until(lambda: cmd_listener._done, "listener passed successfully")
 
 
 class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
