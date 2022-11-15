@@ -62,7 +62,7 @@
   ],
   "tests": [
     {
-      "description": "listDatabases succeeds after retryable handshake network error",
+      "description": "client.listDatabases succeeds after retryable handshake network error",
       "operations": [
         {
           "name": "failPoint",
@@ -155,7 +155,7 @@
       ]
     },
     {
-      "description": "listDatabases succeeds after retryable handshake server error (ShutdownInProgress)",
+      "description": "client.listDatabases succeeds after retryable handshake server error (ShutdownInProgress)",
       "operations": [
         {
           "name": "failPoint",
@@ -248,7 +248,7 @@
       ]
     },
     {
-      "description": "listDatabaseNames succeeds after retryable handshake network error",
+      "description": "client.listDatabaseNames succeeds after retryable handshake network error",
       "operations": [
         {
           "name": "failPoint",
@@ -338,7 +338,7 @@
       ]
     },
     {
-      "description": "listDatabaseNames succeeds after retryable handshake server error (ShutdownInProgress)",
+      "description": "client.listDatabaseNames succeeds after retryable handshake server error (ShutdownInProgress)",
       "operations": [
         {
           "name": "failPoint",
@@ -428,7 +428,7 @@
       ]
     },
     {
-      "description": "createChangeStream succeeds after retryable handshake network error",
+      "description": "client.createChangeStream succeeds after retryable handshake network error",
       "runOnRequirements": [
         {
           "serverless": "forbid"
@@ -527,7 +527,7 @@
       ]
     },
     {
-      "description": "createChangeStream succeeds after retryable handshake server error (ShutdownInProgress)",
+      "description": "client.createChangeStream succeeds after retryable handshake server error (ShutdownInProgress)",
       "runOnRequirements": [
         {
           "serverless": "forbid"
@@ -626,7 +626,7 @@
       ]
     },
     {
-      "description": "aggregate succeeds after retryable handshake network error",
+      "description": "database.aggregate succeeds after retryable handshake network error",
       "operations": [
         {
           "name": "failPoint",
@@ -726,7 +726,7 @@
       ]
     },
     {
-      "description": "aggregate succeeds after retryable handshake server error (ShutdownInProgress)",
+      "description": "database.aggregate succeeds after retryable handshake server error (ShutdownInProgress)",
       "operations": [
         {
           "name": "failPoint",
@@ -826,7 +826,7 @@
       ]
     },
     {
-      "description": "listCollections succeeds after retryable handshake network error",
+      "description": "database.listCollections succeeds after retryable handshake network error",
       "operations": [
         {
           "name": "failPoint",
@@ -919,7 +919,7 @@
       ]
     },
     {
-      "description": "listCollections succeeds after retryable handshake server error (ShutdownInProgress)",
+      "description": "database.listCollections succeeds after retryable handshake server error (ShutdownInProgress)",
       "operations": [
         {
           "name": "failPoint",
@@ -1012,7 +1012,7 @@
       ]
     },
     {
-      "description": "listCollectionNames succeeds after retryable handshake network error",
+      "description": "database.listCollectionNames succeeds after retryable handshake network error",
       "operations": [
         {
           "name": "failPoint",
@@ -1105,7 +1105,7 @@
       ]
     },
     {
-      "description": "listCollectionNames succeeds after retryable handshake server error (ShutdownInProgress)",
+      "description": "database.listCollectionNames succeeds after retryable handshake server error (ShutdownInProgress)",
       "operations": [
         {
           "name": "failPoint",
@@ -1198,7 +1198,7 @@
       ]
     },
     {
-      "description": "createChangeStream succeeds after retryable handshake network error",
+      "description": "database.createChangeStream succeeds after retryable handshake network error",
       "runOnRequirements": [
         {
           "serverless": "forbid"
@@ -1297,7 +1297,7 @@
       ]
     },
     {
-      "description": "createChangeStream succeeds after retryable handshake server error (ShutdownInProgress)",
+      "description": "database.createChangeStream succeeds after retryable handshake server error (ShutdownInProgress)",
       "runOnRequirements": [
         {
           "serverless": "forbid"
@@ -1396,7 +1396,7 @@
       ]
     },
     {
-      "description": "aggregate succeeds after retryable handshake network error",
+      "description": "collection.aggregate succeeds after retryable handshake network error",
       "operations": [
         {
           "name": "failPoint",
@@ -1489,7 +1489,7 @@
       ]
     },
     {
-      "description": "aggregate succeeds after retryable handshake server error (ShutdownInProgress)",
+      "description": "collection.aggregate succeeds after retryable handshake server error (ShutdownInProgress)",
       "operations": [
         {
           "name": "failPoint",
@@ -1582,7 +1582,7 @@
       ]
     },
     {
-      "description": "countDocuments succeeds after retryable handshake network error",
+      "description": "collection.countDocuments succeeds after retryable handshake network error",
       "operations": [
         {
           "name": "failPoint",
@@ -1675,7 +1675,7 @@
       ]
     },
     {
-      "description": "countDocuments succeeds after retryable handshake server error (ShutdownInProgress)",
+      "description": "collection.countDocuments succeeds after retryable handshake server error (ShutdownInProgress)",
       "operations": [
         {
           "name": "failPoint",
@@ -1768,7 +1768,7 @@
       ]
     },
     {
-      "description": "estimatedDocumentCount succeeds after retryable handshake network error",
+      "description": "collection.estimatedDocumentCount succeeds after retryable handshake network error",
       "operations": [
         {
           "name": "failPoint",
@@ -1858,7 +1858,7 @@
       ]
     },
     {
-      "description": "estimatedDocumentCount succeeds after retryable handshake server error (ShutdownInProgress)",
+      "description": "collection.estimatedDocumentCount succeeds after retryable handshake server error (ShutdownInProgress)",
       "operations": [
         {
           "name": "failPoint",
@@ -1948,7 +1948,7 @@
       ]
     },
     {
-      "description": "distinct succeeds after retryable handshake network error",
+      "description": "collection.distinct succeeds after retryable handshake network error",
       "operations": [
         {
           "name": "failPoint",
@@ -2042,7 +2042,7 @@
       ]
     },
     {
-      "description": "distinct succeeds after retryable handshake server error (ShutdownInProgress)",
+      "description": "collection.distinct succeeds after retryable handshake server error (ShutdownInProgress)",
       "operations": [
         {
           "name": "failPoint",
@@ -2136,7 +2136,7 @@
       ]
     },
     {
-      "description": "find succeeds after retryable handshake network error",
+      "description": "collection.find succeeds after retryable handshake network error",
       "operations": [
         {
           "name": "failPoint",
@@ -2229,7 +2229,7 @@
       ]
     },
     {
-      "description": "find succeeds after retryable handshake server error (ShutdownInProgress)",
+      "description": "collection.find succeeds after retryable handshake server error (ShutdownInProgress)",
       "operations": [
         {
           "name": "failPoint",
@@ -2322,7 +2322,7 @@
       ]
     },
     {
-      "description": "findOne succeeds after retryable handshake network error",
+      "description": "collection.findOne succeeds after retryable handshake network error",
       "operations": [
         {
           "name": "failPoint",
@@ -2415,7 +2415,7 @@
       ]
     },
     {
-      "description": "findOne succeeds after retryable handshake server error (ShutdownInProgress)",
+      "description": "collection.findOne succeeds after retryable handshake server error (ShutdownInProgress)",
       "operations": [
         {
           "name": "failPoint",
@@ -2508,7 +2508,7 @@
       ]
     },
     {
-      "description": "listIndexes succeeds after retryable handshake network error",
+      "description": "collection.listIndexes succeeds after retryable handshake network error",
       "operations": [
         {
           "name": "failPoint",
@@ -2598,7 +2598,7 @@
       ]
     },
     {
-      "description": "listIndexes succeeds after retryable handshake server error (ShutdownInProgress)",
+      "description": "collection.listIndexes succeeds after retryable handshake server error (ShutdownInProgress)",
       "operations": [
         {
           "name": "failPoint",
@@ -2688,7 +2688,7 @@
       ]
     },
     {
-      "description": "listIndexNames succeeds after retryable handshake network error",
+      "description": "collection.listIndexNames succeeds after retryable handshake network error",
       "operations": [
         {
           "name": "failPoint",
@@ -2778,7 +2778,7 @@
       ]
     },
     {
-      "description": "listIndexNames succeeds after retryable handshake server error (ShutdownInProgress)",
+      "description": "collection.listIndexNames succeeds after retryable handshake server error (ShutdownInProgress)",
       "operations": [
         {
           "name": "failPoint",
@@ -2868,7 +2868,7 @@
       ]
     },
     {
-      "description": "createChangeStream succeeds after retryable handshake network error",
+      "description": "collection.createChangeStream succeeds after retryable handshake network error",
       "runOnRequirements": [
         {
           "serverless": "forbid"
@@ -2967,7 +2967,7 @@
       ]
     },
     {
-      "description": "createChangeStream succeeds after retryable handshake server error (ShutdownInProgress)",
+      "description": "collection.createChangeStream succeeds after retryable handshake server error (ShutdownInProgress)",
       "runOnRequirements": [
         {
           "serverless": "forbid"
