@@ -30,6 +30,7 @@ from test.utils import (
     OvertCommandListener,
     TestCreator,
     rs_or_single_client,
+    wait_until,
 )
 from test.utils_spec_runner import SpecRunner
 from test.version import Version
@@ -64,6 +65,34 @@ from pymongo.write_concern import WriteConcern
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "retryable_writes", "legacy")
+
+
+class ClientEventListener(EventListener):
+    def __init__(self, client):
+        self._client = client
+        self._retryed = False
+        super().__init__()
+
+    def succeeded(self, event: CommandSucceededEvent):
+        if self._retryed:
+            return
+        else:
+            client_context.client.admin.command(
+                {
+                    "configureFailPoint": "failCommand",
+                    "mode": {"times": 1},
+                    "data": {
+                        "errorCode": 10107,
+                        "errorLabels": ["RetryableWriteError", "NoWritesPerformed"],
+                        "failCommands": ["insert"],
+                    },
+                }
+            )
+            try:
+                self._client.test.another_coll.insert_one({"_id": 1})
+            except WriteConcernError as exc:
+                assert exc.exception.code == 91
+            self._retryed = True
 
 
 class TestAllScenarios(SpecRunner):
@@ -589,7 +618,7 @@ class TestPoolPausedError(IntegrationTest):
     def test_returns_original_error_code(
         self,
     ):  # TODO: Make this a real integration test where we stepdown the primary.
-        cmd_listener = EventListener()
+        cmd_listener = ClientEventListener(client_context.client)
         client = rs_or_single_client(retryWrites=True, event_listeners=[cmd_listener])
         client.test.test.drop()
         client.test.another_coll.drop()
@@ -607,20 +636,7 @@ class TestPoolPausedError(IntegrationTest):
 
         with self.fail_point(failpoint):
             client.test.test.insert_one({"_id": 2})
-        cmd_listener.wait_for_event(CommandSucceededEvent, 1)
-        with self.fail_point(
-            {
-                "mode": {"times": 1},
-                "data": {
-                    "errorCode": 10107,
-                    "errorLabels": ["RetryableWriteError", "NoWritesPerformed"],
-                    "failCommands": ["insert"],
-                },
-            }
-        ):
-            with self.assertRaises(WriteConcernError) as exc:
-                client.test.another_coll.insert_one({"_id": 2})
-            self.assertEqual(exc.exception.code, 91)
+        wait_until(lambda: cmd_listener._retryed, "listener passed successfully")
 
 
 class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
