@@ -1408,7 +1408,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 # Add the RetryableWriteError label, if applicable.
                 _add_retryable_write_error(exc, max_wire_version)
                 retryable_error = exc.has_error_label("RetryableWriteError")
-                if self._indefinite_error:
+                if self._indefinite_error and exc.has_error_label("NoWritesPerformed"):
                     raise self._indefinite_error from exc
                 if isinstance(exc, WriteConcernError):
                     self._indefinite_error = exc
