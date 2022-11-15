@@ -76,13 +76,13 @@ class InsertEventListener(EventListener):
         self._retried = False
         super().reset()
 
-    def succeeded(self, event: CommandSucceededEvent):
+    def succeeded(self, event: CommandSucceededEvent) -> None:
+        super(InsertEventListener, self).succeeded(event)
         if (
             event.command_name == "insert"
             and event.reply.get("writeConcernError", {}).get("code", None) == 91
         ):
             self._retried = True
-        super(InsertEventListener, self).succeeded(event)
 
 
 class TestAllScenarios(SpecRunner):
@@ -604,10 +604,14 @@ class TestPoolPausedError(IntegrationTest):
 
     @client_context.require_failCommand_fail_point
     @client_context.require_replica_set
+    @client_context.require_version_min(
+        4, 3, 1
+    )  # the errorLabels parameter that is used in this test was introduced
+    # in MongoDB 4.3.1 (SERVER-43941)
     @client_knobs(heartbeat_frequency=0.05, min_heartbeat_interval=0.05)
     def test_returns_original_error_code(
         self,
-    ):  # TODO: Make this a real integration test where we stepdown the primary.
+    ):
         cmd_listener = InsertEventListener()
         client = rs_or_single_client(retryWrites=True, event_listeners=[cmd_listener])
         client.test.test.drop()
@@ -643,7 +647,7 @@ class TestPoolPausedError(IntegrationTest):
         )
         with self.assertRaises(WriteConcernError) as exc:
             client.test.test.insert_one({"_id": 1})
-        assert exc.exception.code == 91
+        self.assertEqual(exc.exception.code, 91)
         client.admin.command(
             {
                 "configureFailPoint": "failCommand",
