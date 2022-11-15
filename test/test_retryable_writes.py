@@ -41,7 +41,6 @@ from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo.errors import (
     ConnectionFailure,
-    NotPrimaryError,
     OperationFailure,
     ServerSelectionTimeoutError,
     WriteConcernError,
@@ -68,46 +67,22 @@ from pymongo.write_concern import WriteConcern
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "retryable_writes", "legacy")
 
 
-class ClientEventListener(EventListener):
-    def __init__(self, client):
-        self._client = client
-        self._retryed = False
-        self._done = False
+class InsertEventListener(EventListener):
+    def __init__(self):
+        self._retried = False
         super().__init__()
 
     def reset(self) -> None:
-        self._retryed = False
-        self._done = False
+        self._retried = False
         super().reset()
 
     def succeeded(self, event: CommandSucceededEvent):
-        if event.command_name == "insert" and event.reply["writeConcernError"]["code"] == 91:
-            self._retryed = True
-            self._client.test.test.drop()
-            self._client.admin.command(
-                {
-                    "configureFailPoint": "failCommand",
-                    "mode": {"times": 10},
-                    "data": {
-                        "errorCode": 10107,
-                        "errorLabels": ["RetryableWriteError", "NoWritesPerformed"],
-                        "failCommands": ["insert"],
-                    },
-                }
-            )
-            try:
-                self._client.test.test.insert_one({"_id": 1})
-            except NotPrimaryError as exc:
-                print(exc.details)
-                assert exc.details["code"] == 91
-                self._done = True
-            finally:
-                self._client.admin.command(
-                    {
-                        "configureFailPoint": "failCommand",
-                        "mode": "off",
-                    }
-                )
+        if (
+            event.command_name == "insert"
+            and event.reply.get("writeConcernError", {}).get("code", None) == 91
+        ):
+            self._retried = True
+        super(InsertEventListener, self).succeeded(event)
 
 
 class TestAllScenarios(SpecRunner):
@@ -633,26 +608,48 @@ class TestPoolPausedError(IntegrationTest):
     def test_returns_original_error_code(
         self,
     ):  # TODO: Make this a real integration test where we stepdown the primary.
-        cmd_listener = ClientEventListener(client_context.client)
+        cmd_listener = InsertEventListener()
         client = rs_or_single_client(retryWrites=True, event_listeners=[cmd_listener])
         client.test.test.drop()
         client.test.another_coll.drop()
         self.addCleanup(client.close)
-        failpoint = {
-            "mode": {"times": 1},
-            "data": {
-                "writeConcernError": {
-                    "code": 91,
-                    "errorLabels": ["RetryableWriteError"],
+        cmd_listener.reset()
+        client.admin.command(
+            {
+                "configureFailPoint": "failCommand",
+                "mode": {"times": 1},
+                "data": {
+                    "writeConcernError": {
+                        "code": 91,
+                        "errorLabels": ["RetryableWriteError"],
+                    },
+                    "failCommands": ["insert"],
                 },
-                "failCommands": ["insert"],
-            },
-        }
-
-        with self.fail_point(failpoint):
-            with self.assertRaises(WriteConcernError):
-                client.test.test.insert_one({"_id": 1})
-        wait_until(lambda: cmd_listener._done, "listener passed successfully")
+            }
+        )
+        client.test.test.insert_one({"_id": 1})
+        wait_until(lambda: cmd_listener._retried, "ready for second failpoint")
+        client.test.test.drop()
+        client.admin.command(
+            {
+                "configureFailPoint": "failCommand",
+                "mode": {"times": 1},
+                "data": {
+                    "errorCode": 10107,
+                    "errorLabels": ["RetryableWriteError", "NoWritesPerformed"],
+                    "failCommands": ["insert"],
+                },
+            }
+        )
+        with self.assertRaises(WriteConcernError) as exc:
+            client.test.test.insert_one({"_id": 1})
+        assert exc.exception.code == 91
+        client.admin.command(
+            {
+                "configureFailPoint": "failCommand",
+                "mode": "off",
+            }
+        )
 
 
 class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):

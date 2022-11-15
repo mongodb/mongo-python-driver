@@ -1412,7 +1412,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     raise self._indefinite_error from exc
                 if isinstance(exc, WriteConcernError):
                     self._indefinite_error = exc
-                    raise
                 if retryable_error:
                     session._unpin()
                 if not retryable_error or (is_retrying() and not multiple_retries):
