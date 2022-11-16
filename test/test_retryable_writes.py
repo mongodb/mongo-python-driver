@@ -656,6 +656,7 @@ class TestPoolPausedError(IntegrationTest):
         )
 
 
+# TODO: Make this a real integration test where we stepdown the primary.
 class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
     @client_context.require_replica_set
     @client_context.require_no_mmap
