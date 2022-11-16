@@ -838,6 +838,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             MongoClient._clients[self._topology._topology_id] = self
 
         self._indefinite_error: Optional[WriteConcernError] = None
+        self._indefinite_error_lock = _create_lock()
 
     def _init_background(self):
         self._topology = Topology(self._topology_settings)
@@ -1408,10 +1409,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 # Add the RetryableWriteError label, if applicable.
                 _add_retryable_write_error(exc, max_wire_version)
                 retryable_error = exc.has_error_label("RetryableWriteError")
-                if self._indefinite_error and exc.has_error_label("NoWritesPerformed"):
-                    raise self._indefinite_error from exc
-                if isinstance(exc, WriteConcernError):
-                    self._indefinite_error = exc
+                with self._indefinite_error_lock:
+                    if self._indefinite_error and exc.has_error_label("NoWritesPerformed"):
+                        raise self._indefinite_error from exc
+                    if retryable_error and not exc.has_error_label("NoWritesPerformed"):
+                        self._indefinite_error = exc
                 if retryable_error:
                     session._unpin()
                 if not retryable_error or (is_retrying() and not multiple_retries):
