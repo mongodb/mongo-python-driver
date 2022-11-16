@@ -605,9 +605,8 @@ class TestPoolPausedError(IntegrationTest):
     @client_context.require_failCommand_fail_point
     @client_context.require_replica_set
     @client_context.require_version_min(
-        4, 3, 1
-    )  # the errorLabels parameter that is used in this test was introduced
-    # in MongoDB 4.3.1 (SERVER-43941)
+        6, 0, 0
+    )  # the spec requires that this prose test only be run on 6.0+
     @client_knobs(heartbeat_frequency=0.05, min_heartbeat_interval=0.05)
     def test_returns_original_error_code(
         self,
