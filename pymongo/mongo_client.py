@@ -1409,20 +1409,20 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 # Add the RetryableWriteError label, if applicable.
                 _add_retryable_write_error(exc, max_wire_version)
                 retryable_error = exc.has_error_label("RetryableWriteError")
-                with self._indefinite_error_lock:
-                    if self._indefinite_error and exc.has_error_label("NoWritesPerformed"):
-                        raise self._indefinite_error from exc
-                    if retryable_error and not exc.has_error_label("NoWritesPerformed"):
-                        self._indefinite_error = exc
                 if retryable_error:
                     session._unpin()
+
                 if not retryable_error or (is_retrying() and not multiple_retries):
-                    raise
+                    if exc.has_error_label("NoWritesPerformed"):
+                        raise last_error from exc
+                    else:
+                        raise
                 if bulk:
                     bulk.retrying = True
                 else:
                     retrying = True
-                last_error = exc
+                if not exc.has_error_label("NoWritesPerformed"):
+                    last_error = exc
 
     @_csot.apply
     def _retryable_read(self, func, read_pref, session, address=None, retryable=True):

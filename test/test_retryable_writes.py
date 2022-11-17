@@ -30,7 +30,6 @@ from test.utils import (
     OvertCommandListener,
     TestCreator,
     rs_or_single_client,
-    wait_until,
 )
 from test.utils_spec_runner import SpecRunner
 from test.version import Version
@@ -68,21 +67,23 @@ _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "retryabl
 
 
 class InsertEventListener(EventListener):
-    def __init__(self):
-        self._retried = False
-        super().__init__()
-
-    def reset(self) -> None:
-        self._retried = False
-        super().reset()
-
     def succeeded(self, event: CommandSucceededEvent) -> None:
         super(InsertEventListener, self).succeeded(event)
         if (
             event.command_name == "insert"
             and event.reply.get("writeConcernError", {}).get("code", None) == 91
         ):
-            self._retried = True
+            client_context.client.admin.command(
+                {
+                    "configureFailPoint": "failCommand",
+                    "mode": {"times": 1},
+                    "data": {
+                        "errorCode": 10107,
+                        "errorLabels": ["RetryableWriteError", "NoWritesPerformed"],
+                        "failCommands": ["insert"],
+                    },
+                }
+            )
 
 
 class TestAllScenarios(SpecRunner):
@@ -626,20 +627,6 @@ class TestPoolPausedError(IntegrationTest):
                         "code": 91,
                         "errorLabels": ["RetryableWriteError"],
                     },
-                    "failCommands": ["insert"],
-                },
-            }
-        )
-        client.test.test.insert_one({"_id": 1})
-        wait_until(lambda: cmd_listener._retried, "ready for second failpoint")
-        client.test.test.drop()
-        client.admin.command(
-            {
-                "configureFailPoint": "failCommand",
-                "mode": {"times": 1},
-                "data": {
-                    "errorCode": 10107,
-                    "errorLabels": ["RetryableWriteError", "NoWritesPerformed"],
                     "failCommands": ["insert"],
                 },
             }
