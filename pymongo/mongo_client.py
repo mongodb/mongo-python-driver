@@ -1414,6 +1414,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
                 if not retryable_error or (is_retrying() and not multiple_retries):
                     if exc.has_error_label("NoWritesPerformed"):
+                        assert last_error is not None
                         raise last_error from exc
                     else:
                         raise
