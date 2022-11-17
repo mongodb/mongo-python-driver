@@ -1353,6 +1353,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """Internal retryable write helper."""
         max_wire_version = 0
         last_error: Optional[Exception] = None
+        last_indefinite_error: Optional[Exception] = None
         retrying = False
         multiple_retries = _csot.get_timeout() is not None
 
@@ -1408,8 +1409,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 if retryable_error:
                     session._unpin()
                 if not retryable_error or (is_retrying() and not multiple_retries):
-                    if exc.has_error_label("NoWritesPerformed") and last_error:
-                        raise last_error from exc
+                    if exc.has_error_label("NoWritesPerformed") and last_indefinite_error:
+                        raise last_indefinite_error from exc
                     else:
                         raise
                 if bulk:
@@ -1417,7 +1418,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 else:
                     retrying = True
                 if not exc.has_error_label("NoWritesPerformed"):
-                    last_error = exc
+                    last_indefinite_error = exc
+                last_error = exc
 
     @_csot.apply
     def _retryable_read(self, func, read_pref, session, address=None, retryable=True):
