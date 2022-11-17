@@ -15,6 +15,7 @@
 """Test that each file in mypy_fails/ actually fails mypy, and test some
 sample client code that uses PyMongo typings."""
 import os
+import sys
 import tempfile
 import unittest
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List, Union
@@ -51,7 +52,9 @@ try:
 except ImportError:
     api = None  # type: ignore[assignment]
 
-from test import IntegrationTest
+sys.path[0:0] = [""]
+
+from test import IntegrationTest, client_context
 from test.utils import rs_or_single_client
 
 from bson import CodecOptions, decode, decode_all, decode_file_iter, decode_iter, encode
@@ -430,6 +433,7 @@ class TestDocumentType(unittest.TestCase):
         # This should fail because _id is not included in our TypedDict definition.
         assert out["_id"]  # type:ignore[typeddict-item]
 
+    @client_context.require_connection
     def test_typeddict_find_notrequired(self):
         if NotRequired is None or ImplicitMovie is None:
             raise unittest.SkipTest("Python 3.11+ is required to use NotRequired.")
