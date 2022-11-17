@@ -62,7 +62,7 @@ class TestCreateEntities(IntegrationTest):
                 {
                     "client": {
                         "id": "client0",
-                        "uriOptions": {"retryReads": True, "serverSelectionTimeoutMS": 500},
+                        "uriOptions": {"retryReads": True},
                     }
                 },
                 {"database": {"id": "database0", "client": "client0", "databaseName": "dat"}},
