@@ -11,11 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import sys
 import unittest
+
+sys.path[0:0] = [""]
+
+from test import IntegrationTest
 from test.unified_format import UnifiedSpecTestMixinV1
 
 
-class TestCreateEntities(unittest.TestCase):
+class TestCreateEntities(IntegrationTest):
     def test_store_events_as_entities(self):
         self.scenario_runner = UnifiedSpecTestMixinV1()
         spec = {
@@ -57,7 +62,7 @@ class TestCreateEntities(unittest.TestCase):
                 {
                     "client": {
                         "id": "client0",
-                        "uriOptions": {"retryReads": True},
+                        "uriOptions": {"retryReads": True, "serverSelectionTimeoutMS": 500},
                     }
                 },
                 {"database": {"id": "database0", "client": "client0", "databaseName": "dat"}},
@@ -91,7 +96,7 @@ class TestCreateEntities(unittest.TestCase):
                                     {
                                         "name": "insertOne",
                                         "object": "collection0",
-                                        "arguments": {"document": {"_id": 1, "x": 44}},
+                                        "arguments": {"document": {"_id": 2, "x": 44}},
                                     },
                                 ],
                             },
@@ -101,15 +106,19 @@ class TestCreateEntities(unittest.TestCase):
             ],
         }
 
+        self.client.dat.dat.delete_many({})
         self.scenario_runner.TEST_SPEC = spec
         self.scenario_runner.setUp()
         self.scenario_runner.run_scenario(spec["tests"][0])
         self.scenario_runner.entity_map["client0"].close()
-        final_entity_map = self.scenario_runner.entity_map
-        for entity in ["errors", "failures"]:
-            self.assertIn(entity, final_entity_map)
-            self.assertGreaterEqual(len(final_entity_map[entity]), 0)
-            self.assertEqual(type(final_entity_map[entity]), list)
-        for entity in ["successes", "iterations"]:
-            self.assertIn(entity, final_entity_map)
-            self.assertEqual(type(final_entity_map[entity]), int)
+        entity_map = self.scenario_runner.entity_map
+        self.assertEqual(len(entity_map["errors"]), 4)
+        for error in entity_map["errors"]:
+            self.assertEqual(error["type"], "DuplicateKeyError")
+        self.assertEqual(entity_map["failures"], [])
+        self.assertEqual(entity_map["successes"], 2)
+        self.assertEqual(entity_map["iterations"], 5)
+
+
+if __name__ == "__main__":
+    unittest.main()
