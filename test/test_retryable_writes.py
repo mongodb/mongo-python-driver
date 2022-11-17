@@ -615,7 +615,6 @@ class TestPoolPausedError(IntegrationTest):
         cmd_listener = InsertEventListener()
         client = rs_or_single_client(retryWrites=True, event_listeners=[cmd_listener])
         client.test.test.drop()
-        client.test.another_coll.drop()
         self.addCleanup(client.close)
         cmd_listener.reset()
         client.admin.command(
