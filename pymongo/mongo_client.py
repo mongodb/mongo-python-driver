@@ -81,7 +81,6 @@ from pymongo.errors import (
     PyMongoError,
     ServerSelectionTimeoutError,
     WaitQueueTimeoutError,
-    WriteConcernError,
 )
 from pymongo.lock import _HAS_REGISTER_AT_FORK, _create_lock, _release_locks
 from pymongo.pool import ConnectionClosedReason
@@ -836,9 +835,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             # Add this client to the list of weakly referenced items.
             # This will be used later if we fork.
             MongoClient._clients[self._topology._topology_id] = self
-
-        self._indefinite_error: Optional[WriteConcernError] = None
-        self._indefinite_error_lock = _create_lock()
 
     def _init_background(self):
         self._topology = Topology(self._topology_settings)
