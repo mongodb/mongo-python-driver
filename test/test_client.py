@@ -791,6 +791,10 @@ class TestClient(IntegrationTest):
         self.assertIsInstance(cursor, CommandCursor)
         helper_docs = list(cursor)
         self.assertTrue(len(helper_docs) > 0)
+        # sizeOnDisk can change between calls.
+        for doc_list in (helper_docs, cmd_docs):
+            for doc in doc_list:
+                doc.pop("sizeOnDisk", None)
         self.assertEqual(helper_docs, cmd_docs)
         for doc in helper_docs:
             self.assertIs(type(doc), dict)
