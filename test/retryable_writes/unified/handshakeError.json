@@ -54,7 +54,7 @@
   ],
   "tests": [
     {
-      "description": "insertOne succeeds after retryable handshake network error",
+      "description": "collection.insertOne succeeds after retryable handshake network error",
       "operations": [
         {
           "name": "failPoint",
@@ -150,7 +150,7 @@
       ]
     },
     {
-      "description": "insertOne succeeds after retryable handshake server error (ShutdownInProgress)",
+      "description": "collection.insertOne succeeds after retryable handshake server error (ShutdownInProgress)",
       "operations": [
         {
           "name": "failPoint",
@@ -246,7 +246,7 @@
       ]
     },
     {
-      "description": "insertMany succeeds after retryable handshake network error",
+      "description": "collection.insertMany succeeds after retryable handshake network error",
       "operations": [
         {
           "name": "failPoint",
@@ -344,7 +344,7 @@
       ]
     },
     {
-      "description": "insertMany succeeds after retryable handshake server error (ShutdownInProgress)",
+      "description": "collection.insertMany succeeds after retryable handshake server error (ShutdownInProgress)",
       "operations": [
         {
           "name": "failPoint",
@@ -442,7 +442,7 @@
       ]
     },
     {
-      "description": "deleteOne succeeds after retryable handshake network error",
+      "description": "collection.deleteOne succeeds after retryable handshake network error",
       "operations": [
         {
           "name": "failPoint",
@@ -535,7 +535,7 @@
       ]
     },
     {
-      "description": "deleteOne succeeds after retryable handshake server error (ShutdownInProgress)",
+      "description": "collection.deleteOne succeeds after retryable handshake server error (ShutdownInProgress)",
       "operations": [
         {
           "name": "failPoint",
@@ -628,7 +628,7 @@
       ]
     },
     {
-      "description": "replaceOne succeeds after retryable handshake network error",
+      "description": "collection.replaceOne succeeds after retryable handshake network error",
       "operations": [
         {
           "name": "failPoint",
@@ -724,7 +724,7 @@
       ]
     },
     {
-      "description": "replaceOne succeeds after retryable handshake server error (ShutdownInProgress)",
+      "description": "collection.replaceOne succeeds after retryable handshake server error (ShutdownInProgress)",
       "operations": [
         {
           "name": "failPoint",
@@ -820,7 +820,7 @@
       ]
     },
     {
-      "description": "updateOne succeeds after retryable handshake network error",
+      "description": "collection.updateOne succeeds after retryable handshake network error",
       "operations": [
         {
           "name": "failPoint",
@@ -918,7 +918,7 @@
       ]
     },
     {
-      "description": "updateOne succeeds after retryable handshake server error (ShutdownInProgress)",
+      "description": "collection.updateOne succeeds after retryable handshake server error (ShutdownInProgress)",
       "operations": [
         {
           "name": "failPoint",
@@ -1016,7 +1016,7 @@
       ]
     },
     {
-      "description": "findOneAndDelete succeeds after retryable handshake network error",
+      "description": "collection.findOneAndDelete succeeds after retryable handshake network error",
       "operations": [
         {
           "name": "failPoint",
@@ -1109,7 +1109,7 @@
       ]
     },
     {
-      "description": "findOneAndDelete succeeds after retryable handshake server error (ShutdownInProgress)",
+      "description": "collection.findOneAndDelete succeeds after retryable handshake server error (ShutdownInProgress)",
       "operations": [
         {
           "name": "failPoint",
@@ -1202,7 +1202,7 @@
       ]
     },
     {
-      "description": "findOneAndReplace succeeds after retryable handshake network error",
+      "description": "collection.findOneAndReplace succeeds after retryable handshake network error",
       "operations": [
         {
           "name": "failPoint",
@@ -1298,7 +1298,7 @@
       ]
     },
     {
-      "description": "findOneAndReplace succeeds after retryable handshake server error (ShutdownInProgress)",
+      "description": "collection.findOneAndReplace succeeds after retryable handshake server error (ShutdownInProgress)",
       "operations": [
         {
           "name": "failPoint",
@@ -1394,7 +1394,7 @@
       ]
     },
     {
-      "description": "findOneAndUpdate succeeds after retryable handshake network error",
+      "description": "collection.findOneAndUpdate succeeds after retryable handshake network error",
       "operations": [
         {
           "name": "failPoint",
@@ -1492,7 +1492,7 @@
       ]
     },
     {
-      "description": "findOneAndUpdate succeeds after retryable handshake server error (ShutdownInProgress)",
+      "description": "collection.findOneAndUpdate succeeds after retryable handshake server error (ShutdownInProgress)",
       "operations": [
         {
           "name": "failPoint",
@@ -1590,7 +1590,7 @@
       ]
     },
     {
-      "description": "bulkWrite succeeds after retryable handshake network error",
+      "description": "collection.bulkWrite succeeds after retryable handshake network error",
       "operations": [
         {
           "name": "failPoint",
@@ -1692,7 +1692,7 @@
       ]
     },
     {
-      "description": "bulkWrite succeeds after retryable handshake server error (ShutdownInProgress)",
+      "description": "collection.bulkWrite succeeds after retryable handshake server error (ShutdownInProgress)",
       "operations": [
         {
           "name": "failPoint",
