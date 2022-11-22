@@ -1683,7 +1683,7 @@ class TestCollection(IntegrationTest):
 
         self.assertRaises(TypeError, db.test.find, sort=5)
         self.assertRaises(TypeError, db.test.find, sort="hello")
-        self.assertRaises(ValueError, db.test.find, sort=["hello", 1])
+        self.assertRaises(TypeError, db.test.find, sort=["hello", 1])
 
     # TODO doesn't actually test functionality, just that it doesn't blow up
     def test_cursor_timeout(self):
