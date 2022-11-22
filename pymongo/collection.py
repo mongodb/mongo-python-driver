@@ -26,7 +26,6 @@ from typing import (
     NoReturn,
     Optional,
     Sequence,
-    Tuple,
     Union,
 )
 
