@@ -80,6 +80,8 @@ def _index_list(key_or_list, direction=None):
     Takes such a list, or a single key, or a single key and direction.
     """
     if direction is not None:
+        if not isinstance(key_or_list, str):
+            raise ValueError("Expected a string and a a direction")
         return [(key_or_list, direction)]
     else:
         if isinstance(key_or_list, str):
@@ -88,7 +90,12 @@ def _index_list(key_or_list, direction=None):
             return list(key_or_list)
         elif not isinstance(key_or_list, (list, tuple)):
             raise TypeError("if no direction is specified, key_or_list must be an instance of list")
-        return key_or_list
+        values = []
+        for item in key_or_list:
+            if isinstance(item, str):
+                item = (item, ASCENDING)
+            values.append(item)
+        return values
 
 
 def _index_document(index_list):

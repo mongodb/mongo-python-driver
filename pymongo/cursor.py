@@ -146,7 +146,7 @@ class _SocketManager(object):
             self.sock = None
 
 
-_Sort = Sequence[Tuple[str, Union[int, str, Mapping[str, Any]]]]
+_Sort = Sequence[Union[str, Tuple[str, Union[int, str, Mapping[str, Any]]]]]
 _Hint = Union[str, _Sort]
 
 

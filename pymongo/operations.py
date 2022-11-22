@@ -22,6 +22,10 @@ from pymongo.common import validate_boolean, validate_is_mapping, validate_list
 from pymongo.helpers import _gen_index_name, _index_document, _index_list
 from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
 
+# Hint supports index name, "myIndex", or list of either strings or index pairs: [('x', 1), ('y', -1), 'z'']
+_IndexList = Sequence[Union[str, Tuple[str, Union[int, str, Mapping[str, Any]]]]]
+_IndexKeyHint = Union[str, _IndexList]
+
 
 class InsertOne(Generic[_DocumentType]):
     """Represents an insert_one operation."""
@@ -53,10 +57,6 @@ class InsertOne(Generic[_DocumentType]):
 
     def __ne__(self, other: Any) -> bool:
         return not self == other
-
-
-_IndexList = Sequence[Tuple[str, Union[int, str, Mapping[str, Any]]]]
-_IndexKeyHint = Union[str, _IndexList]
 
 
 class DeleteOne(object):
@@ -435,7 +435,9 @@ class IndexModel(object):
 
         For use with :meth:`~pymongo.collection.Collection.create_indexes`.
 
-        Takes either a single key or a list of (key, direction) pairs.
+        Takes either a single key or a list containing (key, direction) pairs
+        or keys.  If no direction is given, :data:`~pymongo.ASCENDING` will
+        be assumed.
         The key(s) must be an instance of :class:`basestring`
         (:class:`str` in python 3), and the direction(s) must be one of
         (:data:`~pymongo.ASCENDING`, :data:`~pymongo.DESCENDING`,

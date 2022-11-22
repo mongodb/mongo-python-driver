@@ -1,6 +1,20 @@
 Changelog
 =========
 
+Changes in Version 4.4
+-----------------------
+
+- Added support for passing a list containing (key, direction) pairs
+  or keys to :meth:`~pymongo.collection.Collection.create_index`.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.4 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.4 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=34354
+
 Changes in Version 4.3.3
 ------------------------
 

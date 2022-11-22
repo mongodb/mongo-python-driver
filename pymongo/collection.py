@@ -62,6 +62,8 @@ from pymongo.operations import (
     ReplaceOne,
     UpdateMany,
     UpdateOne,
+    _IndexKeyHint,
+    _IndexList,
 )
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.results import (
@@ -85,9 +87,6 @@ _WriteOp = Union[
     UpdateOne,
     UpdateMany,
 ]
-# Hint supports index name, "myIndex", or list of index pairs: [('x', 1), ('y', -1)]
-_IndexList = Sequence[Tuple[str, Union[int, str, Mapping[str, Any]]]]
-_IndexKeyHint = Union[str, _IndexList]
 
 
 class ReturnDocument(object):
@@ -1948,7 +1947,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     ) -> str:
         """Creates an index on this collection.
 
-        Takes either a single key or a list of (key, direction) pairs.
+        Takes either a single key or a list containing (key, direction) pairs
+        or keys.  If no direction is given, :data:`~pymongo.ASCENDING` will
+        be assumed.
         The key(s) must be an instance of :class:`basestring`
         (:class:`str` in python 3), and the direction(s) must be one of
         (:data:`~pymongo.ASCENDING`, :data:`~pymongo.DESCENDING`,
@@ -2025,6 +2026,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `**kwargs` (optional): any additional index creation
             options (see the above list) should be passed as keyword
 
+        .. versionchanged:: 4.4
+           Allow passing a list containing (key, direction) pairs
+           or keys for the ``keys`` parameter.
         .. versionchanged:: 4.1
            Added ``comment`` parameter.
         .. versionchanged:: 3.11

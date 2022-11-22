@@ -315,6 +315,9 @@ class TestCollection(IntegrationTest):
         with self.write_concern_collection() as coll:
             coll.create_index([("hello", DESCENDING)])
 
+        db.test.create_index(["hello", "world"])
+        db.test.create_index(["hello", ("world", DESCENDING)])
+
     def test_drop_index(self):
         db = self.db
         db.test.drop_indexes()
