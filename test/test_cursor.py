@@ -366,9 +366,12 @@ class TestCursor(IntegrationTest):
             break
         self.assertRaises(InvalidOperation, a.hint, spec)
 
+        db.test.drop()
+        db.test.insert_many([{"num": i, "foo": i} for i in range(100)])
         spec = ["num"]
+        db.test.create_index(spec)
         first = next(db.test.find().hint(spec))
-        self.assertEqual(99, first.get("num"))
+        self.assertEqual(0, first.get("num"))
 
     def test_hint_by_name(self):
         db = self.db
