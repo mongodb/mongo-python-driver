@@ -51,6 +51,6 @@ Code is marked as unreachable
 - https://github.com/microsoft/pylance-release/issues/3672
 
 ## Screen
-<img width="936" alt="image" src="https://user-images.githubusercontent.com/78344396/203837530-53885275-1ca7-450d-9355-d8223741d28f.png">
+<img width="935" alt="image" src="https://user-images.githubusercontent.com/78344396/203837693-aacbcd7e-c841-42e0-994c-0c1c2fb36c6c.png">
 
 
