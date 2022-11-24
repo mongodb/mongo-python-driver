@@ -49,3 +49,8 @@ Code is marked as unreachable
 
 ## Links
 - https://github.com/microsoft/pylance-release/issues/3672
+
+## Screen
+<img width="936" alt="image" src="https://user-images.githubusercontent.com/78344396/203837530-53885275-1ca7-450d-9355-d8223741d28f.png">
+
+
