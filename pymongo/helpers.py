@@ -94,8 +94,6 @@ def _index_list(key_or_list, direction=None):
         for item in key_or_list:
             if isinstance(item, str):
                 item = (item, ASCENDING)
-            if isinstance(item, abc.ItemsView):
-                item = list(item)
             values.append(item)
         return values
 
