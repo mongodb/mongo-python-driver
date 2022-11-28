@@ -81,7 +81,7 @@ def _index_list(key_or_list, direction=None):
     """
     if direction is not None:
         if not isinstance(key_or_list, str):
-            raise TypeError("Expected a string and a a direction")
+            raise TypeError("Expected a string and a direction")
         return [(key_or_list, direction)]
     else:
         if isinstance(key_or_list, str):
