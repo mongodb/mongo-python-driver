@@ -40,6 +40,7 @@ from pymongo import ASCENDING, DESCENDING
 from pymongo.collation import Collation
 from pymongo.cursor import Cursor, CursorType
 from pymongo.errors import ExecutionTimeout, InvalidOperation, OperationFailure
+from pymongo.operations import _IndexList
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
@@ -368,7 +369,7 @@ class TestCursor(IntegrationTest):
 
         db.test.drop()
         db.test.insert_many([{"num": i, "foo": i} for i in range(100)])
-        spec = ["num", ("foo", DESCENDING)]
+        spec: _IndexList = ["num", ("foo", DESCENDING)]
         db.test.create_index(spec)
         first = next(db.test.find().hint(spec))
         self.assertEqual(0, first.get("num"))
