@@ -368,6 +368,14 @@ class TestCursor(IntegrationTest):
 
         db.test.drop()
         db.test.insert_many([{"num": i, "foo": i} for i in range(100)])
+        spec = ["num", ("foo", DESCENDING)]
+        db.test.create_index(spec)
+        first = next(db.test.find().hint(spec))
+        self.assertEqual(0, first.get("num"))
+        self.assertEqual(0, first.get("foo"))
+
+        db.test.drop()
+        db.test.insert_many([{"num": i, "foo": i} for i in range(100)])
         spec = ["num"]
         db.test.create_index(spec)
         first = next(db.test.find().hint(spec))
@@ -721,6 +729,8 @@ class TestCursor(IntegrationTest):
         result = [
             (i["a"], i["b"]) for i in db.test.find().sort([("b", DESCENDING), ("a", ASCENDING)])
         ]
+        self.assertEqual(result, expected)
+        result = [(i["a"], i["b"]) for i in db.test.find().sort([("b", DESCENDING), "a"])]
         self.assertEqual(result, expected)
 
         a = db.test.find()

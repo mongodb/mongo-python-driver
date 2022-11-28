@@ -1964,7 +1964,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         ascending we need to use a list of tuples::
 
           >>> my_collection.create_index([("mike", pymongo.DESCENDING),
-          ...                             ("eliot", pymongo.ASCENDING)])
+          ...                             "eliot"])
 
         All optional index creation parameters should be passed as
         keyword arguments to this method. For example::

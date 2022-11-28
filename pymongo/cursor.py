@@ -832,15 +832,16 @@ class Cursor(Generic[_DocumentType]):
         """Sorts this cursor's results.
 
         Pass a field name and a direction, either
-        :data:`~pymongo.ASCENDING` or :data:`~pymongo.DESCENDING`::
+        :data:`~pymongo.ASCENDING` or :data:`~pymongo.DESCENDING`.::
 
             for doc in collection.find().sort('field', pymongo.ASCENDING):
                 print(doc)
 
-        To sort by multiple fields, pass a list of (key, direction) pairs::
+        To sort by multiple fields, pass a list of (key, direction) pairs.
+        If just a name is given, :data:`~pymongo.ASCENDING` will be inferred::
 
             for doc in collection.find().sort([
-                    ('field1', pymongo.ASCENDING),
+                    'field1',
                     ('field2', pymongo.DESCENDING)]):
                 print(doc)
 
