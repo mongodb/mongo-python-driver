@@ -40,6 +40,7 @@ from pymongo import ASCENDING, DESCENDING
 from pymongo.collation import Collation
 from pymongo.cursor import Cursor, CursorType
 from pymongo.errors import ExecutionTimeout, InvalidOperation, OperationFailure
+from pymongo.operations import _IndexList
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
@@ -365,6 +366,21 @@ class TestCursor(IntegrationTest):
         for _ in a:
             break
         self.assertRaises(InvalidOperation, a.hint, spec)
+
+        db.test.drop()
+        db.test.insert_many([{"num": i, "foo": i} for i in range(100)])
+        spec: _IndexList = ["num", ("foo", DESCENDING)]
+        db.test.create_index(spec)
+        first = next(db.test.find().hint(spec))
+        self.assertEqual(0, first.get("num"))
+        self.assertEqual(0, first.get("foo"))
+
+        db.test.drop()
+        db.test.insert_many([{"num": i, "foo": i} for i in range(100)])
+        spec = ["num"]
+        db.test.create_index(spec)
+        first = next(db.test.find().hint(spec))
+        self.assertEqual(0, first.get("num"))
 
     def test_hint_by_name(self):
         db = self.db
@@ -714,6 +730,8 @@ class TestCursor(IntegrationTest):
         result = [
             (i["a"], i["b"]) for i in db.test.find().sort([("b", DESCENDING), ("a", ASCENDING)])
         ]
+        self.assertEqual(result, expected)
+        result = [(i["a"], i["b"]) for i in db.test.find().sort([("b", DESCENDING), "a"])]
         self.assertEqual(result, expected)
 
         a = db.test.find()

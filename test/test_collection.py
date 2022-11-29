@@ -315,6 +315,10 @@ class TestCollection(IntegrationTest):
         with self.write_concern_collection() as coll:
             coll.create_index([("hello", DESCENDING)])
 
+        db.test.create_index(["hello", "world"])
+        db.test.create_index(["hello", ("world", DESCENDING)])
+        db.test.create_index({"hello": 1}.items())  # type:ignore[arg-type]
+
     def test_drop_index(self):
         db = self.db
         db.test.drop_indexes()
@@ -1680,7 +1684,7 @@ class TestCollection(IntegrationTest):
 
         self.assertRaises(TypeError, db.test.find, sort=5)
         self.assertRaises(TypeError, db.test.find, sort="hello")
-        self.assertRaises(ValueError, db.test.find, sort=["hello", 1])
+        self.assertRaises(TypeError, db.test.find, sort=["hello", 1])
 
     # TODO doesn't actually test functionality, just that it doesn't blow up
     def test_cursor_timeout(self):
