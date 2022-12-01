@@ -2335,6 +2335,7 @@ class TestOnDemandAWSCredentials(EncryptionIntegrationTest):
         self.client_encryption.create_data_key("aws", self.master_key)
 
 
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#8-bypass-spawning-mongocryptd
 class TestBypassMongocryptWithSharedLibrary(EncryptionIntegrationTest):
     @unittest.skipUnless(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is not installed")
     def test_via_loading_shared_library(self):
