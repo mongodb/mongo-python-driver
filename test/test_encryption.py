@@ -2335,6 +2335,30 @@ class TestOnDemandAWSCredentials(EncryptionIntegrationTest):
         self.client_encryption.create_data_key("aws", self.master_key)
 
 
+class TestBypassMongocryptWithSharedLibrary(EncryptionIntegrationTest):
+    @unittest.skipUnless(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is not installed")
+    def test_via_loading_shared_library(self):
+        schemas = {"db.,coll": json_data("external", "external-schema.json")}
+        opts = AutoEncryptionOpts(
+            KMS_PROVIDERS,
+            "keyvault.datakeys",
+            schema_map=schemas,
+            mongocryptd_uri="mongodb://localhost:27021/db?serverSelectionTimeoutMS=1000",
+            mongocryptd_spawn_args=[
+                "--pidfilepath=bypass-spawning-mongocryptd.pid",
+                "--port=27021",
+            ],
+            crypt_shared_lib_required=True,
+        )
+        encrypted_client = rs_or_single_client(auto_encryption_opts=opts)
+        encrypted_client.db.coll.insert_one({"unencrypted": "test"})
+        no_mongocryptd_client = MongoClient(
+            host="mongodb://localhost:27021/db?serverSelectionTimeoutMS=1000"
+        )
+        with self.assertRaises(ServerSelectionTimeoutError):
+            no_mongocryptd_client.db.command("ping")
+
+
 class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):
     # Queryable Encryption is not supported on Standalone topology.
     @client_context.require_no_standalone
