@@ -994,6 +994,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         error_labels_contain = spec.get("errorLabelsContain")
         error_labels_omit = spec.get("errorLabelsOmit")
         expect_result = spec.get("expectResult")
+        error_response = spec.pop("errorResponse")
+        if error_response:
+            for k in error_response.keys():
+                self.assertEqual(error_response[k], exception.details[k])
 
         if is_error:
             # already satisfied because exception was raised
