@@ -75,7 +75,7 @@ functions:
 
               export TMPDIR="$MONGO_ORCHESTRATION_HOME/db"
               # Installation of cryptography requires a rust compiler on some machines
-              export PATH="$MONGODB_BINARIES:/home/admin/.cargo/bin:$PATH"
+              export PATH="/opt/mongodbtoolchain/v4/bin/:$MONGODB_BINARIES:/home/admin/.cargo/bin:$PATH"
               export PROJECT="${project}"
            EOT
            # See what we've done
@@ -97,7 +97,7 @@ functions:
             # If this was a patch build, doing a fresh clone would not actually test the patch
             cp -R ${PROJECT_DIRECTORY}/ $DRIVERS_TOOLS
           else
-            git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $DRIVERS_TOOLS
+            git clone --branch DRIVERS-2508 https://github.com/blink1073/drivers-evergreen-tools.git $DRIVERS_TOOLS
           fi
           echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
 
@@ -165,6 +165,7 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
+          cat ${DRIVERS_TOOLS}/server.log
           find $MONGO_ORCHESTRATION_HOME -name \*.log | xargs tar czf mongodb-logs.tar.gz
     - command: archive.targz_pack
       params:
@@ -284,8 +285,14 @@ functions:
           fi
 
           ${PREPARE_SHELL}
+
+          # TODO: remove path hack and mongodb download url
+          /opt/mongodbtoolchain/v4/bin/python3 -m pip install virtualenv
+          export PATH=/opt/mongodbtoolchain/v4/bin/:$PATH
+
           MONGODB_VERSION=${VERSION} \
             TOPOLOGY=${TOPOLOGY} \
+            MONGODB_DOWNLOAD_URL=https://mciuploads.s3.amazonaws.com/mongodb-mongo-master/linux-x86-dynamic-compile-required/d2bb64fbd29269667d665c1f09066be0725b1d78/dist/mongo-mongodb_mongo_master_linux_x86_dynamic_compile_required_d2bb64fbd29269667d665c1f09066be0725b1d78_23_01_03_16_35_49.tgz \
             AUTH=${AUTH} \
             SSL=${SSL} \
             STORAGE_ENGINE=${STORAGE_ENGINE} \
@@ -294,6 +301,7 @@ functions:
             REQUIRE_API_VERSION=${REQUIRE_API_VERSION} \
             LOAD_BALANCER=${LOAD_BALANCER} \
             bash ${DRIVERS_TOOLS}/.evergreen/run-orchestration.sh
+
     # run-orchestration generates expansion file with the MONGODB_URI for the cluster
     - command: expansions.update
       params:
@@ -566,15 +574,12 @@ functions:
               "iam_auth_ecs_subnet_a": "${iam_auth_ecs_subnet_a}",
               "iam_auth_ecs_subnet_b": "${iam_auth_ecs_subnet_b}",
               "iam_auth_ecs_security_group": "${iam_auth_ecs_security_group}",
-
               "iam_auth_assume_aws_account" : "${iam_auth_assume_aws_account}",
               "iam_auth_assume_aws_secret_access_key" : "${iam_auth_assume_aws_secret_access_key}",
               "iam_auth_assume_role_name" : "${iam_auth_assume_role_name}",
-
               "iam_auth_ec2_instance_account" : "${iam_auth_ec2_instance_account}",
               "iam_auth_ec2_instance_secret_access_key" : "${iam_auth_ec2_instance_secret_access_key}",
               "iam_auth_ec2_instance_profile" : "${iam_auth_ec2_instance_profile}",
-
               "iam_auth_assume_web_role_name": "${iam_auth_assume_web_role_name}",
               "iam_web_identity_issuer": "${iam_web_identity_issuer}",
               "iam_web_identity_rsa_key": "${iam_web_identity_rsa_key}",
@@ -737,6 +742,70 @@ functions:
              exit 0
           fi
           PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-aws-test.sh
+
+  "bootstrap oidc":
+    - command: ec2.assume_role
+      params:
+        role_arn: ${aws_test_secrets_role}
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        script: |
+          ${PREPARE_SHELL}
+          if [ "${skip_EC2_auth_test}" = "true" ]; then
+             echo "This platform does not support the oidc auth test, skipping..."
+             exit 0
+          fi
+
+          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
+          export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+          export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+          export AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
+          export AWS_TOKEN_DIR=/tmp/tokens
+
+          . ./activate_venv.sh
+          python lib/aws_oidc_bootstrap.py
+
+          # TODO: remove once we can target Ubuntu build
+          sudo yum install -y lsof
+
+  "run oidc auth test with aws credentials":
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        script: |
+          ${PREPARE_SHELL}
+          if [ "${skip_EC2_auth_test}" = "true" ]; then
+             echo "This platform does not support the oidc auth test, skipping..."
+             exit 0
+          fi
+          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
+          . ./activate_venv.sh
+          mongo aws_setup_oidc.js
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        silent: true
+        script: |
+          # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
+          cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
+            export AWS_WEB_IDENTITY_TOKEN_FILE=${AWS_WEB_IDENTITY_TOKEN_FILE|/tmp/tokens/test1}
+            export USE_MULTIPLE_PRINCIPALS=${USE_MULTIPLE_PRINCIPALS|false}
+          EOF
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        script: |
+          ${PREPARE_SHELL}
+          if [ "${skip_web_identity_auth_test}" = "true" ]; then
+             echo "This platform does not support the oidc auth test, skipping..."
+             exit 0
+          fi
+          PYTHON_BINARY=/opt/mongodbtoolchain/v4/bin/python3 ASSERT_NO_URI_CREDS=true USE_MULTIPLE_PRINCIPALS=${USE_MULTIPLE_PRINCIPALS|false} .evergreen/run-mongodb-oidc-test.sh
 
   "run aws auth test with aws credentials as environment variables":
     - command: shell.exec
@@ -1956,6 +2025,7 @@ tasks:
         - func: "run aws auth test with aws EC2 credentials"
         - func: "run aws auth test with aws web identity credentials"
         - func: "run aws ECS auth test"
+
     - name: "aws-auth-test-rapid"
       commands:
         - func: "bootstrap mongo-orchestration"
@@ -1972,6 +2042,33 @@ tasks:
         - func: "run aws auth test with aws EC2 credentials"
         - func: "run aws auth test with aws web identity credentials"
         - func: "run aws ECS auth test"
+
+    - name: "oidc-auth-test-single-latest"
+      commands:
+        - func: "bootstrap oidc"
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            AUTH: "auth"
+            ORCHESTRATION_FILE: "auth-oidc.json"
+            TOPOLOGY: "server"
+            VERSION: "latest"
+        - func: "run oidc auth test with aws credentials"
+
+    - name: "oidc-auth-test-multiple-latest"
+      commands:
+        - func: "bootstrap oidc"
+          vars:
+            USE_MULTIPLE_PRINCIPALS: "true"
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            AUTH: "auth"
+            ORCHESTRATION_FILE: "auth-oidc.json"
+            TOPOLOGY: "server"
+            VERSION: "latest"
+        - func: "run oidc auth test with aws credentials"
+          vars:
+            USE_MULTIPLE_PRINCIPALS: "true"
+            AWS_WEB_IDENTITY_TOKEN_FILE: /tmp/tokens/test2
 
     - name: load-balancer-test
       commands:
@@ -2176,6 +2273,12 @@ axes:
       - id: rhel70
         display_name: "RHEL 7.0"
         run_on: rhel70-small
+        batchtime: 10080  # 7 days
+        variables:
+          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-70-64-bit/master/latest/libmongocrypt.tar.gz
+      - id: rhel80-xlarge
+        display_name: "RHEL 8.0"
+        run_on: rhel80-xlarge
         batchtime: 10080  # 7 days
         variables:
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-70-64-bit/master/latest/libmongocrypt.tar.gz
@@ -3018,6 +3121,15 @@ buildvariants:
   tasks:
     # macOS MongoDB servers do not staple OCSP responses and only support RSA.
     - name: ".ocsp-rsa !.ocsp-staple"
+
+- matrix_name: "oidc-auth-test"
+  matrix_spec:
+    platform: [ rhel80-xlarge ]
+    python-version: ["3.7"]
+  display_name: "MONGODB-OIDC Auth ${platform} ${python-version}"
+  tasks:
+    - name: "oidc-auth-test-single-latest"
+    - name: "oidc-auth-test-multiple-latest"
 
 - matrix_name: "aws-auth-test"
   matrix_spec:

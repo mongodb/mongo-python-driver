@@ -16,6 +16,7 @@
 """Functions and classes common to multiple pymongo modules."""
 
 import datetime
+import inspect
 import warnings
 from collections import OrderedDict, abc
 from typing import (
@@ -422,6 +423,25 @@ _MECHANISM_PROPS = frozenset(
 
 def validate_auth_mechanism_properties(option: str, value: Any) -> Dict[str, Union[bool, str]]:
     """Validate authMechanismProperties."""
+    if not isinstance(value, str):
+        if not isinstance(value, dict):
+            raise ValueError("Auth mechansim properties must be given as a string or a dictionary")
+        props = {}
+        for key, value in value.items():
+            if isinstance(value, str):
+                props[key] = value
+            elif inspect.isfunction(value):
+                signature = inspect.signature(value)
+                if len(signature.parameters) == 0:
+                    msg = "Auth mechanisim properity callbacks must accept at least one value"
+                    raise ValueError(msg)
+                props[key] = value
+            else:
+                raise ValueError(
+                    "Auth mechanisim properity values must be strings or callback functions"
+                )
+        return props
+
     value = validate_string(option, value)
     props: Dict[str, Any] = {}
     for opt in value.split(","):

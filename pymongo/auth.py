@@ -21,9 +21,11 @@ import os
 import socket
 from base64 import standard_b64decode, standard_b64encode
 from collections import namedtuple
+from datetime import datetime, timedelta, timezone
 from typing import Callable, Mapping
 from urllib.parse import quote
 
+import bson
 from bson.binary import Binary
 from bson.son import SON
 from pymongo.auth_aws import _authenticate_aws
@@ -48,6 +50,7 @@ MECHANISMS = frozenset(
     [
         "GSSAPI",
         "MONGODB-CR",
+        "MONGODB-OIDC",
         "MONGODB-X509",
         "MONGODB-AWS",
         "PLAIN",
@@ -99,9 +102,15 @@ _AWSProperties = namedtuple("_AWSProperties", ["aws_session_token"])
 """Mechanism properties for MONGODB-AWS authentication."""
 
 
+_OIDCProperties = namedtuple(
+    "_OIDCProperties", ["on_oidc_request_token", "on_oidc_refresh_token", "principal_name"]
+)
+"""Mechanism properties for MONGODB-OIDC authentication."""
+
+
 def _build_credentials_tuple(mech, source, user, passwd, extra, database):
     """Build and return a mechanism specific credentials tuple."""
-    if mech not in ("MONGODB-X509", "MONGODB-AWS") and user is None:
+    if mech not in ("MONGODB-X509", "MONGODB-AWS", "MONGODB-OIDC") and user is None:
         raise ConfigurationError("%s requires a username." % (mech,))
     if mech == "GSSAPI":
         if source is not None and source != "$external":
@@ -137,6 +146,20 @@ def _build_credentials_tuple(mech, source, user, passwd, extra, database):
         aws_props = _AWSProperties(aws_session_token=aws_session_token)
         # user can be None for temporary link-local EC2 credentials.
         return MongoCredential(mech, "$external", user, passwd, aws_props, None)
+    elif mech == "MONGODB-OIDC":
+        if source is not None and source != "$external":
+            raise ValueError("authentication source must be $external or None for MONGODB-ODIC")
+        properties = extra.get("authmechanismproperties", {})
+        on_oidc_request_token = properties.get("on_oidc_request_token")
+        on_oidc_refresh_token = properties.get("on_oidc_refresh_token", on_oidc_request_token)
+        principal_name = properties.get("principal_name", "")
+        oidc_props = _OIDCProperties(
+            on_oidc_request_token=on_oidc_request_token,
+            on_oidc_refresh_token=on_oidc_refresh_token,
+            principal_name=principal_name,
+        )
+        return MongoCredential(mech, "$external", user, passwd, oidc_props, None)
+
     elif mech == "PLAIN":
         source_database = source or database or "$external"
         return MongoCredential(mech, source_database, user, passwd, None, None)
@@ -458,6 +481,107 @@ def _authenticate_mongo_cr(credentials, sock_info):
     sock_info.command(source, query)
 
 
+"""
+interface OIDCRequestTokenParams {
+ authorizeEndpoint?: string;
+ tokenEndpoint?: string;
+ deviceAuthorizeEndpoint?: string;
+ clientId: string;
+ clientSecret?: string;
+ requestScopes?: string[];
+}
+
+interface OIDCRequestTokenResult {
+ accessToken: string
+ expiresInSeconds?: number
+ refreshToken?: string
+}
+"""
+
+_oidc_auth_cache = {}
+_oidc_exp_utc = {}
+# TODO: Offer another parameter that is the refresh buffer?
+# TOOD: Make a dataclass for the client resp and the internal storage
+_oidc_buffer_seconds = 5 * 60
+
+
+def _authenticate_oidc(credentials, sock_info):
+    """Authenticate using MONGODB-OIDC."""
+    properties: _OIDCProperties = credentials.mechanism_properties
+
+    # Send the SASL start with the optional principal name.
+    payload = dict()
+    principal_name = properties.principal_name
+    if principal_name:
+        payload["n"] = principal_name
+
+    cmd = SON(
+        [
+            ("saslStart", 1),
+            ("mechanism", "MONGODB-OIDC"),
+            ("payload", Binary(bson.encode(payload))),
+            ("autoAuthorize", 1),
+        ]
+    )
+    response = sock_info.command("$external", cmd)
+    server_payload = bson.decode(response["payload"])
+    client_resp = None
+    token = None
+
+    if principal_name in _oidc_auth_cache:
+        client_resp = _oidc_auth_cache[principal_name]
+        now_utc = datetime.now(timezone.utc)
+        exp_utc = _oidc_exp_utc[principal_name]
+        if (exp_utc - now_utc).total_seconds() <= _oidc_buffer_seconds:
+            del _oidc_auth_cache[principal_name]
+            if properties.on_oidc_refresh_token:
+                client_resp = properties.on_oidc_refresh_token(server_payload, auth)
+            else:
+                client_resp = None
+
+    if client_resp is None and properties.on_oidc_request_token is not None:
+        if principal_name in _oidc_auth_cache:
+            auth = _oidc_auth_cache[principal_name]
+            token = auth["access_token"]
+        else:
+            client_resp = properties.on_oidc_request_token(server_payload)
+
+    if client_resp is not None:
+        token = client_resp["access_token"]
+        if "expires_in_seconds" in client_resp:
+            expires_in = client_resp["expires_in_seconds"]
+            if expires_in >= _oidc_buffer_seconds:
+                now_utc = datetime.now(timezone.utc)
+                exp_utc = now_utc + timedelta(seconds=expires_in)
+                _oidc_exp_utc[principal_name] = exp_utc
+                _oidc_auth_cache[principal_name] = client_resp.copy()
+
+    else:
+        aws_identity_file = os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"]
+        with open(aws_identity_file) as fid:
+            token = fid.read().strip()
+
+    payload = dict(jwt=token)
+    cmd = SON(
+        [
+            ("saslContinue", 1),
+            ("conversationId", response["conversationId"]),
+            ("payload", Binary(bson.encode(payload))),
+        ]
+    )
+
+    try:
+        response = sock_info.command("$external", cmd)
+    except Exception:
+        if principal_name in _oidc_auth_cache:
+            del _oidc_auth_cache[principal_name]
+        raise
+
+    if not response["done"]:
+        del _oidc_auth_cache[principal_name]
+        raise OperationFailure("SASL conversation failed to complete.")
+
+
 def _authenticate_default(credentials, sock_info):
     if sock_info.max_wire_version >= 7:
         if sock_info.negotiated_mechs:
@@ -482,6 +606,7 @@ _AUTH_MAP: Mapping[str, Callable] = {
     "MONGODB-CR": _authenticate_mongo_cr,
     "MONGODB-X509": _authenticate_x509,
     "MONGODB-AWS": _authenticate_aws,
+    "MONGODB-OIDC": _authenticate_oidc,
     "PLAIN": _authenticate_plain,
     "SCRAM-SHA-1": functools.partial(_authenticate_scram, mechanism="SCRAM-SHA-1"),
     "SCRAM-SHA-256": functools.partial(_authenticate_scram, mechanism="SCRAM-SHA-256"),
