@@ -64,7 +64,11 @@
               "key": "value"
             }
           },
-          "expectResult": [ 11, 22, 33 ]
+          "expectResult": [
+            11,
+            22,
+            33
+          ]
         }
       ],
       "expectEvents": [
@@ -105,7 +109,11 @@
             "filter": {},
             "comment": "comment"
           },
-          "expectResult": [ 11, 22, 33 ]
+          "expectResult": [
+            11,
+            22,
+            33
+          ]
         }
       ],
       "expectEvents": [
