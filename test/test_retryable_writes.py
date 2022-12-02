@@ -26,6 +26,7 @@ from test import IntegrationTest, SkipTest, client_context, client_knobs, unitte
 from test.utils import (
     CMAPListener,
     DeprecationFilter,
+    EventListener,
     OvertCommandListener,
     TestCreator,
     rs_or_single_client,
@@ -45,6 +46,7 @@ from pymongo.errors import (
 )
 from pymongo.mongo_client import MongoClient
 from pymongo.monitoring import (
+    CommandSucceededEvent,
     ConnectionCheckedOutEvent,
     ConnectionCheckOutFailedEvent,
     ConnectionCheckOutFailedReason,
@@ -62,6 +64,26 @@ from pymongo.write_concern import WriteConcern
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "retryable_writes", "legacy")
+
+
+class InsertEventListener(EventListener):
+    def succeeded(self, event: CommandSucceededEvent) -> None:
+        super(InsertEventListener, self).succeeded(event)
+        if (
+            event.command_name == "insert"
+            and event.reply.get("writeConcernError", {}).get("code", None) == 91
+        ):
+            client_context.client.admin.command(
+                {
+                    "configureFailPoint": "failCommand",
+                    "mode": {"times": 1},
+                    "data": {
+                        "errorCode": 10107,
+                        "errorLabels": ["RetryableWriteError", "NoWritesPerformed"],
+                        "failCommands": ["insert"],
+                    },
+                }
+            )
 
 
 class TestAllScenarios(SpecRunner):
@@ -580,6 +602,43 @@ class TestPoolPausedError(IntegrationTest):
         self.assertEqual(2, len(succeeded), msg)
         failed = cmd_listener.failed_events
         self.assertEqual(1, len(failed), msg)
+
+    @client_context.require_failCommand_fail_point
+    @client_context.require_replica_set
+    @client_context.require_version_min(
+        6, 0, 0
+    )  # the spec requires that this prose test only be run on 6.0+
+    @client_knobs(heartbeat_frequency=0.05, min_heartbeat_interval=0.05)
+    def test_returns_original_error_code(
+        self,
+    ):
+        cmd_listener = InsertEventListener()
+        client = rs_or_single_client(retryWrites=True, event_listeners=[cmd_listener])
+        client.test.test.drop()
+        self.addCleanup(client.close)
+        cmd_listener.reset()
+        client.admin.command(
+            {
+                "configureFailPoint": "failCommand",
+                "mode": {"times": 1},
+                "data": {
+                    "writeConcernError": {
+                        "code": 91,
+                        "errorLabels": ["RetryableWriteError"],
+                    },
+                    "failCommands": ["insert"],
+                },
+            }
+        )
+        with self.assertRaises(WriteConcernError) as exc:
+            client.test.test.insert_one({"_id": 1})
+        self.assertEqual(exc.exception.code, 91)
+        client.admin.command(
+            {
+                "configureFailPoint": "failCommand",
+                "mode": "off",
+            }
+        )
 
 
 # TODO: Make this a real integration test where we stepdown the primary.
