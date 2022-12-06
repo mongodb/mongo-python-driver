@@ -1910,6 +1910,38 @@ class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
         with self.assertRaises(ServerSelectionTimeoutError):
             mongocryptd_client.admin.command("ping")
 
+    @unittest.skipUnless(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is not installed")
+    def test_via_loading_shared_library(self):
+        key_vault = client_context.client.keyvault.datakeys
+        key_vault.drop()
+        key_vault.create_index(
+            "keyAltNames", unique=True, partialFilterExpression={"keyAltNames": {"$exists": True}}
+        )
+        key_vault.insert_one(json_data("external", "external-key.json"))
+        schemas = {"db.coll": json_data("external", "external-schema.json")}
+        opts = AutoEncryptionOpts(
+            kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
+            key_vault_namespace="keyvault.datakeys",
+            schema_map=schemas,
+            mongocryptd_uri="mongodb://localhost:47021/db?serverSelectionTimeoutMS=1000",
+            mongocryptd_spawn_args=[
+                "--pidfilepath=bypass-spawning-mongocryptd.pid",
+                "--port=47021",
+            ],
+            crypt_shared_lib_required=True,
+        )
+        client_encrypted = rs_or_single_client(auto_encryption_opts=opts)
+        self.addCleanup(client_encrypted.close)
+        client_encrypted.db.coll.drop()
+        client_encrypted.db.coll.insert_one({"encrypted": "test"})
+        self.assertEncrypted(client_context.client.db.coll.find_one({})["encrypted"])
+        no_mongocryptd_client = MongoClient(
+            host="mongodb://localhost:47021/db?serverSelectionTimeoutMS=1000"
+        )
+        self.addCleanup(no_mongocryptd_client.close)
+        with self.assertRaises(ServerSelectionTimeoutError):
+            no_mongocryptd_client.db.command("ping")
+
 
 # https://github.com/mongodb/specifications/tree/master/source/client-side-encryption/tests#kms-tls-tests
 class TestKmsTLSProse(EncryptionIntegrationTest):
