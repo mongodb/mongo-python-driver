@@ -1756,7 +1756,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def count_documents(
         self,
-        filter: Mapping[str, Any],
+        filter: Optional[Mapping[str, Any]] = None,
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
@@ -1800,7 +1800,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
            +-------------+-------------------------------------+
 
         :Parameters:
-          - `filter` (required): A query document that selects which documents
+          - `filter` (optional): A query document that selects which documents
             to count in the collection. Can be an empty document to count all
             documents.
           - `session` (optional): a
@@ -1817,7 +1817,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. _$center: https://mongodb.com/docs/manual/reference/operator/query/center/
         .. _$centerSphere: https://mongodb.com/docs/manual/reference/operator/query/centerSphere/
         """
-        pipeline = [{"$match": filter}]
+        pipeline = [{"$match": filter or {}}]
         if "skip" in kwargs:
             pipeline.append({"$skip": kwargs.pop("skip")})
         if "limit" in kwargs:
