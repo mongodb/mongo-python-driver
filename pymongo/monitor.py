@@ -20,6 +20,7 @@ import weakref
 from typing import Any, Mapping, cast
 
 from pymongo import common, periodic_executor
+from pymongo._csot import MovingMinimum
 from pymongo.errors import NotPrimaryError, OperationFailure, _OperationCancelled
 from pymongo.hello import Hello
 from pymongo.lock import _create_lock
@@ -40,7 +41,7 @@ class MonitorBase(object):
     def __init__(self, topology, name, interval, min_interval):
         """Base class to do periodic work on a background thread.
 
-        The the background thread is signaled to stop when the Topology or
+        The background thread is signaled to stop when the Topology or
         this instance is freed.
         """
         # We strongly reference the executor and it weakly references us via
@@ -250,7 +251,8 @@ class Monitor(MonitorBase):
             if not response.awaitable:
                 self._rtt_monitor.add_sample(round_trip_time)
 
-            sd = ServerDescription(address, response, self._rtt_monitor.average())
+            avg_rtt, min_rtt = self._rtt_monitor.get()
+            sd = ServerDescription(address, response, avg_rtt, min_round_trip_time=min_rtt)
             if self._publish:
                 self._listeners.publish_server_heartbeat_succeeded(
                     address, round_trip_time, response, response.awaitable
@@ -350,6 +352,7 @@ class _RttMonitor(MonitorBase):
 
         self._pool = pool
         self._moving_average = MovingAverage()
+        self._moving_min = MovingMinimum()
         self._lock = _create_lock()
 
     def close(self):
@@ -362,20 +365,22 @@ class _RttMonitor(MonitorBase):
         """Add a RTT sample."""
         with self._lock:
             self._moving_average.add_sample(sample)
+            self._moving_min.add_sample(sample)
 
-    def average(self):
-        """Get the calculated average, or None if no samples yet."""
+    def get(self):
+        """Get the calculated average, or None if no samples yet and the min."""
         with self._lock:
-            return self._moving_average.get()
+            return self._moving_average.get(), self._moving_min.get()
 
     def reset(self):
         """Reset the average RTT."""
         with self._lock:
-            return self._moving_average.reset()
+            self._moving_average.reset()
+            self._moving_min.reset()
 
     def _run(self):
         try:
-            # NOTE: This thread is only run when when using the streaming
+            # NOTE: This thread is only run when using the streaming
             # heartbeat protocol (MongoDB 4.4+).
             # XXX: Skip check if the server is unknown?
             rtt = self._ping()
