@@ -125,10 +125,7 @@ class TestCollectionNoConnect(unittest.TestCase):
 
     def test_iteration(self):
         coll = self.db.coll
-        if "PyPy" in sys.version:
-            msg = "'NoneType' object is not callable"
-        else:
-            msg = "'Collection' object is not iterable"
+        msg = "'Collection' object is not iterable"
         # Iteration fails
         with self.assertRaisesRegex(TypeError, msg):
             for _ in coll:  # type: ignore[misc] # error: "None" not callable  [misc]
