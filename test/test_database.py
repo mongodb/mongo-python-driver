@@ -95,7 +95,7 @@ class TestDatabaseNoConnect(unittest.TestCase):
 
     def test_iteration(self):
         db = self.client.pymongo_test
-        if "PyPy" in sys.version:
+        if "PyPy" in sys.version and sys.version_info < (3, 8, 15):
             msg = "'NoneType' object is not callable"
         else:
             msg = "'Database' object is not iterable"

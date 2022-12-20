@@ -125,7 +125,7 @@ class TestCollectionNoConnect(unittest.TestCase):
 
     def test_iteration(self):
         coll = self.db.coll
-        if "PyPy" in sys.version:
+        if "PyPy" in sys.version and sys.version_info < (3, 8, 15):
             msg = "'NoneType' object is not callable"
         else:
             msg = "'Collection' object is not iterable"

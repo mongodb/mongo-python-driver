@@ -217,7 +217,7 @@ class ClientUnitTest(unittest.TestCase):
 
     def test_iteration(self):
         client = self.client
-        if "PyPy" in sys.version:
+        if "PyPy" in sys.version and sys.version_info < (3, 8, 15):
             msg = "'NoneType' object is not callable"
         else:
             msg = "'MongoClient' object is not iterable"
