@@ -14,7 +14,7 @@
 
 """Tools for working with `collations`_.
 
-.. _collations: http://userguide.icu-project.org/collation/concepts
+.. _collations: https://www.mongodb.com/docs/manual/reference/collation/
 """
 from typing import Any, Dict, Mapping, Optional, Union
 

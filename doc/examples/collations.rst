@@ -42,7 +42,7 @@ or with plain Python dictionaries. The structure is the same::
              backwards=<bool>)
 
 The only required parameter is ``locale``, which the server parses as
-an `ICU format locale ID <http://userguide.icu-project.org/locale>`_.
+an `ICU format locale ID <https://www.mongodb.com/docs/manual/reference/collation-locales-defaults/>`_.
 For example, set ``locale`` to ``en_US`` to represent US English
 or ``fr_CA`` to represent Canadian French.
 
