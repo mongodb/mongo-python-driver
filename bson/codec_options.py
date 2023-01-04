@@ -315,6 +315,7 @@ class CodecOptions(_BaseCodecOptions):
             return DatetimeMS objects when the underlying datetime is
             out-of-range and 'datetime_clamp' to clamp to the minimum and
             maximum possible datetimes. Defaults to 'datetime'.
+
         .. versionchanged:: 4.0
            The default for `uuid_representation` was changed from
            :const:`~bson.binary.UuidRepresentation.PYTHON_LEGACY` to
