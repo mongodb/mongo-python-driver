@@ -2507,7 +2507,6 @@ axes:
           test_crypt_shared: true
         batchtime: 10080  # 7 days
 
-
   # Run pyopenssl tests?
   - id: pyopenssl
     display_name: "PyOpenSSL"
@@ -2637,7 +2636,6 @@ buildvariants:
     - ".4.4"
     - ".4.2"
     - ".4.0"
-
 
 # Test one server version with zSeries, POWER8, and ARM.
 - matrix_name: "test-different-cpu-architectures"
