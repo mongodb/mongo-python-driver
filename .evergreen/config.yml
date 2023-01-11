@@ -770,6 +770,10 @@ functions:
           # TODO: remove once we can target Ubuntu build
           sudo yum install -y lsof
 
+          echo "Got tokens!"
+          cat /tmp/tokens/test1
+          cat /tmp/tokens/test2
+
   "run oidc auth test with aws credentials":
     - command: shell.exec
       type: test
