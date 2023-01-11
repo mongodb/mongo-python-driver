@@ -165,7 +165,6 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
-          find $MONGO_ORCHESTRATION_HOME -name \*.log | xargs cat
           find $MONGO_ORCHESTRATION_HOME -name \*.log | xargs tar czf mongodb-logs.tar.gz
     - command: archive.targz_pack
       params:
@@ -195,16 +194,16 @@ functions:
         permissions: public-read
         content_type: ${content_type|application/x-gzip}
         display_name: "mongodb-logs.tar.gz"
-    - command: s3.put
-      params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        local_file: drivers-tools/.evergreen/orchestration/server.log
-        remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/logs/${task_id}-${execution}-orchestration.log
-        bucket: mciuploads
-        permissions: public-read
-        content_type: ${content_type|text/plain}
-        display_name: "orchestration.log"
+    # - command: s3.put
+    #   params:
+    #     aws_key: ${aws_key}
+    #     aws_secret: ${aws_secret}
+    #     local_file: drivers-tools/.evergreen/orchestration/server.log
+    #     remote_file: ${UPLOAD_BUCKET}/${build_variant}/${revision}/${version_id}/${build_id}/logs/${task_id}-${execution}-orchestration.log
+    #     bucket: mciuploads
+    #     permissions: public-read
+    #     content_type: ${content_type|text/plain}
+    #     display_name: "orchestration.log"
 
   "upload working dir":
     - command: archive.targz_pack
@@ -769,10 +768,6 @@ functions:
 
           # TODO: remove once we can target Ubuntu build
           sudo yum install -y lsof
-
-          echo "Got tokens!"
-          cat /tmp/tokens/test1
-          cat /tmp/tokens/test2
 
   "run oidc auth test with aws credentials":
     - command: shell.exec
