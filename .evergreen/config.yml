@@ -453,9 +453,6 @@ functions:
           if [ -n "${test_crypt_shared}" ]; then
             export TEST_CRYPT_SHARED=1
           fi
-          if [ -n "${test_crypt_shared_latest}" ]; then
-            export TEST_CRYPT_SHARED_LATEST=1
-          fi
           if [ -n "${test_pyopenssl}" ]; then
             export TEST_PYOPENSSL=1
           fi
@@ -2500,6 +2497,8 @@ axes:
         variables:
           test_encryption: true
         batchtime: 10080  # 7 days
+      # For server >6.0, use corresponding version shared lib.
+      # Otherwise, use "latest". See run-tests.sh.
       - id: "encryption_crypt_shared"
         display_name: "Encryption shared lib"
         tags: ["encryption_tag"]
@@ -2507,14 +2506,7 @@ axes:
           test_encryption: true
           test_crypt_shared: true
         batchtime: 10080  # 7 days
-      - id: "encryption_crypt_shared_old_server"
-        display_name: "Encryption shared lib old server versions"
-        tags: ["encryption_tag"]
-        variables:
-          test_encryption: true
-          test_crypt_shared: true
-          test_crypt_shared_latest: true
-        batchtime: 10080  # 7 days
+
 
   # Run pyopenssl tests?
   - id: pyopenssl
@@ -2645,19 +2637,7 @@ buildvariants:
     - ".4.4"
     - ".4.2"
     - ".4.0"
-  rules: &encryption-exclude-rules
-    - if:
-        platform: "*"
-        auth: "*"
-        ssl: "*"
-        encryption: [ "encryption_crypt_shared" ]
-      then:
-        remove_tasks:
-          - ".rapid"
-          - ".5.0"
-          - ".4.4"
-          - ".4.2"
-          - ".4.0"
+
 
 # Test one server version with zSeries, POWER8, and ARM.
 - matrix_name: "test-different-cpu-architectures"
