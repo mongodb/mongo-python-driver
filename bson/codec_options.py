@@ -330,7 +330,7 @@ class CodecOptions(_BaseCodecOptions):
            retrieved from the server will be modified in the client application
            and stored back to the server.
         """
-        return super().__init__()
+        return super().__init__(*args, **kwargs)
 
     def __new__(
         cls: Type["CodecOptions"],
