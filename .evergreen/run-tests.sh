@@ -158,9 +158,11 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     . $DRIVERS_TOOLS/.evergreen/csfle/set-temp-creds.sh
 
     if [ -n "$TEST_CRYPT_SHARED" ]; then
-        export DYLD_FALLBACK_LIBRARY_PATH=$CRYPT_SHARED_LIB_PATH:$DYLD_FALLBACK_LIBRARY_PATH
-        export LD_LIBRARY_PATH=$CRYPT_SHARED_LIB_PATH:$LD_LIBRARY_PATH
-        export PATH=$CRYPT_SHARED_LIB_PATH:$PATH
+        CRYPT_SHARED_DIR=`dirname $CRYPT_SHARED_LIB_PATH`
+        echo "using crypt_shared_dir $CRYPT_SHARED_DIR"
+        export DYLD_FALLBACK_LIBRARY_PATH=$CRYPT_SHARED_DIR:$DYLD_FALLBACK_LIBRARY_PATH
+        export LD_LIBRARY_PATH=$CRYPT_SHARED_DIR:$LD_LIBRARY_PATH
+        export PATH=$CRYPT_SHARED_DIR:$PATH
     fi
     # Only run the encryption tests.
     TEST_ARGS="-s test.test_encryption"
