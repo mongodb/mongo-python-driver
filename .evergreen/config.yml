@@ -2718,19 +2718,6 @@ buildvariants:
     encryption: "*"
   display_name: "${encryption} ${python-version} ${platform} ${auth-ssl}"
   tasks: *encryption-server-versions
-  rules:
-    - if:
-        platform: "*"
-        python-version: "*"
-        auth-ssl: "*"
-        encryption: [ "encryption_crypt_shared" ]
-      then:
-        remove_tasks:
-          - ".rapid"
-          - ".5.0"
-          - ".4.4"
-          - ".4.2"
-          - ".4.0"
 
 
 - matrix_name: "tests-python-version-ubuntu18-without-c-extensions"
@@ -2842,19 +2829,6 @@ buildvariants:
     encryption: "*"
   display_name: "${encryption} ${platform} ${python-version-windows} ${auth-ssl}"
   tasks: *encryption-server-versions
-  rules:
-    - if:
-        platform: "*"
-        python-version-windows: "*"
-        auth-ssl: "*"
-        encryption: [ "encryption_crypt_shared" ]
-      then:
-        remove_tasks:
-          - ".rapid"
-          - ".5.0"
-          - ".4.4"
-          - ".4.2"
-          - ".4.0"
 
 # Storage engine tests on Ubuntu 18.04 (x86_64) with Python 3.7.
 - matrix_name: "tests-storage-engines"
