@@ -452,6 +452,7 @@ functions:
           fi
           if [ -n "${test_crypt_shared}" ]; then
             export TEST_CRYPT_SHARED=1
+            export CRYPT_SHARED_PATH=${CRYPT_SHARED_PATH}
           fi
           if [ -n "${test_pyopenssl}" ]; then
             export TEST_PYOPENSSL=1
@@ -2497,9 +2498,7 @@ axes:
         variables:
           test_encryption: true
         batchtime: 10080  # 7 days
-      # For server <6.0, use crypt shared version "latest".
-      # Otherwise, use the version corresponding with the server's.
-      # See run-tests.sh.
+      # The path to crypt_shared is stored in the $CRYPT_SHARED_PATH expansion.
       - id: "encryption_crypt_shared"
         display_name: "Encryption shared lib"
         tags: ["encryption_tag"]
