@@ -165,7 +165,7 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
-          cat ${DRIVERS_TOOLS}/server.log
+          find $MONGO_ORCHESTRATION_HOME -name \*.log | xargs cat
           find $MONGO_ORCHESTRATION_HOME -name \*.log | xargs tar czf mongodb-logs.tar.gz
     - command: archive.targz_pack
       params:
