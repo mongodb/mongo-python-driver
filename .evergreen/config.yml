@@ -2497,8 +2497,9 @@ axes:
         variables:
           test_encryption: true
         batchtime: 10080  # 7 days
-      # For server >6.0, use corresponding version shared lib.
-      # Otherwise, use "latest". See run-tests.sh.
+      # For server <6.0, use crypt shared version "latest".
+      # Otherwise, use the version corresponding with the server's.
+      # See run-tests.sh.
       - id: "encryption_crypt_shared"
         display_name: "Encryption shared lib"
         tags: ["encryption_tag"]
