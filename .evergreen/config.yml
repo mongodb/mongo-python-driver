@@ -2659,7 +2659,6 @@ buildvariants:
           - ".4.2"
           - ".4.0"
 
-
 # Test one server version with zSeries, POWER8, and ARM.
 - matrix_name: "test-different-cpu-architectures"
   matrix_spec:
