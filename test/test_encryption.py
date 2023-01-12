@@ -22,6 +22,7 @@ import socket
 import ssl
 import sys
 import textwrap
+import threading
 import traceback
 import uuid
 from typing import Any, Dict, Mapping
@@ -47,6 +48,7 @@ from test.test_bulk import BulkTestBase
 from test.unified_format import generate_test_classes
 from test.utils import (
     AllowListEventListener,
+    ExceptionCatchingThread,
     OvertCommandListener,
     TestCreator,
     TopologyEventListener,
@@ -1945,28 +1947,38 @@ class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
     # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#20-bypass-creating-mongocryptd-client-when-shared-library-is-loaded
     @unittest.skipUnless(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is not installed")
     def test_client_via_loading_shared_library(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            key_vault = client_context.client.keyvault.datakeys
-            key_vault.drop()
-            key_vault.create_index(
-                "keyAltNames",
-                unique=True,
-                partialFilterExpression={"keyAltNames": {"$exists": True}},
-            )
-            key_vault.insert_one(json_data("external", "external-key.json"))
-            schemas = {"db.coll": json_data("external", "external-schema.json")}
-            opts = AutoEncryptionOpts(
-                kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
-                key_vault_namespace="keyvault.datakeys",
-                schema_map=schemas,
-                mongocryptd_uri="mongodb://localhost:27021",
-                crypt_shared_lib_required=True,
-            )
-            client_encrypted = rs_or_single_client(auto_encryption_opts=opts)
-            self.addCleanup(client_encrypted.close)
-            client_encrypted.db.coll.drop()
-            client_encrypted.db.coll.insert_one({"encrypted": "test"})
-            sock.bind(("localhost", 27021))
+        def listen():
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                addr = ("localhost", 27021)
+                sock.bind(addr)
+                sock.settimeout(2)
+                sock.listen(1)
+                sock.accept()
+
+        listener_t = ExceptionCatchingThread(target=listen)
+        listener_t.start()
+        key_vault = client_context.client.keyvault.datakeys
+        key_vault.drop()
+        key_vault.create_index(
+            "keyAltNames",
+            unique=True,
+            partialFilterExpression={"keyAltNames": {"$exists": True}},
+        )
+        key_vault.insert_one(json_data("external", "external-key.json"))
+        schemas = {"db.coll": json_data("external", "external-schema.json")}
+        opts = AutoEncryptionOpts(
+            kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
+            key_vault_namespace="keyvault.datakeys",
+            schema_map=schemas,
+            mongocryptd_uri="mongodb://localhost:27021",
+            crypt_shared_lib_required=False,
+        )
+        client_encrypted = rs_or_single_client(auto_encryption_opts=opts)
+        self.addCleanup(client_encrypted.close)
+        client_encrypted.db.coll.drop()
+        client_encrypted.db.coll.insert_one({"encrypted": "test"})
+        listener_t.join()
+        self.assertIsInstance(listener_t.exc, socket.timeout)
 
 
 # https://github.com/mongodb/specifications/tree/master/source/client-side-encryption/tests#kms-tls-tests
