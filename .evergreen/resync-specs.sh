@@ -100,7 +100,7 @@ do
       rm $PYMONGO/test/cmap/wait-queue-fairness.json  # PYTHON-1873
       ;;
     apm|APM|command-monitoring|command_monitoring)
-      cpjson command-monitoring/tests command_monitoring
+      cpjson command-logging-and-monitoring/tests/monitoring command_monitoring
       ;;
     crud|CRUD)
       cpjson crud/tests/ crud
