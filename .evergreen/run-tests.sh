@@ -29,7 +29,7 @@ COMPRESSORS=${COMPRESSORS:-}
 MONGODB_VERSION=${MONGODB_VERSION:-}
 MONGODB_API_VERSION=${MONGODB_API_VERSION:-}
 TEST_ENCRYPTION=${TEST_ENCRYPTION:-}
-TEST_CRYPT_SHARED=${TEST_CRYPT_SHARED:-}
+CRYPT_SHARED_LIB_PATH=${CRYPT_SHARED_LIB_PATH:-}
 LIBMONGOCRYPT_URL=${LIBMONGOCRYPT_URL:-}
 DATA_LAKE=${DATA_LAKE:-}
 TEST_ARGS=""
@@ -158,17 +158,11 @@ if [ -n "$TEST_ENCRYPTION" ]; then
     . $DRIVERS_TOOLS/.evergreen/csfle/set-temp-creds.sh
 
     if [ -n "$TEST_CRYPT_SHARED" ]; then
-        REAL_VERSION=$(mongod --version | head -n1 | cut -d v -f3 | tr -d "\r")
-        if [ "$MONGODB_VERSION" = "latest" ]; then
-          REAL_VERSION="latest"
-        fi
-        echo "Testing CSFLE with crypt_shared lib"
-        $PYTHON $DRIVERS_TOOLS/.evergreen/mongodl.py --component crypt_shared \
-            --version "$REAL_VERSION" \
-            --out ../crypt_shared/
-        export DYLD_FALLBACK_LIBRARY_PATH=../crypt_shared/lib/:$DYLD_FALLBACK_LIBRARY_PATH
-        export LD_LIBRARY_PATH=../crypt_shared/lib:$LD_LIBRARY_PATH
-        export PATH=../crypt_shared/bin:$PATH
+        CRYPT_SHARED_DIR=`dirname $CRYPT_SHARED_LIB_PATH`
+        echo "using crypt_shared_dir $CRYPT_SHARED_DIR"
+        export DYLD_FALLBACK_LIBRARY_PATH=$CRYPT_SHARED_DIR:$DYLD_FALLBACK_LIBRARY_PATH
+        export LD_LIBRARY_PATH=$CRYPT_SHARED_DIR:$LD_LIBRARY_PATH
+        export PATH=$CRYPT_SHARED_DIR:$PATH
     fi
     # Only run the encryption tests.
     TEST_ARGS="-s test.test_encryption"

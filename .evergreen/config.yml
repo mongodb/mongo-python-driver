@@ -452,6 +452,7 @@ functions:
           fi
           if [ -n "${test_crypt_shared}" ]; then
             export TEST_CRYPT_SHARED=1
+            export CRYPT_SHARED_LIB_PATH=${CRYPT_SHARED_LIB_PATH}
           fi
           if [ -n "${test_pyopenssl}" ]; then
             export TEST_PYOPENSSL=1
@@ -2497,6 +2498,7 @@ axes:
         variables:
           test_encryption: true
         batchtime: 10080  # 7 days
+      # The path to crypt_shared is stored in the $CRYPT_SHARED_LIB_PATH expansion.
       - id: "encryption_crypt_shared"
         display_name: "Encryption shared lib"
         tags: ["encryption_tag"]
@@ -2634,19 +2636,6 @@ buildvariants:
     - ".4.4"
     - ".4.2"
     - ".4.0"
-  rules: &encryption-exclude-rules
-    - if:
-        platform: "*"
-        auth: "*"
-        ssl: "*"
-        encryption: [ "encryption_crypt_shared" ]
-      then:
-        remove_tasks:
-          - ".rapid"
-          - ".5.0"
-          - ".4.4"
-          - ".4.2"
-          - ".4.0"
 
 # Test one server version with zSeries, POWER8, and ARM.
 - matrix_name: "test-different-cpu-architectures"
@@ -2729,19 +2718,6 @@ buildvariants:
     encryption: "*"
   display_name: "${encryption} ${python-version} ${platform} ${auth-ssl}"
   tasks: *encryption-server-versions
-  rules:
-    - if:
-        platform: "*"
-        python-version: "*"
-        auth-ssl: "*"
-        encryption: [ "encryption_crypt_shared" ]
-      then:
-        remove_tasks:
-          - ".rapid"
-          - ".5.0"
-          - ".4.4"
-          - ".4.2"
-          - ".4.0"
 
 
 - matrix_name: "tests-python-version-ubuntu18-without-c-extensions"
@@ -2853,19 +2829,6 @@ buildvariants:
     encryption: "*"
   display_name: "${encryption} ${platform} ${python-version-windows} ${auth-ssl}"
   tasks: *encryption-server-versions
-  rules:
-    - if:
-        platform: "*"
-        python-version-windows: "*"
-        auth-ssl: "*"
-        encryption: [ "encryption_crypt_shared" ]
-      then:
-        remove_tasks:
-          - ".rapid"
-          - ".5.0"
-          - ".4.4"
-          - ".4.2"
-          - ".4.0"
 
 # Storage engine tests on Ubuntu 18.04 (x86_64) with Python 3.7.
 - matrix_name: "tests-storage-engines"
