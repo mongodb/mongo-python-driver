@@ -22,7 +22,6 @@ import socket
 import ssl
 import sys
 import textwrap
-import threading
 import traceback
 import uuid
 from typing import Any, Dict, Mapping
