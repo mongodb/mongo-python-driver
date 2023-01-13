@@ -1948,7 +1948,8 @@ class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
     @unittest.skipUnless(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is not installed")
     def test_client_via_loading_shared_library(self):
         def listen():
-            with socketserver.TCPServer(("localhost", 47021), None) as sock:
+            with socketserver.TCPServer(("localhost", 47021), None) as sock:  # type: ignore[arg-type]
+                # Call these methods ourselves because we need to get the exception.
                 sock.server_bind()
                 sock.server_activate()
 
