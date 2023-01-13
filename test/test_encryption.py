@@ -1947,13 +1947,9 @@ class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
     # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#20-bypass-creating-mongocryptd-client-when-shared-library-is-loaded
     @unittest.skipUnless(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is not installed")
     def test_client_via_loading_shared_library(self):
-        class TCPHandler(socketserver.BaseRequestHandler):
-            def handle(self):
-                assert not self.request.recv(1024)
-
         def listen():
-            addr = ("localhost", 27021)
-            with socketserver.TCPServer(addr, TCPHandler) as sock:
+            addr = ("localhost", 47021)
+            with socketserver.TCPServer(addr, None) as sock:
                 sock.server_bind()
                 sock.server_activate()
 
@@ -1981,6 +1977,7 @@ class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
         client_encrypted.db.coll.insert_one({"encrypted": "test"})
         listener_t.join()
         self.assertIsInstance(listener_t.exc, OSError)
+        self.assertEqual(listener_t.exc.errno, 22)
 
 
 # https://github.com/mongodb/specifications/tree/master/source/client-side-encryption/tests#kms-tls-tests
