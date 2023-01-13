@@ -13,11 +13,11 @@
 # limitations under the License.
 
 """Test client side encryption spec."""
+
 import base64
 import copy
 import os
 import re
-import select
 import socket
 import socketserver
 import ssl
@@ -1949,7 +1949,7 @@ class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
     def test_client_via_loading_shared_library(self):
         class TCPHandler(socketserver.BaseRequestHandler):
             def handle(self):
-                print(self.request.recv(1024))
+                assert not self.request.recv(1024)
 
         def listen():
             addr = ("localhost", 27021)
