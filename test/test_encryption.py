@@ -13,12 +13,13 @@
 # limitations under the License.
 
 """Test client side encryption spec."""
-
 import base64
 import copy
 import os
 import re
+import select
 import socket
+import socketserver
 import ssl
 import sys
 import textwrap
@@ -1946,13 +1947,15 @@ class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
     # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#20-bypass-creating-mongocryptd-client-when-shared-library-is-loaded
     @unittest.skipUnless(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is not installed")
     def test_client_via_loading_shared_library(self):
+        class TCPHandler(socketserver.BaseRequestHandler):
+            def handle(self):
+                print(self.request.recv(1024))
+
         def listen():
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                addr = ("localhost", 27021)
-                sock.bind(addr)
-                sock.settimeout(2)
-                sock.listen(1)
-                sock.accept()
+            addr = ("localhost", 27021)
+            with socketserver.TCPServer(addr, TCPHandler) as sock:
+                sock.server_bind()
+                sock.server_activate()
 
         listener_t = ExceptionCatchingThread(target=listen)
         listener_t.start()
@@ -1977,7 +1980,7 @@ class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
         client_encrypted.db.coll.drop()
         client_encrypted.db.coll.insert_one({"encrypted": "test"})
         listener_t.join()
-        self.assertIsInstance(listener_t.exc, socket.timeout)
+        self.assertIsInstance(listener_t.exc, OSError)
 
 
 # https://github.com/mongodb/specifications/tree/master/source/client-side-encryption/tests#kms-tls-tests
