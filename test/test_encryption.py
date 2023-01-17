@@ -25,6 +25,7 @@ import sys
 import textwrap
 import traceback
 import uuid
+from threading import Thread
 from typing import Any, Dict, Mapping
 
 from pymongo.collection import Collection
@@ -1947,13 +1948,19 @@ class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
     # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#20-bypass-creating-mongocryptd-client-when-shared-library-is-loaded
     @unittest.skipUnless(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is not installed")
     def test_client_via_loading_shared_library(self):
-        def listen():
-            with socketserver.TCPServer(("localhost", 47021), None) as sock:  # type: ignore[arg-type]
-                # Call these methods ourselves because we need to get the exception.
-                sock.server_bind()
-                sock.server_activate()
+        connection_established = [False]
 
-        listener_t = ExceptionCatchingThread(target=listen)
+        class Handler(socketserver.BaseRequestHandler):
+            def handle(self):
+                connection_established[0] = True
+
+        server = socketserver.TCPServer(("localhost", 47021), Handler)
+
+        def listener():
+            with server:
+                server.serve_forever(poll_interval=0.05)  # Short poll timeout to speed up the test
+
+        listener_t = Thread(target=listener)
         listener_t.start()
         key_vault = client_context.client.keyvault.datakeys
         key_vault.drop()
@@ -1968,16 +1975,16 @@ class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
             kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
             key_vault_namespace="keyvault.datakeys",
             schema_map=schemas,
-            mongocryptd_uri="mongodb://localhost:27021",
+            mongocryptd_uri="mongodb://localhost:47021",
             crypt_shared_lib_required=False,
         )
         client_encrypted = rs_or_single_client(auto_encryption_opts=opts)
         self.addCleanup(client_encrypted.close)
         client_encrypted.db.coll.drop()
         client_encrypted.db.coll.insert_one({"encrypted": "test"})
+        server.shutdown()
         listener_t.join()
-        self.assertIsInstance(listener_t.exc, OSError)
-        self.assertEqual(listener_t.exc.errno, 22)
+        self.assertFalse(connection_established[0], "a connection was established on port 47021")
 
 
 # https://github.com/mongodb/specifications/tree/master/source/client-side-encryption/tests#kms-tls-tests
