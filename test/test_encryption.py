@@ -25,7 +25,7 @@ import sys
 import textwrap
 import traceback
 import uuid
-from threading import Lock, Thread
+from threading import Thread
 from typing import Any, Dict, Mapping
 
 from pymongo.collection import Collection
