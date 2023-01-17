@@ -732,6 +732,11 @@ def create_key_vault(vault, *data_keys):
     vault.drop()
     if data_keys:
         vault.insert_many(data_keys)
+    vault.create_index(
+        "keyAltNames",
+        unique=True,
+        partialFilterExpression={"keyAltNames": {"$exists": True}},
+    )
     return vault
 
 
@@ -1788,10 +1793,7 @@ class TestDecryptProse(EncryptionIntegrationTest):
     def setUp(self):
         self.client = client_context.client
         self.client.db.drop_collection("decryption_events")
-        self.client.keyvault.drop_collection("datakeys")
-        self.client.keyvault.datakeys.create_index(
-            "keyAltNames", unique=True, partialFilterExpression={"keyAltNames": {"$exists": True}}
-        )
+        create_key_vault(self.client.keyvault.datakeys)
         kms_providers_map = {"local": {"key": LOCAL_MASTER_KEY}}
 
         self.client_encryption = ClientEncryption(
@@ -1914,12 +1916,9 @@ class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
 
     @unittest.skipUnless(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is not installed")
     def test_via_loading_shared_library(self):
-        key_vault = client_context.client.keyvault.datakeys
-        key_vault.drop()
-        key_vault.create_index(
-            "keyAltNames", unique=True, partialFilterExpression={"keyAltNames": {"$exists": True}}
+        create_key_vault(
+            client_context.client.keyvault.datakeys, json_data("external", "external-key.json")
         )
-        key_vault.insert_one(json_data("external", "external-key.json"))
         schemas = {"db.coll": json_data("external", "external-schema.json")}
         opts = AutoEncryptionOpts(
             kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
@@ -1948,13 +1947,11 @@ class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
     @unittest.skipUnless(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is not installed")
     def test_client_via_loading_shared_library(self):
         connection_established = False
-        connection_established_lock = Lock()
 
         class Handler(socketserver.BaseRequestHandler):
             def handle(self):
-                nonlocal connection_established_lock, connection_established
-                with connection_established_lock:
-                    connection_established = True
+                nonlocal connection_established
+                connection_established = True
 
         server = socketserver.TCPServer(("localhost", 47021), Handler)
 
@@ -1964,14 +1961,9 @@ class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
 
         listener_t = Thread(target=listener)
         listener_t.start()
-        key_vault = client_context.client.keyvault.datakeys
-        key_vault.drop()
-        key_vault.create_index(
-            "keyAltNames",
-            unique=True,
-            partialFilterExpression={"keyAltNames": {"$exists": True}},
+        create_key_vault(
+            client_context.client.keyvault.datakeys, json_data("external", "external-key.json")
         )
-        key_vault.insert_one(json_data("external", "external-key.json"))
         schemas = {"db.coll": json_data("external", "external-schema.json")}
         opts = AutoEncryptionOpts(
             kms_providers={"local": {"key": LOCAL_MASTER_KEY}},
@@ -1986,8 +1978,7 @@ class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
         client_encrypted.db.coll.insert_one({"encrypted": "test"})
         server.shutdown()
         listener_t.join()
-        with connection_established_lock:
-            self.assertFalse(connection_established, "a connection was established on port 47021")
+        self.assertFalse(connection_established, "a connection was established on port 47021")
 
 
 # https://github.com/mongodb/specifications/tree/master/source/client-side-encryption/tests#kms-tls-tests
@@ -2159,10 +2150,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
 class TestUniqueIndexOnKeyAltNamesProse(EncryptionIntegrationTest):
     def setUp(self):
         self.client = client_context.client
-        self.client.keyvault.drop_collection("datakeys")
-        self.client.keyvault.datakeys.create_index(
-            "keyAltNames", unique=True, partialFilterExpression={"keyAltNames": {"$exists": True}}
-        )
+        create_key_vault(self.client.keyvault.datakeys)
         kms_providers_map = {"local": {"key": LOCAL_MASTER_KEY}}
         self.client_encryption = ClientEncryption(
             kms_providers_map, "keyvault.datakeys", self.client, CodecOptions()
