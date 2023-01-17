@@ -85,7 +85,7 @@ TEXT = "text"
 """
 
 from pymongo import _csot
-from pymongo._version import __version__, get_version_string, version, version_tuple
+from pymongo._version import __version__, get_version_string, version_tuple
 from pymongo.collection import ReturnDocument
 from pymongo.common import MAX_SUPPORTED_WIRE_VERSION, MIN_SUPPORTED_WIRE_VERSION
 from pymongo.cursor import CursorType
@@ -101,6 +101,9 @@ from pymongo.operations import (
 )
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
+
+version = __version__
+"""Current version of PyMongo."""
 
 
 def has_c() -> bool:
