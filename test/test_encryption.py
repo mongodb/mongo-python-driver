@@ -25,7 +25,7 @@ import sys
 import textwrap
 import traceback
 import uuid
-from threading import Thread
+from threading import Lock, Thread
 from typing import Any, Dict, Mapping
 
 from pymongo.collection import Collection
@@ -1947,11 +1947,14 @@ class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
     # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#20-bypass-creating-mongocryptd-client-when-shared-library-is-loaded
     @unittest.skipUnless(os.environ.get("TEST_CRYPT_SHARED"), "crypt_shared lib is not installed")
     def test_client_via_loading_shared_library(self):
-        connection_established = [False]
+        connection_established = False
+        connection_established_lock = Lock()
 
         class Handler(socketserver.BaseRequestHandler):
             def handle(self):
-                connection_established[0] = True
+                nonlocal connection_established_lock, connection_established
+                with connection_established_lock:
+                    connection_established = True
 
         server = socketserver.TCPServer(("localhost", 47021), Handler)
 
@@ -1983,7 +1986,8 @@ class TestBypassSpawningMongocryptdProse(EncryptionIntegrationTest):
         client_encrypted.db.coll.insert_one({"encrypted": "test"})
         server.shutdown()
         listener_t.join()
-        self.assertFalse(connection_established[0], "a connection was established on port 47021")
+        with connection_established_lock:
+            self.assertFalse(connection_established, "a connection was established on port 47021")
 
 
 # https://github.com/mongodb/specifications/tree/master/source/client-side-encryption/tests#kms-tls-tests
