@@ -2055,8 +2055,8 @@ tasks:
             VERSION: "latest"
         - func: "run oidc auth test with aws credentials"
           vars:
-            USE_MULTIPLE_PRINCIPALS: "true"
-            AWS_WEB_IDENTITY_TOKEN_FILE: /tmp/tokens/test2
+            USE_MULTIPLE_PRINCIPALS: "false"
+            AWS_WEB_IDENTITY_TOKEN_FILE: /tmp/tokens/test1
 
     - name: "oidc-auth-test-multiple-latest"
       commands:
@@ -2072,7 +2072,7 @@ tasks:
         - func: "run oidc auth test with aws credentials"
           vars:
             USE_MULTIPLE_PRINCIPALS: "true"
-            AWS_WEB_IDENTITY_TOKEN_FILE: /tmp/tokens/test2
+            AWS_WEB_IDENTITY_TOKEN_FILE: /tmp/tokens/test1
 
     - name: load-balancer-test
       commands:
