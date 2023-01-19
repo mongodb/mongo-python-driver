@@ -341,6 +341,7 @@ class SpecRunner(IntegrationTest):
                     errmsg = str(context.exception.details).lower()
                 else:
                     errmsg = str(context.exception).lower()
+                print(errmsg)
                 self.assertIn(expected_result["errorContains"].lower(), errmsg)
             if expect_error_code(expected_result):
                 self.assertEqual(

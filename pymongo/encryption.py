@@ -36,12 +36,13 @@ from bson import _dict_to_bson, decode, encode
 from bson.binary import STANDARD, UUID_SUBTYPE, Binary
 from bson.codec_options import CodecOptions
 from bson.errors import BSONError
+from bson.json_util import JSONMode
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from bson.son import SON
 from pymongo import _csot
 from pymongo.cursor import Cursor
 from pymongo.daemon import _spawn_daemon
-from pymongo.encryption_options import AutoEncryptionOpts
+from pymongo.encryption_options import AutoEncryptionOpts, EncryptionRangeOpts
 from pymongo.errors import (
     ConfigurationError,
     EncryptionError,
@@ -673,7 +674,10 @@ class ClientEncryption(Generic[_DocumentType]):
         ):
             raise TypeError("key_id must be a bson.binary.Binary with subtype 4")
 
-        doc = encode({"v": value}, codec_options=self._codec_options)
+        doc = encode(
+            {"v": value},
+            codec_options=self._codec_options.with_options(json_mode=JSONMode.CANONICAL),
+        )
         with _wrap_encryption_errors():
             encrypted_doc = self._encryption.encrypt(
                 doc,
@@ -682,6 +686,68 @@ class ClientEncryption(Generic[_DocumentType]):
                 key_alt_name=key_alt_name,
                 query_type=query_type,
                 contention_factor=contention_factor,
+            )
+            return decode(encrypted_doc)["v"]  # type: ignore[index]
+
+    def encrypt_expression(
+        self,
+        expression: Mapping[str, Any],
+        algorithm: str,
+        key_id: Optional[Binary] = None,
+        key_alt_name: Optional[str] = None,
+        query_type: Optional[str] = None,
+        contention_factor: Optional[int] = None,
+        range_options: Optional[EncryptionRangeOpts] = None,
+    ) -> RawBSONDocument:
+        """Encrypt a BSON expression with a given key and algorithm.
+
+        Note that exactly one of ``key_id`` or  ``key_alt_name`` must be
+        provided.
+
+        :Parameters:
+          - `expression`: The BSON aggregate or match expression to encrypt.
+          - `algorithm` (string): The encryption algorithm to use. See
+            :class:`Algorithm` for some valid options.
+          - `key_id`: Identifies a data key by ``_id`` which must be a
+            :class:`~bson.binary.Binary` with subtype 4 (
+            :attr:`~bson.binary.UUID_SUBTYPE`).
+          - `key_alt_name`: Identifies a key vault document by 'keyAltName'.
+          - `query_type` (str): **(BETA)** The query type to execute. See
+            :class:`QueryType` for valid options.
+          - `contention_factor` (int): **(BETA)** The contention factor to use
+            when the algorithm is :attr:`Algorithm.INDEXED`.  An integer value
+            *must* be given when the :attr:`Algorithm.INDEXED` algorithm is
+            used.
+          - `range_options`: An instance of EncryptionRangeOptions.
+
+        .. note:: Support for Range queries is in beta.
+           Backwards-breaking changes may be made before the final release.
+
+        :Returns:
+          The encrypted value, a :class:`~bson.RawBSONDocument`.
+
+        .. versionadded:: 4.4
+        """
+
+        self._check_closed()
+        if key_id is not None and not (
+            isinstance(key_id, Binary) and key_id.subtype == UUID_SUBTYPE
+        ):
+            raise TypeError("key_id must be a bson.binary.Binary with subtype 4")
+
+        doc = encode(
+            expression, codec_options=self._codec_options.with_options(json_mode=JSONMode.CANONICAL)
+        )
+        print(doc)
+        with _wrap_encryption_errors():
+            encrypted_doc = self._encryption.encrypt(
+                doc,
+                algorithm,
+                key_id=key_id,
+                key_alt_name=key_alt_name,
+                query_type=query_type,
+                contention_factor=contention_factor,
+                expression_range_options=range_options,
             )
             return decode(encrypted_doc)["v"]  # type: ignore[index]
 

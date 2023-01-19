@@ -22,7 +22,7 @@ try:
     _HAVE_PYMONGOCRYPT = True
 except ImportError:
     _HAVE_PYMONGOCRYPT = False
-
+from bson import Decimal128
 from pymongo.common import validate_is_mapping
 from pymongo.errors import ConfigurationError
 from pymongo.uri_parser import _parse_kms_tls_options
@@ -219,3 +219,32 @@ class AutoEncryptionOpts(object):
         # Maps KMS provider name to a SSLContext.
         self._kms_ssl_contexts = _parse_kms_tls_options(kms_tls_options)
         self._bypass_query_analysis = bypass_query_analysis
+
+
+class EncryptionRangeOpts:
+    """Options to configure encrypted queries using the rangePreview algorithm."""
+
+    def __init__(
+        self,
+        min: Optional[Mapping[str, Any]],
+        max: Optional[Mapping[str, Any]],
+        sparsity: int,
+        precision: Optional[int] = None,
+    ) -> None:
+        """Options to configure encrypted queries using the rangePreview algorithm.
+
+        .. note:: Support for Range queries is in beta.
+           Backwards-breaking changes may be made before the final release.
+
+        :Parameters:
+          - `min`: An Extended JSON Strict expression for a numeric type as a BSON Document like ``{ "$numberDouble": "0" }``.
+          - `max`: An Extended JSON Strict expression as a BSON Document like ``{ "$numberDouble": "0" }``.
+          - `sparsity`: An integer.
+          - `precision`: An integer, may only be set for double or decimal128 types.
+
+        .. versionadded:: 4.4
+        """
+        self.min = min
+        self.max = max
+        self.sparsity = sparsity
+        self.precision = precision
