@@ -152,7 +152,7 @@ def _build_credentials_tuple(mech, source, user, passwd, extra, database):
         properties = extra.get("authmechanismproperties", {})
         on_oidc_request_token = properties.get("on_oidc_request_token")
         on_oidc_refresh_token = properties.get("on_oidc_refresh_token", on_oidc_request_token)
-        principal_name = properties.get("principal_name", "")
+        principal_name = properties.get("PRINCIPAL_NAME", "")
         oidc_props = _OIDCProperties(
             on_oidc_request_token=on_oidc_request_token,
             on_oidc_refresh_token=on_oidc_refresh_token,

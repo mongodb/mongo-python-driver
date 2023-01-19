@@ -417,7 +417,14 @@ def validate_read_preference_tags(name: str, value: Any) -> List[Dict[str, str]]
 
 
 _MECHANISM_PROPS = frozenset(
-    ["SERVICE_NAME", "CANONICALIZE_HOST_NAME", "SERVICE_REALM", "AWS_SESSION_TOKEN"]
+    [
+        "SERVICE_NAME",
+        "CANONICALIZE_HOST_NAME",
+        "SERVICE_REALM",
+        "AWS_SESSION_TOKEN",
+        "PRINCIPAL_NAME",
+        "DEVICE_NAME",
+    ]
 )
 
 
