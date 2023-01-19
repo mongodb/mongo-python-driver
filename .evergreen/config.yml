@@ -792,7 +792,7 @@ functions:
           # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
           cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
             export AWS_WEB_IDENTITY_TOKEN_FILE=${AWS_WEB_IDENTITY_TOKEN_FILE|/tmp/tokens/test1}
-            export USE_MULTIPLE_PRINCIPALS=${USE_MULTIPLE_PRINCIPALS|false}
+            export USE_MULTIPLE_PRINCIPALS=${USE_MULTIPLE_PRINCIPALS}
           EOF
     - command: shell.exec
       type: test
@@ -804,7 +804,7 @@ functions:
              echo "This platform does not support the oidc auth test, skipping..."
              exit 0
           fi
-          PYTHON_BINARY=/opt/mongodbtoolchain/v4/bin/python3 ASSERT_NO_URI_CREDS=true USE_MULTIPLE_PRINCIPALS=${USE_MULTIPLE_PRINCIPALS|false} .evergreen/run-mongodb-oidc-test.sh
+          PYTHON_BINARY=/opt/mongodbtoolchain/v4/bin/python3 ASSERT_NO_URI_CREDS=true USE_MULTIPLE_PRINCIPALS=${USE_MULTIPLE_PRINCIPALS} .evergreen/run-mongodb-oidc-test.sh
 
   "run aws auth test with aws credentials as environment variables":
     - command: shell.exec
@@ -2045,6 +2045,8 @@ tasks:
     - name: "oidc-auth-test-single-latest"
       commands:
         - func: "bootstrap oidc"
+          vars:
+            USE_MULTIPLE_PRINCIPALS: "false"
         - func: "bootstrap mongo-orchestration"
           vars:
             AUTH: "auth"
@@ -2052,6 +2054,9 @@ tasks:
             TOPOLOGY: "server"
             VERSION: "latest"
         - func: "run oidc auth test with aws credentials"
+          vars:
+            USE_MULTIPLE_PRINCIPALS: "true"
+            AWS_WEB_IDENTITY_TOKEN_FILE: /tmp/tokens/test2
 
     - name: "oidc-auth-test-multiple-latest"
       commands:

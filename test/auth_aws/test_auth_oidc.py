@@ -32,7 +32,7 @@ class TestAuthOIDC(unittest.TestCase):
 
     def test_connect_environment_var(self):
         with MongoClient(self.uri) as client:
-            client.get_database().test.find_one()
+            client.test.test.find_one()
 
 
 if __name__ == "__main__":

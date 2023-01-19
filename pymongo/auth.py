@@ -512,8 +512,33 @@ def _authenticate_oidc(credentials, sock_info):
     # Send the SASL start with the optional principal name.
     payload = dict()
     principal_name = properties.principal_name
+
     if principal_name:
         payload["n"] = principal_name
+
+    if principal_name in _oidc_auth_cache:
+        auth = _oidc_auth_cache[principal_name]
+        payload = dict(jwt=auth["access_token"])
+        cmd = SON(
+            [
+                ("saslStart", 1),
+                ("mechanism", "MONGODB-OIDC"),
+                ("payload", Binary(bson.encode(payload))),
+                ("autoAuthorize", 1),
+            ]
+        )
+
+        try:
+            response = sock_info.command("$external", cmd)
+        except Exception:
+            if principal_name in _oidc_auth_cache:
+                del _oidc_auth_cache[principal_name]
+            raise
+
+        if not response["done"]:
+            del _oidc_auth_cache[principal_name]
+            raise OperationFailure("SASL conversation failed to complete.")
+        return
 
     cmd = SON(
         [
@@ -560,6 +585,7 @@ def _authenticate_oidc(credentials, sock_info):
         aws_identity_file = os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"]
         with open(aws_identity_file) as fid:
             token = fid.read().strip()
+            _oidc_auth_cache[principal_name] = dict(access_token=token)
 
     payload = dict(jwt=token)
     cmd = SON(

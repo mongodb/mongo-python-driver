@@ -22,7 +22,11 @@ shopt -s expand_aliases # needed for `urlencode` alias
 [ -s "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh" ] && source "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
 
 MONGODB_URI=${MONGODB_URI:-"mongodb://localhost"}
-MONGODB_URI="${MONGODB_URI}/test?authMechanism=MONGODB-OIDC"
+MONGODB_URI="${MONGODB_URI}/test/?authMechanism=MONGODB-OIDC"
+
+if [ "$USE_MULTIPLE_PRINCIPALS" = "true" ]; then
+    MONGODB_URI="${MONGODB_URI}&authMechanismProperties=PRINCIPAL_NAME=717cc021e105be9843cd2005e5a4607beae5a4960ef8098cb1247481626090f8"
+fi
 
 export MONGODB_URI="$MONGODB_URI"
 
