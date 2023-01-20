@@ -9,7 +9,7 @@ set -o errexit  # Exit the script with error if any of the commands fail
 
 # Supported/used environment variables:
 #  MONGODB_URI    Set the URI, including an optional username/password to use
-#                 to connect to the server via MONGODB-AWS authentication
+#                 to connect to the server via MONGODB-OIDC authentication
 #                 mechanism.
 #  PYTHON_BINARY  The Python version to use.
 
@@ -19,7 +19,7 @@ set +x
 
 # load the script
 shopt -s expand_aliases # needed for `urlencode` alias
-[ -s "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh" ] && source "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
+[ -s "${PROJECT_DIRECTORY}/prepare_mongodb_oidc.sh" ] && source "${PROJECT_DIRECTORY}/prepare_mongodb_oidc.sh"
 
 MONGODB_URI=${MONGODB_URI:-"mongodb://localhost"}
 MONGODB_URI="${MONGODB_URI}/test?authMechanism=MONGODB-OIDC"
@@ -44,7 +44,7 @@ set -x
 
 # Workaround macOS python 3.9 incompatibility with system virtualenv.
 if [ "$(uname -s)" = "Darwin" ]; then
-    VIRTUALENV="/Library/Frameworks/Python.framework/Versions/3.9/bin/python3 -m virtualenv"
+    VIRTUALENV="/Library/Frameworks/Python.framework/Versions/3.10/bin/python3 -m virtualenv"
 else
     VIRTUALENV=$(command -v virtualenv)
 fi
@@ -54,7 +54,7 @@ authtest () {
       PYTHON=$(cygpath -m $PYTHON)
     fi
 
-    echo "Running MONGODB-AWS authentication tests with $PYTHON"
+    echo "Running MONGODB-OIDC authentication tests with $PYTHON"
     $PYTHON --version
 
     $VIRTUALENV -p $PYTHON --never-download venvoidc

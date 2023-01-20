@@ -97,7 +97,8 @@ functions:
             # If this was a patch build, doing a fresh clone would not actually test the patch
             cp -R ${PROJECT_DIRECTORY}/ $DRIVERS_TOOLS
           else
-            git clone --branch DRIVERS-2508 https://github.com/blink1073/drivers-evergreen-tools.git $DRIVERS_TOOLS
+            # TODO: switch back to master before merging
+            git clone --branch DRIVERS-2415 https://github.com/blink1073/drivers-evergreen-tools.git $DRIVERS_TOOLS
           fi
           echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
 
@@ -285,13 +286,8 @@ functions:
 
           ${PREPARE_SHELL}
 
-          # TODO: remove path hack and mongodb download url
-          /opt/mongodbtoolchain/v4/bin/python3 -m pip install virtualenv
-          export PATH=/opt/mongodbtoolchain/v4/bin/:$PATH
-
           MONGODB_VERSION=${VERSION} \
             TOPOLOGY=${TOPOLOGY} \
-            MONGODB_DOWNLOAD_URL=https://mciuploads.s3.amazonaws.com/mongodb-mongo-master/linux-x86-dynamic-compile-required/d2bb64fbd29269667d665c1f09066be0725b1d78/dist/mongo-mongodb_mongo_master_linux_x86_dynamic_compile_required_d2bb64fbd29269667d665c1f09066be0725b1d78_23_01_03_16_35_49.tgz \
             AUTH=${AUTH} \
             SSL=${SSL} \
             STORAGE_ENGINE=${STORAGE_ENGINE} \
@@ -757,17 +753,14 @@ functions:
              exit 0
           fi
 
-          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
+          cd ${DRIVERS_TOOLS}/.evergreen/auth_oidc
           export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
           export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
           export AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
           export AWS_TOKEN_DIR=/tmp/tokens
 
           . ./activate_venv.sh
-          python lib/aws_oidc_bootstrap.py
-
-          # TODO: remove once we can target Ubuntu build
-          sudo yum install -y lsof
+          python oidc_bootstrap.py
 
   "run oidc auth test with aws credentials":
     - command: shell.exec
@@ -780,9 +773,9 @@ functions:
              echo "This platform does not support the oidc auth test, skipping..."
              exit 0
           fi
-          cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
+          cd ${DRIVERS_TOOLS}/.evergreen/auth_oidc
           . ./activate_venv.sh
-          mongo aws_setup_oidc.js
+          mongo setup_oidc.js
     - command: shell.exec
       type: test
       params:
@@ -790,7 +783,7 @@ functions:
         silent: true
         script: |
           # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
-          cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_aws.sh"
+          cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_oidc.sh"
             export AWS_WEB_IDENTITY_TOKEN_FILE=${AWS_WEB_IDENTITY_TOKEN_FILE|/tmp/tokens/test1}
             export USE_MULTIPLE_PRINCIPALS=${USE_MULTIPLE_PRINCIPALS}
           EOF
@@ -804,7 +797,7 @@ functions:
              echo "This platform does not support the oidc auth test, skipping..."
              exit 0
           fi
-          PYTHON_BINARY=/opt/mongodbtoolchain/v4/bin/python3 ASSERT_NO_URI_CREDS=true USE_MULTIPLE_PRINCIPALS=${USE_MULTIPLE_PRINCIPALS} .evergreen/run-mongodb-oidc-test.sh
+          ASSERT_NO_URI_CREDS=true USE_MULTIPLE_PRINCIPALS=${USE_MULTIPLE_PRINCIPALS} .evergreen/run-mongodb-oidc-test.sh
 
   "run aws auth test with aws credentials as environment variables":
     - command: shell.exec
@@ -3128,8 +3121,8 @@ buildvariants:
 
 - matrix_name: "oidc-auth-test"
   matrix_spec:
-    platform: [ rhel80-xlarge ]
-    python-version: ["3.7"]
+    platform: [ ubuntu-20.04 ]
+    python-version: ["3.9"]
   display_name: "MONGODB-OIDC Auth ${platform} ${python-version}"
   tasks:
     - name: "oidc-auth-test-single-latest"
