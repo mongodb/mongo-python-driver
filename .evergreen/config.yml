@@ -746,6 +746,7 @@ functions:
       type: test
       params:
         working_dir: "src"
+        shell: bash
         script: |
           ${PREPARE_SHELL}
           if [ "${skip_EC2_auth_test}" = "true" ]; then
@@ -767,6 +768,7 @@ functions:
       type: test
       params:
         working_dir: "src"
+        shell: bash
         script: |
           ${PREPARE_SHELL}
           if [ "${skip_EC2_auth_test}" = "true" ]; then
