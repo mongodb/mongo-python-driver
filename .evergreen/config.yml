@@ -799,7 +799,7 @@ functions:
              echo "This platform does not support the oidc auth test, skipping..."
              exit 0
           fi
-          ASSERT_NO_URI_CREDS=true USE_MULTIPLE_PRINCIPALS=${USE_MULTIPLE_PRINCIPALS} .evergreen/run-mongodb-oidc-test.sh
+          PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true USE_MULTIPLE_PRINCIPALS=${USE_MULTIPLE_PRINCIPALS} .evergreen/run-mongodb-oidc-test.sh
 
   "run aws auth test with aws credentials as environment variables":
     - command: shell.exec
