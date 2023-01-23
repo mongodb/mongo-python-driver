@@ -24,7 +24,7 @@ import datetime
 import random
 import struct
 from io import BytesIO as _BytesIO
-from typing import TYPE_CHECKING, Any, Mapping, NoReturn
+from typing import Any, Mapping, NoReturn
 
 import bson
 from bson import CodecOptions, _decode_selective, _dict_to_bson, _make_c_string, encode

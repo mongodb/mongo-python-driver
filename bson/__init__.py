@@ -1216,7 +1216,7 @@ def _decode_all_selective(data: Any, codec_options: CodecOptions, fields: Any) -
     # Decode documents for internal use.
     from bson.raw_bson import RawBSONDocument
 
-    internal_codec_options = codec_options.with_options(
+    internal_codec_options: CodecOptions[RawBSONDocument] = codec_options.with_options(
         document_class=RawBSONDocument, type_registry=None
     )
     _doc = _bson_to_dict(data, internal_codec_options)
