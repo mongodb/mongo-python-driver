@@ -102,6 +102,9 @@ from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 
 if TYPE_CHECKING:
     import sys
+    from typing import TypeVar
+
+    _ClientDocumentType = TypeVar("_ClientDocumentType", bound=Mapping[str, Any])
 
     from pymongo.read_concern import ReadConcern
 
@@ -1990,7 +1993,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def get_database(
         self,
         name: Optional[str] = None,
-        codec_options: Optional["bson.CodecOptions[_DocumentType]"] = None,
+        codec_options: Optional["bson.CodecOptions[_ClientDocumentType]"] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional["ReadConcern"] = None,

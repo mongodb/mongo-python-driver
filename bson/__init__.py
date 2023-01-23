@@ -101,7 +101,6 @@ from bson.codec_options import (
     DEFAULT_CODEC_OPTIONS,
     CodecOptions,
     DatetimeConversion,
-    _DocumentType,
     _raw_document_class,
 )
 from bson.datetime_ms import (
@@ -127,6 +126,8 @@ from bson.timestamp import Timestamp
 if TYPE_CHECKING:
     from array import array
     from mmap import mmap
+
+    from pymongo.typings import _DocumentType
 
 try:
     from bson import _cbson  # type: ignore[attr-defined]

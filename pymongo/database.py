@@ -58,7 +58,7 @@ if TYPE_CHECKING:
     import bson
     import bson.codec_options
     from pymongo.client_session import ClientSession
-    from pymongo.mongo_client import MongoClient
+    from pymongo.mongo_client import MongoClient, _ClientDocumentType
     from pymongo.read_concern import ReadConcern
     from pymongo.write_concern import WriteConcern
 
@@ -73,7 +73,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         self,
         client: "MongoClient[_DocumentType]",
         name: str,
-        codec_options: Optional["bson.CodecOptions[_DocumentType]"] = None,
+        codec_options: Optional["bson.CodecOptions[_ClientDocumentType]"] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,

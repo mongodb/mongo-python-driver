@@ -22,7 +22,8 @@ you get the error: "TypeError: 'type' object is not subscriptable".
 import datetime
 import abc
 import enum
-from typing import Tuple, Generic, Optional, Mapping, Any, TypeVar, Type, Dict, Iterable, Tuple, MutableMapping, Callable, Union
+from typing import Tuple, Generic, Optional, Mapping, Any, TypeVar, Type, Dict, Iterable, Tuple, Callable, Union
+from pymongo.typings import _DocumentType
 
 
 class TypeEncoder(abc.ABC, metaclass=abc.ABCMeta):
@@ -51,9 +52,6 @@ class TypeRegistry:
 
     def __init__(self, type_codecs: Optional[Iterable[Codec]] = ..., fallback_encoder: Optional[Fallback] = ...) -> None: ...
     def __eq__(self, other: Any) -> Any: ...
-
-
-_DocumentType = TypeVar("_DocumentType", bound=Mapping[str, Any])
 
 class DatetimeConversion(int, enum.Enum):
     DATETIME = ...
@@ -100,7 +98,7 @@ class CodecOptions(Tuple, Generic[_DocumentType]):
     _fields: Tuple[str]
 
 
-DEFAULT_CODEC_OPTIONS: CodecOptions[MutableMapping[str, Any]]
+DEFAULT_CODEC_OPTIONS: "CodecOptions[Mapping[str, Any]]"
 _RAW_BSON_DOCUMENT_MARKER: int
 
 def _raw_document_class(document_class: Any) -> bool: ...
