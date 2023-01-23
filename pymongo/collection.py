@@ -117,7 +117,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         database: "Database[_DocumentType]",
         name: str,
         create: Optional[bool] = False,
-        codec_options: Optional["CodecOptions[Dict[str, Any]]"] = None,
+        codec_options: Optional["CodecOptions[Mapping[str, Any]]"] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional["ReadConcern"] = None,
@@ -395,7 +395,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def with_options(
         self,
-        codec_options: Optional["CodecOptions[Dict[str, Any]]"] = None,
+        codec_options: Optional["CodecOptions[Mapping[str, Any]]"] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional["ReadConcern"] = None,

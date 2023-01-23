@@ -18,7 +18,7 @@ import os
 import sys
 import tempfile
 import unittest
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List, Mapping, Union
 
 try:
     from typing_extensions import NotRequired, TypedDict
@@ -482,7 +482,7 @@ class TestCommandDocumentType(unittest.TestCase):
     @only_type_check
     def test_explicit_document_type(self) -> None:
         client: MongoClient = MongoClient()
-        codec_options: CodecOptions[Dict[str, Any]] = CodecOptions()
+        codec_options: CodecOptions[Mapping[str, Any]] = CodecOptions()
         result = client.admin.command("ping", codec_options=codec_options)
         result["a"] = 1
 
@@ -516,7 +516,7 @@ class TestCodecOptionsDocumentType(unittest.TestCase):
         obj["a"] = 1
 
     def test_explicit_document_type(self) -> None:
-        options: CodecOptions[Dict[str, Any]] = CodecOptions()
+        options: CodecOptions[Mapping[str, Any]] = CodecOptions()
         obj = options.document_class()
         obj["a"] = 1
 
