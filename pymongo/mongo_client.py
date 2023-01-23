@@ -1875,7 +1875,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     @_csot.apply
     def drop_database(
         self,
-        name_or_database: Union[str, database.Database],
+        name_or_database: Union[str, database.Database[Mapping[str, Any]]],
         session: Optional[client_session.ClientSession] = None,
         comment: Optional[Any] = None,
     ) -> None:
@@ -1928,7 +1928,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def get_default_database(
         self,
         default: Optional[str] = None,
-        codec_options: Optional[CodecOptions] = None,
+        codec_options: Optional[CodecOptions[Dict[str, Any]]] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional["ReadConcern"] = None,
@@ -1989,7 +1989,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def get_database(
         self,
         name: Optional[str] = None,
-        codec_options: Optional[CodecOptions] = None,
+        codec_options: Optional[CodecOptions[Dict[str, Any]]] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional["ReadConcern"] = None,

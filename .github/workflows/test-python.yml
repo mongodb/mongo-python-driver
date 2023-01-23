@@ -58,7 +58,7 @@ jobs:
           cache-dependency-path: 'setup.py'
       - name: Install dependencies
         run: |
-          python -m pip install -U pip mypy==0.990
+          python -m pip install -U pip mypy==0.990 pyright== 1.1.290
           pip install -e ".[zstd, encryption, ocsp]"
       - name: Run mypy
         run: |
@@ -67,7 +67,11 @@ jobs:
           mypy --install-types --non-interactive bson/codec_options.py
           mypy --install-types --non-interactive --disable-error-code var-annotated --disable-error-code attr-defined --disable-error-code union-attr --disable-error-code assignment --disable-error-code no-redef --disable-error-code index --allow-redefinition --allow-untyped-globals --exclude "test/mypy_fails/*.*" test
           python -m pip install -U typing_extensions
-          mypy --install-types --non-interactive test/test_mypy.py
+          mypy --install-types --non-interactive test/test_typing.py test/test_typing_strict.py
+          mypy --strict test/test_typing_strict.py
+          pyright test/test_typing.py test/test_typing_strict.py
+          echo '{"strict": ["tests/test_typing_strict.py"]}"'' >>  pyrightconfig.json
+          pyright test/test_typing_strict.py
 
   linkcheck:
     name: Check Links

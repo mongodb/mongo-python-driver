@@ -72,7 +72,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         self,
         client: "MongoClient[_DocumentType]",
         name: str,
-        codec_options: Optional[CodecOptions] = None,
+        codec_options: Optional[CodecOptions[Dict[str, Any]]] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
@@ -152,7 +152,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
     def with_options(
         self,
-        codec_options: Optional[CodecOptions] = None,
+        codec_options: Optional[CodecOptions[Dict[str, Any]]] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
@@ -239,7 +239,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     def get_collection(
         self,
         name: str,
-        codec_options: Optional[CodecOptions] = None,
+        codec_options: Optional[CodecOptions[Dict[str, Any]]] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
@@ -295,7 +295,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     def create_collection(
         self,
         name: str,
-        codec_options: Optional[CodecOptions] = None,
+        codec_options: Optional[CodecOptions[Dict[str, Any]]] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
@@ -976,7 +976,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     @_csot.apply
     def drop_collection(
         self,
-        name_or_collection: Union[str, Collection],
+        name_or_collection: Union[str, Collection[Mapping[str, Any]]],
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
         encrypted_fields: Optional[Mapping[str, Any]] = None,
@@ -1068,7 +1068,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
     def validate_collection(
         self,
-        name_or_collection: Union[str, Collection],
+        name_or_collection: Union[str, Collection[Mapping[str, Any]]],
         scandata: bool = False,
         full: bool = False,
         session: Optional["ClientSession"] = None,
