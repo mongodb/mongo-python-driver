@@ -585,7 +585,6 @@ def _authenticate_oidc(credentials, sock_info):
         aws_identity_file = os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"]
         with open(aws_identity_file) as fid:
             token = fid.read().strip()
-            _oidc_auth_cache[principal_name] = dict(access_token=token)
 
     payload = dict(jwt=token)
     cmd = SON(
