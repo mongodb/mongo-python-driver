@@ -14,7 +14,7 @@
 
 """Support for automatic client-side field level encryption."""
 
-from typing import TYPE_CHECKING, Any, List, Mapping, Optional
+from typing import TYPE_CHECKING, Any, List, Mapping, Optional, Union
 
 try:
     import pymongocrypt  # noqa: F401
@@ -22,7 +22,7 @@ try:
     _HAVE_PYMONGOCRYPT = True
 except ImportError:
     _HAVE_PYMONGOCRYPT = False
-from bson import Decimal128
+from bson import int64
 from pymongo.common import validate_is_mapping
 from pymongo.errors import ConfigurationError
 from pymongo.uri_parser import _parse_kms_tls_options
@@ -226,9 +226,9 @@ class EncryptionRangeOpts:
 
     def __init__(
         self,
-        min: Optional[Mapping[str, Any]],
-        max: Optional[Mapping[str, Any]],
-        sparsity: int,
+        sparsity: int64,
+        min: Optional[Mapping[str, Any]] = None,
+        max: Optional[Mapping[str, Any]] = None,
         precision: Optional[int] = None,
     ) -> None:
         """Options to configure encrypted queries using the rangePreview algorithm.
@@ -248,3 +248,15 @@ class EncryptionRangeOpts:
         self.max = max
         self.sparsity = sparsity
         self.precision = precision
+
+    def as_doc(self):
+        doc = {}
+        for k, v in [
+            ("sparsity", int64.Int64(self.sparsity)),
+            ("precision", self.precision),
+            ("min", self.min),
+            ("max", self.max),
+        ]:
+            if v is not None:
+                doc[k] = v
+        return doc

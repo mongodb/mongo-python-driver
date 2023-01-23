@@ -36,7 +36,9 @@ from bson import _dict_to_bson, decode, encode
 from bson.binary import STANDARD, UUID_SUBTYPE, Binary
 from bson.codec_options import CodecOptions
 from bson.errors import BSONError
-from bson.json_util import JSONMode
+from bson.json_util import CANONICAL_JSON_OPTIONS, JSONMode
+from bson.json_util import dumps as json_dumps
+from bson.json_util import loads as json_loads
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from bson.son import SON
 from pymongo import _csot
@@ -417,6 +419,14 @@ class Algorithm(str, enum.Enum):
 
     .. versionadded:: 4.2
     """
+    RANGEPREVIEW = "RangePreview"
+    """Unindexed.
+
+    .. note:: Support for Range queries is in beta.
+       Backwards-breaking changes may be made before the final release.
+
+    .. versionadded:: 4.4
+    """
 
 
 class QueryType(str, enum.Enum):
@@ -430,6 +440,9 @@ class QueryType(str, enum.Enum):
 
     EQUALITY = "equality"
     """Used to encrypt a value for an equality query."""
+
+    RANGEPREVIEW = "rangePreview"
+    """Used to encrypt a value for a Range query."""
 
 
 class ClientEncryption(Generic[_DocumentType]):
@@ -636,6 +649,7 @@ class ClientEncryption(Generic[_DocumentType]):
         key_alt_name: Optional[str] = None,
         query_type: Optional[str] = None,
         contention_factor: Optional[int] = None,
+        range_options: Optional[EncryptionRangeOpts] = None,
     ) -> Binary:
         """Encrypt a BSON value with a given key and algorithm.
 
@@ -676,7 +690,11 @@ class ClientEncryption(Generic[_DocumentType]):
 
         doc = encode(
             {"v": value},
-            codec_options=self._codec_options.with_options(json_mode=JSONMode.CANONICAL),
+            codec_options=self._codec_options,
+        )
+        range_options = encode(
+            range_options.as_doc(),
+            codec_options=self._codec_options,
         )
         with _wrap_encryption_errors():
             encrypted_doc = self._encryption.encrypt(
@@ -686,6 +704,7 @@ class ClientEncryption(Generic[_DocumentType]):
                 key_alt_name=key_alt_name,
                 query_type=query_type,
                 contention_factor=contention_factor,
+                range_opts=range_options,
             )
             return decode(encrypted_doc)["v"]  # type: ignore[index]
 
@@ -736,18 +755,23 @@ class ClientEncryption(Generic[_DocumentType]):
             raise TypeError("key_id must be a bson.binary.Binary with subtype 4")
 
         doc = encode(
-            expression, codec_options=self._codec_options.with_options(json_mode=JSONMode.CANONICAL)
+            {"v": expression},
+            codec_options=self._codec_options,
         )
-        print(doc)
+        range_options = encode(
+            range_options.as_doc(),
+            codec_options=self._codec_options,
+        )
         with _wrap_encryption_errors():
             encrypted_doc = self._encryption.encrypt(
-                doc,
-                algorithm,
+                value=doc,
+                algorithm=algorithm,
                 key_id=key_id,
                 key_alt_name=key_alt_name,
                 query_type=query_type,
                 contention_factor=contention_factor,
-                expression_range_options=range_options,
+                range_opts=range_options,
+                is_expression=True,
             )
             return decode(encrypted_doc)["v"]  # type: ignore[index]
 

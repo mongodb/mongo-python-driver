@@ -57,7 +57,7 @@ from test.utils import (
 )
 from test.utils_spec_runner import SpecRunner
 
-from bson import encode, json_util
+from bson import DatetimeMS, Decimal128, encode, json_util
 from bson.binary import UUID_SUBTYPE, Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.errors import BSONError
@@ -66,7 +66,11 @@ from bson.son import SON
 from pymongo import encryption
 from pymongo.cursor import CursorType
 from pymongo.encryption import Algorithm, ClientEncryption, QueryType
-from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts
+from pymongo.encryption_options import (
+    _HAVE_PYMONGOCRYPT,
+    AutoEncryptionOpts,
+    EncryptionRangeOpts,
+)
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
@@ -2457,6 +2461,101 @@ class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):
         assert isinstance(res["encrypted_unindexed"], Binary)
 
         client_encryption.close()
+
+
+# https://github.com/mongodb/specifications/blob/d4c9432/source/client-side-encryption/tests/README.rst#explicit-encryption
+class TestRangeQueryProse(EncryptionIntegrationTest):
+    @client_context.require_no_standalone
+    @client_context.require_version_min(6, 2, -1)
+    def setUp(self):
+        super().setUp()
+        self.key1_document = json_data("etc", "data", "keys", "key1-document.json")
+        self.key1_id = self.key1_document["_id"]
+        self.db = self.client.test_queryable_encryption
+        self.client.drop_database(self.db)
+        key_vault = create_key_vault(self.client.keyvault.datakeys, self.key1_document)
+        self.addCleanup(key_vault.drop)
+        self.key_vault_client = self.client
+        self.client_encryption = ClientEncryption(
+            {"local": {"key": LOCAL_MASTER_KEY}}, key_vault.full_name, self.key_vault_client, OPTS
+        )
+        self.addCleanup(self.client_encryption.close)
+        opts = AutoEncryptionOpts(
+            {"local": {"key": LOCAL_MASTER_KEY}},
+            key_vault.full_name,
+            bypass_query_analysis=True,
+        )
+        self.encrypted_client = rs_or_single_client(auto_encryption_opts=opts)
+        self.addCleanup(self.encrypted_client.close)
+
+    def run_test(self, name, range_opts, cast_func):
+        encrypted_fields = json_data("etc", "data", f"range-encryptedFields-{name}.json")
+        self.db.drop_collection("explicit_encryption")
+        self.db.create_collection("explicit_encryption", encryptedFields=encrypted_fields)
+        self.encrypted_client.db.explicit_encryption.insert_many(
+            [{f"encrypted{name}": cast_func(i)} for i in [0, 6, 30, 200]]
+        )
+        insert_payload = self.client_encryption.encrypt(
+            cast_func(6),
+            key_id=self.key1_id,
+            algorithm=Algorithm.RANGEPREVIEW,
+            contention_factor=0,
+            range_options=range_opts,
+        )
+        self.assertEqual(self.client_encryption.decrypt(insert_payload), cast_func(6))
+
+        find_payload = self.client_encryption.encrypt_expression(
+            expression={
+                "$and": [
+                    {f"encrypted{name}": {"$gte": cast_func(6)}},
+                    {f"encrypted{name}": {"$lte": cast_func(200)}},
+                ]
+            },
+            key_id=self.key1_id,
+            algorithm=Algorithm.RANGEPREVIEW,
+            query_type=QueryType.RANGEPREVIEW,
+            contention_factor=0,
+            range_options=range_opts,
+        )
+
+        self.assertEqual(
+            list(self.db.explicit_encryption.find({f"encrypted{name}": find_payload})),
+            [{f"encrypted{name}": cast_func(i)} for i in [6, 30, 200]],
+        )
+
+    def test_double_no_precision(self):
+        self.run_test("DoubleNoPrecision", EncryptionRangeOpts(sparsity=1), float)
+
+    def test_double_precision(self):
+        self.run_test(
+            "DoublePrecision",
+            EncryptionRangeOpts(min=0.0, max=200.0, sparsity=1, precision=2),
+            float,
+        )
+
+    def test_decimal_no_precision(self):
+        self.run_test(
+            "DecimalNoPrecision", EncryptionRangeOpts(sparsity=1), lambda x: Decimal128(str(x))
+        )
+
+    def test_decimal_precision(self):
+        self.run_test(
+            "DecimalPrecision",
+            EncryptionRangeOpts(
+                min=Decimal128("0.0"), max=Decimal128("200.0"), sparsity=1, precision=2
+            ),
+            lambda x: Decimal128(str(x)),
+        )
+
+    def test_datetime(self):
+        self.run_test(
+            "Date",
+            EncryptionRangeOpts(min=DatetimeMS(0), max=DatetimeMS(200), sparsity=1),
+            lambda x: DatetimeMS(x).as_datetime(),
+        )
+
+    def test_int(self):
+        self.run_test("Int", EncryptionRangeOpts(min=0, max=200, sparsity=1), int)
 
 
 if __name__ == "__main__":
