@@ -977,7 +977,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     @_csot.apply
     def drop_collection(
         self,
-        name_or_collection: Union[str, Collection[_DocumentType]],
+        name_or_collection: Union[str, Collection[_DocumentTypeArg]],
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
         encrypted_fields: Optional[Mapping[str, Any]] = None,
@@ -1069,7 +1069,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
     def validate_collection(
         self,
-        name_or_collection: Union[str, Collection[_DocumentType]],
+        name_or_collection: Union[str, Collection[_DocumentTypeArg]],
         scandata: bool = False,
         full: bool = False,
         session: Optional["ClientSession"] = None,

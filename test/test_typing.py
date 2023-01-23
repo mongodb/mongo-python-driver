@@ -18,16 +18,7 @@ import os
 import sys
 import tempfile
 import unittest
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
-    MutableMapping,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, List, Union
 
 try:
     from typing_extensions import NotRequired, TypedDict
@@ -431,7 +422,7 @@ class TestDocumentType(unittest.TestCase):
         assert out is not None
         # This should fail because the output is a Movie.
         assert out["foo"]  # type:ignore[typeddict-item]
-        assert out["_id"]  # type:ignore
+        assert out["_id"]  # type:ignore (reportTypedDictNotRequiredAccess)
 
     @only_type_check
     def test_typeddict_empty_document_type(self) -> None:
@@ -451,7 +442,7 @@ class TestDocumentType(unittest.TestCase):
         coll.insert_one(ImplicitMovie(name="THX-1138", year=1971))
         out = coll.find_one({})
         assert out is not None
-        assert out["_id"]  # type:ignore
+        assert out["_id"]  # type:ignore (reportTypedDictNotRequiredAccess)
 
     @only_type_check
     def test_raw_bson_document_type(self) -> None:
@@ -491,7 +482,7 @@ class TestCommandDocumentType(unittest.TestCase):
     @only_type_check
     def test_explicit_document_type(self) -> None:
         client: MongoClient = MongoClient()
-        codec_options: CodecOptions[MutableMapping[str, Any]] = CodecOptions()
+        codec_options: CodecOptions[Dict[str, Any]] = CodecOptions()
         result = client.admin.command("ping", codec_options=codec_options)
         result["a"] = 1
 
@@ -525,7 +516,7 @@ class TestCodecOptionsDocumentType(unittest.TestCase):
         obj["a"] = 1
 
     def test_explicit_document_type(self) -> None:
-        options: CodecOptions[MutableMapping[str, Any]] = CodecOptions()
+        options: CodecOptions[Dict[str, Any]] = CodecOptions()
         obj = options.document_class()
         obj["a"] = 1
 

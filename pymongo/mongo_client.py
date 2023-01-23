@@ -1882,7 +1882,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     @_csot.apply
     def drop_database(
         self,
-        name_or_database: Union[str, database.Database[_DocumentType]],
+        name_or_database: Union[str, database.Database[_DocumentTypeArg]],
         session: Optional[client_session.ClientSession] = None,
         comment: Optional[Any] = None,
     ) -> None:
