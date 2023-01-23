@@ -422,7 +422,7 @@ class TestDocumentType(unittest.TestCase):
         assert out is not None
         # This should fail because the output is a Movie.
         assert out["foo"]  # type:ignore[typeddict-item]
-        assert out["_id"]
+        assert out["_id"]  # type:ignore
 
     @only_type_check
     def test_typeddict_empty_document_type(self) -> None:
@@ -442,7 +442,7 @@ class TestDocumentType(unittest.TestCase):
         coll.insert_one(ImplicitMovie(name="THX-1138", year=1971))
         out = coll.find_one({})
         assert out is not None
-        assert out["_id"]
+        assert out["_id"]  # type:ignore
 
     @only_type_check
     def test_raw_bson_document_type(self) -> None:
