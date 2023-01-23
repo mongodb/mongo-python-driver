@@ -22,8 +22,8 @@ you get the error: "TypeError: 'type' object is not subscriptable".
 import datetime
 import abc
 import enum
-from typing import Tuple, Generic, Optional, Mapping, Any, TypeVar, Type, Dict, Iterable, Tuple, Callable, Union
-from pymongo.typings import _DocumentType, _DocumentTypeArg
+from typing import Tuple, Generic, Optional, Mapping, Any, Type, Dict, Iterable, Tuple, Callable, Union
+from bson.typings import _DocumentType, _DocumentTypeArg
 
 
 class TypeEncoder(abc.ABC, metaclass=abc.ABCMeta):

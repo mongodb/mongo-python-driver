@@ -13,31 +13,18 @@
 # limitations under the License.
 
 """Type aliases used by PyMongo"""
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Mapping,
-    MutableMapping,
-    Optional,
-    Sequence,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, Tuple, Union
 
 if TYPE_CHECKING:
     from bson.raw_bson import RawBSONDocument
+    from bson.typings import _DocumentIn, _DocumentOut, _DocumentType, _DocumentTypeArg
     from pymongo.collation import Collation
 
 
 # Common Shared Types.
 _Address = Tuple[str, Optional[int]]
 _CollationIn = Union[Mapping[str, Any], "Collation"]
-_DocumentIn = Union[MutableMapping[str, Any], "RawBSONDocument"]
 _Pipeline = Sequence[Mapping[str, Any]]
-_DocumentOut = _DocumentIn
-_DocumentType = TypeVar("_DocumentType", bound=Mapping[str, Any])
-_DocumentTypeArg = TypeVar("_DocumentTypeArg", bound=Mapping[str, Any])
 
 
 def strip_optional(elem):

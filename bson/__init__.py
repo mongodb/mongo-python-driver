@@ -124,10 +124,7 @@ from bson.timestamp import Timestamp
 
 # Import some modules for type-checking only.
 if TYPE_CHECKING:
-    from array import array
-    from mmap import mmap
-
-    from pymongo.typings import _DocumentType
+    from bson.typings import _DocumentIn, _DocumentType, _ReadableBuffer
 
 try:
     from bson import _cbson  # type: ignore[attr-defined]
@@ -987,12 +984,8 @@ if _USE_C:
 _CODEC_OPTIONS_TYPE_ERROR = TypeError("codec_options must be an instance of CodecOptions")
 
 
-_DocumentIn = Mapping[str, Any]
-_ReadableBuffer = Union[bytes, memoryview, "mmap", "array"]
-
-
 def encode(
-    document: _DocumentIn,
+    document: "_DocumentIn",
     check_keys: bool = False,
     codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS,
 ) -> bytes:
@@ -1023,7 +1016,7 @@ def encode(
 
 
 def decode(
-    data: _ReadableBuffer, codec_options: "Optional[CodecOptions[_DocumentType]]" = None
+    data: "_ReadableBuffer", codec_options: "Optional[CodecOptions[_DocumentType]]" = None
 ) -> "_DocumentType":
     """Decode BSON to a document.
 
@@ -1058,7 +1051,7 @@ def decode(
 
 
 def _decode_all(
-    data: _ReadableBuffer, opts: "CodecOptions[_DocumentType]"
+    data: "_ReadableBuffer", opts: "CodecOptions[_DocumentType]"
 ) -> "List[_DocumentType]":
     """Decode a BSON data to multiple documents."""
     data, view = get_data_and_view(data)
@@ -1094,7 +1087,7 @@ if _USE_C:
 
 
 def decode_all(
-    data: _ReadableBuffer, codec_options: "Optional[CodecOptions[_DocumentType]]" = None
+    data: "_ReadableBuffer", codec_options: "Optional[CodecOptions[_DocumentType]]" = None
 ) -> "List[_DocumentType]":
     """Decode BSON data to multiple documents.
 
@@ -1328,7 +1321,7 @@ class BSON(bytes):
     @classmethod
     def encode(
         cls: Type["BSON"],
-        document: _DocumentIn,
+        document: "_DocumentIn",
         check_keys: bool = False,
         codec_options: CodecOptions = DEFAULT_CODEC_OPTIONS,
     ) -> "BSON":
