@@ -1024,7 +1024,7 @@ def encode(
 
 def decode(
     data: _ReadableBuffer, codec_options: "Optional[CodecOptions[_DocumentType]]" = None
-) -> _DocumentType:
+) -> "_DocumentType":
     """Decode BSON to a document.
 
     By default, returns a BSON document represented as a Python
@@ -1057,11 +1057,13 @@ def decode(
     return _bson_to_dict(data, opts)
 
 
-def _decode_all(data: _ReadableBuffer, opts: "CodecOptions[_DocumentType]") -> List[_DocumentType]:
+def _decode_all(
+    data: _ReadableBuffer, opts: "CodecOptions[_DocumentType]"
+) -> "List[_DocumentType]":
     """Decode a BSON data to multiple documents."""
     data, view = get_data_and_view(data)
     data_len = len(data)
-    docs: List[_DocumentType] = []
+    docs: "List[_DocumentType]" = []
     position = 0
     end = data_len - 1
     use_raw = _raw_document_class(opts.document_class)
@@ -1093,7 +1095,7 @@ if _USE_C:
 
 def decode_all(
     data: _ReadableBuffer, codec_options: "Optional[CodecOptions[_DocumentType]]" = None
-) -> List[_DocumentType]:
+) -> "List[_DocumentType]":
     """Decode BSON data to multiple documents.
 
     `data` must be a bytes-like object implementing the buffer protocol that
@@ -1229,7 +1231,7 @@ def _decode_all_selective(data: Any, codec_options: CodecOptions, fields: Any) -
 
 def decode_iter(
     data: bytes, codec_options: "Optional[CodecOptions[_DocumentType]]" = None
-) -> Iterator[_DocumentType]:
+) -> "Iterator[_DocumentType]":
     """Decode BSON data to multiple documents as a generator.
 
     Works similarly to the decode_all function, but yields one document at a
@@ -1265,7 +1267,7 @@ def decode_iter(
 
 def decode_file_iter(
     file_obj: Union[BinaryIO, IO], codec_options: "Optional[CodecOptions[_DocumentType]]" = None
-) -> Iterator[_DocumentType]:
+) -> "Iterator[_DocumentType]":
     """Decode bson data from a file to multiple documents as a generator.
 
     Works similarly to the decode_all function, but reads from the file object
@@ -1353,7 +1355,7 @@ class BSON(bytes):
         """
         return cls(encode(document, check_keys, codec_options))
 
-    def decode(self, codec_options: "CodecOptions[_DocumentType]" = DEFAULT_CODEC_OPTIONS) -> _DocumentType:  # type: ignore[override,assignment]
+    def decode(self, codec_options: "CodecOptions[_DocumentType]" = DEFAULT_CODEC_OPTIONS) -> "_DocumentType":  # type: ignore[override,assignment]
         """Decode this BSON data.
 
         By default, returns a BSON document represented as a Python
