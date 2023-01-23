@@ -22,11 +22,7 @@
           "keyVaultClient": "client0",
           "keyVaultNamespace": "keyvault.datakeys",
           "kmsProviders": {
-            "local": {
-              "key": {
-                "$$placeholder": 1
-              }
-            }
+            "local": {}
           }
         }
       }

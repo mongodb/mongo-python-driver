@@ -22,11 +22,7 @@
           "keyVaultClient": "client0",
           "keyVaultNamespace": "keyvault.datakeys",
           "kmsProviders": {
-            "local": {
-              "key": {
-                "$$placeholder": 1
-              }
-            }
+            "local": {}
           }
         }
       }
@@ -128,9 +124,7 @@
           "arguments": {
             "keyAltName": "does_not_exist"
           },
-          "expectResult": {
-            "$$unsetOrMatches": null
-          }
+          "expectResult": null
         }
       ],
       "expectEvents": [

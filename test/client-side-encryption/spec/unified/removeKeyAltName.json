@@ -22,11 +22,7 @@
           "keyVaultClient": "client0",
           "keyVaultNamespace": "keyvault.datakeys",
           "kmsProviders": {
-            "local": {
-              "key": {
-                "$$placeholder": 1
-              }
-            }
+            "local": {}
           }
         }
       }
@@ -102,9 +98,7 @@
             },
             "keyAltName": "does_not_exist"
           },
-          "expectResult": {
-            "$$unsetOrMatches": null
-          }
+          "expectResult": null
         }
       ],
       "expectEvents": [
@@ -124,36 +118,11 @@
                       }
                     }
                   },
-                  "update": [
-                    {
-                      "$set": {
-                        "keyAltNames": {
-                          "$cond": [
-                            {
-                              "$eq": [
-                                "$keyAltNames",
-                                [
-                                  "does_not_exist"
-                                ]
-                              ]
-                            },
-                            "$$REMOVE",
-                            {
-                              "$filter": {
-                                "input": "$keyAltNames",
-                                "cond": {
-                                  "$ne": [
-                                    "$$this",
-                                    "does_not_exist"
-                                  ]
-                                }
-                              }
-                            }
-                          ]
-                        }
-                      }
+                  "update": {
+                    "$pull": {
+                      "keyAltNames": "does_not_exist"
                     }
-                  ],
+                  },
                   "writeConcern": {
                     "w": "majority"
                   }
@@ -270,36 +239,11 @@
                       }
                     }
                   },
-                  "update": [
-                    {
-                      "$set": {
-                        "keyAltNames": {
-                          "$cond": [
-                            {
-                              "$eq": [
-                                "$keyAltNames",
-                                [
-                                  "does_not_exist"
-                                ]
-                              ]
-                            },
-                            "$$REMOVE",
-                            {
-                              "$filter": {
-                                "input": "$keyAltNames",
-                                "cond": {
-                                  "$ne": [
-                                    "$$this",
-                                    "does_not_exist"
-                                  ]
-                                }
-                              }
-                            }
-                          ]
-                        }
-                      }
+                  "update": {
+                    "$pull": {
+                      "keyAltNames": "does_not_exist"
                     }
-                  ],
+                  },
                   "writeConcern": {
                     "w": "majority"
                   }
@@ -434,36 +378,11 @@
                       }
                     }
                   },
-                  "update": [
-                    {
-                      "$set": {
-                        "keyAltNames": {
-                          "$cond": [
-                            {
-                              "$eq": [
-                                "$keyAltNames",
-                                [
-                                  "alternate_name"
-                                ]
-                              ]
-                            },
-                            "$$REMOVE",
-                            {
-                              "$filter": {
-                                "input": "$keyAltNames",
-                                "cond": {
-                                  "$ne": [
-                                    "$$this",
-                                    "alternate_name"
-                                  ]
-                                }
-                              }
-                            }
-                          ]
-                        }
-                      }
+                  "update": {
+                    "$pull": {
+                      "keyAltNames": "alternate_name"
                     }
-                  ],
+                  },
                   "writeConcern": {
                     "w": "majority"
                   }
@@ -582,36 +501,11 @@
                       }
                     }
                   },
-                  "update": [
-                    {
-                      "$set": {
-                        "keyAltNames": {
-                          "$cond": [
-                            {
-                              "$eq": [
-                                "$keyAltNames",
-                                [
-                                  "alternate_name"
-                                ]
-                              ]
-                            },
-                            "$$REMOVE",
-                            {
-                              "$filter": {
-                                "input": "$keyAltNames",
-                                "cond": {
-                                  "$ne": [
-                                    "$$this",
-                                    "alternate_name"
-                                  ]
-                                }
-                              }
-                            }
-                          ]
-                        }
-                      }
+                  "update": {
+                    "$pull": {
+                      "keyAltNames": "alternate_name"
                     }
-                  ],
+                  },
                   "writeConcern": {
                     "w": "majority"
                   }
@@ -631,36 +525,42 @@
                       }
                     }
                   },
-                  "update": [
+                  "update": {
+                    "$pull": {
+                      "keyAltNames": "local_key"
+                    }
+                  },
+                  "writeConcern": {
+                    "w": "majority"
+                  }
+                }
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "databaseName": "keyvault",
+                "command": {
+                  "update": "datakeys",
+                  "updates": [
                     {
-                      "$set": {
-                        "keyAltNames": {
-                          "$cond": [
-                            {
-                              "$eq": [
-                                "$keyAltNames",
-                                [
-                                  "local_key"
-                                ]
-                              ]
-                            },
-                            "$$REMOVE",
-                            {
-                              "$filter": {
-                                "input": "$keyAltNames",
-                                "cond": {
-                                  "$ne": [
-                                    "$$this",
-                                    "local_key"
-                                  ]
-                                }
-                              }
-                            }
-                          ]
+                      "q": {
+                        "_id": {
+                          "$binary": {
+                            "base64": "bG9jYWxrZXlsb2NhbGtleQ==",
+                            "subType": "04"
+                          }
+                        }
+                      },
+                      "u": {
+                        "$unset": {
+                          "keyAltNames": true
                         }
                       }
                     }
-                  ]
+                  ],
+                  "writeConcern": {
+                    "w": "majority"
+                  }
                 }
               }
             }
