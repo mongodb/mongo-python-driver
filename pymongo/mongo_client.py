@@ -53,7 +53,8 @@ from typing import (
     cast,
 )
 
-from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
+import bson
+from bson.codec_options import DEFAULT_CODEC_OPTIONS, TypeRegistry
 from bson.son import SON
 from bson.timestamp import Timestamp
 from pymongo import (
@@ -102,7 +103,6 @@ from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
 if TYPE_CHECKING:
     import sys
 
-    import bson
     from pymongo.read_concern import ReadConcern
 
     if sys.version_info[:2] >= (3, 9):
@@ -1929,7 +1929,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def get_default_database(
         self,
         default: Optional[str] = None,
-        codec_options: Optional["bson.CodecOptions[Mapping[str, Any]]"] = None,
+        codec_options: Optional["bson.CodecOptions[_DocumentType]"] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional["ReadConcern"] = None,
@@ -1990,7 +1990,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def get_database(
         self,
         name: Optional[str] = None,
-        codec_options: Optional["bson.CodecOptions[Mapping[str, Any]]"] = None,
+        codec_options: Optional["bson.CodecOptions[_DocumentType]"] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional["ReadConcern"] = None,

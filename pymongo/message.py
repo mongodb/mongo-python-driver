@@ -24,7 +24,7 @@ import datetime
 import random
 import struct
 from io import BytesIO as _BytesIO
-from typing import Any, Mapping, NoReturn
+from typing import TYPE_CHECKING, Any, NoReturn
 
 import bson
 from bson import CodecOptions, _decode_selective, _dict_to_bson, _make_c_string, encode
@@ -57,6 +57,9 @@ from pymongo.hello import HelloCompat
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
+if TYPE_CHECKING:
+    from pymongo.typings import _DocumentType
+
 MAX_INT32 = 2147483647
 MIN_INT32 = -2147483648
 
@@ -81,7 +84,7 @@ _OP_MAP = {
 }
 _FIELD_MAP = {"insert": "documents", "update": "updates", "delete": "deletes"}
 
-_UNICODE_REPLACE_CODEC_OPTIONS: "CodecOptions[Mapping[str, Any]]" = CodecOptions(
+_UNICODE_REPLACE_CODEC_OPTIONS: "CodecOptions[_DocumentType]" = CodecOptions(
     unicode_decode_error_handler="replace"
 )
 

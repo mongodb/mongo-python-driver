@@ -73,7 +73,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         self,
         client: "MongoClient[_DocumentType]",
         name: str,
-        codec_options: Optional["bson.CodecOptions[Mapping[str, Any]]"] = None,
+        codec_options: Optional["bson.CodecOptions[_DocumentType]"] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
@@ -153,7 +153,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
     def with_options(
         self,
-        codec_options: Optional["bson.CodecOptions[Mapping[str, Any]]"] = None,
+        codec_options: Optional["bson.CodecOptions[_DocumentType]"] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
@@ -240,7 +240,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     def get_collection(
         self,
         name: str,
-        codec_options: Optional["bson.CodecOptions[Mapping[str, Any]]"] = None,
+        codec_options: Optional["bson.CodecOptions[_DocumentType]"] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
@@ -296,7 +296,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     def create_collection(
         self,
         name: str,
-        codec_options: Optional["bson.CodecOptions[Mapping[str, Any]]"] = None,
+        codec_options: Optional["bson.CodecOptions[_DocumentType]"] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
