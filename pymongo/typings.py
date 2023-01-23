@@ -37,6 +37,7 @@ _DocumentIn = Union[MutableMapping[str, Any], "RawBSONDocument"]
 _Pipeline = Sequence[Mapping[str, Any]]
 _DocumentOut = _DocumentIn
 _DocumentType = TypeVar("_DocumentType", bound=Mapping[str, Any])
+_DocumentTypeArg = TypeVar("_DocumentTypeArg", bound=Mapping[str, Any])
 
 
 def strip_optional(elem):

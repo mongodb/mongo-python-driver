@@ -23,7 +23,7 @@ import datetime
 import abc
 import enum
 from typing import Tuple, Generic, Optional, Mapping, Any, TypeVar, Type, Dict, Iterable, Tuple, Callable, Union
-from pymongo.typings import _DocumentType
+from pymongo.typings import _DocumentType, _DocumentTypeArg
 
 
 class TypeEncoder(abc.ABC, metaclass=abc.ABCMeta):
@@ -80,7 +80,7 @@ class CodecOptions(Tuple, Generic[_DocumentType]):
     ) -> CodecOptions[_DocumentType]: ...
 
     # CodecOptions API
-    def with_options(self, **kwargs: Any) -> CodecOptions[_DocumentType]: ...
+    def with_options(self, **kwargs: Any) -> CodecOptions[_DocumentTypeArg]: ...
 
     def _arguments_repr(self) -> str: ...
 

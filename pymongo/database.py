@@ -29,7 +29,7 @@ from typing import (
     cast,
 )
 
-from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
+from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.dbref import DBRef
 from bson.son import SON
 from bson.timestamp import Timestamp
@@ -41,7 +41,7 @@ from pymongo.command_cursor import CommandCursor
 from pymongo.common import _ecc_coll_name, _ecoc_coll_name, _esc_coll_name
 from pymongo.errors import CollectionInvalid, InvalidName
 from pymongo.read_preferences import ReadPreference, _ServerMode
-from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
+from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 
 
 def _check_name(name):
@@ -58,7 +58,7 @@ if TYPE_CHECKING:
     import bson
     import bson.codec_options
     from pymongo.client_session import ClientSession
-    from pymongo.mongo_client import MongoClient, _ClientDocumentType
+    from pymongo.mongo_client import MongoClient
     from pymongo.read_concern import ReadConcern
     from pymongo.write_concern import WriteConcern
 
@@ -73,7 +73,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         self,
         client: "MongoClient[_DocumentType]",
         name: str,
-        codec_options: Optional["bson.CodecOptions[_ClientDocumentType]"] = None,
+        codec_options: Optional["bson.CodecOptions[_DocumentTypeArg]"] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
@@ -153,7 +153,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
     def with_options(
         self,
-        codec_options: Optional["bson.CodecOptions[_DocumentType]"] = None,
+        codec_options: Optional["bson.CodecOptions[_DocumentTypeArg]"] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
@@ -240,7 +240,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     def get_collection(
         self,
         name: str,
-        codec_options: Optional["bson.CodecOptions[_DocumentType]"] = None,
+        codec_options: Optional["bson.CodecOptions[_DocumentTypeArg]"] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
@@ -296,7 +296,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     def create_collection(
         self,
         name: str,
-        codec_options: Optional["bson.CodecOptions[_DocumentType]"] = None,
+        codec_options: Optional["bson.CodecOptions[_DocumentTypeArg]"] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional["WriteConcern"] = None,
         read_concern: Optional["ReadConcern"] = None,
@@ -977,7 +977,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     @_csot.apply
     def drop_collection(
         self,
-        name_or_collection: Union[str, Collection[Mapping[str, Any]]],
+        name_or_collection: Union[str, Collection[_DocumentType]],
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
         encrypted_fields: Optional[Mapping[str, Any]] = None,
@@ -1069,7 +1069,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
     def validate_collection(
         self,
-        name_or_collection: Union[str, Collection[Mapping[str, Any]]],
+        name_or_collection: Union[str, Collection[_DocumentType]],
         scandata: bool = False,
         full: bool = False,
         session: Optional["ClientSession"] = None,

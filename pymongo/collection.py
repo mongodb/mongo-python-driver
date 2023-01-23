@@ -72,7 +72,7 @@ from pymongo.results import (
     InsertOneResult,
     UpdateResult,
 )
-from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
+from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 from pymongo.write_concern import WriteConcern
 
 _FIND_AND_MODIFY_DOC_FIELDS = {"value": 1}
@@ -117,7 +117,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         database: "Database[_DocumentType]",
         name: str,
         create: Optional[bool] = False,
-        codec_options: Optional["CodecOptions[_DocumentType]"] = None,
+        codec_options: Optional["CodecOptions[_DocumentTypeArg]"] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional["ReadConcern"] = None,
@@ -395,7 +395,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def with_options(
         self,
-        codec_options: Optional["bson.CodecOptions[_DocumentType]"] = None,
+        codec_options: Optional["bson.CodecOptions[_DocumentTypeArg]"] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional["ReadConcern"] = None,

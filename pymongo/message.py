@@ -57,9 +57,6 @@ from pymongo.hello import HelloCompat
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
-if TYPE_CHECKING:
-    from pymongo.typings import _DocumentType
-
 MAX_INT32 = 2147483647
 MIN_INT32 = -2147483648
 
