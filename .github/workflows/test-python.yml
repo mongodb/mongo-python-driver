@@ -77,7 +77,7 @@ jobs:
           pyright test/test_typing.py test/test_typing_strict.py
       - name: Run pyright strict
         run: |
-          echo '{"strict": ["tests/test_typing_strict.py"]}"'' >>  pyrightconfig.json
+          echo '{"strict": ["tests/test_typing_strict.py"]}' >>  pyrightconfig.json
           pyright test/test_typing_strict.py
 
   linkcheck:
