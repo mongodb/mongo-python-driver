@@ -706,11 +706,10 @@ class ClientEncryption(Generic[_DocumentType]):
             when the algorithm is :attr:`Algorithm.INDEXED`.  An integer value
             *must* be given when the :attr:`Algorithm.INDEXED` algorithm is
             used.
-          - `range_opts`: An instance of RangeOpts.
+          - `range_opts`: **(BETA)** An instance of RangeOpts.
 
-        .. note:: `query_type` and `contention_factor` are part of the
-           Queryable Encryption beta. Backwards-breaking changes may be made before the
-           final release.
+        .. note:: `query_type`, `contention_factor` and `range_opts` are part of the Queryable Encryption beta.
+           Backwards-breaking changes may be made before the final release.
 
         :Returns:
           The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
@@ -746,7 +745,7 @@ class ClientEncryption(Generic[_DocumentType]):
         provided.
 
         :Parameters:
-          - `expression`: The BSON aggregate or match expression to encrypt.
+          - `expression`: **(BETA)** The BSON aggregate or match expression to encrypt.
           - `algorithm` (string): The encryption algorithm to use. See
             :class:`Algorithm` for some valid options.
           - `key_id`: Identifies a data key by ``_id`` which must be a
@@ -759,7 +758,7 @@ class ClientEncryption(Generic[_DocumentType]):
             when the algorithm is :attr:`Algorithm.INDEXED`.  An integer value
             *must* be given when the :attr:`Algorithm.INDEXED` algorithm is
             used.
-          - `range_opts`: An instance of RangeOpts.
+          - `range_opts`: **(BETA)** An instance of RangeOpts.
 
         .. note:: Support for range queries is in beta.
            Backwards-breaking changes may be made before the final release.
