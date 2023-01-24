@@ -2494,7 +2494,7 @@ class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):
         client_encryption.close()
 
 
-# https://github.com/mongodb/specifications/blob/d4c9432/source/client-side-encryption/tests/README.rst#explicit-encryption
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#range-explicit-encryption
 class TestRangeQueryProse(EncryptionIntegrationTest):
     @client_context.require_no_standalone
     @client_context.require_version_min(6, 2, -1)
@@ -2624,6 +2624,7 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
                     contention_factor=0,
                     range_opts=range_opts,
                 )
+
             # Case 7.
             with self.assertRaisesRegex(
                 EncryptionError, "expected matching 'min' and value type. Got range option"
