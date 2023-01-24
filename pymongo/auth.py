@@ -531,7 +531,7 @@ def _authenticate_oidc(credentials, sock_info):
 
     # The cache key includes the client_id, the principal name,
     # and the id of the request callback if provided.
-    cache_key = server_payload["clientId"] + principal_name
+    cache_key = server_payload["clientId"] + str(principal_name)
     if properties.on_oidc_request_token:
         cache_key += str(id(properties.on_oidc_request_token))
 
