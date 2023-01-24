@@ -28,7 +28,7 @@ _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "command_
 
 globals().update(
     generate_test_classes(
-        os.path.join(_TEST_PATH, "unified"),
+        _TEST_PATH,
         module=__name__,
     )
 )

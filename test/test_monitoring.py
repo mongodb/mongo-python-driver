@@ -1078,6 +1078,7 @@ class TestCommandMonitoring(IntegrationTest):
 
         self.listener.reset()
 
+    @client_context.require_version_max(6, 1, 99)
     def test_sensitive_commands(self):
         listeners = self.client._event_listeners
 
