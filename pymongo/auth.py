@@ -529,14 +529,18 @@ def _authenticate_oidc(credentials, sock_info):
     client_resp = None
     token = None
 
-    # TODO: Update cache key to include id(callback) and the client_id
-    # from the server response.
-    if principal_name in _oidc_auth_cache:
-        client_resp = _oidc_auth_cache[principal_name]
+    # The cache key includes the client_id, the principal name,
+    # and the id of the request callback if provided.
+    cache_key = server_payload["client_id"] + principal_name
+    if properties.on_oidc_request_token:
+        cache_key += str(id(properties.on_oidc_request_token))
+
+    if cache_key in _oidc_auth_cache:
+        client_resp = _oidc_auth_cache[cache_key]
         now_utc = datetime.now(timezone.utc)
-        exp_utc = _oidc_exp_utc[principal_name]
+        exp_utc = _oidc_exp_utc[cache_key]
         if (exp_utc - now_utc).total_seconds() <= _oidc_buffer_seconds:
-            del _oidc_auth_cache[principal_name]
+            del _oidc_auth_cache[cache_key]
             if properties.on_oidc_refresh_token:
                 client_resp = properties.on_oidc_refresh_token(server_payload, auth)
             else:
@@ -544,7 +548,7 @@ def _authenticate_oidc(credentials, sock_info):
 
     if client_resp is None and properties.on_oidc_request_token is not None:
         if principal_name in _oidc_auth_cache:
-            auth = _oidc_auth_cache[principal_name]
+            auth = _oidc_auth_cache[cache_key]
             token = auth["access_token"]
         else:
             client_resp = properties.on_oidc_request_token(server_payload)
@@ -557,7 +561,7 @@ def _authenticate_oidc(credentials, sock_info):
                 now_utc = datetime.now(timezone.utc)
                 exp_utc = now_utc + timedelta(seconds=expires_in)
                 _oidc_exp_utc[principal_name] = exp_utc
-                _oidc_auth_cache[principal_name] = client_resp.copy()
+                _oidc_auth_cache[cache_key] = client_resp.copy()
 
     else:
         aws_identity_file = os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"]
