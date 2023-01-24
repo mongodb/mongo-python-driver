@@ -516,30 +516,6 @@ def _authenticate_oidc(credentials, sock_info):
     if principal_name:
         payload["n"] = principal_name
 
-    if principal_name in _oidc_auth_cache:
-        auth = _oidc_auth_cache[principal_name]
-        payload = dict(jwt=auth["access_token"])
-        cmd = SON(
-            [
-                ("saslStart", 1),
-                ("mechanism", "MONGODB-OIDC"),
-                ("payload", Binary(bson.encode(payload))),
-                ("autoAuthorize", 1),
-            ]
-        )
-
-        try:
-            response = sock_info.command("$external", cmd)
-        except Exception:
-            if principal_name in _oidc_auth_cache:
-                del _oidc_auth_cache[principal_name]
-            raise
-
-        if not response["done"]:
-            del _oidc_auth_cache[principal_name]
-            raise OperationFailure("SASL conversation failed to complete.")
-        return
-
     cmd = SON(
         [
             ("saslStart", 1),
@@ -553,6 +529,8 @@ def _authenticate_oidc(credentials, sock_info):
     client_resp = None
     token = None
 
+    # TODO: Update cache key to include id(callback) and the client_id
+    # from the server response.
     if principal_name in _oidc_auth_cache:
         client_resp = _oidc_auth_cache[principal_name]
         now_utc = datetime.now(timezone.utc)
