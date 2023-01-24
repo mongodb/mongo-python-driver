@@ -540,16 +540,14 @@ def _authenticate_oidc(credentials, sock_info):
     # The cache key includes the client_id, the principal name,
     # and the id of the request callback if provided.
     cache_key = server_payload["clientId"] + str(principal_name)
+    if properties.on_oidc_request_token:
+        cache_key += str(id(properties.on_oidc_request_token))
 
     if cache_key not in _oidc_locks:
         _oidc_locks[cache_key] = threading.Lock()
 
     lock = _oidc_locks[cache_key]
-
     lock.acquire()
-
-    if properties.on_oidc_request_token:
-        cache_key += str(id(properties.on_oidc_request_token))
 
     if cache_key in _oidc_auth_cache:
         client_resp = _oidc_auth_cache[cache_key]
