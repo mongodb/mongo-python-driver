@@ -692,10 +692,11 @@ class ClientEncryption(Generic[_DocumentType]):
             {"v": value},
             codec_options=self._codec_options,
         )
-        range_options = encode(
-            range_options.as_doc(),
-            codec_options=self._codec_options,
-        )
+        if range_options:
+            range_options = encode(
+                range_options.as_doc(),
+                codec_options=self._codec_options,
+            )
         with _wrap_encryption_errors():
             encrypted_doc = self._encryption.encrypt(
                 doc,
