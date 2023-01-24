@@ -103,7 +103,8 @@ _AWSProperties = namedtuple("_AWSProperties", ["aws_session_token"])
 
 
 _OIDCProperties = namedtuple(
-    "_OIDCProperties", ["on_oidc_request_token", "on_oidc_refresh_token", "principal_name"]
+    "_OIDCProperties",
+    ["on_oidc_request_token", "on_oidc_refresh_token", "principal_name", "device_name"],
 )
 """Mechanism properties for MONGODB-OIDC authentication."""
 
@@ -148,15 +149,21 @@ def _build_credentials_tuple(mech, source, user, passwd, extra, database):
         return MongoCredential(mech, "$external", user, passwd, aws_props, None)
     elif mech == "MONGODB-OIDC":
         if source is not None and source != "$external":
-            raise ValueError("authentication source must be $external or None for MONGODB-ODIC")
+            raise ValueError("authentication source must be $external or None for MONGODB-OIDC")
         properties = extra.get("authmechanismproperties", {})
         on_oidc_request_token = properties.get("on_oidc_request_token")
         on_oidc_refresh_token = properties.get("on_oidc_refresh_token", on_oidc_request_token)
         principal_name = properties.get("PRINCIPAL_NAME", "")
+        device_name = properties.get("DEVICE_NAME", "")
+        if not on_oidc_request_token and device_name != "aws":
+            raise ConfigurationError(
+                "authentication with MONGODB-OIDC requires providing an on_oidc_request_token or a device_name of 'aws'"
+            )
         oidc_props = _OIDCProperties(
             on_oidc_request_token=on_oidc_request_token,
             on_oidc_refresh_token=on_oidc_refresh_token,
             principal_name=principal_name,
+            device_name=device_name,
         )
         return MongoCredential(mech, "$external", user, passwd, oidc_props, None)
 
@@ -500,8 +507,7 @@ interface OIDCRequestTokenResult {
 
 _oidc_auth_cache = {}
 _oidc_exp_utc = {}
-# TODO: Offer another parameter that is the refresh buffer?
-# TOOD: Make a dataclass for the client resp and the internal storage
+# TOOD: Make a namedtuple for the client resp and the internal storage
 _oidc_buffer_seconds = 5 * 60
 
 
@@ -563,7 +569,7 @@ def _authenticate_oidc(credentials, sock_info):
                 _oidc_exp_utc[principal_name] = exp_utc
                 _oidc_auth_cache[cache_key] = client_resp.copy()
 
-    else:
+    elif properties.device_name == "aws":
         aws_identity_file = os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"]
         with open(aws_identity_file) as fid:
             token = fid.read().strip()
