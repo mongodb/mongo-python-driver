@@ -706,7 +706,7 @@ class ClientEncryption(Generic[_DocumentType]):
             when the algorithm is :attr:`Algorithm.INDEXED`.  An integer value
             *must* be given when the :attr:`Algorithm.INDEXED` algorithm is
             used.
-          - `range_options`: An instance of RangeOpts.
+          - `range_opts`: An instance of RangeOpts.
 
         .. note:: `query_type` and `contention_factor` are part of the
            Queryable Encryption beta. Backwards-breaking changes may be made before the
@@ -759,7 +759,7 @@ class ClientEncryption(Generic[_DocumentType]):
             when the algorithm is :attr:`Algorithm.INDEXED`.  An integer value
             *must* be given when the :attr:`Algorithm.INDEXED` algorithm is
             used.
-          - `range_options`: An instance of RangeOpts.
+          - `range_opts`: An instance of RangeOpts.
 
         .. note:: Support for range queries is in beta.
            Backwards-breaking changes may be made before the final release.
