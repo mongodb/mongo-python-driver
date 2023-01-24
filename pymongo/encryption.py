@@ -36,15 +36,12 @@ from bson import _dict_to_bson, decode, encode
 from bson.binary import STANDARD, UUID_SUBTYPE, Binary
 from bson.codec_options import CodecOptions
 from bson.errors import BSONError
-from bson.json_util import CANONICAL_JSON_OPTIONS, JSONMode
-from bson.json_util import dumps as json_dumps
-from bson.json_util import loads as json_loads
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from bson.son import SON
 from pymongo import _csot
 from pymongo.cursor import Cursor
 from pymongo.daemon import _spawn_daemon
-from pymongo.encryption_options import AutoEncryptionOpts, EncryptionRangeOpts
+from pymongo.encryption_options import AutoEncryptionOpts, RangeOpts
 from pymongo.errors import (
     ConfigurationError,
     EncryptionError,
@@ -442,7 +439,7 @@ class QueryType(str, enum.Enum):
     """Used to encrypt a value for an equality query."""
 
     RANGEPREVIEW = "rangePreview"
-    """Used to encrypt a value for a Range query."""
+    """Used to encrypt a value for a range query."""
 
 
 class ClientEncryption(Generic[_DocumentType]):
@@ -641,6 +638,45 @@ class ClientEncryption(Generic[_DocumentType]):
                 key_material=key_material,
             )
 
+    def _encrypt_helper(
+        self,
+        value,
+        algorithm,
+        key_id=None,
+        key_alt_name=None,
+        query_type=None,
+        contention_factor=None,
+        range_opts=None,
+        is_expression=False,
+    ):
+        self._check_closed()
+        if key_id is not None and not (
+            isinstance(key_id, Binary) and key_id.subtype == UUID_SUBTYPE
+        ):
+            raise TypeError("key_id must be a bson.binary.Binary with subtype 4")
+
+        doc = encode(
+            {"v": value},
+            codec_options=self._codec_options,
+        )
+        if range_opts:
+            range_opts = encode(
+                range_opts.as_doc(),
+                codec_options=self._codec_options,
+            )
+        with _wrap_encryption_errors():
+            encrypted_doc = self._encryption.encrypt(
+                value=doc,
+                algorithm=algorithm,
+                key_id=key_id,
+                key_alt_name=key_alt_name,
+                query_type=query_type,
+                contention_factor=contention_factor,
+                range_opts=range_opts,
+                is_expression=is_expression,
+            )
+            return decode(encrypted_doc)["v"]  # type: ignore[index]
+
     def encrypt(
         self,
         value: Any,
@@ -649,7 +685,7 @@ class ClientEncryption(Generic[_DocumentType]):
         key_alt_name: Optional[str] = None,
         query_type: Optional[str] = None,
         contention_factor: Optional[int] = None,
-        range_options: Optional[EncryptionRangeOpts] = None,
+        range_opts: Optional[RangeOpts] = None,
     ) -> Binary:
         """Encrypt a BSON value with a given key and algorithm.
 
@@ -682,32 +718,16 @@ class ClientEncryption(Generic[_DocumentType]):
            Added the `query_type` and `contention_factor` parameters.
 
         """
-        self._check_closed()
-        if key_id is not None and not (
-            isinstance(key_id, Binary) and key_id.subtype == UUID_SUBTYPE
-        ):
-            raise TypeError("key_id must be a bson.binary.Binary with subtype 4")
-
-        doc = encode(
-            {"v": value},
-            codec_options=self._codec_options,
+        return self._encrypt_helper(
+            value=value,
+            algorithm=algorithm,
+            key_id=key_id,
+            key_alt_name=key_alt_name,
+            query_type=query_type,
+            contention_factor=contention_factor,
+            range_opts=range_opts,
+            is_expression=False,
         )
-        if range_options:
-            range_options = encode(
-                range_options.as_doc(),
-                codec_options=self._codec_options,
-            )
-        with _wrap_encryption_errors():
-            encrypted_doc = self._encryption.encrypt(
-                doc,
-                algorithm,
-                key_id=key_id,
-                key_alt_name=key_alt_name,
-                query_type=query_type,
-                contention_factor=contention_factor,
-                range_opts=range_options,
-            )
-            return decode(encrypted_doc)["v"]  # type: ignore[index]
 
     def encrypt_expression(
         self,
@@ -717,7 +737,7 @@ class ClientEncryption(Generic[_DocumentType]):
         key_alt_name: Optional[str] = None,
         query_type: Optional[str] = None,
         contention_factor: Optional[int] = None,
-        range_options: Optional[EncryptionRangeOpts] = None,
+        range_opts: Optional[RangeOpts] = None,
     ) -> RawBSONDocument:
         """Encrypt a BSON expression with a given key and algorithm.
 
@@ -748,33 +768,16 @@ class ClientEncryption(Generic[_DocumentType]):
 
         .. versionadded:: 4.4
         """
-
-        self._check_closed()
-        if key_id is not None and not (
-            isinstance(key_id, Binary) and key_id.subtype == UUID_SUBTYPE
-        ):
-            raise TypeError("key_id must be a bson.binary.Binary with subtype 4")
-
-        doc = encode(
-            {"v": expression},
-            codec_options=self._codec_options,
+        return self._encrypt_helper(
+            value=expression,
+            algorithm=algorithm,
+            key_id=key_id,
+            key_alt_name=key_alt_name,
+            query_type=query_type,
+            contention_factor=contention_factor,
+            range_opts=range_opts,
+            is_expression=True,
         )
-        range_options = encode(
-            range_options.as_doc(),
-            codec_options=self._codec_options,
-        )
-        with _wrap_encryption_errors():
-            encrypted_doc = self._encryption.encrypt(
-                value=doc,
-                algorithm=algorithm,
-                key_id=key_id,
-                key_alt_name=key_alt_name,
-                query_type=query_type,
-                contention_factor=contention_factor,
-                range_opts=range_options,
-                is_expression=True,
-            )
-            return decode(encrypted_doc)["v"]  # type: ignore[index]
 
     def decrypt(self, value: Binary) -> Any:
         """Decrypt an encrypted value.

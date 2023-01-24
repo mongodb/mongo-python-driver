@@ -66,11 +66,7 @@ from bson.son import SON
 from pymongo import encryption
 from pymongo.cursor import CursorType
 from pymongo.encryption import Algorithm, ClientEncryption, QueryType
-from pymongo.encryption_options import (
-    _HAVE_PYMONGOCRYPT,
-    AutoEncryptionOpts,
-    EncryptionRangeOpts,
-)
+from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts, RangeOpts
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
@@ -2495,7 +2491,7 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
             algorithm=Algorithm.RANGEPREVIEW,
             query_type=QueryType.RANGEPREVIEW,
             contention_factor=0,
-            range_options=range_opts,
+            range_opts=range_opts,
         )
         if use_expr:
             find_payload = {"$expr": find_payload}
@@ -2516,7 +2512,7 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
                 key_id=self.key1_id,
                 algorithm=Algorithm.RANGEPREVIEW,
                 contention_factor=0,
-                range_options=range_opts,
+                range_opts=range_opts,
             )
 
         for elem in [{f"encrypted{name}": encrypt_and_cast(i)} for i in [0, 6, 30, 200]]:
@@ -2528,7 +2524,7 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
             key_id=self.key1_id,
             algorithm=Algorithm.RANGEPREVIEW,
             contention_factor=0,
-            range_options=range_opts,
+            range_opts=range_opts,
         )
         self.assertEqual(self.client_encryption.decrypt(insert_payload), cast_func(6))
 
@@ -2591,7 +2587,7 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
                     key_id=self.key1_id,
                     algorithm=Algorithm.RANGEPREVIEW,
                     contention_factor=0,
-                    range_options=range_opts,
+                    range_opts=range_opts,
                 )
             # Case 7.
             with self.assertRaisesRegex(
@@ -2602,7 +2598,7 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
                     key_id=self.key1_id,
                     algorithm=Algorithm.RANGEPREVIEW,
                     contention_factor=0,
-                    range_options=range_opts,
+                    range_opts=range_opts,
                 )
 
             # Case 8.
@@ -2617,44 +2613,40 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
                         key_id=self.key1_id,
                         algorithm=Algorithm.RANGEPREVIEW,
                         contention_factor=0,
-                        range_options=EncryptionRangeOpts(
+                        range_opts=RangeOpts(
                             min=cast_func(0), max=cast_func(200), sparsity=1, precision=2
                         ),
                     )
 
     def test_double_no_precision(self):
-        self.run_test("DoubleNoPrecision", EncryptionRangeOpts(sparsity=1), float)
+        self.run_test("DoubleNoPrecision", RangeOpts(sparsity=1), float)
 
     def test_double_precision(self):
         self.run_test(
             "DoublePrecision",
-            EncryptionRangeOpts(min=0.0, max=200.0, sparsity=1, precision=2),
+            RangeOpts(min=0.0, max=200.0, sparsity=1, precision=2),
             float,
         )
 
     def test_decimal_no_precision(self):
-        self.run_test(
-            "DecimalNoPrecision", EncryptionRangeOpts(sparsity=1), lambda x: Decimal128(str(x))
-        )
+        self.run_test("DecimalNoPrecision", RangeOpts(sparsity=1), lambda x: Decimal128(str(x)))
 
     def test_decimal_precision(self):
         self.run_test(
             "DecimalPrecision",
-            EncryptionRangeOpts(
-                min=Decimal128("0.0"), max=Decimal128("200.0"), sparsity=1, precision=2
-            ),
+            RangeOpts(min=Decimal128("0.0"), max=Decimal128("200.0"), sparsity=1, precision=2),
             lambda x: Decimal128(str(x)),
         )
 
     def test_datetime(self):
         self.run_test(
             "Date",
-            EncryptionRangeOpts(min=DatetimeMS(0), max=DatetimeMS(200), sparsity=1),
+            RangeOpts(min=DatetimeMS(0), max=DatetimeMS(200), sparsity=1),
             lambda x: DatetimeMS(x).as_datetime(),
         )
 
     def test_int(self):
-        self.run_test("Int", EncryptionRangeOpts(min=0, max=200, sparsity=1), int)
+        self.run_test("Int", RangeOpts(min=0, max=200, sparsity=1), int)
 
 
 if __name__ == "__main__":

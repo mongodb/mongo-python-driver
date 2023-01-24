@@ -221,12 +221,12 @@ class AutoEncryptionOpts(object):
         self._bypass_query_analysis = bypass_query_analysis
 
 
-class EncryptionRangeOpts:
+class RangeOpts:
     """Options to configure encrypted queries using the rangePreview algorithm."""
 
     def __init__(
         self,
-        sparsity: int64,
+        sparsity: int,
         min: Optional[Mapping[str, Any]] = None,
         max: Optional[Mapping[str, Any]] = None,
         precision: Optional[int] = None,
@@ -237,9 +237,9 @@ class EncryptionRangeOpts:
            Backwards-breaking changes may be made before the final release.
 
         :Parameters:
-          - `min`: An Extended JSON Strict expression for a numeric type as a BSON Document like ``{ "$numberDouble": "0" }``.
-          - `max`: An Extended JSON Strict expression as a BSON Document like ``{ "$numberDouble": "0" }``.
           - `sparsity`: An integer.
+          - `min`: A BSON scalar value corresponding to the type being queried.
+          - `max`: A BSON scalar value corresponding to the type being queried.
           - `precision`: An integer, may only be set for double or decimal128 types.
 
         .. versionadded:: 4.4
