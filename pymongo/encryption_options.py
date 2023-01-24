@@ -249,7 +249,8 @@ class RangeOpts:
         self.sparsity = sparsity
         self.precision = precision
 
-    def as_doc(self):
+    @property
+    def document(self) -> Mapping[str, Any]:
         doc = {}
         for k, v in [
             ("sparsity", int64.Int64(self.sparsity)),

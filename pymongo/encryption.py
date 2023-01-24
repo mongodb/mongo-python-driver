@@ -417,7 +417,7 @@ class Algorithm(str, enum.Enum):
     .. versionadded:: 4.2
     """
     RANGEPREVIEW = "RangePreview"
-    """Unindexed.
+    """RangePreview.
 
     .. note:: Support for Range queries is in beta.
        Backwards-breaking changes may be made before the final release.
@@ -661,7 +661,7 @@ class ClientEncryption(Generic[_DocumentType]):
         )
         if range_opts:
             range_opts = encode(
-                range_opts.as_doc(),
+                range_opts.document,
                 codec_options=self._codec_options,
             )
         with _wrap_encryption_errors():
