@@ -19,6 +19,7 @@ import hashlib
 import hmac
 import os
 import socket
+import threading
 from base64 import standard_b64decode, standard_b64encode
 from collections import namedtuple
 from datetime import datetime, timedelta, timezone
@@ -509,6 +510,7 @@ _oidc_auth_cache = {}
 _oidc_exp_utc = {}
 # TOOD: Make a namedtuple for the client resp and the internal storage
 _oidc_buffer_seconds = 5 * 60
+_oidc_locks = {}
 
 
 def _authenticate_oidc(credentials, sock_info):
@@ -538,6 +540,14 @@ def _authenticate_oidc(credentials, sock_info):
     # The cache key includes the client_id, the principal name,
     # and the id of the request callback if provided.
     cache_key = server_payload["clientId"] + str(principal_name)
+
+    if cache_key not in _oidc_locks:
+        _oidc_locks[cache_key] = threading.Lock()
+
+    lock = _oidc_locks[cache_key]
+
+    lock.acquire()
+
     if properties.on_oidc_request_token:
         cache_key += str(id(properties.on_oidc_request_token))
 
@@ -558,6 +568,8 @@ def _authenticate_oidc(credentials, sock_info):
             token = auth["access_token"]
         else:
             client_resp = properties.on_oidc_request_token(server_payload)
+
+    lock.release()
 
     if client_resp is not None:
         token = client_resp["access_token"]
