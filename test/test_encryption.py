@@ -2536,7 +2536,7 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
         for elem, expected in zip(sorted_find, expected_elems):
             self.assertEqual(elem[f"encrypted{name}"], expected)
 
-    def run_test(self, name, range_opts, cast_func):
+    def run_test_cases(self, name, range_opts, cast_func):
         encrypted_fields = json_data("etc", "data", f"range-encryptedFields-{name}.json")
         self.db.drop_collection("explicit_encryption", encrypted_fields=encrypted_fields)
         self.db.create_collection("explicit_encryption", encryptedFields=encrypted_fields)
@@ -2655,34 +2655,36 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
                     )
 
     def test_double_no_precision(self):
-        self.run_test("DoubleNoPrecision", RangeOpts(sparsity=1), float)
+        self.run_test_cases("DoubleNoPrecision", RangeOpts(sparsity=1), float)
 
     def test_double_precision(self):
-        self.run_test(
+        self.run_test_cases(
             "DoublePrecision",
             RangeOpts(min=0.0, max=200.0, sparsity=1, precision=2),
             float,
         )
 
     def test_decimal_no_precision(self):
-        self.run_test("DecimalNoPrecision", RangeOpts(sparsity=1), lambda x: Decimal128(str(x)))
+        self.run_test_cases(
+            "DecimalNoPrecision", RangeOpts(sparsity=1), lambda x: Decimal128(str(x))
+        )
 
     def test_decimal_precision(self):
-        self.run_test(
+        self.run_test_cases(
             "DecimalPrecision",
             RangeOpts(min=Decimal128("0.0"), max=Decimal128("200.0"), sparsity=1, precision=2),
             lambda x: Decimal128(str(x)),
         )
 
     def test_datetime(self):
-        self.run_test(
+        self.run_test_cases(
             "Date",
             RangeOpts(min=DatetimeMS(0), max=DatetimeMS(200), sparsity=1),
             lambda x: DatetimeMS(x).as_datetime(),
         )
 
     def test_int(self):
-        self.run_test("Int", RangeOpts(min=0, max=200, sparsity=1), int)
+        self.run_test_cases("Int", RangeOpts(min=0, max=200, sparsity=1), int)
 
 
 if __name__ == "__main__":
