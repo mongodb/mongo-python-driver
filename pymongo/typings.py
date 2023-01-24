@@ -15,9 +15,14 @@
 """Type aliases used by PyMongo"""
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, Tuple, Union
 
+from bson.typings import (  # noqa
+    _DocumentIn,
+    _DocumentOut,
+    _DocumentType,
+    _DocumentTypeArg,
+)
+
 if TYPE_CHECKING:
-    from bson.raw_bson import RawBSONDocument
-    from bson.typings import _DocumentIn, _DocumentOut, _DocumentType, _DocumentTypeArg
     from pymongo.collation import Collation
 
 
