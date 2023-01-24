@@ -14,7 +14,7 @@
 
 """Support for automatic client-side field level encryption."""
 
-from typing import TYPE_CHECKING, Any, List, Mapping, Optional, Union
+from typing import TYPE_CHECKING, Any, List, Mapping, Optional
 
 try:
     import pymongocrypt  # noqa: F401
@@ -227,8 +227,8 @@ class RangeOpts:
     def __init__(
         self,
         sparsity: int,
-        min: Optional[Mapping[str, Any]] = None,
-        max: Optional[Mapping[str, Any]] = None,
+        min: Optional[Any] = None,
+        max: Optional[Any] = None,
         precision: Optional[int] = None,
     ) -> None:
         """Options to configure encrypted queries using the rangePreview algorithm.
