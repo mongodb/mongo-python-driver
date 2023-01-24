@@ -59,7 +59,7 @@ from test.utils import (
 )
 from test.utils_spec_runner import SpecRunner
 
-from bson import encode, json_util
+from bson import DatetimeMS, Decimal128, encode, json_util
 from bson.binary import UUID_SUBTYPE, Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.errors import BSONError
@@ -68,7 +68,7 @@ from bson.son import SON
 from pymongo import encryption
 from pymongo.cursor import CursorType
 from pymongo.encryption import Algorithm, ClientEncryption, QueryType
-from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts
+from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts, RangeOpts
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
@@ -2492,6 +2492,199 @@ class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):
         assert isinstance(res["encrypted_unindexed"], Binary)
 
         client_encryption.close()
+
+
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#range-explicit-encryption
+class TestRangeQueryProse(EncryptionIntegrationTest):
+    @client_context.require_no_standalone
+    @client_context.require_version_min(6, 2, -1)
+    def setUp(self):
+        super().setUp()
+        self.key1_document = json_data("etc", "data", "keys", "key1-document.json")
+        self.key1_id = self.key1_document["_id"]
+        self.client.drop_database(self.db)
+        key_vault = create_key_vault(self.client.keyvault.datakeys, self.key1_document)
+        self.addCleanup(key_vault.drop)
+        self.key_vault_client = self.client
+        self.client_encryption = ClientEncryption(
+            {"local": {"key": LOCAL_MASTER_KEY}}, key_vault.full_name, self.key_vault_client, OPTS
+        )
+        self.addCleanup(self.client_encryption.close)
+        opts = AutoEncryptionOpts(
+            {"local": {"key": LOCAL_MASTER_KEY}},
+            key_vault.full_name,
+            bypass_query_analysis=True,
+        )
+        self.encrypted_client = rs_or_single_client(auto_encryption_opts=opts)
+        self.db = self.encrypted_client.db
+        self.addCleanup(self.encrypted_client.close)
+
+    def run_expression_find(self, name, expression, expected_elems, range_opts, use_expr=False):
+        find_payload = self.client_encryption.encrypt_expression(
+            expression=expression,
+            key_id=self.key1_id,
+            algorithm=Algorithm.RANGEPREVIEW,
+            query_type=QueryType.RANGEPREVIEW,
+            contention_factor=0,
+            range_opts=range_opts,
+        )
+        if use_expr:
+            find_payload = {"$expr": find_payload}
+        sorted_find = sorted(
+            self.encrypted_client.db.explicit_encryption.find(find_payload), key=lambda x: x["_id"]
+        )
+        for elem, expected in zip(sorted_find, expected_elems):
+            self.assertEqual(elem[f"encrypted{name}"], expected)
+
+    def run_test_cases(self, name, range_opts, cast_func):
+        encrypted_fields = json_data("etc", "data", f"range-encryptedFields-{name}.json")
+        self.db.drop_collection("explicit_encryption", encrypted_fields=encrypted_fields)
+        self.db.create_collection("explicit_encryption", encryptedFields=encrypted_fields)
+
+        def encrypt_and_cast(i):
+            return self.client_encryption.encrypt(
+                cast_func(i),
+                key_id=self.key1_id,
+                algorithm=Algorithm.RANGEPREVIEW,
+                contention_factor=0,
+                range_opts=range_opts,
+            )
+
+        for elem in [{f"encrypted{name}": encrypt_and_cast(i)} for i in [0, 6, 30, 200]]:
+            self.encrypted_client.db.explicit_encryption.insert_one(elem)
+
+        # Case 1.
+        insert_payload = self.client_encryption.encrypt(
+            cast_func(6),
+            key_id=self.key1_id,
+            algorithm=Algorithm.RANGEPREVIEW,
+            contention_factor=0,
+            range_opts=range_opts,
+        )
+        self.assertEqual(self.client_encryption.decrypt(insert_payload), cast_func(6))
+
+        # Case 2.
+        self.run_expression_find(
+            name,
+            {
+                "$and": [
+                    {f"encrypted{name}": {"$gte": cast_func(6)}},
+                    {f"encrypted{name}": {"$lte": cast_func(200)}},
+                ]
+            },
+            [cast_func(i) for i in [6, 30, 200]],
+            range_opts,
+        )
+
+        # Case 3.
+        self.run_expression_find(
+            name,
+            {
+                "$and": [
+                    {f"encrypted{name}": {"$gte": cast_func(0)}},
+                    {f"encrypted{name}": {"$lte": cast_func(6)}},
+                ]
+            },
+            [cast_func(i) for i in [0, 6]],
+            range_opts,
+        )
+
+        # Case 4.
+        self.run_expression_find(
+            name,
+            {
+                "$and": [
+                    {f"encrypted{name}": {"$gt": cast_func(30)}},
+                ]
+            },
+            [cast_func(i) for i in [200]],
+            range_opts,
+        )
+
+        # Case 5.
+        self.run_expression_find(
+            name,
+            {"$and": [{"$lt": [f"$encrypted{name}", cast_func(30)]}]},
+            [cast_func(i) for i in [0, 6]],
+            range_opts,
+            use_expr=True,
+        )
+
+        # The spec says to skip the following tests for no precision decimal or double types.
+        if name not in ("DoubleNoPrecision", "DecimalNoPrecision"):
+            # Case 6.
+            with self.assertRaisesRegex(
+                EncryptionError,
+                "greater than or equal to the minimum value and less than or equal to the maximum value",
+            ):
+                self.client_encryption.encrypt(
+                    cast_func(201),
+                    key_id=self.key1_id,
+                    algorithm=Algorithm.RANGEPREVIEW,
+                    contention_factor=0,
+                    range_opts=range_opts,
+                )
+
+            # Case 7.
+            with self.assertRaisesRegex(
+                EncryptionError, "expected matching 'min' and value type. Got range option"
+            ):
+                self.client_encryption.encrypt(
+                    int(6) if cast_func != int else float(6),
+                    key_id=self.key1_id,
+                    algorithm=Algorithm.RANGEPREVIEW,
+                    contention_factor=0,
+                    range_opts=range_opts,
+                )
+
+            # Case 8.
+            # The spec says we must additionally not run this case with any precision type, not just the ones above.
+            if "Precision" not in name:
+                with self.assertRaisesRegex(
+                    EncryptionError,
+                    "expected 'precision' to be set with double or decimal128 index, but got:",
+                ):
+                    self.client_encryption.encrypt(
+                        cast_func(6),
+                        key_id=self.key1_id,
+                        algorithm=Algorithm.RANGEPREVIEW,
+                        contention_factor=0,
+                        range_opts=RangeOpts(
+                            min=cast_func(0), max=cast_func(200), sparsity=1, precision=2
+                        ),
+                    )
+
+    def test_double_no_precision(self):
+        self.run_test_cases("DoubleNoPrecision", RangeOpts(sparsity=1), float)
+
+    def test_double_precision(self):
+        self.run_test_cases(
+            "DoublePrecision",
+            RangeOpts(min=0.0, max=200.0, sparsity=1, precision=2),
+            float,
+        )
+
+    def test_decimal_no_precision(self):
+        self.run_test_cases(
+            "DecimalNoPrecision", RangeOpts(sparsity=1), lambda x: Decimal128(str(x))
+        )
+
+    def test_decimal_precision(self):
+        self.run_test_cases(
+            "DecimalPrecision",
+            RangeOpts(min=Decimal128("0.0"), max=Decimal128("200.0"), sparsity=1, precision=2),
+            lambda x: Decimal128(str(x)),
+        )
+
+    def test_datetime(self):
+        self.run_test_cases(
+            "Date",
+            RangeOpts(min=DatetimeMS(0), max=DatetimeMS(200), sparsity=1),
+            lambda x: DatetimeMS(x).as_datetime(),
+        )
+
+    def test_int(self):
+        self.run_test_cases("Int", RangeOpts(min=0, max=200, sparsity=1), int)
 
 
 if __name__ == "__main__":

@@ -41,7 +41,7 @@ from bson.son import SON
 from pymongo import _csot
 from pymongo.cursor import Cursor
 from pymongo.daemon import _spawn_daemon
-from pymongo.encryption_options import AutoEncryptionOpts
+from pymongo.encryption_options import AutoEncryptionOpts, RangeOpts
 from pymongo.errors import (
     ConfigurationError,
     EncryptionError,
@@ -416,6 +416,14 @@ class Algorithm(str, enum.Enum):
 
     .. versionadded:: 4.2
     """
+    RANGEPREVIEW = "RangePreview"
+    """RangePreview.
+
+    .. note:: Support for Range queries is in beta.
+       Backwards-breaking changes may be made before the final release.
+
+    .. versionadded:: 4.4
+    """
 
 
 class QueryType(str, enum.Enum):
@@ -429,6 +437,9 @@ class QueryType(str, enum.Enum):
 
     EQUALITY = "equality"
     """Used to encrypt a value for an equality query."""
+
+    RANGEPREVIEW = "rangePreview"
+    """Used to encrypt a value for a range query."""
 
 
 class ClientEncryption(Generic[_DocumentType]):
@@ -627,6 +638,45 @@ class ClientEncryption(Generic[_DocumentType]):
                 key_material=key_material,
             )
 
+    def _encrypt_helper(
+        self,
+        value,
+        algorithm,
+        key_id=None,
+        key_alt_name=None,
+        query_type=None,
+        contention_factor=None,
+        range_opts=None,
+        is_expression=False,
+    ):
+        self._check_closed()
+        if key_id is not None and not (
+            isinstance(key_id, Binary) and key_id.subtype == UUID_SUBTYPE
+        ):
+            raise TypeError("key_id must be a bson.binary.Binary with subtype 4")
+
+        doc = encode(
+            {"v": value},
+            codec_options=self._codec_options,
+        )
+        if range_opts:
+            range_opts = encode(
+                range_opts.document,
+                codec_options=self._codec_options,
+            )
+        with _wrap_encryption_errors():
+            encrypted_doc = self._encryption.encrypt(
+                value=doc,
+                algorithm=algorithm,
+                key_id=key_id,
+                key_alt_name=key_alt_name,
+                query_type=query_type,
+                contention_factor=contention_factor,
+                range_opts=range_opts,
+                is_expression=is_expression,
+            )
+            return decode(encrypted_doc)["v"]  # type: ignore[index]
+
     def encrypt(
         self,
         value: Any,
@@ -635,6 +685,7 @@ class ClientEncryption(Generic[_DocumentType]):
         key_alt_name: Optional[str] = None,
         query_type: Optional[str] = None,
         contention_factor: Optional[int] = None,
+        range_opts: Optional[RangeOpts] = None,
     ) -> Binary:
         """Encrypt a BSON value with a given key and algorithm.
 
@@ -655,10 +706,10 @@ class ClientEncryption(Generic[_DocumentType]):
             when the algorithm is :attr:`Algorithm.INDEXED`.  An integer value
             *must* be given when the :attr:`Algorithm.INDEXED` algorithm is
             used.
+          - `range_opts`: **(BETA)** An instance of RangeOpts.
 
-        .. note:: `query_type` and `contention_factor` are part of the
-           Queryable Encryption beta. Backwards-breaking changes may be made before the
-           final release.
+        .. note:: `query_type`, `contention_factor` and `range_opts` are part of the Queryable Encryption beta.
+           Backwards-breaking changes may be made before the final release.
 
         :Returns:
           The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
@@ -667,23 +718,66 @@ class ClientEncryption(Generic[_DocumentType]):
            Added the `query_type` and `contention_factor` parameters.
 
         """
-        self._check_closed()
-        if key_id is not None and not (
-            isinstance(key_id, Binary) and key_id.subtype == UUID_SUBTYPE
-        ):
-            raise TypeError("key_id must be a bson.binary.Binary with subtype 4")
+        return self._encrypt_helper(
+            value=value,
+            algorithm=algorithm,
+            key_id=key_id,
+            key_alt_name=key_alt_name,
+            query_type=query_type,
+            contention_factor=contention_factor,
+            range_opts=range_opts,
+            is_expression=False,
+        )
 
-        doc = encode({"v": value}, codec_options=self._codec_options)
-        with _wrap_encryption_errors():
-            encrypted_doc = self._encryption.encrypt(
-                doc,
-                algorithm,
-                key_id=key_id,
-                key_alt_name=key_alt_name,
-                query_type=query_type,
-                contention_factor=contention_factor,
-            )
-            return decode(encrypted_doc)["v"]  # type: ignore[index]
+    def encrypt_expression(
+        self,
+        expression: Mapping[str, Any],
+        algorithm: str,
+        key_id: Optional[Binary] = None,
+        key_alt_name: Optional[str] = None,
+        query_type: Optional[str] = None,
+        contention_factor: Optional[int] = None,
+        range_opts: Optional[RangeOpts] = None,
+    ) -> RawBSONDocument:
+        """Encrypt a BSON expression with a given key and algorithm.
+
+        Note that exactly one of ``key_id`` or  ``key_alt_name`` must be
+        provided.
+
+        :Parameters:
+          - `expression`: **(BETA)** The BSON aggregate or match expression to encrypt.
+          - `algorithm` (string): The encryption algorithm to use. See
+            :class:`Algorithm` for some valid options.
+          - `key_id`: Identifies a data key by ``_id`` which must be a
+            :class:`~bson.binary.Binary` with subtype 4 (
+            :attr:`~bson.binary.UUID_SUBTYPE`).
+          - `key_alt_name`: Identifies a key vault document by 'keyAltName'.
+          - `query_type` (str): **(BETA)** The query type to execute. See
+            :class:`QueryType` for valid options.
+          - `contention_factor` (int): **(BETA)** The contention factor to use
+            when the algorithm is :attr:`Algorithm.INDEXED`.  An integer value
+            *must* be given when the :attr:`Algorithm.INDEXED` algorithm is
+            used.
+          - `range_opts`: **(BETA)** An instance of RangeOpts.
+
+        .. note:: Support for range queries is in beta.
+           Backwards-breaking changes may be made before the final release.
+
+        :Returns:
+          The encrypted expression, a :class:`~bson.RawBSONDocument`.
+
+        .. versionadded:: 4.4
+        """
+        return self._encrypt_helper(
+            value=expression,
+            algorithm=algorithm,
+            key_id=key_id,
+            key_alt_name=key_alt_name,
+            query_type=query_type,
+            contention_factor=contention_factor,
+            range_opts=range_opts,
+            is_expression=True,
+        )
 
     def decrypt(self, value: Binary) -> Any:
         """Decrypt an encrypted value.
