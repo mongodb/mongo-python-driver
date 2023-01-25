@@ -67,7 +67,18 @@ jobs:
           mypy --install-types --non-interactive bson/codec_options.py
           mypy --install-types --non-interactive --disable-error-code var-annotated --disable-error-code attr-defined --disable-error-code union-attr --disable-error-code assignment --disable-error-code no-redef --disable-error-code index --allow-redefinition --allow-untyped-globals --exclude "test/mypy_fails/*.*" test
           python -m pip install -U typing_extensions
-          mypy --install-types --non-interactive test/test_mypy.py
+          mypy --install-types --non-interactive test/test_typing.py test/test_typing_strict.py
+      - name: Run mypy strict
+        run: |
+          mypy --strict test/test_typing_strict.py
+      - name: Run pyright
+        run: |
+          python -m pip install -U pip pyright==1.1.290
+          pyright test/test_typing.py test/test_typing_strict.py
+      - name: Run pyright strict
+        run: |
+          echo '{"strict": ["tests/test_typing_strict.py"]}' >>  pyrightconfig.json
+          pyright test/test_typing_strict.py
 
   linkcheck:
     name: Check Links

@@ -53,7 +53,8 @@ from typing import (
     cast,
 )
 
-from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
+import bson
+from bson.codec_options import DEFAULT_CODEC_OPTIONS, TypeRegistry
 from bson.son import SON
 from bson.timestamp import Timestamp
 from pymongo import (
@@ -90,7 +91,13 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.settings import TopologySettings
 from pymongo.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
-from pymongo.typings import _Address, _CollationIn, _DocumentType, _Pipeline
+from pymongo.typings import (
+    _Address,
+    _CollationIn,
+    _DocumentType,
+    _DocumentTypeArg,
+    _Pipeline,
+)
 from pymongo.uri_parser import (
     _check_options,
     _handle_option_deprecations,
@@ -1875,7 +1882,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     @_csot.apply
     def drop_database(
         self,
-        name_or_database: Union[str, database.Database],
+        name_or_database: Union[str, database.Database[_DocumentTypeArg]],
         session: Optional[client_session.ClientSession] = None,
         comment: Optional[Any] = None,
     ) -> None:
@@ -1928,7 +1935,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def get_default_database(
         self,
         default: Optional[str] = None,
-        codec_options: Optional[CodecOptions] = None,
+        codec_options: Optional["bson.CodecOptions[_DocumentTypeArg]"] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional["ReadConcern"] = None,
@@ -1989,7 +1996,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def get_database(
         self,
         name: Optional[str] = None,
-        codec_options: Optional[CodecOptions] = None,
+        codec_options: Optional["bson.CodecOptions[_DocumentTypeArg]"] = None,
         read_preference: Optional[_ServerMode] = None,
         write_concern: Optional[WriteConcern] = None,
         read_concern: Optional["ReadConcern"] = None,

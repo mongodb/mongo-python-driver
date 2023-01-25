@@ -20,7 +20,7 @@ type of document object returned when decoding BSON documents.
 Due to `limitations in mypy`_, the default
 values for generic document types are not yet provided (they will eventually be ``Dict[str, any]``).
 
-For a larger set of examples that use types, see the PyMongo `test_mypy module`_.
+For a larger set of examples that use types, see the PyMongo `test_typing module`_.
 
 If you would like to opt out of using the provided types, add the following to
 your `mypy config`_: ::
@@ -326,5 +326,5 @@ Another example is trying to set a value on a :class:`~bson.raw_bson.RawBSONDocu
 .. _mypy: https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html
 .. _limitations in mypy: https://github.com/python/mypy/issues/3737
 .. _mypy config: https://mypy.readthedocs.io/en/stable/config_file.html
-.. _test_mypy module: https://github.com/mongodb/mongo-python-driver/blob/master/test/test_mypy.py
+.. _test_typing module: https://github.com/mongodb/mongo-python-driver/blob/master/test/test_typing.py
 .. _schema validation: https://www.mongodb.com/docs/manual/core/schema-validation/#when-to-use-schema-validation
