@@ -10,6 +10,7 @@ Changes in Version 4.4
 - pymongocrypt 1.5.0 or later is now required for client side field level
   encryption support.
 - Improved support for Pyright to improve typing support for IDEs like Visual Studio Code or Visual Studio.
+- Added support for type-checking with MyPy "strict" mode (`--strict`).
 - Added support for Python 3.11.
 
 Issues Resolved
