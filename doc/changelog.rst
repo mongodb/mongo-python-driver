@@ -6,6 +6,12 @@ Changes in Version 4.4
 
 - Added support for passing a list containing (key, direction) pairs
   or keys to :meth:`~pymongo.collection.Collection.create_index`.
+- **BETA** Added support for range queries on client side field level encrypted collections.
+- pymongocrypt 1.5.0 or later is now required for client side field level
+  encryption support.
+- Improved support for Pyright to improve typing support for IDEs like Visual Studio Code or Visual Studio.
+- Improved support for type-checking with MyPy "strict" mode (`--strict`).
+- Added support for Python 3.11.
 
 Issues Resolved
 ...............

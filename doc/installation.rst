@@ -197,4 +197,4 @@ but can be found on the
 `GitHub tags page <https://github.com/mongodb/mongo-python-driver/tags>`_.
 They can be installed by passing the full URL for the tag to pip::
 
-  $ python3 -m pip install https://github.com/mongodb/mongo-python-driver/archive/3.11.0rc0.tar.gz
+  $ python3 -m pip install https://github.com/mongodb/mongo-python-driver/archive/4.4.0b0.tar.gz
