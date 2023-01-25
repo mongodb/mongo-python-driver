@@ -787,7 +787,6 @@ functions:
           # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
           cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_oidc.sh"
             export AWS_WEB_IDENTITY_TOKEN_FILE=${AWS_WEB_IDENTITY_TOKEN_FILE|/tmp/tokens/test1}
-            export USE_MULTIPLE_PRINCIPALS=${USE_MULTIPLE_PRINCIPALS}
           EOF
     - command: shell.exec
       type: test
@@ -799,7 +798,7 @@ functions:
              echo "This platform does not support the oidc auth test, skipping..."
              exit 0
           fi
-          PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true USE_MULTIPLE_PRINCIPALS=${USE_MULTIPLE_PRINCIPALS} .evergreen/run-mongodb-oidc-test.sh
+          PYTHON_BINARY=${PYTHON_BINARY} ASSERT_NO_URI_CREDS=true .evergreen/run-mongodb-oidc-test.sh
 
   "run aws auth test with aws credentials as environment variables":
     - command: shell.exec
@@ -2037,36 +2036,17 @@ tasks:
         - func: "run aws auth test with aws web identity credentials"
         - func: "run aws ECS auth test"
 
-    - name: "oidc-auth-test-single-latest"
+    - name: "oidc-auth-test-latest"
       commands:
         - func: "bootstrap oidc"
-          vars:
-            USE_MULTIPLE_PRINCIPALS: "false"
         - func: "bootstrap mongo-orchestration"
           vars:
             AUTH: "auth"
             ORCHESTRATION_FILE: "auth-oidc.json"
-            TOPOLOGY: "server"
+            TOPOLOGY: "replica_set"
             VERSION: "latest"
         - func: "run oidc auth test with aws credentials"
           vars:
-            USE_MULTIPLE_PRINCIPALS: "false"
-            AWS_WEB_IDENTITY_TOKEN_FILE: /tmp/tokens/test1
-
-    - name: "oidc-auth-test-multiple-latest"
-      commands:
-        - func: "bootstrap oidc"
-          vars:
-            USE_MULTIPLE_PRINCIPALS: "true"
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            AUTH: "auth"
-            ORCHESTRATION_FILE: "auth-oidc.json"
-            TOPOLOGY: "server"
-            VERSION: "latest"
-        - func: "run oidc auth test with aws credentials"
-          vars:
-            USE_MULTIPLE_PRINCIPALS: "true"
             AWS_WEB_IDENTITY_TOKEN_FILE: /tmp/tokens/test1
 
     - name: load-balancer-test
@@ -3127,8 +3107,7 @@ buildvariants:
     python-version: ["3.9"]
   display_name: "MONGODB-OIDC Auth ${platform} ${python-version}"
   tasks:
-    - name: "oidc-auth-test-single-latest"
-    - name: "oidc-auth-test-multiple-latest"
+    - name: "oidc-auth-test-latest"
 
 - matrix_name: "aws-auth-test"
   matrix_spec:
