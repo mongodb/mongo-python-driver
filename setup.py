@@ -281,7 +281,7 @@ if sys.platform in ("win32", "darwin"):
 aws_reqs = ["pymongo-auth-aws<2.0.0"]
 
 extras_require = {
-    "encryption": ["pymongocrypt>=1.3.0,<2.0.0"] + aws_reqs,
+    "encryption": ["pymongocrypt>=1.5.0,<2.0.0"] + aws_reqs,
     "ocsp": pyopenssl_reqs,
     "snappy": ["python-snappy"],
     "zstd": ["zstandard"],
