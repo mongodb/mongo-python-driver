@@ -23,7 +23,7 @@ import threading
 from base64 import standard_b64decode, standard_b64encode
 from collections import namedtuple
 from datetime import datetime, timedelta, timezone
-from typing import Callable, Mapping
+from typing import Callable, Dict, Mapping
 from urllib.parse import quote
 
 import bson
@@ -506,11 +506,11 @@ interface OIDCRequestTokenResult {
 }
 """
 
-_oidc_auth_cache = {}
-_oidc_exp_utc = {}
+_oidc_auth_cache: Dict = {}
+_oidc_exp_utc: Dict = {}
 # TOOD: Make a namedtuple for the client resp and the internal storage
 _oidc_buffer_seconds = 5 * 60
-_oidc_locks = {}
+_oidc_locks: Dict = {}
 
 
 def _authenticate_oidc(credentials, sock_info):
@@ -533,7 +533,7 @@ def _authenticate_oidc(credentials, sock_info):
         ]
     )
     response = sock_info.command("$external", cmd)
-    server_payload = bson.decode(response["payload"])
+    server_payload: Dict = bson.decode(response["payload"])
     client_resp = None
     token = None
 
@@ -554,7 +554,7 @@ def _authenticate_oidc(credentials, sock_info):
         now_utc = datetime.now(timezone.utc)
         exp_utc = _oidc_exp_utc[cache_key]
         if (exp_utc - now_utc).total_seconds() <= _oidc_buffer_seconds:
-            del _oidc_auth_cache[cache_key]
+            auth = _oidc_auth_cache.pop(cache_key)
             if properties.on_oidc_refresh_token:
                 client_resp = properties.on_oidc_refresh_token(server_payload, auth)
             else:

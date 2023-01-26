@@ -430,10 +430,10 @@ _MECHANISM_PROPS = frozenset(
 
 def validate_auth_mechanism_properties(option: str, value: Any) -> Dict[str, Union[bool, str]]:
     """Validate authMechanismProperties."""
+    props: Dict[str, Any] = {}
     if not isinstance(value, str):
         if not isinstance(value, dict):
             raise ValueError("Auth mechansim properties must be given as a string or a dictionary")
-        props = {}
         for key, value in value.items():
             if isinstance(value, str):
                 props[key] = value
@@ -450,7 +450,6 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> Dict[str, Uni
         return props
 
     value = validate_string(option, value)
-    props: Dict[str, Any] = {}
     for opt in value.split(","):
         try:
             key, val = opt.split(":")
