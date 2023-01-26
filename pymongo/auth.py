@@ -508,6 +508,7 @@ interface OIDCRequestTokenResult {
 
 _oidc_auth_cache: Dict = {}
 _oidc_exp_utc: Dict = {}
+_oidc_server_cache: Dict = {}
 # TOOD: Make a namedtuple for the client resp and the internal storage
 _oidc_buffer_seconds = 5 * 60
 _oidc_locks: Dict = {}
@@ -517,37 +518,58 @@ def _authenticate_oidc(credentials, sock_info):
     """Authenticate using MONGODB-OIDC."""
     properties: _OIDCProperties = credentials.mechanism_properties
 
-    # Send the SASL start with the optional principal name.
-    payload = dict()
+    if properties.device_name == "aws":
+        aws_identity_file = os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"]
+        with open(aws_identity_file) as fid:
+            token = fid.read().strip()
+        payload = dict(jwt=token)
+        cmd = SON(
+            [
+                ("saslStart", 1),
+                ("payload", Binary(bson.encode(payload))),
+            ]
+        )
+        response = sock_info.command("$external", cmd)
+        if not response["done"]:
+            raise OperationFailure("SASL conversation failed to complete.")
+        return
+
+    address = sock_info.address
     principal_name = properties.principal_name
+    cache_key = f"{principal_name}{address[0]}{address[1]}"
 
-    if principal_name:
-        payload["n"] = principal_name
+    skip_step1 = cache_key in _oidc_server_cache
+    conversation_id = None
 
-    cmd = SON(
-        [
-            ("saslStart", 1),
-            ("mechanism", "MONGODB-OIDC"),
-            ("payload", Binary(bson.encode(payload))),
-            ("autoAuthorize", 1),
-        ]
-    )
-    response = sock_info.command("$external", cmd)
-    server_payload: Dict = bson.decode(response["payload"])
+    if not skip_step1:
+        # Send the SASL start with the optional principal name.
+        payload = dict()
+
+        if principal_name:
+            payload["n"] = principal_name
+
+        cmd = SON(
+            [
+                ("saslStart", 1),
+                ("mechanism", "MONGODB-OIDC"),
+                ("payload", Binary(bson.encode(payload))),
+                ("autoAuthorize", 1),
+            ]
+        )
+        response = sock_info.command("$external", cmd)
+        _oidc_server_cache[cache_key] = bson.decode(response["payload"])
+        conversation_id = response["conversationId"]
+
     client_resp = None
     token = None
-
-    # The cache key includes the client_id, the principal name,
-    # and the id of the request callback if provided.
-    cache_key = server_payload["clientId"] + str(principal_name)
-    if properties.on_oidc_request_token:
-        cache_key += str(id(properties.on_oidc_request_token))
 
     if cache_key not in _oidc_locks:
         _oidc_locks[cache_key] = threading.Lock()
 
     lock = _oidc_locks[cache_key]
     lock.acquire()
+
+    server_payload = _oidc_server_cache[cache_key]
 
     if cache_key in _oidc_auth_cache:
         client_resp = _oidc_auth_cache[cache_key]
@@ -579,19 +601,17 @@ def _authenticate_oidc(credentials, sock_info):
                 _oidc_exp_utc[principal_name] = exp_utc
                 _oidc_auth_cache[cache_key] = client_resp.copy()
 
-    elif properties.device_name == "aws":
-        aws_identity_file = os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"]
-        with open(aws_identity_file) as fid:
-            token = fid.read().strip()
+    payload = Binary(bson.encode(dict(jwt=token)))
 
-    payload = dict(jwt=token)
-    cmd = SON(
-        [
-            ("saslContinue", 1),
-            ("conversationId", response["conversationId"]),
-            ("payload", Binary(bson.encode(payload))),
-        ]
-    )
+    if skip_step1:
+        cmd = SON([("saslContinue", 1), ("conversationId", conversation_id), ("payload", payload)])
+    else:
+        cmd = SON(
+            [
+                ("saslStart", 1),
+                ("payload", payload),
+            ]
+        )
 
     try:
         response = sock_info.command("$external", cmd)
