@@ -24,7 +24,7 @@ import datetime
 import random
 import struct
 from io import BytesIO as _BytesIO
-from typing import Any, Dict, NoReturn
+from typing import Any, Mapping, NoReturn
 
 import bson
 from bson import CodecOptions, _decode_selective, _dict_to_bson, _make_c_string, encode
@@ -81,7 +81,7 @@ _OP_MAP = {
 }
 _FIELD_MAP = {"insert": "documents", "update": "updates", "delete": "deletes"}
 
-_UNICODE_REPLACE_CODEC_OPTIONS: "CodecOptions[Dict[str, Any]]" = CodecOptions(
+_UNICODE_REPLACE_CODEC_OPTIONS: "CodecOptions[Mapping[str, Any]]" = CodecOptions(
     unicode_decode_error_handler="replace"
 )
 

@@ -581,7 +581,9 @@ class TestSCRAM(IntegrationTest):
         coll.insert_one({"_id": 1})
 
         # The first thread to call find() will authenticate
-        coll = rs_or_single_client().db.test
+        client = rs_or_single_client()
+        self.addCleanup(client.close)
+        coll = client.db.test
         threads = []
         for _ in range(4):
             threads.append(AutoAuthenticateThread(coll))
