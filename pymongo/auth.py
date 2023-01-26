@@ -526,6 +526,7 @@ def _authenticate_oidc(credentials, sock_info):
         cmd = SON(
             [
                 ("saslStart", 1),
+                ("mechanism", "MONGODB-OIDC"),
                 ("payload", Binary(bson.encode(payload))),
             ]
         )
@@ -604,11 +605,19 @@ def _authenticate_oidc(credentials, sock_info):
     payload = Binary(bson.encode(dict(jwt=token)))
 
     if skip_step1:
-        cmd = SON([("saslContinue", 1), ("conversationId", conversation_id), ("payload", payload)])
+        cmd = SON(
+            [
+                ("saslContinue", 1),
+                ("mechanism", "MONGODB-OIDC"),
+                ("conversationId", conversation_id),
+                ("payload", payload),
+            ]
+        )
     else:
         cmd = SON(
             [
                 ("saslStart", 1),
+                ("mechanism", "MONGODB-OIDC"),
                 ("payload", payload),
             ]
         )
