@@ -2713,44 +2713,45 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
         self.db = self.encrypted_client.db
         self.addCleanup(self.encrypted_client.close)
 
-    def test_simple_create(self):
-        coll, _ = self.db.create_encrypted_collection(
+    def test_01_simple_create(self):
+        coll, _ = self.client_encryption.create_encrypted_collection(
+            database=self.db,
             name="testing1",
             encryptedFields={"fields": [{"path": "ssn", "bsonType": "string", "keyId": None}]},
             kms_provider="local",
-            client_encryption=self.client_encryption,
         )
-        with self.assertRaisesRegex(WriteError, "schemaRulesNotSatisfied"):
+        with self.assertRaises(WriteError) as exc:
             coll.insert_one({"ssn": "123-45-6789"})
+        self.assertEqual(exc.exception.code, 121)
 
-    def test_no_fields(self):
+    def test_02_no_fields(self):
         with self.assertRaisesRegex(
             EncryptionError,
             "'encryptedFields' must be provided as a keyword argument to create_encrypted_collection",
         ):
-            self.db.create_encrypted_collection(
-                name="testing1", client_encryption=self.client_encryption
+            self.client_encryption.create_encrypted_collection(
+                database=self.db,
+                name="testing1",
             )
 
-    def test_invalid_keyid(self):
+    def test_03_invalid_keyid(self):
         with self.assertRaisesRegex(
             OperationFailure,
             "create.encryptedFields.fields.keyId' is the wrong type 'bool', expected type 'binData",
         ):
-            self.db.create_encrypted_collection(
+            self.client_encryption.create_encrypted_collection(
+                database=self.db,
                 name="testing1",
                 encryptedFields={"fields": [{"path": "ssn", "bsonType": "string", "keyId": False}]},
                 kms_provider="local",
-                client_encryption=self.client_encryption,
             )
 
-    def test_insert_encrypted(self):
-        self.encrypted_client.drop_database("db")
-        coll, ef = self.db.create_encrypted_collection(
+    def test_04_insert_encrypted(self):
+        coll, ef = self.client_encryption.create_encrypted_collection(
+            database=self.db,
             name="testing1",
             encryptedFields={"fields": [{"path": "ssn", "bsonType": "string", "keyId": None}]},
             kms_provider="local",
-            client_encryption=self.client_encryption,
         )
         key1_id = ef["fields"][0]["keyId"]
         encrypted_value = self.client_encryption.encrypt(

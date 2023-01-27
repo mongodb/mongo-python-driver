@@ -18,7 +18,7 @@ import contextlib
 import enum
 import socket
 import weakref
-from typing import Any, Generic, Mapping, Optional, Sequence
+from typing import Any, Generic, Mapping, Optional, Sequence, Tuple
 
 try:
     from pymongocrypt.auto_encrypter import AutoEncrypter
@@ -39,6 +39,7 @@ from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from bson.son import SON
 from pymongo import _csot
+from pymongo.collection import Collection
 from pymongo.cursor import Cursor
 from pymongo.daemon import _spawn_daemon
 from pymongo.encryption_options import AutoEncryptionOpts, RangeOpts
@@ -47,6 +48,7 @@ from pymongo.errors import (
     EncryptionError,
     InvalidOperation,
     ServerSelectionTimeoutError,
+    WriteError,
 )
 from pymongo.mongo_client import MongoClient
 from pymongo.network import BLOCKING_IO_ERRORS
@@ -551,6 +553,128 @@ class ClientEncryption(Generic[_DocumentType]):
         )
         # Use the same key vault collection as the callback.
         self._key_vault_coll = self._io_callbacks.key_vault_coll
+
+    def create_encrypted_collection(
+        self,
+        database,
+        name: str,
+        kms_provider: Optional[str] = None,
+        data_key_opts: Mapping[str, Any] = {},
+        **kwargs: Any,
+    ) -> Tuple[Collection[_DocumentType], Mapping[str, Any]]:
+        """Create a new :class:`~pymongo.collection.Collection` in this
+        database with encryptedFields.
+
+        Normally collection creation is automatic. This method should
+        only be used to specify options on
+        creation. :class:`~pymongo.errors.CollectionInvalid` will be
+        raised if the collection already exists.
+
+        :Parameters:
+          - `name`: the name of the collection to create
+          - `kms_provider`: the KMS provider to be used
+          - `data_key_opts` (dict): a dictionary containing additional arguments to the `create_data_key` method such as:
+            {
+                       masterKey: Optional<Document>
+                       keyAltNames: Optional<Array[String]>
+                       keyMaterial: Optional<BinData>
+            }
+          - ``encryptedFields`` (optional) (dict): **(BETA)** Document that describes the encrypted fields for
+            Queryable Encryption. For example::
+
+                {
+                  "escCollection": "enxcol_.encryptedCollection.esc",
+                  "eccCollection": "enxcol_.encryptedCollection.ecc",
+                  "ecocCollection": "enxcol_.encryptedCollection.ecoc",
+                  "fields": [
+                      {
+                          "path": "firstName",
+                          "keyId": Binary.from_uuid(UUID('00000000-0000-0000-0000-000000000000')),
+                          "bsonType": "string",
+                          "queries": {"queryType": "equality"}
+                      },
+                      {
+                          "path": "ssn",
+                          "keyId": Binary.from_uuid(UUID('04104104-1041-0410-4104-104104104104')),
+                          "bsonType": "string"
+                      }
+                    ]
+                }
+          - `**kwargs` (optional): additional keyword arguments are the same as "create_collection".
+
+        All optional `create collection command`_ parameters should be passed
+        as keyword arguments to this method. Valid options include, but are not
+        limited to:
+
+          - ``size`` (int): desired initial size for the collection (in
+            bytes). For capped collections this size is the max
+            size of the collection.
+          - ``capped`` (bool): if True, this is a capped collection
+          - ``max`` (int): maximum number of objects if capped (optional)
+          - ``timeseries`` (dict): a document specifying configuration options for
+            timeseries collections
+          - ``expireAfterSeconds`` (int): the number of seconds after which a
+            document in a timeseries collection expires
+          - ``validator`` (dict): a document specifying validation rules or expressions
+            for the collection
+          - ``validationLevel`` (str): how strictly to apply the
+            validation rules to existing documents during an update.  The default level
+            is "strict"
+          - ``validationAction`` (str): whether to "error" on invalid documents
+            (the default) or just "warn" about the violations but allow invalid
+            documents to be inserted
+          - ``indexOptionDefaults`` (dict): a document specifying a default configuration
+            for indexes when creating a collection
+          - ``viewOn`` (str): the name of the source collection or view from which
+            to create the view
+          - ``pipeline`` (list): a list of aggregation pipeline stages
+          - ``comment`` (str): a user-provided comment to attach to this command.
+            This option is only supported on MongoDB >= 4.4.
+          - ``clusteredIndex`` (dict): Document that specifies the clustered index
+            configuration. It must have the following form::
+
+                {
+                    // key pattern must be {_id: 1}
+                    key: <key pattern>, // required
+                    unique: <bool>, // required, must be ‘true’
+                    name: <string>, // optional, otherwise automatically generated
+                    v: <int>, // optional, must be ‘2’ if provided
+                }
+          - ``changeStreamPreAndPostImages`` (dict): a document with a boolean field ``enabled`` for
+            enabling pre- and post-images.
+
+        .. versionadded:: 4.4
+           Added the codec_options, read_preference, and write_concern options.
+
+        .. _create collection command:
+            https://mongodb.com/docs/manual/reference/command/create
+        """
+        encrypted_fields = database._get_encrypted_fields(kwargs, name, False)
+        if encrypted_fields:
+            for field in encrypted_fields["fields"]:
+                if isinstance(field, dict) and field.get("keyId") is None:
+                    try:
+                        field["keyId"] = self.create_data_key(
+                            kms_provider=kms_provider, **data_key_opts
+                        )
+                    except WriteError as exc:
+                        raise EncryptionError(
+                            f"Error occured while creating data key with encryptedFields={str(encrypted_fields)}"
+                        ) from exc
+            kwargs["encryptedFields"] = encrypted_fields
+        else:
+            raise EncryptionError(
+                "'encryptedFields' must be provided as a keyword argument to create_encrypted_collection"
+                "or initialized with AutoEncryptionOpts."
+            )
+
+        return (
+            database.create_collection(
+                name=name,
+                **kwargs,
+            ),
+            encrypted_fields,
+        )
 
     def create_data_key(
         self,
