@@ -2687,5 +2687,78 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
         self.run_test_cases("Int", RangeOpts(min=0, max=200, sparsity=1), int)
 
 
+class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
+    @client_context.require_no_standalone
+    @client_context.require_version_min(6, 2, -1)
+    def setUp(self):
+        super().setUp()
+        self.key1_document = json_data("etc", "data", "keys", "key1-document.json")
+        self.key1_id = self.key1_document["_id"]
+        self.client.drop_database(self.db)
+        key_vault = create_key_vault(self.client.keyvault.datakeys, self.key1_document)
+        self.addCleanup(key_vault.drop)
+        self.key_vault_client = self.client
+        self.client_encryption = ClientEncryption(
+            {"local": {"key": LOCAL_MASTER_KEY}}, key_vault.full_name, self.key_vault_client, OPTS
+        )
+        self.addCleanup(self.client_encryption.close)
+        opts = AutoEncryptionOpts(
+            {"local": {"key": LOCAL_MASTER_KEY}},
+            key_vault.full_name,
+            bypass_query_analysis=True,
+        )
+        self.encrypted_client = rs_or_single_client(auto_encryption_opts=opts)
+        self.encrypted_client.drop_database("db")
+        self.db = self.encrypted_client.db
+        self.addCleanup(self.encrypted_client.close)
+
+    def test_simple_create(self):
+        coll, _ = self.db.create_encrypted_collection(
+            name="testing1",
+            encryptedFields={"fields": [{"path": "ssn", "bsonType": "string", "keyId": None}]},
+            kms_provider="local",
+            client_encryption=self.client_encryption,
+        )
+        with self.assertRaisesRegex(WriteError, "schemaRulesNotSatisfied"):
+            coll.insert_one({"ssn": "123-45-6789"})
+
+    def test_no_fields(self):
+        with self.assertRaisesRegex(
+            EncryptionError,
+            "'encryptedFields' must be provided as a keyword argument to create_encrypted_collection",
+        ):
+            self.db.create_encrypted_collection(
+                name="testing1", client_encryption=self.client_encryption
+            )
+
+    def test_invalid_keyid(self):
+        with self.assertRaisesRegex(
+            OperationFailure,
+            "create.encryptedFields.fields.keyId' is the wrong type 'bool', expected type 'binData",
+        ):
+            self.db.create_encrypted_collection(
+                name="testing1",
+                encryptedFields={"fields": [{"path": "ssn", "bsonType": "string", "keyId": False}]},
+                kms_provider="local",
+                client_encryption=self.client_encryption,
+            )
+
+    def test_insert_encrypted(self):
+        self.encrypted_client.drop_database("db")
+        coll, ef = self.db.create_encrypted_collection(
+            name="testing1",
+            encryptedFields={"fields": [{"path": "ssn", "bsonType": "string", "keyId": None}]},
+            kms_provider="local",
+            client_encryption=self.client_encryption,
+        )
+        key1_id = ef["fields"][0]["keyId"]
+        encrypted_value = self.client_encryption.encrypt(
+            "123-45-6789",
+            key_id=key1_id,
+            algorithm=Algorithm.UNINDEXED,
+        )
+        coll.insert_one({"ssn": encrypted_value})
+
+
 if __name__ == "__main__":
     unittest.main()

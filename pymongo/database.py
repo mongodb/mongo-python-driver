@@ -39,7 +39,7 @@ from pymongo.change_stream import DatabaseChangeStream
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.common import _ecc_coll_name, _ecoc_coll_name, _esc_coll_name
-from pymongo.errors import CollectionInvalid, InvalidName
+from pymongo.errors import CollectionInvalid, EncryptionError, InvalidName, WriteError
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 
@@ -291,6 +291,173 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             write_concern,
             read_concern,
         )
+
+    def _get_encrypted_fields(self, kwargs, coll_name, ask_db):
+        encrypted_fields = kwargs.get("encryptedFields")
+        if encrypted_fields:
+            return encrypted_fields
+        if (
+            self.client.options.auto_encryption_opts
+            and self.client.options.auto_encryption_opts._encrypted_fields_map
+            and self.client.options.auto_encryption_opts._encrypted_fields_map.get(
+                f"{self.name}.{coll_name}"
+            )
+        ):
+            return self.client.options.auto_encryption_opts._encrypted_fields_map[
+                f"{self.name}.{coll_name}"
+            ]
+        if ask_db:
+            colls = list(self.list_collections(filter={"name": coll_name}, **kwargs))
+            if colls and colls[0]["options"].get("encryptedFields"):
+                return colls[0]["options"]["encryptedFields"]
+        return None
+
+    @_csot.apply
+    def create_encrypted_collection(
+        self,
+        name: str,
+        client_encryption: Any,
+        kms_provider: Optional[str] = None,
+        data_key_opts: Any = {},
+        codec_options: Optional["bson.CodecOptions[_DocumentTypeArg]"] = None,
+        read_preference: Optional[_ServerMode] = None,
+        write_concern: Optional["WriteConcern"] = None,
+        read_concern: Optional["ReadConcern"] = None,
+        session: Optional["ClientSession"] = None,
+        check_exists: Optional[bool] = True,
+        **kwargs: Any,
+    ) -> Collection[_DocumentType]:
+        """Create a new :class:`~pymongo.collection.Collection` in this
+        database.
+
+        Normally collection creation is automatic. This method should
+        only be used to specify options on
+        creation. :class:`~pymongo.errors.CollectionInvalid` will be
+        raised if the collection already exists.
+
+        :Parameters:
+          - `name`: the name of the collection to create
+          - `codec_options` (optional): An instance of
+            :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
+            default) the :attr:`codec_options` of this :class:`Database` is
+            used.
+          - `read_preference` (optional): The read preference to use. If
+            ``None`` (the default) the :attr:`read_preference` of this
+            :class:`Database` is used.
+          - `write_concern` (optional): An instance of
+            :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
+            default) the :attr:`write_concern` of this :class:`Database` is
+            used.
+          - `read_concern` (optional): An instance of
+            :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
+            default) the :attr:`read_concern` of this :class:`Database` is
+            used.
+          - `collation` (optional): An instance of
+            :class:`~pymongo.collation.Collation`.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+          - ``check_exists`` (optional): if True (the default), send a listCollections command to
+            check if the collection already exists before creation.
+          - `**kwargs` (optional): additional keyword arguments will
+            be passed as options for the `create collection command`_
+
+        All optional `create collection command`_ parameters should be passed
+        as keyword arguments to this method. Valid options include, but are not
+        limited to:
+
+          - ``size`` (int): desired initial size for the collection (in
+            bytes). For capped collections this size is the max
+            size of the collection.
+          - ``capped`` (bool): if True, this is a capped collection
+          - ``max`` (int): maximum number of objects if capped (optional)
+          - ``timeseries`` (dict): a document specifying configuration options for
+            timeseries collections
+          - ``expireAfterSeconds`` (int): the number of seconds after which a
+            document in a timeseries collection expires
+          - ``validator`` (dict): a document specifying validation rules or expressions
+            for the collection
+          - ``validationLevel`` (str): how strictly to apply the
+            validation rules to existing documents during an update.  The default level
+            is "strict"
+          - ``validationAction`` (str): whether to "error" on invalid documents
+            (the default) or just "warn" about the violations but allow invalid
+            documents to be inserted
+          - ``indexOptionDefaults`` (dict): a document specifying a default configuration
+            for indexes when creating a collection
+          - ``viewOn`` (str): the name of the source collection or view from which
+            to create the view
+          - ``pipeline`` (list): a list of aggregation pipeline stages
+          - ``comment`` (str): a user-provided comment to attach to this command.
+            This option is only supported on MongoDB >= 4.4.
+          - ``encryptedFields`` (dict): **(BETA)** Document that describes the encrypted fields for
+            Queryable Encryption. For example::
+
+                {
+                  "escCollection": "enxcol_.encryptedCollection.esc",
+                  "eccCollection": "enxcol_.encryptedCollection.ecc",
+                  "ecocCollection": "enxcol_.encryptedCollection.ecoc",
+                  "fields": [
+                      {
+                          "path": "firstName",
+                          "keyId": Binary.from_uuid(UUID('00000000-0000-0000-0000-000000000000')),
+                          "bsonType": "string",
+                          "queries": {"queryType": "equality"}
+                      },
+                      {
+                          "path": "ssn",
+                          "keyId": Binary.from_uuid(UUID('04104104-1041-0410-4104-104104104104')),
+                          "bsonType": "string"
+                      }
+                    ]
+                }
+          - ``clusteredIndex`` (dict): Document that specifies the clustered index
+            configuration. It must have the following form::
+
+                {
+                    // key pattern must be {_id: 1}
+                    key: <key pattern>, // required
+                    unique: <bool>, // required, must be ‘true’
+                    name: <string>, // optional, otherwise automatically generated
+                    v: <int>, // optional, must be ‘2’ if provided
+                }
+          - ``changeStreamPreAndPostImages`` (dict): a document with a boolean field ``enabled`` for
+            enabling pre- and post-images.
+
+        .. versionadded:: 4.4
+           Added the codec_options, read_preference, and write_concern options.
+
+        .. _create collection command:
+            https://mongodb.com/docs/manual/reference/command/create
+        """
+        encrypted_fields = self._get_encrypted_fields(kwargs, name, False)
+        if encrypted_fields:
+            for field in encrypted_fields["fields"]:
+                if isinstance(field, dict) and field.get("keyId") is None:
+                    try:
+                        field["keyId"] = client_encryption.create_data_key(
+                            kms_provider=kms_provider, **data_key_opts
+                        )
+                    except WriteError as exc:
+                        raise EncryptionError(
+                            f"Error occured while creating data key with encryptedFields={str(encrypted_fields)}"
+                        ) from exc
+            kwargs["encryptedFields"] = encrypted_fields
+        else:
+            raise EncryptionError(
+                "'encryptedFields' must be provided as a keyword argument to create_encrypted_collection"
+                "or initialized with AutoEncryptionOpts."
+            )
+
+        return self.create_collection(
+            name=name,
+            codec_options=codec_options,
+            read_preference=read_preference,
+            write_concern=write_concern,
+            read_concern=read_concern,
+            check_exists=check_exists,
+            session=session,
+            **kwargs,
+        ), kwargs.get("encryptedFields")
 
     @_csot.apply
     def create_collection(
