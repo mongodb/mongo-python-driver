@@ -562,8 +562,7 @@ class ClientEncryption(Generic[_DocumentType]):
         data_key_opts: Mapping[str, Any] = {},
         **kwargs: Any,
     ) -> Tuple[Collection[_DocumentType], Mapping[str, Any]]:
-        """Create a new :class:`~pymongo.collection.Collection` in this
-        database with encryptedFields.
+        """Create a collection with encryptedFields.
 
         Normally collection creation is automatic. This method should
         only be used to specify options on
