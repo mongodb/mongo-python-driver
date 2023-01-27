@@ -292,7 +292,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             read_concern,
         )
 
-    def _get_encrypted_fields(self, kwargs, coll_name, ask_db):
+    def _get_encrypted_fields(self, kwargs, coll_name, ask_db, session=None, comment=None):
         encrypted_fields = kwargs.get("encryptedFields")
         if encrypted_fields:
             return encrypted_fields
@@ -306,8 +306,10 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             return self.client.options.auto_encryption_opts._encrypted_fields_map[
                 f"{self.name}.{coll_name}"
             ]
-        if ask_db:
-            colls = list(self.list_collections(filter={"name": coll_name}))
+        if ask_db and self.client.options.auto_encryption_opts:
+            colls = list(
+                self.list_collections(filter={"name": coll_name}, session=session, comment=comment)
+            )
             if colls and colls[0]["options"].get("encryptedFields"):
                 return colls[0]["options"]["encryptedFields"]
         return None
@@ -1050,7 +1052,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if not isinstance(name, str):
             raise TypeError("name_or_collection must be an instance of str")
         encrypted_fields = self._get_encrypted_fields(
-            {"encryptedFields": encrypted_fields}, name, True
+            {"encryptedFields": encrypted_fields},
+            name,
+            True,
+            session=session,
+            comment=comment,
         )
         if encrypted_fields:
             common.validate_is_mapping("encrypted_fields", encrypted_fields)
