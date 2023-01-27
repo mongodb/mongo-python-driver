@@ -655,8 +655,8 @@ class ClientEncryption(Generic[_DocumentType]):
                 if isinstance(field, dict) and field.get("keyId") is None:
                     try:
                         field["keyId"] = self.create_data_key(
-                            kms_provider=kms_provider,
-                            **{data_key_opts or {}},  # type:ignore[arg-type]
+                            kms_provider=kms_provider,  # type:ignore[arg-type]
+                            **{data_key_opts or {}},
                         )
                     except WriteError as exc:
                         raise WriteError(
