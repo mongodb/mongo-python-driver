@@ -573,12 +573,13 @@ class ClientEncryption(Generic[_DocumentType]):
         :Parameters:
           - `name`: the name of the collection to create
           - `kms_provider`: the KMS provider to be used
-          - `data_key_opts` (dict): a dictionary containing additional arguments to the `create_data_key` method such as:
-            {
-                       masterKey: Optional<Document>
-                       keyAltNames: Optional<Array[String]>
-                       keyMaterial: Optional<BinData>
-            }
+          - `data_key_opts` (dict): a dictionary containing additional arguments to the `create_data_key` method such as::
+
+                {
+                   masterKey: Optional<Document>
+                   keyAltNames: Optional<Array[String]>
+                           keyMaterial: Optional<BinData>
+                }
           - ``encryptedFields`` (optional) (dict): **(BETA)** Document that describes the encrypted fields for
             Queryable Encryption. For example::
 
@@ -648,7 +649,9 @@ class ClientEncryption(Generic[_DocumentType]):
 
         .. _create collection command:
             https://mongodb.com/docs/manual/reference/command/create
+
         """
+
         encrypted_fields = database._get_encrypted_fields(kwargs, name, False)
         if encrypted_fields:
             for field in encrypted_fields["fields"]:
