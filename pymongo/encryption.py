@@ -559,7 +559,7 @@ class ClientEncryption(Generic[_DocumentType]):
         database,
         name: str,
         kms_provider: Optional[str] = None,
-        data_key_opts: Mapping[str, Any] = {},
+        data_key_opts: Mapping[str, Any] = None,
         **kwargs: Any,
     ) -> Tuple[Collection[_DocumentType], Mapping[str, Any]]:
         """Create a collection with encryptedFields.
@@ -653,9 +653,10 @@ class ClientEncryption(Generic[_DocumentType]):
             for field in encrypted_fields["fields"]:
                 if isinstance(field, dict) and field.get("keyId") is None:
                     try:
-                        field["keyId"] = self.create_data_key(
-                            kms_provider=kms_provider, **data_key_opts
-                        )
+                        if kms_provider:
+                            field["keyId"] = self.create_data_key(
+                                kms_provider=kms_provider, **{data_key_opts or {}}
+                            )
                     except WriteError as exc:
                         raise EncryptionError(
                             f"Error occured while creating data key with encryptedFields={str(encrypted_fields)}"

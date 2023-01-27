@@ -39,7 +39,7 @@ from pymongo.change_stream import DatabaseChangeStream
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.common import _ecc_coll_name, _ecoc_coll_name, _esc_coll_name
-from pymongo.errors import CollectionInvalid, EncryptionError, InvalidName, WriteError
+from pymongo.errors import CollectionInvalid, InvalidName
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 
