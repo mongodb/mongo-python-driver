@@ -2726,7 +2726,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
 
     def test_02_no_fields(self):
         with self.assertRaisesRegex(
-            EncryptionError,
+            ConfigurationError,
             "'encryptedFields' must be provided as a keyword argument to create_encrypted_collection",
         ):
             self.client_encryption.create_encrypted_collection(

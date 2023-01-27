@@ -42,6 +42,7 @@ from pymongo import _csot
 from pymongo.collection import Collection
 from pymongo.cursor import Cursor
 from pymongo.daemon import _spawn_daemon
+from pymongo.database import Database
 from pymongo.encryption_options import AutoEncryptionOpts, RangeOpts
 from pymongo.errors import (
     ConfigurationError,
@@ -556,10 +557,10 @@ class ClientEncryption(Generic[_DocumentType]):
 
     def create_encrypted_collection(
         self,
-        database,
+        database: Database,
         name: str,
         kms_provider: Optional[str] = None,
-        data_key_opts: Mapping[str, Any] = None,
+        data_key_opts: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> Tuple[Collection[_DocumentType], Mapping[str, Any]]:
         """Create a collection with encryptedFields.
@@ -653,17 +654,17 @@ class ClientEncryption(Generic[_DocumentType]):
             for field in encrypted_fields["fields"]:
                 if isinstance(field, dict) and field.get("keyId") is None:
                     try:
-                        if kms_provider:
-                            field["keyId"] = self.create_data_key(
-                                kms_provider=kms_provider, **{data_key_opts or {}}
-                            )
+                        field["keyId"] = self.create_data_key(
+                            kms_provider=kms_provider,
+                            **{data_key_opts or {}},  # type:ignore[arg-type]
+                        )
                     except WriteError as exc:
-                        raise EncryptionError(
+                        raise WriteError(
                             f"Error occured while creating data key with encryptedFields={str(encrypted_fields)}"
                         ) from exc
             kwargs["encryptedFields"] = encrypted_fields
         else:
-            raise EncryptionError(
+            raise ConfigurationError(
                 "'encryptedFields' must be provided as a keyword argument to create_encrypted_collection"
                 "or initialized with AutoEncryptionOpts."
             )
