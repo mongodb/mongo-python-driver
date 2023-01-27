@@ -319,16 +319,10 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         client_encryption: Any,
         kms_provider: Optional[str] = None,
         data_key_opts: Any = {},
-        codec_options: Optional["bson.CodecOptions[_DocumentTypeArg]"] = None,
-        read_preference: Optional[_ServerMode] = None,
-        write_concern: Optional["WriteConcern"] = None,
-        read_concern: Optional["ReadConcern"] = None,
-        session: Optional["ClientSession"] = None,
-        check_exists: Optional[bool] = True,
         **kwargs: Any,
     ) -> Collection[_DocumentType]:
         """Create a new :class:`~pymongo.collection.Collection` in this
-        database.
+        database with encryptedFields.
 
         Normally collection creation is automatic. This method should
         only be used to specify options on
@@ -337,29 +331,35 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         :Parameters:
           - `name`: the name of the collection to create
-          - `codec_options` (optional): An instance of
-            :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
-            default) the :attr:`codec_options` of this :class:`Database` is
-            used.
-          - `read_preference` (optional): The read preference to use. If
-            ``None`` (the default) the :attr:`read_preference` of this
-            :class:`Database` is used.
-          - `write_concern` (optional): An instance of
-            :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
-            default) the :attr:`write_concern` of this :class:`Database` is
-            used.
-          - `read_concern` (optional): An instance of
-            :class:`~pymongo.read_concern.ReadConcern`. If ``None`` (the
-            default) the :attr:`read_concern` of this :class:`Database` is
-            used.
-          - `collation` (optional): An instance of
-            :class:`~pymongo.collation.Collation`.
-          - `session` (optional): a
-            :class:`~pymongo.client_session.ClientSession`.
-          - ``check_exists`` (optional): if True (the default), send a listCollections command to
-            check if the collection already exists before creation.
-          - `**kwargs` (optional): additional keyword arguments will
-            be passed as options for the `create collection command`_
+          - `kms_provider`: the KMS provider to be used
+          - `data_key_opts` (dict): a dictionary containing additional arguments to the `create_data_key` method such as:
+            {
+                       masterKey: Optional<Document>
+                       keyAltNames: Optional<Array[String]>
+                       keyMaterial: Optional<BinData>
+            }
+          - ``encryptedFields`` (optional) (dict): **(BETA)** Document that describes the encrypted fields for
+            Queryable Encryption. For example::
+
+                {
+                  "escCollection": "enxcol_.encryptedCollection.esc",
+                  "eccCollection": "enxcol_.encryptedCollection.ecc",
+                  "ecocCollection": "enxcol_.encryptedCollection.ecoc",
+                  "fields": [
+                      {
+                          "path": "firstName",
+                          "keyId": Binary.from_uuid(UUID('00000000-0000-0000-0000-000000000000')),
+                          "bsonType": "string",
+                          "queries": {"queryType": "equality"}
+                      },
+                      {
+                          "path": "ssn",
+                          "keyId": Binary.from_uuid(UUID('04104104-1041-0410-4104-104104104104')),
+                          "bsonType": "string"
+                      }
+                    ]
+                }
+          - `**kwargs` (optional): additional keyword arguments are the same as "create_collection".
 
         All optional `create collection command`_ parameters should be passed
         as keyword arguments to this method. Valid options include, but are not
@@ -389,27 +389,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
           - ``pipeline`` (list): a list of aggregation pipeline stages
           - ``comment`` (str): a user-provided comment to attach to this command.
             This option is only supported on MongoDB >= 4.4.
-          - ``encryptedFields`` (dict): **(BETA)** Document that describes the encrypted fields for
-            Queryable Encryption. For example::
-
-                {
-                  "escCollection": "enxcol_.encryptedCollection.esc",
-                  "eccCollection": "enxcol_.encryptedCollection.ecc",
-                  "ecocCollection": "enxcol_.encryptedCollection.ecoc",
-                  "fields": [
-                      {
-                          "path": "firstName",
-                          "keyId": Binary.from_uuid(UUID('00000000-0000-0000-0000-000000000000')),
-                          "bsonType": "string",
-                          "queries": {"queryType": "equality"}
-                      },
-                      {
-                          "path": "ssn",
-                          "keyId": Binary.from_uuid(UUID('04104104-1041-0410-4104-104104104104')),
-                          "bsonType": "string"
-                      }
-                    ]
-                }
           - ``clusteredIndex`` (dict): Document that specifies the clustered index
             configuration. It must have the following form::
 
@@ -450,12 +429,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         return self.create_collection(
             name=name,
-            codec_options=codec_options,
-            read_preference=read_preference,
-            write_concern=write_concern,
-            read_concern=read_concern,
-            check_exists=check_exists,
-            session=session,
             **kwargs,
         ), kwargs.get("encryptedFields")
 
