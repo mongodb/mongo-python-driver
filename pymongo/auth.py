@@ -533,7 +533,7 @@ class _OIDCLRUCache:
         if len(self.cache) > 100:
             self.cache.popitem(last=False)
 
-    def remove(self, key: str):
+    def remove(self, key: str) -> None:
         self.cache.pop(key, None)
 
 
@@ -618,7 +618,7 @@ def _authenticate_oidc(credentials, sock_info):
     else:
         _oidc_cache.remove(cache_key)
 
-    payload = Binary(bson.encode(dict(jwt=token)))
+    bin_payload = Binary(bson.encode(dict(jwt=token)))
 
     if conversation_id is not None:
         cmd = SON(
@@ -626,7 +626,7 @@ def _authenticate_oidc(credentials, sock_info):
                 ("saslContinue", 1),
                 ("mechanism", "MONGODB-OIDC"),
                 ("conversationId", conversation_id),
-                ("payload", payload),
+                ("payload", bin_payload),
             ]
         )
     else:
@@ -634,7 +634,7 @@ def _authenticate_oidc(credentials, sock_info):
             [
                 ("saslStart", 1),
                 ("mechanism", "MONGODB-OIDC"),
-                ("payload", payload),
+                ("payload", bin_payload),
             ]
         )
 
