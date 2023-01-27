@@ -2687,6 +2687,7 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
         self.run_test_cases("Int", RangeOpts(min=0, max=200, sparsity=1), int)
 
 
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#automatic-data-encryption-keys
 class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
     @client_context.require_no_standalone
     @client_context.require_version_min(6, 2, -1)
