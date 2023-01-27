@@ -332,6 +332,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         :Parameters:
           - `name`: the name of the collection to create
           - `kms_provider`: the KMS provider to be used
+          - `client_encryption`: An instance of `ClientEncryption` used to create data keys.
           - `data_key_opts` (dict): a dictionary containing additional arguments to the `create_data_key` method such as:
             {
                        masterKey: Optional<Document>
