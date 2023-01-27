@@ -21,9 +21,10 @@ import os
 import socket
 import threading
 from base64 import standard_b64decode, standard_b64encode
-from collections import namedtuple
+from collections import OrderedDict, namedtuple
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Callable, Dict, Mapping
+from typing import Callable, Dict, Mapping, Optional
 from urllib.parse import quote
 
 import bson
@@ -108,6 +109,14 @@ _OIDCProperties = namedtuple(
     ["on_oidc_request_token", "on_oidc_refresh_token", "principal_name", "device_name"],
 )
 """Mechanism properties for MONGODB-OIDC authentication."""
+
+
+@dataclass
+class _OIDCCache:
+    token_result: Optional[Dict]
+    exp_utc: Optional[datetime]
+    server_resp: Optional[Dict]
+    lock: threading.Lock
 
 
 def _build_credentials_tuple(mech, source, user, passwd, extra, database):
@@ -506,12 +515,30 @@ interface OIDCRequestTokenResult {
 }
 """
 
-_oidc_auth_cache: Dict = {}
-_oidc_exp_utc: Dict = {}
-_oidc_server_cache: Dict = {}
-# TOOD: Make a namedtuple for the client resp and the internal storage
+
+class _OIDCLRUCache:
+    def __init__(self):
+        self.cache = OrderedDict()
+
+    def get(self, key: str) -> Optional[_OIDCCache]:
+        if key not in self.cache:
+            return None
+        else:
+            self.cache.move_to_end(key)
+            return self.cache[key]
+
+    def put(self, key: str, value: _OIDCCache) -> None:
+        self.cache[key] = value
+        self.cache.move_to_end(key)
+        if len(self.cache) > 100:
+            self.cache.popitem(last=False)
+
+    def remove(self, key: str):
+        self.cache.pop(key, None)
+
+
+_oidc_cache = _OIDCLRUCache()
 _oidc_buffer_seconds = 5 * 60
-_oidc_locks: Dict = {}
 
 
 def _authenticate_oidc(credentials, sock_info):
@@ -539,10 +566,14 @@ def _authenticate_oidc(credentials, sock_info):
     principal_name = properties.principal_name
     cache_key = f"{principal_name}{address[0]}{address[1]}"
 
-    skip_step1 = cache_key in _oidc_server_cache
+    cache_value = _oidc_cache.get(cache_key)
     conversation_id = None
 
-    if not skip_step1:
+    if cache_value is None:
+        lock = threading.Lock()
+        cache_value = _OIDCCache(lock=lock, token_result=None, server_resp=None, exp_utc=None)
+        _oidc_cache.put(cache_key, cache_value)
+
         # Send the SASL start with the optional principal name.
         payload = dict()
 
@@ -558,53 +589,38 @@ def _authenticate_oidc(credentials, sock_info):
             ]
         )
         response = sock_info.command("$external", cmd)
-        _oidc_server_cache[cache_key] = bson.decode(response["payload"])
+        cache_value.server_resp = bson.decode(response["payload"])
         conversation_id = response["conversationId"]
 
-    client_resp = None
-    token = None
+    with cache_value.lock:
+        if cache_value.exp_utc is not None:
+            now_utc = datetime.now(timezone.utc)
+            exp_utc = cache_value.exp_utc
+            if (exp_utc - now_utc).total_seconds() <= _oidc_buffer_seconds:
+                if properties.on_oidc_refresh_token:
+                    cache_value.token_result = properties.on_oidc_refresh_token(
+                        cache_value.server_resp, cache_value.token_result
+                    )
+                else:
+                    cache_value.token_result = None
 
-    if cache_key not in _oidc_locks:
-        _oidc_locks[cache_key] = threading.Lock()
+        if cache_value.token_result is None:
+            cache_value.token_result = properties.on_oidc_request_token(cache_value.server_resp)
 
-    lock = _oidc_locks[cache_key]
-    lock.acquire()
-
-    server_payload = _oidc_server_cache[cache_key]
-
-    if cache_key in _oidc_auth_cache:
-        client_resp = _oidc_auth_cache[cache_key]
-        now_utc = datetime.now(timezone.utc)
-        exp_utc = _oidc_exp_utc[cache_key]
-        if (exp_utc - now_utc).total_seconds() <= _oidc_buffer_seconds:
-            auth = _oidc_auth_cache.pop(cache_key)
-            if properties.on_oidc_refresh_token:
-                client_resp = properties.on_oidc_refresh_token(server_payload, auth)
-            else:
-                client_resp = None
-
-    if client_resp is None and properties.on_oidc_request_token is not None:
-        if principal_name in _oidc_auth_cache:
-            auth = _oidc_auth_cache[cache_key]
-            token = auth["access_token"]
-        else:
-            client_resp = properties.on_oidc_request_token(server_payload)
-
-    lock.release()
-
-    if client_resp is not None:
-        token = client_resp["access_token"]
-        if "expires_in_seconds" in client_resp:
-            expires_in = client_resp["expires_in_seconds"]
-            if expires_in >= _oidc_buffer_seconds:
-                now_utc = datetime.now(timezone.utc)
-                exp_utc = now_utc + timedelta(seconds=expires_in)
-                _oidc_exp_utc[principal_name] = exp_utc
-                _oidc_auth_cache[cache_key] = client_resp.copy()
+    token_result = cache_value.token_result
+    token = token_result["access_token"]
+    if "expires_in_seconds" in token_result:
+        expires_in = token_result["expires_in_seconds"]
+        if expires_in >= _oidc_buffer_seconds:
+            now_utc = datetime.now(timezone.utc)
+            exp_utc = now_utc + timedelta(seconds=expires_in)
+            cache_value.exp_utc = exp_utc
+    else:
+        _oidc_cache.remove(cache_key)
 
     payload = Binary(bson.encode(dict(jwt=token)))
 
-    if skip_step1:
+    if conversation_id is not None:
         cmd = SON(
             [
                 ("saslContinue", 1),
@@ -625,12 +641,11 @@ def _authenticate_oidc(credentials, sock_info):
     try:
         response = sock_info.command("$external", cmd)
     except Exception:
-        if principal_name in _oidc_auth_cache:
-            del _oidc_auth_cache[principal_name]
+        _oidc_cache.remove(cache_key)
         raise
 
     if not response["done"]:
-        del _oidc_auth_cache[principal_name]
+        _oidc_cache.remove(cache_key)
         raise OperationFailure("SASL conversation failed to complete.")
 
 
