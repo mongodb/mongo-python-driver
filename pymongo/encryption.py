@@ -651,7 +651,8 @@ class ClientEncryption(Generic[_DocumentType]):
             https://mongodb.com/docs/manual/reference/command/create
 
         """
-
+        if not data_key_opts:
+            data_key_opts = {}
         encrypted_fields = database._get_encrypted_fields(kwargs, name, False)
         if encrypted_fields:
             for field in encrypted_fields["fields"]:
@@ -659,7 +660,7 @@ class ClientEncryption(Generic[_DocumentType]):
                     try:
                         field["keyId"] = self.create_data_key(
                             kms_provider=kms_provider,  # type:ignore[arg-type]
-                            **{data_key_opts or {}},
+                            **data_key_opts,
                         )
                     except WriteError as exc:
                         raise WriteError(
