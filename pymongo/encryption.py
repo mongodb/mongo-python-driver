@@ -49,7 +49,6 @@ from pymongo.errors import (
     EncryptionError,
     InvalidOperation,
     ServerSelectionTimeoutError,
-    WriteError,
 )
 from pymongo.mongo_client import MongoClient
 from pymongo.network import BLOCKING_IO_ERRORS
@@ -581,6 +580,7 @@ class ClientEncryption(Generic[_DocumentType]):
                    keyAltNames: Optional<Array[String]>
                            keyMaterial: Optional<BinData>
                 }
+
           - ``encryptedFields`` (optional) (dict): **(BETA)** Document that describes the encrypted fields for
             Queryable Encryption. For example::
 
@@ -602,6 +602,7 @@ class ClientEncryption(Generic[_DocumentType]):
                       }
                     ]
                 }
+
             The "keyId" may be set to `None` to auto-generate the data keys.
           - `**kwargs` (optional): additional keyword arguments are the same as "create_collection".
 
