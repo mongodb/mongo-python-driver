@@ -308,10 +308,10 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             ]
         if ask_db and self.client.options.auto_encryption_opts:
             colls = list(
-                self.list_collections(filter={"name": coll_name}, session=session, comment=comment)
+                self.list_collections(filter={"name": coll_name}, **(self[coll_name].options()))
             )
-            if colls and colls[0]["options"].get("encryptedFields"):
-                return colls[0]["options"]["encryptedFields"]
+            if colls:
+                return colls[0]["options"].get("encryptedFields")
         return None
 
     @_csot.apply

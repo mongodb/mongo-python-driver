@@ -573,7 +573,8 @@ class ClientEncryption(Generic[_DocumentType]):
         :Parameters:
           - `name`: the name of the collection to create
           - `kms_provider`: the KMS provider to be used
-          - `data_key_opts` (dict): a dictionary containing additional arguments to the `create_data_key` method such as::
+          - `data_key_opts` (dict): a dictionary containing additional arguments to the `create_data_key` method that will be
+            used to auto-generate the data keys if `keyId` is `None` such as::
 
                 {
                    masterKey: Optional<Document>
@@ -601,48 +602,12 @@ class ClientEncryption(Generic[_DocumentType]):
                       }
                     ]
                 }
+            The "keyId" may be set to `None` to auto-generate the data keys.
           - `**kwargs` (optional): additional keyword arguments are the same as "create_collection".
 
         All optional `create collection command`_ parameters should be passed
-        as keyword arguments to this method. Valid options include, but are not
-        limited to:
-
-          - ``size`` (int): desired initial size for the collection (in
-            bytes). For capped collections this size is the max
-            size of the collection.
-          - ``capped`` (bool): if True, this is a capped collection
-          - ``max`` (int): maximum number of objects if capped (optional)
-          - ``timeseries`` (dict): a document specifying configuration options for
-            timeseries collections
-          - ``expireAfterSeconds`` (int): the number of seconds after which a
-            document in a timeseries collection expires
-          - ``validator`` (dict): a document specifying validation rules or expressions
-            for the collection
-          - ``validationLevel`` (str): how strictly to apply the
-            validation rules to existing documents during an update.  The default level
-            is "strict"
-          - ``validationAction`` (str): whether to "error" on invalid documents
-            (the default) or just "warn" about the violations but allow invalid
-            documents to be inserted
-          - ``indexOptionDefaults`` (dict): a document specifying a default configuration
-            for indexes when creating a collection
-          - ``viewOn`` (str): the name of the source collection or view from which
-            to create the view
-          - ``pipeline`` (list): a list of aggregation pipeline stages
-          - ``comment`` (str): a user-provided comment to attach to this command.
-            This option is only supported on MongoDB >= 4.4.
-          - ``clusteredIndex`` (dict): Document that specifies the clustered index
-            configuration. It must have the following form::
-
-                {
-                    // key pattern must be {_id: 1}
-                    key: <key pattern>, // required
-                    unique: <bool>, // required, must be ‘true’
-                    name: <string>, // optional, otherwise automatically generated
-                    v: <int>, // optional, must be ‘2’ if provided
-                }
-          - ``changeStreamPreAndPostImages`` (dict): a document with a boolean field ``enabled`` for
-            enabling pre- and post-images.
+        as keyword arguments to this method.
+        See the documentation for :meth:`~pymongo.database.Database.create_collection` for all valid options.
 
         .. versionadded:: 4.4
            Added the codec_options, read_preference, and write_concern options.
@@ -662,9 +627,11 @@ class ClientEncryption(Generic[_DocumentType]):
                             kms_provider=kms_provider,  # type:ignore[arg-type]
                             **data_key_opts,
                         )
-                    except WriteError as exc:
-                        raise WriteError(
-                            f"Error occured while creating data key with encryptedFields={str(encrypted_fields)}"
+                    except EncryptionError as exc:
+                        raise EncryptionError(
+                            Exception(
+                                f"Error occured while creating data key for field {field['path']} with encryptedFields={str(encrypted_fields)}"
+                            )
                         ) from exc
             kwargs["encryptedFields"] = encrypted_fields
         else:

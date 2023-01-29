@@ -2690,7 +2690,7 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#automatic-data-encryption-keys
 class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
     @client_context.require_no_standalone
-    @client_context.require_version_min(6, 2, -1)
+    @client_context.require_version_min(6, 0, -1)
     def setUp(self):
         super().setUp()
         self.key1_document = json_data("etc", "data", "keys", "key1-document.json")
@@ -2708,10 +2708,10 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
             key_vault.full_name,
             bypass_query_analysis=True,
         )
-        self.encrypted_client = rs_or_single_client(auto_encryption_opts=opts)
-        self.encrypted_client.drop_database("db")
-        self.db = self.encrypted_client.db
-        self.addCleanup(self.encrypted_client.close)
+        self.client = rs_or_single_client()
+        self.client.drop_database("db")
+        self.db = self.client.db
+        self.addCleanup(self.client.close)
 
     def test_01_simple_create(self):
         coll, _ = self.client_encryption.create_encrypted_collection(
