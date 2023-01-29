@@ -578,7 +578,7 @@ class ClientEncryption(Generic[_DocumentType]):
                 {
                    masterKey: Optional<Document>
                    keyAltNames: Optional<Array[String]>
-                           keyMaterial: Optional<BinData>
+                   keyMaterial: Optional<BinData>
                 }
 
           - ``encryptedFields`` (optional) (dict): **(BETA)** Document that describes the encrypted fields for
