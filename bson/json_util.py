@@ -265,7 +265,7 @@ class JSONOptions(CodecOptions):
         .. versionchanged:: 4.0
            Changed default value of `tz_aware` to False.
         """
-        pass
+        super().__init__()
 
     def __new__(
         cls: Type["JSONOptions"],
