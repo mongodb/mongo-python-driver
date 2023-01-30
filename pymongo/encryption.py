@@ -631,7 +631,7 @@ class ClientEncryption(Generic[_DocumentType]):
                     except EncryptionError as exc:
                         raise EncryptionError(
                             Exception(
-                                f"Error occured while creating data key for field {field['path']} with encryptedFields={str(encrypted_fields)}"
+                                f"Error occurred while creating data key for field {field['path']} with encryptedFields={str(encrypted_fields)}"
                             )
                         ) from exc
             kwargs["encryptedFields"] = encrypted_fields

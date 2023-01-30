@@ -28,6 +28,7 @@ import uuid
 from threading import Thread
 from typing import Any, Dict, Mapping
 
+import pymongo
 from pymongo.collection import Collection
 
 sys.path[0:0] = [""]
@@ -65,7 +66,7 @@ from bson.codec_options import CodecOptions
 from bson.errors import BSONError
 from bson.json_util import JSONOptions
 from bson.son import SON
-from pymongo import encryption
+from pymongo import ReadPreference, encryption
 from pymongo.cursor import CursorType
 from pymongo.encryption import Algorithm, ClientEncryption, QueryType
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts, RangeOpts
@@ -2696,18 +2697,16 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
         self.key1_document = json_data("etc", "data", "keys", "key1-document.json")
         self.key1_id = self.key1_document["_id"]
         self.client.drop_database(self.db)
-        key_vault = create_key_vault(self.client.keyvault.datakeys, self.key1_document)
-        self.addCleanup(key_vault.drop)
+        self.key_vault = create_key_vault(self.client.keyvault.datakeys, self.key1_document)
+        self.addCleanup(self.key_vault.drop)
         self.key_vault_client = self.client
         self.client_encryption = ClientEncryption(
-            {"local": {"key": LOCAL_MASTER_KEY}}, key_vault.full_name, self.key_vault_client, OPTS
+            {"local": {"key": LOCAL_MASTER_KEY}},
+            self.key_vault.full_name,
+            self.key_vault_client,
+            OPTS,
         )
         self.addCleanup(self.client_encryption.close)
-        opts = AutoEncryptionOpts(
-            {"local": {"key": LOCAL_MASTER_KEY}},
-            key_vault.full_name,
-            bypass_query_analysis=True,
-        )
         self.client = rs_or_single_client()
         self.client.drop_database("db")
         self.db = self.client.db
@@ -2760,6 +2759,89 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
             algorithm=Algorithm.UNINDEXED,
         )
         coll.insert_one({"ssn": encrypted_value})
+
+    def test_copy_encrypted_fields(self):
+        encrypted_fields = {
+            f"{self.db.name}.testing1": {
+                "fields": [
+                    {
+                        "path": "ssn",
+                        "bsonType": "string",
+                        "keyId": self.client_encryption.create_data_key(kms_provider="local"),
+                    }
+                ]
+            }
+        }
+        opts = AutoEncryptionOpts(
+            {"local": {"key": LOCAL_MASTER_KEY}},
+            self.key_vault.full_name,
+            bypass_query_analysis=True,
+            encrypted_fields_map=encrypted_fields,
+        )
+        client = rs_or_single_client(auto_encryption_opts=opts)
+        _, ef = self.client_encryption.create_encrypted_collection(
+            database=client.db, name="testing1", kms_provider="local"
+        )
+        self.assertIsNot(
+            ef,
+            client.options.auto_encryption_opts._encrypted_fields_map[f"{self.db.name}.testing1"],
+        )
+
+    def test_options_forward(self):
+        coll, ef = self.client_encryption.create_encrypted_collection(
+            database=self.db,
+            name="testing1",
+            kms_provider="local",
+            encryptedFields={"fields": [{"path": "ssn", "bsonType": "string", "keyId": None}]},
+            read_preference=ReadPreference.NEAREST,
+        )
+        self.assertEqual(coll.read_preference, ReadPreference.NEAREST)
+        self.assertEqual(coll.name, "testing1")
+
+    def test_mixed_null_keyids(self):
+        key = self.client_encryption.create_data_key(kms_provider="local")
+        coll, ef = self.client_encryption.create_encrypted_collection(
+            database=self.db,
+            name="testing1",
+            encryptedFields={
+                "fields": [
+                    {"path": "ssn", "bsonType": "string", "keyId": None},
+                    {"path": "dob", "bsonType": "string", "keyId": key},
+                ]
+            },
+            kms_provider="local",
+        )
+        encrypted_values = [
+            self.client_encryption.encrypt(
+                val,
+                key_id=key,
+                algorithm=Algorithm.UNINDEXED,
+            )
+            for val, key in zip(
+                ["123-45-6789", "11/22/1963"], [field["keyId"] for field in ef["fields"]]
+            )
+        ]
+        coll.insert_one({"ssn": encrypted_values[0], "dob": encrypted_values[1]})
+
+    def test_create_datakey_fails(self):
+        key = self.client_encryption.create_data_key(kms_provider="local")
+        # Make sure the error message includes the previous keys in the error message even when generating keys fails.
+        with self.assertRaisesRegex(
+            EncryptionError,
+            f"data key for field dob with encryptedFields=.*{re.escape(repr(key))}.*keyId.*None",
+        ):
+            self.client_encryption.create_encrypted_collection(
+                database=self.db,
+                name="testing1",
+                encryptedFields={
+                    "fields": [
+                        {"path": "ssn", "bsonType": "string", "keyId": key},
+                        {"path": "dob", "bsonType": "string", "keyId": None},
+                    ]
+                },
+                kms_provider="local",
+                data_key_opts={"key_alt_names": ["name", True]},
+            )
 
 
 if __name__ == "__main__":

@@ -292,10 +292,10 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             read_concern,
         )
 
-    def _get_encrypted_fields(self, kwargs, coll_name, ask_db, session=None, comment=None):
+    def _get_encrypted_fields(self, kwargs, coll_name, ask_db):
         encrypted_fields = kwargs.get("encryptedFields")
         if encrypted_fields:
-            return dict(**encrypted_fields)
+            return encrypted_fields.copy()
         if (
             self.client.options.auto_encryption_opts
             and self.client.options.auto_encryption_opts._encrypted_fields_map
@@ -303,15 +303,13 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 f"{self.name}.{coll_name}"
             )
         ):
-            return dict(
-                **self.client.options.auto_encryption_opts._encrypted_fields_map[
-                    f"{self.name}.{coll_name}"
-                ]
-            )
+            return self.client.options.auto_encryption_opts._encrypted_fields_map[
+                f"{self.name}.{coll_name}"
+            ].copy()
         if ask_db and self.client.options.auto_encryption_opts:
             options = self[coll_name].options()
             if options.get("encryptedFields"):
-                return dict(**options["encryptedFields"])
+                return options["encryptedFields"].copy()
         return None
 
     @_csot.apply
@@ -1055,8 +1053,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             {"encryptedFields": encrypted_fields},
             name,
             True,
-            session=session,
-            comment=comment,
         )
         if encrypted_fields:
             common.validate_is_mapping("encrypted_fields", encrypted_fields)
