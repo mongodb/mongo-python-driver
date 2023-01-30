@@ -28,7 +28,6 @@ import uuid
 from threading import Thread
 from typing import Any, Dict, Mapping
 
-import pymongo
 from pymongo.collection import Collection
 
 sys.path[0:0] = [""]
