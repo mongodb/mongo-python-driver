@@ -21,7 +21,7 @@ set +x
 shopt -s expand_aliases # needed for `urlencode` alias
 [ -s "${PROJECT_DIRECTORY}/prepare_mongodb_oidc.sh" ] && source "${PROJECT_DIRECTORY}/prepare_mongodb_oidc.sh"
 
-MONGODB_URI=${MONGODB_URI:-"mongodb://localhost:27017"}
+MONGODB_URI=${MONGODB_URI:-"mongodb://localhost:27018"}
 MONGODB_URI="${MONGODB_URI}/test?authMechanism=MONGODB-OIDC&directConnection=true&authMechanismProperties=DEVICE_NAME:aws"
 
 if [ "$USE_MULTIPLE_PRINCIPALS" = "true" ]; then

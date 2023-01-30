@@ -21,7 +21,7 @@ import os
 import socket
 import threading
 from base64 import standard_b64decode, standard_b64encode
-from collections import OrderedDict, namedtuple
+from collections import namedtuple
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Callable, Dict, Mapping, Optional
@@ -114,7 +114,8 @@ _OIDCProperties = namedtuple(
 @dataclass
 class _OIDCCache:
     token_result: Optional[Dict]
-    exp_utc: Optional[datetime]
+    token_exp_utc: Optional[datetime]
+    cache_exp_utc: datetime
     server_resp: Optional[Dict]
     lock: threading.Lock
 
@@ -516,35 +517,25 @@ interface OIDCRequestTokenResult {
 """
 
 
-class _OIDCLRUCache:
-    def __init__(self):
-        self.cache = OrderedDict()
-
-    def get(self, key: str) -> Optional[_OIDCCache]:
-        if key not in self.cache:
-            return None
-        else:
-            self.cache.move_to_end(key)
-            return self.cache[key]
-
-    def put(self, key: str, value: _OIDCCache) -> None:
-        self.cache[key] = value
-        self.cache.move_to_end(key)
-        if len(self.cache) > 100:
-            self.cache.popitem(last=False)
-
-    def remove(self, key: str) -> None:
-        self.cache.pop(key, None)
-
-
-_oidc_cache = _OIDCLRUCache()
-_oidc_buffer_seconds = 5 * 60
+_oidc_cache: Dict[str, _OIDCCache] = {}
+_OIDC_TOKEN_BUFFER_MINUTES = 5
+_OIDC_CACHE_TIMEOUT_MINUTES = 60 * 5
 
 
 def _authenticate_oidc(credentials, sock_info):
     """Authenticate using MONGODB-OIDC."""
     properties: _OIDCProperties = credentials.mechanism_properties
 
+    # Clear out old items in the cache.
+    now_utc = datetime.now(timezone.utc)
+    to_remove = []
+    for key, value in _oidc_cache.items():
+        if value.cache_exp_utc > now_utc:
+            to_remove.append(key)
+    for key in to_remove:
+        del _oidc_cache[key]
+
+    # Handle aws device credentials.
     if properties.device_name == "aws":
         aws_identity_file = os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"]
         with open(aws_identity_file) as fid:
@@ -562,6 +553,7 @@ def _authenticate_oidc(credentials, sock_info):
             raise OperationFailure("SASL conversation failed to complete.")
         return
 
+    # Handle authorization code credentials.
     address = sock_info.address
     principal_name = properties.principal_name
     cache_key = f"{principal_name}{address[0]}{address[1]}"
@@ -571,8 +563,15 @@ def _authenticate_oidc(credentials, sock_info):
 
     if cache_value is None:
         lock = threading.Lock()
-        cache_value = _OIDCCache(lock=lock, token_result=None, server_resp=None, exp_utc=None)
-        _oidc_cache.put(cache_key, cache_value)
+        cache_exp_utc = datetime.now(timezone.utc) + timedelta(minutes=_OIDC_CACHE_TIMEOUT_MINUTES)
+        cache_value = _OIDCCache(
+            lock=lock,
+            token_result=None,
+            server_resp=None,
+            token_exp_utc=None,
+            cache_exp_utc=cache_exp_utc,
+        )
+        _oidc_cache[cache_key] = cache_value
 
         # Send the SASL start with the optional principal name.
         payload = dict()
@@ -593,30 +592,40 @@ def _authenticate_oidc(credentials, sock_info):
         conversation_id = response["conversationId"]
 
     with cache_value.lock:
-        if cache_value.exp_utc is not None:
+        if cache_value.token_exp_utc is not None:
             now_utc = datetime.now(timezone.utc)
-            exp_utc = cache_value.exp_utc
-            if (exp_utc - now_utc).total_seconds() <= _oidc_buffer_seconds:
+            exp_utc = cache_value.token_exp_utc
+            buffer_seconds = _OIDC_TOKEN_BUFFER_MINUTES * 60
+            if (exp_utc - now_utc).total_seconds() <= buffer_seconds:
                 if properties.on_oidc_refresh_token:
                     cache_value.token_result = properties.on_oidc_refresh_token(
                         cache_value.server_resp, cache_value.token_result
                     )
+                    cache_exp_utc = datetime.now(timezone.utc) + timedelta(
+                        minutes=_OIDC_CACHE_TIMEOUT_MINUTES
+                    )
+                    cache_value.cache_exp_utc = cache_exp_utc
                 else:
                     cache_value.token_result = None
 
         if cache_value.token_result is None:
             cache_value.token_result = properties.on_oidc_request_token(cache_value.server_resp)
+            cache_exp_utc = datetime.now(timezone.utc) + timedelta(
+                minutes=_OIDC_CACHE_TIMEOUT_MINUTES
+            )
+            cache_value.cache_exp_utc = cache_exp_utc
 
     token_result = cache_value.token_result
     token = token_result["access_token"]
     if "expires_in_seconds" in token_result:
         expires_in = token_result["expires_in_seconds"]
-        if expires_in >= _oidc_buffer_seconds:
+        buffer_seconds = _OIDC_TOKEN_BUFFER_MINUTES * 60
+        if expires_in >= buffer_seconds:
             now_utc = datetime.now(timezone.utc)
             exp_utc = now_utc + timedelta(seconds=expires_in)
-            cache_value.exp_utc = exp_utc
+            cache_value.token_exp_utc = exp_utc
     else:
-        _oidc_cache.remove(cache_key)
+        _oidc_cache.pop(cache_key, None)
 
     bin_payload = Binary(bson.encode(dict(jwt=token)))
 
@@ -641,11 +650,11 @@ def _authenticate_oidc(credentials, sock_info):
     try:
         response = sock_info.command("$external", cmd)
     except Exception:
-        _oidc_cache.remove(cache_key)
+        _oidc_cache.pop(cache_key, None)
         raise
 
     if not response["done"]:
-        _oidc_cache.remove(cache_key)
+        _oidc_cache.pop(cache_key, None)
         raise OperationFailure("SASL conversation failed to complete.")
 
 
