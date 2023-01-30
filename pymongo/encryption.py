@@ -641,13 +641,7 @@ class ClientEncryption(Generic[_DocumentType]):
                 "or initialized with AutoEncryptionOpts."
             )
 
-        return (
-            database.create_collection(
-                name=name,
-                **kwargs,
-            ),
-            encrypted_fields,
-        )
+        return database.create_collection(name=name, **kwargs), encrypted_fields
 
     def create_data_key(
         self,
