@@ -2840,6 +2840,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
                     ]
                 },
                 kms_provider="local",
+                # We pass in a valid name, and then an invalid one to trigger an error for the second field.
                 data_key_opts={"key_alt_names": ["name", True]},
             )
 
