@@ -70,6 +70,9 @@ for spec in "$@"
 do
   # Match the spec dir name, the python test dir name, and/or common abbreviations.
   case "$spec" in
+    auth)
+      cpjson auth/tests/ auth
+      ;;
     atlas-data-lake-testing|data_lake)
       cpjson atlas-data-lake-testing/tests/ data_lake
       ;;

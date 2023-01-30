@@ -437,6 +437,8 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> Dict[str, Uni
         for key, value in value.items():
             if isinstance(value, str):
                 props[key] = value
+            elif isinstance(value, bool):
+                props[key] = str(value).lower()
             elif inspect.isfunction(value):
                 signature = inspect.signature(value)
                 if len(signature.parameters) == 0:

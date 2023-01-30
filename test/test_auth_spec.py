@@ -41,7 +41,16 @@ def create_test(test_case):
         if not valid:
             self.assertRaises(Exception, MongoClient, uri, connect=False)
         else:
-            client = MongoClient(uri, connect=False)
+            props = {}
+            if credential:
+                props = credential["mechanism_properties"] or {}
+                if props.get("REQUEST_TOKEN_CALLBACK"):
+                    props["on_oidc_request_token"] = lambda x: 1
+                    del props["REQUEST_TOKEN_CALLBACK"]
+                if props.get("REFRESH_TOKEN_CALLBACK"):
+                    props["on_oidc_refresh_token"] = lambda x, y: 1
+                    del props["REFRESH_TOKEN_CALLBACK"]
+            client = MongoClient(uri, connect=False, authmechanismproperties=props)
             credentials = client.options.pool_options._credentials
             if credential is None:
                 self.assertIsNone(credentials)
@@ -69,6 +78,16 @@ def create_test(test_case):
                         elif "AWS_SESSION_TOKEN" in expected:
                             self.assertEqual(
                                 actual.aws_session_token, expected["AWS_SESSION_TOKEN"]
+                            )
+                        elif "DEVICE_NAME" in expected:
+                            self.assertEqual(actual.device_name, expected["DEVICE_NAME"])
+                        elif "on_oidc_request_token" in expected:
+                            self.assertEqual(
+                                actual.on_oidc_request_token, expected["on_oidc_request_token"]
+                            )
+                        elif "on_oidc_refresh_token" in expected:
+                            self.assertEqual(
+                                actual.on_oidc_refresh_token, expected["on_oidc_refresh_token"]
                             )
                         else:
                             self.fail("Unhandled property: %s" % (key,))
