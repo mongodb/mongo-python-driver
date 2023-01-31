@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Database level operations."""
+from copy import deepcopy
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -295,7 +296,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     def _get_encrypted_fields(self, kwargs, coll_name, ask_db):
         encrypted_fields = kwargs.get("encryptedFields")
         if encrypted_fields:
-            return encrypted_fields.copy()
+            return deepcopy(encrypted_fields)
         if (
             self.client.options.auto_encryption_opts
             and self.client.options.auto_encryption_opts._encrypted_fields_map
@@ -303,13 +304,15 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 f"{self.name}.{coll_name}"
             )
         ):
-            return self.client.options.auto_encryption_opts._encrypted_fields_map[
-                f"{self.name}.{coll_name}"
-            ].copy()
+            return deepcopy(
+                self.client.options.auto_encryption_opts._encrypted_fields_map[
+                    f"{self.name}.{coll_name}"
+                ]
+            )
         if ask_db and self.client.options.auto_encryption_opts:
             options = self[coll_name].options()
             if options.get("encryptedFields"):
-                return options["encryptedFields"].copy()
+                return deepcopy(options["encryptedFields"])
         return None
 
     @_csot.apply

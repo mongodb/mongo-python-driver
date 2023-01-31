@@ -559,7 +559,9 @@ class ClientEncryption(Generic[_DocumentType]):
         database: Database,
         name: str,
         kms_provider: Optional[str] = None,
-        data_key_opts: Optional[Mapping[str, Any]] = None,
+        master_key: Optional[Mapping[str, Any]] = None,
+        key_alt_names: Optional[Sequence[str]] = None,
+        key_material: Optional[bytes] = None,
         **kwargs: Any,
     ) -> Tuple[Collection[_DocumentType], Mapping[str, Any]]:
         """Create a collection with encryptedFields.
@@ -572,15 +574,21 @@ class ClientEncryption(Generic[_DocumentType]):
         :Parameters:
           - `name`: the name of the collection to create
           - `kms_provider`: the KMS provider to be used
-          - `data_key_opts` (dict): a dictionary containing additional arguments to the `create_data_key` method that will be
-            used to auto-generate the data keys if `keyId` is `None` such as::
+          - `master_key`: Identifies a KMS-specific key used to encrypt the
+            new data key. If the kmsProvider is "local" the `master_key` is
+            not applicable and may be omitted.
+          - `key_alt_names` (optional): An optional list of string alternate
+            names used to reference a key. If a key is created with alternate
+            names, then encryption may refer to the key by the unique alternate
+            name instead of by ``key_id``. The following example shows creating
+            and referring to a data key by alternate name::
 
-                {
-                   masterKey: Optional<Document>
-                   keyAltNames: Optional<Array[String]>
-                   keyMaterial: Optional<BinData>
-                }
-
+              client_encryption.create_data_key("local", keyAltNames=["name1"])
+              # reference the key with the alternate name
+              client_encryption.encrypt("457-55-5462", keyAltName="name1",
+                                        algorithm=Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Random)
+          - `key_material` (optional): Sets the custom key material to be used
+            by the data key for encryption and decryption.
           - ``encryptedFields`` (optional) (dict): **(BETA)** Document that describes the encrypted fields for
             Queryable Encryption. For example::
 
@@ -617,21 +625,22 @@ class ClientEncryption(Generic[_DocumentType]):
             https://mongodb.com/docs/manual/reference/command/create
 
         """
-        if not data_key_opts:
-            data_key_opts = {}
         encrypted_fields = database._get_encrypted_fields(kwargs, name, False)
         if encrypted_fields:
-            for field in encrypted_fields["fields"]:
+            for i, field in enumerate(encrypted_fields["fields"]):
                 if isinstance(field, dict) and field.get("keyId") is None:
                     try:
-                        field["keyId"] = self.create_data_key(
+                        encrypted_fields["fields"][i]["keyId"] = self.create_data_key(
                             kms_provider=kms_provider,  # type:ignore[arg-type]
-                            **data_key_opts,
+                            master_key=master_key,
+                            key_alt_names=key_alt_names,
+                            key_material=key_material,
                         )
                     except EncryptionError as exc:
                         raise EncryptionError(
                             Exception(
-                                f"Error occurred while creating data key for field {field['path']} with encryptedFields={str(encrypted_fields)}"
+                                "Error occurred while creating data key for field %s with encryptedFields=%s"
+                                % (field["path"], encrypted_fields)
                             )
                         ) from exc
             kwargs["encryptedFields"] = encrypted_fields
@@ -640,8 +649,14 @@ class ClientEncryption(Generic[_DocumentType]):
                 "'encryptedFields' must be provided as a keyword argument to create_encrypted_collection"
                 "or initialized with AutoEncryptionOpts."
             )
-
-        return database.create_collection(name=name, **kwargs), encrypted_fields
+        try:
+            return database.create_collection(name=name, **kwargs), encrypted_fields
+        except Exception as exc:
+            raise EncryptionError(
+                Exception(
+                    f"Error: {str(exc)} occurred while creating collection with encryptedFields={str(encrypted_fields)}"
+                )
+            ) from exc
 
     def create_data_key(
         self,

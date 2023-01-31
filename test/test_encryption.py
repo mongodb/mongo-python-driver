@@ -2734,7 +2734,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
 
     def test_03_invalid_keyid(self):
         with self.assertRaisesRegex(
-            OperationFailure,
+            EncryptionError,
             "create.encryptedFields.fields.keyId' is the wrong type 'bool', expected type 'binData",
         ):
             self.client_encryption.create_encrypted_collection(
@@ -2778,12 +2778,15 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
             encrypted_fields_map=encrypted_fields,
         )
         client = rs_or_single_client(auto_encryption_opts=opts)
+        self.addCleanup(client.close)
         _, ef = self.client_encryption.create_encrypted_collection(
             database=client.db, name="testing1", kms_provider="local"
         )
         self.assertIsNot(
-            ef,
-            client.options.auto_encryption_opts._encrypted_fields_map[f"{self.db.name}.testing1"],
+            ef["fields"],
+            client.options.auto_encryption_opts._encrypted_fields_map[f"{self.db.name}.testing1"][
+                "fields"
+            ],
         )
 
     def test_options_forward(self):
@@ -2827,20 +2830,40 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
         # Make sure the error message includes the previous keys in the error message even when generating keys fails.
         with self.assertRaisesRegex(
             EncryptionError,
-            f"data key for field dob with encryptedFields=.*{re.escape(repr(key))}.*keyId.*None",
+            f"data key for field ssn with encryptedFields=.*{re.escape(repr(key))}.*keyId.*Binary.*keyId.*None",
         ):
             self.client_encryption.create_encrypted_collection(
                 database=self.db,
                 name="testing1",
                 encryptedFields={
                     "fields": [
-                        {"path": "ssn", "bsonType": "string", "keyId": key},
+                        {"path": "address", "bsonType": "string", "keyId": key},
+                        {"path": "dob", "bsonType": "string", "keyId": None},
+                        # We want this next one to fail, so we provide an invalid query.
+                        {"path": "ssn", "bsonType": "string", "keyId": None, "queries": None},
+                    ]
+                },
+                kms_provider="local",
+                key_alt_names=["2", "1", "3"],
+            )
+
+    def test_create_failure(self):
+        key = self.client_encryption.create_data_key(kms_provider="local")
+        # Make sure the error message includes the previous keys in the error message even when generating keys fails.
+        with self.assertRaisesRegex(
+            EncryptionError,
+            f"while creating collection with encryptedFields=.*{re.escape(repr(key))}.*keyId.*Binary",
+        ):
+            self.client_encryption.create_encrypted_collection(
+                database=self.db,
+                name=1,
+                encryptedFields={
+                    "fields": [
+                        {"path": "address", "bsonType": "string", "keyId": key},
                         {"path": "dob", "bsonType": "string", "keyId": None},
                     ]
                 },
                 kms_provider="local",
-                # We pass in a valid name, and then an invalid one to trigger an error for the second field.
-                data_key_opts={"key_alt_names": ["name", True]},
             )
 
 
