@@ -2761,32 +2761,23 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
 
     def test_copy_encrypted_fields(self):
         encrypted_fields = {
-            f"{self.db.name}.testing1": {
-                "fields": [
-                    {
-                        "path": "ssn",
-                        "bsonType": "string",
-                        "keyId": self.client_encryption.create_data_key(kms_provider="local"),
-                    }
-                ]
-            }
+            "fields": [
+                {
+                    "path": "ssn",
+                    "bsonType": "string",
+                    "keyId": self.client_encryption.create_data_key(kms_provider="local"),
+                }
+            ]
         }
-        opts = AutoEncryptionOpts(
-            {"local": {"key": LOCAL_MASTER_KEY}},
-            self.key_vault.full_name,
-            bypass_query_analysis=True,
-            encrypted_fields_map=encrypted_fields,
-        )
-        client = rs_or_single_client(auto_encryption_opts=opts)
-        self.addCleanup(client.close)
         _, ef = self.client_encryption.create_encrypted_collection(
-            database=client.db, name="testing1", kms_provider="local"
+            database=self.db,
+            name="testing1",
+            kms_provider="local",
+            encryptedFields=encrypted_fields,
         )
         self.assertIsNot(
             ef["fields"],
-            client.options.auto_encryption_opts._encrypted_fields_map[f"{self.db.name}.testing1"][
-                "fields"
-            ],
+            encrypted_fields["fields"],
         )
 
     def test_options_forward(self):

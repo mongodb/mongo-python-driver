@@ -18,6 +18,7 @@ import contextlib
 import enum
 import socket
 import weakref
+from copy import deepcopy
 from typing import Any, Generic, Mapping, Optional, Sequence, Tuple
 
 try:
@@ -624,7 +625,7 @@ class ClientEncryption(Generic[_DocumentType]):
             https://mongodb.com/docs/manual/reference/command/create
 
         """
-        encrypted_fields = database._get_encrypted_fields(kwargs, name, False)
+        encrypted_fields = deepcopy(kwargs.get("encryptedFields"))
         if encrypted_fields:
             for i, field in enumerate(encrypted_fields["fields"]):
                 if isinstance(field, dict) and field.get("keyId") is None:
