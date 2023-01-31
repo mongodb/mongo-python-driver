@@ -362,6 +362,3 @@ class Binary(bytes):
 
     def __repr__(self):
         return "Binary(%s, %s)" % (bytes.__repr__(self), self.__subtype)
-
-    def __deepcopy__(self, memodict={}):
-        return type(self)(self, self.__subtype)
