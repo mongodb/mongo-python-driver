@@ -575,7 +575,7 @@ class ClientEncryption(Generic[_DocumentType]):
 
         :Parameters:
           - `name`: the name of the collection to create
-          - `encryptedFields` (dict): **(BETA)** Document that describes the encrypted fields for
+          - `encrypted_fields` (dict): **(BETA)** Document that describes the encrypted fields for
             Queryable Encryption. For example::
 
               {
@@ -605,13 +605,7 @@ class ClientEncryption(Generic[_DocumentType]):
           - `key_alt_names` (optional): An optional list of string alternate
             names used to reference a key. If a key is created with alternate
             names, then encryption may refer to the key by the unique alternate
-            name instead of by ``key_id``. The following example shows creating
-            and referring to a data key by alternate name::
-
-              client_encryption.create_data_key("local", keyAltNames=["name1"])
-              # reference the key with the alternate name
-              client_encryption.encrypt("457-55-5462", keyAltName="name1",
-                                        algorithm=Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Random)
+            name instead of by ``key_id``.
           - `key_material` (optional): Sets the custom key material to be used
             by the data key for encryption and decryption.
           - `**kwargs` (optional): additional keyword arguments are the same as "create_collection".
