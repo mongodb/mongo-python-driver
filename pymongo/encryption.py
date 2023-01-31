@@ -638,9 +638,10 @@ class ClientEncryption(Generic[_DocumentType]):
                         )
                     ) from exc
         kwargs["encryptedFields"] = encrypted_fields
+        kwargs["check_exists"] = False
         try:
             return (
-                database.create_collection(check_exists=False, name=name, **kwargs),
+                database.create_collection(name=name, **kwargs),
                 encrypted_fields,
             )
         except Exception as exc:
