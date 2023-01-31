@@ -2855,8 +2855,11 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
             )
 
     def test_collection_name_collision(self):
-        # Make sure the error message includes the previous keys in the error message even when it is the creation
-        # of the collection that fails.
+        encrypted_fields = {
+            "fields": [
+                {"path": "address", "bsonType": "string", "keyId": None},
+            ]
+        }
         self.db.create_collection("testing1")
         with self.assertRaisesRegex(
             EncryptionError,
@@ -2864,26 +2867,16 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
         ):
             self.client_encryption.create_encrypted_collection(
                 database=self.db,
-                name="testing1",
-                encrypted_fields={
-                    "fields": [
-                        {"path": "dob", "bsonType": "string", "keyId": None},
-                    ]
-                },
+                name="testing1",  # type:ignore[arg-type]
+                encrypted_fields=encrypted_fields,
                 kms_provider="local",
-                check_exists=True,
             )
-        self.db.drop_collection("testing1")
+        self.db.drop_collection("testing1", encrypted_fields=encrypted_fields)
         self.client_encryption.create_encrypted_collection(
             database=self.db,
             name="testing1",
-            encrypted_fields={
-                "fields": [
-                    {"path": "dob", "bsonType": "string", "keyId": None},
-                ]
-            },
+            encrypted_fields=encrypted_fields,
             kms_provider="local",
-            check_exists=True,
         )
         with self.assertRaisesRegex(
             EncryptionError,
@@ -2892,13 +2885,8 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
             self.client_encryption.create_encrypted_collection(
                 database=self.db,
                 name="testing1",
-                encrypted_fields={
-                    "fields": [
-                        {"path": "dob", "bsonType": "string", "keyId": None},
-                    ]
-                },
+                encrypted_fields=encrypted_fields,
                 kms_provider="local",
-                check_exists=True,
             )
 
 

@@ -450,7 +450,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         clustered_index = kwargs.get("clusteredIndex")
         if clustered_index:
             common.validate_is_mapping("clusteredIndex", clustered_index)
-
+        create = True
+        if kwargs.get("check_exists") is False:
+            create = False
         with self.__client._tmp_session(session) as s:
             # Skip this check in a transaction where listCollections is not
             # supported.
