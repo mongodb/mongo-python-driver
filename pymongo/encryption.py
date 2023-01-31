@@ -647,7 +647,6 @@ class ClientEncryption(Generic[_DocumentType]):
         else:
             raise ConfigurationError(
                 "'encryptedFields' must be provided as a keyword argument to create_encrypted_collection"
-                "or initialized with AutoEncryptionOpts."
             )
         try:
             return database.create_collection(name=name, **kwargs), encrypted_fields
