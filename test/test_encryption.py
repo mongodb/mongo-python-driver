@@ -2727,7 +2727,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
             TypeError,
             "create_encrypted_collection.* missing 1 required positional argument: 'encrypted_fields'",
         ):
-            self.client_encryption.create_encrypted_collection(
+            self.client_encryption.create_encrypted_collection(  # type:ignore[call-arg]
                 database=self.db,
                 name="testing1",
             )
