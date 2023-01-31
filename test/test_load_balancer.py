@@ -122,6 +122,13 @@ class TestLB(IntegrationTest):
         session = client.start_session()
         session.start_transaction()
         client.test_session_gc.test.find_one({}, session=session)
+        # Cleanup the transaction left open on the server.
+        session_id = session.session_id
+
+        def kill_session():
+            self.client.admin.command("killSessions", [session_id])
+
+        self.addCleanup(kill_session)
         if client_context.load_balancer:
             self.assertEqual(pool.active_sockets, 1)  # Pinned.
 
