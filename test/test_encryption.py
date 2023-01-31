@@ -2795,6 +2795,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
                 "fields": [
                     {"path": "ssn", "bsonType": "string", "keyId": None},
                     {"path": "dob", "bsonType": "string", "keyId": key},
+                    {"path": "secrets", "bsonType": "string"},
                     {"path": "address", "bsonType": "string", "keyId": None},
                 ]
             },
@@ -2807,10 +2808,18 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
                 algorithm=Algorithm.UNINDEXED,
             )
             for val, key in zip(
-                ["123-45-6789", "11/22/1963"], [field["keyId"] for field in ef["fields"]]
+                ["123-45-6789", "11/22/1963", "My secret", "New Mexico, 87104"],
+                [field["keyId"] for field in ef["fields"]],
             )
         ]
-        coll.insert_one({"ssn": encrypted_values[0], "dob": encrypted_values[1]})
+        coll.insert_one(
+            {
+                "ssn": encrypted_values[0],
+                "dob": encrypted_values[1],
+                "secrets": encrypted_values[2],
+                "address": encrypted_values[3],
+            }
+        )
 
     def test_create_datakey_fails(self):
         key = self.client_encryption.create_data_key(kms_provider="local")
@@ -2825,7 +2834,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
                 encrypted_fields={
                     "fields": [
                         {"path": "address", "bsonType": "string", "keyId": key},
-                        {"path": "dob", "bsonType": "string"},
+                        {"path": "dob", "bsonType": "string", "keyId": None},
                         # Because this is the second one to use the altName "1", it will fail when creating the data_key.
                         {"path": "ssn", "bsonType": "string", "keyId": None},
                     ]
