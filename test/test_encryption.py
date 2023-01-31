@@ -2698,11 +2698,10 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
         self.client.drop_database(self.db)
         self.key_vault = create_key_vault(self.client.keyvault.datakeys, self.key1_document)
         self.addCleanup(self.key_vault.drop)
-        self.key_vault_client = self.client
         self.client_encryption = ClientEncryption(
             {"local": {"key": LOCAL_MASTER_KEY}},
             self.key_vault.full_name,
-            self.key_vault_client,
+            self.client,
             OPTS,
         )
         self.addCleanup(self.client_encryption.close)
