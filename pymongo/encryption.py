@@ -611,7 +611,7 @@ class ClientEncryption(Generic[_DocumentType]):
                     ]
                 }
 
-            The "keyId" may be set to `None` to auto-generate the data keys.
+            The "keyId" may be set to ``None`` to auto-generate the data keys.
           - `**kwargs` (optional): additional keyword arguments are the same as "create_collection".
 
         All optional `create collection command`_ parameters should be passed
@@ -619,7 +619,6 @@ class ClientEncryption(Generic[_DocumentType]):
         See the documentation for :meth:`~pymongo.database.Database.create_collection` for all valid options.
 
         .. versionadded:: 4.4
-           Added the codec_options, read_preference, and write_concern options.
 
         .. _create collection command:
             https://mongodb.com/docs/manual/reference/command/create
