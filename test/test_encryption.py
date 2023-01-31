@@ -2886,17 +2886,21 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
             kms_provider="local",
             check_exists=True,
         )
-        self.client_encryption.create_encrypted_collection(
-            database=self.db,
-            name="testing1",  # type:ignore[arg-type]
-            encrypted_fields={
-                "fields": [
-                    {"path": "dob", "bsonType": "string", "keyId": None},
-                ]
-            },
-            kms_provider="local",
-            check_exists=True,
-        )
+        with self.assertRaisesRegex(
+            EncryptionError,
+            f"while creating collection with encryptedFields=.*keyId.*Binary",
+        ):
+            self.client_encryption.create_encrypted_collection(
+                database=self.db,
+                name="testing1",  # type:ignore[arg-type]
+                encrypted_fields={
+                    "fields": [
+                        {"path": "dob", "bsonType": "string", "keyId": None},
+                    ]
+                },
+                kms_provider="local",
+                check_exists=True,
+            )
 
 
 if __name__ == "__main__":

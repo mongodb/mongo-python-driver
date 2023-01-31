@@ -570,7 +570,7 @@ class ClientEncryption(Generic[_DocumentType]):
 
         Normally collection creation is automatic. This method should
         only be used to specify options on
-        creation. :class:`~pymongo.errors.CollectionInvalid` will be
+        creation. :class:`~pymongo.errors.EncryptionError` will be
         raised if the collection already exists.
 
         :Parameters:
