@@ -2849,7 +2849,8 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
 
     def test_create_failure(self):
         key = self.client_encryption.create_data_key(kms_provider="local")
-        # Make sure the error message includes the previous keys in the error message even when generating keys fails.
+        # Make sure the error message includes the previous keys in the error message even when it is the creation
+        # of the collection that fails.
         with self.assertRaisesRegex(
             EncryptionError,
             f"while creating collection with encryptedFields=.*{re.escape(repr(key))}.*keyId.*Binary",
