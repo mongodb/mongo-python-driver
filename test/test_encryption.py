@@ -2809,6 +2809,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
                 "fields": [
                     {"path": "ssn", "bsonType": "string", "keyId": None},
                     {"path": "dob", "bsonType": "string", "keyId": key},
+                    {"path": "address", "bsonType": "string", "keyId": None},
                 ]
             },
             kms_provider="local",
