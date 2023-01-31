@@ -312,13 +312,6 @@ by this python implementation.\n
 else:
     extra_opts["ext_modules"] = ext_modules
 
-import logging
-
-# Enable logs in this format:
-# 2022-03-30 12:40:55,582 INFO <ServerHeartbeatStartedEvent ('localhost', 27017)>
-FORMAT = "%(asctime)s %(levelname)s %(message)s"
-logging.basicConfig(format=FORMAT, level=logging.INFO)
-
 setup(
     name="pymongo",
     version=version,

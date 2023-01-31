@@ -24,7 +24,6 @@ from test.utils import OvertCommandListener, rs_or_single_client
 
 from bson.son import SON
 from pymongo.errors import OperationFailure
-from pymongo.event_loggers import *
 from pymongo.read_concern import ReadConcern
 
 
@@ -36,16 +35,7 @@ class TestReadConcern(IntegrationTest):
     def setUpClass(cls):
         super(TestReadConcern, cls).setUpClass()
         cls.listener = OvertCommandListener()
-        cls.client = rs_or_single_client(
-            event_listeners=[
-                cls.listener,
-                CommandLogger(),
-                HeartbeatLogger(),
-                ConnectionPoolLogger(),
-                ServerLogger(),
-                TopologyLogger(),
-            ]
-        )
+        cls.client = rs_or_single_client(event_listeners=[cls.listener])
         cls.db = cls.client.pymongo_test
         client_context.client.pymongo_test.create_collection("coll")
 
