@@ -72,6 +72,7 @@ from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts, R
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
+    CollectionInvalid,
     ConfigurationError,
     DuplicateKeyError,
     EncryptionError,
@@ -2853,6 +2854,49 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
                 },
                 kms_provider="local",
             )
+
+    def test_collection_name_collision(self):
+        # Make sure the error message includes the previous keys in the error message even when it is the creation
+        # of the collection that fails.
+        self.db.create_collection("testing1")
+        with self.assertRaisesRegex(
+            EncryptionError,
+            f"while creating collection with encryptedFields=.*keyId.*Binary",
+        ):
+            self.client_encryption.create_encrypted_collection(
+                database=self.db,
+                name="testing1",  # type:ignore[arg-type]
+                encrypted_fields={
+                    "fields": [
+                        {"path": "dob", "bsonType": "string", "keyId": None},
+                    ]
+                },
+                kms_provider="local",
+                check_exists=True,
+            )
+        self.db.drop_collection("testing1")
+        self.client_encryption.create_encrypted_collection(
+            database=self.db,
+            name="testing1",  # type:ignore[arg-type]
+            encrypted_fields={
+                "fields": [
+                    {"path": "dob", "bsonType": "string", "keyId": None},
+                ]
+            },
+            kms_provider="local",
+            check_exists=True,
+        )
+        self.client_encryption.create_encrypted_collection(
+            database=self.db,
+            name="testing1",  # type:ignore[arg-type]
+            encrypted_fields={
+                "fields": [
+                    {"path": "dob", "bsonType": "string", "keyId": None},
+                ]
+            },
+            kms_provider="local",
+            check_exists=True,
+        )
 
 
 if __name__ == "__main__":
