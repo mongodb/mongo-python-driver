@@ -65,7 +65,7 @@ from bson.codec_options import CodecOptions
 from bson.errors import BSONError
 from bson.json_util import JSONOptions
 from bson.son import SON
-from pymongo import encryption
+from pymongo import ReadPreference, encryption
 from pymongo.cursor import CursorType
 from pymongo.encryption import Algorithm, ClientEncryption, QueryType
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts, RangeOpts
@@ -2685,6 +2685,218 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
 
     def test_int(self):
         self.run_test_cases("Int", RangeOpts(min=0, max=200, sparsity=1), int)
+
+
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#automatic-data-encryption-keys
+class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
+    @client_context.require_no_standalone
+    @client_context.require_version_min(6, 0, -1)
+    def setUp(self):
+        super().setUp()
+        self.key1_document = json_data("etc", "data", "keys", "key1-document.json")
+        self.key1_id = self.key1_document["_id"]
+        self.client.drop_database(self.db)
+        self.key_vault = create_key_vault(self.client.keyvault.datakeys, self.key1_document)
+        self.addCleanup(self.key_vault.drop)
+        self.client_encryption = ClientEncryption(
+            {"local": {"key": LOCAL_MASTER_KEY}},
+            self.key_vault.full_name,
+            self.client,
+            OPTS,
+        )
+        self.addCleanup(self.client_encryption.close)
+
+    def test_01_simple_create(self):
+        coll, _ = self.client_encryption.create_encrypted_collection(
+            database=self.db,
+            name="testing1",
+            encrypted_fields={"fields": [{"path": "ssn", "bsonType": "string", "keyId": None}]},
+            kms_provider="local",
+        )
+        with self.assertRaises(WriteError) as exc:
+            coll.insert_one({"ssn": "123-45-6789"})
+        self.assertEqual(exc.exception.code, 121)
+
+    def test_02_no_fields(self):
+        with self.assertRaisesRegex(
+            TypeError,
+            "create_encrypted_collection.* missing 1 required positional argument: 'encrypted_fields'",
+        ):
+            self.client_encryption.create_encrypted_collection(  # type:ignore[call-arg]
+                database=self.db,
+                name="testing1",
+            )
+
+    def test_03_invalid_keyid(self):
+        with self.assertRaisesRegex(
+            EncryptionError,
+            "create.encryptedFields.fields.keyId' is the wrong type 'bool', expected type 'binData",
+        ):
+            self.client_encryption.create_encrypted_collection(
+                database=self.db,
+                name="testing1",
+                encrypted_fields={
+                    "fields": [{"path": "ssn", "bsonType": "string", "keyId": False}]
+                },
+                kms_provider="local",
+            )
+
+    def test_04_insert_encrypted(self):
+        coll, ef = self.client_encryption.create_encrypted_collection(
+            database=self.db,
+            name="testing1",
+            encrypted_fields={"fields": [{"path": "ssn", "bsonType": "string", "keyId": None}]},
+            kms_provider="local",
+        )
+        key1_id = ef["fields"][0]["keyId"]
+        encrypted_value = self.client_encryption.encrypt(
+            "123-45-6789",
+            key_id=key1_id,
+            algorithm=Algorithm.UNINDEXED,
+        )
+        coll.insert_one({"ssn": encrypted_value})
+
+    def test_copy_encrypted_fields(self):
+        encrypted_fields = {
+            "fields": [
+                {
+                    "path": "ssn",
+                    "bsonType": "string",
+                    "keyId": None,
+                }
+            ]
+        }
+        _, ef = self.client_encryption.create_encrypted_collection(
+            database=self.db,
+            name="testing1",
+            kms_provider="local",
+            encrypted_fields=encrypted_fields,
+        )
+        self.assertIsNotNone(ef["fields"][0]["keyId"])
+        self.assertIsNone(encrypted_fields["fields"][0]["keyId"])
+
+    def test_options_forward(self):
+        coll, ef = self.client_encryption.create_encrypted_collection(
+            database=self.db,
+            name="testing1",
+            kms_provider="local",
+            encrypted_fields={"fields": [{"path": "ssn", "bsonType": "string", "keyId": None}]},
+            read_preference=ReadPreference.NEAREST,
+        )
+        self.assertEqual(coll.read_preference, ReadPreference.NEAREST)
+        self.assertEqual(coll.name, "testing1")
+
+    def test_mixed_null_keyids(self):
+        key = self.client_encryption.create_data_key(kms_provider="local")
+        coll, ef = self.client_encryption.create_encrypted_collection(
+            database=self.db,
+            name="testing1",
+            encrypted_fields={
+                "fields": [
+                    {"path": "ssn", "bsonType": "string", "keyId": None},
+                    {"path": "dob", "bsonType": "string", "keyId": key},
+                    {"path": "secrets", "bsonType": "string"},
+                    {"path": "address", "bsonType": "string", "keyId": None},
+                ]
+            },
+            kms_provider="local",
+        )
+        encrypted_values = [
+            self.client_encryption.encrypt(
+                val,
+                key_id=key,
+                algorithm=Algorithm.UNINDEXED,
+            )
+            for val, key in zip(
+                ["123-45-6789", "11/22/1963", "My secret", "New Mexico, 87104"],
+                [field["keyId"] for field in ef["fields"]],
+            )
+        ]
+        coll.insert_one(
+            {
+                "ssn": encrypted_values[0],
+                "dob": encrypted_values[1],
+                "secrets": encrypted_values[2],
+                "address": encrypted_values[3],
+            }
+        )
+
+    def test_create_datakey_fails(self):
+        key = self.client_encryption.create_data_key(kms_provider="local")
+        # Make sure the error message includes the previous keys in the error message even when generating keys fails.
+        with self.assertRaisesRegex(
+            EncryptionError,
+            f"data key for field ssn with encryptedFields=.*{re.escape(repr(key))}.*keyId.*Binary.*keyId.*None",
+        ):
+            self.client_encryption.create_encrypted_collection(
+                database=self.db,
+                name="testing1",
+                encrypted_fields={
+                    "fields": [
+                        {"path": "address", "bsonType": "string", "keyId": key},
+                        {"path": "dob", "bsonType": "string", "keyId": None},
+                        # Because this is the second one to use the altName "1", it will fail when creating the data_key.
+                        {"path": "ssn", "bsonType": "string", "keyId": None},
+                    ]
+                },
+                kms_provider="local",
+                key_alt_names=["1"],
+            )
+
+    def test_create_failure(self):
+        key = self.client_encryption.create_data_key(kms_provider="local")
+        # Make sure the error message includes the previous keys in the error message even when it is the creation
+        # of the collection that fails.
+        with self.assertRaisesRegex(
+            EncryptionError,
+            f"while creating collection with encryptedFields=.*{re.escape(repr(key))}.*keyId.*Binary",
+        ):
+            self.client_encryption.create_encrypted_collection(
+                database=self.db,
+                name=1,  # type:ignore[arg-type]
+                encrypted_fields={
+                    "fields": [
+                        {"path": "address", "bsonType": "string", "keyId": key},
+                        {"path": "dob", "bsonType": "string", "keyId": None},
+                    ]
+                },
+                kms_provider="local",
+            )
+
+    def test_collection_name_collision(self):
+        encrypted_fields = {
+            "fields": [
+                {"path": "address", "bsonType": "string", "keyId": None},
+            ]
+        }
+        self.db.create_collection("testing1")
+        with self.assertRaisesRegex(
+            EncryptionError,
+            "while creating collection with encryptedFields=.*keyId.*Binary",
+        ):
+            self.client_encryption.create_encrypted_collection(
+                database=self.db,
+                name="testing1",
+                encrypted_fields=encrypted_fields,
+                kms_provider="local",
+            )
+        self.db.drop_collection("testing1", encrypted_fields=encrypted_fields)
+        self.client_encryption.create_encrypted_collection(
+            database=self.db,
+            name="testing1",
+            encrypted_fields=encrypted_fields,
+            kms_provider="local",
+        )
+        with self.assertRaisesRegex(
+            EncryptionError,
+            "while creating collection with encryptedFields=.*keyId.*Binary",
+        ):
+            self.client_encryption.create_encrypted_collection(
+                database=self.db,
+                name="testing1",
+                encrypted_fields=encrypted_fields,
+                kms_provider="local",
+            )
 
 
 if __name__ == "__main__":

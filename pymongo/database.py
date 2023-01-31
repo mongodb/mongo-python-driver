@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Database level operations."""
+from copy import deepcopy
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -292,6 +293,28 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             read_concern,
         )
 
+    def _get_encrypted_fields(self, kwargs, coll_name, ask_db):
+        encrypted_fields = kwargs.get("encryptedFields")
+        if encrypted_fields:
+            return deepcopy(encrypted_fields)
+        if (
+            self.client.options.auto_encryption_opts
+            and self.client.options.auto_encryption_opts._encrypted_fields_map
+            and self.client.options.auto_encryption_opts._encrypted_fields_map.get(
+                f"{self.name}.{coll_name}"
+            )
+        ):
+            return deepcopy(
+                self.client.options.auto_encryption_opts._encrypted_fields_map[
+                    f"{self.name}.{coll_name}"
+                ]
+            )
+        if ask_db and self.client.options.auto_encryption_opts:
+            options = self[coll_name].options()
+            if options.get("encryptedFields"):
+                return deepcopy(options["encryptedFields"])
+        return None
+
     @_csot.apply
     def create_collection(
         self,
@@ -419,19 +442,10 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         .. _create collection command:
             https://mongodb.com/docs/manual/reference/command/create
         """
-        encrypted_fields = kwargs.get("encryptedFields")
-        if (
-            not encrypted_fields
-            and self.client.options.auto_encryption_opts
-            and self.client.options.auto_encryption_opts._encrypted_fields_map
-        ):
-            encrypted_fields = self.client.options.auto_encryption_opts._encrypted_fields_map.get(
-                "%s.%s" % (self.name, name)
-            )
-            kwargs["encryptedFields"] = encrypted_fields
-
+        encrypted_fields = self._get_encrypted_fields(kwargs, name, False)
         if encrypted_fields:
             common.validate_is_mapping("encryptedFields", encrypted_fields)
+            kwargs["encryptedFields"] = encrypted_fields
 
         clustered_index = kwargs.get("clusteredIndex")
         if clustered_index:
@@ -1038,21 +1052,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         if not isinstance(name, str):
             raise TypeError("name_or_collection must be an instance of str")
-        full_name = "%s.%s" % (self.name, name)
-        if (
-            not encrypted_fields
-            and self.client.options.auto_encryption_opts
-            and self.client.options.auto_encryption_opts._encrypted_fields_map
-        ):
-            encrypted_fields = self.client.options.auto_encryption_opts._encrypted_fields_map.get(
-                full_name
-            )
-        if not encrypted_fields and self.client.options.auto_encryption_opts:
-            colls = list(
-                self.list_collections(filter={"name": name}, session=session, comment=comment)
-            )
-            if colls and colls[0]["options"].get("encryptedFields"):
-                encrypted_fields = colls[0]["options"]["encryptedFields"]
+        encrypted_fields = self._get_encrypted_fields(
+            {"encryptedFields": encrypted_fields},
+            name,
+            True,
+        )
         if encrypted_fields:
             common.validate_is_mapping("encrypted_fields", encrypted_fields)
             self._drop_helper(
