@@ -2867,7 +2867,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
         ):
             self.client_encryption.create_encrypted_collection(
                 database=self.db,
-                name="testing1",  # type:ignore[arg-type]
+                name="testing1",
                 encrypted_fields=encrypted_fields,
                 kms_provider="local",
             )
