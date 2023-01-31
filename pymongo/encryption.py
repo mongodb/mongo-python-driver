@@ -559,6 +559,7 @@ class ClientEncryption(Generic[_DocumentType]):
         self,
         database: Database,
         name: str,
+        encrypted_fields: Mapping[str, Any],
         kms_provider: Optional[str] = None,
         master_key: Optional[Mapping[str, Any]] = None,
         key_alt_names: Optional[Sequence[str]] = None,
@@ -574,8 +575,31 @@ class ClientEncryption(Generic[_DocumentType]):
 
         :Parameters:
           - `name`: the name of the collection to create
-          - `kms_provider`: the KMS provider to be used
-          - `master_key`: Identifies a KMS-specific key used to encrypt the
+          - `encryptedFields` (dict): **(BETA)** Document that describes the encrypted fields for
+            Queryable Encryption. For example::
+
+              {
+                "escCollection": "enxcol_.encryptedCollection.esc",
+                "eccCollection": "enxcol_.encryptedCollection.ecc",
+                "ecocCollection": "enxcol_.encryptedCollection.ecoc",
+                "fields": [
+                    {
+                        "path": "firstName",
+                        "keyId": Binary.from_uuid(UUID('00000000-0000-0000-0000-000000000000')),
+                        "bsonType": "string",
+                        "queries": {"queryType": "equality"}
+                    },
+                    {
+                        "path": "ssn",
+                        "keyId": Binary.from_uuid(UUID('04104104-1041-0410-4104-104104104104')),
+                        "bsonType": "string"
+                    }
+                  ]
+              }
+
+            The "keyId" may be set to ``None`` to auto-generate the data keys.
+          - `kms_provider` (optional): the KMS provider to be used
+          - `master_key` (optional): Identifies a KMS-specific key used to encrypt the
             new data key. If the kmsProvider is "local" the `master_key` is
             not applicable and may be omitted.
           - `key_alt_names` (optional): An optional list of string alternate
@@ -590,29 +614,6 @@ class ClientEncryption(Generic[_DocumentType]):
                                         algorithm=Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Random)
           - `key_material` (optional): Sets the custom key material to be used
             by the data key for encryption and decryption.
-          - ``encryptedFields`` (optional) (dict): **(BETA)** Document that describes the encrypted fields for
-            Queryable Encryption. For example::
-
-                {
-                  "escCollection": "enxcol_.encryptedCollection.esc",
-                  "eccCollection": "enxcol_.encryptedCollection.ecc",
-                  "ecocCollection": "enxcol_.encryptedCollection.ecoc",
-                  "fields": [
-                      {
-                          "path": "firstName",
-                          "keyId": Binary.from_uuid(UUID('00000000-0000-0000-0000-000000000000')),
-                          "bsonType": "string",
-                          "queries": {"queryType": "equality"}
-                      },
-                      {
-                          "path": "ssn",
-                          "keyId": Binary.from_uuid(UUID('04104104-1041-0410-4104-104104104104')),
-                          "bsonType": "string"
-                      }
-                    ]
-                }
-
-            The "keyId" may be set to ``None`` to auto-generate the data keys.
           - `**kwargs` (optional): additional keyword arguments are the same as "create_collection".
 
         All optional `create collection command`_ parameters should be passed
@@ -625,29 +626,24 @@ class ClientEncryption(Generic[_DocumentType]):
             https://mongodb.com/docs/manual/reference/command/create
 
         """
-        encrypted_fields = deepcopy(kwargs.get("encryptedFields"))
-        if encrypted_fields:
-            for i, field in enumerate(encrypted_fields["fields"]):
-                if isinstance(field, dict) and field.get("keyId") is None:
-                    try:
-                        encrypted_fields["fields"][i]["keyId"] = self.create_data_key(
-                            kms_provider=kms_provider,  # type:ignore[arg-type]
-                            master_key=master_key,
-                            key_alt_names=key_alt_names,
-                            key_material=key_material,
+        encrypted_fields = deepcopy(encrypted_fields)
+        for i, field in enumerate(encrypted_fields["fields"]):
+            if isinstance(field, dict) and field.get("keyId") is None:
+                try:
+                    encrypted_fields["fields"][i]["keyId"] = self.create_data_key(
+                        kms_provider=kms_provider,  # type:ignore[arg-type]
+                        master_key=master_key,
+                        key_alt_names=key_alt_names,
+                        key_material=key_material,
+                    )
+                except EncryptionError as exc:
+                    raise EncryptionError(
+                        Exception(
+                            "Error occurred while creating data key for field %s with encryptedFields=%s"
+                            % (field["path"], encrypted_fields)
                         )
-                    except EncryptionError as exc:
-                        raise EncryptionError(
-                            Exception(
-                                "Error occurred while creating data key for field %s with encryptedFields=%s"
-                                % (field["path"], encrypted_fields)
-                            )
-                        ) from exc
-            kwargs["encryptedFields"] = encrypted_fields
-        else:
-            raise ConfigurationError(
-                "'encryptedFields' must be provided as a keyword argument to create_encrypted_collection"
-            )
+                    ) from exc
+        kwargs["encryptedFields"] = encrypted_fields
         try:
             return database.create_collection(name=name, **kwargs), encrypted_fields
         except Exception as exc:

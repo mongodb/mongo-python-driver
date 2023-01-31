@@ -2715,7 +2715,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
         coll, _ = self.client_encryption.create_encrypted_collection(
             database=self.db,
             name="testing1",
-            encryptedFields={"fields": [{"path": "ssn", "bsonType": "string", "keyId": None}]},
+            encrypted_fields={"fields": [{"path": "ssn", "bsonType": "string", "keyId": None}]},
             kms_provider="local",
         )
         with self.assertRaises(WriteError) as exc:
@@ -2724,8 +2724,8 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
 
     def test_02_no_fields(self):
         with self.assertRaisesRegex(
-            ConfigurationError,
-            "'encryptedFields' must be provided as a keyword argument to create_encrypted_collection",
+            TypeError,
+            "create_encrypted_collection.* missing 1 required positional argument: 'encrypted_fields'",
         ):
             self.client_encryption.create_encrypted_collection(
                 database=self.db,
@@ -2740,7 +2740,9 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
             self.client_encryption.create_encrypted_collection(
                 database=self.db,
                 name="testing1",
-                encryptedFields={"fields": [{"path": "ssn", "bsonType": "string", "keyId": False}]},
+                encrypted_fields={
+                    "fields": [{"path": "ssn", "bsonType": "string", "keyId": False}]
+                },
                 kms_provider="local",
             )
 
@@ -2748,7 +2750,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
         coll, ef = self.client_encryption.create_encrypted_collection(
             database=self.db,
             name="testing1",
-            encryptedFields={"fields": [{"path": "ssn", "bsonType": "string", "keyId": None}]},
+            encrypted_fields={"fields": [{"path": "ssn", "bsonType": "string", "keyId": None}]},
             kms_provider="local",
         )
         key1_id = ef["fields"][0]["keyId"]
@@ -2773,7 +2775,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
             database=self.db,
             name="testing1",
             kms_provider="local",
-            encryptedFields=encrypted_fields,
+            encrypted_fields=encrypted_fields,
         )
         self.assertIsNot(
             ef["fields"],
@@ -2785,7 +2787,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
             database=self.db,
             name="testing1",
             kms_provider="local",
-            encryptedFields={"fields": [{"path": "ssn", "bsonType": "string", "keyId": None}]},
+            encrypted_fields={"fields": [{"path": "ssn", "bsonType": "string", "keyId": None}]},
             read_preference=ReadPreference.NEAREST,
         )
         self.assertEqual(coll.read_preference, ReadPreference.NEAREST)
@@ -2796,7 +2798,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
         coll, ef = self.client_encryption.create_encrypted_collection(
             database=self.db,
             name="testing1",
-            encryptedFields={
+            encrypted_fields={
                 "fields": [
                     {"path": "ssn", "bsonType": "string", "keyId": None},
                     {"path": "dob", "bsonType": "string", "keyId": key},
@@ -2827,16 +2829,16 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
             self.client_encryption.create_encrypted_collection(
                 database=self.db,
                 name="testing1",
-                encryptedFields={
+                encrypted_fields={
                     "fields": [
                         {"path": "address", "bsonType": "string", "keyId": key},
                         {"path": "dob", "bsonType": "string", "keyId": None},
-                        # We want this next one to fail, so we provide an invalid query.
-                        {"path": "ssn", "bsonType": "string", "keyId": None, "queries": None},
+                        # Because this is the second one to use the altName "1", it will fail when creating the data_key.
+                        {"path": "ssn", "bsonType": "string", "keyId": None},
                     ]
                 },
                 kms_provider="local",
-                key_alt_names=["2", "1", "3"],
+                key_alt_names=["1"],
             )
 
     def test_create_failure(self):
@@ -2850,7 +2852,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
             self.client_encryption.create_encrypted_collection(
                 database=self.db,
                 name=1,  # type:ignore[arg-type]
-                encryptedFields={
+                encrypted_fields={
                     "fields": [
                         {"path": "address", "bsonType": "string", "keyId": key},
                         {"path": "dob", "bsonType": "string", "keyId": None},
