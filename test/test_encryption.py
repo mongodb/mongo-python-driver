@@ -72,7 +72,6 @@ from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts, R
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
-    CollectionInvalid,
     ConfigurationError,
     DuplicateKeyError,
     EncryptionError,
@@ -2861,11 +2860,11 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
         self.db.create_collection("testing1")
         with self.assertRaisesRegex(
             EncryptionError,
-            f"while creating collection with encryptedFields=.*keyId.*Binary",
+            "while creating collection with encryptedFields=.*keyId.*Binary",
         ):
             self.client_encryption.create_encrypted_collection(
                 database=self.db,
-                name="testing1",  # type:ignore[arg-type]
+                name="testing1",
                 encrypted_fields={
                     "fields": [
                         {"path": "dob", "bsonType": "string", "keyId": None},
@@ -2877,7 +2876,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
         self.db.drop_collection("testing1")
         self.client_encryption.create_encrypted_collection(
             database=self.db,
-            name="testing1",  # type:ignore[arg-type]
+            name="testing1",
             encrypted_fields={
                 "fields": [
                     {"path": "dob", "bsonType": "string", "keyId": None},
@@ -2888,11 +2887,11 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
         )
         with self.assertRaisesRegex(
             EncryptionError,
-            f"while creating collection with encryptedFields=.*keyId.*Binary",
+            "while creating collection with encryptedFields=.*keyId.*Binary",
         ):
             self.client_encryption.create_encrypted_collection(
                 database=self.db,
-                name="testing1",  # type:ignore[arg-type]
+                name="testing1",
                 encrypted_fields={
                     "fields": [
                         {"path": "dob", "bsonType": "string", "keyId": None},
