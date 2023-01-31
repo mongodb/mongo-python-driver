@@ -568,6 +568,11 @@ class ClientEncryption(Generic[_DocumentType]):
     ) -> Tuple[Collection[_DocumentType], Mapping[str, Any]]:
         """Create a collection with encryptedFields.
 
+        .. warning::
+            This function does not update the encryptedFieldsMap in the client's
+            AutoEncryptionOpts, thus the user must create a new client after calling this function with
+            the encryptedFields returned.
+
         Normally collection creation is automatic. This method should
         only be used to specify options on
         creation. :class:`~pymongo.errors.EncryptionError` will be
