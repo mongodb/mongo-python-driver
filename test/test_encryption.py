@@ -2856,7 +2856,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
         ):
             self.client_encryption.create_encrypted_collection(
                 database=self.db,
-                name=1,
+                name=1,  # type:ignore[arg-type]
                 encryptedFields={
                     "fields": [
                         {"path": "address", "bsonType": "string", "keyId": key},
