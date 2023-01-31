@@ -2706,10 +2706,6 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
             OPTS,
         )
         self.addCleanup(self.client_encryption.close)
-        self.client = rs_or_single_client()
-        self.client.drop_database("db")
-        self.db = self.client.db
-        self.addCleanup(self.client.close)
 
     def test_01_simple_create(self):
         coll, _ = self.client_encryption.create_encrypted_collection(
@@ -2767,7 +2763,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
                 {
                     "path": "ssn",
                     "bsonType": "string",
-                    "keyId": self.client_encryption.create_data_key(kms_provider="local"),
+                    "keyId": None,
                 }
             ]
         }
@@ -2777,10 +2773,8 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
             kms_provider="local",
             encrypted_fields=encrypted_fields,
         )
-        self.assertIsNot(
-            ef["fields"],
-            encrypted_fields["fields"],
-        )
+        self.assertIsNotNone(ef["fields"][0]["keyId"])
+        self.assertIsNone(encrypted_fields["fields"][0]["keyId"])
 
     def test_options_forward(self):
         coll, ef = self.client_encryption.create_encrypted_collection(
@@ -2832,7 +2826,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
                 encrypted_fields={
                     "fields": [
                         {"path": "address", "bsonType": "string", "keyId": key},
-                        {"path": "dob", "bsonType": "string", "keyId": None},
+                        {"path": "dob", "bsonType": "string"},
                         # Because this is the second one to use the altName "1", it will fail when creating the data_key.
                         {"path": "ssn", "bsonType": "string", "keyId": None},
                     ]
