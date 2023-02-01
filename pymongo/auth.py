@@ -530,7 +530,7 @@ def _authenticate_oidc(credentials, sock_info):
     now_utc = datetime.now(timezone.utc)
     to_remove = []
     for key, value in _oidc_cache.items():
-        if value.cache_exp_utc > now_utc:
+        if value.cache_exp_utc < now_utc:
             to_remove.append(key)
     for key in to_remove:
         del _oidc_cache[key]
@@ -591,25 +591,22 @@ def _authenticate_oidc(credentials, sock_info):
         cache_value.server_resp = bson.decode(response["payload"])
         conversation_id = response["conversationId"]
 
-    with cache_value.lock:
-        if cache_value.token_exp_utc is not None:
-            now_utc = datetime.now(timezone.utc)
-            exp_utc = cache_value.token_exp_utc
-            buffer_seconds = _OIDC_TOKEN_BUFFER_MINUTES * 60
-            if (exp_utc - now_utc).total_seconds() <= buffer_seconds:
-                if properties.on_oidc_refresh_token:
-                    cache_value.token_result = properties.on_oidc_refresh_token(
-                        cache_value.server_resp, cache_value.token_result
-                    )
-                    cache_exp_utc = datetime.now(timezone.utc) + timedelta(
-                        minutes=_OIDC_CACHE_TIMEOUT_MINUTES
-                    )
-                    cache_value.cache_exp_utc = cache_exp_utc
-                else:
-                    cache_value.token_result = None
+    current_valid_token = False
+    if cache_value.token_exp_utc is not None:
+        now_utc = datetime.now(timezone.utc)
+        exp_utc = cache_value.token_exp_utc
+        buffer_seconds = _OIDC_TOKEN_BUFFER_MINUTES * 60
+        if (exp_utc - now_utc).total_seconds() >= buffer_seconds:
+            current_valid_token = True
 
-        if cache_value.token_result is None:
-            cache_value.token_result = properties.on_oidc_request_token(cache_value.server_resp)
+    if not current_valid_token:
+        with cache_value.lock:
+            if cache_value.token_result is None or properties.on_oidc_refresh_token is None:
+                cache_value.token_result = properties.on_oidc_request_token(cache_value.server_resp)
+            else:
+                cache_value.token_result = properties.on_oidc_refresh_token(
+                    cache_value.server_resp, cache_value.token_result
+                )
             cache_exp_utc = datetime.now(timezone.utc) + timedelta(
                 minutes=_OIDC_CACHE_TIMEOUT_MINUTES
             )
@@ -624,8 +621,6 @@ def _authenticate_oidc(credentials, sock_info):
             now_utc = datetime.now(timezone.utc)
             exp_utc = now_utc + timedelta(seconds=expires_in)
             cache_value.token_exp_utc = exp_utc
-    else:
-        _oidc_cache.pop(cache_key, None)
 
     bin_payload = Binary(bson.encode(dict(jwt=token)))
 
@@ -633,7 +628,6 @@ def _authenticate_oidc(credentials, sock_info):
         cmd = SON(
             [
                 ("saslContinue", 1),
-                ("mechanism", "MONGODB-OIDC"),
                 ("conversationId", conversation_id),
                 ("payload", bin_payload),
             ]

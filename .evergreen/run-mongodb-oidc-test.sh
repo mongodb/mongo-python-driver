@@ -23,9 +23,15 @@ shopt -s expand_aliases # needed for `urlencode` alias
 
 MONGODB_URI=${MONGODB_URI:-"mongodb://localhost:27017"}
 MONGODB_URI="${MONGODB_URI}/test?authMechanism=MONGODB-OIDC&directConnection=true&authMechanismProperties=DEVICE_NAME:aws"
+#MONGODB_URI="${MONGODB_URI}/test?authMechanism=MONGODB-OIDC"
 
 if [ "$USE_MULTIPLE_PRINCIPALS" = "true" ]; then
     MONGODB_URI="${MONGODB_URI}&authMechanismProperties=PRINCIPAL_NAME:717cc021e105be9843cd2005e5a4607beae5a4960ef8098cb1247481626090f8"
+fi
+
+if [ -z "${AWS_TOKEN_DIR}" ]; then
+    echo "Must specify AWS_TOKEN_DIR"
+    exit 1
 fi
 
 export MONGODB_URI="$MONGODB_URI"

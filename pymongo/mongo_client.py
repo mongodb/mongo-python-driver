@@ -1394,7 +1394,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                             assert last_error is not None
                             raise last_error
                         retryable = False
-                    return func(session, sock_info, retryable)
+                    try:
+                        return func(session, sock_info, retryable)
+                    except OperationFailure as exc:
+                        sock_info.authenticate(force=True)
+                        return func(session, sock_info, retryable)
             except ServerSelectionTimeoutError:
                 if is_retrying():
                     # The application may think the write was never attempted

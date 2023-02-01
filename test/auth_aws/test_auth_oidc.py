@@ -31,8 +31,40 @@ class TestAuthOIDC(unittest.TestCase):
         cls.uri = os.environ["MONGODB_URI"]
 
     def test_connect_environment_var(self):
-        with MongoClient(self.uri) as client:
-            client.test.test.find_one()
+        aws_token_dir = os.environ["AWS_TOKEN_DIR"]
+
+        def get_auth_token(info):
+            with open(os.path.join(aws_token_dir, "test_user1_expires")) as fid:
+                token = fid.read()
+            return dict(access_token=token)
+
+        def refresh_auth_token(server_info, auth_info):
+            with open(os.path.join(aws_token_dir, "test_user1")) as fid:
+                token = fid.read()
+            return dict(access_token=token)
+
+        props = dict(
+            on_oidc_request_token=get_auth_token,
+            on_oidc_refresh_token=refresh_auth_token,
+            principal_name="test_user1",
+        )
+        client = MongoClient(self.uri, authmechanismproperties=props)
+        client.test.test.find_one()
+
+        import time
+
+        time.sleep(60)
+
+        orders = client.test.orders
+        inventory = client.test.inventory
+        with client.start_session() as session:
+            with session.start_transaction():
+                orders.insert_one({"sku": "abc123", "qty": 100}, session=session)
+                inventory.update_one(
+                    {"sku": "abc123", "qty": {"$gte": 100}},
+                    {"$inc": {"qty": -100}},
+                    session=session,
+                )
 
 
 if __name__ == "__main__":

@@ -857,14 +857,14 @@ class SocketInfo(object):
         helpers._check_command_response(result, self.max_wire_version)
         return result
 
-    def authenticate(self):
+    def authenticate(self, force=False):
         """Authenticate to the server if needed.
 
         Can raise ConnectionFailure or OperationFailure.
         """
         # CMAP spec says to publish the ready event only after authenticating
         # the connection.
-        if not self.ready:
+        if not self.ready or force:
             creds = self.opts._credentials
             if creds:
                 auth.authenticate(creds, self)
