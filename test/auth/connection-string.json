@@ -536,34 +536,6 @@
       }
     },
     {
-      "description": "should recognise the mechanism with azure device (MONGODB-OIDC)",
-      "uri": "mongodb://localhost/?authMechanism=MONGODB-OIDC&authMechanismProperties=DEVICE_NAME:azure",
-      "valid": true,
-      "credential": {
-        "username": null,
-        "password": null,
-        "source": "$external",
-        "mechanism": "MONGODB-OIDC",
-        "mechanism_properties": {
-            "DEVICE_NAME": "azure"
-        }
-      }
-    },
-    {
-      "description": "should recognise the mechanism with gcp device (MONGODB-OIDC)",
-      "uri": "mongodb://localhost/?authMechanism=MONGODB-OIDC&authMechanismProperties=DEVICE_NAME:gcp",
-      "valid": true,
-      "credential": {
-        "username": null,
-        "password": null,
-        "source": "$external",
-        "mechanism": "MONGODB-OIDC",
-        "mechanism_properties": {
-            "DEVICE_NAME": "gcp"
-        }
-      }
-    },
-    {
       "description": "should throw an exception if username is specified (MONGODB-OIDC)",
       "uri": "mongodb://user@localhost/?authMechanism=MONGODB-OIDC",
       "callback": ["oidcRequest"],
