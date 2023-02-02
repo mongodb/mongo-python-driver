@@ -623,9 +623,14 @@ def _authenticate_oidc(credentials, sock_info):
             cache_value.cache_exp_utc = cache_exp_utc
 
     token_result = cache_value.token_result
+    if not isinstance(token_result, dict):
+        raise ValueError("OIDC callback returned invalid result")
+    if "access_token" not in token_result:
+        raise ValueError("OIDC callback did not return an access_token")
+
     token = token_result["access_token"]
     if "expires_in_seconds" in token_result:
-        expires_in = token_result["expires_in_seconds"]
+        expires_in = int(token_result["expires_in_seconds"])
         buffer_seconds = _OIDC_TOKEN_BUFFER_MINUTES * 60
         if expires_in >= buffer_seconds:
             now_utc = datetime.now(timezone.utc)
