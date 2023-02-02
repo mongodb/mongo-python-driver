@@ -33,12 +33,12 @@ class TestAuthOIDC(unittest.TestCase):
     def test_connect_environment_var(self):
         aws_token_dir = os.environ["AWS_TOKEN_DIR"]
 
-        def get_auth_token(info):
+        def get_auth_token(info, timeout):
             with open(os.path.join(aws_token_dir, "test_user1_expires")) as fid:
                 token = fid.read()
             return dict(access_token=token)
 
-        def refresh_auth_token(server_info, auth_info):
+        def refresh_auth_token(server_info, auth_info, timeout):
             with open(os.path.join(aws_token_dir, "test_user1")) as fid:
                 token = fid.read()
             return dict(access_token=token)

@@ -30,6 +30,7 @@ from urllib.parse import quote
 import bson
 from bson.binary import Binary
 from bson.son import SON
+from pymongo import _csot
 from pymongo.auth_aws import _authenticate_aws
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.saslprep import saslprep
@@ -599,13 +600,22 @@ def _authenticate_oidc(credentials, sock_info):
         if (exp_utc - now_utc).total_seconds() >= buffer_seconds:
             current_valid_token = True
 
+    # CSOT: apply timeout to callback.
+    timeout = _csot.remaining()
+    if timeout is None:
+        timeout = sock_info.opts.connect_timeout
+    elif timeout <= 0:
+        raise TimeoutError("timed out")
+
     if not current_valid_token:
         with cache_value.lock:
             if cache_value.token_result is None or properties.on_oidc_refresh_token is None:
-                cache_value.token_result = properties.on_oidc_request_token(cache_value.server_resp)
+                cache_value.token_result = properties.on_oidc_request_token(
+                    cache_value.server_resp, timeout
+                )
             else:
                 cache_value.token_result = properties.on_oidc_refresh_token(
-                    cache_value.server_resp, cache_value.token_result
+                    cache_value.server_resp, cache_value.token_result, timeout
                 )
             cache_exp_utc = datetime.now(timezone.utc) + timedelta(
                 minutes=_OIDC_CACHE_TIMEOUT_MINUTES
