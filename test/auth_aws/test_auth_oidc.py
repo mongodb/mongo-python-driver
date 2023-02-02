@@ -17,10 +17,12 @@
 import os
 import sys
 import unittest
+from typing import Dict
 
 sys.path[0:0] = [""]
 
 from pymongo import MongoClient
+from pymongo.auth import _oidc_cache
 
 
 class TestAuthOIDC(unittest.TestCase):
@@ -28,43 +30,110 @@ class TestAuthOIDC(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.uri = os.environ["MONGODB_URI"]
+        cls.uri_single = os.environ["MONGODB_URI_SINGLE"]
+        cls.uri_multiple = os.environ["MONGODB_URI_MULTIPLE"]
+        cls.token_dir = os.environ["AWS_TOKEN_DIR"]
 
-    def test_connect_environment_var(self):
-        aws_token_dir = os.environ["AWS_TOKEN_DIR"]
-
-        def get_auth_token(info, timeout):
-            with open(os.path.join(aws_token_dir, "test_user1_expires")) as fid:
-                token = fid.read()
-            return dict(access_token=token)
-
-        def refresh_auth_token(server_info, auth_info, timeout):
-            with open(os.path.join(aws_token_dir, "test_user1")) as fid:
-                token = fid.read()
-            return dict(access_token=token)
-
-        props = dict(
-            on_oidc_request_token=get_auth_token,
-            on_oidc_refresh_token=refresh_auth_token,
-            principal_name="test_user1",
-        )
-        client = MongoClient(self.uri, authmechanismproperties=props)
+    def test_connect_aws_device_workflow(self):
+        os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"] = os.path.join(self.token_dir, "test_user1")
+        props = dict(DEVICE_NAME="aws")
+        client = MongoClient(self.uri_single, authmechanismproperties=props)
         client.test.test.find_one()
+        client.close()
 
-        import time
+        client = MongoClient(self.uri_multiple, authmechanismproperties=props)
+        client.test.test.find_one()
+        client.close()
 
-        time.sleep(60)
+        os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"] = os.path.join(self.token_dir, "test_user2")
+        client = MongoClient(self.uri_multiple, authmechanismproperties=props)
+        client.test.test.find_one()
+        client.close()
 
-        orders = client.test.orders
-        inventory = client.test.inventory
-        with client.start_session() as session:
-            with session.start_transaction():
-                orders.insert_one({"sku": "abc123", "qty": 100}, session=session)
-                inventory.update_one(
-                    {"sku": "abc123", "qty": {"$gte": 100}},
-                    {"$inc": {"qty": -100}},
-                    session=session,
-                )
+    def test_connect_authorization_code_workflow(self):
+        token_file = os.path.join(self.token_dir, "test_user1")
+
+        def request_token(info, timeout):
+            with open(token_file) as fid:
+                token = fid.read()
+            return dict(access_token=token)
+
+        props: Dict = dict(on_oidc_request_token=request_token)
+        client = MongoClient(self.uri_single, authmechanismproperties=props)
+        client.test.test.find_one()
+        client.close()
+
+        _oidc_cache.clear()
+        props["PRINCIPAL_NAME"] = "test_user1"
+        client = MongoClient(self.uri_multiple, authmechanismproperties=props)
+        client.test.test.find_one()
+        client.close()
+
+        _oidc_cache.clear()
+        props["PRINCIPAL_NAME"] = "test_user2"
+        token_file = os.path.join(self.token_dir, "test_user2")
+        client = MongoClient(self.uri_multiple, authmechanismproperties=props)
+        client.test.test.find_one()
+        client.close()
+
+    def test_bad_callbacks(self):
+        _oidc_cache.clear()
+
+        def request_token_null(info, timeout):
+            return None
+
+        props: Dict = dict(on_oidc_request_token=request_token_null)
+        client = MongoClient(self.uri_single, authMechanismProperties=props)
+        with self.assertRaises(ValueError):
+            client.test.test.find_one()
+        client.close()
+
+        def request_token_no_token(info, timeout):
+            return dict()
+
+        _oidc_cache.clear()
+        props: Dict = dict(on_oidc_request_token=request_token_no_token)
+        client = MongoClient(self.uri_single, authMechanismProperties=props)
+        with self.assertRaises(ValueError):
+            client.test.test.find_one()
+        client.close()
+
+        def request_refresh_null(info, creds, timeout):
+            return None
+
+        token_file = os.path.join(self.token_dir, "test_user1")
+
+        def request_token(info, timeout):
+            with open(token_file) as fid:
+                token = fid.read()
+            return dict(access_token=token)
+
+        _oidc_cache.clear()
+        props: Dict = dict(
+            on_oidc_request_token=request_token, on_oidc_refresh_token=request_refresh_null
+        )
+        client = MongoClient(self.uri_single, authMechanismProperties=props)
+        client.test.test.find_one()
+        client.close()
+
+        client = MongoClient(self.uri_single, authMechanismProperties=props)
+        with self.assertRaises(ValueError):
+            client.test.test.find_one()
+        client.close()
+
+        def request_refresh_no_token(info, creds, timeout):
+            return dict()
+
+        _oidc_cache.clear()
+        props["on_oidc_refresh_token"] = request_refresh_no_token
+        client = MongoClient(self.uri_single, authMechanismProperties=props)
+        client.test.test.find_one()
+        client.close()
+
+        client = MongoClient(self.uri_single, authMechanismProperties=props)
+        with self.assertRaises(ValueError):
+            client.test.test.find_one()
+        client.close()
 
 
 if __name__ == "__main__":

@@ -21,22 +21,20 @@ set +x
 shopt -s expand_aliases # needed for `urlencode` alias
 [ -s "${PROJECT_DIRECTORY}/prepare_mongodb_oidc.sh" ] && source "${PROJECT_DIRECTORY}/prepare_mongodb_oidc.sh"
 
-MONGODB_URI=${MONGODB_URI:-"mongodb://localhost:27017"}
-MONGODB_URI="${MONGODB_URI}/test?authMechanism=MONGODB-OIDC&directConnection=true&authMechanismProperties=DEVICE_NAME:aws"
-#MONGODB_URI="${MONGODB_URI}/test?authMechanism=MONGODB-OIDC"
-
-if [ "$USE_MULTIPLE_PRINCIPALS" = "true" ]; then
-    MONGODB_URI="${MONGODB_URI}&authMechanismProperties=PRINCIPAL_NAME:717cc021e105be9843cd2005e5a4607beae5a4960ef8098cb1247481626090f8"
-fi
+MONGODB_URI=${MONGODB_URI:-"mongodb://localhost"}
+MONGODB_URI_SINGLE="${MONGODB_URI}/?authMechanism=MONGODB-OIDC"
+MONGODB_URI_MULTIPLE="${MONGODB_URI}:27018/?authMechanism=MONGODB-OIDC&directConnection=true"
 
 if [ -z "${AWS_TOKEN_DIR}" ]; then
     echo "Must specify AWS_TOKEN_DIR"
     exit 1
 fi
 
-export MONGODB_URI="$MONGODB_URI"
+export MONGODB_URI_SINGLE="$MONGODB_URI_SINGLE"
+export MONGODB_URI_MULTIPLE="$MONGODB_URI_MULTIPLE"
 
-echo $MONGODB_URI
+echo $MONGODB_URI_SINGLE
+echo $MONGODB_URI_MULTIPLE
 
 if [ "$ASSERT_NO_URI_CREDS" = "true" ]; then
     if echo "$MONGODB_URI" | grep -q "@"; then

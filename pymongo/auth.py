@@ -164,7 +164,7 @@ def _build_credentials_tuple(mech, source, user, passwd, extra, database):
             raise ValueError("authentication source must be $external or None for MONGODB-OIDC")
         properties = extra.get("authmechanismproperties", {})
         on_oidc_request_token = properties.get("on_oidc_request_token")
-        on_oidc_refresh_token = properties.get("on_oidc_refresh_token", on_oidc_request_token)
+        on_oidc_refresh_token = properties.get("on_oidc_refresh_token", None)
         principal_name = properties.get("PRINCIPAL_NAME", "")
         device_name = properties.get("DEVICE_NAME", "")
         if not on_oidc_request_token and device_name != "aws":
