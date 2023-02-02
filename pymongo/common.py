@@ -447,7 +447,7 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> Dict[str, Uni
                     expected_params = 3
                 else:
                     raise ValueError(f"Unrecognized Auth mechanisim function {key}")
-                if len(signature.parameters) == expected_params:
+                if len(signature.parameters) != expected_params:
                     msg = f"{key} must accept {expected_params} parameters"
                     raise ValueError(msg)
                 props[key] = value
