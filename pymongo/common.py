@@ -441,8 +441,14 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> Dict[str, Uni
                 props[key] = str(value).lower()
             elif inspect.isfunction(value):
                 signature = inspect.signature(value)
-                if len(signature.parameters) == 0:
-                    msg = "Auth mechanisim properity callbacks must accept at least one value"
+                if key == "on_oidc_request_token":
+                    expected_params = 2
+                elif key == "on_oidc_refresh_token":
+                    expected_params = 3
+                else:
+                    raise ValueError(f"Unrecognized Auth mechanisim function {key}")
+                if len(signature.parameters) == expected_params:
+                    msg = f"{key} must accept {expected_params} parameters"
                     raise ValueError(msg)
                 props[key] = value
             else:

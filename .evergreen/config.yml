@@ -787,6 +787,7 @@ functions:
           # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
           cat <<'EOF' > "${PROJECT_DIRECTORY}/prepare_mongodb_oidc.sh"
             export AWS_WEB_IDENTITY_TOKEN_FILE=${AWS_WEB_IDENTITY_TOKEN_FILE|/tmp/tokens/test1}
+            export AWS_TOKEN_DIR=/tmp/tokens
           EOF
     - command: shell.exec
       type: test
