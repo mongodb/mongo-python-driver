@@ -566,6 +566,9 @@ class ClientEncryption(Generic[_DocumentType]):
     ) -> Tuple[Collection[_DocumentType], Mapping[str, Any]]:
         """Create a collection with encryptedFields.
 
+        .. note:: Support for Queryable Encryption is in beta.
+           Backwards-breaking changes may be made before the final release.
+
         .. warning::
             This function does not update the encryptedFieldsMap in the client's
             AutoEncryptionOpts, thus the user must create a new client after calling this function with
