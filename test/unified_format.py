@@ -862,7 +862,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     a class attribute ``TEST_SPEC``.
     """
 
-    SCHEMA_VERSION = Version.from_string("1.12")
+    # TODO: check for other changes in 1.13
+    SCHEMA_VERSION = Version.from_string("1.13")
     RUN_ON_LOAD_BALANCER = True
     RUN_ON_SERVERLESS = True
     TEST_SPEC: Any

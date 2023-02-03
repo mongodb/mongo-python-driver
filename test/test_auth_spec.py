@@ -22,6 +22,7 @@ import sys
 sys.path[0:0] = [""]
 
 from test import unittest
+from test.unified_format import generate_test_classes
 
 from pymongo import MongoClient
 
@@ -101,7 +102,7 @@ def create_test(test_case):
 
 
 def create_tests():
-    for filename in glob.glob(os.path.join(_TEST_PATH, "*.json")):
+    for filename in glob.glob(os.path.join(_TEST_PATH, "legacy", "*.json")):
         test_suffix, _ = os.path.splitext(os.path.basename(filename))
         with open(filename) as auth_tests:
             test_cases = json.load(auth_tests)["tests"]
@@ -115,6 +116,13 @@ def create_tests():
 
 create_tests()
 
+
+globals().update(
+    generate_test_classes(
+        os.path.join(_TEST_PATH, "unified"),
+        module=__name__,
+    )
+)
 
 if __name__ == "__main__":
     unittest.main()
