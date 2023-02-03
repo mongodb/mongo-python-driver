@@ -2826,7 +2826,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
         # Make sure the error message includes the previous keys in the error message even when generating keys fails.
         with self.assertRaisesRegex(
             EncryptionError,
-            f"data key for field ssn with encryptedFields=.*{re.escape(repr(key))}.*keyId.*Binary.*keyId.*None",
+            f"data key for field dob with encryptedFields=.*{re.escape(repr(key))}.*keyId.*None",
         ):
             self.client_encryption.create_encrypted_collection(
                 database=self.db,
@@ -2835,12 +2835,9 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
                     "fields": [
                         {"path": "address", "bsonType": "string", "keyId": key},
                         {"path": "dob", "bsonType": "string", "keyId": None},
-                        # Because this is the second one to use the altName "1", it will fail when creating the data_key.
-                        {"path": "ssn", "bsonType": "string", "keyId": None},
                     ]
                 },
-                kms_provider="local",
-                key_alt_names=["1"],
+                kms_provider="does not exist",
             )
 
     def test_create_failure(self):
