@@ -562,11 +562,12 @@ class ClientEncryption(Generic[_DocumentType]):
         encrypted_fields: Mapping[str, Any],
         kms_provider: Optional[str] = None,
         master_key: Optional[Mapping[str, Any]] = None,
-        key_alt_names: Optional[Sequence[str]] = None,
-        key_material: Optional[bytes] = None,
         **kwargs: Any,
     ) -> Tuple[Collection[_DocumentType], Mapping[str, Any]]:
         """Create a collection with encryptedFields.
+
+        .. note:: Support for Queryable Encryption is in beta.
+           Backwards-breaking changes may be made before the final release.
 
         .. warning::
             This function does not update the encryptedFieldsMap in the client's
@@ -607,12 +608,6 @@ class ClientEncryption(Generic[_DocumentType]):
           - `master_key` (optional): Identifies a KMS-specific key used to encrypt the
             new data key. If the kmsProvider is "local" the `master_key` is
             not applicable and may be omitted.
-          - `key_alt_names` (optional): An optional list of string alternate
-            names used to reference a key. If a key is created with alternate
-            names, then encryption may refer to the key by the unique alternate
-            name instead of by ``key_id``.
-          - `key_material` (optional): Sets the custom key material to be used
-            by the data key for encryption and decryption.
           - `**kwargs` (optional): additional keyword arguments are the same as "create_collection".
 
         All optional `create collection command`_ parameters should be passed
@@ -632,8 +627,6 @@ class ClientEncryption(Generic[_DocumentType]):
                     encrypted_fields["fields"][i]["keyId"] = self.create_data_key(
                         kms_provider=kms_provider,  # type:ignore[arg-type]
                         master_key=master_key,
-                        key_alt_names=key_alt_names,
-                        key_material=key_material,
                     )
                 except EncryptionError as exc:
                     raise EncryptionError(
