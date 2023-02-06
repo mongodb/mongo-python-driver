@@ -74,7 +74,7 @@ from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
     DuplicateKeyError,
-    EncryptedFieldsError,
+    EncryptedCollectionError,
     EncryptionError,
     InvalidOperation,
     OperationFailure,
@@ -2730,7 +2730,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
 
     def test_03_invalid_keyid(self):
         with self.assertRaisesRegex(
-            EncryptedFieldsError,
+            EncryptedCollectionError,
             "create.encryptedFields.fields.keyId' is the wrong type 'bool', expected type 'binData",
         ):
             self.client_encryption.create_encrypted_collection(
@@ -2833,7 +2833,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
         # Make sure the exception's encrypted_fields object includes the previous keys in the error message even when
         # generating keys fails.
         with self.assertRaises(
-            EncryptedFieldsError,
+            EncryptedCollectionError,
         ) as exc:
             self.client_encryption.create_encrypted_collection(
                 database=self.db,
@@ -2848,7 +2848,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
         # Make sure the exception's encrypted_fields object includes the previous keys in the error message even when
         # it is the creation of the collection that fails.
         with self.assertRaises(
-            EncryptedFieldsError,
+            EncryptedCollectionError,
         ) as exc:
             self.client_encryption.create_encrypted_collection(
                 database=self.db,
@@ -2872,7 +2872,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
         }
         self.db.create_collection("testing1")
         with self.assertRaises(
-            EncryptedFieldsError,
+            EncryptedCollectionError,
         ) as exc:
             self.client_encryption.create_encrypted_collection(
                 database=self.db,
@@ -2889,7 +2889,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
             kms_provider="local",
         )
         with self.assertRaises(
-            EncryptedFieldsError,
+            EncryptedCollectionError,
         ) as exc:
             self.client_encryption.create_encrypted_collection(
                 database=self.db,

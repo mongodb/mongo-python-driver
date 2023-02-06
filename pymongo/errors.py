@@ -359,21 +359,21 @@ class EncryptionError(PyMongoError):
         return False
 
 
-class EncryptedFieldsError(EncryptionError):
+class EncryptedCollectionError(EncryptionError):
     """Raised when creating a collection with encrypted_fields fails.
 
-    .. note:: EncryptedFieldsError and `create_encrypted_collection` are both part of the
+    .. note:: EncryptedCollectionError and `create_encrypted_collection` are both part of the
        Queryable Encryption beta. Backwards-breaking changes may be made before the final release.
 
     .. versionadded:: 4.4
     """
 
     def __init__(self, cause: Exception, encrypted_fields: Mapping[str, Any]) -> None:
-        super(EncryptedFieldsError, self).__init__(cause)
+        super(EncryptedCollectionError, self).__init__(cause)
         self.__encrypted_fields = encrypted_fields
 
     @property
-    def encrypted_fields(self):
+    def encrypted_fields(self) -> Mapping[str, Any]:
         """The encrypted_fields document that allows inferring which data keys are *known* to be created.
 
         Note that the returned document is not guaranteed to contain information about *all* of the data keys that
