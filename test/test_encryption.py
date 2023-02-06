@@ -74,6 +74,7 @@ from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
     DuplicateKeyError,
+    EncryptedFieldsError,
     EncryptionError,
     InvalidOperation,
     OperationFailure,
@@ -2729,7 +2730,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
 
     def test_03_invalid_keyid(self):
         with self.assertRaisesRegex(
-            EncryptionError,
+            EncryptedFieldsError,
             "create.encryptedFields.fields.keyId' is the wrong type 'bool', expected type 'binData",
         ):
             self.client_encryption.create_encrypted_collection(
@@ -2823,31 +2824,31 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
 
     def test_create_datakey_fails(self):
         key = self.client_encryption.create_data_key(kms_provider="local")
+        encrypted_fields = {
+            "fields": [
+                {"path": "address", "bsonType": "string", "keyId": key},
+                {"path": "dob", "bsonType": "string", "keyId": None},
+            ]
+        }
         # Make sure the error message includes the previous keys in the error message even when generating keys fails.
-        with self.assertRaisesRegex(
-            EncryptionError,
-            f"data key for field dob with encryptedFields=.*{re.escape(repr(key))}.*keyId.*None",
-        ):
+        with self.assertRaises(
+            EncryptedFieldsError,
+        ) as exc:
             self.client_encryption.create_encrypted_collection(
                 database=self.db,
                 name="testing1",
-                encrypted_fields={
-                    "fields": [
-                        {"path": "address", "bsonType": "string", "keyId": key},
-                        {"path": "dob", "bsonType": "string", "keyId": None},
-                    ]
-                },
+                encrypted_fields=encrypted_fields,
                 kms_provider="does not exist",
             )
+        self.assertEqual(exc.exception.encrypted_fields, encrypted_fields)
 
     def test_create_failure(self):
         key = self.client_encryption.create_data_key(kms_provider="local")
         # Make sure the error message includes the previous keys in the error message even when it is the creation
         # of the collection that fails.
-        with self.assertRaisesRegex(
-            EncryptionError,
-            f"while creating collection with encryptedFields=.*{re.escape(repr(key))}.*keyId.*Binary",
-        ):
+        with self.assertRaises(
+            EncryptedFieldsError,
+        ) as exc:
             self.client_encryption.create_encrypted_collection(
                 database=self.db,
                 name=1,  # type:ignore[arg-type]
@@ -2859,6 +2860,8 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
                 },
                 kms_provider="local",
             )
+        for field in exc.exception.encrypted_fields["fields"]:
+            self.assertIsInstance(field["keyId"], Binary)
 
     def test_collection_name_collision(self):
         encrypted_fields = {
@@ -2867,16 +2870,16 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
             ]
         }
         self.db.create_collection("testing1")
-        with self.assertRaisesRegex(
-            EncryptionError,
-            "while creating collection with encryptedFields=.*keyId.*Binary",
-        ):
+        with self.assertRaises(
+            EncryptedFieldsError,
+        ) as exc:
             self.client_encryption.create_encrypted_collection(
                 database=self.db,
                 name="testing1",
                 encrypted_fields=encrypted_fields,
                 kms_provider="local",
             )
+        self.assertIsInstance(exc.exception.encrypted_fields["fields"][0]["keyId"], Binary)
         self.db.drop_collection("testing1", encrypted_fields=encrypted_fields)
         self.client_encryption.create_encrypted_collection(
             database=self.db,
@@ -2884,16 +2887,16 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
             encrypted_fields=encrypted_fields,
             kms_provider="local",
         )
-        with self.assertRaisesRegex(
-            EncryptionError,
-            "while creating collection with encryptedFields=.*keyId.*Binary",
-        ):
+        with self.assertRaises(
+            EncryptedFieldsError,
+        ) as exc:
             self.client_encryption.create_encrypted_collection(
                 database=self.db,
                 name="testing1",
                 encrypted_fields=encrypted_fields,
                 kms_provider="local",
             )
+        self.assertIsInstance(exc.exception.encrypted_fields["fields"][0]["keyId"], Binary)
 
 
 if __name__ == "__main__":

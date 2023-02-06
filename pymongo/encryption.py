@@ -47,6 +47,7 @@ from pymongo.database import Database
 from pymongo.encryption_options import AutoEncryptionOpts, RangeOpts
 from pymongo.errors import (
     ConfigurationError,
+    EncryptedFieldsError,
     EncryptionError,
     InvalidOperation,
     ServerSelectionTimeoutError,
@@ -629,12 +630,7 @@ class ClientEncryption(Generic[_DocumentType]):
                         master_key=master_key,
                     )
                 except EncryptionError as exc:
-                    raise EncryptionError(
-                        Exception(
-                            "Error occurred while creating data key for field %s with encryptedFields=%s"
-                            % (field["path"], encrypted_fields)
-                        )
-                    ) from exc
+                    raise EncryptedFieldsError(exc, encrypted_fields) from exc
         kwargs["encryptedFields"] = encrypted_fields
         kwargs["check_exists"] = False
         try:
@@ -643,11 +639,7 @@ class ClientEncryption(Generic[_DocumentType]):
                 encrypted_fields,
             )
         except Exception as exc:
-            raise EncryptionError(
-                Exception(
-                    f"Error: {str(exc)} occurred while creating collection with encryptedFields={str(encrypted_fields)}"
-                )
-            ) from exc
+            raise EncryptedFieldsError(exc, encrypted_fields) from exc
 
     def create_data_key(
         self,
