@@ -616,7 +616,7 @@ class ClientEncryption(Generic[_DocumentType]):
         See the documentation for :meth:`~pymongo.database.Database.create_collection` for all valid options.
 
         :Raises:
-          - :py:class:`~pymongo.errors.EncryptedCollectionError`: When either data-key creation or creating the collection fails.
+          - :class:`~pymongo.errors.EncryptedCollectionError`: When either data-key creation or creating the collection fails.
 
         .. versionadded:: 4.4
 
