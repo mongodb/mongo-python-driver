@@ -235,11 +235,9 @@ def _authenticate_scram(credentials, sock_info, mechanism):
     _hmac = hmac.HMAC
 
     ctx = sock_info.auth_ctx
-    speculated = False
     if ctx and ctx.speculate_succeeded():
         nonce, first_bare = ctx.scram_data
         res = ctx.speculative_authenticate
-        speculated = True
     else:
         nonce, first_bare, cmd = _authenticate_scram_start(credentials, mechanism)
         res = sock_info.command(source, cmd)
@@ -754,8 +752,8 @@ def authenticate(credentials, sock_info, reauthenticate=False):
     """Authenticate sock_info."""
     mechanism = credentials.mechanism
     auth_func = _AUTH_MAP[mechanism]
-    if reauthenticate and sock_info.pool_ref().handshake:
-        sock_info.hello()
+    if reauthenticate:
+        sock_info.performed_handshake = False
     if mechanism == "MONGODB-OIDC":
         auth_func(credentials, sock_info, reauthenticate)  # type:ignore
     else:
