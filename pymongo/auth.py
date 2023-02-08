@@ -524,7 +524,7 @@ _OIDC_CALLBACK_TIMEOUT_SECONDS = 5 * 60
 _OIDC_CACHE_TIMEOUT_MINUTES = 60 * 5
 
 
-def _authenticate_oidc(credentials, sock_info):
+def _authenticate_oidc(credentials, sock_info, reauthenticate):
     """Authenticate using MONGODB-OIDC."""
     properties: _OIDCProperties = credentials.mechanism_properties
 
@@ -594,7 +594,7 @@ def _authenticate_oidc(credentials, sock_info):
         conversation_id = response["conversationId"]
 
     current_valid_token = False
-    if cache_value.token_exp_utc is not None:
+    if cache_value.token_exp_utc is not None and not reauthenticate:
         now_utc = datetime.now(timezone.utc)
         exp_utc = cache_value.token_exp_utc
         buffer_seconds = _OIDC_TOKEN_BUFFER_MINUTES * 60
@@ -748,8 +748,11 @@ _SPECULATIVE_AUTH_MAP: Mapping[str, Callable] = {
 }
 
 
-def authenticate(credentials, sock_info):
+def authenticate(credentials, sock_info, reauthenticate=False):
     """Authenticate sock_info."""
     mechanism = credentials.mechanism
     auth_func = _AUTH_MAP[mechanism]
-    auth_func(credentials, sock_info)
+    if mechanism == "MONGODB-OIDC":
+        auth_func(credentials, sock_info, reauthenticate)  # type:ignore
+    else:
+        auth_func(credentials, sock_info)

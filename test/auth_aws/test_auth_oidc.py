@@ -23,6 +23,7 @@ sys.path[0:0] = [""]
 
 from pymongo import MongoClient
 from pymongo.auth import OperationFailure, _oidc_cache
+from pymongo.server_selectors import readable_server_selector
 
 
 class TestAuthOIDC(unittest.TestCase):
@@ -139,10 +140,10 @@ class TestAuthOIDC(unittest.TestCase):
         request_called = 0
         refresh_called = 0
 
-        # . Clear the cache.
+        # Clear the cache.
         _oidc_cache.clear()
-        # . Create a new client with a request callback and a refresh callback.  Both callbacks will read the contents of the ``AWS_WEB_IDENTITY_TOKEN_FILE`` location to obtain a valid access token.
-        # . Give a callback response with a valid accessToken and an expiresInSeconds that is within one minute.
+        # Create a new client with a request callback and a refresh callback.  Both callbacks will read the contents of the ``AWS_WEB_IDENTITY_TOKEN_FILE`` location to obtain a valid access token.
+        # Give a callback response with a valid accessToken and an expiresInSeconds that is within one minute.
         token_file = os.path.join(self.token_dir, "test_user1")
 
         def request_token(info, timeout):
@@ -171,15 +172,15 @@ class TestAuthOIDC(unittest.TestCase):
         _oidc_cache.clear()
         props: Dict = dict(on_oidc_request_token=request_token, on_oidc_refresh_token=refresh_token)
 
-        # . Ensure that a ``find`` operation adds credentials to the cache.
+        # Ensure that a ``find`` operation adds credentials to the cache.
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         client.test.test.find_one()
         client.close()
 
         assert len(_oidc_cache) == 1
 
-        # . Create a new client with the same request callback and a refresh callback.
-        # . Ensure that a ``find`` operation results in a call to the refresh callback.
+        # Create a new client with the same request callback and a refresh callback.
+        # Ensure that a ``find`` operation results in a call to the refresh callback.
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         client.test.test.find_one()
         client.close()
@@ -187,47 +188,47 @@ class TestAuthOIDC(unittest.TestCase):
         assert refresh_called == 1
         assert len(_oidc_cache) == 1
 
-        # . Clear the cache.
+        # Clear the cache.
         _oidc_cache.clear()
 
-        # . Create a new client with a request callback callback.
-        # . Give a callback response with a valid accessToken and an expiresInSeconds that is within one minute.
+        # Create a new client with a request callback callback.
+        # Give a callback response with a valid accessToken and an expiresInSeconds that is within one minute.
         del props["on_oidc_refresh_token"]
         client = MongoClient(self.uri_single, authMechanismProperties=props)
 
-        # . Ensure that a ``find`` operation adds credentials to the cache.
+        # Ensure that a ``find`` operation adds credentials to the cache.
         request_called = 0
         client.test.test.find_one()
         client.close()
         assert request_called == 1
         assert len(_oidc_cache) == 1
 
-        # . Create a new client with the same request callback.
-        # . Ensure that a ``find`` operation results in a call to the request callback.
+        # Create a new client with the same request callback.
+        # Ensure that a ``find`` operation results in a call to the request callback.
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         client.test.test.find_one()
         client.close()
         assert request_called == 2
         assert len(_oidc_cache) == 1
 
-        # . Create a new client with a refresh callback that gives invalid credentials.
+        # Create a new client with a refresh callback that gives invalid credentials.
         def bad_refresh(info, creds, timeout):
             return dict(access_token="bad")
 
         props["on_oidc_refresh_token"] = bad_refresh
         client = MongoClient(self.uri_single, authMechanismProperties=props)
 
-        # . Ensure that a ``find`` operation results in an error.
+        # Ensure that a ``find`` operation results in an error.
         with self.assertRaises(OperationFailure):
             client.test.test.find_one()
             client.close()
 
-        # . Ensure that the cache has been cleared.
+        # Ensure that the cache has been cleared.
         assert len(_oidc_cache) == 0
 
-        # . Clear the cache.
-        # . Create a new client using the AWS device workflow.
-        # . Ensure that a ``find`` operation does not add credentials to the cache.
+        # Clear the cache.
+        # Create a new client using the AWS device workflow.
+        # Ensure that a ``find`` operation does not add credentials to the cache.
         _oidc_cache.clear()
         os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"] = os.path.join(self.token_dir, "test_user1")
         props = dict(DEVICE_NAME="aws")
@@ -235,6 +236,48 @@ class TestAuthOIDC(unittest.TestCase):
         client.test.test.find_one()
         client.close()
         assert len(_oidc_cache) == 0
+
+    def test_reauthenticate(self):
+        token_file = os.path.join(self.token_dir, "test_user1")
+        refresh_called = 0
+
+        # Clear the cache
+        _oidc_cache.clear()
+
+        # Create request and refresh callbacks that return valid credentials
+        # that will not expire soon.
+        def request_token(info, timeout):
+            with open(token_file) as fid:
+                token = fid.read()
+            return dict(access_token=token, expires_in_seconds=1000)
+
+        def refresh_token(info, creds, timeout):
+            nonlocal refresh_called
+            with open(token_file) as fid:
+                token = fid.read()
+            refresh_called += 1
+            return dict(access_token=token, expires_in_seconds=1000)
+
+        # Create a client with the callbacks.
+        props: Dict = dict(on_oidc_request_token=request_token, on_oidc_refresh_token=refresh_token)
+        client = MongoClient(self.uri_single, authmechanismproperties=props)
+
+        # Perform a find operation.
+        client.test.test.find_one()
+        # Perform another find operation.
+        client.test.test.find_one()
+
+        # Assert that the refresh callback has not been called.
+        self.assertEqual(refresh_called, 0)
+
+        # Force a reauthenication
+        server = client._get_topology().select_server(readable_server_selector)
+        with server._pool.get_socket() as sock_info:  # type:ignore
+            sock_info.authenticate(True)
+
+        # Assert that the refresh callback has been called.
+        self.assertEqual(refresh_called, 1)
+        client.close()
 
 
 if __name__ == "__main__":

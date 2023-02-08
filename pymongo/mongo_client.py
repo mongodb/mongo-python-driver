@@ -1399,7 +1399,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                         return func(session, sock_info, retryable)
                     except OperationFailure as exc:
                         if exc.code == helpers._REAUTHENTICATION_REQUIRED_CODE:
-                            sock_info.authenticate(force=True)
+                            sock_info.authenticate(reauthenticate=True)
                             return func(session, sock_info, retryable)
                         raise
             except ServerSelectionTimeoutError:
@@ -1470,7 +1470,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                         return func(session, server, sock_info, read_pref)
                     except OperationFailure as exc:
                         if exc.code == helpers._REAUTHENTICATION_REQUIRED_CODE:
-                            sock_info.authenticate(force=True)
+                            sock_info.authenticate(reauthenticate=True)
                             return func(session, server, sock_info, read_pref)
                         raise
             except ServerSelectionTimeoutError:
