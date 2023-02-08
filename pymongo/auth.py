@@ -282,10 +282,7 @@ def _authenticate_scram(credentials, sock_info, mechanism):
             ("payload", Binary(client_final)),
         ]
     )
-    try:
-        res = sock_info.command(source, cmd)
-    except Exception as e:
-        raise ValueError(f"speculated? {speculated}")
+    res = sock_info.command(source, cmd)
 
     parsed = _parse_scram_response(res["payload"])
     if not hmac.compare_digest(parsed[b"v"], server_sig):
