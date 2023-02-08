@@ -520,6 +520,7 @@ interface OIDCRequestTokenResult {
 
 _oidc_cache: Dict[str, _OIDCCache] = {}
 _OIDC_TOKEN_BUFFER_MINUTES = 5
+_OIDC_CALLBACK_TIMEOUT_SECONDS = 5 * 60
 _OIDC_CACHE_TIMEOUT_MINUTES = 60 * 5
 
 
@@ -600,12 +601,7 @@ def _authenticate_oidc(credentials, sock_info):
         if (exp_utc - now_utc).total_seconds() >= buffer_seconds:
             current_valid_token = True
 
-    # CSOT: apply timeout to callback.
-    timeout = _csot.remaining()
-    if timeout is None:
-        timeout = sock_info.opts.connect_timeout
-    elif timeout <= 0:
-        raise TimeoutError("timed out")
+    timeout = _OIDC_CALLBACK_TIMEOUT_SECONDS
 
     if not current_valid_token:
         with cache_value.lock:
