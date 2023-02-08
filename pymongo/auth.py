@@ -238,6 +238,7 @@ def _authenticate_scram(credentials, sock_info, mechanism):
     if ctx and ctx.speculate_succeeded():
         nonce, first_bare = ctx.scram_data
         res = ctx.speculative_authenticate
+        raise ValueError("this is the one")
     else:
         nonce, first_bare, cmd = _authenticate_scram_start(credentials, mechanism)
         res = sock_info.command(source, cmd)
