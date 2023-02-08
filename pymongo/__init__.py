@@ -14,6 +14,24 @@
 
 """Python driver for MongoDB."""
 
+from pymongo.write_concern import WriteConcern
+from pymongo.read_preferences import ReadPreference
+from pymongo.operations import (
+    DeleteMany,
+    DeleteOne,
+    IndexModel,
+    InsertOne,
+    ReplaceOne,
+    UpdateMany,
+    UpdateOne,
+)
+from pymongo.mongo_client import MongoClient
+from pymongo.pipeline_helper import PipelineHelper
+from pymongo.cursor import CursorType
+from pymongo.common import MAX_SUPPORTED_WIRE_VERSION, MIN_SUPPORTED_WIRE_VERSION
+from pymongo.collection import ReturnDocument
+from pymongo._version import __version__, get_version_string, version_tuple
+from pymongo import _csot
 from typing import ContextManager, Optional
 
 __all__ = [
@@ -32,6 +50,7 @@ __all__ = [
     "MIN_SUPPORTED_WIRE_VERSION",
     "CursorType",
     "MongoClient",
+    "PipelineHelper",
     "DeleteMany",
     "DeleteOne",
     "IndexModel",
@@ -84,23 +103,6 @@ TEXT = "text"
 .. _text index: http://mongodb.com/docs/manual/core/index-text/
 """
 
-from pymongo import _csot
-from pymongo._version import __version__, get_version_string, version_tuple
-from pymongo.collection import ReturnDocument
-from pymongo.common import MAX_SUPPORTED_WIRE_VERSION, MIN_SUPPORTED_WIRE_VERSION
-from pymongo.cursor import CursorType
-from pymongo.mongo_client import MongoClient
-from pymongo.operations import (
-    DeleteMany,
-    DeleteOne,
-    IndexModel,
-    InsertOne,
-    ReplaceOne,
-    UpdateMany,
-    UpdateOne,
-)
-from pymongo.read_preferences import ReadPreference
-from pymongo.write_concern import WriteConcern
 
 version = __version__
 """Current version of PyMongo."""
