@@ -757,6 +757,8 @@ def authenticate(credentials, sock_info, reauthenticate=False):
     """Authenticate sock_info."""
     mechanism = credentials.mechanism
     auth_func = _AUTH_MAP[mechanism]
+    if reauthenticate:
+        sock_info.auth_ctx = None
     if mechanism == "MONGODB-OIDC":
         auth_func(credentials, sock_info, reauthenticate)  # type:ignore
     else:
