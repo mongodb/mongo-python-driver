@@ -26,13 +26,14 @@ from pymongo.operations import (
     UpdateOne,
 )
 from pymongo.mongo_client import MongoClient
-from pymongo.pipeline_helper import PipelineHelper
 from pymongo.cursor import CursorType
 from pymongo.common import MAX_SUPPORTED_WIRE_VERSION, MIN_SUPPORTED_WIRE_VERSION
 from pymongo.collection import ReturnDocument
 from pymongo._version import __version__, get_version_string, version_tuple
 from pymongo import _csot
 from typing import ContextManager, Optional
+from pymongo.pipeline_helper import PipelineHelper
+
 
 __all__ = [
     "ASCENDING",
@@ -49,7 +50,6 @@ __all__ = [
     "MAX_SUPPORTED_WIRE_VERSION",
     "MIN_SUPPORTED_WIRE_VERSION",
     "CursorType",
-    "MongoClient",
     "PipelineHelper",
     "DeleteMany",
     "DeleteOne",
@@ -62,6 +62,7 @@ __all__ = [
     "WriteConcern",
     "has_c",
     "timeout",
+    "MongoClient",
 ]
 
 ASCENDING = 1
