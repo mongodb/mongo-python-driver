@@ -235,10 +235,11 @@ def _authenticate_scram(credentials, sock_info, mechanism):
     _hmac = hmac.HMAC
 
     ctx = sock_info.auth_ctx
+    speculated = False
     if ctx and ctx.speculate_succeeded():
         nonce, first_bare = ctx.scram_data
         res = ctx.speculative_authenticate
-        raise ValueError("this is the one")
+        speculated = True
     else:
         nonce, first_bare, cmd = _authenticate_scram_start(credentials, mechanism)
         res = sock_info.command(source, cmd)
@@ -281,7 +282,10 @@ def _authenticate_scram(credentials, sock_info, mechanism):
             ("payload", Binary(client_final)),
         ]
     )
-    res = sock_info.command(source, cmd)
+    try:
+        res = sock_info.command(source, cmd)
+    except Exception as e:
+        raise ValueError(f"speculated? {speculated}")
 
     parsed = _parse_scram_response(res["payload"])
     if not hmac.compare_digest(parsed[b"v"], server_sig):
