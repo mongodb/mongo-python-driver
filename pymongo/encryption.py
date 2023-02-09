@@ -706,9 +706,9 @@ class ClientEncryption(Generic[_DocumentType]):
             name instead of by ``key_id``. The following example shows creating
             and referring to a data key by alternate name::
 
-              client_encryption.create_data_key("local", keyAltNames=["name1"])
+              client_encryption.create_data_key("local", key_alt_names=["name1"])
               # reference the key with the alternate name
-              client_encryption.encrypt("457-55-5462", keyAltName="name1",
+              client_encryption.encrypt("457-55-5462", key_alt_name="name1",
                                         algorithm=Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Random)
           - `key_material` (optional): Sets the custom key material to be used
             by the data key for encryption and decryption.
