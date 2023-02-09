@@ -32,9 +32,11 @@ fi
 
 export MONGODB_URI_SINGLE="$MONGODB_URI_SINGLE"
 export MONGODB_URI_MULTIPLE="$MONGODB_URI_MULTIPLE"
+export MONGODB_URI="$MONGODB_URI"
 
 echo $MONGODB_URI_SINGLE
 echo $MONGODB_URI_MULTIPLE
+echo $MONGODB_URI
 
 if [ "$ASSERT_NO_URI_CREDS" = "true" ]; then
     if echo "$MONGODB_URI" | grep -q "@"; then

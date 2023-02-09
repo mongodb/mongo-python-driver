@@ -17,13 +17,14 @@
 import os
 import sys
 import unittest
+from contextlib import contextmanager
 from typing import Dict
 
 sys.path[0:0] = [""]
 
+from bson import SON
 from pymongo import MongoClient
 from pymongo.auth import OperationFailure, _oidc_cache
-from pymongo.server_selectors import readable_server_selector
 
 
 class TestAuthOIDC(unittest.TestCase):
@@ -33,7 +34,19 @@ class TestAuthOIDC(unittest.TestCase):
     def setUpClass(cls):
         cls.uri_single = os.environ["MONGODB_URI_SINGLE"]
         cls.uri_multiple = os.environ["MONGODB_URI_MULTIPLE"]
+        cls.uri_admin = os.environ["MONGODB_URI"]
         cls.token_dir = os.environ["AWS_TOKEN_DIR"]
+
+    @contextmanager
+    def fail_point(self, command_args):
+        cmd_on = SON([("configureFailPoint", "failCommand")])
+        cmd_on.update(command_args)
+        client = MongoClient(self.uri_admin)
+        client.admin.command(cmd_on)
+        try:
+            yield
+        finally:
+            client.admin.command("configureFailPoint", cmd_on["configureFailPoint"], mode="off")
 
     def test_connect_aws_device_workflow(self):
         os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"] = os.path.join(self.token_dir, "test_user1")
@@ -239,7 +252,7 @@ class TestAuthOIDC(unittest.TestCase):
         client.close()
         assert len(_oidc_cache) == 0
 
-    def test_reauthenticate(self):
+    def test_reauthenticate_read(self):
         token_file = os.path.join(self.token_dir, "test_user1")
         refresh_called = 0
 
@@ -266,16 +279,56 @@ class TestAuthOIDC(unittest.TestCase):
 
         # Perform a find operation.
         client.test.test.find_one()
-        # Perform another find operation.
+
+        # Assert that the refresh callback has not been called.
+        self.assertEqual(refresh_called, 0)
+
+        with self.fail_point(
+            {"mode": {"times": 1}, "data": {"failCommands": ["find"], "errorCode": 391}}
+        ):
+            # Perform a find operation.
+            client.test.test.find_one()
+
+        # Assert that the refresh callback has been called.
+        self.assertEqual(refresh_called, 1)
+        client.close()
+
+    def test_reauthenticate_write(self):
+        token_file = os.path.join(self.token_dir, "test_user1")
+        refresh_called = 0
+
+        # Clear the cache
+        _oidc_cache.clear()
+
+        # Create request and refresh callbacks that return valid credentials
+        # that will not expire soon.
+        def request_token(info, timeout):
+            with open(token_file) as fid:
+                token = fid.read()
+            return dict(access_token=token, expires_in_seconds=1000)
+
+        def refresh_token(info, creds, timeout):
+            nonlocal refresh_called
+            with open(token_file) as fid:
+                token = fid.read()
+            refresh_called += 1
+            return dict(access_token=token, expires_in_seconds=1000)
+
+        # Create a client with the callbacks.
+        props: Dict = dict(on_oidc_request_token=request_token, on_oidc_refresh_token=refresh_token)
+        client = MongoClient(self.uri_single, authmechanismproperties=props)
+
+        # Perform a find operation.
         client.test.test.find_one()
 
         # Assert that the refresh callback has not been called.
         self.assertEqual(refresh_called, 0)
 
-        # Force a reauthenication
-        server = client._get_topology().select_server(readable_server_selector)
-        with server._pool.get_socket() as sock_info:  # type:ignore
-            sock_info.authenticate(True)
+        with self.fail_point(
+            {"mode": {"times": 1}, "data": {"failCommands": ["insert"], "errorCode": 391}}
+        ):
+            # Perform an insert operation.
+            client.test.test.insert_one({})
 
         # Assert that the refresh callback has been called.
         self.assertEqual(refresh_called, 1)
