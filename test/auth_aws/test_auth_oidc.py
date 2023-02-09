@@ -65,15 +65,17 @@ class TestAuthOIDC(unittest.TestCase):
         client.close()
 
         _oidc_cache.clear()
-        props["PRINCIPAL_NAME"] = "test_user1"
-        client = MongoClient(self.uri_multiple, authmechanismproperties=props)
+        client = MongoClient(
+            self.uri_multiple, username="test_user1", authmechanismproperties=props
+        )
         client.test.test.find_one()
         client.close()
 
         _oidc_cache.clear()
-        props["PRINCIPAL_NAME"] = "test_user2"
         token_file = os.path.join(self.token_dir, "test_user2")
-        client = MongoClient(self.uri_multiple, authmechanismproperties=props)
+        client = MongoClient(
+            self.uri_multiple, username="test_user2", authmechanismproperties=props
+        )
         client.test.test.find_one()
         client.close()
 

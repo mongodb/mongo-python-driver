@@ -107,7 +107,7 @@ _AWSProperties = namedtuple("_AWSProperties", ["aws_session_token"])
 
 _OIDCProperties = namedtuple(
     "_OIDCProperties",
-    ["on_oidc_request_token", "on_oidc_refresh_token", "principal_name", "device_name"],
+    ["on_oidc_request_token", "on_oidc_refresh_token", "device_name"],
 )
 """Mechanism properties for MONGODB-OIDC authentication."""
 
@@ -165,7 +165,6 @@ def _build_credentials_tuple(mech, source, user, passwd, extra, database):
         properties = extra.get("authmechanismproperties", {})
         on_oidc_request_token = properties.get("on_oidc_request_token")
         on_oidc_refresh_token = properties.get("on_oidc_refresh_token", None)
-        principal_name = properties.get("PRINCIPAL_NAME", "")
         device_name = properties.get("DEVICE_NAME", "")
         if not on_oidc_request_token and device_name != "aws":
             raise ConfigurationError(
@@ -174,7 +173,6 @@ def _build_credentials_tuple(mech, source, user, passwd, extra, database):
         oidc_props = _OIDCProperties(
             on_oidc_request_token=on_oidc_request_token,
             on_oidc_refresh_token=on_oidc_refresh_token,
-            principal_name=principal_name,
             device_name=device_name,
         )
         return MongoCredential(mech, "$external", user, passwd, oidc_props, None)
@@ -557,7 +555,7 @@ def _authenticate_oidc(credentials, sock_info, reauthenticate):
 
     # Handle authorization code credentials.
     address = sock_info.address
-    principal_name = properties.principal_name
+    principal_name = credentials.username
     cache_key = f"{principal_name}{address[0]}{address[1]}"
 
     cache_value = _oidc_cache.get(cache_key)
