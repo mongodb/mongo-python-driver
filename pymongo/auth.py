@@ -30,7 +30,6 @@ from urllib.parse import quote
 import bson
 from bson.binary import Binary
 from bson.son import SON
-from pymongo import _csot
 from pymongo.auth_aws import _authenticate_aws
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.saslprep import saslprep
@@ -753,6 +752,6 @@ def authenticate(credentials, sock_info, reauthenticate=False):
     if reauthenticate and sock_info.performed_handshake:
         sock_info.hello()
     if mechanism == "MONGODB-OIDC":
-        auth_func(credentials, sock_info, reauthenticate)  # type:ignore
+        auth_func(credentials, sock_info, reauthenticate)
     else:
         auth_func(credentials, sock_info)
