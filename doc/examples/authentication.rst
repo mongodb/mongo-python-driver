@@ -433,19 +433,19 @@ Where ``ProviderInfo`` is a dictionary of the following form::
           URL where the IDP may be contacted for end user
           authentication and authorization code generation.
         type: string
-        optional: true # Req if deviceAuthorizeEndpoint not present
+        optional: true # Req if device_authorization_endpoint not present
       token_endpoint:
         description: >-
           URL where the IDP may be contacted for authorization
           code <=> ID/access token exchange.
         type: string
-        optional: true # Req if deviceAuthorizeEndpoint not present
+        optional: true # Req if device_authorization_endpoint not present
       device_authorization_endpoint:
         description: >-
           URL where the IDP may be contacted for device
           authentication and authorization code generation.
         type: string
-        optional: true # Req if authorizeEndpoint not present
+        optional: true # Req if authorization_endpoint not present
       client_id:
         description: "Unique client ID for this OIDC client"
         type: string
