@@ -72,9 +72,9 @@ class TestJsonUtil(unittest.TestCase):
         self.round_trip({"hello": "world"})
 
     def test_loads_bytes(self):
-        string = rb'{"hello": "world"}'
-        for type in [bytes, bytearray]:
-            json_util.loads(type(string))
+        string = b'{"hello": "world"}'
+        json_util.loads(bytes(string))
+        json_util.loads(bytearray(string))
 
     def test_json_options_with_options(self):
         opts = JSONOptions(
