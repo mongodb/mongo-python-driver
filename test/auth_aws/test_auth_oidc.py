@@ -22,6 +22,8 @@ from typing import Dict
 
 sys.path[0:0] = [""]
 
+from test.utils import EventListener
+
 from bson import SON
 from pymongo import MongoClient
 from pymongo.auth import OperationFailure, _oidc_cache
@@ -255,6 +257,7 @@ class TestAuthOIDC(unittest.TestCase):
     def test_reauthenticate_read(self):
         token_file = os.path.join(self.token_dir, "test_user1")
         refresh_called = 0
+        listener = EventListener()
 
         # Clear the cache
         _oidc_cache.clear()
@@ -275,7 +278,9 @@ class TestAuthOIDC(unittest.TestCase):
 
         # Create a client with the callbacks.
         props: Dict = dict(on_oidc_request_token=request_token, on_oidc_refresh_token=refresh_token)
-        client = MongoClient(self.uri_single, authmechanismproperties=props)
+        client = MongoClient(
+            self.uri_single, event_listeners=[listener], authmechanismproperties=props
+        )
 
         # Perform a find operation.
         client.test.test.find_one()
@@ -283,11 +288,21 @@ class TestAuthOIDC(unittest.TestCase):
         # Assert that the refresh callback has not been called.
         self.assertEqual(refresh_called, 0)
 
+        listener.reset()
+
         with self.fail_point(
             {"mode": {"times": 1}, "data": {"failCommands": ["find"], "errorCode": 391}}
         ):
             # Perform a find operation.
             client.test.test.find_one()
+
+        started_events = [i.command_name for i in listener.started_events]
+        succeeded_events = [i.command_name for i in listener.succeeded_events]
+        failed_events = [i.command_name for i in listener.failed_events]
+
+        assert started_events == ["find", "saslStart", "find"]
+        assert succeeded_events == ["saslStart", "find"]
+        assert failed_events == ["find"]
 
         # Assert that the refresh callback has been called.
         self.assertEqual(refresh_called, 1)
@@ -296,6 +311,7 @@ class TestAuthOIDC(unittest.TestCase):
     def test_reauthenticate_write(self):
         token_file = os.path.join(self.token_dir, "test_user1")
         refresh_called = 0
+        listener = EventListener()
 
         # Clear the cache
         _oidc_cache.clear()
@@ -316,7 +332,9 @@ class TestAuthOIDC(unittest.TestCase):
 
         # Create a client with the callbacks.
         props: Dict = dict(on_oidc_request_token=request_token, on_oidc_refresh_token=refresh_token)
-        client = MongoClient(self.uri_single, authmechanismproperties=props)
+        client = MongoClient(
+            self.uri_single, event_listeners=[listener], authmechanismproperties=props
+        )
 
         # Perform a find operation.
         client.test.test.find_one()
@@ -324,11 +342,21 @@ class TestAuthOIDC(unittest.TestCase):
         # Assert that the refresh callback has not been called.
         self.assertEqual(refresh_called, 0)
 
+        listener.reset()
+
         with self.fail_point(
             {"mode": {"times": 1}, "data": {"failCommands": ["insert"], "errorCode": 391}}
         ):
             # Perform an insert operation.
             client.test.test.insert_one({})
+
+        started_events = [i.command_name for i in listener.started_events]
+        succeeded_events = [i.command_name for i in listener.succeeded_events]
+        failed_events = [i.command_name for i in listener.failed_events]
+
+        assert started_events == ["insert", "saslStart", "insert"]
+        assert succeeded_events == ["saslStart", "insert"]
+        assert failed_events == ["insert"]
 
         # Assert that the refresh callback has been called.
         self.assertEqual(refresh_called, 1)
