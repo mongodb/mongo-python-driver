@@ -75,7 +75,7 @@ functions:
 
               export TMPDIR="$MONGO_ORCHESTRATION_HOME/db"
               # Installation of cryptography requires a rust compiler on some machines
-              export PATH="/opt/mongodbtoolchain/v4/bin/:$MONGODB_BINARIES:/home/admin/.cargo/bin:$PATH"
+              export PATH="$MONGODB_BINARIES:/home/admin/.cargo/bin:$PATH"
               export PROJECT="${project}"
            EOT
            # See what we've done
@@ -285,7 +285,6 @@ functions:
           fi
 
           ${PREPARE_SHELL}
-
           MONGODB_VERSION=${VERSION} \
             TOPOLOGY=${TOPOLOGY} \
             AUTH=${AUTH} \
@@ -569,12 +568,14 @@ functions:
               "iam_auth_ecs_subnet_a": "${iam_auth_ecs_subnet_a}",
               "iam_auth_ecs_subnet_b": "${iam_auth_ecs_subnet_b}",
               "iam_auth_ecs_security_group": "${iam_auth_ecs_security_group}",
+
               "iam_auth_assume_aws_account" : "${iam_auth_assume_aws_account}",
               "iam_auth_assume_aws_secret_access_key" : "${iam_auth_assume_aws_secret_access_key}",
               "iam_auth_assume_role_name" : "${iam_auth_assume_role_name}",
               "iam_auth_ec2_instance_account" : "${iam_auth_ec2_instance_account}",
               "iam_auth_ec2_instance_secret_access_key" : "${iam_auth_ec2_instance_secret_access_key}",
               "iam_auth_ec2_instance_profile" : "${iam_auth_ec2_instance_profile}",
+
               "iam_auth_assume_web_role_name": "${iam_auth_assume_web_role_name}",
               "iam_web_identity_issuer": "${iam_web_identity_issuer}",
               "iam_web_identity_rsa_key": "${iam_web_identity_rsa_key}",
