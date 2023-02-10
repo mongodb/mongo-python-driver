@@ -575,7 +575,7 @@ def _authenticate_oidc(credentials, sock_info, reauthenticate):
         # Avoid circular import
         from pymongo.common import camel_to_snake
 
-        orig_server_resp = bson.decode(response["payload"])
+        orig_server_resp: Dict = bson.decode(response["payload"])
         server_resp = dict()
         for key, value in orig_server_resp.items():
             server_resp[camel_to_snake(key)] = value
