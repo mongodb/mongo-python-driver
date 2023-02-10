@@ -417,9 +417,7 @@ Authentication Code Flow Support
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 PyMongo supports using the Authentication Code Flow for OIDC, when
-callbacks are given to the ``MongoClient``.  When multiple identity providers
-are configured on the server, a ``username`` must be provided, which is the
-Principal Name used on the provider.  The ``on_oidc_request_callback``
+callbacks are given to the ``MongoClient``.  The ``on_oidc_request_callback``
 is intended to accept information about the Identity Provider, and return
 credentials that are used to authenticate with the server, usually through
 a browser interaction with the user.  The callback must be of the form::
@@ -474,7 +472,7 @@ And ``TokenResult`` is a dictionary of the following form::
         type: str
         optional: true
 
-And ``timeout_seconds`` will always be 3000 (5 minutes).  An example
+And ``timeout_seconds`` will always be 300 (5 minutes).  An example
 client would be::
 
   >>> from pymongo import MongoClient
@@ -499,5 +497,14 @@ if it was provided.  An example using both callbacks would be::
 
   >>> from pymongo import MongoClient
   >>> uri = "mongodb://localhost/?authMechanism=MONGODB-OIDC")
+  >>> client = MongoClient(uri, on_oidc_request_callback=my_request_callback,
+  ... on_oidc_refresh_callback=my_refresh_callback)
+
+Note: when multiple identity providers
+are configured on the server, a ``username`` must be provided, which is the
+Principal Name used on the provider.  For example::
+
+  >>> from pymongo import MongoClient
+  >>> uri = "mongodb://my_username@localhost/?authMechanism=MONGODB-OIDC")
   >>> client = MongoClient(uri, on_oidc_request_callback=my_request_callback,
   ... on_oidc_refresh_callback=my_refresh_callback)
