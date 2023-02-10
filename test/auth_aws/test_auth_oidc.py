@@ -165,9 +165,9 @@ class TestAuthOIDC(unittest.TestCase):
 
         def request_token(info, timeout):
             nonlocal request_called
-            assert "authorizationEndpoint" in info
-            assert "tokenEndpoint" in info
-            assert "clientId" in info
+            assert "authorization_endpoint" in info
+            assert "token_endpoint" in info
+            assert "client_id" in info
             assert timeout == 60 * 5
             with open(token_file) as fid:
                 token = fid.read()
@@ -176,9 +176,9 @@ class TestAuthOIDC(unittest.TestCase):
 
         def refresh_token(info, creds, timeout):
             nonlocal refresh_called
-            assert "authorizationEndpoint" in info
-            assert "tokenEndpoint" in info
-            assert "clientId" in info
+            assert "authorization_endpoint" in info
+            assert "token_endpoint" in info
+            assert "client_id" in info
             assert timeout == 60 * 5
             assert "access_token" in creds
             refresh_called += 1

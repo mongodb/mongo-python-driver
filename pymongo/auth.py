@@ -570,7 +570,17 @@ def _authenticate_oidc(credentials, sock_info, reauthenticate):
             ]
         )
         response = sock_info.command("$external", cmd)
-        cache_value.server_resp = bson.decode(response["payload"])
+
+        # Convert the server response to be more pythonic.
+        # Avoid circular import
+        from pymongo.common import camel_to_snake
+
+        orig_server_resp = bson.decode(response["payload"])
+        server_resp = dict()
+        for key, value in orig_server_resp.items():
+            server_resp[camel_to_snake(key)] = value
+        cache_value.server_resp = server_resp
+
         conversation_id = response["conversationId"]
 
     current_valid_token = False
