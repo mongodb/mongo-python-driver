@@ -73,8 +73,8 @@ class TestJsonUtil(unittest.TestCase):
 
     def test_loads_bytes(self):
         string = b'{"hello": "world"}'
-        json_util.loads(bytes(string))
-        json_util.loads(bytearray(string))
+        self.assertEqual(json_util.loads(bytes(string)), {"hello": "world"})
+        self.assertEqual(json_util.loads(bytearray(string)), {"hello": "world"})
 
     def test_json_options_with_options(self):
         opts = JSONOptions(
