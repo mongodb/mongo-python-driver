@@ -71,6 +71,11 @@ class TestJsonUtil(unittest.TestCase):
     def test_basic(self):
         self.round_trip({"hello": "world"})
 
+    def test_loads_bytes(self):
+        string = rb'{"hello": "world"}'
+        for type in [bytes, bytearray]:
+            json_util.loads(type(string))
+
     def test_json_options_with_options(self):
         opts = JSONOptions(
             datetime_representation=DatetimeRepresentation.NUMBERLONG, json_mode=JSONMode.LEGACY
