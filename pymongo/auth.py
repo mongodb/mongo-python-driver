@@ -497,24 +497,7 @@ def _authenticate_mongo_cr(credentials, sock_info):
     sock_info.command(source, query)
 
 
-"""
-interface OIDCRequestTokenParams {
- authorizeEndpoint?: string;
- tokenEndpoint?: string;
- deviceAuthorizeEndpoint?: string;
- clientId: string;
- clientSecret?: string;
- requestScopes?: string[];
-}
-
-interface OIDCRequestTokenResult {
- accessToken: string
- expiresInSeconds?: number
- refreshToken?: string
-}
-"""
-
-
+# MONGO-OIDC private variables.
 _oidc_cache: Dict[str, _OIDCCache] = {}
 _OIDC_TOKEN_BUFFER_MINUTES = 5
 _OIDC_CALLBACK_TIMEOUT_SECONDS = 5 * 60

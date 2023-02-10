@@ -4,6 +4,7 @@ Changelog
 Changes in Version 4.4
 -----------------------
 
+- Added support for :ref:`OIDC <oidc_sasl>` authentication with MongoDB Enterprise 7.0+.
 - Added support for passing a list containing (key, direction) pairs
   or keys to :meth:`~pymongo.collection.Collection.create_index`.
 - **BETA** Added support for range queries on client side field level encrypted collections.
