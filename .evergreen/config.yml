@@ -778,7 +778,7 @@ functions:
              exit 0
           fi
           cd ${DRIVERS_TOOLS}/.evergreen/auth_oidc
-          mongo setup_oidc.js
+          mongosh setup_oidc.js
     - command: shell.exec
       type: test
       params:
