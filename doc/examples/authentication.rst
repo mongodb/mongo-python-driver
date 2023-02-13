@@ -413,14 +413,14 @@ The driver will use the authentication token from the file given by the
 ``AWS_WEB_IDENTITY_TOKEN_FILE`` environment variable provided by AWS to
 authenticate with the server.
 
-Authentication Code Flow Support
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Callback-based OIDC Support
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-PyMongo supports using the Authentication Code Flow for OIDC, when
-callbacks are given to the ``MongoClient``.  The ``on_oidc_request_callback``
-is intended to accept information about the Identity Provider, and return
-credentials that are used to authenticate with the server, usually through
-a browser interaction with the user.  The callback must be of the form::
+PyMongo supports user-provided callbacks for OIDC, which are are given to the
+``MongoClient``.  The ``on_oidc_request_callback`` is intended to accept
+information about the Identity Provider, and return credentials that are used
+to authenticate with the server, usually through a browser interaction with
+the user.  The callback must be of the form::
 
   def request_callback(ProviderInfo, timeout_seconds) -> TokenResult:
     ...
