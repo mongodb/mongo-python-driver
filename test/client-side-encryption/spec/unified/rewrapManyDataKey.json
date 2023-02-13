@@ -321,10 +321,7 @@
               "modifiedCount": 4,
               "deletedCount": 0,
               "upsertedCount": 0,
-              "upsertedIds": {},
-              "insertedIds": {
-                "$$unsetOrMatches": {}
-              }
+              "upsertedIds": {}
             }
           }
         }
@@ -506,10 +503,7 @@
               "modifiedCount": 4,
               "deletedCount": 0,
               "upsertedCount": 0,
-              "upsertedIds": {},
-              "insertedIds": {
-                "$$unsetOrMatches": {}
-              }
+              "upsertedIds": {}
             }
           }
         }
@@ -693,10 +687,7 @@
               "modifiedCount": 4,
               "deletedCount": 0,
               "upsertedCount": 0,
-              "upsertedIds": {},
-              "insertedIds": {
-                "$$unsetOrMatches": {}
-              }
+              "upsertedIds": {}
             }
           }
         }
@@ -882,10 +873,7 @@
               "modifiedCount": 4,
               "deletedCount": 0,
               "upsertedCount": 0,
-              "upsertedIds": {},
-              "insertedIds": {
-                "$$unsetOrMatches": {}
-              }
+              "upsertedIds": {}
             }
           }
         }
@@ -1067,10 +1055,7 @@
               "modifiedCount": 4,
               "deletedCount": 0,
               "upsertedCount": 0,
-              "upsertedIds": {},
-              "insertedIds": {
-                "$$unsetOrMatches": {}
-              }
+              "upsertedIds": {}
             }
           }
         }
@@ -1233,10 +1218,7 @@
               "modifiedCount": 5,
               "deletedCount": 0,
               "upsertedCount": 0,
-              "upsertedIds": {},
-              "insertedIds": {
-                "$$unsetOrMatches": {}
-              }
+              "upsertedIds": {}
             }
           }
         },
