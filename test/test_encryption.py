@@ -2145,6 +2145,14 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         ):
             self.client_encryption_invalid_hostname.create_data_key("kmip")
 
+    def test_05_tlsDisableOCSPEndpointCheck_is_permitted(self):
+        providers = {"aws": {"accessKeyId": "foo", "secretAccessKey": "bar"}}
+        options: dict = dict(aws=dict(tlsdisableocspendpointcheck=True))
+        encryption = ClientEncryption(
+            providers, "keyvault.datakeys", self.client, OPTS, kms_tls_options=options
+        )
+        encryption.close()
+
 
 # https://github.com/mongodb/specifications/blob/50e26fe/source/client-side-encryption/tests/README.rst#unique-index-on-keyaltnames
 class TestUniqueIndexOnKeyAltNamesProse(EncryptionIntegrationTest):
