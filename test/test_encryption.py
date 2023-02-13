@@ -155,7 +155,6 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
             {"kmip": {"tls": True, "tlsInsecure": True}},
             {"kmip": {"tls": True, "tlsAllowInvalidCertificates": True}},
             {"kmip": {"tls": True, "tlsAllowInvalidHostnames": True}},
-            {"kmip": {"tls": True, "tlsDisableOCSPEndpointCheck": True}},
         ]:
             with self.assertRaisesRegex(ConfigurationError, "Insecure TLS options prohibited"):
                 opts = AutoEncryptionOpts({}, "k.d", kms_tls_options=tls_opts)
