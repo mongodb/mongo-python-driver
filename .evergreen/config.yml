@@ -282,8 +282,11 @@ functions:
                 ulimit -c unlimited
               fi
           fi
-
+          if [ -n "${test_crypt_shared}" ]; then
+            export TEST_CRYPT_SHARED=1
+          fi
           ${PREPARE_SHELL}
+
           MONGODB_VERSION=${VERSION} \
             TOPOLOGY=${TOPOLOGY} \
             AUTH=${AUTH} \
