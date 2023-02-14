@@ -124,6 +124,9 @@ from bson.timestamp import Timestamp
 
 # Import some modules for type-checking only.
 if TYPE_CHECKING:
+    import mmap
+
+    from bson.raw_bson import RawBSONDocument
     from bson.typings import _DocumentIn, _DocumentType, _ReadableBuffer
 
 try:

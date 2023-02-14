@@ -32,6 +32,12 @@ try:
 except ImportError:
     pass
 
+try:
+    import sphinx_autodoc_typehints
+
+    extensions += ["sphinx_autodoc_typehints"]
+except ImportError:
+    pass
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -108,13 +114,18 @@ db = client.doctest_test
 
 # -- Options for HTML output ---------------------------------------------------
 
-# Theme gratefully vendored from CPython source.
-html_theme = "pydoctheme"
-html_theme_path = ["."]
-html_theme_options = {"collapsiblesidebar": True, "googletag": False}
+try:
+    import furo
 
-# Additional static files.
-html_static_path = ["static"]
+    html_theme = "furo"
+except ImportError:
+    # Theme gratefully vendored from CPython source.
+    html_theme = "pydoctheme"
+    html_theme_path = ["."]
+    html_theme_options = {"collapsiblesidebar": True, "googletag": False}
+
+    # Additional static files.
+    html_static_path = ["static"]
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".

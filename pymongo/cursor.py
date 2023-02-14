@@ -152,6 +152,7 @@ _Hint = Union[str, _Sort]
 
 if TYPE_CHECKING:
     from pymongo.client_session import ClientSession
+    from pymongo.collation import Collation
     from pymongo.collection import Collection
 
 

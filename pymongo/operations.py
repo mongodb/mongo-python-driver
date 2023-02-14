@@ -13,7 +13,18 @@
 # limitations under the License.
 
 """Operation class definitions."""
-from typing import Any, Dict, Generic, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Generic,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 from bson.raw_bson import RawBSONDocument
 from pymongo import helpers
@@ -21,6 +32,9 @@ from pymongo.collation import validate_collation_or_none
 from pymongo.common import validate_boolean, validate_is_mapping, validate_list
 from pymongo.helpers import _gen_index_name, _index_document, _index_list
 from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
+
+if TYPE_CHECKING:
+    from pymongo.collation import Collation
 
 # Hint supports index name, "myIndex", or list of either strings or index pairs: [('x', 1), ('y', -1), 'z'']
 _IndexList = Sequence[Union[str, Tuple[str, Union[int, str, Mapping[str, Any]]]]]

@@ -117,6 +117,8 @@ if TYPE_CHECKING:
         # Deprecated since version 3.9: collections.abc.Generator now supports [].
         from typing import Generator
 
+    from pymongo.collation import Collation
+
 
 class MongoClient(common.BaseObject, Generic[_DocumentType]):
     """
