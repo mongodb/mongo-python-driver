@@ -193,6 +193,7 @@ from pymongo.helpers import _handle_exception
 from pymongo.typings import _Address, _DocumentOut
 
 if TYPE_CHECKING:
+    from bson.raw_bson import RawBSONDocument  # noqa
     from pymongo.server_description import ServerDescription
     from pymongo.topology_description import TopologyDescription
 
