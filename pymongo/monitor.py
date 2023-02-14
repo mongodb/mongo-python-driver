@@ -17,7 +17,7 @@
 import atexit
 import time
 import weakref
-from typing import Any, Mapping, cast
+from typing import TYPE_CHECKING, Any, Mapping, cast
 
 from pymongo import common, periodic_executor
 from pymongo.errors import NotPrimaryError, OperationFailure, _OperationCancelled
@@ -27,6 +27,9 @@ from pymongo.periodic_executor import _shutdown_executors
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
 from pymongo.srv_resolver import _SrvResolver
+
+if TYPE_CHECKING:
+    from bson.raw_bson import RawBSONDocument  # noqa
 
 
 def _sanitize(error):
