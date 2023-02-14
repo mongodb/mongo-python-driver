@@ -50,7 +50,7 @@ class TestAuthOIDC(unittest.TestCase):
         finally:
             client.admin.command("configureFailPoint", cmd_on["configureFailPoint"], mode="off")
 
-    def test_connect_aws_device_workflow(self):
+    def test_connect_aws(self):
         os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"] = os.path.join(self.token_dir, "test_user1")
         props = dict(DEVICE_NAME="aws")
         client = MongoClient(self.uri_single, authmechanismproperties=props)
@@ -66,7 +66,7 @@ class TestAuthOIDC(unittest.TestCase):
         client.test.test.find_one()
         client.close()
 
-    def test_connect_authorization_code_workflow(self):
+    def test_connect_callbacks(self):
         token_file = os.path.join(self.token_dir, "test_user1")
 
         def request_token(info, timeout):
@@ -92,6 +92,11 @@ class TestAuthOIDC(unittest.TestCase):
             self.uri_multiple, username="test_user2", authmechanismproperties=props
         )
         client.test.test.find_one()
+        client.close()
+
+        client = MongoClient(self.uri_multiple, authmechanismproperties=props)
+        with self.assertRaises(OperationFailure):
+            client.test.test.find_one()
         client.close()
 
     def test_bad_callbacks(self):
