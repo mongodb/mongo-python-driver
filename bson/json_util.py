@@ -440,7 +440,7 @@ def dumps(obj: Any, *args: Any, **kwargs: Any) -> str:
     return json.dumps(_json_convert(obj, json_options), *args, **kwargs)
 
 
-def loads(s: str, *args: Any, **kwargs: Any) -> Any:
+def loads(s: Union[str, bytes, bytearray], *args: Any, **kwargs: Any) -> Any:
     """Helper function that wraps :func:`json.loads`.
 
     Automatically passes the object_hook for BSON type conversion.

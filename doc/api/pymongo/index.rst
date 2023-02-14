@@ -29,7 +29,6 @@ Sub-modules:
 .. toctree::
    :maxdepth: 2
 
-   bulk
    change_stream
    client_options
    client_session

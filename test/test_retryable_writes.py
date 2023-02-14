@@ -128,23 +128,23 @@ def retryable_single_statement_ops(coll):
     return [
         (coll.bulk_write, [[InsertOne({}), InsertOne({})]], {}),
         (coll.bulk_write, [[InsertOne({}), InsertOne({})]], {"ordered": False}),
-        (coll.bulk_write, [[ReplaceOne({}, {})]], {}),
-        (coll.bulk_write, [[ReplaceOne({}, {}), ReplaceOne({}, {})]], {}),
+        (coll.bulk_write, [[ReplaceOne({}, {"a1": 1})]], {}),
+        (coll.bulk_write, [[ReplaceOne({}, {"a2": 1}), ReplaceOne({}, {"a3": 1})]], {}),
         (
             coll.bulk_write,
-            [[UpdateOne({}, {"$set": {"a": 1}}), UpdateOne({}, {"$set": {"a": 1}})]],
+            [[UpdateOne({}, {"$set": {"a4": 1}}), UpdateOne({}, {"$set": {"a5": 1}})]],
             {},
         ),
         (coll.bulk_write, [[DeleteOne({})]], {}),
         (coll.bulk_write, [[DeleteOne({}), DeleteOne({})]], {}),
         (coll.insert_one, [{}], {}),
         (coll.insert_many, [[{}, {}]], {}),
-        (coll.replace_one, [{}, {}], {}),
-        (coll.update_one, [{}, {"$set": {"a": 1}}], {}),
+        (coll.replace_one, [{}, {"a6": 1}], {}),
+        (coll.update_one, [{}, {"$set": {"a7": 1}}], {}),
         (coll.delete_one, [{}], {}),
-        (coll.find_one_and_replace, [{}, {"a": 3}], {}),
-        (coll.find_one_and_update, [{}, {"$set": {"a": 1}}], {}),
-        (coll.find_one_and_delete, [{}, {}], {}),
+        (coll.find_one_and_replace, [{}, {"a8": 1}], {}),
+        (coll.find_one_and_update, [{}, {"$set": {"a9": 1}}], {}),
+        (coll.find_one_and_delete, [{}, {"a10": 1}], {}),
     ]
 
 
@@ -490,6 +490,7 @@ class TestWriteConcernError(IntegrationTest):
         }
 
     @client_context.require_version_min(4, 0)
+    @client_knobs(heartbeat_frequency=0.05, min_heartbeat_interval=0.05)
     def test_RetryableWriteError_error_label(self):
         listener = OvertCommandListener()
         client = rs_or_single_client(retryWrites=True, event_listeners=[listener])

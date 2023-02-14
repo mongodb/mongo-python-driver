@@ -18,7 +18,8 @@ import contextlib
 import enum
 import socket
 import weakref
-from typing import Any, Generic, Mapping, Optional, Sequence
+from copy import deepcopy
+from typing import Any, Generic, Mapping, Optional, Sequence, Tuple
 
 try:
     from pymongocrypt.auto_encrypter import AutoEncrypter
@@ -39,11 +40,14 @@ from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from bson.son import SON
 from pymongo import _csot
+from pymongo.collection import Collection
 from pymongo.cursor import Cursor
 from pymongo.daemon import _spawn_daemon
+from pymongo.database import Database
 from pymongo.encryption_options import AutoEncryptionOpts, RangeOpts
 from pymongo.errors import (
     ConfigurationError,
+    EncryptedCollectionError,
     EncryptionError,
     InvalidOperation,
     ServerSelectionTimeoutError,
@@ -552,6 +556,94 @@ class ClientEncryption(Generic[_DocumentType]):
         # Use the same key vault collection as the callback.
         self._key_vault_coll = self._io_callbacks.key_vault_coll
 
+    def create_encrypted_collection(
+        self,
+        database: Database,
+        name: str,
+        encrypted_fields: Mapping[str, Any],
+        kms_provider: Optional[str] = None,
+        master_key: Optional[Mapping[str, Any]] = None,
+        **kwargs: Any,
+    ) -> Tuple[Collection[_DocumentType], Mapping[str, Any]]:
+        """Create a collection with encryptedFields.
+
+        .. note:: Support for Queryable Encryption is in beta.
+           Backwards-breaking changes may be made before the final release.
+
+        .. warning::
+            This function does not update the encryptedFieldsMap in the client's
+            AutoEncryptionOpts, thus the user must create a new client after calling this function with
+            the encryptedFields returned.
+
+        Normally collection creation is automatic. This method should
+        only be used to specify options on
+        creation. :class:`~pymongo.errors.EncryptionError` will be
+        raised if the collection already exists.
+
+        :Parameters:
+          - `name`: the name of the collection to create
+          - `encrypted_fields` (dict): **(BETA)** Document that describes the encrypted fields for
+            Queryable Encryption. For example::
+
+              {
+                "escCollection": "enxcol_.encryptedCollection.esc",
+                "eccCollection": "enxcol_.encryptedCollection.ecc",
+                "ecocCollection": "enxcol_.encryptedCollection.ecoc",
+                "fields": [
+                    {
+                        "path": "firstName",
+                        "keyId": Binary.from_uuid(UUID('00000000-0000-0000-0000-000000000000')),
+                        "bsonType": "string",
+                        "queries": {"queryType": "equality"}
+                    },
+                    {
+                        "path": "ssn",
+                        "keyId": Binary.from_uuid(UUID('04104104-1041-0410-4104-104104104104')),
+                        "bsonType": "string"
+                    }
+                  ]
+              }
+
+            The "keyId" may be set to ``None`` to auto-generate the data keys.
+          - `kms_provider` (optional): the KMS provider to be used
+          - `master_key` (optional): Identifies a KMS-specific key used to encrypt the
+            new data key. If the kmsProvider is "local" the `master_key` is
+            not applicable and may be omitted.
+          - `**kwargs` (optional): additional keyword arguments are the same as "create_collection".
+
+        All optional `create collection command`_ parameters should be passed
+        as keyword arguments to this method.
+        See the documentation for :meth:`~pymongo.database.Database.create_collection` for all valid options.
+
+        :Raises:
+          - :class:`~pymongo.errors.EncryptedCollectionError`: When either data-key creation or creating the collection fails.
+
+        .. versionadded:: 4.4
+
+        .. _create collection command:
+            https://mongodb.com/docs/manual/reference/command/create
+
+        """
+        encrypted_fields = deepcopy(encrypted_fields)
+        for i, field in enumerate(encrypted_fields["fields"]):
+            if isinstance(field, dict) and field.get("keyId") is None:
+                try:
+                    encrypted_fields["fields"][i]["keyId"] = self.create_data_key(
+                        kms_provider=kms_provider,  # type:ignore[arg-type]
+                        master_key=master_key,
+                    )
+                except EncryptionError as exc:
+                    raise EncryptedCollectionError(exc, encrypted_fields) from exc
+        kwargs["encryptedFields"] = encrypted_fields
+        kwargs["check_exists"] = False
+        try:
+            return (
+                database.create_collection(name=name, **kwargs),
+                encrypted_fields,
+            )
+        except Exception as exc:
+            raise EncryptedCollectionError(exc, encrypted_fields) from exc
+
     def create_data_key(
         self,
         kms_provider: str,
@@ -614,9 +706,9 @@ class ClientEncryption(Generic[_DocumentType]):
             name instead of by ``key_id``. The following example shows creating
             and referring to a data key by alternate name::
 
-              client_encryption.create_data_key("local", keyAltNames=["name1"])
+              client_encryption.create_data_key("local", key_alt_names=["name1"])
               # reference the key with the alternate name
-              client_encryption.encrypt("457-55-5462", keyAltName="name1",
+              client_encryption.encrypt("457-55-5462", key_alt_name="name1",
                                         algorithm=Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Random)
           - `key_material` (optional): Sets the custom key material to be used
             by the data key for encryption and decryption.
