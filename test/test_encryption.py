@@ -2147,7 +2147,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
 
     def test_05_tlsDisableOCSPEndpointCheck_is_permitted(self):
         providers = {"aws": {"accessKeyId": "foo", "secretAccessKey": "bar"}}
-        options: dict = dict(aws=dict(tlsdisableocspendpointcheck=True))
+        options = {"aws": {"tlsDisableOCSPEndpointCheck": True}}
         encryption = ClientEncryption(
             providers, "keyvault.datakeys", self.client, OPTS, kms_tls_options=options
         )
