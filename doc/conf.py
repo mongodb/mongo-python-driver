@@ -33,7 +33,7 @@ except ImportError:
     pass
 
 try:
-    import sphinx_autodoc_typehints
+    import sphinx_autodoc_typehints  # noqa
 
     extensions += ["sphinx_autodoc_typehints"]
 except ImportError:
@@ -115,7 +115,7 @@ db = client.doctest_test
 # -- Options for HTML output ---------------------------------------------------
 
 try:
-    import furo
+    import furo  # noqa
 
     html_theme = "furo"
 except ImportError:

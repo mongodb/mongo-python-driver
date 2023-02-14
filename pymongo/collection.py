@@ -105,7 +105,7 @@ class ReturnDocument(object):
 if TYPE_CHECKING:
     import bson
     from pymongo.client_session import ClientSession
-    from pymongo.collation import Collation
+    from pymongo.collation import Collation  # noqa
     from pymongo.database import Database
     from pymongo.read_concern import ReadConcern
 
