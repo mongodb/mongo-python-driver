@@ -2013,7 +2013,9 @@ class TestKmsTLSProse(EncryptionIntegrationTest):
         # Some examples:
         # certificate verify failed: IP address mismatch, certificate is not valid for '127.0.0.1'. (_ssl.c:1129)"
         # hostname '127.0.0.1' doesn't match 'wronghost.com'
-        with self.assertRaisesRegex(EncryptionError, "IP address mismatch|wronghost"):
+        with self.assertRaisesRegex(
+            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch"
+        ):
             self.client_encrypted.create_data_key("aws", master_key=key)
 
 
@@ -2066,7 +2068,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         # [SSL: TLSV13_ALERT_CERTIFICATE_REQUIRED] tlsv13 alert certificate required (_ssl.c:2623)
         self.cert_error = (
             "certificate required|SSL handshake failed|"
-            "KMS connection closed|Connection reset by peer"
+            "KMS connection closed|Connection reset by peer|ECONNRESET"
         )
         # On Python 3.10+ this error might be:
         # EOF occurred in violation of protocol (_ssl.c:2384)
