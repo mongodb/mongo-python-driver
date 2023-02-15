@@ -283,8 +283,8 @@ functions:
               fi
           fi
 
-          if [ -n "${test_crypt_shared}" ]; then
-            export TEST_CRYPT_SHARED=1
+          if [ -n "${skip_crypt_shared}" ]; then
+            export SKIP_CRYPT_SHARED=1
           fi
 
           ${PREPARE_SHELL}
