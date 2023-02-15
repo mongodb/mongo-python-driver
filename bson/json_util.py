@@ -372,7 +372,6 @@ class JSONOptions(CodecOptions):
             >>> json_options.tz_aware
             False
 
-
         .. versionadded:: 3.12
         """
         opts = self._options_dict()

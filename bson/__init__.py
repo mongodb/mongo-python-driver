@@ -124,9 +124,6 @@ from bson.timestamp import Timestamp
 
 # Import some modules for type-checking only.
 if TYPE_CHECKING:
-    import mmap  # noqa
-
-    from bson.raw_bson import RawBSONDocument  # noqa
     from bson.typings import _DocumentIn, _DocumentType, _ReadableBuffer
 
 try:
@@ -1210,7 +1207,7 @@ def _decode_all_selective(data: Any, codec_options: CodecOptions, fields: Any) -
         return decode_all(data, codec_options.with_options(type_registry=None))
 
     # Decode documents for internal use.
-    from bson.raw_bson import RawBSONDocument  # noqa
+    from bson.raw_bson import RawBSONDocument
 
     internal_codec_options: CodecOptions[RawBSONDocument] = codec_options.with_options(
         document_class=RawBSONDocument, type_registry=None

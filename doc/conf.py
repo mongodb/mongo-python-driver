@@ -32,13 +32,6 @@ try:
 except ImportError:
     pass
 
-try:
-    import sphinx_autodoc_typehints  # noqa
-
-    extensions += ["sphinx_autodoc_typehints"]
-except ImportError:
-    pass
-
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
 

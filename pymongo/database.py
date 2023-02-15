@@ -59,7 +59,6 @@ if TYPE_CHECKING:
     import bson
     import bson.codec_options
     from pymongo.client_session import ClientSession
-    from pymongo.collation import Collation  # noqa
     from pymongo.mongo_client import MongoClient
     from pymongo.read_concern import ReadConcern
     from pymongo.write_concern import WriteConcern

@@ -438,7 +438,6 @@ class CodecOptions(_BaseCodecOptions):
             >>> options.tz_aware
             True
 
-
         .. versionadded:: 3.5
         """
         opts = self._options_dict()
