@@ -2151,6 +2151,9 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         encryption = ClientEncryption(
             providers, "keyvault.datakeys", self.client, OPTS, kms_tls_options=options
         )
+        self.assertFalse(
+            encryption._io_callbacks.opts._kms_ssl_contexts["aws"].check_ocsp_endpoint
+        )  # type:ignore
         encryption.close()
 
 
