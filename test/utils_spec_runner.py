@@ -52,7 +52,7 @@ class SpecRunnerThread(threading.Thread):
         super(SpecRunnerThread, self).__init__()
         self.name = name
         self.exc = None
-        self.setDaemon(True)
+        self.daemon = True
         self.cond = threading.Condition()
         self.ops = []
         self.stopped = False
