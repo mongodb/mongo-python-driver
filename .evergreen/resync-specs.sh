@@ -97,7 +97,12 @@ do
       ;;
     cmap|CMAP|connection-monitoring-and-pooling)
       cpjson connection-monitoring-and-pooling/tests cmap
-      rm $PYMONGO/test/cmap/wait-queue-fairness.json  # PYTHON-1873
+      rm $PYMONGO/test/cmap/cmap-format/wait-queue-fairness.json  # PYTHON-1873
+      rm $PYMONGO/test/cmap/cmap-format/pool-clear-interrupt-immediately.json  # PYTHON-3175
+      rm $PYMONGO/test/cmap/cmap-format/pool-clear-interrupting-pending-connections.json  # PYTHON-3175
+      rm $PYMONGO/test/cmap/cmap-format/pool-clear-schedule-run-interruptInUseConnections-false.json  # PYTHON-3175
+      rm $PYMONGO/test/cmap/unified/connection-logging.json  # PYTHON-3113
+      rm $PYMONGO/test/cmap/unified/connection-pool-options-logging.json  # PYTHON-3113
       ;;
     apm|APM|command-monitoring|command_monitoring)
       cpjson command-logging-and-monitoring/tests/monitoring command_monitoring

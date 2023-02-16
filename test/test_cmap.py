@@ -22,6 +22,7 @@ sys.path[0:0] = [""]
 
 from test import IntegrationTest, client_knobs, unittest
 from test.pymongo_mocks import DummyMonitor
+from test.unified_format import generate_test_classes
 from test.utils import (
     CMAPListener,
     TestCreator,
@@ -84,7 +85,7 @@ OBJECT_TYPES = {
 
 class TestCMAP(IntegrationTest):
     # Location of JSON test specifications.
-    TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "cmap")
+    TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "cmap", "cmap-format")
 
     # Test operations:
 
@@ -467,6 +468,11 @@ class CMAPTestCreator(TestCreator):
 
 test_creator = CMAPTestCreator(create_test, TestCMAP, TestCMAP.TEST_PATH)
 test_creator.create_tests()
+
+TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "cmap", "unified")
+
+# Generate unified tests.
+globals().update(generate_test_classes(TEST_PATH, module=__name__))
 
 
 if __name__ == "__main__":
