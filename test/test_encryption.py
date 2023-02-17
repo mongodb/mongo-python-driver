@@ -2068,7 +2068,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         # [SSL: TLSV13_ALERT_CERTIFICATE_REQUIRED] tlsv13 alert certificate required (_ssl.c:2623)
         self.cert_error = (
             "certificate required|SSL handshake failed|"
-            "KMS connection closed|Connection reset by peer|ECONNRESET"
+            "KMS connection closed|Connection reset by peer|ECONNRESET|EPIPE"
         )
         # On Python 3.10+ this error might be:
         # EOF occurred in violation of protocol (_ssl.c:2384)
