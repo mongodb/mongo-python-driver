@@ -1,8 +1,6 @@
 Frequently Asked Questions
 ==========================
 
-.. contents::
-
 Is PyMongo thread-safe?
 -----------------------
 
