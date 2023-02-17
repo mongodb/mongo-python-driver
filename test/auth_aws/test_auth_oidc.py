@@ -69,7 +69,7 @@ class TestAuthOIDC(unittest.TestCase):
     def test_connect_callbacks(self):
         token_file = os.path.join(self.token_dir, "test_user1")
 
-        def request_token(info, timeout):
+        def request_token(principal, info, timeout):
             with open(token_file) as fid:
                 token = fid.read()
             return dict(access_token=token)
@@ -102,7 +102,7 @@ class TestAuthOIDC(unittest.TestCase):
     def test_bad_callbacks(self):
         _oidc_cache.clear()
 
-        def request_token_null(info, timeout):
+        def request_token_null(principal, info, timeout):
             return None
 
         props: Dict = dict(on_oidc_request_token=request_token_null)
@@ -111,7 +111,7 @@ class TestAuthOIDC(unittest.TestCase):
             client.test.test.find_one()
         client.close()
 
-        def request_token_no_token(info, timeout):
+        def request_token_no_token(principal, info, timeout):
             return dict()
 
         _oidc_cache.clear()
@@ -121,12 +121,12 @@ class TestAuthOIDC(unittest.TestCase):
             client.test.test.find_one()
         client.close()
 
-        def request_refresh_null(info, creds, timeout):
+        def request_refresh_null(principal, info, creds, timeout):
             return None
 
         token_file = os.path.join(self.token_dir, "test_user1")
 
-        def request_token(info, timeout):
+        def request_token(principal, info, timeout):
             with open(token_file) as fid:
                 token = fid.read()
             return dict(access_token=token)
@@ -144,7 +144,7 @@ class TestAuthOIDC(unittest.TestCase):
             client.test.test.find_one()
         client.close()
 
-        def request_refresh_no_token(info, creds, timeout):
+        def request_refresh_no_token(principal, info, creds, timeout):
             return dict()
 
         _oidc_cache.clear()
@@ -168,7 +168,7 @@ class TestAuthOIDC(unittest.TestCase):
         # Give a callback response with a valid accessToken and an expiresInSeconds that is within one minute.
         token_file = os.path.join(self.token_dir, "test_user1")
 
-        def request_token(info, timeout):
+        def request_token(principal, info, timeout):
             nonlocal request_called
             assert "authorization_endpoint" in info
             assert "token_endpoint" in info
@@ -179,7 +179,7 @@ class TestAuthOIDC(unittest.TestCase):
             request_called += 1
             return dict(access_token=token, expires_in_seconds=60)
 
-        def refresh_token(info, creds, timeout):
+        def refresh_token(principal, info, creds, timeout):
             nonlocal refresh_called
             assert "authorization_endpoint" in info
             assert "token_endpoint" in info
@@ -233,17 +233,40 @@ class TestAuthOIDC(unittest.TestCase):
         assert request_called == 2
         assert len(_oidc_cache) == 1
 
-        # Create a new client with a refresh callback that gives invalid credentials.
-        def bad_refresh(info, creds, timeout):
-            return dict(access_token="bad")
+        # Create a new client with a different request callback.
+        def request_token_2(principal, info, timeout):
+            return request_token(principal, info, timeout)
 
-        props["on_oidc_refresh_token"] = bad_refresh
+        props["on_oidc_request_token"] = request_token_2
         client = MongoClient(self.uri_single, authMechanismProperties=props)
 
-        # Ensure that a ``find`` operation results in an error.
+        # Ensure that a ``find`` operation adds a new entry to the cache.
+        client.test.test.find_one()
+        client.close()
+        assert request_called == 3
+        assert len(_oidc_cache) == 2
+
+        # Clear the cache
+        _oidc_cache.clear()
+
+        # Create a new client with a refresh callback that gives invalid credentials.
+        def bad_refresh(principal, info, creds, timeout):
+            return dict(access_token="bad")
+
+        # Add a token to the cache that will expire soon.
+        props["on_oidc_refresh_token"] = bad_refresh
+        client = MongoClient(self.uri_single, authMechanismProperties=props)
+        client.test.test.find_one()
+        client.close()
+
+        # Create a new client with the same callbacks.
+        client = MongoClient(self.uri_single, authMechanismProperties=props)
+
+        # Ensure that another ``find`` operation results in an error.
         with self.assertRaises(OperationFailure):
             client.test.test.find_one()
-            client.close()
+
+        client.close()
 
         # Ensure that the cache has been cleared.
         assert len(_oidc_cache) == 0
@@ -269,12 +292,12 @@ class TestAuthOIDC(unittest.TestCase):
 
         # Create request and refresh callbacks that return valid credentials
         # that will not expire soon.
-        def request_token(info, timeout):
+        def request_token(principal, info, timeout):
             with open(token_file) as fid:
                 token = fid.read()
             return dict(access_token=token, expires_in_seconds=1000)
 
-        def refresh_token(info, creds, timeout):
+        def refresh_token(principal, info, creds, timeout):
             nonlocal refresh_called
             with open(token_file) as fid:
                 token = fid.read()
@@ -323,12 +346,12 @@ class TestAuthOIDC(unittest.TestCase):
 
         # Create request and refresh callbacks that return valid credentials
         # that will not expire soon.
-        def request_token(info, timeout):
+        def request_token(principal, info, timeout):
             with open(token_file) as fid:
                 token = fid.read()
             return dict(access_token=token, expires_in_seconds=1000)
 
-        def refresh_token(info, creds, timeout):
+        def refresh_token(principal, info, creds, timeout):
             nonlocal refresh_called
             with open(token_file) as fid:
                 token = fid.read()
