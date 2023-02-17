@@ -46,10 +46,10 @@ def create_test(test_case):
             if credential:
                 props = credential["mechanism_properties"] or {}
                 if props.get("REQUEST_TOKEN_CALLBACK"):
-                    props["on_oidc_request_token"] = lambda x, y: 1
+                    props["on_oidc_request_token"] = lambda x, y, z: 1
                     del props["REQUEST_TOKEN_CALLBACK"]
                 if props.get("REFRESH_TOKEN_CALLBACK"):
-                    props["on_oidc_refresh_token"] = lambda x, y, z: 1  # type:ignore[misc]
+                    props["on_oidc_refresh_token"] = lambda a, b, c, d: 1  # type:ignore[misc]
                     del props["REFRESH_TOKEN_CALLBACK"]
             client = MongoClient(uri, connect=False, authmechanismproperties=props)
             credentials = client.options.pool_options._credentials
