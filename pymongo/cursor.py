@@ -990,7 +990,7 @@ class Cursor(Generic[_DocumentType]):
                 print(doc)
 
         Raises :class:`TypeError` if `code` is not an instance of
-        :class:`basestring` (:class:`str` in python 3). Raises
+        :class:`str`. Raises
         :class:`~pymongo.errors.InvalidOperation` if this
         :class:`Cursor` has already been used. Only the last call to
         :meth:`where` applied to a :class:`Cursor` has any effect.

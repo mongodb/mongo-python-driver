@@ -127,9 +127,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """Get / create a Mongo collection.
 
         Raises :class:`TypeError` if `name` is not an instance of
-        :class:`basestring` (:class:`str` in python 3). Raises
-        :class:`~pymongo.errors.InvalidName` if `name` is not a valid
-        collection name. Any additional keyword arguments will be used
+        :class:`str`. Raises :class:`~pymongo.errors.InvalidName` if `name` is 
+        not a valid collection name. Any additional keyword arguments will be used
         as options passed to the create command. See
         :meth:`~pymongo.database.Database.create_collection` for valid
         options.
@@ -2711,7 +2710,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         in this collection.
 
         Raises :class:`TypeError` if `key` is not an instance of
-        :class:`basestring` (:class:`str` in python 3).
+        :class:`str`.
 
         All optional distinct parameters should be passed as keyword arguments
         to this method. Valid options include:

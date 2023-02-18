@@ -184,7 +184,7 @@ class ObjectId(object):
         """Validate and use the given id for this ObjectId.
 
         Raises TypeError if id is not an instance of
-        (:class:`basestring` (:class:`str` or :class:`bytes`
+        ((:class:`str` or :class:`bytes`
         in python 3), ObjectId) and InvalidId if it is not a
         valid ObjectId.
 

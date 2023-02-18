@@ -1294,7 +1294,7 @@ def is_valid(bson: bytes) -> bool:
     """Check that the given string represents valid :class:`BSON` data.
 
     Raises :class:`TypeError` if `bson` is not an instance of
-    :class:`str` (:class:`bytes` in python 3). Returns ``True``
+    :class:`bytes`. Returns ``True``
     if `bson` is valid :class:`BSON`, ``False`` otherwise.
 
     :Parameters:
