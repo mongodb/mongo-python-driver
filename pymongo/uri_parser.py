@@ -605,7 +605,6 @@ def _parse_kms_tls_options(kms_tls_options):
             "tlsInsecure",
             "tlsAllowInvalidCertificates",
             "tlsAllowInvalidHostnames",
-            "tlsDisableOCSPEndpointCheck",
             "tlsDisableCertificateRevocationCheck",
         ]:
             if n in opts:
