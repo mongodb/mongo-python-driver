@@ -994,8 +994,7 @@ def encode(
     A document can be any mapping type (like :class:`dict`).
 
     Raises :class:`TypeError` if `document` is not a mapping type,
-    or contains keys that are not instances of
-    :class:`basestring` (:class:`str` in python 3). Raises
+    or contains keys that are not instances of :class:`str`. Raises
     :class:`~bson.errors.InvalidDocument` if `document` cannot be
     converted to :class:`BSON`.
 
