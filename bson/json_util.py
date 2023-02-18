@@ -205,65 +205,67 @@ class JSONMode:
 
 
 class JSONOptions(CodecOptions):
-    """Encapsulates JSON options for :func:`dumps` and :func:`loads`.
-
-    :Parameters:
-      - `strict_number_long`: If ``True``, :class:`~bson.int64.Int64` objects
-        are encoded to MongoDB Extended JSON's *Strict mode* type
-        `NumberLong`, ie ``'{"$numberLong": "<number>" }'``. Otherwise they
-        will be encoded as an `int`. Defaults to ``False``.
-      - `datetime_representation`: The representation to use when encoding
-        instances of :class:`datetime.datetime`. Defaults to
-        :const:`~DatetimeRepresentation.LEGACY`.
-      - `strict_uuid`: If ``True``, :class:`uuid.UUID` object are encoded to
-        MongoDB Extended JSON's *Strict mode* type `Binary`. Otherwise it
-        will be encoded as ``'{"$uuid": "<hex>" }'``. Defaults to ``False``.
-      - `json_mode`: The :class:`JSONMode` to use when encoding BSON types to
-        Extended JSON. Defaults to :const:`~JSONMode.LEGACY`.
-      - `document_class`: BSON documents returned by :func:`loads` will be
-        decoded to an instance of this class. Must be a subclass of
-        :class:`collections.MutableMapping`. Defaults to :class:`dict`.
-      - `uuid_representation`: The :class:`~bson.binary.UuidRepresentation`
-        to use when encoding and decoding instances of :class:`uuid.UUID`.
-        Defaults to :const:`~bson.binary.UuidRepresentation.UNSPECIFIED`.
-      - `tz_aware`: If ``True``, MongoDB Extended JSON's *Strict mode* type
-        `Date` will be decoded to timezone aware instances of
-        :class:`datetime.datetime`. Otherwise they will be naive. Defaults
-        to ``False``.
-      - `tzinfo`: A :class:`datetime.tzinfo` subclass that specifies the
-        timezone from which :class:`~datetime.datetime` objects should be
-        decoded. Defaults to :const:`~bson.tz_util.utc`.
-      - `datetime_conversion`: Specifies how UTC datetimes should be decoded
-        within BSON. Valid options include 'datetime_ms' to return as a
-        DatetimeMS, 'datetime' to return as a datetime.datetime and
-        raising a ValueError for out-of-range values, 'datetime_auto' to
-        return DatetimeMS objects when the underlying datetime is
-        out-of-range and 'datetime_clamp' to clamp to the minimum and
-        maximum possible datetimes. Defaults to 'datetime'. See
-        :ref:`handling-out-of-range-datetimes` for details.
-      - `args`: arguments to :class:`~bson.codec_options.CodecOptions`
-      - `kwargs`: arguments to :class:`~bson.codec_options.CodecOptions`
-
-    .. seealso:: The specification for Relaxed and Canonical `Extended JSON`_.
-
-    .. versionchanged:: 4.0
-       The default for `json_mode` was changed from :const:`JSONMode.LEGACY`
-       to :const:`JSONMode.RELAXED`.
-       The default for `uuid_representation` was changed from
-       :const:`~bson.binary.UuidRepresentation.PYTHON_LEGACY` to
-       :const:`~bson.binary.UuidRepresentation.UNSPECIFIED`.
-
-    .. versionchanged:: 3.5
-       Accepts the optional parameter `json_mode`.
-
-    .. versionchanged:: 4.0
-       Changed default value of `tz_aware` to False.
-    """
-
     json_mode: int
     strict_number_long: bool
     datetime_representation: int
     strict_uuid: bool
+
+    def __init__(self, *args, **kwargs):
+        """Encapsulates JSON options for :func:`dumps` and :func:`loads`.
+
+        :Parameters:
+          - `strict_number_long`: If ``True``, :class:`~bson.int64.Int64` objects
+            are encoded to MongoDB Extended JSON's *Strict mode* type
+            `NumberLong`, ie ``'{"$numberLong": "<number>" }'``. Otherwise they
+            will be encoded as an `int`. Defaults to ``False``.
+          - `datetime_representation`: The representation to use when encoding
+            instances of :class:`datetime.datetime`. Defaults to
+            :const:`~DatetimeRepresentation.LEGACY`.
+          - `strict_uuid`: If ``True``, :class:`uuid.UUID` object are encoded to
+            MongoDB Extended JSON's *Strict mode* type `Binary`. Otherwise it
+            will be encoded as ``'{"$uuid": "<hex>" }'``. Defaults to ``False``.
+          - `json_mode`: The :class:`JSONMode` to use when encoding BSON types to
+            Extended JSON. Defaults to :const:`~JSONMode.LEGACY`.
+          - `document_class`: BSON documents returned by :func:`loads` will be
+            decoded to an instance of this class. Must be a subclass of
+            :class:`collections.MutableMapping`. Defaults to :class:`dict`.
+          - `uuid_representation`: The :class:`~bson.binary.UuidRepresentation`
+            to use when encoding and decoding instances of :class:`uuid.UUID`.
+            Defaults to :const:`~bson.binary.UuidRepresentation.UNSPECIFIED`.
+          - `tz_aware`: If ``True``, MongoDB Extended JSON's *Strict mode* type
+            `Date` will be decoded to timezone aware instances of
+            :class:`datetime.datetime`. Otherwise they will be naive. Defaults
+            to ``False``.
+          - `tzinfo`: A :class:`datetime.tzinfo` subclass that specifies the
+            timezone from which :class:`~datetime.datetime` objects should be
+            decoded. Defaults to :const:`~bson.tz_util.utc`.
+          - `datetime_conversion`: Specifies how UTC datetimes should be decoded
+            within BSON. Valid options include 'datetime_ms' to return as a
+            DatetimeMS, 'datetime' to return as a datetime.datetime and
+            raising a ValueError for out-of-range values, 'datetime_auto' to
+            return DatetimeMS objects when the underlying datetime is
+            out-of-range and 'datetime_clamp' to clamp to the minimum and
+            maximum possible datetimes. Defaults to 'datetime'. See
+            :ref:`handling-out-of-range-datetimes` for details.
+          - `args`: arguments to :class:`~bson.codec_options.CodecOptions`
+          - `kwargs`: arguments to :class:`~bson.codec_options.CodecOptions`
+
+        .. seealso:: The specification for Relaxed and Canonical `Extended JSON`_.
+
+        .. versionchanged:: 4.0
+           The default for `json_mode` was changed from :const:`JSONMode.LEGACY`
+           to :const:`JSONMode.RELAXED`.
+           The default for `uuid_representation` was changed from
+           :const:`~bson.binary.UuidRepresentation.PYTHON_LEGACY` to
+           :const:`~bson.binary.UuidRepresentation.UNSPECIFIED`.
+
+        .. versionchanged:: 3.5
+           Accepts the optional parameter `json_mode`.
+
+        .. versionchanged:: 4.0
+           Changed default value of `tz_aware` to False.
+        """
+        super().__init__()
 
     def __new__(
         cls: Type["JSONOptions"],
@@ -438,7 +440,7 @@ def dumps(obj: Any, *args: Any, **kwargs: Any) -> str:
     return json.dumps(_json_convert(obj, json_options), *args, **kwargs)
 
 
-def loads(s: str, *args: Any, **kwargs: Any) -> Any:
+def loads(s: Union[str, bytes, bytearray], *args: Any, **kwargs: Any) -> Any:
     """Helper function that wraps :func:`json.loads`.
 
     Automatically passes the object_hook for BSON type conversion.

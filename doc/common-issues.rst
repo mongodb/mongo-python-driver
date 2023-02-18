@@ -3,8 +3,6 @@ Frequently Encountered Issues
 
 Also see the :ref:`TLSErrors` section.
 
-.. contents::
-
 Server reports wire version X, PyMongo requires Y
 -------------------------------------------------
 

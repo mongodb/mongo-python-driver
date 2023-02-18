@@ -1331,9 +1331,8 @@ class BSON(bytes):
 
         Raises :class:`TypeError` if `document` is not a mapping type,
         or contains keys that are not instances of
-        :class:`basestring` (:class:`str` in python 3). Raises
-        :class:`~bson.errors.InvalidDocument` if `document` cannot be
-        converted to :class:`BSON`.
+        :class:`str'. Raises :class:`~bson.errors.InvalidDocument` 
+        if `document` cannot be converted to :class:`BSON`.
 
         :Parameters:
           - `document`: mapping type representing a document

@@ -65,7 +65,7 @@ from bson.codec_options import CodecOptions
 from bson.errors import BSONError
 from bson.json_util import JSONOptions
 from bson.son import SON
-from pymongo import encryption
+from pymongo import ReadPreference, encryption
 from pymongo.cursor import CursorType
 from pymongo.encryption import Algorithm, ClientEncryption, QueryType
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts, RangeOpts
@@ -74,6 +74,7 @@ from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
     DuplicateKeyError,
+    EncryptedCollectionError,
     EncryptionError,
     InvalidOperation,
     OperationFailure,
@@ -154,7 +155,6 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
             {"kmip": {"tls": True, "tlsInsecure": True}},
             {"kmip": {"tls": True, "tlsAllowInvalidCertificates": True}},
             {"kmip": {"tls": True, "tlsAllowInvalidHostnames": True}},
-            {"kmip": {"tls": True, "tlsDisableOCSPEndpointCheck": True}},
         ]:
             with self.assertRaisesRegex(ConfigurationError, "Insecure TLS options prohibited"):
                 opts = AutoEncryptionOpts({}, "k.d", kms_tls_options=tls_opts)
@@ -2013,7 +2013,9 @@ class TestKmsTLSProse(EncryptionIntegrationTest):
         # Some examples:
         # certificate verify failed: IP address mismatch, certificate is not valid for '127.0.0.1'. (_ssl.c:1129)"
         # hostname '127.0.0.1' doesn't match 'wronghost.com'
-        with self.assertRaisesRegex(EncryptionError, "IP address mismatch|wronghost"):
+        with self.assertRaisesRegex(
+            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch"
+        ):
             self.client_encrypted.create_data_key("aws", master_key=key)
 
 
@@ -2066,7 +2068,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         # [SSL: TLSV13_ALERT_CERTIFICATE_REQUIRED] tlsv13 alert certificate required (_ssl.c:2623)
         self.cert_error = (
             "certificate required|SSL handshake failed|"
-            "KMS connection closed|Connection reset by peer"
+            "KMS connection closed|Connection reset by peer|ECONNRESET|EPIPE"
         )
         # On Python 3.10+ this error might be:
         # EOF occurred in violation of protocol (_ssl.c:2384)
@@ -2098,7 +2100,9 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         # certificate verify failed: IP address mismatch, certificate is not valid for '127.0.0.1'. (_ssl.c:1129)"
         # hostname '127.0.0.1' doesn't match 'wronghost.com'
         key["endpoint"] = "127.0.0.1:8001"
-        with self.assertRaisesRegex(EncryptionError, "IP address mismatch|wronghost"):
+        with self.assertRaisesRegex(
+            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch"
+        ):
             self.client_encryption_invalid_hostname.create_data_key("aws", key)
 
     def test_02_azure(self):
@@ -2113,7 +2117,9 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         with self.assertRaisesRegex(EncryptionError, "expired|certificate verify failed"):
             self.client_encryption_expired.create_data_key("azure", key)
         # Invalid cert hostname error.
-        with self.assertRaisesRegex(EncryptionError, "IP address mismatch|wronghost"):
+        with self.assertRaisesRegex(
+            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch"
+        ):
             self.client_encryption_invalid_hostname.create_data_key("azure", key)
 
     def test_03_gcp(self):
@@ -2128,7 +2134,9 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         with self.assertRaisesRegex(EncryptionError, "expired|certificate verify failed"):
             self.client_encryption_expired.create_data_key("gcp", key)
         # Invalid cert hostname error.
-        with self.assertRaisesRegex(EncryptionError, "IP address mismatch|wronghost"):
+        with self.assertRaisesRegex(
+            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch"
+        ):
             self.client_encryption_invalid_hostname.create_data_key("gcp", key)
 
     def test_04_kmip(self):
@@ -2144,6 +2152,15 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
             EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch"
         ):
             self.client_encryption_invalid_hostname.create_data_key("kmip")
+
+    def test_05_tlsDisableOCSPEndpointCheck_is_permitted(self):
+        providers = {"aws": {"accessKeyId": "foo", "secretAccessKey": "bar"}}
+        options = {"aws": {"tlsDisableOCSPEndpointCheck": True}}
+        encryption = ClientEncryption(
+            providers, "keyvault.datakeys", self.client, OPTS, kms_tls_options=options
+        )
+        self.assertFalse(encryption._io_callbacks.opts._kms_ssl_contexts["aws"].check_ocsp_endpoint)
+        encryption.close()
 
 
 # https://github.com/mongodb/specifications/blob/50e26fe/source/client-side-encryption/tests/README.rst#unique-index-on-keyaltnames
@@ -2685,6 +2702,218 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
 
     def test_int(self):
         self.run_test_cases("Int", RangeOpts(min=0, max=200, sparsity=1), int)
+
+
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#automatic-data-encryption-keys
+class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
+    @client_context.require_no_standalone
+    @client_context.require_version_min(6, 0, -1)
+    def setUp(self):
+        super().setUp()
+        self.key1_document = json_data("etc", "data", "keys", "key1-document.json")
+        self.key1_id = self.key1_document["_id"]
+        self.client.drop_database(self.db)
+        self.key_vault = create_key_vault(self.client.keyvault.datakeys, self.key1_document)
+        self.addCleanup(self.key_vault.drop)
+        self.client_encryption = ClientEncryption(
+            {"local": {"key": LOCAL_MASTER_KEY}},
+            self.key_vault.full_name,
+            self.client,
+            OPTS,
+        )
+        self.addCleanup(self.client_encryption.close)
+
+    def test_01_simple_create(self):
+        coll, _ = self.client_encryption.create_encrypted_collection(
+            database=self.db,
+            name="testing1",
+            encrypted_fields={"fields": [{"path": "ssn", "bsonType": "string", "keyId": None}]},
+            kms_provider="local",
+        )
+        with self.assertRaises(WriteError) as exc:
+            coll.insert_one({"ssn": "123-45-6789"})
+        self.assertEqual(exc.exception.code, 121)
+
+    def test_02_no_fields(self):
+        with self.assertRaisesRegex(
+            TypeError,
+            "create_encrypted_collection.* missing 1 required positional argument: 'encrypted_fields'",
+        ):
+            self.client_encryption.create_encrypted_collection(  # type:ignore[call-arg]
+                database=self.db,
+                name="testing1",
+            )
+
+    def test_03_invalid_keyid(self):
+        with self.assertRaisesRegex(
+            EncryptedCollectionError,
+            "create.encryptedFields.fields.keyId' is the wrong type 'bool', expected type 'binData",
+        ):
+            self.client_encryption.create_encrypted_collection(
+                database=self.db,
+                name="testing1",
+                encrypted_fields={
+                    "fields": [{"path": "ssn", "bsonType": "string", "keyId": False}]
+                },
+                kms_provider="local",
+            )
+
+    def test_04_insert_encrypted(self):
+        coll, ef = self.client_encryption.create_encrypted_collection(
+            database=self.db,
+            name="testing1",
+            encrypted_fields={"fields": [{"path": "ssn", "bsonType": "string", "keyId": None}]},
+            kms_provider="local",
+        )
+        key1_id = ef["fields"][0]["keyId"]
+        encrypted_value = self.client_encryption.encrypt(
+            "123-45-6789",
+            key_id=key1_id,
+            algorithm=Algorithm.UNINDEXED,
+        )
+        coll.insert_one({"ssn": encrypted_value})
+
+    def test_copy_encrypted_fields(self):
+        encrypted_fields = {
+            "fields": [
+                {
+                    "path": "ssn",
+                    "bsonType": "string",
+                    "keyId": None,
+                }
+            ]
+        }
+        _, ef = self.client_encryption.create_encrypted_collection(
+            database=self.db,
+            name="testing1",
+            kms_provider="local",
+            encrypted_fields=encrypted_fields,
+        )
+        self.assertIsNotNone(ef["fields"][0]["keyId"])
+        self.assertIsNone(encrypted_fields["fields"][0]["keyId"])
+
+    def test_options_forward(self):
+        coll, ef = self.client_encryption.create_encrypted_collection(
+            database=self.db,
+            name="testing1",
+            kms_provider="local",
+            encrypted_fields={"fields": [{"path": "ssn", "bsonType": "string", "keyId": None}]},
+            read_preference=ReadPreference.NEAREST,
+        )
+        self.assertEqual(coll.read_preference, ReadPreference.NEAREST)
+        self.assertEqual(coll.name, "testing1")
+
+    def test_mixed_null_keyids(self):
+        key = self.client_encryption.create_data_key(kms_provider="local")
+        coll, ef = self.client_encryption.create_encrypted_collection(
+            database=self.db,
+            name="testing1",
+            encrypted_fields={
+                "fields": [
+                    {"path": "ssn", "bsonType": "string", "keyId": None},
+                    {"path": "dob", "bsonType": "string", "keyId": key},
+                    {"path": "secrets", "bsonType": "string"},
+                    {"path": "address", "bsonType": "string", "keyId": None},
+                ]
+            },
+            kms_provider="local",
+        )
+        encrypted_values = [
+            self.client_encryption.encrypt(
+                val,
+                key_id=key,
+                algorithm=Algorithm.UNINDEXED,
+            )
+            for val, key in zip(
+                ["123-45-6789", "11/22/1963", "My secret", "New Mexico, 87104"],
+                [field["keyId"] for field in ef["fields"]],
+            )
+        ]
+        coll.insert_one(
+            {
+                "ssn": encrypted_values[0],
+                "dob": encrypted_values[1],
+                "secrets": encrypted_values[2],
+                "address": encrypted_values[3],
+            }
+        )
+
+    def test_create_datakey_fails(self):
+        key = self.client_encryption.create_data_key(kms_provider="local")
+        encrypted_fields = {
+            "fields": [
+                {"path": "address", "bsonType": "string", "keyId": key},
+                {"path": "dob", "bsonType": "string", "keyId": None},
+            ]
+        }
+        # Make sure the exception's encrypted_fields object includes the previous keys in the error message even when
+        # generating keys fails.
+        with self.assertRaises(
+            EncryptedCollectionError,
+        ) as exc:
+            self.client_encryption.create_encrypted_collection(
+                database=self.db,
+                name="testing1",
+                encrypted_fields=encrypted_fields,
+                kms_provider="does not exist",
+            )
+        self.assertEqual(exc.exception.encrypted_fields, encrypted_fields)
+
+    def test_create_failure(self):
+        key = self.client_encryption.create_data_key(kms_provider="local")
+        # Make sure the exception's encrypted_fields object includes the previous keys in the error message even when
+        # it is the creation of the collection that fails.
+        with self.assertRaises(
+            EncryptedCollectionError,
+        ) as exc:
+            self.client_encryption.create_encrypted_collection(
+                database=self.db,
+                name=1,  # type:ignore[arg-type]
+                encrypted_fields={
+                    "fields": [
+                        {"path": "address", "bsonType": "string", "keyId": key},
+                        {"path": "dob", "bsonType": "string", "keyId": None},
+                    ]
+                },
+                kms_provider="local",
+            )
+        for field in exc.exception.encrypted_fields["fields"]:
+            self.assertIsInstance(field["keyId"], Binary)
+
+    def test_collection_name_collision(self):
+        encrypted_fields = {
+            "fields": [
+                {"path": "address", "bsonType": "string", "keyId": None},
+            ]
+        }
+        self.db.create_collection("testing1")
+        with self.assertRaises(
+            EncryptedCollectionError,
+        ) as exc:
+            self.client_encryption.create_encrypted_collection(
+                database=self.db,
+                name="testing1",
+                encrypted_fields=encrypted_fields,
+                kms_provider="local",
+            )
+        self.assertIsInstance(exc.exception.encrypted_fields["fields"][0]["keyId"], Binary)
+        self.db.drop_collection("testing1", encrypted_fields=encrypted_fields)
+        self.client_encryption.create_encrypted_collection(
+            database=self.db,
+            name="testing1",
+            encrypted_fields=encrypted_fields,
+            kms_provider="local",
+        )
+        with self.assertRaises(
+            EncryptedCollectionError,
+        ) as exc:
+            self.client_encryption.create_encrypted_collection(
+                database=self.db,
+                name="testing1",
+                encrypted_fields=encrypted_fields,
+                kms_provider="local",
+            )
+        self.assertIsInstance(exc.exception.encrypted_fields["fields"][0]["keyId"], Binary)
 
 
 if __name__ == "__main__":

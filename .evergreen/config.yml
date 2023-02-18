@@ -283,6 +283,10 @@ functions:
               fi
           fi
 
+          if [ -n "${skip_crypt_shared}" ]; then
+            export SKIP_CRYPT_SHARED=1
+          fi
+
           ${PREPARE_SHELL}
           MONGODB_VERSION=${VERSION} \
             TOPOLOGY=${TOPOLOGY} \
@@ -2133,6 +2137,7 @@ axes:
         run_on: amazon1-2018-test
         batchtime: 10080  # 7 days
         variables:
+          skip_crypt_shared: true
           python3_binary: "/opt/python/3.8/bin/python3"
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/linux-64-amazon-ami/master/latest/libmongocrypt.tar.gz
       - id: archlinux-test
