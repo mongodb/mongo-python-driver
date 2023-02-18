@@ -3,8 +3,6 @@
 PyMongo 4 Migration Guide
 =========================
 
-.. contents::
-
 .. testsetup::
 
   from pymongo import MongoClient, ReadPreference

@@ -44,7 +44,7 @@ class JustWrite(threading.Thread):
         threading.Thread.__init__(self)
         self.gfs = gfs
         self.num = num
-        self.setDaemon(True)
+        self.daemon = True
 
     def run(self):
         for _ in range(self.num):
@@ -59,7 +59,7 @@ class JustRead(threading.Thread):
         self.gfs = gfs
         self.num = num
         self.results = results
-        self.setDaemon(True)
+        self.daemon = True
 
     def run(self):
         for _ in range(self.num):

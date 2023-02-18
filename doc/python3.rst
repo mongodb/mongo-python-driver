@@ -1,8 +1,6 @@
 Python 3 FAQ
 ============
 
-.. contents::
-
 What Python 3 versions are supported?
 -------------------------------------
 
