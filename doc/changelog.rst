@@ -3519,9 +3519,3 @@ Changes in Version 0.9.7
   :class:`~pymongo.collection.Collection` names
 - add version as :attr:`pymongo.version`
 - add ``--no_ext`` command line option to *setup.py*
-
-.. toctree::
-   :hidden:
-
-   python3
-   examples/gevent
