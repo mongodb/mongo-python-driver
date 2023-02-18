@@ -977,13 +977,12 @@ class Cursor(Generic[_DocumentType]):
     def where(self, code: Union[str, Code]) -> "Cursor[_DocumentType]":
         """Adds a `$where`_ clause to this query.
 
-        The `code` argument must be an instance of :class:`basestring`
-        (:class:`str` in python 3) or :class:`~bson.code.Code`
-        containing a JavaScript expression. This expression will be
-        evaluated for each document scanned. Only those documents
-        for which the expression evaluates to *true* will be returned
-        as results. The keyword *this* refers to the object currently
-        being scanned. For example::
+        The `code` argument must be an instance of :class:`str` or
+        :class:`~bson.code.Code` containing a JavaScript expression. 
+        This expression will be evaluated for each document scanned. 
+        Only those documents for which the expression evaluates to
+        *true* will be returned as results. The keyword *this* refers 
+        to the object currently being scanned. For example::
 
             # Find all documents where field "a" is less than "b" plus "c".
             for doc in db.test.find().where('this.a < (this.b + this.c)'):

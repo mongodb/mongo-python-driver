@@ -2646,8 +2646,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         If operating in auth mode, client must be authorized as an
         admin to perform this operation. Raises :class:`TypeError` if
-        `new_name` is not an instance of :class:`basestring`
-        (:class:`str` in python 3). Raises :class:`~pymongo.errors.InvalidName`
+        `new_name` is not an instance of :class:`str`.
+        Raises :class:`~pymongo.errors.InvalidName`
         if `new_name` is not a valid collection name.
 
         :Parameters:

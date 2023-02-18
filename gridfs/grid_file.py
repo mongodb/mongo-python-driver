@@ -592,8 +592,8 @@ class GridOut(io.IOBase):
         """Read at most `size` bytes from the file (less if there
         isn't enough data).
 
-        The bytes are returned as an instance of :class:`str` (:class:`bytes`
-        in python 3). If `size` is negative or omitted all data is read.
+        The bytes are returned as an instance of :class:`bytes`
+        If `size` is negative or omitted all data is read.
 
         :Parameters:
           - `size` (optional): the number of bytes to read
