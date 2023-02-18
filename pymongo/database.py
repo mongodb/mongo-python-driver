@@ -82,9 +82,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         """Get a database by client and name.
 
         Raises :class:`TypeError` if `name` is not an instance of
-        :class:`basestring` (:class:`str` in python 3). Raises
-        :class:`~pymongo.errors.InvalidName` if `name` is not a valid
-        database name.
+        :class:`str`. Raises :class:`~pymongo.errors.InvalidName` if
+        `name` is not a valid database name.
 
         :Parameters:
           - `client`: A :class:`~pymongo.mongo_client.MongoClient` instance.

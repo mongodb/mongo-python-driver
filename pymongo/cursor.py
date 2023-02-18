@@ -880,7 +880,7 @@ class Cursor(Generic[_DocumentType]):
         in the result set of this query.
 
         Raises :class:`TypeError` if `key` is not an instance of
-        :class:`basestring` (:class:`str` in python 3).
+        :class:`str`.
 
         The :meth:`distinct` method obeys the
         :attr:`~pymongo.collection.Collection.read_preference` of the
