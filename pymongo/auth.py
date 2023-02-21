@@ -545,6 +545,10 @@ def _authenticate_oidc(credentials, sock_info, reauthenticate):
 
     cache_value = _oidc_cache.get(cache_key)
     conversation_id = None
+    if cache_value is not None:
+        cache_value.cache_exp_utc = datetime.now(timezone.utc) + timedelta(
+            minutes=_OIDC_CACHE_TIMEOUT_MINUTES
+        )
 
     if cache_value is None:
         lock = threading.Lock()
