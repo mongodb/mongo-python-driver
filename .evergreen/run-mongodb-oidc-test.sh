@@ -25,8 +25,8 @@ MONGODB_URI=${MONGODB_URI:-"mongodb://localhost"}
 MONGODB_URI_SINGLE="${MONGODB_URI}/?authMechanism=MONGODB-OIDC"
 MONGODB_URI_MULTIPLE="${MONGODB_URI}:27018/?authMechanism=MONGODB-OIDC&directConnection=true"
 
-if [ -z "${AWS_TOKEN_DIR}" ]; then
-    echo "Must specify AWS_TOKEN_DIR"
+if [ -z "${OIDC_TOKEN_DIR}" ]; then
+    echo "Must specify OIDC_TOKEN_DIR"
     exit 1
 fi
 

@@ -37,7 +37,7 @@ class TestAuthOIDC(unittest.TestCase):
         cls.uri_single = os.environ["MONGODB_URI_SINGLE"]
         cls.uri_multiple = os.environ["MONGODB_URI_MULTIPLE"]
         cls.uri_admin = os.environ["MONGODB_URI"]
-        cls.token_dir = os.environ["AWS_TOKEN_DIR"]
+        cls.token_dir = os.environ["OIDC_TOKEN_DIR"]
 
     @contextmanager
     def fail_point(self, command_args):
