@@ -70,6 +70,7 @@ authtest () {
     else
       . venvoidc/bin/activate
     fi
+    python -m pip install -U pip setuptools
     python -m pip install '.[aws]'
     python test/auth_aws/test_auth_oidc.py -v
     deactivate
