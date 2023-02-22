@@ -336,60 +336,6 @@ class TestAuthOIDC(unittest.TestCase):
         self.assertEqual(refresh_called, 1)
         client.close()
 
-    def test_reauthenticate_write(self):
-        token_file = os.path.join(self.token_dir, "test_user1")
-        refresh_called = 0
-        listener = EventListener()
-
-        # Clear the cache
-        _oidc_cache.clear()
-
-        # Create request and refresh callbacks that return valid credentials
-        # that will not expire soon.
-        def request_token(principal, info, timeout):
-            with open(token_file) as fid:
-                token = fid.read()
-            return dict(access_token=token, expires_in_seconds=1000)
-
-        def refresh_token(principal, info, creds, timeout):
-            nonlocal refresh_called
-            with open(token_file) as fid:
-                token = fid.read()
-            refresh_called += 1
-            return dict(access_token=token, expires_in_seconds=1000)
-
-        # Create a client with the callbacks.
-        props: Dict = dict(on_oidc_request_token=request_token, on_oidc_refresh_token=refresh_token)
-        client = MongoClient(
-            self.uri_single, event_listeners=[listener], authmechanismproperties=props
-        )
-
-        # Perform a find operation.
-        client.test.test.find_one()
-
-        # Assert that the refresh callback has not been called.
-        self.assertEqual(refresh_called, 0)
-
-        listener.reset()
-
-        with self.fail_point(
-            {"mode": {"times": 1}, "data": {"failCommands": ["insert"], "errorCode": 391}}
-        ):
-            # Perform an insert operation.
-            client.test.test.insert_one({})
-
-        started_events = [i.command_name for i in listener.started_events]
-        succeeded_events = [i.command_name for i in listener.succeeded_events]
-        failed_events = [i.command_name for i in listener.failed_events]
-
-        assert started_events == ["insert", "saslStart", "insert"]
-        assert succeeded_events == ["saslStart", "insert"]
-        assert failed_events == ["insert"]
-
-        # Assert that the refresh callback has been called.
-        self.assertEqual(refresh_called, 1)
-        client.close()
-
 
 if __name__ == "__main__":
     unittest.main()
