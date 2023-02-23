@@ -123,7 +123,7 @@ _MAX_RTT_SAMPLES: int = 10
 _MIN_RTT_SAMPLES: int = 2
 
 
-class MovingMinimum(object):
+class MovingMinimum:
     """Tracks a minimum RTT within the last 10 RTT samples."""
 
     samples: Deque[float]
