@@ -210,17 +210,6 @@ tasks:
         - func: "attach benchmark test results"
         - func: "send dashboard data"
 
-    - name: "perf-4.2-standalone"
-      tags: ["perf"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "4.2"
-            TOPOLOGY: "server"
-        - func: "run perf tests"
-        - func: "attach benchmark test results"
-        - func: "send dashboard data"
-
     - name: "perf-4.4-standalone"
       tags: ["perf"]
       commands:
@@ -251,6 +240,5 @@ buildvariants:
   run_on: ubuntu2004-large
   tasks:
      - name: "perf-4.0-standalone"
-     - name: "perf-4.2-standalone"
      - name: "perf-4.4-standalone"
      - name: "perf-6.0-standalone"
