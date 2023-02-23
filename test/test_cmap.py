@@ -199,9 +199,10 @@ class TestCMAP(IntegrationTest):
             self.fail("missing events: %r" % (events[len(actual_events) :],))
 
     def check_error(self, actual, expected):
-        message = expected.pop("message")
+        message = expected.pop("message", "")
         self.check_object(actual, expected)
-        self.assertIn(message, str(actual))
+        if message:
+            self.assertIn(message, str(actual))
 
     def _set_fail_point(self, client, command_args):
         cmd = SON([("configureFailPoint", "failCommand")])
@@ -406,9 +407,11 @@ class TestCMAP(IntegrationTest):
         self.assertIsInstance(listener.events[2], ConnectionCheckOutStartedEvent)
         self.assertIsInstance(listener.events[3], ConnectionCreatedEvent)
         # Error happens here.
-        self.assertIsInstance(listener.events[4], ConnectionClosedEvent)
-        self.assertIsInstance(listener.events[5], ConnectionCheckOutFailedEvent)
-        self.assertEqual(listener.events[5].reason, ConnectionCheckOutFailedReason.CONN_ERROR)
+        self.assertIsInstance(listener.events[4], PoolClearedEvent)
+        self.assertIsInstance(listener.events[5], ConnectionClosedEvent)
+        self.assertEqual(listener.events[5].reason, ConnectionClosedReason.ERROR)
+        self.assertIsInstance(listener.events[6], ConnectionCheckOutFailedEvent)
+        self.assertEqual(listener.events[6].reason, ConnectionCheckOutFailedReason.CONN_ERROR)
 
     #
     # Extra non-spec tests
