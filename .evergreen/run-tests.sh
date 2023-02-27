@@ -218,8 +218,6 @@ if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
 fi
 
 $PYTHON setup.py clean
-$PYTHON -m pip install unittest-xml-reporting coverage
-
 if [ -z "$GREEN_FRAMEWORK" ]; then
     if [ -z "$C_EXTENSIONS" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
         # Fail if the C extensions fail to build.
