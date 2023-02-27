@@ -653,6 +653,9 @@ def _authenticate_oidc(credentials, sock_info, reauthenticate):
         response = sock_info.command("$external", cmd)
     except Exception:
         _oidc_cache.pop(cache_key, None)
+        # Allow for one retry on reauthenticate when using server step 2.
+        if reauthenticate and conversation_id is None:
+            return _authenticate_oidc(credentials, sock_info, False)
         raise
 
     if not response["done"]:

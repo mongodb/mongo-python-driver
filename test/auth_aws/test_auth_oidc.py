@@ -319,7 +319,10 @@ class TestAuthOIDC(unittest.TestCase):
         listener.reset()
 
         with self.fail_point(
-            {"mode": {"times": 1}, "data": {"failCommands": ["find"], "errorCode": 391}}
+            {
+                "mode": {"times": 2},
+                "data": {"failCommands": ["find", "saslStart"], "errorCode": 391},
+            }
         ):
             # Perform a find operation.
             client.test.test.find_one()
@@ -328,9 +331,9 @@ class TestAuthOIDC(unittest.TestCase):
         succeeded_events = [i.command_name for i in listener.succeeded_events]
         failed_events = [i.command_name for i in listener.failed_events]
 
-        assert started_events == ["find", "saslStart", "find"]
-        assert succeeded_events == ["saslStart", "find"]
-        assert failed_events == ["find"]
+        assert started_events == ["find", "saslStart", "saslStart", "saslContinue", "find"]
+        assert succeeded_events == ["saslStart", "saslContinue", "find"]
+        assert failed_events == ["find", "saslStart"]
 
         # Assert that the refresh callback has been called.
         self.assertEqual(refresh_called, 1)
