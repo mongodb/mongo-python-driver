@@ -528,8 +528,8 @@ def _authenticate_oidc(credentials, sock_info, reauthenticate):
             resp = sock_info.command(credentials.source, cmd)
         except Exception:
             _oidc_cache.pop(cache_key, None)
-            # Allow for one retry on reauthenticate when using server step 2.
-            if reauthenticate:
+            # Allow for one retry on reauthenticate when callbacks are in use.
+            if reauthenticate and not credentials.mechanism_properties.device_name:
                 return _authenticate_oidc(credentials, sock_info, False)
             raise
 
