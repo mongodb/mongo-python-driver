@@ -478,7 +478,7 @@ def _authenticate_x509(credentials, sock_info):
         # MONGODB-X509 is done after the speculative auth step.
         return
 
-    cmd = _X509Context(credentials).speculate_command()
+    cmd = _X509Context(credentials, sock_info.address).speculate_command()
     sock_info.command("$external", cmd)
 
 
@@ -761,7 +761,7 @@ class _AuthContext(object):
 
 
 class _ScramContext(_AuthContext):
-    def __init__(self, credentials, mechanism, address):
+    def __init__(self, credentials, address, mechanism):
         super(_ScramContext, self).__init__(credentials, address)
         self.scram_data = None
         self.mechanism = mechanism
