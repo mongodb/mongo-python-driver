@@ -331,9 +331,9 @@ class TestAuthOIDC(unittest.TestCase):
         succeeded_events = [i.command_name for i in listener.succeeded_events]
         failed_events = [i.command_name for i in listener.failed_events]
 
-        assert started_events == ["find", "saslStart", "saslStart", "saslContinue", "find"]
-        assert succeeded_events == ["saslStart", "saslContinue", "find"]
-        assert failed_events == ["find", "saslStart"]
+        assert started_events == ["find", "find", "find"], started_events
+        assert succeeded_events == ["find"], succeeded_events
+        assert failed_events == ["find", "find"], failed_events
 
         # Assert that the refresh callback has been called.
         self.assertEqual(refresh_called, 1)

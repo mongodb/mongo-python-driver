@@ -647,7 +647,7 @@ class SocketInfo(object):
         if creds:
             if creds.mechanism == "DEFAULT" and creds.username:
                 cmd["saslSupportedMechs"] = creds.source + "." + creds.username
-            auth_ctx = auth._AuthContext.from_credentials(creds)
+            auth_ctx = auth._AuthContext.from_credentials(creds, self.address)
             if auth_ctx:
                 cmd["speculativeAuthenticate"] = auth_ctx.speculate_command()
         else:
