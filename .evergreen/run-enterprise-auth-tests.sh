@@ -28,5 +28,19 @@ export GSSAPI_PRINCIPAL=${PRINCIPAL}
 
 
 echo "Running tests"
+
+# Set up xml reporting
+${PYTHON_BINARY} -m pip install unittest-xml-reporting || true
+if ${PYTHON_BINARY} -c "import xmlrunner"; then
+    # The xunit output dir must be a Python style absolute path.
+    XUNIT_DIR="$(pwd)/xunit-results"
+    if [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
+        XUNIT_DIR=$(cygpath -m $XUNIT_DIR)
+    fi
+    OUTPUT="--xunit-output=${XUNIT_DIR}"
+else
+    OUTPUT=""
+fi
+
 ${PYTHON_BINARY} setup.py clean
-${PYTHON_BINARY} setup.py test --xunit-output=xunit-results
+${PYTHON_BINARY} setup.py test $OUTPUT
