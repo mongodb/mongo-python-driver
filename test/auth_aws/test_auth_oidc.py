@@ -282,6 +282,94 @@ class TestAuthOIDC(unittest.TestCase):
         client.close()
         assert len(_oidc_cache) == 0
 
+    def test_speculative_auth_succeeds(self):
+        # Clear the cache
+        _oidc_cache.clear()
+        token_file = os.path.join(self.token_dir, "test_user1")
+
+        def request_token(principal, info, timeout):
+            with open(token_file) as fid:
+                token = fid.read()
+            return dict(access_token=token, expires_in_seconds=1000)
+
+        # Create a client with a request callback that returns a valid token
+        # that will not expire soon.
+        props: Dict = dict(on_oidc_request_token=request_token)
+        client = MongoClient(self.uri_single, authmechanismproperties=props)
+
+        # Set a fail point for saslStart commands.
+        with self.fail_point(
+            {
+                "mode": {"times": 2},
+                "data": {"failCommands": ["saslStart"], "errorCode": 18},
+            }
+        ):
+            # Perform a find operation.
+            client.test.test.find_one()
+
+        # Close the client.
+        client.close()
+
+        # Create a new client.
+        client = MongoClient(self.uri_single, authmechanismproperties=props)
+
+        # Set a fail point for saslStart commands.
+        with self.fail_point(
+            {
+                "mode": {"times": 2},
+                "data": {"failCommands": ["saslStart"], "errorCode": 18},
+            }
+        ):
+            # Perform a find operation.
+            client.test.test.find_one()
+
+        # Close the client.
+        client.close()
+
+    def test_speculative_auth_fails(self):
+        # Clear the cache
+        _oidc_cache.clear()
+        token_file = os.path.join(self.token_dir, "test_user1")
+
+        def request_token(principal, info, timeout):
+            with open(token_file) as fid:
+                token = fid.read()
+            return dict(access_token=token, expires_in_seconds=60)
+
+        # Create a client with a request callback that returns a valid token
+        # that will expire soon.
+        props: Dict = dict(on_oidc_request_token=request_token)
+        client = MongoClient(self.uri_single, authmechanismproperties=props)
+
+        # Set a fail point for saslStart commands.
+        with self.fail_point(
+            {
+                "mode": {"times": 2},
+                "data": {"failCommands": ["saslStart"], "errorCode": 18},
+            }
+        ):
+            # Perform a find operation.
+            client.test.test.find_one()
+
+        # Close the client.
+        client.close()
+
+        client = MongoClient(self.uri_single, authmechanismproperties=props)
+
+        # Set a fail point for saslStart commands.
+        with self.fail_point(
+            {
+                "mode": {"times": 2},
+                "data": {"failCommands": ["saslStart"], "errorCode": 18},
+            }
+        ):
+            # Perform a find operation.
+            with self.assertRaises(OperationFailure):
+                client.test.test.find_one()
+
+        # Close the client.
+        client.close()
+
     def test_reauthenticate_read(self):
         token_file = os.path.join(self.token_dir, "test_user1")
         refresh_called = 0
@@ -331,9 +419,15 @@ class TestAuthOIDC(unittest.TestCase):
         succeeded_events = [i.command_name for i in listener.succeeded_events]
         failed_events = [i.command_name for i in listener.failed_events]
 
-        assert started_events == ["find", "find", "find"], started_events
-        assert succeeded_events == ["find"], succeeded_events
-        assert failed_events == ["find", "find"], failed_events
+        assert started_events == [
+            "find",
+            "saslStart",
+            "saslStart",
+            "saslContinue",
+            "find",
+        ], started_events
+        assert succeeded_events == ["saslStart", "saslContinue", "find"], succeeded_events
+        assert failed_events == ["find", "saslStart"], failed_events
 
         # Assert that the refresh callback has been called.
         self.assertEqual(refresh_called, 1)

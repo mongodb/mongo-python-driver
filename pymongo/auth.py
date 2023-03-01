@@ -587,7 +587,7 @@ def _oidc_get_current_token(credentials, address, use_callbacks=True):
     timeout = _OIDC_CALLBACK_TIMEOUT_SECONDS
 
     if not use_callbacks and not current_valid_token:
-        return dict()
+        return None
 
     if not current_valid_token:
         with cache_value.lock:
@@ -695,6 +695,8 @@ def _authenticate_oidc_start(credentials, address, use_callbacks=True):
         return cmd
 
     token = _oidc_get_current_token(credentials, address, use_callbacks)
+    if not token:
+        return None
     bin_payload = Binary(bson.encode(dict(jwt=token)))
     return SON(
         [
@@ -785,7 +787,9 @@ class _X509Context(_AuthContext):
 
 class _OIDCContext(_AuthContext):
     def speculate_command(self):
-        cmd = _authenticate_oidc_start(self.credentials, self.address)
+        cmd = _authenticate_oidc_start(self.credentials, self.address, False)
+        if cmd is None:
+            return
         cmd["db"] = self.credentials.source
         return cmd
 
@@ -806,8 +810,8 @@ def authenticate(credentials, sock_info, reauthenticate=False):
     if reauthenticate and mechanism == "MONGODB-OIDC":
         _invalidate_oidc_token(credentials, sock_info.address)
     if reauthenticate and sock_info.performed_handshake:
-        # Existing hello response is stale, call it again.
-        sock_info.hello()
+        # Existing auth_ctx is stale, remove it.
+        sock_info.auth_ctx = None
     if mechanism == "MONGODB-OIDC":
         auth_func(credentials, sock_info, reauthenticate)
     else:
