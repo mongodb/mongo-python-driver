@@ -187,9 +187,7 @@ if [ -n "$DATA_LAKE" ]; then
     TEST_ARGS="-s test.test_data_lake"
 fi
 
-
-# Attempt to install unittest-xml-reporting from pypi.
-$PYTHON -m pip install --prefer-binary unittest-xml-reporting || true
+# Don't download unittest-xml-reporting from pypi, which often fails.
 if $PYTHON -c "import xmlrunner"; then
     # The xunit output dir must be a Python style absolute path.
     XUNIT_DIR="$(pwd)/xunit-results"
