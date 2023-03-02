@@ -17,9 +17,4 @@ fi
 createvirtualenv $PYTHON_BINARY atlastest
 trap "deactivate; rm -rf atlastest" EXIT HUP
 
-echo "Running tests without dnspython"
-python test/atlas/test_connection.py
-
-python -m pip install dnspython
-echo "Running tests with dnspython"
 MUST_TEST_SRV="1" python test/atlas/test_connection.py
