@@ -579,8 +579,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                keyword arguments.
              - The default for `uuidRepresentation` was changed from
                ``pythonLegacy`` to ``unspecified``.
-             - Added the ``srvServiceName`` and ``maxConnecting`` URI and
-               keyword argument.
+             - Added the ``srvServiceName``, ``maxConnecting``, and ``srvMaxHosts`` URI and
+               keyword arguments.
 
         .. versionchanged:: 3.12
            Added the ``server_api`` keyword argument.
