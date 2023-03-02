@@ -28,6 +28,5 @@ export GSSAPI_PRINCIPAL=${PRINCIPAL}
 
 
 echo "Running tests"
-
 ${PYTHON_BINARY} setup.py clean
 ${PYTHON_BINARY} setup.py test --xunit-output=xunit-results
