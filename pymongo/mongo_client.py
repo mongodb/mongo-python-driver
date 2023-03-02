@@ -402,7 +402,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
                 MongoClient("mongodb+srv://example.com/?srvServiceName=customname")
           - `srvMaxHosts`: (int) limits the number of mongos-like hosts a client will
-            connect to. More specifically, when a mongodb+srv:// connection string
+            connect to. More specifically, when a "mongodb+srv://" connection string
             resolves to more than srvMaxHosts number of hosts, the client will randomly
             choose an srvMaxHosts sized subset of hosts.
 
