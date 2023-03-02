@@ -401,6 +401,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             "mongodb+srv://" URIs. Defaults to "mongodb". Use it like so::
 
                 MongoClient("mongodb+srv://example.com/?srvServiceName=customname")
+          - `srvMaxHosts`: (int) limits the number of mongos-like hosts a client will
+            connect to. More specifically, when a "mongodb+srv://" connection string
+            resolves to more than srvMaxHosts number of hosts, the client will randomly
+            choose an srvMaxHosts sized subset of hosts.
 
 
           | **Write Concern options:**
@@ -575,8 +579,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                keyword arguments.
              - The default for `uuidRepresentation` was changed from
                ``pythonLegacy`` to ``unspecified``.
-             - Added the ``srvServiceName`` and ``maxConnecting`` URI and
-               keyword argument.
+             - Added the ``srvServiceName``, ``maxConnecting``, and ``srvMaxHosts`` URI and
+               keyword arguments.
 
         .. versionchanged:: 3.12
            Added the ``server_api`` keyword argument.
