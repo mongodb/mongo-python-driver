@@ -363,7 +363,7 @@ class TestAuthOIDC(unittest.TestCase):
                 "data": {"failCommands": ["saslStart"], "errorCode": 18},
             }
         ):
-            # Perform a find operation.
+            # Perform a find operation that fails.
             with self.assertRaises(OperationFailure):
                 client.test.test.find_one()
 
