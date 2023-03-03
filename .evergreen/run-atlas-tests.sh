@@ -13,4 +13,9 @@ if [ -z "$PYTHON_BINARY" ]; then
     fi
 fi
 
-$PYTHON_BINARY test/atlas/test_connection.py
+. .evergreen/utils.sh
+createvirtualenv $PYTHON_BINARY atlastest
+trap "deactivate; rm -rf atlastest" EXIT HUP
+
+python -m pip install .
+python test/atlas/test_connection.py
