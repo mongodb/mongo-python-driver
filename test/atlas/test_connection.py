@@ -19,8 +19,6 @@ import sys
 import unittest
 from collections import defaultdict
 
-import dns
-
 sys.path[0:0] = [""]
 
 import pymongo
