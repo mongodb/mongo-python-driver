@@ -80,8 +80,8 @@ def create_test(test_case):
                             self.assertEqual(
                                 actual.aws_session_token, expected["AWS_SESSION_TOKEN"]
                             )
-                        elif "DEVICE_NAME" in expected:
-                            self.assertEqual(actual.device_name, expected["DEVICE_NAME"])
+                        elif "PROVIDER_NAME" in expected:
+                            self.assertEqual(actual.PROVIDER_NAME, expected["PROVIDER_NAME"])
                         elif "on_oidc_request_token" in expected:
                             self.assertEqual(
                                 actual.on_oidc_request_token, expected["on_oidc_request_token"]

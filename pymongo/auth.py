@@ -106,7 +106,7 @@ _AWSProperties = namedtuple("_AWSProperties", ["aws_session_token"])
 
 _OIDCProperties = namedtuple(
     "_OIDCProperties",
-    ["on_oidc_request_token", "on_oidc_refresh_token", "device_name"],
+    ["on_oidc_request_token", "on_oidc_refresh_token", "provider_name"],
 )
 """Mechanism properties for MONGODB-OIDC authentication."""
 
@@ -164,15 +164,15 @@ def _build_credentials_tuple(mech, source, user, passwd, extra, database):
         properties = extra.get("authmechanismproperties", {})
         on_oidc_request_token = properties.get("on_oidc_request_token")
         on_oidc_refresh_token = properties.get("on_oidc_refresh_token", None)
-        device_name = properties.get("DEVICE_NAME", "")
-        if not on_oidc_request_token and device_name != "aws":
+        provider_name = properties.get("PROVIDER_NAME", "")
+        if not on_oidc_request_token and provider_name != "aws":
             raise ConfigurationError(
-                "authentication with MONGODB-OIDC requires providing an on_oidc_request_token or a device_name of 'aws'"
+                "authentication with MONGODB-OIDC requires providing an on_oidc_request_token or a provider_name of 'aws'"
             )
         oidc_props = _OIDCProperties(
             on_oidc_request_token=on_oidc_request_token,
             on_oidc_refresh_token=on_oidc_refresh_token,
-            device_name=device_name,
+            provider_name=provider_name,
         )
         return MongoCredential(mech, "$external", user, passwd, oidc_props, None)
 
@@ -529,7 +529,7 @@ def _authenticate_oidc(credentials, sock_info, reauthenticate):
         except Exception:
             _oidc_cache.pop(cache_key, None)
             # Allow for one retry on reauthenticate when callbacks are in use.
-            if reauthenticate and not credentials.mechanism_properties.device_name:
+            if reauthenticate and not credentials.mechanism_properties.provider_name:
                 return _authenticate_oidc(credentials, sock_info, False)
             raise
 
@@ -641,8 +641,8 @@ def _authenticate_oidc_start(credentials, address, use_callbacks=True):
     for key in to_remove:
         del _oidc_cache[key]
 
-    # Handle aws device credentials.
-    if properties.device_name == "aws":
+    # Handle aws provider credentials.
+    if properties.provider_name == "aws":
         aws_identity_file = os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"]
         with open(aws_identity_file) as fid:
             token = fid.read().strip()

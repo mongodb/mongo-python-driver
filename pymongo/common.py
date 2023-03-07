@@ -429,7 +429,7 @@ _MECHANISM_PROPS = frozenset(
         "CANONICALIZE_HOST_NAME",
         "SERVICE_REALM",
         "AWS_SESSION_TOKEN",
-        "DEVICE_NAME",
+        "PROVIDER_NAME",
     ]
 )
 

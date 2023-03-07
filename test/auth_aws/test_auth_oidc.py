@@ -52,7 +52,7 @@ class TestAuthOIDC(unittest.TestCase):
 
     def test_connect_aws(self):
         os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"] = os.path.join(self.token_dir, "test_user1")
-        props = dict(DEVICE_NAME="aws")
+        props = dict(PROVIDER_NAME="aws")
         client = MongoClient(self.uri_single, authmechanismproperties=props)
         client.test.test.find_one()
         client.close()
@@ -276,7 +276,7 @@ class TestAuthOIDC(unittest.TestCase):
         # Ensure that a ``find`` operation does not add credentials to the cache.
         _oidc_cache.clear()
         os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"] = os.path.join(self.token_dir, "test_user1")
-        props = dict(DEVICE_NAME="aws")
+        props = dict(PROVIDER_NAME="aws")
         client = MongoClient(self.uri_single, authmechanismproperties=props)
         client.test.test.find_one()
         client.close()

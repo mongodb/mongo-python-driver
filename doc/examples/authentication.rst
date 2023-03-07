@@ -406,7 +406,7 @@ available, by installing pymongo with the
 A sample URI would be:
 
   >>> from pymongo import MongoClient
-  >>> uri = "mongodb://localhost/?authMechanism=MONGODB-OIDC&authMechanismProperties=DEVICE_NAME:aws")
+  >>> uri = "mongodb://localhost/?authMechanism=MONGODB-OIDC&authMechanismProperties=PROVIDER_NAME:aws")
   >>> client = MongoClient(uri)
 
 The driver will use the authentication token from the file given by the
