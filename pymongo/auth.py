@@ -519,6 +519,7 @@ def _authenticate_oidc(credentials, sock_info, reauthenticate):
     ctx = sock_info.auth_ctx
     cmd = None
     cache_key = _oidc_get_cache_key(credentials, sock_info.address)
+    in_cache = cache_key in _oidc_cache
 
     if ctx and ctx.speculate_succeeded():
         resp = ctx.speculative_authenticate
@@ -526,10 +527,11 @@ def _authenticate_oidc(credentials, sock_info, reauthenticate):
         cmd = _authenticate_oidc_start(credentials, sock_info.address)
         try:
             resp = sock_info.command(credentials.source, cmd)
-        except Exception:
+        except Exception as e:
             _oidc_cache.pop(cache_key, None)
-            # Allow for one retry on reauthenticate when callbacks are in use.
-            if reauthenticate and not credentials.mechanism_properties.provider_name:
+            # Allow for one retry on reauthenticate when callbacks are in use
+            # and there was no cache.
+            if reauthenticate and not credentials.mechanism_properties.provider_name and in_cache:
                 return _authenticate_oidc(credentials, sock_info, False)
             raise
 

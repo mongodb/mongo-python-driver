@@ -433,6 +433,27 @@ class TestAuthOIDC(unittest.TestCase):
         self.assertEqual(refresh_called, 1)
         client.close()
 
+        # Create a new client with the callbacks.
+        client = MongoClient(self.uri_single, authmechanismproperties=props)
+
+        # Perform a find operation.
+        client.test.test.find_one()
+
+        # Clear the cache.
+        _oidc_cache.clear()
+
+        with self.fail_point(
+            {
+                "mode": {"times": 2},
+                "data": {"failCommands": ["find", "saslStart"], "errorCode": 391},
+            }
+        ):
+            # Perform a find operation that fails.
+            with self.assertRaises(OperationFailure):
+                client.test.test.find_one()
+
+        client.close()
+
 
 if __name__ == "__main__":
     unittest.main()
