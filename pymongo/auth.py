@@ -527,7 +527,7 @@ def _authenticate_oidc(credentials, sock_info, reauthenticate):
         cmd = _authenticate_oidc_start(credentials, sock_info.address)
         try:
             resp = sock_info.command(credentials.source, cmd)
-        except Exception as e:
+        except Exception:
             _oidc_cache.pop(cache_key, None)
             # Allow for one retry on reauthenticate when callbacks are in use
             # and there was no cache.
