@@ -53,14 +53,18 @@ class TestAuthOIDC(unittest.TestCase):
     def test_connect_aws(self):
         os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"] = os.path.join(self.token_dir, "test_user1")
         props = dict(PROVIDER_NAME="aws")
+
+        # Test 1
         client = MongoClient(self.uri_single, authmechanismproperties=props)
         client.test.test.find_one()
         client.close()
 
+        # Test 2
         client = MongoClient(self.uri_multiple, authmechanismproperties=props)
         client.test.test.find_one()
         client.close()
 
+        # Test 3
         os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"] = os.path.join(self.token_dir, "test_user2")
         client = MongoClient(self.uri_multiple, authmechanismproperties=props)
         client.test.test.find_one()
@@ -74,11 +78,13 @@ class TestAuthOIDC(unittest.TestCase):
                 token = fid.read()
             return dict(access_token=token)
 
+        # Test 1
         props: Dict = dict(on_oidc_request_token=request_token)
         client = MongoClient(self.uri_single, authmechanismproperties=props)
         client.test.test.find_one()
         client.close()
 
+        # Test 2
         _oidc_cache.clear()
         client = MongoClient(
             self.uri_multiple, username="test_user1", authmechanismproperties=props
@@ -86,6 +92,7 @@ class TestAuthOIDC(unittest.TestCase):
         client.test.test.find_one()
         client.close()
 
+        # Test 3
         _oidc_cache.clear()
         token_file = os.path.join(self.token_dir, "test_user2")
         client = MongoClient(
@@ -105,6 +112,7 @@ class TestAuthOIDC(unittest.TestCase):
         def request_token_null(principal, info, timeout):
             return None
 
+        # Test 1
         props: Dict = dict(on_oidc_request_token=request_token_null)
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         with self.assertRaises(ValueError):
@@ -114,6 +122,7 @@ class TestAuthOIDC(unittest.TestCase):
         def request_token_no_token(principal, info, timeout):
             return dict()
 
+        # Test 2
         _oidc_cache.clear()
         props: Dict = dict(on_oidc_request_token=request_token_no_token)
         client = MongoClient(self.uri_single, authMechanismProperties=props)
@@ -131,6 +140,7 @@ class TestAuthOIDC(unittest.TestCase):
                 token = fid.read()
             return dict(access_token=token)
 
+        # Test 3
         _oidc_cache.clear()
         props: Dict = dict(
             on_oidc_request_token=request_token, on_oidc_refresh_token=request_refresh_null
@@ -147,12 +157,14 @@ class TestAuthOIDC(unittest.TestCase):
         def request_refresh_no_token(principal, info, creds, timeout):
             return dict()
 
+        # Test 4
         _oidc_cache.clear()
         props["on_oidc_refresh_token"] = request_refresh_no_token
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         client.test.test.find_one()
         client.close()
 
+        # Test 5
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         with self.assertRaises(ValueError):
             client.test.test.find_one()
@@ -162,6 +174,7 @@ class TestAuthOIDC(unittest.TestCase):
         request_called = 0
         refresh_called = 0
 
+        # Test 1
         # Clear the cache.
         _oidc_cache.clear()
         # Create a new client with a request callback and a refresh callback.  Both callbacks will read the contents of the ``AWS_WEB_IDENTITY_TOKEN_FILE`` location to obtain a valid access token.
@@ -191,6 +204,7 @@ class TestAuthOIDC(unittest.TestCase):
                 token = fid.read()
             return dict(access_token=token, expires_in_seconds=60)
 
+        # Test 2
         _oidc_cache.clear()
         props: Dict = dict(on_oidc_request_token=request_token, on_oidc_refresh_token=refresh_token)
 
@@ -201,6 +215,7 @@ class TestAuthOIDC(unittest.TestCase):
 
         assert len(_oidc_cache) == 1
 
+        # Test 3
         # Create a new client with the same request callback and a refresh callback.
         # Ensure that a ``find`` operation results in a call to the refresh callback.
         client = MongoClient(self.uri_single, authMechanismProperties=props)
@@ -210,6 +225,7 @@ class TestAuthOIDC(unittest.TestCase):
         assert refresh_called == 1
         assert len(_oidc_cache) == 1
 
+        # Test 4
         # Clear the cache.
         _oidc_cache.clear()
 
@@ -225,6 +241,7 @@ class TestAuthOIDC(unittest.TestCase):
         assert request_called == 1
         assert len(_oidc_cache) == 1
 
+        # Test 5
         # Create a new client with the same request callback.
         # Ensure that a ``find`` operation results in a call to the request callback.
         client = MongoClient(self.uri_single, authMechanismProperties=props)
@@ -246,6 +263,7 @@ class TestAuthOIDC(unittest.TestCase):
         assert request_called == 3
         assert len(_oidc_cache) == 2
 
+        # Test 6.
         # Clear the cache
         _oidc_cache.clear()
 
@@ -271,6 +289,7 @@ class TestAuthOIDC(unittest.TestCase):
         # Ensure that the cache has been cleared.
         assert len(_oidc_cache) == 0
 
+        # Test 7.
         # Clear the cache.
         # Create a new client using the AWS device workflow.
         # Ensure that a ``find`` operation does not add credentials to the cache.
@@ -292,6 +311,7 @@ class TestAuthOIDC(unittest.TestCase):
                 token = fid.read()
             return dict(access_token=token, expires_in_seconds=1000)
 
+        # Test 1
         # Create a client with a request callback that returns a valid token
         # that will not expire soon.
         props: Dict = dict(on_oidc_request_token=request_token)
@@ -310,6 +330,7 @@ class TestAuthOIDC(unittest.TestCase):
         # Close the client.
         client.close()
 
+        # Test 2
         # Create a new client.
         client = MongoClient(self.uri_single, authmechanismproperties=props)
 
@@ -336,6 +357,7 @@ class TestAuthOIDC(unittest.TestCase):
                 token = fid.read()
             return dict(access_token=token, expires_in_seconds=60)
 
+        # Test 1
         # Create a client with a request callback that returns a valid token
         # that will expire soon.
         props: Dict = dict(on_oidc_request_token=request_token)
@@ -354,6 +376,7 @@ class TestAuthOIDC(unittest.TestCase):
         # Close the client.
         client.close()
 
+        # Test 2
         client = MongoClient(self.uri_single, authmechanismproperties=props)
 
         # Set a fail point for saslStart commands.
@@ -375,6 +398,7 @@ class TestAuthOIDC(unittest.TestCase):
         refresh_called = 0
         listener = EventListener()
 
+        # Test 1
         # Clear the cache
         _oidc_cache.clear()
 
@@ -433,6 +457,7 @@ class TestAuthOIDC(unittest.TestCase):
         self.assertEqual(refresh_called, 1)
         client.close()
 
+        # Test 2
         # Create a new client with the callbacks.
         client = MongoClient(self.uri_single, authmechanismproperties=props)
 
@@ -452,6 +477,42 @@ class TestAuthOIDC(unittest.TestCase):
             with self.assertRaises(OperationFailure):
                 client.test.test.find_one()
 
+        client.close()
+
+        # . Ensure there is a cache.
+
+        # Test 3
+        # Clear the cache.
+        _oidc_cache.clear()
+
+        # Create request and refresh callbacks that return valid credentials
+        # that will not expire soon.
+        client = MongoClient(
+            self.uri_single, event_listeners=[listener], authmechanismproperties=props
+        )
+
+        # Perform a find operation.
+        client.test.test.find_one()
+
+        # Close the client.
+        client.close()
+
+        # Create a new client with the same callbacks.
+        client = MongoClient(
+            self.uri_single, event_listeners=[listener], authmechanismproperties=props
+        )
+
+        # Set a fail point for ``saslStart`` commands of the form
+        with self.fail_point(
+            {
+                "mode": {"times": 2},
+                "data": {"failCommands": ["find", "saslStart"], "errorCode": 391},
+            }
+        ):
+            # Perform a find operation that succeeds.
+            client.test.test.find_one()
+
+        # Close the client.
         client.close()
 
 
