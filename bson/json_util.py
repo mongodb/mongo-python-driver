@@ -29,7 +29,9 @@ Example usage (deserialization):
 .. doctest::
 
    >>> from bson.json_util import loads
-   >>> loads('[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$scope": {}, "$code": "function x() { return 1; }"}}, {"bin": {"$type": "80", "$binary": "AQIDBA=="}}]')
+   >>> loads(
+   ...     '[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$scope": {}, "$code": "function x() { return 1; }"}}, {"bin": {"$type": "80", "$binary": "AQIDBA=="}}]'
+   ... )
    [{'foo': [1, 2]}, {'bar': {'hello': 'world'}}, {'code': Code('function x() { return 1; }', {})}, {'bin': Binary(b'...', 128)}]
 
 Example usage with :const:`RELAXED_JSON_OPTIONS` (the default):
@@ -38,10 +40,14 @@ Example usage with :const:`RELAXED_JSON_OPTIONS` (the default):
 
    >>> from bson import Binary, Code
    >>> from bson.json_util import dumps
-   >>> dumps([{'foo': [1, 2]},
-   ...        {'bar': {'hello': 'world'}},
-   ...        {'code': Code("function x() { return 1; }")},
-   ...        {'bin': Binary(b"\x01\x02\x03\x04")}])
+   >>> dumps(
+   ...     [
+   ...         {"foo": [1, 2]},
+   ...         {"bar": {"hello": "world"}},
+   ...         {"code": Code("function x() { return 1; }")},
+   ...         {"bin": Binary(b"\x01\x02\x03\x04")},
+   ...     ]
+   ... )
    '[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$code": "function x() { return 1; }"}}, {"bin": {"$binary": {"base64": "AQIDBA==", "subType": "00"}}}]'
 
 Example usage (with :const:`CANONICAL_JSON_OPTIONS`):
@@ -50,11 +56,15 @@ Example usage (with :const:`CANONICAL_JSON_OPTIONS`):
 
    >>> from bson import Binary, Code
    >>> from bson.json_util import dumps, CANONICAL_JSON_OPTIONS
-   >>> dumps([{'foo': [1, 2]},
-   ...        {'bar': {'hello': 'world'}},
-   ...        {'code': Code("function x() { return 1; }")},
-   ...        {'bin': Binary(b"\x01\x02\x03\x04")}],
-   ...       json_options=CANONICAL_JSON_OPTIONS)
+   >>> dumps(
+   ...     [
+   ...         {"foo": [1, 2]},
+   ...         {"bar": {"hello": "world"}},
+   ...         {"code": Code("function x() { return 1; }")},
+   ...         {"bin": Binary(b"\x01\x02\x03\x04")},
+   ...     ],
+   ...     json_options=CANONICAL_JSON_OPTIONS,
+   ... )
    '[{"foo": [{"$numberInt": "1"}, {"$numberInt": "2"}]}, {"bar": {"hello": "world"}}, {"code": {"$code": "function x() { return 1; }"}}, {"bin": {"$binary": {"base64": "AQIDBA==", "subType": "00"}}}]'
 
 Example usage (with :const:`LEGACY_JSON_OPTIONS`):
@@ -63,11 +73,15 @@ Example usage (with :const:`LEGACY_JSON_OPTIONS`):
 
    >>> from bson import Binary, Code
    >>> from bson.json_util import dumps, LEGACY_JSON_OPTIONS
-   >>> dumps([{'foo': [1, 2]},
-   ...        {'bar': {'hello': 'world'}},
-   ...        {'code': Code("function x() { return 1; }", {})},
-   ...        {'bin': Binary(b"\x01\x02\x03\x04")}],
-   ...       json_options=LEGACY_JSON_OPTIONS)
+   >>> dumps(
+   ...     [
+   ...         {"foo": [1, 2]},
+   ...         {"bar": {"hello": "world"}},
+   ...         {"code": Code("function x() { return 1; }", {})},
+   ...         {"bin": Binary(b"\x01\x02\x03\x04")},
+   ...     ],
+   ...     json_options=LEGACY_JSON_OPTIONS,
+   ... )
    '[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$code": "function x() { return 1; }", "$scope": {}}}, {"bin": {"$binary": "AQIDBA==", "$type": "00"}}]'
 
 Alternatively, you can manually pass the `default` to :func:`json.dumps`.

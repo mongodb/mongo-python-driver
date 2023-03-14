@@ -2533,14 +2533,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. code-block:: python
 
             try:
-                with db.collection.watch(
-                        [{'$match': {'operationType': 'insert'}}]) as stream:
+                with db.collection.watch([{"$match": {"operationType": "insert"}}]) as stream:
                     for insert_change in stream:
                         print(insert_change)
             except pymongo.errors.PyMongoError:
                 # The ChangeStream encountered an unrecoverable error or the
                 # resume attempt failed to recreate the cursor.
-                logging.error('...')
+                logging.error("...")
 
         For a precise description of the resume process see the
         `change streams specification`_.
