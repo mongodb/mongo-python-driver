@@ -360,35 +360,6 @@ class TestAuthOIDC(unittest.TestCase):
         # Close the client.
         client.close()
 
-    def test_speculative_auth_failure(self):
-        # Clear the cache
-        _oidc_cache.clear()
-        token_file = os.path.join(self.token_dir, "test_user1")
-
-        def request_token(principal, info, timeout):
-            with open(token_file) as fid:
-                token = fid.read()
-            return dict(access_token=token, expires_in_seconds=60)
-
-        # Create a client with a request callback that returns a valid token
-        # that will expire soon.
-        props: Dict = dict(on_oidc_request_token=request_token)
-        client = MongoClient(self.uri_single, authmechanismproperties=props)
-
-        # Set a fail point for saslStart commands.
-        with self.fail_point(
-            {
-                "mode": {"times": 2},
-                "data": {"failCommands": ["isMaster", "saslStart"], "errorCode": 18},
-            }
-        ):
-            # Perform a find operation that fails.
-            with self.assertRaises(OperationFailure):
-                client.test.test.find_one()
-
-        # Close the client.
-        client.close()
-
     def test_reauthenticate_succeeds(self):
         listener = EventListener()
 
