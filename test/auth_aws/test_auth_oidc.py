@@ -39,6 +39,38 @@ class TestAuthOIDC(unittest.TestCase):
         cls.uri_admin = os.environ["MONGODB_URI"]
         cls.token_dir = os.environ["OIDC_TOKEN_DIR"]
 
+    def setup(self):
+        _oidc_cache.clear()
+        os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"] = os.path.join(self.token_dir, "test_user1")
+
+    def create_request_callback(self, username="test_user1", expires_in_seconds=None):
+
+        token_file = os.path.join(self.token_dir, username)
+
+        def request_token(principal, info, timeout):
+            with open(token_file) as fid:
+                token = fid.read()
+            resp = dict(access_token=token)
+            if expires_in_seconds is not None:
+                resp["expires_in_seconds"] = expires_in_seconds
+            return resp
+
+        return request_token
+
+    def create_refresh_callback(self, username="test_user1", expires_in_seconds=None):
+
+        token_file = os.path.join(self.token_dir, username)
+
+        def refresh_token(principal, info, creds, timeout):
+            with open(token_file) as fid:
+                token = fid.read()
+            resp = dict(access_token=token)
+            if expires_in_seconds is not None:
+                resp["expires_in_seconds"] = expires_in_seconds
+            return resp
+
+        return refresh_token
+
     @contextmanager
     def fail_point(self, command_args):
         cmd_on = SON([("configureFailPoint", "failCommand")])
@@ -50,144 +82,127 @@ class TestAuthOIDC(unittest.TestCase):
         finally:
             client.admin.command("configureFailPoint", cmd_on["configureFailPoint"], mode="off")
 
-    def test_connect_callbacks(self):
-        token_file = os.path.join(self.token_dir, "test_user1")
-
-        def request_token(principal, info, timeout):
-            with open(token_file) as fid:
-                token = fid.read()
-            return dict(access_token=token)
-
-        # Single Principal Implicit Username
+    def test_connect_callbacks_single_implicit_username(self):
+        request_token = self.create_request_callback()
         props: Dict = dict(on_oidc_request_token=request_token)
         client = MongoClient(self.uri_single, authmechanismproperties=props)
         client.test.test.find_one()
         client.close()
 
-        # Single Principal Explicit Username
+    def test_connect_callbacks_single_explicit_username(self):
+        request_token = self.create_request_callback()
         props: Dict = dict(on_oidc_request_token=request_token)
         client = MongoClient(self.uri_single, username="test_user1", authmechanismproperties=props)
         client.test.test.find_one()
         client.close()
 
-        # Multiple Principal User 1
-        _oidc_cache.clear()
+    def test_connect_callbacks_multiple_principal_user1(self):
+        request_token = self.create_request_callback()
+        props: Dict = dict(on_oidc_request_token=request_token)
         client = MongoClient(
             self.uri_multiple, username="test_user1", authmechanismproperties=props
         )
         client.test.test.find_one()
         client.close()
 
-        # Multiple Principal User 2
-        _oidc_cache.clear()
-        token_file = os.path.join(self.token_dir, "test_user2")
+    def test_connect_callbacks_multiple_principal_user2(self):
+        request_token = self.create_request_callback("test_user2")
+        props: Dict = dict(on_oidc_request_token=request_token)
         client = MongoClient(
             self.uri_multiple, username="test_user2", authmechanismproperties=props
         )
         client.test.test.find_one()
         client.close()
 
-        # Multiple No User
+    def test_connect_callbacks_multiple_no_username(self):
+        request_token = self.create_request_callback()
+        props: Dict = dict(on_oidc_request_token=request_token)
         client = MongoClient(self.uri_multiple, authmechanismproperties=props)
         with self.assertRaises(OperationFailure):
             client.test.test.find_one()
         client.close()
 
-    def test_connect_aws(self):
-        os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"] = os.path.join(self.token_dir, "test_user1")
+    def test_connect_aws_single_principal(self):
         props = dict(PROVIDER_NAME="aws")
-
-        # Single principal
         client = MongoClient(self.uri_single, authmechanismproperties=props)
         client.test.test.find_one()
         client.close()
 
-        # Multiple principal user 1
+    def test_connect_aws_multiple_principal_user1(self):
+        props = dict(PROVIDER_NAME="aws")
         client = MongoClient(self.uri_multiple, authmechanismproperties=props)
         client.test.test.find_one()
         client.close()
 
-        # Multiple principal user 2
+    def test_connect_aws_multiple_principal_user2(self):
         os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"] = os.path.join(self.token_dir, "test_user2")
+        props = dict(PROVIDER_NAME="aws")
         client = MongoClient(self.uri_multiple, authmechanismproperties=props)
         client.test.test.find_one()
         client.close()
 
-    def test_bad_callbacks(self):
-        _oidc_cache.clear()
-
+    def test_request_callback_returns_null(self):
         def request_token_null(principal, info, timeout):
             return None
 
-        # Request Callback returns null
         props: Dict = dict(on_oidc_request_token=request_token_null)
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         with self.assertRaises(ValueError):
             client.test.test.find_one()
         client.close()
 
-        def request_token_no_token(principal, info, timeout):
-            return dict()
+    def test_refresh_callback_returns_null(self):
+        request_cb = self.create_request_callback(expires_in_seconds=60)
 
-        # Refresh Callback returns null
-        _oidc_cache.clear()
-        props: Dict = dict(on_oidc_request_token=request_token_no_token)
-        client = MongoClient(self.uri_single, authMechanismProperties=props)
-        with self.assertRaises(ValueError):
-            client.test.test.find_one()
-        client.close()
-
-        def request_refresh_null(principal, info, creds, timeout):
+        def refresh_token_null(principal, info, creds, timeout):
             return None
 
-        token_file = os.path.join(self.token_dir, "test_user1")
-
-        def request_token(principal, info, timeout):
-            with open(token_file) as fid:
-                token = fid.read()
-            return dict(access_token=token)
-
-        # Request callback returns unexpected result
-        _oidc_cache.clear()
         props: Dict = dict(
-            on_oidc_request_token=request_token, on_oidc_refresh_token=request_refresh_null
+            on_oidc_request_token=request_cb, on_oidc_refresh_token=refresh_token_null
         )
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         client.test.test.find_one()
+        with self.assertRaises(ValueError):
+            client.test.test.find_one()
         client.close()
 
+    def test_request_callback_invalid_result(self):
+        def request_token_invalid(principal, info, timeout):
+            return None
+
+        props: Dict = dict(on_oidc_request_token=request_token_invalid)
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         with self.assertRaises(ValueError):
             client.test.test.find_one()
         client.close()
 
-        def request_refresh_no_token(principal, info, creds, timeout):
+    def test_refresh_callback_invalid_result(self):
+        request_cb = self.create_request_callback(expires_in_seconds=60)
+
+        def refresh_cb_no_token(principal, info, cred, timeout):
             return dict()
 
-        # Refresh callback returns unexpected result
-        _oidc_cache.clear()
-        props["on_oidc_refresh_token"] = request_refresh_no_token
+        props: Dict = dict(
+            on_oidc_request_token=request_cb, on_oidc_refresh_token=refresh_cb_no_token
+        )
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         client.test.test.find_one()
-        client.close()
-        client = MongoClient(self.uri_single, authMechanismProperties=props)
         with self.assertRaises(ValueError):
             client.test.test.find_one()
         client.close()
 
-    def test_caching(self):
+    def test_cache_with_refresh(self):
         request_called = 0
         refresh_called = 0
 
-        # Cache succeeds
-        # Clear the cache.
-        _oidc_cache.clear()
         # Create a new client with a request callback and a refresh callback.  Both callbacks will read the contents of the ``AWS_WEB_IDENTITY_TOKEN_FILE`` location to obtain a valid access token.
+
         # Give a callback response with a valid accessToken and an expiresInSeconds that is within one minute.
         token_file = os.path.join(self.token_dir, "test_user1")
 
         def request_token(principal, info, timeout):
             nonlocal request_called
+            # Validate the info.
             assert "authorization_endpoint" in info
             assert "token_endpoint" in info
             assert "client_id" in info
@@ -199,6 +214,7 @@ class TestAuthOIDC(unittest.TestCase):
 
         def refresh_token(principal, info, creds, timeout):
             nonlocal refresh_called
+            # Validate the info.
             assert "authorization_endpoint" in info
             assert "token_endpoint" in info
             assert "client_id" in info
@@ -209,8 +225,6 @@ class TestAuthOIDC(unittest.TestCase):
                 token = fid.read()
             return dict(access_token=token, expires_in_seconds=60)
 
-        # Cache expires
-        _oidc_cache.clear()
         props: Dict = dict(on_oidc_request_token=request_token, on_oidc_refresh_token=refresh_token)
 
         # Ensure that a ``find`` operation adds credentials to the cache.
@@ -220,7 +234,6 @@ class TestAuthOIDC(unittest.TestCase):
 
         assert len(_oidc_cache) == 1
 
-        # Test 3
         # Create a new client with the same request callback and a refresh callback.
         # Ensure that a ``find`` operation results in a call to the refresh callback.
         client = MongoClient(self.uri_single, authMechanismProperties=props)
@@ -230,13 +243,18 @@ class TestAuthOIDC(unittest.TestCase):
         assert refresh_called == 1
         assert len(_oidc_cache) == 1
 
-        # Test 4
-        # Clear the cache.
-        _oidc_cache.clear()
-
+    def test_cache_with_no_refresh(self):
         # Create a new client with a request callback callback.
         # Give a callback response with a valid accessToken and an expiresInSeconds that is within one minute.
-        del props["on_oidc_refresh_token"]
+        request_called = 0
+        inner_cb = self.create_request_callback(expires_in_seconds=60)
+
+        def request_cb(principal, info, timeout):
+            nonlocal request_called
+            request_called += 1
+            return inner_cb(principal, info, timeout)
+
+        props = dict(on_oidc_request_token=request_cb)
         client = MongoClient(self.uri_single, authMechanismProperties=props)
 
         # Ensure that a ``find`` operation adds credentials to the cache.
@@ -246,7 +264,9 @@ class TestAuthOIDC(unittest.TestCase):
         assert request_called == 1
         assert len(_oidc_cache) == 1
 
-        # Test 5
+    def test_cache_key_includes_callback(self):
+        # Cache key includes callback
+
         # Create a new client with the same request callback.
         # Ensure that a ``find`` operation results in a call to the request callback.
         client = MongoClient(self.uri_single, authMechanismProperties=props)
@@ -268,7 +288,8 @@ class TestAuthOIDC(unittest.TestCase):
         assert request_called == 3
         assert len(_oidc_cache) == 2
 
-        # Test 6.
+        # Error clears cache
+
         # Clear the cache
         _oidc_cache.clear()
 
@@ -294,7 +315,8 @@ class TestAuthOIDC(unittest.TestCase):
         # Ensure that the cache has been cleared.
         assert len(_oidc_cache) == 0
 
-        # Test 7.
+        # AWS Automatic workflow does not use cache
+
         # Clear the cache.
         # Create a new client using the AWS device workflow.
         # Ensure that a ``find`` operation does not add credentials to the cache.
@@ -369,22 +391,7 @@ class TestAuthOIDC(unittest.TestCase):
         with self.fail_point(
             {
                 "mode": {"times": 2},
-                "data": {"failCommands": ["saslStart"], "errorCode": 18},
-            }
-        ):
-            # Perform a find operation.
-            client.test.test.find_one()
-
-        # Close the client.
-        client.close()
-
-        client = MongoClient(self.uri_single, authmechanismproperties=props)
-
-        # Set a fail point for saslStart commands.
-        with self.fail_point(
-            {
-                "mode": {"times": 2},
-                "data": {"failCommands": ["saslStart"], "errorCode": 18},
+                "data": {"failCommands": ["isMaster", "saslStart"], "errorCode": 18},
             }
         ):
             # Perform a find operation that fails.
@@ -399,7 +406,8 @@ class TestAuthOIDC(unittest.TestCase):
         refresh_called = 0
         listener = EventListener()
 
-        # Test 1
+        # Succeeds
+
         # Clear the cache
         _oidc_cache.clear()
 
@@ -458,31 +466,8 @@ class TestAuthOIDC(unittest.TestCase):
         self.assertEqual(refresh_called, 1)
         client.close()
 
-        # Test 2
-        # Create a new client with the callbacks.
-        client = MongoClient(self.uri_single, authmechanismproperties=props)
+        # Retries and Succeeds with Cache
 
-        # Perform a find operation.
-        client.test.test.find_one()
-
-        # Clear the cache.
-        _oidc_cache.clear()
-
-        with self.fail_point(
-            {
-                "mode": {"times": 2},
-                "data": {"failCommands": ["find", "saslStart"], "errorCode": 391},
-            }
-        ):
-            # Perform a find operation that fails.
-            with self.assertRaises(OperationFailure):
-                client.test.test.find_one()
-
-        client.close()
-
-        # . Ensure there is a cache.
-
-        # Test 3
         # Clear the cache.
         _oidc_cache.clear()
 
@@ -514,6 +499,29 @@ class TestAuthOIDC(unittest.TestCase):
             client.test.test.find_one()
 
         # Close the client.
+        client.close()
+
+        # Fails with no Cache
+
+        # Create a new client with the callbacks.
+        client = MongoClient(self.uri_single, authmechanismproperties=props)
+
+        # Perform a find operation.
+        client.test.test.find_one()
+
+        # Clear the cache.
+        _oidc_cache.clear()
+
+        with self.fail_point(
+            {
+                "mode": {"times": 2},
+                "data": {"failCommands": ["find", "saslStart"], "errorCode": 391},
+            }
+        ):
+            # Perform a find operation that fails.
+            with self.assertRaises(OperationFailure):
+                client.test.test.find_one()
+
         client.close()
 
 
