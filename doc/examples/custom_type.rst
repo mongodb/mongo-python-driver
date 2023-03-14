@@ -19,7 +19,7 @@ We'll start by getting a clean database to use for the example:
 
   >>> from pymongo import MongoClient
   >>> client = MongoClient()
-  >>> client.drop_database('custom_type_example')
+  >>> client.drop_database("custom_type_example")
   >>> db = client.custom_type_example
 
 
@@ -36,7 +36,7 @@ to save an instance of ``Decimal`` with PyMongo, results in an
 
   >>> from decimal import Decimal
   >>> num = Decimal("45.321")
-  >>> db.test.insert_one({'num': num})
+  >>> db.test.insert_one({"num": num})
   Traceback (most recent call last):
   ...
   bson.errors.InvalidDocument: cannot encode object: Decimal('45.321'), of type: <class 'decimal.Decimal'>
@@ -78,8 +78,8 @@ interested in both encoding and decoding our custom type, we use the
   >>> from bson.decimal128 import Decimal128
   >>> from bson.codec_options import TypeCodec
   >>> class DecimalCodec(TypeCodec):
-  ...     python_type = Decimal    # the Python type acted upon by this type codec
-  ...     bson_type = Decimal128   # the BSON type acted upon by this type codec
+  ...     python_type = Decimal  # the Python type acted upon by this type codec
+  ...     bson_type = Decimal128  # the BSON type acted upon by this type codec
   ...     def transform_python(self, value):
   ...         """Function that transforms a custom type value into a type
   ...         that BSON can encode."""
@@ -88,6 +88,7 @@ interested in both encoding and decoding our custom type, we use the
   ...         """Function that transforms a vanilla BSON type value into our
   ...         custom type."""
   ...         return value.to_decimal()
+  ...
   >>> decimal_codec = DecimalCodec()
 
 
@@ -125,7 +126,7 @@ with our ``type_registry`` and use it to get a
 
   >>> from bson.codec_options import CodecOptions
   >>> codec_options = CodecOptions(type_registry=type_registry)
-  >>> collection = db.get_collection('test', codec_options=codec_options)
+  >>> collection = db.get_collection("test", codec_options=codec_options)
 
 
 Now, we can seamlessly encode and decode instances of
@@ -133,7 +134,7 @@ Now, we can seamlessly encode and decode instances of
 
 .. doctest::
 
-  >>> collection.insert_one({'num': Decimal("45.321")})
+  >>> collection.insert_one({"num": Decimal("45.321")})
   <pymongo.results.InsertOneResult object at ...>
   >>> mydoc = collection.find_one()
   >>> import pprint
@@ -147,7 +148,7 @@ MongoDB:
 
 .. doctest::
 
-  >>> vanilla_collection = db.get_collection('test')
+  >>> vanilla_collection = db.get_collection("test")
   >>> pprint.pprint(vanilla_collection.find_one())
   {'_id': ObjectId('...'), 'num': Decimal128('45.321')}
 
@@ -170,13 +171,14 @@ an integer:
   ...     def my_method(self):
   ...         """Method implementing some custom logic."""
   ...         return int(self)
+  ...
 
 If we try to save an instance of this type without first registering a type
 codec for it, we get an error:
 
 .. doctest::
 
-  >>> collection.insert_one({'num': DecimalInt("45.321")})
+  >>> collection.insert_one({"num": DecimalInt("45.321")})
   Traceback (most recent call last):
   ...
   bson.errors.InvalidDocument: cannot encode object: Decimal('45.321'), of type: <class 'decimal.Decimal'>
@@ -192,6 +194,7 @@ This is trivial to do since the same transformation as the one used for
   ...     def python_type(self):
   ...         """The Python type acted upon by this type codec."""
   ...         return DecimalInt
+  ...
   >>> decimalint_codec = DecimalIntCodec()
 
 
@@ -211,9 +214,9 @@ object, we can seamlessly encode instances of ``DecimalInt``:
 
   >>> type_registry = TypeRegistry([decimal_codec, decimalint_codec])
   >>> codec_options = CodecOptions(type_registry=type_registry)
-  >>> collection = db.get_collection('test', codec_options=codec_options)
+  >>> collection = db.get_collection("test", codec_options=codec_options)
   >>> collection.drop()
-  >>> collection.insert_one({'num': DecimalInt("45.321")})
+  >>> collection.insert_one({"num": DecimalInt("45.321")})
   <pymongo.results.InsertOneResult object at ...>
   >>> mydoc = collection.find_one()
   >>> pprint.pprint(mydoc)
@@ -236,26 +239,26 @@ writing a ``TypeDecoder`` that modifies how this datatype is decoded.
 On Python 3.x, :class:`~bson.binary.Binary` data (``subtype = 0``) is decoded
 as a ``bytes`` instance:
 
-.. code-block:: python
+.. code-block:: pycon
 
     >>> # On Python 3.x.
     >>> from bson.binary import Binary
-    >>> newcoll = db.get_collection('new')
-    >>> newcoll.insert_one({'_id': 1, 'data': Binary(b"123", subtype=0)})
+    >>> newcoll = db.get_collection("new")
+    >>> newcoll.insert_one({"_id": 1, "data": Binary(b"123", subtype=0)})
     >>> doc = newcoll.find_one()
-    >>> type(doc['data'])
+    >>> type(doc["data"])
     bytes
 
 
 On Python 2.7.x, the same data is decoded as a :class:`~bson.binary.Binary`
 instance:
 
-.. code-block:: python
+.. code-block:: pycon
 
     >>> # On Python 2.7.x
-    >>> newcoll = db.get_collection('new')
+    >>> newcoll = db.get_collection("new")
     >>> doc = newcoll.find_one()
-    >>> type(doc['data'])
+    >>> type(doc["data"])
     bson.binary.Binary
 
 
@@ -291,6 +294,7 @@ BSON-encodable value. The following fallback encoder encodes python's
   ...     if isinstance(value, Decimal):
   ...         return Decimal128(value)
   ...     return value
+  ...
 
 After declaring the callback, we must create a type registry and codec options
 with this fallback encoder before it can be used for initializing a collection:
@@ -299,14 +303,14 @@ with this fallback encoder before it can be used for initializing a collection:
 
   >>> type_registry = TypeRegistry(fallback_encoder=fallback_encoder)
   >>> codec_options = CodecOptions(type_registry=type_registry)
-  >>> collection = db.get_collection('test', codec_options=codec_options)
+  >>> collection = db.get_collection("test", codec_options=codec_options)
   >>> collection.drop()
 
 We can now seamlessly encode instances of :py:class:`~decimal.Decimal`:
 
 .. doctest::
 
-  >>> collection.insert_one({'num': Decimal("45.321")})
+  >>> collection.insert_one({"num": Decimal("45.321")})
   <pymongo.results.InsertOneResult object at ...>
   >>> mydoc = collection.find_one()
   >>> pprint.pprint(mydoc)
@@ -343,12 +347,15 @@ We start by defining some arbitrary custom types:
   class MyStringType(object):
       def __init__(self, value):
           self.__value = value
+
       def __repr__(self):
           return "MyStringType('%s')" % (self.__value,)
+
 
   class MyNumberType(object):
       def __init__(self, value):
           self.__value = value
+
       def __repr__(self):
           return "MyNumberType(%s)" % (self.__value,)
 
@@ -362,11 +369,15 @@ back into Python objects:
 
   import pickle
   from bson.binary import Binary, USER_DEFINED_SUBTYPE
+
+
   def fallback_pickle_encoder(value):
       return Binary(pickle.dumps(value), USER_DEFINED_SUBTYPE)
 
+
   class PickledBinaryDecoder(TypeDecoder):
       bson_type = Binary
+
       def transform_bson(self, value):
           if value.subtype == USER_DEFINED_SUBTYPE:
               return pickle.loads(value)
@@ -384,19 +395,23 @@ Finally, we create a ``CodecOptions`` instance:
 
 .. code-block:: python
 
-  codec_options = CodecOptions(type_registry=TypeRegistry(
-      [PickledBinaryDecoder()], fallback_encoder=fallback_pickle_encoder))
+  codec_options = CodecOptions(
+      type_registry=TypeRegistry(
+          [PickledBinaryDecoder()], fallback_encoder=fallback_pickle_encoder
+      )
+  )
 
 We can now round trip our custom objects to MongoDB:
 
 .. code-block:: python
 
-  collection = db.get_collection('test_fe', codec_options=codec_options)
-  collection.insert_one({'_id': 1, 'str': MyStringType("hello world"),
-                         'num': MyNumberType(2)})
+  collection = db.get_collection("test_fe", codec_options=codec_options)
+  collection.insert_one(
+      {"_id": 1, "str": MyStringType("hello world"), "num": MyNumberType(2)}
+  )
   mydoc = collection.find_one()
-  assert isinstance(mydoc['str'], MyStringType)
-  assert isinstance(mydoc['num'], MyNumberType)
+  assert isinstance(mydoc["str"], MyStringType)
+  assert isinstance(mydoc["num"], MyNumberType)
 
 
 Limitations

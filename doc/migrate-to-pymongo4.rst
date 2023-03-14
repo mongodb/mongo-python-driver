@@ -6,6 +6,7 @@ PyMongo 4 Migration Guide
 .. testsetup::
 
   from pymongo import MongoClient, ReadPreference
+
   client = MongoClient()
   database = client.my_database
   collection = database.my_collection

@@ -23,12 +23,11 @@ Causally Consistent Reads
 
   with client.start_session(causal_consistency=True) as session:
       collection = client.db.collection
-      collection.update_one({'_id': 1}, {'$set': {'x': 10}}, session=session)
-      secondary_c = collection.with_options(
-          read_preference=ReadPreference.SECONDARY)
+      collection.update_one({"_id": 1}, {"$set": {"x": 10}}, session=session)
+      secondary_c = collection.with_options(read_preference=ReadPreference.SECONDARY)
 
       # A secondary read waits for replication of the write.
-      secondary_c.find_one({'_id': 1}, session=session)
+      secondary_c.find_one({"_id": 1}, session=session)
 
 If `causal_consistency` is True (the default), read operations that use
 the session are causally after previous read and write operations. Using a
@@ -57,8 +56,11 @@ operation:
   with client.start_session() as session:
       with session.start_transaction():
           orders.insert_one({"sku": "abc123", "qty": 100}, session=session)
-          inventory.update_one({"sku": "abc123", "qty": {"$gte": 100}},
-                               {"$inc": {"qty": -100}}, session=session)
+          inventory.update_one(
+              {"sku": "abc123", "qty": {"$gte": 100}},
+              {"$inc": {"qty": -100}},
+              session=session,
+          )
 
 Upon normal completion of ``with session.start_transaction()`` block, the
 transaction automatically calls :meth:`ClientSession.commit_transaction`.

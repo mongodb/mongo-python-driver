@@ -6,8 +6,9 @@ Datetimes and Timezones
    import datetime
    from pymongo import MongoClient
    from bson.codec_options import CodecOptions
+
    client = MongoClient()
-   client.drop_database('dt_example')
+   client.drop_database("dt_example")
    db = client.dt_example
 
 These examples show how to handle Python :class:`datetime.datetime` objects
@@ -24,8 +25,7 @@ time into MongoDB:
 
 .. doctest::
 
-   >>> result = db.objects.insert_one(
-   ...     {"last_modified": datetime.datetime.utcnow()})
+   >>> result = db.objects.insert_one({"last_modified": datetime.datetime.utcnow()})
 
 Always use :meth:`datetime.datetime.utcnow`, which returns the current time in
 UTC, instead of :meth:`datetime.datetime.now`, which returns the current local
@@ -33,8 +33,7 @@ time. Avoid doing this:
 
 .. doctest::
 
-   >>> result = db.objects.insert_one(
-   ...     {"last_modified": datetime.datetime.now()})
+   >>> result = db.objects.insert_one({"last_modified": datetime.datetime.now()})
 
 The value for `last_modified` is very different between these two examples, even
 though both documents were stored at around the same local time. This will be
@@ -42,7 +41,7 @@ confusing to the application that reads them:
 
 .. doctest::
 
-   >>> [doc['last_modified'] for doc in db.objects.find()]  # doctest: +SKIP
+   >>> [doc["last_modified"] for doc in db.objects.find()]  # doctest: +SKIP
    [datetime.datetime(2015, 7, 8, 18, 17, 28, 324000),
     datetime.datetime(2015, 7, 8, 11, 17, 42, 911000)]
 
@@ -52,12 +51,11 @@ timezone they're in. By default, PyMongo retrieves naive datetimes:
 
 .. doctest::
 
-   >>> result = db.tzdemo.insert_one(
-   ...     {'date': datetime.datetime(2002, 10, 27, 6, 0, 0)})
-   >>> db.tzdemo.find_one()['date']
+   >>> result = db.tzdemo.insert_one({"date": datetime.datetime(2002, 10, 27, 6, 0, 0)})
+   >>> db.tzdemo.find_one()["date"]
    datetime.datetime(2002, 10, 27, 6, 0)
    >>> options = CodecOptions(tz_aware=True)
-   >>> db.get_collection('tzdemo', codec_options=options).find_one()['date']  # doctest: +SKIP
+   >>> db.get_collection("tzdemo", codec_options=options).find_one()["date"]  # doctest: +SKIP
    datetime.datetime(2002, 10, 27, 6, 0,
                      tzinfo=<bson.tz_util.FixedOffset object at 0x10583a050>)
 
@@ -71,11 +69,10 @@ those datetimes to UTC automatically:
 .. doctest::
 
    >>> import pytz
-   >>> pacific = pytz.timezone('US/Pacific')
-   >>> aware_datetime = pacific.localize(
-   ...     datetime.datetime(2002, 10, 27, 6, 0, 0))
+   >>> pacific = pytz.timezone("US/Pacific")
+   >>> aware_datetime = pacific.localize(datetime.datetime(2002, 10, 27, 6, 0, 0))
    >>> result = db.times.insert_one({"date": aware_datetime})
-   >>> db.times.find_one()['date']
+   >>> db.times.find_one()["date"]
    datetime.datetime(2002, 10, 27, 14, 0)
 
 Reading Time
@@ -150,7 +147,7 @@ cannot be represented using the builtin Python :class:`~datetime.datetime`:
 .. doctest::
 
     >>> x = encode({"x": datetime(1970, 1, 1)})
-    >>> y = encode({"x": DatetimeMS(-2**62)})
+    >>> y = encode({"x": DatetimeMS(-(2**62))})
     >>> codec_auto = CodecOptions(datetime_conversion=DatetimeConversion.DATETIME_AUTO)
     >>> decode(x, codec_options=codec_auto)
     {'x': datetime.datetime(1970, 1, 1, 0, 0)}
@@ -165,7 +162,7 @@ resulting :class:`~datetime.datetime` objects to be within
 .. doctest::
 
     >>> x = encode({"x": DatetimeMS(2**62)})
-    >>> y = encode({"x": DatetimeMS(-2**62)})
+    >>> y = encode({"x": DatetimeMS(-(2**62))})
     >>> codec_clamp = CodecOptions(datetime_conversion=DatetimeConversion.DATETIME_CLAMP)
     >>> decode(x, codec_options=codec_clamp)
     {'x': datetime.datetime(9999, 12, 31, 23, 59, 59, 999000)}

@@ -4,8 +4,9 @@ GridFS Example
 .. testsetup::
 
   from pymongo import MongoClient
+
   client = MongoClient()
-  client.drop_database('gridfs_example')
+  client.drop_database("gridfs_example")
 
 This example shows how to use :mod:`gridfs` to store large binary
 objects (e.g. files) in MongoDB.
