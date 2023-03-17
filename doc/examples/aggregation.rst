@@ -68,8 +68,8 @@ eg "$sort":
    {'_id': 'mouse', 'count': 1}]
 
 To run an explain plan for this aggregation use
-`PyMongoExplain <https://github.com/mongodb-labs/pymongoexplain>`_
-instead, a companion library for PyMongo. It allows you to explain any CRUD operation
+`PyMongoExplain <https://github.com/mongodb-labs/pymongoexplain>`_,
+a companion library for PyMongo. It allows you to explain any CRUD operation
 by providing a few convenience classes::
 
   >>> from pymongoexplain import ExplainableCollection
