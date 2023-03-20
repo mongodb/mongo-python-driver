@@ -274,7 +274,7 @@ class _OIDCContextMixin:
         cmd = _internal.auth_start(self.credentials, self.address, False)
         if cmd is None:
             return
-        cmd["db"] = self.credentials.source  # type:ignore
+        cmd["db"] = self.credentials.source
         return cmd
 
 
