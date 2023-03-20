@@ -68,13 +68,18 @@ eg "$sort":
    {'_id': 'mouse', 'count': 1}]
 
 To run an explain plan for this aggregation use
-`PyMongoExplain <https://github.com/mongodb-labs/pymongoexplain>`_,
+`PyMongoExplain <https://pypi.org/project/pymongoexplain/>`_,
 a companion library for PyMongo. It allows you to explain any CRUD operation
 by providing a few convenience classes::
 
   >>> from pymongoexplain import ExplainableCollection
   >>> ExplainableCollection(collection).aggregate(pipeline)
   {'ok': 1.0, 'queryPlanner': [...]}
+
+Or, use the :meth:`~pymongo.database.Database.command` method::
+
+  >>> db.command('aggregate', 'things', pipeline=pipeline, explain=True)
+  {'ok': 1.0, 'stages': [...]}
 
 As well as simple aggregations the aggregation framework provides projection
 capabilities to reshape the returned data. Using projections and aggregation,
