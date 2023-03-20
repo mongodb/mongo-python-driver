@@ -36,6 +36,7 @@ from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo import MongoClient, monitoring, operations, read_preferences
 from pymongo.collection import ReturnDocument
+from pymongo.common import camel_to_snake  # noqa
 from pymongo.cursor import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
@@ -665,12 +666,6 @@ def get_command_line(client):
     command_line = client.admin.command("getCmdLineOpts")
     assert command_line["ok"] == 1, "getCmdLineOpts() failed"
     return command_line
-
-
-def camel_to_snake(camel: str) -> str:
-    # Regex to convert CamelCase to snake_case.
-    snake = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", camel)
-    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", snake).lower()
 
 
 def camel_to_upper_camel(camel):

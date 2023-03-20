@@ -19,18 +19,15 @@ import hashlib
 import hmac
 import os
 import socket
-import threading
 from base64 import standard_b64decode, standard_b64encode
 from collections import namedtuple
-from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Callable, Dict, Mapping, Optional
+from typing import Callable, Mapping
 from urllib.parse import quote
 
-import bson
 from bson.binary import Binary
 from bson.son import SON
 from pymongo.auth_aws import _authenticate_aws
+from pymongo.auth_oidc import _authenticate_oidc, _OIDCContextMixin, _OIDCProperties
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.saslprep import saslprep
 
@@ -102,22 +99,6 @@ GSSAPIProperties = namedtuple(
 
 _AWSProperties = namedtuple("_AWSProperties", ["aws_session_token"])
 """Mechanism properties for MONGODB-AWS authentication."""
-
-
-_OIDCProperties = namedtuple(
-    "_OIDCProperties",
-    ["on_oidc_request_token", "on_oidc_refresh_token", "provider_name"],
-)
-"""Mechanism properties for MONGODB-OIDC authentication."""
-
-
-@dataclass
-class _OIDCCache:
-    token_result: Optional[Dict]
-    token_exp_utc: Optional[datetime]
-    cache_exp_utc: datetime
-    server_resp: Optional[Dict]
-    lock: threading.Lock
 
 
 def _build_credentials_tuple(mech, source, user, passwd, extra, database):
@@ -497,218 +478,6 @@ def _authenticate_mongo_cr(credentials, sock_info):
     sock_info.command(source, query)
 
 
-# MONGODB-OIDC private variables.
-_oidc_cache: Dict[str, _OIDCCache] = {}
-_OIDC_TOKEN_BUFFER_MINUTES = 5
-_OIDC_CALLBACK_TIMEOUT_SECONDS = 5 * 60
-_OIDC_CACHE_TIMEOUT_MINUTES = 60 * 5
-
-
-def _oidc_get_cache_key(credentials, address):
-    # Handle authorization code credentials.
-    address = address
-    principal_name = credentials.username
-    properties = credentials.mechanism_properties
-    request_cb = properties.on_oidc_request_token
-    refresh_cb = properties.on_oidc_refresh_token
-    return f"{principal_name}{address[0]}{address[1]}{id(request_cb)}{id(refresh_cb)}"
-
-
-def _authenticate_oidc(credentials, sock_info, reauthenticate):
-    """Authenticate using MONGODB-OIDC."""
-    ctx = sock_info.auth_ctx
-    cmd = None
-    cache_key = _oidc_get_cache_key(credentials, sock_info.address)
-    in_cache = cache_key in _oidc_cache
-
-    if ctx and ctx.speculate_succeeded():
-        resp = ctx.speculative_authenticate
-    else:
-        cmd = _authenticate_oidc_start(credentials, sock_info.address)
-        try:
-            resp = sock_info.command(credentials.source, cmd)
-        except Exception:
-            _oidc_cache.pop(cache_key, None)
-            # Allow for one retry on reauthenticate when callbacks are in use
-            # and there was no cache.
-            if reauthenticate and not credentials.mechanism_properties.provider_name and in_cache:
-                return _authenticate_oidc(credentials, sock_info, False)
-            raise
-
-    if resp["done"]:
-        return
-
-    # Convert the server response to be more pythonic.
-    # Avoid circular import
-    from pymongo.common import camel_to_snake
-
-    orig_server_resp: Dict = bson.decode(resp["payload"])
-    server_resp = dict()
-    for key, value in orig_server_resp.items():
-        server_resp[camel_to_snake(key)] = value
-
-    if "token_endpoint" in server_resp:
-        _oidc_cache[cache_key].server_resp = server_resp
-
-    conversation_id = resp["conversationId"]
-    token = _oidc_get_current_token(credentials, sock_info.address)
-    bin_payload = Binary(bson.encode(dict(jwt=token)))
-    cmd = SON(
-        [
-            ("saslContinue", 1),
-            ("conversationId", conversation_id),
-            ("payload", bin_payload),
-        ]
-    )
-    response = sock_info.command("$external", cmd)
-    if not response["done"]:
-        _oidc_cache.pop(cache_key, None)
-        raise OperationFailure("SASL conversation failed to complete.")
-
-
-def _oidc_get_current_token(credentials, address, use_callbacks=True):
-    properties: _OIDCProperties = credentials.mechanism_properties
-    cache_key = _oidc_get_cache_key(credentials, address)
-    cache_value = _oidc_cache[cache_key]
-    principal_name = credentials.username
-
-    request_cb = properties.on_oidc_request_token
-    refresh_cb = properties.on_oidc_refresh_token
-    if not use_callbacks:
-        request_cb = None
-        refresh_cb = None
-
-    current_valid_token = False
-    if cache_value.token_exp_utc is not None:
-        now_utc = datetime.now(timezone.utc)
-        exp_utc = cache_value.token_exp_utc
-        buffer_seconds = _OIDC_TOKEN_BUFFER_MINUTES * 60
-        if (exp_utc - now_utc).total_seconds() >= buffer_seconds:
-            current_valid_token = True
-
-    timeout = _OIDC_CALLBACK_TIMEOUT_SECONDS
-
-    if not use_callbacks and not current_valid_token:
-        return None
-
-    if not current_valid_token:
-        with cache_value.lock:
-            if cache_value.token_result is None or refresh_cb is None:
-                cache_value.token_result = request_cb(
-                    principal_name, cache_value.server_resp, timeout
-                )
-            elif request_cb is not None:
-                cache_value.token_result = refresh_cb(
-                    principal_name, cache_value.server_resp, cache_value.token_result, timeout
-                )
-            cache_exp_utc = datetime.now(timezone.utc) + timedelta(
-                minutes=_OIDC_CACHE_TIMEOUT_MINUTES
-            )
-            cache_value.cache_exp_utc = cache_exp_utc
-
-    token_result = cache_value.token_result
-    if not isinstance(token_result, dict):
-        raise ValueError("OIDC callback returned invalid result")
-    if "access_token" not in token_result:
-        raise ValueError("OIDC callback did not return an access_token")
-
-    token = token_result["access_token"]
-    if "expires_in_seconds" in token_result:
-        expires_in = int(token_result["expires_in_seconds"])
-        buffer_seconds = _OIDC_TOKEN_BUFFER_MINUTES * 60
-        if expires_in >= buffer_seconds:
-            now_utc = datetime.now(timezone.utc)
-            exp_utc = now_utc + timedelta(seconds=expires_in)
-            cache_value.token_exp_utc = exp_utc
-
-    return token
-
-
-def _invalidate_oidc_token(credentials, address):
-    cache_key = _oidc_get_cache_key(credentials, address)
-    cache_value = _oidc_cache.get(cache_key)
-    if cache_value:
-        cache_value.token_exp_utc = None
-
-
-def _authenticate_oidc_start(credentials, address, use_callbacks=True):
-    properties: _OIDCProperties = credentials.mechanism_properties
-
-    # Clear out old items in the cache.
-    now_utc = datetime.now(timezone.utc)
-    to_remove = []
-    for key, value in _oidc_cache.items():
-        if value.cache_exp_utc < now_utc:
-            to_remove.append(key)
-    for key in to_remove:
-        del _oidc_cache[key]
-
-    # Handle aws provider credentials.
-    if properties.provider_name == "aws":
-        aws_identity_file = os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"]
-        with open(aws_identity_file) as fid:
-            token = fid.read().strip()
-        payload = dict(jwt=token)
-        cmd = SON(
-            [
-                ("saslStart", 1),
-                ("mechanism", "MONGODB-OIDC"),
-                ("payload", Binary(bson.encode(payload))),
-            ]
-        )
-        return cmd
-
-    cache_key = _oidc_get_cache_key(credentials, address)
-    cache_value = _oidc_cache.get(cache_key)
-    principal_name = credentials.username
-
-    if cache_value is not None:
-        cache_value.cache_exp_utc = datetime.now(timezone.utc) + timedelta(
-            minutes=_OIDC_CACHE_TIMEOUT_MINUTES
-        )
-
-    if cache_value is None:
-        lock = threading.Lock()
-        cache_exp_utc = datetime.now(timezone.utc) + timedelta(minutes=_OIDC_CACHE_TIMEOUT_MINUTES)
-        cache_value = _OIDCCache(
-            lock=lock,
-            token_result=None,
-            server_resp=None,
-            token_exp_utc=None,
-            cache_exp_utc=cache_exp_utc,
-        )
-        _oidc_cache[cache_key] = cache_value
-
-    if cache_value.server_resp is None:
-        # Send the SASL start with the optional principal name.
-        payload = dict()
-
-        if principal_name:
-            payload["n"] = principal_name
-
-        cmd = SON(
-            [
-                ("saslStart", 1),
-                ("mechanism", "MONGODB-OIDC"),
-                ("payload", Binary(bson.encode(payload))),
-                ("autoAuthorize", 1),
-            ]
-        )
-        return cmd
-
-    token = _oidc_get_current_token(credentials, address, use_callbacks)
-    if not token:
-        return None
-    bin_payload = Binary(bson.encode(dict(jwt=token)))
-    return SON(
-        [
-            ("saslStart", 1),
-            ("mechanism", "MONGODB-OIDC"),
-            ("payload", bin_payload),
-        ]
-    )
-
-
 def _authenticate_default(credentials, sock_info):
     if sock_info.max_wire_version >= 7:
         if sock_info.negotiated_mechs:
@@ -787,13 +556,8 @@ class _X509Context(_AuthContext):
         return cmd
 
 
-class _OIDCContext(_AuthContext):
-    def speculate_command(self):
-        cmd = _authenticate_oidc_start(self.credentials, self.address, False)
-        if cmd is None:
-            return
-        cmd["db"] = self.credentials.source
-        return cmd
+class _OIDCContext(_OIDCContextMixin, _AuthContext):
+    pass
 
 
 _SPECULATIVE_AUTH_MAP: Mapping[str, Callable] = {
@@ -809,12 +573,10 @@ def authenticate(credentials, sock_info, reauthenticate=False):
     """Authenticate sock_info."""
     mechanism = credentials.mechanism
     auth_func = _AUTH_MAP[mechanism]
-    if reauthenticate and mechanism == "MONGODB-OIDC":
-        _invalidate_oidc_token(credentials, sock_info.address)
     if reauthenticate and sock_info.performed_handshake:
         # Existing auth_ctx is stale, remove it.
         sock_info.auth_ctx = None
     if mechanism == "MONGODB-OIDC":
-        auth_func(credentials, sock_info, reauthenticate)
+        _authenticate_oidc(credentials, sock_info, reauthenticate)
     else:
         auth_func(credentials, sock_info)

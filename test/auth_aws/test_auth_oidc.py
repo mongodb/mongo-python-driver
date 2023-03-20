@@ -26,7 +26,9 @@ from test.utils import EventListener
 
 from bson import SON
 from pymongo import MongoClient
-from pymongo.auth import OperationFailure, _oidc_cache
+from pymongo.auth_oidc import OperationFailure, _internal
+
+_oidc_cache = _internal.cache
 
 
 class TestAuthOIDC(unittest.TestCase):
