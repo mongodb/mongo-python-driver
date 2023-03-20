@@ -52,11 +52,28 @@ class TestAuthOIDC(unittest.TestCase):
         token_file = os.path.join(self.token_dir, username)
 
         def request_token(principal, info, timeout):
+            # Validate the principal.
+            if principal is not None:
+                self.assertIsInstance(principal, str)
+
             # Validate the info.
-            assert "authorization_endpoint" in info or "device_authorization_endpoint" in info
-            assert "token_endpoint" in info
-            assert "client_id" in info
-            assert timeout == 60 * 5
+            if "device_authorization_endpoint" not in info:
+                self.assertIn("authorization_endpoint", info)
+            self.assertIn("token_endpoint", info)
+            self.assertIn("client_id", info)
+            for key in info:
+                self.assertIn(
+                    key,
+                    [
+                        "authorization_endpoint",
+                        "token_endpoint",
+                        "client_id",
+                        "device_authorization_endpoint",
+                    ],
+                )
+
+            # Validate the timeout.
+            self.assertEqual(timeout, 60 * 5)
             with open(token_file) as fid:
                 token = fid.read()
             resp = dict(access_token=token)
@@ -74,12 +91,34 @@ class TestAuthOIDC(unittest.TestCase):
         def refresh_token(principal, info, creds, timeout):
             with open(token_file) as fid:
                 token = fid.read()
-                # Validate the info.
-            assert "authorization_endpoint" in info
-            assert "token_endpoint" in info
-            assert "client_id" in info
-            assert timeout == 60 * 5
-            assert "access_token" in creds
+
+            # Validate the principal.
+            if principal is not None:
+                self.assertIsInstance(principal, str)
+
+            # Validate the info.
+            if "device_authorization_endpoint" not in info:
+                self.assertIn("authorization_endpoint", info)
+            self.assertIn("token_endpoint", info)
+            self.assertIn("client_id", info)
+            for key in info:
+                self.assertIn(
+                    key,
+                    [
+                        "authorization_endpoint",
+                        "token_endpoint",
+                        "client_id",
+                        "device_authorization_endpoint",
+                    ],
+                )
+
+            # Validate the creds
+            self.assertIn("access_token", creds)
+            for key in creds:
+                self.assertIn(key, ["access_token", "expires_in_seconds", "refresh_token"])
+            # Validate the timeout.
+            self.assertEqual(timeout, 60 * 5)
+
             resp = dict(access_token=token)
             if expires_in_seconds is not None:
                 resp["expires_in_seconds"] = expires_in_seconds
@@ -158,6 +197,19 @@ class TestAuthOIDC(unittest.TestCase):
         client.test.test.find_one()
         client.close()
 
+    def test_valid_callbacks(self):
+        request_cb = self.create_request_cb(expires_in_seconds=60)
+        refresh_cb = self.create_refresh_cb()
+
+        props: Dict = dict(on_oidc_request_token=request_cb, on_oidc_refresh_token=refresh_cb)
+        client = MongoClient(self.uri_single, authmechanismproperties=props)
+        client.test.test.find_one()
+        client.close()
+
+        client = MongoClient(self.uri_single, authmechanismproperties=props)
+        client.test.test.find_one()
+        client.close()
+
     def test_request_callback_returns_null(self):
         def request_token_null(principal, info, timeout):
             return None
@@ -188,9 +240,18 @@ class TestAuthOIDC(unittest.TestCase):
 
     def test_request_callback_invalid_result(self):
         def request_token_invalid(principal, info, timeout):
-            return None
+            return dict()
 
         props: Dict = dict(on_oidc_request_token=request_token_invalid)
+        client = MongoClient(self.uri_single, authMechanismProperties=props)
+        with self.assertRaises(ValueError):
+            client.test.test.find_one()
+        client.close()
+
+        def request_token_invalid2(principal, info, timeout):
+            return dict(access_token="foo", other="bar")
+
+        props: Dict = dict(on_oidc_request_token=request_token_invalid2)
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         with self.assertRaises(ValueError):
             client.test.test.find_one()
@@ -204,6 +265,21 @@ class TestAuthOIDC(unittest.TestCase):
 
         props: Dict = dict(
             on_oidc_request_token=request_cb, on_oidc_refresh_token=refresh_cb_no_token
+        )
+        client = MongoClient(self.uri_single, authMechanismProperties=props)
+        client.test.test.find_one()
+        client.close()
+
+        client = MongoClient(self.uri_single, authMechanismProperties=props)
+        with self.assertRaises(ValueError):
+            client.test.test.find_one()
+        client.close()
+
+        def refresh_cb_extra_value(principal, info, cred, timeout):
+            return dict(access_token="foo", other="bar")
+
+        props: Dict = dict(
+            on_oidc_request_token=request_cb, on_oidc_refresh_token=refresh_cb_extra_value
         )
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         client.test.test.find_one()

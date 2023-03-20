@@ -105,6 +105,10 @@ class _OIDCMechanism:
         if "access_token" not in token_result:
             raise ValueError("OIDC callback did not return an access_token")
 
+        for key in token_result:
+            if key not in ["access_token", "expires_in_seconds", "refresh_token"]:
+                raise ValueError(f"OIDC callback returned invalid result key '{key}'")
+
         token = token_result["access_token"]
         if "expires_in_seconds" in token_result:
             expires_in = int(token_result["expires_in_seconds"])
