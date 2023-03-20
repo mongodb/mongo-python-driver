@@ -2368,8 +2368,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY` is used.
 
         .. note:: This method does not support the 'explain' option. Please
-           use :meth:`~pymongo.database.Database.command` instead. An
-           example is included in the :ref:`aggregate-examples` documentation.
+           use `PyMongoExplain <https://pypi.org/project/pymongoexplain/>`_
+           instead. An example is included in the :ref:`aggregate-examples`
+           documentation.
 
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation.
