@@ -2368,7 +2368,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY` is used.
 
         .. note:: This method does not support the 'explain' option. Please
-           use `PyMongoExplain <https://github.com/mongodb-labs/pymongoexplain>`_
+           use `PyMongoExplain <https://pypi.org/project/pymongoexplain/>`_
            instead. An example is included in the :ref:`aggregate-examples`
            documentation.
 
