@@ -1021,6 +1021,23 @@ class ClientEncryption(Generic[_DocumentType]):
         :Returns:
           A :class:`RewrapManyDataKeyResult`.
 
+        This method allows you to re-encrypt all of your data-keys with a new CMK, or master key.
+        Note that this does *not* require re-encrypting any of the data in your encrypted collections,
+        but rather refreshes the key that protects the keys that encrypt the data:
+
+        .. code-block:: python
+
+           client_encryption.rewrap_many_data_key(
+               filter={"keyAltNames": "optional filter for which keys you want to update"},
+               master_key={
+                   "provider": "azure",  # replace with your cloud provider
+                   "master_key": {
+                       # put the rest of your master_key options here
+                       "key": "<your new key>"
+                   },
+               },
+           )
+
         .. versionadded:: 4.2
         """
         self._check_closed()
