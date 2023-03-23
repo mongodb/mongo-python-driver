@@ -100,10 +100,18 @@ class _OIDCMechanism:
                 cache_value.cache_exp_utc = cache_exp_utc
 
         token_result = cache_value.token_result
+
+        # Validate callback return value.
         if not isinstance(token_result, dict):
             raise ValueError("OIDC callback returned invalid result")
+
         if "access_token" not in token_result:
             raise ValueError("OIDC callback did not return an access_token")
+
+        expected = ["access_token", "expires_in_seconds", "refesh_token"]
+        for key in token_result:
+            if key not in expected:
+                raise ValueError(f'Unexpected field in callback result "{key}"')
 
         token = token_result["access_token"]
         if "expires_in_seconds" in token_result:

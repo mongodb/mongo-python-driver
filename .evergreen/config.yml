@@ -294,7 +294,6 @@ functions:
             REQUIRE_API_VERSION=${REQUIRE_API_VERSION} \
             LOAD_BALANCER=${LOAD_BALANCER} \
             bash ${DRIVERS_TOOLS}/.evergreen/run-orchestration.sh
-
     # run-orchestration generates expansion file with the MONGODB_URI for the cluster
     - command: expansions.update
       params:
@@ -571,6 +570,7 @@ functions:
               "iam_auth_assume_aws_account" : "${iam_auth_assume_aws_account}",
               "iam_auth_assume_aws_secret_access_key" : "${iam_auth_assume_aws_secret_access_key}",
               "iam_auth_assume_role_name" : "${iam_auth_assume_role_name}",
+
               "iam_auth_ec2_instance_account" : "${iam_auth_ec2_instance_account}",
               "iam_auth_ec2_instance_secret_access_key" : "${iam_auth_ec2_instance_secret_access_key}",
               "iam_auth_ec2_instance_profile" : "${iam_auth_ec2_instance_profile}",
@@ -2018,7 +2018,6 @@ tasks:
         - func: "run aws auth test with aws EC2 credentials"
         - func: "run aws auth test with aws web identity credentials"
         - func: "run aws ECS auth test"
-
     - name: "aws-auth-test-rapid"
       commands:
         - func: "bootstrap mongo-orchestration"

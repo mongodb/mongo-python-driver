@@ -180,19 +180,9 @@ class TestAuthOIDC(unittest.TestCase):
         request_cb = self.create_request_cb(expires_in_seconds=60)
         refresh_cb = self.create_refresh_cb()
 
-        def request_cb_extra_value(principal, info, timeout):
-            result = request_cb(principal, info, timeout)
-            result["foo"] = "bar"
-            return result
-
-        def refresh_cb_extra_value(principal, info, cred, timeout):
-            result = refresh_cb(principal, info, cred, timeout)
-            result["foo"] = "bar"
-            return result
-
         props: Dict = dict(
-            on_oidc_request_token=request_cb_extra_value,
-            on_oidc_refresh_token=refresh_cb_extra_value,
+            on_oidc_request_token=request_cb,
+            on_oidc_refresh_token=refresh_cb,
         )
         client = MongoClient(self.uri_single, authmechanismproperties=props)
         client.test.test.find_one()
@@ -240,7 +230,18 @@ class TestAuthOIDC(unittest.TestCase):
             client.test.test.find_one()
         client.close()
 
-    def test_refresh_callback_invalid_result(self):
+        def request_cb_extra_value(principal, info, timeout):
+            result = self.create_request_cb()(principal, info, timeout)
+            result["foo"] = "bar"
+            return result
+
+        props: Dict = dict(on_oidc_request_token=request_cb_extra_value)
+        client = MongoClient(self.uri_single, authMechanismProperties=props)
+        with self.assertRaises(ValueError):
+            client.test.test.find_one()
+        client.close()
+
+    def test_refresh_callback_missing_data(self):
         request_cb = self.create_request_cb(expires_in_seconds=60)
 
         def refresh_cb_no_token(principal, info, cred, timeout):
@@ -248,6 +249,26 @@ class TestAuthOIDC(unittest.TestCase):
 
         props: Dict = dict(
             on_oidc_request_token=request_cb, on_oidc_refresh_token=refresh_cb_no_token
+        )
+        client = MongoClient(self.uri_single, authMechanismProperties=props)
+        client.test.test.find_one()
+        client.close()
+
+        client = MongoClient(self.uri_single, authMechanismProperties=props)
+        with self.assertRaises(ValueError):
+            client.test.test.find_one()
+        client.close()
+
+    def test_refresh_callback_extra_data(self):
+        request_cb = self.create_request_cb(expires_in_seconds=60)
+
+        def refresh_cb_extra_value(principal, info, cred, timeout):
+            result = self.create_refresh_cb()(principal, info, cred, timeout)
+            result["foo"] = "bar"
+            return result
+
+        props: Dict = dict(
+            on_oidc_request_token=request_cb, on_oidc_refresh_token=refresh_cb_extra_value
         )
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         client.test.test.find_one()
