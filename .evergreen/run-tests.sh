@@ -110,7 +110,6 @@ if [ -n "$TEST_ENCRYPTION" ] || [ -n "$TEST_FLE_AZURE_AUTO" ] || [ -n "$TEST_FLE
     if [ "Windows_NT" = "$OS" ]; then # Magic variable in cygwin
         # PYTHON-2808 Ensure this machine has the CA cert for google KMS.
         powershell.exe "Invoke-WebRequest -URI https://oauth2.googleapis.com/" > /dev/null || true
-        powershell.exe "Invoke-WebRequest -URI https://login.microsoftonline.com/common/v2.0/oauth2/" > /dev/null || true
     fi
 
     if [ -z "$LIBMONGOCRYPT_URL" ]; then

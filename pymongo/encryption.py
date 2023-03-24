@@ -19,6 +19,7 @@ import enum
 import socket
 import weakref
 from copy import deepcopy
+from ssl import SSLWantReadError
 from typing import Any, Generic, Mapping, Optional, Sequence, Tuple
 
 try:
@@ -144,7 +145,10 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
             while kms_context.bytes_needed > 0:
                 # CSOT: update timeout.
                 conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
-                data = conn.recv(kms_context.bytes_needed)
+                try:
+                    data = conn.recv(kms_context.bytes_needed)
+                except SSLWantReadError:
+                    data = conn.recv(kms_context.bytes_needed)
                 if not data:
                     raise OSError("KMS connection closed")
                 kms_context.feed(data)
