@@ -15,7 +15,7 @@ command_type: system
 # Protect ourself against rogue test case, or curl gone wild, that runs forever
 # Good rule of thumb: the averageish length a task takes, times 5
 # That roughly accounts for variable system performance for various buildvariants
-exec_timeout_secs: 2700 # 45 minutes is the longest we'll ever run (primarily
+exec_timeout_secs: 3600 # 60 minutes is the longest we'll ever run (primarily
                         # for macos hosts)
 
 # What to do when evergreen hits the timeout (`post:` tasks are run automatically)
