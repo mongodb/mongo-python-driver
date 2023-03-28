@@ -980,6 +980,13 @@ The default uuid_representation for :class:`~bson.codec_options.CodecOptions`,
 :data:`bson.binary.UuidRepresentation.PYTHON_LEGACY` to
 :data:`bson.binary.UuidRepresentation.UNSPECIFIED`. Attempting to encode a
 :class:`uuid.UUID` instance to BSON or JSON now produces an error by default.
+If you were using UUIDs previously, you will need to set your uuid_representation to
+:data:`bson.binary.UuidRepresentation.PYTHON_LEGACY` to avoid data corruption. If you do not have UUIDs,
+then you should set :data:`bson.binary.UuidRepresentation.STANDARD`. If you do not explicitly set a value,
+you will receive an error like this when attempting to encode a :class:`uuid.UUID`::
+
+    ValueError: cannot encode native uuid.UUID with UuidRepresentation.UNSPECIFIED. UUIDs can be manually converted...
+
 See :ref:`handling-uuid-data-example` for details.
 
 Additional BSON classes implement ``__slots__``
