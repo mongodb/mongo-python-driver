@@ -13,16 +13,17 @@
 # limitations under the License.
 
 """"MONGODB-OIDC Authentication helpers."""
+import fnmatch
 import os
 import threading
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import bson
 from bson.binary import Binary
 from bson.son import SON
-from pymongo.errors import OperationFailure
+from pymongo.errors import OperationFailure, PyMongoError
 
 
 @dataclass
@@ -30,6 +31,7 @@ class _OIDCProperties:
     on_oidc_request_token: Optional[Callable[..., Dict]]
     on_oidc_refresh_token: Optional[Callable[..., Dict]]
     provider_name: Optional[str]
+    allowed_hosts: List[str]
 
 
 """Mechanism properties for MONGODB-OIDC authentication."""
@@ -83,6 +85,17 @@ class _OIDCMechanism:
 
         if not use_callbacks and not current_valid_token:
             return None
+
+        # Ensure that the desired address is allowed.
+        found = False
+        allowed_hosts = credentials.mechanism_properties.allowed_hosts
+        for patt in allowed_hosts:
+            if fnmatch.fnmatch(address[0], patt):
+                found = True
+        if not found:
+            raise PyMongoError(
+                f"Refusing to connect to {address[0]}, which is not in authOIDCAllowedHosts: {allowed_hosts}"
+            )
 
         if not current_valid_token and request_cb is not None:
             with cache_value.lock:
@@ -248,7 +261,7 @@ class _OIDCMechanism:
         for key, value in orig_server_resp.items():
             server_resp[camel_to_snake(key)] = value
 
-        if "token_endpoint" in server_resp:
+        if "issuer" in server_resp:
             cache[cache_key].server_resp = server_resp
 
         conversation_id = resp["conversationId"]

@@ -154,6 +154,7 @@ def _build_credentials_tuple(mech, source, user, passwd, extra, database):
             on_oidc_request_token=on_oidc_request_token,
             on_oidc_refresh_token=on_oidc_refresh_token,
             provider_name=provider_name,
+            allowed_hosts=extra["authOIDCAllowedHosts"],
         )
         return MongoCredential(mech, "$external", user, passwd, oidc_props, None)
 

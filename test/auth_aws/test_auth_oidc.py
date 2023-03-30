@@ -26,7 +26,8 @@ from test.utils import EventListener
 
 from bson import SON
 from pymongo import MongoClient
-from pymongo.auth_oidc import OperationFailure, _internal
+from pymongo.auth_oidc import _internal
+from pymongo.errors import OperationFailure, PyMongoError
 
 _oidc_cache = _internal.cache
 
@@ -57,9 +58,7 @@ class TestAuthOIDC(unittest.TestCase):
                 self.assertIsInstance(principal, str)
 
             # Validate the info.
-            if "device_authorization_endpoint" not in info:
-                self.assertIn("authorization_endpoint", info)
-            self.assertIn("token_endpoint", info)
+            self.assertIn("issuer", info)
             self.assertIn("client_id", info)
 
             # Validate the timeout.
@@ -87,9 +86,7 @@ class TestAuthOIDC(unittest.TestCase):
                 self.assertIsInstance(principal, str)
 
             # Validate the info.
-            if "device_authorization_endpoint" not in info:
-                self.assertIn("authorization_endpoint", info)
-            self.assertIn("token_endpoint", info)
+            self.assertIn("issuer", info)
             self.assertIn("client_id", info)
 
             # Validate the creds
@@ -154,6 +151,16 @@ class TestAuthOIDC(unittest.TestCase):
         props: Dict = dict(on_oidc_request_token=request_token)
         client = MongoClient(self.uri_multiple, authmechanismproperties=props)
         with self.assertRaises(OperationFailure):
+            client.test.test.find_one()
+        client.close()
+
+    def test_oidc_allowed_hosts_blocked(self):
+        request_token = self.create_request_cb()
+        props: Dict = dict(on_oidc_request_token=request_token)
+        client = MongoClient(
+            self.uri_single, authOIDCAllowedHosts=[], authmechanismproperties=props
+        )
+        with self.assertRaises(PyMongoError):
             client.test.test.find_one()
         client.close()
 

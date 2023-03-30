@@ -755,6 +755,7 @@ KW_VALIDATORS: Dict[str, Callable[[Any, Any], Any]] = {
     "password": validate_string_or_none,
     "server_selector": validate_is_callable_or_none,
     "auto_encryption_opts": validate_auto_encryption_opts_or_none,
+    "authoidcallowedhosts": validate_list,
 }
 
 # Dictionary where keys are any URI option name, and values are the

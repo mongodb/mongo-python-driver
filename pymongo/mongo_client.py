@@ -477,6 +477,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             name>'.
             To specify the session token for MONGODB-AWS authentication pass
             ``authMechanismProperties='AWS_SESSION_TOKEN:<session token>'``.
+          - `authOIDCAllowedHosts``: A list of patterns that are used to match
+            allowed server hosts for OIDC callbacks.  By default a standard
+            set of Atlas hosts and ``localhost`` are allowed.  If an attempt
+            is made to connect to a host that is not allowed, a
+            ``PyMongoError`` will be raised and the OIDC callback(s) will not
+            be called.
 
           .. seealso:: :doc:`/examples/authentication`
 
@@ -718,6 +724,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         # Parse options passed as kwargs.
         keyword_opts = common._CaseInsensitiveDictionary(kwargs)
         keyword_opts["document_class"] = doc_class
+
+        # Use a default secure value for authOIDCAllowedHosts.
+        keyword_opts.setdefault(
+            "authOIDCAllowedHosts",
+            ["*.mongodb.net", "*.mongodb-dev.net", "*.mongodbgov.net", "localhost"],
+        )
 
         seeds = set()
         username = None
