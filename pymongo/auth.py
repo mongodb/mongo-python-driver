@@ -143,18 +143,20 @@ def _build_credentials_tuple(mech, source, user, passwd, extra, database):
         if source is not None and source != "$external":
             raise ValueError("authentication source must be $external or None for MONGODB-OIDC")
         properties = extra.get("authmechanismproperties", {})
-        on_oidc_request_token = properties.get("on_oidc_request_token")
-        on_oidc_refresh_token = properties.get("on_oidc_refresh_token", None)
+        request_token_callback = properties.get("request_token_callback")
+        refresh_token_callback = properties.get("refresh_token_callback", None)
         provider_name = properties.get("PROVIDER_NAME", "")
-        if not on_oidc_request_token and provider_name != "aws":
+        default_allowed = ["*.mongodb.net", "*.mongodb-dev.net", "*.mongodbgov.net", "localhost"]
+        allowed_hosts = properties.get("allowed_hosts", default_allowed)
+        if not request_token_callback and provider_name != "aws":
             raise ConfigurationError(
-                "authentication with MONGODB-OIDC requires providing an on_oidc_request_token or a provider_name of 'aws'"
+                "authentication with MONGODB-OIDC requires providing an request_token_callback or a provider_name of 'aws'"
             )
         oidc_props = _OIDCProperties(
-            on_oidc_request_token=on_oidc_request_token,
-            on_oidc_refresh_token=on_oidc_refresh_token,
+            request_token_callback=request_token_callback,
+            refresh_token_callback=refresh_token_callback,
             provider_name=provider_name,
-            allowed_hosts=extra["authOIDCAllowedHosts"],
+            allowed_hosts=allowed_hosts,
         )
         return MongoCredential(mech, "$external", user, passwd, oidc_props, None)
 

@@ -417,7 +417,7 @@ Callback-based OIDC Support
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 PyMongo supports user-provided callbacks for OIDC, which are are given to the
-``MongoClient``.  The ``on_oidc_request_callback`` is intended to accept
+``MongoClient``.  The ``request_token_callback`` is intended to accept
 information about the Identity Provider, and return credentials that are used
 to authenticate with the server, usually through a browser interaction with
 the user.  The callback must be of the form::
@@ -428,24 +428,12 @@ the user.  The callback must be of the form::
 
 Where ``ProviderInfo`` is a dictionary of the following form::
 
-      authorization_endpoint:
+      issuer:
         description: >-
-          URL where the IDP may be contacted for end user
-          authentication and authorization code generation.
+            URL which describes the Authorization Server. This identifier should be
+            the iss of provided access tokens, and be viable for RFC8414
+            metadata discovery and RFC9207 identification.
         type: string
-        optional: true # Req if device_authorization_endpoint not present
-      token_endpoint:
-        description: >-
-          URL where the IDP may be contacted for authorization
-          code <=> ID/access token exchange.
-        type: string
-        optional: true # Req if device_authorization_endpoint not present
-      device_authorization_endpoint:
-        description: >-
-          URL where the IDP may be contacted for device
-          authentication and authorization code generation.
-        type: string
-        optional: true # Req if authorization_endpoint not present
       client_id:
         description: "Unique client ID for this OIDC client"
         type: string
@@ -477,7 +465,7 @@ client would be::
 
   >>> from pymongo import MongoClient
   >>> uri = "mongodb://localhost/?authMechanism=MONGODB-OIDC")
-  >>> client = MongoClient(uri, on_oidc_request_callback=my_callback)
+  >>> client = MongoClient(uri, request_token_callback=my_callback)
 
 If the identity provider supports refresh, a refresh callback can also
 be provided.  If a refresh callback is provided, it will be called
@@ -497,8 +485,8 @@ if it was provided.  An example using both callbacks would be::
 
   >>> from pymongo import MongoClient
   >>> uri = "mongodb://localhost/?authMechanism=MONGODB-OIDC")
-  >>> client = MongoClient(uri, on_oidc_request_callback=my_request_callback,
-  ... on_oidc_refresh_callback=my_refresh_callback)
+  >>> client = MongoClient(uri, request_token_callback=my_request_callback,
+  ... refresh_token_callback=my_refresh_callback)
 
 Note: when multiple identity providers
 are configured on the server, a ``username`` must be provided, which is the
@@ -506,5 +494,20 @@ Principal Name used on the provider.  For example::
 
   >>> from pymongo import MongoClient
   >>> uri = "mongodb://my_username@localhost/?authMechanism=MONGODB-OIDC")
-  >>> client = MongoClient(uri, on_oidc_request_callback=my_request_callback,
-  ... on_oidc_refresh_callback=my_refresh_callback)
+  >>> client = MongoClient(uri, authMechanismProperties=request_token_callback=my_request_callback,
+  ... refresh_token_callback=my_refresh_callback)
+
+Allowed Hosts
+~~~~~~~~~~~~~
+
+By default, only Atlas and localhost MongoDB server hostnames are allowed
+to use MONGODB-OIDC.  If a different set of host(s) are desired, use
+the ``allowed_hosts`` option:
+
+  >>> from pymongo import MongoClient
+  >>> uri = "mongodb://my_username@localhost/?authMechanism=MONGODB-OIDC")
+  >>> my_host = "example.com"
+  >>> client = MongoClient(uri, authMechanismProperties=request_token_callback=my_request_callback,
+  ... refresh_token_callback=my_refresh_callback, allowed_hosts=[my_host])
+
+The hostnames support Unix shell-style wildcards.

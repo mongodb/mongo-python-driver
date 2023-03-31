@@ -445,21 +445,23 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> Dict[str, Uni
                 props[key] = value
             elif isinstance(value, bool):
                 props[key] = str(value).lower()
+            elif key in ["allowed_hosts"] and isinstance(value, list):
+                props[key] = value
             elif inspect.isfunction(value):
                 signature = inspect.signature(value)
-                if key == "on_oidc_request_token":
+                if key == "request_token_callback":
                     expected_params = 3
-                elif key == "on_oidc_refresh_token":
+                elif key == "refresh_token_callback":
                     expected_params = 4
                 else:
-                    raise ValueError(f"Unrecognized Auth mechanisim function {key}")
+                    raise ValueError(f"Unrecognized Auth mechanism function {key}")
                 if len(signature.parameters) != expected_params:
                     msg = f"{key} must accept {expected_params} parameters"
                     raise ValueError(msg)
                 props[key] = value
             else:
                 raise ValueError(
-                    "Auth mechanisim properity values must be strings or callback functions"
+                    "Auth mechanism properity values must be strings or callback functions"
                 )
         return props
 

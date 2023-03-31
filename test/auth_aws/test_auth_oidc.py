@@ -116,21 +116,21 @@ class TestAuthOIDC(unittest.TestCase):
 
     def test_connect_callbacks_single_implicit_username(self):
         request_token = self.create_request_cb()
-        props: Dict = dict(on_oidc_request_token=request_token)
+        props: Dict = dict(request_token_callback=request_token)
         client = MongoClient(self.uri_single, authmechanismproperties=props)
         client.test.test.find_one()
         client.close()
 
     def test_connect_callbacks_single_explicit_username(self):
         request_token = self.create_request_cb()
-        props: Dict = dict(on_oidc_request_token=request_token)
+        props: Dict = dict(request_token_callback=request_token)
         client = MongoClient(self.uri_single, username="test_user1", authmechanismproperties=props)
         client.test.test.find_one()
         client.close()
 
     def test_connect_callbacks_multiple_principal_user1(self):
         request_token = self.create_request_cb()
-        props: Dict = dict(on_oidc_request_token=request_token)
+        props: Dict = dict(request_token_callback=request_token)
         client = MongoClient(
             self.uri_multiple, username="test_user1", authmechanismproperties=props
         )
@@ -139,7 +139,7 @@ class TestAuthOIDC(unittest.TestCase):
 
     def test_connect_callbacks_multiple_principal_user2(self):
         request_token = self.create_request_cb("test_user2")
-        props: Dict = dict(on_oidc_request_token=request_token)
+        props: Dict = dict(request_token_callback=request_token)
         client = MongoClient(
             self.uri_multiple, username="test_user2", authmechanismproperties=props
         )
@@ -148,7 +148,7 @@ class TestAuthOIDC(unittest.TestCase):
 
     def test_connect_callbacks_multiple_no_username(self):
         request_token = self.create_request_cb()
-        props: Dict = dict(on_oidc_request_token=request_token)
+        props: Dict = dict(request_token_callback=request_token)
         client = MongoClient(self.uri_multiple, authmechanismproperties=props)
         with self.assertRaises(OperationFailure):
             client.test.test.find_one()
@@ -156,10 +156,8 @@ class TestAuthOIDC(unittest.TestCase):
 
     def test_oidc_allowed_hosts_blocked(self):
         request_token = self.create_request_cb()
-        props: Dict = dict(on_oidc_request_token=request_token)
-        client = MongoClient(
-            self.uri_single, authOIDCAllowedHosts=[], authmechanismproperties=props
-        )
+        props: Dict = dict(request_token_callback=request_token, allowed_hosts=[])
+        client = MongoClient(self.uri_single, authmechanismproperties=props)
         with self.assertRaises(PyMongoError):
             client.test.test.find_one()
         client.close()
@@ -188,8 +186,8 @@ class TestAuthOIDC(unittest.TestCase):
         refresh_cb = self.create_refresh_cb()
 
         props: Dict = dict(
-            on_oidc_request_token=request_cb,
-            on_oidc_refresh_token=refresh_cb,
+            request_token_callback=request_cb,
+            refresh_token_callback=refresh_cb,
         )
         client = MongoClient(self.uri_single, authmechanismproperties=props)
         client.test.test.find_one()
@@ -203,7 +201,7 @@ class TestAuthOIDC(unittest.TestCase):
         def request_token_null(principal, info, timeout):
             return None
 
-        props: Dict = dict(on_oidc_request_token=request_token_null)
+        props: Dict = dict(request_token_callback=request_token_null)
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         with self.assertRaises(ValueError):
             client.test.test.find_one()
@@ -216,7 +214,7 @@ class TestAuthOIDC(unittest.TestCase):
             return None
 
         props: Dict = dict(
-            on_oidc_request_token=request_cb, on_oidc_refresh_token=refresh_token_null
+            request_token_callback=request_cb, refresh_token_callback=refresh_token_null
         )
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         client.test.test.find_one()
@@ -231,7 +229,7 @@ class TestAuthOIDC(unittest.TestCase):
         def request_token_invalid(principal, info, timeout):
             return dict()
 
-        props: Dict = dict(on_oidc_request_token=request_token_invalid)
+        props: Dict = dict(request_token_callback=request_token_invalid)
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         with self.assertRaises(ValueError):
             client.test.test.find_one()
@@ -242,7 +240,7 @@ class TestAuthOIDC(unittest.TestCase):
             result["foo"] = "bar"
             return result
 
-        props: Dict = dict(on_oidc_request_token=request_cb_extra_value)
+        props: Dict = dict(request_token_callback=request_cb_extra_value)
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         with self.assertRaises(ValueError):
             client.test.test.find_one()
@@ -255,7 +253,7 @@ class TestAuthOIDC(unittest.TestCase):
             return dict()
 
         props: Dict = dict(
-            on_oidc_request_token=request_cb, on_oidc_refresh_token=refresh_cb_no_token
+            request_token_callback=request_cb, refresh_token_callback=refresh_cb_no_token
         )
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         client.test.test.find_one()
@@ -275,7 +273,7 @@ class TestAuthOIDC(unittest.TestCase):
             return result
 
         props: Dict = dict(
-            on_oidc_request_token=request_cb, on_oidc_refresh_token=refresh_cb_extra_value
+            request_token_callback=request_cb, refresh_token_callback=refresh_cb_extra_value
         )
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         client.test.test.find_one()
@@ -293,7 +291,7 @@ class TestAuthOIDC(unittest.TestCase):
         request_cb = self.create_request_cb(expires_in_seconds=60)
         refresh_cb = self.create_refresh_cb()
 
-        props: Dict = dict(on_oidc_request_token=request_cb, on_oidc_refresh_token=refresh_cb)
+        props: Dict = dict(request_token_callback=request_cb, refresh_token_callback=refresh_cb)
 
         # Ensure that a ``find`` operation adds credentials to the cache.
         client = MongoClient(self.uri_single, authMechanismProperties=props)
@@ -316,7 +314,7 @@ class TestAuthOIDC(unittest.TestCase):
         # Give a callback response with a valid accessToken and an expiresInSeconds that is within one minute.
         request_cb = self.create_request_cb()
 
-        props = dict(on_oidc_request_token=request_cb)
+        props = dict(request_token_callback=request_cb)
         client = MongoClient(self.uri_single, authMechanismProperties=props)
 
         # Ensure that a ``find`` operation adds credentials to the cache.
@@ -337,7 +335,7 @@ class TestAuthOIDC(unittest.TestCase):
     def test_cache_key_includes_callback(self):
         request_cb = self.create_request_cb()
 
-        props: Dict = dict(on_oidc_request_token=request_cb)
+        props: Dict = dict(request_token_callback=request_cb)
 
         # Ensure that a ``find`` operation adds a new entry to the cache.
         client = MongoClient(self.uri_single, authMechanismProperties=props)
@@ -348,7 +346,7 @@ class TestAuthOIDC(unittest.TestCase):
         def request_token_2(principal, info, timeout):
             return request_cb(principal, info, timeout)
 
-        props["on_oidc_request_token"] = request_token_2
+        props["request_token_callback"] = request_token_2
         client = MongoClient(self.uri_single, authMechanismProperties=props)
 
         # Ensure that a ``find`` operation adds a new entry to the cache.
@@ -364,7 +362,7 @@ class TestAuthOIDC(unittest.TestCase):
             return dict(access_token="bad")
 
         # Add a token to the cache that will expire soon.
-        props: Dict = dict(on_oidc_request_token=request_cb, on_oidc_refresh_token=refresh_cb)
+        props: Dict = dict(request_token_callback=request_cb, refresh_token_callback=refresh_cb)
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         client.test.test.find_one()
         client.close()
@@ -402,7 +400,7 @@ class TestAuthOIDC(unittest.TestCase):
 
         # Create a client with a request callback that returns a valid token
         # that will not expire soon.
-        props: Dict = dict(on_oidc_request_token=request_token)
+        props: Dict = dict(request_token_callback=request_token)
         client = MongoClient(self.uri_single, authmechanismproperties=props)
 
         # Set a fail point for saslStart commands.
@@ -443,7 +441,7 @@ class TestAuthOIDC(unittest.TestCase):
         refresh_cb = self.create_refresh_cb()
 
         # Create a client with the callbacks.
-        props: Dict = dict(on_oidc_request_token=request_cb, on_oidc_refresh_token=refresh_cb)
+        props: Dict = dict(request_token_callback=request_cb, refresh_token_callback=refresh_cb)
         client = MongoClient(
             self.uri_single, event_listeners=[listener], authmechanismproperties=props
         )
@@ -492,7 +490,7 @@ class TestAuthOIDC(unittest.TestCase):
         refresh_cb = self.create_refresh_cb()
 
         # Create a client with the callbacks.
-        props: Dict = dict(on_oidc_request_token=request_cb, on_oidc_refresh_token=refresh_cb)
+        props: Dict = dict(request_token_callback=request_cb, refresh_token_callback=refresh_cb)
         client = MongoClient(
             self.uri_single, event_listeners=[listener], authmechanismproperties=props
         )
@@ -522,7 +520,7 @@ class TestAuthOIDC(unittest.TestCase):
         refresh_cb = self.create_refresh_cb()
 
         # Create a client with the callbacks.
-        props: Dict = dict(on_oidc_request_token=request_cb, on_oidc_refresh_token=refresh_cb)
+        props: Dict = dict(request_token_callback=request_cb, refresh_token_callback=refresh_cb)
         client = MongoClient(
             self.uri_single, event_listeners=[listener], authmechanismproperties=props
         )

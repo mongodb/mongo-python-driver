@@ -28,8 +28,8 @@ from pymongo.errors import OperationFailure, PyMongoError
 
 @dataclass
 class _OIDCProperties:
-    on_oidc_request_token: Optional[Callable[..., Dict]]
-    on_oidc_refresh_token: Optional[Callable[..., Dict]]
+    request_token_callback: Optional[Callable[..., Dict]]
+    refresh_token_callback: Optional[Callable[..., Dict]]
     provider_name: Optional[str]
     allowed_hosts: List[str]
 
@@ -57,8 +57,8 @@ class _OIDCMechanism:
         address = address
         principal_name = credentials.username
         properties = credentials.mechanism_properties
-        request_cb = properties.on_oidc_request_token
-        refresh_cb = properties.on_oidc_refresh_token
+        request_cb = properties.request_token_callback
+        refresh_cb = properties.refresh_token_callback
         return f"{principal_name}{address[0]}{address[1]}{id(request_cb)}{id(refresh_cb)}"
 
     def get_current_token(self, credentials, address, use_callbacks=True):
@@ -67,8 +67,8 @@ class _OIDCMechanism:
         cache_value = self.cache[cache_key]
         principal_name = credentials.username
 
-        request_cb = properties.on_oidc_request_token
-        refresh_cb = properties.on_oidc_refresh_token
+        request_cb = properties.request_token_callback
+        refresh_cb = properties.refresh_token_callback
         if not use_callbacks:
             request_cb = None
             refresh_cb = None
