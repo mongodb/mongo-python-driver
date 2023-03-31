@@ -147,7 +147,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
                 conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
                 try:
                     data = conn.recv(kms_context.bytes_needed)
-                except Exception:
+                except SSLWantReadError:
                     data = conn.recv(kms_context.bytes_needed)
                 if not data:
                     raise OSError("KMS connection closed")
