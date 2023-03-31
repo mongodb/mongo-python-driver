@@ -46,10 +46,10 @@ def create_test(test_case):
             if credential:
                 props = credential["mechanism_properties"] or {}
                 if props.get("REQUEST_TOKEN_CALLBACK"):
-                    props["on_oidc_request_token"] = lambda x, y, z: 1
+                    props["request_token_callback"] = lambda x, y, z: 1
                     del props["REQUEST_TOKEN_CALLBACK"]
                 if props.get("REFRESH_TOKEN_CALLBACK"):
-                    props["on_oidc_refresh_token"] = lambda a, b, c, d: 1  # type:ignore[misc]
+                    props["refresh_token_callback"] = lambda a, b, c, d: 1  # type:ignore[misc]
                     del props["REFRESH_TOKEN_CALLBACK"]
             client = MongoClient(uri, connect=False, authmechanismproperties=props)
             credentials = client.options.pool_options._credentials
@@ -82,13 +82,13 @@ def create_test(test_case):
                             )
                         elif "PROVIDER_NAME" in expected:
                             self.assertEqual(actual.provider_name, expected["PROVIDER_NAME"])
-                        elif "on_oidc_request_token" in expected:
+                        elif "request_token_callback" in expected:
                             self.assertEqual(
-                                actual.on_oidc_request_token, expected["on_oidc_request_token"]
+                                actual.request_token_callback, expected["request_token_callback"]
                             )
-                        elif "on_oidc_refresh_token" in expected:
+                        elif "refresh_token_callback" in expected:
                             self.assertEqual(
-                                actual.on_oidc_refresh_token, expected["on_oidc_refresh_token"]
+                                actual.refresh_token_callback, expected["refresh_token_callback"]
                             )
                         else:
                             self.fail("Unhandled property: %s" % (key,))
