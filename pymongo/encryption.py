@@ -65,7 +65,7 @@ from pymongo.uri_parser import parse_host
 from pymongo.write_concern import WriteConcern
 
 _HTTPS_PORT = 443
-_KMS_CONNECT_TIMEOUT = 10  # TODO: CDRIVER-3262 will define this value.
+_KMS_CONNECT_TIMEOUT = 20  # TODO: CDRIVER-3262 will define this value.
 _MONGOCRYPTD_TIMEOUT_MS = 10000
 
 
@@ -145,10 +145,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
             while kms_context.bytes_needed > 0:
                 # CSOT: update timeout.
                 conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
-                try:
-                    data = conn.recv(kms_context.bytes_needed)
-                except SSLWantReadError:
-                    data = conn.recv(kms_context.bytes_needed)
+                data = conn.recv(kms_context.bytes_needed)
                 if not data:
                     raise OSError("KMS connection closed")
                 kms_context.feed(data)
