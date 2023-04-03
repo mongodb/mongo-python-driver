@@ -2549,7 +2549,7 @@ buildvariants:
   matrix_spec:
     platform:
       # OSes that support versions of MongoDB>=3.6 with SSL.
-      - rhel76-small
+      - rhel76
     auth-ssl: "*"
   display_name: "${platform} ${auth-ssl}"
   tasks:
@@ -2637,7 +2637,7 @@ buildvariants:
 
 - matrix_name: "tests-python-version-rhel7.6-test-ssl"
   matrix_spec:
-    platform: rhel76-small
+    platform: rhel76
     python-version: "*"
     auth-ssl: "*"
     coverage: "*"
@@ -2695,7 +2695,7 @@ buildvariants:
 
 - matrix_name: "tests-python-version-rhel76-test-encryption"
   matrix_spec:
-    platform: rhel76-small
+    platform: rhel76
     python-version: "*"
     auth-ssl: noauth-nossl
 # TODO: dependency error for 'coverage-report' task:
@@ -2708,14 +2708,14 @@ buildvariants:
 
 - matrix_name: "tests-python-version-rhel76-without-c-extensions"
   matrix_spec:
-    platform: rhel76-small
+    platform: rhel76
     python-version: "*"
     c-extensions: without-c-extensions
     auth-ssl: noauth-nossl
     coverage: "*"
   exclude_spec:
    # These interpreters are always tested without extensions.
-   - platform: rhel76-small
+   - platform: rhel76
      python-version: ["pypy3.7", "pypy3.8"]
      c-extensions: "*"
      auth-ssl: "*"
@@ -2725,13 +2725,13 @@ buildvariants:
 
 - matrix_name: "tests-python-version-rhel76-compression"
   matrix_spec:
-    platform: rhel76-small
+    platform: rhel76
     python-version: "*"
     c-extensions: "*"
     compression: "*"
   exclude_spec:
    # These interpreters are always tested without extensions.
-   - platform: rhel76-small
+   - platform: rhel76
      python-version: ["pypy3.7", "pypy3.8"]
      c-extensions: "with-c-extensions"
      compression: "*"
@@ -2754,13 +2754,13 @@ buildvariants:
 
 - matrix_name: "tests-python-version-green-framework-rhel76"
   matrix_spec:
-    platform: rhel76-small
+    platform: rhel76
     python-version: "*"
     green-framework: "*"
     auth-ssl: "*"
   exclude_spec:
    # Don't test green frameworks on these Python versions.
-   - platform: rhel76-small
+   - platform: rhel76
      python-version: ["pypy3.7", "pypy3.8", "3.11"]
      green-framework: "*"
      auth-ssl: "*"
@@ -2819,13 +2819,13 @@ buildvariants:
 # Storage engine tests on RHEL 7.6 (x86_64) with Python 3.7.
 - matrix_name: "tests-storage-engines"
   matrix_spec:
-    platform: rhel76-small
+    platform: rhel76
     storage-engine: "*"
     python-version: 3.7
   display_name: "Storage ${storage-engine} ${python-version} ${platform}"
   rules:
     - if:
-        platform: rhel76-small
+        platform: rhel76
         storage-engine: ["inmemory"]
         python-version: "*"
       then:
@@ -2838,7 +2838,7 @@ buildvariants:
           - "test-3.6-standalone"
     - if:
         # MongoDB 4.2 drops support for MMAPv1
-        platform: rhel76-small
+        platform: rhel76
         storage-engine: ["mmapv1"]
         python-version: "*"
       then:
@@ -2851,7 +2851,7 @@ buildvariants:
 # enableTestCommands=0 tests on RHEL 7.6 (x86_64) with Python 3.7.
 - matrix_name: "test-disableTestCommands"
   matrix_spec:
-    platform: rhel76-small
+    platform: rhel76
     disableTestCommands: "*"
     python-version: "3.7"
   display_name: "Disable test commands ${python-version} ${platform}"
@@ -2860,7 +2860,7 @@ buildvariants:
 
 - matrix_name: "test-linux-enterprise-auth"
   matrix_spec:
-    platform: rhel76-small
+    platform: rhel76
     python-version: "*"
     auth: "auth"
   display_name: "Enterprise ${auth} ${platform} ${python-version}"
@@ -2878,12 +2878,12 @@ buildvariants:
 
 - matrix_name: "tests-mod-wsgi"
   matrix_spec:
-    platform: rhel76-small
+    platform: rhel76
     python-version: ["3.7", "3.8", "3.9", "3.10"]
     mod-wsgi-version: "*"
   exclude_spec:
    # mod-wsgi 3.5 won't build against CPython 3.8+
-   - platform: rhel76-small
+   - platform: rhel76
      python-version: ["3.8", "3.9", "3.10"]
      mod-wsgi-version: "3"
   display_name: "${mod-wsgi-version} ${python-version} ${platform}"
@@ -2893,7 +2893,7 @@ buildvariants:
 
 - matrix_name: "mockupdb-tests"
   matrix_spec:
-    platform: rhel76-small
+    platform: rhel76
     python-version: 3.7
   display_name: "MockupDB Tests"
   tasks:
@@ -2901,7 +2901,7 @@ buildvariants:
 
 - matrix_name: "tests-doctests"
   matrix_spec:
-    platform: rhel76-small
+    platform: rhel76
     python-version: ["3.8"]
   display_name: "Doctests ${python-version} ${platform}"
   tasks:
@@ -2927,7 +2927,7 @@ buildvariants:
 
 - matrix_name: "atlas-connect"
   matrix_spec:
-    platform: rhel76-small
+    platform: rhel76
     python-version: "*"
   display_name: "Atlas connect ${python-version} ${platform}"
   tasks:
@@ -2935,7 +2935,7 @@ buildvariants:
 
 - matrix_name: "serverless"
   matrix_spec:
-    platform: rhel76-small
+    platform: rhel76
     python-version: "*"
     auth-ssl: auth-ssl
     serverless: "*"
@@ -2945,7 +2945,7 @@ buildvariants:
 
 - matrix_name: "data-lake-spec-tests"
   matrix_spec:
-    platform: rhel76-small
+    platform: rhel76
     python-version: ["3.7", "3.10"]
     auth: "auth"
     c-extensions: "*"
@@ -2955,7 +2955,7 @@ buildvariants:
 
 - matrix_name: "stable-api-tests"
   matrix_spec:
-    platform: rhel76-small
+    platform: rhel76
     python-version: ["3.7", "3.10"]
     auth: "auth"
     versionedApi: "*"
@@ -3005,7 +3005,7 @@ buildvariants:
 
 - matrix_name: "aws-auth-test"
   matrix_spec:
-    platform: [rhel76-small]
+    platform: [rhel76]
     python-version: ["3.7"]
   display_name: "MONGODB-AWS Auth ${platform} ${python-version}"
   tasks:
@@ -3040,7 +3040,7 @@ buildvariants:
 
 - matrix_name: "load-balancer"
   matrix_spec:
-    platform: rhel76-small
+    platform: rhel76
     mongodb-version: ["rapid", "latest", "6.0"]
     auth-ssl: "*"
     python-version: "*"
