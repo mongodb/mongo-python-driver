@@ -2739,11 +2739,7 @@ buildvariants:
   tasks: "test-latest-replica_set"
   rules:
     - if:
-        encryption: encryption
-      then:
-        add_tasks: *encryption-server-versions
-    - if:
-        encryption: encryption_crypt_shared
+        encryption: ["encryption", "encryption_crypt_shared"]
       then:
         add_tasks: *encryption-server-versions
 
