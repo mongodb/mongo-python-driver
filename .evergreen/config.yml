@@ -2737,6 +2737,13 @@ buildvariants:
     encryption: "*"
   display_name: "${encryption} ${python-version} ${platform} ${auth-ssl}"
   tasks: *encryption-server-versions
+  rules:
+    - if:
+        # Only test a subset with both encryption and PyOpenSSSl
+        encryption: encryption_pyopenssl
+      then:
+        add_tasks:
+          - "test-latest-replica_set"
 
 
 - matrix_name: "tests-python-version-ubuntu18-without-c-extensions"
