@@ -19,7 +19,6 @@ import enum
 import socket
 import weakref
 from copy import deepcopy
-from ssl import SSLWantReadError
 from typing import Any, Generic, Mapping, Optional, Sequence, Tuple
 
 try:
