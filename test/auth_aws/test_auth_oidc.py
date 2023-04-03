@@ -52,17 +52,17 @@ class TestAuthOIDC(unittest.TestCase):
 
         token_file = os.path.join(self.token_dir, username)
 
-        def request_token(principal, info, timeout):
+        def request_token(client_info, server_info):
             # Validate the principal.
-            if principal is not None:
-                self.assertIsInstance(principal, str)
+            if client_info["principal_name"] is not None:
+                self.assertIsInstance(client_info["principal_name"], str)
 
             # Validate the info.
-            self.assertIn("issuer", info)
-            self.assertIn("client_id", info)
+            self.assertIn("issuer", server_info)
+            self.assertIn("client_id", server_info)
 
             # Validate the timeout.
-            self.assertEqual(timeout, 60 * 5)
+            self.assertEqual(client_info["timeout_seconds"], 60 * 5)
             with open(token_file) as fid:
                 token = fid.read()
             resp = dict(access_token=token)
@@ -77,23 +77,23 @@ class TestAuthOIDC(unittest.TestCase):
 
         token_file = os.path.join(self.token_dir, username)
 
-        def refresh_token(principal, info, creds, timeout):
+        def refresh_token(client_info, server_info, creds):
             with open(token_file) as fid:
                 token = fid.read()
 
             # Validate the principal.
-            if principal is not None:
-                self.assertIsInstance(principal, str)
+            if client_info["principal_name"] is not None:
+                self.assertIsInstance(client_info["principal_name"], str)
 
             # Validate the info.
-            self.assertIn("issuer", info)
-            self.assertIn("client_id", info)
+            self.assertIn("issuer", server_info)
+            self.assertIn("client_id", server_info)
 
             # Validate the creds
             self.assertIn("access_token", creds)
 
             # Validate the timeout.
-            self.assertEqual(timeout, 60 * 5)
+            self.assertEqual(client_info["timeout_seconds"], 60 * 5)
 
             resp = dict(access_token=token)
             if expires_in_seconds is not None:
@@ -198,7 +198,7 @@ class TestAuthOIDC(unittest.TestCase):
         client.close()
 
     def test_request_callback_returns_null(self):
-        def request_token_null(principal, info, timeout):
+        def request_token_null(client_info, server_info):
             return None
 
         props: Dict = dict(request_token_callback=request_token_null)
@@ -210,7 +210,7 @@ class TestAuthOIDC(unittest.TestCase):
     def test_refresh_callback_returns_null(self):
         request_cb = self.create_request_cb(expires_in_seconds=60)
 
-        def refresh_token_null(principal, info, creds, timeout):
+        def refresh_token_null(client_info, server_info, creds):
             return None
 
         props: Dict = dict(
@@ -226,7 +226,7 @@ class TestAuthOIDC(unittest.TestCase):
         client.close()
 
     def test_request_callback_invalid_result(self):
-        def request_token_invalid(principal, info, timeout):
+        def request_token_invalid(client_info, server_info):
             return dict()
 
         props: Dict = dict(request_token_callback=request_token_invalid)
@@ -235,8 +235,8 @@ class TestAuthOIDC(unittest.TestCase):
             client.test.test.find_one()
         client.close()
 
-        def request_cb_extra_value(principal, info, timeout):
-            result = self.create_request_cb()(principal, info, timeout)
+        def request_cb_extra_value(client_info, server_info):
+            result = self.create_request_cb()(client_info, server_info)
             result["foo"] = "bar"
             return result
 
@@ -249,7 +249,7 @@ class TestAuthOIDC(unittest.TestCase):
     def test_refresh_callback_missing_data(self):
         request_cb = self.create_request_cb(expires_in_seconds=60)
 
-        def refresh_cb_no_token(principal, info, cred, timeout):
+        def refresh_cb_no_token(client_info, server_info, cred):
             return dict()
 
         props: Dict = dict(
@@ -267,8 +267,8 @@ class TestAuthOIDC(unittest.TestCase):
     def test_refresh_callback_extra_data(self):
         request_cb = self.create_request_cb(expires_in_seconds=60)
 
-        def refresh_cb_extra_value(principal, info, cred, timeout):
-            result = self.create_refresh_cb()(principal, info, cred, timeout)
+        def refresh_cb_extra_value(client_info, server_info, cred):
+            result = self.create_refresh_cb()(client_info, server_info, cred)
             result["foo"] = "bar"
             return result
 
@@ -343,8 +343,8 @@ class TestAuthOIDC(unittest.TestCase):
         client.close()
 
         # Create a new client with a different request callback.
-        def request_token_2(principal, info, timeout):
-            return request_cb(principal, info, timeout)
+        def request_token_2(client_info, server_info):
+            return request_cb(client_info, server_info)
 
         props["request_token_callback"] = request_token_2
         client = MongoClient(self.uri_single, authMechanismProperties=props)
@@ -358,7 +358,7 @@ class TestAuthOIDC(unittest.TestCase):
         request_cb = self.create_request_cb()
 
         # Create a new client with a valid request callback that gives credentials that expire within 5 minutes and a refresh callback that gives invalid credentials.
-        def refresh_cb(principal, info, creds, timeout):
+        def refresh_cb(client_info, server_info, creds):
             return dict(access_token="bad")
 
         # Add a token to the cache that will expire soon.
@@ -393,7 +393,7 @@ class TestAuthOIDC(unittest.TestCase):
         _oidc_cache.clear()
         token_file = os.path.join(self.token_dir, "test_user1")
 
-        def request_token(principal, info, timeout):
+        def request_token(client_info, server_info):
             with open(token_file) as fid:
                 token = fid.read()
             return dict(access_token=token, expires_in_seconds=1000)

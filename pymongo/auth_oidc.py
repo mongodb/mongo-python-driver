@@ -98,14 +98,13 @@ class _OIDCMechanism:
             )
 
         if not current_valid_token and request_cb is not None:
+            client_info = dict(principal_name=principal_name, timeout_seconds=timeout)
             with cache_value.lock:
                 if cache_value.token_result is None or refresh_cb is None:
-                    cache_value.token_result = request_cb(
-                        principal_name, cache_value.server_resp, timeout
-                    )
+                    cache_value.token_result = request_cb(client_info, cache_value.server_resp)
                 elif request_cb is not None:
                     cache_value.token_result = refresh_cb(
-                        principal_name, cache_value.server_resp, cache_value.token_result, timeout
+                        client_info, cache_value.server_resp, cache_value.token_result
                     )
                 cache_exp_utc = datetime.now(timezone.utc) + timedelta(
                     minutes=self.cache_timeout_minutes
