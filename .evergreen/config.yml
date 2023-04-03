@@ -457,6 +457,9 @@ functions:
             rm -f ./fle_creds.sh
             export LIBMONGOCRYPT_URL="${libmongocrypt_url}"
             export TEST_ENCRYPTION=1
+            if [ -n "${test_encryption_pyopenssl}" ]; then
+              export TEST_ENCRYPTION_PYOPENSSL=1
+            fi
           fi
           if [ -n "${test_crypt_shared}" ]; then
             export TEST_CRYPT_SHARED=1
@@ -2506,6 +2509,13 @@ axes:
         tags: ["encryption_tag"]
         variables:
           test_encryption: true
+        batchtime: 10080  # 7 days
+      - id: "encryption_pyopenssl"
+        display_name: "Encryption"
+        tags: ["encryption_tag"]
+        variables:
+          test_encryption: true
+          test_encryption_pyopenssl: true
         batchtime: 10080  # 7 days
       # The path to crypt_shared is stored in the $CRYPT_SHARED_LIB_PATH expansion.
       - id: "encryption_crypt_shared"
