@@ -152,7 +152,7 @@ fi
 if [ -n "$TEST_ENCRYPTION" ]; then
     # Need aws dependency for On-Demand KMS Credentials.
     # Need OSCP dependency to verify OCSP TSL args.
-    python -m pip install '.[aws,ocsp]'
+    python -m pip install '.[aws]'
 
     # Get access to the AWS temporary credentials:
     # CSFLE_AWS_TEMP_ACCESS_KEY_ID, CSFLE_AWS_TEMP_SECRET_ACCESS_KEY, CSFLE_AWS_TEMP_SESSION_TOKEN
