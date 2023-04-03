@@ -2647,14 +2647,22 @@ buildvariants:
     ssl: "nossl"
     encryption: "*"
   display_name: "${encryption} ${platform} ${auth} ${ssl}"
-  tasks: &encryption-server-versions
-    - ".rapid"
-    - ".latest"
-    - ".6.0"
-    - ".5.0"
-    - ".4.4"
-    - ".4.2"
-    - ".4.0"
+  tasks: "test-latest-replica_set"
+  rules:
+    - if:
+        encryption: ["encryption", "encryption_crypt_shared"]
+        platform: macos-1100
+        auth: "auth"
+        ssl: "nossl"
+      then:
+        add_tasks: &encryption-server-versions
+          - ".rapid"
+          - ".latest"
+          - ".6.0"
+          - ".5.0"
+          - ".4.4"
+          - ".4.2"
+          - ".4.0"
 
 # Test one server version with zSeries, POWER8, and ARM.
 - matrix_name: "test-different-cpu-architectures"
@@ -2854,7 +2862,15 @@ buildvariants:
     auth-ssl: "*"
     encryption: "*"
   display_name: "${encryption} ${platform} ${python-version-windows} ${auth-ssl}"
-  tasks: *encryption-server-versions
+  tasks: "test-latest-replica_set"
+  rules:
+    - if:
+        encryption: ["encryption", "encryption_crypt_shared"]
+        platform: windows-64-vsMulti-small
+        python-version-windows: "*"
+        auth-ssl: "*"
+      then:
+        add_tasks: *encryption-server-versions
 
 # Storage engine tests on Ubuntu 18.04 (x86_64) with Python 3.7.
 - matrix_name: "tests-storage-engines"
