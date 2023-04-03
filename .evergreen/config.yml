@@ -2740,6 +2740,9 @@ buildvariants:
   rules:
     - if:
         encryption: ["encryption", "encryption_crypt_shared"]
+        platform: ubuntu-18.04
+        auth-ssl: noauth-nossl
+        python-version: "*"
       then:
         add_tasks: *encryption-server-versions
 
