@@ -2159,8 +2159,11 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         encryption = ClientEncryption(
             providers, "keyvault.datakeys", self.client, OPTS, kms_tls_options=options
         )
-        self.assertFalse(encryption._io_callbacks.opts._kms_ssl_contexts["aws"].check_ocsp_endpoint)
-        encryption.close()
+        self.addCleanup(encryption.close)
+        ctx = encryption._io_callbacks.opts._kms_ssl_contexts["aws"]
+        if not hasattr(ctx, "check_ocsp_endpoint"):
+            raise self.skipTest("OCSP not enabled")  # type:ignore
+        self.assertFalse(ctx.check_ocsp_endpoint)
 
 
 # https://github.com/mongodb/specifications/blob/50e26fe/source/client-side-encryption/tests/README.rst#unique-index-on-keyaltnames
