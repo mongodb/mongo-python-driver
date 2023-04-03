@@ -52,7 +52,7 @@
                 ],
                 "appName": "reduceMaxTimeMSTest",
                 "blockConnection": true,
-                "blockTimeMS": 50
+                "blockTimeMS": 75
               }
             }
           }
