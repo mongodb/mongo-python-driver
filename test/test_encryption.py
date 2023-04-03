@@ -2161,7 +2161,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         )
         self.addCleanup(encryption.close)
         ctx = encryption._io_callbacks.opts._kms_ssl_contexts["aws"]
-        if hasattr(ctx, "check_ocsp_endpoint"):
+        if not hasattr(ctx, "check_ocsp_endpoint"):
             raise self.skipTest("OCSP not enabled")
         self.assertFalse(ctx.check_ocsp_endpoint)
 
