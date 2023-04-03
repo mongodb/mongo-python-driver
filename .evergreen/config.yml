@@ -321,7 +321,7 @@ functions:
           ${PREPARE_SHELL}
           # The mongohouse build script needs to be passed the VARIANT variable, see
           # https://github.com/10gen/mongohouse/blob/973cc11/evergreen.yaml#L65
-          VARIANT=ubuntu1804 bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/build-mongohouse-local.sh
+          VARIANT=rhel76-small bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/build-mongohouse-local.sh
     - command: shell.exec
       type: setup
       params:
@@ -2070,7 +2070,7 @@ tasks:
             shell: "bash"
             script: |
               ${PREPARE_SHELL}
-              export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/ubuntu1804-64/master/latest/libmongocrypt.tar.gz
+              export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/ubuntu2004-64/master/latest/libmongocrypt.tar.gz
               SUCCESS=false TEST_FLE_GCP_AUTO=1 ./.evergreen/run-tests.sh
 
     - name: testazurekms-task
@@ -2127,7 +2127,7 @@ tasks:
             PYTHON_BINARY=
             KEY_NAME='${testazurekms_keyname}' \
             KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}' \
-            LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/ubuntu1804-64/master/latest/libmongocrypt.tar.gz \
+            LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/ubuntu2004-64/master/latest/libmongocrypt.tar.gz \
             SUCCESS=false TEST_FLE_AZURE_AUTO=1 \
             ./.evergreen/run-tests.sh
 
@@ -2204,7 +2204,7 @@ axes:
         run_on: rhel82-arm64-small
         batchtime: 10080  # 7 days
         variables:
-          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/ubuntu1804-arm64/master/latest/libmongocrypt.tar.gz
+          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-82-arm64/master/latest/libmongocrypt.tar.gz
       - id: windows-64-vsMulti-small
         display_name: "Windows 64"
         run_on: windows-64-vsMulti-small
@@ -2549,7 +2549,7 @@ buildvariants:
   matrix_spec:
     platform:
       # OSes that support versions of MongoDB>=3.6 with SSL.
-      - ubuntu-18.04
+      - rhel76-small
     auth-ssl: "*"
   display_name: "${platform} ${auth-ssl}"
   tasks:
