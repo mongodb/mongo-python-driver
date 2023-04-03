@@ -2736,13 +2736,8 @@ buildvariants:
 #    coverage: "*"
     encryption: "*"
   display_name: "${encryption} ${python-version} ${platform} ${auth-ssl}"
+  tasks: "test-latest-replica_set"
   rules:
-    - if:
-        # Only test a subset with both encryption and PyOpenSSSl
-        encryption: encryption_pyopenssl
-      then:
-        add_tasks:
-          - "test-latest-replica_set"
     - if:
         encryption: encryption
       then:
