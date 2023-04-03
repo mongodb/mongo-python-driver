@@ -2511,7 +2511,7 @@ axes:
           test_encryption: true
         batchtime: 10080  # 7 days
       - id: "encryption_pyopenssl"
-        display_name: "Encryption"
+        display_name: "Encryption PyOpenSSL"
         tags: ["encryption_tag"]
         variables:
           test_encryption: true
