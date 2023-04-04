@@ -2631,7 +2631,6 @@ buildvariants:
       # MacOS introduced SSL support with MongoDB >= 3.2.
       # Older server versions (2.6, 3.0) are supported without SSL.
       - macos-1014
-      - macos-1100-arm64
     auth: "*"
     ssl: "*"
   exclude_spec:
