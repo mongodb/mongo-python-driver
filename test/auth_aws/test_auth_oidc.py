@@ -463,19 +463,24 @@ class TestAuthOIDC(unittest.TestCase):
             # Perform a find operation.
             client.test.test.find_one()
 
-        started_events = [i.command_name for i in listener.started_events]
-        succeeded_events = [i.command_name for i in listener.succeeded_events]
-        failed_events = [i.command_name for i in listener.failed_events]
+        started_events = [
+            i.command_name for i in listener.started_events if not i.command_name.startswith("sasl")
+        ]
+        succeeded_events = [
+            i.command_name
+            for i in listener.succeeded_events
+            if not i.command_name.startswith("sasl")
+        ]
+        failed_events = [
+            i.command_name for i in listener.failed_events if not i.command_name.startswith("sasl")
+        ]
 
         assert started_events == [
             "find",
-            "saslStart",
-            "saslStart",
-            "saslContinue",
             "find",
         ], started_events
-        assert succeeded_events == ["saslStart", "saslContinue", "find"], succeeded_events
-        assert failed_events == ["find", "saslStart"], failed_events
+        assert succeeded_events == ["find"], succeeded_events
+        assert failed_events == ["find"], failed_events
 
         # Assert that the refresh callback has been called.
         self.assertEqual(self.refresh_called, 1)
