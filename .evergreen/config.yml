@@ -2653,7 +2653,7 @@ buildvariants:
     platform:
       - macos-1100-arm64
     auth-ssl: "*"
-  display_name: "${platform} ${auth} ${ssl}"
+  display_name: "${platform} ${auth-ssl}"
   tasks:
     - ".latest"
     - ".6.0"
