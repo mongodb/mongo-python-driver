@@ -600,7 +600,7 @@ class ClientSession:
         In the event of an exception, ``with_transaction`` may retry the commit
         or the entire transaction, therefore ``callback`` may be invoked
         multiple times by a single call to ``with_transaction``. Developers
-        should be mindful of this possiblity when writing a ``callback`` that
+        should be mindful of this possibility when writing a ``callback`` that
         modifies application state or has any other side-effects.
         Note that even when the ``callback`` is invoked multiple times,
         ``with_transaction`` ensures that the transaction will be committed
