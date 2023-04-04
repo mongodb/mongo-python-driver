@@ -2176,6 +2176,15 @@ axes:
           skip_web_identity_auth_test: true
           python3_binary: /Library/Frameworks/Python.framework/Versions/3.8/bin/python3
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
+      - id: macos-1100-arm64
+        display_name: "macOS 11.00 Arm64"
+        run_on: macos-1100-arm64
+        variables:
+          skip_EC2_auth_test: true
+          skip_ECS_auth_test: true
+          skip_web_identity_auth_test: true
+          python3_binary: /Library/Frameworks/Python.framework/Versions/3.8/bin/python3
+          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
       - id: rhel62
         display_name: "RHEL 6.2 (x86_64)"
         run_on: rhel62-small
@@ -2622,6 +2631,7 @@ buildvariants:
       # MacOS introduced SSL support with MongoDB >= 3.2.
       # Older server versions (2.6, 3.0) are supported without SSL.
       - macos-1014
+      - macos-1100-arm64
     auth: "*"
     ssl: "*"
   exclude_spec:
@@ -2639,6 +2649,23 @@ buildvariants:
     - ".4.0"
     - ".3.6"
 
+- matrix_name: "test-macos-arm64"
+  matrix_spec:
+    platform:
+      - macos-1100-arm64
+    auth: "*"
+    ssl: "*"
+  exclude_spec:
+    # No point testing with SSL without auth.
+    - platform: macos-1100-arm64
+      auth: "noauth"
+      ssl: "ssl"
+  display_name: "${platform} ${auth} ${ssl}"
+  tasks:
+    - ".latest"
+    - ".6.0"
+    - ".5.0"
+    - ".4.4"
 - matrix_name: "test-macos-encryption"
   matrix_spec:
     platform:
