@@ -2652,19 +2652,14 @@ buildvariants:
   matrix_spec:
     platform:
       - macos-1100-arm64
-    auth: "*"
-    ssl: "*"
-  exclude_spec:
-    # No point testing with SSL without auth.
-    - platform: macos-1100-arm64
-      auth: "noauth"
-      ssl: "ssl"
+    auth-ssl: "*"
   display_name: "${platform} ${auth} ${ssl}"
   tasks:
     - ".latest"
     - ".6.0"
     - ".5.0"
     - ".4.4"
+
 - matrix_name: "test-macos-encryption"
   matrix_spec:
     platform:
