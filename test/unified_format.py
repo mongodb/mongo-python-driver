@@ -947,6 +947,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
         if "csot" in class_name:
+            if "gridfs" in class_name and sys.platform == "win32":
+                self.skipTest("PYTHON-3522 CSOT GridFS tests are flaky on Windows")
             if client_context.storage_engine == "mmapv1":
                 self.skipTest(
                     "MMAPv1 does not support retryable writes which is required for CSOT tests"
