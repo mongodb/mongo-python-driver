@@ -146,7 +146,13 @@ def _build_credentials_tuple(mech, source, user, passwd, extra, database):
         request_token_callback = properties.get("request_token_callback")
         refresh_token_callback = properties.get("refresh_token_callback", None)
         provider_name = properties.get("PROVIDER_NAME", "")
-        default_allowed = ["*.mongodb.net", "*.mongodb-dev.net", "*.mongodbgov.net", "localhost"]
+        default_allowed = [
+            "*.mongodb.net",
+            "*.mongodb-dev.net",
+            "*.mongodbgov.net",
+            "localhost",
+            "127.0.0.1",
+        ]
         allowed_hosts = properties.get("allowed_hosts", default_allowed)
         if not request_token_callback and provider_name != "aws":
             raise ConfigurationError(

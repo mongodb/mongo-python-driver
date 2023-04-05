@@ -154,9 +154,15 @@ class TestAuthOIDC(unittest.TestCase):
             client.test.test.find_one()
         client.close()
 
-    def test_oidc_allowed_hosts_blocked(self):
+    def test_allowed_hosts_blocked(self):
         request_token = self.create_request_cb()
         props: Dict = dict(request_token_callback=request_token, allowed_hosts=[])
+        client = MongoClient(self.uri_single, authmechanismproperties=props)
+        with self.assertRaises(PyMongoError):
+            client.test.test.find_one()
+        client.close()
+
+        props: Dict = dict(request_token_callback=request_token, allowed_hosts=["localhost1"])
         client = MongoClient(self.uri_single, authmechanismproperties=props)
         with self.assertRaises(PyMongoError):
             client.test.test.find_one()
@@ -177,6 +183,12 @@ class TestAuthOIDC(unittest.TestCase):
     def test_connect_aws_multiple_principal_user2(self):
         os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"] = os.path.join(self.token_dir, "test_user2")
         props = dict(PROVIDER_NAME="aws")
+        client = MongoClient(self.uri_multiple, authmechanismproperties=props)
+        client.test.test.find_one()
+        client.close()
+
+    def test_connect_aws_allowed_hosts_ignored(self):
+        props = dict(PROVIDER_NAME="aws", allowed_hosts=[])
         client = MongoClient(self.uri_multiple, authmechanismproperties=props)
         client.test.test.find_one()
         client.close()
