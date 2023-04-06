@@ -392,26 +392,7 @@ MONGODB-OIDC
 ------------
 .. versionadded:: 4.4
 
-The MONGODB-OIDC authentication mechanism is available in MongoDB Enterprise 7.0+.
-
-AWS OIDC Support
-~~~~~~~~~~~~~~~~
-
-PyMongo supports automatic authentication when AWS OIDC credentials are
-available, by installing pymongo with the
-``aws`` extra::
-
-  $ python -m pip install 'pymongo[aws]'
-
-A sample URI would be:
-
-  >>> from pymongo import MongoClient
-  >>> uri = "mongodb://localhost/?authMechanism=MONGODB-OIDC&authMechanismProperties=PROVIDER_NAME:aws")
-  >>> client = MongoClient(uri)
-
-The driver will use the authentication token from the file given by the
-``AWS_WEB_IDENTITY_TOKEN_FILE`` environment variable provided by AWS to
-authenticate with the server.
+The MONGODB-OIDC authentication mechanism is available in MongoDB Enterprise 7.0+ as a Public Preview.
 
 Callback-based OIDC Support
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
