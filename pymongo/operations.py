@@ -494,7 +494,7 @@ class IndexModel(object):
         .. _wildcard index: https://mongodb.com/docs/master/core/index-wildcard/
         """
         keys = _index_list(keys)
-        if "name" not in kwargs:
+        if kwargs.get("name") is None:
             kwargs["name"] = _gen_index_name(keys)
         kwargs["key"] = _index_document(keys)
         collation = validate_collation_or_none(kwargs.pop("collation", None))
