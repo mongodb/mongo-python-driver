@@ -2674,7 +2674,7 @@ buildvariants:
   tasks:
     - ".6.0"
 
-- matrix_name: "tests-python-version-rhel7.6-test-ssl"
+- matrix_name: "tests-python-version-rhel8.4-test-ssl"
   matrix_spec:
     platform: rhel84
     python-version: "*"
