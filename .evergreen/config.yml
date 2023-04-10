@@ -2746,7 +2746,7 @@ buildvariants:
   rules:
     - if:
         encryption: ["encryption", "encryption_crypt_shared"]
-        platform: ubuntu-18.04
+        platform: rhel84
         auth-ssl: noauth-nossl
         python-version: "*"
       then:
