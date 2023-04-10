@@ -2870,7 +2870,7 @@ buildvariants:
       then:
         add_tasks: *encryption-server-versions
 
-# Storage engine tests on RHEL 7.6 (x86_64) with Python 3.7.
+# Storage engine tests on RHEL 8.4 (x86_64) with Python 3.7.
 - matrix_name: "tests-storage-engines"
   matrix_spec:
     platform: rhel84
@@ -2902,7 +2902,7 @@ buildvariants:
           - "test-3.6-standalone"
           - "test-3.6-replica_set"
 
-# enableTestCommands=0 tests on RHEL 7.6 (x86_64) with Python 3.7.
+# enableTestCommands=0 tests on RHEL 8.4 (x86_64) with Python 3.7.
 - matrix_name: "test-disableTestCommands"
   matrix_spec:
     platform: rhel84
@@ -3136,7 +3136,7 @@ buildvariants:
       # Debian 8.1 only supports MongoDB 3.4+
       # SUSE12 s390x is only supported by MongoDB 3.4+
       # No enterprise build for Archlinux, SSL not available
-      # RHEL 7.6 only supports 3.6+.
+      # RHEL 7.6 and RHEL 8.4 only supports 3.6+.
       # RHEL 7 only supports 2.6+
       # RHEL 7.1 ppc64le is only supported by MongoDB 3.2+
       # RHEL 7.2 s390x is only supported by MongoDB 3.4+
