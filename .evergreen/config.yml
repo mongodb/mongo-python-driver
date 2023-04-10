@@ -2878,12 +2878,12 @@ buildvariants:
 
 - matrix_name: "tests-mod-wsgi"
   matrix_spec:
-    platform: rhel84
+    platform: ubuntu-20
     python-version: ["3.7", "3.8", "3.9", "3.10"]
     mod-wsgi-version: "*"
   exclude_spec:
    # mod-wsgi 3.5 won't build against CPython 3.8+
-   - platform: rhel84
+   - platform: ubuntu-20
      python-version: ["3.8", "3.9", "3.10"]
      mod-wsgi-version: "3"
   display_name: "${mod-wsgi-version} ${python-version} ${platform}"
@@ -3052,7 +3052,7 @@ buildvariants:
 - name: testgcpkms-variant
   display_name: "GCP KMS"
   run_on:
-    - rhel84-small
+    - ubuntu2004-small
   tasks:
     - name: testgcpkms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
@@ -3060,7 +3060,7 @@ buildvariants:
 
 - name: testazurekms-variant
   display_name: "Azure KMS"
-  run_on: rhel84-small
+  run_on: ubuntu2004-small
   tasks:
     - name: testazurekms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
