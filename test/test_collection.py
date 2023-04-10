@@ -307,6 +307,10 @@ class TestCollection(IntegrationTest):
         db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
         self.assertTrue("hello_-1_world_1" in db.test.index_information())
 
+        db.test.drop_indexes()
+        db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)], name=None)
+        self.assertTrue("hello_-1_world_1" in db.test.index_information())
+
         db.test.drop()
         db.test.insert_one({"a": 1})
         db.test.insert_one({"a": 1})

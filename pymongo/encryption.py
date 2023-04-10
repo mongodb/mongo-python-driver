@@ -41,6 +41,7 @@ from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bs
 from bson.son import SON
 from pymongo import _csot
 from pymongo.collection import Collection
+from pymongo.common import CONNECT_TIMEOUT
 from pymongo.cursor import Cursor
 from pymongo.daemon import _spawn_daemon
 from pymongo.database import Database
@@ -64,7 +65,7 @@ from pymongo.uri_parser import parse_host
 from pymongo.write_concern import WriteConcern
 
 _HTTPS_PORT = 443
-_KMS_CONNECT_TIMEOUT = 10  # TODO: CDRIVER-3262 will define this value.
+_KMS_CONNECT_TIMEOUT = CONNECT_TIMEOUT  # CDRIVER-3262 redefined this value to CONNECT_TIMEOUT
 _MONGOCRYPTD_TIMEOUT_MS = 10000
 
 

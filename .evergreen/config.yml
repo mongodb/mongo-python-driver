@@ -457,6 +457,9 @@ functions:
             rm -f ./fle_creds.sh
             export LIBMONGOCRYPT_URL="${libmongocrypt_url}"
             export TEST_ENCRYPTION=1
+            if [ -n "${test_encryption_pyopenssl}" ]; then
+              export TEST_ENCRYPTION_PYOPENSSL=1
+            fi
           fi
           if [ -n "${test_crypt_shared}" ]; then
             export TEST_CRYPT_SHARED=1
@@ -2173,6 +2176,15 @@ axes:
           skip_web_identity_auth_test: true
           python3_binary: /Library/Frameworks/Python.framework/Versions/3.8/bin/python3
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
+      - id: macos-1100-arm64
+        display_name: "macOS 11.00 Arm64"
+        run_on: macos-1100-arm64
+        variables:
+          skip_EC2_auth_test: true
+          skip_ECS_auth_test: true
+          skip_web_identity_auth_test: true
+          python3_binary: /Library/Frameworks/Python.framework/Versions/3.8/bin/python3
+          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
       - id: rhel84
         display_name: "RHEL 8.4"
         run_on: rhel84-small
@@ -2484,6 +2496,13 @@ axes:
         variables:
           test_encryption: true
         batchtime: 10080  # 7 days
+      - id: "encryption_pyopenssl"
+        display_name: "Encryption PyOpenSSL"
+        tags: ["encryption_tag"]
+        variables:
+          test_encryption: true
+          test_encryption_pyopenssl: true
+        batchtime: 10080  # 7 days
       # The path to crypt_shared is stored in the $CRYPT_SHARED_LIB_PATH expansion.
       - id: "encryption_crypt_shared"
         display_name: "Encryption shared lib"
@@ -2606,6 +2625,18 @@ buildvariants:
     - ".4.0"
     - ".3.6"
 
+- matrix_name: "test-macos-arm64"
+  matrix_spec:
+    platform:
+      - macos-1100-arm64
+    auth-ssl: "*"
+  display_name: "${platform} ${auth-ssl}"
+  tasks:
+    - ".latest"
+    - ".6.0"
+    - ".5.0"
+    - ".4.4"
+
 - matrix_name: "test-macos-encryption"
   matrix_spec:
     platform:
@@ -2614,14 +2645,22 @@ buildvariants:
     ssl: "nossl"
     encryption: "*"
   display_name: "${encryption} ${platform} ${auth} ${ssl}"
-  tasks: &encryption-server-versions
-    - ".rapid"
-    - ".latest"
-    - ".6.0"
-    - ".5.0"
-    - ".4.4"
-    - ".4.2"
-    - ".4.0"
+  tasks: "test-latest-replica_set"
+  rules:
+    - if:
+        encryption: ["encryption", "encryption_crypt_shared"]
+        platform: macos-1100
+        auth: "auth"
+        ssl: "nossl"
+      then:
+        add_tasks: &encryption-server-versions
+          - ".rapid"
+          - ".latest"
+          - ".6.0"
+          - ".5.0"
+          - ".4.4"
+          - ".4.2"
+          - ".4.0"
 
 # Test one server version with zSeries, POWER8, and ARM.
 - matrix_name: "test-different-cpu-architectures"
@@ -2703,8 +2742,15 @@ buildvariants:
 #    coverage: "*"
     encryption: "*"
   display_name: "${encryption} ${python-version} ${platform} ${auth-ssl}"
-  tasks: *encryption-server-versions
-
+  tasks: "test-latest-replica_set"
+  rules:
+    - if:
+        encryption: ["encryption", "encryption_crypt_shared"]
+        platform: ubuntu-18.04
+        auth-ssl: noauth-nossl
+        python-version: "*"
+      then:
+        add_tasks: *encryption-server-versions
 
 - matrix_name: "tests-python-version-rhel84-without-c-extensions"
   matrix_spec:
@@ -2814,7 +2860,15 @@ buildvariants:
     auth-ssl: "*"
     encryption: "*"
   display_name: "${encryption} ${platform} ${python-version-windows} ${auth-ssl}"
-  tasks: *encryption-server-versions
+  tasks: "test-latest-replica_set"
+  rules:
+    - if:
+        encryption: ["encryption", "encryption_crypt_shared"]
+        platform: windows-64-vsMulti-small
+        python-version-windows: "*"
+        auth-ssl: "*"
+      then:
+        add_tasks: *encryption-server-versions
 
 # Storage engine tests on RHEL 7.6 (x86_64) with Python 3.7.
 - matrix_name: "tests-storage-engines"
