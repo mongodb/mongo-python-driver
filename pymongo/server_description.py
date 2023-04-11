@@ -15,6 +15,7 @@
 """Represent one server the driver is connected to."""
 
 import time
+import warnings
 from typing import Any, Dict, Mapping, Optional, Set, Tuple
 
 from bson import EPOCH_NAIVE
@@ -180,6 +181,11 @@ class ServerDescription(object):
 
     @property
     def election_tuple(self) -> Tuple[Optional[int], Optional[ObjectId]]:
+        warnings.warn(
+            "'election_tuple' is deprecated, use  'set_version' and 'election_id' instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return self._set_version, self._election_id
 
     @property
