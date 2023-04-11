@@ -2697,14 +2697,14 @@ buildvariants:
 
 - matrix_name: "tests-pyopenssl"
   matrix_spec:
-    platform: ubuntu-20.04
+    platform: rhel84
     python-version: "*"
     auth: "*"
     ssl: "ssl"
     pyopenssl: "*"
   # Only test "noauth" with Python 3.7.
   exclude_spec:
-    platform: ubuntu-20.04
+    platform: rhel84
     python-version: ["3.8", "3.9", "3.10", "pypy3.7", "pypy3.8"]
     auth: "noauth"
     ssl: "ssl"
