@@ -532,6 +532,7 @@ class TestMultiServerTopology(TopologyTest):
         t.select_servers(any_server_selector)
 
         # Incompatible.
+        max_version = common.MAX_SUPPORTED_WIRE_VERSION
         got_hello(
             t,
             address,
@@ -540,8 +541,8 @@ class TestMultiServerTopology(TopologyTest):
                 HelloCompat.LEGACY_CMD: True,
                 "setName": "rs",
                 "hosts": ["a"],
-                "minWireVersion": 21,
-                "maxWireVersion": 22,
+                "minWireVersion": max_version + 1,
+                "maxWireVersion": max_version + 2,
             },
         )
 
@@ -551,8 +552,8 @@ class TestMultiServerTopology(TopologyTest):
             # Error message should say which server failed and why.
             self.assertEqual(
                 str(e),
-                "Server at a:27017 requires wire version 21, but this version "
-                "of PyMongo only supports up to %d." % (common.MAX_SUPPORTED_WIRE_VERSION,),
+                "Server at a:27017 requires wire version %d, but this version "
+                "of PyMongo only supports up to %d." % (max_version + 1, max_version),
             )
         else:
             self.fail("No error with incompatible wire version")
