@@ -120,11 +120,10 @@ class _OIDCAuthenticator:
             return None
 
         if not current_valid_token and request_cb is not None:
-            client_info = dict(principal_name=principal_name, timeout_seconds=timeout)
             if self.idp_resp is None or refresh_cb is None:
-                self.idp_resp = request_cb(client_info, self.idp_info)
+                self.idp_resp = request_cb(principal_name, self.idp_info, timeout)
             elif request_cb is not None:
-                self.idp_resp = refresh_cb(client_info, self.idp_info, self.idp_resp)
+                self.idp_resp = refresh_cb(principal_name, self.idp_info, self.idp_resp, timeout)
             cache_exp_utc = datetime.now(timezone.utc) + timedelta(minutes=CACHE_TIMEOUT_MINUTES)
             self.cache_exp_utc = cache_exp_utc
 

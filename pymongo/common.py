@@ -450,9 +450,9 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> Dict[str, Uni
             elif inspect.isfunction(value):
                 signature = inspect.signature(value)
                 if key == "request_token_callback":
-                    expected_params = 2
-                elif key == "refresh_token_callback":
                     expected_params = 3
+                elif key == "refresh_token_callback":
+                    expected_params = 4
                 else:
                     raise ValueError(f"Unrecognized Auth mechanism function {key}")
                 if len(signature.parameters) != expected_params:
