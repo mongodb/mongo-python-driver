@@ -92,6 +92,7 @@ class _OIDCAuthenticator:
     idp_info: Optional[Dict] = field(default=None)
     idp_resp: Optional[Dict] = field(default=None)
     reauth_time: Optional[datetime] = field(default=None)
+    idp_info_time: Optional[datetime] = field(default=None)
     token_exp_utc: Optional[datetime] = field(default=None)
     cache_exp_utc: datetime = field(default_factory=_get_cache_exp)
     lock: threading.Lock = field(default_factory=threading.Lock)
@@ -222,7 +223,13 @@ class _OIDCAuthenticator:
             self.clear()
             if exc.code == _REAUTHENTICATION_REQUIRED_CODE:
                 if "jwt" in bson.decode(cmd["payload"]):
-                    self.reauth_time = datetime.now(timezone.utc)
+                    if (
+                        self.idp_info_time is not None
+                        and self.reauth_time is not None
+                        and self.idp_info_time > self.reauth_time
+                    ):
+                        raise
+                    self.handle_reauth(self.reauth_time)
                     return self.authenticate(sock_info)
             raise
 
@@ -258,6 +265,7 @@ class _OIDCAuthenticator:
 
         if "issuer" in server_resp:
             self.idp_info = server_resp
+            self.idp_info_time = datetime.now(timezone.utc)
 
         conversation_id = resp["conversationId"]
         token = self.get_current_token()
