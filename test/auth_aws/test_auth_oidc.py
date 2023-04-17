@@ -26,10 +26,8 @@ from test.utils import EventListener
 
 from bson import SON
 from pymongo import MongoClient
-from pymongo.auth_oidc import _internal
+from pymongo.auth_oidc import _CACHE as _oidc_cache
 from pymongo.errors import OperationFailure, PyMongoError
-
-_oidc_cache = _internal.cache
 
 
 class TestAuthOIDC(unittest.TestCase):
@@ -389,7 +387,8 @@ class TestAuthOIDC(unittest.TestCase):
         client.close()
 
         # Ensure that the cache has been cleared.
-        assert len(_oidc_cache) == 0
+        authenticator = list(_oidc_cache.values())[0]
+        assert authenticator.idp_info is None
 
     def test_cache_is_not_used_in_aws_automatic_workflow(self):
         # Create a new client using the AWS device workflow.
@@ -398,7 +397,10 @@ class TestAuthOIDC(unittest.TestCase):
         client = MongoClient(self.uri_single, authmechanismproperties=props)
         client.test.test.find_one()
         client.close()
-        assert len(_oidc_cache) == 0
+
+        # Ensure that the cache has been cleared.
+        authenticator = list(_oidc_cache.values())[0]
+        assert authenticator.idp_info is None
 
     def test_speculative_auth_success(self):
         # Clear the cache
