@@ -226,6 +226,14 @@ class _OIDCAuthenticator:
                     return self.authenticate(sock_info)
             raise
 
+    def handle_reauth(self, prev_time):
+        new_time = self.reauth_time
+        if prev_time and new_time and new_time <= prev_time:
+            self.token_exp_utc = None
+            if not self.properties.refresh_token_callback:
+                self.clear()
+        self.reauth_time = datetime.now(timezone.utc)
+
     def authenticate(self, sock_info):
         ctx = sock_info.auth_ctx
         cmd = None
@@ -290,9 +298,5 @@ def _authenticate_oidc(credentials, sock_info, reauthenticate):
     prev_time = authenticator.reauth_time
     with authenticator.lock:
         if reauthenticate:
-            new_time = authenticator.reauth_time
-            if prev_time and new_time and new_time <= prev_time:
-                authenticator.token_exp_utc = None
-            authenticator.reauth_time = datetime.now(timezone.utc)
-
+            authenticator.handle_reauth(prev_time)
         return authenticator.authenticate(sock_info)
