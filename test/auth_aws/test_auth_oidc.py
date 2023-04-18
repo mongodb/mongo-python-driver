@@ -160,8 +160,10 @@ class TestAuthOIDC(unittest.TestCase):
             client.test.test.find_one()
         client.close()
 
-        props: Dict = dict(request_token_callback=request_token, allowed_hosts=["localhost1"])
-        client = MongoClient(self.uri_single, authmechanismproperties=props)
+        props: Dict = dict(request_token_callback=request_token, allowed_hosts=["example.com"])
+        client = MongoClient(
+            self.uri_single + "&ignored=example.com", authmechanismproperties=props, connect=False
+        )
         with self.assertRaises(PyMongoError):
             client.test.test.find_one()
         client.close()

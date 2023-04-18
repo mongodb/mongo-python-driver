@@ -121,12 +121,24 @@ class _OIDCAuthenticator:
             return None
 
         if not current_valid_token and request_cb is not None:
-            if self.idp_resp is None or refresh_cb is None:
-                self.idp_resp = request_cb(principal_name, self.idp_info, timeout)
-            elif request_cb is not None:
-                self.idp_resp = refresh_cb(principal_name, self.idp_info, self.idp_resp, timeout)
-            cache_exp_utc = datetime.now(timezone.utc) + timedelta(minutes=CACHE_TIMEOUT_MINUTES)
-            self.cache_exp_utc = cache_exp_utc
+            prev_token = self.idp_resp and self.idp_resp["access_token"]
+            with self.lock:
+                # See if the token was changed while we were waiting for the
+                # lock.
+                new_token = self.idp_resp and self.idp_resp["access_token"]
+                if new_token != prev_token:
+                    return new_token
+
+                if self.idp_resp is None or refresh_cb is None:
+                    self.idp_resp = request_cb(principal_name, self.idp_info, timeout)
+                elif request_cb is not None:
+                    self.idp_resp = refresh_cb(
+                        principal_name, self.idp_info, self.idp_resp, timeout
+                    )
+                cache_exp_utc = datetime.now(timezone.utc) + timedelta(
+                    minutes=CACHE_TIMEOUT_MINUTES
+                )
+                self.cache_exp_utc = cache_exp_utc
 
         token_result = self.idp_resp
 
@@ -229,17 +241,20 @@ class _OIDCAuthenticator:
                         and self.idp_info_time > self.reauth_time
                     ):
                         raise
-                    self.handle_reauth(self.reauth_time)
+                    self.handle_reauth(sock_info)
                     return self.authenticate(sock_info)
             raise
 
-    def handle_reauth(self, prev_time):
-        new_time = self.reauth_time
-        if prev_time and new_time and new_time <= prev_time:
-            self.token_exp_utc = None
-            if not self.properties.refresh_token_callback:
-                self.clear()
+    def handle_reauth(self, sock_info):
+        prev_token = getattr(sock_info, "oidc_access_token", None)
+        if prev_token and self.idp_resp and prev_token != self.idp_resp["access_token"]:
+            # No need to preemptively clear, we've already changed tokens.
+            return
+
         self.reauth_time = datetime.now(timezone.utc)
+        self.token_exp_utc = None
+        if not self.properties.refresh_token_callback:
+            self.clear()
 
     def authenticate(self, sock_info):
         ctx = sock_info.auth_ctx
@@ -269,6 +284,7 @@ class _OIDCAuthenticator:
 
         conversation_id = resp["conversationId"]
         token = self.get_current_token()
+        sock_info.oidc_access_token = token
         bin_payload = Binary(bson.encode(dict(jwt=token)))
         cmd = SON(
             [
@@ -301,10 +317,6 @@ class _OIDCContextMixin:
 def _authenticate_oidc(credentials, sock_info, reauthenticate):
     """Authenticate using MONGODB-OIDC."""
     authenticator = _get_authenticator(credentials, sock_info.address)
-    # Prevent a race condition on reauthentication.  Store the current time
-    # and compare to reauth time.
-    prev_time = authenticator.reauth_time
-    with authenticator.lock:
-        if reauthenticate:
-            authenticator.handle_reauth(prev_time)
-        return authenticator.authenticate(sock_info)
+    if reauthenticate:
+        authenticator.handle_reauth(sock_info)
+    return authenticator.authenticate(sock_info)
