@@ -93,6 +93,7 @@ class _OIDCAuthenticator:
     idp_resp: Optional[Dict] = field(default=None)
     reauth_time: Optional[datetime] = field(default=None)
     idp_info_time: Optional[datetime] = field(default=None)
+    token_acq_time: Optional[datetime] = field(default=None)
     token_exp_utc: Optional[datetime] = field(default=None)
     cache_exp_utc: datetime = field(default_factory=_get_cache_exp)
     lock: threading.Lock = field(default_factory=threading.Lock)
@@ -139,6 +140,7 @@ class _OIDCAuthenticator:
                     minutes=CACHE_TIMEOUT_MINUTES
                 )
                 self.cache_exp_utc = cache_exp_utc
+                self.token_acq_time = datetime.now(timezone.utc)
 
         token_result = self.idp_resp
 
@@ -246,8 +248,8 @@ class _OIDCAuthenticator:
             raise
 
     def handle_reauth(self, sock_info):
-        prev_token = getattr(sock_info, "oidc_access_token", None)
-        if prev_token and self.idp_resp and prev_token != self.idp_resp["access_token"]:
+        prev_time = getattr(sock_info, "oidc_token_time", None)
+        if prev_time and self.token_acq_time and prev_time != self.token_acq_time:
             # No need to preemptively clear, we've already changed tokens.
             return
 
@@ -267,6 +269,8 @@ class _OIDCAuthenticator:
             resp = self.run_command(sock_info, cmd)
 
         if resp["done"]:
+            if self.token_acq_time is not None:
+                sock_info.oidc_token_time = self.token_acq_time
             return
 
         # Convert the server response to be more pythonic.
@@ -284,7 +288,7 @@ class _OIDCAuthenticator:
 
         conversation_id = resp["conversationId"]
         token = self.get_current_token()
-        sock_info.oidc_access_token = token
+        sock_info.oidc_token_time = self.token_acq_time
         bin_payload = Binary(bson.encode(dict(jwt=token)))
         cmd = SON(
             [
@@ -306,8 +310,7 @@ class _OIDCContextMixin:
 
     def speculate_command(self):
         authenticator = _get_authenticator(self.credentials, self.address)
-        with authenticator.lock:
-            cmd = authenticator.auth_start_cmd(False)
+        cmd = authenticator.auth_start_cmd(False)
         if cmd is None:
             return
         cmd["db"] = self.credentials.source

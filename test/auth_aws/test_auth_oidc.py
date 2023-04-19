@@ -16,6 +16,8 @@
 
 import os
 import sys
+import threading
+import time
 import unittest
 from contextlib import contextmanager
 from typing import Dict
@@ -26,7 +28,9 @@ from test.utils import EventListener
 
 from bson import SON
 from pymongo import MongoClient
+from pymongo.auth import MongoCredential
 from pymongo.auth_oidc import _CACHE as _oidc_cache
+from pymongo.auth_oidc import _get_authenticator, _OIDCProperties
 from pymongo.errors import OperationFailure, PyMongoError
 
 
@@ -46,7 +50,7 @@ class TestAuthOIDC(unittest.TestCase):
         _oidc_cache.clear()
         os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"] = os.path.join(self.token_dir, "test_user1")
 
-    def create_request_cb(self, username="test_user1", expires_in_seconds=None):
+    def create_request_cb(self, username="test_user1", expires_in_seconds=None, sleep=0):
 
         token_file = os.path.join(self.token_dir, username)
 
@@ -64,6 +68,9 @@ class TestAuthOIDC(unittest.TestCase):
             with open(token_file) as fid:
                 token = fid.read()
             resp = dict(access_token=token)
+
+            time.sleep(sleep)
+
             if expires_in_seconds is not None:
                 resp["expires_in_seconds"] = expires_in_seconds
             self.request_called += 1
@@ -209,6 +216,31 @@ class TestAuthOIDC(unittest.TestCase):
         client.test.test.find_one()
         client.close()
 
+    def test_lock_avoids_extra_callbacks(self):
+        request_cb = self.create_request_cb(sleep=0.5)
+        refresh_cb = self.create_refresh_cb()
+
+        props: Dict = dict(request_token_callback=request_cb, refresh_token_callback=refresh_cb)
+
+        def run_test():
+            client = MongoClient(self.uri_single, authMechanismProperties=props)
+            client.test.test.find_one()
+            client.close()
+
+            client = MongoClient(self.uri_single, authMechanismProperties=props)
+            client.test.test.find_one()
+            client.close()
+
+        t1 = threading.Thread(target=run_test)
+        t2 = threading.Thread(target=run_test)
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+
+        assert self.request_called == 1
+        assert self.refresh_called == 2
+
     def test_request_callback_returns_null(self):
         def request_token_null(a, b, c):
             return None
@@ -330,7 +362,7 @@ class TestAuthOIDC(unittest.TestCase):
         client = MongoClient(self.uri_single, authMechanismProperties=props)
 
         # Ensure that a ``find`` operation adds credentials to the cache.
-        request_called = 0
+        self.request_called = 0
         client.test.test.find_one()
         client.close()
         assert self.request_called == 1
@@ -563,6 +595,46 @@ class TestAuthOIDC(unittest.TestCase):
                 client.test.test.find_one()
 
         client.close()
+
+    def test_late_reauth_avoids_callback(self):
+        # Step 1: connect with both clients
+        request_cb = self.create_request_cb(expires_in_seconds=1e6)
+        refresh_cb = self.create_refresh_cb(expires_in_seconds=1e6)
+
+        props: Dict = dict(request_token_callback=request_cb, refresh_token_callback=refresh_cb)
+        client1 = MongoClient(self.uri_single, authMechanismProperties=props)
+        client1.test.test.find_one()
+        client2 = MongoClient(self.uri_single, authMechanismProperties=props)
+        client2.test.test.find_one()
+
+        assert self.refresh_called == 0
+        assert self.request_called == 1
+
+        # Step 2: cause a find 391 on the first client
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "errorCode": 391},
+            }
+        ):
+            # Perform a find operation that succeeds.
+            client1.test.test.find_one()
+
+        assert self.refresh_called == 1
+        assert self.request_called == 1
+
+        # Step 3: cause a find 391 on the second client
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "errorCode": 391},
+            }
+        ):
+            # Perform a find operation that succeeds.
+            client2.test.test.find_one()
+
+        assert self.refresh_called == 1
+        assert self.request_called == 1
 
 
 if __name__ == "__main__":
