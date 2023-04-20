@@ -91,9 +91,9 @@ class _OIDCAuthenticator:
     properties: _OIDCProperties
     idp_info: Optional[Dict] = field(default=None)
     idp_resp: Optional[Dict] = field(default=None)
-    reauth_time: Optional[datetime] = field(default=None)
-    idp_info_time: Optional[datetime] = field(default=None)
-    token_acq_time: Optional[datetime] = field(default=None)
+    reauth_gen_id: int = field(default=0)
+    idp_info_gen_id: int = field(default=0)
+    token_gen_id: int = field(default=0)
     token_exp_utc: Optional[datetime] = field(default=None)
     cache_exp_utc: datetime = field(default_factory=_get_cache_exp)
     lock: threading.Lock = field(default_factory=threading.Lock)
@@ -140,7 +140,7 @@ class _OIDCAuthenticator:
                     minutes=CACHE_TIMEOUT_MINUTES
                 )
                 self.cache_exp_utc = cache_exp_utc
-                self.token_acq_time = datetime.now(timezone.utc)
+                self.token_gen_id += 1
 
         token_result = self.idp_resp
 
@@ -237,23 +237,19 @@ class _OIDCAuthenticator:
             self.clear()
             if exc.code == _REAUTHENTICATION_REQUIRED_CODE:
                 if "jwt" in bson.decode(cmd["payload"]):
-                    if (
-                        self.idp_info_time is not None
-                        and self.reauth_time is not None
-                        and self.idp_info_time > self.reauth_time
-                    ):
+                    if self.idp_info_gen_id > self.reauth_gen_id:
                         raise
                     self.handle_reauth(sock_info)
                     return self.authenticate(sock_info)
             raise
 
     def handle_reauth(self, sock_info):
-        prev_time = getattr(sock_info, "oidc_token_time", None)
-        if prev_time and self.token_acq_time and prev_time != self.token_acq_time:
+        prev_id = getattr(sock_info, "oidc_token_gen_id", None)
+        if prev_id != self.token_gen_id:
             # No need to preemptively clear, we've already changed tokens.
             return
 
-        self.reauth_time = datetime.now(timezone.utc)
+        self.reauth_gen_id = self.idp_info_gen_id
         self.token_exp_utc = None
         if not self.properties.refresh_token_callback:
             self.clear()
@@ -269,8 +265,7 @@ class _OIDCAuthenticator:
             resp = self.run_command(sock_info, cmd)
 
         if resp["done"]:
-            if self.token_acq_time is not None:
-                sock_info.oidc_token_time = self.token_acq_time
+            sock_info.oidc_token_gen_id = self.token_gen_id
             return
 
         # Convert the server response to be more pythonic.
@@ -284,11 +279,11 @@ class _OIDCAuthenticator:
 
         if "issuer" in server_resp:
             self.idp_info = server_resp
-            self.idp_info_time = datetime.now(timezone.utc)
+            self.idp_info_gen_id += 1
 
         conversation_id = resp["conversationId"]
         token = self.get_current_token()
-        sock_info.oidc_token_time = self.token_acq_time
+        sock_info.oidc_token_gen_id = self.token_gen_id
         bin_payload = Binary(bson.encode(dict(jwt=token)))
         cmd = SON(
             [

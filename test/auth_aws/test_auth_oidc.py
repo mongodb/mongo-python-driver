@@ -636,6 +636,9 @@ class TestAuthOIDC(unittest.TestCase):
         assert self.refresh_called == 1
         assert self.request_called == 1
 
+        client1.close()
+        client2.close()
+
 
 if __name__ == "__main__":
     unittest.main()
