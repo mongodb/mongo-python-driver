@@ -100,7 +100,7 @@ def _decimal_to_128(value: _VALUE_OPTIONS) -> Tuple[int, int]:
         if significand & (1 << i):
             high |= 1 << (i - 64)
 
-    biased_exponent = exponent + _EXPONENT_BIAS
+    biased_exponent = exponent + _EXPONENT_BIAS  # type: ignore[operator]
 
     if high >> 49 == 1:
         high = high & 0x7FFFFFFFFFFF
