@@ -39,7 +39,7 @@ class _OIDCProperties:
 TOKEN_BUFFER_MINUTES = 5
 CALLBACK_TIMEOUT_SECONDS = 5 * 60
 CACHE_TIMEOUT_MINUTES = 60 * 5
-
+CALLBACK_VERSION = 0
 
 _CACHE: Dict[str, "_OIDCAuthenticator"] = {}
 
@@ -130,12 +130,19 @@ class _OIDCAuthenticator:
                 if new_token != prev_token:
                     return new_token
 
+                refresh_token = self.idp_resp and self.idp_resp.get("refresh_token")
+                refresh_token = refresh_token or ""
+                context = dict(
+                    timeout_seconds=timeout,
+                    principal_name=principal_name,
+                    version=CALLBACK_VERSION,
+                    refresh_token=refresh_token,
+                )
+
                 if self.idp_resp is None or refresh_cb is None:
-                    self.idp_resp = request_cb(principal_name, self.idp_info, timeout)
+                    self.idp_resp = request_cb(self.idp_info, context)
                 elif request_cb is not None:
-                    self.idp_resp = refresh_cb(
-                        principal_name, self.idp_info, self.idp_resp, timeout
-                    )
+                    self.idp_resp = refresh_cb(self.idp_info, context)
                 cache_exp_utc = datetime.now(timezone.utc) + timedelta(
                     minutes=CACHE_TIMEOUT_MINUTES
                 )
