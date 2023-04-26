@@ -134,7 +134,6 @@ class _OIDCAuthenticator:
                 refresh_token = refresh_token or ""
                 context = dict(
                     timeout_seconds=timeout,
-                    principal_name=principal_name,
                     version=CALLBACK_VERSION,
                     refresh_token=refresh_token,
                 )

@@ -55,11 +55,6 @@ class TestAuthOIDC(unittest.TestCase):
         token_file = os.path.join(self.token_dir, username)
 
         def request_token(server_info, context):
-            # Validate the principal.
-            principal_name = context.get("principal_name")
-            if principal_name is not None:
-                self.assertIsInstance(principal_name, str)
-
             # Validate the info.
             self.assertIn("issuer", server_info)
             self.assertIn("client_id", server_info)
@@ -87,11 +82,6 @@ class TestAuthOIDC(unittest.TestCase):
         def refresh_token(server_info, context):
             with open(token_file) as fid:
                 token = fid.read()
-
-            # Validate the principal.
-            principal_name = context.get("principal_name")
-            if principal_name is not None:
-                self.assertIsInstance(principal_name, str)
 
             # Validate the info.
             self.assertIn("issuer", server_info)
