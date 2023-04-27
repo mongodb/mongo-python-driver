@@ -2030,11 +2030,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             pairs specifying the index to create
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
-            arguments
           - `comment` (optional): A user-provided comment to attach to this
             command.
           - `**kwargs` (optional): any additional index creation
             options (see the above list) should be passed as keyword
+            arguments.
 
         .. versionchanged:: 4.4
            Allow passing a list containing (key, direction) pairs
@@ -2082,13 +2082,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         :Parameters:
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
-            arguments
           - `comment` (optional): A user-provided comment to attach to this
             command.
           - `**kwargs` (optional): optional arguments to the createIndexes
             command (like maxTimeMS) can be passed as keyword arguments.
-
-
 
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation.
@@ -2100,7 +2097,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 3.4
            Apply this collection's write concern automatically to this operation
            when connected to MongoDB >= 3.4.
-
         """
         if comment is not None:
             kwargs["comment"] = comment
