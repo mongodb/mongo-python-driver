@@ -2198,7 +2198,7 @@ class TestUniqueIndexOnKeyAltNamesProse(EncryptionIntegrationTest):
 # https://github.com/mongodb/specifications/blob/d4c9432/source/client-side-encryption/tests/README.rst#explicit-encryption
 class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
     @client_context.require_no_standalone
-    @client_context.require_version_min(6, 0, -1)
+    @client_context.require_version_min(7, 0, -1)
     def setUp(self):
         super().setUp()
         self.encrypted_fields = json_data("etc", "data", "encryptedFields.json")
@@ -2425,7 +2425,7 @@ class TestOnDemandAWSCredentials(EncryptionIntegrationTest):
 class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):
     # Queryable Encryption is not supported on Standalone topology.
     @client_context.require_no_standalone
-    @client_context.require_version_min(6, 0, -1)
+    @client_context.require_version_min(7, 0, -1)
     def setUp(self):
         super().setUp()
 
@@ -2517,7 +2517,7 @@ class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#range-explicit-encryption
 class TestRangeQueryProse(EncryptionIntegrationTest):
     @client_context.require_no_standalone
-    @client_context.require_version_min(6, 2, -1)
+    @client_context.require_version_min(7, 0, -1)
     def setUp(self):
         super().setUp()
         self.key1_document = json_data("etc", "data", "keys", "key1-document.json")
@@ -2710,7 +2710,7 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#automatic-data-encryption-keys
 class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
     @client_context.require_no_standalone
-    @client_context.require_version_min(6, 0, -1)
+    @client_context.require_version_min(7, 0, -1)
     def setUp(self):
         super().setUp()
         self.key1_document = json_data("etc", "data", "keys", "key1-document.json")

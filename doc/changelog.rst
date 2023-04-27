@@ -8,9 +8,14 @@ Changes in Version 4.4
   or keys to :meth:`~pymongo.collection.Collection.create_index`.
 - pymongocrypt 1.5.0 or later is now required for client side field level
   encryption support.
-- Improved support for Pyright to improve typing support for IDEs like Visual Studio Code or Visual Studio.
+- Improved support for Pyright to improve typing support for IDEs like Visual Studio Code
+  or Visual Studio.
 - Improved support for type-checking with MyPy "strict" mode (`--strict`).
 - Added support for Python 3.11.
+- pymongocrypt 1.6.0 or later is now required for Client Side Field Level Encryption (CSFLE)
+  and Queryable Encryption (QE) support. MongoDB Server 7.0 introduced a backwards breaking
+  change to the QE protocol. Users taking advantage of the QE beta must now upgrade to
+  MongoDB 7.0+ and PyMongo 4.4+.
 
 Issues Resolved
 ...............
