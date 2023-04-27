@@ -441,7 +441,7 @@ else:
             return (
                 "document_class={}, tz_aware={!r}, uuid_representation={}, "
                 "unicode_decode_error_handler={!r}, tzinfo={!r}, "
-                "type_registry={!r}, datetime_conversion={}".format(
+                "type_registry={!r}, datetime_conversion={!s}".format(
                     document_class_repr,
                     self.tz_aware,
                     uuid_rep_repr,
