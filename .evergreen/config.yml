@@ -1246,9 +1246,9 @@ tasks:
               ENSURE_UNIVERSAL2: "1"
         - func: "upload release"
 
-    - name: "release-mac-1014"
+    - name: "release-mac-1015"
       tags: ["release_tag"]
-      run_on: macos-1014
+      run_on: macos-1015
       commands:
         - func: "build release"
           vars:
@@ -2162,9 +2162,9 @@ axes:
         variables:
           python3_binary: "/opt/python/3.8/bin/python3"
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/debian92/master/latest/libmongocrypt.tar.gz
-      - id: macos-1014
-        display_name: "macOS 10.14"
-        run_on: macos-1014
+      - id: macos-1015
+        display_name: "macOS 10.15"
+        run_on: macos-1015
         variables:
           skip_EC2_auth_test: true
           skip_ECS_auth_test: true
@@ -2611,12 +2611,12 @@ buildvariants:
     platform:
       # MacOS introduced SSL support with MongoDB >= 3.2.
       # Older server versions (2.6, 3.0) are supported without SSL.
-      - macos-1014
+      - macos-1015
     auth: "*"
     ssl: "*"
   exclude_spec:
     # No point testing with SSL without auth.
-    - platform: macos-1014
+    - platform: macos-1015
       auth: "noauth"
       ssl: "ssl"
   display_name: "${platform} ${auth} ${ssl}"
@@ -2717,7 +2717,7 @@ buildvariants:
 
 - matrix_name: "tests-pyopenssl-macOS"
   matrix_spec:
-    platform: macos-1014
+    platform: macos-1015
     auth: "auth"
     ssl: "ssl"
     pyopenssl: "*"
@@ -3051,7 +3051,7 @@ buildvariants:
 
 - matrix_name: "ocsp-test-macos"
   matrix_spec:
-    platform: macos-1014
+    platform: macos-1015
     mongodb-version: ["4.4", "5.0", "6.0", "latest"]
     auth: "noauth"
     ssl: "ssl"
@@ -3075,7 +3075,7 @@ buildvariants:
 
 - matrix_name: "aws-auth-test-mac"
   matrix_spec:
-    platform: [macos-1014]
+    platform: [macos-1015]
     python-version-mac: ["system-python3"]
   display_name: "MONGODB-AWS Auth ${platform} ${python-version-mac}"
   tasks:
