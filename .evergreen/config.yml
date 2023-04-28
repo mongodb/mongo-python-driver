@@ -1246,7 +1246,7 @@ tasks:
               ENSURE_UNIVERSAL2: "1"
         - func: "upload release"
 
-    - name: "release-mac-1015"
+    - name: "release-mac-1014"
       tags: ["release_tag"]
       run_on: macos-1014
       commands:
