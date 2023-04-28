@@ -12,5 +12,7 @@ include tools/README.rst
 recursive-include test *.pem
 recursive-include test *.py
 recursive-include bson *.h
-global-include *.pyi
-global-include *.typed
+recursive-include bson *.pyi
+recursive-include bson *.typed
+recursive-include gridfs *.typed
+recursive-include pymongo *.typed
