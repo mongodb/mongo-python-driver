@@ -230,8 +230,8 @@ class TestAuthOIDC(unittest.TestCase):
         t1.join()
         t2.join()
 
-        assert self.request_called == 1
-        assert self.refresh_called == 2
+        self.assertEqual(self.request_called, 1)
+        self.assertEqual(self.refresh_called, 2)
 
     def test_request_callback_returns_null(self):
         def request_token_null(a, b):
@@ -334,7 +334,7 @@ class TestAuthOIDC(unittest.TestCase):
         client.test.test.find_one()
         client.close()
 
-        assert len(_oidc_cache) == 1
+        self.assertEqual(len(_oidc_cache), 1)
 
         # Create a new client with the same request callback and a refresh callback.
         # Ensure that a ``find`` operation results in a call to the refresh callback.
@@ -342,8 +342,8 @@ class TestAuthOIDC(unittest.TestCase):
         client.test.test.find_one()
         client.close()
 
-        assert self.refresh_called == 1
-        assert len(_oidc_cache) == 1
+        self.assertEqual(self.refresh_called, 1)
+        self.assertEqual(len(_oidc_cache), 1)
 
     def test_cache_with_no_refresh(self):
         # Create a new client with a request callback callback.
@@ -357,16 +357,16 @@ class TestAuthOIDC(unittest.TestCase):
         self.request_called = 0
         client.test.test.find_one()
         client.close()
-        assert self.request_called == 1
-        assert len(_oidc_cache) == 1
+        self.assertEqual(self.request_called, 1)
+        self.assertEqual(len(_oidc_cache), 1)
 
         # Create a new client with the same request callback.
         # Ensure that a ``find`` operation results in a call to the request callback.
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         client.test.test.find_one()
         client.close()
-        assert self.request_called == 2
-        assert len(_oidc_cache) == 1
+        self.assertEqual(self.request_called, 2)
+        self.assertEqual(len(_oidc_cache), 1)
 
     def test_cache_key_includes_callback(self):
         request_cb = self.create_request_cb()
@@ -388,7 +388,7 @@ class TestAuthOIDC(unittest.TestCase):
         # Ensure that a ``find`` operation adds a new entry to the cache.
         client.test.test.find_one()
         client.close()
-        assert len(_oidc_cache) == 2
+        self.assertEqual(len(_oidc_cache), 2)
 
     def test_cache_clears_on_error(self):
         request_cb = self.create_request_cb()
@@ -414,7 +414,7 @@ class TestAuthOIDC(unittest.TestCase):
 
         # Ensure that the cache has been cleared.
         authenticator = list(_oidc_cache.values())[0]
-        assert authenticator.idp_info is None
+        self.assertIsNone(authenticator.idp_info)
 
     def test_cache_is_not_used_in_aws_automatic_workflow(self):
         # Create a new client using the AWS device workflow.
@@ -426,7 +426,7 @@ class TestAuthOIDC(unittest.TestCase):
 
         # Ensure that the cache has been cleared.
         authenticator = list(_oidc_cache.values())[0]
-        assert authenticator.idp_info is None
+        self.assertIsNone(authenticator.idp_info)
 
     def test_speculative_auth_success(self):
         # Clear the cache
@@ -515,12 +515,15 @@ class TestAuthOIDC(unittest.TestCase):
             i.command_name for i in listener.failed_events if not i.command_name.startswith("sasl")
         ]
 
-        assert started_events == [
-            "find",
-            "find",
-        ], started_events
-        assert succeeded_events == ["find"], succeeded_events
-        assert failed_events == ["find"], failed_events
+        self.assertEqual(
+            started_events,
+            [
+                "find",
+                "find",
+            ],
+        )
+        self.assertEqual(succeeded_events, ["find"])
+        self.assertEqual(failed_events, ["find"])
 
         # Assert that the refresh callback has been called.
         self.assertEqual(self.refresh_called, 1)
@@ -599,8 +602,8 @@ class TestAuthOIDC(unittest.TestCase):
         client2 = MongoClient(self.uri_single, authMechanismProperties=props)
         client2.test.test.find_one()
 
-        assert self.refresh_called == 0
-        assert self.request_called == 1
+        self.assertEqual(self.refresh_called, 0)
+        self.assertEqual(self.request_called, 1)
 
         # Step 2: cause a find 391 on the first client
         with self.fail_point(
@@ -612,8 +615,8 @@ class TestAuthOIDC(unittest.TestCase):
             # Perform a find operation that succeeds.
             client1.test.test.find_one()
 
-        assert self.refresh_called == 1
-        assert self.request_called == 1
+        self.assertEqual(self.refresh_called, 1)
+        self.assertEqual(self.request_called, 1)
 
         # Step 3: cause a find 391 on the second client
         with self.fail_point(
@@ -625,8 +628,8 @@ class TestAuthOIDC(unittest.TestCase):
             # Perform a find operation that succeeds.
             client2.test.test.find_one()
 
-        assert self.refresh_called == 1
-        assert self.request_called == 1
+        self.assertEqual(self.refresh_called, 1)
+        self.assertEqual(self.request_called, 1)
 
         client1.close()
         client2.close()
