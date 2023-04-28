@@ -30,8 +30,7 @@ from bson import SON
 from pymongo import MongoClient
 from pymongo.auth import MongoCredential
 from pymongo.auth_oidc import _CACHE as _oidc_cache
-from pymongo.auth_oidc import _get_authenticator, _OIDCProperties
-from pymongo.errors import OperationFailure, PyMongoError
+from pymongo.errors import ConfigurationError, OperationFailure
 
 
 class TestAuthOIDC(unittest.TestCase):
@@ -156,7 +155,7 @@ class TestAuthOIDC(unittest.TestCase):
         request_token = self.create_request_cb()
         props: Dict = dict(request_token_callback=request_token, allowed_hosts=[])
         client = MongoClient(self.uri_single, authmechanismproperties=props)
-        with self.assertRaises(PyMongoError):
+        with self.assertRaises(ConfigurationError):
             client.test.test.find_one()
         client.close()
 
@@ -164,7 +163,7 @@ class TestAuthOIDC(unittest.TestCase):
         client = MongoClient(
             self.uri_single + "&ignored=example.com", authmechanismproperties=props, connect=False
         )
-        with self.assertRaises(PyMongoError):
+        with self.assertRaises(ConfigurationError):
             client.test.test.find_one()
         client.close()
 

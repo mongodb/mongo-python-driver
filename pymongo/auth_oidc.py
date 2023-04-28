@@ -22,7 +22,7 @@ from typing import Any, Callable, Dict, List, Optional
 import bson
 from bson.binary import Binary
 from bson.son import SON
-from pymongo.errors import OperationFailure, PyMongoError
+from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.helpers import _REAUTHENTICATION_REQUIRED_CODE
 
 
@@ -67,10 +67,10 @@ def _get_authenticator(credentials, address):
         for patt in allowed_hosts:
             if patt == address[0]:
                 found = True
-            elif patt.startswith("*") and address[0].endswith(patt[1:]):
+            elif patt.startswith("*.") and address[0].endswith(patt[1:]):
                 found = True
         if not found:
-            raise PyMongoError(
+            raise ConfigurationError(
                 f"Refusing to connect to {address[0]}, which is not in authOIDCAllowedHosts: {allowed_hosts}"
             )
 
