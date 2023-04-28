@@ -16,8 +16,9 @@
 
 import functools
 import time
+from collections import deque
 from contextvars import ContextVar, Token
-from typing import Any, Callable, MutableMapping, Optional, Tuple, TypeVar, cast
+from typing import Any, Callable, Deque, MutableMapping, Optional, Tuple, TypeVar, cast
 
 from pymongo.write_concern import WriteConcern
 
@@ -116,3 +117,33 @@ def apply_write_concern(cmd: MutableMapping, write_concern: Optional[WriteConcer
         wc.pop("wtimeout", None)
     if wc:
         cmd["writeConcern"] = wc
+
+
+_MAX_RTT_SAMPLES: int = 10
+_MIN_RTT_SAMPLES: int = 2
+
+
+class MovingMinimum:
+    """Tracks a minimum RTT within the last 10 RTT samples."""
+
+    samples: Deque[float]
+
+    def __init__(self) -> None:
+        self.samples = deque(maxlen=_MAX_RTT_SAMPLES)
+
+    def add_sample(self, sample: float) -> None:
+        if sample < 0:
+            # Likely system time change while waiting for hello response
+            # and not using time.monotonic. Ignore it, the next one will
+            # probably be valid.
+            return
+        self.samples.append(sample)
+
+    def get(self) -> float:
+        """Get the min, or 0.0 if there aren't enough samples yet."""
+        if len(self.samples) >= _MIN_RTT_SAMPLES:
+            return min(self.samples)
+        return 0.0
+
+    def reset(self) -> None:
+        self.samples.clear()

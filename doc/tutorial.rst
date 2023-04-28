@@ -4,8 +4,9 @@ Tutorial
 .. testsetup::
 
   from pymongo import MongoClient
+
   client = MongoClient()
-  client.drop_database('test-database')
+  client.drop_database("test-database")
 
 This tutorial is intended as an introduction to working with
 **MongoDB** and **PyMongo**.
@@ -45,13 +46,13 @@ specify the host and port explicitly, as follows:
 
 .. doctest::
 
-  >>> client = MongoClient('localhost', 27017)
+  >>> client = MongoClient("localhost", 27017)
 
 Or use the MongoDB URI format:
 
 .. doctest::
 
-  >>> client = MongoClient('mongodb://localhost:27017/')
+  >>> client = MongoClient("mongodb://localhost:27017/")
 
 Getting a Database
 ------------------
@@ -70,7 +71,7 @@ instead:
 
 .. doctest::
 
-  >>> db = client['test-database']
+  >>> db = client["test-database"]
 
 Getting a Collection
 --------------------
@@ -87,7 +88,7 @@ or (using dictionary style access):
 
 .. doctest::
 
-  >>> collection = db['test-collection']
+  >>> collection = db["test-collection"]
 
 An important note about collections (and databases) in MongoDB is that
 they are created lazily - none of the above commands have actually
@@ -104,10 +105,12 @@ post:
 .. doctest::
 
   >>> import datetime
-  >>> post = {"author": "Mike",
-  ...         "text": "My first blog post!",
-  ...         "tags": ["mongodb", "python", "pymongo"],
-  ...         "date": datetime.datetime.utcnow()}
+  >>> post = {
+  ...     "author": "Mike",
+  ...     "text": "My first blog post!",
+  ...     "tags": ["mongodb", "python", "pymongo"],
+  ...     "date": datetime.datetime.utcnow(),
+  ... }
 
 Note that documents can contain native Python types (like
 :class:`datetime.datetime` instances) which will be automatically
@@ -212,7 +215,7 @@ Note that an ObjectId is not the same as its string representation:
 .. doctest::
 
   >>> post_id_as_str = str(post_id)
-  >>> posts.find_one({"_id": post_id_as_str}) # No result
+  >>> posts.find_one({"_id": post_id_as_str})  # No result
   >>>
 
 A common task in web applications is to get an ObjectId from the
@@ -240,14 +243,20 @@ command to the server:
 
 .. doctest::
 
-  >>> new_posts = [{"author": "Mike",
-  ...               "text": "Another post!",
-  ...               "tags": ["bulk", "insert"],
-  ...               "date": datetime.datetime(2009, 11, 12, 11, 14)},
-  ...              {"author": "Eliot",
-  ...               "title": "MongoDB is fun",
-  ...               "text": "and pretty easy too!",
-  ...               "date": datetime.datetime(2009, 11, 10, 10, 45)}]
+  >>> new_posts = [
+  ...     {
+  ...         "author": "Mike",
+  ...         "text": "Another post!",
+  ...         "tags": ["bulk", "insert"],
+  ...         "date": datetime.datetime(2009, 11, 12, 11, 14),
+  ...     },
+  ...     {
+  ...         "author": "Eliot",
+  ...         "title": "MongoDB is fun",
+  ...         "text": "and pretty easy too!",
+  ...         "date": datetime.datetime(2009, 11, 10, 10, 45),
+  ...     },
+  ... ]
   >>> result = posts.insert_many(new_posts)
   >>> result.inserted_ids
   [ObjectId('...'), ObjectId('...')]
@@ -274,7 +283,7 @@ document in the ``posts`` collection:
 .. doctest::
 
   >>> for post in posts.find():
-  ...   pprint.pprint(post)
+  ...     pprint.pprint(post)
   ...
   {'_id': ObjectId('...'),
    'author': 'Mike',
@@ -300,7 +309,7 @@ author is "Mike":
 .. doctest::
 
   >>> for post in posts.find({"author": "Mike"}):
-  ...   pprint.pprint(post)
+  ...     pprint.pprint(post)
   ...
   {'_id': ObjectId('...'),
    'author': 'Mike',
@@ -343,7 +352,7 @@ than a certain date, but also sort the results by author:
 
   >>> d = datetime.datetime(2009, 11, 12, 12)
   >>> for post in posts.find({"date": {"$lt": d}}).sort("author"):
-  ...   pprint.pprint(post)
+  ...     pprint.pprint(post)
   ...
   {'_id': ObjectId('...'),
    'author': 'Eliot',
@@ -373,8 +382,7 @@ First, we'll need to create the index:
 
 .. doctest::
 
-   >>> result = db.profiles.create_index([('user_id', pymongo.ASCENDING)],
-   ...                                   unique=True)
+   >>> result = db.profiles.create_index([("user_id", pymongo.ASCENDING)], unique=True)
    >>> sorted(list(db.profiles.index_information()))
    ['_id_', 'user_id_1']
 
@@ -386,9 +394,7 @@ Now let's set up some user profiles:
 
 .. doctest::
 
-   >>> user_profiles = [
-   ...     {'user_id': 211, 'name': 'Luke'},
-   ...     {'user_id': 212, 'name': 'Ziltoid'}]
+   >>> user_profiles = [{"user_id": 211, "name": "Luke"}, {"user_id": 212, "name": "Ziltoid"}]
    >>> result = db.profiles.insert_many(user_profiles)
 
 The index prevents us from inserting a document whose ``user_id`` is already in
@@ -397,8 +403,8 @@ the collection:
 .. doctest::
    :options: +IGNORE_EXCEPTION_DETAIL
 
-   >>> new_profile = {'user_id': 213, 'name': 'Drew'}
-   >>> duplicate_profile = {'user_id': 212, 'name': 'Tommy'}
+   >>> new_profile = {"user_id": 213, "name": "Drew"}
+   >>> duplicate_profile = {"user_id": 212, "name": "Tommy"}
    >>> result = db.profiles.insert_one(new_profile)  # This is fine.
    >>> result = db.profiles.insert_one(duplicate_profile)
    Traceback (most recent call last):

@@ -15,6 +15,7 @@
 """Represent one server the driver is connected to."""
 
 import time
+import warnings
 from typing import Any, Dict, Mapping, Optional, Set, Tuple
 
 from bson import EPOCH_NAIVE
@@ -32,6 +33,7 @@ class ServerDescription(object):
       - `hello`: Optional Hello instance
       - `round_trip_time`: Optional float
       - `error`: Optional, the last error attempting to connect to the server
+      - `round_trip_time`: Optional float, the min latency from the most recent samples
     """
 
     __slots__ = (
@@ -47,6 +49,7 @@ class ServerDescription(object):
         "_min_wire_version",
         "_max_wire_version",
         "_round_trip_time",
+        "_min_round_trip_time",
         "_me",
         "_is_writable",
         "_is_readable",
@@ -66,6 +69,7 @@ class ServerDescription(object):
         hello: Optional[Hello] = None,
         round_trip_time: Optional[float] = None,
         error: Optional[Exception] = None,
+        min_round_trip_time: float = 0.0,
     ) -> None:
         self._address = address
         if not hello:
@@ -88,6 +92,7 @@ class ServerDescription(object):
         self._is_readable = hello.is_readable
         self._ls_timeout_minutes = hello.logical_session_timeout_minutes
         self._round_trip_time = round_trip_time
+        self._min_round_trip_time = min_round_trip_time
         self._me = hello.me
         self._last_update_time = time.monotonic()
         self._error = error
@@ -176,6 +181,11 @@ class ServerDescription(object):
 
     @property
     def election_tuple(self) -> Tuple[Optional[int], Optional[ObjectId]]:
+        warnings.warn(
+            "'election_tuple' is deprecated, use  'set_version' and 'election_id' instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return self._set_version, self._election_id
 
     @property
@@ -202,6 +212,11 @@ class ServerDescription(object):
             return self._host_to_round_trip_time[self._address]
 
         return self._round_trip_time
+
+    @property
+    def min_round_trip_time(self) -> float:
+        """The min latency from the most recent samples."""
+        return self._min_round_trip_time
 
     @property
     def error(self) -> Optional[Exception]:

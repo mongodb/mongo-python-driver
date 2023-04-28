@@ -1,8 +1,6 @@
 Frequently Asked Questions
 ==========================
 
-.. contents::
-
 Is PyMongo thread-safe?
 -----------------------
 
@@ -246,8 +244,7 @@ Key order in subdocuments -- why does my query work in the shell but not PyMongo
 
   collection = MongoClient().test.collection
   collection.drop()
-  collection.insert_one({'_id': 1.0,
-                         'subdocument': SON([('b', 1.0), ('a', 1.0)])})
+  collection.insert_one({"_id": 1.0, "subdocument": SON([("b", 1.0), ("a", 1.0)])})
 
 The key-value pairs in a BSON document can have any order (except that ``_id``
 is always first). The mongo shell preserves key order when reading and writing
@@ -539,6 +536,7 @@ objects as before:
     <pymongo.results.InsertOneResult object at 0x...>
     >>> for x in client.db.collection.find():
     ...     print(x)
+    ...
     {'_id': ObjectId('...'), 'x': datetime.datetime(1970, 1, 1, 0, 0)}
     {'_id': ObjectId('...'), 'x': DatetimeMS(4611686018427387904)}
 

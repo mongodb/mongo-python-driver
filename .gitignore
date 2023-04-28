@@ -16,3 +16,4 @@ pymongo.egg-info/
 mongocryptd.pid
 .idea/
 .nova/
+venv/

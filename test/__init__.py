@@ -536,7 +536,6 @@ class ClientContext(object):
             port,
             username=db_user,
             password=db_pwd,
-            serverSelectionTimeoutMS=100,
             **self.default_client_options,
         )
 
@@ -550,6 +549,8 @@ class ClientContext(object):
                 return False
             else:
                 raise
+        finally:
+            client.close()
 
     def _server_started_with_auth(self):
         # MongoDB >= 2.0

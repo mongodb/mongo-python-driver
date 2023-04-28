@@ -155,7 +155,6 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
             {"kmip": {"tls": True, "tlsInsecure": True}},
             {"kmip": {"tls": True, "tlsAllowInvalidCertificates": True}},
             {"kmip": {"tls": True, "tlsAllowInvalidHostnames": True}},
-            {"kmip": {"tls": True, "tlsDisableOCSPEndpointCheck": True}},
         ]:
             with self.assertRaisesRegex(ConfigurationError, "Insecure TLS options prohibited"):
                 opts = AutoEncryptionOpts({}, "k.d", kms_tls_options=tls_opts)
@@ -2014,7 +2013,9 @@ class TestKmsTLSProse(EncryptionIntegrationTest):
         # Some examples:
         # certificate verify failed: IP address mismatch, certificate is not valid for '127.0.0.1'. (_ssl.c:1129)"
         # hostname '127.0.0.1' doesn't match 'wronghost.com'
-        with self.assertRaisesRegex(EncryptionError, "IP address mismatch|wronghost"):
+        with self.assertRaisesRegex(
+            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch"
+        ):
             self.client_encrypted.create_data_key("aws", master_key=key)
 
 
@@ -2067,7 +2068,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         # [SSL: TLSV13_ALERT_CERTIFICATE_REQUIRED] tlsv13 alert certificate required (_ssl.c:2623)
         self.cert_error = (
             "certificate required|SSL handshake failed|"
-            "KMS connection closed|Connection reset by peer"
+            "KMS connection closed|Connection reset by peer|ECONNRESET|EPIPE"
         )
         # On Python 3.10+ this error might be:
         # EOF occurred in violation of protocol (_ssl.c:2384)
@@ -2099,7 +2100,9 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         # certificate verify failed: IP address mismatch, certificate is not valid for '127.0.0.1'. (_ssl.c:1129)"
         # hostname '127.0.0.1' doesn't match 'wronghost.com'
         key["endpoint"] = "127.0.0.1:8001"
-        with self.assertRaisesRegex(EncryptionError, "IP address mismatch|wronghost"):
+        with self.assertRaisesRegex(
+            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch"
+        ):
             self.client_encryption_invalid_hostname.create_data_key("aws", key)
 
     def test_02_azure(self):
@@ -2114,7 +2117,9 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         with self.assertRaisesRegex(EncryptionError, "expired|certificate verify failed"):
             self.client_encryption_expired.create_data_key("azure", key)
         # Invalid cert hostname error.
-        with self.assertRaisesRegex(EncryptionError, "IP address mismatch|wronghost"):
+        with self.assertRaisesRegex(
+            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch"
+        ):
             self.client_encryption_invalid_hostname.create_data_key("azure", key)
 
     def test_03_gcp(self):
@@ -2129,7 +2134,9 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         with self.assertRaisesRegex(EncryptionError, "expired|certificate verify failed"):
             self.client_encryption_expired.create_data_key("gcp", key)
         # Invalid cert hostname error.
-        with self.assertRaisesRegex(EncryptionError, "IP address mismatch|wronghost"):
+        with self.assertRaisesRegex(
+            EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch"
+        ):
             self.client_encryption_invalid_hostname.create_data_key("gcp", key)
 
     def test_04_kmip(self):
@@ -2145,6 +2152,18 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
             EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch"
         ):
             self.client_encryption_invalid_hostname.create_data_key("kmip")
+
+    def test_05_tlsDisableOCSPEndpointCheck_is_permitted(self):
+        providers = {"aws": {"accessKeyId": "foo", "secretAccessKey": "bar"}}
+        options = {"aws": {"tlsDisableOCSPEndpointCheck": True}}
+        encryption = ClientEncryption(
+            providers, "keyvault.datakeys", self.client, OPTS, kms_tls_options=options
+        )
+        self.addCleanup(encryption.close)
+        ctx = encryption._io_callbacks.opts._kms_ssl_contexts["aws"]
+        if not hasattr(ctx, "check_ocsp_endpoint"):
+            raise self.skipTest("OCSP not enabled")  # type:ignore
+        self.assertFalse(ctx.check_ocsp_endpoint)
 
 
 # https://github.com/mongodb/specifications/blob/50e26fe/source/client-side-encryption/tests/README.rst#unique-index-on-keyaltnames

@@ -2368,8 +2368,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY` is used.
 
         .. note:: This method does not support the 'explain' option. Please
-           use :meth:`~pymongo.database.Database.command` instead. An
-           example is included in the :ref:`aggregate-examples` documentation.
+           use `PyMongoExplain <https://pypi.org/project/pymongoexplain/>`_
+           instead. An example is included in the :ref:`aggregate-examples`
+           documentation.
 
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation.
@@ -2533,14 +2534,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. code-block:: python
 
             try:
-                with db.collection.watch(
-                        [{'$match': {'operationType': 'insert'}}]) as stream:
+                with db.collection.watch([{"$match": {"operationType": "insert"}}]) as stream:
                     for insert_change in stream:
                         print(insert_change)
             except pymongo.errors.PyMongoError:
                 # The ChangeStream encountered an unrecoverable error or the
                 # resume attempt failed to recreate the cursor.
-                logging.error('...')
+                logging.error("...")
 
         For a precise description of the resume process see the
         `change streams specification`_.

@@ -199,34 +199,12 @@ post:
   - func: "cleanup"
 
 tasks:
-    - name: "perf-3.6-standalone"
-      tags: ["perf"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "3.6"
-            TOPOLOGY: "server"
-        - func: "run perf tests"
-        - func: "attach benchmark test results"
-        - func: "send dashboard data"
-
     - name: "perf-4.0-standalone"
       tags: ["perf"]
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
             VERSION: "4.0"
-            TOPOLOGY: "server"
-        - func: "run perf tests"
-        - func: "attach benchmark test results"
-        - func: "send dashboard data"
-
-    - name: "perf-4.2-standalone"
-      tags: ["perf"]
-      commands:
-        - func: "bootstrap mongo-orchestration"
-          vars:
-            VERSION: "4.2"
             TOPOLOGY: "server"
         - func: "run perf tests"
         - func: "attach benchmark test results"
@@ -243,14 +221,24 @@ tasks:
         - func: "attach benchmark test results"
         - func: "send dashboard data"
 
+    - name: "perf-6.0-standalone"
+      tags: ["perf"]
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "6.0"
+            TOPOLOGY: "server"
+        - func: "run perf tests"
+        - func: "attach benchmark test results"
+        - func: "send dashboard data"
+
 buildvariants:
 
 - name: "perf-tests"
   display_name: "Performance Benchmark Tests"
   batchtime: 10080  # 7 days
-  run_on: centos6-perf
+  run_on: ubuntu2004-large
   tasks:
-     - name: "perf-3.6-standalone"
      - name: "perf-4.0-standalone"
-     - name: "perf-4.2-standalone"
      - name: "perf-4.4-standalone"
+     - name: "perf-6.0-standalone"

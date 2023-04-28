@@ -233,8 +233,7 @@ class RangeOpts:
     ) -> None:
         """Options to configure encrypted queries using the rangePreview algorithm.
 
-        .. note:: Support for Range queries is in beta.
-           Backwards-breaking changes may be made before the final release.
+        .. note:: This feature is experimental only, and not intended for public use.
 
         :Parameters:
           - `sparsity`: An integer.

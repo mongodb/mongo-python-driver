@@ -27,7 +27,7 @@ access:
   >>> c = MongoClient()
   >>> c.test_database
   Database(MongoClient(host=['localhost:27017'], document_class=dict, tz_aware=False, connect=True), 'test_database')
-  >>> c['test-database']
+  >>> c["test-database"]
   Database(MongoClient(host=['localhost:27017'], document_class=dict, tz_aware=False, connect=True), 'test-database')
 """
 
@@ -401,6 +401,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             "mongodb+srv://" URIs. Defaults to "mongodb". Use it like so::
 
                 MongoClient("mongodb+srv://example.com/?srvServiceName=customname")
+          - `srvMaxHosts`: (int) limits the number of mongos-like hosts a client will
+            connect to. More specifically, when a "mongodb+srv://" connection string
+            resolves to more than srvMaxHosts number of hosts, the client will randomly
+            choose an srvMaxHosts sized subset of hosts.
 
 
           | **Write Concern options:**
@@ -575,8 +579,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                keyword arguments.
              - The default for `uuidRepresentation` was changed from
                ``pythonLegacy`` to ``unspecified``.
-             - Added the ``srvServiceName`` and ``maxConnecting`` URI and
-               keyword argument.
+             - Added the ``srvServiceName``, ``maxConnecting``, and ``srvMaxHosts`` URI and
+               keyword arguments.
 
         .. versionchanged:: 3.12
            Added the ``server_api`` keyword argument.
@@ -931,14 +935,13 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         .. code-block:: python
 
             try:
-                with client.watch(
-                        [{'$match': {'operationType': 'insert'}}]) as stream:
+                with client.watch([{"$match": {"operationType": "insert"}}]) as stream:
                     for insert_change in stream:
                         print(insert_change)
             except pymongo.errors.PyMongoError:
                 # The ChangeStream encountered an unrecoverable error or the
                 # resume attempt failed to recreate the cursor.
-                logging.error('...')
+                logging.error("...")
 
         For a precise description of the resume process see the
         `change streams specification`_.

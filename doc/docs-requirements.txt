@@ -1,4 +1,5 @@
-Sphinx~=4.2
+Sphinx~=6.1
 sphinx_rtd_theme~=0.5
 readthedocs-sphinx-search~=0.1
 sphinxcontrib-shellcheck~=1.1
+furo==2022.12.7

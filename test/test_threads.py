@@ -30,7 +30,7 @@ class AutoAuthenticateThreads(threading.Thread):
         self.coll = collection
         self.num = num
         self.success = False
-        self.setDaemon(True)
+        self.daemon = True
 
     def run(self):
         for i in range(self.num):
@@ -44,7 +44,7 @@ class SaveAndFind(threading.Thread):
     def __init__(self, collection):
         threading.Thread.__init__(self)
         self.collection = collection
-        self.setDaemon(True)
+        self.daemon = True
         self.passed = False
 
     def run(self):
@@ -62,7 +62,7 @@ class Insert(threading.Thread):
         self.collection = collection
         self.n = n
         self.expect_exception = expect_exception
-        self.setDaemon(True)
+        self.daemon = True
 
     def run(self):
         for _ in range(self.n):
@@ -85,7 +85,7 @@ class Update(threading.Thread):
         self.collection = collection
         self.n = n
         self.expect_exception = expect_exception
-        self.setDaemon(True)
+        self.daemon = True
 
     def run(self):
         for _ in range(self.n):
