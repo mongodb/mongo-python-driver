@@ -12,4 +12,5 @@ include tools/README.rst
 recursive-include test *.pem
 recursive-include test *.py
 recursive-include bson *.h
-recursive-include bson *.pyi
+global-include *.pyi
+global-include *.typed
