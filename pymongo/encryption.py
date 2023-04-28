@@ -595,7 +595,6 @@ class ClientEncryption(Generic[_DocumentType]):
 
               {
                 "escCollection": "enxcol_.encryptedCollection.esc",
-                "eccCollection": "enxcol_.encryptedCollection.ecc",
                 "ecocCollection": "enxcol_.encryptedCollection.ecoc",
                 "fields": [
                     {

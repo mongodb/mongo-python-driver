@@ -43,7 +43,7 @@ from pymongo.bulk import _Bulk
 from pymongo.change_stream import CollectionChangeStream
 from pymongo.collation import validate_collation_or_none
 from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
-from pymongo.common import _ecc_coll_name, _ecoc_coll_name, _esc_coll_name
+from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.cursor import Cursor, RawBatchCursor
 from pymongo.errors import (
     ConfigurationError,
@@ -235,7 +235,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 self.__create(
                     _esc_coll_name(encrypted_fields, name), opts, None, session, qev2_required=True
                 )
-                self.__create(_ecc_coll_name(encrypted_fields, name), opts, None, session)
                 self.__create(_ecoc_coll_name(encrypted_fields, name), opts, None, session)
                 self.__create(name, kwargs, collation, session, encrypted_fields=encrypted_fields)
                 self.create_index([("__safeContent__", ASCENDING)], session)

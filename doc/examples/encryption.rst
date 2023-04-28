@@ -396,7 +396,6 @@ Automatic encryption in Queryable Encryption is configured with an ``encrypted_f
   encrypted_fields_map = {
       "default.encryptedCollection": {
         "escCollection": "encryptedCollection.esc",
-        "eccCollection": "encryptedCollection.ecc",
         "ecocCollection": "encryptedCollection.ecoc",
         "fields": [
           {
@@ -487,7 +486,6 @@ using an ``encrypted_fields`` mapping, as demonstrated by the following example:
 
         encrypted_fields = {
           "escCollection": "enxcol_.default.esc",
-          "eccCollection": "enxcol_.default.ecc",
           "ecocCollection": "enxcol_.default.ecoc",
           "fields": [
             {
