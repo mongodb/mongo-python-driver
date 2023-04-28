@@ -32,7 +32,7 @@ from test.utils import (
 )
 from typing import List
 
-from bson import decode, encode
+from bson import ObjectId, decode, encode
 from bson.binary import Binary
 from bson.int64 import Int64
 from bson.son import SON
@@ -654,6 +654,11 @@ def decode_raw(val):
 TYPES = {
     "binData": Binary,
     "long": Int64,
+    "int": int,
+    "string": str,
+    "objectId": ObjectId,
+    "object": dict,
+    "array": list,
 }
 
 
@@ -664,7 +669,11 @@ def wrap_types(val):
     if isinstance(val, abc.Mapping):
         typ = val.get("$$type")
         if typ:
-            return CompareType(TYPES[typ])
+            if isinstance(typ, str):
+                types = TYPES[typ]
+            else:
+                types = tuple(TYPES[t] for t in typ)
+            return CompareType(types)
         d = {}
         for key in val:
             d[key] = wrap_types(val[key])
