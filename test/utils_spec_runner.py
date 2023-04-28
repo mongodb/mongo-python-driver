@@ -429,6 +429,12 @@ class SpecRunner(IntegrationTest):
                         elif key not in actual:
                             self.fail("Expected key [%s] in %r" % (key, actual))
                         else:
+                            # Workaround an incorrect command started event in fle2v2-CreateCollection.yml
+                            # added in DRIVERS-2524.
+                            if key == "encryptedFields":
+                                for n in ("eccCollection", "ecocCollection", "escCollection"):
+                                    if val.get(n) is None:
+                                        val.pop(n, None)
                             self.assertEqual(
                                 val, decode_raw(actual[key]), "Key [%s] in %s" % (key, actual)
                             )
