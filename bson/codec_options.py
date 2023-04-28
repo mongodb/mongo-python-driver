@@ -41,11 +41,6 @@ from bson.binary import (
 )
 from bson.typings import _DocumentType
 
-
-def _abstractproperty(func: Callable[..., Any]) -> property:
-    return property(abc.abstractmethod(func))
-
-
 _RAW_BSON_DOCUMENT_MARKER = 101
 
 
@@ -65,7 +60,7 @@ class TypeEncoder(abc.ABC):
     See :ref:`custom-type-type-codec` documentation for an example.
     """
 
-    @_abstractproperty
+    @abc.abstractproperty
     def python_type(self) -> Any:
         """The Python type to be converted into something serializable."""
         pass
@@ -86,7 +81,7 @@ class TypeDecoder(abc.ABC):
     See :ref:`custom-type-type-codec` documentation for an example.
     """
 
-    @_abstractproperty
+    @abc.abstractproperty
     def bson_type(self) -> Any:
         """The BSON type to be converted into our own type."""
         pass
