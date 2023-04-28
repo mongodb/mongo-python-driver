@@ -336,22 +336,24 @@ class SpecRunner(IntegrationTest):
         if expect_error(op):
             with self.assertRaises(self.allowable_errors(op), msg=op["name"]) as context:
                 out = self.run_operation(sessions, collection, op.copy())
+            exc = context.exception
             if expect_error_message(expected_result):
-                if isinstance(context.exception, BulkWriteError):
-                    errmsg = str(context.exception.details).lower()
+                if isinstance(exc, BulkWriteError):
+                    errmsg = str(exc.details).lower()
                 else:
-                    errmsg = str(context.exception).lower()
+                    errmsg = str(exc).lower()
                 self.assertIn(expected_result["errorContains"].lower(), errmsg)
             if expect_error_code(expected_result):
-                self.assertEqual(
-                    expected_result["errorCodeName"], context.exception.details.get("codeName")
-                )
+                self.assertEqual(expected_result["errorCodeName"], exc.details.get("codeName"))
             if expect_error_labels_contain(expected_result):
-                self.assertErrorLabelsContain(
-                    context.exception, expected_result["errorLabelsContain"]
-                )
+                self.assertErrorLabelsContain(exc, expected_result["errorLabelsContain"])
             if expect_error_labels_omit(expected_result):
-                self.assertErrorLabelsOmit(context.exception, expected_result["errorLabelsOmit"])
+                self.assertErrorLabelsOmit(exc, expected_result["errorLabelsOmit"])
+            if expect_timeout_error(expected_result):
+                self.assertIsInstance(exc, PyMongoError)
+                if not exc.timeout:
+                    # Re-raise the exception for better diagnostics.
+                    raise exc
 
             # Reraise the exception if we're in the with_transaction
             # callback.
@@ -617,6 +619,13 @@ def expect_error_labels_omit(expected_result):
     return False
 
 
+def expect_timeout_error(expected_result):
+    if isinstance(expected_result, dict):
+        return expected_result["isTimeoutError"]
+
+    return False
+
+
 def expect_error(op):
     expected_result = op.get("result")
     return (
@@ -625,6 +634,7 @@ def expect_error(op):
         or expect_error_code(expected_result)
         or expect_error_labels_contain(expected_result)
         or expect_error_labels_omit(expected_result)
+        or expect_timeout_error(expected_result)
     )
 
 

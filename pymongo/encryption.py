@@ -51,12 +51,13 @@ from pymongo.errors import (
     EncryptedCollectionError,
     EncryptionError,
     InvalidOperation,
+    PyMongoError,
     ServerSelectionTimeoutError,
 )
 from pymongo.mongo_client import MongoClient
 from pymongo.network import BLOCKING_IO_ERRORS
 from pymongo.operations import UpdateOne
-from pymongo.pool import PoolOptions, _configured_socket
+from pymongo.pool import PoolOptions, _configured_socket, _raise_connection_failure
 from pymongo.read_concern import ReadConcern
 from pymongo.results import BulkWriteResult, DeleteResult
 from pymongo.ssl_support import get_ssl_context
@@ -139,20 +140,26 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
             ssl_context=ctx,
         )
         host, port = parse_host(endpoint, _HTTPS_PORT)
-        conn = _configured_socket((host, port), opts)
         try:
-            conn.sendall(message)
-            while kms_context.bytes_needed > 0:
-                # CSOT: update timeout.
-                conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
-                data = conn.recv(kms_context.bytes_needed)
-                if not data:
-                    raise OSError("KMS connection closed")
-                kms_context.feed(data)
-        except BLOCKING_IO_ERRORS:
-            raise socket.timeout("timed out")
-        finally:
-            conn.close()
+            conn = _configured_socket((host, port), opts)
+            try:
+                conn.sendall(message)
+                while kms_context.bytes_needed > 0:
+                    # CSOT: update timeout.
+                    conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
+                    data = conn.recv(kms_context.bytes_needed)
+                    if not data:
+                        raise OSError("KMS connection closed")
+                    kms_context.feed(data)
+            except BLOCKING_IO_ERRORS:
+                raise socket.timeout("timed out")
+            finally:
+                conn.close()
+        except (PyMongoError, MongoCryptError):
+            raise  # Propagate pymongo errors directly.
+        except Exception as error:
+            # Wrap I/O errors in PyMongo exceptions.
+            _raise_connection_failure((host, port), error)
 
     def collection_info(self, database, filter):
         """Get the collection info for a namespace.

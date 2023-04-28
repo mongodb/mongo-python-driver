@@ -2206,9 +2206,6 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
         self.key1_id = self.key1_document["_id"]
         self.db = self.client.test_queryable_encryption
         self.client.drop_database(self.db)
-        self.db.command("create", self.encrypted_fields["escCollection"])
-        self.db.command("create", self.encrypted_fields["eccCollection"])
-        self.db.command("create", self.encrypted_fields["ecocCollection"])
         self.db.command("create", "explicit_encryption", encryptedFields=self.encrypted_fields)
         key_vault = create_key_vault(self.client.keyvault.datakeys, self.key1_document)
         self.addCleanup(key_vault.drop)
