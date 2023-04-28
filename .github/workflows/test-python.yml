@@ -58,8 +58,9 @@ jobs:
           cache-dependency-path: 'setup.py'
       - name: Install dependencies
         run: |
-          python -m pip install -U pip mypy==0.990
-          pip install -e ".[zstd, encryption, ocsp]"
+          python -m pip install mypy==0.990 tomli==2.0.1 typed-ast==1.5.4 typing-extensions==4.5.0
+          python -m pip install -e ".[zstd, encryption, ocsp]"
+          python -m pip freeze
       - name: Run mypy
         run: |
           mypy --install-types --non-interactive bson gridfs tools pymongo
