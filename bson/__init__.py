@@ -1115,7 +1115,7 @@ def decode_all(
     if not isinstance(opts, CodecOptions):
         raise _CODEC_OPTIONS_TYPE_ERROR
 
-    return _decode_all(data, opts)  # type: ignore[arg-type]
+    return _decode_all(data, opts)  # type:ignore[arg-type]
 
 
 def _decode_selective(rawdoc: Any, fields: Any, codec_options: Any) -> Mapping[Any, Any]:
