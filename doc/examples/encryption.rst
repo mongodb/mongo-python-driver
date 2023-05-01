@@ -364,13 +364,13 @@ data key and create a collection with the
 Automatic Queryable Encryption (Beta)
 `````````````````````````````````````
 
-PyMongo 4.2 brings beta support for Queryable Encryption with MongoDB >=6.0.
+PyMongo 4.4 brings beta support for Queryable Encryption with MongoDB >=7.0.
 
 Queryable Encryption is the second version of Client-Side Field Level Encryption.
 Data is encrypted client-side. Queryable Encryption supports indexed encrypted fields,
 which are further processed server-side.
 
-You must have MongoDB 6.0 Enterprise to preview the capability.
+You must have MongoDB 7.0 Enterprise to preview the capability.
 
 Automatic encryption in Queryable Encryption is configured with an ``encrypted_fields`` mapping, as demonstrated by the following example::
 
@@ -396,7 +396,6 @@ Automatic encryption in Queryable Encryption is configured with an ``encrypted_f
   encrypted_fields_map = {
       "default.encryptedCollection": {
         "escCollection": "encryptedCollection.esc",
-        "eccCollection": "encryptedCollection.ecc",
         "ecocCollection": "encryptedCollection.ecoc",
         "fields": [
           {
@@ -429,7 +428,7 @@ automatically encrypted and decrypted.
 Explicit Queryable Encryption (Beta)
 ````````````````````````````````````
 
-PyMongo 4.2 brings beta support for Queryable Encryption with MongoDB >=6.0.
+PyMongo 4.4 brings beta support for Queryable Encryption with MongoDB >=7.0.
 
 Queryable Encryption is the second version of Client-Side Field Level Encryption.
 Data is encrypted client-side. Queryable Encryption supports indexed encrypted fields,
@@ -487,7 +486,6 @@ using an ``encrypted_fields`` mapping, as demonstrated by the following example:
 
         encrypted_fields = {
           "escCollection": "enxcol_.default.esc",
-          "eccCollection": "enxcol_.default.ecc",
           "ecocCollection": "enxcol_.default.ecoc",
           "fields": [
             {

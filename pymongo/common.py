@@ -822,10 +822,6 @@ def _esc_coll_name(encrypted_fields, name):
     return encrypted_fields.get("escCollection", f"enxcol_.{name}.esc")
 
 
-def _ecc_coll_name(encrypted_fields, name):
-    return encrypted_fields.get("eccCollection", f"enxcol_.{name}.ecc")
-
-
 def _ecoc_coll_name(encrypted_fields, name):
     return encrypted_fields.get("ecocCollection", f"enxcol_.{name}.ecoc")
 

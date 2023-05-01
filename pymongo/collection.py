@@ -43,7 +43,7 @@ from pymongo.bulk import _Bulk
 from pymongo.change_stream import CollectionChangeStream
 from pymongo.collation import validate_collation_or_none
 from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
-from pymongo.common import _ecc_coll_name, _ecoc_coll_name, _esc_coll_name
+from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.cursor import Cursor, RawBatchCursor
 from pymongo.errors import (
     ConfigurationError,
@@ -232,8 +232,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             if encrypted_fields:
                 common.validate_is_mapping("encrypted_fields", encrypted_fields)
                 opts = {"clusteredIndex": {"key": {"_id": 1}, "unique": True}}
-                self.__create(_esc_coll_name(encrypted_fields, name), opts, None, session)
-                self.__create(_ecc_coll_name(encrypted_fields, name), opts, None, session)
+                self.__create(
+                    _esc_coll_name(encrypted_fields, name), opts, None, session, qev2_required=True
+                )
                 self.__create(_ecoc_coll_name(encrypted_fields, name), opts, None, session)
                 self.__create(name, kwargs, collation, session, encrypted_fields=encrypted_fields)
                 self.create_index([("__safeContent__", ASCENDING)], session)
@@ -305,7 +306,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 user_fields=user_fields,
             )
 
-    def __create(self, name, options, collation, session, encrypted_fields=None):
+    def __create(
+        self, name, options, collation, session, encrypted_fields=None, qev2_required=False
+    ):
         """Sends a create command with the given options."""
         cmd = SON([("create", name)])
         if encrypted_fields:
@@ -316,6 +319,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 options["size"] = float(options["size"])
             cmd.update(options)
         with self._socket_for_writes(session) as sock_info:
+            if qev2_required and sock_info.max_wire_version < 21:
+                raise ConfigurationError(
+                    "Driver support of Queryable Encryption is incompatible with server. "
+                    "Upgrade server to use Queryable Encryption. "
+                    f"Got maxWireVersion {sock_info.max_wire_version} but need maxWireVersion >= 21 (MongoDB >=7.0)"
+                )
+
             self._command(
                 sock_info,
                 cmd,
