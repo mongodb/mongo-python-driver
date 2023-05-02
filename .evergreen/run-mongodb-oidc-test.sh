@@ -50,8 +50,7 @@ set -x
 
 # Workaround macOS python 3.9 incompatibility with system virtualenv.
 if [ "$(uname -s)" = "Darwin" ]; then
-    # TODO: change back to 3.9 before merging.
-    VIRTUALENV="/Library/Frameworks/Python.framework/Versions/3.10/bin/python3 -m virtualenv"
+    VIRTUALENV="/Library/Frameworks/Python.framework/Versions/3.9/bin/python3 -m virtualenv"
 else
     VIRTUALENV=$(command -v virtualenv)
 fi

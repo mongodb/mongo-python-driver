@@ -4,7 +4,6 @@ Changelog
 Changes in Version 4.4
 -----------------------
 
-- Added support for :ref:`OIDC <oidc_sasl>` authentication with MongoDB Enterprise 7.0+ in Public Preview.
 - Added support for passing a list containing (key, direction) pairs
   or keys to :meth:`~pymongo.collection.Collection.create_index`.
 - pymongocrypt 1.5.0 or later is now required for client side field level
