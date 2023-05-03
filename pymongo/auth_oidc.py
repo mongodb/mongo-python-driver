@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-""""MONGODB-OIDC Authentication helpers."""
+"""MONGODB-OIDC Authentication helpers."""
 import os
 import threading
 from dataclasses import dataclass, field
@@ -303,19 +303,6 @@ class _OIDCAuthenticator:
             self.clear()
             raise OperationFailure("SASL conversation failed to complete.")
         return resp
-
-
-class _OIDCContextMixin:
-    credentials: Any
-    address: Any
-
-    def speculate_command(self):
-        authenticator = _get_authenticator(self.credentials, self.address)
-        cmd = authenticator.auth_start_cmd(False)
-        if cmd is None:
-            return
-        cmd["db"] = self.credentials.source
-        return cmd
 
 
 def _authenticate_oidc(credentials, sock_info, reauthenticate):

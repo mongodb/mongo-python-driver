@@ -27,7 +27,7 @@ from urllib.parse import quote
 from bson.binary import Binary
 from bson.son import SON
 from pymongo.auth_aws import _authenticate_aws
-from pymongo.auth_oidc import _authenticate_oidc, _OIDCContextMixin, _OIDCProperties
+from pymongo.auth_oidc import _authenticate_oidc, _get_authenticator, _OIDCProperties
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.saslprep import saslprep
 
@@ -566,8 +566,14 @@ class _X509Context(_AuthContext):
         return cmd
 
 
-class _OIDCContext(_OIDCContextMixin, _AuthContext):
-    pass
+class _OIDCContext(_AuthContext):
+    def speculate_command(self):
+        authenticator = _get_authenticator(self.credentials, self.address)
+        cmd = authenticator.auth_start_cmd(False)
+        if cmd is None:
+            return
+        cmd["db"] = self.credentials.source
+        return cmd
 
 
 _SPECULATIVE_AUTH_MAP: Mapping[str, Callable] = {
@@ -583,9 +589,8 @@ def authenticate(credentials, sock_info, reauthenticate=False):
     """Authenticate sock_info."""
     mechanism = credentials.mechanism
     auth_func = _AUTH_MAP[mechanism]
-    if reauthenticate and sock_info.performed_handshake:
-        # Existing auth_ctx is stale, remove it.
-        sock_info.auth_ctx = None
+    if reauthenticate:
+        sock_info.handle_reauthenticate()
     if mechanism == "MONGODB-OIDC":
         _authenticate_oidc(credentials, sock_info, reauthenticate)
     else:

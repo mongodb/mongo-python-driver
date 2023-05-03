@@ -927,6 +927,12 @@ class SocketInfo(object):
         """Seconds since this socket was last checked into its pool."""
         return time.monotonic() - self.last_checkin_time
 
+    def handle_reauthenticate(self):
+        """Handle a reauthentication."""
+        if self.performed_handshake:
+            # Existing auth_ctx is stale, remove it.
+            self.auth_ctx = None
+
     def _raise_connection_failure(self, error):
         # Catch *all* exceptions from socket methods and close the socket. In
         # regular Python, socket operations only raise socket.error, even if
