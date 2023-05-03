@@ -358,17 +358,13 @@ class ScenarioDict(dict):
 
 
 class CompareType(object):
-    """Class that compares equal to any object of the given type."""
+    """Class that compares equal to any object of the given type(s)."""
 
-    def __init__(self, type):
-        self.type = type
+    def __init__(self, types):
+        self.types = types
 
     def __eq__(self, other):
-        return isinstance(other, self.type)
-
-    def __ne__(self, other):
-        """Needed for Python 2."""
-        return not self.__eq__(other)
+        return isinstance(other, self.types)
 
 
 class FunctionCallRecorder(object):

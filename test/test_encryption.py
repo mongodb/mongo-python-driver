@@ -1329,9 +1329,9 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
             "key": ("arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0"),
             "endpoint": "kms.us-east-1.amazonaws.com:12345",
         }
-        with self.assertRaises(EncryptionError) as ctx:
+        with self.assertRaisesRegex(EncryptionError, "kms.us-east-1.amazonaws.com:12345") as ctx:
             self.client_encryption.create_data_key("aws", master_key=master_key)
-        self.assertIsInstance(ctx.exception.cause, socket.error)
+        self.assertIsInstance(ctx.exception.cause, AutoReconnect)
 
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
     def test_05_aws_endpoint_wrong_region(self):
@@ -2162,7 +2162,7 @@ class TestKmsTLSOptions(EncryptionIntegrationTest):
         self.addCleanup(encryption.close)
         ctx = encryption._io_callbacks.opts._kms_ssl_contexts["aws"]
         if not hasattr(ctx, "check_ocsp_endpoint"):
-            raise self.skipTest("OCSP not enabled")  # type:ignore
+            raise self.skipTest("OCSP not enabled")
         self.assertFalse(ctx.check_ocsp_endpoint)
 
 
@@ -2198,7 +2198,7 @@ class TestUniqueIndexOnKeyAltNamesProse(EncryptionIntegrationTest):
 # https://github.com/mongodb/specifications/blob/d4c9432/source/client-side-encryption/tests/README.rst#explicit-encryption
 class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
     @client_context.require_no_standalone
-    @client_context.require_version_min(6, 0, -1)
+    @client_context.require_version_min(7, 0, -1)
     def setUp(self):
         super().setUp()
         self.encrypted_fields = json_data("etc", "data", "encryptedFields.json")
@@ -2206,9 +2206,6 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
         self.key1_id = self.key1_document["_id"]
         self.db = self.client.test_queryable_encryption
         self.client.drop_database(self.db)
-        self.db.command("create", self.encrypted_fields["escCollection"])
-        self.db.command("create", self.encrypted_fields["eccCollection"])
-        self.db.command("create", self.encrypted_fields["ecocCollection"])
         self.db.command("create", "explicit_encryption", encryptedFields=self.encrypted_fields)
         key_vault = create_key_vault(self.client.keyvault.datakeys, self.key1_document)
         self.addCleanup(key_vault.drop)
@@ -2425,7 +2422,7 @@ class TestOnDemandAWSCredentials(EncryptionIntegrationTest):
 class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):
     # Queryable Encryption is not supported on Standalone topology.
     @client_context.require_no_standalone
-    @client_context.require_version_min(6, 0, -1)
+    @client_context.require_version_min(7, 0, -1)
     def setUp(self):
         super().setUp()
 
@@ -2517,7 +2514,7 @@ class TestQueryableEncryptionDocsExample(EncryptionIntegrationTest):
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#range-explicit-encryption
 class TestRangeQueryProse(EncryptionIntegrationTest):
     @client_context.require_no_standalone
-    @client_context.require_version_min(6, 2, -1)
+    @client_context.require_version_min(7, 0, -1)
     def setUp(self):
         super().setUp()
         self.key1_document = json_data("etc", "data", "keys", "key1-document.json")
@@ -2710,7 +2707,7 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.rst#automatic-data-encryption-keys
 class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
     @client_context.require_no_standalone
-    @client_context.require_version_min(6, 0, -1)
+    @client_context.require_version_min(7, 0, -1)
     def setUp(self):
         super().setUp()
         self.key1_document = json_data("etc", "data", "keys", "key1-document.json")

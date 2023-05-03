@@ -39,7 +39,7 @@ from pymongo.aggregation import _DatabaseAggregationCommand
 from pymongo.change_stream import DatabaseChangeStream
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
-from pymongo.common import _ecc_coll_name, _ecoc_coll_name, _esc_coll_name
+from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.errors import CollectionInvalid, InvalidName
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
@@ -394,7 +394,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
                 {
                   "escCollection": "enxcol_.encryptedCollection.esc",
-                  "eccCollection": "enxcol_.encryptedCollection.ecc",
                   "ecocCollection": "enxcol_.encryptedCollection.ecoc",
                   "fields": [
                       {
@@ -1009,7 +1008,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
                 {
                   "escCollection": "enxcol_.encryptedCollection.esc",
-                  "eccCollection": "enxcol_.encryptedCollection.ecc",
                   "ecocCollection": "enxcol_.encryptedCollection.ecoc",
                   "fields": [
                       {
@@ -1060,9 +1058,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             common.validate_is_mapping("encrypted_fields", encrypted_fields)
             self._drop_helper(
                 _esc_coll_name(encrypted_fields, name), session=session, comment=comment
-            )
-            self._drop_helper(
-                _ecc_coll_name(encrypted_fields, name), session=session, comment=comment
             )
             self._drop_helper(
                 _ecoc_coll_name(encrypted_fields, name), session=session, comment=comment
