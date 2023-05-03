@@ -55,7 +55,7 @@
   "key_vault_data": [],
   "tests": [
     {
-      "description": "FLE2 encrypt fails with mising key",
+      "description": "FLE2 encrypt fails with missing key",
       "clientOptions": {
         "autoEncryptOpts": {
           "kmsProviders": {
@@ -86,7 +86,7 @@
       ]
     },
     {
-      "description": "FLE2 decrypt fails with mising key",
+      "description": "FLE2 decrypt fails with missing key",
       "clientOptions": {
         "autoEncryptOpts": {
           "kmsProviders": {

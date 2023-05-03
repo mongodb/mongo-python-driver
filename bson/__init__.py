@@ -1282,7 +1282,7 @@ def decode_file_iter(
         # Read size of next object.
         size_data = file_obj.read(4)
         if not size_data:
-            break  # Finished with file normaly.
+            break  # Finished with file normally.
         elif len(size_data) != 4:
             raise InvalidBSON("cut off in middle of objsize")
         obj_size = _UNPACK_INT_FROM(size_data, 0)[0] - 4

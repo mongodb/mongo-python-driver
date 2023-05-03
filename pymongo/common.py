@@ -469,7 +469,7 @@ def validate_document_class(
         raise TypeError(
             "%s must be dict, bson.son.SON, "
             "bson.raw_bson.RawBSONDocument, or a "
-            "sublass of collections.MutableMapping" % (option,)
+            "subclass of collections.MutableMapping" % (option,)
         )
     return value
 

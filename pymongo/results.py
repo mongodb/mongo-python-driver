@@ -45,7 +45,7 @@ class _WriteResult(object):
 
         .. note::
           If the :attr:`acknowledged` attribute is ``False`` all other
-          attibutes of this class will raise
+          attributes of this class will raise
           :class:`~pymongo.errors.InvalidOperation` when accessed. Values for
           other attributes cannot be determined if the write operation was
           unacknowledged.

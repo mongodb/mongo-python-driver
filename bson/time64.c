@@ -73,7 +73,7 @@ static const Year     years_in_gregorian_cycle   = 400;
 #define               days_in_gregorian_cycle      ((365 * 400) + 100 - 4 + 1)
 static const Time64_T seconds_in_gregorian_cycle = days_in_gregorian_cycle * 60LL * 60LL * 24LL;
 
-/* Year range we can trust the time funcitons with */
+/* Year range we can trust the time functions with */
 #define MAX_SAFE_YEAR 2037
 #define MIN_SAFE_YEAR 1971
 
@@ -739,7 +739,7 @@ struct TM *cbson_localtime64_r (const Time64_T *time, struct TM *local_tm)
     /* GMT is Jan 1st, xx01 year, but localtime is still Dec 31st
        in a non-leap xx00.  There is one point in the cycle
        we can't account for which the safe xx00 year is a leap
-       year.  So we need to correct for Dec 31st comming out as
+       year.  So we need to correct for Dec 31st coming out as
        the 366th day of the year.
     */
     if( !IS_LEAP(local_tm->tm_year) && local_tm->tm_yday == 365 )

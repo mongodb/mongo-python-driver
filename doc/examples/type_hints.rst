@@ -264,7 +264,7 @@ Troubleshooting
 
 Client Type Annotation
 ~~~~~~~~~~~~~~~~~~~~~~
-If you forget to add a type annotation for a :class:`~pymongo.mongo_client.MongoClient` object you may get the followig ``mypy`` error::
+If you forget to add a type annotation for a :class:`~pymongo.mongo_client.MongoClient` object you may get the following ``mypy`` error::
 
   from pymongo import MongoClient
   client = MongoClient()  # error: Need type annotation for "client"
@@ -313,10 +313,10 @@ Another example is trying to set a value on a :class:`~bson.raw_bson.RawBSONDocu
     coll = client.test.test
     doc = {"my": "doc"}
     coll.insert_one(doc)
-    retreived = coll.find_one({"_id": doc["_id"]})
-    assert retreived is not None
-    assert len(retreived.raw) > 0
-    retreived[
+    retrieved = coll.find_one({"_id": doc["_id"]})
+    assert retrieved is not None
+    assert len(retrieved.raw) > 0
+    retrieved[
         "foo"
     ] = "bar"  # error: Unsupported target for indexed assignment
                # ("RawBSONDocument")  [index]

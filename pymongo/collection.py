@@ -2076,7 +2076,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     ) -> None:
         """Drops all indexes on this collection.
 
-        Can be used on non-existant collections or collections with no indexes.
+        Can be used on non-existent collections or collections with no indexes.
         Raises OperationFailure on an error.
 
         :Parameters:
@@ -2112,7 +2112,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     ) -> None:
         """Drops the specified index on this collection.
 
-        Can be used on non-existant collections or collections with no
+        Can be used on non-existent collections or collections with no
         indexes.  Raises OperationFailure on an error (e.g. trying to
         drop an index that does not exist). `index_or_name`
         can be either an index name (as returned by `create_index`),
@@ -2683,7 +2683,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if not new_name or ".." in new_name:
             raise InvalidName("collection names cannot be empty")
         if new_name[0] == "." or new_name[-1] == ".":
-            raise InvalidName("collecion names must not start or end with '.'")
+            raise InvalidName("collection names must not start or end with '.'")
         if "$" in new_name and not new_name.startswith("oplog.$main"):
             raise InvalidName("collection names must not contain '$'")
 

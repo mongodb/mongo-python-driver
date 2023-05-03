@@ -111,11 +111,11 @@ class TestPymongo(IntegrationTest):
         coll2 = self.client.test.test2
         result = self.coll.insert_one(doc)
         self.assertEqual(result.inserted_id, doc["_id"])
-        retreived = self.coll.find_one({"_id": doc["_id"]})
-        if retreived:
+        retrieved = self.coll.find_one({"_id": doc["_id"]})
+        if retrieved:
             # Documents returned from find are mutable.
-            retreived["new_field"] = 1
-            result2 = coll2.insert_one(retreived)
+            retrieved["new_field"] = 1
+            result2 = coll2.insert_one(retrieved)
             self.assertEqual(result2.inserted_id, result.inserted_id)
 
     def test_cursor_iterable(self) -> None:
@@ -182,9 +182,9 @@ class TestPymongo(IntegrationTest):
         coll = client.test.test
         doc = {"my": "doc"}
         coll.insert_one(doc)
-        retreived = coll.find_one({"_id": doc["_id"]})
-        assert retreived is not None
-        retreived["a"] = 1
+        retrieved = coll.find_one({"_id": doc["_id"]})
+        assert retrieved is not None
+        retrieved["a"] = 1
 
     def test_aggregate_pipeline(self) -> None:
         coll3 = self.client.test.test3
@@ -329,26 +329,26 @@ class TestDocumentType(unittest.TestCase):
     def test_default(self) -> None:
         client: MongoClient = MongoClient()
         coll = client.test.test
-        retreived = coll.find_one({"_id": "foo"})
-        assert retreived is not None
-        retreived["a"] = 1
+        retrieved = coll.find_one({"_id": "foo"})
+        assert retrieved is not None
+        retrieved["a"] = 1
 
     @only_type_check
     def test_explicit_document_type(self) -> None:
         client: MongoClient[Dict[str, Any]] = MongoClient()
         coll = client.test.test
-        retreived = coll.find_one({"_id": "foo"})
-        assert retreived is not None
-        retreived["a"] = 1
+        retrieved = coll.find_one({"_id": "foo"})
+        assert retrieved is not None
+        retrieved["a"] = 1
 
     @only_type_check
     def test_typeddict_document_type(self) -> None:
         client: MongoClient[Movie] = MongoClient()
         coll = client.test.test
-        retreived = coll.find_one({"_id": "foo"})
-        assert retreived is not None
-        assert retreived["year"] == 1
-        assert retreived["name"] == "a"
+        retrieved = coll.find_one({"_id": "foo"})
+        assert retrieved is not None
+        assert retrieved["year"] == 1
+        assert retrieved["name"] == "a"
 
     @only_type_check
     def test_typeddict_document_type_insertion(self) -> None:
@@ -450,17 +450,17 @@ class TestDocumentType(unittest.TestCase):
     def test_raw_bson_document_type(self) -> None:
         client = MongoClient(document_class=RawBSONDocument)
         coll = client.test.test
-        retreived = coll.find_one({"_id": "foo"})
-        assert retreived is not None
-        assert len(retreived.raw) > 0
+        retrieved = coll.find_one({"_id": "foo"})
+        assert retrieved is not None
+        assert len(retrieved.raw) > 0
 
     @only_type_check
     def test_son_document_type(self) -> None:
         client = MongoClient(document_class=SON[str, Any])
         coll = client.test.test
-        retreived = coll.find_one({"_id": "foo"})
-        assert retreived is not None
-        retreived["a"] = 1
+        retrieved = coll.find_one({"_id": "foo"})
+        assert retrieved is not None
+        retrieved["a"] = 1
 
     def test_son_document_type_runtime(self) -> None:
         client = MongoClient(document_class=SON[str, Any], connect=False)
