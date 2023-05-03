@@ -17,7 +17,7 @@ import warnings
 try:
     from cramjam import snappy
 
-    _HAVE_SNAPPY = True
+    _HAVE_SNAPPY = False
 except ImportError:
     # cramjam isn't available.
     try:
