@@ -15,12 +15,18 @@
 import warnings
 
 try:
-    import snappy
+    from cramjam import snappy
 
     _HAVE_SNAPPY = True
 except ImportError:
-    # python-snappy isn't available.
-    _HAVE_SNAPPY = False
+    # cramjam isn't available.
+    try:
+        import snappy
+
+        _HAVE_SNAPPY = True
+    except ImportError:
+        # python-snappy isn't available.
+        _HAVE_SNAPPY = False
 
 try:
     import zlib
@@ -61,7 +67,7 @@ def validate_compressors(dummy, value):
             compressors.remove(compressor)
             warnings.warn(
                 "Wire protocol compression with snappy is not available. "
-                "You must install the python-snappy module for snappy support."
+                "You must install the cramjam module for snappy support."
             )
         elif compressor == "zlib" and not _HAVE_ZLIB:
             compressors.remove(compressor)

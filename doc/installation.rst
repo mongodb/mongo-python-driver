@@ -60,7 +60,9 @@ dependency can be installed automatically along with PyMongo::
   $ python3 -m pip install "pymongo[ocsp]"
 
 Wire protocol compression with snappy requires `cramjam
-<https://pypi.org/project/cramjam>`_::
+<https://pypi.org/project/cramjam>`_.  For backwards compatibility,
+if `python-snappy <https://pypi.org/project/python-snappy>`_ is installed,
+it will be used if ``cramjam`` is not installed::
 
   $ python3 -m pip install "pymongo[snappy]"
 
