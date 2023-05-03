@@ -264,7 +264,7 @@ Troubleshooting
 
 Client Type Annotation
 ~~~~~~~~~~~~~~~~~~~~~~
-If you forget to add a type annotation for a :class:`~pymongo.mongo_client.MongoClient` object you may get the followig ``mypy`` error::
+If you forget to add a type annotation for a :class:`~pymongo.mongo_client.MongoClient` object you may get the following ``mypy`` error::
 
   from pymongo import MongoClient
   client = MongoClient()  # error: Need type annotation for "client"

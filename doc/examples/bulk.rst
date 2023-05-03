@@ -80,7 +80,7 @@ of operations performed.
 
 The first write failure that occurs (e.g. duplicate key error) aborts the
 remaining operations, and PyMongo raises
-:class:`~pymongo.errors.BulkWriteError`. The :attr:`details` attibute of
+:class:`~pymongo.errors.BulkWriteError`. The :attr:`details` attribute of
 the exception instance provides the execution results up until the failure
 occurred and details about the failure - including the operation that caused
 the failure.

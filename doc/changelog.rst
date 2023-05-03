@@ -2805,7 +2805,7 @@ Important New Features:
 - The URI parser has been moved into its own module and can be used directly
   by application code.
 - AutoReconnect exception now provides information about the error that
-  actually occured instead of a generic failure message.
+  actually occurred instead of a generic failure message.
 - A number of new helper methods have been added with options for setting and
   unsetting cursor flags, re-indexing a collection, fsync and locking a server,
   and getting the server's current operations.
@@ -2930,7 +2930,7 @@ Issues resolved
 - `PYTHON-186 <https://jira.mongodb.org/browse/PYTHON-186>`_:
   When storing integers, type is selected according to value instead of type
 - `PYTHON-173 <https://jira.mongodb.org/browse/PYTHON-173>`_:
-  as_class option is not propogated by Cursor.clone
+  as_class option is not propagated by Cursor.clone
 - `PYTHON-113 <https://jira.mongodb.org/browse/PYTHON-113>`_:
   Redunducy in MasterSlaveConnection
 
