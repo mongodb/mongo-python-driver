@@ -171,12 +171,6 @@ _UUID_REPRESENTATIONS = {
 }
 
 
-def camel_to_snake(camel):
-    # Regex to convert CamelCase to snake_case.
-    snake = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", camel)
-    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", snake).lower()
-
-
 def validate_boolean(option: str, value: Any) -> bool:
     """Validates that 'value' is True or False."""
     if isinstance(value, bool):
