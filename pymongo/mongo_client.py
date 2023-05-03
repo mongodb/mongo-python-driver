@@ -375,7 +375,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             protocol compression. The list is used to negotiate a compressor
             with the server. Currently supported options are "snappy", "zlib"
             and "zstd". Support for snappy requires the
-            `python-snappy <https://pypi.org/project/python-snappy/>`_ package.
+            `cramjam <https://pypi.org/project/cramjam/>`_ package.
             zlib support requires the Python standard library zlib module. zstd
             requires the `zstandard <https://pypi.org/project/zstandard/>`_
             package. By default no compression is used. Compression support

@@ -81,7 +81,7 @@ if [ -z "$PYTHON_BINARY" ]; then
 elif [ "$COMPRESSORS" = "snappy" ]; then
     createvirtualenv $PYTHON_BINARY snappytest
     trap "deactivate; rm -rf snappytest" EXIT HUP
-    python -m pip install python-snappy
+    python -m pip install cramjam
     PYTHON=python
 elif [ "$COMPRESSORS" = "zstd" ]; then
     createvirtualenv $PYTHON_BINARY zstdtest

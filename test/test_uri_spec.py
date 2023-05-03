@@ -93,7 +93,7 @@ def create_test(test, test_workdir):
     def run_scenario(self):
         compressors = (test.get("options") or {}).get("compressors", [])
         if "snappy" in compressors and not _HAVE_SNAPPY:
-            self.skipTest("This test needs the snappy module.")
+            self.skipTest("This test needs the cramjam module.")
         if test["uri"].startswith(SRV_SCHEME) and not _HAVE_DNSPYTHON:
             self.skipTest("This test needs dnspython package.")
         valid = True

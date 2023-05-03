@@ -283,7 +283,7 @@ aws_reqs = ["pymongo-auth-aws<2.0.0"]
 extras_require = {
     "encryption": ["pymongocrypt>=1.5.0,<2.0.0"] + aws_reqs,
     "ocsp": pyopenssl_reqs,
-    "snappy": ["python-snappy"],
+    "snappy": ["cramjam"],
     "zstd": ["zstandard"],
     "aws": aws_reqs,
     "srv": [],  # PYTHON-3423 Removed in 4.3 but kept here to avoid pip warnings.
