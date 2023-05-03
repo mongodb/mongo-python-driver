@@ -274,15 +274,7 @@ class _OIDCAuthenticator:
             sock_info.oidc_token_gen_id = self.token_gen_id
             return
 
-        # Convert the server response to be more pythonic.
-        # Avoid circular import
-        from pymongo.common import camel_to_snake
-
-        orig_server_resp: Dict = bson.decode(resp["payload"])
-        server_resp = dict()
-        for key, value in orig_server_resp.items():
-            server_resp[camel_to_snake(key)] = value
-
+        server_resp: Dict = bson.decode(resp["payload"])
         if "issuer" in server_resp:
             self.idp_info = server_resp
             self.idp_info_gen_id += 1

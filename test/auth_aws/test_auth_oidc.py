@@ -56,7 +56,7 @@ class TestAuthOIDC(unittest.TestCase):
         def request_token(server_info, context):
             # Validate the info.
             self.assertIn("issuer", server_info)
-            self.assertIn("client_id", server_info)
+            self.assertIn("clientId", server_info)
 
             # Validate the timeout.
             timeout_seconds = context["timeout_seconds"]
@@ -84,7 +84,7 @@ class TestAuthOIDC(unittest.TestCase):
 
             # Validate the info.
             self.assertIn("issuer", server_info)
-            self.assertIn("client_id", server_info)
+            self.assertIn("clientId", server_info)
 
             # Validate the creds
             self.assertIsNotNone(context["refresh_token"])
