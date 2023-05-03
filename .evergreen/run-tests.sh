@@ -222,6 +222,7 @@ if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
 fi
 
 $PYTHON -c "from pymongo import __version__;print(__version__)"
+$PYTHON -m pip uninstall -y cramjam
 $PYTHON setup.py test
 
 # $PYTHON setup.py clean
