@@ -305,7 +305,6 @@ class _Bulk(object):
                 run.op_type,
                 self.collection.codec_options,
             )
-
             while run.idx_offset < len(run.ops):
                 # If this is the last possible operation, use the
                 # final write concern.

@@ -763,32 +763,40 @@ class SocketInfo(object):
         unacknowledged = write_concern and not write_concern.acknowledged
         if self.op_msg_enabled:
             self._raise_if_not_writable(unacknowledged)
+        args = (
+            self,
+            dbname,
+            spec,
+            self.is_mongos,
+            read_preference,
+            codec_options,
+            session,
+            client,
+            check,
+            allowable_errors,
+            self.address,
+            listeners,
+            self.max_bson_size,
+            read_concern,
+        )
+        kwargs = dict(
+            parse_write_concern_error=parse_write_concern_error,
+            collation=collation,
+            compression_ctx=self.compression_context,
+            use_op_msg=self.op_msg_enabled,
+            unacknowledged=unacknowledged,
+            user_fields=user_fields,
+            exhaust_allowed=exhaust_allowed,
+            write_concern=write_concern,
+        )
         try:
-            return command(
-                self,
-                dbname,
-                spec,
-                self.is_mongos,
-                read_preference,
-                codec_options,
-                session,
-                client,
-                check,
-                allowable_errors,
-                self.address,
-                listeners,
-                self.max_bson_size,
-                read_concern,
-                parse_write_concern_error=parse_write_concern_error,
-                collation=collation,
-                compression_ctx=self.compression_context,
-                use_op_msg=self.op_msg_enabled,
-                unacknowledged=unacknowledged,
-                user_fields=user_fields,
-                exhaust_allowed=exhaust_allowed,
-                write_concern=write_concern,
-            )
-        except (OperationFailure, NotPrimaryError):
+            return command(*args, **kwargs)
+        except OperationFailure as exc:
+            if exc.code == helpers._REAUTHENTICATION_REQUIRED_CODE:
+                self.authenticate(True)
+                return command(*args, **kwargs)
+            raise
+        except NotPrimaryError:
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.
         except BaseException as error:
@@ -864,7 +872,12 @@ class SocketInfo(object):
         """
         # CMAP spec says to publish the ready event only after authenticating
         # the connection.
-        if not self.ready or reauthenticate:
+        if reauthenticate:
+            self.ready = False
+            if self.performed_handshake:
+                # Existing auth_ctx is stale, remove it.
+                self.auth_ctx = None
+        if not self.ready:
             creds = self.opts._credentials
             if creds:
                 auth.authenticate(creds, self, reauthenticate=reauthenticate)
@@ -926,12 +939,6 @@ class SocketInfo(object):
     def idle_time_seconds(self):
         """Seconds since this socket was last checked into its pool."""
         return time.monotonic() - self.last_checkin_time
-
-    def handle_reauthenticate(self):
-        """Handle a reauthentication."""
-        if self.performed_handshake:
-            # Existing auth_ctx is stale, remove it.
-            self.auth_ctx = None
 
     def _raise_connection_failure(self, error):
         # Catch *all* exceptions from socket methods and close the socket. In
