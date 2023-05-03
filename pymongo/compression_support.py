@@ -136,6 +136,8 @@ def decompress(data, compressor_id):
     if compressor_id == SnappyContext.compressor_id:
         # python-snappy doesn't support the buffer interface.
         # https://github.com/andrix/python-snappy/issues/65
+        # cramjam also doesn't support the buffer interface.
+        # https://github.com/milesgranger/pyrus-cramjam/issues/102
         # This only matters when data is a memoryview since
         # id(bytes(data)) == id(data) when data is a bytes.
         return snappy.uncompress(bytes(data))
