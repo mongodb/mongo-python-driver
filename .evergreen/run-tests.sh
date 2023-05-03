@@ -222,7 +222,7 @@ if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
 fi
 
 $PYTHON -c "from pymongo import __version__;print(__version__)"
-$PYTHON -c "from pymongo.compression_support import _HAVE_SNAPPY;print(_HAVE_SNAPPY)"
+$PYTHON setup.py test
 
 # $PYTHON setup.py clean
 # if [ -z "$GREEN_FRAMEWORK" ]; then
