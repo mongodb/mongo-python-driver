@@ -313,10 +313,10 @@ Another example is trying to set a value on a :class:`~bson.raw_bson.RawBSONDocu
     coll = client.test.test
     doc = {"my": "doc"}
     coll.insert_one(doc)
-    retreived = coll.find_one({"_id": doc["_id"]})
-    assert retreived is not None
-    assert len(retreived.raw) > 0
-    retreived[
+    retrieved = coll.find_one({"_id": doc["_id"]})
+    assert retrieved is not None
+    assert len(retrieved.raw) > 0
+    retrieved[
         "foo"
     ] = "bar"  # error: Unsupported target for indexed assignment
                # ("RawBSONDocument")  [index]
