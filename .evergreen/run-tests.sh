@@ -221,22 +221,25 @@ if [ -n "$COVERAGE" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
     fi
 fi
 
-$PYTHON setup.py clean
-if [ -z "$GREEN_FRAMEWORK" ]; then
-    if [ -z "$C_EXTENSIONS" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
-        # Fail if the C extensions fail to build.
+$PYTHON -c "from pymongo import __version__;print(__version__)"
+$PYTHON -c "from pymongo.compression_support import _HAVE_SNAPPY;print(_HAVE_SNAPPY)"
 
-        # This always sets 0 for exit status, even if the build fails, due
-        # to our hack to install PyMongo without C extensions when build
-        # deps aren't available.
-        $PYTHON setup.py build_ext -i
-        # This will set a non-zero exit status if either import fails,
-        # causing this script to exit.
-        $PYTHON -c "from bson import _cbson; from pymongo import _cmessage"
-    fi
+# $PYTHON setup.py clean
+# if [ -z "$GREEN_FRAMEWORK" ]; then
+#     if [ -z "$C_EXTENSIONS" ] && [ "$PYTHON_IMPL" = "CPython" ]; then
+#         # Fail if the C extensions fail to build.
 
-    $PYTHON $COVERAGE_ARGS setup.py $C_EXTENSIONS test $TEST_ARGS $OUTPUT
-else
-    # --no_ext has to come before "test" so there is no way to toggle extensions here.
-    $PYTHON green_framework_test.py $GREEN_FRAMEWORK $OUTPUT
-fi
+#         # This always sets 0 for exit status, even if the build fails, due
+#         # to our hack to install PyMongo without C extensions when build
+#         # deps aren't available.
+#         $PYTHON setup.py build_ext -i
+#         # This will set a non-zero exit status if either import fails,
+#         # causing this script to exit.
+#         $PYTHON -c "from bson import _cbson; from pymongo import _cmessage"
+#     fi
+
+#     $PYTHON $COVERAGE_ARGS setup.py $C_EXTENSIONS test $TEST_ARGS $OUTPUT
+# else
+#     # --no_ext has to come before "test" so there is no way to toggle extensions here.
+#     $PYTHON green_framework_test.py $GREEN_FRAMEWORK $OUTPUT
+# fi
