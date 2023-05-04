@@ -233,7 +233,12 @@ else:
 
 
 def _is_lambda() -> bool:
-    return bool(os.getenv("AWS_EXECUTION_ENV") or os.getenv("AWS_LAMBDA_RUNTIME_API"))
+    if os.getenv("AWS_LAMBDA_RUNTIME_API"):
+        return True
+    env = os.getenv("AWS_EXECUTION_ENV")
+    if env:
+        return env.startswith("AWS_Lambda_")
+    return False
 
 
 def _is_azure_func() -> bool:
