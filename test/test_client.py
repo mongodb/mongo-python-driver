@@ -1926,6 +1926,87 @@ class TestExhaustCursor(IntegrationTest):
         self.assertNotIn(sock_info, pool.sockets)
         self.assertEqual(0, pool.requests)
 
+    def test_gevent_task(self):
+        if not gevent_monkey_patched():
+            raise SkipTest("Must be running monkey patched by gevent")
+        from gevent import spawn
+
+        def poller():
+            while True:
+                client_context.client.pymongo_test.test.insert_one({})
+
+        task = spawn(poller)
+        task.kill()
+        self.assertTrue(task.dead)
+
+    def test_gevent_timeout(self):
+        if not gevent_monkey_patched():
+            raise SkipTest("Must be running monkey patched by gevent")
+        from gevent import Timeout, spawn
+
+        client = rs_or_single_client(maxPoolSize=1)
+        coll = client.pymongo_test.test
+        coll.insert_one({})
+
+        def contentious_task():
+            # The 10 second timeout causes this test to fail without blocking
+            # forever if a bug like PYTHON-2334 is reintroduced.
+            with Timeout(10):
+                coll.find_one({"$where": delay(1)})
+
+        def timeout_task():
+            with Timeout(0.5):
+                try:
+                    coll.find_one({})
+                except Timeout:
+                    pass
+
+        ct = spawn(contentious_task)
+        tt = spawn(timeout_task)
+        tt.join(15)
+        ct.join(15)
+        self.assertTrue(tt.dead)
+        self.assertTrue(ct.dead)
+        self.assertIsNone(tt.get())
+        self.assertIsNone(ct.get())
+
+    def test_gevent_timeout_when_creating_connection(self):
+        if not gevent_monkey_patched():
+            raise SkipTest("Must be running monkey patched by gevent")
+        from gevent import Timeout, spawn
+
+        client = rs_or_single_client()
+        self.addCleanup(client.close)
+        coll = client.pymongo_test.test
+        pool = get_pool(client)
+
+        # Patch the pool to delay the connect method.
+        def delayed_connect(*args, **kwargs):
+            time.sleep(3)
+            return pool.__class__.connect(pool, *args, **kwargs)
+
+        pool.connect = delayed_connect
+
+        def timeout_task():
+            with Timeout(1):
+                try:
+                    coll.find_one({})
+                    return False
+                except Timeout:
+                    return True
+
+        tt = spawn(timeout_task)
+        tt.join(10)
+
+        # Assert that we got our active_sockets count back
+        self.assertEqual(pool.active_sockets, 0)
+        # Assert the greenlet is dead
+        self.assertTrue(tt.dead)
+        # Assert that the Timeout was raised all the way to the try
+        self.assertTrue(tt.get())
+        # Unpatch the instance.
+        del pool.connect
+
 
 class TestClientLazyConnect(IntegrationTest):
     """Test concurrent operations on a lazily-connecting MongoClient."""
@@ -2104,87 +2185,6 @@ class TestMongoClientFailover(MockClientTest):
     def test_network_error_on_delete(self):
         callback = lambda client: client.db.collection.delete_many({})
         self._test_network_error(callback)
-
-    def test_gevent_task(self):
-        if not gevent_monkey_patched():
-            raise SkipTest("Must be running monkey patched by gevent")
-        from gevent import spawn
-
-        def poller():
-            while True:
-                client_context.client.pymongo_test.test.insert_one({})
-
-        task = spawn(poller)
-        task.kill()
-        self.assertTrue(task.dead)
-
-    def test_gevent_timeout(self):
-        if not gevent_monkey_patched():
-            raise SkipTest("Must be running monkey patched by gevent")
-        from gevent import Timeout, spawn
-
-        client = rs_or_single_client(maxPoolSize=1)
-        coll = client.pymongo_test.test
-        coll.insert_one({})
-
-        def contentious_task():
-            # The 10 second timeout causes this test to fail without blocking
-            # forever if a bug like PYTHON-2334 is reintroduced.
-            with Timeout(10):
-                coll.find_one({"$where": delay(1)})
-
-        def timeout_task():
-            with Timeout(0.5):
-                try:
-                    coll.find_one({})
-                except Timeout:
-                    pass
-
-        ct = spawn(contentious_task)
-        tt = spawn(timeout_task)
-        tt.join(15)
-        ct.join(15)
-        self.assertTrue(tt.dead)
-        self.assertTrue(ct.dead)
-        self.assertIsNone(tt.get())
-        self.assertIsNone(ct.get())
-
-    def test_gevent_timeout_when_creating_connection(self):
-        if not gevent_monkey_patched():
-            raise SkipTest("Must be running monkey patched by gevent")
-        from gevent import Timeout, spawn
-
-        client = rs_or_single_client()
-        self.addCleanup(client.close)
-        coll = client.pymongo_test.test
-        pool = get_pool(client)
-
-        # Patch the pool to delay the connect method.
-        def delayed_connect(*args, **kwargs):
-            time.sleep(3)
-            return pool.__class__.connect(pool, *args, **kwargs)
-
-        pool.connect = delayed_connect
-
-        def timeout_task():
-            with Timeout(1):
-                try:
-                    coll.find_one({})
-                    return False
-                except Timeout:
-                    return True
-
-        tt = spawn(timeout_task)
-        tt.join(10)
-
-        # Assert that we got our active_sockets count back
-        self.assertEqual(pool.active_sockets, 0)
-        # Assert the greenlet is dead
-        self.assertTrue(tt.dead)
-        # Assert that the Timeout was raised all the way to the try
-        self.assertTrue(tt.get())
-        # Unpatch the instance.
-        del pool.connect
 
 
 class TestClientPool(MockClientTest):
