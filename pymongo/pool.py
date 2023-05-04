@@ -23,8 +23,9 @@ import sys
 import threading
 import time
 import weakref
-from typing import Any, NoReturn, Optional
+from typing import Any, Dict, NoReturn, Optional
 
+import bson
 from bson import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
 from pymongo import __version__, _csot, auth, helpers
@@ -231,6 +232,103 @@ else:
     )
 
 
+def _is_lambda() -> bool:
+    return bool(os.getenv("AWS_EXECUTION_ENV") or os.getenv("AWS_LAMBDA_RUNTIME_API"))
+
+
+def _is_azure_func() -> bool:
+    return bool(os.getenv("FUNCTIONS_WORKER_RUNTIME"))
+
+
+def _is_gcp_func() -> bool:
+    return bool(os.getenv("K_SERVICE") or os.getenv("FUNCTION_NAME"))
+
+
+def _is_vercel() -> bool:
+    return bool(os.getenv("VERCEL"))
+
+
+def _getenv_int(key: str) -> Optional[int]:
+    """Like os.getenv but returns an int, or None if the value is missing/malformed."""
+    val = os.getenv(key)
+    if not val:
+        return None
+    try:
+        return int(val)
+    except ValueError:
+        return None
+
+
+def _metadata_env() -> Dict[str, Any]:
+    env: Dict[str, Any] = {}
+    # Skip if multiple (or no) envs are matched.
+    if (_is_lambda(), _is_azure_func(), _is_gcp_func(), _is_vercel()).count(True) != 1:
+        return env
+    if _is_lambda():
+        env["name"] = "aws.lambda"
+        region = os.getenv("AWS_REGION")
+        if region:
+            env["region"] = region
+        memory_mb = _getenv_int("AWS_LAMBDA_FUNCTION_MEMORY_SIZE")
+        if memory_mb is not None:
+            env["memory_mb"] = memory_mb
+    elif _is_azure_func():
+        env["name"] = "azure.func"
+    elif _is_gcp_func():
+        env["name"] = "gcp.func"
+        region = os.getenv("FUNCTION_REGION")
+        if region:
+            env["region"] = region
+        memory_mb = _getenv_int("FUNCTION_MEMORY_MB")
+        if memory_mb is not None:
+            env["memory_mb"] = memory_mb
+        timeout_sec = _getenv_int("FUNCTION_TIMEOUT_SEC")
+        if timeout_sec is not None:
+            env["timeout_sec"] = timeout_sec
+    elif _is_vercel():
+        env["name"] = "vercel"
+        region = os.getenv("VERCEL_REGION")
+        if region:
+            env["region"] = region
+    return env
+
+
+_MAX_METADATA_SIZE = 512
+
+
+# See: https://github.com/mongodb/specifications/blob/5112bcc/source/mongodb-handshake/handshake.rst#limitations
+def _truncate_metadata(metadata):
+    """Perform metadata truncation."""
+    if len(bson.encode(metadata)) <= _MAX_METADATA_SIZE:
+        return
+    # 1. Omit fields from env except env.name.
+    env_name = metadata.get("env", {}).get("name")
+    if env_name:
+        metadata["env"] = {"name": env_name}
+    if len(bson.encode(metadata)) <= _MAX_METADATA_SIZE:
+        return
+    # 2. Omit fields from os except os.type.
+    os_type = metadata.get("os", {}).get("type")
+    if os_type:
+        metadata["os"] = {"type": os_type}
+    if len(bson.encode(metadata)) <= _MAX_METADATA_SIZE:
+        return
+    # 3. Omit the env document entirely.
+    metadata.pop("env", None)
+    encoded_size = len(bson.encode(metadata))
+    if encoded_size <= _MAX_METADATA_SIZE:
+        return
+    # 4. Truncate platform.
+    overflow = encoded_size - _MAX_METADATA_SIZE
+    plat = metadata.get("platform", "")
+    if plat:
+        plat = plat[:-overflow]
+    if plat:
+        metadata["platform"] = plat
+    else:
+        metadata.pop("platform", None)
+
+
 # If the first getaddrinfo call of this interpreter's life is on a thread,
 # while the main thread holds the import lock, getaddrinfo deadlocks trying
 # to import the IDNA codec. Import it here, where presumably we're on the
@@ -363,6 +461,12 @@ class PoolOptions(object):
                 )
             if driver.platform:
                 self.__metadata["platform"] = "%s|%s" % (_METADATA["platform"], driver.platform)
+
+        env = _metadata_env()
+        if env:
+            self.__metadata["env"] = env
+
+        _truncate_metadata(self.__metadata)
 
     @property
     def _credentials(self):
