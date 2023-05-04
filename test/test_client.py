@@ -1752,9 +1752,7 @@ class TestClient(IntegrationTest):
         self.assertNotIn("ServerHeartbeatFailedEvent", log_output)
 
     def _test_handshake(self, env_vars, expected_env):
-        mock_env = os.environ.copy()
-        mock_env.update(env_vars)
-        with patch.dict("os.environ", mock_env):
+        with patch.dict("os.environ", env_vars):
             metadata = copy.deepcopy(_METADATA)
             if expected_env is not None:
                 metadata["env"] = expected_env
