@@ -54,7 +54,6 @@ from pymongo.errors import (
     ProtocolError,
 )
 from pymongo.hello import HelloCompat
-from pymongo.helpers import _REAUTHENTICATION_REQUIRED_CODE
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
@@ -840,13 +839,7 @@ class _BulkWriteContext(object):
 
     def execute(self, cmd, docs, client):
         request_id, msg, to_send = self._batch_command(cmd, docs)
-        try:
-            result = self.write_command(cmd, request_id, msg, to_send)
-        except OperationFailure as exc:
-            if exc.code == _REAUTHENTICATION_REQUIRED_CODE:
-                self.sock_info.authenticate(True)
-                result = self.write_command(cmd, request_id, msg, to_send)
-            raise
+        result = self.write_command(cmd, request_id, msg, to_send)
         client._process_response(result, self.session)
         return result, to_send
 

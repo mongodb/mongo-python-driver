@@ -18,7 +18,7 @@ from datetime import datetime
 
 from bson import _decode_all_selective
 from pymongo.errors import NotPrimaryError, OperationFailure
-from pymongo.helpers import _REAUTHENTICATION_REQUIRED_CODE, _check_command_response
+from pymongo.helpers import _check_command_response
 from pymongo.message import _convert_exception, _OpMsg
 from pymongo.response import PinnedResponse, Response
 
@@ -87,17 +87,6 @@ class Server(object):
           - `listeners`: Instance of _EventListeners or None.
           - `unpack_res`: A callable that decodes the wire protocol response.
         """
-        try:
-            return self._run_operation(sock_info, operation, read_preference, listeners, unpack_res)
-        except OperationFailure as exc:
-            if exc.code == _REAUTHENTICATION_REQUIRED_CODE:
-                sock_info.authenticate(True)
-                return self._run_operation(
-                    sock_info, operation, read_preference, listeners, unpack_res
-                )
-            raise
-
-    def _run_operation(self, sock_info, operation, read_preference, listeners, unpack_res):
         duration = None
         publish = listeners.enabled_for_commands
         if publish:
