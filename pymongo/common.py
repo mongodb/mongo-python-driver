@@ -433,7 +433,7 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> Dict[str, Uni
     props: Dict[str, Any] = {}
     if not isinstance(value, str):
         if not isinstance(value, dict):
-            raise ValueError("Auth mechansim properties must be given as a string or a dictionary")
+            raise ValueError("Auth mechanism properties must be given as a string or a dictionary")
         for key, value in value.items():
             if isinstance(value, str):
                 props[key] = value
@@ -455,7 +455,7 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> Dict[str, Uni
                 props[key] = value
             else:
                 raise ValueError(
-                    "Auth mechanism properity values must be strings or callback functions"
+                    "Auth mechanism property values must be strings or callback functions"
                 )
         return props
 
