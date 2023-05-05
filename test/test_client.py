@@ -1761,6 +1761,13 @@ class TestClient(IntegrationTest):
                 options = client._MongoClient__options
                 self.assertEqual(options.pool_options.metadata, metadata)
 
+    def test_handshake_aws_ec2(self):
+        # AWS_EXECUTION_ENV needs to start with "AWS_Lambda_".
+        self._test_handshake(
+            {"AWS_EXECUTION_ENV": "EC2"},
+            None,
+        )
+
     def test_handshake_01_aws(self):
         self._test_handshake(
             {
@@ -1784,6 +1791,16 @@ class TestClient(IntegrationTest):
             },
             {"name": "gcp.func", "region": "us-central1", "memory_mb": 1024, "timeout_sec": 60},
         )
+        # Extra case for FUNCTION_NAME.
+        self._test_handshake(
+            {
+                "FUNCTION_NAME": "funcname",
+                "FUNCTION_MEMORY_MB": "1024",
+                "FUNCTION_TIMEOUT_SEC": "60",
+                "FUNCTION_REGION": "us-central1",
+            },
+            {"name": "gcp.func", "region": "us-central1", "memory_mb": 1024, "timeout_sec": 60},
+        )
 
     def test_handshake_04_vercel(self):
         self._test_handshake(
@@ -1795,6 +1812,12 @@ class TestClient(IntegrationTest):
             {"AWS_EXECUTION_ENV": "AWS_Lambda_python3.9", "FUNCTIONS_WORKER_RUNTIME": "python"},
             None,
         )
+        # Extra cases for other combos.
+        self._test_handshake(
+            {"FUNCTIONS_WORKER_RUNTIME": "python", "K_SERVICE": "servicename"},
+            None,
+        )
+        self._test_handshake({"K_SERVICE": "servicename", "VERCEL": "1"}, None)
 
     def test_handshake_06_region_too_long(self):
         self._test_handshake(
