@@ -1761,13 +1761,6 @@ class TestClient(IntegrationTest):
                 options = client._MongoClient__options
                 self.assertEqual(options.pool_options.metadata, metadata)
 
-    def test_handshake_aws_ec2(self):
-        # AWS_EXECUTION_ENV needs to start with "AWS_Lambda_".
-        self._test_handshake(
-            {"AWS_EXECUTION_ENV": "EC2"},
-            None,
-        )
-
     def test_handshake_01_aws(self):
         self._test_handshake(
             {
@@ -1829,6 +1822,13 @@ class TestClient(IntegrationTest):
         self._test_handshake(
             {"AWS_EXECUTION_ENV": "AWS_Lambda_python3.9", "AWS_LAMBDA_FUNCTION_MEMORY_SIZE": "big"},
             {"name": "aws.lambda"},
+        )
+
+    def test_handshake_08_invalid_aws_ec2(self):
+        # AWS_EXECUTION_ENV needs to start with "AWS_Lambda_".
+        self._test_handshake(
+            {"AWS_EXECUTION_ENV": "EC2"},
+            None,
         )
 
 
