@@ -18,7 +18,7 @@ from datetime import datetime
 
 from bson import _decode_all_selective
 from pymongo.errors import NotPrimaryError, OperationFailure
-from pymongo.helpers import _check_command_response
+from pymongo.helpers import _check_command_response, _handle_reauth
 from pymongo.message import _convert_exception, _OpMsg
 from pymongo.response import PinnedResponse, Response
 
@@ -73,6 +73,7 @@ class Server(object):
         """Check the server's state soon."""
         self._monitor.request_check()
 
+    @_handle_reauth
     def run_operation(self, sock_info, operation, read_preference, listeners, unpack_res):
         """Run a _Query or _GetMore operation and return a Response object.
 

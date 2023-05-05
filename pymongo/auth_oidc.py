@@ -100,7 +100,6 @@ class _OIDCAuthenticator:
 
     def get_current_token(self, use_callbacks=True):
         properties = self.properties
-        principal_name = self.username
 
         request_cb = properties.request_token_callback
         refresh_cb = properties.refresh_token_callback
@@ -238,29 +237,26 @@ class _OIDCAuthenticator:
 
     def run_command(self, sock_info, cmd):
         try:
-            return sock_info.command("$external", cmd)
+            return sock_info.command("$external", cmd, no_reauth=True)
         except OperationFailure as exc:
             self.clear()
             if exc.code == _REAUTHENTICATION_REQUIRED_CODE:
                 if "jwt" in bson.decode(cmd["payload"]):
                     if self.idp_info_gen_id > self.reauth_gen_id:
                         raise
-                    self.handle_reauth(sock_info)
-                    return self.authenticate(sock_info)
+                    return self.authenticate(sock_info, reauthenticate=True)
             raise
 
-    def handle_reauth(self, sock_info):
-        prev_id = getattr(sock_info, "oidc_token_gen_id", None)
-        if prev_id != self.token_gen_id:
-            # No need to preemptively clear, we've already changed tokens.
-            return
+    def authenticate(self, sock_info, reauthenticate=False):
+        if reauthenticate:
+            prev_id = getattr(sock_info, "oidc_token_gen_id", None)
+            # Check if we've already changed tokens.
+            if prev_id == self.token_gen_id:
+                self.reauth_gen_id = self.idp_info_gen_id
+                self.token_exp_utc = None
+                if not self.properties.refresh_token_callback:
+                    self.clear()
 
-        self.reauth_gen_id = self.idp_info_gen_id
-        self.token_exp_utc = None
-        if not self.properties.refresh_token_callback:
-            self.clear()
-
-    def authenticate(self, sock_info):
         ctx = sock_info.auth_ctx
         cmd = None
 
@@ -300,6 +296,4 @@ class _OIDCAuthenticator:
 def _authenticate_oidc(credentials, sock_info, reauthenticate):
     """Authenticate using MONGODB-OIDC."""
     authenticator = _get_authenticator(credentials, sock_info.address)
-    if reauthenticate:
-        authenticator.handle_reauth(sock_info)
-    return authenticator.authenticate(sock_info)
+    return authenticator.authenticate(sock_info, reauthenticate=reauthenticate)

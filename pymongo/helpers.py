@@ -270,3 +270,35 @@ def _handle_exception():
             pass
         finally:
             del einfo
+
+
+def _handle_reauth(func):
+    def inner(*args, **kwargs):
+        no_reauth = kwargs.pop("no_reauth", False)
+        from pymongo.pool import SocketInfo
+
+        try:
+            return func(*args, **kwargs)
+        except OperationFailure as exc:
+            if no_reauth:
+                raise
+            if exc.code == _REAUTHENTICATION_REQUIRED_CODE:
+                # Look for an argument that either is a SocketInfo
+                # or has a socket_info attribute, so we can trigger
+                # a reauth.
+                sock_info = None
+                for arg in args:
+                    if isinstance(arg, SocketInfo):
+                        sock_info = arg
+                        break
+                    if hasattr(arg, "sock_info"):
+                        sock_info = arg.sock_info
+                        break
+                if sock_info:
+                    sock_info.authenticate(reauthenticate=True)
+                else:
+                    raise
+                return func(*args, **kwargs)
+            raise
+
+    return inner

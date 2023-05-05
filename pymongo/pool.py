@@ -56,6 +56,7 @@ from pymongo.errors import (
     _CertificateError,
 )
 from pymongo.hello import Hello, HelloCompat
+from pymongo.helpers import _handle_reauth
 from pymongo.lock import _create_lock
 from pymongo.monitoring import ConnectionCheckOutFailedReason, ConnectionClosedReason
 from pymongo.network import command, receive_message
@@ -704,6 +705,7 @@ class SocketInfo(object):
         helpers._check_command_response(response_doc, self.max_wire_version)
         return response_doc
 
+    @_handle_reauth
     def command(
         self,
         dbname,
@@ -788,7 +790,7 @@ class SocketInfo(object):
                 exhaust_allowed=exhaust_allowed,
                 write_concern=write_concern,
             )
-        except (OperationFailure, NotPrimaryError):
+        except (OperationFailure, NotPrimaryError) as exc:
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.
         except BaseException as error:
@@ -864,7 +866,12 @@ class SocketInfo(object):
         """
         # CMAP spec says to publish the ready event only after authenticating
         # the connection.
-        if not self.ready or reauthenticate:
+        if reauthenticate:
+            if self.performed_handshake:
+                # Existing auth_ctx is stale, remove it.
+                self.auth_ctx = None
+            self.ready = False
+        if not self.ready:
             creds = self.opts._credentials
             if creds:
                 auth.authenticate(creds, self, reauthenticate=reauthenticate)
@@ -926,12 +933,6 @@ class SocketInfo(object):
     def idle_time_seconds(self):
         """Seconds since this socket was last checked into its pool."""
         return time.monotonic() - self.last_checkin_time
-
-    def handle_reauthenticate(self):
-        """Handle a reauthentication."""
-        if self.performed_handshake:
-            # Existing auth_ctx is stale, remove it.
-            self.auth_ctx = None
 
     def _raise_connection_failure(self, error):
         # Catch *all* exceptions from socket methods and close the socket. In

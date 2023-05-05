@@ -28,9 +28,10 @@ from test.utils import EventListener
 
 from bson import SON
 from pymongo import MongoClient
-from pymongo.auth import MongoCredential
 from pymongo.auth_oidc import _CACHE as _oidc_cache
+from pymongo.cursor import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
+from pymongo.operations import InsertOne
 
 
 class TestAuthOIDC(unittest.TestCase):
@@ -496,8 +497,8 @@ class TestAuthOIDC(unittest.TestCase):
 
         with self.fail_point(
             {
-                "mode": {"times": 2},
-                "data": {"failCommands": ["find", "saslStart"], "errorCode": 391},
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "errorCode": 391},
             }
         ):
             # Perform a find operation.
@@ -529,7 +530,152 @@ class TestAuthOIDC(unittest.TestCase):
         self.assertEqual(self.refresh_called, 1)
         client.close()
 
-    def test_reauthenticate_retries_and_succees_with_cache(self):
+    def test_reauthenticate_succeeds_bulk_write(self):
+        request_cb = self.create_request_cb()
+        refresh_cb = self.create_refresh_cb()
+
+        # Create a client with the callbacks.
+        props: Dict = dict(request_token_callback=request_cb, refresh_token_callback=refresh_cb)
+        client = MongoClient(self.uri_single, authmechanismproperties=props)
+
+        # Perform a find operation.
+        client.test.test.find_one()
+
+        # Assert that the refresh callback has not been called.
+        self.assertEqual(self.refresh_called, 0)
+
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["insert"], "errorCode": 391},
+            }
+        ):
+            # Perform a bulk write operation.
+            client.test.test.bulk_write([InsertOne({})])
+
+        # Assert that the refresh callback has been called.
+        self.assertEqual(self.refresh_called, 1)
+        client.close()
+
+    def test_reauthenticate_succeeds_bulk_read(self):
+        request_cb = self.create_request_cb()
+        refresh_cb = self.create_refresh_cb()
+
+        # Create a client with the callbacks.
+        props: Dict = dict(request_token_callback=request_cb, refresh_token_callback=refresh_cb)
+        client = MongoClient(self.uri_single, authmechanismproperties=props)
+
+        # Perform a find operation.
+        client.test.test.find_one()
+
+        # Perform a bulk write operation.
+        client.test.test.bulk_write([InsertOne({})])
+
+        # Assert that the refresh callback has not been called.
+        self.assertEqual(self.refresh_called, 0)
+
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "errorCode": 391},
+            }
+        ):
+            # Perform a bulk read operation.
+            cursor = client.test.test.find_raw_batches({})
+            list(cursor)
+
+        # Assert that the refresh callback has been called.
+        self.assertEqual(self.refresh_called, 1)
+        client.close()
+
+    def test_reauthenticate_succeeds_cursor(self):
+        request_cb = self.create_request_cb()
+        refresh_cb = self.create_refresh_cb()
+
+        # Create a client with the callbacks.
+        props: Dict = dict(request_token_callback=request_cb, refresh_token_callback=refresh_cb)
+        client = MongoClient(self.uri_single, authmechanismproperties=props)
+
+        # Perform an insert operation.
+        client.test.test.insert_one({"a": 1})
+
+        # Assert that the refresh callback has not been called.
+        self.assertEqual(self.refresh_called, 0)
+
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "errorCode": 391},
+            }
+        ):
+            # Perform a find operation.
+            cursor = client.test.test.find({"a": 1})
+            self.assertGreaterEqual(len(list(cursor)), 1)
+
+        # Assert that the refresh callback has been called.
+        self.assertEqual(self.refresh_called, 1)
+        client.close()
+
+    def test_reauthenticate_succeeds_get_more(self):
+        request_cb = self.create_request_cb()
+        refresh_cb = self.create_refresh_cb()
+
+        # Create a client with the callbacks.
+        props: Dict = dict(request_token_callback=request_cb, refresh_token_callback=refresh_cb)
+        client = MongoClient(self.uri_single, authmechanismproperties=props)
+
+        # Perform an insert operation.
+        client.test.test.insert_many([{"a": 1}, {"a": 1}])
+
+        # Assert that the refresh callback has not been called.
+        self.assertEqual(self.refresh_called, 0)
+
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "errorCode": 391},
+            }
+        ):
+            # Perform a find operation.
+            cursor = client.test.test.find({"a": 1}, batch_size=1, cursor_type=CursorType.EXHAUST)
+            self.assertGreaterEqual(len(list(cursor)), 1)
+
+        # Assert that the refresh callback has been called.
+        self.assertEqual(self.refresh_called, 1)
+        client.close()
+
+    def test_reauthenticate_succeeds_command(self):
+        request_cb = self.create_request_cb()
+        refresh_cb = self.create_refresh_cb()
+
+        # Create a client with the callbacks.
+        props: Dict = dict(request_token_callback=request_cb, refresh_token_callback=refresh_cb)
+
+        print("start of test")
+        client = MongoClient(self.uri_single, authmechanismproperties=props)
+
+        # Perform an insert operation.
+        client.test.test.insert_one({"a": 1})
+
+        # Assert that the refresh callback has not been called.
+        self.assertEqual(self.refresh_called, 0)
+
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["count"], "errorCode": 391},
+            }
+        ):
+            # Perform a count operation.
+            cursor = client.test.command(dict(count="test"))
+
+        self.assertGreaterEqual(len(list(cursor)), 1)
+
+        # Assert that the refresh callback has been called.
+        self.assertEqual(self.refresh_called, 1)
+        client.close()
+
+    def test_reauthenticate_retries_and_succeeds_with_cache(self):
         listener = EventListener()
 
         # Create request and refresh callbacks that return valid credentials

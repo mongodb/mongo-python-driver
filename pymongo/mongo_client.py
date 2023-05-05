@@ -1397,14 +1397,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                             assert last_error is not None
                             raise last_error
                         retryable = False
-                    # Handle re-authentication.
-                    try:
-                        return func(session, sock_info, retryable)
-                    except OperationFailure as exc:
-                        if exc.code == helpers._REAUTHENTICATION_REQUIRED_CODE:
-                            sock_info.authenticate(reauthenticate=True)
-                            return func(session, sock_info, retryable)
-                        raise
+                    return func(session, sock_info, retryable)
             except ServerSelectionTimeoutError:
                 if is_retrying():
                     # The application may think the write was never attempted
@@ -1468,14 +1461,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                         # not support retryable reads, raise the last error.
                         assert last_error is not None
                         raise last_error
-                    # Handle re-authentication.
-                    try:
-                        return func(session, server, sock_info, read_pref)
-                    except OperationFailure as exc:
-                        if exc.code == helpers._REAUTHENTICATION_REQUIRED_CODE:
-                            sock_info.authenticate(reauthenticate=True)
-                            return func(session, server, sock_info, read_pref)
-                        raise
+                    return func(session, server, sock_info, read_pref)
             except ServerSelectionTimeoutError:
                 if retrying:
                     # The application may think the write was never attempted
