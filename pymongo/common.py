@@ -17,7 +17,6 @@
 
 import datetime
 import inspect
-import re
 import warnings
 from collections import OrderedDict, abc
 from typing import (

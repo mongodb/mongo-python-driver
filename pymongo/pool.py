@@ -790,7 +790,7 @@ class SocketInfo(object):
                 exhaust_allowed=exhaust_allowed,
                 write_concern=write_concern,
             )
-        except (OperationFailure, NotPrimaryError) as exc:
+        except (OperationFailure, NotPrimaryError):
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.
         except BaseException as error:

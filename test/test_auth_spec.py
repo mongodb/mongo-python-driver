@@ -49,7 +49,7 @@ def create_test(test_case):
                     props["request_token_callback"] = lambda x, y: 1
                     del props["REQUEST_TOKEN_CALLBACK"]
                 if props.get("REFRESH_TOKEN_CALLBACK"):
-                    props["refresh_token_callback"] = lambda a, b: 1  # type:ignore[misc]
+                    props["refresh_token_callback"] = lambda a, b: 1
                     del props["REFRESH_TOKEN_CALLBACK"]
             client = MongoClient(uri, connect=False, authmechanismproperties=props)
             credentials = client.options.pool_options._credentials
