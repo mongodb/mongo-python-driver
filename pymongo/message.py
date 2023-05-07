@@ -1077,7 +1077,7 @@ def _batched_op_msg_impl(operation, command, docs, ack, opts, ctx, buf):
         new_message_size = buf.tell() + doc_length
         # Does first document exceed max_message_size?
         doc_too_large = idx == 0 and (new_message_size > max_message_size)
-        # When OP_MSG is used unacknowleged we have to check
+        # When OP_MSG is used unacknowledged we have to check
         # document size client side or applications won't be notified.
         # Otherwise we let the server deal with documents that are too large
         # since ordered=False causes those documents to be skipped instead of

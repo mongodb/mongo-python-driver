@@ -66,7 +66,7 @@ class SON(Dict[_Key, _Value]):
         self.update(kwargs)
 
     def __new__(cls: Type["SON[_Key, _Value]"], *args: Any, **kwargs: Any) -> "SON[_Key, _Value]":
-        instance = super(SON, cls).__new__(cls, *args, **kwargs)
+        instance = super(SON, cls).__new__(cls, *args, **kwargs)  # type: ignore[type-var]
         instance.__keys = []
         return instance
 
@@ -115,7 +115,7 @@ class SON(Dict[_Key, _Value]):
         self.__keys = []
         super(SON, self).clear()
 
-    def setdefault(self, key: _Key, default: _Value) -> _Value:  # type: ignore[override]
+    def setdefault(self, key: _Key, default: _Value) -> _Value:
         try:
             return self[key]
         except KeyError:

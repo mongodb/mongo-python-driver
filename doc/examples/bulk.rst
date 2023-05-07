@@ -4,8 +4,9 @@ Bulk Write Operations
 .. testsetup::
 
   from pymongo import MongoClient
+
   client = MongoClient()
-  client.drop_database('bulk_example')
+  client.drop_database("bulk_example")
 
 This tutorial explains how to take advantage of PyMongo's bulk
 write operation features. Executing write operations in batches
@@ -27,7 +28,7 @@ bulk insert operations.
 
   >>> import pymongo
   >>> db = pymongo.MongoClient().bulk_example
-  >>> db.test.insert_many([{'i': i} for i in range(10000)]).inserted_ids
+  >>> db.test.insert_many([{"i": i} for i in range(10000)]).inserted_ids
   [...]
   >>> db.test.count_documents({})
   10000
@@ -56,14 +57,17 @@ of operations performed.
 
   >>> from pprint import pprint
   >>> from pymongo import InsertOne, DeleteMany, ReplaceOne, UpdateOne
-  >>> result = db.test.bulk_write([
-  ...     DeleteMany({}),  # Remove all documents from the previous example.
-  ...     InsertOne({'_id': 1}),
-  ...     InsertOne({'_id': 2}),
-  ...     InsertOne({'_id': 3}),
-  ...     UpdateOne({'_id': 1}, {'$set': {'foo': 'bar'}}),
-  ...     UpdateOne({'_id': 4}, {'$inc': {'j': 1}}, upsert=True),
-  ...     ReplaceOne({'j': 1}, {'j': 2})])
+  >>> result = db.test.bulk_write(
+  ...     [
+  ...         DeleteMany({}),  # Remove all documents from the previous example.
+  ...         InsertOne({"_id": 1}),
+  ...         InsertOne({"_id": 2}),
+  ...         InsertOne({"_id": 3}),
+  ...         UpdateOne({"_id": 1}, {"$set": {"foo": "bar"}}),
+  ...         UpdateOne({"_id": 4}, {"$inc": {"j": 1}}, upsert=True),
+  ...         ReplaceOne({"j": 1}, {"j": 2}),
+  ...     ]
+  ... )
   >>> pprint(result.bulk_api_result)
   {'nInserted': 3,
    'nMatched': 2,
@@ -76,7 +80,7 @@ of operations performed.
 
 The first write failure that occurs (e.g. duplicate key error) aborts the
 remaining operations, and PyMongo raises
-:class:`~pymongo.errors.BulkWriteError`. The :attr:`details` attibute of
+:class:`~pymongo.errors.BulkWriteError`. The :attr:`details` attribute of
 the exception instance provides the execution results up until the failure
 occurred and details about the failure - including the operation that caused
 the failure.
@@ -87,9 +91,10 @@ the failure.
   >>> from pymongo import InsertOne, DeleteOne, ReplaceOne
   >>> from pymongo.errors import BulkWriteError
   >>> requests = [
-  ...     ReplaceOne({'j': 2}, {'i': 5}),
-  ...     InsertOne({'_id': 4}),  # Violates the unique key constraint on _id.
-  ...     DeleteOne({'i': 5})]
+  ...     ReplaceOne({"j": 2}, {"i": 5}),
+  ...     InsertOne({"_id": 4}),  # Violates the unique key constraint on _id.
+  ...     DeleteOne({"i": 5}),
+  ... ]
   >>> try:
   ...     db.test.bulk_write(requests)
   ... except BulkWriteError as bwe:
@@ -124,10 +129,11 @@ and fourth operations succeed.
   :options: +NORMALIZE_WHITESPACE
 
   >>> requests = [
-  ...     InsertOne({'_id': 1}),
-  ...     DeleteOne({'_id': 2}),
-  ...     InsertOne({'_id': 3}),
-  ...     ReplaceOne({'_id': 4}, {'i': 1})]
+  ...     InsertOne({"_id": 1}),
+  ...     DeleteOne({"_id": 2}),
+  ...     InsertOne({"_id": 3}),
+  ...     ReplaceOne({"_id": 4}, {"i": 1}),
+  ... ]
   >>> try:
   ...     db.test.bulk_write(requests, ordered=False)
   ... except BulkWriteError as bwe:

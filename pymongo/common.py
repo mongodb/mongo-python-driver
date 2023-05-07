@@ -63,7 +63,7 @@ MAX_WRITE_BATCH_SIZE = 1000
 # What this version of PyMongo supports.
 MIN_SUPPORTED_SERVER_VERSION = "3.6"
 MIN_SUPPORTED_WIRE_VERSION = 6
-MAX_SUPPORTED_WIRE_VERSION = 17
+MAX_SUPPORTED_WIRE_VERSION = 21
 
 # Frequency to call hello on servers, in seconds.
 HEARTBEAT_FREQUENCY = 10
@@ -469,7 +469,7 @@ def validate_document_class(
         raise TypeError(
             "%s must be dict, bson.son.SON, "
             "bson.raw_bson.RawBSONDocument, or a "
-            "sublass of collections.MutableMapping" % (option,)
+            "subclass of collections.MutableMapping" % (option,)
         )
     return value
 
@@ -820,10 +820,6 @@ def get_validated_options(
 
 def _esc_coll_name(encrypted_fields, name):
     return encrypted_fields.get("escCollection", f"enxcol_.{name}.esc")
-
-
-def _ecc_coll_name(encrypted_fields, name):
-    return encrypted_fields.get("eccCollection", f"enxcol_.{name}.ecc")
 
 
 def _ecoc_coll_name(encrypted_fields, name):

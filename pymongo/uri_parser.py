@@ -42,7 +42,7 @@ DEFAULT_PORT = 27017
 def _unquoted_percent(s):
     """Check for unescaped percent signs.
 
-    :Paramaters:
+    :Parameters:
         - `s`: A string. `s` can have things like '%25', '%2525',
            and '%E2%85%A8' but cannot have unquoted percent like '%foo'.
     """
@@ -64,7 +64,7 @@ def parse_userinfo(userinfo: str) -> Tuple[str, str]:
     Returns a 2-tuple containing the unescaped username followed
     by the unescaped password.
 
-    :Paramaters:
+    :Parameters:
         - `userinfo`: A string of the form <username>:<password>
     """
     if "@" in userinfo or userinfo.count(":") > 1 or _unquoted_percent(userinfo):

@@ -8,8 +8,9 @@ group method.
 .. testsetup::
 
   from pymongo import MongoClient
+
   client = MongoClient()
-  client.drop_database('aggregation_example')
+  client.drop_database("aggregation_example")
 
 Setup
 -----
@@ -20,10 +21,14 @@ aggregations on:
 
   >>> from pymongo import MongoClient
   >>> db = MongoClient().aggregation_example
-  >>> result = db.things.insert_many([{"x": 1, "tags": ["dog", "cat"]},
-  ...                                 {"x": 2, "tags": ["cat"]},
-  ...                                 {"x": 2, "tags": ["mouse", "cat", "dog"]},
-  ...                                 {"x": 3, "tags": []}])
+  >>> result = db.things.insert_many(
+  ...     [
+  ...         {"x": 1, "tags": ["dog", "cat"]},
+  ...         {"x": 2, "tags": ["cat"]},
+  ...         {"x": 2, "tags": ["mouse", "cat", "dog"]},
+  ...         {"x": 3, "tags": []},
+  ...     ]
+  ... )
   >>> result.inserted_ids
   [ObjectId('...'), ObjectId('...'), ObjectId('...'), ObjectId('...')]
 
@@ -54,7 +59,7 @@ eg "$sort":
   >>> pipeline = [
   ...     {"$unwind": "$tags"},
   ...     {"$group": {"_id": "$tags", "count": {"$sum": 1}}},
-  ...     {"$sort": SON([("count", -1), ("_id", -1)])}
+  ...     {"$sort": SON([("count", -1), ("_id", -1)])},
   ... ]
   >>> import pprint
   >>> pprint.pprint(list(db.things.aggregate(pipeline)))
@@ -62,8 +67,16 @@ eg "$sort":
    {'_id': 'dog', 'count': 2},
    {'_id': 'mouse', 'count': 1}]
 
-To run an explain plan for this aggregation use the
-:meth:`~pymongo.database.Database.command` method::
+To run an explain plan for this aggregation use
+`PyMongoExplain <https://pypi.org/project/pymongoexplain/>`_,
+a companion library for PyMongo. It allows you to explain any CRUD operation
+by providing a few convenience classes::
+
+  >>> from pymongoexplain import ExplainableCollection
+  >>> ExplainableCollection(collection).aggregate(pipeline)
+  {'ok': 1.0, 'queryPlanner': [...]}
+
+Or, use the :meth:`~pymongo.database.Database.command` method::
 
   >>> db.command('aggregate', 'things', pipeline=pipeline, explain=True)
   {'ok': 1.0, 'stages': [...]}

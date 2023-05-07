@@ -968,7 +968,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         }
     }
 
-    /* No _type_marker attibute or not one of our types. */
+    /* No _type_marker attribute or not one of our types. */
 
     if (PyBool_Check(value)) {
         const char c = (value == Py_True) ? 0x01 : 0x00;

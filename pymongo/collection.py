@@ -43,7 +43,7 @@ from pymongo.bulk import _Bulk
 from pymongo.change_stream import CollectionChangeStream
 from pymongo.collation import validate_collation_or_none
 from pymongo.command_cursor import CommandCursor, RawBatchCommandCursor
-from pymongo.common import _ecc_coll_name, _ecoc_coll_name, _esc_coll_name
+from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.cursor import Cursor, RawBatchCursor
 from pymongo.errors import (
     ConfigurationError,
@@ -231,8 +231,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             if encrypted_fields:
                 common.validate_is_mapping("encrypted_fields", encrypted_fields)
                 opts = {"clusteredIndex": {"key": {"_id": 1}, "unique": True}}
-                self.__create(_esc_coll_name(encrypted_fields, name), opts, None, session)
-                self.__create(_ecc_coll_name(encrypted_fields, name), opts, None, session)
+                self.__create(
+                    _esc_coll_name(encrypted_fields, name), opts, None, session, qev2_required=True
+                )
                 self.__create(_ecoc_coll_name(encrypted_fields, name), opts, None, session)
                 self.__create(name, kwargs, collation, session, encrypted_fields=encrypted_fields)
                 self.create_index([("__safeContent__", ASCENDING)], session)
@@ -304,7 +305,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 user_fields=user_fields,
             )
 
-    def __create(self, name, options, collation, session, encrypted_fields=None):
+    def __create(
+        self, name, options, collation, session, encrypted_fields=None, qev2_required=False
+    ):
         """Sends a create command with the given options."""
         cmd = SON([("create", name)])
         if encrypted_fields:
@@ -315,6 +318,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 options["size"] = float(options["size"])
             cmd.update(options)
         with self._socket_for_writes(session) as sock_info:
+            if qev2_required and sock_info.max_wire_version < 21:
+                raise ConfigurationError(
+                    "Driver support of Queryable Encryption is incompatible with server. "
+                    "Upgrade server to use Queryable Encryption. "
+                    f"Got maxWireVersion {sock_info.max_wire_version} but need maxWireVersion >= 21 (MongoDB >=7.0)"
+                )
+
             self._command(
                 sock_info,
                 cmd,
@@ -2018,11 +2028,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             pairs specifying the index to create
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
-            arguments
           - `comment` (optional): A user-provided comment to attach to this
             command.
           - `**kwargs` (optional): any additional index creation
             options (see the above list) should be passed as keyword
+            arguments.
 
         .. versionchanged:: 4.4
            Allow passing a list containing (key, direction) pairs
@@ -2064,19 +2074,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     ) -> None:
         """Drops all indexes on this collection.
 
-        Can be used on non-existant collections or collections with no indexes.
+        Can be used on non-existent collections or collections with no indexes.
         Raises OperationFailure on an error.
 
         :Parameters:
           - `session` (optional): a
             :class:`~pymongo.client_session.ClientSession`.
-            arguments
           - `comment` (optional): A user-provided comment to attach to this
             command.
           - `**kwargs` (optional): optional arguments to the createIndexes
             command (like maxTimeMS) can be passed as keyword arguments.
-
-
 
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation.
@@ -2088,7 +2095,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 3.4
            Apply this collection's write concern automatically to this operation
            when connected to MongoDB >= 3.4.
-
         """
         if comment is not None:
             kwargs["comment"] = comment
@@ -2104,7 +2110,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     ) -> None:
         """Drops the specified index on this collection.
 
-        Can be used on non-existant collections or collections with no
+        Can be used on non-existent collections or collections with no
         indexes.  Raises OperationFailure on an error (e.g. trying to
         drop an index that does not exist). `index_or_name`
         can be either an index name (as returned by `create_index`),
@@ -2366,8 +2372,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY` is used.
 
         .. note:: This method does not support the 'explain' option. Please
-           use :meth:`~pymongo.database.Database.command` instead. An
-           example is included in the :ref:`aggregate-examples` documentation.
+           use `PyMongoExplain <https://pypi.org/project/pymongoexplain/>`_
+           instead. An example is included in the :ref:`aggregate-examples`
+           documentation.
 
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation.
@@ -2531,14 +2538,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. code-block:: python
 
             try:
-                with db.collection.watch(
-                        [{'$match': {'operationType': 'insert'}}]) as stream:
+                with db.collection.watch([{"$match": {"operationType": "insert"}}]) as stream:
                     for insert_change in stream:
                         print(insert_change)
             except pymongo.errors.PyMongoError:
                 # The ChangeStream encountered an unrecoverable error or the
                 # resume attempt failed to recreate the cursor.
-                logging.error('...')
+                logging.error("...")
 
         For a precise description of the resume process see the
         `change streams specification`_.
@@ -2675,7 +2681,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if not new_name or ".." in new_name:
             raise InvalidName("collection names cannot be empty")
         if new_name[0] == "." or new_name[-1] == ".":
-            raise InvalidName("collecion names must not start or end with '.'")
+            raise InvalidName("collection names must not start or end with '.'")
         if "$" in new_name and not new_name.startswith("oplog.$main"):
             raise InvalidName("collection names must not contain '$'")
 

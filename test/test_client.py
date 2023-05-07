@@ -28,6 +28,7 @@ import sys
 import threading
 import time
 from typing import Iterable, Type, no_type_check
+from unittest.mock import patch
 
 sys.path[0:0] = [""]
 
@@ -113,7 +114,6 @@ class ClientUnitTest(unittest.TestCase):
     client: MongoClient
 
     @classmethod
-    @client_context.require_connection
     def setUpClass(cls):
         cls.client = rs_or_single_client(connect=False, serverSelectionTimeoutMS=100)
 
@@ -1751,6 +1751,86 @@ class TestClient(IntegrationTest):
         self.assertIn("TEST COMPLETED", log_output)
         self.assertNotIn("ServerHeartbeatFailedEvent", log_output)
 
+    def _test_handshake(self, env_vars, expected_env):
+        with patch.dict("os.environ", env_vars):
+            metadata = copy.deepcopy(_METADATA)
+            if expected_env is not None:
+                metadata["env"] = expected_env
+            with rs_or_single_client(serverSelectionTimeoutMS=10000) as client:
+                client.admin.command("ping")
+                options = client._MongoClient__options
+                self.assertEqual(options.pool_options.metadata, metadata)
+
+    def test_handshake_01_aws(self):
+        self._test_handshake(
+            {
+                "AWS_EXECUTION_ENV": "AWS_Lambda_python3.9",
+                "AWS_REGION": "us-east-2",
+                "AWS_LAMBDA_FUNCTION_MEMORY_SIZE": "1024",
+            },
+            {"name": "aws.lambda", "region": "us-east-2", "memory_mb": 1024},
+        )
+
+    def test_handshake_02_azure(self):
+        self._test_handshake({"FUNCTIONS_WORKER_RUNTIME": "python"}, {"name": "azure.func"})
+
+    def test_handshake_03_gcp(self):
+        self._test_handshake(
+            {
+                "K_SERVICE": "servicename",
+                "FUNCTION_MEMORY_MB": "1024",
+                "FUNCTION_TIMEOUT_SEC": "60",
+                "FUNCTION_REGION": "us-central1",
+            },
+            {"name": "gcp.func", "region": "us-central1", "memory_mb": 1024, "timeout_sec": 60},
+        )
+        # Extra case for FUNCTION_NAME.
+        self._test_handshake(
+            {
+                "FUNCTION_NAME": "funcname",
+                "FUNCTION_MEMORY_MB": "1024",
+                "FUNCTION_TIMEOUT_SEC": "60",
+                "FUNCTION_REGION": "us-central1",
+            },
+            {"name": "gcp.func", "region": "us-central1", "memory_mb": 1024, "timeout_sec": 60},
+        )
+
+    def test_handshake_04_vercel(self):
+        self._test_handshake(
+            {"VERCEL": "1", "VERCEL_REGION": "cdg1"}, {"name": "vercel", "region": "cdg1"}
+        )
+
+    def test_handshake_05_multiple(self):
+        self._test_handshake(
+            {"AWS_EXECUTION_ENV": "AWS_Lambda_python3.9", "FUNCTIONS_WORKER_RUNTIME": "python"},
+            None,
+        )
+        # Extra cases for other combos.
+        self._test_handshake(
+            {"FUNCTIONS_WORKER_RUNTIME": "python", "K_SERVICE": "servicename"},
+            None,
+        )
+        self._test_handshake({"K_SERVICE": "servicename", "VERCEL": "1"}, None)
+
+    def test_handshake_06_region_too_long(self):
+        self._test_handshake(
+            {"AWS_EXECUTION_ENV": "AWS_Lambda_python3.9", "AWS_REGION": "a" * 512},
+            {"name": "aws.lambda"},
+        )
+
+    def test_handshake_07_memory_invalid_int(self):
+        self._test_handshake(
+            {"AWS_EXECUTION_ENV": "AWS_Lambda_python3.9", "AWS_LAMBDA_FUNCTION_MEMORY_SIZE": "big"},
+            {"name": "aws.lambda"},
+        )
+
+    def test_handshake_08_invalid_aws_ec2(self):
+        # AWS_EXECUTION_ENV needs to start with "AWS_Lambda_".
+        self._test_handshake(
+            {"AWS_EXECUTION_ENV": "EC2"},
+            None,
+        )
+
 
 class TestExhaustCursor(IntegrationTest):
     """Test that clients properly handle errors from exhaust cursors."""
@@ -1866,6 +1946,87 @@ class TestExhaustCursor(IntegrationTest):
         # The socket was closed and the semaphore was decremented.
         self.assertNotIn(sock_info, pool.sockets)
         self.assertEqual(0, pool.requests)
+
+    def test_gevent_task(self):
+        if not gevent_monkey_patched():
+            raise SkipTest("Must be running monkey patched by gevent")
+        from gevent import spawn
+
+        def poller():
+            while True:
+                client_context.client.pymongo_test.test.insert_one({})
+
+        task = spawn(poller)
+        task.kill()
+        self.assertTrue(task.dead)
+
+    def test_gevent_timeout(self):
+        if not gevent_monkey_patched():
+            raise SkipTest("Must be running monkey patched by gevent")
+        from gevent import Timeout, spawn
+
+        client = rs_or_single_client(maxPoolSize=1)
+        coll = client.pymongo_test.test
+        coll.insert_one({})
+
+        def contentious_task():
+            # The 10 second timeout causes this test to fail without blocking
+            # forever if a bug like PYTHON-2334 is reintroduced.
+            with Timeout(10):
+                coll.find_one({"$where": delay(1)})
+
+        def timeout_task():
+            with Timeout(0.5):
+                try:
+                    coll.find_one({})
+                except Timeout:
+                    pass
+
+        ct = spawn(contentious_task)
+        tt = spawn(timeout_task)
+        tt.join(15)
+        ct.join(15)
+        self.assertTrue(tt.dead)
+        self.assertTrue(ct.dead)
+        self.assertIsNone(tt.get())
+        self.assertIsNone(ct.get())
+
+    def test_gevent_timeout_when_creating_connection(self):
+        if not gevent_monkey_patched():
+            raise SkipTest("Must be running monkey patched by gevent")
+        from gevent import Timeout, spawn
+
+        client = rs_or_single_client()
+        self.addCleanup(client.close)
+        coll = client.pymongo_test.test
+        pool = get_pool(client)
+
+        # Patch the pool to delay the connect method.
+        def delayed_connect(*args, **kwargs):
+            time.sleep(3)
+            return pool.__class__.connect(pool, *args, **kwargs)
+
+        pool.connect = delayed_connect
+
+        def timeout_task():
+            with Timeout(1):
+                try:
+                    coll.find_one({})
+                    return False
+                except Timeout:
+                    return True
+
+        tt = spawn(timeout_task)
+        tt.join(10)
+
+        # Assert that we got our active_sockets count back
+        self.assertEqual(pool.active_sockets, 0)
+        # Assert the greenlet is dead
+        self.assertTrue(tt.dead)
+        # Assert that the Timeout was raised all the way to the try
+        self.assertTrue(tt.get())
+        # Unpatch the instance.
+        del pool.connect
 
 
 class TestClientLazyConnect(IntegrationTest):
@@ -2045,87 +2206,6 @@ class TestMongoClientFailover(MockClientTest):
     def test_network_error_on_delete(self):
         callback = lambda client: client.db.collection.delete_many({})
         self._test_network_error(callback)
-
-    def test_gevent_task(self):
-        if not gevent_monkey_patched():
-            raise SkipTest("Must be running monkey patched by gevent")
-        from gevent import spawn
-
-        def poller():
-            while True:
-                client_context.client.pymongo_test.test.insert_one({})
-
-        task = spawn(poller)
-        task.kill()
-        self.assertTrue(task.dead)
-
-    def test_gevent_timeout(self):
-        if not gevent_monkey_patched():
-            raise SkipTest("Must be running monkey patched by gevent")
-        from gevent import Timeout, spawn
-
-        client = rs_or_single_client(maxPoolSize=1)
-        coll = client.pymongo_test.test
-        coll.insert_one({})
-
-        def contentious_task():
-            # The 10 second timeout causes this test to fail without blocking
-            # forever if a bug like PYTHON-2334 is reintroduced.
-            with Timeout(10):
-                coll.find_one({"$where": delay(1)})
-
-        def timeout_task():
-            with Timeout(0.5):
-                try:
-                    coll.find_one({})
-                except Timeout:
-                    pass
-
-        ct = spawn(contentious_task)
-        tt = spawn(timeout_task)
-        tt.join(15)
-        ct.join(15)
-        self.assertTrue(tt.dead)
-        self.assertTrue(ct.dead)
-        self.assertIsNone(tt.get())
-        self.assertIsNone(ct.get())
-
-    def test_gevent_timeout_when_creating_connection(self):
-        if not gevent_monkey_patched():
-            raise SkipTest("Must be running monkey patched by gevent")
-        from gevent import Timeout, spawn
-
-        client = rs_or_single_client()
-        self.addCleanup(client.close)
-        coll = client.pymongo_test.test
-        pool = get_pool(client)
-
-        # Patch the pool to delay the connect method.
-        def delayed_connect(*args, **kwargs):
-            time.sleep(3)
-            return pool.__class__.connect(pool, *args, **kwargs)
-
-        pool.connect = delayed_connect
-
-        def timeout_task():
-            with Timeout(1):
-                try:
-                    coll.find_one({})
-                    return False
-                except Timeout:
-                    return True
-
-        tt = spawn(timeout_task)
-        tt.join(10)
-
-        # Assert that we got our active_sockets count back
-        self.assertEqual(pool.active_sockets, 0)
-        # Assert the greenlet is dead
-        self.assertTrue(tt.dead)
-        # Assert that the Timeout was raised all the way to the try
-        self.assertTrue(tt.get())
-        # Unpatch the instance.
-        del pool.connect
 
 
 class TestClientPool(MockClientTest):

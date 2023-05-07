@@ -15,7 +15,8 @@ command_type: system
 # Protect ourself against rogue test case, or curl gone wild, that runs forever
 # Good rule of thumb: the averageish length a task takes, times 5
 # That roughly accounts for variable system performance for various buildvariants
-exec_timeout_secs: 1800 # 30 minutes is the longest we'll ever run
+exec_timeout_secs: 3600 # 60 minutes is the longest we'll ever run (primarily
+                        # for macos hosts)
 
 # What to do when evergreen hits the timeout (`post:` tasks are run automatically)
 timeout:
@@ -165,7 +166,10 @@ functions:
         script: |
           set -o xtrace
           ${PREPARE_SHELL}
-          find $MONGO_ORCHESTRATION_HOME -name \*.log | xargs tar czf mongodb-logs.tar.gz
+          mkdir out_dir
+          find $MONGO_ORCHESTRATION_HOME -name \*.log -exec sh -c 'x="{}"; mv $x $PWD/out_dir/$(basename $(dirname $x))_$(basename $x)' \;
+          tar zcvf mongodb-logs.tar.gz -C out_dir/ .
+          rm -rf out_dir
     - command: archive.targz_pack
       params:
         target: "mongo-coredumps.tgz"
@@ -317,7 +321,7 @@ functions:
           ${PREPARE_SHELL}
           # The mongohouse build script needs to be passed the VARIANT variable, see
           # https://github.com/10gen/mongohouse/blob/973cc11/evergreen.yaml#L65
-          VARIANT=ubuntu1804 bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/build-mongohouse-local.sh
+          VARIANT=rhel84-small bash ${DRIVERS_TOOLS}/.evergreen/atlas_data_lake/build-mongohouse-local.sh
     - command: shell.exec
       type: setup
       params:
@@ -453,6 +457,9 @@ functions:
             rm -f ./fle_creds.sh
             export LIBMONGOCRYPT_URL="${libmongocrypt_url}"
             export TEST_ENCRYPTION=1
+            if [ -n "${test_encryption_pyopenssl}" ]; then
+              export TEST_ENCRYPTION_PYOPENSSL=1
+            fi
           fi
           if [ -n "${test_crypt_shared}" ]; then
             export TEST_CRYPT_SHARED=1
@@ -1174,6 +1181,10 @@ task_groups:
       params:
         file: testazurekms-expansions.yml
     teardown_group:
+    # Load expansions again. The setup task may have failed before running `expansions.update`.
+    - command: expansions.update
+      params:
+        file: testazurekms-expansions.yml
     - command: shell.exec
       params:
         shell: bash
@@ -2066,7 +2077,7 @@ tasks:
             shell: "bash"
             script: |
               ${PREPARE_SHELL}
-              export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/ubuntu1804-64/master/latest/libmongocrypt.tar.gz
+              export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/ubuntu2004-64/master/latest/libmongocrypt.tar.gz
               SUCCESS=false TEST_FLE_GCP_AUTO=1 ./.evergreen/run-tests.sh
 
     - name: testazurekms-task
@@ -2123,7 +2134,7 @@ tasks:
             PYTHON_BINARY=
             KEY_NAME='${testazurekms_keyname}' \
             KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}' \
-            LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/ubuntu1804-64/master/latest/libmongocrypt.tar.gz \
+            LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/ubuntu2004-64/master/latest/libmongocrypt.tar.gz \
             SUCCESS=false TEST_FLE_AZURE_AUTO=1 \
             ./.evergreen/run-tests.sh
 
@@ -2169,41 +2180,27 @@ axes:
           skip_web_identity_auth_test: true
           python3_binary: /Library/Frameworks/Python.framework/Versions/3.8/bin/python3
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
-      - id: rhel62
-        display_name: "RHEL 6.2 (x86_64)"
-        run_on: rhel62-small
+      - id: macos-1100-arm64
+        display_name: "macOS 11.00 Arm64"
+        run_on: macos-1100-arm64
+        variables:
+          skip_EC2_auth_test: true
+          skip_ECS_auth_test: true
+          skip_web_identity_auth_test: true
+          python3_binary: /Library/Frameworks/Python.framework/Versions/3.8/bin/python3
+          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
+      - id: rhel84
+        display_name: "RHEL 8.4"
+        run_on: rhel84-small
         batchtime: 10080  # 7 days
         variables:
-          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-62-64-bit/master/latest/libmongocrypt.tar.gz
-      # Note that rhel70 isn't currently used since it doesn't
-      # have a system Python 3. We'll switch to rhel70 as our main test
-      # system (using /opt/python) in a future change.
-      - id: rhel70
-        display_name: "RHEL 7.0"
-        run_on: rhel70-small
+          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-80-64-bit/master/latest/libmongocrypt.tar.gz
+      - id: rhel80-fips
+        display_name: "RHEL 8.0 FIPS"
+        run_on: rhel80-fips
         batchtime: 10080  # 7 days
         variables:
-          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-70-64-bit/master/latest/libmongocrypt.tar.gz
-      - id: rhel70-fips
-        display_name: "RHEL 7.0 FIPS"
-        run_on: rhel70-fips
-        batchtime: 10080  # 7 days
-        variables:
-          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-70-64-bit/master/latest/libmongocrypt.tar.gz
-      - id: ubuntu-16.04
-        display_name: "Ubuntu 16.04"
-        run_on: ubuntu1604-test
-        batchtime: 10080  # 7 days
-        variables:
-          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/ubuntu1604/master/latest/libmongocrypt.tar.gz
-          python3_binary: "/opt/python/3.8/bin/python3"
-      - id: ubuntu-18.04
-        display_name: "Ubuntu 18.04"
-        run_on: ubuntu1804-small
-        batchtime: 10080  # 7 days
-        variables:
-          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/ubuntu1804-64/master/latest/libmongocrypt.tar.gz
-          python3_binary: "/opt/python/3.8/bin/python3"
+          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-80-64-bit/master/latest/libmongocrypt.tar.gz
       - id: ubuntu-20.04
         display_name: "Ubuntu 20.04"
         run_on: ubuntu2004-small
@@ -2223,7 +2220,7 @@ axes:
         run_on: rhel82-arm64-small
         batchtime: 10080  # 7 days
         variables:
-          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/ubuntu1804-arm64/master/latest/libmongocrypt.tar.gz
+          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-82-arm64/master/latest/libmongocrypt.tar.gz
       - id: windows-64-vsMulti-small
         display_name: "Windows 64"
         run_on: windows-64-vsMulti-small
@@ -2503,6 +2500,13 @@ axes:
         variables:
           test_encryption: true
         batchtime: 10080  # 7 days
+      - id: "encryption_pyopenssl"
+        display_name: "Encryption PyOpenSSL"
+        tags: ["encryption_tag"]
+        variables:
+          test_encryption: true
+          test_encryption_pyopenssl: true
+        batchtime: 10080  # 7 days
       # The path to crypt_shared is stored in the $CRYPT_SHARED_LIB_PATH expansion.
       - id: "encryption_crypt_shared"
         display_name: "Encryption shared lib"
@@ -2568,7 +2572,7 @@ buildvariants:
   matrix_spec:
     platform:
       # OSes that support versions of MongoDB>=3.6 with SSL.
-      - ubuntu-18.04
+      - rhel84
     auth-ssl: "*"
   display_name: "${platform} ${auth-ssl}"
   tasks:
@@ -2595,7 +2599,7 @@ buildvariants:
 - matrix_name: "tests-fips"
   matrix_spec:
     platform:
-      - rhel70-fips
+      - rhel80-fips
     auth: "auth"
     ssl: "ssl"
   display_name: "${platform} ${auth} ${ssl}"
@@ -2625,6 +2629,18 @@ buildvariants:
     - ".4.0"
     - ".3.6"
 
+- matrix_name: "test-macos-arm64"
+  matrix_spec:
+    platform:
+      - macos-1100-arm64
+    auth-ssl: "*"
+  display_name: "${platform} ${auth-ssl}"
+  tasks:
+    - ".latest"
+    - ".6.0"
+    - ".5.0"
+    - ".4.4"
+
 - matrix_name: "test-macos-encryption"
   matrix_spec:
     platform:
@@ -2633,14 +2649,22 @@ buildvariants:
     ssl: "nossl"
     encryption: "*"
   display_name: "${encryption} ${platform} ${auth} ${ssl}"
-  tasks: &encryption-server-versions
-    - ".rapid"
-    - ".latest"
-    - ".6.0"
-    - ".5.0"
-    - ".4.4"
-    - ".4.2"
-    - ".4.0"
+  tasks: "test-latest-replica_set"
+  rules:
+    - if:
+        encryption: ["encryption", "encryption_crypt_shared"]
+        platform: macos-1100
+        auth: "auth"
+        ssl: "nossl"
+      then:
+        add_tasks: &encryption-server-versions
+          - ".rapid"
+          - ".latest"
+          - ".6.0"
+          - ".5.0"
+          - ".4.4"
+          - ".4.2"
+          - ".4.0"
 
 # Test one server version with zSeries, POWER8, and ARM.
 - matrix_name: "test-different-cpu-architectures"
@@ -2654,9 +2678,9 @@ buildvariants:
   tasks:
     - ".6.0"
 
-- matrix_name: "tests-python-version-ubuntu18-test-ssl"
+- matrix_name: "tests-python-version-rhel8.4-test-ssl"
   matrix_spec:
-    platform: ubuntu-18.04
+    platform: rhel84
     python-version: "*"
     auth-ssl: "*"
     coverage: "*"
@@ -2673,14 +2697,14 @@ buildvariants:
 
 - matrix_name: "tests-pyopenssl"
   matrix_spec:
-    platform: ubuntu-18.04
+    platform: rhel84
     python-version: "*"
     auth: "*"
     ssl: "ssl"
     pyopenssl: "*"
   # Only test "noauth" with Python 3.7.
   exclude_spec:
-    platform: ubuntu-18.04
+    platform: rhel84
     python-version: ["3.8", "3.9", "3.10", "pypy3.7", "pypy3.8"]
     auth: "noauth"
     ssl: "ssl"
@@ -2712,9 +2736,9 @@ buildvariants:
   tasks:
     - '.replica_set'
 
-- matrix_name: "tests-python-version-ubuntu18-test-encryption"
+- matrix_name: "tests-python-version-rhel84-test-encryption"
   matrix_spec:
-    platform: ubuntu-18.04
+    platform: rhel84
     python-version: "*"
     auth-ssl: noauth-nossl
 # TODO: dependency error for 'coverage-report' task:
@@ -2722,19 +2746,26 @@ buildvariants:
 #    coverage: "*"
     encryption: "*"
   display_name: "${encryption} ${python-version} ${platform} ${auth-ssl}"
-  tasks: *encryption-server-versions
+  tasks: "test-latest-replica_set"
+  rules:
+    - if:
+        encryption: ["encryption", "encryption_crypt_shared"]
+        platform: rhel84
+        auth-ssl: noauth-nossl
+        python-version: "*"
+      then:
+        add_tasks: *encryption-server-versions
 
-
-- matrix_name: "tests-python-version-ubuntu18-without-c-extensions"
+- matrix_name: "tests-python-version-rhel84-without-c-extensions"
   matrix_spec:
-    platform: ubuntu-18.04
+    platform: rhel84
     python-version: "*"
     c-extensions: without-c-extensions
     auth-ssl: noauth-nossl
     coverage: "*"
   exclude_spec:
    # These interpreters are always tested without extensions.
-   - platform: ubuntu-18.04
+   - platform: rhel84
      python-version: ["pypy3.7", "pypy3.8"]
      c-extensions: "*"
      auth-ssl: "*"
@@ -2742,15 +2773,15 @@ buildvariants:
   display_name: "${c-extensions} ${python-version} ${platform} ${auth} ${ssl} ${coverage}"
   tasks: *all-server-versions
 
-- matrix_name: "tests-python-version-ubuntu18-compression"
+- matrix_name: "tests-python-version-rhel84-compression"
   matrix_spec:
-    platform: ubuntu-18.04
+    platform: rhel84
     python-version: "*"
     c-extensions: "*"
     compression: "*"
   exclude_spec:
    # These interpreters are always tested without extensions.
-   - platform: ubuntu-18.04
+   - platform: rhel84
      python-version: ["pypy3.7", "pypy3.8"]
      c-extensions: "with-c-extensions"
      compression: "*"
@@ -2771,15 +2802,15 @@ buildvariants:
           - "test-4.0-standalone"
           - "test-3.6-standalone"
 
-- matrix_name: "tests-python-version-green-framework-ubuntu18"
+- matrix_name: "tests-python-version-green-framework-rhel84"
   matrix_spec:
-    platform: ubuntu-18.04
+    platform: rhel84
     python-version: "*"
     green-framework: "*"
     auth-ssl: "*"
   exclude_spec:
    # Don't test green frameworks on these Python versions.
-   - platform: ubuntu-18.04
+   - platform: rhel84
      python-version: ["pypy3.7", "pypy3.8", "3.11"]
      green-framework: "*"
      auth-ssl: "*"
@@ -2833,18 +2864,26 @@ buildvariants:
     auth-ssl: "*"
     encryption: "*"
   display_name: "${encryption} ${platform} ${python-version-windows} ${auth-ssl}"
-  tasks: *encryption-server-versions
+  tasks: "test-latest-replica_set"
+  rules:
+    - if:
+        encryption: ["encryption", "encryption_crypt_shared"]
+        platform: windows-64-vsMulti-small
+        python-version-windows: "*"
+        auth-ssl: "*"
+      then:
+        add_tasks: *encryption-server-versions
 
-# Storage engine tests on Ubuntu 18.04 (x86_64) with Python 3.7.
+# Storage engine tests on RHEL 8.4 (x86_64) with Python 3.7.
 - matrix_name: "tests-storage-engines"
   matrix_spec:
-    platform: ubuntu-18.04
+    platform: rhel84
     storage-engine: "*"
     python-version: 3.7
   display_name: "Storage ${storage-engine} ${python-version} ${platform}"
   rules:
     - if:
-        platform: ubuntu-18.04
+        platform: rhel84
         storage-engine: ["inmemory"]
         python-version: "*"
       then:
@@ -2857,7 +2896,7 @@ buildvariants:
           - "test-3.6-standalone"
     - if:
         # MongoDB 4.2 drops support for MMAPv1
-        platform: ubuntu-18.04
+        platform: rhel84
         storage-engine: ["mmapv1"]
         python-version: "*"
       then:
@@ -2867,10 +2906,10 @@ buildvariants:
           - "test-3.6-standalone"
           - "test-3.6-replica_set"
 
-# enableTestCommands=0 tests on Ubuntu18 (x86_64) with Python 3.7.
+# enableTestCommands=0 tests on RHEL 8.4 (x86_64) with Python 3.7.
 - matrix_name: "test-disableTestCommands"
   matrix_spec:
-    platform: ubuntu-18.04
+    platform: rhel84
     disableTestCommands: "*"
     python-version: "3.7"
   display_name: "Disable test commands ${python-version} ${platform}"
@@ -2879,7 +2918,7 @@ buildvariants:
 
 - matrix_name: "test-linux-enterprise-auth"
   matrix_spec:
-    platform: ubuntu-18.04
+    platform: rhel84
     python-version: "*"
     auth: "auth"
   display_name: "Enterprise ${auth} ${platform} ${python-version}"
@@ -2897,13 +2936,13 @@ buildvariants:
 
 - matrix_name: "tests-mod-wsgi"
   matrix_spec:
-    platform: ubuntu-18.04
-    python-version: ["3.7", "3.8", "3.9", "3.10"]
+    platform: ubuntu-20.04
+    python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
     mod-wsgi-version: "*"
   exclude_spec:
    # mod-wsgi 3.5 won't build against CPython 3.8+
-   - platform: ubuntu-18.04
-     python-version: ["3.8", "3.9", "3.10"]
+   - platform: ubuntu-20.04
+     python-version: ["3.8", "3.9", "3.10", "3.11"]
      mod-wsgi-version: "3"
   display_name: "${mod-wsgi-version} ${python-version} ${platform}"
   tasks:
@@ -2912,7 +2951,7 @@ buildvariants:
 
 - matrix_name: "mockupdb-tests"
   matrix_spec:
-    platform: ubuntu-18.04
+    platform: rhel84
     python-version: 3.7
   display_name: "MockupDB Tests"
   tasks:
@@ -2920,7 +2959,7 @@ buildvariants:
 
 - matrix_name: "tests-doctests"
   matrix_spec:
-    platform: ubuntu-18.04
+    platform: rhel84
     python-version: ["3.8"]
   display_name: "Doctests ${python-version} ${platform}"
   tasks:
@@ -2929,7 +2968,7 @@ buildvariants:
 - name: "no-server"
   display_name: "No server test"
   run_on:
-    - ubuntu1804-test
+    - rhel84-small
   tasks:
     - name: "no-server"
   expansions:
@@ -2938,7 +2977,7 @@ buildvariants:
 - name: "Coverage Report"
   display_name: "Coverage Report"
   run_on:
-    - ubuntu1804-test
+    - rhel84-small
   tasks:
      - name: "coverage-report"
   expansions:
@@ -2946,7 +2985,7 @@ buildvariants:
 
 - matrix_name: "atlas-connect"
   matrix_spec:
-    platform: ubuntu-18.04
+    platform: rhel84
     python-version: "*"
   display_name: "Atlas connect ${python-version} ${platform}"
   tasks:
@@ -2954,7 +2993,7 @@ buildvariants:
 
 - matrix_name: "serverless"
   matrix_spec:
-    platform: ubuntu-18.04
+    platform: rhel84
     python-version: "*"
     auth-ssl: auth-ssl
     serverless: "*"
@@ -2964,7 +3003,7 @@ buildvariants:
 
 - matrix_name: "data-lake-spec-tests"
   matrix_spec:
-    platform: ubuntu-18.04
+    platform: rhel84
     python-version: ["3.7", "3.10"]
     auth: "auth"
     c-extensions: "*"
@@ -2974,7 +3013,7 @@ buildvariants:
 
 - matrix_name: "stable-api-tests"
   matrix_spec:
-    platform: ubuntu-18.04
+    platform: rhel84
     python-version: ["3.7", "3.10"]
     auth: "auth"
     versionedApi: "*"
@@ -2987,8 +3026,6 @@ buildvariants:
 
 - matrix_name: "ocsp-test"
   matrix_spec:
-    # OCSP stapling is not supported on Ubuntu 18.04.
-    # See https://jira.mongodb.org/browse/SERVER-51364.
     platform: ubuntu-20.04
     python-version: ["3.7", "3.10", "pypy3.7", "pypy3.8"]
     mongodb-version: ["4.4", "5.0", "6.0", "latest"]
@@ -3026,7 +3063,7 @@ buildvariants:
 
 - matrix_name: "aws-auth-test"
   matrix_spec:
-    platform: [ubuntu-18.04]
+    platform: [ubuntu-20.04]
     python-version: ["3.7"]
   display_name: "MONGODB-AWS Auth ${platform} ${python-version}"
   tasks:
@@ -3061,7 +3098,7 @@ buildvariants:
 
 - matrix_name: "load-balancer"
   matrix_spec:
-    platform: ubuntu-18.04
+    platform: rhel84
     mongodb-version: ["rapid", "latest", "6.0"]
     auth-ssl: "*"
     python-version: "*"
@@ -3073,7 +3110,7 @@ buildvariants:
 - name: testgcpkms-variant
   display_name: "GCP KMS"
   run_on:
-    - ubuntu1804-test
+    - ubuntu2004-small
   tasks:
     - name: testgcpkms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
@@ -3081,7 +3118,7 @@ buildvariants:
 
 - name: testazurekms-variant
   display_name: "Azure KMS"
-  run_on: ubuntu1804-test
+  run_on: ubuntu2004-small
   tasks:
     - name: testazurekms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
@@ -3103,6 +3140,7 @@ buildvariants:
       # Debian 8.1 only supports MongoDB 3.4+
       # SUSE12 s390x is only supported by MongoDB 3.4+
       # No enterprise build for Archlinux, SSL not available
+      # RHEL 7.6 and RHEL 8.4 only supports 3.6+.
       # RHEL 7 only supports 2.6+
       # RHEL 7.1 ppc64le is only supported by MongoDB 3.2+
       # RHEL 7.2 s390x is only supported by MongoDB 3.4+

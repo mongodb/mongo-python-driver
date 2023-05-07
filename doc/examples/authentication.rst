@@ -11,7 +11,7 @@ Percent-Escaping Username and Password
 --------------------------------------
 
 Username and password must be percent-escaped with
-:py:func:`urllib.parse.quote`, to be used in a MongoDB URI. For example::
+:py:func:`urllib.parse.quote_plus`, to be used in a MongoDB URI. For example::
 
   >>> from pymongo import MongoClient
   >>> import urllib.parse
@@ -290,7 +290,7 @@ access key id and secret access key pair as the username and password,
 respectively, in the MongoDB URI. A sample URI would be::
 
   >>> from pymongo import MongoClient
-  >>> uri = "mongodb://<access_key_id>:<secret_access_key>@localhost/?authMechanism=MONGODB-AWS"
+  >>> uri = "mongodb+srv://<access_key_id>:<secret_access_key>@example.mongodb.net/?authMechanism=MONGODB-AWS"
   >>> client = MongoClient(uri)
 
 .. note:: The access_key_id and secret_access_key passed into the URI MUST
@@ -305,7 +305,7 @@ ID, a secret access key, and a security token passed into the URI.
 A sample URI would be::
 
   >>> from pymongo import MongoClient
-  >>> uri = "mongodb://<access_key_id>:<secret_access_key>@example.com/?authMechanism=MONGODB-AWS&authMechanismProperties=AWS_SESSION_TOKEN:<session_token>"
+  >>> uri = "mongodb+srv://<access_key_id>:<secret_access_key>@example.mongodb.net/?authMechanism=MONGODB-AWS&authMechanismProperties=AWS_SESSION_TOKEN:<session_token>"
   >>> client = MongoClient(uri)
 
 .. note:: The access_key_id, secret_access_key, and session_token passed into
@@ -325,7 +325,7 @@ for the access key ID, secret access key, and session token, respectively::
   $ export AWS_SESSION_TOKEN=<session_token>
   $ python
   >>> from pymongo import MongoClient
-  >>> uri = "mongodb://example.com/?authMechanism=MONGODB-AWS"
+  >>> uri = "mongodb+srv://example.mongodb.net/?authMechanism=MONGODB-AWS"
   >>> client = MongoClient(uri)
 
 .. note:: No username, password, or session token is passed into the URI.
@@ -357,7 +357,7 @@ credentials assigned to the machine. A sample URI on an ECS container
 would be::
 
   >>> from pymongo import MongoClient
-  >>> uri = "mongodb://localhost/?authMechanism=MONGODB-AWS"
+  >>> uri = "mongodb+srv://example.mongodb.com/?authMechanism=MONGODB-AWS"
   >>> client = MongoClient(uri)
 
 .. note:: No username, password, or session token is passed into the URI.
@@ -372,7 +372,7 @@ credentials assigned to the machine. A sample URI on an EC2 machine
 would be::
 
   >>> from pymongo import MongoClient
-  >>> uri = "mongodb://localhost/?authMechanism=MONGODB-AWS"
+  >>> uri = "mongodb+srv://example.mongodb.com/?authMechanism=MONGODB-AWS"
   >>> client = MongoClient(uri)
 
 .. note:: No username, password, or session token is passed into the URI.

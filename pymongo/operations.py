@@ -479,10 +479,10 @@ class IndexModel(object):
 
         :Parameters:
           - `keys`: a single key or a list containing (key, direction) pairs
-             or keys specifying the index to create
+             or keys specifying the index to create.
           - `**kwargs` (optional): any additional index creation
             options (see the above list) should be passed as keyword
-            arguments
+            arguments.
 
         .. versionchanged:: 3.11
            Added the ``hidden`` option.
@@ -493,7 +493,7 @@ class IndexModel(object):
         .. _wildcard index: https://mongodb.com/docs/master/core/index-wildcard/
         """
         keys = _index_list(keys)
-        if "name" not in kwargs:
+        if kwargs.get("name") is None:
             kwargs["name"] = _gen_index_name(keys)
         kwargs["key"] = _index_document(keys)
         collation = validate_collation_or_none(kwargs.pop("collation", None))

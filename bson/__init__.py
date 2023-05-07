@@ -1114,7 +1114,7 @@ def decode_all(
     if not isinstance(opts, CodecOptions):
         raise _CODEC_OPTIONS_TYPE_ERROR
 
-    return _decode_all(data, opts)  # type: ignore[arg-type]
+    return _decode_all(data, opts)  # type:ignore[arg-type]
 
 
 def _decode_selective(rawdoc: Any, fields: Any, codec_options: Any) -> Mapping[Any, Any]:
@@ -1281,7 +1281,7 @@ def decode_file_iter(
         # Read size of next object.
         size_data = file_obj.read(4)
         if not size_data:
-            break  # Finished with file normaly.
+            break  # Finished with file normally.
         elif len(size_data) != 4:
             raise InvalidBSON("cut off in middle of objsize")
         obj_size = _UNPACK_INT_FROM(size_data, 0)[0] - 4

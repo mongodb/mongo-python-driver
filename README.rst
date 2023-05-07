@@ -148,7 +148,7 @@ Examples
 ========
 Here's a basic example (for more see the *examples* section of the docs):
 
-.. code-block:: python
+.. code-block:: pycon
 
   >>> import pymongo
   >>> client = pymongo.MongoClient("localhost", 27017)

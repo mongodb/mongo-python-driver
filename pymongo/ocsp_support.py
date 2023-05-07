@@ -312,7 +312,7 @@ def _ocsp_callback(conn, ocsp_bytes, user_data):
             return 0
         if not user_data.check_ocsp_endpoint:
             _LOGGER.debug("OCSP endpoint checking is disabled, soft fail.")
-            # No stapled OCSP response, checking responder URI diabled, soft fail.
+            # No stapled OCSP response, checking responder URI disabled, soft fail.
             return 1
         # https://tools.ietf.org/html/rfc6960#section-3.1
         ext = _get_extension(cert, _AuthorityInformationAccess)

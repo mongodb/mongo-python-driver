@@ -32,7 +32,7 @@ from test.utils import (
 )
 from typing import List
 
-from bson import decode, encode
+from bson import ObjectId, decode, encode
 from bson.binary import Binary
 from bson.int64 import Int64
 from bson.son import SON
@@ -336,22 +336,24 @@ class SpecRunner(IntegrationTest):
         if expect_error(op):
             with self.assertRaises(self.allowable_errors(op), msg=op["name"]) as context:
                 out = self.run_operation(sessions, collection, op.copy())
+            exc = context.exception
             if expect_error_message(expected_result):
-                if isinstance(context.exception, BulkWriteError):
-                    errmsg = str(context.exception.details).lower()
+                if isinstance(exc, BulkWriteError):
+                    errmsg = str(exc.details).lower()
                 else:
-                    errmsg = str(context.exception).lower()
+                    errmsg = str(exc).lower()
                 self.assertIn(expected_result["errorContains"].lower(), errmsg)
             if expect_error_code(expected_result):
-                self.assertEqual(
-                    expected_result["errorCodeName"], context.exception.details.get("codeName")
-                )
+                self.assertEqual(expected_result["errorCodeName"], exc.details.get("codeName"))
             if expect_error_labels_contain(expected_result):
-                self.assertErrorLabelsContain(
-                    context.exception, expected_result["errorLabelsContain"]
-                )
+                self.assertErrorLabelsContain(exc, expected_result["errorLabelsContain"])
             if expect_error_labels_omit(expected_result):
-                self.assertErrorLabelsOmit(context.exception, expected_result["errorLabelsOmit"])
+                self.assertErrorLabelsOmit(exc, expected_result["errorLabelsOmit"])
+            if expect_timeout_error(expected_result):
+                self.assertIsInstance(exc, PyMongoError)
+                if not exc.timeout:
+                    # Re-raise the exception for better diagnostics.
+                    raise exc
 
             # Reraise the exception if we're in the with_transaction
             # callback.
@@ -427,6 +429,12 @@ class SpecRunner(IntegrationTest):
                         elif key not in actual:
                             self.fail("Expected key [%s] in %r" % (key, actual))
                         else:
+                            # Workaround an incorrect command started event in fle2v2-CreateCollection.yml
+                            # added in DRIVERS-2524.
+                            if key == "encryptedFields":
+                                for n in ("eccCollection", "ecocCollection", "escCollection"):
+                                    if val.get(n) is None:
+                                        val.pop(n, None)
                             self.assertEqual(
                                 val, decode_raw(actual[key]), "Key [%s] in %s" % (key, actual)
                             )
@@ -617,6 +625,13 @@ def expect_error_labels_omit(expected_result):
     return False
 
 
+def expect_timeout_error(expected_result):
+    if isinstance(expected_result, dict):
+        return expected_result["isTimeoutError"]
+
+    return False
+
+
 def expect_error(op):
     expected_result = op.get("result")
     return (
@@ -625,6 +640,7 @@ def expect_error(op):
         or expect_error_code(expected_result)
         or expect_error_labels_contain(expected_result)
         or expect_error_labels_omit(expected_result)
+        or expect_timeout_error(expected_result)
     )
 
 
@@ -644,6 +660,11 @@ def decode_raw(val):
 TYPES = {
     "binData": Binary,
     "long": Int64,
+    "int": int,
+    "string": str,
+    "objectId": ObjectId,
+    "object": dict,
+    "array": list,
 }
 
 
@@ -654,7 +675,11 @@ def wrap_types(val):
     if isinstance(val, abc.Mapping):
         typ = val.get("$$type")
         if typ:
-            return CompareType(TYPES[typ])
+            if isinstance(typ, str):
+                types = TYPES[typ]
+            else:
+                types = tuple(TYPES[t] for t in typ)
+            return CompareType(types)
         d = {}
         for key in val:
             d[key] = wrap_types(val[key])

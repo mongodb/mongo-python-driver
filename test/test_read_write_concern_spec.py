@@ -280,7 +280,7 @@ def create_document_test(test_case):
                 self.assertEqual(write_concern.acknowledged, test_case["isAcknowledged"])
                 self.assertEqual(write_concern.is_server_default, test_case["isServerDefault"])
         if "readConcern" in test_case:
-            # Any string for 'level' is equaly valid
+            # Any string for 'level' is equally valid
             read_concern = ReadConcern(**test_case["readConcern"])
             self.assertEqual(read_concern.document, test_case["readConcernDocument"])
             self.assertEqual(not bool(read_concern.level), test_case["isServerDefault"])

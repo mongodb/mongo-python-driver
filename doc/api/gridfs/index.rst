@@ -3,7 +3,7 @@
 
 .. automodule:: gridfs
    :synopsis: Tools for working with GridFS
-   :members:
+   :members: GridFS, GridFSBucket
 
 Sub-modules:
 

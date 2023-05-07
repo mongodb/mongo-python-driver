@@ -81,7 +81,7 @@ Subclasses of :py:class:`collections.abc.Mapping` can also be used, such as :cla
   >>> from pymongo import MongoClient
   >>> client = MongoClient(document_class=SON[str, int])
   >>> collection = client.test.test
-  >>> inserted = collection.insert_one({"x": 1, "y": 2 })
+  >>> inserted = collection.insert_one({"x": 1, "y": 2})
   >>> result = collection.find_one({"x": 1})
   >>> assert result is not None
   >>> assert result["x"] == 1
@@ -103,8 +103,8 @@ These methods automatically add an "_id" field.
   >>> from pymongo import MongoClient
   >>> from pymongo.collection import Collection
   >>> class Movie(TypedDict):
-  ...       name: str
-  ...       year: int
+  ...     name: str
+  ...     year: int
   ...
   >>> client: MongoClient = MongoClient()
   >>> collection: Collection[Movie] = client.test.test
@@ -113,7 +113,7 @@ These methods automatically add an "_id" field.
   >>> assert result is not None
   >>> assert result["year"] == 1993
   >>> # This will raise a type-checking error, despite being present, because it is added by PyMongo.
-  >>> assert result["_id"] # type:ignore[typeddict-item]
+  >>> assert result["_id"]  # type:ignore[typeddict-item]
 
 This same typing scheme works for all of the insert methods (:meth:`~pymongo.collection.Collection.insert_one`,
 :meth:`~pymongo.collection.Collection.insert_many`, and :meth:`~pymongo.collection.Collection.bulk_write`).
@@ -158,18 +158,18 @@ Note: to use :py:class:`~typing.TypedDict` and :py:class:`~typing.NotRequired` i
   >>> from pymongo.collection import Collection
   >>> from bson import ObjectId
   >>> class Movie(TypedDict):
-  ...       name: str
-  ...       year: int
+  ...     name: str
+  ...     year: int
   ...
   >>> class ExplicitMovie(TypedDict):
-  ...       _id: ObjectId
-  ...       name: str
-  ...       year: int
+  ...     _id: ObjectId
+  ...     name: str
+  ...     year: int
   ...
   >>> class NotRequiredMovie(TypedDict):
-  ...       _id: NotRequired[ObjectId]
-  ...       name: str
-  ...       year: int
+  ...     _id: NotRequired[ObjectId]
+  ...     name: str
+  ...     year: int
   ...
   >>> client: MongoClient = MongoClient()
   >>> collection: Collection[Movie] = client.test.test
@@ -180,7 +180,9 @@ Note: to use :py:class:`~typing.TypedDict` and :py:class:`~typing.NotRequired` i
   >>> assert result["_id"]  # type:ignore[typeddict-item]
   >>> collection: Collection[ExplicitMovie] = client.test.test
   >>> # Note that the _id keyword argument must be supplied
-  >>> inserted = collection.insert_one(ExplicitMovie(_id=ObjectId(), name="Jurassic Park", year=1993))
+  >>> inserted = collection.insert_one(
+  ...     ExplicitMovie(_id=ObjectId(), name="Jurassic Park", year=1993)
+  ... )
   >>> result = collection.find_one({"name": "Jurassic Park"})
   >>> assert result is not None
   >>> # This will not raise a type-checking error.
@@ -207,13 +209,13 @@ match a well-defined schema using :py:class:`~typing.TypedDict` (Python 3.8+).
   >>> from pymongo import MongoClient
   >>> from pymongo.database import Database
   >>> class Movie(TypedDict):
-  ...       name: str
-  ...       year: int
+  ...     name: str
+  ...     year: int
   ...
   >>> client: MongoClient = MongoClient()
   >>> db: Database[Movie] = client.test
   >>> collection = db.test
-  >>> inserted = collection.insert_one({"name": "Jurassic Park", "year": 1993 })
+  >>> inserted = collection.insert_one({"name": "Jurassic Park", "year": 1993})
   >>> result = collection.find_one({"name": "Jurassic Park"})
   >>> assert result is not None
   >>> assert result["year"] == 1993
@@ -244,11 +246,11 @@ You can specify the document type returned by :mod:`bson` decoding functions by 
   >>> from typing import Any, Dict
   >>> from bson import CodecOptions, encode, decode
   >>> class MyDict(Dict[str, Any]):
-  ...       def foo(self):
-  ...           return "bar"
+  ...     def foo(self):
+  ...         return "bar"
   ...
   >>> options = CodecOptions(document_class=MyDict)
-  >>> doc = {"x": 1, "y": 2 }
+  >>> doc = {"x": 1, "y": 2}
   >>> bsonbytes = encode(doc, codec_options=options)
   >>> rt_document = decode(bsonbytes, codec_options=options)
   >>> assert rt_document.foo() == "bar"
@@ -262,7 +264,7 @@ Troubleshooting
 
 Client Type Annotation
 ~~~~~~~~~~~~~~~~~~~~~~
-If you forget to add a type annotation for a :class:`~pymongo.mongo_client.MongoClient` object you may get the followig ``mypy`` error::
+If you forget to add a type annotation for a :class:`~pymongo.mongo_client.MongoClient` object you may get the following ``mypy`` error::
 
   from pymongo import MongoClient
   client = MongoClient()  # error: Need type annotation for "client"
@@ -311,10 +313,10 @@ Another example is trying to set a value on a :class:`~bson.raw_bson.RawBSONDocu
     coll = client.test.test
     doc = {"my": "doc"}
     coll.insert_one(doc)
-    retreived = coll.find_one({"_id": doc["_id"]})
-    assert retreived is not None
-    assert len(retreived.raw) > 0
-    retreived[
+    retrieved = coll.find_one({"_id": doc["_id"]})
+    assert retrieved is not None
+    assert len(retrieved.raw) > 0
+    retrieved[
         "foo"
     ] = "bar"  # error: Unsupported target for indexed assignment
                # ("RawBSONDocument")  [index]

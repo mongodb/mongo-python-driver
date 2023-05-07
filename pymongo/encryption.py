@@ -41,6 +41,7 @@ from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bs
 from bson.son import SON
 from pymongo import _csot
 from pymongo.collection import Collection
+from pymongo.common import CONNECT_TIMEOUT
 from pymongo.cursor import Cursor
 from pymongo.daemon import _spawn_daemon
 from pymongo.database import Database
@@ -50,12 +51,13 @@ from pymongo.errors import (
     EncryptedCollectionError,
     EncryptionError,
     InvalidOperation,
+    PyMongoError,
     ServerSelectionTimeoutError,
 )
 from pymongo.mongo_client import MongoClient
 from pymongo.network import BLOCKING_IO_ERRORS
 from pymongo.operations import UpdateOne
-from pymongo.pool import PoolOptions, _configured_socket
+from pymongo.pool import PoolOptions, _configured_socket, _raise_connection_failure
 from pymongo.read_concern import ReadConcern
 from pymongo.results import BulkWriteResult, DeleteResult
 from pymongo.ssl_support import get_ssl_context
@@ -64,7 +66,7 @@ from pymongo.uri_parser import parse_host
 from pymongo.write_concern import WriteConcern
 
 _HTTPS_PORT = 443
-_KMS_CONNECT_TIMEOUT = 10  # TODO: CDRIVER-3262 will define this value.
+_KMS_CONNECT_TIMEOUT = CONNECT_TIMEOUT  # CDRIVER-3262 redefined this value to CONNECT_TIMEOUT
 _MONGOCRYPTD_TIMEOUT_MS = 10000
 
 
@@ -138,20 +140,26 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
             ssl_context=ctx,
         )
         host, port = parse_host(endpoint, _HTTPS_PORT)
-        conn = _configured_socket((host, port), opts)
         try:
-            conn.sendall(message)
-            while kms_context.bytes_needed > 0:
-                # CSOT: update timeout.
-                conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
-                data = conn.recv(kms_context.bytes_needed)
-                if not data:
-                    raise OSError("KMS connection closed")
-                kms_context.feed(data)
-        except BLOCKING_IO_ERRORS:
-            raise socket.timeout("timed out")
-        finally:
-            conn.close()
+            conn = _configured_socket((host, port), opts)
+            try:
+                conn.sendall(message)
+                while kms_context.bytes_needed > 0:
+                    # CSOT: update timeout.
+                    conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0))
+                    data = conn.recv(kms_context.bytes_needed)
+                    if not data:
+                        raise OSError("KMS connection closed")
+                    kms_context.feed(data)
+            except BLOCKING_IO_ERRORS:
+                raise socket.timeout("timed out")
+            finally:
+                conn.close()
+        except (PyMongoError, MongoCryptError):
+            raise  # Propagate pymongo errors directly.
+        except Exception as error:
+            # Wrap I/O errors in PyMongo exceptions.
+            _raise_connection_failure((host, port), error)
 
     def collection_info(self, database, filter):
         """Get the collection info for a namespace.
@@ -587,7 +595,6 @@ class ClientEncryption(Generic[_DocumentType]):
 
               {
                 "escCollection": "enxcol_.encryptedCollection.esc",
-                "eccCollection": "enxcol_.encryptedCollection.ecc",
                 "ecocCollection": "enxcol_.encryptedCollection.ecoc",
                 "fields": [
                     {
@@ -798,9 +805,9 @@ class ClientEncryption(Generic[_DocumentType]):
             when the algorithm is :attr:`Algorithm.INDEXED`.  An integer value
             *must* be given when the :attr:`Algorithm.INDEXED` algorithm is
             used.
-          - `range_opts`: **(BETA)** An instance of RangeOpts.
+          - `range_opts`: Experimental only, not intended for public use.
 
-        .. note:: `query_type`, `contention_factor` and `range_opts` are part of the Queryable Encryption beta.
+        .. note:: `query_type`, and `contention_factor` are part of the Queryable Encryption beta.
            Backwards-breaking changes may be made before the final release.
 
         :Returns:
@@ -850,10 +857,7 @@ class ClientEncryption(Generic[_DocumentType]):
             when the algorithm is :attr:`Algorithm.INDEXED`.  An integer value
             *must* be given when the :attr:`Algorithm.INDEXED` algorithm is
             used.
-          - `range_opts`: **(BETA)** An instance of RangeOpts.
-
-        .. note:: Support for range queries is in beta.
-           Backwards-breaking changes may be made before the final release.
+          - `range_opts`: Experimental only, not intended for public use.
 
         :Returns:
           The encrypted expression, a :class:`~bson.RawBSONDocument`.
@@ -1020,6 +1024,23 @@ class ClientEncryption(Generic[_DocumentType]):
 
         :Returns:
           A :class:`RewrapManyDataKeyResult`.
+
+        This method allows you to re-encrypt all of your data-keys with a new CMK, or master key.
+        Note that this does *not* require re-encrypting any of the data in your encrypted collections,
+        but rather refreshes the key that protects the keys that encrypt the data:
+
+        .. code-block:: python
+
+           client_encryption.rewrap_many_data_key(
+               filter={"keyAltNames": "optional filter for which keys you want to update"},
+               master_key={
+                   "provider": "azure",  # replace with your cloud provider
+                   "master_key": {
+                       # put the rest of your master_key options here
+                       "key": "<your new key>"
+                   },
+               },
+           )
 
         .. versionadded:: 4.2
         """
