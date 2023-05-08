@@ -808,7 +808,7 @@ functions:
           fi
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           . ./activate-authawsvenv.sh
-          export MONGODB_BINARIES="$MONGODB_BINARIES";
+          export MONGO_BINARIES="$MONGODB_BINARIES";
           export PROJECT_DIRECTORY="$PROJECT_DIRECTORY";
           python aws_e2e_ecs.py
           cd -
