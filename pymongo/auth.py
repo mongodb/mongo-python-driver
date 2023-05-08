@@ -140,8 +140,6 @@ def _build_credentials_tuple(mech, source, user, passwd, extra, database):
         # user can be None for temporary link-local EC2 credentials.
         return MongoCredential(mech, "$external", user, passwd, aws_props, None)
     elif mech == "MONGODB-OIDC":
-        if source is not None and source != "$external":
-            raise ValueError("authentication source must be $external or None for MONGODB-OIDC")
         properties = extra.get("authmechanismproperties", {})
         request_token_callback = properties.get("request_token_callback")
         refresh_token_callback = properties.get("refresh_token_callback", None)
