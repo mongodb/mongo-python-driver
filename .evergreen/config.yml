@@ -1983,7 +1983,7 @@ tasks:
         - func: "run aws auth test with aws web identity credentials"
         - func: "run aws ECS auth test"
 
-    - name: "aws-auth-test-6.0"
+    - name: "aws-auth-test-7.0"
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
