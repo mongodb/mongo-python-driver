@@ -794,6 +794,7 @@ functions:
   "run aws ECS auth test":
     - command: shell.exec
       type: test
+      shell: "bash"
       params:
         working_dir: "src"
         script: |
