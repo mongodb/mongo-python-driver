@@ -598,6 +598,7 @@ functions:
     - command: shell.exec
       type: test
       params:
+        shell: "bash"
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
@@ -809,7 +810,7 @@ functions:
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           . ./activate-authawsvenv.sh
           export MONGO_BINARIES="$MONGODB_BINARIES";
-          export PROJECT_DIRECTORY="$PROJECT_DIRECTORY";
+          export PROJECT_DIR="$PROJECT_DIRECTORY";
           python aws_e2e_ecs.py
           cd -
 
