@@ -23,7 +23,7 @@ shopt -s expand_aliases # needed for `urlencode` alias
 
 MONGODB_URI=${MONGODB_URI:-"mongodb://localhost"}
 MONGODB_URI_SINGLE="${MONGODB_URI}/?authMechanism=MONGODB-OIDC"
-MONGODB_URI_MULTIPLE="mongodb+srv://cluster0.oztdp.mongodb-dev.net/?authMechanism=MONGODB-OIDC"
+MONGODB_URI_MULTIPLE="${MONGODB_URI}:27018/?authMechanism=MONGODB-OIDC&directConnection=true"
 
 if [ -z "${OIDC_TOKEN_DIR}" ]; then
     echo "Must specify OIDC_TOKEN_DIR"
