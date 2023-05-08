@@ -602,8 +602,8 @@ functions:
         script: |
           ${PREPARE_SHELL}
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          . ./activate_venv.sh
-          mongo aws_e2e_regular_aws.js
+          . ./activate-authawsvenv.sh
+          mongosh aws_e2e_regular_aws.js
     - command: shell.exec
       type: test
       params:
@@ -628,12 +628,13 @@ functions:
     - command: shell.exec
       type: test
       params:
+        shell: "bash"
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          . ./activate_venv.sh
-          mongo aws_e2e_assume_role.js
+          . ./activate-authawsvenv.sh
+          mongosh aws_e2e_assume_role.js
     - command: shell.exec
       type: test
       params:
@@ -665,6 +666,7 @@ functions:
       type: test
       params:
         working_dir: "src"
+        shell: "bash"
         script: |
           ${PREPARE_SHELL}
           if [ "${skip_EC2_auth_test}" = "true" ]; then
@@ -672,8 +674,8 @@ functions:
              exit 0
           fi
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          . ./activate_venv.sh
-          mongo aws_e2e_ec2.js
+          . ./activate-authawsvenv.sh
+          mongosh aws_e2e_ec2.js
     - command: shell.exec
       type: test
       params:
@@ -694,6 +696,7 @@ functions:
       type: test
       params:
         working_dir: "src"
+        shell: "bash"
         script: |
           ${PREPARE_SHELL}
           if [ "${skip_EC2_auth_test}" = "true" ]; then
@@ -701,8 +704,8 @@ functions:
              exit 0
           fi
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          . ./activate_venv.sh
-          mongo aws_e2e_web_identity.js
+          . ./activate-authawsvenv.sh
+          mongosh aws_e2e_web_identity.js
     - command: shell.exec
       type: test
       params:
