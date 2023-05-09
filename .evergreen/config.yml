@@ -602,6 +602,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
+          set -ex
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           . ./activate-authawsvenv.sh
           python aws_tester.py regular
@@ -633,6 +634,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
+          set -ex
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           . ./activate-authawsvenv.sh
           python aws_tester.py assume-role
@@ -674,6 +676,7 @@ functions:
              echo "This platform does not support the EC2 auth test, skipping..."
              exit 0
           fi
+          set -ex
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           . ./activate-authawsvenv.sh
           python aws_tester.py ec2
@@ -704,6 +707,7 @@ functions:
              echo "This platform does not support the web identity auth test, skipping..."
              exit 0
           fi
+          set -ex
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           . ./activate-authawsvenv.sh
           python aws_tester.py web-identity
@@ -807,6 +811,7 @@ functions:
              echo "This platform does not support the ECS auth test, skipping..."
              exit 0
           fi
+          set -ex
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           . ./activate-authawsvenv.sh
           export MONGODB_BINARIES="$MONGODB_BINARIES";
