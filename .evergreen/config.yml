@@ -604,7 +604,7 @@ functions:
           ${PREPARE_SHELL}
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           . ./activate-authawsvenv.sh
-          mongosh aws_e2e_regular_aws.js
+          python aws_tester.py regular
     - command: shell.exec
       type: test
       params:
@@ -635,7 +635,7 @@ functions:
           ${PREPARE_SHELL}
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           . ./activate-authawsvenv.sh
-          mongosh aws_e2e_assume_role.js
+          python aws_tester.py assume-role
     - command: shell.exec
       type: test
       params:
@@ -676,7 +676,7 @@ functions:
           fi
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           . ./activate-authawsvenv.sh
-          mongosh aws_e2e_ec2.js
+          python aws_tester.py ec2
     - command: shell.exec
       type: test
       params:
@@ -706,7 +706,7 @@ functions:
           fi
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           . ./activate-authawsvenv.sh
-          mongosh aws_e2e_web_identity.js
+          python aws_tester.py web-identity
     - command: shell.exec
       type: test
       params:
@@ -809,9 +809,9 @@ functions:
           fi
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
           . ./activate-authawsvenv.sh
-          export MONGO_BINARIES="$MONGODB_BINARIES";
-          export PROJECT_DIR="$PROJECT_DIRECTORY";
-          python aws_e2e_ecs.py
+          export MONGODB_BINARIES="$MONGODB_BINARIES";
+          export PROJECT_DIRECTORY="$PROJECT_DIRECTORY";
+          python aws_tester.py ecs
           cd -
 
   "cleanup":
