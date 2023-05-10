@@ -1,21 +1,21 @@
 {
-  "description":"reauthenticate_with_retry",
-  "schemaVersion":"1.12",
-  "runOnRequirements":[
+  "description": "reauthenticate_with_retry",
+  "schemaVersion": "1.12",
+  "runOnRequirements": [
     {
-      "minServerVersion":"6.3",
-      "auth":true
+      "minServerVersion": "6.3",
+      "auth": true
     }
   ],
-  "createEntities":[
+  "createEntities": [
     {
-      "client":{
-        "id":"client0",
-        "uriOptions":{
-          "retryReads":true,
-          "retryWrites":true
+      "client": {
+        "id": "client0",
+        "uriOptions": {
+          "retryReads": true,
+          "retryWrites": true
         },
-        "observeEvents":[
+        "observeEvents": [
           "commandStartedEvent",
           "commandSucceededEvent",
           "commandFailedEvent"
@@ -23,97 +23,87 @@
       }
     },
     {
-      "database":{
-        "id":"database0",
-        "client":"client0",
-        "databaseName":"db"
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "db"
       }
     },
     {
-      "collection":{
-        "id":"collection0",
-        "database":"database0",
-        "collectionName":"collName"
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "collName"
       }
     }
   ],
-  "initialData":[
+  "initialData": [
     {
-      "collectionName":"collName",
-      "databaseName":"db",
-      "documents":[
-
-      ]
+      "collectionName": "collName",
+      "databaseName": "db",
+      "documents": []
     }
   ],
-  "tests":[
+  "tests": [
     {
-      "description":"Read command should reauthenticate when receive ReauthenticationRequired error code and retryReads=true",
-      "operations":[
+      "description": "Read command should reauthenticate when receive ReauthenticationRequired error code and retryReads=true",
+      "operations": [
         {
-          "name":"failPoint",
-          "object":"testRunner",
-          "arguments":{
-            "client":"client0",
-            "failPoint":{
-              "configureFailPoint":"failCommand",
-              "mode":{
-                "times":1
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client0",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
               },
-              "data":{
-                "failCommands":[
+              "data": {
+                "failCommands": [
                   "find"
                 ],
-                "errorCode":391
+                "errorCode": 391
               }
             }
           }
         },
         {
-          "name":"find",
-          "arguments":{
-            "filter":{
-
-            }
+          "name": "find",
+          "arguments": {
+            "filter": {}
           },
-          "object":"collection0",
-          "expectResult":[
-
-          ]
+          "object": "collection0",
+          "expectResult": []
         }
       ],
-      "expectEvents":[
+      "expectEvents": [
         {
-          "client":"client0",
-          "events":[
+          "client": "client0",
+          "events": [
             {
-              "commandStartedEvent":{
-                "command":{
-                  "find":"collName",
-                  "filter":{
-
-                  }
+              "commandStartedEvent": {
+                "command": {
+                  "find": "collName",
+                  "filter": {}
                 }
               }
             },
             {
-              "commandFailedEvent":{
-                "commandName":"find"
+              "commandFailedEvent": {
+                "commandName": "find"
               }
             },
             {
-              "commandStartedEvent":{
-                "command":{
-                  "find":"collName",
-                  "filter":{
-
-                  }
+              "commandStartedEvent": {
+                "command": {
+                  "find": "collName",
+                  "filter": {}
                 }
               }
             },
             {
-              "commandSucceededEvent":{
-                "commandName":"find"
+              "commandSucceededEvent": {
+                "commandName": "find"
               }
             }
           ]
@@ -121,76 +111,76 @@
       ]
     },
     {
-      "description":"Write command should reauthenticate when receive ReauthenticationRequired error code and retryWrites=true",
-      "operations":[
+      "description": "Write command should reauthenticate when receive ReauthenticationRequired error code and retryWrites=true",
+      "operations": [
         {
-          "name":"failPoint",
-          "object":"testRunner",
-          "arguments":{
-            "client":"client0",
-            "failPoint":{
-              "configureFailPoint":"failCommand",
-              "mode":{
-                "times":1
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client0",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
               },
-              "data":{
-                "failCommands":[
+              "data": {
+                "failCommands": [
                   "insert"
                 ],
-                "errorCode":391
+                "errorCode": 391
               }
             }
           }
         },
         {
-          "name":"insertOne",
-          "object":"collection0",
-          "arguments":{
-            "document":{
-              "_id":1,
-              "x":1
+          "name": "insertOne",
+          "object": "collection0",
+          "arguments": {
+            "document": {
+              "_id": 1,
+              "x": 1
             }
           }
         }
       ],
-      "expectEvents":[
+      "expectEvents": [
         {
-          "client":"client0",
-          "events":[
+          "client": "client0",
+          "events": [
             {
-              "commandStartedEvent":{
-                "command":{
-                  "insert":"collName",
-                  "documents":[
+              "commandStartedEvent": {
+                "command": {
+                  "insert": "collName",
+                  "documents": [
                     {
-                      "_id":1,
-                      "x":1
+                      "_id": 1,
+                      "x": 1
                     }
                   ]
                 }
               }
             },
             {
-              "commandFailedEvent":{
-                "commandName":"insert"
+              "commandFailedEvent": {
+                "commandName": "insert"
               }
             },
             {
-              "commandStartedEvent":{
-                "command":{
-                  "insert":"collName",
-                  "documents":[
+              "commandStartedEvent": {
+                "command": {
+                  "insert": "collName",
+                  "documents": [
                     {
-                      "_id":1,
-                      "x":1
+                      "_id": 1,
+                      "x": 1
                     }
                   ]
                 }
               }
             },
             {
-              "commandSucceededEvent":{
-                "commandName":"insert"
+              "commandSucceededEvent": {
+                "commandName": "insert"
               }
             }
           ]

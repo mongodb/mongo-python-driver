@@ -1,4 +1,4 @@
-# Copyright 2020-present MongoDB, Inc.
+# Copyright 2023-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ from typing import Dict
 
 sys.path[0:0] = [""]
 
-from test.utils import EventListener
+from test.utils import EventListener, client_context
 
 from bson import SON
 from pymongo import MongoClient
@@ -633,7 +633,36 @@ class TestAuthOIDC(unittest.TestCase):
         with self.fail_point(
             {
                 "mode": {"times": 1},
-                "data": {"failCommands": ["find"], "errorCode": 391},
+                "data": {"failCommands": ["getMore"], "errorCode": 391},
+            }
+        ):
+            # Perform a find operation.
+            cursor = client.test.test.find({"a": 1}, batch_size=1)
+            self.assertGreaterEqual(len(list(cursor)), 1)
+
+        # Assert that the refresh callback has been called.
+        self.assertEqual(self.refresh_called, 1)
+        client.close()
+
+    @client_context.require_no_mongos
+    def test_reauthenticate_succeeds_get_more_exhaust(self):
+        request_cb = self.create_request_cb()
+        refresh_cb = self.create_refresh_cb()
+
+        # Create a client with the callbacks.
+        props: Dict = dict(request_token_callback=request_cb, refresh_token_callback=refresh_cb)
+        client = MongoClient(self.uri_single, authmechanismproperties=props)
+
+        # Perform an insert operation.
+        client.test.test.insert_many([{"a": 1}, {"a": 1}])
+
+        # Assert that the refresh callback has not been called.
+        self.assertEqual(self.refresh_called, 0)
+
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["getMore"], "errorCode": 391},
             }
         ):
             # Perform a find operation.
