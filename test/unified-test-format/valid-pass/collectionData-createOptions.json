@@ -49,19 +49,29 @@
       "description": "collection is created with the correct options",
       "operations": [
         {
-          "name": "runCommand",
-          "object": "database0",
+          "object": "collection0",
+          "name": "aggregate",
           "arguments": {
-            "commandName": "collStats",
-            "command": {
-              "collStats": "coll0",
-              "scale": 1
-            }
+            "pipeline": [
+              {
+                "$collStats": {
+                  "storageStats": {}
+                }
+              },
+              {
+                "$project": {
+                  "capped": "$storageStats.capped",
+                  "maxSize": "$storageStats.maxSize"
+                }
+              }
+            ]
           },
-          "expectResult": {
-            "capped": true,
-            "maxSize": 4096
-          }
+          "expectResult": [
+            {
+              "capped": true,
+              "maxSize": 4096
+            }
+          ]
         }
       ]
     }

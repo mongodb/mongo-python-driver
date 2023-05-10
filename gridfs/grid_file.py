@@ -381,7 +381,7 @@ class GridIn(object):
     def writelines(self, sequence: Iterable[Any]) -> None:
         """Write a sequence of strings to the file.
 
-        Does not add seperators.
+        Does not add separators.
         """
         for line in sequence:
             self.write(line)

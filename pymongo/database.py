@@ -740,10 +740,10 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
         >>> db.command("buildinfo")
 
-        For a command where the value matters, like ``{collstats:
+        For a command where the value matters, like ``{count:
         collection_name}`` we can do:
 
-        >>> db.command("collstats", collection_name)
+        >>> db.command("count", collection_name)
 
         For commands that take additional arguments we can use
         kwargs. So ``{filemd5: object_id, root: file_root}`` becomes:

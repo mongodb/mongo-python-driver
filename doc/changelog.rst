@@ -4,6 +4,7 @@ Changelog
 Changes in Version 4.4
 -----------------------
 
+- Added support for MongoDB 7.0.
 - Added support for passing a list containing (key, direction) pairs
   or keys to :meth:`~pymongo.collection.Collection.create_index`.
 - pymongocrypt 1.5.0 or later is now required for client side field level
@@ -12,9 +13,8 @@ Changes in Version 4.4
   or Visual Studio.
 - Improved support for type-checking with MyPy "strict" mode (`--strict`).
 - Added support for Python 3.11.
-- pymongocrypt 1.6.0 or later is now required for Client Side Field Level Encryption (CSFLE)
-  and Queryable Encryption (QE) support. MongoDB Server 7.0 introduced a backwards breaking
-  change to the QE protocol. Users taking advantage of the QE beta must now upgrade to
+- pymongocrypt 1.6.0 or later is now required for :ref:`In-Use Encryption` support. MongoDB Server 7.0 introduced a backwards breaking
+  change to the QE protocol. Users taking advantage of the Queryable Encryption beta must now upgrade to
   MongoDB 7.0+ and PyMongo 4.4+.
 
 Issues Resolved
@@ -198,7 +198,6 @@ in this release.
 .. _PYTHON-3311: https://jira.mongodb.org/browse/PYTHON-3311
 .. _PYTHON-3187: https://jira.mongodb.org/browse/PYTHON-3187
 .. _PyMongo 4.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=33196
-.. _Queryable Encryption: automatic-queryable-client-side-encryption
 
 Changes in Version 4.1.1
 -------------------------
@@ -2805,7 +2804,7 @@ Important New Features:
 - The URI parser has been moved into its own module and can be used directly
   by application code.
 - AutoReconnect exception now provides information about the error that
-  actually occured instead of a generic failure message.
+  actually occurred instead of a generic failure message.
 - A number of new helper methods have been added with options for setting and
   unsetting cursor flags, re-indexing a collection, fsync and locking a server,
   and getting the server's current operations.
@@ -2930,7 +2929,7 @@ Issues resolved
 - `PYTHON-186 <https://jira.mongodb.org/browse/PYTHON-186>`_:
   When storing integers, type is selected according to value instead of type
 - `PYTHON-173 <https://jira.mongodb.org/browse/PYTHON-173>`_:
-  as_class option is not propogated by Cursor.clone
+  as_class option is not propagated by Cursor.clone
 - `PYTHON-113 <https://jira.mongodb.org/browse/PYTHON-113>`_:
   Redunducy in MasterSlaveConnection
 

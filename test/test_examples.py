@@ -869,7 +869,7 @@ class TestSampleShellCommands(IntegrationTest):
         # End runCommand Example 1
 
         # Start runCommand Example 2
-        db.command("collStats", "restaurants")
+        db.command("count", "restaurants")
         # End runCommand Example 2
 
     def test_index_management(self):
