@@ -12,9 +12,8 @@ Changes in Version 4.4
   or Visual Studio.
 - Improved support for type-checking with MyPy "strict" mode (`--strict`).
 - Added support for Python 3.11.
-- pymongocrypt 1.6.0 or later is now required for Client Side Field Level Encryption (CSFLE)
-  and Queryable Encryption (QE) support. MongoDB Server 7.0 introduced a backwards breaking
-  change to the QE protocol. Users taking advantage of the QE beta must now upgrade to
+- pymongocrypt 1.6.0 or later is now required for :ref:`In-Use Encryption` support. MongoDB Server 7.0 introduced a backwards breaking
+  change to the QE protocol. Users taking advantage of the Queryable Encryption beta must now upgrade to
   MongoDB 7.0+ and PyMongo 4.4+.
 
 Issues Resolved
@@ -198,7 +197,6 @@ in this release.
 .. _PYTHON-3311: https://jira.mongodb.org/browse/PYTHON-3311
 .. _PYTHON-3187: https://jira.mongodb.org/browse/PYTHON-3187
 .. _PyMongo 4.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=33196
-.. _Queryable Encryption: automatic-queryable-client-side-encryption
 
 Changes in Version 4.1.1
 -------------------------
