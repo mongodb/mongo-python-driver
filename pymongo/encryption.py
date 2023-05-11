@@ -177,6 +177,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         with self.client_ref()[database].list_collections(filter=RawBSONDocument(filter)) as cursor:
             for doc in cursor:
                 return _dict_to_bson(doc, False, _DATA_KEY_OPTS)
+            return None
 
     def spawn(self):
         """Spawn mongocryptd.
@@ -272,7 +273,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
             self.mongocryptd_client = None
 
 
-class RewrapManyDataKeyResult(object):
+class RewrapManyDataKeyResult:
     """Result object returned by a :meth:`~ClientEncryption.rewrap_many_data_key` operation.
 
     .. versionadded:: 4.2
@@ -292,11 +293,12 @@ class RewrapManyDataKeyResult(object):
         return self._bulk_write_result
 
 
-class _Encrypter(object):
+class _Encrypter:
     """Encrypts and decrypts MongoDB commands.
 
     This class is used to support automatic encryption and decryption of
-    MongoDB commands."""
+    MongoDB commands.
+    """
 
     def __init__(self, client, opts):
         """Create a _Encrypter for a client.

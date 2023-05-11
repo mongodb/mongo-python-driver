@@ -63,19 +63,19 @@ UNPIN_TEST_MAX_ATTEMPTS = 50
 class TransactionsBase(SpecRunner):
     @classmethod
     def setUpClass(cls):
-        super(TransactionsBase, cls).setUpClass()
+        super().setUpClass()
         if client_context.supports_transactions():
             for address in client_context.mongoses:
-                cls.mongos_clients.append(single_client("%s:%s" % address))
+                cls.mongos_clients.append(single_client("{}:{}".format(*address)))
 
     @classmethod
     def tearDownClass(cls):
         for client in cls.mongos_clients:
             client.close()
-        super(TransactionsBase, cls).tearDownClass()
+        super().tearDownClass()
 
     def maybe_skip_scenario(self, test):
-        super(TransactionsBase, self).maybe_skip_scenario(test)
+        super().maybe_skip_scenario(test)
         if (
             "secondary" in self.id()
             and not client_context.is_mongos
@@ -390,7 +390,7 @@ class TestTransactions(TransactionsBase):
                     list(res)
 
 
-class PatchSessionTimeout(object):
+class PatchSessionTimeout:
     """Patches the client_session's with_transaction timeout for testing."""
 
     def __init__(self, mock_timeout):
@@ -416,7 +416,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
             pass
 
         def raise_error(_):
-            raise _MyException()
+            raise _MyException
 
         with self.client.start_session() as s:
             with self.assertRaises(_MyException):

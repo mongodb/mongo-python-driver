@@ -104,7 +104,8 @@ class TestChangeStreamBase(IntegrationTest):
 
     def get_start_at_operation_time(self):
         """Get an operationTime. Advances the operation clock beyond the most
-        recently returned timestamp."""
+        recently returned timestamp.
+        """
         optime = self.client.admin.command("ping")["operationTime"]
         return Timestamp(optime.time, optime.inc + 1)
 
@@ -120,7 +121,7 @@ class TestChangeStreamBase(IntegrationTest):
         client._close_cursor_now(cursor.cursor_id, address)
 
 
-class APITestsMixin(object):
+class APITestsMixin:
     @no_type_check
     def test_watch(self):
         with self.change_stream(
@@ -208,7 +209,7 @@ class APITestsMixin(object):
             # Stream still works after a resume.
             coll.insert_one({"_id": 3})
             wait_until(lambda: stream.try_next() is not None, "get change from try_next")
-            self.assertEqual(set(listener.started_command_names()), set(["getMore"]))
+            self.assertEqual(set(listener.started_command_names()), {"getMore"})
             self.assertIsNone(stream.try_next())
 
     @no_type_check
@@ -249,7 +250,7 @@ class APITestsMixin(object):
         coll.insert_many([{"data": i} for i in range(ndocs)])
 
         with self.change_stream(start_at_operation_time=optime) as cs:
-            for i in range(ndocs):
+            for _i in range(ndocs):
                 cs.next()
 
     @no_type_check
@@ -443,7 +444,7 @@ class APITestsMixin(object):
             self.assertEqual(change["fullDocument"], {"_id": 2})
 
 
-class ProseSpecTestsMixin(object):
+class ProseSpecTestsMixin:
     @no_type_check
     def _client_with_listener(self, *commands):
         listener = AllowListEventListener(*commands)
@@ -461,7 +462,8 @@ class ProseSpecTestsMixin(object):
     def _get_expected_resume_token_legacy(self, stream, listener, previous_change=None):
         """Predicts what the resume token should currently be for server
         versions that don't support postBatchResumeToken. Assumes the stream
-        has never returned any changes if previous_change is None."""
+        has never returned any changes if previous_change is None.
+        """
         if previous_change is None:
             agg_cmd = listener.started_events[0]
             stage = agg_cmd.command["pipeline"][0]["$changeStream"]
@@ -474,7 +476,8 @@ class ProseSpecTestsMixin(object):
         versions that support postBatchResumeToken. Assumes the stream has
         never returned any changes if previous_change is None. Assumes
         listener is a AllowListEventListener that listens for aggregate and
-        getMore commands."""
+        getMore commands.
+        """
         if previous_change is None or stream._cursor._has_next():
             token = self._get_expected_resume_token_legacy(stream, listener, previous_change)
             if token is not None:
@@ -767,14 +770,14 @@ class TestClusterChangeStream(TestChangeStreamBase, APITestsMixin):
     @client_context.require_version_min(4, 0, 0, -1)
     @client_context.require_change_streams
     def setUpClass(cls):
-        super(TestClusterChangeStream, cls).setUpClass()
+        super().setUpClass()
         cls.dbs = [cls.db, cls.client.pymongo_test_2]
 
     @classmethod
     def tearDownClass(cls):
         for db in cls.dbs:
             cls.client.drop_database(db)
-        super(TestClusterChangeStream, cls).tearDownClass()
+        super().tearDownClass()
 
     def change_stream_with_client(self, client, *args, **kwargs):
         return client.watch(*args, **kwargs)
@@ -828,7 +831,7 @@ class TestDatabaseChangeStream(TestChangeStreamBase, APITestsMixin):
     @client_context.require_version_min(4, 0, 0, -1)
     @client_context.require_change_streams
     def setUpClass(cls):
-        super(TestDatabaseChangeStream, cls).setUpClass()
+        super().setUpClass()
 
     def change_stream_with_client(self, client, *args, **kwargs):
         return client[self.db.name].watch(*args, **kwargs)
@@ -913,7 +916,7 @@ class TestCollectionChangeStream(TestChangeStreamBase, APITestsMixin, ProseSpecT
     @classmethod
     @client_context.require_change_streams
     def setUpClass(cls):
-        super(TestCollectionChangeStream, cls).setUpClass()
+        super().setUpClass()
 
     def setUp(self):
         # Use a new collection for each test.
@@ -1044,17 +1047,17 @@ class TestAllLegacyScenarios(IntegrationTest):
     @classmethod
     @client_context.require_connection
     def setUpClass(cls):
-        super(TestAllLegacyScenarios, cls).setUpClass()
+        super().setUpClass()
         cls.listener = AllowListEventListener("aggregate", "getMore")
         cls.client = rs_or_single_client(event_listeners=[cls.listener])
 
     @classmethod
     def tearDownClass(cls):
         cls.client.close()
-        super(TestAllLegacyScenarios, cls).tearDownClass()
+        super().tearDownClass()
 
     def setUp(self):
-        super(TestAllLegacyScenarios, self).setUp()
+        super().setUp()
         self.listener.reset()
 
     def setUpCluster(self, scenario_dict):
@@ -1088,7 +1091,8 @@ class TestAllLegacyScenarios(IntegrationTest):
 
     def assert_list_contents_are_subset(self, superlist, sublist):
         """Check that each element in sublist is a subset of the corresponding
-        element in superlist."""
+        element in superlist.
+        """
         self.assertEqual(len(superlist), len(sublist))
         for sup, sub in zip(superlist, sublist):
             if isinstance(sub, dict):
@@ -1104,7 +1108,7 @@ class TestAllLegacyScenarios(IntegrationTest):
         exempt_fields = ["documentKey", "_id", "getMore"]
         for key, value in subdict.items():
             if key not in superdict:
-                self.fail("Key %s not found in %s" % (key, superdict))
+                self.fail(f"Key {key} not found in {superdict}")
             if isinstance(value, dict):
                 self.assert_dict_is_subset(superdict[key], value)
                 continue

@@ -125,7 +125,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
                db.__my_collection__
         """
-        super(Database, self).__init__(
+        super().__init__(
             codec_options or client.codec_options,
             read_preference or client.read_preference,
             write_concern or client.write_concern,
@@ -211,7 +211,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         return hash((self.__client, self.__name))
 
     def __repr__(self):
-        return "Database(%r, %r)" % (self.__client, self.__name)
+        return f"Database({self.__client!r}, {self.__name!r})"
 
     def __getattr__(self, name: str) -> Collection[_DocumentType]:
         """Get a collection of this database by name.
@@ -223,8 +223,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         """
         if name.startswith("_"):
             raise AttributeError(
-                "Database has no attribute %r. To access the %s"
-                " collection, use database[%r]." % (name, name, name)
+                "Database has no attribute {!r}. To access the {}"
+                " collection, use database[{!r}].".format(name, name, name)
             )
         return self.__getitem__(name)
 
@@ -415,9 +415,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 {
                     // key pattern must be {_id: 1}
                     key: <key pattern>, // required
-                    unique: <bool>, // required, must be ‘true’
+                    unique: <bool>, // required, must be `true`
                     name: <string>, // optional, otherwise automatically generated
-                    v: <int>, // optional, must be ‘2’ if provided
+                    v: <int>, // optional, must be `2` if provided
                 }
           - ``changeStreamPreAndPostImages`` (dict): a document with a boolean field ``enabled`` for
             enabling pre- and post-images.
@@ -863,7 +863,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
     def _list_collections(self, sock_info, session, read_preference, **kwargs):
         """Internal listCollections helper."""
-
         coll = self.get_collection("$cmd", read_preference=read_preference)
         cmd = SON([("listCollections", 1), ("cursor", {})])
         cmd.update(kwargs)
@@ -1128,14 +1127,14 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if "result" in result:
             info = result["result"]
             if info.find("exception") != -1 or info.find("corrupt") != -1:
-                raise CollectionInvalid("%s invalid: %s" % (name, info))
+                raise CollectionInvalid(f"{name} invalid: {info}")
         # Sharded results
         elif "raw" in result:
             for _, res in result["raw"].items():
                 if "result" in res:
                     info = res["result"]
                     if info.find("exception") != -1 or info.find("corrupt") != -1:
-                        raise CollectionInvalid("%s invalid: %s" % (name, info))
+                        raise CollectionInvalid(f"{name} invalid: {info}")
                 elif not res.get("valid", False):
                     valid = False
                     break
@@ -1144,7 +1143,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             valid = False
 
         if not valid:
-            raise CollectionInvalid("%s invalid: %r" % (name, result))
+            raise CollectionInvalid(f"{name} invalid: {result!r}")
 
         return result
 
@@ -1200,7 +1199,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if dbref.database is not None and dbref.database != self.__name:
             raise ValueError(
                 "trying to dereference a DBRef that points to "
-                "another database (%r not %r)" % (dbref.database, self.__name)
+                "another database ({!r} not {!r})".format(dbref.database, self.__name)
             )
         return self[dbref.collection].find_one(
             {"_id": dbref.id}, session=session, comment=comment, **kwargs

@@ -805,7 +805,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self.__kill_cursors_queue: List = []
 
         self._event_listeners = options.pool_options._event_listeners
-        super(MongoClient, self).__init__(
+        super().__init__(
             options.codec_options,
             options.read_preference,
             options.write_concern,
@@ -1509,11 +1509,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 if value is dict:
                     return "document_class=dict"
                 else:
-                    return "document_class=%s.%s" % (value.__module__, value.__name__)
+                    return f"document_class={value.__module__}.{value.__name__}"
             if option in common.TIMEOUT_OPTIONS and value is not None:
-                return "%s=%s" % (option, int(value * 1000))
+                return f"{option}={int(value * 1000)}"
 
-            return "%s=%r" % (option, value)
+            return f"{option}={value!r}"
 
         # Host first...
         options = [
@@ -1536,7 +1536,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return ", ".join(options)
 
     def __repr__(self):
-        return "MongoClient(%s)" % (self._repr_helper(),)
+        return f"MongoClient({self._repr_helper()})"
 
     def __getattr__(self, name: str) -> database.Database[_DocumentType]:
         """Get a database by name.
@@ -1549,8 +1549,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         if name.startswith("_"):
             raise AttributeError(
-                "MongoClient has no attribute %r. To access the %s"
-                " database, use client[%r]." % (name, name, name)
+                "MongoClient has no attribute {!r}. To access the {}"
+                " database, use client[{!r}].".format(name, name, name)
             )
         return self.__getitem__(name)
 
@@ -1685,7 +1685,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     # This method is run periodically by a background thread.
     def _process_periodic_tasks(self):
         """Process any pending kill cursors requests and
-        maintain connection pool parameters."""
+        maintain connection pool parameters.
+        """
         try:
             self._process_kill_cursors()
             self._topology.update_pool()
@@ -1742,7 +1743,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def _return_server_session(self, server_session, lock):
         """Internal: return a _ServerSession to the pool."""
         if isinstance(server_session, _EmptyServerSession):
-            return
+            return None
         return self._topology.return_server_session(server_session, lock)
 
     def _ensure_session(self, session=None):
@@ -2121,7 +2122,7 @@ def _add_retryable_write_error(exc, max_wire_version):
         exc._add_error_label("RetryableWriteError")
 
 
-class _MongoClientErrorHandler(object):
+class _MongoClientErrorHandler:
     """Handle errors raised when executing an operation."""
 
     __slots__ = (

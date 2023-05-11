@@ -21,7 +21,7 @@ from bson._helpers import _getstate_slots, _setstate_slots
 from bson.son import SON
 
 
-class DBRef(object):
+class DBRef:
     """A reference to a document stored in MongoDB."""
 
     __slots__ = "__collection", "__id", "__database", "__kwargs"
@@ -36,7 +36,7 @@ class DBRef(object):
         id: Any,
         database: Optional[str] = None,
         _extra: Optional[Mapping[str, Any]] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         """Initialize a new :class:`DBRef`.
 
@@ -102,10 +102,10 @@ class DBRef(object):
         return doc
 
     def __repr__(self):
-        extra = "".join([", %s=%r" % (k, v) for k, v in self.__kwargs.items()])
+        extra = "".join([f", {k}={v!r}" for k, v in self.__kwargs.items()])
         if self.database is None:
-            return "DBRef(%r, %r%s)" % (self.collection, self.id, extra)
-        return "DBRef(%r, %r, %r%s)" % (self.collection, self.id, self.database, extra)
+            return f"DBRef({self.collection!r}, {self.id!r}{extra})"
+        return f"DBRef({self.collection!r}, {self.id!r}, {self.database!r}{extra})"
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, DBRef):

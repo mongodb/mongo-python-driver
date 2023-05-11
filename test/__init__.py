@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test suite for pymongo, bson, and gridfs.
-"""
+"""Test suite for pymongo, bson, and gridfs."""
 
 import base64
 import gc
@@ -92,7 +91,7 @@ CERT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "certifica
 CLIENT_PEM = os.environ.get("CLIENT_PEM", os.path.join(CERT_PATH, "client.pem"))
 CA_PEM = os.environ.get("CA_PEM", os.path.join(CERT_PATH, "ca.pem"))
 
-TLS_OPTIONS: Dict = dict(tls=True)
+TLS_OPTIONS: Dict = {"tls": True}
 if CLIENT_PEM:
     TLS_OPTIONS["tlsCertificateKeyFile"] = CLIENT_PEM
 if CA_PEM:
@@ -149,7 +148,7 @@ def is_server_resolvable():
         try:
             socket.gethostbyname("server")
             return True
-        except socket.error:
+        except OSError:
             return False
     finally:
         socket.setdefaulttimeout(socket_timeout)
@@ -165,7 +164,7 @@ def _create_user(authdb, user, pwd=None, roles=None, **kwargs):
     return authdb.command(cmd)
 
 
-class client_knobs(object):
+class client_knobs:
     def __init__(
         self,
         heartbeat_frequency=None,
@@ -234,10 +233,9 @@ class client_knobs(object):
     def __del__(self):
         if self._enabled:
             msg = (
-                "ERROR: client_knobs still enabled! HEARTBEAT_FREQUENCY=%s, "
-                "MIN_HEARTBEAT_INTERVAL=%s, KILL_CURSOR_FREQUENCY=%s, "
-                "EVENTS_QUEUE_FREQUENCY=%s, stack:\n%s"
-                % (
+                "ERROR: client_knobs still enabled! HEARTBEAT_FREQUENCY={}, "
+                "MIN_HEARTBEAT_INTERVAL={}, KILL_CURSOR_FREQUENCY={}, "
+                "EVENTS_QUEUE_FREQUENCY={}, stack:\n{}".format(
                     common.HEARTBEAT_FREQUENCY,
                     common.MIN_HEARTBEAT_INTERVAL,
                     common.KILL_CURSOR_FREQUENCY,
@@ -250,10 +248,10 @@ class client_knobs(object):
 
 
 def _all_users(db):
-    return set(u["user"] for u in db.command("usersInfo").get("users", []))
+    return {u["user"] for u in db.command("usersInfo").get("users", [])}
 
 
-class ClientContext(object):
+class ClientContext:
     client: MongoClient
 
     MULTI_MONGOS_LB_URI = MULTI_MONGOS_LB_URI
@@ -339,14 +337,14 @@ class ClientContext(object):
             except pymongo.errors.OperationFailure as exc:
                 # SERVER-32063
                 self.connection_attempts.append(
-                    "connected client %r, but legacy hello failed: %s" % (client, exc)
+                    f"connected client {client!r}, but legacy hello failed: {exc}"
                 )
             else:
-                self.connection_attempts.append("successfully connected client %r" % (client,))
+                self.connection_attempts.append(f"successfully connected client {client!r}")
             # If connected, then return client with default timeout
             return pymongo.MongoClient(host, port, **kwargs)
         except pymongo.errors.ConnectionFailure as exc:
-            self.connection_attempts.append("failed to connect client %r: %s" % (client, exc))
+            self.connection_attempts.append(f"failed to connect client {client!r}: {exc}")
             return None
         finally:
             client.close()
@@ -447,7 +445,7 @@ class ClientContext(object):
                 nodes.extend([partition_node(node.lower()) for node in hello.get("arbiters", [])])
                 self.nodes = set(nodes)
             else:
-                self.nodes = set([(host, port)])
+                self.nodes = {(host, port)}
             self.w = len(hello.get("hosts", [])) or 1
             self.version = Version.from_client(self.client)
 
@@ -587,7 +585,7 @@ class ClientContext(object):
             for info in socket.getaddrinfo(self.host, self.port):
                 if info[0] == socket.AF_INET6:
                     return True
-        except socket.error:
+        except OSError:
             pass
 
         return False
@@ -599,7 +597,7 @@ class ClientContext(object):
                 self.init()
                 # Always raise SkipTest if we can't connect to MongoDB
                 if not self.connected:
-                    raise SkipTest("Cannot connect to MongoDB on %s" % (self.pair,))
+                    raise SkipTest(f"Cannot connect to MongoDB on {self.pair}")
                 if condition():
                     return f(*args, **kwargs)
                 raise SkipTest(msg)
@@ -625,7 +623,7 @@ class ClientContext(object):
         """Run a test only if we can connect to MongoDB."""
         return self._require(
             lambda: True,  # _require checks if we're connected
-            "Cannot connect to MongoDB on %s" % (self.pair,),
+            f"Cannot connect to MongoDB on {self.pair}",
             func=func,
         )
 
@@ -633,14 +631,15 @@ class ClientContext(object):
         """Run a test only if we are connected to Atlas Data Lake."""
         return self._require(
             lambda: self.is_data_lake,
-            "Not connected to Atlas Data Lake on %s" % (self.pair,),
+            f"Not connected to Atlas Data Lake on {self.pair}",
             func=func,
         )
 
     def require_no_mmap(self, func):
         """Run a test only if the server is not using the MMAPv1 storage
         engine. Only works for standalone and replica sets; tests are
-        run regardless of storage engine on sharded clusters."""
+        run regardless of storage engine on sharded clusters.
+        """
 
         def is_not_mmap():
             if self.is_mongos:
@@ -734,7 +733,8 @@ class ClientContext(object):
 
     def require_multiple_mongoses(self, func):
         """Run a test only if the client is connected to a sharded cluster
-        that has 2 mongos nodes."""
+        that has 2 mongos nodes.
+        """
         return self._require(
             lambda: len(self.mongoses) > 1, "Must have multiple mongoses available", func=func
         )
@@ -786,7 +786,7 @@ class ClientContext(object):
             "load-balanced",
         }
         if unknown:
-            raise AssertionError("Unknown topologies: %r" % (unknown,))
+            raise AssertionError(f"Unknown topologies: {unknown!r}")
         if self.load_balancer:
             if "load-balanced" in topologies:
                 return True
@@ -812,7 +812,8 @@ class ClientContext(object):
     def require_cluster_type(self, topologies=[]):  # noqa
         """Run a test only if the client is connected to a cluster that
         conforms to one of the specified topologies. Acceptable topologies
-        are 'single', 'replicaset', and 'sharded'."""
+        are 'single', 'replicaset', and 'sharded'.
+        """
 
         def _is_valid_topology():
             return self.is_topology_type(topologies)
@@ -827,7 +828,8 @@ class ClientContext(object):
 
     def require_failCommand_fail_point(self, func):
         """Run a test only if the server supports the failCommand fail
-        point."""
+        point.
+        """
         return self._require(
             lambda: self.supports_failCommand_fail_point,
             "failCommand fail point must be supported",
@@ -930,7 +932,7 @@ class ClientContext(object):
         )
 
     def mongos_seeds(self):
-        return ",".join("%s:%s" % address for address in self.mongoses)
+        return ",".join("{}:{}".format(*address) for address in self.mongoses)
 
     @property
     def supports_failCommand_fail_point(self):
@@ -1139,7 +1141,7 @@ class MockClientTest(unittest.TestCase):
         pass
 
     def setUp(self):
-        super(MockClientTest, self).setUp()
+        super().setUp()
 
         self.client_knobs = client_knobs(heartbeat_frequency=0.001, min_heartbeat_interval=0.001)
 
@@ -1147,7 +1149,7 @@ class MockClientTest(unittest.TestCase):
 
     def tearDown(self):
         self.client_knobs.disable()
-        super(MockClientTest, self).tearDown()
+        super().tearDown()
 
 
 # Global knobs to speed up the test suite.
@@ -1181,9 +1183,9 @@ def print_running_topology(topology):
     if running:
         print(
             "WARNING: found Topology with running threads:\n"
-            "  Threads: %s\n"
-            "  Topology: %s\n"
-            "  Creation traceback:\n%s" % (running, topology, topology._settings._stack)
+            "  Threads: {}\n"
+            "  Topology: {}\n"
+            "  Creation traceback:\n{}".format(running, topology, topology._settings._stack)
         )
 
 
@@ -1215,11 +1217,11 @@ def teardown():
     global_knobs.disable()
     garbage = []
     for g in gc.garbage:
-        garbage.append("GARBAGE: %r" % (g,))
-        garbage.append("  gc.get_referents: %r" % (gc.get_referents(g),))
-        garbage.append("  gc.get_referrers: %r" % (gc.get_referrers(g),))
+        garbage.append(f"GARBAGE: {g!r}")
+        garbage.append(f"  gc.get_referents: {gc.get_referents(g)!r}")
+        garbage.append(f"  gc.get_referrers: {gc.get_referrers(g)!r}")
     if garbage:
-        assert False, "\n".join(garbage)
+        raise AssertionError("\n".join(garbage))
     c = client_context.client
     if c:
         if not client_context.is_data_lake:
@@ -1237,7 +1239,7 @@ def teardown():
 class PymongoTestRunner(unittest.TextTestRunner):
     def run(self, test):
         setup()
-        result = super(PymongoTestRunner, self).run(test)
+        result = super().run(test)
         teardown()
         return result
 
@@ -1247,7 +1249,7 @@ if HAVE_XML:
     class PymongoXMLTestRunner(XMLTestRunner):  # type: ignore[misc]
         def run(self, test):
             setup()
-            result = super(PymongoXMLTestRunner, self).run(test)
+            result = super().run(test)
             teardown()
             return result
 
@@ -1260,8 +1262,7 @@ def test_cases(suite):
             yield suite_or_case
         else:
             # unittest.TestSuite
-            for case in test_cases(suite_or_case):
-                yield case
+            yield from test_cases(suite_or_case)
 
 
 # Helper method to workaround https://bugs.python.org/issue21724
@@ -1272,7 +1273,7 @@ def clear_warning_registry():
             setattr(module, "__warningregistry__", {})  # noqa
 
 
-class SystemCertsPatcher(object):
+class SystemCertsPatcher:
     def __init__(self, ca_certs):
         if (
             ssl.OPENSSL_VERSION.lower().startswith("libressl")

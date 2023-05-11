@@ -17,7 +17,7 @@
 from pymongo.server_type import SERVER_TYPE
 
 
-class Selection(object):
+class Selection:
     """Input or output of a server selector function."""
 
     @classmethod
@@ -51,6 +51,7 @@ class Selection(object):
         secondaries = secondary_server_selector(self)
         if secondaries.server_descriptions:
             return max(secondaries.server_descriptions, key=lambda sd: sd.last_write_date)
+        return None
 
     @property
     def primary_selection(self):

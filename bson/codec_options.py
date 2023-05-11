@@ -63,12 +63,10 @@ class TypeEncoder(abc.ABC):
     @abc.abstractproperty
     def python_type(self) -> Any:
         """The Python type to be converted into something serializable."""
-        pass
 
     @abc.abstractmethod
     def transform_python(self, value: Any) -> Any:
         """Convert the given Python object into something serializable."""
-        pass
 
 
 class TypeDecoder(abc.ABC):
@@ -84,12 +82,10 @@ class TypeDecoder(abc.ABC):
     @abc.abstractproperty
     def bson_type(self) -> Any:
         """The BSON type to be converted into our own type."""
-        pass
 
     @abc.abstractmethod
     def transform_bson(self, value: Any) -> Any:
         """Convert the given BSON value into our own type."""
-        pass
 
 
 class TypeCodec(TypeEncoder, TypeDecoder):
@@ -105,14 +101,12 @@ class TypeCodec(TypeEncoder, TypeDecoder):
     See :ref:`custom-type-type-codec` documentation for an example.
     """
 
-    pass
-
 
 _Codec = Union[TypeEncoder, TypeDecoder, TypeCodec]
 _Fallback = Callable[[Any], Any]
 
 
-class TypeRegistry(object):
+class TypeRegistry:
     """Encapsulates type codecs used in encoding and / or decoding BSON, as
     well as the fallback encoder. Type registries cannot be modified after
     instantiation.
@@ -164,8 +158,7 @@ class TypeRegistry(object):
                 self._decoder_map[codec.bson_type] = codec.transform_bson
             if not is_valid_codec:
                 raise TypeError(
-                    "Expected an instance of %s, %s, or %s, got %r instead"
-                    % (TypeEncoder.__name__, TypeDecoder.__name__, TypeCodec.__name__, codec)
+                    f"Expected an instance of {TypeEncoder.__name__}, {TypeDecoder.__name__}, or {TypeCodec.__name__}, got {codec!r} instead"
                 )
 
     def _validate_type_encoder(self, codec: _Codec) -> None:
@@ -175,12 +168,12 @@ class TypeRegistry(object):
             if issubclass(cast(TypeCodec, codec).python_type, pytype):
                 err_msg = (
                     "TypeEncoders cannot change how built-in types are "
-                    "encoded (encoder %s transforms type %s)" % (codec, pytype)
+                    "encoded (encoder {} transforms type {})".format(codec, pytype)
                 )
                 raise TypeError(err_msg)
 
     def __repr__(self):
-        return "%s(type_codecs=%r, fallback_encoder=%r)" % (
+        return "{}(type_codecs={!r}, fallback_encoder={!r})".format(
             self.__class__.__name__,
             self.__type_codecs,
             self._fallback_encoder,
@@ -446,10 +439,9 @@ else:
             )
 
             return (
-                "document_class=%s, tz_aware=%r, uuid_representation=%s, "
-                "unicode_decode_error_handler=%r, tzinfo=%r, "
-                "type_registry=%r, datetime_conversion=%s"
-                % (
+                "document_class={}, tz_aware={!r}, uuid_representation={}, "
+                "unicode_decode_error_handler={!r}, tzinfo={!r}, "
+                "type_registry={!r}, datetime_conversion={!s}".format(
                     document_class_repr,
                     self.tz_aware,
                     uuid_rep_repr,
@@ -474,7 +466,7 @@ else:
             }
 
         def __repr__(self):
-            return "%s(%s)" % (self.__class__.__name__, self._arguments_repr())
+            return f"{self.__class__.__name__}({self._arguments_repr()})"
 
         def with_options(self, **kwargs: Any) -> "CodecOptions":
             """Make a copy of this CodecOptions, overriding some options::

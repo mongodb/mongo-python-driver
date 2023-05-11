@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test client for mod_wsgi application, see bug PYTHON-353.
-"""
+"""Test client for mod_wsgi application, see bug PYTHON-353."""
 
 import _thread as thread
 import sys
@@ -91,14 +90,14 @@ class URLGetterThread(threading.Thread):
     counter = 0
 
     def __init__(self, options, url, nrequests_per_thread):
-        super(URLGetterThread, self).__init__()
+        super().__init__()
         self.options = options
         self.url = url
         self.nrequests_per_thread = nrequests_per_thread
         self.errors = 0
 
     def run(self):
-        for i in range(self.nrequests_per_thread):
+        for _i in range(self.nrequests_per_thread):
             try:
                 get(url)
             except Exception as e:
@@ -128,9 +127,8 @@ def main(options, mode, url):
 
         if options.verbose:
             print(
-                "Getting %s %s times total in %s threads, "
-                "%s times per thread"
-                % (
+                "Getting {} {} times total in {} threads, "
+                "{} times per thread".format(
                     url,
                     nrequests_per_thread * options.nthreads,
                     options.nthreads,
@@ -154,7 +152,7 @@ def main(options, mode, url):
     else:
         assert mode == "serial"
         if options.verbose:
-            print("Getting %s %s times in one thread" % (url, options.nrequests))
+            print(f"Getting {url} {options.nrequests} times in one thread")
 
         for i in range(1, options.nrequests + 1):
             try:

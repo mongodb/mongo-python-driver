@@ -67,7 +67,7 @@ def create_test(test_case):
                 expected = credential["mechanism_properties"]
                 if expected is not None:
                     actual = credentials.mechanism_properties
-                    for key, val in expected.items():
+                    for key, _val in expected.items():
                         if "SERVICE_NAME" in expected:
                             self.assertEqual(actual.service_name, expected["SERVICE_NAME"])
                         elif "CANONICALIZE_HOST_NAME" in expected:
@@ -91,7 +91,7 @@ def create_test(test_case):
                                 actual.refresh_token_callback, expected["refresh_token_callback"]
                             )
                         else:
-                            self.fail("Unhandled property: %s" % (key,))
+                            self.fail(f"Unhandled property: {key}")
                 else:
                     if credential["mechanism"] == "MONGODB-AWS":
                         self.assertIsNone(credentials.mechanism_properties.aws_session_token)
@@ -111,7 +111,7 @@ def create_tests():
                     continue
                 test_method = create_test(test_case)
                 name = str(test_case["description"].lower().replace(" ", "_"))
-                setattr(TestAuthSpec, "test_%s_%s" % (test_suffix, name), test_method)
+                setattr(TestAuthSpec, f"test_{test_suffix}_{name}", test_method)
 
 
 create_tests()

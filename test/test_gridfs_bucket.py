@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2015-present MongoDB, Inc.
 #
@@ -14,8 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for the gridfs package.
-"""
+"""Tests for the gridfs package."""
 import datetime
 import itertools
 import threading
@@ -75,7 +73,7 @@ class TestGridfs(IntegrationTest):
 
     @classmethod
     def setUpClass(cls):
-        super(TestGridfs, cls).setUpClass()
+        super().setUpClass()
         cls.fs = gridfs.GridFSBucket(cls.db)
         cls.alt = gridfs.GridFSBucket(cls.db, bucket_name="alt")
 
@@ -196,8 +194,8 @@ class TestGridfs(IntegrationTest):
         self.alt.upload_from_stream("hello world", b"")
 
         self.assertEqual(
-            set(["mike", "test", "hello world", "foo"]),
-            set(k["filename"] for k in list(self.db.alt.files.find())),
+            {"mike", "test", "hello world", "foo"},
+            {k["filename"] for k in list(self.db.alt.files.find())},
         )
 
     def test_threaded_reads(self):
@@ -442,7 +440,7 @@ class TestGridfsBucketReplicaSet(IntegrationTest):
     @classmethod
     @client_context.require_secondaries_count(1)
     def setUpClass(cls):
-        super(TestGridfsBucketReplicaSet, cls).setUpClass()
+        super().setUpClass()
 
     @classmethod
     def tearDownClass(cls):

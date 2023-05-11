@@ -88,7 +88,7 @@ _WriteOp = Union[
 ]
 
 
-class ReturnDocument(object):
+class ReturnDocument:
     """An enum used with
     :meth:`~pymongo.collection.Collection.find_one_and_replace` and
     :meth:`~pymongo.collection.Collection.find_one_and_update`.
@@ -201,7 +201,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `collections <https://dochub.mongodb.org/core/collections>`_.
         """
-        super(Collection, self).__init__(
+        super().__init__(
             codec_options or database.codec_options,
             read_preference or database.read_preference,
             write_concern or database.write_concern,
@@ -212,7 +212,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         if not name or ".." in name:
             raise InvalidName("collection names cannot be empty")
-        if "$" in name and not (name.startswith("oplog.$main") or name.startswith("$cmd")):
+        if "$" in name and not (name.startswith(("oplog.$main", "$cmd"))):
             raise InvalidName("collection names must not contain '$': %r" % name)
         if name[0] == "." or name[-1] == ".":
             raise InvalidName("collection names must not start or end with '.': %r" % name)
@@ -222,7 +222,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         self.__database: Database[_DocumentType] = database
         self.__name = name
-        self.__full_name = "%s.%s" % (self.__database.name, self.__name)
+        self.__full_name = f"{self.__database.name}.{self.__name}"
         self.__write_response_codec_options = self.codec_options._replace(
             unicode_decode_error_handler="replace", document_class=dict
         )
@@ -344,17 +344,17 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           - `name`: the name of the collection to get
         """
         if name.startswith("_"):
-            full_name = "%s.%s" % (self.__name, name)
+            full_name = f"{self.__name}.{name}"
             raise AttributeError(
-                "Collection has no attribute %r. To access the %s"
-                " collection, use database['%s']." % (name, full_name, full_name)
+                "Collection has no attribute {!r}. To access the {}"
+                " collection, use database['{}'].".format(name, full_name, full_name)
             )
         return self.__getitem__(name)
 
     def __getitem__(self, name: str) -> "Collection[_DocumentType]":
         return Collection(
             self.__database,
-            "%s.%s" % (self.__name, name),
+            f"{self.__name}.{name}",
             False,
             self.codec_options,
             self.read_preference,
@@ -363,7 +363,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         )
 
     def __repr__(self):
-        return "Collection(%r, %r)" % (self.__database, self.__name)
+        return f"Collection({self.__database!r}, {self.__name!r})"
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Collection):
@@ -541,7 +541,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             try:
                 request._add_to_bulk(blk)
             except AttributeError:
-                raise TypeError("%r is not a valid request" % (request,))
+                raise TypeError(f"{request!r} is not a valid request")
 
         write_concern = self._write_concern_for(session)
         bulk_api_result = blk.execute(write_concern, session)
@@ -579,6 +579,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         if not isinstance(doc, RawBSONDocument):
             return doc.get("_id")
+        return None
 
     def insert_one(
         self,
@@ -719,7 +720,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         write_concern = self._write_concern_for(session)
         blk = _Bulk(self, ordered, bypass_document_validation, comment=comment)
-        blk.ops = [doc for doc in gen()]
+        blk.ops = list(gen())
         blk.execute(write_concern, session=session)
         return InsertManyResult(inserted_ids, write_concern.acknowledged)
 
@@ -1924,7 +1925,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 for index in indexes:
                     if not isinstance(index, IndexModel):
                         raise TypeError(
-                            "%r is not an instance of pymongo.operations.IndexModel" % (index,)
+                            f"{index!r} is not an instance of pymongo.operations.IndexModel"
                         )
                     document = index.document
                     names.append(document["name"])
@@ -2442,7 +2443,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. _aggregate command:
             https://mongodb.com/docs/manual/reference/command/aggregate
         """
-
         with self.__database.client._tmp_session(session, close=False) as s:
             return self._aggregate(
                 _CollectionAggregationCommand,
@@ -2687,7 +2687,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if "$" in new_name and not new_name.startswith("oplog.$main"):
             raise InvalidName("collection names must not contain '$'")
 
-        new_name = "%s.%s" % (self.__database.name, new_name)
+        new_name = f"{self.__database.name}.{new_name}"
         cmd = SON([("renameCollection", self.__full_name), ("to", new_name)])
         cmd.update(kwargs)
         if comment is not None:
@@ -2794,7 +2794,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         **kwargs,
     ):
         """Internal findAndModify helper."""
-
         common.validate_is_mapping("filter", filter)
         if not isinstance(return_document, bool):
             raise ValueError(

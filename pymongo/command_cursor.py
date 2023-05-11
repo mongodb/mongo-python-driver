@@ -132,13 +132,15 @@ class CommandCursor(Generic[_DocumentType]):
 
     def _has_next(self):
         """Returns `True` if the cursor has documents remaining from the
-        previous batch."""
+        previous batch.
+        """
         return len(self.__data) > 0
 
     @property
     def _post_batch_resume_token(self):
         """Retrieve the postBatchResumeToken from the response to a
-        changeStream aggregate or getMore."""
+        changeStream aggregate or getMore.
+        """
         return self.__postbatchresumetoken
 
     def _maybe_pin_connection(self, sock_info):
@@ -328,7 +330,7 @@ class RawBatchCommandCursor(CommandCursor, Generic[_DocumentType]):
         .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
         """
         assert not cursor_info.get("firstBatch")
-        super(RawBatchCommandCursor, self).__init__(
+        super().__init__(
             collection,
             cursor_info,
             address,

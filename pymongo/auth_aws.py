@@ -21,7 +21,7 @@ try:
     _HAVE_MONGODB_AWS = True
 except ImportError:
 
-    class AwsSaslContext(object):  # type: ignore
+    class AwsSaslContext:  # type: ignore
         def __init__(self, credentials):
             pass
 
@@ -102,9 +102,7 @@ def _authenticate_aws(credentials, sock_info):
         # Clear the cached credentials if we hit a failure in auth.
         set_cached_credentials(None)
         # Convert to OperationFailure and include pymongo-auth-aws version.
-        raise OperationFailure(
-            "%s (pymongo-auth-aws version %s)" % (exc, pymongo_auth_aws.__version__)
-        )
+        raise OperationFailure(f"{exc} (pymongo-auth-aws version {pymongo_auth_aws.__version__})")
     except Exception:
         # Clear the cached credentials if we hit a failure in auth.
         set_cached_credentials(None)

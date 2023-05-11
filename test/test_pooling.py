@@ -60,7 +60,7 @@ class MongoThread(threading.Thread):
     """A thread that uses a MongoClient."""
 
     def __init__(self, client):
-        super(MongoThread, self).__init__()
+        super().__init__()
         self.daemon = True  # Don't hang whole test if thread hangs.
         self.client = client
         self.db = self.client[DB]
@@ -107,7 +107,7 @@ class SocketGetter(MongoThread):
     """
 
     def __init__(self, client, pool):
-        super(SocketGetter, self).__init__(client)
+        super().__init__(client)
         self.state = "init"
         self.pool = pool
         self.sock = None
@@ -132,7 +132,7 @@ def run_cases(client, cases):
     n_runs = 5
 
     for case in cases:
-        for i in range(n_runs):
+        for _i in range(n_runs):
             t = case(client)
             t.start()
             threads.append(t)
@@ -148,7 +148,7 @@ class _TestPoolingBase(IntegrationTest):
     """Base class for all connection-pool tests."""
 
     def setUp(self):
-        super(_TestPoolingBase, self).setUp()
+        super().setUp()
         self.c = rs_or_single_client()
         db = self.c[DB]
         db.unique.drop()
@@ -158,7 +158,7 @@ class _TestPoolingBase(IntegrationTest):
 
     def tearDown(self):
         self.c.close()
-        super(_TestPoolingBase, self).tearDown()
+        super().tearDown()
 
     def create_pool(self, pair=(client_context.host, client_context.port), *args, **kwargs):
         # Start the pool with the correct ssl options.
@@ -329,7 +329,7 @@ class TestPooling(_TestPoolingBase):
         duration = time.time() - start
         self.assertTrue(
             abs(wait_queue_timeout - duration) < 1,
-            "Waited %.2f seconds for a socket, expected %f" % (duration, wait_queue_timeout),
+            f"Waited {duration:.2f} seconds for a socket, expected {wait_queue_timeout:f}",
         )
 
     def test_no_wait_queue_timeout(self):
@@ -440,7 +440,7 @@ class TestPoolMaxSize(_TestPoolingBase):
             with lock:
                 self.n_passed += 1
 
-        for i in range(nthreads):
+        for _i in range(nthreads):
             t = threading.Thread(target=f)
             threads.append(t)
             t.start()
@@ -472,7 +472,7 @@ class TestPoolMaxSize(_TestPoolingBase):
             with lock:
                 self.n_passed += 1
 
-        for i in range(nthreads):
+        for _i in range(nthreads):
             t = threading.Thread(target=f)
             threads.append(t)
             t.start()
@@ -500,7 +500,7 @@ class TestPoolMaxSize(_TestPoolingBase):
         # First call to get_socket fails; if pool doesn't release its semaphore
         # then the second call raises "ConnectionFailure: Timed out waiting for
         # socket from pool" instead of AutoReconnect.
-        for i in range(2):
+        for _i in range(2):
             with self.assertRaises(AutoReconnect) as context:
                 with test_pool.get_socket():
                     pass

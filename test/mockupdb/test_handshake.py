@@ -247,6 +247,7 @@ class TestHandshake(unittest.TestCase):
                         }
                     )
                 )
+                return None
             else:
                 return request.reply(**primary_response)
 

@@ -116,7 +116,8 @@ def gen_regexp(gen_length):
     # TODO our patterns only consist of one letter.
     # this is because of a bug in CPython's regex equality testing,
     # which I haven't quite tracked down, so I'm just ignoring it...
-    pattern = lambda: "".join(gen_list(choose_lifted("a"), gen_length)())
+    def pattern():
+        return "".join(gen_list(choose_lifted("a"), gen_length)())
 
     def gen_flags():
         flags = 0
@@ -230,9 +231,9 @@ def check(predicate, generator):
         try:
             if not predicate(case):
                 reduction = reduce(case, predicate)
-                counter_examples.append("after %s reductions: %r" % reduction)
+                counter_examples.append("after {} reductions: {!r}".format(*reduction))
         except:
-            counter_examples.append("%r : %s" % (case, traceback.format_exc()))
+            counter_examples.append(f"{case!r} : {traceback.format_exc()}")
     return counter_examples
 
 

@@ -157,7 +157,7 @@ def clean_node(node: str) -> Tuple[str, int]:
 
 def raise_config_error(key: str, dummy: Any) -> NoReturn:
     """Raise ConfigurationError with the given key name."""
-    raise ConfigurationError("Unknown option %s" % (key,))
+    raise ConfigurationError(f"Unknown option {key}")
 
 
 # Mapping of URI uuid representation options to valid subtypes.
@@ -174,14 +174,14 @@ def validate_boolean(option: str, value: Any) -> bool:
     """Validates that 'value' is True or False."""
     if isinstance(value, bool):
         return value
-    raise TypeError("%s must be True or False" % (option,))
+    raise TypeError(f"{option} must be True or False")
 
 
 def validate_boolean_or_string(option: str, value: Any) -> bool:
     """Validates that value is True, False, 'true', or 'false'."""
     if isinstance(value, str):
         if value not in ("true", "false"):
-            raise ValueError("The value of %s must be 'true' or 'false'" % (option,))
+            raise ValueError(f"The value of {option} must be 'true' or 'false'")
         return value == "true"
     return validate_boolean(option, value)
 
@@ -194,15 +194,15 @@ def validate_integer(option: str, value: Any) -> int:
         try:
             return int(value)
         except ValueError:
-            raise ValueError("The value of %s must be an integer" % (option,))
-    raise TypeError("Wrong type for %s, value must be an integer" % (option,))
+            raise ValueError(f"The value of {option} must be an integer")
+    raise TypeError(f"Wrong type for {option}, value must be an integer")
 
 
 def validate_positive_integer(option: str, value: Any) -> int:
     """Validate that 'value' is a positive integer, which does not include 0."""
     val = validate_integer(option, value)
     if val <= 0:
-        raise ValueError("The value of %s must be a positive integer" % (option,))
+        raise ValueError(f"The value of {option} must be a positive integer")
     return val
 
 
@@ -210,7 +210,7 @@ def validate_non_negative_integer(option: str, value: Any) -> int:
     """Validate that 'value' is a positive integer or 0."""
     val = validate_integer(option, value)
     if val < 0:
-        raise ValueError("The value of %s must be a non negative integer" % (option,))
+        raise ValueError(f"The value of {option} must be a non negative integer")
     return val
 
 
@@ -221,7 +221,7 @@ def validate_readable(option: str, value: Any) -> Optional[str]:
     # First make sure its a string py3.3 open(True, 'r') succeeds
     # Used in ssl cert checking due to poor ssl module error reporting
     value = validate_string(option, value)
-    open(value, "r").close()
+    open(value).close()
     return value
 
 
@@ -243,7 +243,7 @@ def validate_string(option: str, value: Any) -> str:
     """Validates that 'value' is an instance of `str`."""
     if isinstance(value, str):
         return value
-    raise TypeError("Wrong type for %s, value must be an instance of str" % (option,))
+    raise TypeError(f"Wrong type for {option}, value must be an instance of str")
 
 
 def validate_string_or_none(option: str, value: Any) -> Optional[str]:
@@ -262,7 +262,7 @@ def validate_int_or_basestring(option: str, value: Any) -> Union[int, str]:
             return int(value)
         except ValueError:
             return value
-    raise TypeError("Wrong type for %s, value must be an integer or a string" % (option,))
+    raise TypeError(f"Wrong type for {option}, value must be an integer or a string")
 
 
 def validate_non_negative_int_or_basestring(option: Any, value: Any) -> Union[int, str]:
@@ -275,16 +275,14 @@ def validate_non_negative_int_or_basestring(option: Any, value: Any) -> Union[in
         except ValueError:
             return value
         return validate_non_negative_integer(option, val)
-    raise TypeError(
-        "Wrong type for %s, value must be an non negative integer or a string" % (option,)
-    )
+    raise TypeError(f"Wrong type for {option}, value must be an non negative integer or a string")
 
 
 def validate_positive_float(option: str, value: Any) -> float:
     """Validates that 'value' is a float, or can be converted to one, and is
     positive.
     """
-    errmsg = "%s must be an integer or float" % (option,)
+    errmsg = f"{option} must be an integer or float"
     try:
         value = float(value)
     except ValueError:
@@ -295,7 +293,7 @@ def validate_positive_float(option: str, value: Any) -> float:
     # float('inf') doesn't work in 2.4 or 2.5 on Windows, so just cap floats at
     # one billion - this is a reasonable approximation for infinity
     if not 0 < value < 1e9:
-        raise ValueError("%s must be greater than 0 and less than one billion" % (option,))
+        raise ValueError(f"{option} must be greater than 0 and less than one billion")
     return value
 
 
@@ -324,7 +322,7 @@ def validate_timeout_or_zero(option: str, value: Any) -> float:
     config error.
     """
     if value is None:
-        raise ConfigurationError("%s cannot be None" % (option,))
+        raise ConfigurationError(f"{option} cannot be None")
     if value == 0 or value == "0":
         return 0
     return validate_positive_float(option, value) / 1000.0
@@ -360,7 +358,7 @@ def validate_max_staleness(option: str, value: Any) -> int:
 def validate_read_preference(dummy: Any, value: Any) -> _ServerMode:
     """Validate a read preference."""
     if not isinstance(value, _ServerMode):
-        raise TypeError("%r is not a read preference." % (value,))
+        raise TypeError(f"{value!r} is not a read preference.")
     return value
 
 
@@ -372,14 +370,14 @@ def validate_read_preference_mode(dummy: Any, value: Any) -> _ServerMode:
        mode.
     """
     if value not in _MONGOS_MODES:
-        raise ValueError("%s is not a valid read preference" % (value,))
+        raise ValueError(f"{value} is not a valid read preference")
     return value
 
 
 def validate_auth_mechanism(option: str, value: Any) -> str:
     """Validate the authMechanism URI option."""
     if value not in MECHANISMS:
-        raise ValueError("%s must be in %s" % (option, tuple(MECHANISMS)))
+        raise ValueError(f"{option} must be in {tuple(MECHANISMS)}")
     return value
 
 
@@ -389,9 +387,9 @@ def validate_uuid_representation(dummy: Any, value: Any) -> int:
         return _UUID_REPRESENTATIONS[value]
     except KeyError:
         raise ValueError(
-            "%s is an invalid UUID representation. "
+            "{} is an invalid UUID representation. "
             "Must be one of "
-            "%s" % (value, tuple(_UUID_REPRESENTATIONS))
+            "{}".format(value, tuple(_UUID_REPRESENTATIONS))
         )
 
 
@@ -412,7 +410,7 @@ def validate_read_preference_tags(name: str, value: Any) -> List[Dict[str, str]]
                 tags[unquote_plus(key)] = unquote_plus(val)
             tag_sets.append(tags)
         except Exception:
-            raise ValueError("%r not a valid value for %s" % (tag_set, name))
+            raise ValueError(f"{tag_set!r} not a valid value for {name}")
     return tag_sets
 
 
@@ -472,13 +470,13 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> Dict[str, Uni
             raise ValueError(
                 "auth mechanism properties must be "
                 "key:value pairs like SERVICE_NAME:"
-                "mongodb, not %s." % (opt,)
+                "mongodb, not {}.".format(opt)
             )
         if key not in _MECHANISM_PROPS:
             raise ValueError(
-                "%s is not a supported auth "
+                "{} is not a supported auth "
                 "mechanism property. Must be one of "
-                "%s." % (key, tuple(_MECHANISM_PROPS))
+                "{}.".format(key, tuple(_MECHANISM_PROPS))
             )
         if key == "CANONICALIZE_HOST_NAME":
             props[key] = validate_boolean_or_string(key, val)
@@ -502,9 +500,9 @@ def validate_document_class(
             is_mapping = issubclass(value.__origin__, abc.MutableMapping)
     if not is_mapping and not issubclass(value, RawBSONDocument):
         raise TypeError(
-            "%s must be dict, bson.son.SON, "
+            "{} must be dict, bson.son.SON, "
             "bson.raw_bson.RawBSONDocument, or a "
-            "subclass of collections.MutableMapping" % (option,)
+            "subclass of collections.MutableMapping".format(option)
         )
     return value
 
@@ -512,14 +510,14 @@ def validate_document_class(
 def validate_type_registry(option: Any, value: Any) -> Optional[TypeRegistry]:
     """Validate the type_registry option."""
     if value is not None and not isinstance(value, TypeRegistry):
-        raise TypeError("%s must be an instance of %s" % (option, TypeRegistry))
+        raise TypeError(f"{option} must be an instance of {TypeRegistry}")
     return value
 
 
 def validate_list(option: str, value: Any) -> List:
     """Validates that 'value' is a list."""
     if not isinstance(value, list):
-        raise TypeError("%s must be a list" % (option,))
+        raise TypeError(f"{option} must be a list")
     return value
 
 
@@ -534,9 +532,9 @@ def validate_list_or_mapping(option: Any, value: Any) -> None:
     """Validates that 'value' is a list or a document."""
     if not isinstance(value, (abc.Mapping, list)):
         raise TypeError(
-            "%s must either be a list or an instance of dict, "
+            "{} must either be a list or an instance of dict, "
             "bson.son.SON, or any other type that inherits from "
-            "collections.Mapping" % (option,)
+            "collections.Mapping".format(option)
         )
 
 
@@ -544,9 +542,9 @@ def validate_is_mapping(option: str, value: Any) -> None:
     """Validate the type of method arguments that expect a document."""
     if not isinstance(value, abc.Mapping):
         raise TypeError(
-            "%s must be an instance of dict, bson.son.SON, or "
+            "{} must be an instance of dict, bson.son.SON, or "
             "any other type that inherits from "
-            "collections.Mapping" % (option,)
+            "collections.Mapping".format(option)
         )
 
 
@@ -554,10 +552,10 @@ def validate_is_document_type(option: str, value: Any) -> None:
     """Validate the type of method arguments that expect a MongoDB document."""
     if not isinstance(value, (abc.MutableMapping, RawBSONDocument)):
         raise TypeError(
-            "%s must be an instance of dict, bson.son.SON, "
+            "{} must be an instance of dict, bson.son.SON, "
             "bson.raw_bson.RawBSONDocument, or "
             "a type that inherits from "
-            "collections.MutableMapping" % (option,)
+            "collections.MutableMapping".format(option)
         )
 
 
@@ -568,7 +566,7 @@ def validate_appname_or_none(option: str, value: Any) -> Optional[str]:
     validate_string(option, value)
     # We need length in bytes, so encode utf8 first.
     if len(value.encode("utf-8")) > 128:
-        raise ValueError("%s must be <= 128 bytes" % (option,))
+        raise ValueError(f"{option} must be <= 128 bytes")
     return value
 
 
@@ -577,7 +575,7 @@ def validate_driver_or_none(option: Any, value: Any) -> Optional[DriverInfo]:
     if value is None:
         return value
     if not isinstance(value, DriverInfo):
-        raise TypeError("%s must be an instance of DriverInfo" % (option,))
+        raise TypeError(f"{option} must be an instance of DriverInfo")
     return value
 
 
@@ -586,7 +584,7 @@ def validate_server_api_or_none(option: Any, value: Any) -> Optional[ServerApi]:
     if value is None:
         return value
     if not isinstance(value, ServerApi):
-        raise TypeError("%s must be an instance of ServerApi" % (option,))
+        raise TypeError(f"{option} must be an instance of ServerApi")
     return value
 
 
@@ -595,7 +593,7 @@ def validate_is_callable_or_none(option: Any, value: Any) -> Optional[Callable]:
     if value is None:
         return value
     if not callable(value):
-        raise ValueError("%s must be a callable" % (option,))
+        raise ValueError(f"{option} must be a callable")
     return value
 
 
@@ -629,9 +627,9 @@ def validate_unicode_decode_error_handler(dummy: Any, value: str) -> str:
     """Validate the Unicode decode error handler option of CodecOptions."""
     if value not in _UNICODE_DECODE_ERROR_HANDLERS:
         raise ValueError(
-            "%s is an invalid Unicode decode error handler. "
+            "{} is an invalid Unicode decode error handler. "
             "Must be one of "
-            "%s" % (value, tuple(_UNICODE_DECODE_ERROR_HANDLERS))
+            "{}".format(value, tuple(_UNICODE_DECODE_ERROR_HANDLERS))
         )
     return value
 
@@ -650,7 +648,7 @@ def validate_auto_encryption_opts_or_none(option: Any, value: Any) -> Optional[A
     from pymongo.encryption_options import AutoEncryptionOpts
 
     if not isinstance(value, AutoEncryptionOpts):
-        raise TypeError("%s must be an instance of AutoEncryptionOpts" % (option,))
+        raise TypeError(f"{option} must be an instance of AutoEncryptionOpts")
 
     return value
 
@@ -667,7 +665,7 @@ def validate_datetime_conversion(option: Any, value: Any) -> Optional[DatetimeCo
     elif isinstance(value, int):
         return DatetimeConversion(value)
 
-    raise TypeError("%s must be a str or int representing DatetimeConversion" % (option,))
+    raise TypeError(f"{option} must be a str or int representing DatetimeConversion")
 
 
 # Dictionary where keys are the names of public URI options, and values
@@ -805,7 +803,7 @@ def validate_auth_option(option: str, value: Any) -> Tuple[str, Any]:
     """Validate optional authentication parameters."""
     lower, value = validate(option, value)
     if lower not in _AUTH_OPTIONS:
-        raise ConfigurationError("Unknown authentication option: %s" % (option,))
+        raise ConfigurationError(f"Unknown authentication option: {option}")
     return option, value
 
 
@@ -866,7 +864,7 @@ def _ecoc_coll_name(encrypted_fields, name):
 WRITE_CONCERN_OPTIONS = frozenset(["w", "wtimeout", "wtimeoutms", "fsync", "j", "journal"])
 
 
-class BaseObject(object):
+class BaseObject:
     """A base class that provides attributes and methods common
     to multiple pymongo classes.
 
@@ -886,9 +884,9 @@ class BaseObject(object):
 
         if not isinstance(read_preference, _ServerMode):
             raise TypeError(
-                "%r is not valid for read_preference. See "
+                "{!r} is not valid for read_preference. See "
                 "pymongo.read_preferences for valid "
-                "options." % (read_preference,)
+                "options.".format(read_preference)
             )
         self.__read_preference = read_preference
 

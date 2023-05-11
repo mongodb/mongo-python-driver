@@ -104,15 +104,15 @@ def got_app_error(topology, app_error):
         elif error_type == "timeout":
             raise NetworkTimeout("mock network timeout error")
         else:
-            raise AssertionError("unknown error type: %s" % (error_type,))
-        assert False
+            raise AssertionError(f"unknown error type: {error_type}")
+        raise AssertionError
     except (AutoReconnect, NotPrimaryError, OperationFailure) as e:
         if when == "beforeHandshakeCompletes":
             completed_handshake = False
         elif when == "afterHandshakeCompletes":
             completed_handshake = True
         else:
-            assert False, "Unknown when field %s" % (when,)
+            raise AssertionError(f"Unknown when field {when}")
 
         topology.handle_error(
             server_address,
@@ -201,7 +201,7 @@ def create_test(scenario_def):
         for i, phase in enumerate(scenario_def["phases"]):
             # Including the phase description makes failures easier to debug.
             description = phase.get("description", str(i))
-            with assertion_context("phase: %s" % (description,)):
+            with assertion_context(f"phase: {description}"):
                 for response in phase.get("responses", []):
                     got_hello(c, common.partition_node(response[0]), response[1])
 
@@ -228,7 +228,7 @@ def create_tests():
 
             # Construct test from scenario.
             new_test = create_test(scenario_def)
-            test_name = "test_%s_%s" % (dirname, os.path.splitext(filename)[0])
+            test_name = f"test_{dirname}_{os.path.splitext(filename)[0]}"
 
             new_test.__name__ = test_name
             setattr(TestAllScenarios, new_test.__name__, new_test)

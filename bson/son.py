@@ -16,7 +16,8 @@
 
 Regular dictionaries can be used instead of SON objects, but not when the order
 of keys is important. A SON object can be used just like a normal Python
-dictionary."""
+dictionary.
+"""
 
 import copy
 import re
@@ -58,7 +59,7 @@ class SON(Dict[_Key, _Value]):
     def __init__(
         self,
         data: Optional[Union[Mapping[_Key, _Value], Iterable[Tuple[_Key, _Value]]]] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         self.__keys = []
         dict.__init__(self)
@@ -66,14 +67,14 @@ class SON(Dict[_Key, _Value]):
         self.update(kwargs)
 
     def __new__(cls: Type["SON[_Key, _Value]"], *args: Any, **kwargs: Any) -> "SON[_Key, _Value]":
-        instance = super(SON, cls).__new__(cls, *args, **kwargs)  # type: ignore[type-var]
+        instance = super().__new__(cls, *args, **kwargs)  # type: ignore[type-var]
         instance.__keys = []
         return instance
 
     def __repr__(self):
         result = []
         for key in self.__keys:
-            result.append("(%r, %r)" % (key, self[key]))
+            result.append(f"({key!r}, {self[key]!r})")
         return "SON([%s])" % ", ".join(result)
 
     def __setitem__(self, key: _Key, value: _Value) -> None:
@@ -94,8 +95,7 @@ class SON(Dict[_Key, _Value]):
     # efficient.
     # second level definitions support higher levels
     def __iter__(self) -> Iterator[_Key]:
-        for k in self.__keys:
-            yield k
+        yield from self.__keys
 
     def has_key(self, key: _Key) -> bool:
         return key in self.__keys
@@ -113,7 +113,7 @@ class SON(Dict[_Key, _Value]):
 
     def clear(self) -> None:
         self.__keys = []
-        super(SON, self).clear()
+        super().clear()
 
     def setdefault(self, key: _Key, default: _Value) -> _Value:
         try:
@@ -189,7 +189,7 @@ class SON(Dict[_Key, _Value]):
             if isinstance(value, list):
                 return [transform_value(v) for v in value]
             elif isinstance(value, _Mapping):
-                return dict([(k, transform_value(v)) for k, v in value.items()])
+                return {k: transform_value(v) for k, v in value.items()}
             else:
                 return value
 

@@ -48,7 +48,7 @@ _TEST_PATH = os.path.join(
 )
 
 
-class SelectionStoreSelector(object):
+class SelectionStoreSelector:
     """No-op selector that keeps track of what was passed to it."""
 
     def __init__(self):
@@ -103,7 +103,7 @@ class TestCustomServerSelectorFunction(IntegrationTest):
 
     def test_invalid_server_selector(self):
         # Client initialization must fail if server_selector is not callable.
-        for selector_candidate in [list(), 10, "string", {}]:
+        for selector_candidate in [[], 10, "string", {}]:
             with self.assertRaisesRegex(ValueError, "must be a callable"):
                 MongoClient(connect=False, server_selector=selector_candidate)
 

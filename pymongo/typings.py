@@ -29,7 +29,8 @@ _Pipeline = Sequence[Mapping[str, Any]]
 
 def strip_optional(elem):
     """This function is to allow us to cast all of the elements of an iterator from Optional[_T] to _T
-    while inside a list comprehension."""
+    while inside a list comprehension.
+    """
     assert elem is not None
     return elem
 

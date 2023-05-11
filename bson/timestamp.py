@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tools for representing MongoDB internal Timestamps.
-"""
+"""Tools for representing MongoDB internal Timestamps."""
 
 import calendar
 import datetime
@@ -25,7 +24,7 @@ from bson.tz_util import utc
 UPPERBOUND = 4294967296
 
 
-class Timestamp(object):
+class Timestamp:
     """MongoDB internal timestamps used in the opLog."""
 
     __slots__ = ("__time", "__inc")
@@ -113,7 +112,7 @@ class Timestamp(object):
         return NotImplemented
 
     def __repr__(self):
-        return "Timestamp(%s, %s)" % (self.__time, self.__inc)
+        return f"Timestamp({self.__time}, {self.__inc})"
 
     def as_datetime(self) -> datetime.datetime:
         """Return a :class:`~datetime.datetime` instance corresponding

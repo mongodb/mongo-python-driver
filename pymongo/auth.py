@@ -61,7 +61,7 @@ MECHANISMS = frozenset(
 """The authentication mechanisms supported by PyMongo."""
 
 
-class _Cache(object):
+class _Cache:
     __slots__ = ("data",)
 
     _hash_val = hash("_Cache")
@@ -104,7 +104,7 @@ _AWSProperties = namedtuple("_AWSProperties", ["aws_session_token"])
 def _build_credentials_tuple(mech, source, user, passwd, extra, database):
     """Build and return a mechanism specific credentials tuple."""
     if mech not in ("MONGODB-X509", "MONGODB-AWS", "MONGODB-OIDC") and user is None:
-        raise ConfigurationError("%s requires a username." % (mech,))
+        raise ConfigurationError(f"{mech} requires a username.")
     if mech == "GSSAPI":
         if source is not None and source != "$external":
             raise ValueError("authentication source must be $external or None for GSSAPI")
@@ -297,7 +297,7 @@ def _password_digest(username, password):
         raise TypeError("username must be an instance of str")
 
     md5hash = hashlib.md5()
-    data = "%s:mongo:%s" % (username, password)
+    data = f"{username}:mongo:{password}"
     md5hash.update(data.encode("utf-8"))
     return md5hash.hexdigest()
 
@@ -306,7 +306,7 @@ def _auth_key(nonce, username, password):
     """Get an auth key to use for authentication."""
     digest = _password_digest(username, password)
     md5hash = hashlib.md5()
-    data = "%s%s%s" % (nonce, username, digest)
+    data = f"{nonce}{username}{digest}"
     md5hash.update(data.encode("utf-8"))
     return md5hash.hexdigest()
 
@@ -448,7 +448,7 @@ def _authenticate_plain(credentials, sock_info):
     source = credentials.source
     username = credentials.username
     password = credentials.password
-    payload = ("\x00%s\x00%s" % (username, password)).encode("utf-8")
+    payload = (f"\x00{username}\x00{password}").encode()
     cmd = SON(
         [
             ("saslStart", 1),
@@ -518,7 +518,7 @@ _AUTH_MAP: Mapping[str, Callable] = {
 }
 
 
-class _AuthContext(object):
+class _AuthContext:
     def __init__(self, credentials, address):
         self.credentials = credentials
         self.speculative_authenticate = None
@@ -543,7 +543,7 @@ class _AuthContext(object):
 
 class _ScramContext(_AuthContext):
     def __init__(self, credentials, address, mechanism):
-        super(_ScramContext, self).__init__(credentials, address)
+        super().__init__(credentials, address)
         self.scram_data = None
         self.mechanism = mechanism
 
@@ -569,7 +569,7 @@ class _OIDCContext(_AuthContext):
         authenticator = _get_authenticator(self.credentials, self.address)
         cmd = authenticator.auth_start_cmd(False)
         if cmd is None:
-            return
+            return None
         cmd["db"] = self.credentials.source
         return cmd
 

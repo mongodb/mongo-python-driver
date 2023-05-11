@@ -169,7 +169,7 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.write_concern import WriteConcern
 
 
-class SessionOptions(object):
+class SessionOptions:
     """Options for a new :class:`ClientSession`.
 
     :Parameters:
@@ -203,8 +203,9 @@ class SessionOptions(object):
             if not isinstance(default_transaction_options, TransactionOptions):
                 raise TypeError(
                     "default_transaction_options must be an instance of "
-                    "pymongo.client_session.TransactionOptions, not: %r"
-                    % (default_transaction_options,)
+                    "pymongo.client_session.TransactionOptions, not: {!r}".format(
+                        default_transaction_options
+                    )
                 )
         self._default_transaction_options = default_transaction_options
         self._snapshot = snapshot
@@ -232,7 +233,7 @@ class SessionOptions(object):
         return self._snapshot
 
 
-class TransactionOptions(object):
+class TransactionOptions:
     """Options for :meth:`ClientSession.start_transaction`.
 
     :Parameters:
@@ -275,25 +276,25 @@ class TransactionOptions(object):
             if not isinstance(read_concern, ReadConcern):
                 raise TypeError(
                     "read_concern must be an instance of "
-                    "pymongo.read_concern.ReadConcern, not: %r" % (read_concern,)
+                    "pymongo.read_concern.ReadConcern, not: {!r}".format(read_concern)
                 )
         if write_concern is not None:
             if not isinstance(write_concern, WriteConcern):
                 raise TypeError(
                     "write_concern must be an instance of "
-                    "pymongo.write_concern.WriteConcern, not: %r" % (write_concern,)
+                    "pymongo.write_concern.WriteConcern, not: {!r}".format(write_concern)
                 )
             if not write_concern.acknowledged:
                 raise ConfigurationError(
                     "transactions do not support unacknowledged write concern"
-                    ": %r" % (write_concern,)
+                    ": {!r}".format(write_concern)
                 )
         if read_preference is not None:
             if not isinstance(read_preference, _ServerMode):
                 raise TypeError(
-                    "%r is not valid for read_preference. See "
+                    "{!r} is not valid for read_preference. See "
                     "pymongo.read_preferences for valid "
-                    "options." % (read_preference,)
+                    "options.".format(read_preference)
                 )
         if max_commit_time_ms is not None:
             if not isinstance(max_commit_time_ms, int):
@@ -340,12 +341,12 @@ def _validate_session_write_concern(session, write_concern):
             else:
                 raise ConfigurationError(
                     "Explicit sessions are incompatible with "
-                    "unacknowledged write concern: %r" % (write_concern,)
+                    "unacknowledged write concern: {!r}".format(write_concern)
                 )
     return session
 
 
-class _TransactionContext(object):
+class _TransactionContext:
     """Internal transaction context manager for start_transaction."""
 
     def __init__(self, session):
@@ -362,7 +363,7 @@ class _TransactionContext(object):
                 self.__session.abort_transaction()
 
 
-class _TxnState(object):
+class _TxnState:
     NONE = 1
     STARTING = 2
     IN_PROGRESS = 3
@@ -371,7 +372,7 @@ class _TxnState(object):
     ABORTED = 6
 
 
-class _Transaction(object):
+class _Transaction:
     """Internal class to hold transaction information in a ClientSession."""
 
     def __init__(self, opts, client):
@@ -973,7 +974,7 @@ class ClientSession:
             if read_preference != ReadPreference.PRIMARY:
                 raise InvalidOperation(
                     "read preference in a transaction must be primary, not: "
-                    "%r" % (read_preference,)
+                    "{!r}".format(read_preference)
                 )
 
             if self._transaction.state == _TxnState.STARTING:
@@ -1023,7 +1024,7 @@ class _EmptyServerSession:
         self.started_retryable_write = True
 
 
-class _ServerSession(object):
+class _ServerSession:
     def __init__(self, generation):
         # Ensure id is type 4, regardless of CodecOptions.uuid_representation.
         self.session_id = {"id": Binary(uuid.uuid4().bytes, 4)}
@@ -1062,7 +1063,7 @@ class _ServerSessionPool(collections.deque):
     """
 
     def __init__(self, *args, **kwargs):
-        super(_ServerSessionPool, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.generation = 0
 
     def reset(self):

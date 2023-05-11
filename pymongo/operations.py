@@ -48,7 +48,7 @@ class InsertOne(Generic[_DocumentType]):
         bulkobj.add_insert(self._doc)
 
     def __repr__(self):
-        return "InsertOne(%r)" % (self._doc,)
+        return f"InsertOne({self._doc!r})"
 
     def __eq__(self, other: Any) -> bool:
         if type(other) == type(self):
@@ -59,7 +59,7 @@ class InsertOne(Generic[_DocumentType]):
         return not self == other
 
 
-class DeleteOne(object):
+class DeleteOne:
     """Represents a delete_one operation."""
 
     __slots__ = ("_filter", "_collation", "_hint")
@@ -104,7 +104,7 @@ class DeleteOne(object):
         bulkobj.add_delete(self._filter, 1, collation=self._collation, hint=self._hint)
 
     def __repr__(self):
-        return "DeleteOne(%r, %r)" % (self._filter, self._collation)
+        return f"DeleteOne({self._filter!r}, {self._collation!r})"
 
     def __eq__(self, other: Any) -> bool:
         if type(other) == type(self):
@@ -115,7 +115,7 @@ class DeleteOne(object):
         return not self == other
 
 
-class DeleteMany(object):
+class DeleteMany:
     """Represents a delete_many operation."""
 
     __slots__ = ("_filter", "_collation", "_hint")
@@ -160,7 +160,7 @@ class DeleteMany(object):
         bulkobj.add_delete(self._filter, 0, collation=self._collation, hint=self._hint)
 
     def __repr__(self):
-        return "DeleteMany(%r, %r)" % (self._filter, self._collation)
+        return f"DeleteMany({self._filter!r}, {self._collation!r})"
 
     def __eq__(self, other: Any) -> bool:
         if type(other) == type(self):
@@ -242,7 +242,7 @@ class ReplaceOne(Generic[_DocumentType]):
         return not self == other
 
     def __repr__(self):
-        return "%s(%r, %r, %r, %r, %r)" % (
+        return "{}({!r}, {!r}, {!r}, {!r}, {!r})".format(
             self.__class__.__name__,
             self._filter,
             self._doc,
@@ -252,7 +252,7 @@ class ReplaceOne(Generic[_DocumentType]):
         )
 
 
-class _UpdateOp(object):
+class _UpdateOp:
     """Private base class for update operations."""
 
     __slots__ = ("_filter", "_doc", "_upsert", "_collation", "_array_filters", "_hint")
@@ -298,7 +298,7 @@ class _UpdateOp(object):
         return not self == other
 
     def __repr__(self):
-        return "%s(%r, %r, %r, %r, %r, %r)" % (
+        return "{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
             self.__class__.__name__,
             self._filter,
             self._doc,
@@ -352,7 +352,7 @@ class UpdateOne(_UpdateOp):
         .. versionchanged:: 3.5
            Added the `collation` option.
         """
-        super(UpdateOne, self).__init__(filter, update, upsert, collation, array_filters, hint)
+        super().__init__(filter, update, upsert, collation, array_filters, hint)
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
@@ -410,7 +410,7 @@ class UpdateMany(_UpdateOp):
         .. versionchanged:: 3.5
            Added the `collation` option.
         """
-        super(UpdateMany, self).__init__(filter, update, upsert, collation, array_filters, hint)
+        super().__init__(filter, update, upsert, collation, array_filters, hint)
 
     def _add_to_bulk(self, bulkobj):
         """Add this operation to the _Bulk instance `bulkobj`."""
@@ -425,7 +425,7 @@ class UpdateMany(_UpdateOp):
         )
 
 
-class IndexModel(object):
+class IndexModel:
     """Represents an index to create."""
 
     __slots__ = ("__document",)

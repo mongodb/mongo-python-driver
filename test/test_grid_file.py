@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2009-present MongoDB, Inc.
 #
@@ -14,8 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for the grid_file module.
-"""
+"""Tests for the grid_file module."""
 
 import datetime
 import io
@@ -462,12 +460,10 @@ class TestGridFile(IntegrationTest):
     def test_readline(self):
         f = GridIn(self.db.fs, chunkSize=5)
         f.write(
-            (
-                b"""Hello world,
+            b"""Hello world,
 How are you?
 Hope all is well.
 Bye"""
-            )
         )
         f.close()
 
@@ -498,12 +494,10 @@ Bye"""
     def test_readlines(self):
         f = GridIn(self.db.fs, chunkSize=5)
         f.write(
-            (
-                b"""Hello world,
+            b"""Hello world,
 How are you?
 Hope all is well.
 Bye"""
-            )
         )
         f.close()
 

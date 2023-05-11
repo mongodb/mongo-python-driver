@@ -219,15 +219,15 @@ def receive_message(sock_info, request_id, max_message_size=MAX_MESSAGE_SIZE):
     # No request_id for exhaust cursor "getMore".
     if request_id is not None:
         if request_id != response_to:
-            raise ProtocolError("Got response id %r but expected %r" % (response_to, request_id))
+            raise ProtocolError(f"Got response id {response_to!r} but expected {request_id!r}")
     if length <= 16:
         raise ProtocolError(
-            "Message length (%r) not longer than standard message header size (16)" % (length,)
+            f"Message length ({length!r}) not longer than standard message header size (16)"
         )
     if length > max_message_size:
         raise ProtocolError(
-            "Message length (%r) is larger than server max "
-            "message size (%r)" % (length, max_message_size)
+            "Message length ({!r}) is larger than server max "
+            "message size ({!r})".format(length, max_message_size)
         )
     if op_code == 2012:
         op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(
@@ -240,7 +240,7 @@ def receive_message(sock_info, request_id, max_message_size=MAX_MESSAGE_SIZE):
     try:
         unpack_reply = _UNPACK_REPLY[op_code]
     except KeyError:
-        raise ProtocolError("Got opcode %r but expected %r" % (op_code, _UNPACK_REPLY.keys()))
+        raise ProtocolError(f"Got opcode {op_code!r} but expected {_UNPACK_REPLY.keys()!r}")
     return unpack_reply(data)
 
 
@@ -281,7 +281,7 @@ def wait_for_read(sock_info, deadline):
 
 
 # Errors raised by sockets (and TLS sockets) when in non-blocking mode.
-BLOCKING_IO_ERRORS = (BlockingIOError,) + ssl_support.BLOCKING_IO_ERRORS
+BLOCKING_IO_ERRORS = (BlockingIOError, *ssl_support.BLOCKING_IO_ERRORS)
 
 
 def _receive_data_on_socket(sock_info, length, deadline):
@@ -299,7 +299,7 @@ def _receive_data_on_socket(sock_info, length, deadline):
             chunk_length = sock_info.sock.recv_into(mv[bytes_read:])
         except BLOCKING_IO_ERRORS:
             raise socket.timeout("timed out")
-        except (IOError, OSError) as exc:  # noqa: B014
+        except OSError as exc:  # noqa: B014
             if _errno_from_exception(exc) == errno.EINTR:
                 continue
             raise

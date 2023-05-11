@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Utilities for testing pymongo
-"""
+"""Utilities for testing pymongo"""
 
 import contextlib
 import copy
@@ -65,7 +64,7 @@ from pymongo.write_concern import WriteConcern
 IMPOSSIBLE_WRITE_CONCERN = WriteConcern(w=50)
 
 
-class BaseListener(object):
+class BaseListener:
     def __init__(self):
         self.events = []
 
@@ -91,7 +90,7 @@ class BaseListener(object):
 
     def wait_for_event(self, event, count):
         """Wait for a number of events to be published, or fail."""
-        wait_until(lambda: self.event_count(event) >= count, "find %s %s event(s)" % (count, event))
+        wait_until(lambda: self.event_count(event) >= count, f"find {count} {event} event(s)")
 
 
 class CMAPListener(BaseListener, monitoring.ConnectionPoolListener):
@@ -142,7 +141,7 @@ class CMAPListener(BaseListener, monitoring.ConnectionPoolListener):
 
 class EventListener(BaseListener, monitoring.CommandListener):
     def __init__(self):
-        super(EventListener, self).__init__()
+        super().__init__()
         self.results = defaultdict(list)
 
     @property
@@ -176,7 +175,7 @@ class EventListener(BaseListener, monitoring.CommandListener):
     def reset(self) -> None:
         """Reset the state of this listener."""
         self.results.clear()
-        super(EventListener, self).reset()
+        super().reset()
 
 
 class TopologyEventListener(monitoring.TopologyListener):
@@ -200,19 +199,19 @@ class TopologyEventListener(monitoring.TopologyListener):
 class AllowListEventListener(EventListener):
     def __init__(self, *commands):
         self.commands = set(commands)
-        super(AllowListEventListener, self).__init__()
+        super().__init__()
 
     def started(self, event):
         if event.command_name in self.commands:
-            super(AllowListEventListener, self).started(event)
+            super().started(event)
 
     def succeeded(self, event):
         if event.command_name in self.commands:
-            super(AllowListEventListener, self).succeeded(event)
+            super().succeeded(event)
 
     def failed(self, event):
         if event.command_name in self.commands:
-            super(AllowListEventListener, self).failed(event)
+            super().failed(event)
 
 
 class OvertCommandListener(EventListener):
@@ -222,18 +221,18 @@ class OvertCommandListener(EventListener):
 
     def started(self, event):
         if event.command_name.lower() not in _SENSITIVE_COMMANDS:
-            super(OvertCommandListener, self).started(event)
+            super().started(event)
 
     def succeeded(self, event):
         if event.command_name.lower() not in _SENSITIVE_COMMANDS:
-            super(OvertCommandListener, self).succeeded(event)
+            super().succeeded(event)
 
     def failed(self, event):
         if event.command_name.lower() not in _SENSITIVE_COMMANDS:
-            super(OvertCommandListener, self).failed(event)
+            super().failed(event)
 
 
-class _ServerEventListener(object):
+class _ServerEventListener:
     """Listens to all events."""
 
     def __init__(self):
@@ -280,7 +279,7 @@ class HeartbeatEventListener(BaseListener, monitoring.ServerHeartbeatListener):
         self.add_event(event)
 
 
-class MockSocketInfo(object):
+class MockSocketInfo:
     def __init__(self):
         self.cancel_context = _CancellationContext()
         self.more_to_come = False
@@ -295,7 +294,7 @@ class MockSocketInfo(object):
         pass
 
 
-class MockPool(object):
+class MockPool:
     def __init__(self, address, options, handshake=True):
         self.gen = _PoolGeneration()
         self._lock = _create_lock()
@@ -357,7 +356,7 @@ class ScenarioDict(dict):
             return ScenarioDict({})
 
 
-class CompareType(object):
+class CompareType:
     """Class that compares equal to any object of the given type(s)."""
 
     def __init__(self, types):
@@ -367,7 +366,7 @@ class CompareType(object):
         return isinstance(other, self.types)
 
 
-class FunctionCallRecorder(object):
+class FunctionCallRecorder:
     """Utility class to wrap a callable and record its invocations."""
 
     def __init__(self, function):
@@ -392,7 +391,7 @@ class FunctionCallRecorder(object):
         return len(self._call_list)
 
 
-class TestCreator(object):
+class TestCreator:
     """Class to create test cases from specifications."""
 
     def __init__(self, create_test, test_class, test_path):
@@ -415,7 +414,8 @@ class TestCreator(object):
 
     def _ensure_min_max_server_version(self, scenario_def, method):
         """Test modifier that enforces a version range for the server on a
-        test case."""
+        test case.
+        """
         if "minServerVersion" in scenario_def:
             min_ver = tuple(int(elt) for elt in scenario_def["minServerVersion"].split("."))
             if min_ver is not None:
@@ -524,7 +524,7 @@ class TestCreator(object):
 
                 # Construct test from scenario.
                 for test_def in self.tests(scenario_def):
-                    test_name = "test_%s_%s_%s" % (
+                    test_name = "test_{}_{}_{}".format(
                         dirname,
                         test_type.replace("-", "_").replace(".", "_"),
                         str(test_def["description"].replace(" ", "_").replace(".", "_")),
@@ -539,9 +539,9 @@ class TestCreator(object):
 
 
 def _connection_string(h):
-    if h.startswith("mongodb://") or h.startswith("mongodb+srv://"):
+    if h.startswith(("mongodb://", "mongodb+srv://")):
         return h
-    return "mongodb://%s" % (str(h),)
+    return f"mongodb://{str(h)}"
 
 
 def _mongo_client(host, port, authenticate=True, directConnection=None, **kwargs):
@@ -620,7 +620,7 @@ def ensure_all_connected(client: MongoClient) -> None:
         raise ConfigurationError("cluster is not a replica set")
 
     target_host_list = set(hello["hosts"] + hello.get("passives", []))
-    connected_host_list = set([hello["me"]])
+    connected_host_list = {hello["me"]}
 
     # Run hello until we have connected to each host at least once.
     def discover():
@@ -821,7 +821,7 @@ def assertRaisesExactly(cls, fn, *args, **kwargs):
     try:
         fn(*args, **kwargs)
     except Exception as e:
-        assert e.__class__ == cls, "got %s, expected %s" % (e.__class__.__name__, cls.__name__)
+        assert e.__class__ == cls, f"got {e.__class__.__name__}, expected {cls.__name__}"
     else:
         raise AssertionError("%s not raised" % cls)
 
@@ -848,7 +848,7 @@ def ignore_deprecations(wrapped=None):
         return _ignore_deprecations()
 
 
-class DeprecationFilter(object):
+class DeprecationFilter:
     def __init__(self, action="ignore"):
         """Start filtering deprecations."""
         self.warn_context = warnings.catch_warnings()
@@ -922,7 +922,7 @@ def lazy_client_trial(reset, target, test, get_client):
     collection = client_context.client.pymongo_test.test
 
     with frequent_thread_switches():
-        for i in range(NTRIALS):
+        for _i in range(NTRIALS):
             reset(collection)
             lazy_client = get_client()
             lazy_collection = lazy_client.pymongo_test.test
@@ -972,11 +972,11 @@ class ExceptionCatchingThread(threading.Thread):
 
     def __init__(self, *args, **kwargs):
         self.exc = None
-        super(ExceptionCatchingThread, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def run(self):
         try:
-            super(ExceptionCatchingThread, self).run()
+            super().run()
         except BaseException as exc:
             self.exc = exc
             raise
@@ -1147,6 +1147,6 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callbac
             elif cursor_type == "tailableAwait":
                 arguments["cursor_type"] = CursorType.TAILABLE
             else:
-                assert False, f"Unsupported cursorType: {cursor_type}"
+                raise AssertionError(f"Unsupported cursorType: {cursor_type}")
         else:
             arguments[c2s] = arguments.pop(arg_name)

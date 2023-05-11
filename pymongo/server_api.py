@@ -95,7 +95,7 @@ class ServerApiVersion:
     """Server API version "1"."""
 
 
-class ServerApi(object):
+class ServerApi:
     """MongoDB Stable API."""
 
     def __init__(self, version, strict=None, deprecation_errors=None):
@@ -113,16 +113,16 @@ class ServerApi(object):
         .. versionadded:: 3.12
         """
         if version != ServerApiVersion.V1:
-            raise ValueError("Unknown ServerApi version: %s" % (version,))
+            raise ValueError(f"Unknown ServerApi version: {version}")
         if strict is not None and not isinstance(strict, bool):
             raise TypeError(
                 "Wrong type for ServerApi strict, value must be an instance "
-                "of bool, not %s" % (type(strict),)
+                "of bool, not {}".format(type(strict))
             )
         if deprecation_errors is not None and not isinstance(deprecation_errors, bool):
             raise TypeError(
                 "Wrong type for ServerApi deprecation_errors, value must be "
-                "an instance of bool, not %s" % (type(deprecation_errors),)
+                "an instance of bool, not {}".format(type(deprecation_errors))
             )
         self._version = version
         self._strict = strict

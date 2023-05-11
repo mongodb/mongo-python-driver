@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional, cast
 from pymongo.errors import InvalidOperation
 
 
-class _WriteResult(object):
+class _WriteResult:
     """Base class for write result classes."""
 
     __slots__ = ("__acknowledged",)
@@ -30,10 +30,10 @@ class _WriteResult(object):
         """Raise an exception on property access if unacknowledged."""
         if not self.__acknowledged:
             raise InvalidOperation(
-                "A value for %s is not available when "
+                "A value for {} is not available when "
                 "the write is unacknowledged. Check the "
                 "acknowledged attribute to avoid this "
-                "error." % (property_name,)
+                "error.".format(property_name)
             )
 
     @property
@@ -63,7 +63,7 @@ class InsertOneResult(_WriteResult):
 
     def __init__(self, inserted_id: Any, acknowledged: bool) -> None:
         self.__inserted_id = inserted_id
-        super(InsertOneResult, self).__init__(acknowledged)
+        super().__init__(acknowledged)
 
     @property
     def inserted_id(self) -> Any:
@@ -78,7 +78,7 @@ class InsertManyResult(_WriteResult):
 
     def __init__(self, inserted_ids: List[Any], acknowledged: bool) -> None:
         self.__inserted_ids = inserted_ids
-        super(InsertManyResult, self).__init__(acknowledged)
+        super().__init__(acknowledged)
 
     @property
     def inserted_ids(self) -> List:
@@ -102,7 +102,7 @@ class UpdateResult(_WriteResult):
 
     def __init__(self, raw_result: Dict[str, Any], acknowledged: bool) -> None:
         self.__raw_result = raw_result
-        super(UpdateResult, self).__init__(acknowledged)
+        super().__init__(acknowledged)
 
     @property
     def raw_result(self) -> Dict[str, Any]:
@@ -134,13 +134,14 @@ class UpdateResult(_WriteResult):
 
 class DeleteResult(_WriteResult):
     """The return type for :meth:`~pymongo.collection.Collection.delete_one`
-    and :meth:`~pymongo.collection.Collection.delete_many`"""
+    and :meth:`~pymongo.collection.Collection.delete_many`
+    """
 
     __slots__ = ("__raw_result",)
 
     def __init__(self, raw_result: Dict[str, Any], acknowledged: bool) -> None:
         self.__raw_result = raw_result
-        super(DeleteResult, self).__init__(acknowledged)
+        super().__init__(acknowledged)
 
     @property
     def raw_result(self) -> Dict[str, Any]:
@@ -169,7 +170,7 @@ class BulkWriteResult(_WriteResult):
             :exc:`~pymongo.errors.InvalidOperation`.
         """
         self.__bulk_api_result = bulk_api_result
-        super(BulkWriteResult, self).__init__(acknowledged)
+        super().__init__(acknowledged)
 
     @property
     def bulk_api_result(self) -> Dict[str, Any]:
@@ -211,7 +212,5 @@ class BulkWriteResult(_WriteResult):
         """A map of operation index to the _id of the upserted document."""
         self._raise_if_unacknowledged("upserted_ids")
         if self.__bulk_api_result:
-            return dict(
-                (upsert["index"], upsert["_id"]) for upsert in self.bulk_api_result["upserted"]
-            )
+            return {upsert["index"]: upsert["_id"] for upsert in self.bulk_api_result["upserted"]}
         return None

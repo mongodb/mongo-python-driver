@@ -20,7 +20,7 @@ from datetime import datetime as _datetime
 from pymongo.lock import _create_lock
 
 
-class _OCSPCache(object):
+class _OCSPCache:
     """A cache for OCSP responses."""
 
     CACHE_KEY_TYPE = namedtuple(  # type: ignore

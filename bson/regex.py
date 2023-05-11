@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tools for representing MongoDB regular expressions.
-"""
+"""Tools for representing MongoDB regular expressions."""
 
 import re
 from typing import Any, Generic, Pattern, Type, TypeVar, Union
@@ -117,7 +116,7 @@ class Regex(Generic[_T]):
         return not self == other
 
     def __repr__(self):
-        return "Regex(%r, %r)" % (self.pattern, self.flags)
+        return f"Regex({self.pattern!r}, {self.flags!r})"
 
     def try_compile(self) -> "Pattern[_T]":
         """Compile this :class:`Regex` as a Python regular expression.

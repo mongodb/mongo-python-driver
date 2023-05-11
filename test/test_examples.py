@@ -34,7 +34,7 @@ from pymongo.write_concern import WriteConcern
 class TestSampleShellCommands(IntegrationTest):
     @classmethod
     def setUpClass(cls):
-        super(TestSampleShellCommands, cls).setUpClass()
+        super().setUpClass()
         # Run once before any tests run.
         cls.db.inventory.drop()
 
@@ -757,18 +757,18 @@ class TestSampleShellCommands(IntegrationTest):
             # 1. The database for reactive, real-time applications
             # Start Changestream Example 1
             cursor = db.inventory.watch()
-            document = next(cursor)
+            next(cursor)
             # End Changestream Example 1
 
             # Start Changestream Example 2
             cursor = db.inventory.watch(full_document="updateLookup")
-            document = next(cursor)
+            next(cursor)
             # End Changestream Example 2
 
             # Start Changestream Example 3
             resume_token = cursor.resume_token
             cursor = db.inventory.watch(resume_after=resume_token)
-            document = next(cursor)
+            next(cursor)
             # End Changestream Example 3
 
             # Start Changestream Example 4
@@ -777,7 +777,7 @@ class TestSampleShellCommands(IntegrationTest):
                 {"$addFields": {"newField": "this is an added field!"}},
             ]
             cursor = db.inventory.watch(pipeline=pipeline)
-            document = next(cursor)
+            next(cursor)
             # End Changestream Example 4
         finally:
             done = True
@@ -898,7 +898,7 @@ class TestSampleShellCommands(IntegrationTest):
         with client.start_session() as session:
             collection.insert_one({"_id": 1}, session=session)
             collection.update_one({"_id": 1}, {"$set": {"a": 1}}, session=session)
-            for doc in collection.find({}, session=session):
+            for _doc in collection.find({}, session=session):
                 pass
 
         # 3. Exploiting the power of arrays
@@ -1078,7 +1078,7 @@ class TestTransactionExamples(IntegrationTest):
         with client.start_session() as session:
             try:
                 run_transaction_with_retry(update_employee_info, session)
-            except Exception as exc:
+            except Exception:
                 # Do something with error.
                 raise
 
@@ -1089,7 +1089,9 @@ class TestTransactionExamples(IntegrationTest):
         self.assertIsNotNone(employee)
         self.assertEqual(employee["status"], "Inactive")
 
-        MongoClient = lambda _: rs_client()
+        def MongoClient(_):
+            return rs_client()
+
         uriString = None
 
         # Start Transactions withTxn API Example 1
@@ -1179,25 +1181,27 @@ class TestVersionedApiExamples(IntegrationTest):
     @client_context.require_version_min(4, 7)
     def test_versioned_api(self):
         # Versioned API examples
-        MongoClient = lambda _, server_api: rs_client(server_api=server_api, connect=False)
+        def MongoClient(_, server_api):
+            return rs_client(server_api=server_api, connect=False)
+
         uri = None
 
         # Start Versioned API Example 1
         from pymongo.server_api import ServerApi
 
-        client = MongoClient(uri, server_api=ServerApi("1"))
+        MongoClient(uri, server_api=ServerApi("1"))
         # End Versioned API Example 1
 
         # Start Versioned API Example 2
-        client = MongoClient(uri, server_api=ServerApi("1", strict=True))
+        MongoClient(uri, server_api=ServerApi("1", strict=True))
         # End Versioned API Example 2
 
         # Start Versioned API Example 3
-        client = MongoClient(uri, server_api=ServerApi("1", strict=False))
+        MongoClient(uri, server_api=ServerApi("1", strict=False))
         # End Versioned API Example 3
 
         # Start Versioned API Example 4
-        client = MongoClient(uri, server_api=ServerApi("1", deprecation_errors=True))
+        MongoClient(uri, server_api=ServerApi("1", deprecation_errors=True))
         # End Versioned API Example 4
 
     @unittest.skip("PYTHON-3167 count has been added to API version 1")
@@ -1339,7 +1343,7 @@ class TestSnapshotQueryExamples(IntegrationTest):
         # Start Snapshot Query Example 2
         db = client.retail
         with client.start_session(snapshot=True) as s:
-            total = db.sales.aggregate(
+            db.sales.aggregate(
                 [
                     {
                         "$match": {

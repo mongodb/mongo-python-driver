@@ -131,7 +131,7 @@ KMS_TLS_OPTS = {
 
 
 # Build up a placeholder map.
-PLACEHOLDER_MAP = dict()
+PLACEHOLDER_MAP = {}
 for (provider_name, provider_data) in [
     ("local", {"key": LOCAL_MASTER_KEY}),
     ("aws", AWS_CREDS),
@@ -257,7 +257,7 @@ def parse_bulk_write_error_result(error):
     return parse_bulk_write_result(write_result)
 
 
-class NonLazyCursor(object):
+class NonLazyCursor:
     """A find cursor proxy that creates the remote cursor when initialized."""
 
     def __init__(self, find_cursor, client):
@@ -289,7 +289,7 @@ class EventListenerUtil(CMAPListener, CommandListener, ServerListener):
     def __init__(
         self, observe_events, ignore_commands, observe_sensitive_commands, store_events, entity_map
     ):
-        self._event_types = set(name.lower() for name in observe_events)
+        self._event_types = {name.lower() for name in observe_events}
         if observe_sensitive_commands:
             self._observe_sensitive_commands = True
             self._ignore_commands = set(ignore_commands)
@@ -306,7 +306,7 @@ class EventListenerUtil(CMAPListener, CommandListener, ServerListener):
                 for i in events:
                     self._event_mapping[i].append(id)
                 self.entity_map[id] = []
-        super(EventListenerUtil, self).__init__()
+        super().__init__()
 
     def get_events(self, event_type):
         assert event_type in ("command", "cmap", "sdam", "all"), event_type
@@ -321,7 +321,7 @@ class EventListenerUtil(CMAPListener, CommandListener, ServerListener):
     def add_event(self, event):
         event_name = type(event).__name__.lower()
         if event_name in self._event_types:
-            super(EventListenerUtil, self).add_event(event)
+            super().add_event(event)
         for id in self._event_mapping[event_name]:
             self.entity_map[id].append(
                 {
@@ -332,7 +332,7 @@ class EventListenerUtil(CMAPListener, CommandListener, ServerListener):
             )
 
     def _command_event(self, event):
-        if not event.command_name.lower() in self._ignore_commands:
+        if event.command_name.lower() not in self._ignore_commands:
             self.add_event(event)
 
     def started(self, event):
@@ -364,9 +364,10 @@ class EventListenerUtil(CMAPListener, CommandListener, ServerListener):
         self.add_event(event)
 
 
-class EntityMapUtil(object):
+class EntityMapUtil:
     """Utility class that implements an entity map as per the unified
-    test format specification."""
+    test format specification.
+    """
 
     def __init__(self, test_class):
         self._entities: Dict[str, Any] = {}
@@ -384,14 +385,14 @@ class EntityMapUtil(object):
         try:
             return self._entities[item]
         except KeyError:
-            self.test.fail("Could not find entity named %s in map" % (item,))
+            self.test.fail(f"Could not find entity named {item} in map")
 
     def __setitem__(self, key, value):
         if not isinstance(key, str):
             self.test.fail("Expected entity name of type str, got %s" % (type(key)))
 
         if key in self._entities:
-            self.test.fail("Entity named %s already in map" % (key,))
+            self.test.fail(f"Entity named {key} already in map")
 
         self._entities[key] = value
 
@@ -410,9 +411,7 @@ class EntityMapUtil(object):
 
     def _create_entity(self, entity_spec, uri=None):
         if len(entity_spec) != 1:
-            self.test.fail(
-                "Entity spec %s did not contain exactly one top-level key" % (entity_spec,)
-            )
+            self.test.fail(f"Entity spec {entity_spec} did not contain exactly one top-level key")
 
         entity_type, spec = next(iter(entity_spec.items()))
         spec = self._handle_placeholders(spec, spec, "")
@@ -454,8 +453,9 @@ class EntityMapUtil(object):
             client = self[spec["client"]]
             if not isinstance(client, MongoClient):
                 self.test.fail(
-                    "Expected entity %s to be of type MongoClient, got %s"
-                    % (spec["client"], type(client))
+                    "Expected entity {} to be of type MongoClient, got {}".format(
+                        spec["client"], type(client)
+                    )
                 )
             options = parse_collection_or_database_options(spec.get("databaseOptions", {}))
             self[spec["id"]] = client.get_database(spec["databaseName"], **options)
@@ -464,8 +464,9 @@ class EntityMapUtil(object):
             database = self[spec["database"]]
             if not isinstance(database, Database):
                 self.test.fail(
-                    "Expected entity %s to be of type Database, got %s"
-                    % (spec["database"], type(database))
+                    "Expected entity {} to be of type Database, got {}".format(
+                        spec["database"], type(database)
+                    )
                 )
             options = parse_collection_or_database_options(spec.get("collectionOptions", {}))
             self[spec["id"]] = database.get_collection(spec["collectionName"], **options)
@@ -474,8 +475,9 @@ class EntityMapUtil(object):
             client = self[spec["client"]]
             if not isinstance(client, MongoClient):
                 self.test.fail(
-                    "Expected entity %s to be of type MongoClient, got %s"
-                    % (spec["client"], type(client))
+                    "Expected entity {} to be of type MongoClient, got {}".format(
+                        spec["client"], type(client)
+                    )
                 )
             opts = camel_to_snake_args(spec.get("sessionOptions", {}))
             if "default_transaction_options" in opts:
@@ -522,7 +524,7 @@ class EntityMapUtil(object):
             self[name] = thread
             return
 
-        self.test.fail("Unable to create entity of unknown type %s" % (entity_type,))
+        self.test.fail(f"Unable to create entity of unknown type {entity_type}")
 
     def create_entities_from_spec(self, entity_spec, uri=None):
         for spec in entity_spec:
@@ -532,12 +534,12 @@ class EntityMapUtil(object):
         client = self[client_name]
         if not isinstance(client, MongoClient):
             self.test.fail(
-                "Expected entity %s to be of type MongoClient, got %s" % (client_name, type(client))
+                f"Expected entity {client_name} to be of type MongoClient, got {type(client)}"
             )
 
         listener = self._listeners.get(client_name)
         if not listener:
-            self.test.fail("No listeners configured for client %s" % (client_name,))
+            self.test.fail(f"No listeners configured for client {client_name}")
 
         return listener
 
@@ -545,8 +547,7 @@ class EntityMapUtil(object):
         session = self[session_name]
         if not isinstance(session, ClientSession):
             self.test.fail(
-                "Expected entity %s to be of type ClientSession, got %s"
-                % (session_name, type(session))
+                f"Expected entity {session_name} to be of type ClientSession, got {type(session)}"
             )
 
         try:
@@ -587,9 +588,10 @@ BSON_TYPE_ALIAS_MAP = {
 }
 
 
-class MatchEvaluatorUtil(object):
+class MatchEvaluatorUtil:
     """Utility class that implements methods for evaluating matches as per
-    the unified test format specification."""
+    the unified test format specification.
+    """
 
     def __init__(self, test_class):
         self.test = test_class
@@ -606,11 +608,11 @@ class MatchEvaluatorUtil(object):
             else:
                 self.test.assertNotIn(key_to_compare, actual)
         else:
-            self.test.fail("Expected boolean value for $$exists operator, got %s" % (spec,))
+            self.test.fail(f"Expected boolean value for $$exists operator, got {spec}")
 
     def __type_alias_to_type(self, alias):
         if alias not in BSON_TYPE_ALIAS_MAP:
-            self.test.fail("Unrecognized BSON type alias %s" % (alias,))
+            self.test.fail(f"Unrecognized BSON type alias {alias}")
         return BSON_TYPE_ALIAS_MAP[alias]
 
     def _operation_type(self, spec, actual, key_to_compare):
@@ -653,11 +655,11 @@ class MatchEvaluatorUtil(object):
         self.test.assertLessEqual(actual[key_to_compare], spec)
 
     def _evaluate_special_operation(self, opname, spec, actual, key_to_compare):
-        method_name = "_operation_%s" % (opname.strip("$"),)
+        method_name = "_operation_{}".format(opname.strip("$"))
         try:
             method = getattr(self, method_name)
         except AttributeError:
-            self.test.fail("Unsupported special matching operator %s" % (opname,))
+            self.test.fail(f"Unsupported special matching operator {opname}")
         else:
             method(spec, actual, key_to_compare)
 
@@ -668,7 +670,8 @@ class MatchEvaluatorUtil(object):
         If given, ``key_to_compare`` is assumed to be the key in
         ``expectation`` whose corresponding value needs to be
         evaluated for a possible special operation. ``key_to_compare``
-        is ignored when ``expectation`` has only one key."""
+        is ignored when ``expectation`` has only one key.
+        """
         if not isinstance(expectation, abc.Mapping):
             return False
 
@@ -730,14 +733,16 @@ class MatchEvaluatorUtil(object):
                     self._match_document(e, a, is_root=not in_recursive_call)
                 else:
                     self.match_result(e, a, in_recursive_call=True)
-                return
+                return None
 
         # account for flexible numerics in element-wise comparison
         if isinstance(expectation, int) or isinstance(expectation, float):
             self.test.assertEqual(expectation, actual)
+            return None
         else:
             self.test.assertIsInstance(actual, type(expectation))
             self.test.assertEqual(expectation, actual)
+            return None
 
     def assertHasServiceId(self, spec, actual):
         if "hasServiceId" in spec:
@@ -828,7 +833,7 @@ class MatchEvaluatorUtil(object):
             if "newDescription" in spec:
                 self.match_server_description(actual.new_description, spec["newDescription"])
         else:
-            raise Exception("Unsupported event type %s" % (name,))
+            raise Exception(f"Unsupported event type {name}")
 
 
 def coerce_result(opname, result):
@@ -840,7 +845,7 @@ def coerce_result(opname, result):
     if opname == "insertOne":
         return {"insertedId": result.inserted_id}
     if opname == "insertMany":
-        return {idx: _id for idx, _id in enumerate(result.inserted_ids)}
+        return dict(enumerate(result.inserted_ids))
     if opname in ("deleteOne", "deleteMany"):
         return {"deletedCount": result.deleted_count}
     if opname in ("updateOne", "updateMany", "replaceOne"):
@@ -904,11 +909,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     @classmethod
     def setUpClass(cls):
         # super call creates internal client cls.client
-        super(UnifiedSpecTestMixinV1, cls).setUpClass()
+        super().setUpClass()
         # process file-level runOnRequirements
         run_on_spec = cls.TEST_SPEC.get("runOnRequirements", [])
         if not cls.should_run_on(run_on_spec):
-            raise unittest.SkipTest("%s runOnRequirements not satisfied" % (cls.__name__,))
+            raise unittest.SkipTest(f"{cls.__name__} runOnRequirements not satisfied")
 
         # add any special-casing for skipping tests here
         if client_context.storage_engine == "mmapv1":
@@ -916,7 +921,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 raise unittest.SkipTest("MMAPv1 does not support retryWrites=True")
 
     def setUp(self):
-        super(UnifiedSpecTestMixinV1, self).setUp()
+        super().setUp()
         # process schemaVersion
         # note: we check major schema version during class generation
         # note: we do this here because we cannot run assertions in setUpClass
@@ -924,7 +929,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self.assertLessEqual(
             version,
             self.SCHEMA_VERSION,
-            "expected schema version %s or lower, got %s" % (self.SCHEMA_VERSION, version),
+            f"expected schema version {self.SCHEMA_VERSION} or lower, got {version}",
         )
 
         # initialize internals
@@ -1044,20 +1049,18 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if error_labels_omit:
             for err_label in error_labels_omit:
                 if exception.has_error_label(err_label):
-                    self.fail("Exception '%s' unexpectedly had label '%s'" % (exception, err_label))
+                    self.fail(f"Exception '{exception}' unexpectedly had label '{err_label}'")
 
         if expect_result:
             if isinstance(exception, BulkWriteError):
                 result = parse_bulk_write_error_result(exception)
                 self.match_evaluator.match_result(expect_result, result)
             else:
-                self.fail(
-                    "expectResult can only be specified with %s exceptions" % (BulkWriteError,)
-                )
+                self.fail(f"expectResult can only be specified with {BulkWriteError} exceptions")
 
     def __raise_if_unsupported(self, opname, target, *target_types):
         if not isinstance(target, target_types):
-            self.fail("Operation %s not supported for entity of type %s" % (opname, type(target)))
+            self.fail(f"Operation {opname} not supported for entity of type {type(target)}")
 
     def __entityOperation_createChangeStream(self, target, *args, **kwargs):
         if client_context.storage_engine == "mmapv1":
@@ -1153,6 +1156,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 return next(target)
             except StopIteration:
                 pass
+        return None
 
     def _cursor_close(self, target, *args, **kwargs):
         self.__raise_if_unsupported("close", target, NonLazyCursor)
@@ -1182,8 +1186,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             kwargs["master_key"] = opts.get("masterKey")
         data = target.rewrap_many_data_key(*args, **kwargs)
         if data.bulk_write_result:
-            return dict(bulkWriteResult=parse_bulk_write_result(data.bulk_write_result))
-        return dict()
+            return {"bulkWriteResult": parse_bulk_write_result(data.bulk_write_result)}
+        return {}
 
     def _bucketOperation_download(self, target: GridFSBucket, *args: Any, **kwargs: Any) -> bytes:
         with target.open_download_stream(*args, **kwargs) as gout:
@@ -1234,30 +1238,30 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             arguments = {}
 
         if isinstance(target, MongoClient):
-            method_name = "_clientOperation_%s" % (opname,)
+            method_name = f"_clientOperation_{opname}"
         elif isinstance(target, Database):
-            method_name = "_databaseOperation_%s" % (opname,)
+            method_name = f"_databaseOperation_{opname}"
         elif isinstance(target, Collection):
-            method_name = "_collectionOperation_%s" % (opname,)
+            method_name = f"_collectionOperation_{opname}"
             # contentType is always stored in metadata in pymongo.
             if target.name.endswith(".files") and opname == "find":
                 for doc in spec.get("expectResult", []):
                     if "contentType" in doc:
                         doc.setdefault("metadata", {})["contentType"] = doc.pop("contentType")
         elif isinstance(target, ChangeStream):
-            method_name = "_changeStreamOperation_%s" % (opname,)
+            method_name = f"_changeStreamOperation_{opname}"
         elif isinstance(target, NonLazyCursor):
-            method_name = "_cursor_%s" % (opname,)
+            method_name = f"_cursor_{opname}"
         elif isinstance(target, ClientSession):
-            method_name = "_sessionOperation_%s" % (opname,)
+            method_name = f"_sessionOperation_{opname}"
         elif isinstance(target, GridFSBucket):
-            method_name = "_bucketOperation_%s" % (opname,)
+            method_name = f"_bucketOperation_{opname}"
             if "id" in arguments:
                 arguments["file_id"] = arguments.pop("id")
             # MD5 is always disabled in pymongo.
             arguments.pop("disable_md5", None)
         elif isinstance(target, ClientEncryption):
-            method_name = "_clientEncryptionOperation_%s" % (opname,)
+            method_name = f"_clientEncryptionOperation_{opname}"
         else:
             method_name = "doesNotExist"
 
@@ -1270,7 +1274,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             try:
                 cmd = getattr(target, target_opname)
             except AttributeError:
-                self.fail("Unsupported operation %s on entity %s" % (opname, target))
+                self.fail(f"Unsupported operation {opname} on entity {target}")
         else:
             cmd = functools.partial(method, target)
 
@@ -1286,15 +1290,13 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             # Ignore all operation errors but to avoid masking bugs don't
             # ignore things like TypeError and ValueError.
             if ignore and isinstance(exc, (PyMongoError,)):
-                return
+                return None
             if expect_error:
                 return self.process_error(exc, expect_error)
             raise
         else:
             if expect_error:
-                self.fail(
-                    'Excepted error %s but "%s" succeeded: %s' % (expect_error, opname, result)
-                )
+                self.fail(f'Excepted error {expect_error} but "{opname}" succeeded: {result}')
 
         if expect_result:
             actual = coerce_result(opname, result)
@@ -1302,6 +1304,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
         if save_as_entity:
             self.entity_map[save_as_entity] = result
+            return None
+        return None
 
     def __set_fail_point(self, client, command_args):
         if not client_context.test_commands_enabled:
@@ -1324,10 +1328,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if not session._pinned_address:
             self.fail(
                 "Cannot use targetedFailPoint operation with unpinned "
-                "session %s" % (spec["session"],)
+                "session {}".format(spec["session"])
             )
 
-        client = single_client("%s:%s" % session._pinned_address)
+        client = single_client("{}:{}".format(*session._pinned_address))
         self.addCleanup(client.close)
         self.__set_fail_point(client=client, command_args=spec["failPoint"])
 
@@ -1422,9 +1426,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         Assert the given event was published exactly `count` times.
         """
         client, event, count = spec["client"], spec["event"], spec["count"]
-        self.assertEqual(
-            self._event_count(client, event), count, "expected %s not %r" % (count, event)
-        )
+        self.assertEqual(self._event_count(client, event), count, f"expected {count} not {event!r}")
 
     def _testOperation_waitForEvent(self, spec):
         """Run the waitForEvent test operation.
@@ -1434,7 +1436,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         client, event, count = spec["client"], spec["event"], spec["count"]
         wait_until(
             lambda: self._event_count(client, event) >= count,
-            "find %s %s event(s)" % (count, event),
+            f"find {count} {event} event(s)",
         )
 
     def _testOperation_wait(self, spec):
@@ -1485,7 +1487,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         thread.join(10)
         if thread.exc:
             raise thread.exc
-        self.assertFalse(thread.is_alive(), "Thread %s is still running" % (spec["thread"],))
+        self.assertFalse(thread.is_alive(), "Thread {} is still running".format(spec["thread"]))
 
     def _testOperation_loop(self, spec):
         failure_key = spec.get("storeFailuresAsEntity")
@@ -1527,11 +1529,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def run_special_operation(self, spec):
         opname = spec["name"]
-        method_name = "_testOperation_%s" % (opname,)
+        method_name = f"_testOperation_{opname}"
         try:
             method = getattr(self, method_name)
         except AttributeError:
-            self.fail("Unsupported special test operation %s" % (opname,))
+            self.fail(f"Unsupported special test operation {opname}")
         else:
             method(spec["arguments"])
 
@@ -1604,8 +1606,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                         self.setUp()
                         continue
                     raise
+            return None
         else:
             self._run_scenario(spec, uri)
+            return None
 
     def _run_scenario(self, spec, uri=None):
         # maybe skip test manually
@@ -1619,7 +1623,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         # process skipReason
         skip_reason = spec.get("skipReason", None)
         if skip_reason is not None:
-            raise unittest.SkipTest("%s" % (skip_reason,))
+            raise unittest.SkipTest(f"{skip_reason}")
 
         # process createEntities
         self._uri = uri
@@ -1648,7 +1652,7 @@ class UnifiedSpecTestMeta(type):
     EXPECTED_FAILURES: Any
 
     def __init__(cls, *args, **kwargs):
-        super(UnifiedSpecTestMeta, cls).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         def create_test(spec):
             def test_case(self):
@@ -1658,7 +1662,9 @@ class UnifiedSpecTestMeta(type):
 
         for test_spec in cls.TEST_SPEC["tests"]:
             description = test_spec["description"]
-            test_name = "test_%s" % (description.strip(". ").replace(" ", "_").replace(".", "_"),)
+            test_name = "test_{}".format(
+                description.strip(". ").replace(" ", "_").replace(".", "_")
+            )
             test_method = create_test(copy.deepcopy(test_spec))
             test_method.__name__ = str(test_name)
 
@@ -1690,13 +1696,15 @@ def generate_test_classes(
     **kwargs,
 ):
     """Method for generating test classes. Returns a dictionary where keys are
-    the names of test classes and values are the test class objects."""
+    the names of test classes and values are the test class objects.
+    """
     test_klasses = {}
 
     def test_base_class_factory(test_spec):
         """Utility that creates the base class to use for test generation.
         This is needed to ensure that cls.TEST_SPEC is appropriately set when
-        the metaclass __init__ is invoked."""
+        the metaclass __init__ is invoked.
+        """
 
         class SpecTestBase(with_metaclass(UnifiedSpecTestMeta)):  # type: ignore
             TEST_SPEC = test_spec
@@ -1716,7 +1724,7 @@ def generate_test_classes(
                 scenario_def = json_util.loads(scenario_stream.read(), json_options=opts)
 
             test_type = os.path.splitext(filename)[0]
-            snake_class_name = "Test%s_%s_%s" % (
+            snake_class_name = "Test{}_{}_{}".format(
                 class_name_prefix,
                 dirname.replace("-", "_"),
                 test_type.replace("-", "_").replace(".", "_"),
@@ -1728,8 +1736,7 @@ def generate_test_classes(
                 mixin_class = _SCHEMA_VERSION_MAJOR_TO_MIXIN_CLASS.get(schema_version[0])
                 if mixin_class is None:
                     raise ValueError(
-                        "test file '%s' has unsupported schemaVersion '%s'"
-                        % (fpath, schema_version)
+                        f"test file '{fpath}' has unsupported schemaVersion '{schema_version}'"
                     )
                 module_dict = {"__module__": module}
                 module_dict.update(kwargs)

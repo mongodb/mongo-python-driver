@@ -156,7 +156,8 @@ class ChangeStream(Generic[_DocumentType]):
     @property
     def _client(self):
         """The client against which the aggregation commands for
-        this ChangeStream will be run."""
+        this ChangeStream will be run.
+        """
         raise NotImplementedError
 
     def _change_stream_options(self):
@@ -221,7 +222,7 @@ class ChangeStream(Generic[_DocumentType]):
                 if self._start_at_operation_time is None:
                     raise OperationFailure(
                         "Expected field 'operationTime' missing from command "
-                        "response : %r" % (result,)
+                        "response : {!r}".format(result)
                     )
 
     def _run_aggregation_cmd(self, session, explicit_session):
@@ -473,6 +474,6 @@ class ClusterChangeStream(DatabaseChangeStream, Generic[_DocumentType]):
     """
 
     def _change_stream_options(self):
-        options = super(ClusterChangeStream, self)._change_stream_options()
+        options = super()._change_stream_options()
         options["allChangesForCluster"] = True
         return options

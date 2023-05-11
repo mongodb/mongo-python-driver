@@ -90,10 +90,10 @@ class TestReadPreferencesBase(IntegrationTest):
     @classmethod
     @client_context.require_secondaries_count(1)
     def setUpClass(cls):
-        super(TestReadPreferencesBase, cls).setUpClass()
+        super().setUpClass()
 
     def setUp(self):
-        super(TestReadPreferencesBase, self).setUp()
+        super().setUp()
         # Insert some data so we can use cursors in read_from_which_host
         self.client.pymongo_test.test.drop()
         self.client.get_database(
@@ -119,16 +119,17 @@ class TestReadPreferencesBase(IntegrationTest):
             return "secondary"
         else:
             self.fail(
-                "Cursor used address %s, expected either primary "
-                "%s or secondaries %s" % (address, client.primary, client.secondaries)
+                "Cursor used address {}, expected either primary "
+                "{} or secondaries {}".format(address, client.primary, client.secondaries)
             )
+            return None
 
     def assertReadsFrom(self, expected, **kwargs):
         c = rs_client(**kwargs)
         wait_until(lambda: len(c.nodes - c.arbiters) == client_context.w, "discovered all nodes")
 
         used = self.read_from_which_kind(c)
-        self.assertEqual(expected, used, "Cursor used %s, expected %s" % (used, expected))
+        self.assertEqual(expected, used, f"Cursor used {used}, expected {expected}")
 
 
 class TestSingleSecondaryOk(TestReadPreferencesBase):
@@ -271,7 +272,7 @@ class TestReadPreferences(TestReadPreferencesBase):
         self.assertFalse(
             not_used,
             "Expected to use primary and all secondaries for mode NEAREST,"
-            " but didn't use %s\nlatencies: %s" % (not_used, latencies),
+            " but didn't use {}\nlatencies: {}".format(not_used, latencies),
         )
 
 
@@ -280,18 +281,18 @@ class ReadPrefTester(MongoClient):
         self.has_read_from = set()
         client_options = client_context.client_options
         client_options.update(kwargs)
-        super(ReadPrefTester, self).__init__(*args, **client_options)
+        super().__init__(*args, **client_options)
 
     @contextlib.contextmanager
     def _socket_for_reads(self, read_preference, session):
-        context = super(ReadPrefTester, self)._socket_for_reads(read_preference, session)
+        context = super()._socket_for_reads(read_preference, session)
         with context as (sock_info, read_preference):
             self.record_a_read(sock_info.address)
             yield sock_info, read_preference
 
     @contextlib.contextmanager
     def _socket_from_server(self, read_preference, server, session):
-        context = super(ReadPrefTester, self)._socket_from_server(read_preference, server, session)
+        context = super()._socket_from_server(read_preference, server, session)
         with context as (sock_info, read_preference):
             self.record_a_read(sock_info.address)
             yield sock_info, read_preference
@@ -317,7 +318,7 @@ class TestCommandAndReadPreference(IntegrationTest):
     @classmethod
     @client_context.require_secondaries_count(1)
     def setUpClass(cls):
-        super(TestCommandAndReadPreference, cls).setUpClass()
+        super().setUpClass()
         cls.c = ReadPrefTester(
             client_context.pair,
             # Ignore round trip times, to test ReadPreference modes only.
@@ -360,7 +361,7 @@ class TestCommandAndReadPreference(IntegrationTest):
                         break
 
                 assert self.c.primary is not None
-                unused = self.c.secondaries.union(set([self.c.primary])).difference(used)
+                unused = self.c.secondaries.union({self.c.primary}).difference(used)
                 if unused:
                     self.fail("Some members not used for NEAREST: %s" % (unused))
             else:
@@ -373,7 +374,10 @@ class TestCommandAndReadPreference(IntegrationTest):
     def _test_coll_helper(self, secondary_ok, coll, meth, *args, **kwargs):
         for mode, server_type in _PREF_MAP:
             new_coll = coll.with_options(read_preference=mode())
-            func = lambda: getattr(new_coll, meth)(*args, **kwargs)
+
+            def func():
+                return getattr(new_coll, meth)(*args, **kwargs)
+
             if secondary_ok:
                 self._test_fn(server_type, func)
             else:
@@ -383,7 +387,10 @@ class TestCommandAndReadPreference(IntegrationTest):
         # Test that the generic command helper obeys the read preference
         # passed to it.
         for mode, server_type in _PREF_MAP:
-            func = lambda: self.c.pymongo_test.command("dbStats", read_preference=mode())
+
+            def func():
+                return self.c.pymongo_test.command("dbStats", read_preference=mode())
+
             self._test_fn(server_type, func)
 
     def test_create_collection(self):
@@ -536,7 +543,7 @@ class TestMongosAndReadPreference(IntegrationTest):
         client = rs_client(event_listeners=[listener])
         self.addCleanup(client.close)
         client.admin.command("ping")
-        for mode, cls in cases.items():
+        for _mode, cls in cases.items():
             pref = cls(hedge={"enabled": True})
             coll = client.test.get_collection("test", read_preference=pref)
             listener.reset()

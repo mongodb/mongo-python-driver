@@ -30,10 +30,10 @@ class TestonDemandGCPCredentials(IntegrationTest):
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
     @client_context.require_version_min(4, 2, -1)
     def setUpClass(cls):
-        super(TestonDemandGCPCredentials, cls).setUpClass()
+        super().setUpClass()
 
     def setUp(self):
-        super(TestonDemandGCPCredentials, self).setUp()
+        super().setUp()
         self.master_key = {
             "projectId": "devprod-drivers",
             "location": "global",
@@ -72,10 +72,10 @@ class TestonDemandAzureCredentials(IntegrationTest):
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
     @client_context.require_version_min(4, 2, -1)
     def setUpClass(cls):
-        super(TestonDemandAzureCredentials, cls).setUpClass()
+        super().setUpClass()
 
     def setUp(self):
-        super(TestonDemandAzureCredentials, self).setUp()
+        super().setUp()
         self.master_key = {
             "keyVaultEndpoint": "https://keyvault-drivers-2411.vault.azure.net/keys/",
             "keyName": "KEY-NAME",

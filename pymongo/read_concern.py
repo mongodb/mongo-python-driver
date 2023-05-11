@@ -17,7 +17,7 @@
 from typing import Any, Dict, Optional
 
 
-class ReadConcern(object):
+class ReadConcern:
     """ReadConcern
 
     :Parameters:
@@ -45,7 +45,8 @@ class ReadConcern(object):
     @property
     def ok_for_legacy(self) -> bool:
         """Return ``True`` if this read concern is compatible with
-        old wire protocol versions."""
+        old wire protocol versions.
+        """
         return self.level is None or self.level == "local"
 
     @property

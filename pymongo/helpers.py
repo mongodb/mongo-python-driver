@@ -74,7 +74,7 @@ _REAUTHENTICATION_REQUIRED_CODE = 391
 
 def _gen_index_name(keys):
     """Generate an index name from the set of fields it is over."""
-    return "_".join(["%s_%s" % item for item in keys])
+    return "_".join(["{}_{}".format(*item) for item in keys])
 
 
 def _index_list(key_or_list, direction=None):
@@ -248,12 +248,10 @@ def _fields_list_to_dict(fields, option_name):
 
     if isinstance(fields, (abc.Sequence, abc.Set)):
         if not all(isinstance(field, str) for field in fields):
-            raise TypeError(
-                "%s must be a list of key names, each an instance of str" % (option_name,)
-            )
+            raise TypeError(f"{option_name} must be a list of key names, each an instance of str")
         return dict.fromkeys(fields, 1)
 
-    raise TypeError("%s must be a mapping or list of key names" % (option_name,))
+    raise TypeError(f"{option_name} must be a mapping or list of key names")
 
 
 def _handle_exception():
@@ -266,7 +264,7 @@ def _handle_exception():
         einfo = sys.exc_info()
         try:
             traceback.print_exception(einfo[0], einfo[1], einfo[2], None, sys.stderr)
-        except IOError:
+        except OSError:
             pass
         finally:
             del einfo

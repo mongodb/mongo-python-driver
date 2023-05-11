@@ -89,7 +89,7 @@ class TopologyTest(unittest.TestCase):
     """Disables periodic monitoring, to make tests deterministic."""
 
     def setUp(self):
-        super(TopologyTest, self).setUp()
+        super().setUp()
         self.client_knobs = client_knobs(heartbeat_frequency=999999)
         self.client_knobs.enable()
         self.addCleanup(self.client_knobs.disable)
@@ -647,13 +647,13 @@ class TestMultiServerTopology(TopologyTest):
         )
         self.assertEqual(
             repr(t.description),
-            "<TopologyDescription id: %s, "
+            "<TopologyDescription id: {}, "
             "topology_type: ReplicaSetWithPrimary, servers: ["
             "<ServerDescription ('a', 27017) server_type: RSPrimary, rtt: 0>, "
             "<ServerDescription ('b', 27017) server_type: Unknown,"
             " rtt: None>, "
             "<ServerDescription ('c', 27017) server_type: Unknown,"
-            " rtt: None>]>" % (t._topology_id,),
+            " rtt: None>]>".format(t._topology_id),
         )
 
     def test_unexpected_load_balancer(self):
@@ -734,7 +734,7 @@ class TestTopologyErrors(TopologyTest):
                 if hello_count[0] in (1, 3):
                     return Hello({"ok": 1, "maxWireVersion": 6}), 0
                 else:
-                    raise AutoReconnect("mock monitor error #%s" % (hello_count[0],))
+                    raise AutoReconnect(f"mock monitor error #{hello_count[0]}")
 
         t = create_mock_topology(monitor_class=TestMonitor)
         self.addCleanup(t.close)

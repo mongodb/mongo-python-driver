@@ -26,7 +26,7 @@ from pymongo.server_type import SERVER_TYPE
 
 class TestResetAndRequestCheck(unittest.TestCase):
     def __init__(self, *args, **kwargs):
-        super(TestResetAndRequestCheck, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.ismaster_time = 0.0
         self.client = None
         self.server = None
@@ -143,7 +143,7 @@ def generate_reset_tests():
     for entry in matrix:
         operation, (test_method, name) = entry
         test = create_reset_test(operation, test_method)
-        test_name = "%s_%s" % (name, operation.name.replace(" ", "_"))
+        test_name = "{}_{}".format(name, operation.name.replace(" ", "_"))
         test.__name__ = test_name
         setattr(TestResetAndRequestCheck, test_name, test)
 

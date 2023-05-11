@@ -945,7 +945,7 @@ class TestCursor(IntegrationTest):
         for a, b in zip(count(99), self.db.test.find()[99:]):
             self.assertEqual(a, b["i"])
 
-        for i in self.db.test.find()[1000:]:
+        for _i in self.db.test.find()[1000:]:
             self.fail()
 
         self.assertEqual(5, len(list(self.db.test.find()[20:25])))
@@ -1079,7 +1079,7 @@ class TestCursor(IntegrationTest):
 
         def iterate_cursor():
             while cursor.alive:
-                for doc in cursor:
+                for _doc in cursor:
                     pass
 
         t = threading.Thread(target=iterate_cursor)
@@ -1430,7 +1430,7 @@ class TestRawBatchCursor(IntegrationTest):
 class TestRawBatchCommandCursor(IntegrationTest):
     @classmethod
     def setUpClass(cls):
-        super(TestRawBatchCommandCursor, cls).setUpClass()
+        super().setUpClass()
 
     def test_aggregate_raw(self):
         c = self.db.test

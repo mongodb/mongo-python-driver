@@ -47,7 +47,7 @@ SRV_POLLING_TOPOLOGIES: Tuple[int, int] = (TOPOLOGY_TYPE.Unknown, TOPOLOGY_TYPE.
 _ServerSelector = Callable[[List[ServerDescription]], List[ServerDescription]]
 
 
-class TopologyDescription(object):
+class TopologyDescription:
     def __init__(
         self,
         topology_type: int,
@@ -171,7 +171,7 @@ class TopologyDescription(object):
             topology_type = self._topology_type
 
         # The default ServerDescription's type is Unknown.
-        sds = dict((address, ServerDescription(address)) for address in self._server_descriptions)
+        sds = {address: ServerDescription(address) for address in self._server_descriptions}
 
         return TopologyDescription(
             topology_type,
@@ -184,7 +184,8 @@ class TopologyDescription(object):
 
     def server_descriptions(self) -> Dict[_Address, ServerDescription]:
         """Dict of (address,
-        :class:`~pymongo.server_description.ServerDescription`)."""
+        :class:`~pymongo.server_description.ServerDescription`).
+        """
         return self._server_descriptions.copy()
 
     @property
@@ -346,7 +347,7 @@ class TopologyDescription(object):
     def __repr__(self):
         # Sort the servers by address.
         servers = sorted(self._server_descriptions.values(), key=lambda sd: sd.address)
-        return "<%s id: %s, topology_type: %s, servers: %r>" % (
+        return "<{} id: {}, topology_type: {}, servers: {!r}>".format(
             self.__class__.__name__,
             self._topology_settings._topology_id,
             self.topology_type_name,
@@ -400,8 +401,9 @@ def updated_topology_description(
         if set_name is not None and set_name != server_description.replica_set_name:
             error = ConfigurationError(
                 "client is configured to connect to a replica set named "
-                "'%s' but this node belongs to a set named '%s'"
-                % (set_name, server_description.replica_set_name)
+                "'{}' but this node belongs to a set named '{}'".format(
+                    set_name, server_description.replica_set_name
+                )
             )
             sds[address] = server_description.to_unknown(error=error)
         # Single type never changes.

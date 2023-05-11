@@ -111,7 +111,7 @@ class TestThreads(IntegrationTest):
         self.db.test.insert_many([{"x": i} for i in range(1000)])
 
         threads = []
-        for i in range(10):
+        for _i in range(10):
             t = SaveAndFind(self.db.test)
             t.start()
             threads.append(t)

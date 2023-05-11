@@ -211,7 +211,7 @@ _Listeners = namedtuple(
 _LISTENERS = _Listeners([], [], [], [], [])
 
 
-class _EventListener(object):
+class _EventListener:
     """Abstract base class for all event listeners."""
 
 
@@ -486,14 +486,14 @@ def _to_micros(dur):
 def _validate_event_listeners(option, listeners):
     """Validate event listeners"""
     if not isinstance(listeners, abc.Sequence):
-        raise TypeError("%s must be a list or tuple" % (option,))
+        raise TypeError(f"{option} must be a list or tuple")
     for listener in listeners:
         if not isinstance(listener, _EventListener):
             raise TypeError(
-                "Listeners for %s must be either a "
+                "Listeners for {} must be either a "
                 "CommandListener, ServerHeartbeatListener, "
                 "ServerListener, TopologyListener, or "
-                "ConnectionPoolListener." % (option,)
+                "ConnectionPoolListener.".format(option)
             )
     return listeners
 
@@ -508,10 +508,10 @@ def register(listener: _EventListener) -> None:
     """
     if not isinstance(listener, _EventListener):
         raise TypeError(
-            "Listeners for %s must be either a "
+            "Listeners for {} must be either a "
             "CommandListener, ServerHeartbeatListener, "
             "ServerListener, TopologyListener, or "
-            "ConnectionPoolListener." % (listener,)
+            "ConnectionPoolListener.".format(listener)
         )
     if isinstance(listener, CommandListener):
         _LISTENERS.command_listeners.append(listener)
@@ -528,19 +528,17 @@ def register(listener: _EventListener) -> None:
 # Note - to avoid bugs from forgetting which if these is all lowercase and
 # which are camelCase, and at the same time avoid having to add a test for
 # every command, use all lowercase here and test against command_name.lower().
-_SENSITIVE_COMMANDS: set = set(
-    [
-        "authenticate",
-        "saslstart",
-        "saslcontinue",
-        "getnonce",
-        "createuser",
-        "updateuser",
-        "copydbgetnonce",
-        "copydbsaslstart",
-        "copydb",
-    ]
-)
+_SENSITIVE_COMMANDS: set = {
+    "authenticate",
+    "saslstart",
+    "saslcontinue",
+    "getnonce",
+    "createuser",
+    "updateuser",
+    "copydbgetnonce",
+    "copydbsaslstart",
+    "copydb",
+}
 
 
 # The "hello" command is also deemed sensitive when attempting speculative
@@ -554,7 +552,7 @@ def _is_speculative_authenticate(command_name, doc):
     return False
 
 
-class _CommandEvent(object):
+class _CommandEvent:
     """Base class for command events."""
 
     __slots__ = ("__cmd_name", "__rqst_id", "__conn_id", "__op_id", "__service_id")
@@ -627,10 +625,10 @@ class CommandStartedEvent(_CommandEvent):
         service_id: Optional[ObjectId] = None,
     ) -> None:
         if not command:
-            raise ValueError("%r is not a valid command" % (command,))
+            raise ValueError(f"{command!r} is not a valid command")
         # Command name must be first key.
         command_name = next(iter(command))
-        super(CommandStartedEvent, self).__init__(
+        super().__init__(
             command_name, request_id, connection_id, operation_id, service_id=service_id
         )
         cmd_name = command_name.lower()
@@ -651,7 +649,7 @@ class CommandStartedEvent(_CommandEvent):
         return self.__db
 
     def __repr__(self):
-        return ("<%s %s db: %r, command: %r, operation_id: %s, service_id: %s>") % (
+        return ("<{} {} db: {!r}, command: {!r}, operation_id: {}, service_id: {}>").format(
             self.__class__.__name__,
             self.connection_id,
             self.database_name,
@@ -687,7 +685,7 @@ class CommandSucceededEvent(_CommandEvent):
         operation_id: Optional[int],
         service_id: Optional[ObjectId] = None,
     ) -> None:
-        super(CommandSucceededEvent, self).__init__(
+        super().__init__(
             command_name, request_id, connection_id, operation_id, service_id=service_id
         )
         self.__duration_micros = _to_micros(duration)
@@ -708,7 +706,9 @@ class CommandSucceededEvent(_CommandEvent):
         return self.__reply
 
     def __repr__(self):
-        return ("<%s %s command: %r, operation_id: %s, duration_micros: %s, service_id: %s>") % (
+        return (
+            "<{} {} command: {!r}, operation_id: {}, duration_micros: {}, service_id: {}>"
+        ).format(
             self.__class__.__name__,
             self.connection_id,
             self.command_name,
@@ -744,7 +744,7 @@ class CommandFailedEvent(_CommandEvent):
         operation_id: Optional[int],
         service_id: Optional[ObjectId] = None,
     ) -> None:
-        super(CommandFailedEvent, self).__init__(
+        super().__init__(
             command_name, request_id, connection_id, operation_id, service_id=service_id
         )
         self.__duration_micros = _to_micros(duration)
@@ -762,9 +762,9 @@ class CommandFailedEvent(_CommandEvent):
 
     def __repr__(self):
         return (
-            "<%s %s command: %r, operation_id: %s, duration_micros: %s, "
-            "failure: %r, service_id: %s>"
-        ) % (
+            "<{} {} command: {!r}, operation_id: {}, duration_micros: {}, "
+            "failure: {!r}, service_id: {}>"
+        ).format(
             self.__class__.__name__,
             self.connection_id,
             self.command_name,
@@ -775,7 +775,7 @@ class CommandFailedEvent(_CommandEvent):
         )
 
 
-class _PoolEvent(object):
+class _PoolEvent:
     """Base class for pool events."""
 
     __slots__ = ("__address",)
@@ -791,7 +791,7 @@ class _PoolEvent(object):
         return self.__address
 
     def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.__address)
+        return f"{self.__class__.__name__}({self.__address!r})"
 
 
 class PoolCreatedEvent(_PoolEvent):
@@ -807,7 +807,7 @@ class PoolCreatedEvent(_PoolEvent):
     __slots__ = ("__options",)
 
     def __init__(self, address: _Address, options: Dict[str, Any]) -> None:
-        super(PoolCreatedEvent, self).__init__(address)
+        super().__init__(address)
         self.__options = options
 
     @property
@@ -816,7 +816,7 @@ class PoolCreatedEvent(_PoolEvent):
         return self.__options
 
     def __repr__(self):
-        return "%s(%r, %r)" % (self.__class__.__name__, self.address, self.__options)
+        return f"{self.__class__.__name__}({self.address!r}, {self.__options!r})"
 
 
 class PoolReadyEvent(_PoolEvent):
@@ -846,7 +846,7 @@ class PoolClearedEvent(_PoolEvent):
     __slots__ = ("__service_id",)
 
     def __init__(self, address: _Address, service_id: Optional[ObjectId] = None) -> None:
-        super(PoolClearedEvent, self).__init__(address)
+        super().__init__(address)
         self.__service_id = service_id
 
     @property
@@ -860,7 +860,7 @@ class PoolClearedEvent(_PoolEvent):
         return self.__service_id
 
     def __repr__(self):
-        return "%s(%r, %r)" % (self.__class__.__name__, self.address, self.__service_id)
+        return f"{self.__class__.__name__}({self.address!r}, {self.__service_id!r})"
 
 
 class PoolClosedEvent(_PoolEvent):
@@ -876,7 +876,7 @@ class PoolClosedEvent(_PoolEvent):
     __slots__ = ()
 
 
-class ConnectionClosedReason(object):
+class ConnectionClosedReason:
     """An enum that defines values for `reason` on a
     :class:`ConnectionClosedEvent`.
 
@@ -897,7 +897,7 @@ class ConnectionClosedReason(object):
     """The pool was closed, making the connection no longer valid."""
 
 
-class ConnectionCheckOutFailedReason(object):
+class ConnectionCheckOutFailedReason:
     """An enum that defines values for `reason` on a
     :class:`ConnectionCheckOutFailedEvent`.
 
@@ -916,7 +916,7 @@ class ConnectionCheckOutFailedReason(object):
     """
 
 
-class _ConnectionEvent(object):
+class _ConnectionEvent:
     """Private base class for connection events."""
 
     __slots__ = ("__address",)
@@ -932,7 +932,7 @@ class _ConnectionEvent(object):
         return self.__address
 
     def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.__address)
+        return f"{self.__class__.__name__}({self.__address!r})"
 
 
 class _ConnectionIdEvent(_ConnectionEvent):
@@ -950,7 +950,7 @@ class _ConnectionIdEvent(_ConnectionEvent):
         return self.__connection_id
 
     def __repr__(self):
-        return "%s(%r, %r)" % (self.__class__.__name__, self.address, self.__connection_id)
+        return f"{self.__class__.__name__}({self.address!r}, {self.__connection_id!r})"
 
 
 class ConnectionCreatedEvent(_ConnectionIdEvent):
@@ -999,7 +999,7 @@ class ConnectionClosedEvent(_ConnectionIdEvent):
     __slots__ = ("__reason",)
 
     def __init__(self, address, connection_id, reason):
-        super(ConnectionClosedEvent, self).__init__(address, connection_id)
+        super().__init__(address, connection_id)
         self.__reason = reason
 
     @property
@@ -1012,7 +1012,7 @@ class ConnectionClosedEvent(_ConnectionIdEvent):
         return self.__reason
 
     def __repr__(self):
-        return "%s(%r, %r, %r)" % (
+        return "{}({!r}, {!r}, {!r})".format(
             self.__class__.__name__,
             self.address,
             self.connection_id,
@@ -1060,7 +1060,7 @@ class ConnectionCheckOutFailedEvent(_ConnectionEvent):
         return self.__reason
 
     def __repr__(self):
-        return "%s(%r, %r)" % (self.__class__.__name__, self.address, self.__reason)
+        return f"{self.__class__.__name__}({self.address!r}, {self.__reason!r})"
 
 
 class ConnectionCheckedOutEvent(_ConnectionIdEvent):
@@ -1091,7 +1091,7 @@ class ConnectionCheckedInEvent(_ConnectionIdEvent):
     __slots__ = ()
 
 
-class _ServerEvent(object):
+class _ServerEvent:
     """Base class for server events."""
 
     __slots__ = ("__server_address", "__topology_id")
@@ -1111,7 +1111,7 @@ class _ServerEvent(object):
         return self.__topology_id
 
     def __repr__(self):
-        return "<%s %s topology_id: %s>" % (
+        return "<{} {} topology_id: {}>".format(
             self.__class__.__name__,
             self.server_address,
             self.topology_id,
@@ -1130,26 +1130,28 @@ class ServerDescriptionChangedEvent(_ServerEvent):
         self,
         previous_description: "ServerDescription",
         new_description: "ServerDescription",
-        *args: Any
+        *args: Any,
     ) -> None:
-        super(ServerDescriptionChangedEvent, self).__init__(*args)
+        super().__init__(*args)
         self.__previous_description = previous_description
         self.__new_description = new_description
 
     @property
     def previous_description(self) -> "ServerDescription":
         """The previous
-        :class:`~pymongo.server_description.ServerDescription`."""
+        :class:`~pymongo.server_description.ServerDescription`.
+        """
         return self.__previous_description
 
     @property
     def new_description(self) -> "ServerDescription":
         """The new
-        :class:`~pymongo.server_description.ServerDescription`."""
+        :class:`~pymongo.server_description.ServerDescription`.
+        """
         return self.__new_description
 
     def __repr__(self):
-        return "<%s %s changed from: %s, to: %s>" % (
+        return "<{} {} changed from: {}, to: {}>".format(
             self.__class__.__name__,
             self.server_address,
             self.previous_description,
@@ -1175,7 +1177,7 @@ class ServerClosedEvent(_ServerEvent):
     __slots__ = ()
 
 
-class TopologyEvent(object):
+class TopologyEvent:
     """Base class for topology description events."""
 
     __slots__ = "__topology_id"
@@ -1189,7 +1191,7 @@ class TopologyEvent(object):
         return self.__topology_id
 
     def __repr__(self):
-        return "<%s topology_id: %s>" % (self.__class__.__name__, self.topology_id)
+        return f"<{self.__class__.__name__} topology_id: {self.topology_id}>"
 
 
 class TopologyDescriptionChangedEvent(TopologyEvent):
@@ -1204,26 +1206,28 @@ class TopologyDescriptionChangedEvent(TopologyEvent):
         self,
         previous_description: "TopologyDescription",
         new_description: "TopologyDescription",
-        *args: Any
+        *args: Any,
     ) -> None:
-        super(TopologyDescriptionChangedEvent, self).__init__(*args)
+        super().__init__(*args)
         self.__previous_description = previous_description
         self.__new_description = new_description
 
     @property
     def previous_description(self) -> "TopologyDescription":
         """The previous
-        :class:`~pymongo.topology_description.TopologyDescription`."""
+        :class:`~pymongo.topology_description.TopologyDescription`.
+        """
         return self.__previous_description
 
     @property
     def new_description(self) -> "TopologyDescription":
         """The new
-        :class:`~pymongo.topology_description.TopologyDescription`."""
+        :class:`~pymongo.topology_description.TopologyDescription`.
+        """
         return self.__new_description
 
     def __repr__(self):
-        return "<%s topology_id: %s changed from: %s, to: %s>" % (
+        return "<{} topology_id: {} changed from: {}, to: {}>".format(
             self.__class__.__name__,
             self.topology_id,
             self.previous_description,
@@ -1249,7 +1253,7 @@ class TopologyClosedEvent(TopologyEvent):
     __slots__ = ()
 
 
-class _ServerHeartbeatEvent(object):
+class _ServerHeartbeatEvent:
     """Base class for server heartbeat events."""
 
     __slots__ = "__connection_id"
@@ -1260,11 +1264,12 @@ class _ServerHeartbeatEvent(object):
     @property
     def connection_id(self) -> _Address:
         """The address (host, port) of the server this heartbeat was sent
-        to."""
+        to.
+        """
         return self.__connection_id
 
     def __repr__(self):
-        return "<%s %s>" % (self.__class__.__name__, self.connection_id)
+        return f"<{self.__class__.__name__} {self.connection_id}>"
 
 
 class ServerHeartbeatStartedEvent(_ServerHeartbeatEvent):
@@ -1287,7 +1292,7 @@ class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):
     def __init__(
         self, duration: float, reply: Hello, connection_id: _Address, awaited: bool = False
     ) -> None:
-        super(ServerHeartbeatSucceededEvent, self).__init__(connection_id)
+        super().__init__(connection_id)
         self.__duration = duration
         self.__reply = reply
         self.__awaited = awaited
@@ -1313,7 +1318,7 @@ class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):
         return self.__awaited
 
     def __repr__(self):
-        return "<%s %s duration: %s, awaited: %s, reply: %s>" % (
+        return "<{} {} duration: {}, awaited: {}, reply: {}>".format(
             self.__class__.__name__,
             self.connection_id,
             self.duration,
@@ -1334,7 +1339,7 @@ class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
     def __init__(
         self, duration: float, reply: Exception, connection_id: _Address, awaited: bool = False
     ) -> None:
-        super(ServerHeartbeatFailedEvent, self).__init__(connection_id)
+        super().__init__(connection_id)
         self.__duration = duration
         self.__reply = reply
         self.__awaited = awaited
@@ -1360,7 +1365,7 @@ class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
         return self.__awaited
 
     def __repr__(self):
-        return "<%s %s duration: %s, awaited: %s, reply: %r>" % (
+        return "<{} {} duration: {}, awaited: {}, reply: {!r}>".format(
             self.__class__.__name__,
             self.connection_id,
             self.duration,
@@ -1369,7 +1374,7 @@ class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
         )
 
 
-class _EventListeners(object):
+class _EventListeners:
     """Configure event listeners for a client instance.
 
     Any event listeners registered globally are included by default.

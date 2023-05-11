@@ -40,7 +40,7 @@ class MockPool(Pool):
     @contextlib.contextmanager
     def get_socket(self, handler=None):
         client = self.client
-        host_and_port = "%s:%s" % (self.mock_host, self.mock_port)
+        host_and_port = f"{self.mock_host}:{self.mock_port}"
         if host_and_port in client.mock_down_hosts:
             raise AutoReconnect("mock error")
 
@@ -54,7 +54,7 @@ class MockPool(Pool):
             yield sock_info
 
 
-class DummyMonitor(object):
+class DummyMonitor:
     def __init__(self, server_description, topology, pool, topology_settings):
         self._server_description = server_description
         self.opened = False
@@ -99,7 +99,7 @@ class MockClient(MongoClient):
         arbiters=None,
         down_hosts=None,
         *args,
-        **kwargs
+        **kwargs,
     ):
         """A MongoClient connected to the default server, with a mock topology.
 
@@ -144,7 +144,7 @@ class MockClient(MongoClient):
         client_options = client_context.default_client_options.copy()
         client_options.update(kwargs)
 
-        super(MockClient, self).__init__(*args, **client_options)
+        super().__init__(*args, **client_options)
 
     def kill_host(self, host):
         """Host is like 'a:1'."""

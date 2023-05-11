@@ -53,7 +53,7 @@ __all__ = [
 ]
 
 
-class GridFS(object):
+class GridFS:
     """An instance of GridFS on top of a single Database."""
 
     def __init__(self, database: Database, collection: str = "fs"):
@@ -141,7 +141,6 @@ class GridFS(object):
         .. versionchanged:: 3.0
            w=0 writes to GridFS are now prohibited.
         """
-
         with GridIn(self.__collection, **kwargs) as grid_file:
             grid_file.write(data)
             return grid_file._id
@@ -449,7 +448,7 @@ class GridFS(object):
         return f is not None
 
 
-class GridFSBucket(object):
+class GridFSBucket:
     """An instance of GridFS on top of a single Database."""
 
     def __init__(
