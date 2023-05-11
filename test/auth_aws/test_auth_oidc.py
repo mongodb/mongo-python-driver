@@ -24,13 +24,14 @@ from typing import Dict
 
 sys.path[0:0] = [""]
 
-from test.utils import EventListener, client_context
+from test.utils import EventListener
 
 from bson import SON
 from pymongo import MongoClient
 from pymongo.auth_oidc import _CACHE as _oidc_cache
 from pymongo.cursor import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
+from pymongo.hello import HelloCompat
 from pymongo.operations import InsertOne
 
 
@@ -644,8 +645,14 @@ class TestAuthOIDC(unittest.TestCase):
         self.assertEqual(self.refresh_called, 1)
         client.close()
 
-    @client_context.require_no_mongos
     def test_reauthenticate_succeeds_get_more_exhaust(self):
+        # Ensure no mongos
+        props = dict(PROVIDER_NAME="aws")
+        client = MongoClient(self.uri_single, authmechanismproperties=props)
+        hello = client.admin.command(HelloCompat.LEGACY_CMD)
+        if hello.get("msg") != "isdbgrid":
+            raise unittest.SkipTest("Must not be a mongos")
+
         request_cb = self.create_request_cb()
         refresh_cb = self.create_refresh_cb()
 
