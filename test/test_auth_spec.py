@@ -22,6 +22,7 @@ import sys
 sys.path[0:0] = [""]
 
 from test import unittest
+from test.unified_format import generate_test_classes
 
 from pymongo import MongoClient
 
@@ -41,7 +42,16 @@ def create_test(test_case):
         if not valid:
             self.assertRaises(Exception, MongoClient, uri, connect=False)
         else:
-            client = MongoClient(uri, connect=False)
+            props = {}
+            if credential:
+                props = credential["mechanism_properties"] or {}
+                if props.get("REQUEST_TOKEN_CALLBACK"):
+                    props["request_token_callback"] = lambda x, y: 1
+                    del props["REQUEST_TOKEN_CALLBACK"]
+                if props.get("REFRESH_TOKEN_CALLBACK"):
+                    props["refresh_token_callback"] = lambda a, b: 1
+                    del props["REFRESH_TOKEN_CALLBACK"]
+            client = MongoClient(uri, connect=False, authmechanismproperties=props)
             credentials = client.options.pool_options._credentials
             if credential is None:
                 self.assertIsNone(credentials)
@@ -70,6 +80,16 @@ def create_test(test_case):
                             self.assertEqual(
                                 actual.aws_session_token, expected["AWS_SESSION_TOKEN"]
                             )
+                        elif "PROVIDER_NAME" in expected:
+                            self.assertEqual(actual.provider_name, expected["PROVIDER_NAME"])
+                        elif "request_token_callback" in expected:
+                            self.assertEqual(
+                                actual.request_token_callback, expected["request_token_callback"]
+                            )
+                        elif "refresh_token_callback" in expected:
+                            self.assertEqual(
+                                actual.refresh_token_callback, expected["refresh_token_callback"]
+                            )
                         else:
                             self.fail("Unhandled property: %s" % (key,))
                 else:
@@ -82,7 +102,7 @@ def create_test(test_case):
 
 
 def create_tests():
-    for filename in glob.glob(os.path.join(_TEST_PATH, "*.json")):
+    for filename in glob.glob(os.path.join(_TEST_PATH, "legacy", "*.json")):
         test_suffix, _ = os.path.splitext(os.path.basename(filename))
         with open(filename) as auth_tests:
             test_cases = json.load(auth_tests)["tests"]
@@ -96,6 +116,13 @@ def create_tests():
 
 create_tests()
 
+
+globals().update(
+    generate_test_classes(
+        os.path.join(_TEST_PATH, "unified"),
+        module=__name__,
+    )
+)
 
 if __name__ == "__main__":
     unittest.main()

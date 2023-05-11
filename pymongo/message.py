@@ -54,6 +54,7 @@ from pymongo.errors import (
     ProtocolError,
 )
 from pymongo.hello import HelloCompat
+from pymongo.helpers import _handle_reauth
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
@@ -909,6 +910,7 @@ class _BulkWriteContext(object):
             self.start_time = datetime.datetime.now()
         return result
 
+    @_handle_reauth
     def write_command(self, cmd, request_id, msg, docs):
         """A proxy for SocketInfo.write_command that handles event publishing."""
         if self.publish:

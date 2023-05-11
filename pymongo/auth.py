@@ -27,6 +27,7 @@ from urllib.parse import quote
 from bson.binary import Binary
 from bson.son import SON
 from pymongo.auth_aws import _authenticate_aws
+from pymongo.auth_oidc import _authenticate_oidc, _get_authenticator, _OIDCProperties
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.saslprep import saslprep
 
@@ -48,6 +49,7 @@ MECHANISMS = frozenset(
     [
         "GSSAPI",
         "MONGODB-CR",
+        "MONGODB-OIDC",
         "MONGODB-X509",
         "MONGODB-AWS",
         "PLAIN",
@@ -101,7 +103,7 @@ _AWSProperties = namedtuple("_AWSProperties", ["aws_session_token"])
 
 def _build_credentials_tuple(mech, source, user, passwd, extra, database):
     """Build and return a mechanism specific credentials tuple."""
-    if mech not in ("MONGODB-X509", "MONGODB-AWS") and user is None:
+    if mech not in ("MONGODB-X509", "MONGODB-AWS", "MONGODB-OIDC") and user is None:
         raise ConfigurationError("%s requires a username." % (mech,))
     if mech == "GSSAPI":
         if source is not None and source != "$external":
@@ -137,6 +139,32 @@ def _build_credentials_tuple(mech, source, user, passwd, extra, database):
         aws_props = _AWSProperties(aws_session_token=aws_session_token)
         # user can be None for temporary link-local EC2 credentials.
         return MongoCredential(mech, "$external", user, passwd, aws_props, None)
+    elif mech == "MONGODB-OIDC":
+        properties = extra.get("authmechanismproperties", {})
+        request_token_callback = properties.get("request_token_callback")
+        refresh_token_callback = properties.get("refresh_token_callback", None)
+        provider_name = properties.get("PROVIDER_NAME", "")
+        default_allowed = [
+            "*.mongodb.net",
+            "*.mongodb-dev.net",
+            "*.mongodbgov.net",
+            "localhost",
+            "127.0.0.1",
+            "::1",
+        ]
+        allowed_hosts = properties.get("allowed_hosts", default_allowed)
+        if not request_token_callback and provider_name != "aws":
+            raise ConfigurationError(
+                "authentication with MONGODB-OIDC requires providing an request_token_callback or a provider_name of 'aws'"
+            )
+        oidc_props = _OIDCProperties(
+            request_token_callback=request_token_callback,
+            refresh_token_callback=refresh_token_callback,
+            provider_name=provider_name,
+            allowed_hosts=allowed_hosts,
+        )
+        return MongoCredential(mech, "$external", user, passwd, oidc_props, None)
+
     elif mech == "PLAIN":
         source_database = source or database or "$external"
         return MongoCredential(mech, source_database, user, passwd, None, None)
@@ -439,7 +467,7 @@ def _authenticate_x509(credentials, sock_info):
         # MONGODB-X509 is done after the speculative auth step.
         return
 
-    cmd = _X509Context(credentials).speculate_command()
+    cmd = _X509Context(credentials, sock_info.address).speculate_command()
     sock_info.command("$external", cmd)
 
 
@@ -482,6 +510,7 @@ _AUTH_MAP: Mapping[str, Callable] = {
     "MONGODB-CR": _authenticate_mongo_cr,
     "MONGODB-X509": _authenticate_x509,
     "MONGODB-AWS": _authenticate_aws,
+    "MONGODB-OIDC": _authenticate_oidc,
     "PLAIN": _authenticate_plain,
     "SCRAM-SHA-1": functools.partial(_authenticate_scram, mechanism="SCRAM-SHA-1"),
     "SCRAM-SHA-256": functools.partial(_authenticate_scram, mechanism="SCRAM-SHA-256"),
@@ -490,15 +519,16 @@ _AUTH_MAP: Mapping[str, Callable] = {
 
 
 class _AuthContext(object):
-    def __init__(self, credentials):
+    def __init__(self, credentials, address):
         self.credentials = credentials
         self.speculative_authenticate = None
+        self.address = address
 
     @staticmethod
-    def from_credentials(creds):
+    def from_credentials(creds, address):
         spec_cls = _SPECULATIVE_AUTH_MAP.get(creds.mechanism)
         if spec_cls:
-            return spec_cls(creds)
+            return spec_cls(creds, address)
         return None
 
     def speculate_command(self):
@@ -512,8 +542,8 @@ class _AuthContext(object):
 
 
 class _ScramContext(_AuthContext):
-    def __init__(self, credentials, mechanism):
-        super(_ScramContext, self).__init__(credentials)
+    def __init__(self, credentials, address, mechanism):
+        super(_ScramContext, self).__init__(credentials, address)
         self.scram_data = None
         self.mechanism = mechanism
 
@@ -534,16 +564,30 @@ class _X509Context(_AuthContext):
         return cmd
 
 
+class _OIDCContext(_AuthContext):
+    def speculate_command(self):
+        authenticator = _get_authenticator(self.credentials, self.address)
+        cmd = authenticator.auth_start_cmd(False)
+        if cmd is None:
+            return
+        cmd["db"] = self.credentials.source
+        return cmd
+
+
 _SPECULATIVE_AUTH_MAP: Mapping[str, Callable] = {
     "MONGODB-X509": _X509Context,
     "SCRAM-SHA-1": functools.partial(_ScramContext, mechanism="SCRAM-SHA-1"),
     "SCRAM-SHA-256": functools.partial(_ScramContext, mechanism="SCRAM-SHA-256"),
+    "MONGODB-OIDC": _OIDCContext,
     "DEFAULT": functools.partial(_ScramContext, mechanism="SCRAM-SHA-256"),
 }
 
 
-def authenticate(credentials, sock_info):
+def authenticate(credentials, sock_info, reauthenticate=False):
     """Authenticate sock_info."""
     mechanism = credentials.mechanism
     auth_func = _AUTH_MAP[mechanism]
-    auth_func(credentials, sock_info)
+    if mechanism == "MONGODB-OIDC":
+        _authenticate_oidc(credentials, sock_info, reauthenticate)
+    else:
+        auth_func(credentials, sock_info)

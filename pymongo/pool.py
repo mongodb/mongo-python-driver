@@ -57,6 +57,7 @@ from pymongo.errors import (
     _CertificateError,
 )
 from pymongo.hello import Hello, HelloCompat
+from pymongo.helpers import _handle_reauth
 from pymongo.lock import _create_lock
 from pymongo.monitoring import ConnectionCheckOutFailedReason, ConnectionClosedReason
 from pymongo.network import command, receive_message
@@ -756,7 +757,7 @@ class SocketInfo(object):
         if creds:
             if creds.mechanism == "DEFAULT" and creds.username:
                 cmd["saslSupportedMechs"] = creds.source + "." + creds.username
-            auth_ctx = auth._AuthContext.from_credentials(creds)
+            auth_ctx = auth._AuthContext.from_credentials(creds, self.address)
             if auth_ctx:
                 cmd["speculativeAuthenticate"] = auth_ctx.speculate_command()
         else:
@@ -813,6 +814,7 @@ class SocketInfo(object):
         helpers._check_command_response(response_doc, self.max_wire_version)
         return response_doc
 
+    @_handle_reauth
     def command(
         self,
         dbname,
@@ -966,17 +968,22 @@ class SocketInfo(object):
         helpers._check_command_response(result, self.max_wire_version)
         return result
 
-    def authenticate(self):
+    def authenticate(self, reauthenticate=False):
         """Authenticate to the server if needed.
 
         Can raise ConnectionFailure or OperationFailure.
         """
         # CMAP spec says to publish the ready event only after authenticating
         # the connection.
+        if reauthenticate:
+            if self.performed_handshake:
+                # Existing auth_ctx is stale, remove it.
+                self.auth_ctx = None
+            self.ready = False
         if not self.ready:
             creds = self.opts._credentials
             if creds:
-                auth.authenticate(creds, self)
+                auth.authenticate(creds, self, reauthenticate=reauthenticate)
             self.ready = True
             if self.enabled_for_cmap:
                 self.listeners.publish_connection_ready(self.address, self.id)

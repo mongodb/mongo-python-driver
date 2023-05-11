@@ -16,6 +16,7 @@
 """Functions and classes common to multiple pymongo modules."""
 
 import datetime
+import inspect
 import warnings
 from collections import OrderedDict, abc
 from typing import (
@@ -416,14 +417,48 @@ def validate_read_preference_tags(name: str, value: Any) -> List[Dict[str, str]]
 
 
 _MECHANISM_PROPS = frozenset(
-    ["SERVICE_NAME", "CANONICALIZE_HOST_NAME", "SERVICE_REALM", "AWS_SESSION_TOKEN"]
+    [
+        "SERVICE_NAME",
+        "CANONICALIZE_HOST_NAME",
+        "SERVICE_REALM",
+        "AWS_SESSION_TOKEN",
+        "PROVIDER_NAME",
+    ]
 )
 
 
 def validate_auth_mechanism_properties(option: str, value: Any) -> Dict[str, Union[bool, str]]:
     """Validate authMechanismProperties."""
-    value = validate_string(option, value)
     props: Dict[str, Any] = {}
+    if not isinstance(value, str):
+        if not isinstance(value, dict):
+            raise ValueError("Auth mechanism properties must be given as a string or a dictionary")
+        for key, value in value.items():
+            if isinstance(value, str):
+                props[key] = value
+            elif isinstance(value, bool):
+                props[key] = str(value).lower()
+            elif key in ["allowed_hosts"] and isinstance(value, list):
+                props[key] = value
+            elif inspect.isfunction(value):
+                signature = inspect.signature(value)
+                if key == "request_token_callback":
+                    expected_params = 2
+                elif key == "refresh_token_callback":
+                    expected_params = 2
+                else:
+                    raise ValueError(f"Unrecognized Auth mechanism function {key}")
+                if len(signature.parameters) != expected_params:
+                    msg = f"{key} must accept {expected_params} parameters"
+                    raise ValueError(msg)
+                props[key] = value
+            else:
+                raise ValueError(
+                    "Auth mechanism property values must be strings or callback functions"
+                )
+        return props
+
+    value = validate_string(option, value)
     for opt in value.split(","):
         try:
             key, val = opt.split(":")
@@ -715,6 +750,7 @@ KW_VALIDATORS: Dict[str, Callable[[Any, Any], Any]] = {
     "password": validate_string_or_none,
     "server_selector": validate_is_callable_or_none,
     "auto_encryption_opts": validate_auto_encryption_opts_or_none,
+    "authoidcallowedhosts": validate_list,
 }
 
 # Dictionary where keys are any URI option name, and values are the
