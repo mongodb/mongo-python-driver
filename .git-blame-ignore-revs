@@ -1,2 +1,4 @@
 # Initial pre-commit reformat
 5578999a90e439fbca06fc0ffc98f4d04e96f7b4
+# pyupgrade and ruff
+0092b0af79378abf35b6db73a082ecb91af1d973
