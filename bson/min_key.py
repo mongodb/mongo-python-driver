@@ -17,7 +17,7 @@
 from typing import Any
 
 
-class MinKey(object):
+class MinKey:
     """MongoDB internal MinKey type."""
 
     __slots__ = ()

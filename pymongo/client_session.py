@@ -169,7 +169,7 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.write_concern import WriteConcern
 
 
-class SessionOptions(object):
+class SessionOptions:
     """Options for a new :class:`ClientSession`.
 
     :Parameters:
@@ -232,7 +232,7 @@ class SessionOptions(object):
         return self._snapshot
 
 
-class TransactionOptions(object):
+class TransactionOptions:
     """Options for :meth:`ClientSession.start_transaction`.
 
     :Parameters:
@@ -345,7 +345,7 @@ def _validate_session_write_concern(session, write_concern):
     return session
 
 
-class _TransactionContext(object):
+class _TransactionContext:
     """Internal transaction context manager for start_transaction."""
 
     def __init__(self, session):
@@ -362,7 +362,7 @@ class _TransactionContext(object):
                 self.__session.abort_transaction()
 
 
-class _TxnState(object):
+class _TxnState:
     NONE = 1
     STARTING = 2
     IN_PROGRESS = 3
@@ -371,7 +371,7 @@ class _TxnState(object):
     ABORTED = 6
 
 
-class _Transaction(object):
+class _Transaction:
     """Internal class to hold transaction information in a ClientSession."""
 
     def __init__(self, opts, client):
@@ -1023,7 +1023,7 @@ class _EmptyServerSession:
         self.started_retryable_write = True
 
 
-class _ServerSession(object):
+class _ServerSession:
     def __init__(self, generation):
         # Ensure id is type 4, regardless of CodecOptions.uuid_representation.
         self.session_id = {"id": Binary(uuid.uuid4().bytes, 4)}
@@ -1062,7 +1062,7 @@ class _ServerSessionPool(collections.deque):
     """
 
     def __init__(self, *args, **kwargs):
-        super(_ServerSessionPool, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.generation = 0
 
     def reset(self):

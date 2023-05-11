@@ -93,12 +93,12 @@ class TestReadWriteConcernSpec(IntegrationTest):
                 self.assertNotIn(
                     "readConcern",
                     event.command,
-                    "%s sent default readConcern with %s" % (name, event.command_name),
+                    f"{name} sent default readConcern with {event.command_name}",
                 )
                 self.assertNotIn(
                     "writeConcern",
                     event.command,
-                    "%s sent default writeConcern with %s" % (name, event.command_name),
+                    f"{name} sent default writeConcern with {event.command_name}",
                 )
 
     def assertWriteOpsRaise(self, write_concern, expected_exception):
@@ -307,7 +307,7 @@ def create_tests():
             fname = os.path.splitext(filename)[0]
             for test_case in test_cases:
                 new_test = create_test(test_case)
-                test_name = "test_%s_%s_%s" % (
+                test_name = "test_{}_{}_{}".format(
                     dirname.replace("-", "_"),
                     fname.replace("-", "_"),
                     str(test_case["description"].lower().replace(" ", "_")),

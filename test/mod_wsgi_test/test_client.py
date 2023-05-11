@@ -91,7 +91,7 @@ class URLGetterThread(threading.Thread):
     counter = 0
 
     def __init__(self, options, url, nrequests_per_thread):
-        super(URLGetterThread, self).__init__()
+        super().__init__()
         self.options = options
         self.url = url
         self.nrequests_per_thread = nrequests_per_thread
@@ -154,7 +154,7 @@ def main(options, mode, url):
     else:
         assert mode == "serial"
         if options.verbose:
-            print("Getting %s %s times in one thread" % (url, options.nrequests))
+            print(f"Getting {url} {options.nrequests} times in one thread")
 
         for i in range(1, options.nrequests + 1):
             try:

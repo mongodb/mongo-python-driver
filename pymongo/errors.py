@@ -33,7 +33,7 @@ class PyMongoError(Exception):
     """Base class for all PyMongo exceptions."""
 
     def __init__(self, message: str = "", error_labels: Optional[Iterable[str]] = None) -> None:
-        super(PyMongoError, self).__init__(message)
+        super().__init__(message)
         self._message = message
         self._error_labels = set(error_labels or [])
 
@@ -105,7 +105,7 @@ class AutoReconnect(ConnectionFailure):
         if errors is not None:
             if isinstance(errors, dict):
                 error_labels = errors.get("errorLabels")
-        super(AutoReconnect, self).__init__(message, error_labels)
+        super().__init__(message, error_labels)
         self.errors = self.details = errors or []
 
 
@@ -125,7 +125,7 @@ class NetworkTimeout(AutoReconnect):
 
 def _format_detailed_error(message, details):
     if details is not None:
-        message = "%s, full error: %s" % (message, details)
+        message = f"{message}, full error: {details}"
     return message
 
 
@@ -148,9 +148,7 @@ class NotPrimaryError(AutoReconnect):
     def __init__(
         self, message: str = "", errors: Optional[Union[Mapping[str, Any], List]] = None
     ) -> None:
-        super(NotPrimaryError, self).__init__(
-            _format_detailed_error(message, errors), errors=errors
-        )
+        super().__init__(_format_detailed_error(message, errors), errors=errors)
 
 
 class ServerSelectionTimeoutError(AutoReconnect):
@@ -191,9 +189,7 @@ class OperationFailure(PyMongoError):
         error_labels = None
         if details is not None:
             error_labels = details.get("errorLabels")
-        super(OperationFailure, self).__init__(
-            _format_detailed_error(error, details), error_labels=error_labels
-        )
+        super().__init__(_format_detailed_error(error, details), error_labels=error_labels)
         self.__code = code
         self.__details = details
         self.__max_wire_version = max_wire_version
@@ -293,7 +289,7 @@ class BulkWriteError(OperationFailure):
     details: Mapping[str, Any]
 
     def __init__(self, results: Mapping[str, Any]) -> None:
-        super(BulkWriteError, self).__init__("batch op errors occurred", 65, results)
+        super().__init__("batch op errors occurred", 65, results)
 
     def __reduce__(self) -> Tuple[Any, Any]:
         return self.__class__, (self.details,)
@@ -344,7 +340,7 @@ class EncryptionError(PyMongoError):
     """
 
     def __init__(self, cause: Exception) -> None:
-        super(EncryptionError, self).__init__(str(cause))
+        super().__init__(str(cause))
         self.__cause = cause
 
     @property
@@ -369,7 +365,7 @@ class EncryptedCollectionError(EncryptionError):
     """
 
     def __init__(self, cause: Exception, encrypted_fields: Mapping[str, Any]) -> None:
-        super(EncryptedCollectionError, self).__init__(cause)
+        super().__init__(cause)
         self.__encrypted_fields = encrypted_fields
 
     @property

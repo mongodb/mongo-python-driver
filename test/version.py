@@ -18,7 +18,7 @@
 class Version(tuple):
     def __new__(cls, *version):
         padded_version = cls._padded(version, 4)
-        return super(Version, cls).__new__(cls, tuple(padded_version))
+        return super().__new__(cls, tuple(padded_version))
 
     @classmethod
     def _padded(cls, iter, length, padding=0):

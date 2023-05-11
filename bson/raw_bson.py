@@ -174,7 +174,7 @@ class RawBSONDocument(Mapping[str, Any]):
         return NotImplemented
 
     def __repr__(self):
-        return "%s(%r, codec_options=%r)" % (
+        return "{}({!r}, codec_options={!r})".format(
             self.__class__.__name__,
             self.raw,
             self.__codec_options,

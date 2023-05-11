@@ -54,7 +54,7 @@ class Code(str):
         cls: Type["Code"],
         code: Union[str, "Code"],
         scope: Optional[Mapping[str, Any]] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> "Code":
         if not isinstance(code, str):
             raise TypeError("code must be an instance of str")
@@ -88,7 +88,7 @@ class Code(str):
         return self.__scope
 
     def __repr__(self):
-        return "Code(%s, %r)" % (str.__repr__(self), self.__scope)
+        return f"Code({str.__repr__(self)}, {self.__scope!r})"
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Code):

@@ -48,7 +48,7 @@ _TEST_PATH = os.path.join(
 )
 
 
-class SelectionStoreSelector(object):
+class SelectionStoreSelector:
     """No-op selector that keeps track of what was passed to it."""
 
     def __init__(self):

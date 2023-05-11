@@ -17,7 +17,7 @@
 from typing import Any
 
 
-class MaxKey(object):
+class MaxKey:
     """MongoDB internal MaxKey type."""
 
     __slots__ = ()

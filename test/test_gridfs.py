@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2009-present MongoDB, Inc.
 #
@@ -90,7 +89,7 @@ class TestGridfs(IntegrationTest):
 
     @classmethod
     def setUpClass(cls):
-        super(TestGridfs, cls).setUpClass()
+        super().setUpClass()
         cls.fs = gridfs.GridFS(cls.db)
         cls.alt = gridfs.GridFS(cls.db, "alt")
 
@@ -141,7 +140,7 @@ class TestGridfs(IntegrationTest):
         self.fs.put(b"foo", filename="test")
         self.fs.put(b"", filename="hello world")
 
-        self.assertEqual(set(["mike", "test", "hello world"]), set(self.fs.list()))
+        self.assertEqual({"mike", "test", "hello world"}, set(self.fs.list()))
 
     def test_empty_file(self):
         oid = self.fs.put(b"")
@@ -210,7 +209,7 @@ class TestGridfs(IntegrationTest):
         self.alt.put(b"foo", filename="test")
         self.alt.put(b"", filename="hello world")
 
-        self.assertEqual(set(["mike", "test", "hello world"]), set(self.alt.list()))
+        self.assertEqual({"mike", "test", "hello world"}, set(self.alt.list()))
 
     def test_threaded_reads(self):
         self.fs.put(b"hello", _id="test")
@@ -496,7 +495,7 @@ class TestGridfsReplicaSet(IntegrationTest):
     @classmethod
     @client_context.require_secondaries_count(1)
     def setUpClass(cls):
-        super(TestGridfsReplicaSet, cls).setUpClass()
+        super().setUpClass()
 
     @classmethod
     def tearDownClass(cls):

@@ -58,7 +58,7 @@ def tearDownModule():
         print(output)
 
 
-class Timer(object):
+class Timer:
     def __enter__(self):
         self.start = time.monotonic()
         return self
@@ -68,7 +68,7 @@ class Timer(object):
         self.interval = self.end - self.start
 
 
-class PerformanceTest(object):
+class PerformanceTest:
     dataset: Any
     data_size: Any
     do_task: Any
@@ -85,7 +85,7 @@ class PerformanceTest(object):
         name = self.__class__.__name__
         median = self.percentile(50)
         bytes_per_sec = self.data_size / median
-        print("Running %s. MEDIAN=%s" % (self.__class__.__name__, self.percentile(50)))
+        print(f"Running {self.__class__.__name__}. MEDIAN={self.percentile(50)}")
         result_data.append(
             {
                 "info": {
@@ -202,7 +202,7 @@ class TestDocument(PerformanceTest):
     def setUp(self):
         # Location of test data.
         with open(
-            os.path.join(TEST_PATH, os.path.join("single_and_multi_document", self.dataset)), "r"
+            os.path.join(TEST_PATH, os.path.join("single_and_multi_document", self.dataset))
         ) as data:
             self.document = json.loads(data.read())
 
@@ -210,7 +210,7 @@ class TestDocument(PerformanceTest):
         self.client.drop_database("perftest")
 
     def tearDown(self):
-        super(TestDocument, self).tearDown()
+        super().tearDown()
         self.client.drop_database("perftest")
 
     def before(self):
@@ -225,7 +225,7 @@ class TestFindOneByID(TestDocument, unittest.TestCase):
 
     def setUp(self):
         self.dataset = "tweet.json"
-        super(TestFindOneByID, self).setUp()
+        super().setUp()
 
         documents = [self.document.copy() for _ in range(NUM_DOCS)]
         self.corpus = self.client.perftest.corpus
@@ -249,7 +249,7 @@ class TestSmallDocInsertOne(TestDocument, unittest.TestCase):
 
     def setUp(self):
         self.dataset = "small_doc.json"
-        super(TestSmallDocInsertOne, self).setUp()
+        super().setUp()
 
         self.documents = [self.document.copy() for _ in range(NUM_DOCS)]
 
@@ -264,7 +264,7 @@ class TestLargeDocInsertOne(TestDocument, unittest.TestCase):
 
     def setUp(self):
         self.dataset = "large_doc.json"
-        super(TestLargeDocInsertOne, self).setUp()
+        super().setUp()
 
         self.documents = [self.document.copy() for _ in range(10)]
 
@@ -280,7 +280,7 @@ class TestFindManyAndEmptyCursor(TestDocument, unittest.TestCase):
 
     def setUp(self):
         self.dataset = "tweet.json"
-        super(TestFindManyAndEmptyCursor, self).setUp()
+        super().setUp()
 
         for _ in range(10):
             self.client.perftest.command("insert", "corpus", documents=[self.document] * 1000)
@@ -301,7 +301,7 @@ class TestSmallDocBulkInsert(TestDocument, unittest.TestCase):
 
     def setUp(self):
         self.dataset = "small_doc.json"
-        super(TestSmallDocBulkInsert, self).setUp()
+        super().setUp()
         self.documents = [self.document.copy() for _ in range(NUM_DOCS)]
 
     def before(self):
@@ -316,7 +316,7 @@ class TestLargeDocBulkInsert(TestDocument, unittest.TestCase):
 
     def setUp(self):
         self.dataset = "large_doc.json"
-        super(TestLargeDocBulkInsert, self).setUp()
+        super().setUp()
         self.documents = [self.document.copy() for _ in range(10)]
 
     def before(self):
@@ -342,7 +342,7 @@ class TestGridFsUpload(PerformanceTest, unittest.TestCase):
         self.bucket = GridFSBucket(self.client.perftest)
 
     def tearDown(self):
-        super(TestGridFsUpload, self).tearDown()
+        super().tearDown()
         self.client.drop_database("perftest")
 
     def before(self):
@@ -368,7 +368,7 @@ class TestGridFsDownload(PerformanceTest, unittest.TestCase):
             self.uploaded_id = self.bucket.upload_from_stream("gridfstest", gfile)
 
     def tearDown(self):
-        super(TestGridFsDownload, self).tearDown()
+        super().tearDown()
         self.client.drop_database("perftest")
 
     def do_task(self):
@@ -392,14 +392,14 @@ def mp_map(map_func, files):
 
 def insert_json_file(filename):
     assert proc_client is not None
-    with open(filename, "r") as data:
+    with open(filename) as data:
         coll = proc_client.perftest.corpus
         coll.insert_many([json.loads(line) for line in data])
 
 
 def insert_json_file_with_file_id(filename):
     documents = []
-    with open(filename, "r") as data:
+    with open(filename) as data:
         for line in data:
             doc = json.loads(line)
             doc["file"] = filename
@@ -461,7 +461,7 @@ class TestJsonMultiImport(PerformanceTest, unittest.TestCase):
         self.client.perftest.drop_collection("corpus")
 
     def tearDown(self):
-        super(TestJsonMultiImport, self).tearDown()
+        super().tearDown()
         self.client.drop_database("perftest")
 
 
@@ -482,7 +482,7 @@ class TestJsonMultiExport(PerformanceTest, unittest.TestCase):
         mp_map(read_json_file, self.files)
 
     def tearDown(self):
-        super(TestJsonMultiExport, self).tearDown()
+        super().tearDown()
         self.client.drop_database("perftest")
 
 
@@ -505,7 +505,7 @@ class TestGridFsMultiFileUpload(PerformanceTest, unittest.TestCase):
         mp_map(insert_gridfs_file, self.files)
 
     def tearDown(self):
-        super(TestGridFsMultiFileUpload, self).tearDown()
+        super().tearDown()
         self.client.drop_database("perftest")
 
 
@@ -529,7 +529,7 @@ class TestGridFsMultiFileDownload(PerformanceTest, unittest.TestCase):
         mp_map(read_gridfs_file, self.files)
 
     def tearDown(self):
-        super(TestGridFsMultiFileDownload, self).tearDown()
+        super().tearDown()
         self.client.drop_database("perftest")
 
 

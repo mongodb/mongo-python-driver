@@ -272,7 +272,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
             self.mongocryptd_client = None
 
 
-class RewrapManyDataKeyResult(object):
+class RewrapManyDataKeyResult:
     """Result object returned by a :meth:`~ClientEncryption.rewrap_many_data_key` operation.
 
     .. versionadded:: 4.2
@@ -292,7 +292,7 @@ class RewrapManyDataKeyResult(object):
         return self._bulk_write_result
 
 
-class _Encrypter(object):
+class _Encrypter:
     """Encrypts and decrypts MongoDB commands.
 
     This class is used to support automatic encryption and decryption of

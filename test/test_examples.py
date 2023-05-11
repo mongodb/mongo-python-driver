@@ -34,7 +34,7 @@ from pymongo.write_concern import WriteConcern
 class TestSampleShellCommands(IntegrationTest):
     @classmethod
     def setUpClass(cls):
-        super(TestSampleShellCommands, cls).setUpClass()
+        super().setUpClass()
         # Run once before any tests run.
         cls.db.inventory.drop()
 

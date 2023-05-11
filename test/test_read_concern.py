@@ -33,7 +33,7 @@ class TestReadConcern(IntegrationTest):
     @classmethod
     @client_context.require_connection
     def setUpClass(cls):
-        super(TestReadConcern, cls).setUpClass()
+        super().setUpClass()
         cls.listener = OvertCommandListener()
         cls.client = rs_or_single_client(event_listeners=[cls.listener])
         cls.db = cls.client.pymongo_test
@@ -43,11 +43,11 @@ class TestReadConcern(IntegrationTest):
     def tearDownClass(cls):
         cls.client.close()
         client_context.client.pymongo_test.drop_collection("coll")
-        super(TestReadConcern, cls).tearDownClass()
+        super().tearDownClass()
 
     def tearDown(self):
         self.listener.reset()
-        super(TestReadConcern, self).tearDown()
+        super().tearDown()
 
     def test_read_concern(self):
         rc = ReadConcern()
@@ -65,7 +65,7 @@ class TestReadConcern(IntegrationTest):
         self.assertRaises(TypeError, ReadConcern, 42)
 
     def test_read_concern_uri(self):
-        uri = "mongodb://%s/?readConcernLevel=majority" % (client_context.pair,)
+        uri = f"mongodb://{client_context.pair}/?readConcernLevel=majority"
         client = rs_or_single_client(uri, connect=False)
         self.assertEqual(ReadConcern("majority"), client.read_concern)
 

@@ -26,7 +26,7 @@ from pymongo.server_description import ServerDescription
 from pymongo.topology_description import TOPOLOGY_TYPE
 
 
-class TopologySettings(object):
+class TopologySettings:
     def __init__(
         self,
         seeds=None,
@@ -156,4 +156,4 @@ class TopologySettings(object):
 
     def get_server_descriptions(self):
         """Initial dict of (address, ServerDescription) for all seeds."""
-        return dict([(address, ServerDescription(address)) for address in self.seeds])
+        return {address: ServerDescription(address) for address in self.seeds}

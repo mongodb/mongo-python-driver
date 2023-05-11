@@ -43,7 +43,7 @@ class TestSlaveOkaySharded(unittest.TestCase):
                 "ismaster", minWireVersion=2, maxWireVersion=6, ismaster=True, msg="isdbgrid"
             )
 
-        self.mongoses_uri = "mongodb://%s,%s" % (
+        self.mongoses_uri = "mongodb://{},{}".format(
             self.mongos1.address_string,
             self.mongos2.address_string,
         )
@@ -84,7 +84,7 @@ def generate_slave_ok_sharded_tests():
     for entry in matrix:
         mode, operation = entry
         test = create_slave_ok_sharded_test(mode, operation)
-        test_name = "test_%s_with_mode_%s" % (operation.name.replace(" ", "_"), mode)
+        test_name = "test_{}_with_mode_{}".format(operation.name.replace(" ", "_"), mode)
 
         test.__name__ = test_name
         setattr(TestSlaveOkaySharded, test_name, test)

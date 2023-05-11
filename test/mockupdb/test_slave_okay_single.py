@@ -78,7 +78,7 @@ def generate_slave_ok_single_tests():
         mode, (server_type, ismaster), operation = entry
         test = create_slave_ok_single_test(mode, server_type, ismaster, operation)
 
-        test_name = "test_%s_%s_with_mode_%s" % (
+        test_name = "test_{}_{}_with_mode_{}".format(
             operation.name.replace(" ", "_"),
             server_type,
             mode,

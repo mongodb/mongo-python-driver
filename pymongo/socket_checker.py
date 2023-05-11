@@ -33,7 +33,7 @@ def _errno_from_exception(exc):
     return None
 
 
-class SocketChecker(object):
+class SocketChecker:
     def __init__(self) -> None:
         self._poller: Optional[select.poll]
         if _HAVE_POLL:
@@ -78,7 +78,7 @@ class SocketChecker(object):
                     # ready: subsets of the first three arguments. Return
                     # True if any of the lists are not empty.
                     return any(res)
-            except (_SelectError, IOError) as exc:  # type: ignore
+            except (_SelectError, OSError) as exc:  # type: ignore
                 if _errno_from_exception(exc) in (errno.EINTR, errno.EAGAIN):
                     continue
                 raise

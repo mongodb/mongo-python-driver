@@ -68,7 +68,7 @@ _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "retryabl
 
 class InsertEventListener(EventListener):
     def succeeded(self, event: CommandSucceededEvent) -> None:
-        super(InsertEventListener, self).succeeded(event)
+        super().succeeded(event)
         if (
             event.command_name == "insert"
             and event.reply.get("writeConcernError", {}).get("code", None) == 91
@@ -108,7 +108,7 @@ class TestAllScenarios(SpecRunner):
         if "result" in outcome:
             operation["result"] = outcome["result"]
         test["operations"] = [operation]
-        super(TestAllScenarios, self).run_test_ops(sessions, collection, test)
+        super().run_test_ops(sessions, collection, test)
 
 
 def create_test(scenario_def, test, name):
@@ -168,13 +168,13 @@ class IgnoreDeprecationsTest(IntegrationTest):
 
     @classmethod
     def setUpClass(cls):
-        super(IgnoreDeprecationsTest, cls).setUpClass()
+        super().setUpClass()
         cls.deprecation_filter = DeprecationFilter()
 
     @classmethod
     def tearDownClass(cls):
         cls.deprecation_filter.stop()
-        super(IgnoreDeprecationsTest, cls).tearDownClass()
+        super().tearDownClass()
 
 
 class TestRetryableWritesMMAPv1(IgnoreDeprecationsTest):
@@ -182,7 +182,7 @@ class TestRetryableWritesMMAPv1(IgnoreDeprecationsTest):
 
     @classmethod
     def setUpClass(cls):
-        super(TestRetryableWritesMMAPv1, cls).setUpClass()
+        super().setUpClass()
         # Speed up the tests by decreasing the heartbeat frequency.
         cls.knobs = client_knobs(heartbeat_frequency=0.1, min_heartbeat_interval=0.1)
         cls.knobs.enable()
@@ -193,7 +193,7 @@ class TestRetryableWritesMMAPv1(IgnoreDeprecationsTest):
     def tearDownClass(cls):
         cls.knobs.disable()
         cls.client.close()
-        super(TestRetryableWritesMMAPv1, cls).tearDownClass()
+        super().tearDownClass()
 
     @client_context.require_no_standalone
     def test_actionable_error_message(self):
@@ -217,7 +217,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
     @classmethod
     @client_context.require_no_mmap
     def setUpClass(cls):
-        super(TestRetryableWrites, cls).setUpClass()
+        super().setUpClass()
         # Speed up the tests by decreasing the heartbeat frequency.
         cls.knobs = client_knobs(heartbeat_frequency=0.1, min_heartbeat_interval=0.1)
         cls.knobs.enable()
@@ -229,7 +229,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
     def tearDownClass(cls):
         cls.knobs.disable()
         cls.client.close()
-        super(TestRetryableWrites, cls).tearDownClass()
+        super().tearDownClass()
 
     def setUp(self):
         if client_context.is_rs and client_context.test_commands_enabled:
@@ -248,20 +248,20 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
         client = rs_or_single_client(retryWrites=False, event_listeners=[listener])
         self.addCleanup(client.close)
         for method, args, kwargs in retryable_single_statement_ops(client.db.retryable_write_test):
-            msg = "%s(*%r, **%r)" % (method.__name__, args, kwargs)
+            msg = f"{method.__name__}(*{args!r}, **{kwargs!r})"
             listener.reset()
             method(*args, **kwargs)
             for event in listener.started_events:
                 self.assertNotIn(
                     "txnNumber",
                     event.command,
-                    "%s sent txnNumber with %s" % (msg, event.command_name),
+                    f"{msg} sent txnNumber with {event.command_name}",
                 )
 
     @client_context.require_no_standalone
     def test_supported_single_statement_supported_cluster(self):
         for method, args, kwargs in retryable_single_statement_ops(self.db.retryable_write_test):
-            msg = "%s(*%r, **%r)" % (method.__name__, args, kwargs)
+            msg = f"{method.__name__}(*{args!r}, **{kwargs!r})"
             self.listener.reset()
             method(*args, **kwargs)
             commands_started = self.listener.started_events
@@ -270,13 +270,13 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             self.assertIn(
                 "lsid",
                 first_attempt.command,
-                "%s sent no lsid with %s" % (msg, first_attempt.command_name),
+                f"{msg} sent no lsid with {first_attempt.command_name}",
             )
             initial_session_id = first_attempt.command["lsid"]
             self.assertIn(
                 "txnNumber",
                 first_attempt.command,
-                "%s sent no txnNumber with %s" % (msg, first_attempt.command_name),
+                f"{msg} sent no txnNumber with {first_attempt.command_name}",
             )
 
             # There should be no retry when the failpoint is not active.
@@ -289,13 +289,13 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             self.assertIn(
                 "lsid",
                 retry_attempt.command,
-                "%s sent no lsid with %s" % (msg, first_attempt.command_name),
+                f"{msg} sent no lsid with {first_attempt.command_name}",
             )
             self.assertEqual(retry_attempt.command["lsid"], initial_session_id, msg)
             self.assertIn(
                 "txnNumber",
                 retry_attempt.command,
-                "%s sent no txnNumber with %s" % (msg, first_attempt.command_name),
+                f"{msg} sent no txnNumber with {first_attempt.command_name}",
             )
             self.assertEqual(retry_attempt.command["txnNumber"], initial_transaction_id, msg)
 
@@ -304,7 +304,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             raise SkipTest("This cluster supports retryable writes")
 
         for method, args, kwargs in retryable_single_statement_ops(self.db.retryable_write_test):
-            msg = "%s(*%r, **%r)" % (method.__name__, args, kwargs)
+            msg = f"{method.__name__}(*{args!r}, **{kwargs!r})"
             self.listener.reset()
             method(*args, **kwargs)
 
@@ -312,7 +312,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
                 self.assertNotIn(
                     "txnNumber",
                     event.command,
-                    "%s sent txnNumber with %s" % (msg, event.command_name),
+                    f"{msg} sent txnNumber with {event.command_name}",
                 )
 
     def test_unsupported_single_statement(self):
@@ -322,7 +322,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
         for method, args, kwargs in non_retryable_single_statement_ops(
             coll
         ) + retryable_single_statement_ops(coll_w0):
-            msg = "%s(*%r, **%r)" % (method.__name__, args, kwargs)
+            msg = f"{method.__name__}(*{args!r}, **{kwargs!r})"
             self.listener.reset()
             method(*args, **kwargs)
             started_events = self.listener.started_events
@@ -332,7 +332,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
                 self.assertNotIn(
                     "txnNumber",
                     event.command,
-                    "%s sent txnNumber with %s" % (msg, event.command_name),
+                    f"{msg} sent txnNumber with {event.command_name}",
                 )
 
     def test_server_selection_timeout_not_retried(self):
@@ -345,7 +345,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             event_listeners=[listener],
         )
         for method, args, kwargs in retryable_single_statement_ops(client.db.retryable_write_test):
-            msg = "%s(*%r, **%r)" % (method.__name__, args, kwargs)
+            msg = f"{method.__name__}(*{args!r}, **{kwargs!r})"
             listener.reset()
             with self.assertRaises(ServerSelectionTimeoutError, msg=msg):
                 method(*args, **kwargs)
@@ -374,7 +374,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             return server
 
         for method, args, kwargs in retryable_single_statement_ops(client.db.retryable_write_test):
-            msg = "%s(*%r, **%r)" % (method.__name__, args, kwargs)
+            msg = f"{method.__name__}(*{args!r}, **{kwargs!r})"
             listener.reset()
             topology.select_server = mock_select_server
             with self.assertRaises(ConnectionFailure, msg=msg):
@@ -479,7 +479,7 @@ class TestWriteConcernError(IntegrationTest):
     @client_context.require_no_mmap
     @client_context.require_failCommand_fail_point
     def setUpClass(cls):
-        super(TestWriteConcernError, cls).setUpClass()
+        super().setUpClass()
         cls.fail_insert = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 2},
@@ -668,7 +668,7 @@ class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
             with client.start_session() as session:
                 kwargs = copy.deepcopy(kwargs)
                 kwargs["session"] = session
-                msg = "%s(*%r, **%r)" % (method.__name__, args, kwargs)
+                msg = f"{method.__name__}(*{args!r}, **{kwargs!r})"
                 initial_txn_id = session._server_session.transaction_id
 
                 # Each operation should fail on the first attempt and succeed
