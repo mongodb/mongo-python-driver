@@ -1,6 +1,6 @@
 {
   "description": "reauthenticate_without_retry",
-  "schemaVersion": "1.13",
+  "schemaVersion": "1.12",
   "runOnRequirements": [
     {
       "minServerVersion": "6.3",
