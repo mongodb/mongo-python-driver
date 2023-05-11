@@ -327,8 +327,6 @@ class InvalidURI(ConfigurationError):
 class DocumentTooLarge(InvalidDocument):
     """Raised when an encoded document is too large for the connected server."""
 
-    pass
-
 
 class EncryptionError(PyMongoError):
     """Raised when encryption or decryption fails.
@@ -382,5 +380,3 @@ class EncryptedCollectionError(EncryptionError):
 
 class _OperationCancelled(AutoReconnect):
     """Internal error raised when a socket operation is cancelled."""
-
-    pass

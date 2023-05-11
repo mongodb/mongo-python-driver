@@ -226,8 +226,8 @@ def receive_message(sock_info, request_id, max_message_size=MAX_MESSAGE_SIZE):
         )
     if length > max_message_size:
         raise ProtocolError(
-            "Message length (%r) is larger than server max "
-            "message size (%r)" % (length, max_message_size)
+            "Message length ({!r}) is larger than server max "
+            "message size ({!r})".format(length, max_message_size)
         )
     if op_code == 2012:
         op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(
@@ -281,7 +281,7 @@ def wait_for_read(sock_info, deadline):
 
 
 # Errors raised by sockets (and TLS sockets) when in non-blocking mode.
-BLOCKING_IO_ERRORS = (BlockingIOError,) + ssl_support.BLOCKING_IO_ERRORS
+BLOCKING_IO_ERRORS = (BlockingIOError, *ssl_support.BLOCKING_IO_ERRORS)
 
 
 def _receive_data_on_socket(sock_info, length, deadline):

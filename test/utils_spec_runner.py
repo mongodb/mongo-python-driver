@@ -242,6 +242,7 @@ class SpecRunner(IntegrationTest):
                     self.assertEqual(expected_result, result)
 
             _helper(expected_result, result)
+            return None
 
     def get_object_name(self, op):
         """Allow subclasses to override handling of 'object'
@@ -335,7 +336,7 @@ class SpecRunner(IntegrationTest):
         expected_result = op.get("result")
         if expect_error(op):
             with self.assertRaises(self.allowable_errors(op), msg=op["name"]) as context:
-                out = self.run_operation(sessions, collection, op.copy())
+                self.run_operation(sessions, collection, op.copy())
             exc = context.exception
             if expect_error_message(expected_result):
                 if isinstance(exc, BulkWriteError):
@@ -459,7 +460,8 @@ class SpecRunner(IntegrationTest):
 
     def run_test_ops(self, sessions, collection, test):
         """Added to allow retryable writes spec to override a test's
-        operation."""
+        operation.
+        """
         self.run_operations(sessions, collection, test["operations"])
 
     def parse_client_options(self, opts):

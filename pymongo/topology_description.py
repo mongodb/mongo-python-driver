@@ -184,7 +184,8 @@ class TopologyDescription:
 
     def server_descriptions(self) -> Dict[_Address, ServerDescription]:
         """Dict of (address,
-        :class:`~pymongo.server_description.ServerDescription`)."""
+        :class:`~pymongo.server_description.ServerDescription`).
+        """
         return self._server_descriptions.copy()
 
     @property
@@ -400,8 +401,9 @@ def updated_topology_description(
         if set_name is not None and set_name != server_description.replica_set_name:
             error = ConfigurationError(
                 "client is configured to connect to a replica set named "
-                "'%s' but this node belongs to a set named '%s'"
-                % (set_name, server_description.replica_set_name)
+                "'{}' but this node belongs to a set named '{}'".format(
+                    set_name, server_description.replica_set_name
+                )
             )
             sds[address] = server_description.to_unknown(error=error)
         # Single type never changes.

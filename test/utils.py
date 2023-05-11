@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Utilities for testing pymongo
-"""
+"""Utilities for testing pymongo"""
 
 import contextlib
 import copy
@@ -415,7 +414,8 @@ class TestCreator:
 
     def _ensure_min_max_server_version(self, scenario_def, method):
         """Test modifier that enforces a version range for the server on a
-        test case."""
+        test case.
+        """
         if "minServerVersion" in scenario_def:
             min_ver = tuple(int(elt) for elt in scenario_def["minServerVersion"].split("."))
             if min_ver is not None:
@@ -539,7 +539,7 @@ class TestCreator:
 
 
 def _connection_string(h):
-    if h.startswith("mongodb://") or h.startswith("mongodb+srv://"):
+    if h.startswith(("mongodb://", "mongodb+srv://")):
         return h
     return f"mongodb://{str(h)}"
 
@@ -922,7 +922,7 @@ def lazy_client_trial(reset, target, test, get_client):
     collection = client_context.client.pymongo_test.test
 
     with frequent_thread_switches():
-        for i in range(NTRIALS):
+        for _i in range(NTRIALS):
             reset(collection)
             lazy_client = get_client()
             lazy_collection = lazy_client.pymongo_test.test
@@ -1147,6 +1147,6 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callbac
             elif cursor_type == "tailableAwait":
                 arguments["cursor_type"] = CursorType.TAILABLE
             else:
-                assert False, f"Unsupported cursorType: {cursor_type}"
+                raise AssertionError(f"Unsupported cursorType: {cursor_type}")
         else:
             arguments[c2s] = arguments.pop(arg_name)

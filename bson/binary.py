@@ -330,8 +330,7 @@ class Binary(bytes):
                 return UUID(bytes=self)
 
         raise ValueError(
-            "cannot decode subtype %s to %s"
-            % (self.subtype, UUID_REPRESENTATION_NAMES[uuid_representation])
+            f"cannot decode subtype {self.subtype} to {UUID_REPRESENTATION_NAMES[uuid_representation]}"
         )
 
     @property

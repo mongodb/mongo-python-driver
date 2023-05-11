@@ -177,6 +177,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore
         with self.client_ref()[database].list_collections(filter=RawBSONDocument(filter)) as cursor:
             for doc in cursor:
                 return _dict_to_bson(doc, False, _DATA_KEY_OPTS)
+            return None
 
     def spawn(self):
         """Spawn mongocryptd.
@@ -296,7 +297,8 @@ class _Encrypter:
     """Encrypts and decrypts MongoDB commands.
 
     This class is used to support automatic encryption and decryption of
-    MongoDB commands."""
+    MongoDB commands.
+    """
 
     def __init__(self, client, opts):
         """Create a _Encrypter for a client.

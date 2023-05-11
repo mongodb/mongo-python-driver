@@ -131,11 +131,11 @@ class _OIDCAuthenticator:
 
                 refresh_token = self.idp_resp and self.idp_resp.get("refresh_token")
                 refresh_token = refresh_token or ""
-                context = dict(
-                    timeout_seconds=timeout,
-                    version=CALLBACK_VERSION,
-                    refresh_token=refresh_token,
-                )
+                context = {
+                    "timeout_seconds": timeout,
+                    "version": CALLBACK_VERSION,
+                    "refresh_token": refresh_token,
+                }
 
                 if self.idp_resp is None or refresh_cb is None:
                     self.idp_resp = request_cb(self.idp_info, context)
@@ -181,7 +181,7 @@ class _OIDCAuthenticator:
             aws_identity_file = os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"]
             with open(aws_identity_file) as fid:
                 token = fid.read().strip()
-            payload = dict(jwt=token)
+            payload = {"jwt": token}
             cmd = SON(
                 [
                     ("saslStart", 1),
@@ -203,7 +203,7 @@ class _OIDCAuthenticator:
 
         if self.idp_info is None:
             # Send the SASL start with the optional principal name.
-            payload = dict()
+            payload = {}
 
             if principal_name:
                 payload["n"] = principal_name
@@ -221,7 +221,7 @@ class _OIDCAuthenticator:
         token = self.get_current_token(use_callbacks)
         if not token:
             return None
-        bin_payload = Binary(bson.encode(dict(jwt=token)))
+        bin_payload = Binary(bson.encode({"jwt": token}))
         return SON(
             [
                 ("saslStart", 1),
@@ -268,7 +268,7 @@ class _OIDCAuthenticator:
 
         if resp["done"]:
             sock_info.oidc_token_gen_id = self.token_gen_id
-            return
+            return None
 
         server_resp: Dict = bson.decode(resp["payload"])
         if "issuer" in server_resp:
@@ -278,7 +278,7 @@ class _OIDCAuthenticator:
         conversation_id = resp["conversationId"]
         token = self.get_current_token()
         sock_info.oidc_token_gen_id = self.token_gen_id
-        bin_payload = Binary(bson.encode(dict(jwt=token)))
+        bin_payload = Binary(bson.encode({"jwt": token}))
         cmd = SON(
             [
                 ("saslContinue", 1),

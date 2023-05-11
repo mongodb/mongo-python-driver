@@ -102,6 +102,8 @@ class CompressionSettings:
                 return ZlibContext(self.zlib_compression_level)
             elif chosen == "zstd":
                 return ZstdContext()
+            return None
+        return None
 
 
 class SnappyContext:

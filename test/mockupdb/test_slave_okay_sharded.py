@@ -59,7 +59,7 @@ def create_slave_ok_sharded_test(mode, operation):
         elif operation.op_type == "must-use-primary":
             slave_ok = False
         else:
-            assert False, "unrecognized op_type %r" % operation.op_type
+            raise AssertionError("unrecognized op_type %r" % operation.op_type)
 
         pref = make_read_preference(read_pref_mode_from_name(mode), tag_sets=None)
 

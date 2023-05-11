@@ -39,7 +39,7 @@ class TestAuthAWS(unittest.TestCase):
         if "@" not in self.uri:
             self.skipTest("MONGODB_URI already has no credentials")
 
-        hosts = ["%s:%s" % addr for addr in parse_uri(self.uri)["nodelist"]]
+        hosts = ["{}:{}".format(*addr) for addr in parse_uri(self.uri)["nodelist"]]
         self.assertTrue(hosts)
         with MongoClient(hosts) as client:
             with self.assertRaises(OperationFailure):
@@ -115,7 +115,7 @@ class TestAuthAWS(unittest.TestCase):
     def test_environment_variables_ignored(self):
         creds = self.setup_cache()
         self.assertIsNotNone(creds)
-        prev = os.environ.copy()
+        os.environ.copy()
 
         client = MongoClient(self.uri)
         self.addCleanup(client.close)
@@ -124,9 +124,11 @@ class TestAuthAWS(unittest.TestCase):
 
         self.assertIsNotNone(auth.get_cached_credentials())
 
-        mock_env = dict(
-            AWS_ACCESS_KEY_ID="foo", AWS_SECRET_ACCESS_KEY="bar", AWS_SESSION_TOKEN="baz"
-        )
+        mock_env = {
+            "AWS_ACCESS_KEY_ID": "foo",
+            "AWS_SECRET_ACCESS_KEY": "bar",
+            "AWS_SESSION_TOKEN": "baz",
+        }
 
         with patch.dict("os.environ", mock_env):
             self.assertEqual(os.environ["AWS_ACCESS_KEY_ID"], "foo")
@@ -147,7 +149,7 @@ class TestAuthAWS(unittest.TestCase):
         self.assertIsNotNone(creds)
         auth.set_cached_credentials(None)
 
-        mock_env = dict(AWS_ACCESS_KEY_ID=creds.username, AWS_SECRET_ACCESS_KEY=creds.password)
+        mock_env = {"AWS_ACCESS_KEY_ID": creds.username, "AWS_SECRET_ACCESS_KEY": creds.password}
         if creds.token:
             mock_env["AWS_SESSION_TOKEN"] = creds.token
 

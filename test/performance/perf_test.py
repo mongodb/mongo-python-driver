@@ -113,6 +113,7 @@ class PerformanceTest:
             return sorted_results[percentile_index]
         else:
             self.fail("Test execution failed")
+            return None
 
     def runTest(self):
         results = []

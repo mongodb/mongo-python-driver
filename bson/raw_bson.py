@@ -131,7 +131,7 @@ class RawBSONDocument(Mapping[str, Any]):
         elif not issubclass(codec_options.document_class, RawBSONDocument):
             raise TypeError(
                 "RawBSONDocument cannot use CodecOptions with document "
-                "class %s" % (codec_options.document_class,)
+                "class {}".format(codec_options.document_class)
             )
         self.__codec_options = codec_options
         # Validate the bson object size.

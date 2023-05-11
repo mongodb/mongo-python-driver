@@ -350,10 +350,9 @@ class JSONOptions(CodecOptions):
 
     def _arguments_repr(self) -> str:
         return (
-            "strict_number_long=%r, "
-            "datetime_representation=%r, "
-            "strict_uuid=%r, json_mode=%r, %s"
-            % (
+            "strict_number_long={!r}, "
+            "datetime_representation={!r}, "
+            "strict_uuid={!r}, json_mode={!r}, {}".format(
                 self.strict_number_long,
                 self.datetime_representation,
                 self.strict_uuid,
@@ -492,7 +491,7 @@ def _json_convert(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) ->
     if hasattr(obj, "items"):
         return SON(((k, _json_convert(v, json_options)) for k, v in obj.items()))
     elif hasattr(obj, "__iter__") and not isinstance(obj, (str, bytes)):
-        return list(_json_convert(v, json_options) for v in obj)
+        return [_json_convert(v, json_options) for v in obj]
     try:
         return default(obj, json_options)
     except TypeError:
@@ -720,7 +719,7 @@ def _parse_canonical_regex(doc: Any) -> Regex:
     if len(regex) != 2:
         raise TypeError(
             'Bad $regularExpression must include only "pattern"'
-            'and "options" components: %s' % (doc,)
+            'and "options" components: {}'.format(doc)
         )
     opts = regex["options"]
     if not isinstance(opts, str):

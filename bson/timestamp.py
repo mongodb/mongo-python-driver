@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tools for representing MongoDB internal Timestamps.
-"""
+"""Tools for representing MongoDB internal Timestamps."""
 
 import calendar
 import datetime

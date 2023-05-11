@@ -51,6 +51,7 @@ class Selection:
         secondaries = secondary_server_selector(self)
         if secondaries.server_descriptions:
             return max(secondaries.server_descriptions, key=lambda sd: sd.last_write_date)
+        return None
 
     @property
     def primary_selection(self):

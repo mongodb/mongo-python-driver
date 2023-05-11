@@ -67,7 +67,7 @@ def create_test(test_case):
                 expected = credential["mechanism_properties"]
                 if expected is not None:
                     actual = credentials.mechanism_properties
-                    for key, val in expected.items():
+                    for key, _val in expected.items():
                         if "SERVICE_NAME" in expected:
                             self.assertEqual(actual.service_name, expected["SERVICE_NAME"])
                         elif "CANONICALIZE_HOST_NAME" in expected:

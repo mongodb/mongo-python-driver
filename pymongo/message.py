@@ -115,7 +115,6 @@ def _convert_exception(exception):
 
 def _convert_write_result(operation, command, result):
     """Convert a legacy write result to write command format."""
-
     # Based on _merge_legacy from bulk.py
     affected = result.get("n", 0)
     res = {"ok": 1, "n": affected}
@@ -518,7 +517,6 @@ class _GetMore:
 
     def get_message(self, dummy0, sock_info, use_cmd=False):
         """Get a getmore message."""
-
         ns = self.namespace()
         ctx = sock_info.compression_context
 
@@ -578,7 +576,7 @@ class _CursorAddress(tuple):
     def __hash__(self):
         # Two _CursorAddress instances with different namespaces
         # must not hash the same.
-        return (self + (self.__namespace,)).__hash__()
+        return ((*self, self.__namespace)).__hash__()
 
     def __eq__(self, other):
         if isinstance(other, _CursorAddress):
@@ -648,7 +646,7 @@ def _op_msg_no_header(flags, command, identifier, docs, opts):
         encoded_size = _pack_int(size)
         total_size += size
         max_doc_size = max(len(doc) for doc in encoded_docs)
-        data = [flags_type, encoded, type_one, encoded_size, cstring] + encoded_docs
+        data = [flags_type, encoded, type_one, encoded_size, cstring, *encoded_docs]
     else:
         data = [flags_type, encoded]
     return b"".join(data), total_size, max_doc_size

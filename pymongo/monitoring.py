@@ -490,10 +490,10 @@ def _validate_event_listeners(option, listeners):
     for listener in listeners:
         if not isinstance(listener, _EventListener):
             raise TypeError(
-                "Listeners for %s must be either a "
+                "Listeners for {} must be either a "
                 "CommandListener, ServerHeartbeatListener, "
                 "ServerListener, TopologyListener, or "
-                "ConnectionPoolListener." % (option,)
+                "ConnectionPoolListener.".format(option)
             )
     return listeners
 
@@ -508,10 +508,10 @@ def register(listener: _EventListener) -> None:
     """
     if not isinstance(listener, _EventListener):
         raise TypeError(
-            "Listeners for %s must be either a "
+            "Listeners for {} must be either a "
             "CommandListener, ServerHeartbeatListener, "
             "ServerListener, TopologyListener, or "
-            "ConnectionPoolListener." % (listener,)
+            "ConnectionPoolListener.".format(listener)
         )
     if isinstance(listener, CommandListener):
         _LISTENERS.command_listeners.append(listener)
@@ -649,7 +649,7 @@ class CommandStartedEvent(_CommandEvent):
         return self.__db
 
     def __repr__(self):
-        return ("<%s %s db: %r, command: %r, operation_id: %s, service_id: %s>") % (
+        return ("<{} {} db: {!r}, command: {!r}, operation_id: {}, service_id: {}>").format(
             self.__class__.__name__,
             self.connection_id,
             self.database_name,
@@ -706,7 +706,9 @@ class CommandSucceededEvent(_CommandEvent):
         return self.__reply
 
     def __repr__(self):
-        return ("<%s %s command: %r, operation_id: %s, duration_micros: %s, service_id: %s>") % (
+        return (
+            "<{} {} command: {!r}, operation_id: {}, duration_micros: {}, service_id: {}>"
+        ).format(
             self.__class__.__name__,
             self.connection_id,
             self.command_name,
@@ -760,9 +762,9 @@ class CommandFailedEvent(_CommandEvent):
 
     def __repr__(self):
         return (
-            "<%s %s command: %r, operation_id: %s, duration_micros: %s, "
-            "failure: %r, service_id: %s>"
-        ) % (
+            "<{} {} command: {!r}, operation_id: {}, duration_micros: {}, "
+            "failure: {!r}, service_id: {}>"
+        ).format(
             self.__class__.__name__,
             self.connection_id,
             self.command_name,
@@ -1137,13 +1139,15 @@ class ServerDescriptionChangedEvent(_ServerEvent):
     @property
     def previous_description(self) -> "ServerDescription":
         """The previous
-        :class:`~pymongo.server_description.ServerDescription`."""
+        :class:`~pymongo.server_description.ServerDescription`.
+        """
         return self.__previous_description
 
     @property
     def new_description(self) -> "ServerDescription":
         """The new
-        :class:`~pymongo.server_description.ServerDescription`."""
+        :class:`~pymongo.server_description.ServerDescription`.
+        """
         return self.__new_description
 
     def __repr__(self):
@@ -1211,13 +1215,15 @@ class TopologyDescriptionChangedEvent(TopologyEvent):
     @property
     def previous_description(self) -> "TopologyDescription":
         """The previous
-        :class:`~pymongo.topology_description.TopologyDescription`."""
+        :class:`~pymongo.topology_description.TopologyDescription`.
+        """
         return self.__previous_description
 
     @property
     def new_description(self) -> "TopologyDescription":
         """The new
-        :class:`~pymongo.topology_description.TopologyDescription`."""
+        :class:`~pymongo.topology_description.TopologyDescription`.
+        """
         return self.__new_description
 
     def __repr__(self):
@@ -1258,7 +1264,8 @@ class _ServerHeartbeatEvent:
     @property
     def connection_id(self) -> _Address:
         """The address (host, port) of the server this heartbeat was sent
-        to."""
+        to.
+        """
         return self.__connection_id
 
     def __repr__(self):

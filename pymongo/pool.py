@@ -81,7 +81,6 @@ except ImportError:
     # everything we need from fcntl, etc.
     def _set_non_inheritable_non_atomic(fd):
         """Dummy function for platforms that don't provide fcntl."""
-        pass
 
 
 _MAX_TCP_KEEPIDLE = 120
@@ -1208,8 +1207,6 @@ class _PoolClosedError(PyMongoError):
     closed pool.
     """
 
-    pass
-
 
 class _PoolGeneration:
     def __init__(self):
@@ -1753,10 +1750,9 @@ class Pool:
             other_ops = self.active_sockets - self.ncursors - self.ntxns
             raise WaitQueueTimeoutError(
                 "Timeout waiting for connection from the connection pool. "
-                "maxPoolSize: %s, connections in use by cursors: %s, "
-                "connections in use by transactions: %s, connections in use "
-                "by other operations: %s, timeout: %s"
-                % (
+                "maxPoolSize: {}, connections in use by cursors: {}, "
+                "connections in use by transactions: {}, connections in use "
+                "by other operations: {}, timeout: {}".format(
                     self.opts.max_pool_size,
                     self.ncursors,
                     self.ntxns,
@@ -1766,7 +1762,7 @@ class Pool:
             )
         raise WaitQueueTimeoutError(
             "Timed out while checking out a connection from connection pool. "
-            "maxPoolSize: %s, timeout: %s" % (self.opts.max_pool_size, timeout)
+            "maxPoolSize: {}, timeout: {}".format(self.opts.max_pool_size, timeout)
         )
 
     def __del__(self):

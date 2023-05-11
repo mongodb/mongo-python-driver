@@ -13,8 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for the gridfs package.
-"""
+"""Tests for the gridfs package."""
 import datetime
 import itertools
 import threading

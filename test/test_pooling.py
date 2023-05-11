@@ -132,7 +132,7 @@ def run_cases(client, cases):
     n_runs = 5
 
     for case in cases:
-        for i in range(n_runs):
+        for _i in range(n_runs):
             t = case(client)
             t.start()
             threads.append(t)
@@ -440,7 +440,7 @@ class TestPoolMaxSize(_TestPoolingBase):
             with lock:
                 self.n_passed += 1
 
-        for i in range(nthreads):
+        for _i in range(nthreads):
             t = threading.Thread(target=f)
             threads.append(t)
             t.start()
@@ -472,7 +472,7 @@ class TestPoolMaxSize(_TestPoolingBase):
             with lock:
                 self.n_passed += 1
 
-        for i in range(nthreads):
+        for _i in range(nthreads):
             t = threading.Thread(target=f)
             threads.append(t)
             t.start()
@@ -500,7 +500,7 @@ class TestPoolMaxSize(_TestPoolingBase):
         # First call to get_socket fails; if pool doesn't release its semaphore
         # then the second call raises "ConnectionFailure: Timed out waiting for
         # socket from pool" instead of AutoReconnect.
-        for i in range(2):
+        for _i in range(2):
             with self.assertRaises(AutoReconnect) as context:
                 with test_pool.get_socket():
                     pass

@@ -236,8 +236,7 @@ class Topology:
             # No suitable servers.
             if timeout == 0 or now > end_time:
                 raise ServerSelectionTimeoutError(
-                    "%s, Timeout: %ss, Topology Description: %r"
-                    % (self._error_message(selector), timeout, self.description)
+                    f"{self._error_message(selector)}, Timeout: {timeout}s, Topology Description: {self.description!r}"
                 )
 
             self._ensure_opened()
@@ -499,7 +498,8 @@ class Topology:
     def close(self):
         """Clear pools and terminate monitors. Topology does not reopen on
         demand. Any further operations will raise
-        :exc:`~.errors.InvalidOperation`."""
+        :exc:`~.errors.InvalidOperation`.
+        """
         with self._lock:
             for server in self._servers.values():
                 server.close()

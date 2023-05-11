@@ -13,7 +13,8 @@
 # limitations under the License.
 
 """Test that the pymongo.uri_parser module is compliant with the connection
-string and uri options specifications."""
+string and uri options specifications.
+"""
 
 import json
 import os

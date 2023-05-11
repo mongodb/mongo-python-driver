@@ -46,18 +46,18 @@ def _validate_tag_sets(tag_sets):
         return tag_sets
 
     if not isinstance(tag_sets, (list, tuple)):
-        raise TypeError(("Tag sets %r invalid, must be a sequence") % (tag_sets,))
+        raise TypeError(f"Tag sets {tag_sets!r} invalid, must be a sequence")
     if len(tag_sets) == 0:
         raise ValueError(
-            ("Tag sets %r invalid, must be None or contain at least one set of tags") % (tag_sets,)
+            f"Tag sets {tag_sets!r} invalid, must be None or contain at least one set of tags"
         )
 
     for tags in tag_sets:
         if not isinstance(tags, abc.Mapping):
             raise TypeError(
-                "Tag set %r invalid, must be an instance of dict, "
+                "Tag set {!r} invalid, must be an instance of dict, "
                 "bson.son.SON or other type that inherits from "
-                "collection.Mapping" % (tags,)
+                "collection.Mapping".format(tags)
             )
 
     return list(tag_sets)
@@ -168,7 +168,8 @@ class _ServerMode:
     def max_staleness(self) -> int:
         """The maximum estimated length of time (in seconds) a replica set
         secondary can fall behind the primary in replication before it will
-        no longer be selected for operations, or -1 for no maximum."""
+        no longer be selected for operations, or -1 for no maximum.
+        """
         return self.__max_staleness
 
     @property

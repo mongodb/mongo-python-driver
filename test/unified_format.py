@@ -131,7 +131,7 @@ KMS_TLS_OPTS = {
 
 
 # Build up a placeholder map.
-PLACEHOLDER_MAP = dict()
+PLACEHOLDER_MAP = {}
 for (provider_name, provider_data) in [
     ("local", {"key": LOCAL_MASTER_KEY}),
     ("aws", AWS_CREDS),
@@ -332,7 +332,7 @@ class EventListenerUtil(CMAPListener, CommandListener, ServerListener):
             )
 
     def _command_event(self, event):
-        if not event.command_name.lower() in self._ignore_commands:
+        if event.command_name.lower() not in self._ignore_commands:
             self.add_event(event)
 
     def started(self, event):
@@ -366,7 +366,8 @@ class EventListenerUtil(CMAPListener, CommandListener, ServerListener):
 
 class EntityMapUtil:
     """Utility class that implements an entity map as per the unified
-    test format specification."""
+    test format specification.
+    """
 
     def __init__(self, test_class):
         self._entities: Dict[str, Any] = {}
@@ -452,8 +453,9 @@ class EntityMapUtil:
             client = self[spec["client"]]
             if not isinstance(client, MongoClient):
                 self.test.fail(
-                    "Expected entity %s to be of type MongoClient, got %s"
-                    % (spec["client"], type(client))
+                    "Expected entity {} to be of type MongoClient, got {}".format(
+                        spec["client"], type(client)
+                    )
                 )
             options = parse_collection_or_database_options(spec.get("databaseOptions", {}))
             self[spec["id"]] = client.get_database(spec["databaseName"], **options)
@@ -462,8 +464,9 @@ class EntityMapUtil:
             database = self[spec["database"]]
             if not isinstance(database, Database):
                 self.test.fail(
-                    "Expected entity %s to be of type Database, got %s"
-                    % (spec["database"], type(database))
+                    "Expected entity {} to be of type Database, got {}".format(
+                        spec["database"], type(database)
+                    )
                 )
             options = parse_collection_or_database_options(spec.get("collectionOptions", {}))
             self[spec["id"]] = database.get_collection(spec["collectionName"], **options)
@@ -472,8 +475,9 @@ class EntityMapUtil:
             client = self[spec["client"]]
             if not isinstance(client, MongoClient):
                 self.test.fail(
-                    "Expected entity %s to be of type MongoClient, got %s"
-                    % (spec["client"], type(client))
+                    "Expected entity {} to be of type MongoClient, got {}".format(
+                        spec["client"], type(client)
+                    )
                 )
             opts = camel_to_snake_args(spec.get("sessionOptions", {}))
             if "default_transaction_options" in opts:
@@ -543,8 +547,7 @@ class EntityMapUtil:
         session = self[session_name]
         if not isinstance(session, ClientSession):
             self.test.fail(
-                "Expected entity %s to be of type ClientSession, got %s"
-                % (session_name, type(session))
+                f"Expected entity {session_name} to be of type ClientSession, got {type(session)}"
             )
 
         try:
@@ -587,7 +590,8 @@ BSON_TYPE_ALIAS_MAP = {
 
 class MatchEvaluatorUtil:
     """Utility class that implements methods for evaluating matches as per
-    the unified test format specification."""
+    the unified test format specification.
+    """
 
     def __init__(self, test_class):
         self.test = test_class
@@ -666,7 +670,8 @@ class MatchEvaluatorUtil:
         If given, ``key_to_compare`` is assumed to be the key in
         ``expectation`` whose corresponding value needs to be
         evaluated for a possible special operation. ``key_to_compare``
-        is ignored when ``expectation`` has only one key."""
+        is ignored when ``expectation`` has only one key.
+        """
         if not isinstance(expectation, abc.Mapping):
             return False
 
@@ -728,14 +733,16 @@ class MatchEvaluatorUtil:
                     self._match_document(e, a, is_root=not in_recursive_call)
                 else:
                     self.match_result(e, a, in_recursive_call=True)
-                return
+                return None
 
         # account for flexible numerics in element-wise comparison
         if isinstance(expectation, int) or isinstance(expectation, float):
             self.test.assertEqual(expectation, actual)
+            return None
         else:
             self.test.assertIsInstance(actual, type(expectation))
             self.test.assertEqual(expectation, actual)
+            return None
 
     def assertHasServiceId(self, spec, actual):
         if "hasServiceId" in spec:
@@ -838,7 +845,7 @@ def coerce_result(opname, result):
     if opname == "insertOne":
         return {"insertedId": result.inserted_id}
     if opname == "insertMany":
-        return {idx: _id for idx, _id in enumerate(result.inserted_ids)}
+        return dict(enumerate(result.inserted_ids))
     if opname in ("deleteOne", "deleteMany"):
         return {"deletedCount": result.deleted_count}
     if opname in ("updateOne", "updateMany", "replaceOne"):
@@ -1149,6 +1156,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 return next(target)
             except StopIteration:
                 pass
+        return None
 
     def _cursor_close(self, target, *args, **kwargs):
         self.__raise_if_unsupported("close", target, NonLazyCursor)
@@ -1178,8 +1186,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             kwargs["master_key"] = opts.get("masterKey")
         data = target.rewrap_many_data_key(*args, **kwargs)
         if data.bulk_write_result:
-            return dict(bulkWriteResult=parse_bulk_write_result(data.bulk_write_result))
-        return dict()
+            return {"bulkWriteResult": parse_bulk_write_result(data.bulk_write_result)}
+        return {}
 
     def _bucketOperation_download(self, target: GridFSBucket, *args: Any, **kwargs: Any) -> bytes:
         with target.open_download_stream(*args, **kwargs) as gout:
@@ -1282,7 +1290,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             # Ignore all operation errors but to avoid masking bugs don't
             # ignore things like TypeError and ValueError.
             if ignore and isinstance(exc, (PyMongoError,)):
-                return
+                return None
             if expect_error:
                 return self.process_error(exc, expect_error)
             raise
@@ -1296,6 +1304,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
         if save_as_entity:
             self.entity_map[save_as_entity] = result
+            return None
+        return None
 
     def __set_fail_point(self, client, command_args):
         if not client_context.test_commands_enabled:
@@ -1318,10 +1328,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         if not session._pinned_address:
             self.fail(
                 "Cannot use targetedFailPoint operation with unpinned "
-                "session %s" % (spec["session"],)
+                "session {}".format(spec["session"])
             )
 
-        client = single_client("%s:%s" % session._pinned_address)
+        client = single_client("{}:{}".format(*session._pinned_address))
         self.addCleanup(client.close)
         self.__set_fail_point(client=client, command_args=spec["failPoint"])
 
@@ -1596,8 +1606,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                         self.setUp()
                         continue
                     raise
+            return None
         else:
             self._run_scenario(spec, uri)
+            return None
 
     def _run_scenario(self, spec, uri=None):
         # maybe skip test manually
@@ -1684,13 +1696,15 @@ def generate_test_classes(
     **kwargs,
 ):
     """Method for generating test classes. Returns a dictionary where keys are
-    the names of test classes and values are the test class objects."""
+    the names of test classes and values are the test class objects.
+    """
     test_klasses = {}
 
     def test_base_class_factory(test_spec):
         """Utility that creates the base class to use for test generation.
         This is needed to ensure that cls.TEST_SPEC is appropriately set when
-        the metaclass __init__ is invoked."""
+        the metaclass __init__ is invoked.
+        """
 
         class SpecTestBase(with_metaclass(UnifiedSpecTestMeta)):  # type: ignore
             TEST_SPEC = test_spec
@@ -1722,8 +1736,7 @@ def generate_test_classes(
                 mixin_class = _SCHEMA_VERSION_MAJOR_TO_MIXIN_CLASS.get(schema_version[0])
                 if mixin_class is None:
                     raise ValueError(
-                        "test file '%s' has unsupported schemaVersion '%s'"
-                        % (fpath, schema_version)
+                        f"test file '{fpath}' has unsupported schemaVersion '{schema_version}'"
                     )
                 module_dict = {"__module__": module}
                 module_dict.update(kwargs)

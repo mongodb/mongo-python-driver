@@ -84,7 +84,7 @@ if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("unknown or missing options")
         print(f"usage: python3 {sys.argv[0]} 'mongodb://localhost'")
-        exit(1)
+        sys.exit(1)
 
     # Enable logs in this format:
     # 2022-03-30 12:40:55,582 INFO <ServerHeartbeatStartedEvent ('localhost', 27017)>

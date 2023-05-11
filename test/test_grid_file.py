@@ -13,8 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for the grid_file module.
-"""
+"""Tests for the grid_file module."""
 
 import datetime
 import io

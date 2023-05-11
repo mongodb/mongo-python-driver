@@ -387,9 +387,9 @@ def validate_uuid_representation(dummy: Any, value: Any) -> int:
         return _UUID_REPRESENTATIONS[value]
     except KeyError:
         raise ValueError(
-            "%s is an invalid UUID representation. "
+            "{} is an invalid UUID representation. "
             "Must be one of "
-            "%s" % (value, tuple(_UUID_REPRESENTATIONS))
+            "{}".format(value, tuple(_UUID_REPRESENTATIONS))
         )
 
 
@@ -470,13 +470,13 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> Dict[str, Uni
             raise ValueError(
                 "auth mechanism properties must be "
                 "key:value pairs like SERVICE_NAME:"
-                "mongodb, not %s." % (opt,)
+                "mongodb, not {}.".format(opt)
             )
         if key not in _MECHANISM_PROPS:
             raise ValueError(
-                "%s is not a supported auth "
+                "{} is not a supported auth "
                 "mechanism property. Must be one of "
-                "%s." % (key, tuple(_MECHANISM_PROPS))
+                "{}.".format(key, tuple(_MECHANISM_PROPS))
             )
         if key == "CANONICALIZE_HOST_NAME":
             props[key] = validate_boolean_or_string(key, val)
@@ -500,9 +500,9 @@ def validate_document_class(
             is_mapping = issubclass(value.__origin__, abc.MutableMapping)
     if not is_mapping and not issubclass(value, RawBSONDocument):
         raise TypeError(
-            "%s must be dict, bson.son.SON, "
+            "{} must be dict, bson.son.SON, "
             "bson.raw_bson.RawBSONDocument, or a "
-            "subclass of collections.MutableMapping" % (option,)
+            "subclass of collections.MutableMapping".format(option)
         )
     return value
 
@@ -532,9 +532,9 @@ def validate_list_or_mapping(option: Any, value: Any) -> None:
     """Validates that 'value' is a list or a document."""
     if not isinstance(value, (abc.Mapping, list)):
         raise TypeError(
-            "%s must either be a list or an instance of dict, "
+            "{} must either be a list or an instance of dict, "
             "bson.son.SON, or any other type that inherits from "
-            "collections.Mapping" % (option,)
+            "collections.Mapping".format(option)
         )
 
 
@@ -542,9 +542,9 @@ def validate_is_mapping(option: str, value: Any) -> None:
     """Validate the type of method arguments that expect a document."""
     if not isinstance(value, abc.Mapping):
         raise TypeError(
-            "%s must be an instance of dict, bson.son.SON, or "
+            "{} must be an instance of dict, bson.son.SON, or "
             "any other type that inherits from "
-            "collections.Mapping" % (option,)
+            "collections.Mapping".format(option)
         )
 
 
@@ -552,10 +552,10 @@ def validate_is_document_type(option: str, value: Any) -> None:
     """Validate the type of method arguments that expect a MongoDB document."""
     if not isinstance(value, (abc.MutableMapping, RawBSONDocument)):
         raise TypeError(
-            "%s must be an instance of dict, bson.son.SON, "
+            "{} must be an instance of dict, bson.son.SON, "
             "bson.raw_bson.RawBSONDocument, or "
             "a type that inherits from "
-            "collections.MutableMapping" % (option,)
+            "collections.MutableMapping".format(option)
         )
 
 
@@ -627,9 +627,9 @@ def validate_unicode_decode_error_handler(dummy: Any, value: str) -> str:
     """Validate the Unicode decode error handler option of CodecOptions."""
     if value not in _UNICODE_DECODE_ERROR_HANDLERS:
         raise ValueError(
-            "%s is an invalid Unicode decode error handler. "
+            "{} is an invalid Unicode decode error handler. "
             "Must be one of "
-            "%s" % (value, tuple(_UNICODE_DECODE_ERROR_HANDLERS))
+            "{}".format(value, tuple(_UNICODE_DECODE_ERROR_HANDLERS))
         )
     return value
 
@@ -884,9 +884,9 @@ class BaseObject:
 
         if not isinstance(read_preference, _ServerMode):
             raise TypeError(
-                "%r is not valid for read_preference. See "
+                "{!r} is not valid for read_preference. See "
                 "pymongo.read_preferences for valid "
-                "options." % (read_preference,)
+                "options.".format(read_preference)
             )
         self.__read_preference = read_preference
 

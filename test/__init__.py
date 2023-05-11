@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test suite for pymongo, bson, and gridfs.
-"""
+"""Test suite for pymongo, bson, and gridfs."""
 
 import base64
 import gc
@@ -92,7 +91,7 @@ CERT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "certifica
 CLIENT_PEM = os.environ.get("CLIENT_PEM", os.path.join(CERT_PATH, "client.pem"))
 CA_PEM = os.environ.get("CA_PEM", os.path.join(CERT_PATH, "ca.pem"))
 
-TLS_OPTIONS: Dict = dict(tls=True)
+TLS_OPTIONS: Dict = {"tls": True}
 if CLIENT_PEM:
     TLS_OPTIONS["tlsCertificateKeyFile"] = CLIENT_PEM
 if CA_PEM:
@@ -234,10 +233,9 @@ class client_knobs:
     def __del__(self):
         if self._enabled:
             msg = (
-                "ERROR: client_knobs still enabled! HEARTBEAT_FREQUENCY=%s, "
-                "MIN_HEARTBEAT_INTERVAL=%s, KILL_CURSOR_FREQUENCY=%s, "
-                "EVENTS_QUEUE_FREQUENCY=%s, stack:\n%s"
-                % (
+                "ERROR: client_knobs still enabled! HEARTBEAT_FREQUENCY={}, "
+                "MIN_HEARTBEAT_INTERVAL={}, KILL_CURSOR_FREQUENCY={}, "
+                "EVENTS_QUEUE_FREQUENCY={}, stack:\n{}".format(
                     common.HEARTBEAT_FREQUENCY,
                     common.MIN_HEARTBEAT_INTERVAL,
                     common.KILL_CURSOR_FREQUENCY,
@@ -640,7 +638,8 @@ class ClientContext:
     def require_no_mmap(self, func):
         """Run a test only if the server is not using the MMAPv1 storage
         engine. Only works for standalone and replica sets; tests are
-        run regardless of storage engine on sharded clusters."""
+        run regardless of storage engine on sharded clusters.
+        """
 
         def is_not_mmap():
             if self.is_mongos:
@@ -734,7 +733,8 @@ class ClientContext:
 
     def require_multiple_mongoses(self, func):
         """Run a test only if the client is connected to a sharded cluster
-        that has 2 mongos nodes."""
+        that has 2 mongos nodes.
+        """
         return self._require(
             lambda: len(self.mongoses) > 1, "Must have multiple mongoses available", func=func
         )
@@ -812,7 +812,8 @@ class ClientContext:
     def require_cluster_type(self, topologies=[]):  # noqa
         """Run a test only if the client is connected to a cluster that
         conforms to one of the specified topologies. Acceptable topologies
-        are 'single', 'replicaset', and 'sharded'."""
+        are 'single', 'replicaset', and 'sharded'.
+        """
 
         def _is_valid_topology():
             return self.is_topology_type(topologies)
@@ -827,7 +828,8 @@ class ClientContext:
 
     def require_failCommand_fail_point(self, func):
         """Run a test only if the server supports the failCommand fail
-        point."""
+        point.
+        """
         return self._require(
             lambda: self.supports_failCommand_fail_point,
             "failCommand fail point must be supported",
@@ -930,7 +932,7 @@ class ClientContext:
         )
 
     def mongos_seeds(self):
-        return ",".join("%s:%s" % address for address in self.mongoses)
+        return ",".join("{}:{}".format(*address) for address in self.mongoses)
 
     @property
     def supports_failCommand_fail_point(self):
@@ -1181,9 +1183,9 @@ def print_running_topology(topology):
     if running:
         print(
             "WARNING: found Topology with running threads:\n"
-            "  Threads: %s\n"
-            "  Topology: %s\n"
-            "  Creation traceback:\n%s" % (running, topology, topology._settings._stack)
+            "  Threads: {}\n"
+            "  Topology: {}\n"
+            "  Creation traceback:\n{}".format(running, topology, topology._settings._stack)
         )
 
 
@@ -1219,7 +1221,7 @@ def teardown():
         garbage.append(f"  gc.get_referents: {gc.get_referents(g)!r}")
         garbage.append(f"  gc.get_referrers: {gc.get_referrers(g)!r}")
     if garbage:
-        assert False, "\n".join(garbage)
+        raise AssertionError("\n".join(garbage))
     c = client_context.client
     if c:
         if not client_context.is_data_lake:

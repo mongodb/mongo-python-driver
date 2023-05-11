@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Representation for the MongoDB internal MaxKey type.
-"""
+"""Representation for the MongoDB internal MaxKey type."""
 from typing import Any
 
 

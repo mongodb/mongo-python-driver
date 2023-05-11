@@ -1549,8 +1549,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         if name.startswith("_"):
             raise AttributeError(
-                "MongoClient has no attribute %r. To access the %s"
-                " database, use client[%r]." % (name, name, name)
+                "MongoClient has no attribute {!r}. To access the {}"
+                " database, use client[{!r}].".format(name, name, name)
             )
         return self.__getitem__(name)
 
@@ -1685,7 +1685,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     # This method is run periodically by a background thread.
     def _process_periodic_tasks(self):
         """Process any pending kill cursors requests and
-        maintain connection pool parameters."""
+        maintain connection pool parameters.
+        """
         try:
             self._process_kill_cursors()
             self._topology.update_pool()
@@ -1742,7 +1743,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def _return_server_session(self, server_session, lock):
         """Internal: return a _ServerSession to the pool."""
         if isinstance(server_session, _EmptyServerSession):
-            return
+            return None
         return self._topology.return_server_session(server_session, lock)
 
     def _ensure_session(self, session=None):

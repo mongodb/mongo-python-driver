@@ -119,9 +119,10 @@ class TestReadPreferencesBase(IntegrationTest):
             return "secondary"
         else:
             self.fail(
-                "Cursor used address %s, expected either primary "
-                "%s or secondaries %s" % (address, client.primary, client.secondaries)
+                "Cursor used address {}, expected either primary "
+                "{} or secondaries {}".format(address, client.primary, client.secondaries)
             )
+            return None
 
     def assertReadsFrom(self, expected, **kwargs):
         c = rs_client(**kwargs)
@@ -271,7 +272,7 @@ class TestReadPreferences(TestReadPreferencesBase):
         self.assertFalse(
             not_used,
             "Expected to use primary and all secondaries for mode NEAREST,"
-            " but didn't use %s\nlatencies: %s" % (not_used, latencies),
+            " but didn't use {}\nlatencies: {}".format(not_used, latencies),
         )
 
 
@@ -373,7 +374,10 @@ class TestCommandAndReadPreference(IntegrationTest):
     def _test_coll_helper(self, secondary_ok, coll, meth, *args, **kwargs):
         for mode, server_type in _PREF_MAP:
             new_coll = coll.with_options(read_preference=mode())
-            func = lambda: getattr(new_coll, meth)(*args, **kwargs)
+
+            def func():
+                return getattr(new_coll, meth)(*args, **kwargs)
+
             if secondary_ok:
                 self._test_fn(server_type, func)
             else:
@@ -383,7 +387,10 @@ class TestCommandAndReadPreference(IntegrationTest):
         # Test that the generic command helper obeys the read preference
         # passed to it.
         for mode, server_type in _PREF_MAP:
-            func = lambda: self.c.pymongo_test.command("dbStats", read_preference=mode())
+
+            def func():
+                return self.c.pymongo_test.command("dbStats", read_preference=mode())
+
             self._test_fn(server_type, func)
 
     def test_create_collection(self):
@@ -536,7 +543,7 @@ class TestMongosAndReadPreference(IntegrationTest):
         client = rs_client(event_listeners=[listener])
         self.addCleanup(client.close)
         client.admin.command("ping")
-        for mode, cls in cases.items():
+        for _mode, cls in cases.items():
             pref = cls(hedge={"enabled": True})
             coll = client.test.get_collection("test", read_preference=pref)
             listener.reset()

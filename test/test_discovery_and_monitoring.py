@@ -105,14 +105,14 @@ def got_app_error(topology, app_error):
             raise NetworkTimeout("mock network timeout error")
         else:
             raise AssertionError(f"unknown error type: {error_type}")
-        assert False
+        raise AssertionError
     except (AutoReconnect, NotPrimaryError, OperationFailure) as e:
         if when == "beforeHandshakeCompletes":
             completed_handshake = False
         elif when == "afterHandshakeCompletes":
             completed_handshake = True
         else:
-            assert False, f"Unknown when field {when}"
+            raise AssertionError(f"Unknown when field {when}")
 
         topology.handle_error(
             server_address,

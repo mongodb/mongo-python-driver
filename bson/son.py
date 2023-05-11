@@ -16,7 +16,8 @@
 
 Regular dictionaries can be used instead of SON objects, but not when the order
 of keys is important. A SON object can be used just like a normal Python
-dictionary."""
+dictionary.
+"""
 
 import copy
 import re

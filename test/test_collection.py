@@ -483,7 +483,7 @@ class TestCollection(IntegrationTest):
         db.test.drop_indexes()
         self.assertEqual("geo_2dsphere", db.test.create_index([("geo", GEOSPHERE)]))
 
-        for dummy, info in db.test.index_information().items():
+        for _dummy, info in db.test.index_information().items():
             field, idx_type = info["key"][0]
             if field == "geo" and idx_type == "2dsphere":
                 break
@@ -502,7 +502,7 @@ class TestCollection(IntegrationTest):
         db.test.drop_indexes()
         self.assertEqual("a_hashed", db.test.create_index([("a", HASHED)]))
 
-        for dummy, info in db.test.index_information().items():
+        for _dummy, info in db.test.index_information().items():
             field, idx_type = info["key"][0]
             if field == "a" and idx_type == "hashed":
                 break

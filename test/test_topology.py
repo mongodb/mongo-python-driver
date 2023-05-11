@@ -647,13 +647,13 @@ class TestMultiServerTopology(TopologyTest):
         )
         self.assertEqual(
             repr(t.description),
-            "<TopologyDescription id: %s, "
+            "<TopologyDescription id: {}, "
             "topology_type: ReplicaSetWithPrimary, servers: ["
             "<ServerDescription ('a', 27017) server_type: RSPrimary, rtt: 0>, "
             "<ServerDescription ('b', 27017) server_type: Unknown,"
             " rtt: None>, "
             "<ServerDescription ('c', 27017) server_type: Unknown,"
-            " rtt: None>]>" % (t._topology_id,),
+            " rtt: None>]>".format(t._topology_id),
         )
 
     def test_unexpected_load_balancer(self):

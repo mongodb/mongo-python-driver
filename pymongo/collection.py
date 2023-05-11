@@ -212,7 +212,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         if not name or ".." in name:
             raise InvalidName("collection names cannot be empty")
-        if "$" in name and not (name.startswith("oplog.$main") or name.startswith("$cmd")):
+        if "$" in name and not (name.startswith(("oplog.$main", "$cmd"))):
             raise InvalidName("collection names must not contain '$': %r" % name)
         if name[0] == "." or name[-1] == ".":
             raise InvalidName("collection names must not start or end with '.': %r" % name)
@@ -346,8 +346,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if name.startswith("_"):
             full_name = f"{self.__name}.{name}"
             raise AttributeError(
-                "Collection has no attribute %r. To access the %s"
-                " collection, use database['%s']." % (name, full_name, full_name)
+                "Collection has no attribute {!r}. To access the {}"
+                " collection, use database['{}'].".format(name, full_name, full_name)
             )
         return self.__getitem__(name)
 
@@ -579,6 +579,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         if not isinstance(doc, RawBSONDocument):
             return doc.get("_id")
+        return None
 
     def insert_one(
         self,
@@ -719,7 +720,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         write_concern = self._write_concern_for(session)
         blk = _Bulk(self, ordered, bypass_document_validation, comment=comment)
-        blk.ops = [doc for doc in gen()]
+        blk.ops = list(gen())
         blk.execute(write_concern, session=session)
         return InsertManyResult(inserted_ids, write_concern.acknowledged)
 
@@ -2442,7 +2443,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. _aggregate command:
             https://mongodb.com/docs/manual/reference/command/aggregate
         """
-
         with self.__database.client._tmp_session(session, close=False) as s:
             return self._aggregate(
                 _CollectionAggregationCommand,
@@ -2794,7 +2794,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         **kwargs,
     ):
         """Internal findAndModify helper."""
-
         common.validate_is_mapping("filter", filter)
         if not isinstance(return_document, bool):
             raise ValueError(

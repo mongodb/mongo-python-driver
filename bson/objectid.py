@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tools for working with MongoDB ObjectIds.
-"""
+"""Tools for working with MongoDB ObjectIds."""
 
 import binascii
 import calendar
@@ -166,7 +165,6 @@ class ObjectId:
 
     def __generate(self) -> None:
         """Generate a new value for this ObjectId."""
-
         # 4 bytes current time
         oid = struct.pack(">I", int(time.time()))
 
@@ -222,13 +220,13 @@ class ObjectId:
         return datetime.datetime.fromtimestamp(timestamp, utc)
 
     def __getstate__(self) -> bytes:
-        """return value of object for pickling.
+        """Return value of object for pickling.
         needed explicitly because __slots__() defined.
         """
         return self.__id
 
     def __setstate__(self, value: Any) -> None:
-        """explicit state set from pickling"""
+        """Explicit state set from pickling"""
         # Provide backwards compatibility with OIDs
         # pickled with pymongo-1.9 or older.
         if isinstance(value, dict):

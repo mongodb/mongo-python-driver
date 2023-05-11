@@ -1046,17 +1046,17 @@ class TestCorpus(EncryptionIntegrationTest):
                 self.assertIn(kms, ("local", "aws", "azure", "gcp", "kmip"))
                 if identifier == "id":
                     if kms == "local":
-                        kwargs = dict(key_id=LOCAL_KEY_ID)
+                        kwargs = {"key_id": LOCAL_KEY_ID}
                     elif kms == "aws":
-                        kwargs = dict(key_id=AWS_KEY_ID)
+                        kwargs = {"key_id": AWS_KEY_ID}
                     elif kms == "azure":
-                        kwargs = dict(key_id=AZURE_KEY_ID)
+                        kwargs = {"key_id": AZURE_KEY_ID}
                     elif kms == "gcp":
-                        kwargs = dict(key_id=GCP_KEY_ID)
+                        kwargs = {"key_id": GCP_KEY_ID}
                     else:
-                        kwargs = dict(key_id=KMIP_KEY_ID)
+                        kwargs = {"key_id": KMIP_KEY_ID}
                 else:
-                    kwargs = dict(key_alt_name=kms)
+                    kwargs = {"key_alt_name": kms}
 
                 self.assertIn(value["algo"], ("det", "rand"))
                 if value["algo"] == "det":

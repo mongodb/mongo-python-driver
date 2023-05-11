@@ -30,10 +30,10 @@ class _WriteResult:
         """Raise an exception on property access if unacknowledged."""
         if not self.__acknowledged:
             raise InvalidOperation(
-                "A value for %s is not available when "
+                "A value for {} is not available when "
                 "the write is unacknowledged. Check the "
                 "acknowledged attribute to avoid this "
-                "error." % (property_name,)
+                "error.".format(property_name)
             )
 
     @property
@@ -134,7 +134,8 @@ class UpdateResult(_WriteResult):
 
 class DeleteResult(_WriteResult):
     """The return type for :meth:`~pymongo.collection.Collection.delete_one`
-    and :meth:`~pymongo.collection.Collection.delete_many`"""
+    and :meth:`~pymongo.collection.Collection.delete_many`
+    """
 
     __slots__ = ("__raw_result",)
 

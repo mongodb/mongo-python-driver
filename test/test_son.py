@@ -47,7 +47,7 @@ class TestSON(unittest.TestCase):
 
         self.assertEqual(a1, SON({"hello": "world"}))
         self.assertEqual(b2, SON((("hello", "world"), ("mike", "awesome"), ("hello_", "mike"))))
-        self.assertEqual(b2, dict((("hello_", "mike"), ("mike", "awesome"), ("hello", "world"))))
+        self.assertEqual(b2, {"hello_": "mike", "mike": "awesome", "hello": "world"})
 
         self.assertNotEqual(a1, b2)
         self.assertNotEqual(b2, SON((("hello_", "mike"), ("mike", "awesome"), ("hello", "world"))))
@@ -55,7 +55,7 @@ class TestSON(unittest.TestCase):
         # Explicitly test inequality
         self.assertFalse(a1 != SON({"hello": "world"}))
         self.assertFalse(b2 != SON((("hello", "world"), ("mike", "awesome"), ("hello_", "mike"))))
-        self.assertFalse(b2 != dict((("hello_", "mike"), ("mike", "awesome"), ("hello", "world"))))
+        self.assertFalse(b2 != {"hello_": "mike", "mike": "awesome", "hello": "world"})
 
         # Embedded SON.
         d4 = SON([("blah", {"foo": SON()})])
@@ -138,18 +138,14 @@ class TestSON(unittest.TestCase):
         self.assertEqual(id(reflexive_son1), id(reflexive_son1["reflexive"]))
 
     def test_iteration(self):
-        """
-        Test __iter__
-        """
+        """Test __iter__"""
         # test success case
         test_son = SON([(1, 100), (2, 200), (3, 300)])
         for ele in test_son:
             self.assertEqual(ele * 100, test_son[ele])
 
     def test_contains_has(self):
-        """
-        has_key and __contains__
-        """
+        """has_key and __contains__"""
         test_son = SON([(1, 100), (2, 200), (3, 300)])
         self.assertIn(1, test_son)
         self.assertTrue(2 in test_son, "in failed")
@@ -158,9 +154,7 @@ class TestSON(unittest.TestCase):
         self.assertFalse(test_son.has_key(22), "has_key succeeded when it shouldn't")  # noqa
 
     def test_clears(self):
-        """
-        Test clear()
-        """
+        """Test clear()"""
         test_son = SON([(1, 100), (2, 200), (3, 300)])
         test_son.clear()
         self.assertNotIn(1, test_son)
@@ -169,9 +163,7 @@ class TestSON(unittest.TestCase):
         self.assertEqual({}, test_son.to_dict())
 
     def test_len(self):
-        """
-        Test len
-        """
+        """Test len"""
         test_son = SON()
         self.assertEqual(0, len(test_son))
         test_son = SON([(1, 100), (2, 200), (3, 300)])

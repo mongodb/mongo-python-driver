@@ -232,40 +232,40 @@ class TestCommandMonitoring(IntegrationTest):
             tuple(cursor)
 
     def test_find_options(self):
-        query = dict(
-            filter={},
-            hint=[("x", 1)],
-            max_time_ms=10000,
-            max={"x": 10},
-            min={"x": -10},
-            return_key=True,
-            show_record_id=True,
-            projection={"x": False},
-            skip=1,
-            no_cursor_timeout=True,
-            sort=[("_id", 1)],
-            allow_partial_results=True,
-            comment="this is a test",
-            batch_size=2,
-        )
+        query = {
+            "filter": {},
+            "hint": [("x", 1)],
+            "max_time_ms": 10000,
+            "max": {"x": 10},
+            "min": {"x": -10},
+            "return_key": True,
+            "show_record_id": True,
+            "projection": {"x": False},
+            "skip": 1,
+            "no_cursor_timeout": True,
+            "sort": [("_id", 1)],
+            "allow_partial_results": True,
+            "comment": "this is a test",
+            "batch_size": 2,
+        }
 
-        cmd = dict(
-            find="test",
-            filter={},
-            hint=SON([("x", 1)]),
-            comment="this is a test",
-            maxTimeMS=10000,
-            max={"x": 10},
-            min={"x": -10},
-            returnKey=True,
-            showRecordId=True,
-            sort=SON([("_id", 1)]),
-            projection={"x": False},
-            skip=1,
-            batchSize=2,
-            noCursorTimeout=True,
-            allowPartialResults=True,
-        )
+        cmd = {
+            "find": "test",
+            "filter": {},
+            "hint": SON([("x", 1)]),
+            "comment": "this is a test",
+            "maxTimeMS": 10000,
+            "max": {"x": 10},
+            "min": {"x": -10},
+            "returnKey": True,
+            "showRecordId": True,
+            "sort": SON([("_id", 1)]),
+            "projection": {"x": False},
+            "skip": 1,
+            "batchSize": 2,
+            "noCursorTimeout": True,
+            "allowPartialResults": True,
+        }
 
         if client_context.version < (4, 1, 0, -1):
             query["max_scan"] = 10
@@ -276,9 +276,9 @@ class TestCommandMonitoring(IntegrationTest):
     @client_context.require_version_max(3, 7, 2)
     def test_find_snapshot(self):
         # Test "snapshot" parameter separately, can't combine with "sort".
-        query = dict(filter={}, snapshot=True)
+        query = {"filter": {}, "snapshot": True}
 
-        cmd = dict(find="test", filter={}, snapshot=True)
+        cmd = {"find": "test", "filter": {}, "snapshot": True}
 
         self._test_find_options(query, cmd)
 

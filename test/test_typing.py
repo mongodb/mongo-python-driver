@@ -13,7 +13,8 @@
 # limitations under the License.
 
 """Test that each file in mypy_fails/ actually fails mypy, and test some
-sample client code that uses PyMongo typings."""
+sample client code that uses PyMongo typings.
+"""
 import os
 import sys
 import tempfile
@@ -39,7 +40,7 @@ try:
         name: str
         year: int
 
-except ImportError as exc:
+except ImportError:
     Movie = dict  # type:ignore[misc,assignment]
     ImplicitMovie = dict  # type: ignore[assignment,misc]
     MovieWithId = dict  # type: ignore[assignment,misc]
@@ -164,12 +165,12 @@ class TestPymongo(IntegrationTest):
 
     def test_command(self) -> None:
         result: Dict = self.client.admin.command("ping")
-        items = result.items()
+        result.items()
 
     def test_list_collections(self) -> None:
         cursor = self.client.test.list_collections()
         value = cursor.next()
-        items = value.items()
+        value.items()
 
     def test_list_databases(self) -> None:
         cursor = self.client.list_databases()
@@ -237,7 +238,7 @@ class TestDecode(unittest.TestCase):
         assert rt_document2.foo() == "bar"
 
         codec_options2 = CodecOptions(document_class=RawBSONDocument)
-        bsonbytes3 = encode(doc, codec_options=codec_options2)
+        encode(doc, codec_options=codec_options2)
         rt_document3 = decode(bsonbytes2, codec_options=codec_options2)
         assert rt_document3.raw
 
@@ -463,7 +464,7 @@ class TestDocumentType(unittest.TestCase):
         retrieved["a"] = 1
 
     def test_son_document_type_runtime(self) -> None:
-        client = MongoClient(document_class=SON[str, Any], connect=False)
+        MongoClient(document_class=SON[str, Any], connect=False)
 
     @only_type_check
     def test_create_index(self) -> None:

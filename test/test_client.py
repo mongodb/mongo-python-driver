@@ -704,7 +704,7 @@ class TestClient(IntegrationTest):
         self.assertRaises(ConnectionFailure, c.pymongo_test.test.find_one)
 
     def test_equality(self):
-        seed = "%s:%s" % list(self.client._topology_settings.seeds)[0]
+        seed = "{}:{}".format(*list(self.client._topology_settings.seeds)[0])
         c = rs_or_single_client(seed, connect=False)
         self.addCleanup(c.close)
         self.assertEqual(client_context.client, c)
@@ -723,7 +723,7 @@ class TestClient(IntegrationTest):
         )
 
     def test_hashable(self):
-        seed = "%s:%s" % list(self.client._topology_settings.seeds)[0]
+        seed = "{}:{}".format(*list(self.client._topology_settings.seeds)[0])
         c = rs_or_single_client(seed, connect=False)
         self.addCleanup(c.close)
         self.assertIn(c, {client_context.client})
@@ -1657,7 +1657,7 @@ class TestClient(IntegrationTest):
             {"mode": {"times": 1}, "data": {"closeConnection": True, "failCommands": ["find"]}}
         ):
             assert client.address is not None
-            expected = "%s:%s: " % client.address
+            expected = "{}:{}: ".format(*client.address)
             with self.assertRaisesRegex(AutoReconnect, expected):
                 client.pymongo_test.test.find_one({})
 
@@ -2188,23 +2188,33 @@ class TestMongoClientFailover(MockClientTest):
             self.assertEqual(7, sd_b.max_wire_version)
 
     def test_network_error_on_query(self):
-        callback = lambda client: client.db.collection.find_one()
+        def callback(client):
+            return client.db.collection.find_one()
+
         self._test_network_error(callback)
 
     def test_network_error_on_insert(self):
-        callback = lambda client: client.db.collection.insert_one({})
+        def callback(client):
+            return client.db.collection.insert_one({})
+
         self._test_network_error(callback)
 
     def test_network_error_on_update(self):
-        callback = lambda client: client.db.collection.update_one({}, {"$unset": "x"})
+        def callback(client):
+            return client.db.collection.update_one({}, {"$unset": "x"})
+
         self._test_network_error(callback)
 
     def test_network_error_on_replace(self):
-        callback = lambda client: client.db.collection.replace_one({}, {})
+        def callback(client):
+            return client.db.collection.replace_one({}, {})
+
         self._test_network_error(callback)
 
     def test_network_error_on_delete(self):
-        callback = lambda client: client.db.collection.delete_many({})
+        def callback(client):
+            return client.db.collection.delete_many({})
+
         self._test_network_error(callback)
 
 

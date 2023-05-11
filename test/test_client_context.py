@@ -28,8 +28,9 @@ class TestClientContext(unittest.TestCase):
         self.assertTrue(
             client_context.connected,
             "client context must be connected when "
-            "PYMONGO_MUST_CONNECT is set. Failed attempts:\n%s"
-            % (client_context.connection_attempt_info(),),
+            "PYMONGO_MUST_CONNECT is set. Failed attempts:\n{}".format(
+                client_context.connection_attempt_info()
+            ),
         )
 
     def test_serverless(self):
@@ -39,8 +40,9 @@ class TestClientContext(unittest.TestCase):
         self.assertTrue(
             client_context.connected and client_context.serverless,
             "client context must be connected to serverless when "
-            "TEST_SERVERLESS is set. Failed attempts:\n%s"
-            % (client_context.connection_attempt_info(),),
+            "TEST_SERVERLESS is set. Failed attempts:\n{}".format(
+                client_context.connection_attempt_info()
+            ),
         )
 
     def test_enableTestCommands_is_disabled(self):

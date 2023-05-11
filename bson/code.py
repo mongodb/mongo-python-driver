@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tools for representing JavaScript code in BSON.
-"""
+"""Tools for representing JavaScript code in BSON."""
 
 from collections.abc import Mapping as _Mapping
 from typing import Any, Mapping, Optional, Type, Union

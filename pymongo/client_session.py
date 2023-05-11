@@ -203,8 +203,9 @@ class SessionOptions:
             if not isinstance(default_transaction_options, TransactionOptions):
                 raise TypeError(
                     "default_transaction_options must be an instance of "
-                    "pymongo.client_session.TransactionOptions, not: %r"
-                    % (default_transaction_options,)
+                    "pymongo.client_session.TransactionOptions, not: {!r}".format(
+                        default_transaction_options
+                    )
                 )
         self._default_transaction_options = default_transaction_options
         self._snapshot = snapshot
@@ -275,25 +276,25 @@ class TransactionOptions:
             if not isinstance(read_concern, ReadConcern):
                 raise TypeError(
                     "read_concern must be an instance of "
-                    "pymongo.read_concern.ReadConcern, not: %r" % (read_concern,)
+                    "pymongo.read_concern.ReadConcern, not: {!r}".format(read_concern)
                 )
         if write_concern is not None:
             if not isinstance(write_concern, WriteConcern):
                 raise TypeError(
                     "write_concern must be an instance of "
-                    "pymongo.write_concern.WriteConcern, not: %r" % (write_concern,)
+                    "pymongo.write_concern.WriteConcern, not: {!r}".format(write_concern)
                 )
             if not write_concern.acknowledged:
                 raise ConfigurationError(
                     "transactions do not support unacknowledged write concern"
-                    ": %r" % (write_concern,)
+                    ": {!r}".format(write_concern)
                 )
         if read_preference is not None:
             if not isinstance(read_preference, _ServerMode):
                 raise TypeError(
-                    "%r is not valid for read_preference. See "
+                    "{!r} is not valid for read_preference. See "
                     "pymongo.read_preferences for valid "
-                    "options." % (read_preference,)
+                    "options.".format(read_preference)
                 )
         if max_commit_time_ms is not None:
             if not isinstance(max_commit_time_ms, int):
@@ -340,7 +341,7 @@ def _validate_session_write_concern(session, write_concern):
             else:
                 raise ConfigurationError(
                     "Explicit sessions are incompatible with "
-                    "unacknowledged write concern: %r" % (write_concern,)
+                    "unacknowledged write concern: {!r}".format(write_concern)
                 )
     return session
 
@@ -973,7 +974,7 @@ class ClientSession:
             if read_preference != ReadPreference.PRIMARY:
                 raise InvalidOperation(
                     "read preference in a transaction must be primary, not: "
-                    "%r" % (read_preference,)
+                    "{!r}".format(read_preference)
                 )
 
             if self._transaction.state == _TxnState.STARTING:

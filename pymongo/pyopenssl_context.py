@@ -328,7 +328,8 @@ class SSLContext:
 
     def set_default_verify_paths(self):
         """Specify that the platform provided CA certificates are to be used
-        for verification purposes."""
+        for verification purposes.
+        """
         # Note: See PyOpenSSL's docs for limitations, which are similar
         # but not that same as CPython's.
         self._ctx.set_default_verify_paths()

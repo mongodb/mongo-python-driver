@@ -1128,7 +1128,7 @@ class TestClusterTime(IntegrationTest):
             ("rename_and_drop", rename_and_drop),
         ]
 
-        for name, f in ops:
+        for _name, f in ops:
             listener.reset()
             # Call f() twice, insert to advance clusterTime, call f() again.
             f()
@@ -1147,8 +1147,7 @@ class TestClusterTime(IntegrationTest):
                     succeeded = listener.succeeded_events[i - 1]
                     self.assertTrue(
                         "$clusterTime" in succeeded.reply,
-                        "%s received no $clusterTime with %s"
-                        % (f.__name__, succeeded.command_name),
+                        f"{f.__name__} received no $clusterTime with {succeeded.command_name}",
                     )
 
                     self.assertTrue(

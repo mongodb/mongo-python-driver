@@ -223,8 +223,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         """
         if name.startswith("_"):
             raise AttributeError(
-                "Database has no attribute %r. To access the %s"
-                " collection, use database[%r]." % (name, name, name)
+                "Database has no attribute {!r}. To access the {}"
+                " collection, use database[{!r}].".format(name, name, name)
             )
         return self.__getitem__(name)
 
@@ -415,9 +415,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 {
                     // key pattern must be {_id: 1}
                     key: <key pattern>, // required
-                    unique: <bool>, // required, must be ‘true’
+                    unique: <bool>, // required, must be `true`
                     name: <string>, // optional, otherwise automatically generated
-                    v: <int>, // optional, must be ‘2’ if provided
+                    v: <int>, // optional, must be `2` if provided
                 }
           - ``changeStreamPreAndPostImages`` (dict): a document with a boolean field ``enabled`` for
             enabling pre- and post-images.
@@ -863,7 +863,6 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
     def _list_collections(self, sock_info, session, read_preference, **kwargs):
         """Internal listCollections helper."""
-
         coll = self.get_collection("$cmd", read_preference=read_preference)
         cmd = SON([("listCollections", 1), ("cursor", {})])
         cmd.update(kwargs)
@@ -1200,7 +1199,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if dbref.database is not None and dbref.database != self.__name:
             raise ValueError(
                 "trying to dereference a DBRef that points to "
-                "another database (%r not %r)" % (dbref.database, self.__name)
+                "another database ({!r} not {!r})".format(dbref.database, self.__name)
             )
         return self[dbref.collection].find_one(
             {"_id": dbref.id}, session=session, comment=comment, **kwargs

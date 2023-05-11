@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tools for representing MongoDB regular expressions.
-"""
+"""Tools for representing MongoDB regular expressions."""
 
 import re
 from typing import Any, Generic, Pattern, Type, TypeVar, Union

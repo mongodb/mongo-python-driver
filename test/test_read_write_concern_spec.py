@@ -89,7 +89,7 @@ class TestReadWriteConcernSpec(IntegrationTest):
             f()
 
             self.assertGreaterEqual(len(listener.started_events), 1)
-            for i, event in enumerate(listener.started_events):
+            for _i, event in enumerate(listener.started_events):
                 self.assertNotIn(
                     "readConcern",
                     event.command,

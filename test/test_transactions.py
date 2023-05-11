@@ -66,7 +66,7 @@ class TransactionsBase(SpecRunner):
         super().setUpClass()
         if client_context.supports_transactions():
             for address in client_context.mongoses:
-                cls.mongos_clients.append(single_client("%s:%s" % address))
+                cls.mongos_clients.append(single_client("{}:{}".format(*address)))
 
     @classmethod
     def tearDownClass(cls):
@@ -416,7 +416,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
             pass
 
         def raise_error(_):
-            raise _MyException()
+            raise _MyException
 
         with self.client.start_session() as s:
             with self.assertRaises(_MyException):

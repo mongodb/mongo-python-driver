@@ -114,7 +114,7 @@ class WriteConcern:
 
     def __repr__(self):
         return "WriteConcern({})".format(
-            ", ".join("%s=%s" % kvt for kvt in self.__document.items())
+            ", ".join("{}={}".format(*kvt) for kvt in self.__document.items())
         )
 
     def __eq__(self, other: Any) -> bool:

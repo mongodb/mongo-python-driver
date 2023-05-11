@@ -13,8 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for the gridfs package.
-"""
+"""Tests for the gridfs package."""
 
 import datetime
 import sys
@@ -393,7 +392,7 @@ class TestGridfs(IntegrationTest):
         f = self.fs.get_last_version(filename="empty")
 
         def iterate_file(grid_file):
-            for chunk in grid_file:
+            for _chunk in grid_file:
                 pass
             return True
 

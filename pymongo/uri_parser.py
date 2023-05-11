@@ -155,7 +155,8 @@ _IMPLICIT_TLSINSECURE_OPTS = {
 def _parse_options(opts, delim):
     """Helper method for split_options which creates the options dict.
     Also handles the creation of a list for the URI tag_sets/
-    readpreferencetags portion, and the use of a unicode options string."""
+    readpreferencetags portion, and the use of a unicode options string.
+    """
     options = _CaseInsensitiveDictionary()
     for uriopt in opts.split(delim):
         key, value = uriopt.split("=")

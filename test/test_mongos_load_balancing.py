@@ -143,7 +143,7 @@ class TestMongosLoadBalancing(MockClientTest):
         # No error
         client.db.command("ping")
         # Our chosen mongos goes down.
-        client.kill_host("%s:%s" % next(iter(client.nodes)))
+        client.kill_host("{}:{}".format(*next(iter(client.nodes))))
         try:
             client.db.command("ping")
         except:

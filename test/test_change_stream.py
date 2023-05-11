@@ -104,7 +104,8 @@ class TestChangeStreamBase(IntegrationTest):
 
     def get_start_at_operation_time(self):
         """Get an operationTime. Advances the operation clock beyond the most
-        recently returned timestamp."""
+        recently returned timestamp.
+        """
         optime = self.client.admin.command("ping")["operationTime"]
         return Timestamp(optime.time, optime.inc + 1)
 
@@ -249,7 +250,7 @@ class APITestsMixin:
         coll.insert_many([{"data": i} for i in range(ndocs)])
 
         with self.change_stream(start_at_operation_time=optime) as cs:
-            for i in range(ndocs):
+            for _i in range(ndocs):
                 cs.next()
 
     @no_type_check
@@ -461,7 +462,8 @@ class ProseSpecTestsMixin:
     def _get_expected_resume_token_legacy(self, stream, listener, previous_change=None):
         """Predicts what the resume token should currently be for server
         versions that don't support postBatchResumeToken. Assumes the stream
-        has never returned any changes if previous_change is None."""
+        has never returned any changes if previous_change is None.
+        """
         if previous_change is None:
             agg_cmd = listener.started_events[0]
             stage = agg_cmd.command["pipeline"][0]["$changeStream"]
@@ -474,7 +476,8 @@ class ProseSpecTestsMixin:
         versions that support postBatchResumeToken. Assumes the stream has
         never returned any changes if previous_change is None. Assumes
         listener is a AllowListEventListener that listens for aggregate and
-        getMore commands."""
+        getMore commands.
+        """
         if previous_change is None or stream._cursor._has_next():
             token = self._get_expected_resume_token_legacy(stream, listener, previous_change)
             if token is not None:
@@ -1088,7 +1091,8 @@ class TestAllLegacyScenarios(IntegrationTest):
 
     def assert_list_contents_are_subset(self, superlist, sublist):
         """Check that each element in sublist is a subset of the corresponding
-        element in superlist."""
+        element in superlist.
+        """
         self.assertEqual(len(superlist), len(sublist))
         for sup, sub in zip(superlist, sublist):
             if isinstance(sub, dict):

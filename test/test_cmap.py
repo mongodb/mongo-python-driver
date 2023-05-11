@@ -260,9 +260,9 @@ class TestCMAP(IntegrationTest):
         self.pool = list(client._topology._servers.values())[0].pool
 
         # Map of target names to Thread objects.
-        self.targets: dict = dict()
+        self.targets: dict = {}
         # Map of label names to Connection objects
-        self.labels: dict = dict()
+        self.labels: dict = {}
 
         def cleanup():
             for t in self.targets.values():

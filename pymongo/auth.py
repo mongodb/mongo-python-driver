@@ -569,7 +569,7 @@ class _OIDCContext(_AuthContext):
         authenticator = _get_authenticator(self.credentials, self.address)
         cmd = authenticator.auth_start_cmd(False)
         if cmd is None:
-            return
+            return None
         cmd["db"] = self.credentials.source
         return cmd
 

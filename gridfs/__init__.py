@@ -141,7 +141,6 @@ class GridFS:
         .. versionchanged:: 3.0
            w=0 writes to GridFS are now prohibited.
         """
-
         with GridIn(self.__collection, **kwargs) as grid_file:
             grid_file.write(data)
             return grid_file._id
