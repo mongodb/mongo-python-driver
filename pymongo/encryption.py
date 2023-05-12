@@ -417,16 +417,10 @@ class Algorithm(str, enum.Enum):
     INDEXED = "Indexed"
     """Indexed.
 
-    .. note:: Support for Queryable Encryption is in beta.
-       Backwards-breaking changes may be made before the final release.
-
     .. versionadded:: 4.2
     """
     UNINDEXED = "Unindexed"
     """Unindexed.
-
-    .. note:: Support for Queryable Encryption is in beta.
-       Backwards-breaking changes may be made before the final release.
 
     .. versionadded:: 4.2
     """
@@ -441,10 +435,7 @@ class Algorithm(str, enum.Enum):
 
 
 class QueryType(str, enum.Enum):
-    """**(BETA)** An enum that defines the supported values for explicit encryption query_type.
-
-    .. note:: Support for Queryable Encryption is in beta.
-       Backwards-breaking changes may be made before the final release.
+    """An enum that defines the supported values for explicit encryption query_type.
 
     .. versionadded:: 4.2
     """
@@ -453,7 +444,11 @@ class QueryType(str, enum.Enum):
     """Used to encrypt a value for an equality query."""
 
     RANGEPREVIEW = "rangePreview"
-    """Used to encrypt a value for a range query."""
+    """Used to encrypt a value for a range query.
+
+    .. note:: Support for Range queries is in beta.
+       Backwards-breaking changes may be made before the final release.
+"""
 
 
 class ClientEncryption(Generic[_DocumentType]):
@@ -577,9 +572,6 @@ class ClientEncryption(Generic[_DocumentType]):
     ) -> Tuple[Collection[_DocumentType], Mapping[str, Any]]:
         """Create a collection with encryptedFields.
 
-        .. note:: Support for Queryable Encryption is in beta.
-           Backwards-breaking changes may be made before the final release.
-
         .. warning::
             This function does not update the encryptedFieldsMap in the client's
             AutoEncryptionOpts, thus the user must create a new client after calling this function with
@@ -592,7 +584,7 @@ class ClientEncryption(Generic[_DocumentType]):
 
         :Parameters:
           - `name`: the name of the collection to create
-          - `encrypted_fields` (dict): **(BETA)** Document that describes the encrypted fields for
+          - `encrypted_fields` (dict): Document that describes the encrypted fields for
             Queryable Encryption. For example::
 
               {
@@ -801,23 +793,18 @@ class ClientEncryption(Generic[_DocumentType]):
             :class:`~bson.binary.Binary` with subtype 4 (
             :attr:`~bson.binary.UUID_SUBTYPE`).
           - `key_alt_name`: Identifies a key vault document by 'keyAltName'.
-          - `query_type` (str): **(BETA)** The query type to execute. See
-            :class:`QueryType` for valid options.
-          - `contention_factor` (int): **(BETA)** The contention factor to use
+          - `query_type` (str): The query type to execute. See :class:`QueryType` for valid options.
+          - `contention_factor` (int): The contention factor to use
             when the algorithm is :attr:`Algorithm.INDEXED`.  An integer value
             *must* be given when the :attr:`Algorithm.INDEXED` algorithm is
             used.
           - `range_opts`: Experimental only, not intended for public use.
-
-        .. note:: `query_type`, and `contention_factor` are part of the Queryable Encryption beta.
-           Backwards-breaking changes may be made before the final release.
 
         :Returns:
           The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
 
         .. versionchanged:: 4.2
            Added the `query_type` and `contention_factor` parameters.
-
         """
         return self._encrypt_helper(
             value=value,
@@ -846,16 +833,16 @@ class ClientEncryption(Generic[_DocumentType]):
         provided.
 
         :Parameters:
-          - `expression`: **(BETA)** The BSON aggregate or match expression to encrypt.
+          - `expression`: The BSON aggregate or match expression to encrypt.
           - `algorithm` (string): The encryption algorithm to use. See
             :class:`Algorithm` for some valid options.
           - `key_id`: Identifies a data key by ``_id`` which must be a
             :class:`~bson.binary.Binary` with subtype 4 (
             :attr:`~bson.binary.UUID_SUBTYPE`).
           - `key_alt_name`: Identifies a key vault document by 'keyAltName'.
-          - `query_type` (str): **(BETA)** The query type to execute. See
+          - `query_type` (str): The query type to execute. See
             :class:`QueryType` for valid options.
-          - `contention_factor` (int): **(BETA)** The contention factor to use
+          - `contention_factor` (int): The contention factor to use
             when the algorithm is :attr:`Algorithm.INDEXED`.  An integer value
             *must* be given when the :attr:`Algorithm.INDEXED` algorithm is
             used.
