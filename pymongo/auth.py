@@ -157,7 +157,7 @@ def _build_credentials_tuple(mech, source, user, passwd, extra, database):
 
         # Handle providers.
         providers = ["aws", "azure"]
-        if not request_token_callback and provider_name in providers:
+        if not request_token_callback and provider_name not in providers:
             raise ConfigurationError(
                 f"authentication with MONGODB-OIDC requires providing an request_token_callback or a provider_name that is one of {providers}"
             )
