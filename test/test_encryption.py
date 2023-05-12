@@ -2387,6 +2387,12 @@ class TestRewrapWithSeparateClientEncryption(EncryptionIntegrationTest):
         decrypt_result2 = client_encryption2.decrypt(cipher_text)
         self.assertEqual(decrypt_result2, "test")
 
+        # 8. Case 2. Provider is not optional when master_key is given.
+        with self.assertRaises(ConfigurationError):
+            rewrap_many_data_key_result = client_encryption2.rewrap_many_data_key(
+                {}, master_key=self.MASTER_KEYS[dst_provider]
+            )
+
 
 # https://github.com/mongodb/specifications/blob/5cf3ed/source/client-side-encryption/tests/README.rst#on-demand-aws-credentials
 class TestOnDemandAWSCredentials(EncryptionIntegrationTest):
