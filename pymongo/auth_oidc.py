@@ -22,6 +22,7 @@ from typing import Callable, Dict, List, Optional
 import bson
 from bson.binary import Binary
 from bson.son import SON
+from pymongo.azure_helpers import _get_azure_token
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.helpers import _REAUTHENTICATION_REQUIRED_CODE
 
@@ -32,6 +33,7 @@ class _OIDCProperties:
     refresh_token_callback: Optional[Callable[..., Dict]]
     provider_name: Optional[str]
     allowed_hosts: List[str]
+    token_audience: Optional[str]
 
 
 """Mechanism properties for MONGODB-OIDC authentication."""
@@ -176,11 +178,19 @@ class _OIDCAuthenticator:
     def auth_start_cmd(self, use_callbacks=True):
         properties = self.properties
 
-        # Handle aws provider credentials.
-        if properties.provider_name == "aws":
-            aws_identity_file = os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"]
-            with open(aws_identity_file) as fid:
-                token = fid.read().strip()
+        # Handle provider credentials.
+        provider = properties.provider_name
+        if provider:
+            if provider == "aws":
+                aws_identity_file = os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"]
+                with open(aws_identity_file) as fid:
+                    token = fid.read().strip()
+            elif provider == "azure":
+                assert self.properties.token_audience is not None
+                token = _get_azure_token(self.properties.token_audience)
+            else:
+                raise ConfigurationError(f"Unsupported provider {provider}")
+
             payload = {"jwt": token}
             cmd = SON(
                 [

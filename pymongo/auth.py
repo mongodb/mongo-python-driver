@@ -144,6 +144,7 @@ def _build_credentials_tuple(mech, source, user, passwd, extra, database):
         request_token_callback = properties.get("request_token_callback")
         refresh_token_callback = properties.get("refresh_token_callback", None)
         provider_name = properties.get("PROVIDER_NAME", "")
+        token_audience = properties.get("TOKEN_AUDIENCE", "")
         default_allowed = [
             "*.mongodb.net",
             "*.mongodb-dev.net",
@@ -153,15 +154,22 @@ def _build_credentials_tuple(mech, source, user, passwd, extra, database):
             "::1",
         ]
         allowed_hosts = properties.get("allowed_hosts", default_allowed)
-        if not request_token_callback and provider_name != "aws":
+
+        # Handle providers.
+        providers = ["aws", "azure"]
+        if not request_token_callback and provider_name in providers:
             raise ConfigurationError(
-                "authentication with MONGODB-OIDC requires providing an request_token_callback or a provider_name of 'aws'"
+                f"authentication with MONGODB-OIDC requires providing an request_token_callback or a provider_name that is one of {providers}"
             )
+        if provider_name == "azure" and not token_audience:
+            raise ConfigurationError("The azure provider requires a TOKEN_AUDIENCE value")
+
         oidc_props = _OIDCProperties(
             request_token_callback=request_token_callback,
             refresh_token_callback=refresh_token_callback,
             provider_name=provider_name,
             allowed_hosts=allowed_hosts,
+            token_audience=token_audience,
         )
         return MongoCredential(mech, "$external", user, passwd, oidc_props, None)
 
