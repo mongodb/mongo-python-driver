@@ -605,18 +605,17 @@ Queryable Encryption
 
 .. _automatic-queryable-client-side-encryption:
 
-Automatic Queryable Encryption (Beta)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Automatic Queryable Encryption
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-PyMongo 4.4 brings beta support for Queryable Encryption with MongoDB >=7.0.
+Automatic Queryable Encryption requires MongoDB 7.0+ Enterprise or a MongoDB 7.0+ Atlas cluster.
 
 Queryable Encryption is the second version of Client-Side Field Level Encryption.
 Data is encrypted client-side. Queryable Encryption supports indexed encrypted fields,
 which are further processed server-side.
 
-You must have MongoDB 7.0 Enterprise to preview the capability.
-
-Automatic encryption in Queryable Encryption is configured with an ``encrypted_fields`` mapping, as demonstrated by the following example::
+Automatic encryption in Queryable Encryption is configured with an ``encrypted_fields`` mapping,
+as demonstrated by the following example::
 
   import os
   from bson.codec_options import CodecOptions
@@ -669,10 +668,10 @@ Automatic encryption in Queryable Encryption is configured with an ``encrypted_f
 In the above example, the ``firstName`` and ``lastName`` fields are
 automatically encrypted and decrypted.
 
-Explicit Queryable Encryption (Beta)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Explicit Queryable Encryption
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-PyMongo 4.4 brings beta support for Queryable Encryption with MongoDB >=7.0.
+Explicit Queryable Encryption requires MongoDB 7.0+.
 
 Queryable Encryption is the second version of Client-Side Field Level Encryption.
 Data is encrypted client-side. Queryable Encryption supports indexed encrypted fields,

@@ -148,11 +148,11 @@ class AutoEncryptionOpts:
           - `crypt_shared_lib_path` (optional): Override the path to load the crypt_shared library.
           - `crypt_shared_lib_required` (optional): If True, raise an error if libmongocrypt is
             unable to load the crypt_shared library.
-          - `bypass_query_analysis` (optional): **(BETA)** If ``True``, disable automatic analysis
+          - `bypass_query_analysis` (optional): If ``True``, disable automatic analysis
             of outgoing commands. Set `bypass_query_analysis` to use explicit
             encryption on indexed fields without the MongoDB Enterprise Advanced
             licensed crypt_shared library.
-          - `encrypted_fields_map`: **(BETA)** Map of collection namespace ("db.coll") to documents
+          - `encrypted_fields_map`: Map of collection namespace ("db.coll") to documents
             that described the encrypted fields for Queryable Encryption. For example::
 
                 {
@@ -174,10 +174,6 @@ class AutoEncryptionOpts:
                       ]
                   }
                 }
-
-        .. note:: `bypass_query_analysis` and `encrypted_fields_map` are part of the
-           Queryable Encryption beta. Backwards-breaking changes may be made before the
-           final release.
 
         .. versionchanged:: 4.2
            Added `encrypted_fields_map` `crypt_shared_lib_path`, `crypt_shared_lib_required`,
