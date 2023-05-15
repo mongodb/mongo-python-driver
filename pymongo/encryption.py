@@ -1033,6 +1033,8 @@ class ClientEncryption(Generic[_DocumentType]):
 
         .. versionadded:: 4.2
         """
+        if master_key is not None and provider is None:
+            raise ConfigurationError("A provider must be given if a master_key is given")
         self._check_closed()
         with _wrap_encryption_errors():
             raw_result = self._encryption.rewrap_many_data_key(filter, provider, master_key)
