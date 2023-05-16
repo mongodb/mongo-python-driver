@@ -1279,6 +1279,7 @@ task_groups:
           export AZUREOIDC_DRIVERS_TOOLS="$DRIVERS_TOOLS"
           export AZUREOIDC_VMNAME_PREFIX="PYTHON_DRIVER"
           $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/create-and-setup-vm.sh
+    teardown_group:
     - command: shell.exec
       params:
         shell: bash
