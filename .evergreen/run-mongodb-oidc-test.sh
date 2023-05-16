@@ -13,7 +13,7 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #                 mechanism.
 #  PYTHON_BINARY  The Python version to use.
 
-echo "Running MONGODB-OIDC authentication tests"
+echo "Running MONGODB-OIDC authentication tests TADA!"
 # ensure no secrets are printed in log files
 set +x
 
@@ -21,22 +21,26 @@ set +x
 shopt -s expand_aliases # needed for `urlencode` alias
 [ -s "${PROJECT_DIRECTORY}/prepare_mongodb_oidc.sh" ] && source "${PROJECT_DIRECTORY}/prepare_mongodb_oidc.sh"
 
-MONGODB_URI=${MONGODB_URI:-"mongodb://localhost"}
-MONGODB_URI_SINGLE="${MONGODB_URI}/?authMechanism=MONGODB-OIDC"
-MONGODB_URI_MULTIPLE="${MONGODB_URI}:27018/?authMechanism=MONGODB-OIDC&directConnection=true"
+PROVIDER_NAME=${PROVIDER_NAME:-"aws"}
+export MONGODB_URI=${MONGODB_URI:-"mongodb://localhost"}
 
-if [ -z "${OIDC_TOKEN_DIR}" ]; then
-    echo "Must specify OIDC_TOKEN_DIR"
-    exit 1
+if [ "$PROVIDER_NAME" = "aws" ]; then
+    export MONGODB_URI_SINGLE="${MONGODB_URI}/?authMechanism=MONGODB-OIDC"
+    export MONGODB_URI_MULTIPLE="${MONGODB_URI}:27018/?authMechanism=MONGODB-OIDC&directConnection=true"
+
+    if [ -z "${OIDC_TOKEN_DIR}" ]; then
+        echo "Must specify OIDC_TOKEN_DIR"
+        exit 1
+    fi
+elif [ "$PROVIDER_NAME" = "azure" ]; then
+    if [ -z "${AZUREOIDC_CLIENTID}" ]; then
+        echo "Must specify an AZUREOIDC_CLIENTID"
+        exit 1
+    fi
+    MONGODB_URI="${MONGODB_URI}/?authMechanism=MONGODB-OIDC"
+    MONGODB_URI="${MONGODB_URI}&authMechanismProperties=PROVIDER_NAME:azure"
+    export MONGODB_URI="${MONGODB_URI},TOKEN_AUDIENCE:api%3A%2F%2F${AZUREOIDC_CLIENTID}"
 fi
-
-export MONGODB_URI_SINGLE="$MONGODB_URI_SINGLE"
-export MONGODB_URI_MULTIPLE="$MONGODB_URI_MULTIPLE"
-export MONGODB_URI="$MONGODB_URI"
-
-echo $MONGODB_URI_SINGLE
-echo $MONGODB_URI_MULTIPLE
-echo $MONGODB_URI
 
 if [ "$ASSERT_NO_URI_CREDS" = "true" ]; then
     if echo "$MONGODB_URI" | grep -q "@"; then
@@ -47,13 +51,7 @@ fi
 
 # show test output
 set -x
-
-# Workaround macOS python 3.9 incompatibility with system virtualenv.
-if [ "$(uname -s)" = "Darwin" ]; then
-    VIRTUALENV="/Library/Frameworks/Python.framework/Versions/3.9/bin/python3 -m virtualenv"
-else
-    VIRTUALENV=$(command -v virtualenv)
-fi
+echo "MONGODB_URI=${MONGODB_URI}"
 
 authtest () {
     if [ "Windows_NT" = "$OS" ]; then
@@ -63,20 +61,26 @@ authtest () {
     echo "Running MONGODB-OIDC authentication tests with $PYTHON"
     $PYTHON --version
 
-    $VIRTUALENV -p $PYTHON --never-download venvoidc
+    $PYTHON -m venv venvoidc
     if [ "Windows_NT" = "$OS" ]; then
       . venvoidc/Scripts/activate
     else
       . venvoidc/bin/activate
     fi
     python -m pip install -U pip setuptools
-    python -m pip install '.[aws]'
-    python test/auth_oidc/test_auth_oidc.py -v
+
+    if [ "$PROVIDER_NAME" = "aws" ]; then
+        python -m pip install '.[aws]'
+        python test/auth_oidc/test_auth_oidc.py -v
+    elif [ "$PROVIDER_NAME" = "azure" ]; then
+        python -m pip install .
+        python test/auth_oidc/test_auth_oidc_azure.py -v
+    fi
     deactivate
     rm -rf venvoidc
 }
 
-PYTHON=${PYTHON_BINARY:-}
+PYTHON=${PYTHON_BINARY:-$(which python3)}
 if [ -z "$PYTHON" ]; then
     echo "Cannot test without specifying PYTHON_BINARY"
     exit 1

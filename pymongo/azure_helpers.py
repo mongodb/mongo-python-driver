@@ -62,6 +62,6 @@ def _get_azure_token(resource: str, timeout: float = 5) -> str:
             raise ValueError(msg)
 
     token = data["access_token"]
-    exp_utc = now_utc + timedelta(seconds=data["expires_in"])
+    exp_utc = now_utc + timedelta(seconds=int(data["expires_in"]))
     _CACHE[resource] = (token, exp_utc)
     return token
