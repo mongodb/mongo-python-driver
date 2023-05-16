@@ -1285,7 +1285,7 @@ task_groups:
         shell: bash
         script: |-
           ${PREPARE_SHELL}
-          $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/delete-vm.sh
+          #$DRIVERS_TOOLS/.evergreen/auth_oidc/azure/delete-vm.sh
     setup_group_can_fail_task: true
     setup_group_timeout_secs: 1800
     tasks:
