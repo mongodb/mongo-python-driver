@@ -2150,7 +2150,7 @@ tasks:
             export AZUREOIDC_DRIVERS_TAR_FILE=/tmp/mongo-python-driver.tgz
             tar czf $AZUREOIDC_DRIVERS_TAR_FILE .
             export AZUREOIDC_TEST_CMD="source ./env.sh && PROVIDER_NAME=azure ./.evergreen/run-mongodb-oidc-test.sh"
-            bash $DRIVERS_TOOLS/auth_oidc/azure/run-driver-test.sh
+            bash $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/run-driver-test.sh
 
     - name: load-balancer-test
       commands:
