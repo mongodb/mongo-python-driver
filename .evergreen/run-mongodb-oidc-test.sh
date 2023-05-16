@@ -13,7 +13,7 @@ set -o errexit  # Exit the script with error if any of the commands fail
 #                 mechanism.
 #  PYTHON_BINARY  The Python version to use.
 
-echo "Running MONGODB-OIDC authentication tests TADA!"
+echo "Running MONGODB-OIDC authentication tests"
 # ensure no secrets are printed in log files
 set +x
 
@@ -78,6 +78,7 @@ authtest () {
     fi
     deactivate
     rm -rf venvoidc
+    echo "MONGODB-OIDC authentication tests complete"
 }
 
 PYTHON=${PYTHON_BINARY:-$(which python3)}
