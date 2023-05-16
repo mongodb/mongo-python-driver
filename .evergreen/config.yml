@@ -98,7 +98,7 @@ functions:
             # If this was a patch build, doing a fresh clone would not actually test the patch
             cp -R ${PROJECT_DIRECTORY}/ $DRIVERS_TOOLS
           else
-            git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $DRIVERS_TOOLS
+            git clone --branch DRIVERS-2416 https://github.com/blink1073/drivers-evergreen-tools.git $DRIVERS_TOOLS
           fi
           echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
 
@@ -1260,6 +1260,36 @@ task_groups:
     tasks:
     - testazurekms-task
 
+  - name: testazureoidc_task_group
+    setup_group:
+    - func: fetch source
+    - func: prepare resources
+    - func: fix absolute paths
+    - func: make files executable
+    - command: shell.exec
+      params:
+        silent: true
+        shell: bash
+        script: |-
+          set -o errexit
+          ${PREPARE_SHELL}
+          export AZUREOIDC_CLIENTID="${testazureoidc_clientid}"
+          export AZUREOIDC_TENANTID="${testazureoidc_tenantid}"
+          export AZUREOIDC_SECRET="${testazureoidc_secret}"
+          export AZUREOIDC_DRIVERS_TOOLS="$DRIVERS_TOOLS"
+          export AZUREKMS_VMNAME_PREFIX="PYTHON_DRIVER"
+          $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/create-and-setup-vm.sh
+    - command: shell.exec
+      params:
+        shell: bash
+        script: |-
+          ${PREPARE_SHELL}
+          $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/delete-vm.sh
+    setup_group_can_fail_task: true
+    setup_group_timeout_secs: 1800
+    tasks:
+    - testazureoidc-task
+
 tasks:
     # Wildcard task. Do you need to find out what tools are available and where?
     # Throw it here, and execute this task on all buildvariants
@@ -2108,6 +2138,19 @@ tasks:
         - func: "run oidc auth test with aws credentials"
           vars:
             AWS_WEB_IDENTITY_TOKEN_FILE: /tmp/tokens/test1
+
+    - name: "oidc-auth-test-azure-latest"
+      commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |-
+            set -o errexit
+            ${PREPARE_SHELL}
+            export AZUREOIDC_DRIVERS_TAR_FILE=/tmp/mongo-python-driver.tgz
+            tar czf $AZUREOIDC_DRIVERS_TAR_FILE .
+            export AZUREOIDC_TEST_CMD="source ./env.sh && PROVIDER_NAME=azure ./.evergreen/run-mongodb-oidc-test.sh"
+            bash $DRIVERS_TOOLS/auth_oidc/azure/run-driver-test.sh
 
     - name: load-balancer-test
       commands:
@@ -3185,6 +3228,13 @@ buildvariants:
   display_name: "MONGODB-OIDC Auth ${platform} ${python-version}"
   tasks:
     - name: "oidc-auth-test-latest"
+
+- name: testazureoidc-variant
+  display_name: "Azure OIDC"
+  run_on: ubuntu2004-small
+  tasks:
+    - name: testazureoidc_task_group
+      batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
 
 - matrix_name: "aws-auth-test"
   matrix_spec:
