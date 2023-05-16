@@ -1268,7 +1268,6 @@ task_groups:
     - func: make files executable
     - command: shell.exec
       params:
-        silent: true
         shell: bash
         script: |-
           set -o errexit
