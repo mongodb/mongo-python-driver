@@ -117,7 +117,7 @@ class _sslConn(_SSL.Connection):
                     want_read = True
                     want_write = True
                 # Check for closed socket.
-                if self.fd == -1:
+                if self.fileno() == -1:
                     raise
                 self.socket_checker.select(self, want_read, want_write, timeout)
                 if timeout and _time.monotonic() - start > timeout:
