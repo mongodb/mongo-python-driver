@@ -107,6 +107,9 @@ class _sslConn(_SSL.Connection):
             try:
                 return call(*args, **kwargs)
             except BLOCKING_IO_ERRORS as exc:
+                # Check for closed socket.
+                if self.fileno() == -1:
+                    raise
                 if isinstance(exc, _SSL.WantReadError):
                     want_read = True
                     want_write = False
@@ -116,9 +119,6 @@ class _sslConn(_SSL.Connection):
                 else:
                     want_read = True
                     want_write = True
-                # Check for closed socket.
-                if self.fileno() == -1:
-                    raise
                 self.socket_checker.select(self, want_read, want_write, timeout)
                 if timeout and _time.monotonic() - start > timeout:
                     raise _socket.timeout("timed out")
