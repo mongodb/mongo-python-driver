@@ -1275,6 +1275,7 @@ task_groups:
           export AZUREOIDC_CLIENTID="${testazureoidc_clientid}"
           export AZUREOIDC_TENANTID="${testazureoic_tenantid}"
           export AZUREOIDC_SECRET="${testazureoidc_secret}"
+          export AZUREOIDC_KEYVAULT=${testazureoidc_keyvault}
           export AZUREOIDC_DRIVERS_TOOLS="$DRIVERS_TOOLS"
           export AZUREOIDC_VMNAME_PREFIX="PYTHON_DRIVER"
           $DRIVERS_TOOLS/.evergreen/auth_oidc/azure/create-and-setup-vm.sh
