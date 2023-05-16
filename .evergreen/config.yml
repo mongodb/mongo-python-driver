@@ -1274,7 +1274,7 @@ task_groups:
           set -o errexit
           ${PREPARE_SHELL}
           export AZUREOIDC_CLIENTID="${testazureoidc_clientid}"
-          export AZUREOIDC_TENANTID="${testazureoidc_tenantid}"
+          export AZUREOIDC_TENANTID="${testazureoic_tenantid}"
           export AZUREOIDC_SECRET="${testazureoidc_secret}"
           export AZUREOIDC_DRIVERS_TOOLS="$DRIVERS_TOOLS"
           export AZUREKMS_VMNAME_PREFIX="PYTHON_DRIVER"
