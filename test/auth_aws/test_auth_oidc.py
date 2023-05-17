@@ -534,6 +534,53 @@ class TestAuthOIDC(unittest.TestCase):
         self.assertEqual(self.refresh_called, 1)
         client.close()
 
+    def test_reauthenticate_succeeds_aws(self):
+        listener = EventListener()
+
+        # Create a client.
+        props = {"PROVIDER_NAME": "aws"}
+        client = MongoClient(
+            self.uri_single, event_listeners=[listener], authMechanismProperties=props
+        )
+
+        # Perform a find operation.
+        client.test.test.find_one()
+
+        listener.reset()
+
+        with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "errorCode": 391},
+            }
+        ):
+            # Perform a find operation.
+            client.test.test.find_one()
+
+        started_events = [
+            i.command_name for i in listener.started_events if not i.command_name.startswith("sasl")
+        ]
+        succeeded_events = [
+            i.command_name
+            for i in listener.succeeded_events
+            if not i.command_name.startswith("sasl")
+        ]
+        failed_events = [
+            i.command_name for i in listener.failed_events if not i.command_name.startswith("sasl")
+        ]
+
+        self.assertEqual(
+            started_events,
+            [
+                "find",
+                "find",
+            ],
+        )
+        self.assertEqual(succeeded_events, ["find"])
+        self.assertEqual(failed_events, ["find"])
+
+        client.close()
+
     def test_reauthenticate_succeeds_bulk_write(self):
         request_cb = self.create_request_cb()
         refresh_cb = self.create_refresh_cb()

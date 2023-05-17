@@ -567,7 +567,7 @@ class _X509Context(_AuthContext):
 class _OIDCContext(_AuthContext):
     def speculate_command(self):
         authenticator = _get_authenticator(self.credentials, self.address)
-        cmd = authenticator.auth_start_cmd(False)
+        cmd = authenticator.auth_start_cmd()
         if cmd is None:
             return None
         cmd["db"] = self.credentials.source
