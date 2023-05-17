@@ -41,12 +41,22 @@
     {
       "collectionName": "collName",
       "databaseName": "db",
-      "documents": []
+      "documents": [
+        {
+          "_id": 1
+        },
+        {
+          "_id": 2
+        },
+        {
+          "_id": 3
+        }
+      ]
     }
   ],
   "tests": [
     {
-      "description": "Read command should reauthenticate when receive ReauthenticationRequired error code and retryReads=true",
+      "description": "Find command should reauthenticate when receive ReauthenticationRequired error code and retryReads=true",
       "operations": [
         {
           "name": "failPoint",
@@ -111,7 +121,7 @@
       ]
     },
     {
-      "description": "Write command should reauthenticate when receive ReauthenticationRequired error code and retryWrites=true",
+      "description": "Insert command should reauthenticate when receive ReauthenticationRequired error code and retryWrites=true",
       "operations": [
         {
           "name": "failPoint",
@@ -137,7 +147,7 @@
           "object": "collection0",
           "arguments": {
             "document": {
-              "_id": 1,
+              "_id": 4,
               "x": 1
             }
           }
@@ -153,7 +163,7 @@
                   "insert": "collName",
                   "documents": [
                     {
-                      "_id": 1,
+                      "_id": 4,
                       "x": 1
                     }
                   ]
@@ -171,7 +181,7 @@
                   "insert": "collName",
                   "documents": [
                     {
-                      "_id": 1,
+                      "_id": 4,
                       "x": 1
                     }
                   ]
@@ -181,6 +191,99 @@
             {
               "commandSucceededEvent": {
                 "commandName": "insert"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "GetMore command should reauthenticate when receive ReauthenticationRequired error code and retryWrites=true",
+      "operations": [
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client0",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
+              },
+              "data": {
+                "failCommands": [
+                  "getMore"
+                ],
+                "errorCode": 391
+              }
+            }
+          }
+        },
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "filter": {},
+            "sort": {
+              "_id": 1
+            },
+            "batchSize": 2
+          }
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "find": "collName",
+                  "filter": {}
+                }
+              }
+            },
+            {
+              "commandSucceededEvent": {
+                "commandName": "find"
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "getMore": {
+                    "$$type": [
+                      "int",
+                      "long"
+                    ]
+                  },
+                  "collection": "collName",
+                  "batchSize": 2
+                }
+              }
+            },
+            {
+              "commandFailedEvent": {
+                "commandName": "getMore"
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "getMore": {
+                    "$$type": [
+                      "int",
+                      "long"
+                    ]
+                  },
+                  "collection": "collName",
+                  "batchSize": 2
+                }
+              }
+            },
+            {
+              "commandSucceededEvent": {
+                "commandName": "getMore"
               }
             }
           ]
