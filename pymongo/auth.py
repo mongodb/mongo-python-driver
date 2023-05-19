@@ -152,6 +152,8 @@ def _build_credentials_tuple(mech, source, user, passwd, extra, database):
             "127.0.0.1",
             "::1",
         ]
+        if provider_name and (request_token_callback or refresh_token_callback):
+            raise ConfigurationError("Callbacks must not be given when using a PROVIDER_NAME")
         allowed_hosts = properties.get("allowed_hosts", default_allowed)
         if not request_token_callback and provider_name != "aws":
             raise ConfigurationError(
