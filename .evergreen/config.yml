@@ -98,7 +98,7 @@ functions:
             # If this was a patch build, doing a fresh clone would not actually test the patch
             cp -R ${PROJECT_DIRECTORY}/ $DRIVERS_TOOLS
           else
-            git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $DRIVERS_TOOLS
+            git clone --branch BUILD-17302 https://github.com/blink1073/drivers-evergreen-tools.git $DRIVERS_TOOLS
           fi
           echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
 
@@ -1042,6 +1042,16 @@ functions:
           # Remove all Docker images
           docker rmi -f $(docker images -a -q) &> /dev/null || true
 
+  "teardown_aws":
+    - command: shell.exec
+      params:
+        script: |
+          ${PREPARE_SHELL}
+          cd "${DRIVERS_TOOLS}/.evergreen/auth_aws"
+          if [ -f "./aws_e2e_setup.json" ]; then
+            python .lib/aws_assign_instance_profile.py
+          fi
+
   "build release":
     - command: shell.exec
       type: test
@@ -1139,6 +1149,7 @@ post:
   - func: "stop mongo-orchestration"
   - func: "cleanup"
   - func: "teardown_docker"
+  - func: "teardown_aws"
 
 task_groups:
   - name: serverless_task_group
