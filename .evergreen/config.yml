@@ -1147,9 +1147,9 @@ post:
   - func: "upload mo artifacts"
   - func: "upload test results"
   - func: "stop mongo-orchestration"
+  - func: "teardown_aws"
   - func: "cleanup"
   - func: "teardown_docker"
-  - func: "teardown_aws"
 
 task_groups:
   - name: serverless_task_group
