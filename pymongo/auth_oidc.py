@@ -98,11 +98,14 @@ class _OIDCAuthenticator:
     cache_exp_utc: datetime = field(default_factory=_get_cache_exp)
     lock: threading.Lock = field(default_factory=threading.Lock)
 
-    def get_current_token(self):
+    def get_current_token(self, use_callbacks=True):
         properties = self.properties
 
         request_cb = properties.request_token_callback
         refresh_cb = properties.refresh_token_callback
+        if not use_callbacks:
+            request_cb = None
+            refresh_cb = None
 
         current_valid_token = False
         if self.token_exp_utc is not None:
@@ -113,6 +116,9 @@ class _OIDCAuthenticator:
                 current_valid_token = True
 
         timeout = CALLBACK_TIMEOUT_SECONDS
+
+        if not use_callbacks and not current_valid_token:
+            return None
 
         if not current_valid_token and request_cb is not None:
             prev_token = self.idp_resp and self.idp_resp["access_token"]
@@ -167,7 +173,7 @@ class _OIDCAuthenticator:
 
         return token
 
-    def auth_start_cmd(self):
+    def auth_start_cmd(self, use_callbacks=True):
         properties = self.properties
 
         # Handle aws provider credentials.
@@ -212,7 +218,7 @@ class _OIDCAuthenticator:
             )
             return cmd
 
-        token = self.get_current_token()
+        token = self.get_current_token(use_callbacks)
         if not token:
             return None
         bin_payload = Binary(bson.encode({"jwt": token}))
