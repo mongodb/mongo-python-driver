@@ -39,18 +39,21 @@ def create_test(test_case):
         valid = test_case["valid"]
         credential = test_case.get("credential")
 
+        props = {}
+        if credential:
+            props = credential["mechanism_properties"] or {}
+            if props.get("REQUEST_TOKEN_CALLBACK"):
+                props["request_token_callback"] = lambda x, y: 1
+                del props["REQUEST_TOKEN_CALLBACK"]
+            if props.get("REFRESH_TOKEN_CALLBACK"):
+                props["refresh_token_callback"] = lambda a, b: 1
+                del props["REFRESH_TOKEN_CALLBACK"]
+
         if not valid:
-            self.assertRaises(Exception, MongoClient, uri, connect=False)
+            self.assertRaises(
+                Exception, MongoClient, uri, connect=False, authmechanismproperties=props
+            )
         else:
-            props = {}
-            if credential:
-                props = credential["mechanism_properties"] or {}
-                if props.get("REQUEST_TOKEN_CALLBACK"):
-                    props["request_token_callback"] = lambda x, y: 1
-                    del props["REQUEST_TOKEN_CALLBACK"]
-                if props.get("REFRESH_TOKEN_CALLBACK"):
-                    props["refresh_token_callback"] = lambda a, b: 1
-                    del props["REFRESH_TOKEN_CALLBACK"]
             client = MongoClient(uri, connect=False, authmechanismproperties=props)
             credentials = client.options.pool_options._credentials
             if credential is None:
