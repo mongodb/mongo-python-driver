@@ -23,7 +23,7 @@ import bson
 from bson.binary import Binary
 from bson.son import SON
 from pymongo.errors import ConfigurationError, OperationFailure
-from pymongo.helpers import _REAUTHENTICATION_REQUIRED_CODE
+from pymongo.helpers import _AUTHENTICATION_FAILED_CODE, _REAUTHENTICATION_REQUIRED_CODE
 
 
 @dataclass
@@ -239,8 +239,11 @@ class _OIDCAuthenticator:
         try:
             return sock_info.command("$external", cmd, no_reauth=True)
         except OperationFailure as exc:
+            had_resp = self.idp_resp is not None
             self.clear()
-            if exc.code == _REAUTHENTICATION_REQUIRED_CODE:
+            if exc.code == _REAUTHENTICATION_REQUIRED_CODE or (
+                had_resp and exc.code == _AUTHENTICATION_FAILED_CODE
+            ):
                 if "jwt" in bson.decode(cmd["payload"]):  # type:ignore[attr-defined]
                     if self.idp_info_gen_id > self.reauth_gen_id:
                         raise

@@ -68,7 +68,8 @@ _RETRYABLE_ERROR_CODES: frozenset = _NOT_PRIMARY_CODES | frozenset(
     ]
 )
 
-# Server code raised when re-authentication is required
+# Server codes related to authentication.
+_AUTHENTICATION_FAILED_CODE = 18
 _REAUTHENTICATION_REQUIRED_CODE = 391
 
 

@@ -51,7 +51,7 @@ class TestAuthOIDC(unittest.TestCase):
         _oidc_cache.clear()
         os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"] = os.path.join(self.token_dir, "test_user1")
 
-    def create_request_cb(self, username="test_user1", expires_in_seconds=None, sleep=0):
+    def create_request_cb(self, username="test_user1", expires_in_seconds=1e6, sleep=0):
 
         token_file = os.path.join(self.token_dir, username)
 
@@ -76,7 +76,7 @@ class TestAuthOIDC(unittest.TestCase):
 
         return request_token
 
-    def create_refresh_cb(self, username="test_user1", expires_in_seconds=None):
+    def create_refresh_cb(self, username="test_user1", expires_in_seconds=1e6):
 
         token_file = os.path.join(self.token_dir, username)
 
@@ -102,16 +102,25 @@ class TestAuthOIDC(unittest.TestCase):
 
         return refresh_token
 
-    @contextmanager
-    def fail_point(self, command_args):
+    def set_fail_point(self, command_args):
         cmd_on = SON([("configureFailPoint", "failCommand")])
         cmd_on.update(command_args)
         client = MongoClient(self.uri_admin)
         client.admin.command(cmd_on)
+        client.close()
+
+    def clear_fail_point(self):
+        client = MongoClient(self.uri_admin)
+        client.admin.command("configureFailPoint", "failCommand", mode="off")
+        client.close()
+
+    @contextmanager
+    def fail_point(self, command_args):
+        self.set_fail_point(command_args)
         try:
             yield
         finally:
-            client.admin.command("configureFailPoint", cmd_on["configureFailPoint"], mode="off")
+            self.clear_fail_point()
 
     def test_connect_callbacks_single_implicit_username(self):
         request_token = self.create_request_cb()
@@ -233,7 +242,7 @@ class TestAuthOIDC(unittest.TestCase):
         t2.join()
 
         self.assertEqual(self.request_called, 1)
-        self.assertEqual(self.refresh_called, 2)
+        self.assertEqual(self.refresh_called, 0)
 
     def test_request_callback_returns_null(self):
         def request_token_null(a, b):
@@ -353,7 +362,7 @@ class TestAuthOIDC(unittest.TestCase):
     def test_cache_with_no_refresh(self):
         # Create a new client with a request callback callback.
         # Give a callback response with a valid accessToken and an expiresInSeconds that is within one minute.
-        request_cb = self.create_request_cb()
+        request_cb = self.create_request_cb(expires_in_seconds=60)
 
         props = {"request_token_callback": request_cb}
         client = MongoClient(self.uri_single, authMechanismProperties=props)
@@ -396,7 +405,7 @@ class TestAuthOIDC(unittest.TestCase):
         self.assertEqual(len(_oidc_cache), 2)
 
     def test_cache_clears_on_error(self):
-        request_cb = self.create_request_cb()
+        request_cb = self.create_request_cb(expires_in_seconds=5 * 60)
 
         # Create a new client with a valid request callback that gives credentials that expire within 5 minutes and a refresh callback that gives invalid credentials.
         def refresh_cb(a, b):
@@ -767,7 +776,17 @@ class TestAuthOIDC(unittest.TestCase):
         # Create request and refresh callbacks that return valid credentials
         # that will not expire soon.
         request_cb = self.create_request_cb()
-        refresh_cb = self.create_refresh_cb()
+        _refresh_cb = self.create_refresh_cb()
+
+        def refresh_cb(info, context):
+            self.clear_fail_point()
+            self.set_fail_point(
+                {
+                    "mode": {"times": 1},
+                    "data": {"failCommands": ["saslStart"], "errorCode": 18},
+                }
+            )
+            return _refresh_cb(info, context)
 
         # Create a client with the callbacks.
         props: Dict = {"request_token_callback": request_cb, "refresh_token_callback": refresh_cb}
@@ -778,15 +797,23 @@ class TestAuthOIDC(unittest.TestCase):
         # Perform a find operation.
         client.test.test.find_one()
 
+        self.assertEqual(self.request_called, 1)
+        self.assertEqual(self.refresh_called, 0)
+
         # Set a fail point for ``saslStart`` commands of the form
-        with self.fail_point(
+        self.set_fail_point(
             {
-                "mode": {"times": 2},
-                "data": {"failCommands": ["find", "saslStart"], "errorCode": 391},
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "errorCode": 391},
             }
-        ):
-            # Perform a find operation that succeeds.
-            client.test.test.find_one()
+        )
+
+        # Perform a find operation that succeeds.
+        client.test.test.find_one()
+        self.clear_fail_point()
+
+        self.assertEqual(self.request_called, 2)
+        self.assertEqual(self.refresh_called, 1)
 
         # Close the client.
         client.close()
@@ -796,8 +823,19 @@ class TestAuthOIDC(unittest.TestCase):
 
         # Create request and refresh callbacks that return valid credentials
         # that will not expire soon.
-        request_cb = self.create_request_cb()
+        _request_cb = self.create_request_cb()
         refresh_cb = self.create_refresh_cb()
+
+        def request_cb(info, context):
+            if self.request_called == 1:
+                self.clear_fail_point()
+                self.set_fail_point(
+                    {
+                        "mode": {"times": 1},
+                        "data": {"failCommands": ["saslContinue"], "errorCode": 18},
+                    }
+                )
+            return _request_cb(info, context)
 
         # Create a client with the callbacks.
         props: Dict = {"request_token_callback": request_cb, "refresh_token_callback": refresh_cb}
@@ -811,22 +849,25 @@ class TestAuthOIDC(unittest.TestCase):
         # Clear the cache.
         _oidc_cache.clear()
 
-        with self.fail_point(
+        self.set_fail_point(
             {
-                "mode": {"times": 2},
-                "data": {"failCommands": ["find", "saslStart"], "errorCode": 391},
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "errorCode": 391},
             }
-        ):
-            # Perform a find operation that fails.
-            with self.assertRaises(OperationFailure):
-                client.test.test.find_one()
+        )
+
+        # Perform a find operation that fails.
+        with self.assertRaises(OperationFailure):
+            client.test.test.find_one()
+
+        self.clear_fail_point()
 
         client.close()
 
     def test_late_reauth_avoids_callback(self):
         # Step 1: connect with both clients
-        request_cb = self.create_request_cb(expires_in_seconds=1e6)
-        refresh_cb = self.create_refresh_cb(expires_in_seconds=1e6)
+        request_cb = self.create_request_cb()
+        refresh_cb = self.create_refresh_cb()
 
         props: Dict = {"request_token_callback": request_cb, "refresh_token_callback": refresh_cb}
         client1 = MongoClient(self.uri_single, authMechanismProperties=props)
