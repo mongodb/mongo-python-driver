@@ -285,21 +285,21 @@ class _OIDCAuthenticator:
         if not self._last_cmd:
             raise
         sock_info = self.sock_info
+        # Only retry on an auth failure code if we've had at least one
+        # accepted token.
         token_id = getattr(sock_info, "oidc_token_gen_id", None)
-        refresh_token = self.idp_resp and self.idp_resp.get("refresh_token")
-        payload = bson.decode(self._last_cmd["payload"])
         if exc.code == _REAUTHENTICATION_REQUIRED_CODE or (
             token_id and exc.code == _AUTHENTICATION_FAILED_CODE
         ):
+            payload = bson.decode(self._last_cmd["payload"])
             if "jwt" not in payload:
                 raise exc
             # Attempt one refresh if available.
-            if refresh_token:
+            if self.idp_resp and self.idp_resp.get("refresh_token"):
                 try:
                     return self._authenticate()
                 except OperationFailure:
-                    # Fall back to clearing and retrying from
-                    # beginning.
+                    # Fall back to retrying from a clean slate.
                     self.clear()
                     return self._authenticate()
             else:
