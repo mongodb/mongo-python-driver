@@ -91,8 +91,8 @@ class _OIDCAuthenticator:
     properties: _OIDCProperties
     idp_info: Optional[Dict] = field(default=None)
     idp_resp: Optional[Dict] = field(default=None)
-    reauth_gen_id: int = field(default=0)
-    idp_info_gen_id: int = field(default=0)
+    has_full_retried: bool = field(default=False)
+    has_refreshed: bool = field(default=False)
     token_gen_id: int = field(default=0)
     token_exp_utc: Optional[datetime] = field(default=None)
     cache_exp_utc: datetime = field(default_factory=_get_cache_exp)
@@ -121,31 +121,21 @@ class _OIDCAuthenticator:
             return None
 
         if not current_valid_token and request_cb is not None:
-            prev_token = self.idp_resp and self.idp_resp["access_token"]
-            with self.lock:
-                # See if the token was changed while we were waiting for the
-                # lock.
-                new_token = self.idp_resp and self.idp_resp["access_token"]
-                if new_token != prev_token:
-                    return new_token
+            refresh_token = self.idp_resp and self.idp_resp.get("refresh_token")
+            refresh_token = refresh_token or ""
+            context = {
+                "timeout_seconds": timeout,
+                "version": CALLBACK_VERSION,
+                "refresh_token": refresh_token,
+            }
 
-                refresh_token = self.idp_resp and self.idp_resp.get("refresh_token")
-                refresh_token = refresh_token or ""
-                context = {
-                    "timeout_seconds": timeout,
-                    "version": CALLBACK_VERSION,
-                    "refresh_token": refresh_token,
-                }
-
-                if self.idp_resp is None or refresh_cb is None:
-                    self.idp_resp = request_cb(self.idp_info, context)
-                elif request_cb is not None:
-                    self.idp_resp = refresh_cb(self.idp_info, context)
-                cache_exp_utc = datetime.now(timezone.utc) + timedelta(
-                    minutes=CACHE_TIMEOUT_MINUTES
-                )
-                self.cache_exp_utc = cache_exp_utc
-                self.token_gen_id += 1
+            if self.idp_resp is None or refresh_cb is None:
+                self.idp_resp = request_cb(self.idp_info, context)
+            elif request_cb is not None and refresh_token is not None:
+                self.idp_resp = refresh_cb(self.idp_info, context)
+            cache_exp_utc = datetime.now(timezone.utc) + timedelta(minutes=CACHE_TIMEOUT_MINUTES)
+            self.cache_exp_utc = cache_exp_utc
+            self.token_gen_id += 1
 
         token_result = self.idp_resp
 
@@ -156,7 +146,7 @@ class _OIDCAuthenticator:
         if "access_token" not in token_result:
             raise ValueError("OIDC callback did not return an access_token")
 
-        expected = ["access_token", "expires_in_seconds", "refesh_token"]
+        expected = ["access_token", "expires_in_seconds", "refresh_token"]
         for key in token_result:
             if key not in expected:
                 raise ValueError(f'Unexpected field in callback result "{key}"')
@@ -189,6 +179,7 @@ class _OIDCAuthenticator:
                     ("payload", Binary(bson.encode(payload))),
                 ]
             )
+            self.token_gen_id += 1
             return cmd
 
         principal_name = self.username
@@ -235,32 +226,48 @@ class _OIDCAuthenticator:
         self.idp_resp = None
         self.token_exp_utc = None
 
+    def handle_reauthenticate(self, sock_info):
+        prev_id = getattr(sock_info, "oidc_token_gen_id", 0)
+        # If we haven't changed tokens, mark the current one as expired.
+        if prev_id == self.token_gen_id:
+            self.token_exp_utc = None
+
     def run_command(self, sock_info, cmd):
         try:
             return sock_info.command("$external", cmd, no_reauth=True)
         except OperationFailure as exc:
-            had_resp = self.idp_resp is not None
-            self.clear()
+            token_id = getattr(sock_info, "oidc_token_gen_id")
+            refresh_token = self.idp_resp and self.idp_resp.get("refresh_token")
             if exc.code == _REAUTHENTICATION_REQUIRED_CODE or (
-                had_resp and exc.code == _AUTHENTICATION_FAILED_CODE
+                token_id and exc.code == _AUTHENTICATION_FAILED_CODE
             ):
                 if "jwt" in bson.decode(cmd["payload"]):  # type:ignore[attr-defined]
-                    if self.idp_info_gen_id > self.reauth_gen_id:
+                    # We've already tried a full retry once, bail and
+                    # raise error to user.
+                    if self.has_full_retried:
+                        self.has_full_retried = False
+                        self.has_refreshed = False
+                        self.clear()
                         raise
-                    return self.authenticate(sock_info, reauthenticate=True)
+                    # We have a refresh token, try to use it.
+                    elif refresh_token and not self.has_refreshed:
+                        self.has_refreshed = True
+                        self.token_exp_utc = None
+                        return self.authenticate(sock_info)
+                    # Try a full retry.
+                    else:
+                        self.has_full_retried = True
+                        self.has_refreshed = False
+                        self.clear()
+                        return self.authenticate(sock_info)
+
+                self.clear()
+                raise
+
+            self.clear()
             raise
 
-    def authenticate(self, sock_info, reauthenticate=False):
-        if reauthenticate:
-            prev_id = getattr(sock_info, "oidc_token_gen_id", None)
-            # Check if we've already changed tokens.
-            if prev_id == self.token_gen_id:
-                self.reauth_gen_id = self.idp_info_gen_id
-                self.token_exp_utc = None
-                refresh_token = self.idp_resp and self.idp_resp.get("refresh_token")
-                if not self.properties.refresh_token_callback and not refresh_token:
-                    self.clear()
-
+    def authenticate(self, sock_info):
         ctx = sock_info.auth_ctx
         cmd = None
 
@@ -272,12 +279,13 @@ class _OIDCAuthenticator:
 
         if resp["done"]:
             sock_info.oidc_token_gen_id = self.token_gen_id
-            return None
+            self.has_full_retried = False
+            self.has_refreshed = False
+            return resp
 
         server_resp: Dict = bson.decode(resp["payload"])
         if "issuer" in server_resp:
             self.idp_info = server_resp
-            self.idp_info_gen_id += 1
 
         conversation_id = resp["conversationId"]
         token = self.get_current_token()
@@ -294,10 +302,15 @@ class _OIDCAuthenticator:
         if not resp["done"]:
             self.clear()
             raise OperationFailure("SASL conversation failed to complete.")
+        self.has_full_retried = False
+        self.has_refreshed = False
         return resp
 
 
 def _authenticate_oidc(credentials, sock_info, reauthenticate):
     """Authenticate using MONGODB-OIDC."""
     authenticator = _get_authenticator(credentials, sock_info.address)
-    return authenticator.authenticate(sock_info, reauthenticate=reauthenticate)
+    with authenticator.lock:
+        if reauthenticate:
+            authenticator.handle_reauthenticate(sock_info)
+        return authenticator.authenticate(sock_info)

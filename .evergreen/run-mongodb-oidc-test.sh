@@ -63,7 +63,7 @@ authtest () {
     echo "Running MONGODB-OIDC authentication tests with $PYTHON"
     $PYTHON --version
 
-    $VIRTUALENV -p $PYTHON --never-download venvoidc
+    #$VIRTUALENV -p $PYTHON --never-download venvoidc
     if [ "Windows_NT" = "$OS" ]; then
       . venvoidc/Scripts/activate
     else
@@ -73,7 +73,7 @@ authtest () {
     python -m pip install '.[aws]'
     python test/auth_aws/test_auth_oidc.py -v
     deactivate
-    rm -rf venvoidc
+    #rm -rf venvoidc
 }
 
 PYTHON=${PYTHON_BINARY:-}
