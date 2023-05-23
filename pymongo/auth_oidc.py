@@ -91,8 +91,6 @@ class _OIDCAuthenticator:
     properties: _OIDCProperties
     idp_info: Optional[Dict] = field(default=None)
     idp_resp: Optional[Dict] = field(default=None)
-    has_full_retried: bool = field(default=False)
-    has_refreshed: bool = field(default=False)
     token_gen_id: int = field(default=0)
     token_exp_utc: Optional[datetime] = field(default=None)
     cache_exp_utc: datetime = field(default_factory=_get_cache_exp)
@@ -226,48 +224,27 @@ class _OIDCAuthenticator:
         self.idp_resp = None
         self.token_exp_utc = None
 
-    def handle_reauthenticate(self, sock_info):
-        prev_id = getattr(sock_info, "oidc_token_gen_id", 0)
-        # If we haven't changed tokens, mark the current one as expired.
-        if prev_id == self.token_gen_id:
-            self.token_exp_utc = None
+    def authenticate(self, sock_info, reauthenticate=False):
+        with self.lock:
+            resp = None
+            self._last_cmd = None
+            self.sock_info = sock_info
+            if reauthenticate:
+                prev_id = getattr(sock_info, "oidc_token_gen_id", 0)
+                # If we haven't changed tokens, mark the current one as expired.
+                if prev_id == self.token_gen_id:
+                    self.token_exp_utc = None
 
-    def run_command(self, sock_info, cmd):
-        try:
-            return sock_info.command("$external", cmd, no_reauth=True)
-        except OperationFailure as exc:
-            token_id = getattr(sock_info, "oidc_token_gen_id")
-            refresh_token = self.idp_resp and self.idp_resp.get("refresh_token")
-            if exc.code == _REAUTHENTICATION_REQUIRED_CODE or (
-                token_id and exc.code == _AUTHENTICATION_FAILED_CODE
-            ):
-                if "jwt" in bson.decode(cmd["payload"]):  # type:ignore[attr-defined]
-                    # We've already tried a full retry once, bail and
-                    # raise error to user.
-                    if self.has_full_retried:
-                        self.has_full_retried = False
-                        self.has_refreshed = False
-                        self.clear()
-                        raise
-                    # We have a refresh token, try to use it.
-                    elif refresh_token and not self.has_refreshed:
-                        self.has_refreshed = True
-                        self.token_exp_utc = None
-                        return self.authenticate(sock_info)
-                    # Try a full retry.
-                    else:
-                        self.has_full_retried = True
-                        self.has_refreshed = False
-                        self.clear()
-                        return self.authenticate(sock_info)
+            try:
+                resp = self._authenticate()
+            except OperationFailure as exc:
+                resp = self._handle_retry(exc)
 
-                self.clear()
-                raise
+            sock_info.oidc_token_gen_id = self.token_gen_id
+            return resp
 
-            self.clear()
-            raise
-
-    def authenticate(self, sock_info):
+    def _authenticate(self):
+        sock_info = self.sock_info
         ctx = sock_info.auth_ctx
         cmd = None
 
@@ -275,12 +252,9 @@ class _OIDCAuthenticator:
             resp = ctx.speculative_authenticate
         else:
             cmd = self.auth_start_cmd()
-            resp = self.run_command(sock_info, cmd)
+            resp = self._run_command(sock_info, cmd)
 
         if resp["done"]:
-            sock_info.oidc_token_gen_id = self.token_gen_id
-            self.has_full_retried = False
-            self.has_refreshed = False
             return resp
 
         server_resp: Dict = bson.decode(resp["payload"])
@@ -289,7 +263,6 @@ class _OIDCAuthenticator:
 
         conversation_id = resp["conversationId"]
         token = self.get_current_token()
-        sock_info.oidc_token_gen_id = self.token_gen_id
         bin_payload = Binary(bson.encode({"jwt": token}))
         cmd = SON(
             [
@@ -298,19 +271,48 @@ class _OIDCAuthenticator:
                 ("payload", bin_payload),
             ]
         )
-        resp = self.run_command(sock_info, cmd)
+        resp = self._run_command(sock_info, cmd)
         if not resp["done"]:
             self.clear()
             raise OperationFailure("SASL conversation failed to complete.")
-        self.has_full_retried = False
-        self.has_refreshed = False
         return resp
+
+    def _run_command(self, sock_info, cmd):
+        self._last_cmd = cmd
+        return sock_info.command("$external", cmd, no_reauth=True)
+
+    def _handle_retry(self, exc):
+        if not self._last_cmd:
+            raise
+        sock_info = self.sock_info
+        token_id = getattr(sock_info, "oidc_token_gen_id", None)
+        refresh_token = self.idp_resp and self.idp_resp.get("refresh_token")
+        payload = bson.decode(self._last_cmd["payload"])
+        if exc.code == _REAUTHENTICATION_REQUIRED_CODE or (
+            token_id and exc.code == _AUTHENTICATION_FAILED_CODE
+        ):
+            if "jwt" not in payload:
+                raise exc
+            # Attempt one refresh if available.
+            if refresh_token:
+                try:
+                    return self._authenticate()
+                except OperationFailure:
+                    # Fall back to clearing and retrying from
+                    # beginning.
+                    self.clear()
+                    return self._authenticate()
+            else:
+                # Retry from a clean slate.
+                self.clear()
+                return self._authenticate()
+        else:
+            # We cannot retry.
+            self.clear()
+            raise exc
 
 
 def _authenticate_oidc(credentials, sock_info, reauthenticate):
     """Authenticate using MONGODB-OIDC."""
     authenticator = _get_authenticator(credentials, sock_info.address)
-    with authenticator.lock:
-        if reauthenticate:
-            authenticator.handle_reauthenticate(sock_info)
-        return authenticator.authenticate(sock_info)
+    return authenticator.authenticate(sock_info, reauthenticate)
