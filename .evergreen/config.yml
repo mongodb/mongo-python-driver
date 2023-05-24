@@ -98,7 +98,7 @@ functions:
             # If this was a patch build, doing a fresh clone would not actually test the patch
             cp -R ${PROJECT_DIRECTORY}/ $DRIVERS_TOOLS
           else
-            git clone --branc PYTHON-3692 https://github.com/blink1073/drivers-evergreen-tools.git $DRIVERS_TOOLS
+            git clone https://github.com/mongodb-labs/drivers-evergreen-tools.git $DRIVERS_TOOLS
           fi
           echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
 
@@ -1965,12 +1965,12 @@ tasks:
             TOPOLOGY: "server"
             VERSION: "5.0"
         - func: "add aws auth variables to file"
-        # - func: "run aws auth test with regular aws credentials"
-        # - func: "run aws auth test with assume role credentials"
-        # - func: "run aws auth test with aws credentials as environment variables"
-        # - func: "run aws auth test with aws credentials and session token as environment variables"
-        # - func: "run aws auth test with aws EC2 credentials"
-        # - func: "run aws auth test with aws web identity credentials"
+        - func: "run aws auth test with regular aws credentials"
+        - func: "run aws auth test with assume role credentials"
+        - func: "run aws auth test with aws credentials as environment variables"
+        - func: "run aws auth test with aws credentials and session token as environment variables"
+        - func: "run aws auth test with aws EC2 credentials"
+        - func: "run aws auth test with aws web identity credentials"
         - func: "run aws ECS auth test"
 
     - name: "aws-auth-test-6.0"
