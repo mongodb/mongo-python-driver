@@ -428,12 +428,13 @@ static int _load_python_objects(PyObject* module) {
  *
  * Return the type marker, 0 if there is no marker, or -1 on failure.
  */
+static PyObject *TYPEMARKERSTR;
 static long _type_marker(PyObject* object) {
     PyObject* type_marker = NULL;
     long type = 0;
 
-    if (PyObject_HasAttrString(object, "_type_marker")) {
-        type_marker = PyObject_GetAttrString(object, "_type_marker");
+    if (PyObject_HasAttr(object, TYPEMARKERSTR)) {
+        type_marker = PyObject_GetAttr(object, TYPEMARKERSTR);
         if (type_marker == NULL) {
             return -1;
         }
@@ -450,13 +451,6 @@ static long _type_marker(PyObject* object) {
     if (type_marker && PyLong_CheckExact(type_marker)) {
         type = PyLong_AsLong(type_marker);
         Py_DECREF(type_marker);
-        /*
-         * Py(Long|Int)_AsLong returns -1 for error but -1 is a valid value
-         * so we call PyErr_Occurred to differentiate.
-         */
-        if (type == -1 && PyErr_Occurred()) {
-            return -1;
-        }
     } else {
         Py_XDECREF(type_marker);
     }
@@ -3030,6 +3024,8 @@ PyInit__cbson(void)
         Py_DECREF(m);
         INITERROR;
     }
+
+    TYPEMARKERSTR = PyUnicode_FromString("_type_marker");
 
     return m;
 }
