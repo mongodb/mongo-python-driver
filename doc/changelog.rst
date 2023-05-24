@@ -7,7 +7,7 @@ Changes in Version 4.4
 - Added support for MongoDB 7.0.
 - Added support for passing a list containing (key, direction) pairs
   or keys to :meth:`~pymongo.collection.Collection.create_index`.
-- pymongocrypt 1.5.0 or later is now required for client side field level
+- pymongocrypt 1.6.0 or later is now required for client side field level
   encryption support.
 - Improved support for Pyright to improve typing support for IDEs like Visual Studio Code
   or Visual Studio.

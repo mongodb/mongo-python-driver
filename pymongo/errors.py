@@ -356,9 +356,6 @@ class EncryptionError(PyMongoError):
 class EncryptedCollectionError(EncryptionError):
     """Raised when creating a collection with encrypted_fields fails.
 
-    .. note:: EncryptedCollectionError and `create_encrypted_collection` are both part of the
-       Queryable Encryption beta. Backwards-breaking changes may be made before the final release.
-
     .. versionadded:: 4.4
     """
 
