@@ -190,6 +190,7 @@ class _OIDCAuthenticator:
                 token = _get_azure_token(self.properties.token_audience)
             else:
                 raise ConfigurationError(f"Unsupported provider {provider}")
+            self.token_gen_id += 1
 
             payload = {"jwt": token}
             cmd = SON(
