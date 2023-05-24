@@ -20,30 +20,38 @@
 #define _CBSONMODULE_H
 
 #if defined(WIN32) || defined(_MSC_VER)
-/*
- * This macro is basically an implementation of asprintf for win32
- * We print to the provided buffer to get the string value as an int.
- */
 #if defined(_MSC_VER) && (_MSC_VER >= 1400)
-#define INT2STRING(buffer, i)                                       \
-    _snprintf_s((buffer),                                           \
-                 _scprintf("%d", (i)) + 1,                          \
-                 _scprintf("%d", (i)) + 1,                          \
-                 "%d",                                              \
-                 (i))
 #define STRCAT(dest, n, src) strcat_s((dest), (n), (src))
 #else
-#define INT2STRING(buffer, i)                                       \
-    _snprintf((buffer),                                             \
-               _scprintf("%d", (i)) + 1,                            \
-               "%d",                                                \
-              (i))
 #define STRCAT(dest, n, src) strcat((dest), (src))
 #endif
 #else
-#define INT2STRING(buffer, i) snprintf((buffer), sizeof((buffer)), "%d", (i))
 #define STRCAT(dest, n, src) strcat((dest), (src))
 #endif
+
+/* Converts integer to its string representation in decimal notation. */
+static char *int10_to_str(long int val, char *dst)
+{
+    char buffer[65];
+    char *p;
+    long int new_val;
+    unsigned long int uval = (unsigned long int) val;
+
+    p = &buffer[sizeof(buffer)-1];
+    *p = '\0';
+    new_val= (long) (uval / 10);
+    *--p = '0'+ (char) (uval - (unsigned long) new_val * 10);
+    val = new_val;
+
+    while (val != 0)
+    {
+        new_val=val/10;
+        *--p = '0' + (char) (val-new_val*10);
+        val= new_val;
+    }
+    while ((*dst++ = *p++) != 0) ;
+    return dst-1;
+}
 
 typedef struct type_registry_t {
     PyObject* encoder_map;

@@ -762,7 +762,7 @@ _batched_write_command(
         int cur_size;
         int enough_data = 0;
         char key[16];
-        INT2STRING(key, idx);
+        int10_to_str(idx, key);
         if (!buffer_write_bytes(buffer, "\x03", 1) ||
             !buffer_write_bytes(buffer, key, (int)strlen(key) + 1)) {
             goto fail;
