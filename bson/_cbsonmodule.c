@@ -55,6 +55,7 @@ struct module_state {
     PyObject* DatetimeMS;
     PyObject* _min_datetime_ms;
     PyObject* _max_datetime_ms;
+    PyObject* _type_marker_str;
 };
 
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
@@ -378,6 +379,9 @@ static int _load_python_objects(PyObject* module) {
     PyObject* compiled = NULL;
     struct module_state *state = GETSTATE(module);
 
+    /* Python str for faster _type_marker check */
+    state->_type_marker_str = PyUnicode_FromString("_type_marker");
+
     if (_load_object(&state->Binary, "bson.binary", "Binary") ||
         _load_object(&state->Code, "bson.code", "Code") ||
         _load_object(&state->ObjectId, "bson.objectid", "ObjectId") ||
@@ -428,13 +432,12 @@ static int _load_python_objects(PyObject* module) {
  *
  * Return the type marker, 0 if there is no marker, or -1 on failure.
  */
-static PyObject *TYPEMARKERSTR;
-static long _type_marker(PyObject* object) {
+static long _type_marker(PyObject* object, PyObject* _type_marker_str) {
     PyObject* type_marker = NULL;
     long type = 0;
 
-    if (PyObject_HasAttr(object, TYPEMARKERSTR)) {
-        type_marker = PyObject_GetAttr(object, TYPEMARKERSTR);
+    if (PyObject_HasAttr(object, _type_marker_str)) {
+        type_marker = PyObject_GetAttr(object, _type_marker_str);
         if (type_marker == NULL) {
             return -1;
         }
@@ -498,13 +501,12 @@ fail:
     return 0;
 }
 
-/* Fill out a codec_options_t* from a CodecOptions object. Use with the "O&"
- * format spec in PyArg_ParseTuple.
+/* Fill out a codec_options_t* from a CodecOptions object.
  *
  * Return 1 on success. options->document_class is a new reference.
  * Return 0 on failure.
  */
-int convert_codec_options(PyObject* options_obj, void* p) {
+int convert_codec_options(PyObject* self, PyObject* options_obj, void* p) {
     codec_options_t* options = (codec_options_t*)p;
     PyObject* type_registry_obj = NULL;
     long type_marker;
@@ -521,7 +523,8 @@ int convert_codec_options(PyObject* options_obj, void* p) {
                           &options->datetime_conversion))
         return 0;
 
-    type_marker = _type_marker(options->document_class);
+    type_marker = _type_marker(options->document_class,
+                               GETSTATE(self)->_type_marker_str);
     if (type_marker < 0) {
         return 0;
     }
@@ -724,7 +727,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
      * problems with python sub interpreters. Our custom types should
      * have a _type_marker attribute, which we can switch on instead.
      */
-    long type = _type_marker(value);
+    long type = _type_marker(value, state->_type_marker_str);
     if (type < 0) {
         return 0;
     }
@@ -1376,7 +1379,7 @@ int write_dict(PyObject* self, buffer_t buffer,
     long type_marker;
 
     /* check for RawBSONDocument */
-    type_marker = _type_marker(dict);
+    type_marker = _type_marker(dict, state->_type_marker_str);
     if (type_marker < 0) {
         return 0;
     }
@@ -1498,18 +1501,20 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
     PyObject* result;
     unsigned char check_keys;
     unsigned char top_level = 1;
+    PyObject* options_obj;
     codec_options_t options;
     buffer_t buffer;
     PyObject* raw_bson_document_bytes_obj;
     long type_marker;
 
-    if (!PyArg_ParseTuple(args, "ObO&|b", &dict, &check_keys,
-                          convert_codec_options, &options, &top_level)) {
+    if (!(PyArg_ParseTuple(args, "ObO|b", &dict, &check_keys,
+                          &options_obj, &top_level) &&
+            convert_codec_options(self, options_obj, &options))) {
         return NULL;
     }
 
     /* check for RawBSONDocument */
-    type_marker = _type_marker(dict);
+    type_marker = _type_marker(dict, GETSTATE(self)->_type_marker_str);
     if (type_marker < 0) {
         destroy_codec_options(&options);
         return NULL;
@@ -2520,6 +2525,7 @@ static PyObject* _cbson_element_to_dict(PyObject* self, PyObject* args) {
     /* TODO: Support buffer protocol */
     char* string;
     PyObject* bson;
+    PyObject* options_obj;
     codec_options_t options;
     unsigned position;
     unsigned max;
@@ -2529,8 +2535,9 @@ static PyObject* _cbson_element_to_dict(PyObject* self, PyObject* args) {
     PyObject* value;
     PyObject* result_tuple;
 
-    if (!PyArg_ParseTuple(args, "OIIO&p", &bson, &position, &max,
-                          convert_codec_options, &options, &raw_array)) {
+    if (!(PyArg_ParseTuple(args, "OIIOp", &bson, &position, &max,
+                          &options_obj, &raw_array) &&
+            convert_codec_options(self, options_obj, &options))) {
         return NULL;
     }
 
@@ -2632,7 +2639,7 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
     Py_buffer view = {0};
 
     if (! (PyArg_ParseTuple(args, "OO", &bson, &options_obj) &&
-            convert_codec_options(options_obj, &options))) {
+            convert_codec_options(self, options_obj, &options))) {
         return result;
     }
 
@@ -2709,10 +2716,8 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
     PyObject* options_obj = NULL;
     Py_buffer view = {0};
 
-    if (!PyArg_ParseTuple(args, "OO", &bson, &options_obj)) {
-        return NULL;
-    }
-    if (!convert_codec_options(options_obj, &options)) {
+    if (!(PyArg_ParseTuple(args, "OO", &bson, &options_obj) &&
+            convert_codec_options(self, options_obj, &options))) {
         return NULL;
     }
 
@@ -2960,6 +2965,7 @@ static int _cbson_clear(PyObject *m) {
     Py_CLEAR(GETSTATE(m)->MaxKey);
     Py_CLEAR(GETSTATE(m)->UTC);
     Py_CLEAR(GETSTATE(m)->REType);
+    Py_CLEAR(GETSTATE(m)->_type_marker_str);
     return 0;
 }
 
@@ -3024,8 +3030,6 @@ PyInit__cbson(void)
         Py_DECREF(m);
         INITERROR;
     }
-
-    TYPEMARKERSTR = PyUnicode_FromString("_type_marker");
 
     return m;
 }
