@@ -1036,7 +1036,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
             if (list_type_byte == -1) {
                 return 0;
             }
-            int10_to_str((int)i, name);
+            itoa((long int)i, name);
             if (!buffer_write_bytes(buffer, name, (int)strlen(name) + 1)) {
                 return 0;
             }
