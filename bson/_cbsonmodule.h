@@ -86,7 +86,7 @@ typedef struct codec_options_t {
 
 #define _cbson_convert_codec_options_INDEX 4
 #define _cbson_convert_codec_options_RETURN int
-#define _cbson_convert_codec_options_PROTO (PyObject* options_obj, void* p)
+#define _cbson_convert_codec_options_PROTO (PyObject* self, PyObject* options_obj, void* p)
 
 #define _cbson_destroy_codec_options_INDEX 5
 #define _cbson_destroy_codec_options_RETURN void
