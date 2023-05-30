@@ -761,8 +761,8 @@ _batched_write_command(
         int cur_doc_begin;
         int cur_size;
         int enough_data = 0;
-        char key[21];
-        long_to_str((long long)idx, key);
+        char key[BUF_SIZE];
+        long_long_to_str((long long)idx, key);
         if (!buffer_write_bytes(buffer, "\x03", 1) ||
             !buffer_write_bytes(buffer, key, (int)strlen(key) + 1)) {
             goto fail;

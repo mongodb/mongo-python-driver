@@ -265,11 +265,6 @@ ext_modules = [
         include_dirs=["bson"],
         sources=["pymongo/_cmessagemodule.c", "bson/buffer.c"],
     ),
-    Extension(
-        "bson.test_long2str",
-        include_dirs=["bson"],
-        sources=["bson/test_long2str.c", "bson/_cbsonmodule.c", "bson/time64.c", "bson/buffer.c"],
-    ),
 ]
 
 # PyOpenSSL 17.0.0 introduced support for OCSP. 17.1.0 introduced

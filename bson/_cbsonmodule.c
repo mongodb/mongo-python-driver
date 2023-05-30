@@ -82,7 +82,7 @@ struct module_state {
 #define DATETIME_AUTO 4
 
 /* Converts integer to its string representation in decimal notation. */
-extern void long_to_str(long long num, char* str) {
+extern void long_long_to_str(long long num, char* str) {
     // Buffer should fit 64-bit signed integer
     assert(sizeof(str) > 20);
     int index = 0;
@@ -122,6 +122,31 @@ extern void long_to_str(long long num, char* str) {
         str[start++] = str[end];
         str[end--] = temp;
     }
+}
+
+static PyObject* _test_long_long_to_str(PyObject* self, PyObject* args) {
+    // Test extreme values
+    Py_ssize_t maxNum = PY_SSIZE_T_MAX;
+    Py_ssize_t minNum = PY_SSIZE_T_MIN;
+    char str_1[BUF_SIZE];
+    char str_2[BUF_SIZE];
+    long_long_to_str((long long)minNum, str_1);
+    INT2STRING(str_2, (long long)minNum);
+    assert(strcmp(str_1, str_2) == 0);
+    long_long_to_str((long long)maxNum, str_1);
+    INT2STRING(str_2, (long long)maxNum);
+    assert(strcmp(str_1, str_2) == 0);
+
+    // Test common values
+    for (Py_ssize_t num = 0; num < 10000; num++) {
+        char str_1[BUF_SIZE];
+        char str_2[BUF_SIZE];
+        long_long_to_str((long long)num, str_1);
+        INT2STRING(str_2, (long long)num);
+        assert(strcmp(str_1, str_2) == 0);
+    }
+
+    return args;
 }
 
 /* Get an error class from the bson.errors module.
@@ -1073,13 +1098,13 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         }
         for(i = 0; i < items; i++) {
             int list_type_byte = pymongo_buffer_save_space(buffer, 1);
-            char name[21];
+            char name[BUF_SIZE];
             PyObject* item_value;
 
             if (list_type_byte == -1) {
                 return 0;
             }
-            long_to_str((long long)i, name);
+            long_long_to_str((long long)i, name);
             if (!buffer_write_bytes(buffer, name, (int)strlen(name) + 1)) {
                 return 0;
             }
@@ -2978,6 +3003,7 @@ static PyMethodDef _CBSONMethods[] = {
     {"_element_to_dict", _cbson_element_to_dict, METH_VARARGS,
      "Decode a single key, value pair."},
     {"_array_of_documents_to_buffer", _cbson_array_of_documents_to_buffer, METH_VARARGS, "Convert raw array of documents to a stream of BSON documents"},
+    {"_test_long_long_to_str", _test_long_long_to_str, METH_VARARGS, "Test conversion of extreme and common Py_ssize_t values to str."},
     {NULL, NULL, 0, NULL}
 };
 
