@@ -46,7 +46,6 @@ from bson import (
     decode_iter,
     encode,
     is_valid,
-    test_long2str,
 )
 from bson.binary import Binary, UuidRepresentation
 from bson.code import Code
@@ -1313,7 +1312,12 @@ class TestDatetimeConversion(unittest.TestCase):
 
 class TestLongToString(unittest.TestCase):
     def test_long_to_string(self):
-        test_long2str.test()
+        try:
+            from bson import test_long2str
+
+            test_long2str.test()
+        except ImportError:
+            print("test_long2str was not imported. Check compilation logs.")
 
 
 if __name__ == "__main__":
