@@ -30,51 +30,7 @@
 #endif
 
 /* Converts integer to its string representation in decimal notation. */
-static void itoa(long int num, char* str) {
-    int index = 0;
-    int sign = 1;
-    // Convert to unsigned to handle -LLONG_MIN overflow
-    unsigned long int absNum;
-
-    // Handle the case of 0
-    if (num == 0) {
-        str[index++] = '0';
-        str[index] = '\0';
-        return;
-    }
-
-    // Handle negative numbers
-    if (num < 0) {
-        sign = -1;
-        absNum = -num;
-    } else {
-        absNum = num;
-    }
-
-    // Convert the number to string
-    int digit;
-    while (absNum > 0) {
-        digit = absNum % 10;
-        str[index++] = digit + '0';  // Convert digit to character
-        absNum /= 10;
-    }
-
-    // Add minus sign if negative
-    if (sign == -1) {
-        str[index++] = '-';
-    }
-
-    str[index] = '\0';  // Null terminator
-
-    // Reverse the string
-    int start = 0;
-    int end = index - 1;
-    while (start < end) {
-        char temp = str[start];
-        str[start++] = str[end];
-        str[end--] = temp;
-    }
-}
+extern void long_to_str(long long int num, char* str);
 
 typedef struct type_registry_t {
     PyObject* encoder_map;

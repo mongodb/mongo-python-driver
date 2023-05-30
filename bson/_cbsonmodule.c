@@ -81,6 +81,49 @@ struct module_state {
 #define DATETIME_MS 3
 #define DATETIME_AUTO 4
 
+/* Converts integer to its string representation in decimal notation. */
+extern void long_to_str(long long num, char* str) {
+    // Buffer should fit 64-bit signed integer
+    assert(sizeof(str) > 20);
+    int index = 0;
+    int sign = 1;
+    // Convert to unsigned to handle -LLONG_MIN overflow
+    unsigned long long absNum;
+    // Handle the case of 0
+    if (num == 0) {
+        str[index++] = '0';
+        str[index] = '\0';
+        return;
+    }
+    // Handle negative numbers
+    if (num < 0) {
+        sign = -1;
+        absNum = 0UL - (unsigned long long)num;
+    } else {
+        absNum = (unsigned long long)num;
+    }
+    // Convert the number to string
+    unsigned long long digit;
+    while (absNum > 0) {
+        digit = absNum % 10UL;
+        str[index++] = (char)digit + '0';  // Convert digit to character
+        absNum /= 10;
+    }
+    // Add minus sign if negative
+    if (sign == -1) {
+        str[index++] = '-';
+    }
+    str[index] = '\0';  // Null terminator
+    // Reverse the string
+    int start = 0;
+    int end = index - 1;
+    while (start < end) {
+        char temp = str[start];
+        str[start++] = str[end];
+        str[end--] = temp;
+    }
+}
+
 /* Get an error class from the bson.errors module.
  *
  * Returns a new ref */
@@ -1030,13 +1073,13 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         }
         for(i = 0; i < items; i++) {
             int list_type_byte = pymongo_buffer_save_space(buffer, 1);
-            char name[16];
+            char name[21];
             PyObject* item_value;
 
             if (list_type_byte == -1) {
                 return 0;
             }
-            itoa((long int)i, name);
+            long_to_str((long long)i, name);
             if (!buffer_write_bytes(buffer, name, (int)strlen(name) + 1)) {
                 return 0;
             }

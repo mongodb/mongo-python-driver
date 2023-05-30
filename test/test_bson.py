@@ -22,6 +22,7 @@ import mmap
 import os
 import pickle
 import re
+import subprocess
 import sys
 import tempfile
 import uuid
@@ -1308,6 +1309,45 @@ class TestDatetimeConversion(unittest.TestCase):
         float_ms = DatetimeMSOverride(2)
         with self.assertRaises(TypeError):
             encode({"x": float_ms})
+
+
+class TestLongToString(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.file_dir = os.path.dirname(os.path.realpath(__file__))
+        bson_dir = os.path.join(os.path.dirname(cls.file_dir), "bson")
+        os.chdir(bson_dir)
+        # Get compilation flags
+        cflag_cmd = ["python-config", "--cflags", "--embed"]
+        cflag_out = subprocess.run(
+            cflag_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8", check=True
+        )
+        cflags = cflag_out.stdout.split(" ")
+        cflags[-1] = cflags[-1].strip("\n")
+        # Get linker flags
+        ldflag_cmd = ["python-config", "--ldflags", "--embed"]
+        ldflag_out = subprocess.run(
+            ldflag_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8", check=True
+        )
+        ldflags = ldflag_out.stdout.split(" ")
+        ldflags[-1] = ldflags[-1].strip("\n")
+        # Compile test module bson/test_long2str.c
+        compile_cmd = (
+            ["gcc"]
+            + cflags
+            + ["_cbsonmodule.c", "time64.c", "buffer.c", "test_long2str.c", "-o", "test_long2str"]
+            + ldflags
+        )
+        compile_cmd = [arg for arg in compile_cmd if len(arg)]
+        subprocess.run(compile_cmd, check=True)
+
+    @classmethod
+    def tearDownClass(cls):
+        os.remove("test_long2str")
+        os.chdir(cls.file_dir)
+
+    def test_long2string(self):
+        subprocess.run("./test_long2str", check=True)
 
 
 if __name__ == "__main__":
