@@ -1314,21 +1314,46 @@ class TestDatetimeConversion(unittest.TestCase):
 class TestLongToString(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.file_dir = os.path.dirname(os.path.realpath(__file__))
-        bson_dir = os.path.join(os.path.dirname(cls.file_dir), "bson")
+        cls.curr_dir = os.getcwd()
+        file_dir = os.path.dirname(os.path.realpath(__file__))
+        bson_dir = os.path.join(os.path.dirname(file_dir), "bson")
         os.chdir(bson_dir)
         # Get compilation flags
-        cflag_cmd = ["python-config", "--cflags", "--embed"]
-        cflag_out = subprocess.run(
-            cflag_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8", check=True
-        )
+        try:
+            cflag_cmd = ["python-config", "--cflags", "--embed"]
+            cflag_out = subprocess.run(
+                cflag_cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                encoding="utf-8",
+                check=True,
+            )
+        except:
+            cflag_cmd = ["python3-config", "--cflags", "--embed"]
+            cflag_out = subprocess.run(
+                cflag_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8"
+            )
         cflags = cflag_out.stdout.split(" ")
         cflags[-1] = cflags[-1].strip("\n")
         # Get linker flags
-        ldflag_cmd = ["python-config", "--ldflags", "--embed"]
-        ldflag_out = subprocess.run(
-            ldflag_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8", check=True
-        )
+        try:
+            ldflag_cmd = ["python-config", "--ldflags", "--embed"]
+            ldflag_out = subprocess.run(
+                ldflag_cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                encoding="utf-8",
+                check=True,
+            )
+        except:
+            ldflag_cmd = ["python3-config", "--ldflags", "--embed"]
+            ldflag_out = subprocess.run(
+                ldflag_cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                encoding="utf-8",
+                check=True,
+            )
         ldflags = ldflag_out.stdout.split(" ")
         ldflags[-1] = ldflags[-1].strip("\n")
         # Compile test module bson/test_long2str.c
@@ -1344,7 +1369,7 @@ class TestLongToString(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         os.remove("test_long2str")
-        os.chdir(cls.file_dir)
+        os.chdir(cls.curr_dir)
 
     def test_long2string(self):
         subprocess.run("./test_long2str", check=True)
