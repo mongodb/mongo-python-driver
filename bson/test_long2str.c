@@ -13,7 +13,7 @@ static void INT2STRING(long long i, char* buffer) {
     return;
 }
 
-void test(void (*f)(long long val, char* str), char* name) {
+static void time_run(void (*f)(long long val, char* str), char* name) {
     // Time common values
     int reps = 1000;
     float startTime, endTime;
@@ -28,7 +28,7 @@ void test(void (*f)(long long val, char* str), char* name) {
     printf("%s: %f\n", name, endTime - startTime);
 }
 
-int main() {
+static PyObject* test(PyObject* self, PyObject* args) {
     // Test extreme values
     Py_ssize_t maxNum = PY_SSIZE_T_MAX;
     Py_ssize_t minNum = PY_SSIZE_T_MIN;
@@ -51,8 +51,40 @@ int main() {
     }
 
     // Time common values
-    test(long_to_str, "long_to_str");
-    test(INT2STRING, "INT2STRING");
+    time_run(long_to_str, "long_to_str");
+    time_run(INT2STRING, "INT2STRING");
 
-    return 0;
+    return args;
+}
+
+static PyMethodDef test_long2str_methods[] = {
+    {"test", test, METH_VARARGS,
+     "Test conversion of extreme and common Py_ssize_t values."},
+    {NULL, NULL, 0, NULL}
+};
+
+static struct PyModuleDef moduledef = {
+    PyModuleDef_HEAD_INIT,
+    "test_long2str",
+    NULL,
+    -1,
+    test_long2str_methods,
+    NULL,
+    NULL,
+    NULL,
+    NULL
+};
+
+PyMODINIT_FUNC
+PyInit_test_long2str(void)
+{
+    PyObject *m;
+    // Not needed but avoids compilation warning
+    _cbson_API = NULL;
+    m = PyModule_Create(&moduledef);
+    if (m == NULL) {
+        return NULL;
+    }
+
+    return m;
 }
