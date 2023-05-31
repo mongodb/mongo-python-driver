@@ -598,12 +598,14 @@ functions:
     - command: shell.exec
       type: test
       params:
+        shell: "bash"
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
+          set -ex
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          . ./activate_venv.sh
-          mongo aws_e2e_regular_aws.js
+          . ./activate-authawsvenv.sh
+          python aws_tester.py regular
     - command: shell.exec
       type: test
       params:
@@ -628,12 +630,14 @@ functions:
     - command: shell.exec
       type: test
       params:
+        shell: "bash"
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
+          set -ex
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          . ./activate_venv.sh
-          mongo aws_e2e_assume_role.js
+          . ./activate-authawsvenv.sh
+          python aws_tester.py assume-role
     - command: shell.exec
       type: test
       params:
@@ -665,15 +669,17 @@ functions:
       type: test
       params:
         working_dir: "src"
+        shell: "bash"
         script: |
           ${PREPARE_SHELL}
           if [ "${skip_EC2_auth_test}" = "true" ]; then
              echo "This platform does not support the EC2 auth test, skipping..."
              exit 0
           fi
+          set -ex
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          . ./activate_venv.sh
-          mongo aws_e2e_ec2.js
+          . ./activate-authawsvenv.sh
+          python aws_tester.py ec2
     - command: shell.exec
       type: test
       params:
@@ -694,15 +700,17 @@ functions:
       type: test
       params:
         working_dir: "src"
+        shell: "bash"
         script: |
           ${PREPARE_SHELL}
           if [ "${skip_EC2_auth_test}" = "true" ]; then
              echo "This platform does not support the web identity auth test, skipping..."
              exit 0
           fi
+          set -ex
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          . ./activate_venv.sh
-          mongo aws_e2e_web_identity.js
+          . ./activate-authawsvenv.sh
+          python aws_tester.py web-identity
     - command: shell.exec
       type: test
       params:
@@ -857,6 +865,7 @@ functions:
     - command: shell.exec
       type: test
       params:
+        shell: "bash"
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
@@ -864,14 +873,12 @@ functions:
              echo "This platform does not support the ECS auth test, skipping..."
              exit 0
           fi
+          set -ex
           cd ${DRIVERS_TOOLS}/.evergreen/auth_aws
-          . ./activate_venv.sh
-          cat <<EOF > setup.js
-          const mongo_binaries = "$MONGODB_BINARIES";
-          const project_dir = "$PROJECT_DIRECTORY";
-          EOF
-
-          mongo --nodb setup.js aws_e2e_ecs.js
+          . ./activate-authawsvenv.sh
+          export MONGODB_BINARIES="${MONGODB_BINARIES}";
+          export PROJECT_DIRECTORY="${PROJECT_DIRECTORY}";
+          python aws_tester.py ecs
           cd -
 
   "cleanup":
@@ -2328,6 +2335,12 @@ axes:
         batchtime: 10080  # 7 days
         variables:
           python3_binary: python3
+      - id: ubuntu-18.04
+        display_name: "Ubuntu 18.04"
+        run_on: ubuntu1804-small
+        batchtime: 10080  # 7 days
+        variables:
+          python3_binary: python3
       - id: rhel83-zseries
         display_name: "RHEL 8.3 (zSeries)"
         run_on: rhel83-zseries-small
@@ -3188,7 +3201,7 @@ buildvariants:
 
 - matrix_name: "aws-auth-test"
   matrix_spec:
-    platform: [ubuntu-20.04]
+    platform: [ubuntu-18.04]
     python-version: ["3.7"]
   display_name: "MONGODB-AWS Auth ${platform} ${python-version}"
   tasks:
