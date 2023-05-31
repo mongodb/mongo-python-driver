@@ -94,3 +94,4 @@ The following is a list of people who have contributed to
 - Arie Bovenberg (ariebovenberg)
 - Ben Warner (bcwarner)
 - Jean-Christophe Fillion-Robin (jcfr)
+- Sean Cheah (thalassemia)
