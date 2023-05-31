@@ -82,9 +82,14 @@ struct module_state {
 #define DATETIME_AUTO 4
 
 /* Converts integer to its string representation in decimal notation. */
-extern void long_long_to_str(long long num, char* str) {
+extern int long_long_to_str(long long num, char* str, size_t size) {
     // Buffer should fit 64-bit signed integer
-    assert(sizeof(str) > 20);
+    if (size < 21) {
+        PyErr_Format(
+            PyExc_RuntimeError,
+            "Buffer too small to hold long long: %d < 21", size);
+        return -1;
+    }
     int index = 0;
     int sign = 1;
     // Convert to unsigned to handle -LLONG_MIN overflow
@@ -93,7 +98,7 @@ extern void long_long_to_str(long long num, char* str) {
     if (num == 0) {
         str[index++] = '0';
         str[index] = '\0';
-        return;
+        return 0;
     }
     // Handle negative numbers
     if (num < 0) {
@@ -122,6 +127,7 @@ extern void long_long_to_str(long long num, char* str) {
         str[start++] = str[end];
         str[end--] = temp;
     }
+    return 0;
 }
 
 static PyObject* _test_long_long_to_str(PyObject* self, PyObject* args) {
@@ -130,20 +136,38 @@ static PyObject* _test_long_long_to_str(PyObject* self, PyObject* args) {
     Py_ssize_t minNum = PY_SSIZE_T_MIN;
     char str_1[BUF_SIZE];
     char str_2[BUF_SIZE];
-    long_long_to_str((long long)minNum, str_1);
+    int res = LL2STR(str_1, (long long)minNum);
+    if (res == -1) {
+        return NULL;
+    }
     INT2STRING(str_2, (long long)minNum);
-    assert(strcmp(str_1, str_2) == 0);
-    long_long_to_str((long long)maxNum, str_1);
+    if (strcmp(str_1, str_2) != 0) {
+        PyErr_Format(
+            PyExc_RuntimeError,
+            "LL2STR != INT2STRING: %s != %s", str_1, str_2);
+        return NULL;
+    }
+    LL2STR(str_1, (long long)maxNum);
     INT2STRING(str_2, (long long)maxNum);
-    assert(strcmp(str_1, str_2) == 0);
+    if (strcmp(str_1, str_2) != 0) {
+        PyErr_Format(
+            PyExc_RuntimeError,
+            "LL2STR != INT2STRING: %s != %s", str_1, str_2);
+        return NULL;
+    }
 
     // Test common values
     for (Py_ssize_t num = 0; num < 10000; num++) {
         char str_1[BUF_SIZE];
         char str_2[BUF_SIZE];
-        long_long_to_str((long long)num, str_1);
+        LL2STR(str_1, (long long)num);
         INT2STRING(str_2, (long long)num);
-        assert(strcmp(str_1, str_2) == 0);
+        if (strcmp(str_1, str_2) != 0) {
+            PyErr_Format(
+                PyExc_RuntimeError,
+                "LL2STR != INT2STRING: %s != %s", str_1, str_2);
+            return NULL;
+        }
     }
 
     return args;
@@ -1104,7 +1128,10 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
             if (list_type_byte == -1) {
                 return 0;
             }
-            long_long_to_str((long long)i, name);
+            int res = LL2STR(name, (long long)i);
+            if (res == -1) {
+                return 0;
+            }
             if (!buffer_write_bytes(buffer, name, (int)strlen(name) + 1)) {
                 return 0;
             }

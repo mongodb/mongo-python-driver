@@ -23,7 +23,7 @@
 /*
  * This macro is basically an implementation of asprintf for win32
  * We print to the provided buffer to get the string value as an int.
- * USE long_long_to_str. This is kept only to test long_long_to_str.
+ * USE LL2STR. This is kept only to test LL2STR.
  */
 #if defined(_MSC_VER) && (_MSC_VER >= 1400)
 #define INT2STRING(buffer, i)                                       \
@@ -49,7 +49,8 @@
 /* Just enough space in char array to hold LLONG_MIN and null terminator */
 #define BUF_SIZE 21
 /* Converts integer to its string representation in decimal notation. */
-extern void long_long_to_str(long long int num, char* str);
+extern int long_long_to_str(long long int num, char* str, size_t size);
+#define LL2STR(buffer, i) long_long_to_str((i), (buffer), sizeof(buffer))
 
 typedef struct type_registry_t {
     PyObject* encoder_map;
