@@ -1049,6 +1049,18 @@ functions:
           # Remove all Docker images
           docker rmi -f $(docker images -a -q) &> /dev/null || true
 
+  "teardown_aws":
+    - command: shell.exec
+      params:
+        shell: "bash"
+        script: |
+          ${PREPARE_SHELL}
+          cd "${DRIVERS_TOOLS}/.evergreen/auth_aws"
+          if [ -f "./aws_e2e_setup.json" ]; then
+            . ./activate-authawsvenv.sh
+            python ./lib/aws_assign_instance_profile.py
+          fi
+
   "build release":
     - command: shell.exec
       type: test
@@ -1144,6 +1156,7 @@ post:
   - func: "upload mo artifacts"
   - func: "upload test results"
   - func: "stop mongo-orchestration"
+  - func: "teardown_aws"
   - func: "cleanup"
   - func: "teardown_docker"
 
