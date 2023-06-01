@@ -109,7 +109,7 @@ class _sslConn(_SSL.Connection):
             except BLOCKING_IO_ERRORS as exc:
                 # Check for closed socket.
                 if self.fileno() == -1:
-                    raise
+                    raise _socket.timeout("timed out")
                 if isinstance(exc, _SSL.WantReadError):
                     want_read = True
                     want_write = False
