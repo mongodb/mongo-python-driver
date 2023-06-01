@@ -103,14 +103,14 @@ extern int long_long_to_str(long long num, char* str, size_t size) {
     // Handle negative numbers
     if (num < 0) {
         sign = -1;
-        absNum = 0UL - (unsigned long long)num;
+        absNum = 0ULL - (unsigned long long)num;
     } else {
         absNum = (unsigned long long)num;
     }
     // Convert the number to string
     unsigned long long digit;
     while (absNum > 0) {
-        digit = absNum % 10UL;
+        digit = absNum % 10ULL;
         str[index++] = (char)digit + '0';  // Convert digit to character
         absNum /= 10;
     }
