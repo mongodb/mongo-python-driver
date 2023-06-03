@@ -49,8 +49,8 @@
 /* Just enough space in char array to hold LLONG_MIN and null terminator */
 #define BUF_SIZE 21
 /* Converts integer to its string representation in decimal notation. */
-extern int long_long_to_str(long long int num, char* str, size_t size);
-#define LL2STR(buffer, i) long_long_to_str((i), (buffer), sizeof(buffer))
+extern int cbson_long_long_to_str(long long int num, char* str, size_t size);
+#define LL2STR(buffer, i) cbson_long_long_to_str((i), (buffer), sizeof(buffer))
 
 typedef struct type_registry_t {
     PyObject* encoder_map;
