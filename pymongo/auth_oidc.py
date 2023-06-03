@@ -29,7 +29,6 @@ from pymongo.helpers import _AUTHENTICATION_FAILED_CODE, _REAUTHENTICATION_REQUI
 @dataclass
 class _OIDCProperties:
     request_token_callback: Optional[Callable[..., Dict]]
-    refresh_token_callback: Optional[Callable[..., Dict]]
     provider_name: Optional[str]
     allowed_hosts: List[str]
 
@@ -57,8 +56,12 @@ def _get_authenticator(credentials, address):
     # Extract values.
     principal_name = credentials.username
     properties = credentials.mechanism_properties
+
+    # Handle aws provider credentials.
+    if properties.provider_name == "aws":
+        properties.request_token_callback = _aws_callback
+
     request_cb = properties.request_token_callback
-    refresh_cb = properties.refresh_token_callback
 
     # Validate that the address is allowed.
     if not properties.provider_name:
@@ -75,7 +78,7 @@ def _get_authenticator(credentials, address):
             )
 
     # Get or create the cache item.
-    cache_key = f"{principal_name}{address[0]}{address[1]}{id(request_cb)}{id(refresh_cb)}"
+    cache_key = f"{principal_name}{address[0]}{address[1]}{id(request_cb)}"
     _CACHE.setdefault(cache_key, _OIDCAuthenticator(username=principal_name, properties=properties))
 
     return _CACHE[cache_key]
@@ -85,6 +88,13 @@ def _get_cache_exp():
     return datetime.now(timezone.utc) + timedelta(minutes=CACHE_TIMEOUT_MINUTES)
 
 
+def _aws_callback(_, __):
+    aws_identity_file = os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"]
+    with open(aws_identity_file) as fid:
+        token = fid.read().strip()
+    return dict(access_token=token)
+
+
 @dataclass
 class _OIDCAuthenticator:
     username: str
@@ -92,7 +102,7 @@ class _OIDCAuthenticator:
     idp_info: Optional[Dict] = field(default=None)
     idp_resp: Optional[Dict] = field(default=None)
     token_gen_id: int = field(default=0)
-    token_exp_utc: Optional[datetime] = field(default=None)
+    token_invalidated: bool = field(default=False)
     cache_exp_utc: datetime = field(default_factory=_get_cache_exp)
     lock: threading.Lock = field(default_factory=threading.Lock)
 
@@ -100,40 +110,30 @@ class _OIDCAuthenticator:
         properties = self.properties
 
         request_cb = properties.request_token_callback
-        refresh_cb = properties.refresh_token_callback
         if not use_callbacks:
             request_cb = None
-            refresh_cb = None
 
-        current_valid_token = False
-        if self.token_exp_utc is not None:
-            now_utc = datetime.now(timezone.utc)
-            exp_utc = self.token_exp_utc
-            buffer_seconds = TOKEN_BUFFER_MINUTES * 60
-            if (exp_utc - now_utc).total_seconds() >= buffer_seconds:
-                current_valid_token = True
-
+        current_valid_token = (
+            self.idp_resp and self.idp_resp.get("access_token") and not self.token_invalidated
+        )
         timeout = CALLBACK_TIMEOUT_SECONDS
 
         if not use_callbacks and not current_valid_token:
             return None
 
         if not current_valid_token and request_cb is not None:
-            refresh_token = self.idp_resp and self.idp_resp.get("refresh_token")
-            refresh_token = refresh_token or ""
             context = {
                 "timeout_seconds": timeout,
                 "version": CALLBACK_VERSION,
-                "refresh_token": refresh_token,
+                "idp_info": self.idp_info,
             }
 
-            if self.idp_resp is None or refresh_cb is None:
+            if self.idp_resp is None:
                 self.idp_resp = request_cb(self.idp_info, context)
-            elif request_cb is not None and refresh_token is not None:
-                self.idp_resp = refresh_cb(self.idp_info, context)
             cache_exp_utc = datetime.now(timezone.utc) + timedelta(minutes=CACHE_TIMEOUT_MINUTES)
             self.cache_exp_utc = cache_exp_utc
             self.token_gen_id += 1
+            self.token_invalidated = False
 
         token_result = self.idp_resp
 
@@ -149,37 +149,9 @@ class _OIDCAuthenticator:
             if key not in expected:
                 raise ValueError(f'Unexpected field in callback result "{key}"')
 
-        token = token_result["access_token"]
-
-        if "expires_in_seconds" in token_result:
-            expires_in = int(token_result["expires_in_seconds"])
-            buffer_seconds = TOKEN_BUFFER_MINUTES * 60
-            if expires_in >= buffer_seconds:
-                now_utc = datetime.now(timezone.utc)
-                exp_utc = now_utc + timedelta(seconds=expires_in)
-                self.token_exp_utc = exp_utc
-
-        return token
+        return token_result["access_token"]
 
     def auth_start_cmd(self, use_callbacks=True):
-        properties = self.properties
-
-        # Handle aws provider credentials.
-        if properties.provider_name == "aws":
-            aws_identity_file = os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"]
-            with open(aws_identity_file) as fid:
-                token = fid.read().strip()
-            payload = {"jwt": token}
-            cmd = SON(
-                [
-                    ("saslStart", 1),
-                    ("mechanism", "MONGODB-OIDC"),
-                    ("payload", Binary(bson.encode(payload))),
-                ]
-            )
-            self.token_gen_id += 1
-            return cmd
-
         principal_name = self.username
 
         if self.idp_info is not None:
@@ -222,7 +194,6 @@ class _OIDCAuthenticator:
     def clear(self):
         self.idp_info = None
         self.idp_resp = None
-        self.token_exp_utc = None
 
     def authenticate(self, sock_info, reauthenticate=False):
         with self.lock:
@@ -233,7 +204,7 @@ class _OIDCAuthenticator:
                 prev_id = getattr(sock_info, "oidc_token_gen_id", 0)
                 # If we haven't changed tokens, mark the current one as expired.
                 if prev_id == self.token_gen_id:
-                    self.token_exp_utc = None
+                    self.token_invalidated = True
 
             try:
                 resp = self._authenticate()
@@ -294,18 +265,9 @@ class _OIDCAuthenticator:
             payload = bson.decode(self._last_cmd["payload"])
             if "jwt" not in payload:
                 raise exc
-            # Attempt one refresh if available.
-            if self.idp_resp and self.idp_resp.get("refresh_token"):
-                try:
-                    return self._authenticate()
-                except OperationFailure:
-                    # Fall back to retrying from a clean slate.
-                    self.clear()
-                    return self._authenticate()
-            else:
-                # Retry from a clean slate.
-                self.clear()
-                return self._authenticate()
+            # Retry from a clean slate.
+            self.clear()
+            return self._authenticate()
         else:
             # We cannot retry.
             self.clear()

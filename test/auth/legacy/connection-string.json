@@ -480,25 +480,6 @@
       }
     },
     {
-      "description": "should recognise the mechanism with request and refresh callback (MONGODB-OIDC)",
-      "uri": "mongodb://localhost/?authMechanism=MONGODB-OIDC",
-      "callback": [
-        "oidcRequest",
-        "oidcRefresh"
-      ],
-      "valid": true,
-      "credential": {
-        "username": null,
-        "password": null,
-        "source": "$external",
-        "mechanism": "MONGODB-OIDC",
-        "mechanism_properties": {
-          "REQUEST_TOKEN_CALLBACK": true,
-          "REFRESH_TOKEN_CALLBACK": true
-        }
-      }
-    },
-    {
       "description": "should recognise the mechanism and username with request callback (MONGODB-OIDC)",
       "uri": "mongodb://principalName@localhost/?authMechanism=MONGODB-OIDC",
       "callback": [
@@ -571,15 +552,6 @@
       "credential": null
     },
     {
-      "description": "should throw an exception when only refresh callback is specified (MONGODB-OIDC)",
-      "uri": "mongodb://localhost/?authMechanism=MONGODB-OIDC",
-      "callback": [
-        "oidcRefresh"
-      ],
-      "valid": false,
-      "credential": null
-    },
-    {
       "description": "should throw an exception when unsupported auth property is specified (MONGODB-OIDC)",
       "uri": "mongodb://localhost/?authMechanism=MONGODB-OIDC&authMechanismProperties=UnsupportedProperty:unexisted",
       "valid": false,
@@ -590,15 +562,6 @@
       "uri": "mongodb://localhost/?authMechanism=MONGODB-OIDC&authMechanismProperties=PROVIDER_NAME:aws",
       "callback": [
         "oidcRequest"
-      ],
-      "valid": false,
-      "credential": null
-    },
-    {
-      "description": "should throw an exception if provider name and refresh callback are specified",
-      "uri": "mongodb://localhost/?authMechanism=MONGODB-OIDC&authMechanismProperties=PROVIDER_NAME:aws",
-      "callback": [
-        "oidcRefresh"
       ],
       "valid": false,
       "credential": null

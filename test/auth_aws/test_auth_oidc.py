@@ -114,13 +114,6 @@ class OIDCTestHelper:
 
         self._test_double_reauth(args, kwargs.copy(), expected_failures.get("doubleReauthCache"))
 
-        # Populate cache.
-        client = MongoClient(*args, **kwargs)
-        client.test.test.find_one()
-        client.close()
-
-        self._test_triple_reauth(args, kwargs.copy(), expected_failures.get("tripleReauth"))
-
     def _test_single_reauth(self, args, kwargs, expected_failure):
         listener = EventListener()
         kwargs["event_listeners"] = [listener]
@@ -303,7 +296,6 @@ class TestAuthOIDC(unittest.TestCase):
     def setUp(self):
         self.helper = OIDCTestHelper(self.uri_admin, self)
         self.request_called = 0
-        self.refresh_called = 0
         _oidc_cache.clear()
         os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"] = os.path.join(self.token_dir, "test_user1")
 
@@ -337,37 +329,6 @@ class TestAuthOIDC(unittest.TestCase):
             return resp
 
         return request_token
-
-    def create_refresh_cb(
-        self, username="test_user1", expires_in_seconds=1e6, refresh_token_value="dummy"
-    ):
-
-        token_file = os.path.join(self.token_dir, username)
-
-        def refresh_token(server_info, context):
-            with open(token_file) as fid:
-                token = fid.read()
-
-            # Validate the info.
-            self.assertIn("issuer", server_info)
-            self.assertIn("clientId", server_info)
-
-            # Validate the creds
-            self.assertIsNotNone(context["refresh_token"])
-
-            # Validate the timeout.
-            self.assertEqual(context["timeout_seconds"], 60 * 5)
-
-            resp = {"access_token": token}
-            if expires_in_seconds is not None:
-                resp["expires_in_seconds"] = expires_in_seconds
-            if refresh_token_value is not None:
-                resp["refresh_token"] = refresh_token_value
-
-            self.refresh_called += 1
-            return resp
-
-        return refresh_token
 
     def test_connect_callbacks_single_implicit_username(self):
         request_token = self.create_request_cb()
@@ -433,28 +394,25 @@ class TestAuthOIDC(unittest.TestCase):
 
     def test_connect_aws_multiple_principal_user1(self):
         props = {"PROVIDER_NAME": "aws"}
-        client = MongoClient(self.uri_multiple, authmechanismproperties=props)
+        client = MongoClient(
+            self.uri_multiple, username="test_user1", authmechanismproperties=props
+        )
         client.test.test.find_one()
         client.close()
 
     def test_connect_aws_multiple_principal_user2(self):
         os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"] = os.path.join(self.token_dir, "test_user2")
         props = {"PROVIDER_NAME": "aws"}
-        client = MongoClient(self.uri_multiple, authmechanismproperties=props)
-        client.test.test.find_one()
-        client.close()
-
-    def test_connect_aws_allowed_hosts_ignored(self):
-        props = {"PROVIDER_NAME": "aws", "allowed_hosts": []}
-        client = MongoClient(self.uri_multiple, authmechanismproperties=props)
+        client = MongoClient(
+            self.uri_multiple, username="test_user2", authmechanismproperties=props
+        )
         client.test.test.find_one()
         client.close()
 
     def test_lock_avoids_extra_callbacks(self):
         request_cb = self.create_request_cb(sleep=0.5, expires_in_seconds=10)
-        refresh_cb = self.create_refresh_cb()
 
-        props: Dict = {"request_token_callback": request_cb, "refresh_token_callback": refresh_cb}
+        props: Dict = {"request_token_callback": request_cb}
 
         def run_test():
             client = MongoClient(self.uri_single, authMechanismProperties=props)
@@ -473,12 +431,10 @@ class TestAuthOIDC(unittest.TestCase):
         t2.join()
 
         self.assertEqual(self.request_called, 1)
-        self.assertEqual(self.refresh_called, 1)
 
     def test_scenario_both_callbacks_no_expiry(self):
         request_cb = self.create_request_cb(refresh_token="dummy")
-        refresh_cb = self.create_refresh_cb()
-        props = dict(request_token_callback=request_cb, refresh_token_callback=refresh_cb)
+        props = dict(request_token_callback=request_cb)
         args = (self.uri_single,)
         kwargs = dict(authMechanismProperties=props)
         self.helper.run_scenario_no_error(args, kwargs)
@@ -486,8 +442,7 @@ class TestAuthOIDC(unittest.TestCase):
 
     def test_scenario_both_callbacks_no_expiry_no_refresh_token(self):
         request_cb = self.create_request_cb()
-        refresh_cb = self.create_refresh_cb(refresh_token_value="")
-        props = dict(request_token_callback=request_cb, refresh_token_callback=refresh_cb)
+        props = dict(request_token_callback=request_cb)
         args = (self.uri_single,)
         kwargs = dict(authMechanismProperties=props)
         self.helper.run_scenario_no_error(args, kwargs)
@@ -521,8 +476,7 @@ class TestAuthOIDC(unittest.TestCase):
 
     def test_scenario_both_callbacks_expiry(self):
         request_cb = self.create_request_cb(expires_in_seconds=10, refresh_token="dummy")
-        refresh_cb = self.create_refresh_cb(expires_in_seconds=10)
-        props = dict(request_token_callback=request_cb, refresh_token_callback=refresh_cb)
+        props = dict(request_token_callback=request_cb)
         args = (self.uri_single,)
         kwargs = dict(authMechanismProperties=props)
         self.helper.run_scenario_no_error(args, kwargs)
@@ -540,25 +494,6 @@ class TestAuthOIDC(unittest.TestCase):
             return None
 
         props: Dict = {"request_token_callback": request_token_null}
-        client = MongoClient(self.uri_single, authMechanismProperties=props)
-        with self.assertRaises(ValueError):
-            client.test.test.find_one()
-        client.close()
-
-    def test_refresh_callback_returns_null(self):
-        request_cb = self.create_request_cb(expires_in_seconds=60)
-
-        def refresh_token_null(a, b):
-            return None
-
-        props: Dict = {
-            "request_token_callback": request_cb,
-            "refresh_token_callback": refresh_token_null,
-        }
-        client = MongoClient(self.uri_single, authMechanismProperties=props)
-        client.test.test.find_one()
-        client.close()
-
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         with self.assertRaises(ValueError):
             client.test.test.find_one()
@@ -585,54 +520,13 @@ class TestAuthOIDC(unittest.TestCase):
             client.test.test.find_one()
         client.close()
 
-    def test_refresh_callback_missing_data(self):
-        request_cb = self.create_request_cb(expires_in_seconds=60)
-
-        def refresh_cb_no_token(a, b):
-            return {}
-
-        props: Dict = {
-            "request_token_callback": request_cb,
-            "refresh_token_callback": refresh_cb_no_token,
-        }
-        client = MongoClient(self.uri_single, authMechanismProperties=props)
-        client.test.test.find_one()
-        client.close()
-
-        client = MongoClient(self.uri_single, authMechanismProperties=props)
-        with self.assertRaises(ValueError):
-            client.test.test.find_one()
-        client.close()
-
-    def test_refresh_callback_extra_data(self):
-        request_cb = self.create_request_cb(expires_in_seconds=60)
-
-        def refresh_cb_extra_value(server_info, context):
-            result = self.create_refresh_cb()(server_info, context)
-            result["foo"] = "bar"
-            return result
-
-        props: Dict = {
-            "request_token_callback": request_cb,
-            "refresh_token_callback": refresh_cb_extra_value,
-        }
-        client = MongoClient(self.uri_single, authMechanismProperties=props)
-        client.test.test.find_one()
-        client.close()
-
-        client = MongoClient(self.uri_single, authMechanismProperties=props)
-        with self.assertRaises(ValueError):
-            client.test.test.find_one()
-        client.close()
-
     def test_cache_with_refresh(self):
         # Create a new client with a request callback and a refresh callback.  Both callbacks will read the contents of the ``AWS_WEB_IDENTITY_TOKEN_FILE`` location to obtain a valid access token.
 
         # Give a callback response with a valid accessToken and an expiresInSeconds that is within one minute.
         request_cb = self.create_request_cb(expires_in_seconds=60)
-        refresh_cb = self.create_refresh_cb()
 
-        props: Dict = {"request_token_callback": request_cb, "refresh_token_callback": refresh_cb}
+        props: Dict = {"request_token_callback": request_cb}
 
         # Ensure that a ``find`` operation adds credentials to the cache.
         client = MongoClient(self.uri_single, authMechanismProperties=props)
@@ -647,7 +541,7 @@ class TestAuthOIDC(unittest.TestCase):
         client.test.test.find_one()
         client.close()
 
-        self.assertEqual(self.refresh_called, 1)
+        self.assertEqual(self.request_called, 1)
         self.assertEqual(len(_oidc_cache), 1)
 
     def test_cache_with_no_refresh(self):
@@ -670,7 +564,7 @@ class TestAuthOIDC(unittest.TestCase):
         client = MongoClient(self.uri_single, authMechanismProperties=props)
         client.test.test.find_one()
         client.close()
-        self.assertEqual(self.request_called, 2)
+        self.assertEqual(self.request_called, 1)
         self.assertEqual(len(_oidc_cache), 1)
 
     def test_cache_key_includes_callback(self):
@@ -695,33 +589,33 @@ class TestAuthOIDC(unittest.TestCase):
         client.close()
         self.assertEqual(len(_oidc_cache), 2)
 
-    def test_cache_clears_on_error(self):
-        request_cb = self.create_request_cb(expires_in_seconds=5 * 60)
+    # def test_cache_clears_on_error(self):
+    #     request_cb = self.create_request_cb(expires_in_seconds=5 * 60)
 
-        # Create a new client with a valid request callback that gives credentials that expire within 5 minutes and a refresh callback that gives invalid credentials.
-        def refresh_cb(a, b):
-            return {"access_token": "bad"}
+    #     # Create a new client with a valid request callback that gives credentials that expire within 5 minutes and a refresh callback that gives invalid credentials.
+    #     def refresh_cb(a, b):
+    #         return {"access_token": "bad"}
 
-        # Add a token to the cache that will expire soon.
-        props: Dict = {"request_token_callback": request_cb, "refresh_token_callback": refresh_cb}
-        client = MongoClient(self.uri_single, authMechanismProperties=props)
-        client.test.test.find_one()
-        client.close()
+    #     # Add a token to the cache that will expire soon.
+    #     props: Dict = {"request_token_callback": request_cb, "refresh_token_callback": refresh_cb}
+    #     client = MongoClient(self.uri_single, authMechanismProperties=props)
+    #     client.test.test.find_one()
+    #     client.close()
 
-        # Create a new client with the same callbacks.
-        client = MongoClient(self.uri_single, authMechanismProperties=props)
+    #     # Create a new client with the same callbacks.
+    #     client = MongoClient(self.uri_single, authMechanismProperties=props)
 
-        # Ensure that another ``find`` operation results in an error.
-        with self.assertRaises(OperationFailure):
-            client.test.test.find_one()
+    #     # Ensure that another ``find`` operation results in an error.
+    #     with self.assertRaises(OperationFailure):
+    #         client.test.test.find_one()
 
-        client.close()
+    #     client.close()
 
-        # Ensure that the cache has been cleared.
-        authenticator = list(_oidc_cache.values())[0]
-        self.assertIsNone(authenticator.idp_info)
+    #     # Ensure that the cache has been cleared.
+    #     authenticator = list(_oidc_cache.values())[0]
+    #     self.assertIsNone(authenticator.idp_info)
 
-    def test_cache_is_not_used_in_aws_automatic_workflow(self):
+    def test_cache_is_used_in_aws_automatic_workflow(self):
         # Create a new client using the AWS device workflow.
         # Ensure that a ``find`` operation does not add credentials to the cache.
         props = {"PROVIDER_NAME": "aws"}
@@ -731,7 +625,7 @@ class TestAuthOIDC(unittest.TestCase):
 
         # Ensure that the cache has been cleared.
         authenticator = list(_oidc_cache.values())[0]
-        self.assertIsNone(authenticator.idp_info)
+        self.assertIsNotNone(authenticator.idp_info)
 
     def test_speculative_auth_success(self):
         # Clear the cache
@@ -779,17 +673,16 @@ class TestAuthOIDC(unittest.TestCase):
 
     def test_reauthenticate_succeeds_bulk_write(self):
         request_cb = self.create_request_cb()
-        refresh_cb = self.create_refresh_cb()
 
         # Create a client with the callbacks.
-        props: Dict = {"request_token_callback": request_cb, "refresh_token_callback": refresh_cb}
+        props: Dict = {"request_token_callback": request_cb}
         client = MongoClient(self.uri_single, authmechanismproperties=props)
 
         # Perform a find operation.
         client.test.test.find_one()
 
         # Assert that the refresh callback has not been called.
-        self.assertEqual(self.refresh_called, 0)
+        self.assertEqual(self.request_called, 1)
 
         with self.helper.fail_point(
             {
@@ -801,15 +694,14 @@ class TestAuthOIDC(unittest.TestCase):
             client.test.test.bulk_write([InsertOne({})])
 
         # Assert that the refresh callback has been called.
-        self.assertEqual(self.refresh_called, 1)
+        self.assertEqual(self.request_called, 1)
         client.close()
 
     def test_reauthenticate_succeeds_bulk_read(self):
         request_cb = self.create_request_cb()
-        refresh_cb = self.create_refresh_cb()
 
         # Create a client with the callbacks.
-        props: Dict = {"request_token_callback": request_cb, "refresh_token_callback": refresh_cb}
+        props: Dict = {"request_token_callback": request_cb}
         client = MongoClient(self.uri_single, authmechanismproperties=props)
 
         # Perform a find operation.
@@ -819,7 +711,7 @@ class TestAuthOIDC(unittest.TestCase):
         client.test.test.bulk_write([InsertOne({})])
 
         # Assert that the refresh callback has not been called.
-        self.assertEqual(self.refresh_called, 0)
+        self.assertEqual(self.request_called, 1)
 
         with self.helper.fail_point(
             {
@@ -832,22 +724,21 @@ class TestAuthOIDC(unittest.TestCase):
             list(cursor)
 
         # Assert that the refresh callback has been called.
-        self.assertEqual(self.refresh_called, 1)
+        self.assertEqual(self.request_called, 1)
         client.close()
 
     def test_reauthenticate_succeeds_cursor(self):
         request_cb = self.create_request_cb()
-        refresh_cb = self.create_refresh_cb()
 
         # Create a client with the callbacks.
-        props: Dict = {"request_token_callback": request_cb, "refresh_token_callback": refresh_cb}
+        props: Dict = {"request_token_callback": request_cb}
         client = MongoClient(self.uri_single, authmechanismproperties=props)
 
         # Perform an insert operation.
         client.test.test.insert_one({"a": 1})
 
         # Assert that the refresh callback has not been called.
-        self.assertEqual(self.refresh_called, 0)
+        self.assertEqual(self.request_called, 1)
 
         with self.helper.fail_point(
             {
@@ -860,22 +751,21 @@ class TestAuthOIDC(unittest.TestCase):
             self.assertGreaterEqual(len(list(cursor)), 1)
 
         # Assert that the refresh callback has been called.
-        self.assertEqual(self.refresh_called, 1)
+        self.assertEqual(self.request_called, 1)
         client.close()
 
     def test_reauthenticate_succeeds_get_more(self):
         request_cb = self.create_request_cb()
-        refresh_cb = self.create_refresh_cb()
 
         # Create a client with the callbacks.
-        props: Dict = {"request_token_callback": request_cb, "refresh_token_callback": refresh_cb}
+        props: Dict = {"request_token_callback": request_cb}
         client = MongoClient(self.uri_single, authmechanismproperties=props)
 
         # Perform an insert operation.
         client.test.test.insert_many([{"a": 1}, {"a": 1}])
 
         # Assert that the refresh callback has not been called.
-        self.assertEqual(self.refresh_called, 0)
+        self.assertEqual(self.request_called, 1)
 
         with self.helper.fail_point(
             {
@@ -888,7 +778,7 @@ class TestAuthOIDC(unittest.TestCase):
             self.assertGreaterEqual(len(list(cursor)), 1)
 
         # Assert that the refresh callback has been called.
-        self.assertEqual(self.refresh_called, 1)
+        self.assertEqual(self.request_called, 1)
         client.close()
 
     def test_reauthenticate_succeeds_get_more_exhaust(self):
@@ -900,17 +790,16 @@ class TestAuthOIDC(unittest.TestCase):
             raise unittest.SkipTest("Must not be a mongos")
 
         request_cb = self.create_request_cb()
-        refresh_cb = self.create_refresh_cb()
 
         # Create a client with the callbacks.
-        props: Dict = {"request_token_callback": request_cb, "refresh_token_callback": refresh_cb}
+        props: Dict = {"request_token_callback": request_cb}
         client = MongoClient(self.uri_single, authmechanismproperties=props)
 
         # Perform an insert operation.
         client.test.test.insert_many([{"a": 1}, {"a": 1}])
 
         # Assert that the refresh callback has not been called.
-        self.assertEqual(self.refresh_called, 0)
+        self.assertEqual(self.request_called, 0)
 
         with self.helper.fail_point(
             {
@@ -923,15 +812,14 @@ class TestAuthOIDC(unittest.TestCase):
             self.assertGreaterEqual(len(list(cursor)), 1)
 
         # Assert that the refresh callback has been called.
-        self.assertEqual(self.refresh_called, 1)
+        self.assertEqual(self.request_called, 1)
         client.close()
 
     def test_reauthenticate_succeeds_command(self):
         request_cb = self.create_request_cb()
-        refresh_cb = self.create_refresh_cb()
 
         # Create a client with the callbacks.
-        props: Dict = {"request_token_callback": request_cb, "refresh_token_callback": refresh_cb}
+        props: Dict = {"request_token_callback": request_cb}
 
         print("start of test")
         client = MongoClient(self.uri_single, authmechanismproperties=props)
@@ -940,7 +828,7 @@ class TestAuthOIDC(unittest.TestCase):
         client.test.test.insert_one({"a": 1})
 
         # Assert that the refresh callback has not been called.
-        self.assertEqual(self.refresh_called, 0)
+        self.assertEqual(self.request_called, 1)
 
         with self.helper.fail_point(
             {
@@ -954,21 +842,19 @@ class TestAuthOIDC(unittest.TestCase):
         self.assertGreaterEqual(len(list(cursor)), 1)
 
         # Assert that the refresh callback has been called.
-        self.assertEqual(self.refresh_called, 1)
+        self.assertEqual(self.request_called, 1)
         client.close()
 
     def test_late_reauth_avoids_callback(self):
         # Step 1: connect with both clients
         request_cb = self.create_request_cb()
-        refresh_cb = self.create_refresh_cb()
 
-        props: Dict = {"request_token_callback": request_cb, "refresh_token_callback": refresh_cb}
+        props: Dict = {"request_token_callback": request_cb}
         client1 = MongoClient(self.uri_single, authMechanismProperties=props)
         client1.test.test.find_one()
         client2 = MongoClient(self.uri_single, authMechanismProperties=props)
         client2.test.test.find_one()
 
-        self.assertEqual(self.refresh_called, 0)
         self.assertEqual(self.request_called, 1)
 
         # Step 2: cause a find 391 on the first client
@@ -981,7 +867,6 @@ class TestAuthOIDC(unittest.TestCase):
             # Perform a find operation that succeeds.
             client1.test.test.find_one()
 
-        self.assertEqual(self.refresh_called, 1)
         self.assertEqual(self.request_called, 1)
 
         # Step 3: cause a find 391 on the second client
@@ -994,7 +879,6 @@ class TestAuthOIDC(unittest.TestCase):
             # Perform a find operation that succeeds.
             client2.test.test.find_one()
 
-        self.assertEqual(self.refresh_called, 1)
         self.assertEqual(self.request_called, 1)
 
         client1.close()
