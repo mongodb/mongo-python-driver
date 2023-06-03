@@ -451,7 +451,7 @@ class TestAuthOIDC(unittest.TestCase):
         client.close()
 
     def test_lock_avoids_extra_callbacks(self):
-        request_cb = self.create_request_cb(sleep=0.5)
+        request_cb = self.create_request_cb(sleep=0.5, expires_in_seconds=10)
         refresh_cb = self.create_refresh_cb()
 
         props: Dict = {"request_token_callback": request_cb, "refresh_token_callback": refresh_cb}
@@ -473,7 +473,7 @@ class TestAuthOIDC(unittest.TestCase):
         t2.join()
 
         self.assertEqual(self.request_called, 1)
-        self.assertEqual(self.refresh_called, 0)
+        self.assertEqual(self.refresh_called, 1)
 
     def test_scenario_both_callbacks_no_expiry(self):
         request_cb = self.create_request_cb(refresh_token="dummy")
