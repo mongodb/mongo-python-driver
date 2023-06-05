@@ -26,12 +26,12 @@ class TestNetworkDisconnectPrimary(unittest.TestCase):
         # Application operation fails against primary. Test that topology
         # type changes from ReplicaSetWithPrimary to ReplicaSetNoPrimary.
         # http://bit.ly/1B5ttuL
-        primary, secondary = servers = [MockupDB() for _ in range(2)]
-        for server in servers:
+        primary, secondary = MockupDB(), MockupDB()
+        for server in primary, secondary:
             server.run()
             self.addCleanup(server.stop)
 
-        hosts = [server.address_string for server in servers]
+        hosts = [server.address_string for server in (primary, secondary)]
         primary_response = OpReply(
             ismaster=True, setName="rs", hosts=hosts, minWireVersion=2, maxWireVersion=6
         )
