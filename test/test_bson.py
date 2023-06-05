@@ -1310,5 +1310,15 @@ class TestDatetimeConversion(unittest.TestCase):
             encode({"x": float_ms})
 
 
+class TestLongLongToString(unittest.TestCase):
+    def test_long_long_to_string(self):
+        try:
+            from bson import _cbson
+
+            _cbson._test_long_long_to_str()
+        except ImportError:
+            print("_cbson was not imported. Check compilation logs.")
+
+
 if __name__ == "__main__":
     unittest.main()
