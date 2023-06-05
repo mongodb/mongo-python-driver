@@ -306,6 +306,8 @@ class TestAuthOIDC(unittest.TestCase):
         token_file = os.path.join(self.token_dir, username)
 
         def request_token(server_info, context):
+            nonlocal token_file
+
             # Validate the info.
             self.assertIn("issuer", server_info)
             self.assertIn("clientId", server_info)
@@ -313,6 +315,12 @@ class TestAuthOIDC(unittest.TestCase):
             # Validate the timeout.
             timeout_seconds = context["timeout_seconds"]
             self.assertEqual(timeout_seconds, 60 * 5)
+
+            if self.request_called > 0:
+                token_file = (
+                    os.path.join(self.token_dir, username) + f"_{self.request_called % 3 + 1}"
+                )
+
             with open(token_file) as fid:
                 token = fid.read()
             resp = {"access_token": token}
@@ -694,7 +702,7 @@ class TestAuthOIDC(unittest.TestCase):
             client.test.test.bulk_write([InsertOne({})])
 
         # Assert that the refresh callback has been called.
-        self.assertEqual(self.request_called, 1)
+        self.assertEqual(self.request_called, 2)
         client.close()
 
     def test_reauthenticate_succeeds_bulk_read(self):
@@ -724,7 +732,7 @@ class TestAuthOIDC(unittest.TestCase):
             list(cursor)
 
         # Assert that the refresh callback has been called.
-        self.assertEqual(self.request_called, 1)
+        self.assertEqual(self.request_called, 2)
         client.close()
 
     def test_reauthenticate_succeeds_cursor(self):
@@ -751,7 +759,7 @@ class TestAuthOIDC(unittest.TestCase):
             self.assertGreaterEqual(len(list(cursor)), 1)
 
         # Assert that the refresh callback has been called.
-        self.assertEqual(self.request_called, 1)
+        self.assertEqual(self.request_called, 2)
         client.close()
 
     def test_reauthenticate_succeeds_get_more(self):
@@ -778,7 +786,7 @@ class TestAuthOIDC(unittest.TestCase):
             self.assertGreaterEqual(len(list(cursor)), 1)
 
         # Assert that the refresh callback has been called.
-        self.assertEqual(self.request_called, 1)
+        self.assertEqual(self.request_called, 2)
         client.close()
 
     def test_reauthenticate_succeeds_get_more_exhaust(self):
@@ -842,7 +850,7 @@ class TestAuthOIDC(unittest.TestCase):
         self.assertGreaterEqual(len(list(cursor)), 1)
 
         # Assert that the refresh callback has been called.
-        self.assertEqual(self.request_called, 1)
+        self.assertEqual(self.request_called, 2)
         client.close()
 
     def test_late_reauth_avoids_callback(self):
@@ -867,7 +875,7 @@ class TestAuthOIDC(unittest.TestCase):
             # Perform a find operation that succeeds.
             client1.test.test.find_one()
 
-        self.assertEqual(self.request_called, 1)
+        self.assertEqual(self.request_called, 2)
 
         # Step 3: cause a find 391 on the second client
         with self.helper.fail_point(
@@ -879,7 +887,7 @@ class TestAuthOIDC(unittest.TestCase):
             # Perform a find operation that succeeds.
             client2.test.test.find_one()
 
-        self.assertEqual(self.request_called, 1)
+        self.assertEqual(self.request_called, 2)
 
         client1.close()
         client2.close()

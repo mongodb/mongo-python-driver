@@ -101,8 +101,7 @@ class _OIDCAuthenticator:
     properties: _OIDCProperties
     idp_info: Optional[Dict] = field(default=None)
     idp_resp: Optional[Dict] = field(default=None)
-    token_gen_id: int = field(default=0)
-    token_invalidated: bool = field(default=False)
+    access_token: str = field(default="")
     cache_exp_utc: datetime = field(default_factory=_get_cache_exp)
     lock: threading.Lock = field(default_factory=threading.Lock)
 
@@ -113,27 +112,26 @@ class _OIDCAuthenticator:
         if not use_callbacks:
             request_cb = None
 
-        current_valid_token = (
-            self.idp_resp and self.idp_resp.get("access_token") and not self.token_invalidated
-        )
+        current_token = self.access_token
         timeout = CALLBACK_TIMEOUT_SECONDS
 
-        if not use_callbacks and not current_valid_token:
+        if not use_callbacks and not current_token:
             return None
 
-        if not current_valid_token and request_cb is not None:
+        if not current_token and request_cb is not None:
             context = {
                 "timeout_seconds": timeout,
                 "version": CALLBACK_VERSION,
-                "idp_info": self.idp_info,
+                "idp_resp": self.idp_resp,
             }
 
-            if self.idp_resp is None:
-                self.idp_resp = request_cb(self.idp_info, context)
+            self.idp_resp = request_cb(self.idp_info, context)
             cache_exp_utc = datetime.now(timezone.utc) + timedelta(minutes=CACHE_TIMEOUT_MINUTES)
             self.cache_exp_utc = cache_exp_utc
-            self.token_gen_id += 1
-            self.token_invalidated = False
+            current_token = self.idp_resp and self.idp_resp.get("access_token")
+
+        if not current_token:
+            raise ValueError("No current token")
 
         token_result = self.idp_resp
 
@@ -149,7 +147,7 @@ class _OIDCAuthenticator:
             if key not in expected:
                 raise ValueError(f'Unexpected field in callback result "{key}"')
 
-        return token_result["access_token"]
+        return current_token
 
     def auth_start_cmd(self, use_callbacks=True):
         principal_name = self.username
@@ -194,6 +192,7 @@ class _OIDCAuthenticator:
     def clear(self):
         self.idp_info = None
         self.idp_resp = None
+        self.access_token = ""
 
     def authenticate(self, sock_info, reauthenticate=False):
         with self.lock:
@@ -201,17 +200,19 @@ class _OIDCAuthenticator:
             self._last_cmd = None
             self.sock_info = sock_info
             if reauthenticate:
-                prev_id = getattr(sock_info, "oidc_token_gen_id", 0)
+                prev_token = getattr(sock_info, "oidc_access_token", 0)
                 # If we haven't changed tokens, mark the current one as expired.
-                if prev_id == self.token_gen_id:
-                    self.token_invalidated = True
+                if prev_token == self.access_token:
+                    self.access_token = ""
 
             try:
                 resp = self._authenticate()
             except OperationFailure as exc:
                 resp = self._handle_retry(exc)
 
-            sock_info.oidc_token_gen_id = self.token_gen_id
+            assert self.idp_resp is not None
+            access_token = self.access_token = self.idp_resp["access_token"]
+            sock_info.oidc_access_token = access_token
             return resp
 
     def _authenticate(self):
@@ -258,9 +259,9 @@ class _OIDCAuthenticator:
         sock_info = self.sock_info
         # Only retry on an auth failure code if we've had at least one
         # accepted token.
-        token_id = getattr(sock_info, "oidc_token_gen_id", None)
+        prev_token = getattr(sock_info, "oidc_access_token", None)
         if exc.code == _REAUTHENTICATION_REQUIRED_CODE or (
-            token_id and exc.code == _AUTHENTICATION_FAILED_CODE
+            prev_token and exc.code == _AUTHENTICATION_FAILED_CODE
         ):
             payload = bson.decode(self._last_cmd["payload"])
             if "jwt" not in payload:
