@@ -82,6 +82,99 @@ struct module_state {
 #define DATETIME_MS 3
 #define DATETIME_AUTO 4
 
+/* Converts integer to its string representation in decimal notation. */
+extern int cbson_long_long_to_str(long long num, char* str, size_t size) {
+    // Buffer should fit 64-bit signed integer
+    if (size < 21) {
+        PyErr_Format(
+            PyExc_RuntimeError,
+            "Buffer too small to hold long long: %d < 21", size);
+        return -1;
+    }
+    int index = 0;
+    int sign = 1;
+    // Convert to unsigned to handle -LLONG_MIN overflow
+    unsigned long long absNum;
+    // Handle the case of 0
+    if (num == 0) {
+        str[index++] = '0';
+        str[index] = '\0';
+        return 0;
+    }
+    // Handle negative numbers
+    if (num < 0) {
+        sign = -1;
+        absNum = 0ULL - (unsigned long long)num;
+    } else {
+        absNum = (unsigned long long)num;
+    }
+    // Convert the number to string
+    unsigned long long digit;
+    while (absNum > 0) {
+        digit = absNum % 10ULL;
+        str[index++] = (char)digit + '0';  // Convert digit to character
+        absNum /= 10;
+    }
+    // Add minus sign if negative
+    if (sign == -1) {
+        str[index++] = '-';
+    }
+    str[index] = '\0';  // Null terminator
+    // Reverse the string
+    int start = 0;
+    int end = index - 1;
+    while (start < end) {
+        char temp = str[start];
+        str[start++] = str[end];
+        str[end--] = temp;
+    }
+    return 0;
+}
+
+static PyObject* _test_long_long_to_str(PyObject* self, PyObject* args) {
+    // Test extreme values
+    Py_ssize_t maxNum = PY_SSIZE_T_MAX;
+    Py_ssize_t minNum = PY_SSIZE_T_MIN;
+    Py_ssize_t num;
+    char str_1[BUF_SIZE];
+    char str_2[BUF_SIZE];
+    int res = LL2STR(str_1, (long long)minNum);
+    if (res == -1) {
+        return NULL;
+    }
+    INT2STRING(str_2, (long long)minNum);
+    if (strcmp(str_1, str_2) != 0) {
+        PyErr_Format(
+            PyExc_RuntimeError,
+            "LL2STR != INT2STRING: %s != %s", str_1, str_2);
+        return NULL;
+    }
+    LL2STR(str_1, (long long)maxNum);
+    INT2STRING(str_2, (long long)maxNum);
+    if (strcmp(str_1, str_2) != 0) {
+        PyErr_Format(
+            PyExc_RuntimeError,
+            "LL2STR != INT2STRING: %s != %s", str_1, str_2);
+        return NULL;
+    }
+
+    // Test common values
+    for (num = 0; num < 10000; num++) {
+        char str_1[BUF_SIZE];
+        char str_2[BUF_SIZE];
+        LL2STR(str_1, (long long)num);
+        INT2STRING(str_2, (long long)num);
+        if (strcmp(str_1, str_2) != 0) {
+            PyErr_Format(
+                PyExc_RuntimeError,
+                "LL2STR != INT2STRING: %s != %s", str_1, str_2);
+            return NULL;
+        }
+    }
+
+    return args;
+}
+
 /* Get an error class from the bson.errors module.
  *
  * Returns a new ref */
@@ -1027,13 +1120,16 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         }
         for(i = 0; i < items; i++) {
             int list_type_byte = pymongo_buffer_save_space(buffer, 1);
-            char name[16];
+            char name[BUF_SIZE];
             PyObject* item_value;
 
             if (list_type_byte == -1) {
                 return 0;
             }
-            INT2STRING(name, (int)i);
+            int res = LL2STR(name, (long long)i);
+            if (res == -1) {
+                return 0;
+            }
             if (!buffer_write_bytes(buffer, name, (int)strlen(name) + 1)) {
                 return 0;
             }
@@ -2934,6 +3030,7 @@ static PyMethodDef _CBSONMethods[] = {
     {"_element_to_dict", _cbson_element_to_dict, METH_VARARGS,
      "Decode a single key, value pair."},
     {"_array_of_documents_to_buffer", _cbson_array_of_documents_to_buffer, METH_VARARGS, "Convert raw array of documents to a stream of BSON documents"},
+    {"_test_long_long_to_str", _test_long_long_to_str, METH_VARARGS, "Test conversion of extreme and common Py_ssize_t values to str."},
     {NULL, NULL, 0, NULL}
 };
 

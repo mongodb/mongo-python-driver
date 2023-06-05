@@ -23,27 +23,34 @@
 /*
  * This macro is basically an implementation of asprintf for win32
  * We print to the provided buffer to get the string value as an int.
+ * USE LL2STR. This is kept only to test LL2STR.
  */
 #if defined(_MSC_VER) && (_MSC_VER >= 1400)
 #define INT2STRING(buffer, i)                                       \
     _snprintf_s((buffer),                                           \
-                 _scprintf("%d", (i)) + 1,                          \
-                 _scprintf("%d", (i)) + 1,                          \
-                 "%d",                                              \
+                 _scprintf("%lld", (i)) + 1,                          \
+                 _scprintf("%lld", (i)) + 1,                          \
+                 "%lld",                                              \
                  (i))
 #define STRCAT(dest, n, src) strcat_s((dest), (n), (src))
 #else
 #define INT2STRING(buffer, i)                                       \
     _snprintf((buffer),                                             \
-               _scprintf("%d", (i)) + 1,                            \
-               "%d",                                                \
+               _scprintf("%lld", (i)) + 1,                            \
+               "%lld",                                                \
               (i))
 #define STRCAT(dest, n, src) strcat((dest), (src))
 #endif
 #else
-#define INT2STRING(buffer, i) snprintf((buffer), sizeof((buffer)), "%d", (i))
+#define INT2STRING(buffer, i) snprintf((buffer), sizeof((buffer)), "%lld", (i))
 #define STRCAT(dest, n, src) strcat((dest), (src))
 #endif
+
+/* Just enough space in char array to hold LLONG_MIN and null terminator */
+#define BUF_SIZE 21
+/* Converts integer to its string representation in decimal notation. */
+extern int cbson_long_long_to_str(long long int num, char* str, size_t size);
+#define LL2STR(buffer, i) cbson_long_long_to_str((i), (buffer), sizeof(buffer))
 
 typedef struct type_registry_t {
     PyObject* encoder_map;
