@@ -134,6 +134,7 @@ static PyObject* _test_long_long_to_str(PyObject* self, PyObject* args) {
     // Test extreme values
     Py_ssize_t maxNum = PY_SSIZE_T_MAX;
     Py_ssize_t minNum = PY_SSIZE_T_MIN;
+    Py_ssize_t num;
     char str_1[BUF_SIZE];
     char str_2[BUF_SIZE];
     int res = LL2STR(str_1, (long long)minNum);
@@ -157,7 +158,7 @@ static PyObject* _test_long_long_to_str(PyObject* self, PyObject* args) {
     }
 
     // Test common values
-    for (Py_ssize_t num = 0; num < 10000; num++) {
+    for (num = 0; num < 10000; num++) {
         char str_1[BUF_SIZE];
         char str_2[BUF_SIZE];
         LL2STR(str_1, (long long)num);
