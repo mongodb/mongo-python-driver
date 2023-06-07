@@ -59,6 +59,7 @@ from pymongo.operations import (
     IndexModel,
     InsertOne,
     ReplaceOne,
+    SearchIndexModel,
     UpdateMany,
     UpdateOne,
     _IndexKeyHint,
@@ -2279,6 +2280,159 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             index = dict(index)
             info[index.pop("name")] = index
         return info
+
+    def list_search_indexes(
+        self,
+        name: Optional[str] = None,
+        session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
+    ) -> CommandCursor[_DocumentType]:
+        """Return a cursor over search indexes for the current collection.
+
+        :Parameters:
+            `name` (optional) - If given, the name of the index to search
+                for.  Only indexes with matching index names will be returned.
+                If not given, all search indexes for the current collection
+                will be returned.
+            - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+            - `comment` (optional): A user-provided comment to attach to this
+            command.
+
+        :Returns:
+          A :class:`~pymongo.command_cursor.CommandCursor` over the result
+          set.
+
+        .. note:: requires a MongoDB server version 7.0+ Atlas cluster.
+        """
+        if name is None:
+            pipeline = [{"$listSearchIndexes": {}}]
+        else:
+            pipeline = [{"$listSearchIndexes": {name}}]
+        return self.aggregate(pipeline, session, comment=comment)
+
+    def create_search_index(
+        self,
+        description: SearchIndexModel,
+        session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> str:
+        """Create a single search index for the collection.
+
+        :Parameters:
+          - `description` - The index description for the new search index.
+
+        :Returns:
+          The name of the new search index.
+
+        .. note:: requires a MongoDB server version 7.0+ Atlas cluster.
+        """
+        return self.create_search_indexes([description], session, comment, **kwargs)[0]
+
+    @_csot.apply
+    def create_search_indexes(
+        self,
+        descriptions: List[SearchIndexModel],
+        session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> List[str]:
+        """Create multiple search indexes for the current collection.
+
+        :Parameters:
+          - `descriptions` - A list of `SearchIndexDescription`s for the new search indexes.
+
+        :Returns:
+            A list of the newly created search index names.
+
+        .. note:: requires a MongoDB server version 7.0+ Atlas cluster.
+        """
+        if comment is not None:
+            kwargs["comment"] = comment
+        names = []
+        with self._socket_for_writes(session) as sock_info:
+
+            def gen_indexes():
+                for index in descriptions:
+                    if not isinstance(index, SearchIndexModel):
+                        raise TypeError(
+                            f"{index!r} is not an instance of pymongo.operations.SearchIndexModel"
+                        )
+                    doc = index.document
+                    names.append(doc["name"])
+                    yield doc
+
+            cmd = SON([("createSearchIndexes", self.name), ("indexes", list(gen_indexes()))])
+            cmd.update(kwargs)
+
+            self._command(
+                sock_info,
+                cmd,
+                read_preference=ReadPreference.PRIMARY,
+                codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
+                write_concern=self._write_concern_for(session),
+                session=session,
+            )
+        return names
+
+    def drop_search_index(
+        self,
+        name: str,
+        session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> None:
+        """Delete a search index by index name.
+
+        :Parameters:
+          - `name` - The name of the search index to be deleted.
+
+        .. note:: requires a MongoDB server version 7.0+ Atlas cluster.
+        """
+        cmd = SON([("dropSearchIndex", self.__name), ("name", name)])
+        cmd.update(kwargs)
+        if comment is not None:
+            cmd["comment"] = comment
+        with self._socket_for_writes(session) as sock_info:
+            self._command(
+                sock_info,
+                cmd,
+                read_preference=ReadPreference.PRIMARY,
+                allowable_errors=["ns not found", 26],
+                write_concern=self._write_concern_for(session),
+                session=session,
+            )
+
+    def update_search_index(
+        self,
+        name: str,
+        definition: Mapping[str, Any],
+        session: Optional["ClientSession"] = None,
+        comment: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> None:
+        """Update a search index by replacing the existing index definition with the provided definition.
+
+        :Parameters:
+          - `name` - The name of the search index to be updated.
+          - `definition` - The new search index definition.
+
+         .. note:: requires a MongoDB server version 7.0+ Atlas cluster.
+        """
+        cmd = SON([("updateSearchIndex", self.__name), ("name", name), ("definition", definition)])
+        cmd.update(kwargs)
+        if comment is not None:
+            cmd["comment"] = comment
+        with self._socket_for_writes(session) as sock_info:
+            self._command(
+                sock_info,
+                cmd,
+                read_preference=ReadPreference.PRIMARY,
+                allowable_errors=["ns not found", 26],
+                write_concern=self._write_concern_for(session),
+                session=session,
+            )
 
     def options(
         self,

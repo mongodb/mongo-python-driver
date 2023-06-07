@@ -508,3 +508,27 @@ class IndexModel:
         command.
         """
         return self.__document
+
+
+class SearchIndexModel:
+    """Represents a search index to create."""
+
+    __slots__ = "__document"
+
+    def __init__(self, definition: Mapping[str, Any], name: Optional[str] = None) -> None:
+        """Create a Search Index instance.
+
+        For use with :meth:`~pymongo.collection.Collection.create_search_indexes`.
+
+        :Parameters:
+          - `definition` - The definition for this index.
+          - `name` (optional) - The name for this index, if present.
+
+        .. note:: Search indexes require a MongoDB server version 7.0+ Atlas cluster.
+        """
+        self.__document = dict(name=name, definition=definition)
+
+    @property
+    def document(self) -> Mapping[str, Any]:
+        """The document for this index."""
+        return self.__document

@@ -1133,6 +1133,21 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def _collectionOperation_listIndexNames(self, target, *args, **kwargs):
         self.skipTest("PyMongo does not support list_index_names")
 
+    def _collectionOperation_createSearchIndex(self, target, *args, **kwargs):
+        return target.create_search_index(*args, **kwargs)
+
+    def _collectionOperation_createSearchIndexes(self, target, *args, **kwargs):
+        return target.create_search_indexex(*args, **kwargs)
+
+    def _collectionOperation_dropSearchIndex(self, target, *args, **kwargs):
+        return target.drop_search_index(*args, **kwargs)
+
+    def _collectionOperation_listSearchIndexes(self, target, *args, **kwargs):
+        return list(target.list_search_indexes(*args, **kwargs))
+
+    def _collectionOperation_updateSearchIndex(self, target, *args, **kwargs):
+        return target.update_search_index(*args, **kwargs)
+
     def _sessionOperation_withTransaction(self, target, *args, **kwargs):
         if client_context.storage_engine == "mmapv1":
             self.skipTest("MMAPv1 does not support document-level locking")
