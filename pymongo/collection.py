@@ -2306,9 +2306,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. note:: requires a MongoDB server version 7.0+ Atlas cluster.
         """
         if name is None:
-            pipeline = [{"$listSearchIndexes": {}}]
+            pipeline: _Pipeline = [{"$listSearchIndexes": {}}]
         else:
-            pipeline = [{"$listSearchIndexes": {name}}]
+            pipeline: _Pipeline = [{"$listSearchIndexes": {name}}]
         return self.aggregate(pipeline, session, comment=comment)
 
     def create_search_index(
@@ -2322,6 +2322,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         :Parameters:
           - `description` - The index description for the new search index.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+          - `**kwargs` (optional): optional arguments to the createSearchIndexes
+            command (like maxTimeMS) can be passed as keyword arguments.
 
         :Returns:
           The name of the new search index.
@@ -2342,6 +2348,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         :Parameters:
           - `descriptions` - A list of `SearchIndexDescription`s for the new search indexes.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+          - `**kwargs` (optional): optional arguments to the createSearchIndexes
+            command (like maxTimeMS) can be passed as keyword arguments.
 
         :Returns:
             A list of the newly created search index names.
@@ -2387,6 +2399,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         :Parameters:
           - `name` - The name of the search index to be deleted.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+          - `**kwargs` (optional): optional arguments to the dropSearchIndexes
+            command (like maxTimeMS) can be passed as keyword arguments.
 
         .. note:: requires a MongoDB server version 7.0+ Atlas cluster.
         """
@@ -2417,6 +2435,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         :Parameters:
           - `name` - The name of the search index to be updated.
           - `definition` - The new search index definition.
+          - `session` (optional): a
+            :class:`~pymongo.client_session.ClientSession`.
+          - `comment` (optional): A user-provided comment to attach to this
+            command.
+          - `**kwargs` (optional): optional arguments to the updateSearchIndexes
+            command (like maxTimeMS) can be passed as keyword arguments.
 
          .. note:: requires a MongoDB server version 7.0+ Atlas cluster.
         """
