@@ -2308,7 +2308,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if name is None:
             pipeline: _Pipeline = [{"$listSearchIndexes": {}}]
         else:
-            pipeline: _Pipeline = [{"$listSearchIndexes": {name}}]
+            pipeline = [{"$listSearchIndexes": {name}}]
         return self.aggregate(pipeline, session, comment=comment)
 
     def create_search_index(
