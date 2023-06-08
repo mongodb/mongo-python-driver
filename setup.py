@@ -263,12 +263,7 @@ ext_modules = [
     Extension(
         "pymongo._cmessage",
         include_dirs=["bson"],
-        sources=[
-            "pymongo/_cmessagemodule.c",
-            "bson/_cbsonmodule.c",
-            "bson/time64.c",
-            "bson/buffer.c",
-        ],
+        sources=["pymongo/_cmessagemodule.c", "bson/buffer.c"],
     ),
 ]
 
