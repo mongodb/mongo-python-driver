@@ -2284,14 +2284,6 @@ axes:
   - id: platform
     display_name: OS
     values:
-      - id: awslinux
-        display_name: "Amazon Linux 2018 (Enterprise)"
-        run_on: amazon1-2018-test
-        batchtime: 10080  # 7 days
-        variables:
-          skip_crypt_shared: true
-          python3_binary: "/opt/python/3.8/bin/python3"
-          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/linux-64-amazon-ami/master/latest/libmongocrypt.tar.gz
       - id: archlinux-test
         display_name: "Archlinux"
         run_on: archlinux-test
@@ -2330,6 +2322,12 @@ axes:
           skip_web_identity_auth_test: true
           python3_binary: /Library/Frameworks/Python.framework/Versions/3.8/bin/python3
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/macos/master/latest/libmongocrypt.tar.gz
+      - id: rhel76
+        display_name: "RHEL 7.6"
+        run_on: rhel76-small
+        batchtime: 10080  # 7 days
+        variables:
+          libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-70-64-bit/master/latest/libmongocrypt.tar.gz
       - id: rhel84
         display_name: "RHEL 8.4"
         run_on: rhel84-small
@@ -2990,7 +2988,7 @@ buildvariants:
 
 - matrix_name: "tests-python-version-supports-openssl-102-test-ssl"
   matrix_spec:
-    platform: awslinux
+    platform: rhel76
     # Python 3.10+ requires OpenSSL 1.1.1+
     python-version: ["3.7", "3.8", "3.9", "pypy3.7", "pypy3.8"]
     auth-ssl: "*"
