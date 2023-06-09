@@ -83,7 +83,7 @@ struct module_state {
 #define DATETIME_AUTO 4
 
 /* Converts integer to its string representation in decimal notation. */
-int cbson_long_long_to_str(long long num, char* str, size_t size) {
+extern int cbson_long_long_to_str(long long num, char* str, size_t size) {
     // Buffer should fit 64-bit signed integer
     if (size < 21) {
         PyErr_Format(
