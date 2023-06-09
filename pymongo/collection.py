@@ -2163,7 +2163,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
-        return self.database.command(
+        self.database.command(
             cmd,
             read_preference=ReadPreference.PRIMARY,
             allowable_errors=["ns not found", 26],
