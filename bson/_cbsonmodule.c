@@ -599,8 +599,7 @@ fail:
  * Return 1 on success. options->document_class is a new reference.
  * Return 0 on failure.
  */
-int convert_codec_options(PyObject* self, PyObject* options_obj, void* p) {
-    codec_options_t* options = (codec_options_t*)p;
+int convert_codec_options(PyObject* self, PyObject* options_obj, codec_options_t* options) {
     PyObject* type_registry_obj = NULL;
     long type_marker;
 
@@ -613,8 +612,9 @@ int convert_codec_options(PyObject* self, PyObject* options_obj, void* p) {
                           &options->unicode_decode_error_handler,
                           &options->tzinfo,
                           &type_registry_obj,
-                          &options->datetime_conversion))
+                          &options->datetime_conversion)) {
         return 0;
+    }
 
     type_marker = _type_marker(options->document_class,
                                GETSTATE(self)->_type_marker_str);
