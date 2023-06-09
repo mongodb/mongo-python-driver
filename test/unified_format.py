@@ -107,6 +107,7 @@ from pymongo.monitoring import (
     _PoolEvent,
     _ServerEvent,
 )
+from pymongo.operations import SearchIndexModel
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import BulkWriteResult
@@ -1134,16 +1135,19 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self.skipTest("PyMongo does not support list_index_names")
 
     def _collectionOperation_createSearchIndex(self, target, *args, **kwargs):
-        return target.create_search_index(*args, **kwargs)
+        return target.create_search_index(SearchIndexModel(**kwargs["model"]))
 
     def _collectionOperation_createSearchIndexes(self, target, *args, **kwargs):
-        return target.create_search_indexex(*args, **kwargs)
+        models = [SearchIndexModel(**i) for i in kwargs["models"]]
+        return target.create_search_indexes(models)
 
     def _collectionOperation_dropSearchIndex(self, target, *args, **kwargs):
         return target.drop_search_index(*args, **kwargs)
 
     def _collectionOperation_listSearchIndexes(self, target, *args, **kwargs):
-        return list(target.list_search_indexes(*args, **kwargs))
+        name = kwargs.get("name")
+        agg_kwargs = kwargs.get("aggregation_options", dict())
+        return list(target.list_search_indexes(name, **agg_kwargs))
 
     def _collectionOperation_updateSearchIndex(self, target, *args, **kwargs):
         return target.update_search_index(*args, **kwargs)

@@ -526,7 +526,10 @@ class SearchIndexModel:
 
         .. note:: Search indexes require a MongoDB server version 7.0+ Atlas cluster.
         """
-        self.__document = dict(name=name, definition=definition)
+        if name is None:
+            self.__document = dict(definition=definition)
+        else:
+            self.__document = dict(name=name, definition=definition)
 
     @property
     def document(self) -> Mapping[str, Any]:

@@ -2163,15 +2163,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
-        with self._socket_for_writes(session) as sock_info:
-            self._command(
-                sock_info,
-                cmd,
-                read_preference=ReadPreference.PRIMARY,
-                allowable_errors=["ns not found", 26],
-                write_concern=self._write_concern_for(session),
-                session=session,
-            )
+        return self.database.command(
+            cmd,
+            read_preference=ReadPreference.PRIMARY,
+            allowable_errors=["ns not found", 26],
+            write_concern=self._write_concern_for(session),
+            session=session,
+        )
 
     def list_indexes(
         self,
@@ -2286,6 +2284,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         name: Optional[str] = None,
         session: Optional["ClientSession"] = None,
         comment: Optional[Any] = None,
+        **kwargs: Any,
     ) -> CommandCursor[_DocumentType]:
         """Return a cursor over search indexes for the current collection.
 
@@ -2308,8 +2307,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if name is None:
             pipeline: _Pipeline = [{"$listSearchIndexes": {}}]
         else:
-            pipeline = [{"$listSearchIndexes": {name}}]
-        return self.aggregate(pipeline, session, comment=comment)
+            pipeline = [{"$listSearchIndexes": {"name": name}}]
+        return self.aggregate(pipeline, session, comment=comment, **kwargs)
 
     def create_search_index(
         self,
@@ -2336,7 +2335,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """
         return self.create_search_indexes([description], session, comment, **kwargs)[0]
 
-    @_csot.apply
     def create_search_indexes(
         self,
         descriptions: List[SearchIndexModel],
@@ -2363,29 +2361,28 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             kwargs["comment"] = comment
         names = []
-        with self._socket_for_writes(session) as sock_info:
 
-            def gen_indexes():
-                for index in descriptions:
-                    if not isinstance(index, SearchIndexModel):
-                        raise TypeError(
-                            f"{index!r} is not an instance of pymongo.operations.SearchIndexModel"
-                        )
-                    doc = index.document
+        def gen_indexes():
+            for index in descriptions:
+                if not isinstance(index, SearchIndexModel):
+                    raise TypeError(
+                        f"{index!r} is not an instance of pymongo.operations.SearchIndexModel"
+                    )
+                doc = index.document
+                if "name" in doc:
                     names.append(doc["name"])
-                    yield doc
+                yield doc
 
-            cmd = SON([("createSearchIndexes", self.name), ("indexes", list(gen_indexes()))])
-            cmd.update(kwargs)
+        cmd = SON([("createSearchIndexes", self.name), ("indexes", list(gen_indexes()))])
+        cmd.update(kwargs)
 
-            self._command(
-                sock_info,
-                cmd,
-                read_preference=ReadPreference.PRIMARY,
-                codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
-                write_concern=self._write_concern_for(session),
-                session=session,
-            )
+        self.database.command(
+            cmd,
+            read_preference=ReadPreference.PRIMARY,
+            codec_options=_UNICODE_REPLACE_CODEC_OPTIONS,
+            write_concern=self._write_concern_for(session),
+            session=session,
+        )
         return names
 
     def drop_search_index(
@@ -2412,15 +2409,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
-        with self._socket_for_writes(session) as sock_info:
-            self._command(
-                sock_info,
-                cmd,
-                read_preference=ReadPreference.PRIMARY,
-                allowable_errors=["ns not found", 26],
-                write_concern=self._write_concern_for(session),
-                session=session,
-            )
+        self.database.command(
+            cmd,
+            read_preference=ReadPreference.PRIMARY,
+            allowable_errors=["ns not found", 26],
+            write_concern=self._write_concern_for(session),
+            session=session,
+        )
 
     def update_search_index(
         self,
@@ -2448,15 +2443,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
         if comment is not None:
             cmd["comment"] = comment
-        with self._socket_for_writes(session) as sock_info:
-            self._command(
-                sock_info,
-                cmd,
-                read_preference=ReadPreference.PRIMARY,
-                allowable_errors=["ns not found", 26],
-                write_concern=self._write_concern_for(session),
-                session=session,
-            )
+        self.database.command(
+            cmd,
+            read_preference=ReadPreference.PRIMARY,
+            allowable_errors=["ns not found", 26],
+            write_concern=self._write_concern_for(session),
+            session=session,
+        )
 
     def options(
         self,

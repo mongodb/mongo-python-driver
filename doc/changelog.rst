@@ -7,6 +7,12 @@ Changes in Version 4.4
 - Added support for MongoDB 7.0.
 - Added support for passing a list containing (key, direction) pairs
   or keys to :meth:`~pymongo.collection.Collection.create_index`.
+- Added new helper methods for Atlas Search Index (requires MongoDB Server 7.0+):
+  :meth:`~pymongo.collection.Collection.list_search_indexes`,
+  :meth:`~pymongo.collection.Collection.create_search_index`,
+  :meth:`~pymongo.collection.Collection.create_search_indexes`,
+  :meth:`~pymongo.collection.Collection.drop_search_index`,
+  :meth:`~pymongo.collection.Collection.update_search_index`
 - pymongocrypt 1.6.0 or later is now required for client side field level
   encryption support.
 - Improved support for Pyright to improve typing support for IDEs like Visual Studio Code
