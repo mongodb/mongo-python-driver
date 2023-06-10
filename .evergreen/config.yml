@@ -1348,7 +1348,7 @@ tasks:
 
     - name: "release-manylinux"
       tags: ["release_tag"]
-      run_on: rhel76-large
+      run_on: ubuntu2204-large
       exec_timeout_secs: 216000  # 60 minutes (manylinux task is slow).
       commands:
         - func: "build release"
@@ -1356,7 +1356,7 @@ tasks:
 
     - name: "release-old-manylinux"
       tags: ["release_tag"]
-      run_on: rhel76-large
+      run_on: ubuntu2204-large
       exec_timeout_secs: 216000  # 60 minutes (manylinux task is slow).
       commands:
         - command: shell.exec
@@ -1371,7 +1371,7 @@ tasks:
 
     - name: "release-combine"
       tags: ["release_tag"]
-      run_on: urhel84-small
+      run_on: rhel84-small
       depends_on:
         - name: "*"
           variant: ".release_tag"
@@ -3243,7 +3243,7 @@ buildvariants:
 - name: testgcpkms-variant
   display_name: "GCP KMS"
   run_on:
-    - rhel84-small
+    - ubuntu2204-small
   tasks:
     - name: testgcpkms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
@@ -3251,7 +3251,7 @@ buildvariants:
 
 - name: testazurekms-variant
   display_name: "Azure KMS"
-  run_on: rhel84-small
+  run_on: ubuntu2204-small
   tasks:
     - name: testazurekms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
