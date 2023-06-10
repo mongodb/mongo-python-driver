@@ -1245,7 +1245,7 @@ task_groups:
           set -o errexit
           ${PREPARE_SHELL}
           # TODO: remove after BUILD-17501 is complete
-          yum install azure-cli
+          sudo yum install azure-cli
           echo '${testazurekms_publickey}' > /tmp/testazurekms_publickey
           echo '${testazurekms_privatekey}' > /tmp/testazurekms_privatekey
           # Set 600 permissions on private key file. Otherwise ssh / scp may error with permissions "are too open".
@@ -2180,7 +2180,7 @@ tasks:
             shell: "bash"
             script: |
               ${PREPARE_SHELL}
-              yum install wget
+              sudo yum install wget
               echo "Copying files ... begin"
               export GCPKMS_GCLOUD=${GCPKMS_GCLOUD}
               export GCPKMS_PROJECT=${GCPKMS_PROJECT}
