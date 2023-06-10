@@ -1244,6 +1244,8 @@ task_groups:
         script: |-
           set -o errexit
           ${PREPARE_SHELL}
+          # TODO: remove after BUILD-17501 is complete
+          yum install azure-cli
           echo '${testazurekms_publickey}' > /tmp/testazurekms_publickey
           echo '${testazurekms_privatekey}' > /tmp/testazurekms_privatekey
           # Set 600 permissions on private key file. Otherwise ssh / scp may error with permissions "are too open".
@@ -3243,7 +3245,7 @@ buildvariants:
 - name: testgcpkms-variant
   display_name: "GCP KMS"
   run_on:
-    - ubuntu2204-small
+    - rhel84-small
   tasks:
     - name: testgcpkms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
@@ -3251,7 +3253,7 @@ buildvariants:
 
 - name: testazurekms-variant
   display_name: "Azure KMS"
-  run_on: ubuntu2204-small
+  run_on: rhel84-small
   tasks:
     - name: testazurekms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
