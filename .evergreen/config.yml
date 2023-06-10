@@ -2220,6 +2220,7 @@ tasks:
             shell: "bash"
             script: |
               ${PREPARE_SHELL}
+              export PYTHON_BINARY=python3
               export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz
               SUCCESS=false TEST_FLE_GCP_AUTO=1 ./.evergreen/run-tests.sh
 
@@ -2274,7 +2275,7 @@ tasks:
             set -o errexit
             ${PREPARE_SHELL}
             cd src
-            PYTHON_BINARY=
+            PYTHON_BINARY=python3 \
             KEY_NAME='${testazurekms_keyname}' \
             KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}' \
             LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz \
