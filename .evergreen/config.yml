@@ -1240,7 +1240,6 @@ task_groups:
     - func: make files executable
     - command: shell.exec
       params:
-        silent: true
         shell: bash
         script: |-
           set -o errexit
@@ -1349,7 +1348,7 @@ tasks:
 
     - name: "release-manylinux"
       tags: ["release_tag"]
-      run_on: rhel84-large
+      run_on: rhel76-large
       exec_timeout_secs: 216000  # 60 minutes (manylinux task is slow).
       commands:
         - func: "build release"
@@ -1357,7 +1356,7 @@ tasks:
 
     - name: "release-old-manylinux"
       tags: ["release_tag"]
-      run_on: rhel84-large
+      run_on: rhel76-large
       exec_timeout_secs: 216000  # 60 minutes (manylinux task is slow).
       commands:
         - command: shell.exec
@@ -2327,12 +2326,14 @@ axes:
         run_on: rhel76-small
         batchtime: 10080  # 7 days
         variables:
+          python3_binary: "/opt/python/3.8/bin/python3"
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-70-64-bit/master/latest/libmongocrypt.tar.gz
       - id: rhel84
         display_name: "RHEL 8.4"
         run_on: rhel84-small
         batchtime: 10080  # 7 days
         variables:
+          python3_binary: "/opt/python/3.8/bin/python3"
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-80-64-bit/master/latest/libmongocrypt.tar.gz
       - id: rhel80-fips
         display_name: "RHEL 8.0 FIPS"
