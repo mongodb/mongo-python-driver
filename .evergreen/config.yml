@@ -2180,6 +2180,7 @@ tasks:
             shell: "bash"
             script: |
               ${PREPARE_SHELL}
+              yum install wget
               echo "Copying files ... begin"
               export GCPKMS_GCLOUD=${GCPKMS_GCLOUD}
               export GCPKMS_PROJECT=${GCPKMS_PROJECT}
