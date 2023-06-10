@@ -27,7 +27,15 @@ fi
 
 for image in "${images[@]}"; do
   docker pull $image
-  docker run --rm -v "`pwd`:/src" $image /src/.evergreen/build-manylinux-internal.sh
+  args="--rm -v "`pwd`:/src" $image"
+  if [[ $image == *"aarch64"* ]]; then
+    args="$args --platform linux/aarch64"
+  elif [[ $image == *"ppc64le"* ]]; then
+    args="$args --platform linux/ppc64le"
+  elif [[ $image == *"s390x"* ]]; then
+    args="$args --platform linux/s390x"
+  fi
+  docker run $args /src/.evergreen/build-manylinux-internal.sh
 done
 
 ls dist
