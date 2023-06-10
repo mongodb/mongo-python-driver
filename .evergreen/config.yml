@@ -1349,7 +1349,7 @@ tasks:
 
     - name: "release-manylinux"
       tags: ["release_tag"]
-      run_on: ubuntu2004-large
+      run_on: rhel84-large
       exec_timeout_secs: 216000  # 60 minutes (manylinux task is slow).
       commands:
         - func: "build release"
@@ -1357,7 +1357,7 @@ tasks:
 
     - name: "release-old-manylinux"
       tags: ["release_tag"]
-      run_on: ubuntu2004-large
+      run_on: rhel84-large
       exec_timeout_secs: 216000  # 60 minutes (manylinux task is slow).
       commands:
         - command: shell.exec
@@ -1372,7 +1372,7 @@ tasks:
 
     - name: "release-combine"
       tags: ["release_tag"]
-      run_on: ubuntu2004-small
+      run_on: urhel84-small
       depends_on:
         - name: "*"
           variant: ".release_tag"
@@ -2218,7 +2218,7 @@ tasks:
             shell: "bash"
             script: |
               ${PREPARE_SHELL}
-              export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/ubuntu2004-64/master/latest/libmongocrypt.tar.gz
+              export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel80-64/master/latest/libmongocrypt.tar.gz
               SUCCESS=false TEST_FLE_GCP_AUTO=1 ./.evergreen/run-tests.sh
 
     - name: testazurekms-task
@@ -2275,7 +2275,7 @@ tasks:
             PYTHON_BINARY=
             KEY_NAME='${testazurekms_keyname}' \
             KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}' \
-            LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/ubuntu2004-64/master/latest/libmongocrypt.tar.gz \
+            LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel80-64/master/latest/libmongocrypt.tar.gz \
             SUCCESS=false TEST_FLE_AZURE_AUTO=1 \
             ./.evergreen/run-tests.sh
 
@@ -2340,12 +2340,6 @@ axes:
         batchtime: 10080  # 7 days
         variables:
           libmongocrypt_url: https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-80-64-bit/master/latest/libmongocrypt.tar.gz
-      - id: ubuntu-20.04
-        display_name: "Ubuntu 20.04"
-        run_on: ubuntu2004-small
-        batchtime: 10080  # 7 days
-        variables:
-          python3_binary: python3
       - id: ubuntu-18.04
         display_name: "Ubuntu 18.04"
         run_on: ubuntu1804-small
@@ -2955,21 +2949,6 @@ buildvariants:
   display_name: "${green-framework} ${python-version} ${platform} ${auth-ssl}"
   tasks: *all-server-versions
 
-- matrix_name: "tests-python-version-green-framework-ubuntu20"
-  matrix_spec:
-    platform: ubuntu-20.04
-    python-version: ["3.11"]
-    green-framework: "*"
-    auth-ssl: "*"
-  display_name: "${green-framework} ${python-version} ${platform} ${auth-ssl}"
-  tasks:
-    - ".rapid"
-    - ".latest"
-    - ".7.0"
-    - ".6.0"
-    - ".5.0"
-    - ".4.4"
-
 - matrix_name: "tests-windows-python-version"
   matrix_spec:
     platform: windows-64-vsMulti-small
@@ -3077,12 +3056,12 @@ buildvariants:
 
 - matrix_name: "tests-mod-wsgi"
   matrix_spec:
-    platform: ubuntu-20.04
+    platform: rhel84
     python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
     mod-wsgi-version: "*"
   exclude_spec:
    # mod-wsgi 3.5 won't build against CPython 3.8+
-   - platform: ubuntu-20.04
+   - platform: rhel84
      python-version: ["3.8", "3.9", "3.10", "3.11"]
      mod-wsgi-version: "3"
   display_name: "${mod-wsgi-version} ${python-version} ${platform}"
@@ -3167,7 +3146,7 @@ buildvariants:
 
 - matrix_name: "ocsp-test"
   matrix_spec:
-    platform: ubuntu-20.04
+    platform: rhel84
     python-version: ["3.7", "3.10", "pypy3.7", "pypy3.8"]
     mongodb-version: ["4.4", "5.0", "6.0", "7.0", "latest"]
     auth: "noauth"
@@ -3204,7 +3183,7 @@ buildvariants:
 
 - matrix_name: "oidc-auth-test"
   matrix_spec:
-    platform: [ ubuntu-20.04 ]
+    platform: [ rhel84 ]
     python-version: ["3.9"]
   display_name: "MONGODB-OIDC Auth ${platform} ${python-version}"
   tasks:
@@ -3263,7 +3242,7 @@ buildvariants:
 - name: testgcpkms-variant
   display_name: "GCP KMS"
   run_on:
-    - ubuntu2004-small
+    - rhel84-small
   tasks:
     - name: testgcpkms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
@@ -3271,7 +3250,7 @@ buildvariants:
 
 - name: testazurekms-variant
   display_name: "Azure KMS"
-  run_on: ubuntu2004-small
+  run_on: rhel84-small
   tasks:
     - name: testazurekms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
@@ -3286,10 +3265,6 @@ buildvariants:
 
       # Platform notes
       # i386 builds of OpenSSL or Cyrus SASL are not available
-      # Ubuntu16.04 ppc64le is only supported by MongoDB 3.4+
-      # Ubuntu16.04 aarch64 is only supported by MongoDB 3.4+
-      # Ubuntu16.04 s390x is only supported by MongoDB 3.4+
-      # Ubuntu16.04 (x86) only supports MongoDB 3.2+
       # Debian 8.1 only supports MongoDB 3.4+
       # SUSE12 s390x is only supported by MongoDB 3.4+
       # No enterprise build for Archlinux, SSL not available
