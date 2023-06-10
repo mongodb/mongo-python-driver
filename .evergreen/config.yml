@@ -1208,7 +1208,8 @@ task_groups:
           shell: "bash"
           script: |
             ${PREPARE_SHELL}
-            sudo yum update
+            set -ex
+            sudo yum update -y
             sudo yum install -y wget
             echo '${testgcpkms_key_file}' > /tmp/testgcpkms_key_file.json
             export GCPKMS_KEYFILE=/tmp/testgcpkms_key_file.json
@@ -1247,7 +1248,8 @@ task_groups:
           set -o errexit
           ${PREPARE_SHELL}
           # TODO: remove after BUILD-17501 is complete
-          sudo yum update
+          set -ex
+          sudo yum update -y
           sudo yum install -y azure-cli
           echo '${testazurekms_publickey}' > /tmp/testazurekms_publickey
           echo '${testazurekms_privatekey}' > /tmp/testazurekms_privatekey
