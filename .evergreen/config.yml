@@ -1348,7 +1348,7 @@ tasks:
 
     - name: "release-manylinux"
       tags: ["release_tag"]
-      run_on: ubuntu2204-large
+      run_on: ubuntu2004-large
       exec_timeout_secs: 216000  # 60 minutes (manylinux task is slow).
       commands:
         - func: "build release"
@@ -1356,7 +1356,7 @@ tasks:
 
     - name: "release-old-manylinux"
       tags: ["release_tag"]
-      run_on: ubuntu2204-large
+      run_on: ubuntu2004-large
       exec_timeout_secs: 216000  # 60 minutes (manylinux task is slow).
       commands:
         - command: shell.exec
