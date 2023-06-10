@@ -1209,8 +1209,6 @@ task_groups:
           script: |
             ${PREPARE_SHELL}
             set -ex
-            sudo yum update -y
-            sudo yum install -y wget
             echo '${testgcpkms_key_file}' > /tmp/testgcpkms_key_file.json
             export GCPKMS_KEYFILE=/tmp/testgcpkms_key_file.json
             export GCPKMS_DRIVERS_TOOLS=$DRIVERS_TOOLS
@@ -1249,8 +1247,6 @@ task_groups:
           ${PREPARE_SHELL}
           # TODO: remove after BUILD-17501 is complete
           set -ex
-          sudo yum update -y
-          sudo yum install -y azure-cli
           echo '${testazurekms_publickey}' > /tmp/testazurekms_publickey
           echo '${testazurekms_privatekey}' > /tmp/testazurekms_privatekey
           # Set 600 permissions on private key file. Otherwise ssh / scp may error with permissions "are too open".
@@ -2224,7 +2220,7 @@ tasks:
             shell: "bash"
             script: |
               ${PREPARE_SHELL}
-              export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-80-64-bit/master/latest/libmongocrypt.tar.gz
+              export LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz
               SUCCESS=false TEST_FLE_GCP_AUTO=1 ./.evergreen/run-tests.sh
 
     - name: testazurekms-task
@@ -2281,7 +2277,7 @@ tasks:
             PYTHON_BINARY=
             KEY_NAME='${testazurekms_keyname}' \
             KEY_VAULT_ENDPOINT='${testazurekms_keyvaultendpoint}' \
-            LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/rhel-80-64-bit/master/latest/libmongocrypt.tar.gz \
+            LIBMONGOCRYPT_URL=https://s3.amazonaws.com/mciuploads/libmongocrypt/debian10/master/latest/libmongocrypt.tar.gz \
             SUCCESS=false TEST_FLE_AZURE_AUTO=1 \
             ./.evergreen/run-tests.sh
 
@@ -3250,7 +3246,7 @@ buildvariants:
 - name: testgcpkms-variant
   display_name: "GCP KMS"
   run_on:
-    - rhel84-small
+    - debian10-small
   tasks:
     - name: testgcpkms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
@@ -3258,7 +3254,7 @@ buildvariants:
 
 - name: testazurekms-variant
   display_name: "Azure KMS"
-  run_on: rhel84-small
+  run_on: debian10-small
   tasks:
     - name: testazurekms_task_group
       batchtime: 20160 # Use a batchtime of 14 days as suggested by the CSFLE test README
