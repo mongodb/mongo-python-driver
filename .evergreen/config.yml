@@ -1208,7 +1208,6 @@ task_groups:
           shell: "bash"
           script: |
             ${PREPARE_SHELL}
-            set -ex
             echo '${testgcpkms_key_file}' > /tmp/testgcpkms_key_file.json
             export GCPKMS_KEYFILE=/tmp/testgcpkms_key_file.json
             export GCPKMS_DRIVERS_TOOLS=$DRIVERS_TOOLS
@@ -1242,11 +1241,10 @@ task_groups:
     - command: shell.exec
       params:
         shell: bash
+        silent: true
         script: |-
           set -o errexit
           ${PREPARE_SHELL}
-          # TODO: remove after BUILD-17501 is complete
-          set -ex
           echo '${testazurekms_publickey}' > /tmp/testazurekms_publickey
           echo '${testazurekms_privatekey}' > /tmp/testazurekms_privatekey
           # Set 600 permissions on private key file. Otherwise ssh / scp may error with permissions "are too open".
