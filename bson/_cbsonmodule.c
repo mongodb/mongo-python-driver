@@ -2077,7 +2077,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                         millis = max_millis;
                     }
                     // Continues from here to return a datetime.
-                } else if (dt_auto) {
+                } else { // dt_auto
                     if (millis < min_millis || millis > max_millis){
                         value = datetime_ms_from_millis(self, millis);
                         break; // Out-of-range so done.
