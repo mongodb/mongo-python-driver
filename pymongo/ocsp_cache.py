@@ -16,6 +16,7 @@
 
 from collections import namedtuple
 from datetime import datetime as _datetime
+from datetime import timezone
 
 from pymongo.lock import _create_lock
 
@@ -60,7 +61,7 @@ class _OCSPCache:
                 return
 
             # Do nothing if the response is invalid.
-            if not (value.this_update <= _datetime.utcnow() < value.next_update):
+            if not (value.this_update <= _datetime.now(tz=timezone.utc) < value.next_update):
                 return
 
             # Cache new response OR update cached response if new response
@@ -81,7 +82,7 @@ class _OCSPCache:
             value = self._data[cache_key]
 
             # Return cached response if it is still valid.
-            if value.this_update <= _datetime.utcnow() < value.next_update:
+            if value.this_update <= _datetime.now(tz=timezone.utc) < value.next_update:
                 return value
 
             self._data.pop(cache_key, None)

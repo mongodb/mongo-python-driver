@@ -86,7 +86,7 @@ class TestObjectId(unittest.TestCase):
         self.assertEqual(a, ObjectId(str(a)))
 
     def test_generation_time(self):
-        d1 = datetime.datetime.utcnow()
+        d1 = datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None)
         d2 = ObjectId().generation_time
 
         self.assertEqual(utc, d2.tzinfo)
@@ -97,7 +97,7 @@ class TestObjectId(unittest.TestCase):
         if "PyPy 1.8.0" in sys.version:
             # See https://bugs.pypy.org/issue1092
             raise SkipTest("datetime.timedelta is broken in pypy 1.8.0")
-        d = datetime.datetime.utcnow()
+        d = datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None)
         d = d - datetime.timedelta(microseconds=d.microsecond)
         oid = ObjectId.from_datetime(d)
         self.assertEqual(d, oid.generation_time.replace(tzinfo=None))
