@@ -304,19 +304,15 @@ static int millis_from_datetime_ms(PyObject* dt, long long* out){
     long long millis;
 
     if (!(ll_millis = PyNumber_Long(dt))){
-        if (PyErr_Occurred()) { // TypeError
-            return 0;
-        }
+        return 0;
     }
-
-    if ((millis = PyLong_AsLongLong(ll_millis)) == -1){
-        if (PyErr_Occurred()) { /* Overflow */
-            PyErr_SetString(PyExc_OverflowError,
-                            "MongoDB datetimes can only handle up to 8-byte ints");
-            return 0;
-        }
-    }
+    millis = PyLong_AsLongLong(ll_millis);
     Py_DECREF(ll_millis);
+    if (millis == -1 && PyErr_Occurred()) { /* Overflow */
+        PyErr_SetString(PyExc_OverflowError,
+                        "MongoDB datetimes can only handle up to 8-byte ints");
+        return 0;
+    }
     *out = millis;
     return 1;
 }
