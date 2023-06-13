@@ -539,13 +539,15 @@ class _AuthContext:
         self.address = address
 
     @staticmethod
-    def from_credentials(creds: MongoCredential, address: tuple[str, int]) -> Optional[Callable]:
+    def from_credentials(
+        creds: MongoCredential, address: tuple[str, int]
+    ) -> Optional[_AuthContext]:
         spec_cls = _SPECULATIVE_AUTH_MAP.get(creds.mechanism)
         if spec_cls:
             return spec_cls(creds, address)
         return None
 
-    def speculate_command(self) -> None:
+    def speculate_command(self) -> Optional[SON[str, Any]]:
         raise NotImplementedError
 
     def parse_response(self, hello: Hello) -> None:
@@ -563,7 +565,7 @@ class _ScramContext(_AuthContext):
         self.scram_data: Optional[tuple[bytes, bytes]] = None
         self.mechanism = mechanism
 
-    def speculate_command(self) -> SON:
+    def speculate_command(self) -> Optional[SON[str, Any]]:
         nonce, first_bare, cmd = _authenticate_scram_start(self.credentials, self.mechanism)
         # The 'db' field is included only on the speculative command.
         cmd["db"] = self.credentials.source
@@ -573,7 +575,7 @@ class _ScramContext(_AuthContext):
 
 
 class _X509Context(_AuthContext):
-    def speculate_command(self) -> SON[str, int | str]:
+    def speculate_command(self) -> Optional[SON[str, Any]]:
         cmd = SON([("authenticate", 1), ("mechanism", "MONGODB-X509")])
         if self.credentials.username is not None:
             cmd["user"] = self.credentials.username
@@ -581,7 +583,7 @@ class _X509Context(_AuthContext):
 
 
 class _OIDCContext(_AuthContext):
-    def speculate_command(self) -> Optional[SON[str, int | str | Binary]]:
+    def speculate_command(self) -> Optional[SON[str, Any]]:
         authenticator = _get_authenticator(self.credentials, self.address)
         cmd = authenticator.auth_start_cmd(False)
         if cmd is None:
