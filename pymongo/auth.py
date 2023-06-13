@@ -108,7 +108,12 @@ _AWSProperties = namedtuple("_AWSProperties", ["aws_session_token"])
 
 
 def _build_credentials_tuple(
-    mech: str, source: str, user: str, passwd: str, extra: Mapping[str, Any], database: str
+    mech: str,
+    source: Optional[str],
+    user: str,
+    passwd: str,
+    extra: Mapping[str, Any],
+    database: Optional[str],
 ) -> MongoCredential:
     """Build and return a mechanism specific credentials tuple."""
     if mech not in ("MONGODB-X509", "MONGODB-AWS", "MONGODB-OIDC") and user is None:
