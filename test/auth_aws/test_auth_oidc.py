@@ -28,11 +28,15 @@ from test.utils import EventListener
 
 from bson import SON
 from pymongo import MongoClient
+from pymongo.auth import _AUTH_MAP, _authenticate_oidc
 from pymongo.auth_oidc import _CACHE as _oidc_cache
 from pymongo.cursor import CursorType
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
 from pymongo.operations import InsertOne
+
+# Force MONGODB-OIDC to be enabled.
+_AUTH_MAP["MONGODB-OIDC"] = _authenticate_oidc  # type:ignore
 
 
 class TestAuthOIDC(unittest.TestCase):
