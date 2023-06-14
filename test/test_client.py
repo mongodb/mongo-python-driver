@@ -1143,7 +1143,7 @@ class TestClient(IntegrationTest):
         naive = self.client
         aware.pymongo_test.drop_collection("test")
 
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(tz=datetime.timezone.utc)
         aware.pymongo_test.test.insert_one({"x": now})
 
         self.assertEqual(None, naive.pymongo_test.test.find_one()["x"].tzinfo)

@@ -44,7 +44,7 @@ def get_addresses(server_list):
 
 
 def make_last_write_date(server):
-    epoch = datetime.datetime.utcfromtimestamp(0)
+    epoch = datetime.datetime.fromtimestamp(0, tz=datetime.timezone.utc).replace(tzinfo=None)
     millis = server.get("lastWrite", {}).get("lastWriteDate")
     if millis:
         diff = ((millis % 1000) + 1000) % 1000

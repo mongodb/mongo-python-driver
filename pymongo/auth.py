@@ -510,7 +510,6 @@ _AUTH_MAP: Mapping[str, Callable] = {
     "MONGODB-CR": _authenticate_mongo_cr,
     "MONGODB-X509": _authenticate_x509,
     "MONGODB-AWS": _authenticate_aws,
-    "MONGODB-OIDC": _authenticate_oidc,
     "PLAIN": _authenticate_plain,
     "SCRAM-SHA-1": functools.partial(_authenticate_scram, mechanism="SCRAM-SHA-1"),
     "SCRAM-SHA-256": functools.partial(_authenticate_scram, mechanism="SCRAM-SHA-256"),
