@@ -762,6 +762,26 @@ class ProseSpecTestsMixin:
         self.assertIsNotNone(response.command["pipeline"][0]["$changeStream"].get("resumeAfter"))
         self.assertIsNone(response.command["pipeline"][0]["$changeStream"].get("startAfter"))
 
+    # Prose test no. 19
+    @no_type_check
+    @client_context.require_version_min(7, 0, -1)
+    def test_split_large_change(self):
+        self.db.drop_collection("test_split_large_change")
+        coll = self.db.create_collection(
+            "test_split_large_change", changeStreamPreAndPostImages={"enabled": True}
+        )
+        coll.insert_one({"_id": 1, "value": "q" * 10 * 1024 * 1024})
+        with coll.watch(
+            [{"$changeStreamSplitLargeEvent": {}}], full_document_before_change="required"
+        ) as change_stream:
+            coll.update_one({"_id": 1}, {"$set": {"value": "z" * 10 * 1024 * 1024}})
+            doc_1 = change_stream.next()
+            self.assertIn("splitEvent", doc_1)
+            self.assertEqual(doc_1["splitEvent"], {"fragment": 1, "of": 2})
+            doc_2 = change_stream.next()
+            self.assertIn("splitEvent", doc_2)
+            self.assertEqual(doc_2["splitEvent"], {"fragment": 2, "of": 2})
+
 
 class TestClusterChangeStream(TestChangeStreamBase, APITestsMixin):
     dbs: list
