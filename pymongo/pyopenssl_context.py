@@ -31,6 +31,7 @@ from service_identity import VerificationError as _SIVerificationError
 from service_identity.pyopenssl import verify_hostname as _verify_hostname
 from service_identity.pyopenssl import verify_ip_address as _verify_ip_address
 
+from pymongo.common import validate_boolean
 from pymongo.errors import ConfigurationError as _ConfigurationError
 from pymongo.errors import _CertificateError
 from pymongo.ocsp_cache import _OCSPCache
@@ -228,8 +229,7 @@ class SSLContext:
         return self._check_hostname
 
     def __set_check_hostname(self, value):
-        if not isinstance(value, bool):
-            raise TypeError("check_hostname must be True or False")
+        validate_boolean("check_hostname", value)
         self._check_hostname = value
 
     check_hostname = property(__get_check_hostname, __set_check_hostname)
@@ -238,8 +238,7 @@ class SSLContext:
         return self._callback_data.check_ocsp_endpoint
 
     def __set_check_ocsp_endpoint(self, value):
-        if not isinstance(value, bool):
-            raise TypeError("check_ocsp must be True or False")
+        validate_boolean("check_ocsp", value)
         self._callback_data.check_ocsp_endpoint = value
 
     check_ocsp_endpoint = property(__get_check_ocsp_endpoint, __set_check_ocsp_endpoint)

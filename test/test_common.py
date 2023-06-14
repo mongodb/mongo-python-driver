@@ -165,6 +165,13 @@ class TestCommon(IntegrationTest):
         self.assertEqual(direct, direct2)
         self.assertFalse(direct != direct2)
 
+    def test_validate_boolean(self):
+        self.db.test.update_one({}, {"$set": {"total": 1}}, upsert=True)
+        with self.assertRaisesRegex(
+            TypeError, "upsert must be True or False, was: upsert={'upsert': True}"
+        ):
+            self.db.test.update_one({}, {"$set": {"total": 1}}, {"upsert": True})
+
 
 if __name__ == "__main__":
     unittest.main()
