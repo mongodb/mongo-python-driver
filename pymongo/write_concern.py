@@ -16,8 +16,14 @@
 
 from typing import Any, Dict, Optional, Union
 
-from pymongo.common import validate_boolean
 from pymongo.errors import ConfigurationError
+
+
+def validate_boolean(option: str, value: Any) -> bool:
+    """Validates that 'value' is True or False."""
+    if isinstance(value, bool):
+        return value
+    raise TypeError(f"{option} must be True or False, was: {option}={value}")
 
 
 class WriteConcern:

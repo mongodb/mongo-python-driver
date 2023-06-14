@@ -50,7 +50,7 @@ from pymongo.monitoring import _validate_event_listeners
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import _MONGOS_MODES, _ServerMode
 from pymongo.server_api import ServerApi
-from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
+from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern, validate_boolean
 
 ORDERED_TYPES: Sequence[Type] = (SON, OrderedDict)
 
@@ -168,13 +168,6 @@ _UUID_REPRESENTATIONS = {
     "javaLegacy": UuidRepresentation.JAVA_LEGACY,
     "csharpLegacy": UuidRepresentation.CSHARP_LEGACY,
 }
-
-
-def validate_boolean(option: str, value: Any) -> bool:
-    """Validates that 'value' is True or False."""
-    if isinstance(value, bool):
-        return value
-    raise TypeError(f"{option} must be True or False, was: {option}={value}")
 
 
 def validate_boolean_or_string(option: str, value: Any) -> bool:
